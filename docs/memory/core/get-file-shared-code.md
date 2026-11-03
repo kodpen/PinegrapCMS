@@ -14,7 +14,7 @@ description: get_file.php never loads functions.php: the shared files (authentic
 - Breaking a contract brings back the dependency the file exists to avoid: the function is missing on the `get_file.php` side (a fatal error on a file request), not on the panel.
 
 ## Which copies are allowed?
-- `get_file.php` keeps 11 deliberate copies, the `$intended` list of `tools/check_copies.php`: `output_error`, `db`, `db_value`, `db_item`, `db_items`, `escape`, `log_activity`, `initialize_user`, `get_request_uri`, `check_if_request_is_secure`, `check_proxy_ssl_headers` (reasons: `docs/_get_file_kopyalar.md`). When you change one of them, change the `get_file.php` copy too.
+- `get_file.php` keeps 10 deliberate copies, the `$intended` list of `tools/check_copies.php`: `output_error`, `db`, `db_value`, `db_item`, `db_items`, `escape`, `log_activity`, `initialize_user`, `get_request_uri`, `check_if_request_is_secure` (reasons: `docs/_get_file_kopyalar.md`). When you change one of them, change the `get_file.php` copy too. The scheme parsing and the peer trust are not copied: both sides load `includes/fn/request_scheme.php` (`platform/proxy-https-trust.md`).
 - CI runs `php tools/check_copies.php`: a function declared in `get_file.php` and again in `functions.php`, `includes/authentication.php` or `includes/fn/*.php` that is not on the list FAILs; a listed name that is no longer duplicated is a WARN.
 
 Related: docs/memory/core/functions-php-split-rules.md, docs/memory/core/session-token-binding.md

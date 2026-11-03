@@ -94,9 +94,9 @@ function test_visitor_report_pay_per_click_organic_translated()
 	pg_assert_contains("lang('Organic')", $function);
 
 	// The SQL still returns the literals the case maps.
-	$source = visitor_report_export_source();
-	pg_assert_contains('THEN "Pay Per Click"', $source);
-	pg_assert_contains('THEN "Organic"', $source);
+	$sql = pg_visitor_report_channel_sql(false);
+	pg_assert_contains("THEN 'Pay Per Click'", $sql);
+	pg_assert_contains("THEN 'Organic'", $sql);
 }
 
 // A grouping cell (referrer, search terms, tracking and affiliate codes,

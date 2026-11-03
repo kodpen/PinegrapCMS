@@ -138,9 +138,9 @@ if ($_POST) {
             go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
         }
 
-        $result = erp_settlement_remove((int) ($_POST['settlement_id'] ?? 0), (int) $user['id']);
+        $result = erp_settlement_remove((int) ($_POST['settlement_id'] ?? 0), (int) $user['id'], array('invoice_id' => $invoice_id));
 
-        if ($result['success'] && ((int) $result['invoice_id'] === $invoice_id)) {
+        if ($result['success']) {
             log_activity(lang(array('string' => 'erp allocation was removed from invoice ({var:1})', 'vars' => $invoice['full_number'])), $_SESSION['sessionusername']);
             $liveform->add_notice(lang('The allocation has been removed.'));
         } else {
@@ -341,9 +341,11 @@ if ($_POST) {
 
     if (($_POST['erp_action'] ?? '') === 'recur_stop') {
 
-        if (erp_invoice_recurrence_stop((int) ($_POST['recurrence_id'] ?? 0), (int) $user['id'])) {
+        if (erp_invoice_recurrence_stop((int) ($_POST['recurrence_id'] ?? 0), (int) $user['id'], $invoice_id)) {
             log_activity(lang(array('string' => 'erp invoice ({var:1}) was stopped repeating', 'vars' => $invoice['full_number'])), $_SESSION['sessionusername']);
             $liveform->add_notice(lang('The invoice no longer repeats. The invoices it wrote stay.'));
+        } else {
+            $liveform->mark_error('_error', lang('The change could not be saved.'));
         }
 
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query . '#erp-recurring');
@@ -536,8 +538,8 @@ if (function_exists('erp_stock_ready') && erp_stock_ready() && ((string) $invoic
 
     $output_stock = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
-                    <span>' . lang('Stock') . '</span>
+                <div class="card-header bg-reset border-0 h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <span class="text-uppercase">' . lang('Stock') . '</span>
                     <a class="btn btn-sm btn-outline theme-secondary m-1" href="erp_stock.php"><i class="bi bi-boxes me-3" aria-hidden="true"></i>' . lang('Stock and cost') . '</a>
                 </div>' . (($stock_rows !== '') ? '
                 <div class="card-body p-0 table-responsive">
@@ -1185,8 +1187,8 @@ if (((string) $invoice['direction'] === 'sales')
 
     $output_edoc = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
-                    <span>' . lang('e-Document') . $edoc_test_badge . '</span>
+                <div class="card-header bg-reset border-0 h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <span class="text-uppercase">' . lang('e-Document') . $edoc_test_badge . '</span>
                     <span>' . $output_edoc_buttons . '</span>
                 </div>
                 <div class="card-body">
@@ -1250,8 +1252,8 @@ if (((string) $invoice['direction'] === 'sales')
 
     $output_edoc = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
-                    <span>' . lang('Incoming e-invoice') . '</span>
+                <div class="card-header bg-reset border-0 h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <span class="text-uppercase">' . lang('Incoming e-invoice') . '</span>
                     ' . (($inbox_id > 0)
                         ? '<span>
                         <a class="btn btn-sm btn-outline theme-secondary m-1" href="erp_inbox_document.php?id=' . $inbox_id . '"><i class="bi bi-inbox me-3" aria-hidden="true"></i>' . lang('The e-invoice') . '</a>
@@ -1410,11 +1412,11 @@ if (function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_read
                         </div>
                         <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_first">' . lang('Next invoice on') . '</label>
-                            <input type="date" data-pg-date class="form-control form-control-sm" id="recur_first" name="recur_first" value="' . h(erp_expense_recurring_step((string) $invoice['issue_date'], 1, (int) substr((string) $invoice['issue_date'], 8, 2))) . '" required />
+                            <input type="date" data-pg-date class="form-control form-control-sm" id="recur_first" name="recur_first" value="' . h(erp_invoice_recurring_first_default((string) $invoice['issue_date'], date('Y-m-d'))) . '" min="' . h(date('Y-m-d', strtotime('+1 day'))) . '" required />
                         </div>
                         <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_end">' . lang('Until (optional)') . '</label>
-                            <input type="date" data-pg-date class="form-control form-control-sm" id="recur_end" name="recur_end" />
+                            <input type="date" data-pg-date class="form-control form-control-sm" id="recur_end" name="recur_end" min="' . h(date('Y-m-d', strtotime('+1 day'))) . '" />
                         </div>
                         <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_mode">' . lang('Each invoice is') . '</label>
@@ -1550,8 +1552,8 @@ pg_page_shell([
             </form>
 
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
-                    <span>' . lang('Settlement') . '</span>
+                <div class="card-header bg-reset border-0 h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <span class="text-uppercase">' . lang('Settlement') . '</span>
                     ' . (($can_record_receipt && $open_amount > 0 && (string) $invoice['status'] !== 'cancelled')
                         ? '<a class="btn btn-sm btn-solid theme-primary" href="add_erp_receipt.php?direction=' . (((string) $invoice['direction'] === 'sales') ? 'collection' : 'payment') . '&amp;invoice_id=' . $invoice_id . '"><i class="bi bi-cash-coin me-3" aria-hidden="true"></i>' . h(erp_record_receipt_label((string) $invoice['direction'])) . '</a>'
                         : '') . '

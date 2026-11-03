@@ -80,13 +80,15 @@ function pg_not_found_log_ready()
  * the path in the stored form of a short link name (no / at either end, one
  * / between parts, _ for a space), and only when a short link could have it
  * (pg_short_link_name_fault()) without being a pattern, and when it is not
- * under the software directory (the panel and its files, never a page).
+ * under the software directory (the panel and its files, never a page) or
+ * a language directory (pg_not_found_log_reserved()).
  *
- * @param mixed  $path               The path the router looked up (PG_SHORT_LINK_PATH)
- * @param string $software_directory SOFTWARE_DIRECTORY
+ * @param mixed         $path               The path the router looked up (PG_SHORT_LINK_PATH)
+ * @param string        $software_directory SOFTWARE_DIRECTORY
+ * @param string[]|null $reserved           pg_tr_reserved_names(); null asks it
  * @return string
  */
-function pg_not_found_log_name($path, $software_directory = '')
+function pg_not_found_log_name($path, $software_directory = '', $reserved = null)
 {
     if (!is_string($path) || !mb_check_encoding($path, 'UTF-8')) {
         return '';
@@ -104,7 +106,36 @@ function pg_not_found_log_name($path, $software_directory = '')
         return '';
     }
 
+    if (pg_not_found_log_reserved($name, $reserved)) {
+        return '';
+    }
+
     return $name;
+}
+
+/**
+ * Whether a name's first part is a language directory, in any case. A short
+ * link cannot take such a name (check_name_availability() lower-cases it and
+ * asks pg_tr_is_reserved_name()), while the router knows a prefix only in
+ * lower case: /EN/menu answers 404 and no redirect can be saved for it.
+ *
+ * @param string        $name
+ * @param string[]|null $reserved pg_tr_reserved_names(); null asks it
+ * @return bool
+ */
+function pg_not_found_log_reserved($name, $reserved = null)
+{
+    if ($reserved === null) {
+        $reserved = function_exists('pg_tr_reserved_names') ? pg_tr_reserved_names() : array();
+    }
+
+    if (!$reserved) {
+        return false;
+    }
+
+    $first = mb_strtolower(explode('/', (string) $name, 2)[0], 'UTF-8');
+
+    return ($first !== '') && in_array($first, array_map('strval', (array) $reserved), true);
 }
 
 /**
@@ -610,9 +641,14 @@ function pg_not_found_log_page_sql($sort, $since = 0, $cursor = null, $rows = 51
  * The WHERE of a list of the log: the retention period always, then who
  * asked ('visitors': at least one request that was not a verified crawler,
  * 'crawlers': at least one that was) and the part of the address searched
- * for (at most 191 characters, the column's width).
+ * for. The search is read in the stored form (pg_short_link_name_from_address():
+ * the list shows "/name" and a pasted full address keeps only its path), at
+ * most 191 characters, the column's width, and matched by the panel's list
+ * rule (pg_list_search_where(): I and ı under Turkish case rules when
+ * 'turkish' names the connection charset).
  *
- * @param array $filters since (int), who, search
+ * @param array $filters since (int), who, search, turkish
+ *                       (pg_list_search_turkish_charset(), '' by default)
  * @return string
  */
 function pg_not_found_log_where($filters)
@@ -630,10 +666,22 @@ function pg_not_found_log_where($filters)
             break;
     }
 
-    $search = is_string($filters['search'] ?? null) ? mb_substr(trim($filters['search']), 0, PG_NOT_FOUND_LOG_PATH_MAX, 'UTF-8') : '';
+    $search = is_string($filters['search'] ?? null) ? pg_short_link_name_from_address($filters['search']) : '';
+    $search = mb_substr($search, 0, PG_NOT_FOUND_LOG_PATH_MAX, 'UTF-8');
 
     if ($search !== '') {
-        $where[] = "path LIKE '" . e('%' . escape_like($search) . '%') . "'";
+        $condition = pg_list_search_where(array($search), array('path'), array(), (string) ($filters['turkish'] ?? ''));
+
+        // The values go into the text of the query: the list is read with
+        // db_items(), and the parts between the placeholders are fixed SQL.
+        $pieces = explode('?', $condition['sql']);
+        $sql = array_shift($pieces);
+
+        foreach ($pieces as $i => $piece) {
+            $sql .= "'" . e((string) $condition['params'][$i]) . "'" . $piece;
+        }
+
+        $where[] = $sql;
     }
 
     return implode(' AND ', $where);
@@ -646,7 +694,9 @@ function pg_not_found_log_where($filters)
  * the Recycle Bin holds the name, so no new one can take it, and the address
  * still answers 404), 'page' or 'file' (one has the name now), 'pattern' (a
  * live short link with a * matches it, pg_short_link_match_in()), 'id' =>
- * the short link's id or 0). A name nothing answers is left out. A pattern is
+ * the short link's id or 0; 'reserved': the first part is a language
+ * directory, so no short link can take the name). A name nothing answers is
+ * left out. A pattern is
  * asked last, as the router asks it: an exact link made for a name a pattern
  * already answers would take the address from the pattern.
  *
@@ -670,6 +720,15 @@ function pg_not_found_log_answers($names)
         $by_key[$key][] = (string) $name;
     }
     $recycled = pg_schema_has('short_links', 'recycled');
+
+    // A name under a language directory cannot become a short link, so the
+    // screen says so instead of offering a form that refuses it. Rows logged
+    // before the log skipped such names show it until they age out.
+    foreach ($names as $name) {
+        if (pg_not_found_log_reserved($name)) {
+            $out[$name] = array('state' => 'reserved', 'id' => 0);
+        }
+    }
 
     foreach (array_chunk($names, 200) as $chunk) {
         $in = "'" . implode("', '", array_map('e', $chunk)) . "'";

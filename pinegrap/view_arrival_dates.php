@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/arrival_date_form.php');
 
 // only ever appended to further below, so it has to start out empty
 $output_rows = '';
@@ -63,6 +64,7 @@ $query = "SELECT
             arrival_dates.status as status,
             arrival_dates.start_date as start_date,
             arrival_dates.end_date as end_date,
+            arrival_dates.custom as custom,
             user.user_username as user,
             arrival_dates.timestamp as timestamp
         FROM arrival_dates
@@ -74,10 +76,14 @@ while ($row = mysqli_fetch_array($result)) {
 
     $id = $row['id'];
     $name = $row['name'];
-    $arrival_date = prepare_form_data_for_output($row['arrival_date'], 'date');
+    // An unset date (AT-ONCE, or one the customer enters) is not 0/0/0000.
+    $arrival_date = pg_arrival_date_form_date_text($row['arrival_date']);
+    if (($arrival_date === '') && ($row['custom'] == 1)) {
+        $arrival_date = lang('Chosen by the customer');
+    }
     $status = $row['status'];
-    $start_date = prepare_form_data_for_output($row['start_date'], 'date');
-    $end_date = prepare_form_data_for_output($row['end_date'], 'date');
+    $start_date = pg_arrival_date_form_date_text($row['start_date']);
+    $end_date = pg_arrival_date_form_date_text($row['end_date']);
     $username = $row['user'];
     $timestamp = $row['timestamp'];
     

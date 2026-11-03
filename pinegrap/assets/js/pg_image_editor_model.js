@@ -363,7 +363,7 @@
 
     // Layers whose content a turn or a flip of the picture does not turn:
     // only their place follows it.
-    var UPRIGHT = ['text', 'sticker', 'image'];
+    var UPRIGHT = ['text', 'sticker', 'image', 'glyph'];
 
     function sourceTurns(doc) {
         var g = doc.geometry, src = doc.source || { width: 0, height: 0 };
@@ -2122,7 +2122,117 @@
 
     // -- export (pg_image_editor_export.js) --
 
-    var EXPORT = {};
+    // The export panel's formats: keep writes the file's own; another is
+    // saved as a copy, so a file's bytes always match its name's extension.
+    var EXPORT_FORMATS = ['keep', 'jpeg', 'webp', 'avif', 'png'];
+
+    // Longest edges offered; 0 keeps the size.
+    var EXPORT_EDGES = [0, 2560, 1920, 1280, 1080];
+
+    // A file's own format from its name: jpeg, png, webp, avif, gif or ''.
+    function fileFormat(name) {
+        var m = /\.([a-z0-9]+)(?:[?#].*)?$/i.exec(String(name || '')), ext = m ? m[1].toLowerCase() : '';
+
+        return { jpg: 'jpeg', jpeg: 'jpeg', png: 'png', webp: 'webp', avif: 'avif', gif: 'gif' }[ext] || '';
+    }
+
+    // The format a save writes: the chosen one, or the file's own for keep.
+    function exportFormat(choice, own) {
+        return ((choice === 'keep') || (EXPORT_FORMATS.indexOf(choice) < 0)) ? (own || '') : choice;
+    }
+
+    // The settings as a save starts: the file's own format at the editor's
+    // quality and size, as before there was a panel.
+    function exportDefaults() {
+        return { format: 'keep', quality: 92, edge: 0, colors: false, progressive: true, camera: false, srgb: false };
+    }
+
+    // w x h brought within a longest edge; never enlarged.
+    function exportSize(w, h, edge) {
+        var k = (edge > 0) ? Math.min(1, edge / Math.max(w, h, 1)) : 1;
+
+        return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)) };
+    }
+
+    // The mode a save takes: a replace that would change the format is a
+    // copy (the file keeps its format and its address).
+    function exportMode(mode, choice, own) {
+        return ((mode === 'replace') && (exportFormat(choice, own) !== own)) ? 'copy' : mode;
+    }
+
+    // What the save request carries: null when the settings change nothing.
+    function exportRequest(ex, own) {
+        var format = exportFormat(ex.format, own), out = {};
+
+        if (format !== own) {
+            out.format = format;
+        }
+
+        if (Math.round(ex.quality) !== 92) {
+            out.quality = Math.round(clamp(Number(ex.quality) || 92, 40, 100));
+        }
+
+        if (ex.edge > 0) {
+            out.edge = ex.edge;
+        }
+
+        if (ex.colors && (format === 'png')) {
+            out.colors = 256;
+        }
+
+        // A JPEG is written progressive unless asked otherwise.
+        if ((ex.progressive === false) && (format === 'jpeg')) {
+            out.progressive = false;
+        }
+
+        // Camera details (never the location) go from a JPEG into a JPEG.
+        if (ex.camera && exportCamera(format, own)) {
+            out.camera = true;
+        }
+
+        if (ex.srgb) {
+            out.srgb = true;
+        }
+
+        return Object.keys(out).length ? out : null;
+    }
+
+    // Whether camera details can be kept: a JPEG saved as a JPEG.
+    function exportCamera(format, own) {
+        return (own === 'jpeg') && (format === 'jpeg');
+    }
+
+    // The panel's result card: after against before as a signed percent
+    // (negative is lighter) and the bar's width in percent (3-100).
+    function exportChange(before, after) {
+        if (!(before > 0) || !(after > 0)) {
+            return null;
+        }
+
+        return { percent: Math.round((after / before - 1) * 100), bar: Math.max(3, Math.min(100, Math.round(after / before * 1000) / 10)) };
+    }
+
+    // A file size for the result card: B, KB with no decimals, MB with one;
+    // sep is the panel's decimal separator.
+    function exportBytes(n, sep) {
+        n = Math.max(0, Math.round(Number(n) || 0));
+
+        if (n < 1024) {
+            return n + ' B';
+        }
+
+        if (n < 1024 * 1024) {
+            return Math.round(n / 1024) + ' KB';
+        }
+
+        return String(Math.round(n / 104857.6) / 10).replace('.', sep || '.') + ' MB';
+    }
+
+    var EXPORT = {
+        EXPORT_FORMATS: EXPORT_FORMATS, EXPORT_EDGES: EXPORT_EDGES, fileFormat: fileFormat, exportFormat: exportFormat,
+        exportDefaults: exportDefaults, exportSize: exportSize, exportMode: exportMode, exportRequest: exportRequest,
+        exportChange: exportChange, exportBytes: exportBytes, exportCamera: exportCamera
+    };
 
     // -- vector pen and nodes (pg_image_editor_vector.js) --
 
@@ -3073,6 +3183,123 @@
 
     var ACCESS = { KEY_TOOLS: KEY_TOOLS, toolForKey: toolForKey, toolKey: toolKey, trapFocus: trapFocus, twistAngle: twistAngle, keyMap: keyMap };
 
+    // -- Google Fonts choice of the Text tool (pg_image_editor_fonts.js) --
+
+    // The catalogue's families (window.PgGoogleFonts) whose name holds the
+    // query, any letter case, in one category or all, in catalogue order:
+    // [{ family, category }].
+    function fontSearch(catalogue, query, category) {
+        var q = String(query || '').trim().toLowerCase(), out = [];
+
+        ((catalogue && catalogue.order) || []).forEach(function (key) {
+            if (category && (key !== category)) {
+                return;
+            }
+
+            (catalogue.categories[key] || []).forEach(function (family) {
+                if (!q || (family.toLowerCase().indexOf(q) >= 0)) {
+                    out.push({ family: family, category: key });
+                }
+            });
+        });
+
+        return out;
+    }
+
+    // The last five families used, newest first, each once; a name that is
+    // not a plain family leaves the list as it was.
+    function fontRecent(list, family) {
+        var name = textFamilyName(family), keep = Array.isArray(list) ? list.filter(function (f) {
+            return (typeof f === 'string') && (textFamilyName(f) === f) && (f !== '');
+        }) : [];
+
+        if (!name || (name !== family)) {
+            return keep.slice(0, 5);
+        }
+
+        return [name].concat(keep.filter(function (f) { return f !== name; })).slice(0, 5);
+    }
+
+    var GFONTS = { fontSearch: fontSearch, fontRecent: fontRecent };
+
+    // -- Icons and emoji of the Sticker tool (pg_image_editor_glyph.js) --
+
+    // A glyph layer: { type: 'glyph', set: 'bi'|'emoji', code, color, x, y,
+    // w, h, rot, opacity }. An icon's code is its Bootstrap Icons code point,
+    // an emoji's code the emoji itself.
+    var EMOJI = {
+        order: ['smileys', 'people', 'nature', 'food', 'travel', 'activities', 'objects', 'symbols'],
+        categories: {
+            smileys: ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '😉', '😍', '🥰', '😘', '😋', '😜', '🤪', '😎', '🤩', '🥳', '😏', '😢', '😭', '😡', '😱', '🤔', '🤗', '😴', '🙄', '😬', '🤯'],
+            people: ['👋', '👍', '👎', '👏', '🙌', '🙏', '🤝', '💪', '✌️', '🤞', '👌', '🤙', '👉', '👈', '👆', '👇', '✋', '👀', '👶', '🧒', '👩', '👨', '🧓', '👵', '👴', '👮', '👷', '🧑‍🍳', '🧑‍🎓', '🧑‍💻', '🧑‍🎨', '🏃'],
+            nature: ['🐶', '🐱', '🐭', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🦋', '🐝', '🐞', '🐢', '🐟', '🐬', '🐳', '🌵', '🌲', '🌳', '🌴', '🌱', '🍀', '🌸', '🌻', '🌹', '🌷', '🍁', '🌈', '☀️', '🌙', '⭐', '❄️'],
+            food: ['🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍒', '🍑', '🥝', '🥑', '🍅', '🥕', '🌽', '🥐', '🍞', '🧀', '🥚', '🍳', '🍔', '🍟', '🍕', '🌭', '🥙', '🌮', '🍝', '🍣', '🍰', '🎂', '🍩', '🍪', '🍫', '🍦', '☕', '🍵', '🥤', '🍷', '🍺', '🥂'],
+            travel: ['🚗', '🚕', '🚌', '🚑', '🚒', '🚓', '🚚', '🚲', '🛵', '🏍️', '🚆', '✈️', '🚀', '🚢', '⛵', '🚦', '🗺️', '🧭', '🏔️', '🏕️', '🏖️', '🏝️', '🏠', '🏡', '🏢', '🏥', '🏫', '🏛️', '🕌', '⛪', '🗼', '🌉'],
+            activities: ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏓', '🏸', '🥊', '🎯', '⛳', '🎳', '🚴', '🏊', '🧘', '🏆', '🥇', '🥈', '🥉', '🏅', '🎉', '🎊', '🎈', '🎁', '🎄', '🎃', '🎨', '🎬', '🎤', '🎧', '🎸', '🎮'],
+            objects: ['📱', '💻', '⌨️', '🖨️', '📷', '🎥', '📺', '📻', '⏰', '⌛', '💡', '🔦', '🔋', '🔌', '💰', '💳', '💎', '🔧', '🔨', '⚙️', '🔑', '🔒', '📦', '✉️', '📅', '📌', '📎', '✏️', '📝', '📚', '🛒', '🎀'],
+            symbols: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '💔', '💯', '✅', '☑️', '✔️', '❌', '❗', '❓', '⚠️', '🚫', '⛔', '♻️', '🔥', '✨', '⚡', '💥', '💫', '🆕', '🆓', '🆗', '🔝', '🔴', '🟢', '🔵']
+        }
+    };
+
+    // The icons (a Bootstrap Icons name => code point map) whose name holds
+    // the query, any case, spaces read as dashes; names starting with it
+    // first, then the rest, each group by name: [{ name, code }], at most
+    // limit of them and the total in found.
+    function iconSearch(map, query, limit) {
+        var q = String(query || '').trim().toLowerCase().replace(/\s+/g, '-'), first = [], rest = [];
+
+        Object.keys(map || {}).sort().forEach(function (name) {
+            var at = q ? name.indexOf(q) : 0, code = Number(map[name]);
+
+            if ((at < 0) || !(code > 0)) {
+                return;
+            }
+
+            (at === 0 ? first : rest).push({ name: name, code: code });
+        });
+
+        var all = first.concat(rest);
+
+        return { icons: all.slice(0, (limit > 0) ? limit : all.length), found: all.length };
+    }
+
+    // The last eight emoji used, newest first, each once; only short
+    // strings count.
+    function emojiRecent(list, emoji) {
+        var ok = function (e) { return (typeof e === 'string') && (e !== '') && (e.length <= 16); };
+        var keep = Array.isArray(list) ? list.filter(ok) : [];
+
+        if (!ok(emoji)) {
+            return keep.slice(0, 8);
+        }
+
+        return [emoji].concat(keep.filter(function (e) { return e !== emoji; })).slice(0, 8);
+    }
+
+    // The characters a glyph layer draws: an icon's code point or the emoji;
+    // '' for anything else.
+    function glyphText(l) {
+        if (!l) {
+            return '';
+        }
+
+        if (l.set === 'bi') {
+            var code = Number(l.code);
+
+            return ((code > 0) && (code <= 0x10ffff)) ? String.fromCodePoint(code) : '';
+        }
+
+        return ((l.set === 'emoji') && (typeof l.code === 'string')) ? l.code.slice(0, 16) : '';
+    }
+
+    // A glyph's font size in its box: the box's shorter side, so a stretched
+    // box keeps the glyph's own shape.
+    function glyphSize(l) {
+        return Math.max(1, Math.min(Number(l.w) || 0, Number(l.h) || 0));
+    }
+
+    var GLYPH = { EMOJI: EMOJI, iconSearch: iconSearch, emojiRecent: emojiRecent, glyphText: glyphText, glyphSize: glyphSize };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -3089,7 +3316,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, TRACKS, ACCESS].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, TRACKS, ACCESS, GFONTS, GLYPH].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

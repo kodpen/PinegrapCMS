@@ -33,7 +33,7 @@
         body.appendChild(pgDash.tiles(data.tiles));
 
         var chart = el("figure", "pg-dash-chart");
-        chart.appendChild(pgDash.line(data.points, data.compare, data.chart_label, data.compare_label));
+        chart.appendChild(pgDash.line(data.points, data.compare, data.chart_label, data.compare_label, data.tips));
 
         var caption = el("figcaption", "pg-dash-chart-caption");
         caption.appendChild(el("span", "pg-dash-key pg-dash-key-main", data.chart_label));
@@ -57,7 +57,7 @@
         body.appendChild(el("p", "pg-dash-live-note", data.note));
 
         var chart = el("figure", "pg-dash-chart");
-        chart.appendChild(pgDash.bars(data.bars, data.bars_label));
+        chart.appendChild(pgDash.bars(data.bars, data.bars_label, data.tips));
         body.appendChild(chart);
 
         body.appendChild(pgDash.rows(data.rows_title, data.rows));
@@ -105,13 +105,18 @@
         if ((data.sources || []).length) {
             body.appendChild(el("h3", "pg-dash-rows-title", data.sources_title));
             var bar = el("div", "pg-dash-stack");
-            bar.setAttribute("aria-hidden", "true");
+            bar.setAttribute("role", "img");
+            bar.setAttribute("aria-label", data.sources_title);
+            var parts = [];
+            var tips = [];
             var keys = el("ul", "pg-dash-stack-keys");
             data.sources.forEach(function (source, i) {
                 var part = el("span", "pg-dash-stack-part");
                 part.setAttribute("data-part", String(i));
                 part.style.setProperty("--share", String(source.share));
                 bar.appendChild(part);
+                parts.push(part);
+                tips.push(source.text + ": " + source.note);
 
                 var key = el("li", "pg-dash-stack-key");
                 key.setAttribute("data-part", String(i));
@@ -121,6 +126,7 @@
             });
             body.appendChild(bar);
             body.appendChild(keys);
+            pgDash.chartTips(bar, tips, {parts: parts});
         }
 
         if (data.url && data.link) {

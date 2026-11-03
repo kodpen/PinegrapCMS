@@ -144,7 +144,7 @@ function db_q_small_front_test_files()
 		'remove_recipient.php' => 4,
 		'reserve_calendar_event.php' => 3,
 		'print_packing_slip.php' => 3,
-		'approve_affiliate.php' => 5,
+		'approve_affiliate.php' => 1,
 		'includes/local_sale.php' => 0,
 	);
 }

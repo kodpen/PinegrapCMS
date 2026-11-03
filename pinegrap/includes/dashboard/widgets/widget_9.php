@@ -184,26 +184,22 @@ function pg_dashboard_ops_shipping_summary()
 }
 
 /**
- * Orders paid for and not yet sent.
+ * The parcels waiting to be sent, oldest first, one row per recipient:
+ * the lane's rows and the Operations Desk card's.
  *
- * @return array label, icon, color, count, sub, late, body
+ * @param int $limit
+ * @return array ship_to_id, ship_to_name, shipping_method_code,
+ *               shipping_method_name, order_id, order_number, order_date,
+ *               pending_quantity
  */
-function pg_dashboard_ops_shipping()
+function pg_dashboard_ops_shipments($limit)
 {
     $scope = pg_dashboard_ops_shipping_scope();
     $sql_scope = $scope['sql'];
-    $window_days = $scope['window_days'];
-    $shipping = pg_dashboard_ops_shipping_summary();
-
-    $order_count   = $shipping['orders'];
-    $package_count = $shipping['packages'];
-    $pending_value = $shipping['value'];
 
     // Grouped per recipient because the carrier lives on ship_tos: one order
-    // going to two addresses can leave by two carriers. One row over the cap
-    // is fetched to know whether to offer the full list.
-    $row_limit = 10;
-    $shipments = db_items(
+    // going to two addresses can leave by two carriers.
+    return db_items(
         "SELECT
             ship_tos.id AS ship_to_id,
             MAX(ship_tos.ship_to_name) AS ship_to_name,
@@ -225,7 +221,27 @@ function pg_dashboard_ops_shipping()
         GROUP BY ship_tos.id, orders.id
         HAVING pending_quantity > 0
         ORDER BY MAX(orders.order_date) ASC, ship_tos.id ASC
-        LIMIT " . ($row_limit + 1));
+        LIMIT " . max(1, (int) $limit));
+}
+
+/**
+ * Orders paid for and not yet sent.
+ *
+ * @return array label, icon, color, count, sub, late, body
+ */
+function pg_dashboard_ops_shipping()
+{
+    $scope = pg_dashboard_ops_shipping_scope();
+    $window_days = $scope['window_days'];
+    $shipping = pg_dashboard_ops_shipping_summary();
+
+    $order_count   = $shipping['orders'];
+    $package_count = $shipping['packages'];
+    $pending_value = $shipping['value'];
+
+    // One row over the cap is fetched to know whether to offer the full list.
+    $row_limit = 10;
+    $shipments = pg_dashboard_ops_shipments($row_limit + 1);
 
     $more = (count($shipments) > $row_limit);
     $shipments = array_slice($shipments, 0, $row_limit);
@@ -361,30 +377,22 @@ function pg_dashboard_ops_refund_summary()
 }
 
 /**
- * Cancelled orders whose money has not gone back yet.
+ * The cancelled orders still owed money back, the oldest first: the lane's
+ * rows and the Operations Desk card's. The caller checks
+ * orders.refund_status exists.
  *
- * cancel_order.php is customer-facing self-service. A customer cancels; the
- * gateway's automatic refund either fails or was never possible for that
- * payment method; process_order_cancellation() writes
- * orders.refund_status = 'manual_required'. The cancellation email has
- * already promised the customer a manual refund, so this lane is the
- * reminder to keep that promise.
- *
- * @return array label, icon, color, count, sub, body
+ * @param int $limit
+ * @return array orders rows, with what pg_order_cancel_refund_owed() reads
  */
-function pg_dashboard_ops_refunds()
+function pg_dashboard_ops_refund_list($limit)
 {
     $states = pg_dashboard_ops_refund_states_sql();
     $has_paid_at = pg_schema_has('orders', 'paid_at');
     $has_refunded_amount = pg_schema_has('orders', 'refunded_amount');
 
-    $summary = pg_dashboard_ops_refund_summary();
-    $count = $summary['count'];
-    $oldest = $summary['oldest'];
-
     // Oldest first: the customer who has waited longest is the one closest
     // to opening a dispute.
-    $rows = db_items(
+    return db_items(
         "SELECT
             orders.id,
             orders.order_number,
@@ -400,7 +408,28 @@ function pg_dashboard_ops_refunds()
          FROM orders
          WHERE orders.refund_status IN " . $states . "
          ORDER BY orders.cancelled_at ASC, orders.id ASC
-         LIMIT 10");
+         LIMIT " . max(1, (int) $limit));
+}
+
+/**
+ * Cancelled orders whose money has not gone back yet.
+ *
+ * cancel_order.php is customer-facing self-service. A customer cancels; the
+ * gateway's automatic refund either fails or was never possible for that
+ * payment method; process_order_cancellation() writes
+ * orders.refund_status = 'manual_required'. The cancellation email has
+ * already promised the customer a manual refund, so this lane is the
+ * reminder to keep that promise.
+ *
+ * @return array label, icon, color, count, sub, body
+ */
+function pg_dashboard_ops_refunds()
+{
+    $summary = pg_dashboard_ops_refund_summary();
+    $count = $summary['count'];
+    $oldest = $summary['oldest'];
+
+    $rows = pg_dashboard_ops_refund_list(10);
 
     $output_rows = '';
     $urgent = false;
@@ -502,16 +531,15 @@ function pg_dashboard_ops_stock_counts()
 }
 
 /**
- * Products out of stock, and the ones about to be.
+ * Products out of stock, the latest first: the lane's rows and the
+ * Operations Desk card's.
  *
- * @return array label, icon, color, count, sub, body
+ * @param int $limit
+ * @return array id, name, short_description, image_name, price, timestamp
  */
-function pg_dashboard_ops_stock()
+function pg_dashboard_ops_out_of_stock_list($limit)
 {
-    $counts = pg_dashboard_ops_stock_counts();
-    $count = $counts['out'];
-
-    $rows = db_items(
+    return db_items(
         "SELECT
             products.id,
             products.name,
@@ -522,7 +550,20 @@ function pg_dashboard_ops_stock()
         FROM products
         WHERE products.out_of_stock = '1'" . pg_catalog_bin_live_sql('products') . "
         ORDER BY products.out_of_stock_timestamp DESC
-        LIMIT 8");
+        LIMIT " . max(1, (int) $limit));
+}
+
+/**
+ * Products out of stock, and the ones about to be.
+ *
+ * @return array label, icon, color, count, sub, body
+ */
+function pg_dashboard_ops_stock()
+{
+    $counts = pg_dashboard_ops_stock_counts();
+    $count = $counts['out'];
+
+    $rows = pg_dashboard_ops_out_of_stock_list(8);
 
     $low_count = $counts['low'];
     $low_rows = array();

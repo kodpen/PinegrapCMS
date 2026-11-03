@@ -157,7 +157,9 @@ function erp_manual_lines_build($lines_in)
         // Priced at the places the line is stored with: an issue rebuilds
         // the lines from what was stored (erp_invoice_issue()).
         $quantity = erp_quantity_round($line['quantity'] ?? 0);
-        $unit_price = (int) ($line['unit_price'] ?? 0);
+        // Held within ten times the line cap before the cast: a larger price
+        // is refused below, and casting a float past PHP_INT_MAX warns.
+        $unit_price = (int) max(-10 * ERP_MAX_LINE_AMOUNT, min(10 * ERP_MAX_LINE_AMOUNT, (float) ($line['unit_price'] ?? 0)));
         $tax_rate = (float) ($line['tax_rate'] ?? 0);
         $tax2_rate = $tax2_on ? (float) ($line['tax2_rate'] ?? 0) : 0.0;
         $discount_rate = (float) ($line['discount_rate'] ?? 0);
@@ -190,6 +192,9 @@ function erp_manual_lines_build($lines_in)
         }
         if ($unit_price < 0) {
             return $fail(lang(array('string' => 'Line {var:1}: the unit price cannot be negative.', 'vars' => $row_no)), $field('unit_price'));
+        }
+        if (!erp_line_amount_fits($unit_price, $quantity)) {
+            return $fail(lang(array('string' => 'Line {var:1}: the amount is too large.', 'vars' => $row_no)), $field(erp_line_amount_fits(0, $quantity) ? 'unit_price' : 'quantity'));
         }
         if (($tax_rate < 0) || ($tax_rate > 100)) {
             return $fail(lang(array('string' => 'Line {var:1}: the VAT rate must be between 0 and 100.', 'vars' => $row_no)), $field('tax_rate'));
@@ -1003,7 +1008,10 @@ function erp_invoice_draft_delete($invoice_id)
     }
 
     if ((erp_query("DELETE FROM erp_invoice_items WHERE invoice_id = '" . $invoice_id . "'") === false)
-        || (erp_query("DELETE FROM erp_invoices WHERE id = '" . $invoice_id . "' AND status = 'draft'") === false)) {
+        || (erp_query("DELETE FROM erp_invoices WHERE id = '" . $invoice_id . "' AND status = 'draft'") === false)
+        // A repeat that wrote this draft no longer points at it.
+        || (function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_ready()
+            && (erp_query("UPDATE erp_invoice_recurrences SET last_invoice_id = 0 WHERE last_invoice_id = '" . $invoice_id . "'") === false))) {
         $error = erp_db_error();
         erp_tx_rollback();
         return $fail($error);

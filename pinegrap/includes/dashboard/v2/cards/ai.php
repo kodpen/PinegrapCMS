@@ -6,9 +6,11 @@
  * for the person (record changes they asked for, ws_ai_changes, and task
  * drafts from their requests, ws_ai_drafts) as chips opening each card, and
  * a box that gives Claude a job by posting "@Claude …" in a channel where
- * Claude may be asked. Not connected: what connecting brings, Connect Claude
- * (Workspace settings) and Connections (Application Access) for the people
- * who may open them, and the MCP note.
+ * Claude may be asked; above them the first three lines of the daily summary
+ * Claude writes at the chosen hour (config.ws_claude_summary_*), when it is
+ * on and the person reads its channel. Not connected: what connecting
+ * brings, Connect Claude (Workspace settings) and Connections (Application
+ * Access) for the people who may open them, and the MCP note.
  *
  * The job is posted through the Workspace's own ws_send action, which checks
  * the channel, the person and Claude's limits again; nothing here writes.
@@ -258,6 +260,78 @@ function pg_dashboard_v2_ai_job_channel($viewer)
 }
 
 /**
+ * The first lines of a summary message as plain text, empty ones left out.
+ * Pure.
+ *
+ * @param string $text the message as plain text
+ * @param int    $limit
+ * @return string[]
+ */
+function pg_dashboard_v2_ai_summary_lines($text, $limit = 3)
+{
+    $lines = array();
+
+    foreach (preg_split('/\R/u', (string) $text) as $line) {
+        // A list marker the answer may start its lines with.
+        $line = trim(preg_replace('/^\s*(?:[-*•]|[0-9]+[.)])\s+/u', '', $line));
+
+        if ($line !== '') {
+            $lines[] = pg_dashboard_v2_ai_cut($line, 140);
+        }
+
+        if (count($lines) >= $limit) {
+            break;
+        }
+    }
+
+    return $lines;
+}
+
+/**
+ * Today's summary for the person: the latest one Claude wrote, when the
+ * summary is on and the person reads its channel.
+ *
+ * @param array $viewer ws_viewer()
+ * @return array|null title, lines (text, url), when
+ */
+function pg_dashboard_v2_ai_summary($viewer)
+{
+    if (!function_exists('ws_claude_summary_ready') || !ws_claude_summary_ready()) {
+        return null;
+    }
+
+    $config = ws_claude_summary_config();
+
+    if (($config['hour'] === WS_CLAUDE_SUMMARY_OFF) || ($config['message_id'] <= 0)) {
+        return null;
+    }
+
+    $message = ws_message($config['message_id']);
+    $channel = $message ? ws_channel($message['channel_id']) : null;
+
+    if (!$message || ((int) $message['deleted_at'] !== 0) || !$channel || !ws_can_read_channel($viewer, $channel)) {
+        return null;
+    }
+
+    $url = pg_dashboard_v2_ai_proposal_url($channel['id'], $message['id'], 0);
+    $lines = array();
+
+    foreach (pg_dashboard_v2_ai_summary_lines(ws_plain_text($viewer, (string) $message['body'])) as $line) {
+        $lines[] = array('text' => $line, 'url' => $url);
+    }
+
+    if (empty($lines)) {
+        return null;
+    }
+
+    return array(
+        'title' => lang('Daily summary'),
+        'lines' => $lines,
+        'when'  => get_relative_time(array('timestamp' => (int) $message['created_at'], 'format' => 'plain_text')),
+    );
+}
+
+/**
  * The card when Claude is not connected: who may connect it gets the
  * buttons, everyone the note. Pure.
  *
@@ -332,6 +406,7 @@ function pg_dashboard_v2_card_ai($user, $period, $compare)
                 : '',
             'none'  => lang('Nothing is waiting for your approval.'),
         ),
+        'summary'   => pg_dashboard_v2_ai_summary($viewer),
         'job'       => $job,
         'no_job'    => $job ? '' : lang('There is no channel where you may ask Claude. Somebody who manages a channel can allow it from the channel menu.'),
     ));

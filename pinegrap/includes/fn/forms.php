@@ -951,8 +951,6 @@ function get_product_group_options($product_group_id = 0, $parent_product_group_
 function get_ad_region_options()
 {
     global $user;
-    // Setup first option
-    $ad_region_options[''] = '';
     $sql_join = '';
     $where = '';
     $where_values = array();
@@ -971,11 +969,32 @@ function get_ad_region_options()
         $where
         ORDER BY name";
     $result = db_q($query, $where_values) or output_error(lang('Query failed.'));
-    // loop through each ad region and add it to array
+    $rows = array();
     while ($row = mysqli_fetch_assoc($result)) {
-        $ad_region_options[h($row['name'])] = $row['id'];
+        $rows[] = $row;
     }
-    return $ad_region_options;
+    return pg_ad_region_option_list($rows);
+}
+/**
+ * The Ad Region pick list from (id, name) rows: a blank first entry, then
+ * escaped name => id. The label is the array key, so a region whose name
+ * an earlier one already uses (stored before names were capped at the
+ * column's length) gets its id after the name instead of replacing it.
+ *
+ * @param array $rows  Rows with 'id' and 'name', in display order
+ * @return array
+ */
+function pg_ad_region_option_list(array $rows)
+{
+    $options = array('' => '');
+    foreach ($rows as $row) {
+        $label = h($row['name']);
+        if (array_key_exists($label, $options)) {
+            $label .= ' (#' . $row['id'] . ')';
+        }
+        $options[$label] = $row['id'];
+    }
+    return $options;
 }
 // get an array of states for pick lists
 function get_state_options()
@@ -1000,7 +1019,8 @@ function get_state_options()
     $query = "SELECT
             states.id,
             states.name,
-            countries.name as country_name
+            countries.name as country_name,
+            countries.code as country_code
         FROM states
         LEFT JOIN countries ON states.country_id = countries.id
         ORDER BY
@@ -1014,16 +1034,10 @@ function get_state_options()
     }
     $state_options = array();
     $state_options[''] = '';
-    // loop through each state in order to prepare options
-    foreach ($states as $state) {
-        // if foreign states exist, then output state label with country name prefix in order to prevent confusion
-        if ($foreign_states == true) {
-            $output_state_label = h($state['country_name']) . ': ' . h($state['name']);
-            // else foreign states do not exist, so just use state name for label
-        } else {
-            $output_state_label = h($state['name']);
-        }
-        $state_options[$output_state_label] = $state['id'];
+    // With foreign states the label carries the country, named in the
+    // current language and ordered by that name, like the list's filter.
+    foreach (pg_geo_state_option_labels($states, $foreign_states) as $option) {
+        $state_options[h($option['label'])] = $option['id'];
     }
     return $state_options;
 }
@@ -1679,11 +1693,59 @@ function pg_log_actor($user, $ip)
 {
     $user = (string) $user;
 
+    // Background writers (backups, operations alerts, recurring invoices,
+    // outbound webhooks) store the literal SYSTEM.
+    if ($user === 'SYSTEM') {
+        return lang('System');
+    }
+
     if (($user !== '') && ($user !== 'UNKNOWN')) {
         return $user;
     }
 
     return ((string) $ip === '') ? lang('Scheduled job') : lang('Unknown');
+}
+
+/**
+ * Whether a user may clear a log for good (the Site Log's delete controls,
+ * the Performance Log's clear action): administrators, or every user who can
+ * open the screen when mass deletion is on.
+ *
+ * @param mixed $mass_deletion The MASS_DELETION setting.
+ * @param mixed $role          The user's role number (USER_ROLE), null when unknown.
+ * @return bool
+ */
+function pg_log_clear_allowed($mass_deletion, $role)
+{
+    if ($mass_deletion == true) {
+        return true;
+    }
+
+    return ($role !== null) && ((int) $role < 1);
+}
+
+/**
+ * A log screen's search term from the request: trimmed and cut to $max
+ * characters. The cut counts characters, so a multi-byte letter is never
+ * split (a broken byte sequence is printed back by h() as an empty box).
+ *
+ * @param mixed $value The request value; anything but a string is no term.
+ * @param int   $max   The most characters kept.
+ * @return string
+ */
+function pg_log_search_term($value, $max = 200)
+{
+    if (!is_string($value)) {
+        return '';
+    }
+
+    $value = trim($value);
+
+    if (mb_strlen($value, 'UTF-8') > $max) {
+        $value = mb_substr($value, 0, $max, 'UTF-8');
+    }
+
+    return $value;
 }
 function get_number_of_contacts($contact_group, $require_email = false)
 {
@@ -1721,8 +1783,9 @@ function validate_date($date)
         return checkdate((int)$iso[2], (int)$iso[3], (int)$iso[1]);
     }
 
-    // if format of date is valid
-    if (preg_match('/(\d{1,2})[-,\/](\d{1,2})[-,\/](\d{4})/', $date, $date_parts) == 1) {
+    // The whole value is the date in the site's day and month order; a
+    // date found inside longer text ('5/5/20271') was stored with a wrong year.
+    if (is_scalar($date) && (preg_match('/^\s*(\d{1,2})[-,\/](\d{1,2})[-,\/](\d{4})\s*$/', (string) $date, $date_parts) == 1)) {
         $year = $date_parts[3];
         if (DATE_FORMAT == 'month_day') {
             $month = $date_parts[1];
@@ -1732,7 +1795,7 @@ function validate_date($date)
             $day = $date_parts[1];
         }
         // if date is valid (i.e. does the day exist for the month)
-        if (checkdate($month, $day, $year) == true) {
+        if (checkdate((int) $month, (int) $day, (int) $year) == true) {
             return true;
         } else {
             return false;
@@ -1741,9 +1804,54 @@ function validate_date($date)
         return false;
     }
 }
+/**
+ * A date typed into a panel field as an ISO date (YYYY-MM-DD), '' when it
+ * is no real date. Reads ISO itself and the site's day and month order
+ * (DATE_FORMAT) with any of the separators people type: '/', '-', ',' and
+ * '.', so the Turkish "31.12.2026" is read too. The year has four digits:
+ * "31/12/27" stood for the year 0027. prepare_form_data_for_input() turned
+ * a dotted or impossible date into text MySQL stored as 0000-00-00 or
+ * refused in a comparison.
+ *
+ * @param mixed $text the typed value
+ * @return string
+ */
+function pg_date_input_iso($text)
+{
+    if (!is_scalar($text)) {
+        return '';
+    }
+
+    $text = trim((string) $text);
+
+    if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', $text, $parts)) {
+        list(, $year, $month, $day) = $parts;
+    } elseif (preg_match('/^(\d{1,2})\s*[-,\/.]\s*(\d{1,2})\s*[-,\/.]\s*(\d{4})$/', $text, $parts)) {
+        $year = $parts[3];
+
+        if (defined('DATE_FORMAT') && (DATE_FORMAT == 'month_day')) {
+            list(, $month, $day) = $parts;
+        } else {
+            list(, $day, $month) = $parts;
+        }
+    } else {
+        return '';
+    }
+
+    if (((int) $year < 1) || !checkdate((int) $month, (int) $day, (int) $year)) {
+        return '';
+    }
+
+    return sprintf('%04d-%02d-%02d', $year, $month, $day);
+}
 function validate_date_and_time($date_and_time)
 {
-    $date_and_time_parts = explode(' ', $date_and_time, 2);
+    // An ISO date and time ('2026-10-26T17:00'), as an <input
+    // type="datetime-local"> of a designed form or product form posts it.
+    if (preg_match('/^\s*(\d{4}-\d{1,2}-\d{1,2})[T ](\d{1,2}:\d{2}(?::\d{2})?)\s*$/', (string)$date_and_time, $iso)) {
+        return validate_date($iso[1]) && (pg_time_24_hour_parts($iso[2]) !== null);
+    }
+    $date_and_time_parts = explode(' ', (string)$date_and_time, 2) + array('', '');
     $date = $date_and_time_parts[0];
     $time = $date_and_time_parts[1];
     if ((validate_date($date) == true) && (validate_time($time) == true)) {
@@ -1972,7 +2080,9 @@ function select_country($country_id = '')
 
 /**
  * The option tags of select_country() from rows with 'id', 'label' and
- * 'default_selected', in the order given.
+ * 'default_selected', in the order given. A country id that matches no row
+ * (the country was deleted) gets an empty, selected "Select a country"
+ * option first, so the browser does not select the first country instead.
  *
  * @param array      $rows
  * @param int|string $country_id The selected country; '' selects the default one
@@ -1981,12 +2091,19 @@ function select_country($country_id = '')
 function pg_country_select_options($rows, $country_id = '')
 {
     $output = '';
+    $matched = false;
 
     foreach ($rows as $row) {
-        $selected = (((string) $row['id'] === (string) $country_id) || (($row['default_selected'] == 1) && ((string) $country_id === '')))
+        $match = ((string) $row['id'] === (string) $country_id);
+        $matched = $matched || $match;
+        $selected = ($match || (($row['default_selected'] == 1) && ((string) $country_id === '')))
             ? ' selected="selected"'
             : '';
         $output .= '<option value="' . h($row['id']) . '"' . $selected . '>' . h($row['label']) . '</option>';
+    }
+
+    if (!$matched && ((string) $country_id !== '')) {
+        $output = '<option value="" selected="selected">' . h(lang('Select a country')) . '</option>' . $output;
     }
 
     return $output;
@@ -2240,7 +2357,7 @@ function select_contact_field($selected_contact_field = '')
     );
     $contact_fields[] = array(
         'value' => 'title',
-        'name' => lang('Title')
+        'name' => lang('Job Title')
     );
     $contact_fields[] = array(
         'value' => 'department',
@@ -2945,6 +3062,28 @@ function get_page_type_name($page_type)
 
     return isset($names[$page_type]) ? $names[$page_type] : null;
 }
+
+/**
+ * The type a File Manager page item shows beside "Page": the panel-language
+ * name of a non-standard type ('custom form' -> "Custom Form"), '' for a
+ * standard page, and the stored code itself for a type no name is known for,
+ * so the column is never drawn empty.
+ *
+ * @param  string $page_type stored page.page_type
+ * @return string
+ */
+function pg_explorer_page_type_name($page_type)
+{
+    $page_type = (string) $page_type;
+
+    if (($page_type === '') || ($page_type === 'standard')) {
+        return '';
+    }
+
+    $name = get_page_type_name($page_type);
+
+    return ($name !== null) ? $name : $page_type;
+}
 function get_currency_name_from_code($currency_code)
 {
     // if the currency code is not blank, then get name from code
@@ -3391,6 +3530,45 @@ function pg_form_input_time_parts($text)
 
     return array('', (string) $parts[0], sprintf('%02d', $parts[1]), '');
 }
+/**
+ * The value a native <input type="date">, "datetime-local" or "time" takes
+ * for a stored, default or typed value: ISO ('2026-10-26',
+ * '2026-10-26T17:05', '17:05'). A browser drops any other text from such an
+ * input, so a default in the site's format ('26/10/2026', '5:05 PM') or a
+ * stored 'Y-m-d H:i' is converted; text that is no date or time is
+ * returned as it is.
+ *
+ * @param string $value
+ * @param string $type  the input's type: date, datetime-local or time
+ * @return string
+ */
+function pg_native_date_value($value, $type)
+{
+    $value = trim((string)$value);
+    $type = strtolower((string)$type);
+    if ($value === '') return '';
+
+    if ($type === 'date') {
+        if (preg_match('/^\d{4}-\d{1,2}-\d{1,2}/', $value, $m) && validate_date($m[0])) {
+            return (string)prepare_form_data_for_input($m[0], 'date');
+        }
+        // The date part of a site date and time ('26/10/2026 5:05 PM').
+        $date = preg_split('/\s+/', $value)[0];
+        return validate_date($date) ? (string)prepare_form_data_for_input($date, 'date') : $value;
+    }
+    if ($type === 'datetime-local') {
+        if (!validate_date_and_time($value)) {
+            // A date alone is midnight, as the date-and-time control reads it.
+            if (preg_match('/\s/', $value) || !validate_date($value)) return $value;
+            $value .= ' 00:00';
+        }
+        return str_replace(' ', 'T', (string)prepare_form_data_for_input($value, 'date and time'));
+    }
+    if ($type === 'time') {
+        return validate_time($value) ? (string)prepare_form_data_for_input($value, 'time') : $value;
+    }
+    return $value;
+}
 function prepare_form_data_for_input($data, $type)
 {
     if ($data) {
@@ -3401,7 +3579,7 @@ function prepare_form_data_for_input($data, $type)
                 if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', trim((string)$data), $iso)) {
                     return sprintf('%04d-%02d-%02d', $iso[1], $iso[2], $iso[3]);
                 }
-                $date_parts = preg_split('/[-,\/]/', $data);
+                $date_parts = preg_split('/[-,\/]/', trim((string) $data));
 
                 // A value that is not in a date format does not split into three parts.
                 $date_parts = $date_parts + array('', '', '');
@@ -3420,6 +3598,12 @@ function prepare_form_data_for_input($data, $type)
                 return $year . '-' . $month . '-' . $day;
                 break;
             case 'date and time':
+                // Already ISO ('2026-10-26T17:00', as an <input
+                // type="datetime-local"> posts it, or with a space): read
+                // the site's way it was stored as '0026-10-2026 17:00'.
+                if (preg_match('/^\s*(\d{4})-(\d{1,2})-(\d{1,2})[T ](\d{1,2}):(\d{2})/', (string)$data, $iso)) {
+                    return sprintf('%04d-%02d-%02d %02d:%02d', $iso[1], $iso[2], $iso[3], $iso[4], $iso[5]);
+                }
                 // Parts missing from a value that is not in a date and time
                 // format (e.g. a search term) count as empty.
                 $date_and_time_parts = explode(' ', $data, 2) + array('', '');

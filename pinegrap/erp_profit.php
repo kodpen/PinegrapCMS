@@ -186,7 +186,7 @@ if ($output_accounts === '') {
 $notes = array();
 if ((int) $report['estimated_lines'] > 0) {
     $notes[] = h(lang(array(
-        'string' => '{var:1} line(s) sold before the ERP kept stock moves are costed at the product\'s average cost today.',
+        'string' => '{var:1} line(s) sold before the ERP knew their cost are costed at the product\'s average cost today.',
         'vars' => (int) $report['estimated_lines'],
     )));
 }
@@ -217,23 +217,10 @@ if (!$report['orders']['included'] && ((int) $report['orders']['count'] > 0)) {
 
 // The period picker.
 $range = $period['range'];
-$output_month_options = '';
-for ($i = 0; $i < 24; $i++) {
-    $month = date('Y-m', strtotime(date('Y-m-01') . ' -' . $i . ' month'));
-    $output_month_options .= '<option value="' . h($month) . '"' . ((($range === 'month') && (substr($period['from'], 0, 7) === $month)) ? ' selected' : '') . '>'
-        . h(get_month_name_from_number(substr($month, 5, 2)) . ' ' . substr($month, 0, 4)) . '</option>';
-}
-$output_quarter_options = '';
-for ($i = 0; $i < 8; $i++) {
-    $first = date('Y-m-01', strtotime(date('Y') . '-' . sprintf('%02d', ((int) ceil(date('n') / 3) - 1) * 3 + 1) . '-01 -' . ($i * 3) . ' month'));
-    $quarter = (int) ceil(((int) substr($first, 5, 2)) / 3);
-    $value = substr($first, 0, 4) . '-Q' . $quarter;
-    $output_quarter_options .= '<option value="' . h($value) . '"' . ((($range === 'quarter') && ($period['from'] === $first)) ? ' selected' : '') . '>' . h(lang(array('string' => '{var:1} / Q{var:2}', 'vars' => array(substr($first, 0, 4), $quarter)))) . '</option>';
-}
-$output_year_options = '';
-for ($year = (int) date('Y'); $year >= (int) date('Y') - 5; $year--) {
-    $output_year_options .= '<option value="' . $year . '"' . ((($range === 'year') && ($period['from'] === $year . '-01-01')) ? ' selected' : '') . '>' . $year . '</option>';
-}
+$period_options = erp_profit_period_options($period);
+$output_month_options = $period_options['month'];
+$output_quarter_options = $period_options['quarter'];
+$output_year_options = $period_options['year'];
 
 $range_options = '';
 foreach (array('month' => lang('Month'), 'quarter' => lang('Quarter'), 'year' => lang('Year'), 'dates' => lang('From - to')) as $key => $label) {
@@ -260,7 +247,8 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <form method="get" action="erp_profit.php" class="card my-7" id="erp_profit_period">
-                <div class="card-body row g-3 align-items-end">
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
                     <div class="col-6 md:col-2">
                         <label class="form-label small fg-secondary mb-1" for="range">' . lang('Period') . '</label>
                         <select class="form-control form-control-sm" id="range" name="range">' . $range_options . '</select>
@@ -279,11 +267,11 @@ pg_page_shell([
                     </div>
                     <div class="col-6 md:col-2" data-range="dates"' . (($range === 'dates') ? '' : ' hidden') . '>
                         <label class="form-label small fg-secondary mb-1" for="from">' . lang('Start') . '</label>
-                        <input type="date" data-pg-date class="form-control form-control-sm" id="from" name="from" value="' . h($period['from']) . '" />
+                        <input type="date" data-pg-date class="form-control form-control-sm" id="from" name="from" min="' . ERP_PROFIT_FIRST_YEAR . '-01-01" max="' . ERP_PROFIT_LAST_YEAR . '-12-31" value="' . h($period['from']) . '" />
                     </div>
                     <div class="col-6 md:col-2" data-range="dates"' . (($range === 'dates') ? '' : ' hidden') . '>
                         <label class="form-label small fg-secondary mb-1" for="to">' . lang('End') . '</label>
-                        <input type="date" data-pg-date class="form-control form-control-sm" id="to" name="to" value="' . h($period['to']) . '" />
+                        <input type="date" data-pg-date class="form-control form-control-sm" id="to" name="to" min="' . ERP_PROFIT_FIRST_YEAR . '-01-01" max="' . ERP_PROFIT_LAST_YEAR . '-12-31" value="' . h($period['to']) . '" />
                     </div>
                     <div class="col-12 md:col-auto">
                         <input type="hidden" name="orders" value="0" />
@@ -297,6 +285,7 @@ pg_page_shell([
                         <a class="btn btn-sm btn-outline theme-secondary" href="' . $export_url . '"><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>' . lang('Excel') . '</a>
                     </div>
                     <div class="col-12 small fg-secondary">' . h(prepare_form_data_for_output($period['from'], 'date', false) . ' – ' . prepare_form_data_for_output($period['to'], 'date', false)) . '</div>
+                    </div>
                 </div>
             </form>
 

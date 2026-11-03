@@ -10,7 +10,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `list_period`: clean
 
-- `mail`: done (#5009: plain-text part capitalised whole bodies and link addresses); `email()` and comment mails only skimmed
+- `mail`: done (#5009: plain-text part capitalised whole bodies and link addresses); `email()` (transport choice, address errors, attachments, DKIM, failure notice) and the three comment mails read: clean (conditional admin lists are validated when the field is saved)
 
 - `mail_parse`: done (#4992: a quoted-printable part ending on a soft break kept its `=`)
 
@@ -18,7 +18,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `maintenance_mode`: clean
 
-- `merchant_center`: clean; lead: a country change keeps the registered data source's feed label, so pushes name another label
+- `merchant_center`: done (#5059: a country change made pushes name another feed label than the registered data source)
 
 - `meta_tags`: done (#4952: a page `og:image` kept the design's `og:image:alt` and size)
 
@@ -32,7 +32,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `ops_alerts`: clean; lead: webhook_failing mails raw webhook URLs
 
-- `order_completion`: done (#4884, #4962: DST end dates); line forms, from_payment clean; lead: two payment callbacks at once can both lower `ship_tos.shipping_cost`
+- `order_completion`: done (#4884, #4962: DST end dates; #5073: two payment callbacks both lowered `ship_tos.shipping_cost`); line forms, from_payment clean
 
 - `order_list`: clean
 
@@ -42,7 +42,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `order_view`: clean (callers escape)
 
-- `output`: clean for list sort, quick edit, back URL, filter, period nav; header, menu, license, page panel open
+- `output`: done (#5568: page panel Next/Skip Page links did not encode the page name; a deleted skip page linked to the root); clean for list sort, quick edit, back URL, filter, period nav, license check and card; menu helpers clean; header done (#5614: an OAuth client name ended <title> on the consent screen)
 
 - `page_bulk`: clean
 

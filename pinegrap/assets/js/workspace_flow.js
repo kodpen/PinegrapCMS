@@ -964,7 +964,9 @@
         table.appendChild(el('thead')).appendChild(head);
         ui.rows = el('tbody');
         table.appendChild(ui.rows);
-        ui.flows.appendChild(table);
+        // The table scrolls in its own box on a narrow main area, so the
+        // page never scrolls sideways and the last column stays reachable.
+        ui.flows.appendChild(el('div', 'table-responsive wsf-flow-scroll')).appendChild(table);
         ui.flowsNone = el('p', 'small fg-secondary wsf-flows-none d-none');
         ui.flows.appendChild(ui.flowsNone);
 
@@ -1171,7 +1173,10 @@
         var row = el('tr', 'wsf-flow-row');
         var name = el('th', 'wsf-flow-name');
         var link = el('button', 'wsf-flow-open', flow.name);
-        var starts = el('td', 'wsf-flow-start');
+        var startCell = el('td', 'wsf-flow-start');
+        // The icon and sentence sit side by side in a wrapper: the cell
+        // itself stays a table cell, as tall as its row.
+        var starts = startCell.appendChild(el('div', 'wsf-flow-start-in'));
         var stateCell = el('td');
         var last = el('td', 'wsf-flow-last');
         var channel = el('td', '', flow.channel_name ? '#' + flow.channel_name : '—');
@@ -1212,11 +1217,11 @@
             last.appendChild(el('span', 'fg-secondary', t('fl_list_never')));
         }
 
-        [[starts, 'fl_col_start'], [stateCell, 'fl_col_state'], [last, 'fl_flag_last'], [channel, 'fl_col_channel']].forEach(function (cell) {
+        [[startCell, 'fl_col_start'], [stateCell, 'fl_col_state'], [last, 'fl_flag_last'], [channel, 'fl_col_channel']].forEach(function (cell) {
             cell[0].setAttribute('data-label', t(cell[1]));
         });
 
-        [name, starts, stateCell, last, channel].forEach(function (cell) {
+        [name, startCell, stateCell, last, channel].forEach(function (cell) {
             row.appendChild(cell);
         });
 

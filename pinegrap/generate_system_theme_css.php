@@ -16,8 +16,34 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
-// this function generates CSS based on the rules that are passed into it
+// Generates CSS from the rules passed in. A theme's rules hold only what
+// was set (a theme made from a short template, an upgrade that reads the
+// stored rules), and the builder reads every key without asking: an unset
+// key reads as null, which the builder treats as "not set". Those reads are
+// kept out of the error log; any other warning goes on as before.
 function generate_system_theme_css($css_properties)
+{
+    $previous = null;
+    $previous = set_error_handler(function ($number, $message, $file = '', $line = 0) use (&$previous) {
+        if (
+            (($number & (E_WARNING | E_NOTICE)) !== 0)
+            && preg_match('/^(Undefined (array key|index|offset|variable)|Trying to access array offset on )/', (string) $message)
+        ) {
+            return true;
+        }
+
+        return is_callable($previous) ? call_user_func($previous, $number, $message, $file, $line) : false;
+    });
+
+    try {
+        return generate_system_theme_css_build($css_properties);
+    } finally {
+        restore_error_handler();
+    }
+}
+
+// Builds the CSS; see generate_system_theme_css().
+function generate_system_theme_css_build($css_properties)
 {
     $output = '';
  

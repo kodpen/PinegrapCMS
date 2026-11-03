@@ -559,7 +559,8 @@ function erp_edoc_account_value_text($field, $value)
 
             $name = db_value("SELECT name FROM countries WHERE code = '" . escape($code) . "' LIMIT 1");
 
-            return ((string) $name !== '') ? (string) $name : $code;
+            // In the panel's language, like the account form's country choice.
+            return ((string) $name !== '') ? (string) pg_geo_country_label((string) $name, $code) : $code;
     }
 
     return trim((string) $value);

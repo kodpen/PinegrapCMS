@@ -342,25 +342,6 @@ function pg_member_email_repeat_ok($email, $repeat)
     return ((string) $repeat === (string) $email);
 }
 
-// Whether an address someone gave (typed into a form, or reported by a
-// sign-in provider) is an account's stored address, letter case aside.
-// A lookup on user.user_email compares under the column's collation, which
-// also folds accents: "jane@şirket.com" finds the account of
-// "jane@sirket.com" and the other way round, two different domains. A flow
-// that sends a secret to the address, or ties an identity to the account,
-// asks this after the lookup and treats any other row as not found.
-function pg_email_address_matches($given, $stored)
-{
-    $given  = is_scalar($given) ? trim((string) $given) : '';
-    $stored = is_scalar($stored) ? trim((string) $stored) : '';
-
-    if (($given === '') || ($stored === '')) {
-        return false;
-    }
-
-    return mb_strtolower($given, 'UTF-8') === mb_strtolower($stored, 'UTF-8');
-}
-
 // Whether a member widget's tree (the decoded shared_components.tree_json)
 // asks the marketing question: it has a control named opt_in (opt_in_sms for
 // the SMS question), the names pg_member_register() and pg_member_activate()
@@ -1484,35 +1465,63 @@ function pg_device_limit_exceeded($user_id)
     return (pg_auth_token_count($user_id) >= $limit);
 }
 
-// Revoke the least-recently-active tokens until only $keep active ones remain,
-// so a new device can be added without passing the limit. Ranks by the most
-// recent touch (last use, or creation for a token never used) and keeps the
-// freshest; returns how many were revoked.
-function pg_device_limit_revoke_oldest($user_id, $keep)
+// Which tokens the device limit may sign out so that only $keep remain.
+// $rows are the account's active tokens newest first, each with 'selector' and
+// 'pinned'. A pinned token is a device and counts toward $keep, but is never
+// chosen; the unpinned ones go oldest first. When too few are unpinned to get
+// down to $keep, nothing is chosen at all: signing out some devices and then
+// refusing the sign-in anyway would cost the member a device for nothing.
+function pg_device_limit_pick_evictions(array $rows, $keep)
 {
-    $user_id = (int) $user_id;
-    $keep = max(0, (int) $keep);
+    $excess = count($rows) - max(0, (int) $keep);
+    if ($excess <= 0) {
+        return array();
+    }
 
-    // Pinned sessions are counted (they are devices) but never evicted - that
-    // is the whole point of pinning. So an account whose slots are all pinned
-    // frees nothing here, and the caller has to notice that and refuse rather
-    // than sign a second device in anyway.
+    $picked = array();
+    foreach (array_reverse($rows) as $row) {
+        if (count($picked) >= $excess) {
+            break;
+        }
+        if (((int) ($row['pinned'] ?? 0)) === 1) {
+            continue;
+        }
+        $picked[] = (string) $row['selector'];
+    }
+
+    return (count($picked) < $excess) ? array() : $picked;
+}
+
+// The selectors pg_device_limit_pick_evictions() chooses for this account,
+// ranked by the most recent touch (last use, or creation for a token never
+// used). The confirmation screen counts them; the confirm action revokes them.
+function pg_device_limit_evictable($user_id, $keep)
+{
+    // Pinned sessions are counted but never evicted - that is the whole point
+    // of pinning. The column arrives with a migration, so it is asked for.
     $pin_column = pg_auth_tokens_have_pin();
 
-    $selectors = array();
+    $rows = array();
     $result = db_q(
         "SELECT selector" . ($pin_column ? ", pinned" : "") . " FROM auth_tokens
          WHERE user_id = ? AND expires_at > ?
-         ORDER BY GREATEST(last_used_at, created_at) DESC, created_at DESC", array((string) $user_id, (string) time()));
+         ORDER BY GREATEST(last_used_at, created_at) DESC, created_at DESC", array((string) (int) $user_id, (string) time()));
     if ($result) {
-        $index = 0;
         while ($r = mysqli_fetch_assoc($result)) {
-            if (($index >= $keep) && (!$pin_column || (((int) $r['pinned']) === 0))) {
-                $selectors[] = $r['selector'];
-            }
-            $index++;
+            $rows[] = array('selector' => $r['selector'], 'pinned' => $pin_column ? (int) $r['pinned'] : 0);
         }
     }
+
+    return pg_device_limit_pick_evictions($rows, $keep);
+}
+
+// Revoke the least-recently-active unpinned tokens until only $keep active
+// ones remain, so a new device can be added without passing the limit.
+// Revokes nothing when the pinned ones leave too little room; the caller
+// notices the account is still full and refuses. Returns how many went.
+function pg_device_limit_revoke_oldest($user_id, $keep)
+{
+    $selectors = pg_device_limit_evictable($user_id, $keep);
 
     foreach ($selectors as $selector) {
         pg_auth_token_revoke($selector);
@@ -1564,13 +1573,16 @@ function pg_device_limit_gate($user_id, $username, $send_to, $remember = false, 
 
 /**
  * Whether the CURRENT request actually arrived over HTTPS - directly, on the
- * standard TLS port, or behind a proxy/tunnel that says so (X-Forwarded-Proto,
- * e.g. Cloudflare Tunnel). Used for cookie Secure flags instead of URL_SCHEME:
- * URL_SCHEME is a static setting, and a Secure cookie set over a plain-http
- * request (localhost, LAN) is silently discarded by the browser - the sign-in
- * would look successful but the token cookie would never stick. Spoofing the
- * forwarded header gains an attacker nothing: the browser itself refuses to
- * store a Secure cookie received over plain http.
+ * standard TLS port, or behind a proxy/tunnel that says so in a forwarded
+ * header (pg_forwarded_https(); e.g. Cloudflare Tunnel). Used for cookie
+ * Secure flags instead of URL_SCHEME: URL_SCHEME is a static setting, and a
+ * Secure cookie set over a plain-http request (localhost, LAN) is silently
+ * discarded by the browser - the sign-in would look successful but the token
+ * cookie would never stick. The peer is deliberately not checked
+ * (pg_https_peer_trusted() is Secure Mode's concern): spoofing the forwarded
+ * header gains an attacker nothing, since the browser itself refuses to store
+ * a Secure cookie received over plain http, while a proxy not yet listed on
+ * Trusted Proxies must still get a cookie that sticks.
  */
 function pg_request_is_https()
 {
@@ -1582,12 +1594,7 @@ function pg_request_is_https()
         return true;
     }
 
-    if (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])
-        && (strtolower(trim(strtok((string) $_SERVER['HTTP_X_FORWARDED_PROTO'], ','))) === 'https')) {
-        return true;
-    }
-
-    return false;
+    return pg_forwarded_https($_SERVER);
 }
 
 // Re-issue the session cookie with SameSite=None so that a cross-site POST
@@ -2105,13 +2112,28 @@ function pg_auth_token_pinned($selector)
 // includes/authentication.php with the rest of the token primitives.
 function pg_auth_token_revoke_user($user_id, $respect_pin = false)
 {
-    $sql = "DELETE FROM auth_tokens WHERE user_id = '" . (int) $user_id . "'";
+    $where = "user_id = '" . (int) $user_id . "'";
 
     if ($respect_pin && pg_auth_tokens_have_pin()) {
-        $sql .= " AND pinned = 0";
+        $where .= " AND pinned = 0";
     }
 
-    db($sql);
+    // Device notifications end with the sign-in of their browser, as they do
+    // for a single token (pg_auth_token_revoke()); a pinned session that stays
+    // keeps its own. Read first, while the tokens still name them; the
+    // selectors are listed rather than joined so the two columns' collations
+    // never have to agree.
+    if (function_exists('pg_auth_push_bound') && pg_auth_push_bound()) {
+        $selectors = array();
+        foreach ((array) db_values("SELECT selector FROM auth_tokens WHERE " . $where) as $selector) {
+            $selectors[] = "'" . escape((string) $selector) . "'";
+        }
+        if ($selectors) {
+            db("DELETE FROM push_subscriptions WHERE auth_selector IN (" . implode(', ', $selectors) . ")");
+        }
+    }
+
+    db("DELETE FROM auth_tokens WHERE " . $where);
 
     // Devices signed in to the external API are sessions of the same person.
     // A new password or "sign out everywhere" that left a phone signed in
@@ -3098,6 +3120,88 @@ function pg_folder_option_label($folder_name, $left_out_parents = array())
 
     return implode(' › ', $parts);
 }
+/**
+ * The Workspace's own folder (config.ws_folder_id), 0 while the Workspace
+ * never made it. Read, never created: ws_root_folder_id() makes the folder
+ * on first use, which a settings screen must not do.
+ *
+ * @return int
+ */
+function pg_workspace_folder_id()
+{
+    static $id = null;
+
+    if ($id === null) {
+        $id = (function_exists('waf_table_has_column') && waf_table_has_column('config', 'ws_folder_id'))
+            ? (int) db_value("SELECT ws_folder_id FROM config")
+            : 0;
+    }
+
+    return $id;
+}
+
+/**
+ * Whether a folder may be a Site Settings folder choice (product images,
+ * API uploads, the folder an order grants access to). Not the Workspace's
+ * folder nor anything below it: its files belong to conversations, other
+ * customers' guest channels and internal notes, and an order granting
+ * access there would open them to every buyer. Not the Recycle Bin either.
+ * 0 (nothing chosen) is allowed. Pure over the rows.
+ *
+ * @param int   $folder_id
+ * @param array $rows      folder_id => folder_parent
+ * @param int   $workspace the Workspace folder, 0 when none
+ * @param int   $bin       the Recycle Bin folder, 0 when none
+ * @return bool
+ */
+function pg_settings_folder_choice_verdict($folder_id, $rows, $workspace, $bin)
+{
+    $folder_id = (int) $folder_id;
+
+    if ($folder_id <= 0) {
+        return true;
+    }
+
+    return !pg_folder_in_bin_chain($rows, $folder_id, (int) $workspace)
+        && !pg_folder_in_bin_chain($rows, $folder_id, (int) $bin);
+}
+
+/**
+ * pg_settings_folder_choice_verdict() over the site's folders.
+ *
+ * @param int $folder_id
+ * @return bool
+ */
+function pg_settings_folder_choice_ok($folder_id)
+{
+    $tree = pg_folder_access_tree();
+
+    return pg_settings_folder_choice_verdict($folder_id, $tree['rows'], pg_workspace_folder_id(), $tree['bin']);
+}
+
+/**
+ * The options of a Site Settings folder picker: select_folder() without the
+ * Workspace's folder and what is below it. A stored folder the list leaves
+ * out is added selected and marked, so the screen shows what is saved; the
+ * save refuses it until another folder is chosen.
+ *
+ * @param int    $folder_id           the stored choice
+ * @param string $access_control_type as select_folder()
+ * @return string
+ */
+function pg_settings_select_folder($folder_id, $access_control_type = '')
+{
+    $folder_id = (int) $folder_id;
+    $output = select_folder($folder_id, 0, pg_workspace_folder_id(), 0, array(), array(), $access_control_type);
+
+    if (($folder_id > 0) && !pg_settings_folder_choice_ok($folder_id)) {
+        $name = (string) db_value("SELECT folder_name FROM folder WHERE folder_id = '" . $folder_id . "'");
+        $output .= '<option value="' . $folder_id . '" selected>' . h($name) . ' ' . lang('(no longer offered)') . '</option>';
+    }
+
+    return $output;
+}
+
 // You can pass the access control type in order to limit the folders to those with that type of access control.
 // $left_out_parents holds the names of the parents above this level that the
 // access type filter did not print; the next printed folder carries them.
@@ -3320,11 +3424,17 @@ function get_column_heading($column, $sort, $order, $extras = '', $key = null)
         return ('<a href="' . h($_SERVER["PHP_SELF"]) . '?sort=' . h(urlencode($key)) . '&order=asc' . $extras . '" class="link-top-row btn btn-sm">' . h($column) . '<span class="material-icons">unfold_more</span></a>');
     }
 }
-function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders = array(), $folders_that_user_has_access_to = array(), $user_id = '')
+// The view tree lists only private folders, so a folder's parents that are
+// not private are left out of it: they lead its label
+// ("pinegrap_cafe › private") through $left_out_parents (never the root
+// folder, as in select_folder()), and the indentation
+// counts only the folders printed above it, as many sites hold several
+// folders named 'private' under different parents.
+function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders = array(), $folders_that_user_has_access_to = array(), $user_id = '', $left_out_parents = array())
 {
     // The view tree's expiry fields are drawn by pgDatePicker
     // (pg_fields.js), bound by backend.src.js when a box opens.
-    $output = ($type == 'view' && $level == 0) ? pg_fields_script() : '';
+    $output = ($type == 'view' && $parent_folder_id == 0) ? pg_fields_script() : '';
     // if this is the first time this function has run, then get folders
     if ($parent_folder_id == 0) {
         // get all folders
@@ -3366,8 +3476,15 @@ function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders 
             $indentation .= '&nbsp;&nbsp;&nbsp;&nbsp;';
         }
         $next_level = $level + 1;
+        $child_left_out_parents = array();
         // if type is edit or type is view and folder is private, then output line for this folder
-        if (($type == 'edit') || (($type == 'view') && (get_access_control_type($folder['id']) == 'private'))) {
+        $folder_is_listed = (($type == 'edit') || (($type == 'view') && (get_access_control_type($folder['id']) == 'private')));
+        if (!$folder_is_listed) {
+            // The root folder is never named: it would only lead every path.
+            $next_level = $level;
+            $child_left_out_parents = ($parent_folder_id != 0) ? array_merge($left_out_parents, array($folder['name'])) : $left_out_parents;
+        }
+        if ($folder_is_listed) {
             $checked = '';
             // if the user has access to this folder, then prepare to check check box
             if (in_array($folder['id'], $folders_that_user_has_access_to) == true) {
@@ -3432,10 +3549,10 @@ function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders 
                     . '</span>'
                     . '</span>';
             }
-            $output .= '<div class="form-field"><input type="checkbox" name="' . $type . '_' . $folder['id'] . '" id="' . $type . '_' . $folder['id'] . '" value="1" class="check  multiselect-checkbox"' . $checked . $output_onclick . ' /><label class="" for="' . $type . '_' . $folder['id'] . '">' . $indentation . h($folder['name']) . '</label>' . $output_expiration_date_container . '</div>';
+            $output .= '<div class="form-field"><input type="checkbox" name="' . $type . '_' . $folder['id'] . '" id="' . $type . '_' . $folder['id'] . '" value="1" class="check  multiselect-checkbox"' . $checked . $output_onclick . ' /><label class="" for="' . $type . '_' . $folder['id'] . '">' . $indentation . h(pg_folder_option_label($folder['name'], $left_out_parents)) . '</label>' . $output_expiration_date_container . '</div>';
         }
         // get lines for child folders
-        $output .= get_acl_folder_tree($type, $folder['id'], $next_level, $folders, $folders_that_user_has_access_to, $user_id);
+        $output .= get_acl_folder_tree($type, $folder['id'], $next_level, $folders, $folders_that_user_has_access_to, $user_id, $child_left_out_parents);
     }
     return $output;
 }
@@ -5154,6 +5271,18 @@ function pg_password_reset_limits()
 }
 
 /**
+ * The address typed into the forgot password form: one string, else ''
+ * (a posted email[] array, which e() would refuse with a TypeError).
+ *
+ * @param  mixed  $value The form's email field
+ * @return string
+ */
+function pg_password_reset_email($value)
+{
+    return is_scalar($value) ? (string) $value : '';
+}
+
+/**
  * @param  string $email Address the reset was requested for
  * @return void          Denies and exits when either ceiling is passed
  */
@@ -5673,6 +5802,34 @@ function pg_reset_password_notice($set_password_url, $sent)
     return lang('The user\'s password has been reset, and the user has been e-mailed to set a new password with "Forgot password" on the sign-in page.');
 }
 
+/**
+ * The notice after a user was created: whether the new account's e-mail was
+ * sent (email()'s answer), and the random password only for a user who was
+ * not notified, who has no other way in. Not escaped. Pure.
+ *
+ * @param bool $notified  "Notify User" was on
+ * @param bool $sent  email() returned true
+ * @param string $set_password_url  The link the e-mail carried, '' for none
+ * @param string $password  The random password the account was given
+ * @return string
+ */
+function pg_new_user_notice($notified, $sent, $set_password_url, $password)
+{
+    if (!$notified) {
+        return lang('The user has been created. ') . lang(array('string' => 'The password is \'{var:1}\'. The user has not been notified.', 'vars' => array((string) $password)));
+    }
+
+    if (!$sent) {
+        return lang('The user has been created, but the e-mail could not be sent. The user can set a password with "Forgot password" on the sign-in page.');
+    }
+
+    if ((string) $set_password_url !== '') {
+        return lang('The user has been created. ') . lang('A link to set a password has been emailed to the user.');
+    }
+
+    return lang('The user has been created. ') . lang('The user has been emailed and can set a password with "Forgot password" on the sign-in page.');
+}
+
 
 /**
  * Is this account locked out of signing in, and until when?
@@ -5942,21 +6099,6 @@ function initialize_developer_security()
             return $_SESSION["filename"];
         }
     }
-}
-
-/**
- * Decrypt API/Secret keys stored in DB.
- */
-function decode_ssl_keys($key_base64, $iv_base64)
-{
-    $crypto_method = 'aes-256-cbc';
-    $crypto_key = substr(hash('sha256', ENCRYPTION_KEY, true), 0, 32);
-    $key = base64_decode($key_base64);
-    $iv = base64_decode($iv_base64);
-    if ($key === false || $iv === false)
-        return '';
-    $decrypted = openssl_decrypt($key, $crypto_method, $crypto_key, OPENSSL_RAW_DATA, $iv);
-    return ($decrypted !== false) ? $decrypted : '';
 }
 
 /**

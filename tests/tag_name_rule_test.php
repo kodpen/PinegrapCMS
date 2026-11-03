@@ -20,7 +20,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/tag_name_rule.php');
 
 function test_tag_name_rule_on_create()
 {
-	$message = lang('Please only enter letters, numbers, and dashes for the name.');
+	$message = lang('Please only enter English letters (a-z), numbers, and dashes for the name.');
 
 	pg_assert_same('', pg_tag_name_error('Main-Menu-2', null), 'letters, numbers and dashes pass');
 	pg_assert_same($message, pg_tag_name_error('main_menu', null), 'an underscore is refused');
@@ -30,8 +30,8 @@ function test_tag_name_rule_on_create()
 
 function test_tag_name_rule_on_edit()
 {
-	$plain = lang('Please only enter letters, numbers, or dashes for the name.');
-	$underscore = lang('Please only enter letters, numbers, dashes, and underscores for the name.');
+	$plain = lang('Please only enter English letters (a-z), numbers, or dashes for the name.');
+	$underscore = lang('Please only enter English letters (a-z), numbers, dashes, and underscores for the name.');
 
 	pg_assert_same('', pg_tag_name_error('top-menu', 'top-menu'), 'a valid name passes');
 	pg_assert_same($plain, pg_tag_name_error('top_menu', 'top-menu'), 'no underscore when the stored name had none');
@@ -49,4 +49,10 @@ function test_tag_name_rule_used_by_both_forms()
 		pg_assert_contains('pg_tag_name_error(', $source, $file . ' applies the rule');
 		pg_assert_false(strpos($source, "preg_match('/[^A-Za-z0-9") !== false, $file . ' keeps no copy of the rule');
 	}
+}
+
+function test_tag_name_rule_says_english_letters()
+{
+	pg_assert_contains('(a-z)', pg_tag_name_error('menü', null), 'the message names the letters the rule accepts');
+	pg_assert_contains('(a-z)', pg_tag_name_error('a b', 'a-b'), 'the edit message names them too');
 }

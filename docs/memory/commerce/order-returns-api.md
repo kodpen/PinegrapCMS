@@ -23,6 +23,9 @@ description: Returns over the external API: GET/POST /orders/{id}/returns, body,
 ## Where are the refund's amount and method?
 - On the return since the owner's decision of 2026-10-24 (step 11.0.34, backfilled from the audit trail and `order_refunds`): `OrderReturn.refund` {amount, method, reference, unclear}, null before the refund; `order.return.refunded` carries amount, refund_method and unclear, no reference: order-returns-refund-columns.md.
 
+## Which routes move a return, or list them across orders?
+- `GET /returns`, `GET /returns/{id}`, `POST /returns/{id}` (the screen's moves and the refund): api/api-returns.md.
+
 ## Events and the Workspace?
 - commerce/order-returns-events.md.
 

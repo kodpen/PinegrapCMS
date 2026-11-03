@@ -83,15 +83,10 @@ function get_unique_name($properties)
     // so prepare new name differently based on the item type.
     switch ($type) {
         default:
-            // If there is already a bracket area on the end of the name,
-            // then just increase number in bracket.
-            if (preg_match('/(.*?)\[(\d+)\]$/', $name, $matches) == 1) {
-                $new_name = $matches[1] . '[' . ($matches[2] + 1) . ']';
-                // Otherwise there is not already a bracket area on the end of the name,
-                // so add bracket area with a 1.
-            } else {
-                $new_name = $name . '[1]';
-            }
+            // A name is cut to fit its column (100 characters) before its
+            // suffix: a longer one would be cut by the column after the
+            // suffix and come out as the name it was meant to differ from.
+            $new_name = pg_bracket_suffix_name($name, pg_unique_name_limit($type));
             break;
         case 'file':
             $position_of_last_period = mb_strrpos($name, '.');
@@ -397,6 +392,105 @@ function pg_upload_neutralize_name($file_name)
     return $result;
 }
 
+/**
+ * One line of the Cleanup tool's list (clean_up.php): a Material icon and a
+ * name. The name is a path on disk; a file left in data/files outside the
+ * uploader (FTP, an unpacked archive) keeps whatever name it was given, so it
+ * is printed as text.
+ *
+ * @param string $icon the Material icon name (folder, insert_drive_file)
+ * @param string $name
+ * @return string
+ */
+function pg_clean_up_list_row($icon, $name)
+{
+    return '<li class="list-group-item bg-reset border-0 fg-danger"><span class="material-icons me-5">' . h((string) $icon) . '</span>' . h((string) $name) . '</li>';
+}
+
+/**
+ * The names under data/temp that the Cleanup tool (clean_up.php) never lists:
+ * the directory guard and the records nothing writes again as the same file.
+ * hash_reference.json is this installation's own integrity baseline;
+ * erp_packages holds the ZIPs the accountant's link reads; csp_reports.json,
+ * php_errors.log, shield_pending.log, waf_ban_notice.log and
+ * ai_write_usage.json are logs, queues and today's AI counter; server_config
+ * holds the copies of web.config / .htaccess the server rules repair keeps
+ * before it rewrites them (pg_server_config_backup()).
+ *
+ * @return array
+ */
+function pg_clean_up_temp_keep()
+{
+    return array(
+        '.', '..', '.htaccess', 'hash_reference.json',
+        'erp_packages', 'csp_reports.json', 'php_errors.log',
+        'shield_pending.log', 'waf_ban_notice.log', 'ai_write_usage.json',
+        'server_config',
+    );
+}
+
+/**
+ * Delete a file or a folder with everything in it for the Cleanup tool and
+ * say whether it is gone. A file the web server may not remove (no right, held
+ * open by another request) makes the answer false and keeps its folder, so the
+ * tool does not count it as deleted.
+ *
+ * @param string $path
+ * @return bool true when the path existed and no longer does
+ */
+function pg_clean_up_delete_path($path)
+{
+    if (is_link($path) || is_file($path)) {
+        return @unlink($path);
+    }
+
+    if (!is_dir($path)) {
+        return false;
+    }
+
+    $removed = true;
+    // scandir() rather than a glob: a {,.}* pattern also matched '..'.
+    foreach (array_diff((array) @scandir($path), array('.', '..')) as $item) {
+        if (!pg_clean_up_delete_path($path . '/' . $item)) {
+            $removed = false;
+        }
+    }
+
+    return $removed && @rmdir($path);
+}
+
+/**
+ * A Cleanup sentence with the folder and file counts in it: $string carries
+ * {var:1} (folders), {var:2} (" and"), {var:3} (files) and their two plural
+ * suffixes. Both counts 0 gives '', so the caller says that nothing was found
+ * or deleted instead of printing the sentence with its counts left empty.
+ *
+ * @param string $string the English key
+ * @param int    $folders
+ * @param int    $files
+ * @param array  $more  further values for {var:4} onwards
+ * @return string
+ */
+function pg_clean_up_count_text($string, $folders, $files, $more = array())
+{
+    $folders = (int) $folders;
+    $files = (int) $files;
+
+    if (($folders === 0) && ($files === 0)) {
+        return '';
+    }
+
+    $folder_text = ($folders !== 0) ? ' ' . $folders . ' ' . lang('folder') : '';
+    $and_text = (($folders !== 0) && ($files !== 0)) ? ' ' . lang('and') : '';
+    $file_text = ($files !== 0) ? ' ' . $files . ' ' . lang('file') : '';
+
+    return lang(array(
+        'string' => $string,
+        'vars'   => array_merge(array($folder_text, $and_text, $file_text), array_values((array) $more)),
+        'suffix' => array(($folders > 1) ? 's' : '', ($files > 1) ? 's' : ''),
+    ));
+}
+
 // Create a function that is used in various areas where files are added,
 // in order to reduce the file name length (if necessary) and replace special characters.
 function prepare_file_name($file_name)
@@ -450,6 +544,11 @@ function prepare_file_name($file_name)
     $file_name = str_replace('&', '_', $file_name);
     $file_name = str_replace('+', '_', $file_name);
     $file_name = str_replace('#', '_', $file_name);
+    // A run of dots becomes one: the theme, CSS and design file screens refuse
+    // to open a name with ".." in it, so such a record could be neither fixed
+    // nor deleted there. Asked after the length limit, which can cut the
+    // part before the extension right after a dot.
+    $file_name = preg_replace('/\.{2,}/', '.', $file_name);
     // Windows drops the dots at the end of a file name, so "photo.jpg." would
     // be written over photo.jpg while its record kept a name of its own. The
     // length limit above can leave one too. Never empty here: a name that
@@ -473,6 +572,63 @@ function prepare_file_name($file_name)
         $file_name = 'file';
     }
     return $file_name;
+}
+
+/**
+ * Whether a design file's stored name would leave the files folder when it is
+ * joined to it: empty, "." or "..", a slash or backslash, or a NUL byte. A
+ * name that merely holds two dots ("old..theme.css", stored before
+ * prepare_file_name() collapsed them) stays inside and is opened, so it can be
+ * renamed or deleted.
+ *
+ * @param mixed $name the stored name
+ * @return bool
+ */
+function pg_design_file_name_unsafe($name)
+{
+    if (!is_string($name) || ($name === '') || ($name === '.') || ($name === '..')) {
+        return true;
+    }
+
+    return strpbrk($name, "/\\\0") !== false;
+}
+
+/**
+ * Whether a single-file box arrived without a file chosen. Read before
+ * prepare_file_name(), which turns an empty name into "file".
+ *
+ * @param array|null $file the $_FILES entry
+ * @return bool
+ */
+function pg_upload_file_missing($file)
+{
+    if (!is_array($file) || !isset($file['name']) || !is_string($file['name'])) {
+        return true;
+    }
+
+    if (isset($file['error']) && is_scalar($file['error']) && ((int) $file['error'] === UPLOAD_ERR_NO_FILE)) {
+        return true;
+    }
+
+    return trim($file['name']) === '';
+}
+
+/**
+ * The sentence that says a file was stored under another name than the one
+ * typed or uploaded (letters an address cannot carry replaced), or '' when
+ * the name was kept.
+ *
+ * @param string $typed  the name as typed or uploaded
+ * @param string $stored the name stored
+ * @return string HTML
+ */
+function pg_file_name_saved_as_notice($typed, $stored)
+{
+    if ((string) $typed === (string) $stored) {
+        return '';
+    }
+
+    return lang(array('string' => 'Saved as {var:1}: a file name is its address, so letters an address cannot carry are replaced.', 'vars' => h((string) $stored)));
 }
 
 // Writes $content to $path as a whole and returns true, or returns false
@@ -940,9 +1096,22 @@ function pg_upload_limit_sentence($app_max = 0, $file_max = null)
         return '';
     }
 
+    // A whole unit is written whole ('1 MB', as the screens' own refusals
+    // say it), never '1,024.0 KB'.
+    $units = array('B', 'KB', 'MB', 'GB');
+    $unit = 0;
+
+    while (($unit < 3) && ($max >= pow(1024, $unit + 1))) {
+        $unit++;
+    }
+
+    $size = (($max % pow(1024, $unit)) === 0)
+        ? pg_format_number(intdiv($max, pow(1024, $unit)), 0) . ' ' . $units[$unit]
+        : convert_bytes_to_string($max, 'auto');
+
     return lang(array(
         'string' => 'The file can be at most {var:1}.',
-        'vars'   => array(convert_bytes_to_string($max, 1))));
+        'vars'   => array($size)));
 }
 
 /**
@@ -1533,38 +1702,88 @@ function pg_public_image_file_types()
 }
 
 /**
- * The `files` condition of a picker whose choice is shown to everyone (site
- * icon, app icon, share image, logo): no attachment and no ERP document. An
- * ERP document (an invoice, a quote signature, an expense receipt) is served
- * to the ERP right only, and a site icon is redrawn and served without a
- * session, so naming one would publish it.
+ * The folders whose files a visitor without a session may open: public
+ * along their parent chain (get_access_control_type()) and not in the
+ * Recycle Bin, which reads as private.
  *
- * @param bool|null $erp_ready  Whether files.erp_doc_type exists; asked when null
+ * @return int[]
+ */
+function pg_public_folder_ids()
+{
+    if (!function_exists('pg_folder_access_tree')) {
+        return array();
+    }
+
+    $tree = pg_folder_access_tree();
+
+    return pg_public_folder_ids_of($tree['rows'], $tree['bin']);
+}
+
+/**
+ * pg_public_folder_ids() over given rows. Pure.
+ *
+ * @param array $rows   folder_id => folder_parent, folder_access_control_type
+ * @param int   $bin_id the Recycle Bin folder, 0 when none
+ * @return int[]
+ */
+function pg_public_folder_ids_of($rows, $bin_id)
+{
+    $ids = array();
+
+    foreach (array_keys((array) $rows) as $folder_id) {
+        if (pg_folder_access_resolve($rows, $folder_id, $bin_id) === 'public') {
+            $ids[] = (int) $folder_id;
+        }
+    }
+
+    return $ids;
+}
+
+/**
+ * The `files` condition of a picker whose choice is shown to everyone (site
+ * icon, app icon, share image, logo): no attachment, no ERP document, and a
+ * file in a folder every visitor may open. An ERP document (an invoice, a
+ * quote signature, an expense receipt) is served to the ERP right only; a
+ * file in a private folder or in the Recycle Bin (its pgbin_ names) sends a
+ * visitor without a session to the sign-in page. The site icon is redrawn
+ * and served without a session, so naming such a file would publish it.
+ *
+ * @param bool|null  $erp_ready Whether files.erp_doc_type exists; asked when null
+ * @param int[]|null $folders   The public folders; read when null
  * @return string
  */
-function pg_public_image_files_where($erp_ready = null)
+function pg_public_image_files_where($erp_ready = null, $folders = null)
 {
     if ($erp_ready === null) {
         $erp_ready = function_exists('waf_table_has_column') && waf_table_has_column('files', 'erp_doc_type');
     }
 
-    return '(attachment = 0)' . ($erp_ready ? " AND (erp_doc_type = '')" : '');
+    if ($folders === null) {
+        $folders = pg_public_folder_ids();
+    }
+
+    $folders = array_values(array_unique(array_map('intval', (array) $folders)));
+
+    return '(attachment = 0)' . ($erp_ready ? " AND (erp_doc_type = '')" : '')
+        . ' AND (folder IN (' . (empty($folders) ? '-1' : implode(', ', $folders)) . '))';
 }
 
 /**
  * Whether a save may write $input into a public picture setting.
  *
  * Empty is always allowed. A files row is allowed when it is no attachment,
- * no ERP document and one of $types. A name no files row carries is allowed
- * only when it is the stored value (an old hand-typed address the picker
- * keeps as its own option), so saving the screen never clears it; a stored
- * file that is now private is refused all the same. A stored public file of
- * a type the picker no longer lists is kept for the same reason.
+ * no ERP document, in a folder every visitor may open and one of $types. A
+ * name no files row carries is allowed only when it is the stored value (an
+ * old hand-typed address the picker keeps as its own option), so saving the
+ * screen never clears it; a stored file that is now private or in the
+ * Recycle Bin is refused all the same. A stored public file of a type the
+ * picker no longer lists is kept for the same reason.
  *
  * @param string     $input   The posted name
  * @param string     $stored  The value saved before
  * @param array      $types   The files.type values the picker lists
- * @param array|null $row     The files row named $input: type, attachment, erp_doc_type
+ * @param array|null $row     The files row named $input: type, attachment,
+ *                            erp_doc_type, public (its folder is public)
  * @return bool
  */
 function pg_public_image_choice_verdict($input, $stored, $types, $row)
@@ -1579,11 +1798,33 @@ function pg_public_image_choice_verdict($input, $stored, $types, $row)
         return ($input === (string) $stored);
     }
 
-    if (((int) ($row['attachment'] ?? 0) !== 0) || ((string) ($row['erp_doc_type'] ?? '') !== '')) {
+    if (((int) ($row['attachment'] ?? 0) !== 0) || ((string) ($row['erp_doc_type'] ?? '') !== '') || empty($row['public'])) {
         return false;
     }
 
     return in_array(strtolower((string) ($row['type'] ?? '')), (array) $types, true) || ($input === (string) $stored);
+}
+
+/**
+ * The files row a public picture setting names, with `public` set from its
+ * folder; null when no row carries the name or the query fails.
+ *
+ * @param string $name
+ * @return array|null
+ */
+function pg_public_image_row($name)
+{
+    $erp_ready = function_exists('waf_table_has_column') && waf_table_has_column('files', 'erp_doc_type');
+
+    $row = db_item("SELECT type, attachment, folder" . ($erp_ready ? ', erp_doc_type' : '') . " FROM files WHERE name = '" . e((string) $name) . "' LIMIT 1");
+
+    if (!is_array($row) || !$row) {
+        return null;
+    }
+
+    $row['public'] = in_array((int) $row['folder'], pg_public_folder_ids(), true);
+
+    return $row;
 }
 
 /**
@@ -1603,11 +1844,38 @@ function pg_public_image_choice_ok($input, $stored, $types)
         return true;
     }
 
-    $erp_ready = function_exists('waf_table_has_column') && waf_table_has_column('files', 'erp_doc_type');
+    return pg_public_image_choice_verdict($input, trim((string) $stored), $types, pg_public_image_row($input));
+}
 
-    $row = db_item("SELECT type, attachment" . ($erp_ready ? ', erp_doc_type' : '') . " FROM files WHERE name = '" . e($input) . "' LIMIT 1");
+/**
+ * The option a public picture picker appends for a stored value its list
+ * lacks: marked "(file not found)" when no file carries it, "(visitors
+ * cannot open it)" when its file is private, in the Recycle Bin, an
+ * attachment or an ERP document. The value is never rewritten; the save
+ * refuses it until another is chosen.
+ *
+ * @param string $value
+ * @return string
+ */
+function pg_public_image_stored_option($value)
+{
+    $value = (string) $value;
 
-    return pg_public_image_choice_verdict($input, trim((string) $stored), $types, (is_array($row) && $row) ? $row : null);
+    if (!pg_stored_file_needs_check($value)) {
+        return pg_stored_file_option($value, true);
+    }
+
+    $row = pg_public_image_row($value);
+
+    if ($row === null) {
+        return pg_stored_file_option($value, false);
+    }
+
+    $hidden = ((int) ($row['attachment'] ?? 0) !== 0) || ((string) ($row['erp_doc_type'] ?? '') !== '') || empty($row['public']);
+
+    return $hidden
+        ? '<option value="' . h($value) . '" selected="selected">' . h($value) . ' ' . lang('(visitors cannot open it)') . '</option>'
+        : pg_stored_file_option($value, true);
 }
 
 // The width of the name columns the File and Catalog Manager and the folder
@@ -1616,6 +1884,158 @@ function pg_public_image_choice_ok($input, $stored, $types)
 function pg_name_max_length()
 {
     return 100;
+}
+
+/**
+ * The width of the column get_unique_name() writes a name of this type to,
+ * or 0 when the copy's name is not cut. Pure.
+ *
+ * @param string $type
+ * @return int
+ */
+function pg_unique_name_limit($type)
+{
+    return in_array($type, array('page', 'folder', 'product', 'product_group', 'common_region', 'designer_region', 'style'), true) ? pg_name_max_length() : 0;
+}
+
+/**
+ * The next name in the [n] series: the number in a bracket at the end of the
+ * name goes up by one, a name without one gets [1]. With a limit, the part
+ * before the bracket is cut so that the whole name fits in that many
+ * characters. Pure.
+ *
+ * @param string $name
+ * @param int    $limit 0 for no limit
+ * @return string
+ */
+function pg_bracket_suffix_name($name, $limit = 0)
+{
+    $name = (string) $name;
+
+    if (preg_match('/^(.*?)\[(\d+)\]$/su', $name, $matches) == 1) {
+        $base = $matches[1];
+        $suffix = '[' . ($matches[2] + 1) . ']';
+    } else {
+        $base = $name;
+        $suffix = '[1]';
+    }
+
+    $limit = (int) $limit;
+
+    if (($limit > 0) && (mb_strlen($base . $suffix, 'UTF-8') > $limit)) {
+        $base = mb_substr($base, 0, max(0, $limit - mb_strlen($suffix, 'UTF-8')), 'UTF-8');
+    }
+
+    return $base . $suffix;
+}
+
+/**
+ * A name cut to fit its column before get_unique_name() checks it: the check
+ * looks for the whole name, so a longer one never matched the row the column
+ * had already cut and two items got the same name. With $keep_extension a
+ * short extension (up to five characters after the dot) stays and the part
+ * before it is cut. Pure.
+ *
+ * @param string $name
+ * @param bool   $keep_extension
+ * @param int    $limit
+ * @return string
+ */
+function pg_import_name_fit($name, $keep_extension = false, $limit = 100)
+{
+    $name = (string) $name;
+    $limit = max(1, (int) $limit);
+
+    if (mb_strlen($name, 'UTF-8') <= $limit) {
+        return $name;
+    }
+
+    $extension = '';
+
+    if ($keep_extension) {
+        $dot = mb_strrpos($name, '.', 0, 'UTF-8');
+
+        if (($dot !== false) && ($dot > 0) && ((mb_strlen($name, 'UTF-8') - $dot) <= 6)) {
+            $extension = mb_substr($name, $dot, null, 'UTF-8');
+            $name = mb_substr($name, 0, $dot, 'UTF-8');
+        }
+    }
+
+    $cut = mb_substr($name, 0, max(1, $limit - mb_strlen($extension, 'UTF-8')), 'UTF-8');
+
+    // A cut that ends on a separator leaves "name-.css" or "name-".
+    $trimmed = rtrim($cut, " -_.");
+
+    return (($trimmed !== '') ? $trimmed : $cut) . $extension;
+}
+
+// The longest tag Import My Site takes: the tag is added to every page,
+// style, file and folder name, which are 100 characters wide.
+function pg_site_import_tag_max_length()
+{
+    return 40;
+}
+
+/**
+ * The folder name Import My Site gives one import: the address without its
+ * scheme, the time of the scan and the tag, cut to the folder column. Built
+ * once at the scan and kept with it, so the name the scan shows is the one
+ * the import creates. Pure.
+ *
+ * @param string $url
+ * @param string $time_text
+ * @param string $tag
+ * @return string
+ */
+function pg_site_import_folder_name($url, $time_text, $tag)
+{
+    $name = str_replace(array('https://', 'http://'), '', (string) $url) . ' ' . (string) $time_text;
+
+    $tag = (string) $tag;
+
+    if ($tag !== '') {
+        // The tag is what tells two imports of one site apart, so the
+        // address gives way first.
+        $tail = ' ' . (string) $time_text . '-' . $tag;
+        $head = str_replace(array('https://', 'http://'), '', (string) $url);
+        $room = pg_name_max_length() - mb_strlen($tail, 'UTF-8');
+
+        if ($room >= 10) {
+            return pg_import_name_fit($head, false, $room) . $tail;
+        }
+
+        $name .= '-' . $tag;
+    }
+
+    return pg_import_name_fit($name, false, pg_name_max_length());
+}
+
+/**
+ * The scans Import My Site keeps in the session, with one more added under
+ * its id: each tab's scan is its own, so an Import takes only the scan its
+ * form came from. The oldest beyond $keep are dropped. Pure.
+ *
+ * @param mixed  $scans  What the session holds (array of id => scan)
+ * @param string $id
+ * @param array  $scan
+ * @param int    $keep
+ * @return array
+ */
+function pg_site_import_scans_add($scans, $id, $scan, $keep = 5)
+{
+    $scans = is_array($scans) ? $scans : array();
+
+    unset($scans[$id]);
+    $scans[$id] = $scan;
+
+    $keep = max(1, (int) $keep);
+
+    while (count($scans) > $keep) {
+        reset($scans);
+        unset($scans[key($scans)]);
+    }
+
+    return $scans;
 }
 
 // True when a name is longer than its column. The session is not strict, so
@@ -1628,4 +2048,68 @@ function pg_name_too_long($name, $limit = null)
     }
 
     return mb_strlen((string) $name, 'UTF-8') > (int) $limit;
+}
+
+// "600 × 600 px", the way the File Manager writes an image's size; '' when
+// either side is unknown or not a positive number.
+function pg_image_dimensions_label($width, $height)
+{
+    if (!is_numeric($width) || !is_numeric($height) || ($width <= 0) || ($height <= 0)) {
+        return '';
+    }
+
+    return round($width) . ' × ' . round($height) . ' px';
+}
+
+/**
+ * A file name's extension, lower-cased, read from the name: files.type is
+ * four characters wide, so it holds "woff" for a .woff2. A name with no dot,
+ * or one that ends in a dot, has no extension. Pure.
+ *
+ * @param string $name
+ * @return string
+ */
+function pg_file_name_extension($name)
+{
+    $name = (string) $name;
+    $dot = mb_strrpos($name, '.');
+
+    if ($dot === false) {
+        return '';
+    }
+
+    return mb_strtolower(mb_substr($name, $dot + 1));
+}
+
+/**
+ * The `files` condition that leaves out files in the Recycle Bin and in the
+ * folders under it: a design file sent there is no longer one of the site's
+ * design files until the bin's own restore brings it back.
+ *
+ * @param int[]|null $bin_folder_ids the bin and its sub-folders; read when null
+ * @return string " AND (...)" or ""
+ */
+function pg_design_files_bin_where($bin_folder_ids = null)
+{
+    if ($bin_folder_ids === null) {
+        $bin_folder_ids = function_exists('pg_recycle_bin_folder_ids') ? pg_recycle_bin_folder_ids() : array();
+    }
+
+    $ids = array_values(array_unique(array_map('intval', (array) $bin_folder_ids)));
+
+    if (count($ids) == 0) {
+        return '';
+    }
+
+    return ' AND (files.folder NOT IN (' . implode(', ', $ids) . '))';
+}
+
+// The name a panel user is shown by beside a change: the first and last name
+// of the user's contact (user.user_contact), else the username, as the
+// Workspace writes a person.
+function pg_user_display_name($first_name, $last_name, $username)
+{
+    $name = trim(trim((string) $first_name) . ' ' . trim((string) $last_name));
+
+    return ($name !== '') ? $name : (string) $username;
 }

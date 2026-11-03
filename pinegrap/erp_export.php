@@ -97,11 +97,20 @@ if ($_POST) {
     $from = trim((string) $liveform->get_field_value('from'));
     $to = trim((string) $liveform->get_field_value('to'));
 
-    if (($from !== '') && (validate_date($from) == false)) {
+    // pg_date_input_iso() reads the dotted Turkish date (01.10.2026) the
+    // other ERP screens take; validate_date() knew only '-', ',' and '/'.
+    $from_iso = pg_date_input_iso($from);
+    $to_iso = pg_date_input_iso($to);
+
+    if (($from !== '') && ($from_iso === '')) {
         $liveform->mark_error('from', lang('Please enter a valid date.'));
     }
-    if (($to !== '') && (validate_date($to) == false)) {
+    if (($to !== '') && ($to_iso === '')) {
         $liveform->mark_error('to', lang('Please enter a valid date.'));
+    }
+
+    if (($profile !== null) && erp_export_direction_refused($profile, $liveform->get_field_value('direction'))) {
+        $liveform->mark_error('direction', lang('This format writes sales invoices only.'));
     }
 
     if ($liveform->check_form_errors() == true) {
@@ -109,13 +118,13 @@ if ($_POST) {
     }
 
     $filters = erp_export_filters(array(
-        'from' => ($from !== '') ? prepare_form_data_for_input($from, 'date') : '',
-        'to' => ($to !== '') ? prepare_form_data_for_input($to, 'date') : '',
+        'from' => $from_iso,
+        'to' => $to_iso,
         'direction' => $liveform->get_field_value('direction'),
         'include_drafts' => $liveform->get_field_value('include_drafts'),
         'include_passive' => $liveform->get_field_value('include_passive'),
         'not_exported' => $liveform->get_field_value('not_exported'),
-    ));
+    ), $profile);
 
     $built = erp_export_build($profile, $filters);
 
@@ -190,7 +199,7 @@ foreach ($group_labels as $group => $group_label) {
         if ($definition['group'] !== $group) {
             continue;
         }
-        $output_profile_options .= '<option value="' . h($id) . '" data-entity="' . h($definition['entity']) . '"' . (($id === $current_profile) ? ' selected="selected"' : '') . '>' . h($definition['label']) . '</option>';
+        $output_profile_options .= '<option value="' . h($id) . '" data-entity="' . h($definition['entity']) . '" data-directions="' . h(implode(' ', $definition['directions'] ?? array())) . '"' . (($id === $current_profile) ? ' selected="selected"' : '') . '>' . h($definition['label']) . '</option>';
     }
     $output_profile_options .= '</optgroup>';
 }
@@ -275,8 +284,30 @@ pg_page_shell([
                             <div class="col-12 lg:col-6 my-3">
                                 <label for="direction" class="form-label">' . lang('Direction') . '</label>
                                 ' . $liveform->output_field(array('type' => 'select', 'id' => 'direction', 'name' => 'direction', 'class' => 'form-control', 'options' => $direction_options)) . '
-                                <div class="form-text">' . lang('Invoices only.') . '</div>
+                                <div class="form-text">' . lang('Only the generic invoice CSV writes purchase invoices.') . '</div>
                             </div>
+                            <script>
+                                (function () {
+                                    // The direction selector works only for a format that lists
+                                    // more than one direction; a disabled select posts nothing,
+                                    // so the server writes the format\'s own direction.
+                                    var profile = document.getElementById(\'profile\');
+                                    var direction = document.getElementById(\'direction\');
+                                    if (!profile || !direction) {
+                                        return;
+                                    }
+                                    function sync() {
+                                        var option = profile.options[profile.selectedIndex];
+                                        var directions = option ? (option.getAttribute(\'data-directions\') || \'\').split(\' \').filter(Boolean) : [];
+                                        direction.disabled = directions.length < 2;
+                                        if (directions.length && directions.indexOf(direction.value) === -1) {
+                                            direction.value = directions[0];
+                                        }
+                                    }
+                                    profile.addEventListener(\'change\', sync);
+                                    sync();
+                                })();
+                            </script>
                         </div>
                     </div>
                 </div>

@@ -39,7 +39,6 @@ function test_dashboard_v2_shop_cards_are_built()
 	}
 
 	pg_assert_same(null, $cards['salesmap']['period'], 'the sales map draws the last 30 days only');
-	pg_assert_false($cards['ops']['built'], 'the operations desk is a step of its own');
 }
 
 function test_dashboard_v2_shop_windows_last_7_days()

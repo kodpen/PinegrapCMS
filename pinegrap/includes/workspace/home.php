@@ -246,7 +246,56 @@ function ws_home_lead($counts)
         $parts[] = lang(array('string' => '{var:1} task{suffix:1} due today or overdue', 'vars' => $due, 'suffix' => array(($due === 1) ? '' : 's')));
     }
 
-    return $parts ? $parts : array(lang('Everything is read and nothing is due today.'));
+    return ws_home_lead_capitalised($parts ? $parts : array(lang('Everything is read and nothing is due today.')));
+}
+
+/**
+ * The lead's parts with the first letter of the line upper-cased: a part
+ * whose translation starts with a word ("bugüne kadar …") is lower-case in
+ * the middle of the line but opens it when the counts before it are zero.
+ *
+ * @param string[] $parts
+ * @return string[]
+ */
+function ws_home_lead_capitalised($parts)
+{
+    $parts = array_values($parts);
+
+    if (!$parts || !preg_match('/^(\pL)(.*)$/su', (string) $parts[0], $match)) {
+        return $parts;
+    }
+
+    $parts[0] = (function_exists('pg_initials_upper') ? pg_initials_upper($match[1]) : mb_strtoupper($match[1], 'UTF-8')) . $match[2];
+
+    return $parts;
+}
+
+/**
+ * The panel heading of the channels screen (workspace.php) for each of its
+ * views; workspace.js swaps it as the view changes without a page load.
+ *
+ * @return array view => array('heading' => …, 'description' => …)
+ */
+function ws_channels_screen_headings()
+{
+    return array(
+        'channel'            => array(
+            'heading'     => lang('Channels'),
+            'description' => lang('Conversations about customers and work, with the tasks that come out of them.'),
+        ),
+        'home'               => array(
+            'heading'     => lang('Today'),
+            'description' => lang('What waits for you today: new messages, mentions, approvals and the tasks due.'),
+        ),
+        'scheduled_actions'  => array(
+            'heading'     => lang('Scheduled actions'),
+            'description' => lang('Actions and messages set to run later, on their own.'),
+        ),
+        'scheduled_messages' => array(
+            'heading'     => lang('Scheduled messages'),
+            'description' => lang('Messages set to be sent later, on their own.'),
+        ),
+    );
 }
 
 /**

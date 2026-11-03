@@ -48,10 +48,12 @@ function test_upload_file_refusal_reads_the_entry()
 function test_upload_limit_sentence_takes_the_lower_limit()
 {
 	pg_assert_same('', pg_upload_limit_sentence(0, 0), 'no limit, no line');
-	pg_assert_contains(convert_bytes_to_string(2097152, 1), pg_upload_limit_sentence(0, 2097152), 'the server limit');
-	pg_assert_contains(convert_bytes_to_string(1048576, 1), pg_upload_limit_sentence(1048576, 2097152), 'the screen limit when lower');
-	pg_assert_contains(convert_bytes_to_string(2097152, 1), pg_upload_limit_sentence(5242880, 2097152), 'the server limit when lower');
-	pg_assert_contains(convert_bytes_to_string(5242880, 1), pg_upload_limit_sentence(5242880, 0), 'the screen limit on an unlimited server');
+	pg_assert_contains(' 2 MB', pg_upload_limit_sentence(0, 2097152), 'the server limit');
+	pg_assert_contains(' 1 MB', pg_upload_limit_sentence(1048576, 2097152), 'the screen limit when lower');
+	pg_assert_contains(' 2 MB', pg_upload_limit_sentence(5242880, 2097152), 'the server limit when lower');
+	pg_assert_contains(' 5 MB', pg_upload_limit_sentence(5242880, 0), 'the screen limit on an unlimited server');
+	// A limit that is not a whole unit keeps its decimal.
+	pg_assert_contains(convert_bytes_to_string(1572864, 'auto'), pg_upload_limit_sentence(1572864, 0), 'one and a half MB');
 }
 
 function test_upload_body_discarded_message_names_the_limit()

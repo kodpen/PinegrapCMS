@@ -3471,16 +3471,7 @@ function _eo_prefill_billing_fields($lf, $order_id, $ghost)
         elseif (!empty($contact['lead_source']))      $rs = (string)$contact['lead_source'];
         if ($rs !== '') $lf->assign_field_value('referral_source', $rs);
     }
-    if (!$lf->field_in_session('opt_in')) {
-        $lf->assign_field_value('opt_in', !empty($order['opt_in']) ? '1' : '');
-    }
-    // The SMS box starts ticked, as the e-mail box of a new order does.
-    if (!$lf->field_in_session('opt_in_sms')) {
-        $lf->assign_field_value('opt_in_sms', '1');
-    }
-    if (!$lf->field_in_session('tax_exempt')) {
-        $lf->assign_field_value('tax_exempt', !empty($order['tax_exempt']) ? '1' : '');
-    }
+    _eo_prefill_billing_boxes($lf, $order);
     // Identity / tax number and tax office: kept on the contact, not on the
     // order, so a member finds them filled in the next time.
     foreach (array('tax_number', 'tax_office') as $f) {
@@ -3495,15 +3486,24 @@ function _eo_prefill_billing_fields($lf, $order_id, $ghost)
     if ($lf->prefill()) {
         $lf->assign_field_value('billing_same_as_shipping', empty($order['billing_address_1']) ? '1' : '');
     }
-    // update_contact: default ON for logged-in users (matches legacy intent).
-    if (!$lf->field_in_session('update_contact')) {
-        $session_pref = isset($_SESSION['software']['update_contact']) ? $_SESSION['software']['update_contact'] : null;
-        if ($session_pref === false) {
-            $lf->assign_field_value('update_contact', '');
-        } else {
-            $lf->assign_field_value('update_contact', '1');
-        }
-    }
+}
+
+// The tick boxes of the billing part: opt_in and tax_exempt from the order,
+// opt_in_sms ticked as the e-mail box of a new order is, update_contact
+// ticked unless the visitor turned it off earlier in the session. Only
+// before the visitor's first submit, as the classic express order page
+// fills them: an unticked box posts nothing, so field_in_session() cannot
+// tell "unticked" from "never shown", and a refused submit would bring an
+// unticked SMS or e-mail consent back ticked.
+function _eo_prefill_billing_boxes($lf, $order)
+{
+    if (!$lf || !$lf->prefill()) return;
+    $order = is_array($order) ? $order : array();
+    $lf->assign_field_value('opt_in', !empty($order['opt_in']) ? '1' : '');
+    $lf->assign_field_value('opt_in_sms', '1');
+    $lf->assign_field_value('tax_exempt', !empty($order['tax_exempt']) ? '1' : '');
+    $session_pref = isset($_SESSION['software']['update_contact']) ? $_SESSION['software']['update_contact'] : null;
+    $lf->assign_field_value('update_contact', ($session_pref === false) ? '' : '1');
 }
 
 // ── Helper: prefill shipping_<rid>_* fields from saved sources ──────────────
@@ -4139,8 +4139,8 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
     // expectation. The HTML5 `<input type="date">` always returns ISO
     // `YYYY-MM-DD`; the server's date validator wants `DD/MM/YYYY` (when
     // DATE_FORMAT='day_month') or `MM/DD/YYYY` (month_day). The JS converts
-    // before POSTing — without this the API rejects every custom arrival
-    // date with "Sorry, the requested arrival date is not valid".
+    // the custom arrival date it sends to the shipping methods API; the
+    // form itself posts its date inputs as ISO, which validate_date() takes.
     $date_format_json = json_encode(defined('DATE_FORMAT') ? DATE_FORMAT : 'month_day');
 
     // Pre-translated labels — passed as JSON-encoded strings into the JS
@@ -4203,23 +4203,16 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
             : (m[3] + '/' + m[2] + '/' + m[1]);
     }
 
-    // ── Form submit interceptor: date format + gift-card email auto-fill ───
-    // Two responsibilities at submit time:
-    //   1. Convert every <input type="date"> from ISO YYYY-MM-DD to the
-    //      server's DATE_FORMAT (DD/MM/YYYY for day_month sites). Same fix
-    //      as shipping arrival_date — `validate_date()` regex doesn't accept
-    //      ISO; without this the server reports "Delivery Date must contain
-    //      a valid date" or the analogous arrival-date error.
-    //   2. For gift-card products that ALSO have a custom form (CASE 3 in
-    //      _eo_render_cart_summary), auto-fill the hidden
-    //      `gift_card_recipient_email_address` from the billing email so
-    //      `express_order.php`'s validation passes WITHOUT showing a
-    //      duplicate "Recipient Email" field on top of the product form.
+    // ── Form submit interceptor: gift-card email auto-fill ──────────────────
+    // For gift-card products that ALSO have a custom form (CASE 3 in
+    // _eo_render_cart_summary), auto-fill the hidden
+    // `gift_card_recipient_email_address` from the billing email so
+    // `express_order.php`'s validation passes WITHOUT showing a duplicate
+    // "Recipient Email" field on top of the product form. Date inputs post
+    // ISO as they are: validate_date() and prepare_form_data_for_input()
+    // read it, and a site-format text written into an <input type="date">
+    // is dropped by the browser, so the date posted empty.
     form.addEventListener('submit', function () {
-        form.querySelectorAll('input[type="date"]').forEach(function (inp) {
-            if (!inp.value) return;
-            inp.value = isoToServerDate(inp.value);
-        });
         // Gift-card hidden recipient_email auto-fill from billing email.
         var billingEmail = (form.querySelector('[name="billing_email_address"]') || {}).value || '';
         if (billingEmail) {
@@ -4732,6 +4725,12 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
         });
     }
 
+    // The date control drawn over a date input (pg_fields.js) shows the
+    // input's disabled state once it is told.
+    function refreshField(inp) {
+        if (window.pgFields && window.pgFields.refresh) window.pgFields.refresh(inp);
+    }
+
     // ── Wire listeners per recipient ────────────────────────────────────────
     RIDS.forEach(function (rid) {
         // Country toggles state field + triggers method fetch
@@ -4756,12 +4755,12 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
                 // submit with no visible message.
                 form.querySelectorAll('.pg-eo-custom-arrival').forEach(function (cd) {
                     cd.style.display = 'none';
-                    cd.querySelectorAll('input').forEach(function (inp) { inp.disabled = true; });
+                    cd.querySelectorAll('input').forEach(function (inp) { inp.disabled = true; refreshField(inp); });
                 });
                 var custWrap = form.querySelector('.pg-eo-custom-arrival[data-pg-eo-arrival-id="' + r.value + '"]');
                 if (custWrap) {
                     custWrap.style.display = '';
-                    custWrap.querySelectorAll('input').forEach(function (inp) { inp.disabled = false; });
+                    custWrap.querySelectorAll('input').forEach(function (inp) { inp.disabled = false; refreshField(inp); });
                 }
                 fetchMethods(rid);
             });

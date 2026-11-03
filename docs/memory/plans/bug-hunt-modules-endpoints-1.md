@@ -4,102 +4,50 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 ---
 
 ## Which root endpoint groups (account to offer) are hunted?
-- Endpoints `account` (2): taken by LY (account_security; only one root file starts with account): #4675
-
+- Endpoints `account` (2): taken by LY: #4675
 - Endpoints `ad` (5): #4854 (sort order); the rest clean
-
-- Endpoints `affiliate` (5): done #4998 (affiliate_sign_up_confirmation, affiliate_sign_up_form, get_affiliate_sign_up_confirmation_screen_content, get_affiliate_sign_up_form_screen_content, get_affiliate_welcome_screen_content)
-
-- Endpoints `api` (5): taken by LF (api, api_docs, api_settings, api_sync_job, api_webhook_job): #4615; the rest clean
-
+- Endpoints `affiliate` (5): done #4998
+- Endpoints `api` (5): taken by LF: #4615; the rest clean
 - Endpoints `arrival` (3): clean (add_arrival_date, edit_arrival_date, view_arrival_dates)
-
 - Endpoints `auto` (4): clean (add_auto_dialog, edit_auto_dialog, view_auto_dialogs, auto_backup)
-
-- Endpoints `barcode` (3): clean (barcode_decrease_inventory, barcode_increase_inventory, barcode_menu; the decrease to 0 is a decision)
-
-- Endpoints `billing` (2): done #5016 (billing_information, get_billing_information)
-
-- Endpoints `calendar` (13): open
-
-- Endpoints `cart` (4): done #4561 (add_cart_quote, cart_action, cart_quote, view_cart_quotes)
-
-- Endpoints `catalog` (4): open
-
-- Endpoints `change` (2): open
-
-- Endpoints `check` (2): open
-
-- Endpoints `comment` (3): open
-
-- Endpoints `commission` (2): open
-
-- Endpoints `common` (3): open
-
-- Endpoints `connect` (3): open
-
-- Endpoints `contact` (8): open
-
-- Endpoints `container` (3): open
-
-- Endpoints `country` (2): open
-
-- Endpoints `currency` (3): open
-
-- Endpoints `custom` (6): open
-
-- Endpoints `design` (5): done #4663, #4684 (add_design_file, edit_design_file, import_design, import_design_zip, view_design_files)
-
-- Endpoints `designer` (4): open
-
-- Endpoints `device` (3): open
-
-- Endpoints `dynamic` (2): open
-
-- Endpoints `editor` (4): open
-
-- Endpoints `email` (16): open
-
-- Endpoints `erp` (77): open
-
-- Endpoints `expres` (2): open
-
-- Endpoints `field` (4): open
-
-- Endpoints `file` (6): open
-
-- Endpoints `find` (2): open
-
-- Endpoints `folder` (8): open
-
-- Endpoints `forgot` (2): open
-
-- Endpoints `form` (6: `edit_form_item_view`, `edit_form_list_view`, `forms`, `get_form_item_view`, `get_form_list_view`, `preview_form`; also `get_form_view_directory_screen_content`): done #4571, #4582
-
+- Endpoints `barcode` (3): clean (decrease and increase inventory, menu; the decrease to 0 is a decision)
+- Endpoints `billing` (2): done #5016
+- Endpoints `calendar` (13): done #5049
+- Endpoints `cart` (4): done #4561
+- Endpoints `catalog` (4): clean #5098
+- Endpoints `change` (2): done #5098
+- Endpoints `check` (2): clean #5108
+- Endpoints `comment` (3): done #5108
+- Endpoints `commission` (2): done #5113
+- Endpoints `common` (3): clean (an empty name is unchecked on purpose: ui/common-region-shared-form.md)
+- Endpoints `connect` (3): clean (connect, connect_client, connect_user_to_order)
+- Endpoints `contact` (8): #5124 (view_contacts); the rest clean but add_contact, edit_contact: open (held by #5095)
+- Endpoints `container` (3): #5133; view_containers clean
+- Endpoints `country` (2): clean (view_countries: #5144)
+- Endpoints `currency` (3): #5147 (exchange rate 0)
+- Endpoints `custom` (6): #5164 (array query value); the rest clean
+- Endpoints `design` (5): done #4663, #4684
+- Endpoints `designer` (4): #5177 (designer_import: HTML refusals on a JSON endpoint); the rest clean
+- Endpoints `device` (3): clean (device_limit, device_pairing, update_device_type)
+- Endpoints `dynamic` (2): clean (add_dynamic_region, edit_dynamic_region)
+- Endpoints `editor` (4): #5167 (editor_add_file: a closing script tag got out of escape_javascript()); editor_edit_file, editor_select_image, editor_select_page_or_file clean
+- Endpoints `email` (16): clean (access, CSRF and role-3 creator checks on the panel screens; email_a_friend, email_preferences one-click unsubscribe; email_campaign_job is web-callable by design)
+- Endpoints `erp` (77): taken by PC in slices: get_erp_* (12) done #5549 (edoc document sandbox; the rest clean); add_erp_*, edit_erp_* (20) done #5607 (allocation removal; the rest clean); erp_a* to erp_e* (22) done #5622 (cheque step date; the rest clean); erp_i* to erp_w* (23): clean #5643 (gates and areas, tokens before reads, read-only refusal through validate_erp_access(), public invoice and quote links, stock count status checks, escaping, money and period dates)
+- Endpoints `expres` (2): #5265 (a posted recurring payment period was stored unchecked); express_order.php read, the rest clean; open: get_express_order.php (only the output escaping spot-checked: calendar range, custom form content, offer code label and message)
+- Endpoints `field` (4): clean (OV; add_field, edit_field, delete_fields, view_fields)
+- Endpoints `file` (6): done #5407 (OV; edit_files ERP rows; add_file, edit_file, get_file ERP and key gates, get_files_for_picker clean)
+- Endpoints `find` (2): clean #6027
+- Endpoints `folder` (8): #6027 (folder view listed form uploads), #6066 (copies dropped the upload mark); rest clean
+- Endpoints `forgot` (2): done #6104
+- Endpoints `form` (6, and get_form_view_directory_screen_content): done #4571, #4582
 - Endpoints `generate` (3): open
-
-- Endpoints `gift` (3): done #4576, #4586 (add_gift_card, edit_gift_card, view_gift_cards)
-
-- Endpoints `google` (3): open
-
+- Endpoints `gift` (3): done #4576, #4586
+- Endpoints `google` (3): clean #6092
 - Endpoints `image` (3): open
-
-- Endpoints `key` (5): open
-
-- Endpoints `login` (4): taken by KZ (add_login_region, edit_login_region, get_login, login_as_user): #4594; the rest clean
-
-- Endpoints `logout` (2): open
-
-- Endpoints `mail` (2): open
-
-- Endpoints `manifest` (2): open
-
-- Endpoints `marketplace` (3): open
-
-- Endpoints `membership` (5): open
-
-- Endpoints `menu` (7): done #4673 (add_menu, add_menu_item, duplicate_menu, edit_menu, edit_menu_item, view_menu_items, view_menus)
-
-- Endpoints `my` (4): done #4653 (get_my_account, get_my_account_profile, my_account, my_account_profile)
-
+- Endpoints `key` (5): done #6092
+- Endpoints `login` (4): taken by KZ: #4594; the rest clean
+- Endpoints `logout` (2): clean #6092
+- Endpoints `membership` (5): #6094 (Google sign-up); rest clean
+- Endpoints `menu` (7): done #4673
+- Endpoints `my` (4): done #4653
 - Endpoints `offer` (5): clean (add_offer, duplicate_offer, edit_offer, edit_offer_f, view_offers)

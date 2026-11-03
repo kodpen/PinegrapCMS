@@ -396,8 +396,7 @@ function erp_api_accounts_create($params)
     $tax_number = $tax['value'];
 
     if ($tax_number !== '') {
-        $existing = (int) db_value("SELECT id FROM erp_accounts
-            WHERE tax_number = '" . escape($tax_number) . "' AND status = 'active' ORDER BY id ASC LIMIT 1");
+        $existing = (int) (erp_account_by_tax_number($tax_number, 0, true)['id'] ?? 0);
 
         if ($existing > 0) {
             api_fail_validation(lang(array(
@@ -683,9 +682,7 @@ function erp_api_accounts_update($params)
     $data = erp_api_account_state_rule($data);
 
     if (in_array('tax_number', $changed, true) && ($data['tax_number'] !== '')) {
-        $existing = (int) db_value("SELECT id FROM erp_accounts
-            WHERE tax_number = '" . escape($data['tax_number']) . "' AND status = 'active' AND id <> '" . $account_id . "'
-            ORDER BY id ASC LIMIT 1");
+        $existing = (int) (erp_account_by_tax_number($data['tax_number'], $account_id, true)['id'] ?? 0);
 
         if ($existing > 0) {
             api_fail_validation(lang(array(

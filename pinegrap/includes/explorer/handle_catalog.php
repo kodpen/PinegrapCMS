@@ -55,6 +55,23 @@ function pg_explorer_catalog_short_description_follows_name($group_row)
             || (trim((string) $group_row['short_description']) == trim((string) $group_row['name'])));
 }
 
+// Whether a group's rename gives it a new address. New Product Group creates
+// the group under the placeholder name and names it in place right after, so
+// the address made from the placeholder (Yeni_Urun_Grubu[3]) would otherwise
+// be the group's address on the site for good. Only while the group still
+// carries the placeholder and the address made from it: a named group keeps
+// its address on a rename, because moving a live URL breaks links to it.
+function pg_explorer_catalog_address_follows_name($group_row, $placeholder)
+{
+    if (!is_array($group_row) || ((string) $group_row['name'] !== (string) $placeholder)) {
+        return false;
+    }
+
+    $slug = pg_catalog_address_slug((string) $placeholder);
+
+    return preg_match('/^' . preg_quote($slug, '/') . '(\[\d+\])*$/', (string) $group_row['address_name']) === 1;
+}
+
 // ── Catalog listing: one group's subgroups and its own products ──
 //
 // Three shapes come out of here.  A group id lists what is inside that
@@ -378,7 +395,8 @@ function pg_explorer_handle_catalog_create_group($type, $request, $user)
 // The name only. address_name is the row's address on the site, and a
 // rename that silently moved a live URL would break links the operator
 // never touched; the edit screen is where an address is changed on
-// purpose.
+// purpose. The one exception is the first name of a group New Product Group
+// made (pg_explorer_catalog_address_follows_name()).
 function pg_explorer_handle_catalog_rename($type, $request, $user)
 {
     if (pg_catalog_access($user) == false) {
@@ -404,7 +422,7 @@ function pg_explorer_handle_catalog_rename($type, $request, $user)
         // Live rows only: a group deleted meanwhile, or one in the bin, is
         // refused instead of answered as renamed (the bin offers no rename).
         // The short description follows the name while the two agree.
-        $group_row = db_item("SELECT name, short_description FROM product_groups WHERE id = '" . e($item_id) . "'" . pg_catalog_live_filter('product_groups'));
+        $group_row = db_item("SELECT name, short_description, address_name FROM product_groups WHERE id = '" . e($item_id) . "'" . pg_catalog_live_filter('product_groups'));
 
         if (!$group_row) {
             respond(array('status' => 'error', 'message' => lang('Sorry, we could not accept your request.')));
@@ -417,7 +435,16 @@ function pg_explorer_handle_catalog_rename($type, $request, $user)
             $sql_short_description = "short_description = '" . e($name) . "',";
         }
 
-        db("UPDATE product_groups SET name = '" . e($name) . "', " . $sql_short_description . " timestamp = UNIX_TIMESTAMP() WHERE id = '" . e($item_id) . "'");
+        // The first name of a group New Product Group made gives it its
+        // address; a later rename leaves the address alone.
+        $sql_address_name = '';
+
+        if (pg_explorer_catalog_address_follows_name($group_row, lang('New Product Group'))) {
+
+            $sql_address_name = "address_name = '" . e(prepare_catalog_item_address_name($name, $item_id, 'product_group')) . "',";
+        }
+
+        db("UPDATE product_groups SET name = '" . e($name) . "', " . $sql_short_description . $sql_address_name . " timestamp = UNIX_TIMESTAMP() WHERE id = '" . e($item_id) . "'");
 
     } elseif ($item_kind == 'product') {
 

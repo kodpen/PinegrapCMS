@@ -97,9 +97,16 @@ if (!isset($_POST['name'])) {
             files.size,
             files.design,
             files.optimized,
-            folder.folder_archived
+            files.timestamp,
+            folder.folder_name,
+            folder.folder_archived,
+            user.user_username,
+            contacts.first_name AS user_first_name,
+            contacts.last_name AS user_last_name
         FROM files 
         LEFT JOIN folder ON files.folder = folder.folder_id
+        LEFT JOIN user ON files.user = user.user_id
+        LEFT JOIN contacts ON contacts.id = user.user_contact
         WHERE files.id = ?";
     $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_array($result);
@@ -270,7 +277,7 @@ if (!isset($_POST['name'])) {
         // Call function to resize image if dimensions are valid
         if (is_numeric($image_width) && is_numeric($image_height)) {
             $thumbnail_dimensions = get_thumbnail_dimensions($image_width, $image_height, $max_dimension);
-            $output_image_info = ' | ' . $image_width . 'px - ' . $image_height . 'px';
+            $output_image_info = ' | ' . pg_image_dimensions_label($image_width, $image_height);
         }
 
        
@@ -468,7 +475,7 @@ if (!isset($_POST['name'])) {
                     <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '">
                 </form>';
 
-            $image_buttons = $optimize_button . $resize_button . '<button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate right') . '</button><button type="button" class="btn btn-link pg-link-secondary py-0 mb-3" data-pg-image-edit="' . h($file_name) . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</button>' . pg_image_editor_includes();
+            $image_buttons = $optimize_button . $resize_button . '<button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate Right') . '</button><button type="button" class="btn btn-link pg-link-secondary py-0 mb-3" data-pg-image-edit="' . h($file_name) . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</button>' . pg_image_editor_includes();
             if($file['type'] !== 'webp'){
                 $output_convert_rows = '
                 <div class="col-12 ' . $output_no_file_editor_classes . '">
@@ -500,6 +507,121 @@ if (!isset($_POST['name'])) {
             <a class="btn btn-link pg-link-secondary py-0 mb-3" download="' . h($file_name) . '" href="' . OUTPUT_PATH . h($file_name) . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>';
     }
 
+    // What the File Manager's details say about the file and this screen did
+    // not: whether an image is optimized, the last change with its exact
+    // time and who made it, and the address as text to copy.
+    $output_file_facts = '';
+
+    if ($image_buttons !== '') {
+        $output_file_facts .= '<p class="p-0 m-0">' . ($optimized
+            ? '<i class="bi bi-check2-circle fg-success me-1"></i>' . lang('Optimized')
+            : lang('Not optimised')) . '</p>';
+    }
+
+    if ((int) $row['timestamp'] > 0) {
+        $editor_name = pg_user_display_name($row['user_first_name'], $row['user_last_name'], $row['user_username']);
+        $output_file_facts .= '<p class="p-0 m-0">' . lang('Last Modified') . ': '
+            . h(get_absolute_time(array('timestamp' => (int) $row['timestamp'], 'format' => 'plain_text', 'size' => 'short', 'year' => true)))
+            . ' · ' . get_relative_time(array('timestamp' => (int) $row['timestamp']))
+            . (($editor_name !== '') ? ' ' . h(lang(array('string' => 'by {var:1}', 'vars' => array($editor_name)))) : '') . '</p>';
+    }
+
+    if ($on_disk) {
+        $file_url = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . $file_name;
+        $output_file_facts .= '<p class="p-0 m-0 d-flex flex-wrap align-items-center justify-content-center md:justify-content-start gap-2">' . lang('Address') . ': '
+            . '<code class="text-break user-select-all" id="file_address">' . h($file_url) . '</code>'
+            . '<button type="button" class="btn btn-sm btn-text theme-secondary py-0 no-popover" data-pg-copy-address="' . h($file_url) . '" data-pg-copied="' . h(lang('Copied')) . '" title="' . h(lang('Copy address')) . '" aria-label="' . h(lang('Copy address')) . '"><i class="bi bi-copy"></i></button></p>';
+    }
+
+    // "Where is it used?" asks the File Manager's own search (the
+    // explorer_file_usage action) only when pressed: it reads every content
+    // table, so nobody pays for it just by opening the file.
+    $output_where_used = '
+                    <div class="mb-5" id="file_where_used">
+                        <button type="button" class="btn btn-sm btn-outline theme-secondary no-popover" data-pg-where-used="' . (int) $_GET['id'] . '"><i class="bi bi-diagram-3 me-1"></i>' . lang('Where is it used?') . '</button>
+                        <div class="mt-3 small" data-pg-where-used-result></div>
+                    </div>
+    <script>
+    (function () {
+        var texts = ' . json_encode(array(
+            'looking' => lang('Looking through the site...'),
+            'none' => lang('Nothing on the site refers to this file.'),
+            'count' => lang('Referred to in {var:1} place(s)'),
+            'more' => lang('Only the first of them are listed.'),
+            'failed' => lang('The request failed. Please try again.'),
+        ), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) . ';
+
+        function esc(value) {
+            var node = document.createElement("span");
+            node.textContent = (value === undefined || value === null) ? "" : String(value);
+            return node.innerHTML;
+        }
+
+        document.addEventListener("click", function (event) {
+            var copy = event.target.closest("[data-pg-copy-address]");
+
+            if (copy && navigator.clipboard) {
+                navigator.clipboard.writeText(copy.getAttribute("data-pg-copy-address")).then(function () {
+                    copy.setAttribute("title", copy.getAttribute("data-pg-copied"));
+                });
+                return;
+            }
+
+            var button = event.target.closest("[data-pg-where-used]");
+
+            if (!button) { return; }
+
+            var box = button.parentNode.querySelector("[data-pg-where-used-result]");
+
+            button.disabled = true;
+            box.innerHTML = "<span class=\"spinner-border spinner-border-sm me-3\"></span>" + esc(texts.looking);
+
+            $.ajax({
+                url: "api.php",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({ action: "file_explorer", token: software_token, type: "explorer_file_usage", file_id: button.getAttribute("data-pg-where-used") }),
+                success: function (response) {
+                    response = response || {};
+
+                    if (response.status !== "success") {
+                        box.innerHTML = "<span class=\"fg-danger\">" + esc(response.message || texts.failed) + "</span>";
+                        return;
+                    }
+
+                    if (!response.total) {
+                        box.innerHTML = "<span class=\"fg-secondary\"><i class=\"bi bi-check2 me-1\"></i>" + esc(texts.none) + "</span>";
+                        return;
+                    }
+
+                    var html = "<div class=\"fw-bold mb-1\">" + esc(texts.count.replace("{var:1}", response.total)) + "</div>";
+
+                    (response.groups || []).forEach(function (group) {
+                        html += "<div class=\"text-uppercase fg-secondary mt-3\">" + esc(group.label) + "</div>";
+
+                        (group.items || []).forEach(function (entry) {
+                            var label = esc(entry.name) + (entry.note ? (" <span class=\"fg-secondary\">· " + esc(entry.note) + "</span>") : "");
+                            html += "<div class=\"text-truncate\">" + (entry.url ? ("<a href=\"" + esc(entry.url) + "\">" + label + "</a>") : label) + "</div>";
+                        });
+                    });
+
+                    if (response.truncated) {
+                        html += "<div class=\"form-text mt-1\">" + esc(texts.more) + "</div>";
+                    }
+
+                    box.innerHTML = html;
+                },
+                error: function () {
+                    box.innerHTML = "<span class=\"fg-danger\">" + esc(texts.failed) + "</span>";
+                },
+                complete: function () {
+                    button.disabled = false;
+                }
+            });
+        });
+    })();
+    </script>';
+
     $output =
     pg_page_shell(
         array(
@@ -513,10 +635,13 @@ if (!isset($_POST['name'])) {
                 'title'=>lang('Return to Files'),
                 'url'=>$back_url
             ),
-            'breadcrumb' => array(
+            // The file's folder sits between the two, so one click goes back
+            // to where the file lives.
+            'breadcrumb' => array_values(array_filter(array(
                 array('label' => lang('File Manager'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php')),
+                ((string) $row['folder_name'] !== '') ? array('label' => (string) $row['folder_name'], 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?folder=' . (int) $file_folder) : null,
                 array('label' => $file_name),
-            ),
+            ))),
         )
     ) . '
 <main id="content" class="container-fluid">
@@ -533,10 +658,12 @@ if (!isset($_POST['name'])) {
                     <div class="mb-3 text-center md:text-start">
                         <p class="p-0 m-0">' . lang('File Size') . ': '. $output_file_size . $output_image_info . '</p>
                         <p class="p-0 m-0 ' . h(get_access_control_type($file_folder)) . '">' . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($file_folder))) . '</p>
+                        ' . $output_file_facts . '
                     </div>
                     ' . pg_screen_toolbar(array(
                         'secondary' => array($image_buttons, $output_file_links),
                     )) . '
+                    ' . $output_where_used . '
                     <div class="row mb-3">
                         <div class="col-12">
                             ' . $output_thumbnail . '
@@ -700,10 +827,15 @@ $liveform->remove_form('edit_file');
         log_activity(lang(array('string'=>'file ({var:1}) was deleted','vars'=>$name)), $_SESSION['sessionusername']);
 
         include_once('liveform.class.php');
-        // The File Manager prints the notices left for it (view_folders.php).
-        $liveform = new liveform('view_folders');
-        $liveform->add_notice(lang('The file was deleted successfully.'));
-        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files'));
+        $location = pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files');
+        // The notice goes to the screen the redirect opens, so it is not kept
+        // for a File Manager opened later.
+        $notice_form = pg_redirect_notice_form($location);
+        if ($notice_form !== '') {
+            $liveform = new liveform($notice_form);
+            $liveform->add_notice(lang('The file was deleted successfully.'));
+        }
+        header('Location: ' . URL_SCHEME . HOSTNAME . $location);
         exit();
     }
 
@@ -1068,9 +1200,15 @@ $liveform->remove_form('edit_file');
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode(pg_send_to_url('')));
             exit();
         } elseif (!empty($_POST['submit_save_and_return']) && ($_POST['submit_save_and_return'] ?? '') === 'Save & Return') {
-            $liveform = new liveform('view_folders');
-            $liveform->add_notice(lang('The file was edited successfully.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files'));
+            $location = pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files');
+            // The notice goes to the screen the redirect opens (the File
+            // Manager, or the screen send_to names).
+            $notice_form = pg_redirect_notice_form($location);
+            if ($notice_form !== '') {
+                $liveform = new liveform($notice_form);
+                $liveform->add_notice(lang('The file was edited successfully.'));
+            }
+            header('Location: ' . URL_SCHEME . HOSTNAME . $location);
             exit();
         }
     }

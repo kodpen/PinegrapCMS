@@ -181,3 +181,32 @@ function test_geo_build_and_search()
 
 	rmdir($dir);
 }
+
+// The refresh lock: taken, held by another request, or not creatable because
+// the folder cannot be written - which is not "busy".
+function test_geo_refresh_lock()
+{
+	$dir = sys_get_temp_dir() . '/pg_geo_lock_' . bin2hex(random_bytes(4));
+	mkdir($dir);
+
+	$first = pg_geo_db_refresh_lock($dir);
+	pg_assert_same('ok', $first['status'], 'lock taken');
+
+	$second = pg_geo_db_refresh_lock($dir);
+	pg_assert_same('busy', $second['status'], 'lock held by another request');
+
+	flock($first['handle'], LOCK_UN);
+	fclose($first['handle']);
+	unlink($dir . '/refresh.lock');
+
+	// A lock file that cannot be opened (a directory in its place stands in
+	// for a folder the web server cannot write, also when the tests run as root).
+	mkdir($dir . '/refresh.lock');
+
+	$blocked = pg_geo_db_refresh_lock($dir);
+	pg_assert_same('failed', $blocked['status'], 'unwritable folder');
+	pg_assert_same(null, $blocked['handle'], 'no handle');
+
+	rmdir($dir . '/refresh.lock');
+	rmdir($dir);
+}

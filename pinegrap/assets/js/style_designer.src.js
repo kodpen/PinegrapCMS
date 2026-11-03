@@ -2919,6 +2919,7 @@ const StyleDesigner = (function () {
         floating:   { label: _sdT('Floating label'),   control: 'floating', type: 'text',           icon: 'bi-textarea-t',               name: 'metin' },
         label:      { label: _sdT('Label'),           control: 'label',    type: '',               icon: 'bi-tag',                      name: '' },
         group:      { label: _sdT('Field group'),       control: 'wrapper',  type: '',               icon: 'bi-bounding-box',             name: '' },
+        step:       { label: _sdT('Step'),             control: 'step',     type: '',               icon: 'bi-signpost-split',           name: '' },
         submit:     { label: _sdT('Submit button'),   control: 'submit',   type: '',               icon: 'bi-send',                     name: '' },
         reset:      { label: _sdT('Reset button'),  control: 'reset',    type: '',               icon: 'bi-arrow-counterclockwise',   name: '' },
         captcha:    { label: _sdT('CAPTCHA'),          control: 'captcha',  type: '',               icon: 'bi-shield-check',             name: '' },
@@ -2928,7 +2929,7 @@ const StyleDesigner = (function () {
     // The palette's Form category, from the table above, in this order.
     var CF_PALETTE_ORDER = ['text', 'email', 'tel', 'number', 'url', 'password', 'textarea', 'select', 'multi',
                             'checkbox', 'checkgroup', 'radiogroup', 'toggle', 'date', 'time', 'datetime', 'file',
-                            'color', 'range', 'hidden', 'floating', 'label', 'group', 'submit', 'reset', 'captcha', 'form'];
+                            'color', 'range', 'hidden', 'floating', 'label', 'group', 'step', 'submit', 'reset', 'captcha', 'form'];
 
     /**
      * A ready-to-fill block for one palette kind.
@@ -2969,6 +2970,12 @@ const StyleDesigner = (function () {
             case 'reset':
                 return createNode('semantic', { tag: 'button', cssClass: 'btn btn-outline-secondary', text: _sdT('Reset'),
                     customName: _sdT('Reset'), _attrs: [{ name: 'type', value: 'reset' }] });
+            case 'step':
+                // A break: the controls after it, up to the next break, are
+                // one step of the form on the site (Back, Next, progress).
+                // Its text is the step's title, its classes the legend's.
+                return createNode('semantic', { tag: 'div', cssClass: 'h5 border-top pt-3 mt-4', text: _sdT('Step'),
+                    customName: _sdT('Step'), _bindings: { section: 'form_step' } });
             case 'captcha':
                 // The site-wide CAPTCHA. The container disappears with it when
                 // the setting is off or the visitor is signed in.
@@ -5051,72 +5058,10 @@ const StyleDesigner = (function () {
     }
 
     // ========================= GOOGLE FONTS =========================
-    // Comprehensive Google Fonts catalog — ~180 popular families covering
-    // sans-serif, serif, display, handwriting and monospace. The list is
-    // hardcoded (not fetched live) so the picker works offline / without an
-    // API key. Sorted within each category by typical popularity. Note:
-    // "Google Sans" / "Product Sans" are NOT in the public Google Fonts
-    // catalog — they're proprietary to Google's products. The closest
-    // public substitutes are Geist, Outfit, Inter, and DM Sans.
-    var GOOGLE_FONTS = [
-        'Default',
-        // ── Sans-serif (most popular) ──
-        'Inter', 'Roboto', 'Roboto Condensed', 'Roboto Flex', 'Open Sans',
-        'Open Sans Condensed', 'Lato', 'Montserrat', 'Poppins', 'Raleway',
-        'Nunito', 'Nunito Sans', 'Ubuntu', 'Ubuntu Condensed', 'Oswald',
-        'Source Sans 3', 'Source Sans Pro', 'Fira Sans', 'Fira Sans Condensed',
-        'Fira Sans Extra Condensed', 'PT Sans', 'PT Sans Caption',
-        'PT Sans Narrow', 'Noto Sans', 'Noto Sans Display',
-        'Josefin Sans', 'Quicksand', 'Exo', 'Exo 2', 'Mulish',
-        'Work Sans', 'Rubik', 'DM Sans', 'Space Grotesk', 'Plus Jakarta Sans',
-        'Sora', 'Outfit', 'Figtree', 'Lexend', 'Lexend Deca',
-        'Manrope', 'Karla', 'Heebo', 'Hind', 'Hind Madurai', 'Hind Siliguri',
-        'Cabin', 'Cabin Condensed', 'Asap', 'Asap Condensed',
-        'Barlow', 'Barlow Condensed', 'Barlow Semi Condensed',
-        'Catamaran', 'Comfortaa', 'Dosis', 'Kanit', 'Maven Pro', 'Mukta',
-        'Public Sans', 'Saira', 'Saira Condensed', 'Saira Extra Condensed',
-        'Saira Semi Condensed', 'Signika', 'Signika Negative',
-        'Titillium Web', 'Yantramanav', 'Inria Sans', 'Onest',
-        'Bricolage Grotesque', 'Geologica', 'Schibsted Grotesk',
-        'Geist', 'Geist Mono', 'IBM Plex Sans', 'IBM Plex Sans Condensed',
-        'IBM Plex Serif', 'Syne', 'Urbanist', 'Albert Sans', 'Be Vietnam Pro',
-        'Reddit Sans', 'Inria Sans', 'Wix Madefor Display', 'Wix Madefor Text',
-        // ── Serif ──
-        'Merriweather', 'Playfair Display', 'Playfair', 'PT Serif',
-        'PT Serif Caption', 'Source Serif 4', 'Source Serif Pro',
-        'Noto Serif', 'Noto Serif Display', 'Cardo', 'Crimson Pro',
-        'Crimson Text', 'Cormorant', 'Cormorant Garamond', 'Cormorant Infant',
-        'Cormorant SC', 'EB Garamond', 'Domine', 'Vollkorn', 'Vollkorn SC',
-        'Volkhov', 'Tinos', 'Faustina', 'Frank Ruhl Libre', 'Inria Serif',
-        'Marcellus', 'Marcellus SC', 'Old Standard TT', 'Sorts Mill Goudy',
-        'Tenor Sans', 'Yeseva One', 'Slabo 13px', 'Slabo 27px', 'Rufina',
-        'Libre Baskerville', 'Libre Caslon Text', 'Lora', 'Spectral',
-        'Bitter', 'Zilla Slab', 'Arvo', 'Roboto Slab',
-        'DM Serif Display', 'DM Serif Text', 'Fraunces',
-        // ── Display ──
-        'Bebas Neue', 'Anton', 'Abril Fatface', 'Alfa Slab One',
-        'Archivo Black', 'Big Shoulders Display', 'Cabin Sketch',
-        'Concert One', 'Fjalla One', 'Fugaz One', 'Limelight', 'Mr Dafoe',
-        'Permanent Marker', 'Righteous', 'Rozha One', 'Russo One',
-        'Shrikhand', 'Stalemate', 'Staatliches', 'Bowlby One', 'Bowlby One SC',
-        'Eczar', 'Krona One', 'Black Ops One', 'Fjalla One', 'Monoton',
-        'Press Start 2P',
-        // ── Handwriting / Script ──
-        'Pacifico', 'Lobster', 'Dancing Script', 'Caveat', 'Satisfy',
-        'Great Vibes', 'Sacramento', 'Parisienne', 'Allura', 'Amatic SC',
-        'Architects Daughter', 'Bad Script', 'Bilbo', 'Caveat Brush',
-        'Cookie', 'Courgette', 'Damion', 'Gloria Hallelujah', 'Homemade Apple',
-        'Indie Flower', 'Italianno', 'Just Another Hand', 'Kalam',
-        'Kaushan Script', 'La Belle Aurore', 'Mr De Haviland',
-        'Patrick Hand', 'Reenie Beanie', 'Rouge Script', 'Shadows Into Light',
-        'Tangerine', 'Yellowtail',
-        // ── Monospace ──
-        'JetBrains Mono', 'Fira Code', 'Source Code Pro', 'Space Mono',
-        'IBM Plex Mono', 'Cutive Mono', 'Inconsolata', 'Major Mono Display',
-        'Nova Mono', 'Overpass Mono', 'PT Mono', 'Roboto Mono',
-        'Share Tech Mono', 'Ubuntu Mono', 'VT323', 'Anonymous Pro',
-        'Courier Prime', 'DM Mono'
-    ];
+    // The catalogue the image editor's Text tool shares (pg_google_fonts.js,
+    // bundled before this file): popular families by category, shipped in
+    // the code so the picker works without an API key.
+    var GOOGLE_FONTS = ['Default'].concat(window.PgGoogleFonts ? window.PgGoogleFonts.all() : []);
 
     function googleFontUrl(name) {
         return 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(name).replace(/%20/g, '+') + ':wght@300;400;500;600;700&display=swap';
@@ -7037,6 +6982,7 @@ const StyleDesigner = (function () {
             '<span class="sd-vb-sep"></span>' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-find" title="' + esc(_sdT('Find & Replace (Ctrl+F)')) + '"><span class="bi bi-search"></span> <span class="sd-vb-txt">' + esc(_sdT('Find')) + '</span></button>' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-snapshots" title="' + esc(_sdT('History')) + '"><span class="bi bi-clock-history"></span> <span class="sd-vb-txt">' + esc(_sdT('History')) + '</span></button>' +
+            '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-proto" aria-pressed="false" title="' + esc(_sdT('Prototype: the links between the pages')) + '"><span class="bi bi-diagram-3"></span> <span class="sd-vb-txt">' + esc(_sdT('Prototype')) + '</span></button>' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-preview" title="' + esc(_sdT('Preview in a new window (Ctrl+Alt+P)')) + '"><span class="bi bi-window" ></span> <span class="sd-vb-txt">' + esc(_sdT('Preview')) + '</span></button>' +
             // Preview renders the UNSAVED canvas in a blank window; this one
             // opens the page as the site actually serves it — theme, common
@@ -7172,6 +7118,8 @@ const StyleDesigner = (function () {
         var _previewBtn   = document.getElementById('sd-vb-preview');
         var _shortcutsBtn = document.getElementById('sd-vb-shortcuts');
         if (_previewBtn)   _previewBtn.addEventListener('click', openPreview);
+        var _protoBtn = document.getElementById('sd-vb-proto');
+        if (_protoBtn) _protoBtn.addEventListener('click', _sdProtoToggle);
         if (_shortcutsBtn) _shortcutsBtn.addEventListener('click', openShortcutsModal);
 
         // The tab strip was rendered before this bar existed, so its first
@@ -11428,6 +11376,7 @@ const StyleDesigner = (function () {
                     ad_region:            _sdT('Ad Region'),
                     tag_cloud_region:     _sdT('Tag Cloud'),
                     google_reviews:       _sdT('Google Reviews'),
+                    accessibility_statement: _sdT('Accessibility Statement'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -14458,6 +14407,9 @@ const StyleDesigner = (function () {
         '__tax_shipping_notice': _sdT('Tax and shipping will be calculated at checkout.'),
         '__item_stock_warning': _sdT('Only 3 left'),
         '__item_out_of_stock_message': _sdT('This product is out of stock right now.'),
+        '__item_preorder_label': _sdT('Pre-order, ships from {var:1}', _sdDateSample(false)),
+        '__preorder_label': _sdT('Pre-order, ships from {var:1}', _sdDateSample(false)),
+        '__preorder_date': _sdDateSample(false),
         '__arrival_date': _sdDateSample(false),
         // Favourites: the day a product was saved.
         '__added_date': _sdDateSample(false),
@@ -33286,17 +33238,25 @@ const StyleDesigner = (function () {
             return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(text) + '</div>';
         };
         var layout = word('layout', ['flat', 'threaded'], 'flat');
+        // 'questions' draws a product's questions with the staff answers
+        // under them (pg_product_question_widget_shows()); the replies and
+        // featured choices do not apply there.
+        var shows = word('shows', ['comments', 'questions'], 'comments');
         return sect('bi-sliders', _sdT('Display'),
             '<div style="font-size:.7rem;color:#6c757d;line-height:1.4;margin-bottom:6px">' +
                 esc(_sdT('Shared: every page that shows this widget uses these options.')) + '</div>' +
+            row(_sdT('Shows'), choice('shows',
+                [['comments', _sdT('Comments and reviews')], ['questions', _sdT('Product questions')]], shows) +
+                hint(_sdT('Product questions: on a product page, visitors ask and staff answer; a second widget beside the reviews.'))) +
             row(_sdT('Comment order'), choice('order',
                 [['oldest', _sdT('Oldest first')], ['newest', _sdT('Newest first')]], word('order', ['oldest', 'newest'], 'oldest'))) +
+            (shows === 'questions' ? '' :
             row(_sdT('Featured comments'), choice('featured',
                 [['first', _sdT('First, then the others')], ['filter', _sdT('Only these, until Show all')], ['none', _sdT('Not marked')]],
                 word('featured', ['first', 'filter', 'none'], 'first'))) +
             row(_sdT('Replies'), choice('layout',
-                [['flat', _sdT('In time order, quoting the comment answered')], ['threaded', _sdT('Under the comment they answer')]], layout)) +
-            (layout === 'threaded'
+                [['flat', _sdT('In time order, quoting the comment answered')], ['threaded', _sdT('Under the comment they answer')]], layout))) +
+            (layout === 'threaded' && shows !== 'questions'
                 ? row(_sdT('Reply depth'), choice('max_depth', [['1', '1'], ['2', '2'], ['3', '3']], String(depth)))
                 : '') +
             row(_sdT('Comments per page'), choice('per_page',
@@ -34013,6 +33973,7 @@ const StyleDesigner = (function () {
             var _isAdRegion        = (_regionType === 'ad_region');
             var _isTagCloud        = (_regionType === 'tag_cloud_region');
             var _isGoogleReviews   = (_regionType === 'google_reviews');
+            var _isA11yStatement   = (_regionType === 'accessibility_statement');
             var _isCommentsRecent  = (_regionType === 'comments_recent');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
@@ -35236,6 +35197,13 @@ const StyleDesigner = (function () {
             if (_isGoogleReviews) {
                 systemSection += sect('bi-google', _sdT('Google Reviews Settings'),
                     '<div style="font-size:.7rem;color:#888">' + esc(_sdT('The Places API key and the Place ID are set in Site Settings › Integrations › Google Reviews. Without them the widget shows nothing on the site.')) + '</div>'
+                );
+            }
+
+            // ── accessibility_statement settings ─────────────────────────────
+            if (_isA11yStatement) {
+                systemSection += sect('bi-universal-access', _sdT('Accessibility Statement Settings'),
+                    '<div style="font-size:.7rem;color:#888">' + esc(_sdT('The organisation, contact and enforcement texts are set in Site Settings › Visitors and privacy › Accessibility Statement; the conformance and the known limitations come from the nightly accessibility report.')) + '</div>'
                 );
             }
 
@@ -38927,7 +38895,7 @@ const StyleDesigner = (function () {
         shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
         order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1,
         tag_cloud_region: 1, order_form: 1, folder_view: 1, photo_gallery: 1,
-        affiliate_sign_up_form: 1, google_reviews: 1
+        affiliate_sign_up_form: 1, google_reviews: 1, accessibility_statement: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -40011,7 +39979,10 @@ const StyleDesigner = (function () {
             ['__backorder',          _sdT('Whether backorder is allowed')],
             ['__out_of_stock',       _sdT('Out of stock (0/1)')],
             ['__out_of_stock_label', _sdT('Out of stock label')],
-            ['__out_of_stock_message',_sdT('Out of stock message')]
+            ['__out_of_stock_message',_sdT('Out of stock message')],
+            ['__preorder',           _sdT('On pre-order (0/1)')],
+            ['__preorder_date',      _sdT('Pre-order ships from (date)')],
+            ['__preorder_label',     _sdT('Pre-order note')]
         ]},
         { label: _sdT('Identification'), tokens: [
             ['__sku',           'SKU (= MPN)'],
@@ -40196,7 +40167,10 @@ const StyleDesigner = (function () {
             ['__backorder',          _sdT('Whether backorder is allowed')],
             ['__out_of_stock',       _sdT('Out of stock (0/1)')],
             ['__out_of_stock_label', _sdT('Out of stock label')],
-            ['__out_of_stock_message',_sdT('Out of stock message')]
+            ['__out_of_stock_message',_sdT('Out of stock message')],
+            ['__preorder',           _sdT('On pre-order (0/1)')],
+            ['__preorder_date',      _sdT('Pre-order ships from (date)')],
+            ['__preorder_label',     _sdT('Pre-order note')]
         ]},
         { label: _sdT('Identification'), tokens: [
             ['__sku',           'SKU (= MPN)'],
@@ -40941,6 +40915,31 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // accessibility_statement token palette — has loop_area (one row per
+    // known limitation). Mirrors _render_system_widget_accessibility_statement()
+    // in widgets_accessibility.php.
+    var SW_ACCESSIBILITY_STATEMENT_TOKEN_GROUPS = [
+        { label: _sdT('Accessibility Statement'), tokens: [
+            ['__a11y_organisation', _sdT('Organisation name (the site name when not set)')],
+            ['__a11y_scope',        _sdT('What the statement applies to')],
+            ['__a11y_standard',     _sdT('Standard (WCAG 2.2 AA, EN 301 549)')],
+            ['__a11y_conformance',  _sdT('Conformance status, from the report')],
+            ['__a11y_contact',      _sdT('Contact address')],
+            ['__a11y_feedback',     _sdT('Feedback mechanism')],
+            ['__a11y_enforcement',  _sdT('Enforcement procedure')],
+            ['__a11y_date',         _sdT('Date the statement was prepared')],
+            ['__a11y_last_check',   _sdT('Date of the last full automatic check')],
+            ['__a11y_pages',        _sdT('Pages the check covers')],
+            ['__limit_total',       _sdT('Number of known limitations')]
+        ]},
+        { label: _sdT('Known limitation (loop_area)'), tokens: [
+            ['__limit_label',       _sdT('The problem found')],
+            ['__limit_criterion',   _sdT('WCAG criterion (number and name)')],
+            ['__limit_level',       _sdT('WCAG level (A or AA)')],
+            ['__limit_pages',       _sdT('Pages where it was found')]
+        ]}
+    ];
+
     // ad_region token palette — has loop_area (one row per ad shown).
     // Mirrors _render_system_widget_ad_region() in widgets_ad_region.php.
     var SW_AD_REGION_TOKEN_GROUPS = [
@@ -41001,7 +41000,8 @@ const StyleDesigner = (function () {
         menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS,
         ad_region:         SW_AD_REGION_TOKEN_GROUPS,
         tag_cloud_region:  SW_TAG_CLOUD_TOKEN_GROUPS,
-        google_reviews:    SW_GOOGLE_REVIEWS_TOKEN_GROUPS
+        google_reviews:    SW_GOOGLE_REVIEWS_TOKEN_GROUPS,
+        accessibility_statement: SW_ACCESSIBILITY_STATEMENT_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -41127,7 +41127,8 @@ const StyleDesigner = (function () {
             ['__item_stock_warning',      _sdT('Low stock warning ("Only 3 left")')],
             ['__item_inventory_quantity', _sdT('Remaining stock quantity')],
             ['__item_out_of_stock',       _sdT('Whether it is out of stock (1 / empty)')],
-            ['__item_out_of_stock_message', _sdT('The product\'s own out-of-stock message')]
+            ['__item_out_of_stock_message', _sdT('The product\'s own out-of-stock message')],
+            ['__item_preorder_label',     _sdT('Pre-order note')]
         ]},
         { label: _sdT('Product row — Row Type'), tokens: [
             ['__item_is_donation',       _sdT('Whether it is a donation row (1 / empty) — an amount is entered instead of a quantity')],
@@ -41277,6 +41278,7 @@ const StyleDesigner = (function () {
             ['__item_image_alt',         _sdT('Image alt text')],
             ['__item_url',               _sdT('Product detail page URL')],
             ['__item_ship_to',           _sdT('This item\'s shipping address')],
+            ['__item_preorder_label',    _sdT('Pre-order note')],
             // The item form and gift card parts' boxes show by these; their
             // rows are the order.item_forms and order.item_gift_cards lists.
             ['__item_has_form_data',     _sdT('Has product form answers (1 or empty)')],
@@ -41597,6 +41599,8 @@ const StyleDesigner = (function () {
             // visitor and when the setting is off, and the container goes
             // with it — an empty box under a heading reads as a failure.
             out.push(['captcha',           _sdT('CAPTCHA (depends on the site setting; hidden for a signed-in visitor)')]);
+            // A break: what follows it is the next step of the form.
+            out.push(['form_step',         _sdT('Step break (the controls after it are the next step)')]);
         } else if (type === 'login_form') {
             // Each block is the server's ready-made element and is
             // absent - container included - when its feature is off.
@@ -43048,6 +43052,15 @@ const StyleDesigner = (function () {
             ['invoice_is_overdue', _sdT('Row: past its due date')],
             ['invoice_is_open',    _sdT('Row: money is still owed on it')],
             ['invoice_has_order',  _sdT('Row: made from an order')]
+        ],
+        accessibility_statement: [
+            ['a11y_assessed',   _sdT('A full accessibility check has finished')],
+            ['has_limitations', _sdT('The report lists a known limitation')],
+            ['no_limitations',  _sdT('The report lists no known limitation')],
+            ['has_contact',     _sdT('A contact address is set')],
+            ['has_feedback',    _sdT('A feedback mechanism is set')],
+            ['has_enforcement', _sdT('An enforcement procedure is set')],
+            ['has_last_check',  _sdT('The date of the last full check is known')]
         ],
         google_reviews: [
             ['has_reviews',      _sdT('Google has a review of the business to show')],
@@ -56940,7 +56953,8 @@ const StyleDesigner = (function () {
         { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' },
         { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' },
         { type: 'tag_cloud_region',  label: _sdT('Tag Cloud'),         slug: _sdT('tag-cloud'),         icon: 'bi-tags' },
-        { type: 'google_reviews',    label: _sdT('Google Reviews'),    slug: _sdT('google-reviews'),    icon: 'bi-google' }
+        { type: 'google_reviews',    label: _sdT('Google Reviews'),    slug: _sdT('google-reviews'),    icon: 'bi-google' },
+        { type: 'accessibility_statement', label: _sdT('Accessibility Statement'), slug: _sdT('accessibility-statement'), icon: 'bi-universal-access' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
@@ -61006,6 +61020,18 @@ const StyleDesigner = (function () {
             ])
         ]);
     }
+    // The state as a text box and a pick list, both named `name`: the page's
+    // script shows the one the chosen country uses (pg_sa_state_script()).
+    /* @pg-site-output */
+    function _swAcctStateField(idBase, name) {
+        var field = _swAcctField(_sdAddrLabel('state'), idBase + '_state', 'text', name, { autocomplete: 'address-level1', colCss: 'col-sm-6' });
+        field.children.push(createNode('semantic', { tag: 'select', cssClass: 'form-select', id: idBase + '_state_list',
+            _attrs: [{ name: 'name', value: name }, { name: 'hidden', value: '' }] }, [
+            createNode('semantic', { tag: 'option', text: _sdT('Filled by the server'), customName: _sdT('Option'),
+                _attrs: [{ name: 'value', value: '' }] })
+        ]));
+        return field;
+    }
     /* @pg-site-output */
     function _swAcctSubmit(text, name) {
         return createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary', text: text,
@@ -63113,7 +63139,7 @@ const StyleDesigner = (function () {
                         _swAcctField(_sdT('Address (line 2)'), apId + '_addr2', 'text', 'business_address_2', { autocomplete: 'address-line2' }),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('City') }, [
                             _swAcctField(_sdAddrLabel('city'), apId + '_city', 'text', 'business_city', { autocomplete: 'address-level2', colCss: 'col-sm-6' }),
-                            _swAcctField(_sdAddrLabel('state'), apId + '_state', 'text', 'business_state', { autocomplete: 'address-level1', colCss: 'col-sm-6' })
+                            _swAcctStateField(apId, 'business_state')
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Country') }, [
                             _swAcctField(_sdT('Zip / Postal Code'), apId + '_zip', 'text', 'business_zip_code', { autocomplete: 'postal-code', colCss: 'col-sm-6' }),
@@ -63223,7 +63249,7 @@ const StyleDesigner = (function () {
                         _swAcctField(_sdT('Address (line 2)'), abId + '_addr2', 'text', 'address_2', { autocomplete: 'address-line2' }),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('City') }, [
                             _swAcctField(_sdAddrLabel('city'), abId + '_city', 'text', 'city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6' }),
-                            _swAcctField(_sdAddrLabel('state'), abId + '_state', 'text', 'state', { autocomplete: 'address-level1', colCss: 'col-sm-6' })
+                            _swAcctStateField(abId, 'state')
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Country') }, [
                             _swAcctField(_sdT('Zip / Postal Code'), abId + '_zip', 'text', 'zip_code', { autocomplete: 'postal-code', colCss: 'col-sm-6' }),
@@ -64042,6 +64068,84 @@ const StyleDesigner = (function () {
                             grLink('', _sdT('The business on Google Maps'), _sdT('See all reviews on Google Maps'), '__place_maps_url'),
                             createNode('semantic', { tag: 'span', cssClass: 'text-body-secondary notranslate', text: 'Google Maps', customName: _sdT('Google attribution'),
                                 _attrs: [{ name: 'translate', value: 'no' }], _bindings: { text: '__google_attribution' } })
+                        ])
+                    ])
+                ]);
+            }
+
+            case 'accessibility_statement': {
+                // The statement in the W3C structure: commitment, conformance,
+                // known limitations (one row per check with findings), feedback,
+                // assessment, enforcement and date. The texts come from Site
+                // Settings, the conformance and the rows from the nightly
+                // report. Mirrors _render_system_widget_accessibility_statement().
+                var asText = function (tag, cls, txt, name, token, flag) {
+                    var b = { text: token };
+                    if (flag) b.eo_visible_if = flag;
+                    return createNode('semantic', { tag: tag, cssClass: cls, text: txt, customName: name, _bindings: b });
+                };
+                var asPlain = function (tag, cls, txt, name, flag) {
+                    return createNode('semantic', { tag: tag, cssClass: cls, text: txt, customName: name,
+                        _bindings: flag ? { eo_visible_if: flag } : {} });
+                };
+                var asSection = function (name, flag, kids) {
+                    return createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: name,
+                        _bindings: flag ? { eo_visible_if: flag } : {} }, kids);
+                };
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'article', cssClass: '', customName: _sdT('Accessibility Statement') }, [
+                        createNode('semantic', { tag: 'h1', cssClass: 'h2 mb-3', customName: _sdT('Heading') }, [
+                            asPlain('span', '', _sdT('Accessibility Statement') + ': ', _sdT('Label')),
+                            asText('span', '', _sdT('Organisation'), _sdT('Organisation'), '__a11y_organisation')
+                        ]),
+                        asSection(_sdT('Scope'), '', [
+                            asText('p', '', _sdT('What the statement applies to'), _sdT('Scope'), '__a11y_scope')
+                        ]),
+                        asSection(_sdT('Conformance status'), '', [
+                            asPlain('h2', 'h4', _sdT('Conformance status'), _sdT('Heading')),
+                            asText('p', 'mb-1', 'WCAG 2.2 AA, EN 301 549', _sdT('Standard'), '__a11y_standard'),
+                            asText('p', '', _sdT('Partially conformant: some parts of the content do not fully conform to the standard.'), _sdT('Conformance'), '__a11y_conformance')
+                        ]),
+                        asSection(_sdT('Known limitations'), '', [
+                            asPlain('h2', 'h4', _sdT('Known limitations'), _sdT('Heading')),
+                            createNode('semantic', { tag: 'ul', cssClass: '', customName: _sdT('Limitations'),
+                                _bindings: { eo_visible_if: 'has_limitations' } }, [
+                                createNode('loop_area', {}, [
+                                    createNode('semantic', { tag: 'li', cssClass: '', customName: _sdT('Limitation') }, [
+                                        asText('span', 'fw-semibold', _sdT('Image without alternative text'), _sdT('Problem'), '__limit_label'),
+                                        asPlain('span', '', ' (', _sdT('Separator')),
+                                        asText('span', '', '1.1.1 ' + _sdT('Non-text Content'), _sdT('Criterion'), '__limit_criterion'),
+                                        asPlain('span', '', ', ', _sdT('Separator')),
+                                        asText('span', '', 'A', _sdT('Level'), '__limit_level'),
+                                        asPlain('span', '', '): ', _sdT('Separator')),
+                                        asText('span', '', '3', _sdT('Pages'), '__limit_pages'),
+                                        asPlain('span', '', ' ' + _sdT('pages'), _sdT('Label'))
+                                    ])
+                                ])
+                            ]),
+                            asPlain('p', 'text-body-secondary', _sdT('The automatic check found no known limitations.'), _sdT('No limitations'), 'no_limitations')
+                        ]),
+                        asSection(_sdT('Feedback'), '', [
+                            asPlain('h2', 'h4', _sdT('Feedback'), _sdT('Heading')),
+                            asPlain('p', '', _sdT('We welcome your feedback on the accessibility of this site. Please let us know if you meet accessibility barriers.'), _sdT('Invitation')),
+                            asText('p', '', _sdT('Contact address'), _sdT('Contact'), '__a11y_contact', 'has_contact'),
+                            asText('p', '', _sdT('Feedback mechanism'), _sdT('Feedback mechanism'), '__a11y_feedback', 'has_feedback')
+                        ]),
+                        asSection(_sdT('Enforcement procedure'), 'has_enforcement', [
+                            asPlain('h2', 'h4', _sdT('Enforcement procedure'), _sdT('Heading')),
+                            asText('p', '', _sdT('Enforcement procedure'), _sdT('Enforcement procedure'), '__a11y_enforcement')
+                        ]),
+                        asSection(_sdT('Date'), '', [
+                            asPlain('h2', 'h4', _sdT('Date'), _sdT('Heading')),
+                            createNode('semantic', { tag: 'p', cssClass: 'mb-1', customName: _sdT('Prepared') }, [
+                                asPlain('span', '', _sdT('Prepared on') + ' ', _sdT('Label')),
+                                asText('span', '', '2026-11-02', _sdT('Date'), '__a11y_date')
+                            ]),
+                            createNode('semantic', { tag: 'p', cssClass: 'text-body-secondary small', customName: _sdT('Last check'),
+                                _bindings: { eo_visible_if: 'has_last_check' } }, [
+                                asPlain('span', '', _sdT('Last automatic check') + ' ', _sdT('Label')),
+                                asText('span', '', '2026-11-01', _sdT('Date'), '__a11y_last_check')
+                            ])
                         ])
                     ])
                 ]);
@@ -65007,7 +65111,7 @@ const StyleDesigner = (function () {
     // "PHP Messages" box in the middle of the header that the page never shows.
     // An e-mail shows no alerts either (_render_system_widget_account_email()).
     // A list of recent comments takes no form either (_render_system_widget_comments_recent()).
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1, tag_cloud_region: 1, google_reviews: 1 };
+    var _SW_NO_MESSAGES = { accessibility_statement: 1, cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1, tag_cloud_region: 1, google_reviews: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {
@@ -67370,6 +67474,402 @@ const StyleDesigner = (function () {
             _sdShowPreview(_sdPreviewDocHtml({}, raw), w);
             _sdLivePreviewAgain();
         });
+    }
+
+    // ── Prototype view ──
+    // The design's links as a map (plans: designer-prototype-links slice
+    // 1): every tab and every shared component a frame on the graph canvas
+    // core (window.PGGraphCanvas), every link a row with its own port, an
+    // arrow from each row to the tab it opens or to a chip for what lies
+    // outside the design (a site page, an anchor, mail or phone, another
+    // site, a hidden page, a broken link). Read-only: frames and chips move,
+    // their places kept per browser and design; a row's click selects its
+    // element on the canvas. window.PGProtoHotspots collects and marks the
+    // links (with window.PGLinkResolve and the server's prototype_map read);
+    // all three are printed before this script.
+    var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null };
+
+    var SD_PROTO_MARKS = {
+        tab: { icon: 'bi-file-earmark-arrow-right', text: function () { return _sdT('Opens a page of this design'); } },
+        page: { icon: 'bi-globe2', text: function () { return _sdT('A site page outside this design'); } },
+        anchor: { icon: 'bi-hash', text: function () { return _sdT('A place on the same page'); } },
+        contact: { icon: 'bi-envelope', text: function () { return _sdT('E-mail, phone or text message'); } },
+        external: { icon: 'bi-box-arrow-up-right', text: function () { return _sdT('Another website'); } },
+        hidden: { icon: 'bi-eye-slash', text: function () { return _sdT('A page you cannot see'); } },
+        broken: { icon: 'bi-exclamation-triangle', text: function () { return _sdT('Broken link'); } }
+    };
+
+    function _sdProtoReady() {
+        return !!(window.PGGraphCanvas && window.PGProtoHotspots && window.PGLinkResolve);
+    }
+
+    function _sdProtoStoreKey() {
+        return 'pg_proto_pos_' + ((_design && _design.styleId) ? _design.styleId : 'new');
+    }
+
+    function _sdProtoSaved() {
+        try {
+            var raw = window.localStorage.getItem(_sdProtoStoreKey());
+            var parsed = raw ? JSON.parse(raw) : null;
+            return (parsed && typeof parsed === 'object') ? parsed : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function _sdProtoKeep(item) {
+        var saved = _sdProtoSaved();
+        saved[item.id] = { x: item.x, y: item.y };
+        try { window.localStorage.setItem(_sdProtoStoreKey(), JSON.stringify(saved)); } catch (e) {}
+    }
+
+    function _sdProtoEl(tag, cls, text) {
+        var el = document.createElement(tag);
+        if (cls) el.className = cls;
+        if (text !== undefined) el.textContent = text;
+        return el;
+    }
+
+    function _sdProtoButton(icon, label, onClick) {
+        var b = _sdProtoEl('button', 'sd-vb-btn');
+        b.type = 'button';
+        b.title = label;
+        b.setAttribute('aria-label', label);
+        b.innerHTML = '<span class="bi ' + icon + '" aria-hidden="true"></span>';
+        b.addEventListener('click', onClick);
+        return b;
+    }
+
+    // The overlay over the canvas: its bar and the graph canvas stage.
+    function _sdProtoBuild() {
+        var area = document.querySelector('#sd-canvas .sd-iframe-area');
+        if (!area) return null;
+        var G = window.PGGraphCanvas;
+        var ui = {};
+
+        ui.root = _sdProtoEl('section', 'sd-proto');
+        ui.root.id = 'sd-proto';
+        ui.root.hidden = true;
+        ui.root.setAttribute('aria-label', _sdT('Prototype'));
+
+        var bar = _sdProtoEl('div', 'sd-proto-bar');
+        bar.appendChild(_sdProtoEl('span', 'sd-proto-title', _sdT('Prototype')));
+        ui.status = _sdProtoEl('span', 'sd-proto-status');
+        ui.status.setAttribute('role', 'status');
+        bar.appendChild(ui.status);
+        var tools = _sdProtoEl('div', 'sd-proto-tools');
+        ui.zoomLabel = _sdProtoEl('span', 'sd-vb-zoom', '100%');
+        tools.appendChild(_sdProtoButton('bi-zoom-out', _sdT('Zoom Out'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1 / 1.2); }));
+        tools.appendChild(ui.zoomLabel);
+        tools.appendChild(_sdProtoButton('bi-zoom-in', _sdT('Zoom In'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1.2); }));
+        tools.appendChild(_sdProtoButton('bi-arrows-fullscreen', _sdT('Fit to screen'), function () { if (_sdProto.canvas) _sdProto.canvas.view.fit(); }));
+        tools.appendChild(_sdProtoButton('bi-arrow-clockwise', _sdT('Read the links again'), function () { _sdProtoLoad(); }));
+        tools.appendChild(_sdProtoButton('bi-x-lg', _sdT('Close the prototype view'), function () { _sdProtoClose(); }));
+        bar.appendChild(tools);
+        ui.root.appendChild(bar);
+
+        ui.live = _sdProtoEl('div', 'sd-proto-sr');
+        ui.live.setAttribute('aria-live', 'polite');
+        ui.viewport = _sdProtoEl('div', 'pgc-viewport');
+        ui.viewport.tabIndex = -1;
+        ui.viewport.setAttribute('role', 'application');
+        ui.viewport.setAttribute('aria-roledescription', _sdT('Prototype map'));
+        ui.viewport.setAttribute('aria-label', _sdT('Drag to move the map, Ctrl and the mouse wheel to zoom; a link row selects its element.'));
+        ui.layer = _sdProtoEl('div', 'pgc-layer');
+        ui.svg = G.svgEl('svg', 'pgc-edges');
+        ui.svg.setAttribute('aria-hidden', 'true');
+        ui.svg.setAttribute('width', '1');
+        ui.svg.setAttribute('height', '1');
+        ui.svg.innerHTML = '<defs>' +
+            '<marker id="sd-proto-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pgc-arrowhead" d="M0 0L10 5L0 10z"/></marker>' +
+            '<marker id="sd-proto-arrow-on" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pgc-arrowhead-on" d="M0 0L10 5L0 10z"/></marker>' +
+            '</defs>';
+        ui.temp = G.svgEl('path', 'pgc-edge-temp pgc-hidden');
+        ui.svg.appendChild(ui.temp);
+        ui.boxes = _sdProtoEl('div', 'pgc-boxes');
+        ui.layer.appendChild(ui.svg);
+        ui.layer.appendChild(ui.boxes);
+        ui.viewport.appendChild(ui.layer);
+        ui.stage = _sdProtoEl('div', 'pgc-stage sd-proto-stage');
+        ui.stage.appendChild(ui.viewport);
+        ui.stage.appendChild(ui.live);
+        ui.root.appendChild(ui.stage);
+        area.appendChild(ui.root);
+
+        _sdProto.ui = ui;
+        _sdProto.canvas = G.create({
+            ui: ui,
+            text: function (key) { return key === 'pgc_box' ? _sdT('Frame') : ''; },
+            boxRole: function () { return _sdT('Frame'); },
+            item: function (id) { return _sdProto.byId[id] || null; },
+            // Frames and chips move; no arrow is drawn by hand here.
+            editable: function () { return true; },
+            size: function (item) { return { w: item.w, h: item.h }; },
+            zoomMin: 0.1,
+            portAt: function (item, name) { return item.rows ? { y: window.PGProtoHotspots.rowY(item, name) } : null; },
+            select: function (selected) { _sdProtoSelect(selected); },
+            moved: function (item) { _sdProtoKeep(item); },
+            canConnect: function () { return false; },
+            connected: function () {},
+            view: function (next) {
+                if (next) _sdProto.view = next;
+                return _sdProto.view;
+            },
+            items: function () { return _sdProto.items; },
+            // A row: no drag, its element selected on release.
+            press: function (event, next) {
+                var row = event.target.closest ? event.target.closest('.sd-proto-row') : null;
+                if (row) {
+                    next.kind = 'row';
+                    next.row = row;
+                }
+            },
+            move: function () {},
+            release: function (event, done) {
+                if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoOpenRow(done.row);
+            },
+            cancel: function () {},
+            key: function (event) {
+                if (event.key === 'Escape') { _sdProtoClose(); return true; }
+                var row = event.target.closest ? event.target.closest('.sd-proto-row') : null;
+                if (row && (event.key === 'Enter' || event.key === ' ')) { _sdProtoOpenRow(row); return true; }
+                return false;
+            }
+        });
+        _sdProto.canvas.bind();
+        return ui;
+    }
+
+    function _sdProtoSelect(selected) {
+        _sdProto.selected = selected;
+        if (_sdProto.canvas) _sdProto.canvas.mark(selected);
+    }
+
+    function _sdProtoStatus(text) {
+        if (_sdProto.ui) _sdProto.ui.status.textContent = text || '';
+    }
+
+    function _sdProtoToggle() {
+        if (_sdProto.open) _sdProtoClose();
+        else _sdProtoOpen();
+    }
+
+    function _sdProtoButtonState() {
+        var btn = document.getElementById('sd-vb-proto');
+        if (!btn) return;
+        btn.classList.toggle('active', _sdProto.open);
+        btn.setAttribute('aria-pressed', _sdProto.open ? 'true' : 'false');
+    }
+
+    function _sdProtoOpen() {
+        if (!_sdProtoReady()) {
+            sdToast(esc(_sdT('The prototype view could not be loaded. Reload the page and try again.')), 'warning', 5000);
+            return;
+        }
+        if (!_sdProto.ui && !_sdProtoBuild()) return;
+        _sdProto.open = true;
+        _sdProto.ui.root.hidden = false;
+        _sdProtoButtonState();
+        _sdProtoLoad();
+        _sdProto.ui.viewport.focus({ preventScroll: true });
+    }
+
+    function _sdProtoClose() {
+        if (!_sdProto.open) return;
+        _sdProto.open = false;
+        _sdProto.seq++;
+        if (_sdProto.canvas) _sdProto.canvas.cancel();
+        if (_sdProto.ui) _sdProto.ui.root.hidden = true;
+        _sdProtoButtonState();
+        var btn = document.getElementById('sd-vb-proto');
+        if (btn) btn.focus();
+    }
+
+    // The tabs as the collector reads them: the open tab's live tree.
+    function _sdProtoTabs() {
+        return _pages.map(function (p) {
+            return { key: p.key, page_id: p.page_id, page_name: p.page_name, tree: _pgTreeOf(p) };
+        });
+    }
+
+    // Collect, fetch the shared components not drawn yet (once), ask the
+    // server what the links lead to, draw. A later load or a close drops
+    // the answer of an earlier one.
+    function _sdProtoLoad() {
+        var H = window.PGProtoHotspots;
+        var seq = ++_sdProto.seq;
+        var tabs = _sdProtoTabs();
+        var designed = H.design(tabs, _sharedCache);
+        var missing = designed.shared.filter(function (s) { return !s.loaded; }).map(function (s) { return s.id; });
+
+        _sdProtoStatus(_sdT('Reading the links…'));
+
+        var ask = function () {
+            if (seq !== _sdProto.seq) return;
+            designed = H.design(tabs, _sharedCache);
+            _pgApiPost('prototype_map', designed.request).then(function (read) {
+                if (seq !== _sdProto.seq) return;
+                if (!read || read.status !== 'success') {
+                    _sdProtoStatus((read && read.message) ? read.message : _sdT('The links could not be read.'));
+                    return;
+                }
+                _sdProtoDraw(H.mark(designed, read, tabs));
+            }, function () {
+                if (seq === _sdProto.seq) _sdProtoStatus(_sdT('The links could not be read.'));
+            });
+        };
+
+        if (missing.length) prefetchShared(missing, ask);
+        else ask();
+    }
+
+    function _sdProtoMarkIcon(mark) {
+        var m = SD_PROTO_MARKS[mark] || SD_PROTO_MARKS.broken;
+        var icon = _sdProtoEl('span', 'bi ' + m.icon + ' sd-proto-icon');
+        icon.title = m.text();
+        icon.setAttribute('role', 'img');
+        icon.setAttribute('aria-label', m.text());
+        return icon;
+    }
+
+    function _sdProtoFrameName(item) {
+        if (item.kind === 'shared') return item.name || _sdT('Shared component {var:1}', item.sharedId);
+        return item.name || _sdT('Untitled page');
+    }
+
+    function _sdProtoFill(item, node) {
+        var canvas = _sdProto.canvas;
+        var head = _sdProtoEl('div', 'sd-proto-head');
+        head.appendChild(_sdProtoEl('span', 'bi ' + (item.kind === 'shared' ? 'bi-puzzle' : 'bi-file-earmark') + ' sd-proto-kind'));
+        head.lastChild.setAttribute('aria-hidden', 'true');
+        head.appendChild(_sdProtoEl('span', 'sd-proto-name', _sdProtoFrameName(item)));
+        var meta = '';
+        if (item.kind === 'shared') {
+            meta = !item.loaded ? _sdT('Not loaded') : (item.pages === 1 ? _sdT('On 1 page') : _sdT('On {var:1} pages', item.pages));
+        } else if (item.key === _activeKey) {
+            meta = _sdT('Open tab');
+        }
+        if (meta) head.appendChild(_sdProtoEl('span', 'sd-proto-meta', meta));
+        node.appendChild(head);
+        node.setAttribute('aria-label', _sdProtoFrameName(item));
+
+        if (!item.rows.length) {
+            node.appendChild(_sdProtoEl('div', 'sd-proto-empty', _sdT('No links')));
+            return;
+        }
+
+        item.rows.forEach(function (row, i) {
+            var r = _sdProtoEl('div', 'sd-proto-row sd-proto-mark-' + row.mark);
+            r.tabIndex = 0;
+            r.setAttribute('role', 'button');
+            r.setAttribute('data-row', String(i));
+            r.title = row.href || '';
+            r.appendChild(_sdProtoMarkIcon(row.mark));
+            r.appendChild(_sdProtoEl('span', 'sd-proto-label', row.from ? row.from + ' › ' + row.label : row.label));
+            if (row.draft) r.appendChild(_sdProtoEl('span', 'sd-proto-draft', _sdT('Draft')));
+            r.appendChild(canvas.port('out', row.port));
+            node.appendChild(r);
+        });
+    }
+
+    function _sdProtoChipText(chip) {
+        if (chip.mark === 'hidden') return _sdT('Hidden page');
+        if (chip.mark === 'broken' && chip.href === '') return _sdT('No address');
+        return chip.href;
+    }
+
+    function _sdProtoDraw(marked) {
+        var H = window.PGProtoHotspots;
+        var G = window.PGGraphCanvas;
+        var canvas = _sdProto.canvas;
+        var ui = _sdProto.ui;
+        var first = !_sdProto.layout;
+        var l = H.layout(marked, _sdProtoSaved());
+
+        _sdProto.layout = l;
+        _sdProto.items = l.frames.concat(l.chips);
+        _sdProto.byId = {};
+        _sdProto.items.forEach(function (item) { _sdProto.byId[item.id] = item; });
+
+        Array.prototype.slice.call(ui.svg.querySelectorAll('g.pgc-edge')).forEach(function (g) { g.parentNode.removeChild(g); });
+        ui.boxes.innerHTML = '';
+
+        l.frames.forEach(function (item) {
+            ui.boxes.appendChild(canvas.box(item, {
+                className: 'sd-proto-frame sd-proto-' + item.kind + (item.key && item.key === _activeKey ? ' sd-proto-active' : ''),
+                into: true,
+                fill: function (node) { _sdProtoFill(item, node); }
+            }));
+        });
+        l.chips.forEach(function (chip) {
+            ui.boxes.appendChild(canvas.box(chip, {
+                className: 'sd-proto-chip sd-proto-mark-' + chip.mark,
+                into: true,
+                fill: function (node) {
+                    node.appendChild(_sdProtoMarkIcon(chip.mark));
+                    node.appendChild(_sdProtoEl('span', 'sd-proto-label', _sdProtoChipText(chip)));
+                    if (chip.draft) node.appendChild(_sdProtoEl('span', 'sd-proto-draft', _sdT('Draft')));
+                    node.setAttribute('aria-label', (SD_PROTO_MARKS[chip.mark] || SD_PROTO_MARKS.broken).text() + ': ' + _sdProtoChipText(chip));
+                }
+            }));
+        });
+
+        var slots = G.spread(l.edges.map(function (e) {
+            var from = _sdProto.byId[e.from];
+            return { to: e.to, y: from.y + H.rowY(from, e.port) };
+        }));
+        l.edges.forEach(function (e, i) {
+            var drawn = canvas.edge(e.id, _sdProto.byId[e.from], _sdProto.byId[e.to], { port: e.port, slot: slots[i].slot, slots: slots[i].slots });
+            drawn.group.classList.add('sd-proto-edge-' + e.mark);
+        });
+
+        var count = l.edges.length;
+        var broken = l.chips.filter(function (c) { return c.mark === 'broken'; }).length;
+        _sdProtoStatus(_sdT('{var:1} links', count) + (broken ? ' · ' + _sdT('{var:1} broken', broken) : ''));
+        canvas.announce(_sdT('{var:1} links', count));
+        if (first) canvas.view.fit();
+        else canvas.view.apply();
+        _sdProtoSelect(_sdProto.selected);
+    }
+
+    // A row's element selected on the canvas: its tab opened first (a
+    // shared component's on a tab placing it), the prototype view closed.
+    function _sdProtoOpenRow(rowEl) {
+        var box = rowEl.closest('[data-node]');
+        var item = box ? _sdProto.byId[box.getAttribute('data-node')] : null;
+        var row = item && item.rows ? item.rows[parseInt(rowEl.getAttribute('data-row'), 10) || 0] : null;
+        if (!row) return;
+
+        var key = item.key;
+        if (item.kind === 'shared') {
+            var here = {};
+            collectSharedIds(tree, here);
+            key = here[item.sharedId] ? _activeKey : '';
+            for (var i = 0; !key && i < _pages.length; i++) {
+                var ids = {};
+                if (_pgTreeOf(_pages[i])) collectSharedIds(_pgTreeOf(_pages[i]), ids);
+                if (ids[item.sharedId]) key = _pages[i].key;
+            }
+        }
+        var page = key ? _pgPageByKey(key) : null;
+        if (page && page.access === 'locked') {
+            sdToast(esc(_sdT('You do not have content rights for this page\'s folder.')), 'warning', 4000);
+            return;
+        }
+
+        _sdProtoClose();
+        if (key && key !== _activeKey) _pgTabsSwitch(key);
+
+        setTimeout(function () {
+            var root = (item.kind === 'shared') ? (_sharedCache[item.sharedId] && _sharedCache[item.sharedId].tree) : tree;
+            var node = root ? findNodeById(row.nodeId, root) : null;
+            if (!node) return;
+            selectedNodes = [];
+            selectedNode = node;
+            renderSelectionOnly();
+            renderProperties();
+            scrollCanvasToNode(node);
+        }, 0);
     }
 
     // ── Live preview ──

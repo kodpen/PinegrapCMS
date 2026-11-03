@@ -15,7 +15,35 @@
  *              2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
-// Duplicates a folder all pages directly inside.  Does not duplicate sub-folders.
+// Duplicates a folder and the pages directly inside it. Files and sub-folders
+// are not copied; the File Manager's plain Duplicate copies the whole tree.
+
+// The find and replace rows of the duplicate screen as keyword pairs: empty
+// when the Find & Replace switch is off, else every row whose Find is filled
+// (rows 1 to 10, in order).
+function pg_duplicate_folder_keywords($fields) {
+
+    $fields = is_array($fields) ? $fields : array();
+
+    if ((string) ($fields['find_and_replace_check'] ?? '') !== '1') {
+        return array();
+    }
+
+    $keywords = array();
+
+    for ($number = 1; $number <= 10; $number++) {
+        $find = $fields['find_' . $number] ?? '';
+        if (!is_scalar($find) || (string) $find === '') {
+            continue;
+        }
+        $replace = $fields['replace_' . $number] ?? '';
+        $keywords[] = array(
+            'find' => (string) $find,
+            'replace' => is_scalar($replace) ? (string) $replace : '');
+    }
+
+    return $keywords;
+}
 
 function duplicate_folder($request) {
 
@@ -92,6 +120,8 @@ function duplicate_folder($request) {
     $pages = db_items(
         "SELECT page_id AS id FROM page WHERE page_folder = '" . e($folder['id']) . "'");
 
+    $pages_copied = 0;
+
     if ($pages) {
 
         require_once(dirname(__FILE__) . '/duplicate_page_f.php');
@@ -101,10 +131,14 @@ function duplicate_folder($request) {
                 'page' => $page,
                 'folder' => $new_folder,
                 'find_replace_keywords' => $request['find_replace_keywords']));
+            if (($response['status'] ?? '') !== 'error') {
+                $pages_copied++;
+            }
         }
     }
 
     return array(
         'status' => 'success',
-        'folder' => $new_folder);
+        'folder' => $new_folder,
+        'pages_copied' => $pages_copied);
 }

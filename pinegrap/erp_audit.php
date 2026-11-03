@@ -86,7 +86,7 @@ foreach ($page['entries'] as $entry) {
 
     foreach ($entry['rows'] as $row) {
         if ((string) $row['event'] === 'log') {
-            $lines .= '<div>' . h((string) $row['description']) . '</div>';
+            $lines .= '<div class="text-break">' . h((string) $row['description']) . '</div>';
             continue;
         }
 
@@ -103,12 +103,13 @@ foreach ($page['entries'] as $entry) {
 
         $records .= '<div class="small d-flex flex-wrap gap-3 align-items-baseline">'
             . '<span class="badge badge-subtle theme-secondary border">' . h(erp_audit_event_text($row)) . '</span>'
-            . '<span>' . $link . '</span>'
+            . '<span class="text-break">' . $link . '</span>'
             . (((int) $row['amount'] !== 0) ? '<span class="fg-secondary">' . h(erp_money_out_currency((int) $row['amount'], (string) $row['currency'])) . '</span>' : '')
             . '</div>';
     }
 
-    $who = ((string) $first['source'] === 'job') ? '<span class="fg-secondary">' . h($sources['job']) . '</span>' : h((string) $first['username']);
+    $kind = erp_audit_actor_kind($first);
+    $who = (($kind === 'job') || ($kind === 'link')) ? '<span class="fg-secondary">' . h($sources[$kind]) . '</span>' : '<span class="text-break">' . h((string) $first['username']) . '</span>';
 
     $output_rows .= '
         <tr>
@@ -125,7 +126,8 @@ if ($output_rows === '') {
         . (empty($query) ? lang('Nothing has been recorded yet. Every document, receipt and change made in the ERP from now on is listed here.') : lang('Nothing matches these filters.')) . '</td></tr>';
 }
 
-$user_options = '<option value="">' . lang('Everyone') . '</option><option value="@job"' . (($filters['user'] === '@job') ? ' selected' : '') . '>' . h($sources['job']) . '</option>';
+$user_options = '<option value="">' . lang('Everyone') . '</option><option value="@job"' . (($filters['user'] === '@job') ? ' selected' : '') . '>' . h($sources['job']) . '</option>'
+    . '<option value="@link"' . (($filters['user'] === '@link') ? ' selected' : '') . '>' . h($sources['link']) . '</option>';
 foreach ($people as $name => $source) {
     $user_options .= '<option value="' . h($name) . '"' . (($filters['user'] === $name) ? ' selected' : '') . '>' . h($name . (($source === 'api') ? ' (' . $sources['api'] . ')' : '')) . '</option>';
 }
@@ -170,7 +172,8 @@ pg_page_shell([
             </nav>
 
             <form method="get" action="erp_audit.php" class="card my-7" role="search">
-                <div class="card-body row g-3 align-items-end">
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
                     <div class="col-6 md:col-2">
                         <label class="form-label small" for="audit_from">' . lang('Start date') . '</label>
                         <input type="date" data-pg-date class="form-control form-control-sm" id="audit_from" name="from" value="' . h($filters['from']) . '" />
@@ -194,6 +197,7 @@ pg_page_shell([
                             <input type="search" class="form-control" id="audit_search" name="search" value="' . h($filters['search']) . '" placeholder="' . h(lang('Number, name, user or IP')) . '" />
                             <button type="submit" class="btn btn-outline theme-secondary"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">' . lang('Search') . '</span></button>
                         </div>
+                    </div>
                     </div>
                 </div>
             </form>

@@ -27,6 +27,7 @@ $liveform = new liveform('erp_waybills');
 
 $filter_names = array(
     'open' => lang('Not yet invoiced'),
+    'drafted' => lang('Invoice drafted'),
     'invoiced' => lang('Invoiced'),
     'cancelled' => lang('Cancelled'),
 );
@@ -37,13 +38,17 @@ if (!isset($filter_names[$filter])) {
 }
 
 // The invoice's state is read through the join: a note whose invoice was
-// cancelled, or whose draft was thrown away, is back to waiting.
+// cancelled, or whose draft was thrown away, is back to waiting. The three
+// states are the ones the rows show (erp_waybill_invoice_state()): a note
+// whose invoice is still a draft is neither waiting nor invoiced.
 $where = array();
 
 if ($filter === 'cancelled') {
     $where[] = "w.status = 'cancelled'";
 } elseif ($filter === 'invoiced') {
-    $where[] = "w.status <> 'cancelled' AND i.id IS NOT NULL AND i.status <> 'cancelled'";
+    $where[] = "w.status <> 'cancelled' AND i.id IS NOT NULL AND i.status NOT IN ('cancelled', 'draft')";
+} elseif ($filter === 'drafted') {
+    $where[] = "w.status <> 'cancelled' AND i.id IS NOT NULL AND i.status = 'draft'";
 } elseif ($filter === 'open') {
     $where[] = "w.status <> 'cancelled' AND (i.id IS NULL OR i.status = 'cancelled')";
 }

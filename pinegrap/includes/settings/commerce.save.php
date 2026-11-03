@@ -73,6 +73,19 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $liveform->mark_error($email_field, $email_error);
     }
 
+    // Neither folder may be the Workspace's or below it, nor in the Recycle
+    // Bin (pg_settings_folder_choice_ok()): granted access there would open
+    // conversation files to every buyer, and product images there could not
+    // be shown to visitors.
+    foreach (array('product_upload_folder_id', 'ecommerce_private_folder_id') as $folder_field) {
+        if (!pg_settings_folder_choice_ok((int) post_value($folder_field))) {
+            $liveform->mark_error($folder_field, lang('Choose a folder outside the Workspace and the Recycle Bin.'));
+        }
+    }
+
+    // The address autocomplete card (includes/fn/address_autocomplete.php).
+    $addr_settings_decision = pg_addr_settings_check($_POST, $liveform);
+
     if ($liveform->check_form_errors()) {
         return;
     }
@@ -113,6 +126,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         ? "review_photos = '" . ((post_value('review_photos') == 1) ? 1 : 0) . "',"
         : '';
 
+    // The protected currency box is drawn only while Multiple Currencies is
+    // on; a save without it keeps the stored currency instead of blanking it.
+    $sql_iyzipay_protected_currency = array_key_exists('iyzipay_protected_currency_code', $_POST)
+        ? "iyzipay_protected_currency_code = '" . escape(post_value('iyzipay_protected_currency_code')) . "',"
+        : '';
+
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
@@ -126,7 +145,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             ecommerce_show_product_images = '" . escape(post_value('ecommerce_show_product_images')) . "',
             barcode_enabled        = '" . escape(post_value('barcode_enabled'))        . "',
             barcode_default_type   = '" . escape(trim(post_value('barcode_default_type') ?: 'CODE128')) . "',
-            iyzipay_protected_currency_code = '" . escape(post_value('iyzipay_protected_currency_code')) . "',
+            " . $sql_iyzipay_protected_currency . "
             ecommerce_shipping = '" . escape(post_value('ecommerce_shipping')) . "',
             ecommerce_recipient_mode = '" . escape(post_value('ecommerce_recipient_mode')) . "',
             ecommerce_address_verification = '" . escape(post_value('ecommerce_address_verification')) . "',
@@ -222,6 +241,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // Stored after the card, then the connection test that was asked for.
     pg_label_settings_save($label_driver_decisions, USER_ID, $liveform);
 
+    // The address autocomplete account, then its test when asked for.
+    pg_addr_settings_save($addr_settings_decision, USER_ID, $liveform);
+
 
 
     // if there was a next order number field, update next order number
@@ -293,13 +315,17 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
         if (is_array($product_feeds_saved['built'])) {
             if ($product_feeds_saved['built']['error'] !== '') {
-                $liveform->add_notice(lang(array('string' => 'The product feeds were not built: {var:1}', 'vars' => array(pg_product_feed_error_text($product_feeds_saved['built']['error'])))));
+                $liveform->add_warning(lang(array('string' => 'The product feeds were not built: {var:1}', 'vars' => array(pg_product_feed_error_text($product_feeds_saved['built']['error'])))));
             }
 
+            // A format that was not built is a warning: beside the green
+            // "saved" a failure read as one more success.
             foreach ($product_feeds_saved['built']['formats'] as $product_feeds_format => $product_feeds_result) {
-                $liveform->add_notice($product_feeds_result['ok']
-                    ? lang(array('string' => '{var:1} was built with {var:2} product(s).', 'vars' => array($product_feeds_texts[$product_feeds_format]['label'], (int) $product_feeds_result['count'])))
-                    : lang(array('string' => '{var:1} was not built: {var:2}', 'vars' => array($product_feeds_texts[$product_feeds_format]['label'], pg_product_feed_error_text($product_feeds_result['error'])))));
+                if ($product_feeds_result['ok']) {
+                    $liveform->add_notice(lang(array('string' => '{var:1} was built with {var:2} product(s).', 'vars' => array($product_feeds_texts[$product_feeds_format]['label'], (int) $product_feeds_result['count']))));
+                } else {
+                    $liveform->add_warning(lang(array('string' => '{var:1} was not built: {var:2}', 'vars' => array($product_feeds_texts[$product_feeds_format]['label'], pg_product_feed_error_text($product_feeds_result['error'])))));
+                }
             }
         }
     }

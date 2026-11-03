@@ -27,5 +27,7 @@ description: Edit calendar event screen (edit_calendar_event.php): which recurri
 - Why: a reservation takes spots off relatively (`order_completion.php`, `number_of_remaining_spots - ?`). With 12 left, three reservations while the screen was open, a description save put 12 back and oversold 3 seats.
 - The decision is `pg_calendar_event_spots_decision()` in `includes/forms/calendar_event_form.php` (keep / write / stale; a form without the was field writes as before), pinned by `tests/calendar_event_edit_test.php`. Same mechanism as `commerce/gift-card-balance-edit.md`.
 
+## Does a save through send_to leave the form in the session?
+- No: a successful save calls `remove_form()` before either redirect. Before (#5572) only the redirect without `send_to` cleared it, so the next open showed the session's old values instead of the database and its old `number_of_remaining_spots_was` refused an unchanged save as stale.
 
 Related: `core/request-parameter-arrays.md` (array = not given).

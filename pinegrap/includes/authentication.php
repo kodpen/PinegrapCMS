@@ -769,3 +769,41 @@ function check_private_access($folder_id)
     }
     return $result;
 }
+
+// Whether an address someone gave (typed into a form, or reported by a
+// sign-in provider) is an account's stored address, letter case aside.
+// A lookup on user.user_email compares under the column's collation, which
+// also folds accents: "jane@şirket.com" finds the account of
+// "jane@sirket.com" and the other way round, two different domains. A flow
+// that sends a secret to the address, or ties an identity to the account,
+// asks this after the lookup and treats any other row as not found. A blank
+// address on either side never matches. It lives here because get_file.php,
+// which never loads includes/fn/, asks it for a submitted form's submitter.
+function pg_email_address_matches($given, $stored)
+{
+    $given  = is_scalar($given) ? trim((string) $given) : '';
+    $stored = is_scalar($stored) ? trim((string) $stored) : '';
+
+    if (($given === '') || ($stored === '')) {
+        return false;
+    }
+
+    return mb_strtolower($given, 'UTF-8') === mb_strtolower($stored, 'UTF-8');
+}
+
+/**
+ * Decrypt API/Secret keys stored in DB. Here rather than in
+ * includes/fn/auth.php because get_file.php unseals the object store's secret
+ * to sign a file's address, and it never loads functions.php.
+ */
+function decode_ssl_keys($key_base64, $iv_base64)
+{
+    $crypto_method = 'aes-256-cbc';
+    $crypto_key = substr(hash('sha256', ENCRYPTION_KEY, true), 0, 32);
+    $key = base64_decode($key_base64);
+    $iv = base64_decode($iv_base64);
+    if ($key === false || $iv === false)
+        return '';
+    $decrypted = openssl_decrypt($key, $crypto_method, $crypto_key, OPENSSL_RAW_DATA, $iv);
+    return ($decrypted !== false) ? $decrypted : '';
+}

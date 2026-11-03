@@ -82,3 +82,47 @@ function test_erp_order_flow_invoice_returned_in_full_by_money()
 	pg_assert_true(erp_order_flow_returned_in_full(100000, 100000, 1), 'all returned');
 	pg_assert_true(erp_order_flow_returned_in_full('100000', '100000', 2), 'over two returns, as the database hands it back');
 }
+
+// The delivery note's notice says only what went onto the invoice: the date
+// and the carrier are written apart (erp_waybill_write_back()).
+function test_erp_order_flow_written_back_message()
+{
+	pg_assert_same('', erp_order_flow_written_back_message(array()), 'nothing written');
+	pg_assert_same('', erp_order_flow_written_back_message(array('order_ship_date' => '2026-11-02')), 'only the order');
+	pg_assert_same('The shipment date was written onto the invoice, which had none.',
+		erp_order_flow_written_back_message(array('invoice_shipment_date' => '2026-11-02')), 'a note with no carrier');
+	pg_assert_same('The carrier was written onto the invoice, which had none.',
+		erp_order_flow_written_back_message(array('invoice_carrier' => 'Cargo')));
+	pg_assert_same('The shipment date and the carrier were written onto the invoice, which had none.',
+		erp_order_flow_written_back_message(array('invoice_shipment_date' => '2026-11-02', 'invoice_carrier' => 'Cargo')));
+}
+
+// An invoice written again after a cancel takes over the note still tied to
+// the cancelled one; a note on a live invoice stays where it is.
+function test_erp_order_flow_waybill_takes_invoice()
+{
+	pg_assert_same(true, erp_order_flow_waybill_takes_invoice(0, null), 'no invoice yet');
+	pg_assert_same(true, erp_order_flow_waybill_takes_invoice('83', 'cancelled'), 'the cancelled invoice');
+	pg_assert_same(true, erp_order_flow_waybill_takes_invoice(83, null), 'an invoice no longer there');
+	pg_assert_same(false, erp_order_flow_waybill_takes_invoice(83, 'issued'));
+	pg_assert_same(false, erp_order_flow_waybill_takes_invoice(83, 'paid'));
+	pg_assert_same(false, erp_order_flow_waybill_takes_invoice(83, 'draft'));
+}
+
+// Cancelling takes the allocations off first, so with allocations it needs
+// the cash right, like the invoice screen's "remove allocation".
+function test_erp_order_flow_cancel_refusal()
+{
+	pg_assert_same('', erp_order_flow_cancel_refusal(0, false), 'nothing allocated');
+	pg_assert_same('', erp_order_flow_cancel_refusal(2, true), 'the cash right');
+	pg_assert_true(erp_order_flow_cancel_refusal(1, false) !== '', 'allocations without the cash right');
+}
+
+// The card's cancel button asks the invoice screen's question.
+function test_erp_order_flow_cancel_confirm()
+{
+	pg_assert_same('Cancel PGF1? It keeps its number and stays in the register as cancelled. This cannot be undone.',
+		erp_order_flow_cancel_confirm('PGF1', false, ''));
+	pg_assert_true(strpos(erp_order_flow_cancel_confirm('PGF1', false, 'Acme'), 'taken back at Acme first') !== false, 'at the provider');
+	pg_assert_true(strpos(erp_order_flow_cancel_confirm('PGF1', true, 'Acme'), 'here too?') !== false, 'cancelled on the provider screen');
+}

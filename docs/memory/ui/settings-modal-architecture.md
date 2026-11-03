@@ -16,7 +16,7 @@ includes/settings/search.php     search index (settings-modal-navigation.md)
 includes/settings/prep.php       GET preparation (every category runs all of it)
 includes/settings/<cat>.php      cards -> $pg_settings_cards (+ modals, scripts)
 includes/settings/<cat>.save.php the columns that category writes
-settings_<cat>.php + screen.php  page path (no JavaScript; main menu's Site Settings row)
+settings_<cat>.php + screen.php  page path (no JavaScript; links keep it as their address)
 system_tools.php                 the tools that leave the dialog (settings-system-tools.md)
 assets/js/backend.src.js         pgSettingsModal, window.pgOpenSettings(), pgInitInjected()
 ```

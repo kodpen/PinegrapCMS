@@ -127,3 +127,49 @@ function test_update_repair_decision()
 
 	pg_assert_false($behind['ok'], '2026.4.10 is older than 2026.11.0');
 }
+
+// One sentence per reason a check has no answer: an error page names its
+// HTTP status, a cURL failure its number, and every sentence starts with a
+// capital letter.
+function test_update_check_error_text()
+{
+	$http = pg_update_check_error_text(array('error' => 'http_error', 'http_status' => 500));
+
+	pg_assert_contains('HTTP 500', $http, 'the status is named');
+
+	$curl = pg_update_check_error_text(array('error' => 'curl_error', 'curl_errno' => 28, 'curl_error' => 'Operation timed out'));
+
+	pg_assert_contains('28', $curl, 'the cURL number');
+	pg_assert_contains('Operation timed out', $curl, 'the cURL message');
+
+	foreach (array('curl_missing', 'curl_error', 'http_error', 'invalid_response', 'checks_off') as $error) {
+		$text = pg_update_check_error_text(array('error' => $error));
+
+		pg_assert_true($text !== '', $error . ' has a sentence');
+		pg_assert_same(mb_strtoupper(mb_substr($text, 0, 1)), mb_substr($text, 0, 1), $error . ' starts with a capital');
+		pg_assert_false(stripos($text, 'daily') !== false, $error . ' does not call a manual check daily');
+	}
+
+	pg_assert_contains('SOFTWARE_UPDATE_CHECK', pg_update_check_error_text(array('error' => 'checks_off')));
+	pg_assert_same('', pg_update_check_error_text(array('error' => '')), 'no error, no sentence');
+}
+
+// With update checks off in data/config.php the manual check returns before
+// it builds or sends a request, and an error page is told apart from an
+// unreadable answer.
+function test_update_check_source_order()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/software_update_check.php');
+
+	$off = strpos($source, "'checks_off'");
+	$request = strpos($source, 'pg_curl_run(');
+
+	pg_assert_true($off !== false && $request !== false && $off < $request, 'checks_off before the request');
+	pg_assert_contains("\$answer['ok']", $source, 'the status is read');
+	pg_assert_false(strpos($source, 'daily software update check') !== false, 'no "daily" wording');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/software_update.php');
+
+	pg_assert_false(strpos($screen, 'log_activity(lang(\'software update check') !== false, 'the screen does not log the check a second time');
+	pg_assert_contains('h($new_version)', $screen, 'the server version is escaped');
+}

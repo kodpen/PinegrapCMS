@@ -23,3 +23,4 @@ module: image_editor
 
 ## Where does the focus go after a panel button?
 - `render()` notes the focused panel control before `renderPanel()` rebuilds the panel and focuses its new copy (`PgImageEditorModel.focusMatch()`: same label and occurrence, else the same place with the same tag and classes, as a Hide that now reads Show). Only a control that is gone or disabled sends the focus to the stage (#4406).
+- Closing the unsaved-changes question (Keep editing or Escape) gives the focus back to the control that had it when the question opened (`confirmReturn`), else the stage; the removed question's button left it on the page body, where the keys no longer arrive (#4701).

@@ -5329,7 +5329,7 @@ var software = {
         },
 
         logout: function() {
-            window.location.href = software_path + software_directory + '/kiosk.php?action=logout';
+            window.location.href = software_path + software_directory + '/kiosk.php?action=logout&token=' + encodeURIComponent(software_token);
         },
 
         show_dialog: function() {

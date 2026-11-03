@@ -19,9 +19,9 @@ description: Plan (owner 2026-11-02): A/B experiments on designed pages (a draft
 - Counting follows `visitors/high-volume-counter-rules.md`; nothing is written per visitor beyond the cookie; a bucket cookie needs no consent (strictly functional) but is listed.
 - Express-order totals and the checkout flow are untouched; the order goal reads `pg_order_complete()`'s context only.
 
-## Which questions are open? (architect; 1-2 before PX1)
-1. Table `experiments` (page id, name, status, goal kind and target, started and ended, winner) and `experiment_variants` (experiment id, draft page id, key, weight) with the rollup `experiment_hourly` (`sha1(date|hour|experiment|variant)`, views, goals), in the open version's migration; recommended as written.
-2. The bucket cookie's life (recommended 90 days) and whether a running experiment is excluded from the page cache instead of cached per variant on sites where the cache is off anyway (recommended: per-variant copies, the cache decides as today).
+## Which questions are decided? (#5038)
+1. `experiments`, `experiment_variants`, `experiment_hourly` as written; shape in the issue.
+2. The `pg_exp` cookie lives 90 days; the page cache keeps one copy per variant and decides as today.
 
 ## Where does it start?
 - PX1 alone, then PX2, PX4 and PX6 together. Read the `designer/` and `visitors/` key rules, `designer/page-drafts.md`, `page-revisions.md`, `widget-condition-panel.md`, `platform/page-cache-invalidation.md`. Steps: `page-experiments-steps.md`, `-steps-2.md`.

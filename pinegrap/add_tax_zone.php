@@ -84,17 +84,7 @@ if (!$_POST || $errors) {
         output_error(lang('Enter a tax rate between 0 and 100.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
-    $query = "INSERT INTO tax_zones (name, tax_rate, user, timestamp)
-              VALUES (
-                ?,
-                ?,
-                ?,
-                UNIX_TIMESTAMP())";
-    $result = db_q($query, array($values['name'], $tax_rate, (int) $user['id'])) or output_error('Query failed.');
-
-    $tax_zone_id = mysqli_insert_id(db::$con);
-
-    pg_tax_zone_form_save_links($tax_zone_id, $_POST);
+    pg_store_tax_zone_save(0, $values['name'], $tax_rate, $values['allowed_countries'], $values['allowed_states'], (int) $user['id']) or output_error('Query failed.');
 
     log_activity(lang(array('string' => 'tax zone ({var:1}) was created', 'vars' => $values['name'])), $_SESSION['sessionusername']);
 

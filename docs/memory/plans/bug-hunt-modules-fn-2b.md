@@ -1,26 +1,24 @@
 ---
 name: bug-hunt-modules-fn-2b
-description: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules widgets to wishlist, one line each with its state
+description: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules widgets to widgets_lists_checkout (widgets_cart and widgets_catalog in part 2d), one line each with its state
 ---
 
-## Which includes/fn/ modules (widgets to wishlist) are hunted?
-- `widgets`: open
-- `widgets_account`: open
+## Which includes/fn/ modules (widgets to widgets_lists_checkout) are hunted?
+- `widgets`: done (#5128: page links on a pretty address carried the router's page name; #5160: a backslash in the form data and simple site search escaped the next pattern character; #5173: ?r[]= and ?cancelled[]= warned; checked, clean: login and forgot password forms, form feed parts, list paging, record view, calendar view and grid, search results, URL filter state and titles, hide-if-empty, token fill, order view access, custom form wrap, edit chip rules, record addresses)
+- `widgets_account`: clean (return_to and account_done redirects, posted controls, tax columns, account e-mail pick and setting, subject, values; logout, change and set password with the token's day as set_password.php, profile, e-mail preferences lists and signed link as email_preferences.php, address book edit id on a refused post, security signed-out state, invoices, staff page access, order history, login region)
 - `widgets_ad_region`: done (#4999: a region placed twice shared its rows' ids)
-- `widgets_affiliate_sign_up`: open
+- `widgets_affiliate_sign_up`: done (#4998: posted next_page_id); rest clean (prefill as the classic screen, terms, confirmation, row changes)
 - `widgets_attrs`: clean (denied names and tokens, placeholders and carriers, empty switches dropped)
-- `widgets_billing_information`: open
-- `widgets_cart`: open
-- `widgets_catalog`: open
-- `widgets_comments`: open
+- `widgets_billing_information`: clean (start values, liveform restore, flags and dropped controls, page row changes as the classic page)
+- `widgets_comments`: clean (options, order, paginate, page param and URLs, quote excerpt, link values, mask email, watcher label, row root id and anchor links; audience and preview override, thread and row flags, status text, rating, the render's thread pick, review refusal, name mode, reply target, watcher state and count, notified rule as the classic block)
 - `widgets_comments_recent`: clean (source decisions, access and scope SQL, record gate, rows read again under the scope, titles)
 - `widgets_conditions`: clean (specs and joins, denied tokens, required controls, amounts and figure grouping, every operator)
-- `widgets_entity_fields`: clean (allow-lists, gates, money and dates, order and account reads)
+- `widgets_entity_fields`: clean (allow-lists, gates, money and dates, order and account reads; order money tokens in the visitor's currency, as the classic receipt and the order view totals)
 - `widgets_error`: clean (error page pick, flags, back address, requested address)
-- `widgets_express_order`: open
+- `widgets_express_order`: done (#5082: unticked opt-in, SMS, tax-exempt and update-contact boxes came back ticked after a refused submit)
 - `widgets_fill`: clean (filter parse, case with Turkish i, number, truncate, escaping, typed fills)
 - `widgets_finish`: clean (conditions, chips, row positions, hide-if-empty, stage order)
-- `widgets_folder_view`: clean (rows, access and archive as the classic folder view, hidden page types)
+- `widgets_folder_view`: done (#5060: placed twice, shared static and row ids; rest clean: rows, access and archive as the classic folder view, hidden page types)
 - `widgets_gallery`: clean (template layouts, page map, starters)
 - `widgets_google_reviews`: done (#4999: placed twice, shared row ids; rest clean)
 - `widgets_language`: done (#4999: placed twice, shared row ids; rows, address and query clean)
@@ -28,21 +26,3 @@ description: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules wid
 - `widgets_lists_calendar`: clean (weeks, ISO week of a Sunday-first week, outside days, events)
 - `widgets_lists_cart`: clean (rows, form, schedule and gift card rows, raw markup keys, cart read)
 - `widgets_lists_checkout`: clean (applied offers, gift card redemption as submit_order(), recipients, cart items)
-- `widgets_lists_menu`: clean (access, current and holding items, addresses and window as the classic menu)
-- `widgets_lists_order`: clean (form answers, gift cards, return rows escaping)
-- `widgets_lists_paging`: clean (window and clamped page key)
-- `widgets_lists_product`: clean (images, attributes, bundle rows, crumbs, filter chips)
-- `widgets_menu`: done (#4999: placed twice, shared row ids; rest clean: classic menu and sequence regions, access, edit chip)
-- `widgets_order_form`: clean
-- `widgets_order_preview`: clean (flags, method rows and On Account, page row changes, recipients and gift card markup escaping, tokens, form wrapper checked)
-- `widgets_parts`: clean (`commerce/cart-product-form-file-field.md`)
-- `widgets_parts_anywhere`: clean (marker encode and decode, read-only refusals, injection into the main loop, span take and place counting checked)
-- `widgets_parts_forms`: clean (cancel and return forms against cancel_order.php and order_return.php fields and limits, restored controls, label pairing, cart product form attributes checked)
-- `widgets_photo_gallery`: done (#4754)
-- `widgets_placement`: done (#4736)
-- `widgets_shipping_address`: clean (#4727)
-- `widgets_shipping_method`: clean (refusals, methods, amounts, remove link)
-- `widgets_starters`: clean (#4628)
-- `widgets_tag_cloud`: done (#4999: placed twice, shared row ids; rest clean: classic and Search Results widget keyword reads against the classic sync, merge and case folding, size and weight scale, token escaping and search links checked)
-- `widgets_wishlist`: clean (owner-only read, escaping, row actions, stock and discount rules checked)
-- `wishlist`: clean (wishlist.php token, method and throttle checks, cookie hashing and merge, owner SQL, trim batches, page script and its injection checked)

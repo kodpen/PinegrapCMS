@@ -144,7 +144,8 @@ function test_visitor_report_reads_days_in_site_time()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/view_visitor_report.php');
 
-	pg_assert_contains("case 'date': \$operand_1 = pg_site_time_sql('visitors.start_timestamp', '%Y-%m-%d', \$site_time_from, \$site_time_to);", $source, 'Date filter');
+	pg_assert_contains("\$operand_1 = pg_visitor_report_filter_column(\$filter['field'], \$site_time_from, \$site_time_to);", $source, 'Date filter');
+	pg_assert_contains("return pg_site_time_sql('visitors.start_timestamp', '%Y-%m-%d', \$from, \$to);", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/visitor_report.php'), 'Date filter column');
 	pg_assert_contains("case 'day': return pg_site_time_sql('visitors.start_timestamp', '%d', \$from, \$to);", $source, 'day grouping');
 	pg_assert_same(3, substr_count($source, ", \$site_time_from, \$site_time_to) . ','"), 'three groupings get the window');
 	pg_assert_same(0, preg_match("/FROM_UNIXTIME\\(visitors\\.start_timestamp, '/", str_replace("\\'", "'", $source)), 'no plain day reading');

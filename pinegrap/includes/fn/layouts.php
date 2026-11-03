@@ -116,7 +116,14 @@ function pg_layout_save($page_id, $content)
 
         $modified = 0;
     } else {
-        @file_put_contents($path, (string) $content);
+        // A page marked modified includes this file when it is drawn, so a
+        // write that failed (folder missing or not writable, disk full)
+        // leaves the page as it was instead of drawing nothing.
+        $content = (string) $content;
+
+        if (@file_put_contents($path, $content) !== strlen($content)) {
+            return array('ok' => false, 'modified' => 0, 'message' => lang('The layout could not be saved.'));
+        }
 
         $modified = 1;
     }

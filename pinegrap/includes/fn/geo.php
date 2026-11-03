@@ -99,6 +99,32 @@ function pg_geo_db_tried_recently()
 }
 
 /**
+ * Takes the refresh lock in $dir: one refresh at a time, as the general job
+ * and the settings screen's button may meet. A lock file that cannot be
+ * opened means the folder cannot be written, not that another request holds
+ * it.
+ *
+ * @param string $dir
+ * @return array status (ok | busy | failed), handle (the open lock file for
+ *               ok, else null)
+ */
+function pg_geo_db_refresh_lock($dir)
+{
+    $lock = @fopen($dir . '/refresh.lock', 'c');
+
+    if (!$lock) {
+        return array('status' => 'failed', 'handle' => null);
+    }
+
+    if (!flock($lock, LOCK_EX | LOCK_NB)) {
+        fclose($lock);
+        return array('status' => 'busy', 'handle' => null);
+    }
+
+    return array('status' => 'ok', 'handle' => $lock);
+}
+
+/**
  * Fetches the newest list and builds the database from it.
  *
  * @param bool $force true from the settings screen's button: no twelve-hour
@@ -114,16 +140,17 @@ function pg_geo_db_refresh($force = false)
         return array('status' => 'failed', 'version' => '', 'reason' => lang('The folder data/geo could not be created.'));
     }
 
-    // One refresh at a time: the general job and the button may meet.
-    $lock = @fopen($dir . '/refresh.lock', 'c');
+    $locked = pg_geo_db_refresh_lock($dir);
 
-    if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) {
-        if ($lock) {
-            fclose($lock);
-        }
+    if ($locked['status'] === 'failed') {
+        return array('status' => 'failed', 'version' => '', 'reason' => lang('The folder data/geo is not writable.'));
+    }
 
+    if ($locked['status'] === 'busy') {
         return array('status' => 'busy', 'version' => '', 'reason' => '');
     }
+
+    $lock = $locked['handle'];
 
     @file_put_contents($dir . '/attempt.txt', (string) time());
 
@@ -834,4 +861,43 @@ function pg_geo_sort_by_label(array $rows, $label_key = 'label')
     return array_map(function ($pair) {
         return $pair[1];
     }, $keyed);
+}
+
+/**
+ * The labels of a state pick list: "Country: State" with the country named
+ * in the current language (pg_geo_country_label()) while states of more
+ * than one country exist, else the state name alone. With countries the
+ * rows follow the shown country name (pg_geo_sort_by_label()), so the list
+ * reads in the order it shows; states of one country keep the order of
+ * $states. A state with no country row keeps its bare name.
+ *
+ * @param array $states         rows of id, name, country_name, country_code
+ * @param bool  $foreign_states whether states of a non-default country exist
+ * @return array list of array('id', 'label'), labels as plain text
+ */
+function pg_geo_state_option_labels(array $states, $foreign_states)
+{
+    $options = array();
+
+    foreach ($states as $state) {
+        $name = (string) ($state['name'] ?? '');
+        $country = (string) ($state['country_name'] ?? '');
+        $country_label = ($foreign_states && (($country !== '') || (($state['country_code'] ?? '') !== '')))
+            ? pg_geo_country_label($country, (string) ($state['country_code'] ?? ''))
+            : '';
+
+        $options[] = array(
+            'id' => (string) ($state['id'] ?? ''),
+            'label' => ($country_label !== '') ? $country_label . ': ' . $name : $name,
+            'country_label' => $country_label,
+        );
+    }
+
+    if ($foreign_states) {
+        $options = pg_geo_sort_by_label($options, 'country_label');
+    }
+
+    return array_map(function ($option) {
+        return array('id' => $option['id'], 'label' => $option['label']);
+    }, $options);
 }

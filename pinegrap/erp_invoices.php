@@ -44,9 +44,10 @@ $edoc_filter = is_string($_GET['edoc'] ?? null) ? $_GET['edoc'] : '';
 $edoc_filter = isset($edoc_filters[$edoc_filter]) ? $edoc_filter : '';
 
 // Ticking rows and acting on them is offered only where there is a provider
-// to act through.
+// to act through, and not to the read-only accountant.
 $edoc_provider = erp_edoc_installed() ? erp_edoc_active() : '';
-$edoc_bulk = ($edoc_provider !== '');
+$readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
+$edoc_bulk = ($edoc_provider !== '') && !$readonly;
 
 // The address this screen was opened at, rebuilt from the values it knows,
 // so a bulk action comes back to the same view.
@@ -409,9 +410,14 @@ if (!empty($edoc_filters)) {
     $edoc_counts = erp_edoc_filter_counts();
     $output_edoc_items = '';
 
+    // Each view keeps the rest of the address (due-date view, direction,
+    // account, aging bucket); "All" drops only the e-document view.
+    $edoc_base_query = $self_query;
+    unset($edoc_base_query['edoc']);
+
     foreach ($edoc_filters as $edoc_key => $edoc_item) {
         $output_edoc_items .= '
-                        <li><a class="menu-item d-flex align-items-center gap-3 pg-link-body-emphasis' . (($edoc_filter === $edoc_key) ? ' active" aria-current="page' : '') . '" href="erp_invoices.php?edoc=' . $edoc_key . '"><i class="bi ' . $edoc_item['icon'] . '" aria-hidden="true"></i><span class="me-auto">' . h($edoc_item['label']) . '</span><span class="badge rounded-pill theme-' . (($edoc_counts[$edoc_key] > 0) ? $edoc_item['tone'] : 'secondary') . '">' . pg_format_number($edoc_counts[$edoc_key], 0) . '</span></a></li>';
+                        <li><a class="menu-item d-flex align-items-center gap-3 pg-link-body-emphasis' . (($edoc_filter === $edoc_key) ? ' active" aria-current="page' : '') . '" href="' . h('erp_invoices.php?' . http_build_query($edoc_base_query + array('edoc' => $edoc_key))) . '"><i class="bi ' . $edoc_item['icon'] . '" aria-hidden="true"></i><span class="me-auto">' . h($edoc_item['label']) . '</span><span class="badge rounded-pill theme-' . (($edoc_counts[$edoc_key] > 0) ? $edoc_item['tone'] : 'secondary') . '">' . pg_format_number($edoc_counts[$edoc_key], 0) . '</span></a></li>';
     }
 
     $output_edoc_menu = '
@@ -419,7 +425,7 @@ if (!empty($edoc_filters)) {
                     <button class="btn btn-sm btn-text theme-secondary pg-menu-caret' . (($edoc_filter !== '') ? ' active' : '') . '" type="button" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false"><i class="bi bi-send-check me-1" aria-hidden="true"></i>' . (($edoc_filter !== '') ? h($edoc_filters[$edoc_filter]['label']) : lang('e-Document')) . '</button>
                     <ul class="menu pg-menu-end">' . $output_edoc_items . '
                         <li><hr class="menu-divider"></li>
-                        <li><a class="menu-item pg-link-body-emphasis" href="erp_invoices.php">' . lang('All') . '</a></li>
+                        <li><a class="menu-item pg-link-body-emphasis" href="' . h('erp_invoices.php' . (!empty($edoc_base_query) ? ('?' . http_build_query($edoc_base_query)) : '')) . '">' . lang('All') . '</a></li>
                     </ul>
                 </div>';
 }
@@ -454,8 +460,8 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_manual_invoice.php"><i class="bi bi-plus-lg me-1"></i>' . lang('New Invoice') . '</a>
-                <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_invoice.php"><i class="bi bi-receipt me-1"></i>' . lang(array('string' => 'Invoice an Order')) . '</a>
+                ' . ($readonly ? '' : '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_manual_invoice.php"><i class="bi bi-plus-lg me-1"></i>' . lang('New Invoice') . '</a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_invoice.php"><i class="bi bi-receipt me-1"></i>' . lang(array('string' => 'Invoice an Order')) . '</a>') . '
                 <a class="btn btn-sm btn-outline theme-secondary" href="erp_export.php?entity=invoices"><i class="bi bi-box-arrow-up me-1"></i>' . lang('Export') . '</a>
                 <a class="btn btn-sm btn-outline theme-secondary" href="erp_aging.php"><i class="bi bi-hourglass-split me-1"></i>' . lang('Aging report') . '</a>
                 ' . ((function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_ready()) ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_invoice_recurrences.php"><i class="bi bi-arrow-repeat me-1"></i>' . lang('Repeating invoices') . '</a>' : '') . '

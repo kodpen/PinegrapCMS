@@ -1,6 +1,7 @@
 ---
 name: product-group-copy
-description: Product group copies (duplicate_product_group.php, pg_catalog_copy_group()): product copy links, Recycle Bin, duplicate notice, default options
+description: Product group copies (duplicate_product_group.php, pg_catalog_copy_group()): product copy links, Recycle Bin, duplicate notice, default options, variant set form and price rules
+module: variant_set_copy
 ---
 
 ## Which code copies a product group?
@@ -25,3 +26,8 @@ description: Product group copies (duplicate_product_group.php, pg_catalog_copy_
 - No. `pg_explorer_handle_catalog_paste()` checks every group of a copy paste with `pg_catalog_group_is_within()` (`includes/explorer/catalog.php`, a parent walk over the group map) before anything is copied, and refuses with "A product group cannot be copied into itself."; the panel shows it as the error toast. A cut already had the same refusal.
 - As a second guard `pg_catalog_copy_group()` reads a group's children before it inserts the copy, and the depth cap of 30 stays.
 - Symptom it fixed: Paste on the group itself, Ctrl+V inside it or Ctrl/Alt-drag onto a subgroup copied the fresh copy into itself again and again, leaving about 30 nested groups.
+
+## Does a copied variant set keep its form and price rules?
+- Yes (PR #5393). Both paths call `pg_variant_set_copy()` (`includes/fn/variant_set_copy.php`) after the group row: it copies `form`, `form_name`, `form_label_column_width`, `form_quantity_type` and `variant_price_rules` (each only where the row has it) and the template (`form_fields` with `form_type = 'product_group'`, options, triggers, ids remapped).
+- Product copies from Duplicate Product Group: `duplicate_product()` drops `template_field_id`, so their generated fields are matched by name to the original's (`pg_variant_set_copy_field_links()`, tested in `tests/variant_set_copy_test.php`) and linked to the template copy. The Catalog Manager links the same products, whose fields stay on the original template.
+- Symptom it fixed: the copy had no form template, no form settings and no price rules; the next template edit on it added every generated field to the product copies a second time.

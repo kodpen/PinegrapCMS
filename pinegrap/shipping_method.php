@@ -174,7 +174,7 @@ if ($liveform->check_form_errors() == false) {
         }
     }
 
-    // get all products in cart for this ship to
+    // get the active products in cart for this ship to (a line saved for later is not shipped)
     $order_items = db_items(
         "SELECT
             order_items.id,
@@ -191,7 +191,7 @@ if ($liveform->check_form_errors() == false) {
             products.extra_shipping_cost
         FROM order_items
         LEFT JOIN products ON products.id = order_items.product_id
-        WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "' AND order_items.ship_to_id = '" . escape($_POST['ship_to_id'] ?? '') . "'
+        WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "' AND order_items.ship_to_id = '" . escape($_POST['ship_to_id'] ?? '') . "'" . pg_order_item_active_sql() . "
         ORDER BY order_items.id ASC");
 
     $shipping_cost = 0;

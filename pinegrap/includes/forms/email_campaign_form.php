@@ -56,12 +56,17 @@ function pg_email_campaign_subject_row($subject, $readonly = false)
     if ($readonly) {
         $field = '<p>' . h($subject) . '</p>';
     } else {
-        $field = '<input value="' . h($subject) . '" type="text" name="subject" placeholder="' . lang('Subject') . '" maxlength="255" id="subject" class="form-control" />';
+        $field = '<input value="' . h($subject) . '" type="text" name="subject" placeholder="' . lang('Subject') . '" maxlength="255" id="subject" class="form-control" required />';
     }
+
+    // A read-only value has no field, so its heading is no label.
+    $heading = $readonly
+        ? '<div class="form-label">' . lang('Subject') . '</div>'
+        : '<label for="subject" class="form-label">' . lang('Subject') . '</label>';
 
     return
         '<div class="col-12 my-3">
-            <label for="subject" class="form-label">' . lang('Subject') . '</label>
+            ' . $heading . '
             ' . $field . '
         </div>';
 }
@@ -131,24 +136,31 @@ function pg_email_campaign_from_card($values, $readonly = false)
         } elseif ($name == 'from_name') {
             $fields[$name] = '<input value="' . h($values[$name]) . '" type="text" class="form-control" id="from_name" name="from_name" maxlength="100" />';
         } else {
-            $fields[$name] = '<input value="' . h($values[$name]) . '" type="text" class="form-control text-end" id="' . $name . '" name="' . $name . '" maxlength="100" inputmode="email" data-inputmask-alias="email"/>';
+            $fields[$name] = '<input value="' . h($values[$name]) . '" type="text" class="form-control text-end" id="' . $name . '" name="' . $name . '" maxlength="100"' . (($name == 'from_email_address') ? ' required' : '') . ' inputmode="email" data-inputmask-alias="email"/>';
         }
     }
+
+    // A read-only value has no field, so its heading is no label.
+    $label = function ($for, $text) use ($readonly) {
+        return $readonly
+            ? '<div class="form-label">' . $text . '</div>'
+            : '<label class="form-label" for="' . $for . '">' . $text . '</label>';
+    };
 
     return pg_email_campaign_card(
         lang('E-Mail Message From'),
         '<div class="col-12 sm:col-6 xl:col-12 my-3">
-            <label class="form-label" for="from_name">' . lang('From Name') . '</label>
+            ' . $label('from_name', lang('From Name')) . '
             ' . $fields['from_name'] . '
         </div>
         <div class="col-12">
             <div class="row">
                 <div class="col-12 sm:col-6 xl:col-4 my-3">
-                    <label class="form-label" for="from_email_address">' . lang('From E-mail Address') . '</label>
+                    ' . $label('from_email_address', lang('From E-mail Address')) . '
                     ' . $fields['from_email_address'] . '
                 </div>
                 <div class="col-12 sm:col-6 xl:col-4 my-3">
-                    <label class="form-label" for="reply_email_address">' . lang('Reply to E-mail Address') . '</label>
+                    ' . $label('reply_email_address', lang('Reply to E-mail Address')) . '
                     ' . $fields['reply_email_address'] . '
                 </div>
             </div>
@@ -194,7 +206,7 @@ function pg_email_campaign_schedule_card($start_time, $readonly = false, $enable
     return pg_email_campaign_card(
         lang('E-Mail Message Delivery Schedule'),
         '<div class="col-12 md:col-6 lg:col-4 my-3">
-            <label class="form-label" for="start_time">' . lang('Send at this Date & Time') . '</label>
+            ' . ($readonly ? '<div class="form-label">' . lang('Send at this Date & Time') . '</div>' : '<label class="form-label" for="start_time">' . lang('Send at this Date & Time') . '</label>') . '
             ' . $field . '
         </div>');
 }
@@ -235,4 +247,85 @@ function pg_email_campaign_purpose_card($purpose, $readonly = false)
         '<div class="col-12 my-5">
             ' . $field . '
         </div>');
+}
+
+/**
+ * The field problems of a posted campaign, keyed by field name: Subject and
+ * From E-mail Address are required, the sender, reply-to and BCC addresses
+ * must be addresses. Reply-to and BCC may be blank; BCC is checked only when
+ * it is posted (automatic campaigns). A value sent as an array counts as not
+ * given.
+ *
+ * @param array $values  subject, from_email_address, reply_email_address,
+ *                       bcc_email_address (optional)
+ * @return array  field name => translated message; empty when all pass
+ */
+function pg_email_campaign_field_errors($values)
+{
+    $text = function ($name) use ($values) {
+        return (isset($values[$name]) && is_scalar($values[$name])) ? trim((string) $values[$name]) : '';
+    };
+
+    $errors = array();
+
+    if ($text('subject') === '') {
+        $errors['subject'] = lang('Enter a subject.');
+    }
+
+    if ($text('from_email_address') === '') {
+        $errors['from_email_address'] = lang('Enter the sender e-mail address.');
+    } elseif (!validate_email_address($text('from_email_address'))) {
+        $errors['from_email_address'] = lang('The sender e-mail address is not valid.');
+    }
+
+    if (($text('reply_email_address') !== '') && !validate_email_address($text('reply_email_address'))) {
+        $errors['reply_email_address'] = lang('The reply-to e-mail address is not valid.');
+    }
+
+    if (array_key_exists('bcc_email_address', $values) && ($text('bcc_email_address') !== '') && !validate_email_address($text('bcc_email_address'))) {
+        $errors['bcc_email_address'] = lang('The BCC e-mail address is not valid.');
+    }
+
+    return $errors;
+}
+
+/**
+ * A posted status, format or purpose when the form offers it, else null.
+ * The status column also holds 'complete', which only sending sets.
+ *
+ * @param string $kind   status, format or purpose
+ * @param mixed  $value
+ * @return string|null
+ */
+function pg_email_campaign_allowed_value($kind, $value)
+{
+    $allowed = array(
+        'status' => array('ready', 'paused', 'cancelled'),
+        'format' => array('plain_text', 'html'),
+        'purpose' => array('commercial', 'transactional'),
+    );
+
+    if (!is_string($value) || !isset($allowed[$kind]) || !in_array($value, $allowed[$kind], true)) {
+        return null;
+    }
+
+    return $value;
+}
+
+/**
+ * The field problems as one error text for the screen, each problem on its
+ * own line, with a way back to the form.
+ *
+ * @param array $errors  pg_email_campaign_field_errors()
+ * @return string HTML
+ */
+function pg_email_campaign_field_errors_html($errors)
+{
+    $items = '';
+
+    foreach ($errors as $message) {
+        $items .= '<li>' . h($message) . '</li>';
+    }
+
+    return lang('Correct these fields and save again:') . '<ul class="mb-0">' . $items . '</ul> <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.';
 }

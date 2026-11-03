@@ -19,7 +19,7 @@ description: A staff move posts the status its page showed (status_was) and is r
 - Only `view_return.php`. A caller that leaves the key out compares nothing (`array_key_exists`); `null` or '' never matches.
 - The refund: `pg_return_refund()` re-reads under the same lock and goes on only from `received`, the one status a refund starts from.
 - Bulk approve (`view_returns.php`): only `requested` rows, and approved starts only from requested.
-- The customer's moves have one starting status each; no API or Workspace route moves a return. A future one passes `status_was` to `pg_return_staff_move()`.
+- The customer's moves have one starting status each. `POST /returns/{id}` (api/api-returns.md) passes the status it read as `status_was` to `pg_return_staff_move()`, and the caller's optional `status_was` is compared before that; no Workspace route moves a return.
 
 ## What does a form drawn before the field get?
 - Refused once, works after the reload: a tab opened before the deploy is the stalest page there is (unlike `balance_was`, gift-card-balance-edit.md, where a form without the field writes as before).

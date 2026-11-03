@@ -12,7 +12,7 @@ description: Panel top bar (#header) below 768px: the logo item (li.pg-brand-ite
 - The icon-only crop (`--pg-logo-icon-w`, `fill: url(#pgLogoGradientIcon)`) was removed with it; `pg_logo_svg()` still carries the unused icon gradient.
 
 ## What must a screen do because the heading is hidden?
-- Anything shown only in the `heading` of `pg_page_shell()` is gone on a phone. A document's status badge is printed in the page too (#4529, from #4435): the cheque's fact card has a Status field (`erp_cheque.php`), the stock count (`erp_stock_count.php`) and the purchase order (`edit_erp_purchase_order.php`) a Status line above their content. The heading badge stays for wide screens; the hiding rule is not touched.
+- Anything shown only in the `heading` of `pg_page_shell()` is gone on a phone. A document's status badge is printed in the page too (#4529, from #4435): the cheque's fact card has a Status field (`erp_cheque.php`), the stock count (`erp_stock_count.php`) and the purchase order (`edit_erp_purchase_order.php`) a Status line above their content, the sales quote (`edit_erp_quote.php`) a line with status, signature, account and valid-until date (#5464). The heading badge stays for wide screens; the hiding rule is not touched.
 
 ## What keeps it?
 - `tests/panel_header_phone_test.php`: the media block, no hiding rule outside it, the `pg-brand-item` class in `output_header()`'s markup (`includes/fn/output.php`).

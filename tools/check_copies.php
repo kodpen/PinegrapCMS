@@ -46,7 +46,6 @@ $intended = array(
 	'initialize_user',
 	'get_request_uri',
 	'check_if_request_is_secure',
-	'check_proxy_ssl_headers',
 );
 
 $repository = dirname(__DIR__);

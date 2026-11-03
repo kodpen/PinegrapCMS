@@ -47,7 +47,8 @@ $sort_levels = $list_state['sorts'];
 // reach pg_list_order_by(), and it writes nothing but these.
 $order_by = pg_list_order_by($sort_levels, array(
     'name'          => 'name',
-    'type'          => 'type',
+    // The extension of the name: files.type is cut to four characters.
+    'type'          => "LOWER(IF(LOCATE('.', files.name) > 0, SUBSTRING_INDEX(files.name, '.', -1), ''))",
     'size'          => 'size',
     'optimized'     => 'optimized',
     'folder'        => 'folder_name',
@@ -61,7 +62,7 @@ $query =
         COUNT(files.id)
     FROM files
     WHERE
-        (design = '1')";
+        (design = '1')" . pg_design_files_bin_where();
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 $all_design_files = $row[0];
@@ -85,7 +86,7 @@ $query =
     FROM files
     LEFT JOIN folder ON files.folder = folder.folder_id
     LEFT JOIN user ON files.user = user.user_id
-    WHERE (files.design = '1')
+    WHERE (files.design = '1')" . pg_design_files_bin_where() . "
     ORDER BY $order_by";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -95,13 +96,18 @@ while ($row = mysqli_fetch_assoc($result)) {
 }
 $output_rows = '';
 
+// Set once a row is an image: the image editor's configuration is printed
+// once after the table, never inside a cell, where DataTables would size the
+// column by its text and the list search would match it.
+$has_image = false;
+
 // Threshold for the optimization percentage: past it the percentages are not
 // computed, since each one decodes and recompresses an image.
 $unoptimized_image_types = ['jpg','jpeg','png','gif','bmp','tiff','tif','webp'];
 $unoptimized_count = 0;
 if ($files) {
     foreach ($files as $f) {
-        if (!$f['optimized'] && in_array(mb_strtolower($f['type']), $unoptimized_image_types)) {
+        if (!$f['optimized'] && in_array(pg_file_name_extension($f['name']), $unoptimized_image_types)) {
             $unoptimized_count++;
         }
     }
@@ -122,7 +128,7 @@ if ($files) {
         $output_optimize_button = '';
         
 
-        $file_type = mb_strtolower($file['type']);
+        $file_type = pg_file_name_extension($file['name']);
         if (    ($file_type == 'jpg')
                 or ($file_type == 'jpeg')
                 or ($file_type == 'png')
@@ -136,9 +142,10 @@ if ($files) {
                     $optimize_percent_html = $show_optimize_percent
                         ? '<span class="ps-1 pe-3 fs-smaller">' . h(lang(array('string' => '{var:1}%', 'vars' => calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file['name'])))) . '</span>'
                         : '';
-                    $output_optimize_button = '<button type="button" class="m-1 btn-data-control btn btn-outline theme-success border-2 " title="' . lang('Optimize this image') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/optimize.php?id=' . h($file['id']) . get_token_query_string_field() . '\'"><i class="bi bi-fast-forward-circle" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Optimize this image')) . '</span>' . $optimize_percent_html . '</button>';
+                    $output_optimize_button = '<button type="button" class="m-1 btn-data-control btn btn-outline theme-success border-2 " title="' . lang('Optimize this image') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/optimize.php?id=' . h($file['id']) . get_token_query_string_field() . h(escape_javascript('&send_to=' . urlencode(PATH . SOFTWARE_DIRECTORY . '/view_design_files.php'))) . '\'"><i class="bi bi-fast-forward-circle" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Optimize this image')) . '</span>' . $optimize_percent_html . '</button>';
                 }
-                $output_edit_image_button = '<button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " title="' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '" data-pg-image-edit="' . h($file['name']) . '"><i class="bi bi-brush"></i></button>' . pg_image_editor_includes();
+                $output_edit_image_button = '<button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " title="' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '" data-pg-image-edit="' . h($file['name']) . '"><i class="bi bi-brush"></i></button>';
+                $has_image = true;
         }
 
 
@@ -157,24 +164,15 @@ if ($files) {
 
         
         // If the file is an image.
-        if ((mb_strtolower($file['type']) == 'bmp') || (mb_strtolower($file['type']) == 'gif') || (mb_strtolower($file['type']) == 'jpg') || (mb_strtolower($file['type']) == 'jpeg') || (mb_strtolower($file['type']) == 'png') || (mb_strtolower($file['type']) == 'tif') || (mb_strtolower($file['type']) == 'tiff') || (mb_strtolower($file['type']) == 'webp')) {
+        if (in_array($file_type, array('bmp', 'gif', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'webp'), true)) {
 
-            // Get the dimensions of the image.
+            // The dimensions in the File Manager's format ("20 × 10 px");
+            // nothing for a file that is not a readable image.
             $image_size = @getimagesize(FILE_DIRECTORY_PATH . '/' . $file['name']);
-            $image_width = $image_size[0];
-            $image_height = $image_size[1];
-
-            // Output the image dimensions to the table.
-            $output_image_dimensions = lang('width') . ': ' . $image_width . ' px ' . lang('height') . ': ' . $image_height . ' px';
-
-            // Set the maximum dimension size for the image.
-            $max_dimension = 75;
-
-            // Call function to resize image.
-            $thumbnail_dimensions = get_thumbnail_dimensions($image_width, $image_height, $max_dimension);
+            $output_image_dimensions = ($image_size !== false) ? pg_image_dimensions_label($image_size[0], $image_size[1]) : '';
 
             // Output thumnail.
-            $output_thumbnail ='<img style="width: 50px;height:50px;object-fit:cover;" title="' . $output_image_dimensions . '" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(PATH . encode_url_path($file['name'])) . '" />';
+            $output_thumbnail ='<img style="width: 50px;height:50px;object-fit:cover;" title="' . h($output_image_dimensions) . '" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(PATH . encode_url_path($file['name'])) . '" />';
 
         } else {
 
@@ -199,7 +197,7 @@ if ($files) {
                 </td>
                 <td class="align-middle text-center">' . $output_thumbnail . '</td>
                 <td class="align-middle chart_label" title="' . h($file['name']) . '">' . h($file['name']) . '</td>
-                <td class="align-middle">' . h($file['type']) . '</td>
+                <td class="align-middle">' . h(pg_file_name_extension($file['name'])) . '</td>
                 <td class="align-middle">' . h($file['size']) . '</td>
                 <td class="align-middle text-center">' . $optimized . '</td>
                 <td class="align-middle text-start text-wrap">' . pg_folder_list_name($file['folder_name']) . '</td>
@@ -275,6 +273,7 @@ pg_page_shell(
             </div>
         </div>
     </div>
+    ' . ($has_image ? pg_image_editor_includes() : '') . '
 </main>
 ' .
 output_footer();

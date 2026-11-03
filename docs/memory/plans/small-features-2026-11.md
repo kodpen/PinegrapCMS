@@ -8,7 +8,7 @@ description: Plan (owner 2026-11-02): eight small independent features: address 
 - Global, as every plan of the review: nothing here is built around one country; the EU VAT step applies only to sites that sell into the EU and changes nothing elsewhere.
 
 ## Which steps, in one line each?
-1. SF1 Address autocomplete: a provider driver (Google Places, Mapbox, Photon) behind a site endpoint, filling the address boxes of checkout, the account's address book and the panel forms; the key never reaches the browser. `commerce/address-labels-by-country.md` is the base; `plans/address-fields-by-country.md` left it out on purpose.
+1. SF1 Address autocomplete: a provider driver (Google Places, Mapbox, Photon) behind a site endpoint, filling the address boxes of checkout, the account's address book and the panel forms; the key never reaches the browser. `commerce/address-labels-by-country.md` is the base; the place lists (`commerce/place-packs.md`) left it out on purpose.
 2. SF2 Accessibility statement: a system widget that writes the statement the EU Accessibility Act and EN 301 549 ask for from the nightly report (`platform/accessibility-report.md`) and a settings card.
 3. SF3 Site search tuning: a daily rollup of search terms and zero-result searches (today only `visitors.site_search_terms` on the visit, `visitors/site-search-terms-on-visit.md`), synonyms and promoted results, a Visitors section.
 4. SF4 Product questions: a question-and-answer thread on product pages on the comments system (`designer/comments-widget-product-page.md`), the staff answer marked, the asker mailed.
@@ -21,11 +21,13 @@ description: Plan (owner 2026-11-02): eight small independent features: address 
 - Legacy and totals: SF5 and SF6 change no totals code; pre-order rides the backorder path, reverse charge the `tax_exempt` flag the billing widget already posts. Every outside call goes through `pg_curl_run()` with a sealed key; a provider that fails leaves the box as typed.
 - Texts through `tr_add.php`; each step writes its memory topic file and tests; a schema change is one sub-step of the open version's migration, asked first.
 
-## Which questions are open? (architect, each before its step)
-1. SF3: table `site_search_daily` (`sha1(date|term)`, term, searches, zero results, clicks) in the open version's migration, and `config.search_synonyms` / `config.search_promoted` as TEXT JSON (`data/config-table-no-varchar.md`); recommended as written.
-2. SF4: `comments.kind` ENUM (comment, question, answer) and `comments.answer_of`; recommended as written, or questions as a plain thread with a staff badge and no schema.
-3. SF5: `products.preorder` TINYINT and `products.preorder_date` DATE; recommended as written.
-4. SF6: whether a VIES-validated id may set `tax_exempt` on its own (recommended, with the id and the check time written on the order) or only tick a box the customer confirms.
+## Which questions are decided? (#5047, #5065, #5076)
+1. SF3: `site_search_daily` (`sha1(date|term)`) and `config.search_synonyms` / `config.search_promoted` TEXT JSON; shape in the issue.
+2. SF4: `comments.kind` ENUM(comment, question, answer) and `comments.answer_of`.
+3. SF5: `products.preorder` TINYINT and `products.preorder_date` DATE.
+4. SF6, owner: a VIES-validated id sets the tax-exempt flag on its own; the id and the check time are written on the order.
+5. SF7 site manifest (#5065): no switch and no column; `site.webmanifest` is linked and served while the site icon is set (`platform/site-icon.md`); a follow-up adds at most `theme_color`.
+6. SF8 delivery (#5076): no schema; targets in one sealed `notify_channels` entry, messages as `api_webhook_queue` rows with `webhook_id = 0` on the same retry ladder; stuck counts take `webhook_id > 0`; no token or URL in error texts.
 
 ## Where does it start?
 - SF1, SF2, SF7 and SF8 need no answer and start at once; SF3-SF6 after their question. Steps: `small-features-2026-11-steps.md` (SF1-SF3), `-steps-2.md` (SF4-SF8).

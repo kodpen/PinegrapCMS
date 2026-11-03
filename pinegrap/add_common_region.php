@@ -26,7 +26,7 @@ $liveform = new liveform('add_common_region');
 if (!isset($_POST['name'])) {
     // Empty on a first visit; the posted values after a refused name.
     list($name, $content) = pg_common_region_form_values(array('name' => $liveform->get_field_value('name'), 'content' => $liveform->get_field_value('content')));
-    $name_taken = $liveform->check_field_error('name');
+    $name_error = pg_region_form_name_error_text($liveform);
 
     $output = '';
     $output .= 
@@ -46,7 +46,7 @@ if (!isset($_POST['name'])) {
                 ' . $liveform->output_errors() . '
                 <form name="form" action="add_common_region.php" method="post">
                     ' . get_token_field() . '
-                    ' . pg_common_region_form_card($name, $content, '', true, $name_taken) . '
+                    ' . pg_common_region_form_card($name, $content, '', true, $name_error) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -75,11 +75,14 @@ if (!isset($_POST['name'])) {
 
     list($name, $content) = pg_common_region_form_values($_POST);
 
-    // A name another region already has is refused: the site reads only one
-    // row per name. The screen comes back with the posted values.
-    if (pg_cregion_name_taken($name)) {
+    // A blank or too long name, or one another region already has (the site
+    // reads only one row per name), is refused. The screen comes back with
+    // the posted values.
+    $name_error = pg_region_form_name_refusal($name, pg_cregion_name_taken($name));
+
+    if ($name_error !== '') {
         $liveform->add_fields_to_session(array('trim' => false));
-        $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
+        $liveform->mark_error('name', $name_error);
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_common_region.php');
         exit();
     }

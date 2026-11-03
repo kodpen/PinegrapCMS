@@ -15,7 +15,7 @@ description: Designer form controls: label[for] protection, fieldset radio/check
 - A field's type is the control itself; the panel has no type select. Changing the type = changing the control (Input panel `type`, or another palette block).
 
 ## What is in the palette "Form" group?
-- `CF_PALETTE` / `CF_PALETTE_ORDER` (style_designer.js): text, email, phone, number, URL, password, textarea, select / multi-select, checkbox, checkbox group, radio group, switch, date, time, datetime, file, color, range, hidden, floating label, label, field group, submit, reset, CAPTCHA, form. Each is `div > label + control` (group: `fieldset > legend + boxes`), a Turkish default label, a seed `name`.
+- `CF_PALETTE` / `CF_PALETTE_ORDER` (style_designer.js): text, email, phone, number, URL, password, textarea, select / multi-select, checkbox, checkbox group, radio group, switch, date, time, datetime, file, color, range, hidden, floating label, label, field group, step (a break, `custom-form-steps.md`), submit, reset, CAPTCHA, form. Each is `div > label + control` (group: `fieldset > legend + boxes`), a Turkish default label, a seed `name`.
 - The `form` item is for the Custom Form widget; dropped elsewhere with no action it gets the audit hint `form_no_action` (designer-audit-form-action.md), the drop is not refused.
 - A new control type goes into the palette; NOTHING is added to the `form_fields.type` enum: any `type` not in the list is a text box and `custom_form.php` validates it. (Exception: signature, see signature-receipt-and-output.)
 

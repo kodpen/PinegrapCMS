@@ -17,3 +17,7 @@ description: How waf_log aggregates by sha1 key + 5 min bucket, why the query st
 
 ## How should reports count?
 - Use `SUM(hit_count)`, not `COUNT(*)`; otherwise an attack looks like a handful of events.
+- A ban row (`ban`, `would-ban`) is written beside the row of the request that earned it, so the screen's request cards and the toolbar's request count leave it out; bans are counted on their own (`pg_waf_log_list_request_actions()`, #5859).
+
+## Do the two search boxes of the log screen agree?
+- Yes: the toolbar search (which also filters the summary) goes through `pg_waf_log_list_search()`, the table box's rule: every word, address, method, URL, user agent, rule, reference, target, match or an action's shown name (#5854). A filter that finds nothing says so with a link that clears it, not "no events in this period".

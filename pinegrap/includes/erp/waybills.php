@@ -256,14 +256,30 @@ function erp_waybill_invoice_url($waybill)
 }
 
 /**
- * The unit codes offered on a line: the invoice editor's list, so a line
- * carried over to the invoice keeps its unit.
+ * The unit codes offered on a line of a note, an invoice, a quote or a
+ * purchase order, UN/ECE Recommendation 20 codes as the e-document side
+ * expects them; free text is still accepted. One list here, loaded with the
+ * ERP, so the note's screen, drawer and PDF name the unit the form offered
+ * (before, they knew only C62 unless the invoice form was loaded).
  *
  * @return array  code => label
  */
 function erp_waybill_unit_codes()
 {
-    return function_exists('erp_invoice_form_unit_codes') ? erp_invoice_form_unit_codes() : array('C62' => lang('piece'));
+    return array(
+        'C62' => lang('piece'),
+        'KGM' => lang('kilogram'),
+        'GRM' => lang('gram'),
+        'MTR' => lang('metre'),
+        'MTK' => lang('square metre'),
+        'LTR' => lang('litre'),
+        'HUR' => lang('hour'),
+        'DAY' => lang('day'),
+        'MON' => lang('month'),
+        'SET' => lang('set'),
+        'PA' => lang('package'),
+        'BX' => lang('box'),
+    );
 }
 
 /**
@@ -295,15 +311,25 @@ function erp_waybill_lines_build($lines_in)
 {
     $lines_in = array_values((array) $lines_in);
 
+    // The refusal names the box it is about (lines[n][quantity], n counted
+    // from 0 in the order posted, as the form draws its rows again), so the
+    // screen can mark it.
+    $fail = function ($message, $field = '_error') {
+        return array('lines' => array(), 'error' => $message, 'field' => $field);
+    };
+
     if (count($lines_in) > ERP_WAYBILL_MAX_LINES) {
-        return array('lines' => array(), 'error' => lang(array('string' => 'A delivery note can carry at most {var:1} lines.', 'vars' => ERP_WAYBILL_MAX_LINES)));
+        return $fail(lang(array('string' => 'A delivery note can carry at most {var:1} lines.', 'vars' => ERP_WAYBILL_MAX_LINES)));
     }
 
     $lines = array();
     $row_no = 0;
 
-    foreach ($lines_in as $line) {
+    foreach ($lines_in as $index => $line) {
         $row_no++;
+        $field = function ($name) use ($index) {
+            return 'lines[' . $index . '][' . $name . ']';
+        };
 
         // One value per field, from the form or the API alike: one sent as
         // an array is not given, rather than a line described as "Array".
@@ -325,10 +351,10 @@ function erp_waybill_lines_build($lines_in)
         }
 
         if ($description === '') {
-            return array('lines' => array(), 'error' => lang(array('string' => 'Line {var:1} needs a description.', 'vars' => $row_no)));
+            return $fail(lang(array('string' => 'Line {var:1} needs a description.', 'vars' => $row_no)), $field('description'));
         }
         if (($quantity <= 0) || !$quantity_valid) {
-            return array('lines' => array(), 'error' => lang(array('string' => 'Line {var:1} needs a quantity greater than zero.', 'vars' => $row_no)));
+            return $fail(lang(array('string' => 'Line {var:1} needs a quantity greater than zero.', 'vars' => $row_no)), $field('quantity'));
         }
 
         $lines[] = array(
@@ -339,7 +365,7 @@ function erp_waybill_lines_build($lines_in)
         );
     }
 
-    return array('lines' => $lines, 'error' => '');
+    return array('lines' => $lines, 'error' => '', 'field' => '');
 }
 
 /**
@@ -359,14 +385,15 @@ function erp_waybill_lines_build($lines_in)
  */
 function erp_waybill_header_build($data, $account_required = true)
 {
-    $fail = function ($message) {
-        return array('header' => array(), 'error' => $message);
+    // The refusal names the box it is about, for the screen to mark.
+    $fail = function ($message, $field = '_error') {
+        return array('header' => array(), 'error' => $message, 'field' => $field);
     };
 
     $account_id = (int) ($data['account_id'] ?? 0);
 
     if (($account_required || ($account_id > 0)) && (($account_id <= 0) || !is_array(erp_account($account_id)))) {
-        return $fail(lang('Choose an account.'));
+        return $fail(lang('Choose an account.'), 'account_id');
     }
 
     $is_date = function ($value) {
@@ -383,7 +410,7 @@ function erp_waybill_header_build($data, $account_required = true)
         $issue_date = date('Y-m-d');
     }
     if (!$is_date($issue_date)) {
-        return $fail(lang('Please enter a valid date.'));
+        return $fail(lang('Please enter a valid date.'), 'issue_date');
     }
 
     $ship_date = trim((string) ($data['ship_date'] ?? ''));
@@ -391,14 +418,14 @@ function erp_waybill_header_build($data, $account_required = true)
         $ship_date = $issue_date;
     }
     if (!$is_date($ship_date)) {
-        return $fail(lang('Please enter a valid shipment date.'));
+        return $fail(lang('Please enter a valid shipment date.'), 'ship_date');
     }
 
     // The hour the goods left, as the printed note states it. Optional.
     $ship_time = trim((string) ($data['ship_time'] ?? ''));
     if ($ship_time !== '') {
         if (preg_match('/^(\d{1,2}):(\d{2})$/', $ship_time, $m) !== 1 || ((int) $m[1] > 23) || ((int) $m[2] > 59)) {
-            return $fail(lang('Please enter the shipment time as HH:MM.'));
+            return $fail(lang('Please enter the shipment time as HH:MM.'), 'ship_time');
         }
         $ship_time = sprintf('%02d:%02d:00', (int) $m[1], (int) $m[2]);
     } else {
@@ -412,17 +439,17 @@ function erp_waybill_header_build($data, $account_required = true)
     if (erp_account_country('') === 'TR') {
         $carrier_vkn = substr(preg_replace('/\D/', '', (string) ($data['carrier_vkn'] ?? '')), 0, 11);
         if (($carrier_vkn !== '') && !in_array(strlen($carrier_vkn), array(10, 11), true)) {
-            return $fail(lang('The carrier tax number has to be 10 or 11 digits.'));
+            return $fail(lang('The carrier tax number has to be 10 or 11 digits.'), 'carrier_vkn');
         }
 
         $driver_tckn = substr(preg_replace('/\D/', '', (string) ($data['driver_tckn'] ?? '')), 0, 11);
         if (($driver_tckn !== '') && (strlen($driver_tckn) !== 11)) {
-            return $fail(lang('The driver ID number has to be 11 digits.'));
+            return $fail(lang('The driver ID number has to be 11 digits.'), 'driver_tckn');
         }
     } else {
         $carrier = erp_tax_number_check((string) ($data['carrier_vkn'] ?? ''));
         if ($carrier['error'] !== '') {
-            return $fail(lang('The carrier tax number:') . ' ' . $carrier['error']);
+            return $fail(lang('The carrier tax number:') . ' ' . $carrier['error'], 'carrier_vkn');
         }
         $carrier_vkn = $carrier['value'];
         $driver_tckn = mb_substr(trim((string) ($data['driver_tckn'] ?? '')), 0, 32);
@@ -462,7 +489,7 @@ function erp_waybill_header_build($data, $account_required = true)
         'ship_to_state' => ($country === 'TR') ? '' : $text('ship_to_state', 100),
         'ship_to_country' => $country,
         'notes' => mb_substr(trim((string) ($data['notes'] ?? '')), 0, 5000),
-    ), 'error' => '');
+    ), 'error' => '', 'field' => '');
 }
 
 /**
@@ -500,23 +527,23 @@ function erp_waybills_for_order($order_id)
  *
  * @param array $data  See erp_waybill_header_build(), plus lines (see
  *                     erp_waybill_lines_build()), invoice_id and created_by
- * @return array ['success' => bool, 'waybill_id' => int, 'full_number' => string, 'error' => string, 'written_back' => array]
+ * @return array ['success' => bool, 'waybill_id' => int, 'full_number' => string, 'error' => string, 'field' => string, 'written_back' => array]
  */
 function erp_waybill_create($data)
 {
-    $fail = function ($message) {
-        return array('success' => false, 'waybill_id' => 0, 'full_number' => '', 'error' => $message, 'written_back' => array());
+    $fail = function ($message, $field = '_error') {
+        return array('success' => false, 'waybill_id' => 0, 'full_number' => '', 'error' => $message, 'field' => $field, 'written_back' => array());
     };
 
     $built_header = erp_waybill_header_build($data);
     if ($built_header['error'] !== '') {
-        return $fail($built_header['error']);
+        return $fail($built_header['error'], $built_header['field']);
     }
     $header = $built_header['header'];
 
     $built = erp_waybill_lines_build($data['lines'] ?? array());
     if ($built['error'] !== '') {
-        return $fail($built['error']);
+        return $fail($built['error'], $built['field']);
     }
     if (empty($built['lines'])) {
         return $fail(lang('Enter at least one line.'));
@@ -524,6 +551,21 @@ function erp_waybill_create($data)
 
     if (($header['order_id'] > 0) && erp_waybills_for_order($header['order_id'])) {
         return $fail(lang('This order already has a delivery note. Cancel it first to write another.'));
+    }
+
+    // A named invoice is checked again on save, not only when the form was
+    // opened: the form's account can be changed, and a second tab or a
+    // resent form would tie a second note to it.
+    if ((int) $header['invoice_id'] > 0) {
+        $named = db_item("SELECT id, full_number, account_id, direction, doc_type, status FROM erp_invoices WHERE id = '" . (int) $header['invoice_id'] . "' LIMIT 1");
+
+        if (is_array($named) && ((string) $named['status'] !== 'cancelled')) {
+            $refusal = erp_waybill_invoice_refusal($named, (int) $header['account_id'], erp_waybills_for_invoice((int) $named['id']));
+
+            if ($refusal !== '') {
+                return $fail($refusal);
+            }
+        }
     }
 
     // The invoice the note belongs to: named, or the order's. A named invoice
@@ -793,6 +835,41 @@ function erp_waybills_for_invoice($invoice_id)
 }
 
 /**
+ * Why a delivery note cannot be tied to an invoice, or '' when it can: the
+ * note is for what that invoice sold, so the invoice has to be a sales
+ * invoice of the note's account with no note yet. One invoice, one note, as
+ * one order, one note. An invoice with no account yet (an order's, whose
+ * account opens with the note) is not judged by account.
+ *
+ * @param array $invoice     erp_invoices row: full_number, account_id,
+ *                           direction, doc_type
+ * @param int   $account_id  The note's account
+ * @param array $waybills    erp_waybills_for_invoice() rows
+ * @return string
+ */
+function erp_waybill_invoice_refusal($invoice, $account_id, $waybills)
+{
+    $number = (string) ($invoice['full_number'] ?? '');
+
+    if (((string) ($invoice['doc_type'] ?? 'invoice') !== 'invoice') || ((string) ($invoice['direction'] ?? 'sales') !== 'sales')) {
+        return lang(array('string' => 'A delivery note is written only for a sales invoice; {var:1} is not one.', 'vars' => $number));
+    }
+
+    $invoice_account = (int) ($invoice['account_id'] ?? 0);
+
+    if (($invoice_account > 0) && ((int) $account_id !== $invoice_account)) {
+        return lang(array('string' => 'Invoice {var:1} belongs to another account; the delivery note has to be for the same account.', 'vars' => $number));
+    }
+
+    if (!empty($waybills)) {
+        $first = reset($waybills);
+        return lang(array('string' => 'Invoice {var:1} already has delivery note {var:2}.', 'vars' => array($number, (string) ($first['full_number'] ?? ''))));
+    }
+
+    return '';
+}
+
+/**
  * Why a draft opened from a delivery note cannot go to another account: the
  * note was written for its account, and the invoice is what that account
  * owes for the goods on it. Changing the draft's account would tie the note
@@ -993,8 +1070,7 @@ function erp_waybill_cancel($waybill_id)
 
 /**
  * The recipient of a note left empty is the account: the goods go to the
- * customer at the address on its card. A typed address under an empty name
- * keeps the address.
+ * customer at the address on its card.
  *
  * @param array $data  See erp_waybill_header_build()
  * @return array  $data with the recipient filled where it was empty
@@ -1007,17 +1083,50 @@ function erp_waybill_ship_to_default($data)
 
     $account = erp_account((int) ($data['account_id'] ?? 0));
 
-    if (!is_array($account)) {
+    return is_array($account) ? erp_waybill_ship_to_fill($data, $account, erp_default_country_code()) : $data;
+}
+
+/**
+ * Fill an empty recipient from the account. Pure.
+ *
+ * The account's street, district, city and state are taken only when none of
+ * them was typed: a typed city or state is kept (before, only the street was
+ * looked at and a typed München, Bayern was replaced without a word). The
+ * country is the account's only when the box is empty or still on the form's
+ * default; a country chosen by hand stays.
+ *
+ * @param array  $data             See erp_waybill_header_build()
+ * @param array  $account          erp_accounts row: title, address,
+ *                                 district, city, state, country_code
+ * @param string $default_country  The country the form starts with
+ * @return array
+ */
+function erp_waybill_ship_to_fill($data, $account, $default_country = '')
+{
+    if (trim((string) ($data['ship_to_title'] ?? '')) !== '') {
         return $data;
     }
 
-    $data['ship_to_title'] = (string) $account['title'];
+    $data['ship_to_title'] = (string) ($account['title'] ?? '');
 
-    if (trim((string) ($data['ship_to_address'] ?? '')) === '') {
-        $data['ship_to_address'] = (string) $account['address'];
-        $data['ship_to_district'] = (string) $account['district'];
-        $data['ship_to_city'] = (string) $account['city'];
-        $data['ship_to_state'] = (string) ($account['state'] ?? '');
+    $parts = array('ship_to_address' => 'address', 'ship_to_district' => 'district', 'ship_to_city' => 'city', 'ship_to_state' => 'state');
+    $typed = false;
+    foreach ($parts as $key => $column) {
+        if (trim((string) ($data[$key] ?? '')) !== '') {
+            $typed = true;
+        }
+    }
+
+    if ($typed) {
+        return $data;
+    }
+
+    foreach ($parts as $key => $column) {
+        $data[$key] = (string) ($account[$column] ?? '');
+    }
+
+    $country = strtoupper(trim((string) ($data['ship_to_country'] ?? '')));
+    if ((($country === '') || ($country === strtoupper((string) $default_country))) && (trim((string) ($account['country_code'] ?? '')) !== '')) {
         $data['ship_to_country'] = (string) $account['country_code'];
     }
 

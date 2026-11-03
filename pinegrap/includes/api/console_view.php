@@ -65,6 +65,7 @@ function api_console_endpoints_html($try_hint = '') {
 		'site_log'       => lang('Site Log'),
 		'campaigns'      => lang('Campaigns'),
 		'contact_groups' => lang('Contact Groups'),
+		'users'          => lang('Users'),
 		'files'          => lang('Files'),
 		'forms'          => lang('Forms'),
 		'seo'            => lang('SEO'),
@@ -483,6 +484,10 @@ window.pgApiConsole = (function () {
 			'string' => '{var:1} could not be read as a list. Enter a JSON array such as ["a", "b"], or values separated by commas.',
 			'vars'   => '%NAME%'
 		)), JSON_UNESCAPED_UNICODE) . ',
+		objectUnreadable: ' . json_encode(lang(array(
+			'string' => '{var:1} could not be read as an object. Enter a JSON object such as {"key": "value"}.',
+			'vars'   => '%NAME%'
+		)), JSON_UNESCAPED_UNICODE) . ',
 		noCredential: ' . json_encode(lang('No credential is available for this call.'), JSON_UNESCAPED_UNICODE) . '
 	};
 
@@ -517,6 +522,9 @@ window.pgApiConsole = (function () {
 			if (type === "list") {
 				html += "<textarea rows=\'2\' class=\'form-control form-control-sm doc-field\'" + attributes +
 					" placeholder=\'[&quot;a&quot;, &quot;b&quot;]\'></textarea>";
+			} else if (type === "object") {
+				html += "<textarea rows=\'3\' class=\'form-control form-control-sm doc-field\'" + attributes +
+					" spellcheck=\'false\' placeholder=\'{&quot;key&quot;: &quot;value&quot;}\'></textarea>";
 			} else if (type === "enum") {
 				var values = [];
 				try { values = JSON.parse(row.dataset.values || "[]"); } catch (e) {}
@@ -545,6 +553,16 @@ window.pgApiConsole = (function () {
 		if (text.indexOf("[") > -1 || text.indexOf("{") > -1) { return null; }
 		return text.split(",").map(function (item) { return item.trim(); })
 			.filter(function (item) { return item !== ""; });
+	}
+
+	// An object field has to be a JSON object: an array, a number or plain
+	// text comes back as null so the caller can name the field.
+	function parseObject(text) {
+		try {
+			var parsed = JSON.parse(text);
+			if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) { return parsed; }
+		} catch (e) {}
+		return null;
 	}
 
 	function showProblem(panel, text) {
@@ -625,6 +643,14 @@ window.pgApiConsole = (function () {
 					return;
 				}
 				body[name] = list;
+				hasBody = true;
+			} else if (field.dataset.type === "object") {
+				var object = parseObject(value);
+				if (object === null) {
+					problem = T.objectUnreadable.replace("%NAME%", name);
+					return;
+				}
+				body[name] = object;
 				hasBody = true;
 			} else {
 				body[name] = value;

@@ -60,6 +60,7 @@ if ($_POST) {
 			$provider = $providers[$provider_key];
 
 			$options = array();
+			$option_error = '';
 
 			foreach ($provider['options'] as $option_key => $option) {
 
@@ -69,6 +70,12 @@ if ($_POST) {
 
 				$options[$option_key] = ($value !== '') ? mb_substr($value, 0, 100) : (string) $option['default'];
 
+				// A value the provider cannot read is refused, never kept
+				// and replaced by the default at connection time.
+				if (($option_error === '') && !pg_connect_option_valid($option, $options[$option_key])) {
+					$option_error = isset($option['invalid']) ? $option['invalid'] : $option['label'];
+				}
+
 			}
 
 			$client_id = (isset($_POST['client_id']) && is_string($_POST['client_id'])) ? trim($_POST['client_id']) : '';
@@ -77,6 +84,10 @@ if ($_POST) {
 			if (mb_strlen($client_id) > 255) {
 
 				$liveform->add_error(lang('The client ID is too long.'));
+
+			} elseif ($option_error !== '') {
+
+				$liveform->add_error(h($option_error));
 
 			} elseif (pg_connect_app_save($provider_key, $client_id, $client_secret, $options, !empty($_POST['enabled']), (int) $user['id'])) {
 
@@ -89,6 +100,20 @@ if ($_POST) {
 				$liveform->add_error(lang('This site has no encryption key, so it cannot keep the permissions of a connected account.'));
 
 			}
+
+		}
+
+	} elseif ($action === 'remove_app') {
+
+		// Only Google has an application to fall back to (Sign in with
+		// Google); for the others removing it would just stop every account.
+		if (pg_signin_google_app() !== null) {
+
+			pg_connect_app_remove('google');
+
+			$liveform->add_notice(lang('Google features use the Sign in with Google application again.'));
+
+			log_activity(lang(array('string' => 'removed the {var:1} application of connected accounts', 'vars' => 'Google')), $_SESSION['sessionusername']);
 
 		}
 
@@ -269,7 +294,23 @@ foreach ($providers as $provider_key => $provider) {
 		$setup_steps .= '<li>' . h($step) . '</li>';
 	}
 
-	$secret_stored = is_array($app) && $app['secret_stored'] && ($app['source'] === 'connect');
+	// The Sign in with Google application's secret counts as stored: saving
+	// the form unchanged keeps it (pg_connect_app_save()).
+	$secret_stored = is_array($app) && $app['secret_stored'];
+
+	$option_invalid = is_array($app) && isset($app['options_valid']) && !$app['options_valid'];
+
+	if ($ready) {
+		$hint = '';
+	} elseif ($option_invalid) {
+		$hint = lang('The directory (tenant) must be common, organizations, consumers, a domain name or a directory ID.');
+	} elseif (is_array($app) && !$app['enabled']) {
+		$hint = lang('Connections through this application are off. Turn them on with the switch below.');
+	} else {
+		$hint = lang('Set up the application below first.');
+	}
+
+	$can_fall_back = ($provider_key === 'google') && is_array($app) && ($app['source'] === 'connect') && (pg_signin_google_app() !== null);
 
 	$app_form = '
 		<form method="post" action="connections.php" class="mt-3">
@@ -281,12 +322,12 @@ foreach ($providers as $provider_key => $provider) {
 				: '') . '
 			<ol class="small ps-5 mb-5">' . $setup_steps . '</ol>
 			<label class="form-label" for="redirect_' . h($provider_key) . '">' . h(lang('Redirect address')) . '</label>
-			<div class="input-group input-group-sm mb-5">
+			<div class="input-group input-group-sm mb-1">
 				<input type="text" class="form-control font-monospace" id="redirect_' . h($provider_key) . '" value="' . h($redirect_uri) . '" readonly>
 				<button type="button" class="btn btn-outline theme-secondary connections-copy" data-target="redirect_' . h($provider_key) . '">
 					<i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
-				<span class="visually-hidden" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>
 			</div>
+			<div class="form-text mb-5 connections-copy-status" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></div>
 			<div class="row g-3">
 				<div class="col-12 md:col-6">
 					<label for="client_id_' . h($provider_key) . '" class="form-label">' . h(lang('Client ID')) . '</label>
@@ -312,6 +353,11 @@ foreach ($providers as $provider_key => $provider) {
 				<button type="submit" name="submit_save" class="btn btn-sm btn-solid theme-primary"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
 				<a class="btn btn-sm btn-outline theme-secondary" href="' . h($provider['console_url']) . '" target="_blank" rel="noopener">
 					<i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Open the {var:1} console', 'vars' => $provider['label']))) . '</a>
+				' . ($can_fall_back
+					? '<button type="button" class="btn btn-sm btn-outline theme-secondary connections-action" data-action="remove_app" data-id="0"
+						data-confirm="' . h(lang('The application saved here is removed and Google features use the Sign in with Google application of the Security settings again. Connected accounts stay.')) . '">
+						<i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Use the Sign in with Google application')) . '</button>'
+					: '') . '
 			</div>
 		</form>';
 
@@ -329,7 +375,7 @@ foreach ($providers as $provider_key => $provider) {
 					<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 connections-connect"
 						data-provider="' . h($provider_key) . '" data-connection="0"' . (($ready && $can_seal) ? '' : ' disabled') . '>
 						<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $provider['label']))) . '</button>
-					' . ($ready ? '' : '<div class="form-text">' . h(lang('Set up the application below first.')) . '</div>') . '
+					' . (($hint === '') ? '' : '<div class="form-text">' . h($hint) . '</div>') . '
 					<details class="mt-7"' . ($ready ? '' : ' open') . '>
 						<summary class="fw-semibold">' . h(lang('Application')) . '</summary>
 						' . $app_form . '
@@ -407,9 +453,9 @@ echo pg_page_shell(array(
 
 		if (copy) {
 			// The button keeps its label; only the icon changes and the
-			// status beside it says whether the copy happened.
+			// visible status under the field says whether the copy happened.
 			var field = document.getElementById(copy.dataset.target);
-			var status = copy.parentNode.querySelector("[role=status]");
+			var status = copy.closest(".input-group").nextElementSibling;
 			var icon = copy.querySelector("i");
 			var done = function () {
 				icon.className = "bi bi-check2 me-1";
@@ -430,6 +476,7 @@ echo pg_page_shell(array(
 				if (copied) {
 					done();
 				} else {
+					icon.className = "bi bi-exclamation-triangle me-1";
 					status.textContent = status.getAttribute("data-refused");
 				}
 			};

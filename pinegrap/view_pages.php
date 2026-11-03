@@ -179,7 +179,7 @@ switch ($_SESSION['software']['device_type']) {
         $style_column_heading_label = lang('Desktop Page Style');
 
         // output toggle to show mobile
-        $output_device_type_toggle = '<a class="btn btn-sm btn-solid theme-secondary p-1 material-icons" href="update_device_type.php?device_type=mobile&amp;send_to=' . h(urlencode(get_request_uri())) . get_token_query_string_field() . '" title="' . lang('Show mobile Page Styles') . '">phone_iphone</a>';
+        $output_device_type_toggle = '<a class="btn btn-sm btn-solid theme-secondary p-1" href="update_device_type.php?device_type=mobile&amp;send_to=' . h(urlencode(get_request_uri())) . get_token_query_string_field() . '" title="' . lang('Show mobile Page Styles') . '" aria-label="' . lang('Show mobile Page Styles') . '"><span class="material-icons" aria-hidden="true">phone_iphone</span></a>';
 
         break;
     
@@ -191,7 +191,7 @@ switch ($_SESSION['software']['device_type']) {
         $style_column_heading_label = lang('Mobile Page Style');
 
         // output toggle to show desktop
-        $output_device_type_toggle = '<a class="btn btn-sm btn-solid theme-secondary p-1 material-icons" href="update_device_type.php?device_type=desktop&amp;send_to=' . h(urlencode(get_request_uri())) . get_token_query_string_field() . '" title="' . lang('Show desktop Page Styles') . '">computer</a>';
+        $output_device_type_toggle = '<a class="btn btn-sm btn-solid theme-secondary p-1" href="update_device_type.php?device_type=desktop&amp;send_to=' . h(urlencode(get_request_uri())) . get_token_query_string_field() . '" title="' . lang('Show desktop Page Styles') . '" aria-label="' . lang('Show desktop Page Styles') . '"><span class="material-icons" aria-hidden="true">computer</span></a>';
 
         break;
 }
@@ -886,7 +886,9 @@ switch ($filter) {
         }
 
         // Set the query filter.
-        $where .= ' (page.seo_checked_at = 0)';
+        // Never scored, or marked stale by a change since the last score,
+        // as the subheading says.
+        $where .= ' ((page.seo_checked_at = 0) OR (page.seo_analysis_current = 0))';
 
         // Change the heading and subheading.
         $heading = lang('SEO Score Not Calculated');
@@ -1236,7 +1238,7 @@ if ($pages) {
                     <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_edit_url . '\'"><i class="bi bi-pencil"></i></button>
                     <button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " title="' . lang('Preview') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-link"></i></button>
                 </td>
-                <td class="align-middle chart_label position-relative">' . $output_home_icon . h($page['page_name']) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" aria-label="' . h(pg_seo_link_name($page)) . '" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=page&amp;id=' . $page['page_id'] . get_token_query_string_field() . '">' . pg_seo_render_bar($page) . '</a></td>
+                <td class="align-middle chart_label position-relative">' . $output_home_icon . h($page['page_name']) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" data-pg-seo-bar="page:' . (int) $page['page_id'] . '" aria-label="' . h(pg_seo_link_name($page)) . '" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=page&amp;id=' . $page['page_id'] . get_token_query_string_field() . '">' . pg_seo_render_bar($page) . '</a></td>
                 ' . $output_form_name_row . '
                 ' . $output_form_enabled_row . '
                 <td class="align-middle text-start text-wrap ' . $page['folder_access_control_type'] . '">' . pg_folder_list_name($page['folder_name'], $page['folder_access_control_type']) . '</td>
@@ -1245,7 +1247,7 @@ if ($pages) {
                 <td class="align-middle text-center">' . $output_search_check_mark . '</td>
                 <td class="align-middle text-center">' . $output_comments_check_mark . '</td>
                 <td class="align-middle text-center">' . $output_sitemap_check_mark . '</td>
-                <td class="align-middle text-center"><a href="javascript:void(0)" class="pg-seo-open text-decoration-none" aria-label="' . h(pg_seo_link_name($page)) . '" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=page&amp;id=' . $page['page_id'] . get_token_query_string_field() . '">' . pg_seo_render_badge($page) . '</a></td>
+                <td class="align-middle text-center"><a href="javascript:void(0)" class="pg-seo-open text-decoration-none" data-pg-seo-badge="page:' . (int) $page['page_id'] . '" aria-label="' . h(pg_seo_link_name($page)) . '" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=page&amp;id=' . $page['page_id'] . get_token_query_string_field() . '">' . pg_seo_render_badge($page) . '</a></td>
                 <td class="align-middle text-center">' . pg_seo_render_impact($page) . '</td>
                 <td class="align-middle" >' . get_relative_time(array('timestamp' => $page['page_timestamp'])) . $output_last_modifier_user . ' </td>
             </tr>';
@@ -1271,7 +1273,8 @@ if ((USER_ROLE < 3) && pg_seo_schema_ready()) {
             page.sitemap,
             page.page_search,
             page.seo_flags,
-            page.seo_checked_at
+            page.seo_checked_at,
+            page.seo_analysis_current
         FROM page
         LEFT JOIN folder ON page.page_folder = folder.folder_id
         WHERE ((folder.folder_archived = '0') OR (folder.folder_archived IS NULL))" . pg_pages_bin_sql(pg_recycle_bin_folder_ids(), false));
@@ -1357,7 +1360,7 @@ if ($seo_summary && (($seo_summary['in_sitemap'] > 0) || ($seo_summary['in_searc
     if ($seo_summary['not_calculated'] > 0) {
         $seo_summary_parts[] =
             '<a class="pg-link-secondary" href="view_pages.php?filter=seo_not_calculated">'
-            . lang(array('string' => '{var:1} not calculated yet', 'vars' => (int) $seo_summary['not_calculated']))
+            . lang(array('string' => '{var:1} not calculated or out of date', 'vars' => (int) $seo_summary['not_calculated']))
             . '</a>';
     }
 

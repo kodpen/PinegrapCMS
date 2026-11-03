@@ -15,6 +15,7 @@ module: imap_client
 
 ## How does it sign in?
 - `pg_imap_login()`: `AUTHENTICATE PLAIN` when offered (base64, so any UTF-8 password; in the command line with SASL-IR, else after `+`), else `LOGIN` with astrings; `LOGINDISABLED` without PLAIN is `auth_disabled`. CAPABILITY is asked again after sign-in unless the OK carried it (MOVE, UIDPLUS).
+- Both sign-ins return a plain bool: a write that fails mid-exchange is `false` with `error` `closed` (`pg_imap_login_xoauth2()` returned the truthy broken-session array before, so a dropped connection passed as signed in).
 - A password never goes into `error` / `detail`; the detail is the server's words (Gmail's "Application-specific password required" shows there).
 
 ## Which commands are there?

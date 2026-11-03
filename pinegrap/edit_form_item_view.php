@@ -31,12 +31,15 @@ $page = db_item(
         page_name AS name,
         page_folder AS folder_id,
         page_style AS style_id,
-        mobile_style_id AS mobile_style_id
+        mobile_style_id AS mobile_style_id,
+        page_type
     FROM page
     WHERE page_id = '" . e($_REQUEST['page_id'] ?? '') . "'");
 
-if (!$page) {
-    output_error(lang('Sorry, the page could not be found.'));
+// Only a form item view page has a form item view to edit: any other page
+// has no form_item_view_pages row, and a save would write one for it.
+if (!$page || $page['page_type'] !== 'form item view') {
+    output_error(lang('Sorry, the page could not be found.'), 404);
 }
 
 // validate user's access
@@ -56,10 +59,11 @@ $query = "SELECT
             (form_item_view_pages.page_id = ?)
             AND (form_item_view_pages.collection = 'a')";
 $result = db_q($query, array((string) $_REQUEST['page_id'])) or output_error('Query failed.');
-$row = mysqli_fetch_assoc($result);
+// A form item view saved before its first edit has no row yet.
+$row = mysqli_fetch_assoc($result) ?: array();
 
-$custom_form_folder_id = $row['page_folder'];
-$custom_form_name = $row['form_name'];
+$custom_form_folder_id = $row['page_folder'] ?? '';
+$custom_form_name = $row['form_name'] ?? '';
 
 if ((isset($custom_form_name) == true) && ($custom_form_name != '')) {
     $output_custom_form_information = lang('Displays submitted forms from') . ': ' . h($custom_form_name);
@@ -129,10 +133,10 @@ if (!$_POST) {
             (page_id = ?)
             AND (collection = 'a')";
     $result = db_q($query, array((string) $page['id'])) or output_error('Query failed.');
-    $row = mysqli_fetch_assoc($result);
+    $row = mysqli_fetch_assoc($result) ?: array();
 
-    $custom_form_page_id = $row['custom_form_page_id'];
-    $layout = $row['layout'];
+    $custom_form_page_id = $row['custom_form_page_id'] ?? '';
+    $layout = $row['layout'] ?? '';
 
     // If the style is set to collection b, then get page type properties for
     // that collection.
@@ -155,7 +159,7 @@ if (!$_POST) {
         foreach ($items as $item) {
             $detail = h($item['label']) . (($item['type_label'] !== '') ? ' · ' . h($item['type_label']) : '');
             $output .= '<li class="list-group-item py-1 px-3 d-flex align-items-center gap-3">'
-                . '<button type="button" class="btn btn-link btn-sm p-0 text-start text-decoration-none flex-grow-1 text-break" data-pg-insert="' . h($item['token']) . '">'
+                . '<button type="button" class="btn btn-link btn-sm p-0 text-start text-decoration-none flex-grow-1 flex-column align-items-start text-wrap text-break" data-pg-insert="' . h($item['token']) . '">'
                 . '<code>' . h($item['token']) . '</code><span class="d-block small fg-secondary">' . $detail . '</span></button>';
             if ($item['example'] !== '') {
                 $output .= '<button type="button" class="btn btn-sm btn-outline theme-secondary no-popover" data-bs-toggle="tooltip" data-pg-insert="' . h($item['example']) . '" title="' . h($item['example']) . '"><i class="bi bi-braces" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Insert with format')) . '</span></button>';
@@ -180,7 +184,7 @@ if (!$_POST) {
         'checkbox' => lang('Check box as text'),
     ) as $format => $format_label) {
         $output_available_formats .= '<li class="list-group-item py-1 px-3">'
-            . '<button type="button" class="btn btn-link btn-sm p-0 text-start text-decoration-none w-100 text-break" data-pg-insert="' . h($variables_help['syntax'][$format]) . '">'
+            . '<button type="button" class="btn btn-link btn-sm p-0 text-start text-decoration-none w-100 flex-column align-items-start text-wrap text-break" data-pg-insert="' . h($variables_help['syntax'][$format]) . '">'
             . '<code>' . h($variables_help['syntax'][$format]) . '</code><span class="d-block small fg-secondary">' . h($format_label) . '</span></button></li>';
     }
 

@@ -49,7 +49,7 @@ function test_session_screen_reasons_are_visible_text()
 	session_screen_reasons_test_not_in_title($source, "lang('This subscription was made before", 'the bare dash explanation');
 	session_screen_reasons_test_not_in_title($source, "lang('This browser has no live sign-in", 'the Signed out explanation');
 	session_screen_reasons_test_not_in_title($source, "lang('Locked by the site owner", 'the Locked badge explanation');
-	session_screen_reasons_test_not_in_title($source, "lang('The setting \"Refuse new sign-ins", 'the disabled Lock button reason');
+	session_screen_reasons_test_not_in_title($source, "lang('With a limit of one, the setting", 'the disabled Lock button reason');
 	pg_assert_contains('text-break', $source, 'a long delivery error wraps');
 }
 
@@ -67,7 +67,7 @@ function test_session_screen_button_hints_are_tooltips()
 {
 	$source = session_screen_reasons_test_source('view_sessions.php');
 
-	foreach (array("lang('Sends one notification", "lang('The device stops receiving", "lang('Pins THIS session") as $needle) {
+	foreach (array("lang('Sends one notification", "lang('The device stops receiving", "lang('Unlocks this session") as $needle) {
 		$at = strpos($source, $needle);
 		pg_assert_true($at !== false, $needle . ' is still there');
 		$before = substr($source, max(0, $at - 200), min(200, $at));

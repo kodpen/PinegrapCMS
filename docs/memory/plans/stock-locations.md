@@ -18,9 +18,9 @@ description: Plan (owner 2026-11-02): stock kept per location (warehouse, shop, 
 - Legacy and express-order totals untouched; the cart's low-stock line, the out-of-stock flag and the back-in-stock notices read the total as today.
 - Products that do not track inventory (`inventory = 0`) have no rows and no location columns on their screens.
 
-## Which questions are open? (architect, before SL1 and SL5)
-1. The two tables and `stock_moves` (product, location, change, reason, order id, user, time) in the open version's migration; `shipping_methods.stock_location_id` and `orders.stock_location_id` (INT UNSIGNED NOT NULL DEFAULT 0); recommended as written.
-2. The pick rule when the order's location lacks units: refuse at checkout as the total would have (recommended), or take from another location in location order.
+## Which questions are decided? (#5042)
+1. `stock_locations`, `product_stock`, `stock_moves`, `shipping_methods.stock_location_id`, `orders.stock_location_id`; the migration moves no data, the first location seeds the rows.
+2. Owner: when the order's location lacks units the checkout refuses as the total would have; nothing is taken from another location.
 
 ## Where does it start?
 - SL1 alone, then SL2, SL3 and SL4 together. Read `commerce/README.md` key rules, `commerce/order-completion-stock-and-spots.md`, `api-bulk-inventory-quantity.md`, `products-variant-model.md`, `barcode-stock-scan-checks.md`, `includes/api/resources/inventory.php`. Steps: `stock-locations-steps.md`, `-steps-2.md`.

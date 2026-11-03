@@ -15,11 +15,14 @@ description: Settings modal vs rest of panel: no settings breadcrumbs/back butto
 - A dialog does its own link handoff: the command palette's settings chip calls `stopPropagation()`, hides the search box and opens the settings in its `hidden` handler (`pgUI.dialog.on($modal, 'hidden', …, {once: true})`), so one dialog gives way to the other instead of opening while the first is still closing.
 
 ## How does a tool that ends on another screen return to settings?
-- Use `pg_settings_return_url()`. There is no settings screen to return to; the address becomes `welcome.php#settings/<pane>/<card>` and the dialog opens itself on arrival. Users: `purge_cache`, `clean_up`, `cloudflare`, `software_update`, `view_parasut_inbox`.
+- Use `pg_settings_return_url()`. There is no settings screen to return to; the address becomes `welcome.php#settings/<pane>/<card>` and the dialog opens itself on arrival. Users: `cloudflare`, `software_update`, `view_parasut_inbox`. Clear Cache and Clean Up are started from `system_tools.php` and return there with `liveform('system_tools')`, which that screen prints (#5872: they landed on the dashboard under the unrelated General pane).
 
 ## How do sentences left by such a tool reach the dialog?
 - Those tools write `add_notice()` / `mark_error()` on `liveform('settings')` and redirect; no screen is left to read them. The endpoint takes them over in the GET branch with `get_notices()` + `get_errors()`, drops the form with `remove_form()`, and the dialog shows them on the first pane.
 - Exactly once: removing before takeover destroys the sentence; taking over without removing brings it back on every open.
+
+## What does the address say while the dialog is open?
+- `#settings/<pane>`: `paint()` calls `locate()` with `history.replaceState` (no entry, no `hashchange`); a `#settings/<pane>/<card>` of the same pane stays. `open()` keeps the page's own fragment once (`address`); `fromHash()` marks a fragment that opened the dialog as its own (`address = ''`). The `hidden` handler's `unlocate()` gives the page its fragment back. Before #5027 a closed dialog came back on Back and reload. Test: `tests/settings_dialog_shell_test.php`.
 
 ## Where is the search in the dialog?
 - In `settings-modal-search.md`.

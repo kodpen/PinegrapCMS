@@ -145,7 +145,7 @@ if (!$_POST) {
     $opening_amount = trim((string) $liveform->get_field_value('opening_amount'));
     $opening_date = trim((string) $liveform->get_field_value('opening_date'));
 
-    if (($opening_amount !== '') && (erp_kurus($opening_amount) === 0) && (preg_match('/^-?[0-9.,]+$/', $opening_amount) !== 1)) {
+    if (($opening_amount !== '') && !erp_amount_text_valid($opening_amount)) {
         $liveform->mark_error('opening_amount', lang('Please enter a valid amount.'));
     }
 

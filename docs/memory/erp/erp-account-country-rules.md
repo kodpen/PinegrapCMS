@@ -11,6 +11,7 @@ description: How the ERP applies a country's rules only to that country's accoun
 - At every door with `erp_tax_number_check($number, $country)` → `['value', 'error']`: account form, New account dialog and counter sale (`erp_account_quick_create()`), CSV import, API, Workspace record changes, delivery-note carrier, expense supplier.
 - Turkey: digits, 10 (VKN) or 11 (TCKN), check digits by `erp_edoc_tax_number_valid()`. Elsewhere: letters, digits, spaces, `. - /`, kept as typed, at most `erp_tax_number_width()` characters (read from the `erp_accounts.tax_number` column: 32 since 4.70, 11 before).
 - Never filter Turkish-style in SQL (`LENGTH(tax_number) IN (10, 11)`); match two numbers by their letters-and-digits key, `erp_edoc_account_tax_key()` (upper case, separators dropped).
+- Every door saves a Turkish number as its digits (the card form too since #5890: it saved `734.512.8907` as typed). The "already belongs to" checks (form, New account, API) and the CSV import's match go through `erp_account_by_tax_number($number, $exclude_id, $active_only)`, which compares by that key in SQL (`erp_account_tax_key_sql()`), so an older dotted card is still found; an exact `tax_number = …` let a second active card open.
 - Its name: `erp_tax_id_label($country)`, "VKN / TCKN" in Turkey, "Tax number" elsewhere. On a PDF the seller's is `label.tax_id` (the store's country), the buyer's `label.account_tax_id` (the account's country).
 
 ## How does an address land on the card? (4.71)

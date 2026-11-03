@@ -250,6 +250,8 @@ if (!$_POST) {
     $name = trim($_POST['name']);
     
     pg_field_form_validate_name($liveform, $name, pg_field_form_names_in_use($form_type_filter, 0, $name));
+    pg_field_form_validate_type($liveform, $_POST['type'] ?? '', $form_type);
+    $numbers = pg_field_form_validate_numbers($liveform, $_POST);
     
     $url_form_type = pg_field_form_express_query($page_type, $form_type);
 
@@ -330,11 +332,11 @@ if (!$_POST) {
                 '" . escape(prepare_rich_text_editor_content_for_input($_POST['information'])) . "',
                 '" . escape($_POST['default_value'] ?? '') . "',
                 '" . escape($_POST['use_folder_name_for_default_value'] ?? '') . "',
-                '" . escape($_POST['size'] ?? '') . "',
-                '" . escape($_POST['maxlength'] ?? '') . "',
+                '" . $numbers['size'] . "',
+                '" . $numbers['maxlength'] . "',
                 '" . escape($_POST['wysiwyg'] ?? '') . "',
-                '" . escape($_POST['rows'] ?? '') . "',
-                '" . escape($_POST['cols'] ?? '') . "',
+                '" . $numbers['rows'] . "',
+                '" . $numbers['cols'] . "',
                 '" . escape($_POST['multiple'] ?? '') . "',
                 '" . escape($_POST['spacing_above'] ?? '') . "',
                 '" . escape($_POST['spacing_below'] ?? '') . "',

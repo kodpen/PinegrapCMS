@@ -1591,8 +1591,11 @@ if (!$_POST) {
         $result = db_q("SELECT * FROM products WHERE id = ?", array((string) $id)) or output_error(lang('Query failed'));
         $row                   = mysqli_fetch_assoc($result);
         $original_product_name = $row['name'];
+        // The original's code with its last letter swapped, made unique as it
+        // is: cutting the "[1]" off the original's unique name gave a code a
+        // second run, or another original ending the same, already held.
         $product_name          = get_unique_name(array(
-            'name' => $row['name'],
+            'name' => pg_duplicate_products_base_name($row['name'], $newletter),
             'type' => 'product'
         ));
         // An emptied field or a value that is not a count of at least one falls
@@ -1604,8 +1607,8 @@ if (!$_POST) {
 
         $lettertodelete = (int) $lettertodelete;
 
-        $product_name = substr($product_name, 0, -4) . $newletter;
-        $short_description = substr($row['short_description'], 0, -$lettertodelete) . $newletter;
+        // Letters, not bytes: a Turkish description keeps whole letters.
+        $short_description = pg_duplicate_products_description($row['short_description'], $lettertodelete, $newletter);
         $row['address_name'] = '';
         // if the address name is NOT blank then use that value for the address name
         if ($row['address_name'] != '') {

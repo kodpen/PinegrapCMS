@@ -63,7 +63,7 @@ if ($_POST) {
         go($self_url . '?tab=sms');
     }
 
-    $mail_queue_action = pg_mail_queue_ready() ? (string) ($_POST['mail_action'] ?? '') : '';
+    $mail_queue_action = (pg_mail_queue_ready() && isset($_POST['mail_action']) && is_string($_POST['mail_action'])) ? $_POST['mail_action'] : '';
 
     if ($mail_queue_action === 'run_now') {
 
@@ -90,7 +90,17 @@ if ($_POST) {
                     AND (status IN ('queued', 'failed'))");
 
             if (mysqli_affected_rows(db::$con) > 0) {
-                $liveform->add_notice(lang('The message will be sent on the next run of the general job or mail_job.php.'));
+
+                if (pg_mail_job_alive()) {
+                    $liveform->add_notice(lang('The message will be sent on the next run of the general job or mail_job.php.'));
+
+                // No scheduled job works the queue, so nothing would pick the
+                // message up: it is sent now, on its own.
+                } elseif (pg_mail_queue_run(1, 20, $mail_queue_id)['sent'] > 0) {
+                    $liveform->add_notice(lang('The message was sent.'));
+                } else {
+                    $liveform->add_warning(lang('The message could not be sent; its last error is in the list. While the queue is inactive it waits until Run now is pressed.'));
+                }
             }
 
         } else {
@@ -111,23 +121,6 @@ $output_content = '';
 if ($mail_queue_tab === 'sms') {
 
     $sms_queue_counts = pg_sms_queue_counts();
-
-    $sms_queue_status_labels = array(
-        'queued'    => array(lang('Queued'), 'theme-secondary'),
-        'sending'   => array(lang('Sending'), 'theme-info'),
-        'sent'      => array(lang('Sent'), 'theme-success'),
-        'failed'    => array(lang('Failed'), 'theme-danger'),
-        'uncertain' => array(lang('Outcome unknown'), 'theme-warning'),
-    );
-
-    $sms_queue_kind_labels = array(
-        'test'      => lang('Test'),
-        'order'     => lang('Order'),
-        'shipping'  => lang('Shipping update'),
-        'otp'       => lang('Sign-in code'),
-        'reminder'  => lang('Reminder'),
-        'marketing' => lang('Marketing'),
-    );
 
     $sms_queue_stats = '';
 
@@ -177,87 +170,6 @@ if ($mail_queue_tab === 'sms') {
         ? prepare_form_data_for_output(date('Y-m-d H:i:s', $sms_queue_job_run), 'date and time')
         : lang('Never');
 
-    $sms_queue_rows = '';
-
-    foreach (db_items(
-        "SELECT id, created_at, send_after, expires_at, status, attempts, last_error, sent_at, kind, recipient, body, reference, provider, provider_id
-        FROM sms_outbox
-        ORDER BY id DESC
-        LIMIT 100") as $sms_queue_row) {
-
-        $sms_queue_status = isset($sms_queue_status_labels[$sms_queue_row['status']])
-            ? $sms_queue_status_labels[$sms_queue_row['status']]
-            : array($sms_queue_row['status'], 'bg-1 fg-body');
-
-        $sms_queue_expired = ((int) $sms_queue_row['expires_at'] > 0) && ((int) $sms_queue_row['expires_at'] <= time());
-
-        // When it went, or when it goes next.
-        if ($sms_queue_row['status'] === 'sent') {
-            $sms_queue_when = prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $sms_queue_row['sent_at']), 'date and time');
-        } elseif ($sms_queue_row['status'] === 'queued') {
-
-            // A row past its expiry is never sent: the next run marks it
-            // failed without an attempt, so it does not claim that run.
-            if ($sms_queue_expired) {
-                $sms_queue_when = lang('Expired');
-            } else {
-                $sms_queue_when = ((int) $sms_queue_row['send_after'] > time())
-                    ? prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $sms_queue_row['send_after']), 'date and time')
-                    : lang('On the next run');
-            }
-        } else {
-            $sms_queue_when = '';
-        }
-
-        // Who took it, under which id: what a question to the provider about
-        // this message needs.
-        $sms_queue_provider = '';
-
-        if ((string) $sms_queue_row['provider'] !== '') {
-            $sms_queue_definition = pg_sms_provider_definition($sms_queue_row['provider']);
-            $sms_queue_provider = ($sms_queue_definition !== null) ? $sms_queue_definition['label'] : (string) $sms_queue_row['provider'];
-
-            if ((string) $sms_queue_row['provider_id'] !== '') {
-                $sms_queue_provider .= ' ' . $sms_queue_row['provider_id'];
-            }
-        }
-
-        $sms_queue_error = (string) $sms_queue_row['last_error'];
-
-        $sms_queue_reference = (string) $sms_queue_row['reference'];
-
-        $sms_queue_buttons = '';
-
-        if (in_array($sms_queue_row['status'], array('queued', 'failed', 'uncertain'), true) && !$sms_queue_expired) {
-
-            // A message whose outcome is unknown may already be on the
-            // recipient's phone; sending it again is the operator's call,
-            // made after a look at the provider's report.
-            $sms_queue_confirm = ($sms_queue_row['status'] === 'uncertain')
-                ? ' data-confirm-content="' . h(lang('The provider may already have delivered this message, and sent again it would arrive twice. Check the provider\'s report first.')) . '"'
-                : '';
-
-            $sms_queue_buttons .= '<button type="submit" name="sms_action" value="retry:' . (int) $sms_queue_row['id'] . '" class="btn btn-sm btn-outline theme-secondary me-1" title="' . h(lang('Retry')) . '"' . $sms_queue_confirm . '><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>';
-        }
-
-        $sms_queue_buttons .= '<button type="submit" name="sms_action" value="delete:' . (int) $sms_queue_row['id'] . '" class="btn btn-sm btn-outline theme-warning" title="' . h(lang('Delete')) . '" data-confirm-content="' . h(lang('The message will be deleted from the queue and not sent.')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>';
-
-        $sms_queue_rows .= '
-                        <tr>
-                            <td class="align-middle text-nowrap">' . $sms_queue_buttons . '</td>
-                            <td class="align-middle">' . (int) $sms_queue_row['id'] . '</td>
-                            <td class="align-middle"><span class="badge ' . $sms_queue_status[1] . '">' . h($sms_queue_status[0]) . '</span></td>
-                            <td class="align-middle">' . h(isset($sms_queue_kind_labels[$sms_queue_row['kind']]) ? $sms_queue_kind_labels[$sms_queue_row['kind']] : $sms_queue_row['kind']) . '</td>
-                            <td class="align-middle text-nowrap">+' . h($sms_queue_row['recipient']) . '</td>
-                            <td class="align-middle text-wrap text-break" style="max-width: 28rem;">' . h($sms_queue_row['body']) . (($sms_queue_reference !== '') ? '<div class="small fg-secondary">' . h($sms_queue_reference) . '</div>' : '') . '</td>
-                            <td class="align-middle">' . (int) $sms_queue_row['attempts'] . '</td>
-                            <td class="align-middle small fg-danger text-wrap text-break" style="max-width: 28rem;">' . h($sms_queue_error) . '</td>
-                            <td class="align-middle small text-nowrap">' . h($sms_queue_provider) . '</td>
-                            <td class="align-middle text-nowrap">' . prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $sms_queue_row['created_at']), 'date and time') . '</td>
-                            <td class="align-middle text-nowrap">' . $sms_queue_when . '</td>
-                        </tr>';
-    }
-
     $output_content = '
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 <form action="mail_queue.php?tab=sms" method="post" class="disable_shortcut">
@@ -277,7 +189,7 @@ if ($mail_queue_tab === 'sms') {
                 ' . get_token_field() . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
-                        <table class="chart table-hover table" style="width:100%;display:none;">
+                        <table class="chart table-hover table" style="width:100%;display:none;" data-pg-list-action="sms_queue_list_rows">
                             <thead>
                                 <tr>
                                     <th class="noVis">' . lang('Action') . '</th>
@@ -293,7 +205,7 @@ if ($mail_queue_tab === 'sms') {
                                     <th>' . lang('Next attempt or sent') . '</th>
                                 </tr>
                             </thead>
-                            <tbody>' . $sms_queue_rows . '</tbody>
+                            <tbody></tbody>
                         </table>
                     </div>
                 </div>
@@ -319,18 +231,6 @@ if ($mail_queue_tab === 'sms') {
     // the queue, so this row is the queue's last run whichever one is
     // scheduled.
     $mail_queue_job_run = (is_array($mail_queue_runs) && isset($mail_queue_runs['mail_job'])) ? (int) $mail_queue_runs['mail_job'] : 0;
-
-    $mail_queue_status_labels = array(
-        'queued'  => array(lang('Queued'), 'theme-secondary'),
-        'sending' => array(lang('Sending'), 'theme-info'),
-        'sent'    => array(lang('Sent'), 'theme-success'),
-        'failed'  => array(lang('Failed'), 'theme-danger'),
-    );
-
-    $mail_queue_type_labels = array(
-        'system'   => lang('System'),
-        'campaign' => lang('Campaign'),
-    );
 
     $mail_queue_stats = '';
 
@@ -381,61 +281,6 @@ if ($mail_queue_tab === 'sms') {
             </div>';
     }
 
-    $mail_queue_rows = '';
-
-    foreach (db_items(
-        "SELECT id, created_at, send_after, status, attempts, last_error, claimed_at, sent_at, mail_type, recipient, subject
-        FROM mail_outbox
-        ORDER BY id DESC
-        LIMIT 100") as $mail_queue_row) {
-
-        $mail_queue_status = isset($mail_queue_status_labels[$mail_queue_row['status']])
-            ? $mail_queue_status_labels[$mail_queue_row['status']]
-            : array($mail_queue_row['status'], 'bg-1 fg-body');
-
-        // When it went, or when it goes next.
-        if ($mail_queue_row['status'] === 'sent') {
-            $mail_queue_when = prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $mail_queue_row['sent_at']), 'date and time');
-        } elseif ($mail_queue_row['status'] === 'queued') {
-            $mail_queue_when = ((int) $mail_queue_row['send_after'] > time())
-                ? prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $mail_queue_row['send_after']), 'date and time')
-                : lang('On the next run');
-        } else {
-            $mail_queue_when = '';
-        }
-
-        $mail_queue_error = (string) $mail_queue_row['last_error'];
-
-        // Given up at once: what is wrong is in the message itself, so a
-        // retry fails the same way until the cause is fixed where it was
-        // written.
-        $mail_queue_permanent = pg_mail_failed_permanently($mail_queue_row['status'], $mail_queue_row['attempts'])
-            ? ' <span class="badge theme-inverse" title="' . h(lang('Not tried again: sending it again would fail the same way.')) . '">' . h(lang('Permanent')) . '</span>'
-            : '';
-
-        $mail_queue_buttons = '';
-
-        if (in_array($mail_queue_row['status'], array('queued', 'failed'), true)) {
-            $mail_queue_buttons .= '<button type="submit" name="mail_action" value="retry:' . (int) $mail_queue_row['id'] . '" class="btn btn-sm btn-outline theme-secondary me-1" title="' . h(lang('Retry')) . '"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>';
-        }
-
-        $mail_queue_buttons .= '<button type="submit" name="mail_action" value="delete:' . (int) $mail_queue_row['id'] . '" class="btn btn-sm btn-outline theme-warning" title="' . h(lang('Delete')) . '" data-confirm-content="' . h(lang('The message will be deleted from the queue and not sent.')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>';
-
-        $mail_queue_rows .= '
-                        <tr>
-                            <td class="align-middle text-nowrap">' . $mail_queue_buttons . '</td>
-                            <td class="align-middle">' . (int) $mail_queue_row['id'] . '</td>
-                            <td class="align-middle text-nowrap"><span class="badge ' . $mail_queue_status[1] . '">' . h($mail_queue_status[0]) . '</span>' . $mail_queue_permanent . '</td>
-                            <td class="align-middle">' . h(isset($mail_queue_type_labels[$mail_queue_row['mail_type']]) ? $mail_queue_type_labels[$mail_queue_row['mail_type']] : $mail_queue_row['mail_type']) . '</td>
-                            <td class="align-middle">' . h($mail_queue_row['recipient']) . '</td>
-                            <td class="align-middle">' . h($mail_queue_row['subject']) . '</td>
-                            <td class="align-middle">' . (int) $mail_queue_row['attempts'] . '</td>
-                            <td class="align-middle small fg-danger text-wrap text-break" style="max-width: 28rem;">' . h($mail_queue_error) . '</td>
-                            <td class="align-middle text-nowrap">' . prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $mail_queue_row['created_at']), 'date and time') . '</td>
-                            <td class="align-middle text-nowrap">' . $mail_queue_when . '</td>
-                        </tr>';
-    }
-
     $output_content = '
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 <form action="mail_queue.php" method="post" class="disable_shortcut">
@@ -455,13 +300,13 @@ if ($mail_queue_tab === 'sms') {
                 ' . get_token_field() . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
-                        <table class="chart table-hover table" style="width:100%;display:none;">
+                        <table class="chart table-hover table" style="width:100%;display:none;" data-pg-list-action="mail_queue_list_rows">
                             <thead>
                                 <tr>
                                     <th class="noVis">' . lang('Action') . '</th>
                                     <th>#</th>
                                     <th>' . lang('Status') . '</th>
-                                    <th>' . lang('Type') . '</th>
+                                    <th>' . lang('Kind') . '</th>
                                     <th>' . lang('Recipient') . '</th>
                                     <th>' . lang('Subject') . '</th>
                                     <th>' . lang('Attempts') . '</th>
@@ -470,7 +315,7 @@ if ($mail_queue_tab === 'sms') {
                                     <th>' . lang('Next attempt or sent') . '</th>
                                 </tr>
                             </thead>
-                            <tbody>' . $mail_queue_rows . '</tbody>
+                            <tbody></tbody>
                         </table>
                     </div>
                 </div>

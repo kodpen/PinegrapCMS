@@ -17,9 +17,9 @@ description: Plan (owner 2026-11-02): rule-driven contact groups whose members a
 - A dynamic group cannot be edited by hand (no tick boxes, no form or product writes into it; those doors are refused for `kind = dynamic`); turning a static group dynamic keeps its members until the first recompute.
 - Counting and recomputing follow `visitors/high-volume-counter-rules.md`: visit conditions read the summary tables and the visit's contact link only, never scan raw rows per contact.
 
-## Which questions are open? (architect, before AU1)
-1. The two columns on `contact_groups` (`kind` ENUM static, dynamic; `rules` TEXT NULL) in the open version's migration, and `users_contact_groups_xref.source` (hand, form, product, rule) so a recompute removes only rule-made rows; recommended as written.
-2. The recompute budget: at most one hour between runs per group, N seconds a tick, and the rule that a group over 100,000 members is recomputed in pages; recommended as written.
+## Which questions are decided? (#5033)
+1. `contact_groups.kind`, `rules`, `computed_at`, `compute_cursor`; `users_contact_groups_xref.source` with its index; shape in the issue.
+2. One recompute an hour per group, 20 seconds a tick, groups over 100,000 members in pages of 10,000 by cursor.
 
 ## Where does it start?
 - AU1 alone, then AU2 and AU3 together. Read `core/README.md` key rules, `core/contact-holders.md`, `core/consent-log-writers.md`, `platform/sms-campaigns.md`, `includes/fn/contact_list.php`, `includes/fn/events.php` (`pg_announce_contact_group_members()`). Steps: `audiences-steps.md`.

@@ -3,8 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the new dashboard's personal cards (includes/dashboard/v2/
- * personal.php and cards/goals.php, notes.php): what a card may store and
- * how a goal turns into progress.
+ * personal.php and cards/goals.php, pins.php, notes.php, perf.php): what a
+ * card may store and how a goal turns into progress.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -106,14 +106,34 @@ function test_dashboard_v2_goal_progress()
 	pg_assert_same(500, pg_dashboard_v2_goal_progress(5, 0, 0)['pct'], 'a zero target counts as one');
 }
 
-// The goals and notes cards are built and offered; the subscription card
-// waits for the vendor licence.
+// The four cards are built and offered; the subscription card waits for
+// the vendor licence.
 function test_dashboard_v2_personal_cards_built()
 {
 	$cards = pg_dashboard_v2_cards();
-	foreach (array('goals', 'notes') as $id) {
+	foreach (array('goals', 'pins', 'notes', 'perf') as $id) {
 		pg_assert_true($cards[$id]['built'], $id . ' built');
 		pg_assert_true(is_file(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/' . $id . '.php'), $id . ' file');
 	}
 	pg_assert_true(!$cards['subs']['built'], 'subs not offered yet');
+}
+
+// Widget 23 and the Performance card grade alike.
+function test_dashboard_v2_perf_grade_and_shape()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets/widget_23.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/perf.php');
+
+	pg_assert_same('none', pg_dashboard_perf_grade(9, '/home', 100)['key'], 'too few requests');
+	pg_assert_same('none', pg_dashboard_perf_grade(50, '', 100)['key'], 'no page to grade');
+	pg_assert_same('very_good', pg_dashboard_perf_grade(50, '/home', 299)['key']);
+	pg_assert_same('good', pg_dashboard_perf_grade(50, '/home', 300)['key']);
+	pg_assert_same('weak', pg_dashboard_perf_grade(50, '/home', 800)['key']);
+	pg_assert_same('poor', pg_dashboard_perf_grade(50, '/home', 2000)['key']);
+
+	pg_assert_same(array('fast' => 0.75, 'tone' => 'good'), pg_dashboard_v2_perf_shape(100, 25, 180));
+	pg_assert_same('warn', pg_dashboard_v2_perf_shape(100, 0, 200)['tone']);
+	pg_assert_same('bad', pg_dashboard_v2_perf_shape(100, 0, 500)['tone']);
+	pg_assert_same(0, pg_dashboard_v2_perf_shape(0, 0, 0)['fast'], 'no requests');
 }

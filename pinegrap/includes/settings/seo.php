@@ -37,7 +37,7 @@ $pg_settings_cards[] = '
                                             <input type="text" name="title" id="setting_title" class="form-control" maxlength="255" value="' . h($title) . '"/>
                                             <div id="setting_seo_c_title"></div>
                                         </div>
-                                        <div class="pg-f-lg">
+                                        <div class="col-12">
                                             <label for="setting_meta_description" class="form-label">' . lang('Web Browser Description') . '</label>
                                             <textarea name="meta_description" id="setting_meta_description" class="form-control" maxlength="255" >' . h($meta_description) . '</textarea>
                                             <div id="setting_seo_c_meta_description"></div>

@@ -49,7 +49,8 @@ function pg_explorer_handle_file_get($type, $request, $user)
 
     $payload = pg_explorer_file_payload($file, $user);
     $extension = mb_strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    $path = FILE_DIRECTORY_PATH . '/' . $file['name'];
+    // A stored file is read from its cached copy (fetched when missing).
+    $path = pg_file_reader_path($file['name']);
 
     // The signing key is shown as a file with no preview: its
     // content never leaves the server (pg_file_withheld()).
@@ -173,6 +174,12 @@ function pg_explorer_handle_file_save($type, $request, $user)
     // leaves the row as it was. A save of the name or folder alone does not
     // read the file.
     $audit_content = isset($request['content']) || isset($request['cells']) || isset($request['paragraphs']);
+
+    // A content save changes the bytes in the file directory: a stored
+    // file is brought there first, so the digest and an office edit read it.
+    if ($audit_content) {
+        pg_file_make_local($file['name']);
+    }
     $audit_before = $audit_content ? pg_audit_fetch_file($file_id, $old_path) : pg_audit_fetch('files', $file_id);
 
     // Cell values changed in a workbook's preview, or paragraph texts

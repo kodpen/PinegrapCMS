@@ -68,9 +68,23 @@ if (!empty($_POST['start'])) {
     log_activity(lang(array('string' => 'started {var:1} from Search and audits', 'vars' => array($engines[$key]['label']))), $username);
 }
 
-$message = $run['failed']
-    ? lang(array('string' => '{var:1} done in this request, {var:2} could not be rendered.', 'vars' => array($run['count'], $run['failed'])))
-    : lang(array('string' => '{var:1} done in this request.', 'vars' => array($run['count'])));
+// The pages it could not render go to the Site Log as the nightly job writes
+// them, where the card's Could not be read list finds them.
+if ($run['failed']) {
+    log_activity(lang(array(
+        'string' => 'accessibility check could not render {var:1} page{suffix:1}',
+        'vars' => $run['failed'],
+        'suffix' => (($run['failed'] > 1) ? 's' : ''))), $username);
+}
+
+// The accessibility pass counts pages; the others pages, products and groups.
+if ($key === 'a11y') {
+    $message = $run['failed']
+        ? lang(array('string' => '{var:1} pages checked in this request, {var:2} could not be rendered.', 'vars' => array($run['count'], $run['failed'])))
+        : lang(array('string' => '{var:1} pages checked in this request.', 'vars' => array($run['count'])));
+} else {
+    $message = lang(array('string' => '{var:1} records checked in this request.', 'vars' => array($run['count'])));
+}
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');

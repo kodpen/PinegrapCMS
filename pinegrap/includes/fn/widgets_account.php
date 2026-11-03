@@ -349,6 +349,21 @@ function _pg_acct_country_options()
     return $out;
 }
 
+// The site's states by country code (list of [code, name]) and the country
+// codes that require a zip code, for _pg_sa_state_controls() and
+// pg_sa_state_script().
+function _pg_acct_states()
+{
+    $states = array();
+    foreach ((array)db_items("SELECT states.code, states.name, countries.code AS country_code FROM states
+        LEFT JOIN countries ON countries.id = states.country_id ORDER BY states.name") as $s) {
+        $states[(string)$s['country_code']][] = array((string)$s['code'], (string)$s['name']);
+    }
+    $zip = array();
+    foreach ((array)db_items("SELECT code FROM countries WHERE zip_code_required = 1") as $c) $zip[] = (string)$c['code'];
+    return array('states' => $states, 'zip' => $zip);
+}
+
 function _pg_acct_default_country()
 {
     return (string)db_value("SELECT code FROM countries WHERE default_selected = 1 LIMIT 1");
@@ -808,13 +823,21 @@ function _render_system_widget_account_profile($tree_json, $widget_id, $cfg = ar
     }
     if ($values['business_country'] === '') $values['business_country'] = _pg_acct_default_country();
 
+    // The state is a text box and a pick list, both named business_state:
+    // the country decides which posts (pg_sa_state_script()).
+    pg_sa_state_list_fit($tree, 'business_state');
+    $place = _pg_acct_states();
     pg_sa_address_labels($tree, 'business_', $values['business_country']);
-    _pg_acct_fill_values($tree, $values, array(
+    $fill = $values;
+    unset($fill['business_state']);
+    _pg_acct_fill_values($tree, $fill, array(
         'salutation'       => _pg_acct_pairs(get_salutation_options()),
         'suffix'           => _pg_acct_pairs(get_suffix_options()),
         'business_country' => _pg_acct_country_options(),
         'timezone'         => _pg_acct_timezone_options(),
     ));
+    _pg_sa_state_controls($tree, $values['business_state'], isset($place['states'][$values['business_country']])
+        ? $place['states'][$values['business_country']] : array(), 'business_state');
 
     $account_url = _pg_acct_page_url(isset($cfg['my_account_page_id']) ? $cfg['my_account_page_id'] : 0, 'my account');
     $send_to     = _pg_member_page_url(isset($cfg['redirect_page_id']) ? $cfg['redirect_page_id'] : 0);
@@ -827,11 +850,14 @@ function _render_system_widget_account_profile($tree_json, $widget_id, $cfg = ar
     $split    = _split_widget_tree($tree);
     $rendered = str_replace('<!--pg-loop-slot-->', '', trim(_render_tree_node($split['static_tree'], 0, 0)));
     $lf->remove();
-    $rendered = _pg_member_form_wrap($rendered . pg_ship_to_district_script(), _pg_acct_software_path() . '/my_account_profile.php', array(
+    $form_id  = 'pg-account-profile-form-w' . (int)$widget_id;
+    $rendered = _pg_member_form_wrap($rendered . pg_sa_state_script($form_id, $place['states'], $place['zip'], 'business_')
+        . pg_ship_to_district_script(), _pg_acct_software_path() . '/my_account_profile.php', array(
         'send_to'     => $send_to,
         'return_to'   => $page_url,
         'pg_controls' => _pg_acct_control_names($tree),
     ), 'pg-account-profile-form');
+    $rendered = preg_replace('/^<form /', '<form id="' . h($form_id) . '" ', $rendered, 1);
 
     return _pg_member_apply_tokens($rendered, array(
         '__site_name'      => h(_pg_member_site_name()),
@@ -1091,11 +1117,19 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
     if ($values['country'] === '') $values['country'] = _pg_acct_default_country();
     $type_value = $values['address_type'];
     unset($values['address_type']);
+    // The state is a text box and a pick list, both named state: the
+    // country decides which posts (pg_sa_state_script()).
+    pg_sa_state_list_fit($tree, 'state');
+    $place = _pg_acct_states();
     pg_sa_address_labels($tree, '', $values['country']);
-    _pg_acct_fill_values($tree, $values, array(
+    $fill = $values;
+    unset($fill['state']);
+    _pg_acct_fill_values($tree, $fill, array(
         'salutation' => _pg_acct_pairs(get_salutation_options()),
         'country'    => _pg_acct_country_options(),
     ));
+    _pg_sa_state_controls($tree, $values['state'], isset($place['states'][$values['country']])
+        ? $place['states'][$values['country']] : array());
     if ($type_on) _pg_acct_check_value($tree, 'address_type', $type_value);
     else          _pg_member_drop_control($tree, 'address_type');
 
@@ -1155,13 +1189,16 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
     }
     $rendered = str_replace('<!--pg-loop-slot-->', $rows, trim(_render_tree_node($split['static_tree'], 0, 0)));
     $lf->remove();
-    $rendered = _pg_member_form_wrap($rendered . pg_ship_to_district_script(), _pg_acct_software_path() . '/update_address_book.php', array(
+    $form_id  = 'pg-address-book-form-w' . $widget_id;
+    $rendered = _pg_member_form_wrap($rendered . pg_sa_state_script($form_id, $place['states'], $place['zip'])
+        . pg_ship_to_district_script(), _pg_acct_software_path() . '/update_address_book.php', array(
         'id'           => $editing !== null ? (string)(int)$editing['id'] : '',
         'send_to'      => $send_to,
         'return_to'    => $self,
         'pg_widget_id' => $widget_id,
         'pg_controls'  => _pg_acct_control_names($split['static_tree']),
     ), 'pg-address-book-form');
+    $rendered = preg_replace('/^<form /', '<form id="' . h($form_id) . '" ', $rendered, 1);
 
     return _pg_member_apply_tokens($rendered, array(
         '__site_name'       => h(_pg_member_site_name()),

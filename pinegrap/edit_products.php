@@ -81,6 +81,24 @@ if (!$_POST) {
 		}
 	}
 
+    // A stock process with no figure, a tax rate to set with none or one
+    // outside 0..100, or a zone both allowed and disallowed stops the whole
+    // change before any product is touched, with its own message.
+    if (($_POST['action'] ?? '') === 'edit') {
+        $mass_edit_problem = pg_products_mass_edit_problem($_POST);
+        $mass_edit_messages = array(
+            'quantity_missing' => lang('Enter an inventory quantity.'),
+            'tax_rate_missing' => lang('Enter a tax rate, or choose to follow the tax zone.'),
+            'tax_rate_range' => lang('Enter a tax rate between 0 and 100.'),
+            'zones_overlap' => lang('A shipping zone cannot be both allowed and disallowed.'),
+        );
+
+        if ($mass_edit_problem !== '') {
+            $liveform->add_error($mass_edit_messages[$mass_edit_problem]);
+            go(PATH . SOFTWARE_DIRECTORY . '/view_products.php');
+        }
+    }
+
     // The stock quantity is read once, the panel's way (1.200 on a Turkish
     // panel is twelve hundred), with the Catalog Manager's reader. A figure
     // that is not a whole count of zero or more stops the whole change
@@ -296,12 +314,10 @@ if (!$_POST) {
                         } elseif ($tax_rate_method === 'set') {
                             $new_tax_rate = parse_tax_rate($_POST['edit_tax_rate_value'] ?? '');
 
+                            // A missing or out-of-range rate was refused above
+                            // (pg_products_mass_edit_problem()).
                             if ($new_tax_rate !== NULL) {
                                 $sql_tax_rate = "tax_rate = '" . e($new_tax_rate) . "',";
-                            } else {
-                                // Asking to set a rate and giving none is a mistake, not an
-                                // instruction to clear: clearing has its own option.
-                                $liveform->mark_error('Update Error', lang('Enter a tax rate, or choose to follow the tax zone.'));
                             }
                         }
 
@@ -471,6 +487,10 @@ if (!$_POST) {
                             $liveform->add_notice(h($message));
                         }
                     }
+                } elseif (!$price_value_refused) {
+                    // Nothing was chosen: the list comes back with a word
+                    // rather than silently, as if something had changed.
+                    $liveform->add_error(lang('Select a field to change.'));
                 }
                 
                 break;

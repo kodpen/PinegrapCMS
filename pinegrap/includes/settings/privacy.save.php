@@ -162,6 +162,19 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         pg_config_text_save('ecommerce_kvkk_consent_text', $legal_kvkk_text);
     }
 
+    // The accessibility statement's texts (includes/fn/widgets_accessibility.php):
+    // one config_text row as JSON; all empty removes it.
+    if (array_key_exists('a11y_statement_card', $_POST) && pg_schema_has('config_text')) {
+        $a11y_statement_post = array();
+
+        foreach (pg_a11y_statement_fields() as $a11y_field => $a11y_max) {
+            $a11y_statement_post[$a11y_field] = (string) post_value('a11y_statement_' . $a11y_field);
+        }
+
+        $a11y_statement_post = pg_a11y_statement_clean($a11y_statement_post);
+        pg_config_text_save('a11y_statement', (implode('', $a11y_statement_post) === '') ? '' : json_encode($a11y_statement_post, JSON_UNESCAPED_UNICODE));
+    }
+
     // Google Analytics figures (includes/fn/google_analytics.php): choose a
     // GA4 property, read its figures now or stop using it. The messages
     // carry Google's own words, so they are escaped whole.

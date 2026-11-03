@@ -217,49 +217,7 @@ if ($_POST['contacts']) {
             
             // get contacts to be merged information
             $query = 
-                "SELECT
-                    contacts.id,
-                    contacts.salutation,
-                    contacts.first_name,
-                    contacts.last_name,
-                    contacts.suffix,
-                    contacts.nickname,
-                    contacts.company,
-                    contacts.title,
-                    contacts.department,
-                    contacts.office_location,
-                    contacts.business_address_1,
-                    contacts.business_address_2,
-                    contacts.business_city,
-                    contacts.business_state,
-                    contacts.business_country,
-                    contacts.business_zip_code,
-                    contacts.business_phone,
-                    contacts.business_fax,
-                    contacts.home_address_1,
-                    contacts.home_address_2,
-                    contacts.home_city,
-                    contacts.home_state,
-                    contacts.home_country,
-                    contacts.home_zip_code,
-                    contacts.home_phone,
-                    contacts.home_fax,
-                    contacts.mobile_phone,
-                    contacts.email_address,
-                    contacts.website,
-                    contacts.lead_source,
-                    contacts.opt_in,
-                    contacts.description,
-                    contacts.member_id,
-                    contacts.expiration_date,
-                    contacts.warning_expiration_date,
-                    contacts.affiliate_approved,
-                    contacts.affiliate_name,
-                    contacts.affiliate_code,
-                    contacts.affiliate_commission_rate,
-                    contacts.user,
-                    contact_user.user_id as user_id,
-                    contacts.timestamp
+                "SELECT " . pg_contact_merge_select(pg_contact_merge_optional_columns(pg_contact_merge_schema_columns())) . "
                 FROM contacts
                 LEFT JOIN user AS contact_user ON contacts.id = contact_user.user_contact
                 LEFT JOIN contacts_contact_groups_xref ON contacts.id = contacts_contact_groups_xref.contact_id

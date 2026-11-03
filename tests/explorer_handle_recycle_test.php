@@ -117,8 +117,8 @@ function test_explorer_restore_notes()
 // The notes follow the count, or the refusals in a partial answer.
 function test_explorer_restore_message()
 {
-	pg_assert_same('2 item(s) were restored from the recycle bin', pg_explorer_restore_message(2, array(), array()), 'no notes');
-	pg_assert_same('2 item(s) were restored from the recycle bin. a went to the root folder because its folder is gone.',
+	pg_assert_same('2 item(s) were restored from the Recycle Bin.', pg_explorer_restore_message(2, array(), array()), 'no notes');
+	pg_assert_same('2 item(s) were restored from the Recycle Bin. a went to the root folder because its folder is gone.',
 		pg_explorer_restore_message(2, array(), array('a went to the root folder because its folder is gone.')), 'with a note');
 	pg_assert_same('Access denied. a came back as a[1] because its name was taken.',
 		pg_explorer_restore_message(1, array('Access denied'), array('a came back as a[1] because its name was taken.')), 'partial with a note');

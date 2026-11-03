@@ -1373,9 +1373,11 @@ function pg_record_widget_form_page_id($cfg)
  * (pg_record_share_image_uses_default()): forms shown by a classic form item
  * view page or a designed form item view widget, with no RSS media field and
  * no share image field. Named for the SEO settings card; empty before the
- * 11.0.18 column is there.
+ * 11.0.18 column is there. Forms in the Recycle Bin are left out (there is
+ * nothing to fix on them), and same-named forms are told apart as the
+ * custom form pickers do (pg_submitted_form_list_labels()).
  *
- * @return array custom form page id => form name
+ * @return array custom form page id => form label, not escaped
  */
 function pg_record_forms_sharing_default_image()
 {
@@ -1401,17 +1403,18 @@ function pg_record_forms_sharing_default_image()
 
     unset($form_page_ids[0]);
 
+    $bin_folders = function_exists('pg_recycle_bin_folder_ids') ? array_flip(pg_recycle_bin_folder_ids()) : array();
     $forms = array();
 
     foreach (array_keys($form_page_ids) as $form_page_id) {
         $form = db_item(
-            "SELECT custom_form_pages.form_name, custom_form_pages.share_image_field_id, page.page_name
+            "SELECT custom_form_pages.form_name, custom_form_pages.share_image_field_id, page.page_name, page.page_folder
             FROM custom_form_pages
             LEFT JOIN page ON page.page_id = custom_form_pages.page_id
             WHERE custom_form_pages.page_id = '" . (int) $form_page_id . "'
             LIMIT 1");
 
-        if (!is_array($form)) {
+        if (!is_array($form) || isset($bin_folders[(int) $form['page_folder']])) {
             continue;
         }
 
@@ -1420,14 +1423,55 @@ function pg_record_forms_sharing_default_image()
             WHERE page_id = '" . (int) $form_page_id . "'");
 
         if (pg_record_share_image_uses_default($form['share_image_field_id'], $fields)) {
-            $name = trim((string) $form['form_name']);
-            $forms[$form_page_id] = ($name !== '') ? $name : (string) $form['page_name'];
+            $forms[] = array(
+                'id' => $form_page_id,
+                'form_name' => trim((string) $form['form_name']),
+                'page_name' => (string) $form['page_name'],
+                'binned' => false);
         }
     }
 
-    natcasesort($forms);
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
 
-    return $forms;
+    $labels = array();
+    $seen = array();
+
+    foreach (pg_submitted_form_list_labels($forms) as $form) {
+        $label = $form['name'];
+
+        // Two forms whose form and page names are both equal get their id.
+        if (isset($seen[mb_strtolower($label, 'UTF-8')])) {
+            $label .= ' (#' . $form['id'] . ')';
+        }
+
+        $seen[mb_strtolower($form['name'], 'UTF-8')] = true;
+        $labels[$form['id']] = $label;
+    }
+
+    natcasesort($labels);
+
+    return $labels;
+}
+
+/**
+ * The forms named in the Default Share Image warning: the first few labels,
+ * then how many more, so a site with dozens of form pages does not get a
+ * warning as long as the card.
+ *
+ * @param array $labels pg_record_forms_sharing_default_image()'s answer
+ * @param int   $limit  labels written out
+ * @return string not escaped
+ */
+function pg_record_forms_sharing_default_image_text($labels, $limit = 5)
+{
+    $labels = array_values((array) $labels);
+    $text = implode(', ', array_slice($labels, 0, $limit));
+
+    if (count($labels) > $limit) {
+        $text .= ' ' . lang(array('string' => 'and {var:1} more', 'vars' => array(count($labels) - $limit)));
+    }
+
+    return $text;
 }
 
 /**
@@ -3330,6 +3374,30 @@ function pg_request_is_automated()
     }
 
     return function_exists('waf_is_pinegrap_client') && waf_is_pinegrap_client();
+}
+
+/**
+ * Whether this request is the panel's own preview of a page: the File
+ * Manager's preview pane and Quick look load the page with pg_preview=1.
+ * Such a draw opens no visitor record and counts no page view, or an operator
+ * looking through pages would raise their views and SEO impact (#5218).
+ *
+ * The marker counts only for a signed-in panel user; a visitor who adds it is
+ * counted as usual. The query string also keeps the page cache out of it, so
+ * no beacon counts it either.
+ *
+ * Pure: no query.
+ *
+ * @param  array $get        request parameters ($_GET)
+ * @param  bool  $signed_in  a panel user is signed in
+ * @return bool
+ */
+function pg_request_is_panel_preview(array $get, $signed_in)
+{
+    return ($signed_in === true)
+        && isset($get['pg_preview'])
+        && is_string($get['pg_preview'])
+        && ($get['pg_preview'] === '1');
 }
 
 // The visitor's row in visitors for this request: opened or found again, with
@@ -5532,7 +5600,10 @@ function pg_seo_pages_summary($rows)
             }
         }
 
-        if ((int) ($row['seo_checked_at'] ?? 0) == 0) {
+        // Never scored, or marked stale by a change since the last score:
+        // the rows the "SEO Score Not Calculated" filter lists.
+        if (((int) ($row['seo_checked_at'] ?? 0) == 0)
+            || (isset($row['seo_analysis_current']) && ((string) $row['seo_analysis_current'] === '0'))) {
             $summary['not_calculated']++;
         }
 

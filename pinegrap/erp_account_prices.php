@@ -94,6 +94,12 @@ if (!$ready) {
     $liveform->mark_error('', lang('Account prices come with the software update; run the update to use them.'));
 }
 
+// Purchase documents never read these terms (the invoice editor applies them
+// on sales only), so a supplier's page says so instead of looking in force.
+if ($ready && ((string) $account['kind'] === 'supplier')) {
+    $liveform->add_warning(h(lang('This account is a supplier only. Account prices apply to sales only (invoices, quotes and the store), never to purchases.')));
+}
+
 // The products' price and discount change in place, saved as soon as they
 // are typed.
 $quick_edit = (!$readonly && $ready) ? erp_account_price_edit_columns() : array();
@@ -160,7 +166,8 @@ pg_page_shell([
                 <input type="hidden" name="account_id" value="' . $account_id . '" />
                 <input type="hidden" name="erp_action" value="save" />
                 <div class="card my-7">
-                    <div class="card-body row g-3 align-items-end">
+                    <div class="card-body">
+                        <div class="row g-3 align-items-end">
                         <div class="col-12 sm:col-6 md:col-4">
                             <label class="form-label" for="account_discount">' . lang('Discount on everything else (%)') . '</label>
                             <input type="text" class="form-control text-end" id="account_discount" name="account_discount" value="' . h(erp_account_rate_input($account['discount_rate'] ?? 0)) . '" inputmode="decimal" placeholder="—"' . (($readonly || !$ready) ? ' disabled' : '') . ' />
@@ -169,6 +176,7 @@ pg_page_shell([
                             <button type="submit" class="btn btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
                         </div>' : '') . '
                         <div class="col-12 md:col form-text">' . lang('Applied on the list price of every product that has no line of its own below. Empty is none.') . '</div>
+                        </div>
                     </div>
                 </div>
             </form>

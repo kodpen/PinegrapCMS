@@ -31,9 +31,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/design_file_form.php');
 $id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $theme_file_name = ($id > 0) ? (string) db_value("SELECT name FROM files WHERE (id = '" . $id . "') AND (design = '1')") : '';
 if (
-    ($theme_file_name === '')
+    pg_design_file_name_unsafe($theme_file_name)
     || ($theme_file_name !== basename($theme_file_name))
-    || (strpos($theme_file_name, '..') !== false)
     || (mb_strtolower(pathinfo($theme_file_name, PATHINFO_EXTENSION)) !== 'css')
 ) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
@@ -595,6 +594,13 @@ if (!$_POST) {
         }
         
         $notice = lang('The theme file was edited successfully.');
+
+        // The name is the theme's address; say so when it is not the one typed.
+        $saved_as = pg_file_name_saved_as_notice(trim((string) $liveform->get_field_value('name')), $name);
+
+        if ($saved_as !== '') {
+            $notice .= ' ' . $saved_as;
+        }
 
         $liveform_view_themes->add_notice($notice);
 

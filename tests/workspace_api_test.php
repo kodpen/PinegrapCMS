@@ -1438,8 +1438,24 @@ function test_ws_file_preview_edge()
 	pg_assert_same(1920, ws_file_preview_edge(4096));
 }
 
-// A picture already no larger than the edge, and a file that is no picture,
-// are sent as they are; nothing is drawn or kept for them.
+// The edge a phone asks for lands on a derivative width, so a preview and a
+// panel list share one copy.
+function test_ws_file_preview_width()
+{
+	pg_assert_same(320, ws_file_preview_width(1), 'the smallest edge');
+	pg_assert_same(320, ws_file_preview_width(160), '160');
+	pg_assert_same(320, ws_file_preview_width(320), '320');
+	pg_assert_same(960, ws_file_preview_width(640), '640');
+	pg_assert_same(1440, ws_file_preview_width(1280), '1280');
+	pg_assert_same(1920, ws_file_preview_width(4096), 'above the largest');
+
+	foreach (array(1, 160, 320, 640, 1280, 1920, 4096) as $wanted) {
+		pg_assert_true(in_array(ws_file_preview_width($wanted), pg_image_derivative_widths(), true), 'a derivative width: ' . $wanted);
+	}
+}
+
+// A file that is no picture, one with no files id and one already no wider
+// than the copy are sent as they are; nothing is drawn or kept for them.
 function test_ws_file_preview_sends_the_original()
 {
 	$directory = sys_get_temp_dir() . '/pg_ws_preview_test_' . getmypid();
@@ -1447,7 +1463,7 @@ function test_ws_file_preview_sends_the_original()
 
 	$text = $directory . '/notes.jpg';
 	file_put_contents($text, 'not a picture');
-	pg_assert_same(null, ws_file_preview($text, 160), 'not a picture');
+	pg_assert_same(null, ws_file_preview($text, 160, 0), 'no files id');
 
 	if (function_exists('imagecreatetruecolor') && function_exists('imagepng')) {
 		$small = $directory . '/small.png';
@@ -1455,8 +1471,7 @@ function test_ws_file_preview_sends_the_original()
 		imagepng($image, $small);
 		pg_image_destroy($image);
 
-		pg_assert_same(null, ws_file_preview($small, 160), 'no larger than the edge');
-		pg_assert_same(null, ws_file_preview($small, 1), 'smaller than the smallest edge');
+		pg_assert_same(null, ws_file_preview($small, 160, 0), 'no files id, a picture');
 		@unlink($small);
 	}
 

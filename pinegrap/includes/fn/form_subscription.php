@@ -543,6 +543,12 @@ function pg_fs_confirm($contact_id, $group_id, $email)
         'contact_id' => $contact_id,
     ));
 
+    // The signed link proves the mailbox is the person's: a bounce or
+    // complaint block on it lifts.
+    if (function_exists('pg_mail_bounce_clear')) {
+        pg_mail_bounce_clear($email);
+    }
+
     log_activity(lang(array(
         'string' => '{var:1} confirmed the subscription to contact group {var:2}.',
         'vars'   => array((string) $email, (string) $group_id))), 'UNKNOWN');

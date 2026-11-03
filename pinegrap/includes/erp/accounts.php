@@ -368,6 +368,52 @@ function erp_tax_number_check($number, $country_code = '')
 }
 
 /**
+ * A tax number column as SQL compares it: upper case, without the spaces,
+ * dots, dashes and slashes a card may hold (erp_tax_number_check() keeps a
+ * foreign number as typed, and older cards hold Turkish ones with dots).
+ * The same key as erp_edoc_account_tax_key() for those separators.
+ *
+ * @param string $column  A trusted column name
+ * @return string
+ */
+function erp_account_tax_key_sql($column)
+{
+    return "REPLACE(REPLACE(REPLACE(REPLACE(UPPER(" . $column . "), ' ', ''), '.', ''), '-', ''), '/', '')";
+}
+
+/**
+ * The first account whose tax number is the given one, separators aside:
+ * 734.512.8907 and 7345128907 are one number.
+ *
+ * @param string $number
+ * @param int    $exclude_id   An account to leave out, 0 for none
+ * @param bool   $active_only  Only active accounts
+ * @return array|null  ['id', 'title', 'tax_number'] or null
+ */
+function erp_account_by_tax_number($number, $exclude_id = 0, $active_only = false)
+{
+    $key = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $number));
+
+    if ($key === '') {
+        return null;
+    }
+
+    $rows = db_items("SELECT id, title, tax_number FROM erp_accounts
+        WHERE " . erp_account_tax_key_sql('tax_number') . " = '" . escape($key) . "'"
+        . ($active_only ? " AND status = 'active'" : '')
+        . " AND id <> '" . (int) $exclude_id . "'
+        ORDER BY id ASC");
+
+    foreach ((array) $rows as $row) {
+        if (strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $row['tax_number'])) === $key) {
+            return $row;
+        }
+    }
+
+    return null;
+}
+
+/**
  * What a tax number is called on screen: VKN / TCKN in Turkey, "tax
  * number" elsewhere, where neither word means anything.
  *

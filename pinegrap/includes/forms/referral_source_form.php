@@ -38,13 +38,18 @@ function pg_referral_source_form_values($post)
 
 /**
  * Why the values cannot be saved: the name or the code is blank (a value
- * of only spaces passes the browser's required check). Empty when both
- * are given.
+ * of only spaces passes the browser's required check), the sort order is
+ * not a whole number from 0 to 999 (the column is a smallint and the
+ * session's sql_mode would clip or zero it silently), or another source
+ * already uses the name or the code (an order keeps only the code, and the
+ * checkout options are keyed by the name). Names and codes are compared
+ * without case, as the table's collation does. Empty when all is well.
  *
  * @param array $values pg_referral_source_form_values()
+ * @param array $others 'name' and 'code' of every other stored source
  * @return string  the translated message, or ''
  */
-function pg_referral_source_form_error($values)
+function pg_referral_source_form_error($values, $others = array())
 {
     $labels = array('name' => 'Referral Source Name', 'code' => 'Referral Source Code');
 
@@ -54,7 +59,36 @@ function pg_referral_source_form_error($values)
         }
     }
 
+    $sort_order = (string) ($values['sort_order'] ?? '');
+    if (($sort_order !== '') && (!ctype_digit($sort_order) || ((int) $sort_order > 999))) {
+        return lang(array('string' => '{var:1} must be a whole number from 0 to 999.', 'vars' => array(lang('Sort Order'))));
+    }
+
+    $name = mb_strtolower($values['name'], 'UTF-8');
+    $code = mb_strtolower($values['code'], 'UTF-8');
+
+    foreach ($others as $other) {
+        if (mb_strtolower((string) ($other['code'] ?? ''), 'UTF-8') === $code) {
+            return lang(array('string' => 'The code {var:1} is already used by another referral source.', 'vars' => array($other['code'])));
+        }
+        if (mb_strtolower((string) ($other['name'] ?? ''), 'UTF-8') === $name) {
+            return lang(array('string' => 'The name {var:1} is already used by another referral source.', 'vars' => array($other['name'])));
+        }
+    }
+
     return '';
+}
+
+/**
+ * The sort order to store, from a value pg_referral_source_form_error()
+ * accepted; an empty box is 0.
+ *
+ * @param string $text the posted sort order
+ * @return int
+ */
+function pg_referral_source_sort_order($text)
+{
+    return (int) $text;
 }
 
 /**
@@ -71,10 +105,12 @@ function pg_referral_source_form_card($values)
         $name_value = '';
         $code_value = '';
         $sort_order = '';
+        $heading = lang('New Referral Source Information');
     } else {
         $name_value = ' value="' . h($values['name']) . '"';
         $code_value = ' value="' . h($values['code']) . '"';
         $sort_order = h($values['sort_order']);
+        $heading = lang('Referral Source Information');
     }
 
     return '
@@ -82,11 +118,11 @@ function pg_referral_source_form_card($values)
                             <div class="col-12">
                                 <div class="card my-7">
                                     <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                        ' . lang('New Referral Source Information') . '
+                                        ' . $heading . '
                                     </h2>
                                     <div class="card-body">
                                         <div class="row">
-                                            <h3 class="h5">' . lang('Order Preview Page Display Options') . '</h3>
+                                            <h3 class="h5">' . lang('Shown in the "How did you hear about us?" choice at checkout') . '</h3>
                                             
                                             <div class="col-12 md:col-6 my-3">
                                                 <label for="name" class="form-label">' . lang('Referral Source Name') . '</label>
@@ -97,7 +133,7 @@ function pg_referral_source_form_card($values)
                                                 <label for="sort_order" class="form-label">' . lang('Sort Order') . '</label>
                                                 <div class="input-group number-controls">
                                                     <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
-                                                    <input class="form-control text-center border-start-0 border-end-0" value="' . $sort_order . '" type="text" name="sort_order" id="sort_order" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"/>
+                                                    <input class="form-control text-center border-start-0 border-end-0" value="' . $sort_order . '" type="text" name="sort_order" id="sort_order" maxlength="3" min="0" max="999" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowMinus="false" data-inputmask-placeholder="0"/>
                                                     <button class="btn material-icons plus border border-start-0" type="button" aria-label="' . h(lang('Increase')) . '">add</button>
                                                 </div>
                                             </div>
@@ -105,7 +141,7 @@ function pg_referral_source_form_card($values)
 
                                         </div>
                                         <div class="row mt-7">
-                                            <h3 class="h5">' . lang('New Referral Source Code for Order Reporting') . '</h3>
+                                            <h3 class="h5">' . lang('Referral Source Code for Order Reporting') . '</h3>
                                             <div class="col-12 md:col-4 my-3">
                                                 <label for="code" class="form-label">' . lang('Referral Source Code') . '</label>
                                                 <input type="text" id="code" name="code" class="form-control" maxlength="50"' . $code_value . ' required />

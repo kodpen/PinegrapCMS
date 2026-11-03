@@ -24,6 +24,81 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $result = mysqli_query(db::$con, "SELECT * FROM config") or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
+    // ── Chat notifications ───────────────────────────────────────────────
+    // Only when the card was drawn: a site that cannot seal draws a note
+    // instead, and its save must leave the sealed entry alone. A new target
+    // whose address or token its service does not give out refuses the save
+    // before anything is written. Written at the end of this module.
+    $notify_save = (post_value('notify_channels_card') && function_exists('pg_notify_targets')
+        && pg_connect_schema_ready() && pg_connect_can_seal());
+    $notify_new = null;
+
+    if ($notify_save && (trim((string) post_value('notify_new_kind')) !== '')) {
+
+        $notify_new = pg_notify_target_clean(array(
+            'id'      => substr(md5(uniqid('', true) . mt_rand()), 0, 16),
+            'kind'    => (string) post_value('notify_new_kind'),
+            'label'   => (string) post_value('notify_new_label'),
+            'url'     => (string) post_value('notify_new_url'),
+            'token'   => (string) post_value('notify_new_token'),
+            'chat_id' => (string) post_value('notify_new_chat_id'),
+            'codes'   => (array) post_value('notify_new_codes'),
+            'events'  => (array) post_value('notify_new_events'),
+        ), array_keys(pg_ops_alert_codes()), array_keys(pg_notify_events()));
+
+        if ($notify_new === null) {
+            $liveform->mark_error((post_value('notify_new_kind') === 'telegram') ? 'notify_new_token' : 'notify_new_url',
+                lang('This is not an address or token the chosen service gives out. Check the bot token and the chat ID for Telegram.'));
+        }
+
+        if ($liveform->check_form_errors()) {
+            return;
+        }
+    }
+
+    // ── Storage ──────────────────────────────────────────────────────────
+    // Only when the card was drawn (a site that cannot seal draws a note).
+    // Switched on, or about to be tested, the settings must be complete and
+    // the save is refused before anything is written; switched off they are
+    // kept as typed. An empty secret box keeps the saved secret. Written at
+    // the end of this module.
+    $object_storage_save = (post_value('object_storage_card') && function_exists('pg_os_settings')
+        && pg_connect_schema_ready() && pg_connect_can_seal());
+    $object_storage_new = null;
+    $object_storage_on = false;
+
+    if ($object_storage_save) {
+
+        $object_storage_now = pg_os_settings();
+        $object_storage_on = (bool) post_value('object_storage_enabled');
+
+        $object_storage_new = pg_os_normalize(array(
+            'endpoint'   => post_value('object_storage_endpoint'),
+            'region'     => post_value('object_storage_region'),
+            'bucket'     => post_value('object_storage_bucket'),
+            'prefix'     => post_value('object_storage_prefix'),
+            'path_style' => (bool) post_value('object_storage_path_style'),
+            'key_id'     => post_value('object_storage_key_id'),
+            'secret'     => post_value('object_storage_secret'),
+        ));
+
+        $object_storage_check = $object_storage_new;
+
+        if ($object_storage_check['secret'] === '') {
+            $object_storage_check['secret'] = $object_storage_now['secret'];
+        }
+
+        if ($object_storage_on || post_value('object_storage_test')) {
+            foreach (pg_os_config_errors($object_storage_check) as $object_storage_field => $object_storage_error) {
+                $liveform->mark_error($object_storage_field, $object_storage_error);
+            }
+        }
+
+        if ($liveform->check_form_errors()) {
+            return;
+        }
+    }
+
     // ── Scheduled job dispatch ───────────────────────────────────────────
     // Same fragment pattern: an install that has not run the 2026.4.2 upgrade
     // saves nothing here instead of failing the whole screen on an unknown
@@ -395,5 +470,109 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             } else {
                 $liveform->add_notice(lang(array('string' => 'The remote backup destination refused the test file: {var:1}', 'vars' => array(h($backup_test_result['error'])))));
             }
+        }
+    }
+
+    if ($notify_save) {
+
+        $notify_targets_now = pg_notify_targets(true);
+        $notify_labels = (array) post_value('notify_target_label');
+        $notify_codes = (array) post_value('notify_target_codes');
+        $notify_events = (array) post_value('notify_target_events');
+        $notify_delete = (array) post_value('notify_target_delete');
+        $notify_kept = array();
+
+        foreach ($notify_targets_now as $notify_id => $notify_target) {
+
+            $notify_id = (string) $notify_id;
+
+            if (!empty($notify_delete[$notify_id])) {
+                continue;
+            }
+
+            // A target the card did not draw (added meanwhile in another
+            // tab) is kept as it is.
+            if (!array_key_exists($notify_id, $notify_labels)) {
+                $notify_kept[$notify_id] = $notify_target;
+                continue;
+            }
+
+            $notify_clean = pg_notify_target_clean(array(
+                'label'  => (string) $notify_labels[$notify_id],
+                'codes'  => isset($notify_codes[$notify_id]) ? (array) $notify_codes[$notify_id] : array(),
+                'events' => isset($notify_events[$notify_id]) ? (array) $notify_events[$notify_id] : array(),
+            ) + $notify_target, array_keys(pg_ops_alert_codes()), array_keys(pg_notify_events()));
+
+            $notify_kept[$notify_id] = ($notify_clean !== null) ? $notify_clean : $notify_target;
+        }
+
+        if ($notify_new !== null) {
+            $notify_kept[$notify_new['id']] = $notify_new;
+        }
+
+        if ($notify_kept !== $notify_targets_now) {
+            pg_notify_targets_save($notify_kept);
+        }
+
+        // "Save and send a test": sent at once, outside the queue, after the
+        // save, so it tests what is stored. Reported as a notice, like the
+        // backup connection test.
+        $notify_test_id = (string) post_value('notify_test');
+
+        if (($notify_test_id !== '') && isset($notify_kept[$notify_test_id])) {
+
+            $notify_test = pg_notify_test($notify_test_id);
+
+            $liveform->add_notice($notify_test['ok']
+                ? lang(array('string' => 'The test message was sent to {var:1}.', 'vars' => array(h($notify_kept[$notify_test_id]['label']))))
+                : lang(array('string' => 'The test message to {var:1} was refused: {var:2}', 'vars' => array(h($notify_kept[$notify_test_id]['label']), h($notify_test['error'])))));
+        }
+    }
+
+    // Storage: written after the rest of the category, then "Save and test"
+    // reads exactly what was stored. The outcome is a notice either way, as
+    // for the backup test.
+    if ($object_storage_new !== null) {
+
+        if (!pg_os_settings_save($object_storage_new, $object_storage_on, USER_ID)) {
+            $liveform->add_notice(lang('This site has no encryption key, so the storage settings were not saved.'));
+        } elseif (post_value('object_storage_test')) {
+
+            $object_storage_test = pg_os_test(pg_os_settings());
+            pg_os_health_test_save($object_storage_test, time());
+
+            $liveform->add_notice($object_storage_test['ok']
+                ? lang('The storage accepted, returned and deleted the test file.')
+                : lang(array('string' => 'The storage test failed: {var:1}', 'vars' => array(h($object_storage_test['message'])))));
+        }
+
+        // The Files buttons, after the settings they work with were saved.
+        // A start in either direction begins a fresh walk at once: the
+        // direction's cursor, rest and failures are cleared, so files left
+        // behind by an earlier walk are tried again. Pause and resume keep
+        // the walk where it is.
+        $object_storage_action = (string) post_value('object_storage_files_action');
+        $object_storage_value = ($object_storage_action !== '') ? pg_file_storage_mode_after(pg_config_text('object_storage_files'), $object_storage_action) : null;
+
+        if (($object_storage_value !== null) && pg_file_storage_ready() && pg_os_ready(pg_os_settings())) {
+
+            if (in_array($object_storage_action, array('move', 'back'), true)) {
+                pg_config_text_save(
+                    pg_file_move_state_key(($object_storage_action === 'back') ? 'back' : 'to'),
+                    json_encode(pg_file_move_state_normalize(array()))
+                );
+            }
+
+            pg_config_text_save('object_storage_files', $object_storage_value);
+
+            $object_storage_notices = array(
+                'move'   => lang('The files are moved to the storage by the general job, a few each run.'),
+                'back'   => lang('The files are brought back to the disk by the general job, a few each run.'),
+                'pause'  => lang('Paused. Files already moved stay where they are.'),
+                'resume' => lang('Resumed.'),
+            );
+            $liveform->add_notice($object_storage_notices[$object_storage_action]);
+        } elseif ($object_storage_action !== '') {
+            $liveform->add_notice(lang('Switch on "Use object storage" and save a complete connection before moving files.'));
         }
     }

@@ -18,9 +18,9 @@ description: Plan (owner 2026-11-02): store credit as customer-bound gift cards:
 - Money stays in minor units rounded with `round()` (CLAUDE.md fixed rule 7); the conversion rate is read as `pg_parse_amount()` reads amounts; a credit card never pays for a gift card product (the rule `submit_order.php` already keeps).
 - Credit is not a payment method: no driver, no charge, no refund to the PSP; a refund to credit is written as a refund in `order_returns.refund_*` with the card id as its reference.
 
-## Which questions are open? (architect; 1 before SC1, 2 before SC5)
-1. The four columns on `gift_cards` (`user_id` INT UNSIGNED NOT NULL DEFAULT 0 with a key, `kind` ENUM, `reason` VARCHAR(255), `issued_by` INT UNSIGNED) in the open version's migration; recommended as written, no second table.
-2. Mail actions `credit_issued` and `credit_expiring` as `email_campaign_profiles.action` values (ENUM widened by appending), and the expiring notice sent 14 days ahead; recommended as written.
+## Which questions are decided? (#5039)
+1. `gift_cards.user_id` (indexed), `kind`, `reason`, `issued_by` and `expires_at` (0 = never); no second table.
+2. `credit_issued` and `credit_expiring` appended to the campaign actions; the notice 14 days ahead (a module constant).
 
 ## Where does it start?
 - SC1 alone, then SC2, SC3, SC4 and SC5 together. Read `commerce/README.md` key rules, `commerce/order-returns-refund.md`, `order-returns-refund-columns.md`, `order-cancel-gift-cards.md`, `gift-card-balance-edit.md`, `includes/fn/order_completion.php` (`pg_order_complete_rewards()`), `submit_order.php` around `applied_gift_cards`. Steps: `store-credit-steps.md`, `-steps-2.md`.

@@ -93,3 +93,60 @@ function test_ad_region_form_refused_create_keeps_an_unticked_box()
 		pg_assert_true((bool) preg_match('/id="fade"[^>]*checked="checked"/', $card), 'Fade stays chosen');
 	});
 }
+
+function test_ad_region_name_error_refuses_a_long_name()
+{
+	$free = function ($name) { return false; };
+	$taken = function ($name) { return true; };
+
+	pg_assert_same('', pg_ad_region_name_error(str_repeat('x', 100), null, $free), '100 characters pass');
+	pg_assert_contains('100', pg_ad_region_name_error(str_repeat('x', 101), null, $free), '101 characters are refused, not cut');
+	pg_assert_same(lang('Name is required.'), pg_ad_region_name_error('', null, $free), 'a blank name is required');
+	pg_assert_same(lang('The name that you entered is already in use, so please enter a different name.'), pg_ad_region_name_error('top', null, $taken), 'a taken name is refused');
+
+	$asked = array();
+	$spy = function ($name) use (&$asked) { $asked[] = $name; return false; };
+	pg_ad_region_name_error(str_repeat('x', 101), null, $spy);
+	pg_assert_same(array(), $asked, 'a long name is refused before the clash check');
+}
+
+function test_ad_region_behavior_errors()
+{
+	$dynamic = array('display_type' => 'dynamic', 'transition_type' => 'slide', 'transition_duration' => '', 'slideshow' => '1', 'slideshow_interval' => '5');
+
+	pg_assert_same(array(), pg_ad_region_behavior_errors($dynamic), 'a valid dynamic region passes');
+	pg_assert_same(array(), pg_ad_region_behavior_errors(array('display_type' => 'static', 'transition_duration' => '-250')), 'a static region does not check hidden fields');
+	pg_assert_same(array('display_type'), array_keys(pg_ad_region_behavior_errors(array('display_type' => 'bogus'))), 'an unknown display type is refused');
+	pg_assert_same(array('transition_type'), array_keys(pg_ad_region_behavior_errors(array('transition_type' => 'bogus') + $dynamic)), 'an unknown transition type is refused');
+	pg_assert_same(array('transition_duration'), array_keys(pg_ad_region_behavior_errors(array('transition_duration' => '-250') + $dynamic)), 'a negative duration is refused');
+	pg_assert_same(array('transition_duration'), array_keys(pg_ad_region_behavior_errors(array('transition_duration' => '10000') + $dynamic)), 'a duration over 9999 is refused');
+	pg_assert_same(array(), pg_ad_region_behavior_errors(array('transition_duration' => '0') + $dynamic), 'a zero duration passes');
+	pg_assert_same(array('slideshow_interval'), array_keys(pg_ad_region_behavior_errors(array('slideshow_interval' => '2.5') + $dynamic)), 'a decimal interval is refused');
+	pg_assert_same(array('slideshow_interval'), array_keys(pg_ad_region_behavior_errors(array('slideshow_interval' => '0') + $dynamic)), 'a zero interval is refused');
+	pg_assert_same(array('slideshow_interval'), array_keys(pg_ad_region_behavior_errors(array('slideshow_interval' => '-9') + $dynamic)), 'a negative interval is refused');
+	pg_assert_same(array(), pg_ad_region_behavior_errors(array('slideshow' => '', 'slideshow_interval' => '-9') + $dynamic), 'autoplay off does not check the interval');
+}
+
+function test_ad_region_form_values_write_only_allowed_values()
+{
+	_test_ad_region_form_with_session(function ($liveform) {
+		$saved_request = $_REQUEST;
+		$_REQUEST = array('display_type' => 'bogus', 'transition_type' => 'bogus', 'transition_duration' => '-250', 'slideshow' => '7', 'slideshow_interval' => '-9', 'slideshow_continuous' => '1');
+		$liveform->add_fields_to_session();
+		$_REQUEST = $saved_request;
+
+		pg_assert_same(array('static', 'slide', '0', '0', '0', '1'), pg_ad_region_form_values($liveform), 'unknown types and out-of-range numbers are written as defaults');
+	});
+}
+
+function test_ad_region_form_numbers_take_no_minus_and_no_decimal()
+{
+	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/ad_region_form.php');
+
+	pg_assert_same(2, substr_count($form, "'data-inputmask-alias'=>'integer', 'data-inputmask-allowminus'=>'false'"), 'duration and interval are whole numbers without a minus');
+	pg_assert_false(strpos($form, "'data-inputmask-alias'=>'decimal'") !== false, 'no decimal mask on the interval');
+
+	foreach (array('add_ad_region.php', 'edit_ad_region.php') as $file) {
+		pg_assert_contains('pg_ad_region_form_validate_behavior($liveform)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ' checks the behaviour values');
+	}
+}

@@ -5,10 +5,11 @@ description: The arrival date create and edit screens share includes/forms/arriv
 
 ## Where is the arrival date form?
 - `includes/forms/arrival_date_form.php` (gate `PG_FUNCTIONS_DIR`). `add_arrival_date.php` and `edit_arrival_date.php` stay at the root as thin wrappers and `require_once` it.
-- `pg_arrival_date_form_cards($values, $cutoffs_js = null)` prints the preview, availability and options cards with the shipping cut-off table. `$values` is the raw stored row (`array()` on create: enabled, not default, not custom); escaping and the date order are inside, and an unset latest allowed date (`0/0/0000`) shows empty. `$cutoffs_js` (edit) fills `shipping_cutoffs` and draws its rows on load.
+- `pg_arrival_date_form_cards($values, $cutoffs_js = null)` prints the preview, availability and options cards with the shipping cut-off table. `$values` is the raw stored row (`array()` on create: enabled, not default, not custom); escaping and the date order are inside, and every unset date shows empty (`pg_arrival_date_form_date_text()`: `0000-00-00` was `0/0/0000`); the list uses it too and writes "Chosen by the customer" for a custom record's arrival date (#5555). `$cutoffs_js` (edit) fills `shipping_cutoffs` and draws its rows on load.
 - `…_shipping_method_options_js()` builds the `shipping_method_id_options` lines.
 
 ## What does a save share?
+- `pg_arrival_date_form_errors($post)` (#5554), run by both screens before any write (edit: before its cut-off DELETE, not for Delete); a refusal ends on the error screen with Go back. Required: the name, a real start and end date (`pg_date_input_iso()`), the end not before the start, a real arrival date unless `custom` (then the latest allowed date is blank or real), a sort order that is a whole smallint. Before, an unreadable date was stored as `0000-00-00` and a zero start kept the record off the checkout.
 - `pg_arrival_date_form_status($post)` ('enabled' / 'disabled'), `…_values($post, $user_id)`: the twelve column values in INSERT/UPDATE order (a list posted for a field saves `''`).
 - `…_save_cutoffs($id, $post)` inserts the posted cut-offs (a method once, a valid time between the start and end dates) and returns whether one was left out; the screen then shows the notice on the edit screen.
 

@@ -233,3 +233,34 @@ function test_erp_invoice_due_date_is_checked_on_save_and_issue()
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_erp_invoice_draft.php');
 	pg_assert_contains('erp_invoice_due_date_redated(', $screen, 'the draft screen moves a worked-out due date');
 }
+
+// A quantity or rate the form refused (read as -1) stops the line on its
+// own box instead of saving 3 for -3 or 2% for 2O.
+function test_erp_invoice_manual_refuses_negative_quantity_and_rates()
+{
+	$line = array('description' => 'pg-test', 'quantity' => -1.0, 'unit_price' => 10000, 'tax_rate' => 20);
+	$built = erp_manual_lines_build(array($line));
+	pg_assert_same('lines[0][quantity]', $built['field']);
+
+	$line['quantity'] = 3;
+	$line['discount_rate'] = -1.0;
+	pg_assert_same('lines[0][discount_rate]', erp_manual_lines_build(array($line))['field']);
+
+	unset($line['discount_rate']);
+	$line['tax_rate'] = -1.0;
+	pg_assert_same('lines[0][tax_rate]', erp_manual_lines_build(array($line))['field']);
+}
+
+// Quantity times price past the cap is refused on the line; nothing is
+// multiplied into a wrapped total.
+function test_erp_invoice_manual_refuses_an_overflowing_line()
+{
+	$line = array('description' => 'pg-test', 'quantity' => 99999999999, 'unit_price' => 99999999999999900, 'tax_rate' => 20, 'discount_rate' => 10);
+	$built = erp_manual_lines_build(array($line));
+
+	pg_assert_same('lines[0][unit_price]', $built['field']);
+	pg_assert_same(array(), $built['lines']);
+
+	$line['unit_price'] = 1e30;
+	pg_assert_same('lines[0][unit_price]', erp_manual_lines_build(array($line))['field']);
+}

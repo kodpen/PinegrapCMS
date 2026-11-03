@@ -18,10 +18,10 @@ description: Plan (owner 2026-11-02): designed forms get Shown-when rules, steps
 - Decision #2450 ("a value condition never hides a required control") is a widget rule; question 1 settles the form case.
 - Texts through `tr_add.php`; the designer twin lists (`_pg_cf_controls()`, `CF_PALETTE`), `php tools/build_js.php`, `designer/system-widget-change-checklist.md`.
 
-## Which questions are open? (architect; 1 before FL1, 2-3 before FL4)
-1. A field hidden by `shown_when` is not required for that submission and its posted value is dropped (recommended), or hiding a required field is refused in the designer as #2450 does for widgets.
-2. The fee is an order of a product (recommended: everything downstream exists), not a `form_payments` table; the fee product may be any product, and the templates add hidden `fee` products in their install dumps.
-3. An unpaid record is listed to staff with an "Unpaid" badge and gets no confirmation mail until paid (recommended), or is not saved until the payment succeeds.
+## Which questions are decided? (#5035)
+1. Owner: a field hidden by `shown_when` is not required for that submission and its posted value is dropped; #2450 stays the widget rule.
+2. The fee is a one-line order of a product; no `form_payments` table; the templates ship hidden fee products in their install dumps.
+3. Owner: an unpaid record is saved, listed with an "Unpaid" badge, no confirmation mail until paid.
 
 ## Where does it start?
 - FL1 and FL2 start together (question 1 first); FL4 after question 2-3. Read `designer/README.md` key rules, `designer/custom-form-field-rules.md`, `custom-form-model.md`, `custom-form-render.md`, `designer-form-palette-and-fields.md`, `commerce/subscriptions-renewal.md`, `includes/payments/driver.php`. Steps: `designer-form-logic-steps.md`, `-steps-2.md`.

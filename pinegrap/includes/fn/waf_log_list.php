@@ -79,6 +79,25 @@ function pg_waf_log_list_actions()
 }
 
 /**
+ * The actions the summary adds up under one card. A ban row is the decision
+ * about a request the refusing row already counts, so the request cards
+ * leave it out and the bans are counted on their own.
+ *
+ * @param string $group blocked, would_block or bans
+ * @return array actions
+ */
+function pg_waf_log_list_request_actions($group)
+{
+    $groups = array(
+        'blocked'     => array('block', 'rate'),
+        'would_block' => array('would-block', 'would-rate'),
+        'bans'        => array('ban', 'would-ban'),
+    );
+
+    return isset($groups[$group]) ? $groups[$group] : array();
+}
+
+/**
  * The filters, each checked: a value that is not one of the choices (or not
  * one value: ?range[]=x) counts as not given. The search keeps its first 200
  * characters.
@@ -137,8 +156,9 @@ function pg_waf_log_list_url(array $filters)
 
 /**
  * The condition of the filters with its values as ? placeholders: the
- * period back from $now, the category, and the search text anywhere in the
- * address, the URL, the rule, the reference or the user agent.
+ * period back from $now, the category, and the search by the table box's
+ * rule (pg_waf_log_list_search()), so the toolbar search and the table's own
+ * box find the same events.
  *
  * @param array $filters pg_waf_log_list_filters()'s answer
  * @param int   $now     the time the period ends
@@ -154,9 +174,11 @@ function pg_waf_log_list_condition(array $filters, $now)
         $params[] = (string) $filters['category'];
     }
 
-    if ($filters['search'] !== '') {
-        $sql .= ' AND (ip_address LIKE ? OR request_url LIKE ? OR rule_id LIKE ? OR reference LIKE ? OR user_agent LIKE ?)';
-        $params = array_merge($params, array_fill(0, 5, pg_list_like_pattern($filters['search'])));
+    $search = pg_waf_log_list_search(pg_list_search_terms($filters['search']));
+
+    if ($search['sql'] !== '') {
+        $sql .= ' AND ' . $search['sql'];
+        $params = array_merge($params, $search['params']);
     }
 
     return array('sql' => $sql, 'params' => $params);

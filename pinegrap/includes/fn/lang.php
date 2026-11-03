@@ -183,13 +183,13 @@ function pg_lang_cache_read($path, $signature)
 // Writes the compiled cache of $map to $path through a temporary file and
 // rename(), so a request never includes a half-written file, and drops the
 // old copy from opcache (which may not check file times at all). false when
-// the folder is missing or not writable: lang() then decodes the JSON each
-// request, as it did before the cache.
+// the folder is missing or does not take the file: lang() then decodes the
+// JSON each request, as it did before the cache. The write answers, not
+// is_writable(): PHP on Windows calls a folder with the read-only attribute
+// (set by OneDrive and Explorer, enforced by nothing) closed.
 function pg_lang_cache_write($path, $signature, array $map)
 {
-    $dir = dirname($path);
-
-    if (!is_dir($dir) || !is_writable($dir)) {
+    if (!is_dir(dirname($path))) {
         return false;
     }
 
@@ -383,65 +383,60 @@ function lang($properties = false)
     }
 
 
-    // Replace variables {var}, {var:1}, with optional modifiers |c |u |l
+    // Fill the placeholders in one strtr() pass, so a value that itself holds
+    // placeholder text ("{var:2}", "{suffix}") is printed as it is, and a
+    // modifier changes only its own placeholder:
+    //   {var:N} the value; {var:N|c} {var:N|u} {var:N|l} (or {var|N|c}...)
+    //   title, upper or lower case; {var|c} {var|u} {var|l} the first value;
+    //   {suffix:N} a suffix; {suffix} the first suffix.
+    // Plain {var} is left alone: JavaScript templates fill it in the browser.
+    $pairs = array();
+
     if ($vars !== null) {
-        // Normalize single scalar to first var
+        // A single scalar is the first value.
         if (!is_array($vars)) {
             $vars = array($vars);
         }
 
-        foreach ($vars as $index => $value) {
-            $pos = $index + 1;
-            $replacement = $value;
+        $modes = array('c' => 'title', 'u' => 'upper', 'l' => 'lower');
 
-            // Look for modifier patterns {var:N|c} {var:N|u} {var:N|l}
-            if (strpos($string, '{var:' . $pos . '|c}') !== false || strpos($string, '{var|' . ($pos) . '|c}') !== false) {
-                $replacement = $safe_case($replacement, 'title');
-                $string = str_replace('{var:' . $pos . '|c}', '{var:' . $pos . '}', $string);
-                $string = str_replace('{var|' . ($pos) . '|c}', '{var:' . $pos . '}', $string);
-            } elseif (strpos($string, '{var:' . $pos . '|u}') !== false || strpos($string, '{var|' . ($pos) . '|u}') !== false) {
-                $replacement = $safe_case($replacement, 'upper');
-                $string = str_replace('{var:' . $pos . '|u}', '{var:' . $pos . '}', $string);
-                $string = str_replace('{var|' . ($pos) . '|u}', '{var:' . $pos . '}', $string);
-            } elseif (strpos($string, '{var:' . $pos . '|l}') !== false || strpos($string, '{var|' . ($pos) . '|l}') !== false) {
-                $replacement = $safe_case($replacement, 'lower');
-                $string = str_replace('{var:' . $pos . '|l}', '{var:' . $pos . '}', $string);
-                $string = str_replace('{var|' . ($pos) . '|l}', '{var:' . $pos . '}', $string);
+        foreach ($vars as $index => $value) {
+            if (!is_int($index)) {
+                continue;
             }
 
-            // Also support shorthand {var|c} or {var} when only one var placeholder exists
-            if ($pos === 1) {
-                if (strpos($string, '{var|c}') !== false) {
-                    $replacement = $safe_case($replacement, 'title');
-                    $string = str_replace('{var|c}', '{var:1}', $string);
-                } elseif (strpos($string, '{var|u}') !== false) {
-                    $replacement = $safe_case($replacement, 'upper');
-                    $string = str_replace('{var|u}', '{var:1}', $string);
-                } elseif (strpos($string, '{var|l}') !== false) {
-                    $replacement = $safe_case($replacement, 'lower');
-                    $string = str_replace('{var|l}', '{var:1}', $string);
+            $pos = $index + 1;
+            $value = is_array($value) ? 'Array' : (string) $value;
+            $pairs['{var:' . $pos . '}'] = $value;
+
+            foreach ($modes as $modifier => $mode) {
+                $cased = $safe_case($value, $mode);
+                $pairs['{var:' . $pos . '|' . $modifier . '}'] = $cased;
+                $pairs['{var|' . $pos . '|' . $modifier . '}'] = $cased;
+
+                if ($pos === 1) {
+                    $pairs['{var|' . $modifier . '}'] = $cased;
                 }
             }
-
-            // Final replacements
-            $string = str_replace('{var:' . $pos . '}', $replacement, $string);
         }
     }
 
-    // Replace suffix placeholders {suffix} and {suffix:N}
     if ($suffixes !== null) {
         if (!is_array($suffixes)) {
             $suffixes = array($suffixes);
         }
-        foreach ($suffixes as $index => $sval) {
-            $pos = $index + 1;
-            $string = str_replace('{suffix:' . $pos . '}', $sval, $string);
+
+        foreach ($suffixes as $index => $suffix) {
+            if (is_int($index)) {
+                $pairs['{suffix:' . ($index + 1) . '}'] = is_array($suffix) ? 'Array' : (string) $suffix;
+            }
         }
-        // generic {suffix} => first suffix if exists
-        if (strpos($string, '{suffix}') !== false) {
-            $first = isset($suffixes[0]) ? $suffixes[0] : '';
-            $string = str_replace('{suffix}', $first, $string);
-        }
+
+        $pairs['{suffix}'] = (isset($suffixes[0]) && !is_array($suffixes[0])) ? (string) $suffixes[0] : '';
+    }
+
+    if (count($pairs) > 0) {
+        $string = strtr($string, $pairs);
     }
 
     return $string;

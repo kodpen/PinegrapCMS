@@ -50,8 +50,28 @@ function test_waf_log_list_condition()
 	pg_assert_same(array('sql' => 'log_timestamp >= ?', 'params' => array(1000000 - 7 * 86400)), pg_waf_log_list_condition(pg_waf_log_list_filters(array()), 1000000));
 
 	$condition = pg_waf_log_list_condition(pg_waf_log_list_filters(array('range' => '1', 'category' => 'bot', 'search' => '50%_?')), 1000000);
-	pg_assert_same('log_timestamp >= ? AND category = ? AND (ip_address LIKE ? OR request_url LIKE ? OR rule_id LIKE ? OR reference LIKE ? OR user_agent LIKE ?)', $condition['sql']);
-	pg_assert_same(array(1000000 - 86400, 'bot', '%50\\%\\_?%', '%50\\%\\_?%', '%50\\%\\_?%', '%50\\%\\_?%', '%50\\%\\_?%'), $condition['params'], 'wildcards are literal, a ? is a value');
+	pg_assert_same('log_timestamp >= ? AND category = ? AND (ip_address LIKE ? OR method LIKE ? OR request_url LIKE ? OR user_agent LIKE ? OR rule_id LIKE ? OR reference LIKE ? OR target LIKE ? OR matched LIKE ?)', $condition['sql']);
+	pg_assert_same(array_merge(array(1000000 - 86400, 'bot'), array_fill(0, 8, '%50\\%\\_?%')), $condition['params'], 'wildcards are literal, a ? is a value');
+
+	// The toolbar search follows the table box's rule: every word, the same
+	// fields, an action by the name it is shown under.
+	$filters = pg_waf_log_list_filters(array('search' => 'unknown bot'));
+	$condition = pg_waf_log_list_condition($filters, 1000000);
+	$search = pg_waf_log_list_search(pg_list_search_terms('unknown bot'));
+	pg_assert_same('log_timestamp >= ? AND ' . $search['sql'], $condition['sql']);
+	pg_assert_same(array_merge(array(1000000 - 7 * 86400), $search['params']), $condition['params']);
+
+	$condition = pg_waf_log_list_condition(pg_waf_log_list_filters(array('search' => lang('Blocked'))), 1000000);
+	pg_assert_contains('action IN (?', $condition['sql'], 'an action by its shown name');
+}
+
+// The summary counts requests; a ban row records a decision about a request
+// already counted by the row that refused it.
+function test_waf_log_list_request_actions()
+{
+	pg_assert_same(array('block', 'rate'), pg_waf_log_list_request_actions('blocked'));
+	pg_assert_same(array('would-block', 'would-rate'), pg_waf_log_list_request_actions('would_block'));
+	pg_assert_same(array('ban', 'would-ban'), pg_waf_log_list_request_actions('bans'));
 }
 
 function test_waf_log_list_sort()

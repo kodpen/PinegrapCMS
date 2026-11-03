@@ -1,0 +1,55 @@
+From: postmaster@outlook.com
+To: <bounces+{TOKEN}@example.com>
+Date: Mon, 2 Nov 2026 18:20:11 +0000
+MIME-Version: 1.0
+Content-Type: multipart/report; report-type=delivery-status;
+	boundary="d1f8a0b2-7c66-4f0e-9a51-0c2b8e1f3a77"
+X-MS-Exchange-Message-Is-Ndr:
+Content-Language: en-US
+Message-ID: <9a2e4f1b-1111-2222-3333-444455556666@AM0EUR02HT123.eop-EUR02.prod.protection.outlook.com>
+In-Reply-To: <out123@example.com>
+References: <out123@example.com>
+Subject: Undeliverable: Spring newsletter
+Auto-Submitted: auto-replied
+
+--d1f8a0b2-7c66-4f0e-9a51-0c2b8e1f3a77
+Content-Type: multipart/alternative; differences=Content-Type;
+	boundary="4a1c2d3e-aaaa-bbbb-cccc-ddddeeeeffff"
+
+--4a1c2d3e-aaaa-bbbb-cccc-ddddeeeeffff
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
+
+Your message to gone.reader@outlook.com couldn't be delivered.
+gone.reader wasn't found at outlook.com.
+
+Status code: 550 5.5.0
+
+Original message headers follow.
+
+--4a1c2d3e-aaaa-bbbb-cccc-ddddeeeeffff--
+
+--d1f8a0b2-7c66-4f0e-9a51-0c2b8e1f3a77
+Content-Type: message/delivery-status
+
+Reporting-MTA: dns;AM0EUR02HT123.eop-EUR02.prod.protection.outlook.com
+Received-From-MTA: dns;mail.example.com
+Arrival-Date: Mon, 2 Nov 2026 18:20:10 +0000
+
+Final-Recipient: rfc822;gone.reader@outlook.com
+Action: failed
+Status: 5.5.0
+Diagnostic-Code: smtp;550 5.5.0 Requested action not taken: mailbox unavailable
+ (S2017062302). [AM0EUR02FT004.eop-EUR02.prod.protection.outlook.com]
+
+--d1f8a0b2-7c66-4f0e-9a51-0c2b8e1f3a77
+Content-Type: text/rfc822-headers
+
+Return-Path: bounces+{TOKEN}@example.com
+From: Example Shop <news@example.com>
+To: gone.reader@outlook.com
+Subject: Spring newsletter
+Message-ID: <out123@example.com>
+Date: Mon, 2 Nov 2026 18:20:00 +0000
+
+--d1f8a0b2-7c66-4f0e-9a51-0c2b8e1f3a77--

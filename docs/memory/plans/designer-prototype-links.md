@@ -8,7 +8,7 @@ description: Plan (2026-10-24; ready to start, owner 2026-11-01): a Figma/XD-lik
 
 ## What is there today?
 - Links: node trees (href in `props.href` or `props._attrs`), shared components, widget page settings, and classic menus and legacy regions outside the trees; `__page_link` already links by page id inside some widgets. Details, renames, the resolver's limits, editor state, rights, Publish: plans/designer-prototype-links-code.md.
-- `seo_link` holds resolved links, refreshed on a design save, not on a shared component edit; the resolver is pure with PHP tests since #1579 (`pg_link_resolve()`), no JS twin.
+- `seo_link` holds resolved links, refreshed on a design save, not on a shared component edit; the resolver is pure with PHP tests since #1579 (`pg_link_resolve()`), its JS twin in 1a.
 
 ## What is planned? (approved 2026-11-01)
 - A Prototype view inside the visual designer on plans/graph-canvas-core.md (slice 4 ports): each page a frame, each link a named port (hotspot) where it sits, an arrow is its href (`props.href`, or the `_attrs` href where the node keeps it). Bootstrap toggle links are no hotspots.
@@ -18,7 +18,7 @@ description: Plan (2026-10-24; ready to start, owner 2026-11-01): a Figma/XD-lik
 - Drafts played as a prototype, a view-only link to it, flow shares: plans/prototype-sharing.md.
 
 ## Slices (one PR each)
-1. `free`. Read-only map: frames and arrows from every tab (`_pgTreeOf()`, shared components prefetched), classic menus (`pg_menu_tree()`) and legacy regions by a new read, the resolver's JS twin with tests (PHP split done in #1579), broken, draft and external marks; a hotspot selects its node.
+1. Done (#5401, #5492, #5603, #5619, #5635): the read-only map, designer/prototype-view.md.
 2. Draw and re-point arrows within today's rights, undo, the shared and Publish warnings, Save.
 3. Done #1867 in the Preview (designer/designer-preview-play.md): a page link plays the open tab of that name, unsaved tabs too; the Prototype view's hotspots reuse `_sdPreviewPlay()`.
 4. Shared positions, thumbnails; links by page id that survive a rename, built from `__page_link` (outside widgets a new tree prop and renderer: ask first).
@@ -32,4 +32,4 @@ description: Plan (2026-10-24; ready to start, owner 2026-11-01): a Figma/XD-lik
 5. Breakpoint: desktop width, collapsed navbars shown as their links.
 
 ## Where to start?
-- Ready now: slice 1, its first PR graph-canvas-core slice 4. Read designer/README.md, designer/designer-canvas-links.md, designer/record-value-page-links.md, designer/shared-component-model.md, designer/designer-content-roles-save-gate.md; claim before code.
+- Slice 2 next (draw and re-point arrows): start from designer/prototype-view.md and designer/prototype-hotspots.md. Read designer/README.md, designer/designer-canvas-links.md, designer/record-value-page-links.md, designer/shared-component-model.md, designer/designer-content-roles-save-gate.md; claim before code.

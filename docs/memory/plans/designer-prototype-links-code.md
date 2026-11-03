@@ -16,7 +16,7 @@ description: What the code holds for plans/designer-prototype-links.md: where li
 
 ## Hrefs, renames, the resolver?
 - An href is a page-name path. A rename rewrites no tree (`_pgFollowRename()`); a 301 short link only while "Send visitors of the old address here" stays ticked (`page_name_redirect`), never for a draft or a taken, routable or looping name. The old href then resolves to `short_link` id 0: follow short_links.page_id.
-- `pg_seo_resolve_link()` (root seo_links.php) wraps the pure `pg_link_resolve()` (includes/fn/link_resolve.php, tests/link_resolve_test.php); maps are handed in: `pg_seo_link_maps()` all names, `pg_link_maps_for_items()` those asked for. `class` splits 'external' (mailto, tel, anchor, host…); the wrapper drops it. No JS twin.
+- `pg_seo_resolve_link()` (root seo_links.php) wraps the pure `pg_link_resolve()` (includes/fn/link_resolve.php); maps are handed in: `pg_seo_link_maps()` all names, `pg_link_maps_for_items()` those asked for. `class` splits 'external' (mailto, tel, anchor, host…); the wrapper drops it. JS twin: platform/link-resolve-js-twin.md.
 - A binned page gets a parked name; drafts sit in the Drafts folder; one page serves every language (`pg_tr_rewrite_links()`).
 
 ## Editor state?

@@ -22,7 +22,7 @@ description: Designable welcome and password reset e-mails: Account E-mail widge
 
 ## Why does the reset e-mail go to the stored address?
 - `user_email`'s collation folds accents: `jane@exámple.com` found `jane@example.com`'s account; the link went to the look-alike. Now `pg_password_reset_address_matches()` (case only) else the unknown-address branch (same notice, no token, no mail); both sends use the stored address.
-- Rule `pg_email_address_matches()` (`auth.php`; the reset name wraps it); social sign-in uses it too ([[social-sign-in-address-match]]).
+- Rule `pg_email_address_matches()` (`authentication.php`; reset wraps it); social sign-in uses it too ([[social-sign-in-address-match]]).
 
 ## Does the designed reset e-mail tell which addresses have accounts?
 - No added timing gap: `forgot_password.php` resolves the setting before the lookup; the unknown answer draws the page unsent (`pg_account_email_reset_unsent()`); the widget looks up its links even with no member (most of the render). Sandbox: known 49-52 ms / unknown 44-46 (before: 50-63 / 15-17); ~5 ms is the token write and send, as on the legacy screen.

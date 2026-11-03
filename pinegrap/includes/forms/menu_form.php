@@ -25,10 +25,16 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/tag_name_rule.php');
  * the menu classes and the active item classes.
  *
  * @param liveform $liveform
+ * @param string|null $stored_name  Edited menu's stored name, null on create
  * @return string
  */
-function pg_menu_form_card($liveform)
+function pg_menu_form_card($liveform, $stored_name = null)
 {
+    $name_pattern = pg_menu_form_name_pattern($stored_name);
+    $name_hint = (strpos($name_pattern, '_') !== false)
+        ? lang('Only English letters (a-z), digits, dashes and underscores; no accented letters or spaces.')
+        : lang('Only English letters (a-z), digits and dashes; no accented letters or spaces.');
+
     $popup_position_options =
         array(
             lang('Top') => 'Top',
@@ -49,9 +55,10 @@ function pg_menu_form_card($liveform)
                                             <label for="name" class="form-label">' . lang('Menu Name') . '</label>
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<menu>') . '</div>
-                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
+                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required', 'pattern'=>$name_pattern, 'title'=>$name_hint, 'aria-describedby'=>'name_hint')) . '
                                                 <div class="input-group-text">' . h('</menu>') . '</div>
                                             </div>
+                                            <div class="form-text" id="name_hint">' . h($name_hint) . '</div>
                                         </div>
                                         <div class="col-12 mt-1">
                                             <div class="form-label" id="effect_label">'. lang('Submenu Effect') . '</div>
@@ -127,6 +134,23 @@ function pg_menu_form_class_field($liveform, $name, $label, $prefix, $help)
                                             </div>
                                             <div class="form-text text-end">' . $help . '</div>
                                         </div>';
+}
+
+/**
+ * The browser pattern of the name field, the rule of pg_tag_name_error():
+ * underscores only for a stored name that already has one. The dash is
+ * escaped, as the browser reads the pattern with the "v" flag.
+ *
+ * @param string|null $stored_name  Edited menu's stored name, null on create
+ * @return string
+ */
+function pg_menu_form_name_pattern($stored_name)
+{
+    if (($stored_name !== null) && (strpos((string) $stored_name, '_') !== false)) {
+        return '[A-Za-z0-9_\\-]+';
+    }
+
+    return '[A-Za-z0-9\\-]+';
 }
 
 /**

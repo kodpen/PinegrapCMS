@@ -186,7 +186,9 @@ if ($canvas) {
     $picture['extension'] = 'png';
 } else {
     $stored_name = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'");
-    $picture = pg_image_editor_render(FILE_DIRECTORY_PATH . '/' . $stored_name, $request);
+    // The editor reads the picture it was opened on, which may be a copy of
+    // a file in the object store; the result is posted as a new file.
+    $picture = pg_image_editor_render(pg_file_reader_path($stored_name), $request);
 }
 
 unset($request);

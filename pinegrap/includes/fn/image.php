@@ -104,13 +104,38 @@ function get_dominant_area_color($file_path)
     $sample_step = max(1, round(min($width, $height) / 50));
     $color_count = array();
 
+    // A palette image (GIF, 8-bit PNG) answers imagecolorat() with a palette
+    // index, not a colour: its colour is looked up in the palette.
+    $palette = !imageistruecolor($image);
+    $transparent = $palette ? imagecolortransparent($image) : -1;
+
     // Loop through pixels with sampling
     for ($x = 0; $x < $width; $x += $sample_step) {
         for ($y = 0; $y < $height; $y += $sample_step) {
             $rgb = imagecolorat($image, $x, $y);
-            $r = ($rgb >> 16) & 0xFF;
-            $g = ($rgb >> 8) & 0xFF;
-            $b = $rgb & 0xFF;
+
+            if ($palette) {
+                if ($rgb === $transparent) {
+                    continue;
+                }
+
+                $c = imagecolorsforindex($image, $rgb);
+                $r = $c['red'];
+                $g = $c['green'];
+                $b = $c['blue'];
+                $alpha = $c['alpha'];
+            } else {
+                $r = ($rgb >> 16) & 0xFF;
+                $g = ($rgb >> 8) & 0xFF;
+                $b = $rgb & 0xFF;
+                $alpha = ($rgb >> 24) & 0x7F;
+            }
+
+            // A fully transparent pixel shows what is behind the picture
+            // (the background of a logo), not the picture's colour.
+            if ($alpha >= 127) {
+                continue;
+            }
 
             // Round color to reduce noise (group similar tones). Rounding pushes
             // values from 240 up to 256, which is one past a byte, so clamp.
@@ -125,6 +150,10 @@ function get_dominant_area_color($file_path)
             }
             $color_count[$hex]++;
         }
+    }
+
+    if (!$color_count) {
+        return $fallback;
     }
 
     // Sort by frequency
@@ -331,7 +360,7 @@ function pg_image_settings($recheck = false)
         'image_quality_avif'       => $settings['quality_avif'],
         'image_resize_quality'     => $settings['resize_quality']));
 
-    $settings['derivative_formats'] = ($delivery['formats']['webp'] ? 1 : 0) | ($delivery['formats']['avif'] ? 2 : 0);
+    $settings['derivative_formats'] = pg_image_delivery_bits($delivery);
     $settings['quality_webp']       = $delivery['quality']['webp'];
     $settings['quality_avif']       = $delivery['quality']['avif'];
     $settings['delivery']           = $delivery;
@@ -467,7 +496,9 @@ function pg_file_image_dimensions($file)
         return array((int) $file['image_width'], (int) $file['image_height']);
     }
 
-    $size = @getimagesize(FILE_DIRECTORY_PATH . '/' . $file['name']);
+    // Never fetched from the object store here: a list measures many files.
+    $path = function_exists('pg_file_present_path') ? pg_file_present_path($file) : FILE_DIRECTORY_PATH . '/' . $file['name'];
+    $size = ($path !== '') ? @getimagesize($path) : false;
 
     $width  = isset($size[0]) ? (int) $size[0] : 0;
     $height = isset($size[1]) ? (int) $size[1] : 0;
@@ -696,7 +727,7 @@ function pg_img_responsive_sets($src, $source_width, $source_extension, $formats
     $source_width = (int) $source_width;
     $widths = array();
 
-    foreach (pg_image_derivative_widths() as $width) {
+    foreach (pg_image_derivative_page_widths() as $width) {
         if ($width < $source_width) {
             $widths[] = $width;
         }
@@ -1690,8 +1721,11 @@ function pg_image_derivative_sweep_run($directory, $seconds = 10)
 
         $names = array();
 
-        foreach ((array) db_items("SELECT id, name FROM files WHERE id IN (" . implode(',', $chunk) . ")") as $row) {
+        $rows = array();
+
+        foreach ((array) db_items("SELECT id, name, type FROM files WHERE id IN (" . implode(',', $chunk) . ")") as $row) {
             $names[(int) $row['id']] = (string) $row['name'];
+            $rows[(int) $row['id']] = $row;
         }
 
         foreach ($chunk as $id) {
@@ -1706,8 +1740,11 @@ function pg_image_derivative_sweep_run($directory, $seconds = 10)
             $source = null;
 
             if (isset($names[$id])) {
-                $path = FILE_DIRECTORY_PATH . '/' . $names[$id];
-                $mtime = @filemtime($path);
+                // A stored file's derivatives were made from its cached copy
+                // and are signed with the copy's time; without the copy they
+                // cannot be matched, and a new copy signs anew.
+                $path = function_exists('pg_file_present_path') ? pg_file_present_path($rows[$id]) : FILE_DIRECTORY_PATH . '/' . $names[$id];
+                $mtime = ($path !== '') ? @filemtime($path) : false;
                 $size = @filesize($path);
 
                 if (($mtime !== false) && ($size !== false)) {
@@ -1760,6 +1797,11 @@ function pg_image_derivative_sweep_run($directory, $seconds = 10)
  * slots, locks, skip markers and the cache are shared. Where it got to is kept
  * in warmup.json beside sweep.json; a pass that is through starts again after
  * a day, finding most copies made and stepping over them.
+ *
+ * A second pass, 'thumbs', makes the 320 px WebP copies panel lists ask for
+ * (pg_image_panel_thumb_url()), newest files first, since those are the ones
+ * a File Manager opens on; its cursor is warmup-thumbs.json. It runs while
+ * WebP is offered, whatever the own-address switch says.
  * ------------------------------------------------------------------------- */
 
 /**
@@ -1794,15 +1836,28 @@ function pg_image_derivative_formats_bits()
 
 
 /**
+ * The file a warm-up pass keeps its cursor in, beside sweep.json.
+ *
+ * @param string $pass own (the WebP copy at the picture's own width) or
+ *                     thumbs (the 320 px copy of panel lists)
+ * @return string
+ */
+function pg_image_warmup_file($pass)
+{
+    return ($pass === 'thumbs') ? 'warmup-thumbs.json' : 'warmup.json';
+}
+
+
+/**
  * Where the warm-up stands: size and id of the last file it went through (id
  * 0 between passes), and done_at, when the last pass finished.
  *
  * @param string $directory pg_image_derivative_directory()
  * @return array size, id, done_at
  */
-function pg_image_warmup_state($directory)
+function pg_image_warmup_state($directory, $pass = 'own')
 {
-    $state = @json_decode((string) @file_get_contents(rtrim((string) $directory, '/\\') . '/warmup.json'), true);
+    $state = @json_decode((string) @file_get_contents(rtrim((string) $directory, '/\\') . '/' . pg_image_warmup_file($pass)), true);
 
     $read = function ($key) use ($state) {
         return (is_array($state) && isset($state[$key]) && is_numeric($state[$key])) ? max(0, (int) $state[$key]) : 0;
@@ -1817,11 +1872,12 @@ function pg_image_warmup_state($directory)
  *
  * @param string $directory
  * @param array  $state pg_image_warmup_state()
+ * @param string $pass  own or thumbs (pg_image_warmup_file())
  * @return void
  */
-function pg_image_warmup_save($directory, $state)
+function pg_image_warmup_save($directory, $state, $pass = 'own')
 {
-    pg_image_derivative_put(rtrim((string) $directory, '/\\') . '/warmup.json', json_encode(array(
+    pg_image_derivative_put(rtrim((string) $directory, '/\\') . '/' . pg_image_warmup_file($pass), json_encode(array(
         'size'    => (int) $state['size'],
         'id'      => (int) $state['id'],
         'done_at' => (int) $state['done_at'])));
@@ -1844,18 +1900,23 @@ function pg_image_warmup_due($state, $now)
 
 /**
  * The SQL condition for the files after the cursor, in the pass's order
- * (largest first, then the newest of the same size): '' at the start of a
- * pass.
+ * (own: largest first, then the newest of the same size; thumbs: newest
+ * first): '' at the start of a pass.
  *
- * @param array $state pg_image_warmup_state()
+ * @param array  $state pg_image_warmup_state()
+ * @param string $pass  own or thumbs
  * @return string
  */
-function pg_image_warmup_after_sql($state)
+function pg_image_warmup_after_sql($state, $pass = 'own')
 {
     $id = (int) $state['id'];
 
     if ($id < 1) {
         return '';
+    }
+
+    if ($pass === 'thumbs') {
+        return "(files.id < " . $id . ")";
     }
 
     $size = (int) $state['size'];
@@ -1869,11 +1930,12 @@ function pg_image_warmup_after_sql($state)
  * not form or comment attachments, ERP documents or workspace files (none of
  * those gets a derivative, docs/memory/platform/image-derivatives.md).
  *
- * @param array $state pg_image_warmup_state()
- * @param int   $limit
+ * @param array  $state pg_image_warmup_state()
+ * @param int    $limit
+ * @param string $pass  own or thumbs, which sets the order
  * @return array rows of id, name, size
  */
-function pg_image_warmup_fetch($state, $limit)
+function pg_image_warmup_fetch($state, $limit, $pass = 'own')
 {
     $where = array(
         "LOWER(files.type) IN ('jpg', 'jpeg', 'jpe', 'png')",
@@ -1881,7 +1943,7 @@ function pg_image_warmup_fetch($state, $limit)
         "files.name NOT LIKE 'erp-%'",
         "files.name NOT LIKE 'ws-%'");
 
-    $after = pg_image_warmup_after_sql($state);
+    $after = pg_image_warmup_after_sql($state, $pass);
 
     if ($after !== '') {
         $where[] = $after;
@@ -1909,7 +1971,7 @@ function pg_image_warmup_fetch($state, $limit)
         "SELECT files.id, files.name, IFNULL(files.size, 0) AS size
         FROM files
         WHERE " . implode(' AND ', $where) . "
-        ORDER BY size DESC, files.id DESC
+        ORDER BY " . (($pass === 'thumbs') ? "files.id DESC" : "size DESC, files.id DESC") . "
         LIMIT " . max(1, (int) $limit));
 }
 
@@ -1925,12 +1987,14 @@ function pg_image_warmup_fetch($state, $limit)
  * @param string        $directory      pg_image_derivative_directory()
  * @param int           $seconds
  * @param array|null    $settings       pg_image_delivery_settings(); pg_image_delivery() when null
- * @param callable|null $fetch          function ($state, $limit): rows of id,
- *                                      name, size; pg_image_warmup_fetch() when null
+ * @param callable|null $fetch          function ($state, $limit, $pass): rows of
+ *                                      id, name, size; pg_image_warmup_fetch() when null
  * @param string|null   $file_directory where the files are; FILE_DIRECTORY_PATH when null
+ * @param string        $pass           own (WebP at the picture's own width) or
+ *                                      thumbs (320 px WebP, newest first)
  * @return array state ('done', 'more' or 'busy'), files (gone through), made
  */
-function pg_image_warmup_run($directory, $seconds = 10, $settings = null, $fetch = null, $file_directory = null)
+function pg_image_warmup_run($directory, $seconds = 10, $settings = null, $fetch = null, $file_directory = null, $pass = 'own')
 {
     $directory = rtrim((string) $directory, '/\\');
     $result = array('state' => 'done', 'files' => 0, 'made' => 0);
@@ -1956,12 +2020,13 @@ function pg_image_warmup_run($directory, $seconds = 10, $settings = null, $fetch
     }
 
     $deadline = microtime(true) + max(0, (int) $seconds);
-    $state = pg_image_warmup_state($directory);
-    $request = array('width' => 0, 'format' => 'webp');
+    $pass = ($pass === 'thumbs') ? 'thumbs' : 'own';
+    $state = pg_image_warmup_state($directory, $pass);
+    $request = array('width' => ($pass === 'thumbs') ? 320 : 0, 'format' => 'webp');
 
     while (true) {
 
-        $rows = call_user_func($fetch, $state, 20);
+        $rows = call_user_func($fetch, $state, 20, $pass);
 
         if (!is_array($rows) || !$rows) {
             break;
@@ -1971,7 +2036,7 @@ function pg_image_warmup_run($directory, $seconds = 10, $settings = null, $fetch
 
             if (($result['files'] > 0) && (microtime(true) > $deadline)) {
                 $result['state'] = 'more';
-                pg_image_warmup_save($directory, $state);
+                pg_image_warmup_save($directory, $state, $pass);
                 return $result;
             }
 
@@ -1985,7 +2050,7 @@ function pg_image_warmup_run($directory, $seconds = 10, $settings = null, $fetch
 
                 if ($answer['status'] === 'busy') {
                     $result['state'] = 'busy';
-                    pg_image_warmup_save($directory, $state);
+                    pg_image_warmup_save($directory, $state, $pass);
                     return $result;
                 }
 
@@ -2000,8 +2065,34 @@ function pg_image_warmup_run($directory, $seconds = 10, $settings = null, $fetch
         }
     }
 
-    pg_image_warmup_save($directory, array('size' => 0, 'id' => 0, 'done_at' => time()));
+    pg_image_warmup_save($directory, array('size' => 0, 'id' => 0, 'done_at' => time()), $pass);
 
     return $result;
 }
 
+/**
+ * The file types optimize_image() (optimize_image.php) compresses or resizes.
+ * 'tif' is not among them: the optimizer has never taken that spelling.
+ *
+ * @return array lower-case extensions
+ */
+function pg_optimizable_image_types()
+{
+    return array('jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp');
+}
+
+/**
+ * The answer for a file the image optimizer does not take: the file's name,
+ * its type and the list of the types it does take.
+ *
+ * @param string $name the file name
+ * @param string $type its extension as stored in files.type
+ * @return string plain text
+ */
+function pg_optimize_unsupported_message($name, $type)
+{
+    return lang(array(
+        'string' => 'Sorry, {var:1} cannot be optimized: its file type ({var:2}) is not supported. The following types are supported: {var:3}.',
+        'vars'   => array((string) $name, mb_strtolower((string) $type), implode(', ', pg_optimizable_image_types())),
+    ));
+}

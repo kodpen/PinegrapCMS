@@ -70,6 +70,7 @@ function test_site_log_writes_cloudflare_actions()
 		"'Brotli updated to {var:1}.'",
 		"'Rocket Loader updated to {var:1}.'",
 		"'Cache successfully purged.'",
+		"'The cache rule was written. Check it through Cloudflare in a minute.'",
 	);
 
 	foreach ($notices as $notice) {
@@ -80,7 +81,9 @@ function test_site_log_writes_cloudflare_actions()
 		pg_assert_contains('log_activity(lang(', $branch, $notice . ' branch writes a line');
 	}
 
-	pg_assert_same(9, substr_count($source, 'log_activity(lang('), 'one line per action, none on failure');
+	// Ten actions above, plus the edge check: a line when it passes and one
+	// when a failed check takes the confirmation back.
+	pg_assert_same(12, substr_count($source, 'log_activity(lang('), 'one line per action, none on failure');
 
 	// A deleted record is named by its type and name, read before the DELETE.
 	$delete = site_log_writes_slice($source, "if (\$action === 'delete_record') {", "// Development Mode toggle");

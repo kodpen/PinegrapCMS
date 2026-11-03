@@ -17,9 +17,9 @@ description: Plan (owner 2026-11-02): importers for WordPress (WXR), WooCommerce
 - Media is fetched through `pg_curl_run()` with the size caps of uploads and the stored-name rule (`platform/stored-file-name-upload-rule.md`); a fetch that fails leaves the record with its text and a note, never a broken row.
 - The product import keeps its screen; the framework reuses its row writer and price reader rather than copying them. Records go through the writer the `forms` API resource uses, so the form's rules, collection references and revisions apply.
 
-## Which questions are open? (architect, before IM1 and IM3)
-1. Where an imported row remembers its source: `import_id` and `source_key` columns on `forms`, `products`, `contacts`, `comments` and `files` (recommended: one small table `import_items` (import id, kind, id, source key) instead, no column on five tables), in the open version's migration.
-2. Authors: panel users made disabled (recommended), or author names kept as a text field only.
+## Which questions are decided? (#5034)
+1. `imports` and `import_items` tables, no column on the five tables; shape in the issue.
+2. Owner: authors become disabled panel users (no password, no sign-in; enabled by hand if wanted).
 
 ## Where does it start?
 - IM1 alone, then IM2, IM3, IM4 and IM5 together. Read `platform/README.md` and `designer/README.md` key rules, `designer/design-template-news.md` (the Articles form contract), `platform/short-link-redirects.md`, `includes/designer_import.php` (`pg_designer_import_single_html()`), `import_products.php`. Steps: `content-importers-steps.md`, `-steps-2.md`.

@@ -32,6 +32,10 @@ include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/currency_form.php');
 $liveform = new liveform('edit_currency', $_REQUEST['id']);
 
+// Whether the stored row is the base currency: it can be neither deleted nor
+// switched off, or the store falls back to USD for every price and payment.
+$stored_base = (int) db_value("SELECT base FROM currencies WHERE id = '" . $id . "'");
+
 if (!$_POST) {
     // if edit currency screen has not been submitted already, pre-populate fields with data
     if (isset($_SESSION['software']['liveforms']['edit_currency'][$_GET['id']]) == false) {
@@ -79,17 +83,17 @@ if (!$_POST) {
                 <form name="form" action="edit_currency.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
-                    ' . pg_currency_form_card($liveform) . '
+                    ' . pg_currency_form_card($liveform, $stored_base == 1) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('currency')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                ' . (($stored_base == 1) ? '' : '<button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('currency')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>') . '
                             </div>
                         </div>
                     </nav>
                 </form>
-            </form>
+            </div>
         </div>
 </main>' .
         output_footer();
@@ -101,21 +105,29 @@ if (!$_POST) {
     
     // if currency was selected for delete
     if (isset($_POST['submit_delete']) && ($_POST['submit_delete'] ?? '') === 'Delete') {
+        $delete_error = pg_currency_form_delete_error($stored_base);
+
+        if ($delete_error !== '') {
+            $liveform->mark_error('base', $delete_error);
+            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_currency.php?id=' . $id);
+            exit();
+        }
+
         // get currency name for the log
         $query = "SELECT name FROM currencies WHERE id = ?";
         $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $currency_name = $row['name'];
         
-        // delete currency
-        $query = "DELETE FROM currencies WHERE id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        if (!pg_store_currency_delete($id)) {
+            output_error('Query failed.');
+        }
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('currency'), $currency_name) )), $_SESSION['sessionusername']);
 
         $liveform->remove_form();
         $liveform_view_currencies = new liveform('view_currencies');
-        $liveform_view_currencies->add_notice(lang(array('string'=>'The {var:1} has been deleted.','vars'=>array(lang('Currency') . ' (' . $currency_name . ')'))));
+        $liveform_view_currencies->add_notice(lang(array('string'=>'The currency ({var:1}) has been deleted.','vars'=>array(h(pg_currency_label($currency_name))))));
         
         header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/view_currencies.php');
         
@@ -123,9 +135,20 @@ if (!$_POST) {
     // else the currency was not selected for delete
     } else {
         $liveform->add_fields_to_session();
+        $liveform->assign_field_value('code', pg_currency_form_code($liveform->get_field_value('code')));
         
-        $liveform->validate_required_field('name', lang(array('string'=>'{var:1} is required','vars'=>array(lang('Name')) )));
+        $liveform->validate_required_field('name', lang(array('string'=>'{var:1} is required','vars'=>array(lang(array('string'=>'{var:1} Name','vars'=>lang('Currency')))) )));
         $liveform->validate_required_field('code', lang(array('string'=>'{var:1} is required','vars'=>array(lang('Code')) )));
+
+        if (!$liveform->check_field_error('code') && (($code_error = pg_currency_form_code_error($liveform->get_field_value('code'))) !== '')) {
+            $liveform->mark_error('code', $code_error);
+        }
+
+        $base_error = pg_currency_form_base_error($stored_base, $liveform->get_field_value('base'));
+
+        if ($base_error !== '') {
+            $liveform->mark_error('base', $base_error);
+        }
 
         // if there is an error, forward user back to edit currency screen
         if ($liveform->check_form_errors() == true) {
@@ -141,26 +164,29 @@ if (!$_POST) {
             exit();
         }
 
+        // a non-base currency needs a rate above zero: checkout divides by it
+        $exchange_rate_error = pg_currency_form_exchange_rate_error($liveform->get_field_value('exchange_rate'), $liveform->get_field_value('base'));
+
+        if ($exchange_rate_error !== '') {
+            $liveform->mark_error('exchange_rate', $exchange_rate_error);
+            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_currency.php?id=' . $id);
+            exit();
+        }
+
         $exchange_rate = pg_currency_form_exchange_rate($liveform->get_field_value('exchange_rate'), $liveform->get_field_value('base'));
         
-        // update currency
-        $query =
-            "UPDATE currencies
-            SET
-                name = ?,
-                base = ?,
-                code = ?,
-                symbol = ?,
-                exchange_rate = ?,
-                last_modified_user_id = ?,
-                last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = ?";
-        $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $liveform->get_field_value('base'), (string) $liveform->get_field_value('code'), (string) $liveform->get_field_value('symbol'), (string) $exchange_rate, (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        // The shared write path (includes/fn/store_currencies.php) also keeps
+        // a single base currency and announces the change.
+        $saved = pg_store_currency_save($id, array(
+            'name' => (string) $liveform->get_field_value('name'),
+            'base' => (int) $liveform->get_field_value('base'),
+            'code' => (string) $liveform->get_field_value('code'),
+            'symbol' => (string) $liveform->get_field_value('symbol'),
+            'exchange_rate' => (string) $exchange_rate,
+        ), (int) $user['id']);
 
-        // If this currency was set as the base currency then update all other currencies
-        // in order to make sure that none are set as the base currency.
-        if ($liveform->get_field_value('base') == 1) {
-            pg_currency_form_clear_other_bases($_POST['id'] ?? '');
+        if ($saved <= 0) {
+            output_error('Query failed.');
         }
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('Currency'),$liveform->get_field_value('name') ))), $_SESSION['sessionusername']);

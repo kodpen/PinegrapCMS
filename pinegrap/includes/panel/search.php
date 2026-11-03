@@ -135,6 +135,8 @@ function pg_panel_backend_search($request, $action)
         $actions[] = array('label' => lang('Visitor Reports'), 'icon' => 'bi-people', 'url' => $base_url . '/view_visitor_reports.php', 'keys' => array('ziyaretci', 'ziyaretçi', 'visitor', 'visit', 'zia', 'rap'));
         $actions[] = array('label' => lang('Visitor Report'), 'icon' => 'bi-graph-up', 'url' => $base_url . '/view_visitor_report.php', 'keys' => array('ziyaret rapor', 'visitor report', 'rapor ziy', 'ziyrapor'));
         $actions[] = array('label' => lang('Google Search Console'), 'icon' => 'bi-google', 'url' => $base_url . '/search_console.php', 'keys' => array('search console', 'arama konsolu', 'google arama', 'gsc', 'site haritasi', 'sitemap', 'tiklama', 'gosterim'));
+        $actions[] = array('label' => lang('Page Speed'), 'icon' => 'bi-speedometer2', 'url' => $base_url . '/visitor_vitals.php', 'keys' => array('sayfa hizi', 'page speed', 'web vitals', 'lcp', 'inp', 'cls', 'hiz'));
+        $actions[] = array('label' => lang('AI Visibility'), 'icon' => 'bi-robot', 'url' => $base_url . '/visitor_ai.php', 'keys' => array('yapay zeka', 'ai visibility', 'ai gorunurluk', 'chatgpt', 'llms', 'bot'));
     }
 
     // ── Contacts ──────────────────────────────────────────────────────────

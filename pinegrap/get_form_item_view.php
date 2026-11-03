@@ -199,11 +199,11 @@ function get_form_item_view($properties) {
                             AND (form_fields.contact_field = 'email_address')";
                     $result = db_q($query, array((string) $submitted_form['id'])) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
-                    $submitter_email_address = $row['data'];
+                    $submitter_email_address = is_array($row) ? $row['data'] : '';
 
                     // If this user has the same e-mail address as the connect-to-contact e-mail address
                     // field value for this submitted form, then the user has view access.
-                    if (mb_strtolower(USER_EMAIL_ADDRESS) == mb_strtolower($submitter_email_address)) {
+                    if (pg_email_address_matches(USER_EMAIL_ADDRESS, $submitter_email_address)) {
                         $view_access = TRUE;
 
                     // Otherwise this user is not the submitter, so check if user is a watcher.
@@ -214,7 +214,7 @@ function get_form_item_view($properties) {
                             WHERE
                                 (
                                     (user_id = ?)
-                                    OR (email_address = ?)
+                                    OR ((email_address = ?) AND (email_address != ''))
                                 )
                                 AND (page_id = ?)
                                 AND (item_id = ?)

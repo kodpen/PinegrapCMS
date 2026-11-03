@@ -617,11 +617,106 @@ function pg_schema_cache_forget($cache, $table)
     return $cache;
 }
 
-// What pg_schema_has() knows in this request: the cache and the file it came
-// from ('' when there is no file to keep, see pg_schema_has()).
+/**
+ * This request's cache with what a stored cache file adds: the tables, and
+ * the missing tables, this request has no answer about. This request's answer
+ * wins for a table both know, and a table in $forgotten is not taken from the
+ * file (pg_schema_forget() asked to read it again). Concurrent requests write
+ * the same file, so without this one request's answers would wipe another's.
+ *
+ * No database access.
+ *
+ * @param array $ours
+ * @param mixed $stored     the decoded file
+ * @param array $forgotten  table names
+ * @return array
+ */
+function pg_schema_cache_merge($ours, $stored, $forgotten = array())
+{
+    if (!is_array($ours)) {
+        $ours = array();
+    }
+
+    $tables = (isset($ours['tables']) && is_array($ours['tables'])) ? $ours['tables'] : array();
+    $missing = (isset($ours['missing']) && is_array($ours['missing'])) ? array_values($ours['missing']) : array();
+    $merged = array('tables' => $tables, 'missing' => $missing);
+
+    if (!is_array($stored)) {
+        return $merged;
+    }
+
+    $known = function ($table) use ($tables, $missing, $forgotten) {
+        return isset($tables[$table]) || in_array($table, $missing, true) || in_array($table, (array) $forgotten, true);
+    };
+
+    if (isset($stored['tables']) && is_array($stored['tables'])) {
+        foreach ($stored['tables'] as $table => $columns) {
+            if (is_string($table) && is_array($columns) && !$known($table)) {
+                $merged['tables'][$table] = array_values(array_filter($columns, 'is_string'));
+            }
+        }
+    }
+
+    if (isset($stored['missing']) && is_array($stored['missing'])) {
+        foreach ($stored['missing'] as $table) {
+            if (is_string($table) && !$known($table) && !isset($merged['tables'][$table])
+                && !in_array($table, $merged['missing'], true)) {
+                $merged['missing'][] = $table;
+            }
+        }
+    }
+
+    return $merged;
+}
+
+/**
+ * Writes $cache to cache file $file, merged with what the file holds now
+ * (pg_schema_cache_merge()), through a temporary file and rename(). Windows
+ * does not rename over a file that exists (above all one another request is
+ * reading), so the old file is then deleted and the rename tried again.
+ *
+ * @param string $file
+ * @param array  $cache
+ * @param array  $forgotten  table names not to take from the file
+ * @return array|null the merged cache, null when it could not be written
+ */
+function pg_schema_cache_file_write($file, $cache, $forgotten = array())
+{
+    $directory = dirname($file);
+
+    if (!is_dir($directory)) {
+        @mkdir($directory, 0755, true);
+    }
+
+    $cache = pg_schema_cache_merge($cache, @json_decode((string) @file_get_contents($file), true), $forgotten);
+
+    $temporary = $file . '.' . (function_exists('getmypid') ? getmypid() : mt_rand()) . '.tmp';
+    $encoded = json_encode(array('tables' => (object) $cache['tables'], 'missing' => array_values($cache['missing'])));
+
+    if (!is_string($encoded) || (@file_put_contents($temporary, $encoded, LOCK_EX) === false)) {
+        @unlink($temporary);
+        return null;
+    }
+
+    if (@rename($temporary, $file)) {
+        return $cache;
+    }
+
+    if (is_file($file) && @unlink($file) && @rename($temporary, $file)) {
+        return $cache;
+    }
+
+    @unlink($temporary);
+
+    return null;
+}
+
+// What pg_schema_has() knows in this request: the cache, the file it came
+// from ('' when there is no file to keep, see pg_schema_has()) and the tables
+// pg_schema_forget() dropped, which a merge with the file must not restore.
 function &pg_schema_cache_state()
 {
-    static $state = array('loaded' => false, 'file' => '', 'cache' => array('tables' => array(), 'missing' => array()));
+    static $state = array('loaded' => false, 'file' => '', 'cache' => array('tables' => array(), 'missing' => array()), 'forgotten' => array());
 
     return $state;
 }
@@ -670,6 +765,7 @@ function pg_schema_forget($table)
     $state = &pg_schema_cache_state();
 
     $state['cache'] = pg_schema_cache_forget($state['cache'], (string) $table);
+    $state['forgotten'][] = (string) $table;
 }
 
 /**
@@ -685,7 +781,7 @@ function pg_schema_cache_clear()
     }
 
     $state = &pg_schema_cache_state();
-    $state = array('loaded' => false, 'file' => '', 'cache' => array('tables' => array(), 'missing' => array()));
+    $state = array('loaded' => false, 'file' => '', 'cache' => array('tables' => array(), 'missing' => array()), 'forgotten' => array());
 }
 
 /**
@@ -755,20 +851,10 @@ function pg_schema_has($table, $column = null)
     }
 
     if ($state['file'] !== '') {
-        $directory = dirname($state['file']);
+        $written = pg_schema_cache_file_write($state['file'], $state['cache'], isset($state['forgotten']) ? $state['forgotten'] : array());
 
-        if (!is_dir($directory)) {
-            @mkdir($directory, 0755, true);
-        }
-
-        $temporary = $state['file'] . '.' . (function_exists('getmypid') ? getmypid() : mt_rand()) . '.tmp';
-
-        $encoded = json_encode(array('tables' => (object) $state['cache']['tables'], 'missing' => array_values($state['cache']['missing'])));
-
-        if (@file_put_contents($temporary, $encoded, LOCK_EX) !== false) {
-            if (!@rename($temporary, $state['file'])) {
-                @unlink($temporary);
-            }
+        if ($written !== null) {
+            $state['cache'] = $written;
         }
     }
 
@@ -785,6 +871,19 @@ function h($content)
     }
 
     return htmlspecialchars($content, ENT_QUOTES | ENT_HTML401, 'UTF-8');
+}
+
+// CSS printed inside a <style> element. Its content is raw text: entities
+// are not decoded there, so h() would turn quoted font names and child
+// selectors into broken CSS. Only a closing </style is defused, the one
+// sequence that would end the element early.
+function pg_style_tag_css($css)
+{
+    if ($css === null) {
+        return '';
+    }
+
+    return str_ireplace('</style', '<\\/style', (string) $css);
 }
 
 // Defuse PHP open tags in markup that is printed raw into a page.
@@ -991,11 +1090,11 @@ function sql_device_type($device_type)
     return ((string) $device_type === 'mobile') ? 'mobile' : 'desktop';
 }
 
+// A value as plain text in a LIKE pattern (before e()): MySQL's escape
+// character, the backslash, is doubled first, then % and _ get one.
 function escape_like($string)
 {
-    $string = str_replace('%', '\%', $string);
-    $string = str_replace('_', '\_', $string);
-    return $string;
+    return str_replace(array('\\', '%', '_'), array('\\\\', '\\%', '\\_'), (string) $string);
 }
 
 function escape_javascript($string)
@@ -1016,8 +1115,11 @@ function escape_javascript($string)
     $string = str_replace('"', '\\"', $string);
     // escape new line
     $string = str_replace(array("\r\n", "\n", "\r"), '\n', $string);
-    // prevent breaking out of script tag
-    $string = str_ireplace('</script>', '<\/script>', $string);
+    // Prevent breaking out of the script block: the HTML parser ends it at
+    // "</script" followed by a space, a slash or ">", and "<!--" switches it
+    // into a state where a later "<script" changes where it ends. "<\/" and
+    // "<\!" read the same inside a JavaScript string.
+    $string = str_replace(array('</', '<!'), array('<\/', '<\!'), $string);
     return $string;
 }
 
@@ -1701,49 +1803,14 @@ function error($content, $response_code = 0)
             </div>
         </div>';
 }
-// we should check sometime to see if we can use the built-in function preg_quote() instead of this
-// PHP 4 and 5 both appear to support preg_quote()
-// if we start using preg_quote(), make sure to also pass the delimiter also (e.g. preg_quote($string, '/'))
+// Text made safe to place in a /-delimited regular expression, so it matches
+// itself. preg_quote() covers every metacharacter, the backslash and the dollar
+// sign included: a tag holding "$50" never matched, and one holding "C:\pics"
+// made the pattern fail to compile, which turned the caller's preg_replace()
+// result into null.
 function escape_regex($string)
 {
-    // set patterns to replace
-    $patterns = array(
-        '/\//',
-        '/\^/',
-        '/\./',
-        '/\$/',
-        '/\|/',
-        '/\(/',
-        '/\)/',
-        '/\[/',
-        '/\]/',
-        '/\*/',
-        '/\+/',
-        '/\?/',
-        '/\{/',
-        '/\}/',
-        '/\,/'
-    );
-    // set the replacement characters
-    $replace = array(
-        '\/',
-        '\^',
-        '\.',
-        '\$',
-        '\|',
-        '\(',
-        '\)',
-        '\[',
-        '\]',
-        '\*',
-        '\+',
-        '\?',
-        '\{',
-        '\}',
-        '\,'
-    );
-    // return the modified string
-    return preg_replace($patterns, $replace, $string);
+    return preg_quote((string) $string, '/');
 }
 
 /**
@@ -1809,6 +1876,37 @@ function pg_send_to_url($fallback = '')
     }
 
     return $send_to;
+}
+
+/**
+ * The liveform that carries a notice to the screen a redirect opens.
+ *
+ * A panel screen prints the form named after its own script
+ * (view_folders.php prints 'view_folders', welcome.php 'welcome'). A screen
+ * that follows send_to leaves its notice on the form of the screen it goes
+ * to, so the notice shows there and is not kept for a screen the user opens
+ * hours later. A target that is not a script (a site page) gets '': no panel
+ * notice is left.
+ *
+ * Pure: no query.
+ *
+ * @param  string $location redirect path or URL
+ * @return string form name, or '' when the target prints no panel form
+ */
+function pg_redirect_notice_form($location)
+{
+    $path = (string) parse_url((string) $location, PHP_URL_PATH);
+
+    if (preg_match('~/([a-z0-9_]+)\.php$~', $path, $match) !== 1) {
+        return '';
+    }
+
+    // A path that climbs out of its folder is no screen of the panel.
+    if (strpos($path, '/../') !== false) {
+        return '';
+    }
+
+    return $match[1];
 }
 /**
  * The list breadcrumb of a screen opened from that list: send_to when its
@@ -2047,6 +2145,8 @@ function pg_timezone_offset_label($zone, $year = null)
 // outputted for the absolute time tooltip.
 // timezone_type: "user" (default) or "site".  This property allows you output a time
 // for the user's timezone (if user has one set) or the site's timezone.
+// mid_sentence: true when the result is printed inside a sentence ("Last modified
+// a moment ago by admin"), so "a moment ago" starts with a small letter.
 function get_relative_time($properties)
 {
     $timestamp = '';
@@ -2089,7 +2189,9 @@ function get_relative_time($properties)
     }
     // if the difference is less than 1 minute, then return "a moment ago/from now"
     if ($difference_in_seconds < 60) {
-        $relative_time = lang(array('string' => 'A moment {var:1}', 'vars' => array($past_or_future_message)));
+        $relative_time = empty($properties['mid_sentence'])
+            ? lang(array('string' => 'A moment {var:1}', 'vars' => array($past_or_future_message)))
+            : lang(array('string' => 'a moment {var:1}', 'vars' => array($past_or_future_message)));
         // else if the difference is less than 1 hour, then return minutes
     } else if ($difference_in_seconds < 3600) {
         $difference_in_minutes = round($difference_in_seconds / 60);
@@ -2477,10 +2579,10 @@ function get_absolute_time($properties)
         // If the type is just date, then prepare datetime attribute with just the date.
         if ($type == 'date') {
             $datetime = date('Y-m-d', $timestamp);
-            // elseIf the type is just time, then prepare datetime attribute with just the time.
-        } elseif ($type == 'time') {
-            $datetime = date('\TH:i:s\Z', $timestamp);
-            // Otherwise the type is date & time, so prepare datetime attribute with both the date and time.
+            // A time or a date and time is one moment: the attribute names it
+            // in UTC with its date. A bare time with a Z suffix is not a valid
+            // datetime value, and the site's clock marked Z was off by the
+            // site's offset.
         } else {
             $datetime = gmdate('Y-m-d\TH:i:s\Z', $timestamp);
         }
@@ -2492,14 +2594,20 @@ function get_absolute_time($properties)
 // Direct TLS termination on the origin is detected via $_SERVER['HTTPS'] / SERVER_PORT.
 //
 // When the site sits behind a reverse proxy or CDN that terminates TLS itself
-// (Cloudflare "Flexible" SSL, nginx/HAProxy offloading, load balancers), the
-// origin leg is plain HTTP on port 80 and neither of those variables is set,
-// even though the visitor's connection is encrypted. In that topology the only
-// evidence is a forwarded header. Those headers are trivially spoofable by any
-// client that can reach the origin directly, so they are honoured ONLY when the
-// administrator opts in with TRUST_PROXY_SSL_HEADERS in the config file.
-// Enable it only when the origin is not directly reachable (firewalled to the
-// proxy's IP ranges, or Cloudflare "Authenticated Origin Pulls").
+// (Cloudflare "Flexible" SSL, nginx/HAProxy offloading, load balancers, a
+// tunnel), the origin leg is plain HTTP on port 80 and neither of those
+// variables is set, even though the visitor's connection is encrypted. In that
+// topology the only evidence is a forwarded header (pg_forwarded_https()).
+// Those headers are trivially spoofable by any client that can reach the
+// origin directly, so they are honoured only from a peer whose word counts
+// (pg_https_peer_trusted()): one listed in Settings > Firewall > Trusted
+// Proxies, a Cloudflare edge address, or any peer when the administrator opts
+// in with TRUST_PROXY_SSL_HEADERS in the config file. The list counts whether
+// or not the firewall is on; every web entry point loads waf.php before this
+// is asked, and a script without it trusts only Cloudflare and the constant.
+//
+// get_file.php keeps a copy of this function (it never loads functions.php):
+// keep the two the same, or downloads and pages disagree about the scheme.
 function check_if_request_is_secure()
 {
     // Direct TLS on the origin. Always trusted - set by the web server, not the client.
@@ -2510,57 +2618,24 @@ function check_if_request_is_secure()
         return true;
     }
 
-    // Everything below is client-supplied, so require the administrator to opt in.
-    if (!defined('TRUST_PROXY_SSL_HEADERS') || TRUST_PROXY_SSL_HEADERS !== true) {
+    if (!pg_forwarded_https($_SERVER)) {
         return false;
     }
 
-    return check_proxy_ssl_headers();
+    $remote = isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
+
+    $trusted = function_exists('waf_setting') ? (string) waf_setting('waf_trusted_proxies', '') : '';
+
+    return pg_https_peer_trusted($remote, $trusted);
 }
 
-// Inspect the forwarded-protocol headers set by reverse proxies and CDNs.
-// Split out from check_if_request_is_secure() so that the diagnostics page can
-// report what the origin sees without having to duplicate the parsing rules.
-// NOTE: these headers are attacker-controlled unless the origin only accepts
-// traffic from the proxy - see check_if_request_is_secure().
+// What the forwarded-protocol headers of this request claim, whoever sent
+// them: the diagnostics of the Secure Mode guard tell "a proxy says https but
+// is not trusted" from "nothing says https" with it. The parsing rules are
+// pg_forwarded_https()'s (includes/fn/request_scheme.php).
 function check_proxy_ssl_headers()
 {
-    // Standard de-facto header, also sent by Cloudflare. May contain a comma
-    // separated chain when several proxies are involved ("https, http") - the
-    // left-most entry is the one the visitor actually used.
-    if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
-        $forwarded_proto = explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO']);
-        if (strtolower(trim($forwarded_proto[0])) === 'https') {
-            return true;
-        }
-    }
-
-    // Cloudflare specific, e.g. {"scheme":"https"}
-    if (!empty($_SERVER['HTTP_CF_VISITOR']) && stripos($_SERVER['HTTP_CF_VISITOR'], '"scheme":"https"') !== false) {
-        return true;
-    }
-
-    // RFC 7239 Forwarded header, e.g. for=1.2.3.4;proto=https
-    if (!empty($_SERVER['HTTP_FORWARDED']) && preg_match('/proto\s*=\s*"?https"?/i', $_SERVER['HTTP_FORWARDED'])) {
-        return true;
-    }
-
-    // Older nginx / AWS ELB style header.
-    if (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) === 'on') {
-        return true;
-    }
-
-    // Microsoft ISA/TMG and IIS ARR.
-    if (!empty($_SERVER['HTTP_FRONT_END_HTTPS']) && strtolower($_SERVER['HTTP_FRONT_END_HTTPS']) === 'on') {
-        return true;
-    }
-
-    // Some proxies rewrite the port instead of the scheme.
-    if (!empty($_SERVER['HTTP_X_FORWARDED_PORT']) && $_SERVER['HTTP_X_FORWARDED_PORT'] == '443') {
-        return true;
-    }
-
-    return false;
+    return pg_forwarded_https($_SERVER);
 }
 
 
@@ -2603,7 +2678,18 @@ function build_url($properties)
     if ($hostname != '') {
         $url_hostname = $hostname;
     } else if (isset($url_parts['host'])) {
+        // The port and user information belong to the given host: without
+        // them an address on port 8443 was sent to the default port. A
+        // hostname property replaces all three (HOSTNAME carries its port).
         $url_hostname = $url_parts['host'];
+
+        if (isset($url_parts['port'])) {
+            $url_hostname .= ':' . $url_parts['port'];
+        }
+
+        if (isset($url_parts['user'])) {
+            $url_hostname = $url_parts['user'] . (isset($url_parts['pass']) ? ':' . $url_parts['pass'] : '') . '@' . $url_hostname;
+        }
     }
 
     $url_path = '';
@@ -3533,7 +3619,12 @@ function check_name_availability($properties)
     }
     // We also need to manually loop through all of the files in the root directory
     // in order to do a case-insensitive check.
-    $handle = opendir('../');
+    // opendir() answers false where open_basedir or the permissions keep the
+    // directory closed, and readdir(false) is a TypeError on PHP 8.
+    $handle = @opendir('../');
+    if ($handle === false) {
+        return true;
+    }
     // Loop through root directory in order to check files and directories in it.
     while (false !== ($file_name = readdir($handle))) {
         // If this is a valid file or directory and the lowercase version of the name
@@ -4565,6 +4656,9 @@ function get_mime_type($file_extention)
 {
     // Generic binary type for extensions not listed below.
     $output = 'application/octet-stream';
+    // files.type keeps the extension as it was uploaded ("JPG"), and a
+    // caller may pass it with its dot.
+    $file_extention = strtolower(ltrim(trim((string) $file_extention), '.'));
     switch ($file_extention) {
         case 'jpeg':
         case 'jpg':
@@ -4629,8 +4723,13 @@ function get_mime_type($file_extention)
 // Detect mime type from file path using mime_content_type, finfo, or fallback
 function detect_mime_type($file_path)
 {
+    // mime_content_type() answers false for a file it cannot read or name;
+    // the extension below is still a better answer than false.
     if (function_exists('mime_content_type')) {
-        return mime_content_type($file_path);
+        $mime = @mime_content_type($file_path);
+        if (is_string($mime) && ($mime !== '')) {
+            return $mime;
+        }
     }
 
     if (function_exists('finfo_open')) {

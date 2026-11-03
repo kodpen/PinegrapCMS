@@ -70,9 +70,14 @@ if (!$_POST) {
     validate_token_field();
     
     $liveform->add_fields_to_session();
+    $liveform->assign_field_value('code', pg_currency_form_code($liveform->get_field_value('code')));
     
-    $liveform->validate_required_field('name', lang(array('string'=>'{var:1} is required','vars'=>array(lang('Name')) )));
+    $liveform->validate_required_field('name', lang(array('string'=>'{var:1} is required','vars'=>array(lang(array('string'=>'{var:1} Name','vars'=>lang('Currency')))) )));
     $liveform->validate_required_field('code', lang(array('string'=>'{var:1} is required','vars'=>array(lang('Code')) )));
+
+    if (!$liveform->check_field_error('code') && (($code_error = pg_currency_form_code_error($liveform->get_field_value('code'))) !== '')) {
+        $liveform->mark_error('code', $code_error);
+    }
     
     // if there is an error, send the user back to the add currency screen
     if ($liveform->check_form_errors() == true) {
@@ -89,45 +94,29 @@ if (!$_POST) {
         exit();
     }
 
+    // a non-base currency needs a rate above zero: checkout divides by it
+    $exchange_rate_error = pg_currency_form_exchange_rate_error($liveform->get_field_value('exchange_rate'), $liveform->get_field_value('base'));
+
+    if ($exchange_rate_error !== '') {
+        $liveform->mark_error('exchange_rate', $exchange_rate_error);
+        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/add_currency.php');
+        exit();
+    }
+
     $exchange_rate = pg_currency_form_exchange_rate($liveform->get_field_value('exchange_rate'), $liveform->get_field_value('base'));
     
-    // insert currency information into the database.
-    $query =
-        "INSERT INTO currencies(
-            name,
-            base,
-            code,
-            symbol,
-            exchange_rate,
-            created_user_id,
-            created_timestamp,
-            last_modified_user_id,
-            last_modified_timestamp)
-        VALUES (
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            UNIX_TIMESTAMP(),
-            ?,
-            UNIX_TIMESTAMP())";
-    $result = db_q($query, array(
-        (string) $liveform->get_field_value('name'),
-        (string) $liveform->get_field_value('base'),
-        (string) $liveform->get_field_value('code'),
-        (string) $liveform->get_field_value('symbol'),
-        (string) $exchange_rate,
-        (string) $user['id'],
-        (string) $user['id'])) or output_error('Query failed.');
+    // The shared write path (includes/fn/store_currencies.php) also keeps a
+    // single base currency and announces the change.
+    $currency_id = pg_store_currency_save(0, array(
+        'name' => (string) $liveform->get_field_value('name'),
+        'base' => (int) $liveform->get_field_value('base'),
+        'code' => (string) $liveform->get_field_value('code'),
+        'symbol' => (string) $liveform->get_field_value('symbol'),
+        'exchange_rate' => (string) $exchange_rate,
+    ), (int) $user['id']);
 
-    $currency_id = mysqli_insert_id(db::$con);
-
-    // If this currency was set as the base currency then update all other currencies
-    // in order to make sure that none are set as the base currency.
-    if ($liveform->get_field_value('base') == 1) {
-        pg_currency_form_clear_other_bases($currency_id);
+    if ($currency_id <= 0) {
+        output_error('Query failed.');
     }
 
     // Log that the currency has been created.

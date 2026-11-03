@@ -64,6 +64,16 @@ function test_rich_text_profiles_images()
 	}
 	pg_assert_false(_pg_rich_text_image_is_local('https://www.example.org/a.png', ''), 'no host set');
 
+	// Page output turns {path} into the site path, which starts and ends with
+	// a slash, so a slash or a backslash next to the placeholder makes a
+	// protocol-relative address on another host.
+	foreach (array('{path}/evil.test/a.png', '{PATH}\\evil.test/a.png', '/{path}evil.test/a.png', '\\{path}evil.test/a.png', '{path}{path}evil.test/a.png') as $src) {
+		pg_assert_false(_pg_rich_text_image_is_local($src, 'www.example.org'), $src);
+	}
+	pg_assert_true(_pg_rich_text_image_is_local('{path}files/a.png', 'www.example.org'), 'placeholder then a file');
+	pg_assert_same('<p>a</p>', pg_sanitize_rich_text('<p>a<img src="{path}/evil.test/t.gif"></p>'));
+	pg_assert_same('<p>a</p>', pg_sanitize_rich_text('<p>a<img src="%7Bpath%7D/evil.test/t.gif"></p>'));
+
 	pg_assert_same('<p>a</p>', pg_sanitize_rich_text('<p>a<img src="https://evil.test/t.gif"></p>'));
 	pg_assert_same('<p>a<img src="/files/a.png" alt="b"></p>', pg_sanitize_rich_text('<p>a<img src="/files/a.png" alt="b"></p>'));
 	pg_assert_same('<p>a<img src="https://evil.test/t.gif"></p>', pg_sanitize_rich_text('<p>a<img src="https://evil.test/t.gif"></p>', 'staff'));
