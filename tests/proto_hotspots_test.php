@@ -344,6 +344,87 @@ function test_proto_hotspots_layout()
 	pg_assert_same(44 + 2 * 30 + 15, $result['y'], 'a row port in the middle of its row');
 }
 
+// Which rows an arrow may be drawn from and where it may end: a link of
+// the tree (not a classic menu or region), to a tab frame by its page name
+// under the site path, or to a chip of a site page, another site or a
+// contact address; never to a shared frame, an anchor, a hidden or broken
+// chip, or a tab without a name.
+function test_proto_hotspots_draw_targets()
+{
+	$result = proto_hotspots_test_node('var env = { path: "/site/" };'
+		. 'out = { rows: ["href", "attrs", "btn", "text", "menu", "region"].map(function (s) { return H.drawable({ source: s, from: (s === "menu" || s === "region") ? "Top" : "" }); }),'
+		. ' menuLink: H.drawable({ source: "href", from: "Top" }),'
+		. ' to: [{ kind: "page", name: "about" }, { kind: "page", name: "Our Team & Co" }, { kind: "page", name: "" }, { kind: "shared", name: "Header" },'
+		. '  { kind: "chip", mark: "page", href: "/shop" }, { kind: "chip", mark: "external", href: "https://x.org/" }, { kind: "chip", mark: "contact", href: "mailto:a@b.c" },'
+		. '  { kind: "chip", mark: "anchor", href: "#top" }, { kind: "chip", mark: "hidden", href: "/secret" }, { kind: "chip", mark: "broken", href: "/old" }, null].map(function (t) { return H.hrefTo(t, env); }),'
+		. ' bare: H.hrefTo({ kind: "page", name: "about" }, {}) };');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, true, true, true, false, false), $result['rows'], 'links of the tree are drawn, menus and regions stay read-only');
+	pg_assert_same(false, $result['menuLink'], 'a row of a menu is read-only');
+	pg_assert_same(array('/site/about', '/site/Our%20Team%20%26%20Co', null, null, '/shop', 'https://x.org/', 'mailto:a@b.c', null, null, null, null), $result['to'], 'the href each target gives');
+	pg_assert_same('/about', $result['bare'], 'the site root when the read names no path');
+}
+
+// The nth link of a piece of markup gets a new href, in double quotes and
+// escaped; the rest of the markup stays byte for byte; a link that is not
+// there answers null.
+function test_proto_hotspots_set_html_href()
+{
+	$html = 'See <a href="/terms">terms</a>, <!-- <a href="/c"> --><a href=\'#top\' data-bs-toggle="tab">tab</a> or <A HREF=/draft-page target=_blank>draft</A>';
+	$result = proto_hotspots_test_node('var h = ' . proto_hotspots_test_js($html) . ';'
+		. 'out = [H.setHtmlHref(h, 0, "/a?x=1&y=\"2\""), H.setHtmlHref(h, 2, "/new"), H.setHtmlHref(h, 3, "/none"), H.htmlLinks(H.setHtmlHref(h, 0, "/a?x=1&y=2"))[0].href];');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same('See <a href="/a?x=1&amp;y=&quot;2&quot;">terms</a>, <!-- <a href="/c"> --><a href=\'#top\' data-bs-toggle="tab">tab</a> or <A HREF=/draft-page target=_blank>draft</A>', $result[0], 'the first link, escaped');
+	pg_assert_same('See <a href="/terms">terms</a>, <!-- <a href="/c"> --><a href=\'#top\' data-bs-toggle="tab">tab</a> or <A HREF="/new" target=_blank>draft</A>', $result[1], 'an unquoted href, the comment skipped');
+	pg_assert_same(null, $result[2], 'no such link');
+	pg_assert_same('/a?x=1&y=2', $result[3], 'the collector reads the new href back');
+}
+
+// What a drawn arrow writes into its node: the href prop, the _attrs href
+// (other attributes kept), a button's href, or the text or custom HTML with
+// the nth link changed; null when the node no longer holds the href the
+// map showed, so a stale map never writes over a newer link.
+function test_proto_hotspots_href_patch()
+{
+	$tree = proto_hotspots_test_tree();
+	$result = proto_hotspots_test_node('var t = ' . proto_hotspots_test_js($tree) . ', c = t.children, n = c[0].children;'
+		. 'out = ['
+		. ' H.hrefPatch(n[0], { source: "href", href: "/about", index: 0 }, "/team"),'
+		. ' H.hrefPatch(n[1], { source: "attrs", href: "/shop", index: 0 }, "/store"),'
+		. ' H.hrefPatch(c[1], { source: "btn", href: "mailto:a@example.com", index: 0 }, "/buy"),'
+		. ' H.hrefPatch(c[3], { source: "text", href: "/draft-page", index: 2 }, "/final"),'
+		. ' H.hrefPatch(c[10], { source: "text", href: "/x?a=1&b=2", index: 0 }, "/y"),'
+		. ' H.hrefPatch(c[5], { source: "href", href: "#", index: 0 }, "/filled"),'
+		. ' H.hrefPatch(n[0], { source: "href", href: "/old", index: 0 }, "/team"),'
+		. ' H.hrefPatch(c[3], { source: "text", href: "/terms", index: 2 }, "/final"),'
+		. ' H.hrefPatch(c[7], { source: "menu", href: "", index: 0 }, "/x"),'
+		. ' n[1].props._attrs'
+		. '];');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('key' => 'href', 'value' => '/team'), $result[0], 'the href prop');
+	pg_assert_same(array('key' => '_attrs', 'value' => array(array('name' => 'href', 'value' => '/store'))), $result[1], 'the _attrs href, a copy');
+	pg_assert_same(array(array('name' => 'href', 'value' => '/shop')), $result[9], 'the node itself is not changed');
+	pg_assert_same(array('key' => 'href', 'value' => '/buy'), $result[2], 'a button');
+	pg_assert_same(array('key' => 'text', 'value' => 'See <a href="/terms">terms</a> and <a href=\'#top\' data-bs-toggle="tab">tab</a> or <a href="/final" target=_blank>draft</a>'), $result[3], 'the nth link of a text');
+	pg_assert_same(array('key' => 'html', 'value' => '<!-- <a href="/c"> --><script>var a = "<a href=/s>";</script><a href="/y">X</a>'), $result[4], 'a link of custom HTML');
+	pg_assert_same(array('key' => 'href', 'value' => '/filled'), $result[5], 'an empty address shown as #');
+	pg_assert_same(null, $result[6], 'a stale href');
+	pg_assert_same(null, $result[7], 'a stale text link');
+	pg_assert_same(null, $result[8], 'a menu is not written');
+}
+
 // The designer prints the canvas core, the resolver and the collector
 // without defer before style_designer.min.js, which reads them; the view
 // has its toolbar button and reads the prototype_map answer.
@@ -361,6 +442,18 @@ function test_proto_hotspots_printed_before_the_designer()
 
 	pg_assert_contains('id="sd-vb-proto"', $source, 'the toolbar button');
 	pg_assert_contains("_pgApiPost('prototype_map', designed.request)", $source, 'the view asks the map read');
+}
+
+// The view draws arrows through the core's connect drag, on the row's tab,
+// and keeps its keys from the editor's document shortcuts.
+function test_proto_hotspots_view_draws_arrows()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+
+	pg_assert_contains('canConnect: function (from, to, port) { return _sdProtoArrowHref(from, to, port) !== null; }', $source, 'the core asks the view where an arrow may end');
+	pg_assert_contains('connected: function (from, to, port) { _sdProtoConnect(from, to, port); }', $source, 'a drawn arrow writes the link');
+	pg_assert_contains("if (e.target.closest && e.target.closest('#sd-proto')) return;", $source, 'the document shortcuts leave the view alone');
+	pg_assert_contains('var patch = node ? H.hrefPatch(node, row, href) : null;', $source, 'the node gets the collector\'s patch');
 }
 
 // The collector is a bundle of its own.

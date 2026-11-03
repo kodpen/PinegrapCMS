@@ -67531,7 +67531,12 @@ const StyleDesigner = (function () {
     // element on the canvas. window.PGProtoHotspots collects and marks the
     // links (with window.PGLinkResolve and the server's prototype_map read);
     // all three are printed before this script.
-    var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null };
+    // An arrow drawn from a link row's port to a tab's frame or to a chip of
+    // a site page, another site or a contact address writes that link's
+    // href (_sdProtoConnect()): on the row's tab, opened first, so its lock,
+    // undo history and content rights answer; the normal Save writes it.
+    // Classic menus and regions stay read-only.
+    var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {} };
 
     var SD_PROTO_MARKS = {
         tab: { icon: 'bi-file-earmark-arrow-right', text: function () { return _sdT('Opens a page of this design'); } },
@@ -67646,22 +67651,25 @@ const StyleDesigner = (function () {
             text: function (key) { return key === 'pgc_box' ? _sdT('Frame') : ''; },
             boxRole: function () { return _sdT('Frame'); },
             item: function (id) { return _sdProto.byId[id] || null; },
-            // Frames and chips move; no arrow is drawn by hand here.
+            // Frames and chips move; an arrow from a link row's port
+            // re-points that link (_sdProtoConnect()).
             editable: function () { return true; },
             size: function (item) { return { w: item.w, h: item.h }; },
             zoomMin: 0.1,
             portAt: function (item, name) { return item.rows ? { y: window.PGProtoHotspots.rowY(item, name) } : null; },
             select: function (selected) { _sdProtoSelect(selected); },
             moved: function (item) { _sdProtoKeep(item); },
-            canConnect: function () { return false; },
-            connected: function () {},
+            canConnect: function (from, to, port) { return _sdProtoArrowHref(from, to, port) !== null; },
+            connected: function (from, to, port) { _sdProtoConnect(from, to, port); },
             view: function (next) {
                 if (next) _sdProto.view = next;
                 return _sdProto.view;
             },
             items: function () { return _sdProto.items; },
-            // A row: no drag, its element selected on release.
+            // A row: no drag, its element selected on release. Its port is
+            // the core's: an arrow drawn from it.
             press: function (event, next) {
+                if (event.target.closest && event.target.closest('.pgc-port-out')) return;
                 var row = event.target.closest ? event.target.closest('.sd-proto-row') : null;
                 if (row) {
                     next.kind = 'row';
@@ -67675,6 +67683,15 @@ const StyleDesigner = (function () {
             cancel: function () {},
             key: function (event) {
                 if (event.key === 'Escape') { _sdProtoClose(); return true; }
+                // The open tab's undo history, as on the canvas; the map is
+                // read again after it.
+                var name = String(event.key || '').toLowerCase();
+                if ((event.ctrlKey || event.metaKey) && (name === 'z' || name === 'y')) {
+                    if (name === 'y' || event.shiftKey) redo();
+                    else undo();
+                    _sdProtoLoad();
+                    return true;
+                }
                 var row = event.target.closest ? event.target.closest('.sd-proto-row') : null;
                 if (row && (event.key === 'Enter' || event.key === ' ')) { _sdProtoOpenRow(row); return true; }
                 return false;
@@ -67712,6 +67729,7 @@ const StyleDesigner = (function () {
         }
         if (!_sdProto.ui && !_sdProtoBuild()) return;
         _sdProto.open = true;
+        _sdProto.warned = {};
         _sdProto.ui.root.hidden = false;
         _sdProtoButtonState();
         _sdProtoLoad();
@@ -67729,10 +67747,13 @@ const StyleDesigner = (function () {
         if (btn) btn.focus();
     }
 
-    // The tabs as the collector reads them: the open tab's live tree.
+    // The tabs as the collector reads them: the open tab's live tree and
+    // the name typed in its page settings (an arrow to it writes that name).
     function _sdProtoTabs() {
+        var nameEl = document.getElementById('sd-page-name');
         return _pages.map(function (p) {
-            return { key: p.key, page_id: p.page_id, page_name: p.page_name, tree: _pgTreeOf(p) };
+            var name = (p.key === _activeKey && nameEl) ? String(nameEl.value || '').trim() : p.page_name;
+            return { key: p.key, page_id: p.page_id, page_name: name, tree: _pgTreeOf(p) };
         });
     }
 
@@ -67757,6 +67778,7 @@ const StyleDesigner = (function () {
                     _sdProtoStatus((read && read.message) ? read.message : _sdT('The links could not be read.'));
                     return;
                 }
+                _sdProto.env = read.env || {};
                 _sdProtoDraw(H.mark(designed, read, tabs));
             }, function () {
                 if (seq === _sdProto.seq) _sdProtoStatus(_sdT('The links could not be read.'));
@@ -67811,7 +67833,12 @@ const StyleDesigner = (function () {
             r.appendChild(_sdProtoMarkIcon(row.mark));
             r.appendChild(_sdProtoEl('span', 'sd-proto-label', row.from ? row.from + ' › ' + row.label : row.label));
             if (row.draft) r.appendChild(_sdProtoEl('span', 'sd-proto-draft', _sdT('Draft')));
-            r.appendChild(canvas.port('out', row.port));
+            // Only a link of a tree gets a port to draw its arrow from.
+            if (window.PGProtoHotspots.drawable(row)) {
+                var dot = canvas.port('out', row.port);
+                dot.title = _sdT('Drag to a page or an address to change where this link goes');
+                r.appendChild(dot);
+            }
             node.appendChild(r);
         });
     }
@@ -67876,6 +67903,105 @@ const StyleDesigner = (function () {
         _sdProtoSelect(_sdProto.selected);
     }
 
+    // The tab a frame's links are edited on: a page's own, a shared
+    // component's the open tab when it places the component, else the
+    // first tab that does ('' for none).
+    function _sdProtoFrameTab(item) {
+        if (item.kind !== 'shared') return item.key || '';
+        var here = {};
+        collectSharedIds(tree, here);
+        if (here[item.sharedId]) return _activeKey;
+        for (var i = 0; i < _pages.length; i++) {
+            var ids = {};
+            if (_pgTreeOf(_pages[i])) collectSharedIds(_pgTreeOf(_pages[i]), ids);
+            if (ids[item.sharedId]) return _pages[i].key;
+        }
+        return '';
+    }
+
+    function _sdProtoRow(item, port) {
+        if (!item || !item.rows) return null;
+        for (var i = 0; i < item.rows.length; i++) {
+            if (item.rows[i].port === port) return item.rows[i];
+        }
+        return null;
+    }
+
+    // The href an arrow from a frame's row to `to` writes, null where none
+    // may go: a link of a tree, to a tab's frame or a chip of a site page,
+    // another site or a contact address, never from a tab that is not
+    // opened to the operator.
+    function _sdProtoArrowHref(from, to, port) {
+        var H = window.PGProtoHotspots;
+        var row = _sdProtoRow(from, port);
+        if (!row || !H.drawable(row) || !to) return null;
+        var key = _sdProtoFrameTab(from);
+        var page = key ? _pgPageByKey(key) : null;
+        if (!page || page.access === 'locked') return null;
+        return H.hrefTo(to, _sdProto.env);
+    }
+
+    // An arrow drawn: the row's tab opened first (its lock answered by a
+    // heartbeat), then the link's node changed through saveState(), so
+    // Ctrl+Z on the canvas or in the view takes it back. A shared
+    // component is marked changed; the warnings say where the link goes
+    // live. The normal Save writes it.
+    function _sdProtoConnect(from, to, port) {
+        var row = _sdProtoRow(from, port);
+        var href = _sdProtoArrowHref(from, to, port);
+        if (!row || href === null || href === row.href) return;
+        var key = _sdProtoFrameTab(from);
+        var seq = _sdProto.seq;
+
+        var apply = function () {
+            if (seq !== _sdProto.seq || _activeKey !== key) return;
+            var H = window.PGProtoHotspots;
+            var sid = (from.kind === 'shared') ? from.sharedId : 0;
+            var root = sid ? (_sharedCache[sid] && _sharedCache[sid].tree) : tree;
+            var node = root ? findNodeById(row.nodeId, root) : null;
+            var patch = node ? H.hrefPatch(node, row, href) : null;
+            if (!patch) {
+                sdToast(esc(_sdT('This link has changed since the map was drawn; the links are read again.')), 'warning', 4000);
+                _sdProtoLoad();
+                return;
+            }
+            if (!_sdMayEdit(node, row.source === 'text' ? 'text' : undefined)) {
+                _sdProtoLoad();
+                return;
+            }
+            saveState();
+            node.props[patch.key] = patch.value;
+            if (sid) _sdSharedMarkEdited(node);
+            render();
+            _sdProtoWarn(from, key);
+            _sdProto.canvas.announce(_sdT('The link now goes to {var:1}', href));
+            _sdProtoLoad();
+        };
+
+        if (key === _activeKey) { apply(); return; }
+        _pgTabsSwitch(key);
+        if (_activeKey !== key) return;
+        if (!_collab.ready) { apply(); return; }
+        _sdProtoStatus(_sdT('Opening the page…'));
+        _collabBeatNow().then(apply, apply);
+    }
+
+    // Where a changed link goes live, said once per opening of the view: a
+    // shared component's on Save, on every page and design that shows it;
+    // a live page's when Publish is clicked.
+    function _sdProtoWarn(from, key) {
+        var page = _pgPageByKey(key);
+        var live = !!(page && page.page_id > 0 && _design && _design.styleId && !(_pgDraftsReady() && page.page_draft));
+        var kind = (from.kind === 'shared') ? 'shared' : (live ? 'live' : '');
+        if (!kind || _sdProto.warned[kind]) return;
+        _sdProto.warned[kind] = true;
+        if (kind === 'shared') {
+            sdToast(esc(_sdT('This link is in a shared component: Save changes it on every page and design that shows it, without a revision.')), 'warning', 7000);
+        } else {
+            sdToast(esc(_sdT('This page is on the site: the changed link goes live when you click Publish.')), 'info', 6000);
+        }
+    }
+
     // A row's element selected on the canvas: its tab opened first (a
     // shared component's on a tab placing it), the prototype view closed.
     function _sdProtoOpenRow(rowEl) {
@@ -67884,17 +68010,7 @@ const StyleDesigner = (function () {
         var row = item && item.rows ? item.rows[parseInt(rowEl.getAttribute('data-row'), 10) || 0] : null;
         if (!row) return;
 
-        var key = item.key;
-        if (item.kind === 'shared') {
-            var here = {};
-            collectSharedIds(tree, here);
-            key = here[item.sharedId] ? _activeKey : '';
-            for (var i = 0; !key && i < _pages.length; i++) {
-                var ids = {};
-                if (_pgTreeOf(_pages[i])) collectSharedIds(_pgTreeOf(_pages[i]), ids);
-                if (ids[item.sharedId]) key = _pages[i].key;
-            }
-        }
+        var key = _sdProtoFrameTab(item);
         var page = key ? _pgPageByKey(key) : null;
         if (page && page.access === 'locked') {
             sdToast(esc(_sdT('You do not have content rights for this page\'s folder.')), 'warning', 4000);
@@ -76936,6 +77052,10 @@ const StyleDesigner = (function () {
     function initKeyboard() {
         document.addEventListener('keydown', function (e) {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+            // The Prototype view keeps its own keys (_sdProtoBuild()): a
+            // Delete there must not remove the element selected on the
+            // canvas below it, nor Ctrl+Z undo twice.
+            if (e.target.closest && e.target.closest('#sd-proto')) return;
             // The code editor has its own keymap (Ctrl+D selects the next
             // match there, Ctrl+Z is its history); the designer's shortcuts
             // keep off it. Ctrl+S is caught before this listener and saves.
