@@ -551,7 +551,7 @@ if ($kept) {
 
     $head = $table
         ? '<th scope="col">' . h($kept['note'] ? lang('In the note') : lang('In the file')) . '</th><th scope="col">' . h(lang('Into the column')) . '</th><th scope="col">' . h(lang('First values')) . '</th>'
-        : '<th scope="col"><span class="visually-hidden">' . h(lang('Import')) . '</span></th><th scope="col">' . h(lang('Column')) . '</th><th scope="col">' . h(lang('Type')) . '</th><th scope="col">' . h(lang('First values')) . '</th>';
+        : '<th scope="col" aria-label="' . h(lang('Import')) . '"></th><th scope="col">' . h(lang('Column')) . '</th><th scope="col">' . h(lang('Type')) . '</th><th scope="col">' . h(lang('First values')) . '</th>';
 
     $import_card = '
     <div class="card mb-5 border-primary" id="ws-wt-import">
@@ -793,7 +793,7 @@ if (!$table) {
         $rows_body = pg_empty_state('bi-table', lang('No row yet'));
     } else {
         $rows_body = '<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
-            <thead><tr><th scope="col" class="text-end">#</th>' . $head . ($can_write ? '<th scope="col"><span class="visually-hidden">' . h(lang('Actions')) . '</span></th>' : '') . '</tr></thead>
+            <thead><tr><th scope="col" class="text-end">#</th>' . $head . ($can_write ? '<th scope="col" aria-label="' . h(lang('Actions')) . '"></th>' : '') . '</tr></thead>
             <tbody>' . $lines . '</tbody>
         </table></div>' . (($pager !== '') ? '<div class="d-flex gap-3 mt-3">' . $pager . '</div>' : '');
     }
@@ -1337,12 +1337,7 @@ if (!$table) {
    The screen
    --------------------------------------------------------------------------- */
 
-$liveform_messages = $liveform->output_errors() . $liveform->output_notices();
-
-$liveform->remove_form();
-
-echo
-pg_page_shell(array(
+$shell = pg_page_shell(array(
     // The shell prints the title and heading as markup: a table's name is text.
     'title'               => h($title),
     'extra classes'       => 'workspace workspace_wtables',
@@ -1351,7 +1346,16 @@ pg_page_shell(array(
     'heading_description' => $description,
     'cancel'              => $cancel,
     'breadcrumb'          => $breadcrumb,
-)) . '
+));
+
+// After the shell, which defines PG_PANEL_OUTPUT: the messages then come in
+// the panel's alert markup, not the site's.
+$liveform_messages = $liveform->output_errors() . $liveform->output_notices();
+
+$liveform->remove_form();
+
+echo
+$shell . '
 <main id="content" class="container-fluid p-0">
 <div class="ws-shell">
 <div class="ws-shell-main">
