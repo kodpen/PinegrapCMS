@@ -28,6 +28,8 @@ function test_site_log_actor_without_user()
 	pg_assert_same(lang('Scheduled job'), pg_log_actor('UNKNOWN', ''));
 	pg_assert_same(lang('Scheduled job'), pg_log_actor(null, null));
 	pg_assert_same(lang('Unknown'), pg_log_actor('', '198.51.100.7'));
+	pg_assert_same(lang('System'), pg_log_actor('SYSTEM', ''), 'a system job line is shown in the panel language');
+	pg_assert_same(lang('System'), pg_log_actor('SYSTEM', '198.51.100.7'));
 }
 
 // Outside a page drawn in another language the line is lang()'s, and the
