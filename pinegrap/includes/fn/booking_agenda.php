@@ -782,6 +782,32 @@ function pg_booking_agenda_link($state, $changes = array())
 }
 
 /**
+ * Writes a booking's status, customer details and notes as one UPDATE that
+ * names the status it moves from, so a booking changed meanwhile (by another
+ * screen or the API) is not overwritten. A cancel frees the slot in the same
+ * UPDATE (slot_at NULL). A hold becoming a request or a confirmed booking
+ * goes through pg_booking_confirm() instead, which stores the manage token.
+ *
+ * @param array  $booking  the bookings row read before
+ * @param string $status   the status it moves to (or keeps)
+ * @param array  $customer pg_booking_customer()'s answer
+ * @param int    $now
+ * @return bool false when the query failed or the row was changed meanwhile
+ */
+function pg_booking_agenda_status_write($booking, $status, $customer, $now)
+{
+    $cancel = ($status === 'cancelled') && ((string) $booking['status'] !== 'cancelled');
+
+    $result = db_q(
+        "UPDATE bookings
+        SET status = ?, name = ?, email = ?, phone = ?, notes = ?, updated_at = ?" . ($cancel ? ", slot_at = NULL, hold_until = 0" : "") . "
+        WHERE id = ? AND status = ?",
+        array((string) $status, $customer['name'], $customer['email'], $customer['phone'], $customer['notes'], (int) $now, (int) $booking['id'], (string) $booking['status']));
+
+    return $result && (mysqli_affected_rows(db::$con) === 1);
+}
+
+/**
  * The statuses a booking may move to now: pg_booking_agenda_moves(), but a
  * visitor's hold that has run out can only be cancelled (its slot is no
  * longer held for anyone).

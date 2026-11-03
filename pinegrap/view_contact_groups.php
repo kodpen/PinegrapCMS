@@ -74,7 +74,8 @@ $query =
         created_user.user_username as created_username,
         contact_groups.created_timestamp,
         last_modified_user.user_username as last_modified_username,
-        contact_groups.last_modified_timestamp
+        contact_groups.last_modified_timestamp,
+        " . (pg_audience_ready() ? 'contact_groups.kind' : "'static' AS kind") . "
     FROM contact_groups
     LEFT JOIN user AS created_user ON contact_groups.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON contact_groups.last_modified_user_id = last_modified_user.user_id
@@ -99,6 +100,13 @@ while ($row = mysqli_fetch_assoc($result)) {
 }
 
 $output_rows = '';
+
+// Members per group, one query for the whole list.
+$member_counts = array();
+
+foreach ((array) db_items("SELECT contact_group_id, COUNT(*) AS members FROM contacts_contact_groups_xref GROUP BY contact_group_id") as $count_row) {
+    $member_counts[(int) $count_row['contact_group_id']] = (int) $count_row['members'];
+}
 
 // if there is at least one result to display
 if ($contact_groups) {
@@ -136,6 +144,14 @@ if ($contact_groups) {
 
         $output_link_url = 'edit_contact_group.php?id=' . $contact_group['id'];
 
+        if ($contact_group['kind'] === 'dynamic') {
+            $output_kind = '<span class="badge fw-light theme-info">' . h(lang('By rule')) . '</span>';
+        } else {
+            $output_kind = '<span class="badge fw-light theme-secondary">' . h(lang('By hand')) . '</span>';
+        }
+
+        $output_members = pg_format_number($member_counts[(int) $contact_group['id']] ?? 0, 0);
+
         $output_rows .=
             '<tr class="unselectable">
 			    <td class="align-middle text-start action-buttons">
@@ -143,6 +159,8 @@ if ($contact_groups) {
                     <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                 </td>
                 <td class="align-middle chart_label">' . h($contact_group['name']) . '</td>
+                <td class="align-middle">' . $output_kind . '</td>
+                <td class="align-middle text-end">' . $output_members . '</td>
                 <td class="align-middle text-center">' . $email_subscription . '</td>
                 <td class="align-middle">' . $email_subscription_type . '</td>
                 <td class="align-middle">' . h($description) . '</td>
@@ -180,6 +198,8 @@ print
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
                                 <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
+                                <th>' . lang('Members') . '</th>
+                                <th class="text-end">' . lang('Contacts') . '</th>
                                 <th class="text-center">' . get_column_heading(lang('Subscription'), $sort_levels, '', '', 'subscription') . '</th>
                                 <th>' . get_column_heading(lang('Type'), $sort_levels, '', '', 'type') . '</th>
                                 <th>' . get_column_heading(lang('Description'), $sort_levels, '', '', 'description') . '</th>

@@ -2510,36 +2510,7 @@ function _eo_hosted_card_html($amount_cents)
     // A card kept for renewals is asked for before it is typed (Stripe's
     // setup_future_usage), as the payment will ask for it.
     $order['recurring'] = pg_payment_order_recurring((int) ($order['id'] ?? 0));
-    $answer = pg_payment_call($key, 'prepare', array($order, (int) $amount_cents));
-    $client = $answer['client'];
-
-    // The service's script is loaded only from a host the driver lists for
-    // the site's security policy.
-    $definition = pg_payment_driver($key);
-    $script = (isset($client['script']) && is_string($client['script'])) ? $client['script'] : '';
-    $script_host = (preg_match('#^(https://[^/\s]+)/#', $script, $script_match) === 1) ? $script_match[1] : '';
-    $script_allowed = ($script_host !== '') && isset($definition['csp']['script-src']) && in_array($script_host, $definition['csp']['script-src'], true);
-
-    if (!$answer['success'] || !$script_allowed) {
-        return '<div class="alert alert-warning small mb-3" role="alert">' . h(lang('Card payments are not available right now. Please choose another payment method.')) . '</div>';
-    }
-
-    $config = array(
-        'driver'   => $key,
-        'client'   => $client,
-        'messages' => array(
-            'unavailable' => lang('Card payments are not available right now. Please choose another payment method.'),
-            'invalid'     => lang('The card details could not be read. Please check them and try again.'),
-        ),
-    );
-
-    return '<div class="pg-eo-hosted-card mb-3" data-pg-payment-hosted="' . h(json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) . '">'
-         .   '<div class="pg-eo-hosted-card-element"></div>'
-         .   '<div class="small text-danger mt-2 pg-eo-hosted-card-error" role="alert" aria-live="polite"></div>'
-         . '</div>'
-         . '<input type="hidden" name="payment_token" value="">'
-         . '<script src="' . h($script) . '"></script>'
-         . pg_js_bundle_tags('assets/js/payment_hosted.min.js', false);
+    return pg_payment_box($key, pg_payment_call($key, 'prepare', array($order, (int) $amount_cents)));
 }
 
 function _eo_render_billing_country_select($lf)

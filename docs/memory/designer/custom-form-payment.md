@@ -1,6 +1,6 @@
 ---
 name: custom-form-payment
-description: Fee of a designed form (plan designer-form-logic FL4-FL6): the setting's shape and store, pg_form_fee() rules, the fee order, forms.order_id and paid_at, the Payment rows
+description: Fee of a designed form (plan designer-form-logic FL4-FL6): the setting's shape and store, pg_form_fee() rules, the fee order, forms.order_id and paid_at
 module: form_payments
 ---
 
@@ -19,13 +19,14 @@ module: form_payments
 - `pg_cf_load_page_form_settings()` returns `payment` (the cleaned setting); `pg_cf_write_form_settings()` writes it when the save carries `payment`.
 
 ## How is the order written and marked paid?
-- `pg_form_payment_order_write($record_id, $fee, $contact)`: an incomplete order (site currency, billing from the contact fields, `subtotal` = `total` = the fee, `offline_payment_allowed` only when the form and the store allow it), one `order_items` line of the fee product, quantity 1, no tax or shipping on top: the visitor pays the figure shown. Columns from `pg_form_payment_order_columns()` (pure). A record that already has an order keeps it, so a retry charges the same order. `orders.notes` untouched.
-- `pg_order_complete()` calls `pg_form_payment_mark_paid($order_id)` after the order number is given, for every order: `UPDATE forms SET paid_at = ? WHERE order_id = ? AND paid_at = 0`, so a second completion message changes nothing and an order without a record costs one indexed update.
+- `pg_form_payment_order_write($record_id, $fee, $contact)`: an incomplete order (site currency, billing from the contact fields, `subtotal` = `total` = the fee, `offline_payment_allowed` only when the form and the store allow it), one `order_items` line of the fee product, quantity 1, no tax or shipping on top: the visitor pays the figure shown. Columns from `pg_form_payment_order_columns()` (pure). A record that already has an order keeps it, so a retry charges the same order.
+- `pg_form_payment_mark_paid($order_id)` is called by `pg_order_complete()` after the order number is given, only when the completion wrote `paid_at` > 0 (#6368), and by `pg_order_mark_paid()` (Payment Received). It marks only when the order itself is paid: `UPDATE forms INNER JOIN orders … WHERE forms.order_id = ? AND forms.paid_at = 0 AND orders.paid_at > 0` (#6367). An offline payment completes the order with `paid_at` 0, so its record stays unpaid until staff record the payment. A repeat changes nothing; a record marked by the call is announced as `form.paid`.
 - System fields `order_number` (the completed order's number) and `paid` ("Paid" or '') join `get_standard_fields_for_view()` once the columns exist.
-- Not yet: the payment step on the site and the confirmation mail when paid (FL5), the badge, filter, offline record and API (FL6).
+- Staff screen, API and `form.paid`: `custom-form-payment-staff.md`; the payment step on the site: `custom-form-payment-step.md` (FL5, #6368).
+- Not yet: the confirmation mails when paid (sent by no path now; a record owing a fee gets none at submit); the list badge and the Unpaid filter on `view_submitted_forms.php` (`pg_form_payment_unpaid_where()` is ready).
 
 ## Where does the designer set it?
 - Custom Form Settings, last rows (`_cfPaymentRows()`): the fee product (`list_fee_products`, the first 2000 by name), the amount source, the field and min/max in major units (stored in minor units), offline. Drawn only when `formMeta.payment` (store on and columns there). Written as one `payment` object (`.sd-cf-pay` handler).
 
 ## Tested?
-- `tests/custom_form_payment_test.php`: the fee from the product price and from a field, bounds, unreadable figures, the setting's shape and its stored JSON, the order's columns, the once-only paid statement.
+- `tests/custom_form_payment_test.php`: the fee from the product price and from a field, bounds, unreadable figures, the setting's shape and its stored JSON, the order's columns, the once-only paid statement gated on the order's paid_at.

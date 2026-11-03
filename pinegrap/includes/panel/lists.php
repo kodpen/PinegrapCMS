@@ -4,9 +4,6 @@
  *
  * Panel actions - the rows of the big list screens, one page at a time.
  *
- *   submitted_form_list_rows   a page of the submitted forms list
- *                              (view_submitted_forms.php)
- *   product_list_rows          a page of the products list (view_products.php)
  *   commission_list_rows       a page of the commissions list
  *                              (view_commissions.php)
  *   commission_profile_list_rows
@@ -22,9 +19,13 @@
  *                              (mail_queue.php?tab=sms)
  *   list_table_rows            a batch of rows of a list drawn by the list
  *                              table driver (includes/fn/list_table.php):
- *                              the pages, users and contacts lists
+ *                              the pages, users, contacts,
+ *                              submitted forms and products lists
  *                              (view_pages.php, view_users.php,
- *                              view_contacts.php)
+ *                              view_contacts.php, view_submitted_forms.php,
+ *                              view_products.php)
+ *   list_table_sort            keeps the sort of a list the driver prints
+ *                              whole (browser mode), set by a heading click
  *   booking_list_rows          a page of the bookings agenda's list view
  *                              (view_bookings.php?view=list)
  *
@@ -42,77 +43,6 @@
 
 if (!defined('PG_PANEL_ACTIONS')) {
     exit;
-}
-
-function pg_panel_submitted_form_list_rows($request, $action)
-{
-    // Kept global: helpers read the session user through `global $user`;
-    // see includes/panel/actions.php.
-    global $user;
-
-    // The general gate has checked the session (any_role). The screen's own
-    // gate is validate_forms_access(), answered here in JSON.
-    $user = validate_user();
-
-    if (((int) $user['role'] > 2) && ($user['manage_forms'] != true)) {
-        http_response_code(403);
-        respond(array('status' => 'error', 'message' => lang('Access denied')));
-    }
-
-    validate_token();
-
-    require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
-
-    // The filters are the ones the screen kept in the session.
-    pg_submitted_form_list_defaults(pg_submitted_form_list_custom_forms());
-
-    $page = pg_submitted_form_list_page(
-        $user,
-        pg_submitted_form_list_filter($user),
-        pg_list_search_terms($request['search'] ?? ''),
-        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
-
-    if ($page === false) {
-        http_response_code(500);
-        respond(array('status' => 'error', 'message' => lang('Query failed.')));
-    }
-
-    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
-}
-
-function pg_panel_product_list_rows($request, $action)
-{
-    // Kept global: helpers read the session user through `global $user`;
-    // see includes/panel/actions.php.
-    global $user;
-
-    // The general gate has checked the session (any_role). The screen's own
-    // gate is validate_ecommerce_access(), answered here in JSON.
-    $user = validate_user();
-
-    if (((int) $user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
-        http_response_code(403);
-        respond(array('status' => 'error', 'message' => lang('Access denied')));
-    }
-
-    validate_token();
-
-    // The list's cells are the product screen's (pg_pb_list_cells()).
-    require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
-    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_list.php');
-
-    // The sort is the one the screen kept in the session.
-    $page = pg_product_list_page(
-        pg_product_list_site_view(pg_product_list_filter_name($request['filter'] ?? '')),
-        pg_list_search_terms($request['search'] ?? ''),
-        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
-
-    if ($page === false) {
-        http_response_code(500);
-        respond(array('status' => 'error', 'message' => lang('Query failed.')));
-    }
-
-    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
 }
 
 // Both commission screens' gate: validate_ecommerce_access(), answered in
@@ -423,6 +353,24 @@ function pg_panel_list_table_rows($request, $action)
     }
 
     return pg_list_table_answer($page, $source['columns']);
+}
+
+function pg_panel_list_table_sort($request, $action)
+{
+    // The general gate has checked the session (any_role). Nothing is read
+    // here: the sort is only kept in the session, and the list's screen
+    // checks it against its own columns when it reads it (pg_list_state()).
+    validate_user();
+    validate_token();
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+    if (!pg_list_table_printed_sort($request['list'] ?? '', $request['sort'] ?? '')) {
+        http_response_code(400);
+        respond(array('status' => 'error', 'message' => lang('Invalid action.')));
+    }
+
+    return array('status' => 'success');
 }
 
 function pg_panel_booking_list_rows($request, $action)

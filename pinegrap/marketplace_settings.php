@@ -115,6 +115,12 @@ if ($_POST) {
 
 			$liveform->mark_error('name', lang(array('string' => '{var:1} is required', 'vars' => array(lang('Name')))));
 
+		} elseif (mb_strlen($name) > 100) {
+
+			// The column holds 100 characters; MySQL would cut a longer name
+			// without a word.
+			$liveform->mark_error('name', lang(array('string' => '{var:1} can be at most {var:2} characters long.', 'vars' => array(lang('Name'), 100))));
+
 		}
 
 		$credentials = mp_settings_credentials_from_post($provider);
@@ -133,7 +139,10 @@ if ($_POST) {
 
 			if (trim((string)$value) === '') {
 
-				$liveform->mark_error($field, lang('This is required.'));
+				$liveform->mark_error($field, lang(array(
+					'string' => '{var:1} is required',
+					'vars'   => array(lang($provider_meta[$provider]['fields'][$field]['label']))
+				)));
 
 			}
 
@@ -189,7 +198,26 @@ if ($_POST) {
 
 			$liveform->mark_error('name', lang(array('string' => '{var:1} is required', 'vars' => array(lang('Name')))));
 
+		} elseif (mb_strlen($name) > 100) {
+
+			$liveform->mark_error('name', lang(array('string' => '{var:1} can be at most {var:2} characters long.', 'vars' => array(lang('Name'), 100))));
+
 		}
+
+		$shipment_template = isset($_POST['shipment_template']) ? trim((string)$_POST['shipment_template']) : '';
+
+		if (mb_strlen($shipment_template) > 100) {
+
+			$liveform->mark_error('shipment_template', lang(array('string' => '{var:1} can be at most {var:2} characters long.', 'vars' => array(lang('Cargo template'), 100))));
+
+		}
+
+		// Days to prepare is 1 to 30; an emptied box keeps the stored value
+		// instead of becoming 1.
+		$preparing_day = (isset($_POST['preparing_day']) && is_scalar($_POST['preparing_day']) && trim((string)$_POST['preparing_day']) !== '')
+			? (int)$_POST['preparing_day'] : (int)$account['preparing_day'];
+
+		$preparing_day = max(1, min(30, $preparing_day));
 
 		if ($liveform->check_form_errors() == false) {
 
@@ -239,8 +267,8 @@ if ($_POST) {
 					push_price = '" . (empty($_POST['push_price']) ? '0' : '1') . "',
 					pull_orders = '" . (empty($_POST['pull_orders']) ? '0' : '1') . "',
 					auto_approve = '" . (empty($_POST['auto_approve']) ? '0' : '1') . "',
-					shipment_template = '" . e(mb_substr(isset($_POST['shipment_template']) ? trim($_POST['shipment_template']) : '', 0, 100)) . "',
-					preparing_day = '" . max(1, min(30, isset($_POST['preparing_day']) ? (int)$_POST['preparing_day'] : 3)) . "',
+					shipment_template = '" . e($shipment_template) . "',
+					preparing_day = '" . (int)$preparing_day . "',
 					updated_timestamp = UNIX_TIMESTAMP()
 				WHERE id = '" . e($account_id) . "'");
 
@@ -1685,8 +1713,8 @@ function mp_settings_credentials_from_post($provider) {
 // select or a plain text box, never into a secret one. A text box is
 // required on create only.
 // $disabled keeps the field of a marketplace that is not chosen out of the
-// submitted form.
-function mp_settings_credential_field($prefix, $field, $meta, $current, $editing, $disabled = false) {
+// submitted form. $invalid marks a field a refused post was refused for.
+function mp_settings_credential_field($prefix, $field, $meta, $current, $editing, $disabled = false, $invalid = false) {
 
 	$id = $prefix . '_' . $field;
 
@@ -1701,7 +1729,7 @@ function mp_settings_credential_field($prefix, $field, $meta, $current, $editing
 			: (isset($meta['default']) ? (string)$meta['default'] : '');
 
 		$out .= '
-				<select class="form-control" id="' . h($id) . '" name="' . h($field) . '"' . ($disabled ? ' disabled' : '') . '>';
+				<select class="form-control' . ($invalid ? ' is-invalid" aria-invalid="true' : '') . '" id="' . h($id) . '" name="' . h($field) . '"' . ($disabled ? ' disabled' : '') . '>';
 
 		foreach ((array)$meta['options'] as $value => $label) {
 
@@ -1719,7 +1747,7 @@ function mp_settings_credential_field($prefix, $field, $meta, $current, $editing
 	}
 
 	$out .= '
-				<input type="' . (!empty($meta['secret']) ? 'password' : 'text') . '" class="form-control"
+				<input type="' . (!empty($meta['secret']) ? 'password' : 'text') . '" class="form-control' . ($invalid ? ' is-invalid" aria-invalid="true' : '') . '"
 					id="' . h($id) . '" name="' . h($field) . '" autocomplete="' . (!empty($meta['secret']) ? 'new-password' : 'off') . '"'
 					. ($editing ? ' placeholder="' . h(mp_credential_hint($current)) . '"' : '')
 					. ((!$editing && empty($meta['secret']) && $current !== '') ? ' value="' . h($current) . '"' : '')
@@ -1867,6 +1895,12 @@ foreach ($providers as $key => $meta) {
    The screen
    --------------------------------------------------------------------------- */
 
+// A refused Connect or Save shows its messages inside the dialog or drawer it
+// opens again: at the top of the page they would sit under the backdrop. The
+// fields it was refused for are marked there too.
+$mp_form_errors = $mp_refused ? (string)$liveform->output_errors() : '';
+$mp_invalid = $mp_refused ? $liveform->field_error_texts() : array();
+
 echo pg_page_shell(array(
 	'title'                => lang('Marketplaces'),
 	'extra classes'        => 'mp-screen',
@@ -1895,6 +1929,11 @@ echo pg_page_shell(array(
 	text-decoration: none; color: inherit; display: block; }
 .mp-tab.sel { border-color: var(--pg-primary); background: var(--pg-bg-1); }
 .mp-tab small { color: var(--pg-fg-2); }
+/* An account name is free text of up to 100 characters, possibly one long
+   word: it breaks inside the tile, the account card header and the drawer
+   title instead of pushing the page (and the close button of the drawer) sideways. */
+.mp-name { min-width: 0; overflow-wrap: anywhere; }
+#mp_drawer .drawer-header .btn-close { flex: 0 0 auto; }
 .mp-count { display: flex; gap: 18px; flex-wrap: wrap; }
 .mp-count div { min-width: 82px; }
 .mp-count b { font-size: 1.25rem; display: block; line-height: 1.1; }
@@ -1910,8 +1949,18 @@ echo pg_page_shell(array(
 }</style>
 
 <main id="content" class="container-fluid">
+	' . pg_screen_toolbar(array(
+		'primary' => '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-toggle="dialog" data-bs-target="#mp_new">'
+			. '<i class="bi bi-plus-lg me-2" aria-hidden="true"></i>' . lang('Connect a Marketplace') . '</button>',
+		'grow'    => $accounts
+			? '<span class="small fg-secondary"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>'
+				. ($last_run
+					? lang(array('string' => 'Last run {var:1}', 'vars' => array(mp_settings_ago($last_run))))
+					: lang('The scheduled job has not run yet.')) . '</span>'
+			: '',
+	)) . '
 	<div class="row"><div class="col-12">
-		' . $liveform->output_errors() . $liveform->output_notices() . $liveform->get_warnings() . '
+		' . ($mp_refused ? '' : $liveform->output_errors()) . $liveform->output_notices() . $liveform->get_warnings() . '
 	</div></div>
 ';
 
@@ -1927,28 +1976,14 @@ if (!$accounts) {
 		<div class="card-body text-center py-12">
 			<i class="bi bi-shop" style="font-size:2.125rem;opacity:.35"></i>
 			<p class="mt-5 mb-1"><b>' . lang('No marketplace is connected yet.') . '</b></p>
-			<p class="small opacity-75 mb-7" style="max-width:520px;margin:0 auto">'
+			<p class="small opacity-75 mb-0" style="max-width:520px;margin:0 auto">'
 				. lang('Connect a marketplace account and match your products to the codes it knows them by. Stock and price changes here are then sent over there on a schedule.') . '</p>
-			<button type="button" class="btn btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#mp_new">
-				<i class="bi bi-plus-lg me-1"></i>' . lang('Connect a Marketplace') . '</button>
 		</div>
 	</div>';
 
 } else {
 
 	echo '
-	<div class="d-flex align-items-center gap-3 mb-5 flex-wrap">
-		<span class="small opacity-75">
-			<i class="bi bi-clock-history me-1"></i>'
-			. ($last_run
-				? lang(array('string' => 'Last run {var:1}', 'vars' => array(mp_settings_ago($last_run))))
-				: lang('The scheduled job has not run yet.')) . '
-		</span>
-		<div class="flex-grow-1"></div>
-		<button type="button" class="btn btn-sm btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#mp_new">
-			<i class="bi bi-plus-lg me-1"></i>' . lang('Connect a Marketplace') . '</button>
-	</div>
-
 	<div class="row g-5 mb-5">';
 
 	foreach ($accounts as $row) {
@@ -1964,7 +1999,7 @@ if (!$accounts) {
 			<a class="mp-tab' . ($is_selected ? ' sel" aria-current="page' : '') . '" href="marketplace_settings.php?account=' . (int)$row['id'] . '">
 				<div class="d-flex align-items-center gap-3">
 					<i class="bi bi-shop"></i>
-					<b>' . h($row['name']) . '</b>
+					<b class="mp-name">' . h($row['name']) . '</b>
 					<span class="ms-auto">' . $state . '</span>
 				</div>
 				<small>' . h(mp_provider_name($row['provider']))
@@ -2033,7 +2068,7 @@ if ($selected) {
 	echo '
 	<div class="card mb-5">
 		<div class="card-header d-flex align-items-center flex-wrap gap-3">
-			<i class="bi bi-sliders me-1"></i><b>' . h($selected['name']) . '</b>
+			<i class="bi bi-sliders me-1"></i><b class="mp-name">' . h($selected['name']) . '</b>
 			<span class="small opacity-75">' . h(mp_provider_name($selected['provider'])) . '</span>'
 			. ((isset($selected['credentials']['environment']) && $selected['credentials']['environment'] === 'stage')
 				? ' <span class="mp-pill off">' . lang('Test environment') . '</span>' : '') . '
@@ -2689,7 +2724,8 @@ foreach ($providers as $key => $meta) {
 		$posted = ($is_chosen && ($mp_refused === 'create') && isset($_POST[$field]) && is_scalar($_POST[$field]))
 			? trim((string)$_POST[$field]) : '';
 
-		$new_fields .= mp_settings_credential_field('new_' . $key, $field, $field_meta, $posted, false, !$is_chosen);
+		$new_fields .= mp_settings_credential_field('new_' . $key, $field, $field_meta, $posted, false, !$is_chosen,
+			$is_chosen && ($mp_refused === 'create') && isset($mp_invalid[$field]));
 
 	}
 
@@ -2715,13 +2751,14 @@ echo '
 				<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
 			</div>
 			<div class="dialog-body">
+				' . (($mp_refused === 'create') ? $mp_form_errors : '') . '
 				<div class="mb-5">
 					<label class="form-label" for="new_provider">' . lang('Marketplace') . '</label>
-					<select class="form-control" id="new_provider" name="provider">' . $provider_options . '</select>
+					<select class="form-control' . ((($mp_refused === 'create') && isset($mp_invalid['provider'])) ? ' is-invalid" aria-invalid="true' : '') . '" id="new_provider" name="provider">' . $provider_options . '</select>
 				</div>
 				<div class="mb-5">
 					<label class="form-label" for="new_name">' . lang('Name') . '</label>
-					<input type="text" class="form-control" id="new_name" name="name" value="' . h($new_name) . '" required
+					<input type="text" class="form-control' . ((($mp_refused === 'create') && isset($mp_invalid['name'])) ? ' is-invalid" aria-invalid="true' : '') . '" id="new_name" name="name" value="' . h($new_name) . '" required maxlength="100"
 						placeholder="' . lang('The name you will recognise this store by') . '">
 				</div>
 				' . $new_fields . '
@@ -2758,7 +2795,8 @@ if ($selected) {
 
 		$edit['shipment_template'] = isset($_POST['shipment_template']) ? trim((string)$_POST['shipment_template']) : '';
 
-		$edit['preparing_day'] = max(1, min(30, isset($_POST['preparing_day']) ? (int)$_POST['preparing_day'] : 3));
+		$edit['preparing_day'] = max(1, min(30, (isset($_POST['preparing_day']) && is_scalar($_POST['preparing_day']) && trim((string)$_POST['preparing_day']) !== '')
+			? (int)$_POST['preparing_day'] : (int)$selected['preparing_day']));
 
 	}
 
@@ -2776,7 +2814,8 @@ if ($selected) {
 
 		}
 
-		$edit_fields .= mp_settings_credential_field('edit', $field, $meta, $current, true);
+		$edit_fields .= mp_settings_credential_field('edit', $field, $meta, $current, true, false,
+			($mp_refused === 'update') && isset($mp_invalid[$field]));
 
 	}
 
@@ -2808,13 +2847,14 @@ if ($selected) {
 		<input type="hidden" name="mp_action" value="update">
 		<input type="hidden" name="account_id" value="' . $selected_id . '">
 		<div class="drawer-header border-bottom">
-			<h5 class="drawer-title" id="mp_drawer_title"><i class="bi bi-sliders me-3"></i>' . h($selected['name']) . '</h5>
+			<h5 class="drawer-title mp-name" id="mp_drawer_title"><i class="bi bi-sliders me-3"></i>' . h($selected['name']) . '</h5>
 			<button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
 		</div>
 		<div class="drawer-body">
+			' . (($mp_refused === 'update') ? $mp_form_errors : '') . '
 			<div class="mb-5">
 				<label class="form-label" for="edit_name">' . lang('Name') . '</label>
-				<input type="text" class="form-control" id="edit_name" name="name" value="' . h($edit_name) . '" required>
+				<input type="text" class="form-control' . ((($mp_refused === 'update') && isset($mp_invalid['name'])) ? ' is-invalid" aria-invalid="true' : '') . '" id="edit_name" name="name" value="' . h($edit_name) . '" required maxlength="100">
 			</div>
 			' . $edit_fields . '
 			<div class="form-field mb-3">
@@ -2855,14 +2895,14 @@ if ($selected) {
 			. (!empty($providers[$selected['provider']]['shipment_template']) ? '
 			<div class="mb-5">
 				<label class="form-label" for="edit_shipment_template">' . lang('Cargo template') . '</label>
-				<input type="text" class="form-control" id="edit_shipment_template" name="shipment_template"
+				<input type="text" class="form-control' . ((($mp_refused === 'update') && isset($mp_invalid['shipment_template'])) ? ' is-invalid" aria-invalid="true' : '') . '" id="edit_shipment_template" name="shipment_template" maxlength="100"
 					value="' . h((string)$edit['shipment_template']) . '">
 				<div class="form-text">'
 					. lang('The name of the cargo agreement in your marketplace store settings, copied exactly. A new listing is refused without it.') . '</div>
 			</div>' : '') . '
 			<div class="mb-7">
 				<label class="form-label" for="edit_preparing_day">' . lang('Days to prepare') . '</label>
-				<input type="number" class="form-control" id="edit_preparing_day" name="preparing_day" min="1" max="30"
+				<input type="number" class="form-control" id="edit_preparing_day" name="preparing_day" min="1" max="30" step="1" required
 					value="' . (int)$edit['preparing_day'] . '" style="max-width:110px">
 				<div class="form-text">' . lang('How long you take to hand a parcel over. It is shown to the buyer.') . '</div>
 			</div>

@@ -29,7 +29,7 @@ description: Plan for the Social Community template (pinegrap-social): a photo c
 
 - 5 Done (#6340). Reports and mail: `mail.php`, `reports.php`; test `…_reports_test.php`.
 
-- 6 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Community News", blog post, search, error); test `…_standard_test.php`.
+- 6 Done (#6343). Standard: `standard.php` (contact, inbox, newsletter, Community News, search, error); test `…_standard_test.php`.
 
 - 7 Done (#6346). Account and staff: `account.php`; test `…_account_test.php`.
 

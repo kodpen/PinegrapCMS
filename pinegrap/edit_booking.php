@@ -196,15 +196,9 @@ if ($_POST) {
         go($back);
     }
 
-    // A cancel frees the slot in the same UPDATE (slot_at NULL); the status
-    // it moves from is part of the WHERE, so two screens cannot both move it.
-    $result = db_q(
-        "UPDATE bookings
-        SET status = ?, name = ?, email = ?, phone = ?, notes = ?, updated_at = ?" . ($cancel ? ", slot_at = NULL, hold_until = 0" : "") . "
-        WHERE id = ? AND status = ?",
-        array($status, $customer['name'], $customer['email'], $customer['phone'], $customer['notes'], $booking_now, $booking_id, (string) $booking['status']));
-
-    if (!$result || (mysqli_affected_rows(db::$con) !== 1)) {
+    // The status it moves from is part of the write, so two screens cannot
+    // both move it.
+    if (!pg_booking_agenda_status_write($booking, $status, $customer, $booking_now)) {
         $liveform->add_error(lang('The booking was changed meanwhile. Check it and save again.'));
         go($back);
     }

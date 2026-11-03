@@ -175,3 +175,39 @@ function test_geo_country_label_used_by_the_erp_account_and_address_book()
 	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/account_form.php');
 	pg_assert_true(strpos($form, "h((string) \$country_row['name'])") === false, 'the account form prints no stored name');
 }
+
+// A stored name is unedited when it is the code's shipped, alias, translated
+// or intl name, compared without case, accents or punctuation (#5650).
+function test_geo_country_name_unedited()
+{
+	pg_assert_true(pg_geo_country_name_unedited('Turkey', 'TR'), 'old seed');
+	pg_assert_true(pg_geo_country_name_unedited('Türkiye', 'TR'), 'new seed');
+	pg_assert_true(pg_geo_country_name_unedited(' turkey ', 'tr'), 'case and spaces');
+	pg_assert_true(pg_geo_country_name_unedited('Germany', 'DE'), 'shipped name');
+	pg_assert_true(pg_geo_country_name_unedited('', 'DE'), 'a blank name is no edit');
+	pg_assert_false(pg_geo_country_name_unedited('pg-test Ülke 297', 'XK'), 'a typed name');
+	pg_assert_false(pg_geo_country_name_unedited('Germany', 'TR'), 'another country\'s name');
+	pg_assert_false(pg_geo_country_name_unedited('Nowhere Land', ''), 'no code');
+}
+
+// An edited name shows as stored; an unedited one is translated as before.
+function test_geo_country_label_shows_an_edited_name()
+{
+	pg_assert_same('pg-test Ülke 297', pg_geo_country_label('pg-test Ülke 297', 'XK'));
+	pg_assert_same('Germany', pg_geo_country_label('Germany', 'TR'));
+	pg_assert_same(pg_geo_country_label('Turkey', 'TR'), pg_geo_country_label('Türkiye', 'TR'), 'both seeds name it the same');
+}
+
+// Rows that end up with the same label get their code after it, so the list
+// and the pickers tell them apart; single labels stay as they are.
+function test_geo_label_disambiguate()
+{
+	$rows = array(
+		array('code' => 'VA', 'label' => 'Vatikan'),
+		array('code' => 'DE', 'label' => 'Almanya'),
+		array('code' => 'XV', 'label' => 'vatikan'),
+	);
+
+	pg_assert_same(array('Vatikan (VA)', 'Almanya', 'vatikan (XV)'), array_column(pg_geo_label_disambiguate($rows), 'label'));
+	pg_assert_same(array(), pg_geo_label_disambiguate(array()));
+}

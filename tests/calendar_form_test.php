@@ -47,9 +47,11 @@ function test_calendar_form_card_prints_the_name_field()
 function test_calendar_form_name_check_skips_own_row_on_edit()
 {
 	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/calendar_form.php');
+	$writes = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/calendar_writes.php');
 
-	pg_assert_contains('SELECT id FROM calendars WHERE (name = ?)"', $form, 'create looks the name up');
-	pg_assert_contains('WHERE (name = ?) AND (id != ?)', $form, 'edit skips its own name');
+	pg_assert_contains("pg_calendar_name_taken(\$liveform->get_field_value('name'), (int) \$id)", $form, 'the form asks the shared lookup');
+	pg_assert_contains('SELECT id FROM calendars WHERE (name = ?)"', $writes, 'create looks the name up');
+	pg_assert_contains('WHERE (name = ?) AND (id != ?)', $writes, 'edit skips its own name');
 	pg_assert_contains("check_field_error('name') == true", $form, 'a missing name skips the lookup');
 }
 

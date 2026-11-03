@@ -3257,6 +3257,48 @@ function pg_settings_select_folder($folder_id, $access_control_type = '')
     return $output;
 }
 
+/**
+ * Whether a page picker leaves a folder out: the Workspace's folder and what
+ * is below it. A page is never filed under the Workspace; the Recycle Bin is
+ * left to select_folder() as before.
+ *
+ * @param int   $folder_id
+ * @param array $rows      folder_id => array('folder_parent' => …)
+ * @param int   $workspace the Workspace's folder, 0 when there is none
+ * @return bool
+ */
+function pg_page_folder_left_out($folder_id, $rows, $workspace)
+{
+    return ((int) $folder_id > 0) && pg_folder_in_bin_chain($rows, (int) $folder_id, (int) $workspace);
+}
+
+/**
+ * The options of a page folder picker (Add Page, Edit Page, the Pages
+ * list's move picker): select_folder() without the Workspace's folder and
+ * what is below it. A page already filed there keeps its folder, added
+ * selected and marked, so the stored value is shown and not rewritten.
+ *
+ * @param int $folder_id the stored choice, 0 for none
+ * @return string
+ */
+function pg_page_select_folder($folder_id = 0)
+{
+    $folder_id = (int) $folder_id;
+    $workspace = (int) pg_workspace_folder_id();
+    $output = select_folder($folder_id, 0, $workspace);
+
+    if (($folder_id > 0) && ($workspace > 0)) {
+        $tree = pg_folder_access_tree();
+
+        if (pg_page_folder_left_out($folder_id, $tree['rows'], $workspace)) {
+            $name = (string) db_value("SELECT folder_name FROM folder WHERE folder_id = '" . $folder_id . "'");
+            $output .= '<option value="' . $folder_id . '" selected>' . h($name) . ' ' . lang('(no longer offered)') . '</option>';
+        }
+    }
+
+    return $output;
+}
+
 // You can pass the access control type in order to limit the folders to those with that type of access control.
 // $left_out_parents holds the names of the parents above this level that the
 // access type filter did not print; the next printed folder carries them.

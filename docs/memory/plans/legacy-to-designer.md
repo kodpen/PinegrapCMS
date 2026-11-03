@@ -9,8 +9,8 @@ description: Plan (owner 2026-11-03, started): classic designs moved to the visu
 - The legacy rule holds (`feature-roadmap-2026-10.md`): nothing classic is removed, the renderers stay, conversion never runs by itself. This plan adds a guided bulk run on top of the existing converters.
 
 ## Which steps, in one line each?
-1. LD1 (M) Readiness report, done (#6219, `designer/legacy-to-designer-report.md`): a "Move to the visual designer" screen off `view_styles.php` listing every classic style with its pages (own and by folder), its regions by type, custom layouts, PHP regions, the refusal reasons (`pg_classic_style_refusal()`), locks, and a ready / needs-attention state per style; pure readers, tests; writes nothing.
-2. LD2 (M) Bulk run with a dry run: the chosen styles converted in the existing order (common and designer regions to components, the style to a design with its folder pages, page regions into trees, region nodes to widgets) by the existing converters, as a background job of the general job runner with progress; a dry run lists what each would write; a page somebody holds is skipped and listed; a kept report; undo stays the existing paths (component delete, page revisions).
+1. LD1 (M) Readiness report, done (#6219, `designer/legacy-to-designer-report.md`).
+2. LD2 (M) Bulk run with a dry run: the chosen styles converted in the existing order (common and designer regions to components, the style to a design with its folder pages, page regions into trees, region nodes to widgets) by the existing converters, as a background job of the general job runner with progress; a dry run lists what each would write; a page somebody holds is skipped and listed; a kept report; undo stays the existing paths (component delete, page revisions). Decided in #6251: LD2a done (#6252: server twins, dry run; `designer/legacy-to-designer-bulk-run.md`); LD2b open: the run, lock, screen requests, job tick, kept report (that file and #6251).
 3. LD3 (M) Search over trees, done (#6257, `designer/tree-search.md`): site search, find and replace and the panel's content search read designer page trees and shared component trees (the open items of `classic-regions-in-designer.md`), so a converted site loses no search.
 4. LD4 (M) Migration carries designer content (#6006 option A), done in #6221 (`designer/migration-carries-designs.md`): the source's `api.php` migration actions expose the designer columns of pages and styles, the design's managed files and theme, shared components; the target remaps the ids inside the trees (styles, pages, regions, files, components) the way the template-from-design export does (`designer/design-templates-from-design.md`, `pg_dtc_*` placeholders: reuse it, no second serializer); bin, draft and Workspace folders stay skipped; a report.
 5. LD5 (S) Close-out: the report's "stays classic" list (dynamic PHP regions, custom layouts, frozen gateways), memory, the open `cregion` rows question left as decided (#3156).
@@ -21,7 +21,7 @@ description: Plan (owner 2026-11-03, started): classic designs moved to the visu
 - Sizes about 1,000 product lines; texts through `tr_add.php`; each step writes its memory file and tests; claim as `[plan:legacy-to-designer] LD<n>`.
 
 ## Open questions?
-- None; the owner said start on 2026-11-03. LD1 and LD4 are `free`, claimed as `[plan:legacy-to-designer] LD<n>` (`feature-plans-2026-11.md` rules); LD2, LD3 and LD5 open as their "after" steps land.
+- None; the owner said start on 2026-11-03. LD1 and LD4 are `free`, claimed as `[plan:legacy-to-designer] LD<n>` (`feature-plans-2026-11.md` rules); LD5 opens when LD2b lands.
 
 ## Where to start?
-- LD1 is done (#6219); LD4 runs on its own; LD2 starts from `pg_ltd_report()`; LD3 is done (#6257); LD5 last.
+- LD1 is done (#6219); LD4 runs on its own; LD2b starts from `pg_ltd_plan()` and the twins of LD2a; LD3 is done (#6257); LD5 last.

@@ -178,4 +178,33 @@ function test_form_payment_mark_paid_once()
 	pg_assert_same(array(1700000000, 31), $query['params'], 'time then order');
 	pg_assert_same(null, pg_form_payment_mark_paid_query(0, 1700000000), 'no order: nothing marked');
 	pg_assert_same(1, pg_form_payment_mark_paid_query(5, 0)['params'][0], 'a stamp is never 0, which reads as unpaid');
+	// An offline payment completes the order with paid_at 0: the record waits
+	// until the order itself is paid.
+	pg_assert_true(strpos($query['sql'], 'orders.paid_at > 0') !== false, 'only once the order is paid');
+}
+
+function test_form_payment_state()
+{
+	pg_assert_same('none', pg_form_payment_state(array()), 'no columns: no fee');
+	pg_assert_same('none', pg_form_payment_state(array('order_id' => 0, 'paid_at' => 0)), 'no order: no fee');
+	pg_assert_same('unpaid', pg_form_payment_state(array('order_id' => 4, 'paid_at' => 0)), 'an order not yet paid');
+	pg_assert_same('paid', pg_form_payment_state(array('order_id' => '4', 'paid_at' => '1700000000')), 'paid');
+}
+
+function test_form_payment_unpaid_condition()
+{
+	pg_assert_same('(forms.order_id > 0 AND forms.paid_at = 0)', pg_form_payment_unpaid_where('forms'), 'records with a fee order not yet paid');
+}
+
+function test_form_paid_event_payload()
+{
+	$payload = pg_form_paid_event_payload(array(
+		'id' => '12', 'page_id' => '30', 'reference_code' => 'ABC', 'contact_id' => '0',
+		'order_id' => '44', 'order_number' => '1009', 'paid_at' => '1700000000', 'secret' => 'x',
+	));
+	pg_assert_same(array(
+		'id' => 12, 'form_id' => 30, 'reference_code' => 'ABC', 'contact_id' => null,
+		'order_id' => 44, 'order_number' => '1009', 'paid_at' => gmdate('Y-m-d\\TH:i:s\\Z', 1700000000),
+	), $payload, 'identifiers only, no values');
+	pg_assert_same(5, pg_form_paid_event_payload(array('id' => 1, 'page_id' => 2, 'contact_id' => 5))['contact_id'], 'the contact when there is one');
 }

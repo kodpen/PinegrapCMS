@@ -37,6 +37,12 @@ function list_row_names_source($path)
 	return file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
 }
 
+// The edit button of a row on the list table driver, named after the row.
+function list_row_names_edit($name)
+{
+	return 'aria-label="' . h(lang(array('string' => 'Edit {var:1}', 'vars' => $name))) . '"';
+}
+
 function list_row_names_select($name)
 {
 	return 'aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($name)))) . '"';
@@ -67,7 +73,7 @@ function test_list_row_names_product_row()
 		$html .= $cell['html'];
 	}
 
-	pg_assert_contains(list_row_names_select('MUG <1>'), $row['cells'][0]['html'], 'the row box names the product');
+	pg_assert_contains('>MUG &lt;1&gt;</a>', $row['cells']['id']['html'], 'the row\'s link names the product');
 	pg_assert_contains('class="pg-seo-open d-block text-decoration-none" aria-label="' . h(lang('SEO score has not been calculated yet.')) . '"', $html, 'the SEO link names the score');
 }
 
@@ -84,14 +90,14 @@ function test_list_row_names_submitted_form_row()
 		'contact_id' => null, 'contact_name' => null, 'submitted_username' => 'sam',
 		'submitted_timestamp' => time(), 'last_modified_username' => 'ed', 'last_modified_timestamp' => time(),
 	), false);
-	pg_assert_contains(list_row_names_select('Form <b> R&1'), $row['cells'][0]['html'], 'form name and reference code');
+	pg_assert_contains(list_row_names_edit('Form <b> R&1'), $row['cells']['actions']['html'], 'form name and reference code');
 
 	$row = pg_submitted_form_list_row(array(
 		'id' => '3', 'complete' => '0', 'form_name' => 'F', 'reference_code' => '',
 		'contact_id' => null, 'contact_name' => null, 'submitted_username' => '',
 		'submitted_timestamp' => time(), 'last_modified_username' => '', 'last_modified_timestamp' => time(),
 	), false);
-	pg_assert_contains(list_row_names_select('F'), $row['cells'][0]['html'], 'no reference code, no trailing space');
+	pg_assert_contains(list_row_names_edit('F'), $row['cells']['actions']['html'], 'no reference code, no trailing space');
 }
 
 function test_list_row_names_order_row()
