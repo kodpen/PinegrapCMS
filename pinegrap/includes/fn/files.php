@@ -493,6 +493,37 @@ function pg_clean_up_count_text($string, $folders, $files, $more = array())
 
 // Create a function that is used in various areas where files are added,
 // in order to reduce the file name length (if necessary) and replace special characters.
+// Adds '-<suffix>' to a file name in front of its extension and keeps the
+// result within $limit characters (the files.name column) by shortening the
+// part before the suffix, never the suffix or the extension. $at_first_dot
+// puts the suffix before the first dot ("site-tag.min.js", the ZIP import's
+// tag), otherwise before the last one ("site.min-backup.js"). A name whose
+// extension leaves no room is cut as a whole, the way prepare_file_name()
+// cuts an odd extension.
+function pg_file_name_add_suffix($name, $suffix, $at_first_dot = false, $limit = 100)
+{
+    $name = (string) $name;
+    $suffix = '-' . (string) $suffix;
+    $dot = $at_first_dot ? mb_strpos($name, '.') : mb_strrpos($name, '.');
+
+    // No dot, or only a leading one: the whole name is the part before.
+    if (($dot === false) || ($dot === 0)) {
+        $stem = $name;
+        $tail = '';
+    } else {
+        $stem = mb_substr($name, 0, $dot);
+        $tail = mb_substr($name, $dot);
+    }
+
+    $room = $limit - mb_strlen($suffix) - mb_strlen($tail);
+
+    if ($room < 1) {
+        return mb_substr($stem . $suffix . $tail, 0, $limit);
+    }
+
+    return mb_substr($stem, 0, $room) . $suffix . $tail;
+}
+
 function prepare_file_name($file_name)
 {
     $file_name = trim($file_name);

@@ -844,7 +844,7 @@
     "{var:1} handed you a note": "{var:1} size bir not verdi",
     "{var:1} has a new address; the old one no longer works.": "{var:1} için yeni adres oluşturuldu; eskisi artık çalışmıyor.",
     "{var:1} has been duplicated.": "{var:1} çoğaltıldı.",
-    "{var:1} has been optimized ({var:2} -> {var:3}, {var:4}%).": "{var:1} optimize edildi ({var:2} -> {var:3}, {var:4}%).",
+    "{var:1} has been optimized ({var:2} -> {var:3}, {var:4}%).": "{var:1} optimize edildi ({var:2} → {var:3}, %{var:4}).",
     "{var:1} has no HS code, neither on the product nor as the shop default of the label service.": "{var:1} için HS kodu yok; ne üründe ne de etiket servisinin mağaza varsayılanında var.",
     "{var:1} has no Trendyol content number to update. Wait until the listing is approved.": "{var:1} için güncellenecek bir Trendyol içerik numarası yok. İlan onaylanana kadar bekleyin.",
     "{var:1} has no Turkish default": "{var:1} Türkiye varsayılanı taşımıyor",

@@ -289,7 +289,7 @@ $explorer_lang = array(
     'new_image' => lang('New image'),
     'new_image_name' => lang('New image'),
     'new_image_saved' => lang('{var:1} was created.'),
-    'rotate_right' => lang('Rotate right'),
+    'rotate_right' => lang('Rotate Right'),
     'image_editor_missing' => lang('The image editor is not loaded on this screen.'),
     'saved_named' => lang('The {var:1} has been saved.'),
     'file_not_on_disk' => lang('The file is recorded here but is not on the disk.'),
@@ -343,6 +343,7 @@ $explorer_lang = array(
     'leave_during_job' => lang('A job is still running on this screen. If you leave now it stops where it is.'),
     'upload_too_large' => lang('The file is too large. The maximum allowed size is {var:1}.'),
     'upload_done' => lang('{var:1} file(s) were uploaded.'),
+    'extracted_renamed' => lang('Extracted under a new name: {var:1}. A file name is its address, so a taken name gets a number and letters an address cannot carry are replaced.'),
     'uploaded_renamed' => lang('Uploaded under a new name: {var:1}. A file name is its address, so a taken name gets a number and letters an address cannot carry are replaced.'),
     'renamed_as' => lang('Saved as {var:1}: a file name is its address, so letters an address cannot carry are replaced and a taken name gets a number.'),
     'drop_to_upload' => lang('Drop files here to upload them into this folder'),
@@ -460,6 +461,7 @@ $explorer_lang = array(
     'webp_copy_fact' => lang('WebP copy {var:1} ({var:2}% lighter)'),
     'folder_settings' => lang('Folder Settings'),
     'sorting' => lang('Sorting'),
+    'sorting_whole_number' => lang('Sorting is a whole number from -9999 to 9999.'),
     'sorting_note' => lang('The order of this folder among the folders beside it'),
     'archive' => lang('Archive'),
     'archive_note' => lang('For pages and files no longer in use. While on, the pages directly in this folder answer visitors with 410 (gone), and its pages and files leave the Pages, Files and Pictures views, the site search and the editor pickers. Its files stay reachable at their address.'),
@@ -759,8 +761,8 @@ $explorer_lang = array(
     'rename_mode_number' => lang('Number them in order'),
     'rename_find' => lang('Find'),
     'rename_replace' => lang('Replace with'),
-    'rename_prefix' => lang('Prefix'),
-    'rename_suffix' => lang('Suffix'),
+    'rename_prefix' => lang('Text at the start'),
+    'rename_suffix' => lang('Text at the end'),
     'rename_pattern' => lang('Pattern'),
     'rename_pattern_note' => lang('# is where the number goes: urun-### gives urun-001. {name} is the name it has now.'),
     'rename_pattern_default' => lang('photo-###'),
@@ -2517,19 +2519,30 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // An open dialog's backdrop would cover a body-level toast.
         pgUI.hostLayer(container);
         container.appendChild(element);
-        var instance = pgUI.toast.get(element, options.sticky ? { autohide: false } : { delay: (action || options.html) ? 9000 : 3500 });
 
-        if (action) {
-            var actionButton = element.querySelector('[data-role="toast-action"]');
-            actionButton.textContent = action.label;
-            actionButton.addEventListener('click', function () {
-                instance.hide();
-                action.run();
-            });
+        // Bootstrap 6 is a deferred module: a toast asked for while the page
+        // is still parsed (a server message) has no Toast class yet, so it is
+        // shown once Bootstrap's script has run instead of throwing.
+        function show() {
+            var instance = pgUI.toast.get(element, options.sticky ? { autohide: false } : { delay: (action || options.html) ? 9000 : 3500 });
+
+            if (!instance) { return false; }
+
+            if (action) {
+                var actionButton = element.querySelector('[data-role="toast-action"]');
+                actionButton.textContent = action.label;
+                actionButton.addEventListener('click', function () {
+                    instance.hide();
+                    action.run();
+                });
+            }
+
+            pgUI.toast.on(element, 'hidden', function () { element.remove(); });
+            instance.show();
+            return true;
         }
 
-        pgUI.toast.on(element, 'hidden', function () { element.remove(); });
-        instance.show();
+        if (!show()) { pgUI.ready(show); }
     }
 
     function api(payload, done, fail) {
@@ -4328,7 +4341,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         document.getElementById('upload_file_item').classList.toggle('d-none', catalogArea);
         document.getElementById('create_file_item').classList.toggle('d-none', catalogArea || backupArea);
-        document.getElementById('new_image_item').classList.toggle('d-none', catalogArea);
+        // A new image is a file in a folder: neither the backups nor the short
+        // links have one to put it in.
+        document.getElementById('new_image_item').classList.toggle('d-none', catalogArea || backupArea || insideShortLinks());
 
         // Taking a backup is offered only where backups live.
         document.getElementById('create_backup_item').classList.toggle('d-none', !backupArea);
@@ -5570,6 +5585,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // worth naming only when it is not a standard page, and the folder
         // and the last change are what the rows are told apart by.
         var pagesColumns = (state.mode === 'all') && (state.allFilter === 'pages');
+        // The Files and Pictures views list nothing but files: the styles,
+        // impact and features of folders and pages stay empty there, and the
+        // SEO score the marks column sorts by is a page's.
+        var filesColumns = (state.mode === 'all') && ((state.allFilter === '') || (state.allFilter === 'images'));
         var columns = [];
 
         columns.push({ id: 'icon', w: 46, cls: 'text-center', cell: function (item) { return itemIconHtml(item, false); } });
@@ -5589,7 +5608,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // and a mark nobody can line up with the mark on the row above is not
         // doing its job either.
         columns.push({
-            id: 'flags', key: 'seo', label: L.flags, at: 'md', w: (pagesColumns ? 150 : 92), cls: 'text-center text-nowrap',
+            id: 'flags', key: (filesColumns ? undefined : 'seo'), label: L.flags, at: 'md', w: (pagesColumns ? 150 : 92), cls: 'text-center text-nowrap',
             cell: function (item) { return seoChipHtml(item, 20) + ' <span class="item-flags">' + itemFlagsHtml(item) + '</span>'; }
         });
 
@@ -5685,7 +5704,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             });
         }
 
-        if (siteColumns) {
+        if (siteColumns && !filesColumns) {
 
             columns.push({ id: 'style_desktop', label: L.desktop_style_short, at: 'xl', w: 130, cls: 'small',
                 cell: function (item) { return ((item.kind === 'folder') || (item.kind === 'page')) ? styleCellHtml(item.style_desktop) : ''; } });
@@ -5698,6 +5717,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             columns.push({ id: 'features', label: L.features, at: 'lg', w: 108, cls: 'text-center text-nowrap',
                 cell: function (item) { return pageFeatureIcons(item); } });
+        }
+
+        if (siteColumns) {
 
             columns.push({ id: 'access', key: 'access', label: L.access_control, at: 'xl', w: 132,
                 cell: function (item) { return '<span class="list-badge ' + item.access_control_type + '">' + esc(accessLabel(item.access_control_type)) + '</span>'; } });
@@ -8927,7 +8949,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     toast(L.extracting + '...');
 
                     api({ type: 'explorer_zip_extract', item_id: item.id }, function (response) {
-                        toast(response.message || L.request_failed, response.status !== 'error');
+                        // Names the server had to change are listed, as an
+                        // upload lists them, in a toast that stays.
+                        if ((response.status !== 'error') && response.renamed && response.renamed.length > 0) {
+                            toast(response.message + ' ' + fmt(L.extracted_renamed, [response.renamed.join(', ')]), true, null, { tone: 'warning', sticky: true });
+                        } else {
+                            toast(response.message || L.request_failed, response.status !== 'error');
+                        }
 
                         if ((response.status !== 'error') && response.created && response.created.length > 0 && state.recycle.available) {
                             pushUndo({ undo: { type: 'bin', items: response.created }, redo: null });
@@ -10861,6 +10889,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var taken = {};
 
         if (isNaN(start)) { start = 1; }
+        // Numbers count up from 0: a minus sign in the middle of a name is no
+        // number in its sequence ("photo-0-3").
+        if (start < 0) { start = 0; }
 
         bulkRenameItems.forEach(function (item, index) {
 
@@ -11068,7 +11099,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             '<input type="text" class="form-control form-control-sm" id="rename_pattern" value="' + esc(L.rename_pattern_default) + '" />' +
             '<div class="form-text">' + esc(L.rename_pattern_note) + '</div></div>' +
             '<div class="mb-5" style="max-width:9rem;"><label class="form-label" for="rename_start">' + esc(L.rename_start) + '</label>' +
-            '<input type="number" class="form-control form-control-sm" id="rename_start" value="1" min="0" /></div>' +
+            '<input type="number" class="form-control form-control-sm" id="rename_start" value="1" min="0" step="1" /></div>' +
             '</div>' +
 
             (anyFile
@@ -14050,7 +14081,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var orderArchiveHtml = isRoot ? '' :
                 '<div class="mb-5">' +
                 '<label class="form-label" for="settings_order_input">' + esc(L.sorting) + '</label>' +
-                '<input type="number" id="settings_order_input" class="form-control" inputmode="numeric" value="' + esc(String(folder.order)) + '" />' +
+                '<input type="number" id="settings_order_input" class="form-control" inputmode="numeric" step="1" min="-9999" max="9999" value="' + esc(String(folder.order)) + '" />' +
                 '<div class="form-text">' + esc(L.sorting_note) + '</div>' +
                 '</div>' +
                 '<div class="form-field mb-5">' +
@@ -14066,6 +14097,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 '<div class="mt-5 text-end"><button type="button" id="settings_save_button" class="btn btn-solid theme-success"><span class="bi bi-save me-3"></span>' + esc(L.save) + '</button></div>';
 
             document.getElementById('settings_save_button').addEventListener('click', function () {
+                // A sorting value that is no whole number in the range is
+                // refused here: the browser sends "12,50" as '' and the
+                // server would store 0.
+                var orderInput = isRoot ? null : document.getElementById('settings_order_input');
+
+                if (orderInput && ((orderInput.value === '') || !orderInput.checkValidity())) {
+                    toast(L.sorting_whole_number, false);
+                    orderInput.focus();
+                    return;
+                }
+
                 // The root's order and archive are not on the drawer; the
                 // server keeps the stored ones whatever is sent.
                 var payload = {
@@ -15286,7 +15328,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // Closed without the unsaved question: what was typed is saved.
             if (fileEdit) { fileEdit.baseline = fileEditSnapshot(); }
 
-            toast(response.message || fmt(L.saved_named, [payload.name]), true);
+            // A file name is its address, so a name the server had to change
+            // (letters an address cannot carry) is said, as a rename says it.
+            if (response.file && response.file.name && (response.file.name !== payload.name.trim())) {
+                toast(fmt(L.renamed_as, [response.file.name]), true, null, { tone: 'warning' });
+            } else {
+                toast(response.message || fmt(L.saved_named, [payload.name]), true);
+            }
             hideModal(fileEditModal, 'file_edit_modal');
             reload();
         }, function () {
@@ -16713,8 +16761,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         setErpTreeOpen(true);
     }
 
-    SERVER_MESSAGES.forEach(function (entry) {
-        toast(entry.message, entry.type === 'success', null, { html: true, tone: entry.type === 'warning' ? 'warning' : '', sticky: entry.type !== 'success' });
+    // Shown once Bootstrap's script has run (a deferred module on Bootstrap 6),
+    // so a message never stops the listing below from loading.
+    pgUI.ready(function () {
+        SERVER_MESSAGES.forEach(function (entry) {
+            toast(entry.message, entry.type === 'success', null, { html: true, tone: entry.type === 'warning' ? 'warning' : '', sticky: entry.type !== 'success' });
+        });
     });
 
     // The tour opens itself only once the grid and the tree have arrived. A

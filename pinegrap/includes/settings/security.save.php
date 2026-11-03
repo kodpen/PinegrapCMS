@@ -83,6 +83,35 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $liveform->mark_error($email_field, $email_error);
     }
 
+    // The sign-in throttle's numbers are refused when blank or out of range
+    // instead of being clamped: an emptied "Failed Attempts" box read as 0
+    // was clamped to 1, which locks an account after one wrong password.
+    if (function_exists('waf_table_has_column') && waf_table_has_column('config', 'login_throttle')) {
+        foreach (array(
+            'login_throttle_attempts' => array(lang('Failed Attempts'), 1, 1000),
+            'login_throttle_minutes'  => array(lang('Counted Over'), 1, 1440),
+            'login_throttle_lockout'  => array(lang('Locked Out For'), 1, 43200),
+        ) as $throttle_field => $throttle_rule) {
+            if (array_key_exists($throttle_field, $_POST) && (pg_whole_number_in_range(post_value($throttle_field), $throttle_rule[1], $throttle_rule[2]) === null)) {
+                $liveform->mark_error($throttle_field, lang(array('string' => '{var:1} must be a whole number from {var:2} to {var:3}.', 'vars' => $throttle_rule)));
+            }
+        }
+    }
+
+    // The membership expiration warning is sent from a page, some days
+    // before the end: switched on, it needs both, or the job sends nothing
+    // (no page) or warns members whose membership has already ended (a
+    // negative number of days).
+    if (post_value('membership_expiration_warning_email') == 1) {
+        if ((int) post_value('membership_expiration_warning_email_page_id') <= 0) {
+            $liveform->mark_error('membership_expiration_warning_email_page_id', lang('Choose the page the expiration warning e-mail is sent from.'));
+        }
+
+        if (pg_whole_number_in_range(post_value('membership_expiration_warning_email_days_before_expiration'), 1, 999) === null) {
+            $liveform->mark_error('membership_expiration_warning_email_days_before_expiration', lang('Send the expiration warning 1 to 999 days before the membership ends.'));
+        }
+    }
+
     if ($liveform->check_form_errors()) {
         return;
     }

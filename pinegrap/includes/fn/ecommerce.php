@@ -8481,6 +8481,39 @@ function pg_parse_whole_number($raw, $max)
 }
 
 /**
+ * Check a settings box that must hold a whole number from $min to $max. The
+ * figure is read as pg_parse_whole_number() reads it ("2.400" on a Turkish
+ * panel is 2400), but a blank entry, a letter, a sign, a fraction or a figure
+ * outside the range gives null, so the save can refuse it instead of storing
+ * a bound nobody typed (an emptied box read as 0 became the strictest limit).
+ *
+ * @param  mixed $raw
+ * @param  int   $min
+ * @param  int   $max
+ * @return int|null
+ */
+function pg_whole_number_in_range($raw, $min, $max)
+{
+    if (!is_scalar($raw)) {
+        return null;
+    }
+
+    $value = str_replace(array("\u{00A0}", ' '), '', trim((string) $raw));
+
+    if (!preg_match('/^[0-9]([0-9.,]*[0-9])?$/D', $value)) {
+        return null;
+    }
+
+    $number = pg_parse_amount($value);
+
+    if (($number != floor($number)) || ($number < $min) || ($number > $max)) {
+        return null;
+    }
+
+    return (int) $number;
+}
+
+/**
  * An amount typed into a form, in the machine format ("1.234,56" ->
  * "1234.56"), for the handlers that validate with is_numeric() before they
  * store it. A value that is not a number is returned trimmed and otherwise
