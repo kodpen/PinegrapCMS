@@ -5160,11 +5160,15 @@
 
     // The versions of a channel's conversation (includes/workspace/eras.php):
     // the current one, the earlier ones to read, and clearing it for staff.
-    function eraSection(channel, node) {
+    // ownDrawer: the section fills a drawer titled with the same words, so
+    // its own heading is left out.
+    function eraSection(channel, node, ownDrawer) {
         var box = el('div', 'mb-5 ws-era-section');
         var list = el('div', 'ws-era-list');
 
-        box.appendChild(el('div', 'form-label', t('era_list')));
+        if (!ownDrawer) {
+            box.appendChild(el('div', 'form-label', t('era_list')));
+        }
         list.appendChild(skeleton(2, 'ws-skeleton-sm'));
         box.appendChild(list);
 
@@ -7242,7 +7246,7 @@
             var body = clear(node.querySelector('.drawer-body'));
 
             node.querySelector('.drawer-footer').classList.add('d-none');
-            body.appendChild(eraSection(channel, node));
+            body.appendChild(eraSection(channel, node, true));
             showOffcanvas(node);
         },
 

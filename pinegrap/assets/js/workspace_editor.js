@@ -6473,6 +6473,9 @@
 
             var text = cellSurface(item.text);
             text.setAttribute('data-placeholder', t('item_placeholder'));
+            // The placeholder is drawn by CSS only: the box is named too.
+            text.setAttribute('role', 'textbox');
+            text.setAttribute('aria-label', t('item_placeholder'));
             text.classList.toggle('is-empty', !item.text);
             text.addEventListener('input', function () {
                 text.classList.toggle('is-empty', (text.textContent || '').trim() === '');
