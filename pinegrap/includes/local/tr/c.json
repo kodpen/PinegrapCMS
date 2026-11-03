@@ -697,6 +697,7 @@
     "Check the time zone of the app and of each device when reminders come early or late.": "Hatırlatıcılar erken ya da geç geldiğinde uygulamanın ve her cihazın saat dilimini kontrol edin.",
     "Check the unit price and the VAT rate on the lines.": "Satırlardaki birim fiyatı ve KDV oranını kontrol edin.",
     "Check the unit price, the discount and the VAT rate on line {var:1}.": "{var:1}. satırdaki birim fiyatı, iskontoyu ve KDV oranını kontrol edin.",
+    "Check them before switching the firewall to Block.": "Güvenlik duvarını Engelleme moduna almadan önce bunları kontrol edin.",
     "Check this box to continue.": "Devam etmek için bu kutuyu işaretleyin.",
     "Check through Cloudflare": "Cloudflare üzerinden denetle",
     "Check visitors against StopForumSpam": "Ziyaretçileri StopForumSpam ile denetle",
