@@ -26,7 +26,7 @@ description: Plan for the Car Dealership template (pinegrap-dealership): vehicle
 
 - 5 Done (#6268). Finance: `finance_requests.php` (`finance_apply`, `finance_view`, `my_finance`, `staff_finance`).
 
-- 6 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Showroom News", blog post, search, error); test `…_standard_test.php`.
+- 6 Done (#6275). Standard: `standard.php`; test `…_standard_test.php`.
 
 - 7 Account and staff: `account.php` (sign-in, My Account, staff area, `blog_new` with samples, account e-mails); test `…_account_test.php`.
 

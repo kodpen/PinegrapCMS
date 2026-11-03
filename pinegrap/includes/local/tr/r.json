@@ -160,6 +160,7 @@
     "Reading campaign rules; writing means switching one on or off, moving its dates or removing it, not creating it": "Kampanya kurallarını okuma; yazma, kampanyayı açıp kapatmak, tarihlerini değiştirmek ya da kaldırmaktır, yeni kampanya oluşturmak değil",
     "Reading e-invoices needs the PHP DOM extension.": "e-Faturaları okumak için PHP DOM eklentisi gerekir.",
     "Reading from {var:1}…": "{var:1} üzerinden okunuyor…",
+    "Reading is one thing, driving is another. Try any car in stock on the roads you know.": "Okumak bir şey, sürmek başka. Stoktaki her aracı bildiğiniz yollarda deneyin.",
     "Reading lists, author evenings and news from the shop.": "Dükkândan okuma listeleri, yazar akşamları ve haberler.",
     "Reading mailboxes": "Posta kutularını okuma",
     "Reading night": "Okuma gecesi",
