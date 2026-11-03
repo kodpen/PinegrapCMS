@@ -2188,6 +2188,17 @@
   color: var(--pgie-muted);
 }
 
+/* Warp: the envelope mesh over the selected layer, turned with it. */
+.pgie-wbox {
+  position: absolute;
+  pointer-events: none;
+}
+
+.pgie-sh.pgie-wpt {
+  border-radius: 50%;
+  cursor: move;
+}
+
 /* Small screens. Below 768 px wide or 500 px tall the dialog fills the
    screen and the panel becomes a sheet: over the right of the stage between
    600 and 767 px and on a phone held sideways, above a bottom tool bar below

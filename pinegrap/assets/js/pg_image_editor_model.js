@@ -150,15 +150,15 @@
     // ---- tools ----
 
     var PROFILES = {
-        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'scissors', 'motion'],
-        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'image', 'vector', 'scissors', 'frame', 'motion'],
+        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'motion'],
+        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'image', 'vector', 'scissors', 'warp', 'frame', 'motion'],
         annotate: ['arrow', 'rect', 'text', 'pen', 'redact'],
         optimise: ['export']
     };
 
     // Tools a caller may name: the rail's and the marking tools of the mini
     // bar (one draw kind each).
-    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'scissors', 'artboard', 'image', 'export', 'motion',
+    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'artboard', 'image', 'export', 'motion',
         'arrow', 'line', 'rect', 'ellipse', 'pen'];
 
     // The tools of one call: the caller's list (known names, first mention
@@ -1266,6 +1266,10 @@
     function shapePath(l) {
         var w = l.w, h = l.h, r = clamp(Number(l.radius) || 0, 0, maxRadius(l)), d = '';
 
+        if (warpOn(l)) {
+            return warpShape(l);
+        }
+
         if (l.type === 'path') {
             return pathShape(l);
         }
@@ -1291,6 +1295,10 @@
     // walked in short steps.
     function outline(l) {
         var w = l.w, h = l.h, out = [], i, n = 48;
+
+        if (warpOn(l)) {
+            return warpOutline(l);
+        }
 
         if (LINE_KINDS.indexOf(l.type) >= 0) {
             return [[[0, h / 2], [w, h / 2]]];
@@ -3989,6 +3997,279 @@
 
     var GLYPH = { EMOJI: EMOJI, iconSearch: iconSearch, emojiRecent: emojiRecent, glyphText: glyphText, glyphSize: glyphSize, swapGlyph: swapGlyph };
 
+    // ---- warp ----
+
+    // A path or a drawn shape bent as a whole, kept as l.warp and drawn by
+    // mapping its flattened outline: a preset ({ style, bend, h, v }: bend,
+    // horizontal and vertical distortion, each -1 to 1) or an envelope mesh
+    // ({ style: 'mesh', cols, rows, pts }: cols x rows points, row by row,
+    // as parts of the box; the curve runs through them). The mapping works in
+    // the box's frame before the mirror, so turns and flips carry it.
+
+    var WARP_STYLES = ['arc', 'arch', 'bulge', 'flag', 'wave', 'fish', 'rise', 'squeeze', 'twist'];
+    var MESH_MIN = 3;
+    var MESH_MAX = 6;
+
+    // A curve's flattening step in pixels and the most points one segment gets.
+    var WARP_STEP = 3;
+    var WARP_MAX = 64;
+
+    // Whether a layer can be warped: a path, or a drawn shape that is not a
+    // line or an arrow (their heads do not bend).
+    function warpable(l) {
+        if (!l) {
+            return false;
+        }
+
+        if (l.type === 'path') {
+            return !!(l.knots && (l.knots.length > 1));
+        }
+
+        return (DRAW_KINDS.indexOf(l.type) >= 0) && (LINE_KINDS.indexOf(l.type) < 0);
+    }
+
+    function meshValid(wp) {
+        var c = Number(wp.cols), r = Number(wp.rows);
+
+        return (c >= MESH_MIN) && (c <= MESH_MAX) && (r >= MESH_MIN) && (r <= MESH_MAX)
+            && Array.isArray(wp.pts) && (wp.pts.length === c * r);
+    }
+
+    // Whether the layer's drawing goes through its warp.
+    function warpOn(l) {
+        var wp = l && l.warp;
+
+        if (!wp || !warpable(l)) {
+            return false;
+        }
+
+        return (wp.style === 'mesh') ? meshValid(wp) : (WARP_STYLES.indexOf(wp.style) >= 0);
+    }
+
+    // The even mesh that changes nothing.
+    function meshGrid(cols, rows) {
+        var c = clamp(Math.round(cols) || MESH_MIN, MESH_MIN, MESH_MAX), r = clamp(Math.round(rows) || MESH_MIN, MESH_MIN, MESH_MAX), pts = [], i, j;
+
+        for (j = 0; j < r; j++) {
+            for (i = 0; i < c; i++) {
+                pts.push([frac(i, c - 1), frac(j, r - 1)]);
+            }
+        }
+
+        return { style: 'mesh', cols: c, rows: r, pts: pts };
+    }
+
+    // One Catmull-Rom step between p1 and p2: an even row stays straight.
+    function catmull(p0, p1, p2, p3, t) {
+        var t2 = t * t, t3 = t2 * t;
+
+        return [0, 1].map(function (k) {
+            return 0.5 * (2 * p1[k] + (p2[k] - p0[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (3 * p1[k] - p0[k] - 3 * p2[k] + p3[k]) * t3);
+        });
+    }
+
+    // A mesh point; one past an edge is mirrored through the edge point.
+    function meshPoint(wp, i, j) {
+        var c = wp.cols, r = wp.rows;
+        var ext = function (a, b) { return [2 * a[0] - b[0], 2 * a[1] - b[1]]; };
+
+        if (i < 0) { return ext(meshPoint(wp, 0, j), meshPoint(wp, 1, j)); }
+        if (i >= c) { return ext(meshPoint(wp, c - 1, j), meshPoint(wp, c - 2, j)); }
+        if (j < 0) { return ext(meshPoint(wp, i, 0), meshPoint(wp, i, 1)); }
+        if (j >= r) { return ext(meshPoint(wp, i, r - 1), meshPoint(wp, i, r - 2)); }
+
+        return wp.pts[j * c + i];
+    }
+
+    // Where the mesh takes the box's point u, v (parts of the box).
+    function meshAt(wp, u, v) {
+        var s = clamp(u, 0, 1) * (wp.cols - 1), q = clamp(v, 0, 1) * (wp.rows - 1);
+        var i = Math.min(Math.floor(s), wp.cols - 2), j = Math.min(Math.floor(q), wp.rows - 2), rows = [], n;
+
+        for (n = j - 1; n <= j + 2; n++) {
+            rows.push(catmull(meshPoint(wp, i - 1, n), meshPoint(wp, i, n), meshPoint(wp, i + 1, n), meshPoint(wp, i + 2, n), s - i));
+        }
+
+        return catmull(rows[0], rows[1], rows[2], rows[3], q - j);
+    }
+
+    // The mesh with cols x rows points, each where the old mesh took it.
+    function meshResize(wp, cols, rows) {
+        var grid = meshGrid(cols, rows), old = (wp && (wp.style === 'mesh') && meshValid(wp)) ? wp : null;
+
+        if (old) {
+            grid.pts = grid.pts.map(function (p) {
+                var q = meshAt(old, p[0], p[1]);
+
+                return [frac(q[0], 1), frac(q[1], 1)];
+            });
+        }
+
+        return grid;
+    }
+
+    // Where the warp takes the point u, v of a w x h box, in the box's
+    // pixels. The presets bend around the box's middle.
+    function warpPoint(wp, w, h, u, v) {
+        if (wp.style === 'mesh') {
+            var m = meshAt(wp, u, v);
+
+            return [m[0] * w, m[1] * h];
+        }
+
+        var b = clamp(Number(wp.bend) || 0, -1, 1), X = u - 0.5, Y = v - 0.5;
+        var x = X * w * (1 + clamp(Number(wp.v) || 0, -1, 1) * Y), y = Y * h * (1 + clamp(Number(wp.h) || 0, -1, 1) * X);
+        var dome = 1 - 4 * X * X, a, r, phi, R;
+
+        if (wp.style === 'arc') {
+            a = b * Math.PI;
+
+            if (Math.abs(a) > 1e-9) {
+                // The middle line becomes an arc of angle a; the box's top
+                // lies outside it, its bottom inside.
+                R = w / a;
+                phi = x / R;
+                r = R - y;
+                x = r * Math.sin(phi);
+                y = R - r * Math.cos(phi);
+            }
+        } else if (wp.style === 'arch') {
+            y -= b * h / 2 * dome;
+        } else if (wp.style === 'bulge') {
+            y *= 1 + b * dome;
+        } else if (wp.style === 'flag') {
+            y -= b * h / 4 * Math.sin(2 * Math.PI * X);
+        } else if (wp.style === 'wave') {
+            y -= b * h / 4 * Math.sin(2 * Math.PI * (X + Y));
+        } else if (wp.style === 'fish') {
+            y *= 1 - b / 2 * Math.sin(2 * Math.PI * X);
+        } else if (wp.style === 'rise') {
+            y -= b * h / 2 * Math.sin(Math.PI * X);
+        } else if (wp.style === 'squeeze') {
+            x *= 1 - b / 2 * (1 - 4 * Y * Y);
+        } else if (wp.style === 'twist') {
+            // Turns most in the middle, not at all at the corners.
+            a = b * Math.PI * (1 - Math.min(1, Math.hypot(2 * X, 2 * Y) / Math.SQRT2));
+            r = x;
+            x = r * Math.cos(a) - y * Math.sin(a);
+            y = r * Math.sin(a) + y * Math.cos(a);
+        }
+
+        return [x + w / 2, y + h / 2];
+    }
+
+    // Knots as a point list in short steps, straight segments included
+    // (a warp bends them).
+    function flattenKnots(knots, closed) {
+        var pts = knots.length ? [[knots[0].x, knots[0].y]] : [];
+
+        segments(knots, closed).forEach(function (s) {
+            var a = s[0], b = s[1];
+            var len = Math.hypot(a.ox - a.x, a.oy - a.y) + Math.hypot(b.ix - a.ox, b.iy - a.oy) + Math.hypot(b.x - b.ix, b.y - b.iy);
+            var n = clamp(Math.ceil(len / WARP_STEP), 2, WARP_MAX), k;
+
+            for (k = 1; k <= n; k++) {
+                pts.push(cubicAt(a, b, k / n));
+            }
+        });
+
+        return pts;
+    }
+
+    // The layer's contours before the warp, as knots in its box's frame: a
+    // path's own (and the other contours of outlined letters), a shape's as
+    // convert to path gives them.
+    function warpSource(l) {
+        var bare = Object.assign({}, l), out;
+
+        delete bare.warp;
+
+        if (l.type !== 'path') {
+            return [shapeKnots(bare)];
+        }
+
+        out = [{ knots: pathKnots(bare), closed: !!l.closed }];
+
+        (Array.isArray(l.subs) ? l.subs : []).forEach(function (sub) {
+            out.push({ knots: moveKnots(sub.knots || [], function (u, v) { return [u * l.w, v * l.h]; }), closed: !!sub.closed });
+        });
+
+        return out;
+    }
+
+    // The warped contours: [{ pts, closed }] in the box's frame; a closed
+    // one does not repeat its first point.
+    function warpContours(l) {
+        var w = l.w, h = l.h;
+
+        return warpSource(l).map(function (c) {
+            var pts = flattenKnots(c.knots, c.closed && (c.knots.length > 2)), closed = c.closed && (c.knots.length > 2);
+
+            if (closed && (pts.length > 1)) {
+                pts.pop();
+            }
+
+            return {
+                closed: closed,
+                pts: pts.map(function (p) { return warpPoint(l.warp, w, h, w ? p[0] / w : 0, h ? p[1] / h : 0); })
+            };
+        });
+    }
+
+    // The warped drawing as shapePath() answers it.
+    function warpShape(l) {
+        var cs = warpContours(l);
+
+        return {
+            d: cs.map(function (c) {
+                return c.pts.map(function (p, i) { return (i ? 'L' : 'M') + rnd(p[0]) + ' ' + rnd(p[1]); }).join('') + (c.closed ? 'Z' : '');
+            }).join(''),
+            head: null,
+            closed: cs.length ? cs[0].closed : false
+        };
+    }
+
+    // The warped outline as outline() answers it: a closed list ends on its
+    // first point.
+    function warpOutline(l) {
+        return warpContours(l).map(function (c) {
+            return c.closed ? c.pts.concat([c.pts[0]]) : c.pts;
+        });
+    }
+
+    // Expand: the drawn outline baked into a path of corner points, its box
+    // fitted to it, angle and mirror kept. The fields to set; the caller
+    // drops the warp and a shape's own fields.
+    function warpExpand(l) {
+        var cs = warpContours(l).filter(function (c) { return c.pts.length > 1; }), all = [];
+
+        cs.forEach(function (c) { all = all.concat(c.pts); });
+
+        if (!all.length) {
+            return null;
+        }
+
+        var xs = all.map(function (p) { return p[0]; }), ys = all.map(function (p) { return p[1]; });
+        var x0 = Math.min.apply(null, xs), y0 = Math.min.apply(null, ys), bw = Math.max.apply(null, xs) - x0, bh = Math.max.apply(null, ys) - y0;
+        var w = Math.max(1, bw), h = Math.max(1, bh), left = x0 + bw / 2 - w / 2, top = y0 + bh / 2 - h / 2, c = drawnPoint(l, left + w / 2, top + h / 2);
+        var part = function (pts) {
+            return pts.map(function (p) { return knot(frac(p[0] - left, w), frac(p[1] - top, h)); });
+        };
+        var out = { type: 'path', x: c[0] - w / 2, y: c[1] - h / 2, w: w, h: h, knots: part(cs[0].pts), closed: cs[0].closed };
+
+        if (cs.length > 1) {
+            out.subs = cs.slice(1).map(function (o) { return { knots: part(o.pts), closed: o.closed }; });
+        }
+
+        return out;
+    }
+
+    var WARP = {
+        WARP_STYLES: WARP_STYLES, MESH_MIN: MESH_MIN, MESH_MAX: MESH_MAX, warpable: warpable, warpOn: warpOn, meshGrid: meshGrid,
+        meshAt: meshAt, meshResize: meshResize, warpPoint: warpPoint, flattenKnots: flattenKnots, warpContours: warpContours,
+        warpShape: warpShape, warpOutline: warpOutline, warpExpand: warpExpand
+    };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -4005,7 +4286,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

@@ -248,6 +248,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-vector.md: The image editor's vector pen: path layers as boxes with knots inside, drawing point by point, editing points and handles, smooth and corner, open and closed, convert to path
 - image-editor-versions.md: The image editor's versions (file_versions, 2026.11.0): base and save rows, what opening loads, what a save, restore and delete write, retention, the drawer, deleting a file, Disk Usage
 - image-editor-video-export.md: The image editor's MP4 and WebM output (AN6): WebCodecs with own MP4 and WebM muxers, the MediaRecorder fallback, the limits, the estimate from the bit rate
+- image-editor-warp.md: The image editor's Warp tool: presets and an envelope mesh kept as l.warp, drawn by mapping the flattened outline; Expand bakes it into the path
 - image-editor-workspace.md: Workspace canvas (E16 #4762, E16b): New canvas in a channel or note, saved with its document in file_versions and its pictures as files beside it, opened again with its layers
 - inline-feedback-placement.md: Where a panel field's error message goes on Bootstrap 6 (pgPlaceInlineFeedback(), #2578) and how script-set marks get aria-invalid and their message (pgFieldInvalid(), class observer, #3026)
 - installer-wizard-a11y.md: Installer wizard (install/index.php) from the keyboard and a screen reader: focus on step change, step status, rail current/Completed, step problems, the announced run, choice cards

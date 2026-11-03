@@ -6954,6 +6954,7 @@
     "Twilio refused the recipient number.": "Twilio alıcı numarasını reddetti.",
     "Twilio sent an answer that could not be read (HTTP {var:1}).": "Twilio okunamayan bir yanıt gönderdi (HTTP {var:1}).",
     "Twilio test credentials cannot send messages: enter the live Account SID and Auth Token.": "Twilio test kimlik bilgileriyle ileti gönderilemez: canlı Account SID ve Auth Token bilgilerini girin.",
+    "Twist": "Burgu",
     "Two Nights by the Sea": "Deniz Kıyısında İki Gece",
     "Two Products, One Decision": "İki Ürün, Tek Karar",
     "Two arrows join {var:1} to {var:2} on the same outcome.": "İki ok aynı sonuçta {var:1} kutusunu {var:2} kutusuna bağlıyor.",

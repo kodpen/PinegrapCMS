@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'access', 'fonts', 'glyph');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'access', 'fonts', 'glyph', 'warp');
 }
 
 /**
@@ -112,6 +112,7 @@ function pg_image_editor_strings_core()
         'tool_frame'     => lang('Frame'),
         'tool_vector'    => lang('Vector'),
         'tool_scissors'  => lang('Scissors'),
+        'tool_warp'      => lang('Warp'),
         'tool_artboard'  => lang('Canvas'),
         'tool_image'     => lang('Image'),
         'tool_export'    => lang('Export'),
@@ -4159,6 +4160,45 @@ function pg_image_editor_icon_urls()
     return array(
         'font' => $base . 'fonts/bootstrap-icons.woff2?v=' . (int) @filemtime($dir . 'fonts/bootstrap-icons.woff2'),
         'map'  => $base . 'bootstrap-icons.json?v=' . (int) @filemtime($dir . 'bootstrap-icons.json'),
+    );
+}
+
+// -- Warp (pg_image_editor_warp.js) --
+
+/**
+ * The Warp tool: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_warp()
+{
+    return array(
+        'hintWarp'       => lang('Select a path or shape, then pick a warp.'),
+        'warpNote'       => lang('Select one path, shape or outlined text to warp it.'),
+        'warpTextNote'   => lang('A text is warped once its letters are outlines.'),
+        'warpToOutlines' => lang('Convert to outlines'),
+        'warpStyles'     => lang('Warp styles'),
+        'warp_none'      => lang('None'),
+        'warp_arc'       => lang('Arc'),
+        'warp_arch'      => lang('Arch'),
+        'warp_bulge'     => lang('Bulge'),
+        'warp_flag'      => lang('Flag'),
+        'warp_wave'      => lang('Wave'),
+        'warp_fish'      => lang('Fish'),
+        'warp_rise'      => lang('Rise'),
+        'warp_squeeze'   => lang('Squeeze'),
+        'warp_twist'     => lang('Twist'),
+        'warp_mesh'      => lang('Envelope'),
+        'warpBend'       => lang('Bend'),
+        'warpHorizontal' => lang('Horizontal distortion'),
+        'warpVertical'   => lang('Vertical distortion'),
+        'warpCols'       => lang('Columns'),
+        'warpRows'       => lang('Rows'),
+        'warpMeshNote'   => lang('Drag the mesh points on the picture to shape it.'),
+        'warpMeshPoint'  => lang('Mesh point'),
+        'warpReset'      => lang('Reset mesh'),
+        'warpExpand'     => lang('Expand'),
+        'warpExpandNote' => lang('Expand turns the warp into the path for good.'),
     );
 }
 
