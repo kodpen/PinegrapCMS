@@ -121,8 +121,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - storefront-api-routes-customer.md: Storefront API design note: customer routes (sign-in, sign-up, refresh, sign-out, password reset, profile, orders, addresses, returns) with scopes, limits and the website code each one calls
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
-- voice-to-assistants-steps.md: Steps VA1-VA6 of plans/voice-to-assistants.md: deaf hint, keyless hearing, speech service, spoken answers, voice message route, MCP agents; claim as [plan:voice-to-assistants] VA<n>
-- voice-to-assistants.md: Plan (owner 2026-11-02): recordings reach every assistant in channels and discussions, assistants answer by voice, any caller can post a voice message; steps VA1-VA6
 - workspace-agent-handles.md: Plan (2026-10-21, steps 1 and 5 done, 4 waits for 2): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1-3 (#1462, #1523, #1726) and question 6 done): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
 - workspace-menu-layout.md: Plan (owner decision 2026-10-30) for a tidier Workspace list in the main menu: search, places, one Channels section, discussions, Tools tiles; channel screen unchanged

@@ -591,7 +591,9 @@
             var details = el('details', 'ws-voice-transcript small mt-1');
             var summary = el('summary', 'fg-secondary', t('voice_transcript'));
             var text = el('div', 'mt-1', voice.transcript);
-            var by = el('div', 'fg-secondary fst-italic mt-1', t('voice_machine', voice.provider || '?'));
+            // 'browser': written out by the sender's own browser
+            // (pg_voice_text.js) where the site has no service.
+            var by = el('div', 'fg-secondary fst-italic mt-1', (voice.provider === 'browser') ? t('voice_machine_browser') : t('voice_machine', voice.provider || '?'));
 
             details.style.maxWidth = '22rem';
             text.style.whiteSpace = 'pre-wrap';

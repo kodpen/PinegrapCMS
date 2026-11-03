@@ -62,6 +62,9 @@ function ws_voice_js_strings()
         'voice_unheard_skipped' => lang('Assistants will not hear this recording: voice messages are not transcribed in this channel.'),
         'voice_unheard_settings' => lang('Switch them on: Workspace Settings › Voice message transcripts'),
         'voice_unheard_menu' => lang('A manager switches it on in the channel menu: Voice messages are transcribed here.'),
+        'voice_browser_hint' => lang('This browser writes the recording out on this device; the text goes with it for the assistants.'),
+        'voice_browser_working' => lang('Writing the recording out…'),
+        'voice_machine_browser' => lang('Machine transcript by the sender\'s browser'),
     ) + pg_voice_text_strings();
 }
 
@@ -1703,14 +1706,18 @@ function ws_voice_measure_clean($duration_ms, $peaks)
 
 /**
  * Notes a recording just posted: queued to be written out when transcripts
- * are on and its channel allows them, otherwise kept as never asked. Called
- * by both uploads (ws_message_send_file_bytes(), the API's files.create).
+ * are on and its channel allows them; written out already when the sender's
+ * browser did so where no service does (ws_voice_browser_rule(), kept as
+ * the machine transcript with provider 'browser'); otherwise kept as never
+ * asked. Called by both uploads (ws_message_send_file_bytes(), the API's
+ * files.create).
  *
  * @param array  $channel
  * @param int    $message_id
  * @param int    $file_id
  * @param string $name    the name it was posted with
- * @param array  $measure duration_ms and peaks the recorder sent, if any
+ * @param array  $measure duration_ms and peaks the recorder sent, if any;
+ *                        transcript, the text the sender's browser wrote
  * @return bool it waits to be written out
  */
 function ws_voice_queue($channel, $message_id, $file_id, $name, $measure = array())
@@ -1719,9 +1726,23 @@ function ws_voice_queue($channel, $message_id, $file_id, $name, $measure = array
         return false;
     }
 
-    $queued = ws_voice_config()['enabled'] && ws_voice_channel_allowed($channel);
+    $enabled = ws_voice_config()['enabled'];
+    $allowed = ws_voice_channel_allowed($channel);
+    $queued = $enabled && $allowed;
     $measured = ws_voice_measure_clean($measure['duration_ms'] ?? 0, $measure['peaks'] ?? '');
     $now = time();
+
+    // The sender's browser wrote it out where no service would: kept done,
+    // so the assistants its words ask hear it at once.
+    $heard = ws_voice_browser_rule(true, $enabled, $allowed) ? ws_voice_browser_transcript($measure['transcript'] ?? '', $name) : '';
+
+    if ($heard !== '') {
+        db("INSERT IGNORE INTO ws_voice (file_id, message_id, channel_id, duration_ms, peaks, status, transcript, provider, created_at, updated_at, transcribed_at)
+            VALUES ('" . (int) $file_id . "', '" . (int) $message_id . "', '" . (int) $channel['id'] . "', '" . (int) $measured['duration_ms'] . "', '" . e($measured['peaks']) . "',
+                'done', '" . e($heard) . "', 'browser', '" . $now . "', '" . $now . "', '" . $now . "')");
+
+        return false;
+    }
 
     db("INSERT IGNORE INTO ws_voice (file_id, message_id, channel_id, duration_ms, peaks, status, created_at, updated_at)
         VALUES ('" . (int) $file_id . "', '" . (int) $message_id . "', '" . (int) $channel['id'] . "', '" . (int) $measured['duration_ms'] . "', '" . e($measured['peaks']) . "',
@@ -2564,6 +2585,66 @@ function ws_voice_channel_unheard_rule($enabled, $allowed)
 function ws_voice_channel_unheard($channel)
 {
     return ws_voice_channel_unheard_rule(ws_voice_schema_ready() && ws_voice_config()['enabled'], ws_voice_channel_allowed($channel));
+}
+
+/**
+ * The longest text a sender's browser may hand in as a recording's
+ * transcript, in characters: the service's own limit (ws_voice_run()).
+ */
+define('WS_VOICE_BROWSER_MAX_CHARS', 100000);
+
+/**
+ * Does the sender's browser write a recording out before it is posted?
+ * Only where no service does (transcripts switched off on the site) and the
+ * channel lets its recordings be written out (ws_voice_channel_allowed()),
+ * once the schema step has run. The browser's own model writes it on the
+ * device; nothing is sent to a third party (owner decision #5390).
+ *
+ * @param bool $schema_ready ws_voice_schema_ready()
+ * @param bool $enabled      transcripts switched on on the site
+ * @param bool $allowed      ws_voice_channel_allowed()
+ * @return bool
+ */
+function ws_voice_browser_rule($schema_ready, $enabled, $allowed)
+{
+    return $schema_ready && !$enabled && $allowed;
+}
+
+/**
+ * ws_voice_browser_rule() for a channel now: channel.voice_browser on the
+ * channel screen, and the check an upload's transcript passes.
+ *
+ * @param array $channel
+ * @return bool
+ */
+function ws_voice_browser_channel($channel)
+{
+    $ready = ws_voice_schema_ready();
+
+    return ws_voice_browser_rule($ready, $ready && ws_voice_config()['enabled'], ws_voice_channel_allowed($channel));
+}
+
+/**
+ * The transcript a sender's browser handed in with a recording, as it is
+ * kept: one trimmed line without control characters, at most
+ * WS_VOICE_BROWSER_MAX_CHARS characters; '' for nothing heard, a value that
+ * is not text, or a file the recorder did not name (a sound somebody
+ * attached is never given a text).
+ *
+ * @param mixed  $text
+ * @param string $name the name the file was posted with
+ * @return string
+ */
+function ws_voice_browser_transcript($text, $name)
+{
+    if (!is_string($text) || !ws_voice_is_recording($name)) {
+        return '';
+    }
+
+    $text = (string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $text);
+    $text = trim((string) preg_replace('/\s+/u', ' ', $text));
+
+    return (mb_strlen($text) > WS_VOICE_BROWSER_MAX_CHARS) ? rtrim(mb_substr($text, 0, WS_VOICE_BROWSER_MAX_CHARS)) : $text;
 }
 
 /**

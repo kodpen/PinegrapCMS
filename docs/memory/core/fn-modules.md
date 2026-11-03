@@ -147,7 +147,7 @@ description: Generated from the module field of the memory files: each includes/
 - `vendor_api`: [[vendor-api-client]]
 - `visitor_insights`: [[visitors-ai-section]], [[visitors-speed-section]]
 - `visitor_report`: [[visitor-report-filters-and-form]]
-- `voice_text`: [[voice-browser-to-text]]
+- `voice_text`: [[voice-browser-to-text]], [[workspace-voice-browser-route]]
 - `waf_log_list`: [[waf-log-paging]]
 - `waf_notice`: [[waf-ban-notice]]
 - `waf_rescue`: [[waf-self-rescue]]

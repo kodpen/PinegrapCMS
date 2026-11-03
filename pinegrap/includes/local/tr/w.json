@@ -1307,6 +1307,7 @@
     "Writing a text for each record needs Pinegrap AI, which is not ready on this site. Give the values one by one instead.": "Her kayıt için metin yazmak Pinegrap AI gerektirir ve bu sitede hazır değil. Bunun yerine değerleri tek tek verin.",
     "Writing a will that holds": "Geçerli bir vasiyetname yazmak",
     "Writing for us?": "Bizim için mi yazıyorsunuz?",
+    "Writing the recording out…": "Kayıt yazıya dökülüyor…",
     "Writing the rule from here needs the API token permission Zone › Cache Rules › Edit. Without it, open your domain in the Cloudflare dashboard, then Caching › Cache Rules › Create rule.": "Kuralı buradan yazmak için API anahtarının Zone › Cache Rules › Edit iznine sahip olması gerekir. Bu izin yoksa Cloudflare panelinde alan adınızı açın, ardından Caching › Cache Rules › Create rule.",
     "Writing the shipping methods, shipping zones and tax zones checkout charges by - reading them is under Orders": "Ödemede kargo ve verginin hesaplandığı kargo yöntemlerini, kargo bölgelerini ve vergi bölgelerini yazma - okuma Siparişler altındadır",
     "Writing the shipping zones and tax zones checkout charges by - reading them is under Orders": "Ödemede kargo ve verginin hesaplandığı kargo bölgelerini ve vergi bölgelerini yazma - okuma Siparişler altındadır",

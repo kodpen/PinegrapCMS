@@ -609,6 +609,23 @@
     // the browser's back-forward cache.
     var uploadsRunning = 0;
 
+    // Whether this browser's own model hears audio and is on the device
+    // (PGVoiceText.downloaded()): null until asked, then false or true. A
+    // recording is then written out here before it is posted where the
+    // site has no transcription service (channel.voice_browser).
+    var voiceModel = null;
+
+    function voiceModelHere() {
+        if ((voiceModel === null) && window.PGVoiceText && window.PGVoiceText.downloaded) {
+            voiceModel = false;
+            window.PGVoiceText.downloaded(CFG.locale || '').then(function (yes) {
+                voiceModel = !!yes;
+            }, function () {});
+        }
+
+        return voiceModel === true;
+    }
+
     function uploadLeaveGuard(event) {
         event.preventDefault();
         event.returnValue = t('upload_leave');
@@ -13846,6 +13863,12 @@
 
             mic.classList.toggle('d-none', !show);
             this.sendNode.classList.toggle('d-none', show);
+
+            // Asked once, before the first recording, so the recorder knows
+            // whether this browser writes it out (voiceUnheard()).
+            if (show && this.channel.voice_browser) {
+                voiceModelHere();
+            }
         },
 
         // The box's text while it holds nothing but tags (a person, @ai,
@@ -13944,13 +13967,19 @@
         // switched off on the site; skipped: this channel keeps its
         // recordings), only where an assistant could be asked. Role 0 gets
         // the settings card's link, a manager of a switchable channel the
-        // menu's entry; null when the recording is written out.
+        // menu's entry; null when the recording is written out by a
+        // service. Where this browser writes it out instead
+        // (voiceWritesOut()), the hint says so.
         voiceUnheard: function () {
             var channel = this.channel;
             var reason = channel ? (channel.voice_unheard || '') : '';
 
             if (!reason || !(channel.claude || channel.ai || (BOOT.mcp || []).length)) {
                 return null;
+            }
+
+            if (this.voiceWritesOut()) {
+                return { text: t('voice_browser_hint'), link: null, note: '' };
             }
 
             var hint = { text: t(reason === 'off' ? 'voice_unheard_off' : 'voice_unheard_skipped'), link: null, note: '' };
@@ -14009,21 +14038,72 @@
             self.voiceRecord();
         },
 
+        // Does this browser write a recording made here out before it is
+        // posted? Where the site has no transcription service and the
+        // channel allows transcripts (channel.voice_browser), with the
+        // browser's model already on the device.
+        voiceWritesOut: function () {
+            return !!(this.channel && this.channel.voice_browser) && voiceModelHere();
+        },
+
         // A recording leaves as a file of its own: words in the box stay
         // there, tags alone go with it (voiceTags()) and leave the box. It
         // answers the message the reply bar shows when it is sent; the bar
         // closes once it is posted. measure: the length and waveform the
         // recorder heard, kept for the player; its transcript is asked for
         // at once (kickVoice()), and an assistant it asks answers after it.
+        // Where this browser writes it out (voiceWritesOut()), that comes
+        // first and the text goes with it; a failure or Cancel posts it
+        // without, as before.
         voiceSend: function (file, measure) {
             var self = this;
             var parent = (self.reply && self.voiceAnswers(self.reply)) ? self.reply : null;
             var tags = self.voiceTags();
+            var channel = self.channel;
+
+            if (!self.voiceWritesOut()) {
+                self.voicePost(file, measure, parent, tags, channel, '');
+                return;
+            }
+
+            var abort = new window.AbortController();
+            var posted = false;
+            var post = function (text) {
+                if (!posted) {
+                    posted = true;
+                    card.remove();
+                    self.voicePost(file, measure, parent, tags, channel, text);
+                }
+            };
+            var card = uploadCard(t('voice_browser_working'), file.name, function () {
+                abort.abort();
+                post('');
+            });
+
+            card.progress(0, 0);
+
+            window.PGVoiceText.transcribe(file, CFG.locale || '', function (step) {
+                if (typeof step.done === 'number') {
+                    card.progress(Math.round(step.done * 100), 100);
+                }
+            }, abort).then(function (text) {
+                post(text || '');
+            }, function () {
+                post('');
+            });
+        },
+
+        // Posts a recording into the channel it was made in, with the text
+        // this browser wrote ('' for none).
+        voicePost: function (file, measure, parent, tags, channel, transcript) {
+            var self = this;
 
             self.uploadFiles([file], {
                 body: tags,
+                channel: channel,
                 parent_id: parent ? parent.id : 0,
                 voice: measure || null,
+                transcript: transcript,
                 sent: function () {
                     if (parent && (self.reply === parent)) {
                         self.reply = null;
@@ -14891,17 +14971,20 @@
         // refuses here too, and says so. options (a recording, voiceSend()):
         // body sent instead of the box's text, which then stays in the box;
         // parent_id, the message the files answer; voice, a recording's
-        // duration_ms and peaks; sent(), once any is posted.
+        // duration_ms and peaks; transcript, the text this browser wrote of
+        // it; channel, the one it was made in when not the one shown now;
+        // sent(), once any is posted.
         uploadFiles: function (files, options) {
             var self = this;
             var settings = options || {};
+            var channel = settings.channel || self.channel;
             var queue = (files || []).slice();
             var total = queue.length;
             var done = 0;
             var ownBody = (typeof settings.body === 'string');
             var body = ownBody ? settings.body : (self.input ? self.tokens(self.inputText()) : '');
 
-            if (!total || !self.channel || !self.channel.can_post) {
+            if (!total || !channel || !channel.can_post) {
                 return;
             }
 
@@ -14931,12 +15014,13 @@
                     request.xhr.abort();
                 });
                 var request = apiUpload('ws_attach', {
-                    channel_id: self.channel.id,
+                    channel_id: channel.id,
                     name: name,
                     body: body,
                     parent_id: settings.parent_id || 0,
                     voice_duration_ms: settings.voice ? Math.round(settings.voice.duration_ms || 0) : 0,
-                    voice_peaks: settings.voice ? (settings.voice.peaks || '') : ''
+                    voice_peaks: settings.voice ? (settings.voice.peaks || '') : '',
+                    voice_transcript: settings.transcript || ''
                 }, file, name, function (loaded, sent) {
                     card.progress(loaded, sent);
                 });
