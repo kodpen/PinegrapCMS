@@ -169,6 +169,7 @@ description: Generated from the module field of the memory files: each includes/
 - `variant_set_copy`: [[product-group-copy]]
 - `vat_check`: [[eu-vat-check]]
 - `vendor_api`: [[vendor-api-client]]
+- `visitor_figures`: [[visitor-figures-module]]
 - `visitor_insights`: [[visitors-ai-section]], [[visitors-speed-section]]
 - `visitor_report`: [[visitor-report-filters-and-form]]
 - `visitor_retention`: [[visitor-daily-summary]]
