@@ -175,6 +175,12 @@ function api_webhook_events() {
 		'currency.created'     => 'A currency was created',
 		'currency.updated'     => 'A currency was changed, or the rate refresh moved its exchange rate',
 		'currency.deleted'     => 'A currency was deleted',
+		// Offers (edit_offer_f.php): announced from the offer editor's save and
+		// delete, its on/off switch, the Workspace and the API alike. id, code
+		// and enabled follow; a deletion carries id and code.
+		'offer.created'        => 'An offer was created or duplicated',
+		'offer.updated'        => 'An offer was changed or switched on or off',
+		'offer.deleted'        => 'An offer was deleted',
 		// Uploads from the panel's file screen and writes through the API alike.
 		// A design or theme import brings its own files in bulk and stays quiet,
 		// for the same reason the contact import does.

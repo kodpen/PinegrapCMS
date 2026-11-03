@@ -792,3 +792,412 @@ function pg_audience_count($rules)
 
     return $row ? (int) $row[0] : 0;
 }
+
+// The recompute (AU2): at most once an hour a group, at most this many
+// seconds of a general job tick, pages of this many contact ids.
+define('PG_AUDIENCE_INTERVAL', 3600);
+define('PG_AUDIENCE_TICK_SECONDS', 20);
+define('PG_AUDIENCE_PAGE', 10000);
+define('PG_AUDIENCE_WRITE_CHUNK', 500);
+
+/**
+ * What a page of a recompute changes: the contacts the rule selects that
+ * are not members yet are added; the rule-made rows whose contact the rule
+ * no longer selects are removed. A contact that is a member by another
+ * source (a hand, form or product row) is never added a second time, and
+ * its row is never touched. Pure; each list sorted, without repeats.
+ *
+ * @param int[] $selected the contacts the rule selects
+ * @param int[] $by_rule  the contacts with a rule-made row
+ * @param int[] $by_other the contacts with a row of another source
+ * @return array array('add' => int[], 'remove' => int[])
+ */
+function pg_audience_diff(array $selected, array $by_rule, array $by_other)
+{
+    $selected = pg_audience_id_set($selected);
+    $by_rule = pg_audience_id_set($by_rule);
+    $by_other = pg_audience_id_set($by_other);
+
+    $add = array_keys(array_diff_key($selected, $by_rule, $by_other));
+    $remove = array_keys(array_diff_key($by_rule, $selected));
+
+    sort($add);
+    sort($remove);
+
+    return array('add' => $add, 'remove' => $remove);
+}
+
+/**
+ * Positive ids as the keys of a set.
+ *
+ * @param array $ids
+ * @return array id => true
+ */
+function pg_audience_id_set(array $ids)
+{
+    $set = array();
+
+    foreach ($ids as $id) {
+        $id = (int) $id;
+
+        if ($id > 0) {
+            $set[$id] = true;
+        }
+    }
+
+    return $set;
+}
+
+/**
+ * The SELECT of a rule set narrowed to one page of contact ids: after
+ * $after, up to and with $upto. Pure.
+ *
+ * @param mixed    $rules
+ * @param int      $after
+ * @param int      $upto
+ * @param int|null $now
+ * @return array array('sql', 'params')
+ */
+function pg_audience_sql_page($rules, $after, $upto, $now = null)
+{
+    $query = pg_audience_sql($rules, $now);
+    $query['sql'] .= ' AND contacts.id > ? AND contacts.id <= ?';
+    $query['params'][] = (int) $after;
+    $query['params'][] = (int) $upto;
+
+    return $query;
+}
+
+/**
+ * The pass's state between ticks: the ids added and removed so far, kept
+ * until the whole pass is announced once.
+ *
+ * @param int $group_id
+ * @return string
+ */
+function pg_audience_state_path($group_id)
+{
+    return PG_FUNCTIONS_DIR . '/data/temp/audience_' . (int) $group_id . '.json';
+}
+
+/**
+ * @param int $group_id
+ * @return array array('added' => int[], 'removed' => int[])
+ */
+function pg_audience_state_read($group_id)
+{
+    $state = array('added' => array(), 'removed' => array());
+    $path = pg_audience_state_path($group_id);
+    $data = is_file($path) ? json_decode((string) @file_get_contents($path), true) : null;
+
+    foreach (array('added', 'removed') as $key) {
+        if (is_array($data) && isset($data[$key]) && is_array($data[$key])) {
+            $state[$key] = array_keys(pg_audience_id_set($data[$key]));
+        }
+    }
+
+    return $state;
+}
+
+/**
+ * @param int        $group_id
+ * @param array|null $state null removes the file
+ * @return void
+ */
+function pg_audience_state_write($group_id, $state)
+{
+    $path = pg_audience_state_path($group_id);
+
+    if ($state === null) {
+        if (is_file($path)) {
+            @unlink($path);
+        }
+
+        return;
+    }
+
+    @file_put_contents($path, json_encode($state), LOCK_EX);
+}
+
+/**
+ * The ids of one SELECT of a single id column, or null on a failed query.
+ *
+ * @param string $sql
+ * @param array  $params
+ * @return int[]|null
+ */
+function pg_audience_ids($sql, array $params)
+{
+    $result = db_q($sql, $params);
+
+    if (!$result) {
+        return null;
+    }
+
+    $ids = array();
+
+    while ($row = mysqli_fetch_row($result)) {
+        $ids[] = (int) $row[0];
+    }
+
+    return $ids;
+}
+
+/**
+ * Where the page after $after ends: the PG_AUDIENCE_PAGE-th contact id
+ * after it, or the top of the id range when fewer are left (so rule-made
+ * rows of contacts that are gone are removed on the last page). Null on a
+ * failed query.
+ *
+ * @param int $after
+ * @return array|null array('upto' => int, 'last' => bool)
+ */
+function pg_audience_page_end($after)
+{
+    $result = db_q('SELECT id FROM contacts WHERE id > ? ORDER BY id LIMIT 1 OFFSET ' . (PG_AUDIENCE_PAGE - 1), array((int) $after));
+
+    if (!$result) {
+        return null;
+    }
+
+    $row = mysqli_fetch_row($result);
+
+    if ($row) {
+        return array('upto' => (int) $row[0], 'last' => false);
+    }
+
+    return array('upto' => 4294967295, 'last' => true);
+}
+
+/**
+ * The statements that write one page's change into the xref, in chunks of
+ * PG_AUDIENCE_WRITE_CHUNK: inserts as 'rule' rows, deletes of 'rule' rows
+ * only. Pure.
+ *
+ * @param int   $group_id
+ * @param array $diff pg_audience_diff()
+ * @return array list of array('sql', 'params')
+ */
+function pg_audience_write_queries($group_id, array $diff)
+{
+    $queries = array();
+
+    foreach (array_chunk($diff['add'], PG_AUDIENCE_WRITE_CHUNK) as $chunk) {
+        $params = array();
+
+        foreach ($chunk as $id) {
+            $params[] = (int) $id;
+            $params[] = (int) $group_id;
+        }
+
+        $queries[] = array(
+            'sql' => 'INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id, source) VALUES '
+                . implode(', ', array_fill(0, count($chunk), "(?, ?, 'rule')")),
+            'params' => $params,
+        );
+    }
+
+    foreach (array_chunk($diff['remove'], PG_AUDIENCE_WRITE_CHUNK) as $chunk) {
+        $queries[] = array(
+            'sql' => "DELETE FROM contacts_contact_groups_xref WHERE contact_group_id = ? AND source = 'rule' AND contact_id IN ("
+                . implode(', ', array_fill(0, count($chunk), '?')) . ')',
+            'params' => array_merge(array((int) $group_id), array_map('intval', $chunk)),
+        );
+    }
+
+    return $queries;
+}
+
+/**
+ * Writes one page's change into the xref.
+ *
+ * @param int   $group_id
+ * @param array $diff pg_audience_diff()
+ * @return bool false on a failed write
+ */
+function pg_audience_write($group_id, array $diff)
+{
+    foreach (pg_audience_write_queries($group_id, $diff) as $query) {
+        if (!db_q($query['sql'], $query['params'])) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * After a page: 'done' when it was the last, 'stop' when the budget is
+ * spent (the cursor keeps the place), else 'next'. Pure.
+ *
+ * @param bool  $last
+ * @param float $elapsed seconds
+ * @param int   $budget  seconds
+ * @return string
+ */
+function pg_audience_next_step($last, $elapsed, $budget)
+{
+    if ($last) {
+        return 'done';
+    }
+
+    return ((float) $elapsed >= (float) $budget) ? 'stop' : 'next';
+}
+
+/**
+ * Recomputes one dynamic group from its cursor, page by page, until the
+ * pass ends or $budget seconds are spent. A pass that ends announces its
+ * whole change once (contact_group.members_changed), stamps computed_at and
+ * puts the cursor back to 0; one that stops keeps its cursor and the ids
+ * changed so far for the next call.
+ *
+ * @param int $group_id
+ * @param int $budget seconds
+ * @return array|null array('done' => bool, 'added' => int, 'removed' => int,
+ *               'cursor' => int); null when the group is not a dynamic one
+ *               or a query failed
+ */
+function pg_audience_recompute($group_id, $budget)
+{
+    if (!pg_audience_ready()) {
+        return null;
+    }
+
+    $group_id = (int) $group_id;
+    $result = db_q("SELECT name, rules, compute_cursor FROM contact_groups WHERE id = ? AND kind = 'dynamic'", array($group_id));
+    $group = $result ? mysqli_fetch_assoc($result) : null;
+
+    if (!$group) {
+        return null;
+    }
+
+    $rules = pg_audience_rules_clean((string) $group['rules']);
+    $cursor = (int) $group['compute_cursor'];
+    $state = ($cursor > 0) ? pg_audience_state_read($group_id) : array('added' => array(), 'removed' => array());
+    $started = microtime(true);
+    $now = time();
+    $done = false;
+
+    while (true) {
+        $page = pg_audience_page_end($cursor);
+
+        if ($page === null) {
+            return null;
+        }
+
+        $range = array($group_id, $cursor, $page['upto']);
+        $select = pg_audience_sql_page($rules, $cursor, $page['upto'], $now);
+        $selected = pg_audience_ids($select['sql'], $select['params']);
+        $by_rule = pg_audience_ids("SELECT contact_id FROM contacts_contact_groups_xref WHERE contact_group_id = ? AND source = 'rule' AND contact_id > ? AND contact_id <= ?", $range);
+        $by_other = pg_audience_ids("SELECT contact_id FROM contacts_contact_groups_xref WHERE contact_group_id = ? AND source <> 'rule' AND contact_id > ? AND contact_id <= ?", $range);
+
+        if (($selected === null) || ($by_rule === null) || ($by_other === null)) {
+            return null;
+        }
+
+        $diff = pg_audience_diff($selected, $by_rule, $by_other);
+
+        if (!pg_audience_write($group_id, $diff)) {
+            return null;
+        }
+
+        $state['added'] = array_merge($state['added'], $diff['add']);
+        $state['removed'] = array_merge($state['removed'], $diff['remove']);
+
+        $next = pg_audience_next_step($page['last'], microtime(true) - $started, $budget);
+
+        if ($next === 'done') {
+            $done = true;
+            break;
+        }
+
+        $cursor = $page['upto'];
+
+        if ($next === 'stop') {
+            break;
+        }
+    }
+
+    if ($done) {
+        db_q('UPDATE contact_groups SET computed_at = ?, compute_cursor = 0 WHERE id = ?', array($now, $group_id));
+        pg_audience_state_write($group_id, null);
+
+        if ($state['added'] || $state['removed']) {
+            pg_announce_contact_group_members($group_id, $state['added'], $state['removed'], (string) $group['name']);
+        }
+    } else {
+        db_q('UPDATE contact_groups SET compute_cursor = ? WHERE id = ?', array($cursor, $group_id));
+        pg_audience_state_write($group_id, $state);
+    }
+
+    return array('done' => $done, 'added' => count($state['added']), 'removed' => count($state['removed']), 'cursor' => $done ? 0 : $cursor);
+}
+
+/**
+ * The dynamic groups due, the one waiting longest first: a pass under way
+ * (a cursor) before the others, then by computed_at. Pure: the WHERE and
+ * ORDER BY with their values.
+ *
+ * @param int $now
+ * @return array array('sql', 'params')
+ */
+function pg_audience_due_sql($now)
+{
+    return array(
+        'sql' => "SELECT id FROM contact_groups WHERE kind = 'dynamic' AND (compute_cursor > 0 OR computed_at <= ?)"
+            . ' ORDER BY (compute_cursor > 0) DESC, computed_at, id',
+        'params' => array((int) $now - PG_AUDIENCE_INTERVAL),
+    );
+}
+
+/**
+ * The general job's part: recomputes the due dynamic groups, the oldest
+ * run first, within $budget seconds of the tick (and what is left of it).
+ *
+ * @param int $budget
+ * @return array array('groups' => int, 'added' => int, 'removed' => int)
+ */
+function pg_audience_job_run($budget = PG_AUDIENCE_TICK_SECONDS)
+{
+    $totals = array('groups' => 0, 'added' => 0, 'removed' => 0);
+
+    if (!pg_audience_ready()) {
+        return $totals;
+    }
+
+    if (function_exists('pg_cron_time_left')) {
+        $budget = min((int) $budget, pg_cron_time_left((int) $budget));
+    }
+
+    $started = microtime(true);
+    $due = pg_audience_due_sql(time());
+    $ids = pg_audience_ids($due['sql'], $due['params']);
+
+    foreach ((array) $ids as $group_id) {
+        $left = (int) floor($budget - (microtime(true) - $started));
+
+        if ($left < 1) {
+            break;
+        }
+
+        $run = pg_audience_recompute($group_id, $left);
+
+        if ($run === null) {
+            // A failed run waits its hour like a finished one, so one broken
+            // group does not take the head of every tick.
+            db_q('UPDATE contact_groups SET computed_at = ?, compute_cursor = 0 WHERE id = ?', array(time(), (int) $group_id));
+            pg_audience_state_write($group_id, null);
+            continue;
+        }
+
+        if ($run['done']) {
+            $totals['groups']++;
+            $totals['added'] += $run['added'];
+            $totals['removed'] += $run['removed'];
+        } else {
+            break;
+        }
+    }
+
+    return $totals;
+}

@@ -19,15 +19,15 @@ description: Plan for the Web Designer Portfolio template (pinegrap-portfolio): 
 ## Which steps are there?
 - 1 Done (#6131). Data and shared parts: `parts.php` (builders, the designer's data, sample projects, pick lists, header, footer, brief band, project, package and testimonial cards, page shells, form fields, comment thread, staff bar); test `design_template_portfolio_test.php`.
 
-- 2 Public pages: `pages_public.php` (home, services with packages, process, about, FAQ).
+- 2 Done (#6169). Home places `home_projects`, `home_posts`, `google_reviews`; class `pdp-hero`.
 
-- 3 Work: `work.php` (`project_new` with the Projects collection and its samples, `work` with category filters, `project` record page with images, facts, the story and the brief button, the list widgets the home places).
+- 3 Done (#6168). `work.php`: `work`, `project`, `project_new`; widgets `work_list`, `project_detail`, `project_more`, `home_projects` (the home's three featured); helpers `$work_…`.
 
-- 4 Briefs: `mail.php`, `briefs.php` (`brief`, `brief_view`, `my_briefs`, `staff_briefs`, `privacy`, `email_reply`, notify e-mails).
+- 4 Done (#6172). Briefs: `mail.php` (e-mail builders only, reads only `parts.php`; step 6 builds on it), `briefs.php`; test `…_briefs_test.php`.
 
-- 5 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog as "Journal", blog post, search, error); test `…_standard_test.php`.
+- 5 Done (#6176). Standard: `standard.php` (contact, inbox, conversation, newsletter, blog as "Journal", blog post, search, error); test `…_standard_test.php`.
 
-- 6 Account and staff: `account.php` (sign-in, My Account, the staff area, `blog_new` with sample posts, account e-mails); test `…_account_test.php`.
+- 6 Done (#6177). Account and staff: `account.php` (sign-in, My Account, the staff area, `blog_new` with sample posts, account e-mails); test `…_account_test.php`.
 
 - 7 Assembly: `pinegrap-portfolio.php` (order 72, icon `bi-vector-pen`, look `bold`, palette `graphite`, contact group `newsletter`, folders, `pdp-` User Styles with two fonts, search map), the shared tests' lists, `designer/design-template-portfolio.md`, plan deleted; PR body names `[NEW] Added the Web Designer Portfolio design template`.
 

@@ -79,6 +79,45 @@ function pg_dashboard_v2_look_attributes($look)
 }
 
 /**
+ * How many check chips the System Status card shows before folding the
+ * rest behind one "+n more" chip: the drawings' card, about the greeting's
+ * height.
+ */
+if (!defined('PG_DASHBOARD_V2_STATUS_CHIPS')) {
+    define('PG_DASHBOARD_V2_STATUS_CHIPS', 8);
+}
+
+/**
+ * The checks as chips in widget 2's order, the first
+ * PG_DASHBOARD_V2_STATUS_CHIPS of them drawn and the rest folded behind one
+ * "+n more" chip that opens them. That chip takes the tone of the worst
+ * check it holds, so a folded problem still shows.
+ *
+ * @param array $checks get_system_status_checks()['checks']
+ * @param int   $role
+ * @return string HTML
+ */
+function pg_dashboard_v2_status_chips($checks, $role)
+{
+    $ordered = pg_system_status_order($checks);
+    $shown = array_slice($ordered, 0, PG_DASHBOARD_V2_STATUS_CHIPS);
+    $folded = array_slice($ordered, PG_DASHBOARD_V2_STATUS_CHIPS);
+
+    $output = pg_system_status_chips($shown, $role);
+
+    if (empty($folded)) {
+        return $output;
+    }
+
+    $states = array_column($folded, 'state');
+    $tone = in_array('fail', $states, true) ? 'bad' : (in_array('warn', $states, true) ? 'warn' : '');
+
+    return $output . '<details class="pg-dash-status-more"><summary' . (($tone !== '') ? ' data-tone="' . $tone . '"' : '') . '>'
+        . h(lang(array('string' => '+{var:1} more', 'vars' => count($folded)))) . '</summary>'
+        . pg_system_status_chips($folded, $role, 'system_status_more_') . '</details>';
+}
+
+/**
  * The System Status card, or nothing for a person widget 2 is not drawn for.
  *
  * Every check is a chip here, jobs included: the card has no jobs column,
@@ -116,7 +155,7 @@ function pg_dashboard_v2_status($user, $status = null, $off = false)
                 ' . $details . '
             </div>
             ' . pg_health_gauge($score) . '
-            <div class="pg-checks pg-dash-status-checks">' . pg_system_status_chips($checks, $user['role']) . '
+            <div class="pg-checks pg-dash-status-checks">' . pg_dashboard_v2_status_chips($checks, $user['role']) . '
             </div>
             <script>
                 pgUI.ready(function () {
