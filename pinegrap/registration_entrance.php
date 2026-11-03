@@ -18,6 +18,10 @@
 
 include('init.php');
 
+// Each of these is one value: one sent as an array (?send_to[]=x) counts as
+// not given, instead of urlencode() and h() stopping on it with an error page.
+pg_request_single_values(array('send_to', 'allow_guest'));
+
 $login_form = new liveform('login');
 $register_form = new liveform('register');
 

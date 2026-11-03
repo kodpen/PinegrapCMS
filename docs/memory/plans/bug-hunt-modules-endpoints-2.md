@@ -15,10 +15,10 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `product`, part 3 (import, export, builder, marketplace): import_products: #5371 (columns after a sfc_/sfu_ heading were read one cell to the left); import_products_f, export_products, export_products_f, product_builder, marketplace_products clean
 - Endpoints `recurring` (3): done #5525 (recurring_payment_job: no web gate); the commission profile screens clean
 - Endpoints `referral` (3): add_referral_source, edit_referral_source, view_referral_sources clean
-- Endpoints `region` (3): get_region_content, save_region_content, view_regions clean; the next hunt starts at `registration`
-- Endpoints `registration` (4): taken
-- Endpoints `remove` (3): taken
-- Endpoints `return` (4): taken
+- Endpoints `region` (3): get_region_content, save_region_content, view_regions clean
+- Endpoints `registration` (4): done #6041 (lang() labels, send_to[])
+- Endpoints `remove` (3): done #6041 (cart ids[])
+- Endpoints `return` (4): clean
 - Endpoints `search` (3): open
 - Endpoints `seo` (8): open
 - Endpoints `setting` (14): open
