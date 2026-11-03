@@ -53,6 +53,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - back-arrow-targets.md: The back arrow of a panel screen (pg_page_shell 'cancel') goes where its Save goes, send_to first; the screens fixed for it and the ones that keep another target
 - barcode-scanner-detection.md: The jQuery Scanner Detection listener on the barcode stock screens and Create Order ignores keys typed into fields, scans in an open dialog and blank codes; the Last Scans row is built as text
 - bell-refusals.md: What the bell panel shows when loading, marking unread or Delete All Notifications is refused or fails (no endless spinner, refused rows put back)
+- booking-settings.md: Settings › Bookings (category bookings): services, staff hours grid and exceptions, booking rules and widget texts in config_text; what the save writes and refuses
 - bootstrap-6-button-alignment.md: Shell rule .btn:where(.text-start|.text-end) in backend.src.css: why text-start buttons came out centred under Bootstrap 6, how the rule keeps utilities winning, the ellipsis limit
 - bootstrap-6-codemod.md: tools/bs6_migrate.php, the switch fixes and tools/check_bs6.php: contexts read, what is rewritten or reported, sizes converted once, scope, how the switch keeps the v5 look
 - bootstrap-6-collapse-switcher.md: Sections behind a panel switch (input.collapse-switcher) on Bootstrap 6: why they stayed 0 px high, the .show that pgCollapseSwitcherShow() adds with the display, why switch callouts lost their arrow
@@ -306,6 +307,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-avatar-sites.md: Where the panel draws people as the Bootstrap 6 Avatar (step B9j slices) and where the picture of letters (pg_initials_avatar_url()) stays
 - panel-avatar.md: The panel Avatar (pg_avatar_markup()): letters on eight theme tones, grey square for a nameless login, presence dot, no empty src; initials and tone on person briefs
 - panel-background-polls.md: Every panel page's background polls (bell count, heartbeat, sitemap check): session lock released, timers paused in a hidden tab, the lazy My Account link, the idle settings bar
+- panel-bfcache.md: Panel HTML in the browser's back/forward cache (#6081): private, no-cache from output_header(), the no-store screen list, Clear-Site-Data on sign-out, the session check of a restored page
 - panel-cloudflare-email-obfuscation.md: Panel body wrapped in <!--email_off--> so Cloudflare Email Obfuscation does not show staff "[email protected]"; which functions, what stays protected, the Cloudflare-side rule
 - panel-code-fields.md: Code fields on panel screens: pg_code_editor_attach(), loading through pgCodeEditorUse(), the settings dialog, releasing editors, the rich text source mode, the colour scheme
 - panel-colour-tokens.md: B10 colours (#4836): panel surfaces on Bootstrap 6's gray scale (dark one step lighter), text and lines Bootstrap 6's own, the v5 accent names dropped, plain fills kept for the charts
@@ -394,7 +396,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - settings-invalid-fields.md: A refused Site Settings save names its marked fields (pg_settings_marked_fields()); the dialog marks them with pgFieldInvalid(), shows the notice and focuses the first (#3026)
 - settings-invalid-vs-error.md: Settings save outcomes: rejected input returns status invalid (no re-read, nothing written, no log); pane sentences are plain text.
 - settings-list-headings.md: Site Settings dialog list: the four group headings (decided #3879, built #4118), the group key per category, how a new category joins one.
-- settings-modal-architecture.md: Site Settings dialog: file map, the 13 categories under 4 headings, where moved cards went, moving a card, adding a category.
+- settings-modal-architecture.md: Site Settings dialog: file map, the 14 categories under 4 headings, where moved cards went, moving a card, adding a category.
 - settings-modal-autofill-lock.md: Settings dialog autofill prevention: readonly latch/unlatch of text fields, stamped autocomplete attributes, no fake password field in the dialog.
 - settings-modal-autofill-restore.md: Settings dialog defence against password-manager fills: hold()/review() restore, gesture-clock ownership, patrol() polling, three-restore limit.
 - settings-modal-card-dialogs.md: Rules for a settings card that opens its own dialog inside the settings modal: extras box, data-pgdialog rename, the dialog-open scroll lock, dispose.
