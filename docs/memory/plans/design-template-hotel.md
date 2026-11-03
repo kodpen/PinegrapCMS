@@ -27,7 +27,7 @@ description: Plan for the Hotel template (pinegrap-hotel): rooms as a collection
 
 - 5 Events: `events.php` (`meetings`, `event_enquiry`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, notify e-mails).
 
-- 6 Shop: `shop.php` (Gift Vouchers group, `vouchers`, product, cart, checkout, order, `email_order`).
+- 6 Done (#6287). Shop: `shop.php` (Gift Vouchers group, `vouchers`, product, cart, checkout, order, `email_order`).
 
 - 7 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Hotel Journal", blog post, search, error); test `…_standard_test.php`.
 
