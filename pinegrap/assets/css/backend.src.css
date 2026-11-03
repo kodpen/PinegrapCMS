@@ -5219,6 +5219,11 @@ a.dt-button {
 .input-group-text {
   border-radius: var(--pg-radius-lg);
 }
+/* Backup Manager status line: a refused or failed step reads as an error,
+   not in the muted grey of a progress notice. */
+.logbox.software_error {
+  color: var(--pg-danger-ink);
+}
 .dialog-header,
 .popover .popover-header,
 .advanced-filter-bar > *:first-child {
