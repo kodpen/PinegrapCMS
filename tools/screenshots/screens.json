@@ -21,6 +21,7 @@
 		{"name": "add_shipping_method", "path": "add_shipping_method.php"},
 		{"name": "add_email_campaign_profile", "path": "add_email_campaign_profile.php"},
 		{"name": "add_zone", "path": "add_zone.php"},
+		{"name": "add_short_link", "path": "add_short_link.php"},
 		{"name": "add_contact", "path": "add_contact.php"},
 		{"name": "edit_contact", "path": "edit_contact.php?id={contact_id}"},
 		{"name": "view_pages", "path": "view_pages.php"},
