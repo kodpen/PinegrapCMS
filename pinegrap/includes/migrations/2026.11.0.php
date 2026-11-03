@@ -147,6 +147,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_imports();                 // 11.0.156
 	upgrade_2026_11_0_bookings();                // 11.0.157
 	upgrade_2026_11_0_form_fee();                // 11.0.158
+	upgrade_2026_11_0_store_credit();            // 11.0.159
 
 }
 
@@ -4807,5 +4808,23 @@ function upgrade_2026_11_0_form_fee() {
 	install_add_index('forms', 'idx_order_id', "INDEX idx_order_id (order_id)");
 
 	install_note('Forms: a form made in the visual designer can ask for a fee, charged as a one-line order of a product; every existing form stays free.');
+
+}
+
+// Store credit (2026.11.0, 11.0.159; includes/fn/store_credit.php): a gift
+// card bound to a customer. Every existing card keeps user_id 0 and kind
+// 'gift', so it stays a plain gift card. expires_at is the moment the card
+// stops (unix time, 0 = never); expiration_date is still what the checkout
+// reads, and the writer fills both.
+function upgrade_2026_11_0_store_credit() {
+
+	install_add_column('gift_cards', 'user_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('gift_cards', 'kind', "ENUM('gift','points','refund','manual') NOT NULL DEFAULT 'gift'");
+	install_add_column('gift_cards', 'reason', "VARCHAR(255) NOT NULL DEFAULT ''");
+	install_add_column('gift_cards', 'issued_by', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('gift_cards', 'expires_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('gift_cards', 'idx_user', "INDEX idx_user (user_id)");
+
+	install_note('Gift cards: a card can belong to a customer as store credit, with where it came from, why it was issued and when it expires.');
 
 }

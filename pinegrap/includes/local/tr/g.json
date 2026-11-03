@@ -136,6 +136,7 @@
     "Gift cards of the item": "Kalemin hediye kartları",
     "Gift cards paid {var:1} of this order. Return the amounts to the cards; the site log names them.": "Bu siparişin {var:1} tutarındaki kısmı hediye kartlarıyla ödendi. Tutarları kartlara geri yükleyin; kartlar site günlüğünde yazılı.",
     "Gift cards pay part of the order": "Siparişin bir kısmını hediye kartları ödüyor",
+    "Gift cards: a card can belong to a customer as store credit, with where it came from, why it was issued and when it expires.": "Hediye kartları: bir kart, nereden geldiği, neden verildiği ve ne zaman sona erdiğiyle birlikte bir müşteriye mağaza kredisi olarak ait olabilir.",
     "Gift ideas for someone who loves their home": "Evini seven biri için hediye fikirleri",
     "Gift ideas from the boutique, wrapped for free and sent the next working day.": "Butikten hediye fikirleri; ücretsiz paketlenir ve ertesi iş günü gönderilir.",
     "Gift wrapping": "Hediye paketi",
