@@ -42,7 +42,7 @@ $pg_settings_cards[] = '
                     </div>
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_default_series">' . lang('Invoice series') . '</label>
-                        <input type="text" class="form-control" id="erp_default_series" name="erp_default_series" value="' . h($erp_default_series) . '" maxlength="10" autocomplete="off" />
+                        <input type="text" class="form-control" id="erp_default_series" name="erp_default_series" value="' . h($erp_default_series) . '" maxlength="10" pattern="[A-Za-z0-9]{1,10}" autocapitalize="characters" spellcheck="false" autocomplete="off" />
                         <div class="form-text">' . lang('The letters every invoice number starts with, for example PGF (three letters in Turkey). Delivery notes add S to them, returns I, purchase invoices A.') . '</div>
                     </div>
                     <div class="pg-f-md">
