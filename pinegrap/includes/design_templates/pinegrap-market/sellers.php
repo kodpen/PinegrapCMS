@@ -121,7 +121,7 @@ $seller_filter_bar = function () use ($el, $link, $span, $attr, $seller_category
 // Every maker, by shop name, narrowed by category or city, with a search.
 $seller_pages[] = array(
     'key'              => 'sellers',
-    'name'             => lang('makers'),
+    'name'             => lang('all-makers'),
     'folder'           => 'public',
     'title'            => lang('Makers'),
     'meta_description' => lang('The independent makers whose shops we carry: potters, silversmiths, printmakers, weavers, woodworkers and small producers.'),

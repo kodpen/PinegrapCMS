@@ -17,22 +17,14 @@ description: Plan for the Hotel template (pinegrap-hotel): rooms as a collection
 - Turkish: check shared keys in tr.json before reuse (`Process` reads İşlem).
 
 ## Which steps are there?
-- 1 Done (#6216). Data and shared parts: `parts.php` (builders, the hotel's data, sample rooms, rates, plans, offers, vouchers, pick lists; account bar, header, footer, booking band, room, plan and offer cards, page shells, form fields, comment thread, staff bar); test `design_template_hotel_test.php`.
-
-- 2 Public pages: `pages_public.php` (home, about, dining, spa, location, offers, rates, FAQ).
-
-- 3 Rooms: `rooms.php` (`room_new` with the Rooms collection and samples, `rooms` with filters, `room` record page, the home's list widgets).
-
-- 4 Bookings: `mail.php`, `bookings.php` (`book`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`, notify e-mails).
-
-- 5 Events: `events.php` (`meetings`, `event_enquiry`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, notify e-mails).
-
-- 6 Shop: `shop.php` (Gift Vouchers group, `vouchers`, product, cart, checkout, order, `email_order`).
-
+- 1 Done (#6216): `parts.php` (data, samples and shared parts); test `design_template_hotel_test.php`.
+- 2 Done (#6283): `pages_public.php` (public pages; the home places `home_rooms`, `google_reviews`, `home_posts`).
+- 3 Done (#6280): `rooms.php` (the Rooms collection, list, record page, `home_rooms`).
+- 4 Done (#6282): `mail.php`, `bookings.php` (booking requests, their views, lists and e-mails).
+- 5 Done (#6289). Events: `events.php` (`meetings`, `event_enquiry`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, notify e-mails).
+- 6 Done (#6287). Shop: `shop.php` (Gift Vouchers group, `vouchers`, product, cart, checkout, order, `email_order`).
 - 7 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Hotel Journal", blog post, search, error); test `…_standard_test.php`.
-
 - 8 Account and staff: `account.php` (sign-in, My Account, staff area, `blog_new` with samples, account e-mails); test `…_account_test.php`.
-
 - 9 Assembly: `pinegrap-hotel.php` (order 76, icon `bi-buildings`, look `elegant`, palette `cocoa`, contact group `newsletter`, folders, `pht-` User Styles, search map), the shared tests' lists, `designer/design-template-hotel.md`, plan deleted; PR body names `[NEW] Added the Hotel design template`.
 
 ## Where to start?

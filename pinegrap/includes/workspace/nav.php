@@ -28,9 +28,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * @param array|null $flags  what the gates found, for a test (notes,
  *                           calendar_feed, actions, messages, flows, mcp, base);
  *                           null asks them
- * @return array[] head (the settings gear beside the search), top (the
- *                 places), tools (the tiles), more (behind the More tile)
- *                 => items (key, label, icon, url; a tile's short name)
+ * @return array[] head (the settings gear beside the search), top (Today,
+ *                 the one place over the channels), tools (the tiles), more
+ *                 (behind the More tile) => items (key, label, icon, url; a
+ *                 tile's short name)
  */
 function ws_nav_groups($viewer, $flags = null)
 {
@@ -58,14 +59,16 @@ function ws_nav_groups($viewer, $flags = null)
 
     $base = isset($flags['base']) ? (string) $flags['base'] : OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
 
+    // Today alone over the channels. The bell is the one inbox, so the list
+    // has no entry of its own for it; My Tasks leads the tiles.
     $groups = array(
         'head' => array(),
         'top' => array(
             array('key' => 'home', 'label' => lang('Today'), 'icon' => 'bi-house', 'url' => $base . 'workspace.php?view=home'),
-            array('key' => 'inbox', 'label' => lang('Inbox'), 'icon' => 'bi-inbox', 'url' => $base . 'workspace.php?view=home&inbox=1', 'inbox' => true),
+        ),
+        'tools' => array(
             array('key' => 'tasks', 'label' => lang('My Tasks'), 'icon' => 'bi-check2-square', 'url' => $base . 'workspace_tasks.php'),
         ),
-        'tools' => array(),
         'more' => array(),
     );
 
@@ -172,7 +175,7 @@ function ws_side_screen($script)
  * with only what the browser needs.
  *
  * @param array $groups ws_nav_groups()
- * @return array head, top, tools, more => [key, label, short, icon, url, inbox]
+ * @return array head, top, tools, more => [key, label, short, icon, url]
  */
 function ws_side_nav($groups)
 {
@@ -188,7 +191,6 @@ function ws_side_nav($groups)
                 'short' => (string) ($item['short'] ?? $item['label']),
                 'icon'  => (string) $item['icon'],
                 'url'   => (string) $item['url'],
-                'inbox' => !empty($item['inbox']),
             );
         }
     }
@@ -205,7 +207,7 @@ function ws_side_nav($groups)
 function ws_side_js_keys()
 {
     return array(
-        'pal_open', 'pal_shortcut', 'new_channel', 'tour_start', 'pin', 'unpin', 'channels',
+        'pal_open', 'pal_shortcut', 'new_channel', 'pin', 'unpin', 'channels',
         'th_mine', 'th_show_all', 'th_show_fewer', 'no_channels',
         'side_expand', 'side_collapse', 'grp_expand', 'grp_collapse', 'grp_access', 'grp_empty', 'grp_new',
         'more', 'loading', 'error_generic',
@@ -224,8 +226,7 @@ function ws_side_js_strings()
         ws_js_strings(),
         ws_threads_js_strings(),
         ws_groups_js_strings(),
-        function_exists('ws_palette_js_strings') ? ws_palette_js_strings() : array(),
-        function_exists('ws_tour_js_strings') ? ws_tour_js_strings() : array()
+        function_exists('ws_palette_js_strings') ? ws_palette_js_strings() : array()
     );
 
     $out = array();

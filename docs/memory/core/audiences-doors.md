@@ -16,7 +16,8 @@ module: audience_doors
 
 ## What is left as it was?
 - Readers: campaigns, SMS campaigns, the account's group list, exports, `GET` members read the xref rows whatever their source.
-- Erasure and merge move or delete a contact's xref rows (`core/contact-holders.md`) and recompute nothing; the next pass settles the group.
+- Erasure deletes a contact's xref rows and recomputes nothing. A merge (`merge_contacts()`) re-inserts the merged contact's rows without `source`, so a `rule` row comes back `hand` and the recompute never removes it (open, step AU4b).
+- Hand rows of a group switched to dynamic stay too: the recompute removes only `rule` rows (open, step AU4b).
 - The form and product editors still list every group; the sale or submission skips a dynamic one.
 
 ## Tests?
