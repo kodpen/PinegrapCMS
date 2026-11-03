@@ -1,6 +1,6 @@
 ---
 name: kiosk-mode
-description: kiosk.php: what its query string sets in the session, how logout restarts it, and why the text parameters must be strings
+description: kiosk.php: what its query string sets in the session, how logout restarts it (token and kiosk mode required), and why the text parameters must be strings
 ---
 
 ## What does kiosk.php do?
@@ -10,3 +10,9 @@ description: kiosk.php: what its query string sets in the session, how logout re
 
 ## Why must the text parameters be strings?
 - `escape_javascript()` returns a non-scalar unchanged. An array (`?dialog_message[]=x`) was stored in the session and printed "Array" with an "Array to string conversion" warning on every page of the kiosk session. Since #5110 a text parameter is kept only when it is a non-empty string (`tests/kiosk_text_parameters_test.php`).
+
+## Why does kiosk.php check the session token?
+- A link planted elsewhere signed anyone out with `kiosk.php?action=logout`, and `kiosk.php?inactivity_time=1` put a signed-in session into kiosk mode whose timer signed it out; `logout.php` sent kiosk sessions on before its own token check (#5773).
+- Now `action=logout` restarts only a kiosk session, and a signed-in one only with `token` (the kiosk script sends `software_token`); anything else goes to `logout.php`, which asks first. `logout.php` sends a kiosk session on only after its token check, with the token.
+- Turning kiosk mode on from a signed-in session without the token shows a confirm form (GET, the link's settings and the token). A kiosk normally starts signed out, and its logout comes back with a fresh session, so the kiosk loop asks nothing.
+- `tests/kiosk_text_parameters_test.php` (source pins).

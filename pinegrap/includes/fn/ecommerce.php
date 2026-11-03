@@ -13687,7 +13687,9 @@ function pg_barcode_scan_choice($barcode_of, $code_of)
  */
 function pg_barcode_scan_product($code)
 {
-    $code = is_scalar($code) ? (string) $code : '';
+    // A typed code with a blank around it is the same code, as the counter
+    // sale screen reads it.
+    $code = is_scalar($code) ? trim((string) $code) : '';
 
     $barcode_of = (int) db_value("SELECT product_id FROM product_barcodes WHERE barcode = '" . e($code) . "' LIMIT 1");
 

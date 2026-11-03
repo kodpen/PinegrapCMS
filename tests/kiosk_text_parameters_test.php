@@ -27,3 +27,20 @@ function test_kiosk_text_parameters_are_strings()
 		pg_assert_same(1, preg_match_all("/is_string\\(\\\$_GET\\['" . $name . "'\\] \\?\\? null\\) && \\(\\\$_GET\\['" . $name . "'\\] !== ''\\)/", $source), $name . ': kept only as a non-empty string');
 	}
 }
+
+function test_kiosk_logout_needs_kiosk_mode_and_the_token()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/kiosk.php');
+	$logout = substr($source, (int) strpos($source, "case 'logout':"));
+	pg_assert_contains("if (!\$kiosk_on || (!\$token_ok && pg_session_signed_in())) {", $logout, 'kiosk.php logout gate');
+	pg_assert_true(strpos($logout, '$kiosk_on') < strpos($logout, 'logout();'), 'gate before the logout');
+
+	$default = substr($source, 0, (int) strpos($source, "case 'update_activity':"));
+	pg_assert_contains('if (!$token_ok && pg_session_signed_in()) {', $default, 'signed-in session confirms kiosk mode');
+
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/logout.php');
+	pg_assert_true(strpos($page, "kiosk.php?action=logout&token=") > strpos($page, 'hash_equals($session_token, $request_token)'), 'logout.php sends to the kiosk logout only after its token check');
+
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/frontend.src.js');
+	pg_assert_contains("'/kiosk.php?action=logout&token=' + encodeURIComponent(software_token)", $script, 'kiosk script sends the token');
+}
