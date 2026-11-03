@@ -22,7 +22,7 @@ description: Steps OS1-OS7 of plans/object-storage.md: SigV4 client, backup targ
 - OS4 (S) Migration tool and Disk Usage. Done (#5993, `platform/object-storage-migration.md`).
   - Settings › Storage: "Move existing files" starts the job over all local rows with progress (count, bytes, failures), pause and resume; "Bring back" moves them home; Disk Usage and System Status count local and stored bytes and name the store. Memory: `platform/file-object-storage.md` grows.
 
-- OS5 (M) Workspace and ERP attachments. After OS3 and question 1.
+- OS5 (M) Workspace and ERP attachments. Done (#PR, `workspace/workspace-files-object-storage.md`).
   - Workspace channel files and note canvases (`workspace_file_save.php`, `ws_file_preview()`) and ERP attachments follow the same row rule and copy function; previews stay in the derivative cache (`api/api-file-endpoints.md`). Memory: `workspace/workspace-files-object-storage.md`.
 
 - OS6 (S) Health. Done (#5933).

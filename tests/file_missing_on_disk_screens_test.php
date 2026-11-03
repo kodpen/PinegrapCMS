@@ -63,5 +63,5 @@ function test_file_missing_on_disk_comment_attachment_says_not_on_the_disk()
 function test_file_missing_on_disk_quote_signature_needs_the_drawing()
 {
 	$source = file_missing_on_disk_source('edit_erp_quote');
-	pg_assert_true(strpos($source, "is_file(FILE_DIRECTORY_PATH . '/' . (string) \$signature['file_name'])") !== false, 'draws the signature only from the disk');
+	pg_assert_true(strpos($source, "pg_file_kept((string) \$signature['file_name'])") !== false, 'draws the signature only when its file is kept (on the disk or in the object store)');
 }
