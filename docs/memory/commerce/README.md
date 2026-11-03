@@ -73,6 +73,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - checkout-kvkk-notice.md: KVKK notice link and optional consent box at checkout and sign-up (11.0.48): settings, why a page and a config_text row, injection and designer node, the kvkk copy, consent log row
 - checkout-legal-checkboxes.md: How the legal documents' checkboxes reach every checkout, what the cart document page shows (drawn snapshot or the values its link posts), its amounts, the server check in submit_order.php
 - checkout-requested-arrival-date.md: How the designed checkout refills a recipient's custom requested arrival date, bounds its box and keeps a past, invalid or unreachable date out of the "cannot ship here" notice
+- checkout-state-list.md: The checkout's state as a text box and a pick list (_eo_fit_state_lists(), #6146), one state script per address (data-pg-sa-for), the order screen's İlçe/İl billing labels
 - classic-order-pages-language.md: The classic order view, receipt and preview write every label through lang(): billing Phone/Fax/PO Number, shipping method and arrival date, the order view's headings and totals (PR #5202)
 - classic-store-pages-language.md: Classic store pages and checkout steps (cart, express order, receipt, order preview, shipping, billing) print every visitor text through lang(); {var:n} keys (PR #4472, #4795)
 - counter-sale-cart-session.md: Counter sale (add_order.php) cart in its own session key and born a local order; what completion writes (order date, buyer name, no recipient); typed quantity 0 to 9999 only

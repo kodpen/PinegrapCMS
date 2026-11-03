@@ -3200,6 +3200,10 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         if ($_eo_lf) _eo_fit_district_field($tree_decoded_for_eo, $_eo_ship_rid);
         if ($_eo_lf) _eo_apply_field_bindings($tree_decoded_for_eo, $_eo_lf, $_eo_ship_rid);
         if ($_eo_lf) _eo_prefill_input_values_in_tree($tree_decoded_for_eo, $_eo_lf);
+        // The shipping and billing state as a text box and a pick list, the
+        // country deciding which posts (_eo_state_list_scripts() below).
+        _eo_state_list_prefixes(null, true);
+        if ($_eo_lf) _eo_fit_state_lists($tree_decoded_for_eo, $_eo_lf, $_eo_ship_rid);
         _eo_apply_action_bindings($tree_decoded_for_eo);
 
         // ── 2. Split off any loop_area the designer placed (typically the
@@ -3387,6 +3391,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             . '</form>'
             . $eo_modal_fallback
             . $widget_js
+            . _eo_state_list_scripts($form_id)
             . '</div>';
         return _pg_widget_layout_css_once() . $form_html;
     }

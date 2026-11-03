@@ -700,6 +700,113 @@ function _eo_default_country()
     return pg_address_default_country();
 }
 
+/**
+ * One state control of the checkout as a text box and a pick list, as the
+ * other address widgets have it: a layout that holds only the text box (the
+ * default layout and the starter draw one) gets a hidden <select> of the
+ * same name right after it (pg_sa_state_list_fit()); both are filled and
+ * marked for pg_sa_state_script() by _pg_sa_state_controls(), the list with
+ * the states of $country_states and the stored state chosen by code or name.
+ * Runs on a tree whose controls _eo_apply_field_bindings() already named.
+ * Pure.
+ *
+ * @param array  $tree
+ * @param string $name           the state control's name ('shipping_7_state', 'billing_state')
+ * @param string $value          the stored or posted state
+ * @param array  $country_states list of [code, name] of the address's country
+ * @return bool whether the tree holds a state control of that name
+ */
+function _eo_fit_state_list(&$tree, $name, $value, $country_states)
+{
+    if (!is_array($tree) || (string)$name === '') return false;
+    $found = false;
+    $scan = function ($node) use (&$scan, $name, &$found) {
+        if ($found || !is_array($node)) return;
+        if (_pg_member_control_name($node) === $name) {
+            $tag = strtolower((string)($node['props']['tag'] ?? ''));
+            if ($tag === 'input' || $tag === 'select') { $found = true; return; }
+        }
+        if (!empty($node['children']) && is_array($node['children'])) {
+            foreach ($node['children'] as $c) $scan($c);
+        }
+    };
+    $scan($tree);
+    if (!$found) return false;
+    pg_sa_state_list_fit($tree, $name);
+    _pg_sa_state_controls($tree, (string)$value, (array)$country_states, $name);
+    return true;
+}
+
+/**
+ * Gives the checkout's shipping state (the recipient's, or the one recipient
+ * of a layout without a recipient list) and billing state their pick list
+ * (_eo_fit_state_list()) for the country each address starts with: the
+ * posted or stored one, else the shop's default. Each address that holds a
+ * state control is noted for _eo_state_list_scripts().
+ *
+ * @param array  $tree
+ * @param object $lf       the express order liveform
+ * @param int    $ship_rid the recipient the shipping fields are named for, 0 for none
+ */
+function _eo_fit_state_lists(&$tree, $lf, $ship_rid = 0)
+{
+    if (!is_array($tree) || !$lf) return;
+    $place = _eo_state_list_place();
+    $prefixes = array(($ship_rid > 0) ? 'shipping_' . (int)$ship_rid . '_' : 'shipping_', 'billing_');
+    foreach ($prefixes as $prefix) {
+        $country = (string)$lf->get_field_value($prefix . 'country');
+        if ($country === '') $country = _eo_default_country();
+        $states = isset($place['states'][$country]) ? $place['states'][$country] : array();
+        if (_eo_fit_state_list($tree, $prefix . 'state', (string)$lf->get_field_value($prefix . 'state'), $states)) {
+            _eo_state_list_prefixes($prefix);
+        }
+    }
+}
+
+// The shop's states by country and the zip-required countries
+// (_pg_acct_states()), read once per request.
+function _eo_state_list_place()
+{
+    static $place = null;
+    if ($place === null) $place = _pg_acct_states();
+    return $place;
+}
+
+/**
+ * The name prefixes of the checkout addresses that hold a state control
+ * ('shipping_7_', 'billing_'), noted while the tree is fitted. With $add the
+ * prefix is added; with $take the list is returned and emptied, so a second
+ * checkout widget on the page starts with its own.
+ *
+ * @param string|null $add
+ * @param bool        $take
+ * @return array
+ */
+function _eo_state_list_prefixes($add = null, $take = false)
+{
+    static $prefixes = array();
+    if ($add !== null && !in_array((string)$add, $prefixes, true)) $prefixes[] = (string)$add;
+    if (!$take) return $prefixes;
+    $out = $prefixes;
+    $prefixes = array();
+    return $out;
+}
+
+// The state script (pg_sa_state_script()) of every checkout address noted by
+// _eo_fit_state_lists(), for the form $form_id: each switches its own text
+// box and pick list with its own country control.
+function _eo_state_list_scripts($form_id)
+{
+    $prefixes = _eo_state_list_prefixes(null, true);
+    if (!$prefixes) return '';
+    $place = _eo_state_list_place();
+    $out = '';
+    foreach ($prefixes as $prefix) {
+        $out .= pg_sa_state_script((string)$form_id, $place['states'], $place['zip'], $prefix);
+    }
+    return $out;
+}
+
 // ── Designer bindings: `_bindings.eo_field='X'` on input/select/textarea
 // ─────────────────────────────────────────────────────────────────────────
 // THE primary binding for express order form fields. Designer drops any
@@ -4979,6 +5086,7 @@ function _eo_render_recipient_loop($template_children, $recipients, $lf)
             _eo_fit_district_field($wrap, $rid);
             _eo_apply_field_bindings($wrap, $lf, $rid);
             _eo_prefill_input_values_in_tree($wrap, $lf);
+            _eo_fit_state_lists($wrap, $lf, $rid);
         }
         _eo_apply_action_bindings($wrap);
 
