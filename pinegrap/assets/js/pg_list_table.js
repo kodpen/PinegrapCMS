@@ -18,6 +18,13 @@
  * (detail: count, payload) to enable its bulk actions, and may put them in
  * the bar's .pg-list-table-actions box. root.pgListTable is the driver.
  *
+ * The bar's columns menu shows, hides and orders the columns, and its
+ * details switch opens a panel with every column of the current row (a
+ * side sheet below 1024 px); both choices are kept per user and list in
+ * localStorage (pg.list.<user id>.<list>). Below 768 px each row is drawn
+ * as a card, every cell under its column's name (data-pg-label). Pictures
+ * named by img[data-pg-thumb] load as they come into sight, six at a time.
+ *
  * Served minified as assets/js/pg_list_table.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
  *
@@ -399,7 +406,11 @@
         this.root = root;
         this.name = root.getAttribute('data-pg-list-table');
         this.browser = root.getAttribute('data-pg-list-mode') === 'browser';
-        this.columns = readJson(root, 'data-pg-list-columns', []);
+        this.model = readJson(root, 'data-pg-list-columns', []);
+        this.storeKey = prefsKey(root.getAttribute('data-pg-list-user'), root.getAttribute('data-pg-list-table'));
+        this.prefs = prefsClean(this.readPrefs());
+        this.columns = columnsView(this.model, this.prefs);
+        this.current = null;
         this.params = readJson(root, 'data-pg-list-params', {});
         this.texts = readJson(root, 'data-pg-list-texts', {});
         this.levels = sortParse(root.getAttribute('data-pg-list-sort'));
@@ -420,6 +431,11 @@
         this.bar = root.querySelector('.pg-list-table-bar');
         this.count = root.querySelector('.pg-list-table-count');
         this.live = root.querySelector('[data-pg-list-live]');
+        this.menu = root.querySelector('.pg-list-table-columns-menu');
+        this.details = root.querySelector('.pg-list-table-details');
+        this.detailsBody = root.querySelector('.pg-list-table-details-body');
+        this.detailsSwitch = root.querySelector('.pg-list-table-details-switch');
+        this.thumbs = { waiting: [], running: 0 };
 
         if (this.browser) {
             this.total = this.tbody.rows.length;
@@ -428,9 +444,11 @@
 
         this.build();
         this.bind();
+        this.applyColumns();
         this.fit();
         this.paint();
         this.watch();
+        this.watchThumbs(this.tbody);
 
         root.pgListTable = this;
     }
@@ -486,7 +504,7 @@
         this.undoButton.hidden = true;
 
         this.bar.insertBefore(clear, this.bar.firstChild);
-        this.bar.appendChild(this.undoButton);
+        this.bar.insertBefore(this.undoButton, this.bar.querySelector('.pg-list-table-tools'));
 
         Array.prototype.forEach.call(this.tbody.rows, function (row) {
             row.tabIndex = -1;
@@ -546,6 +564,285 @@
         window.addEventListener('resize', function () {
             self.fit();
         });
+
+        if (this.menu) {
+            this.menu.addEventListener('click', function (event) {
+                var target = event.target.closest('[data-pg-col-action]');
+
+                if (target) {
+                    self.columnAction(target.getAttribute('data-pg-col-action'), target.getAttribute('data-pg-col'));
+                }
+            });
+        }
+
+        if (this.detailsSwitch) {
+            this.detailsSwitch.addEventListener('click', function () {
+                self.setDetails(!self.prefs.details);
+            });
+            this.details.querySelector('.pg-list-table-details-close').addEventListener('click', function () {
+                self.setDetails(false);
+                self.detailsSwitch.focus();
+            });
+        }
+
+        // The details follow the row the keyboard is on.
+        this.tbody.addEventListener('focusin', function (event) {
+            var row = event.target.closest('tr[data-pg-id]');
+
+            if (row && (row.getAttribute('data-pg-id') !== self.current)) {
+                self.current = row.getAttribute('data-pg-id');
+                self.showDetails();
+            }
+        });
+    };
+
+    Driver.prototype.readPrefs = function () {
+        try {
+            return JSON.parse(window.localStorage.getItem(this.storeKey) || 'null');
+        } catch (e) {
+            return null;
+        }
+    };
+
+    Driver.prototype.savePrefs = function () {
+        try {
+            window.localStorage.setItem(this.storeKey, JSON.stringify(this.prefs));
+        } catch (e) {
+            // Private mode or a full storage: the choice lasts for this page.
+        }
+    };
+
+    /** A column menu item: show or hide, move, or reset. */
+    Driver.prototype.columnAction = function (action, key) {
+        if (action === 'toggle') {
+            this.prefs = columnsToggle(this.model, this.prefs, key);
+        } else if ((action === 'up') || (action === 'down')) {
+            this.prefs = columnsMove(this.model, this.prefs, key, (action === 'up') ? -1 : 1);
+        } else if (action === 'reset') {
+            this.prefs = columnsReset(this.prefs);
+        } else {
+            return;
+        }
+
+        this.savePrefs();
+        this.columns = columnsView(this.model, this.prefs);
+        this.applyColumns();
+
+        var again = this.menu.querySelector('[data-pg-col-action="' + action + '"][data-pg-col="' + (key || '') + '"]');
+
+        if (again) {
+            again.focus();
+        }
+    };
+
+    /**
+     * The columns' order and visibility on the headings and every row, a
+     * phone card's label on each cell, and the menu drawn again.
+     */
+    Driver.prototype.applyColumns = function () {
+        var self = this;
+        var labels = {};
+
+        this.model.forEach(function (column) {
+            labels[column.key] = column.heading;
+        });
+
+        Array.prototype.forEach.call([this.table.tHead.rows[0]].concat(Array.prototype.slice.call(this.tbody.rows)), function (row) {
+            self.arrange(row, labels);
+        });
+
+        this.drawMenu();
+        this.showDetails();
+    };
+
+    Driver.prototype.arrange = function (row, labels) {
+        var cells = {};
+
+        Array.prototype.forEach.call(row.cells, function (cell) {
+            cells[cell.getAttribute('data-pg-col')] = cell;
+        });
+
+        this.columns.forEach(function (column) {
+            var cell = cells[column.key];
+
+            if (cell) {
+                cell.hidden = column.hidden;
+
+                if (cell.tagName === 'TD') {
+                    cell.setAttribute('data-pg-label', labels[column.key] || '');
+                }
+
+                row.appendChild(cell);
+            }
+        });
+    };
+
+    Driver.prototype.drawMenu = function () {
+        if (!this.menu) {
+            return;
+        }
+
+        var self = this;
+        var last = this.columns.length - 1;
+        var html = '';
+
+        function esc(value) {
+            var div = document.createElement('div');
+
+            div.textContent = String(value);
+
+            return div.innerHTML.replace(/"/g, '&quot;');
+        }
+
+        this.columns.forEach(function (column, index) {
+            if (index === 0) {
+                return;
+            }
+
+            var key = esc(column.key);
+            var name = esc(column.heading);
+
+            html += '<div class="pg-list-table-column">'
+                + '<label class="pg-list-table-column-name"><input type="checkbox" class="check me-2" data-pg-col-action="toggle" data-pg-col="' + key + '"'
+                + (column.hidden ? '' : ' checked') + ((column.hideable === false) ? ' disabled' : '') + '>' + name + '</label>'
+                + '<button type="button" class="btn btn-sm btn-text theme-secondary" data-pg-col-action="up" data-pg-col="' + key + '"' + ((index <= 1) ? ' disabled' : '')
+                + ' aria-label="' + esc(self.texts.up || '') + ': ' + name + '" title="' + esc(self.texts.up || '') + '"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>'
+                + '<button type="button" class="btn btn-sm btn-text theme-secondary" data-pg-col-action="down" data-pg-col="' + key + '"' + ((index >= last) ? ' disabled' : '')
+                + ' aria-label="' + esc(self.texts.down || '') + ': ' + name + '" title="' + esc(self.texts.down || '') + '"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>'
+                + '</div>';
+        });
+
+        html += '<hr class="my-1"><button type="button" class="menu-item" data-pg-col-action="reset" data-pg-col=""><i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i>' + esc(this.texts.reset || '') + '</button>';
+
+        this.menu.innerHTML = html;
+    };
+
+    /** The details panel opened or closed, the choice kept. */
+    Driver.prototype.setDetails = function (open) {
+        this.prefs.details = !!open;
+        this.savePrefs();
+        this.showDetails();
+    };
+
+    /**
+     * The details panel: every column of the current row, hidden ones too,
+     * in the order the user put them.
+     */
+    Driver.prototype.showDetails = function () {
+        if (!this.details) {
+            return;
+        }
+
+        var open = this.prefs.details;
+
+        this.details.hidden = !open;
+        this.root.classList.toggle('pg-list-table-with-details', open);
+        this.detailsSwitch.setAttribute('aria-pressed', open ? 'true' : 'false');
+
+        if (!open) {
+            return;
+        }
+
+        var row = (this.current === null) ? null : this.tbody.querySelector('tr[data-pg-id="' + String(this.current).replace(/["\\]/g, '') + '"]');
+        var body = this.detailsBody;
+
+        body.textContent = '';
+
+        if (!row) {
+            var empty = document.createElement('p');
+
+            empty.className = 'fg-secondary m-0';
+            empty.textContent = this.texts.pick || '';
+            body.appendChild(empty);
+            return;
+        }
+
+        var list = document.createElement('dl');
+
+        this.columns.forEach(function (column) {
+            var cell = row.querySelector('td[data-pg-col="' + column.key + '"]');
+
+            if (!cell || (column.kind === 'actions' && !cell.textContent.trim() && !cell.querySelector('a, button'))) {
+                return;
+            }
+
+            var term = document.createElement('dt');
+            var value = document.createElement('dd');
+
+            term.textContent = column.heading;
+
+            // The cell's own markup, escaped by the server where it was built.
+            value.innerHTML = cell.innerHTML;
+            list.appendChild(term);
+            list.appendChild(value);
+        });
+
+        body.appendChild(list);
+    };
+
+    /**
+     * Thumbnails (img[data-pg-thumb]) load as they come into sight, at most
+     * six at a time, so a long list of pictures does not hold up the rows.
+     */
+    Driver.prototype.watchThumbs = function (scope) {
+        var self = this;
+        var images = scope.querySelectorAll ? scope.querySelectorAll('img[data-pg-thumb]') : [];
+
+        if (!images.length) {
+            return;
+        }
+
+        if (!this.thumbWatch) {
+            if (!('IntersectionObserver' in window)) {
+                Array.prototype.forEach.call(images, function (img) { self.queueThumb(img); });
+                return;
+            }
+
+            this.thumbWatch = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    if (entry.isIntersecting) {
+                        self.thumbWatch.unobserve(entry.target);
+                        self.queueThumb(entry.target);
+                    }
+                });
+            }, { root: this.scroll, rootMargin: '200px 0px' });
+        }
+
+        Array.prototype.forEach.call(images, function (img) {
+            self.thumbWatch.observe(img);
+        });
+    };
+
+    Driver.prototype.queueThumb = function (img) {
+        if (!img.getAttribute('data-pg-thumb')) {
+            return;
+        }
+
+        this.thumbs.waiting.push(img);
+        this.pumpThumbs();
+    };
+
+    Driver.prototype.pumpThumbs = function () {
+        var self = this;
+
+        while ((this.thumbs.running < 6) && this.thumbs.waiting.length) {
+            var img = this.thumbs.waiting.shift();
+            var src = img.getAttribute('data-pg-thumb');
+
+            img.removeAttribute('data-pg-thumb');
+            this.thumbs.running++;
+
+            var done = function () {
+                this.removeEventListener('load', done);
+                this.removeEventListener('error', done);
+                self.thumbs.running--;
+                self.pumpThumbs();
+            };
+
+            img.addEventListener('load', done);
+            img.addEventListener('error', done);
+            img.src = src;
+        }
     };
 
     /** Rows load when the end of the list comes into sight. */
@@ -579,6 +876,8 @@
     Driver.prototype.pick = function (row, event) {
         var id = row.getAttribute('data-pg-id');
 
+        this.current = id;
+
         if (event.shiftKey) {
             this.selection.range(this.order(), id, event.ctrlKey || event.metaKey);
         } else if (event.ctrlKey || event.metaKey) {
@@ -589,6 +888,7 @@
 
         row.focus();
         this.paint();
+        this.showDetails();
     };
 
     /** A change that replaces the selection, offering its undo. */
@@ -679,7 +979,7 @@
             row.classList.toggle('pg-list-table-selected', self.selection.has(row.getAttribute('data-pg-id')));
         });
 
-        this.bar.hidden = (count === 0) && !this.undo;
+        this.bar.classList.toggle('is-empty', (count === 0) && !this.undo);
         this.count.textContent = (count === 0) ? '' : text(this.selection.all ? this.texts.all : this.texts.selected, count);
         this.clearButton.hidden = (count === 0);
         this.empty.hidden = this.tbody.rows.length > 0;
@@ -732,11 +1032,13 @@
 
         this.columns.forEach(function (column) {
             var cell = (data.cells && data.cells[column.key]) || { html: '', class: '' };
+            var label = column.heading;
             var td = document.createElement('td');
             var cls = ((cell.class || '') + ((column.align !== 'start') ? ' text-' + column.align : '')).trim();
 
             td.setAttribute('role', 'cell');
             td.setAttribute('data-pg-col', column.key);
+            td.setAttribute('data-pg-label', label || '');
 
             if (cls) {
                 td.className = cls;
@@ -850,8 +1152,16 @@
             window.pgInitInjected(window.jQuery(rows));
         }
 
+        rows.forEach(function (row) {
+            self.watchThumbs(row);
+        });
+
         this.say(text(this.texts.loaded, this.tbody.rows.length));
         this.paint();
+
+        if (reset) {
+            this.showDetails();
+        }
     };
 
     /** A heading click: the server sorts, or the browser for a list printed whole. */

@@ -9,7 +9,7 @@ description: Steps of the table driver plan: the driver core, its parts, the ser
 2. TD2 (L) After TD1. Browser core in `assets/js/pg_list_table.js`: rows, selection and its bar, Ctrl+A by condition, the undo of a replaced selection, rows on scroll, sort without a reload, the fill-height layout with a sticky header, empty, loading and failed states, CSS; the Pages list (`view_pages.php`, server-paged since #6114) moves with its bulk actions.
    Cut in two: TD2a (#6246) the browser core (`pg_list_table.js`, selection model, CSS, bundle, Node test of the selection model), no screen on it yet; TD2b done (#6304): the Pages list moves with its bulk actions through the resolver.
 
-3. TD3 (M) After TD2. Columns menu (show, hide, order, reset), the details panel and its side sheet below 1024 px, both in localStorage; phone cards below 768 px; the thumbnail queue.
+3. TD3 (M) done (#6321). Columns menu (show, hide, order, reset), the details panel and its side sheet below 1024 px, both in localStorage; phone cards below 768 px; the thumbnail queue.
 
 4. TD4 (M) After TD2. Users, contacts and submitted forms move with their bulk actions (export, merge, delete all) through the resolver.
 
