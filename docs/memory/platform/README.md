@@ -98,6 +98,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - iys-sms-channel.md: İYS MESAJ channel (PR #3806): contacts.iys_sms_status (11.0.136), the SMS consent rows pushed for a mobile number, İYS's SMS changes pulled and matched to the contacts' numbers
 - kiosk-mode.md: kiosk.php: what its query string sets in the session, how logout restarts it (token and kiosk mode required), and why the text parameters must be strings
 - language-address-prefix.md: A target language's address prefix (/en/, /pt-br/): lower case everywhere, fallback to the lower-cased code, collision check in the languages save, router matching
+- language-redirect-matching.md: How the automatic language redirect reads a browser language tag: regions, Chinese script before region, aliases
 - license-check.md: The panel's licence check (license_check(), includes/fn/output.php): when it asks, the Kodpen API branch behind PG_VENDOR_API_V1 (PR #4381), the card, the key field
 - link-resolve-js-twin.md: The link resolver's browser twin (assets/js/pg_link_resolve.js, window.PGLinkResolve): what it mirrors, how parity is tested, what it cannot mirror
 - link-resolve-letter-case.md: The link resolver (SEO broken links, prototype viewer) matches page, file, short link, product, group and record names without letter case, as the router's database lookup does (#4976)
