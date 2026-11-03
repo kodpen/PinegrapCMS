@@ -10,7 +10,7 @@ description: Module list of plans/bug-hunt.md, part 1a2: includes/fn/ modules em
 - `events`: clean
 - `explorer_side`: clean (gates match view_folders.php, view_product_groups.php and the menu rows; ids filtered; markup escaped; script builds rows with textContent)
 - `files`: done #4613
-- `form_subscription`: open
+- `form_subscription`: clean (read twice: link signing and parsing, link states, hold and daily resend limit, confirmation writes)
 - `forms`: done #6044 (validate_date() took a date inside longer text)
 - `geo`: done #5975
 - `google_analytics`: clean
