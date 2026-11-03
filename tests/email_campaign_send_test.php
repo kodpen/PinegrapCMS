@@ -119,3 +119,18 @@ function test_email_campaign_save_reads_start_time_only_when_posted()
 	pg_assert_true((bool) preg_match('/if \(isset\(\$_POST\[\'start_time\'\]\)[^{]*\{\s*\$sql_start_time = /', $edit), 'edit reads start_time only when it is posted');
 	pg_assert_contains("isset(\$_POST['start_time'])", $edit, 'edit keeps the stored start time when the field is not posted');
 }
+
+// The reason line names delivery errors only: a recipient the send gate
+// skipped (attempts = 0, "the address bounced or complained") is counted in
+// the summary already, and its text must not hide the SMTP error behind a
+// link to SMTP Settings.
+function test_email_campaign_problem_reason_leaves_out_suppressed()
+{
+	$where = pg_email_campaign_problem_where(42);
+
+	pg_assert_contains("(email_campaign_id = '42')", $where);
+	pg_assert_contains("(last_error != '')", $where);
+	pg_assert_contains("((complete = '0') OR (failed = '1'))", $where);
+	pg_assert_contains('(attempts > 0)', $where, 'a suppressed recipient has no attempt');
+	pg_assert_contains("(email_campaign_id = '1')", pg_email_campaign_problem_where("1' OR '1"), 'the id is a number');
+}

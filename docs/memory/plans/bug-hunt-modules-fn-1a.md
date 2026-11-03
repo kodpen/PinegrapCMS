@@ -52,7 +52,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `email_campaign_schedule`: open
 
-- `email_campaign_send`: open
+- `email_campaign_send`: taken by worker of coordinator Elçin V10
 
 - `errors`: open
 
