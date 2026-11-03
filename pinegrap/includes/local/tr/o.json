@@ -1241,6 +1241,7 @@
     "Order information will be displayed here when this page is linked to from a My Account Page Type.": "Bu sayfaya Hesabım Sayfa Türünden bağlantı verildiğinde sipariş bilgilerini gösterecektir.",
     "Order installment fee": "Sipariş taksit bedeli",
     "Order is already cancelled.": "Sipariş zaten iptal edilmiş.",
+    "Order it online": "Çevrimiçi sipariş verin",
     "Order item (loop_area)": "Sipariş kalemi (loop_area)",
     "Order item ID": "Sipariş kalemi kimliği",
     "Order items": "Sipariş kalemleri",
