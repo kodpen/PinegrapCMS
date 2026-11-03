@@ -40,7 +40,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `designer`: open
 
-- `designer_fx`: clean (PR pending)
+- `designer_fx`: clean #6050
 
 - `designer_theme_vars`: open
 
