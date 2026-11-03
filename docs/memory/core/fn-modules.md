@@ -153,6 +153,7 @@ description: Generated from the module field of the memory files: each includes/
 - `speculation`: [[speculation-prefetch]], [[speculation-prefetch-left-out]]
 - `stock_locations`: [[stock-locations-model]]
 - `stock_notify`: [[back-in-stock-notices]]
+- `stock_sales`: [[stock-locations-completion]]
 - `store_credit`: [[store-credit-checkout]], [[store-credit-model]]
 - `store_currencies`: [[api-store-currency-writes]]
 - `store_lookups`: [[api-store-lookups]]

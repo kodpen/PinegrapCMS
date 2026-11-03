@@ -247,7 +247,8 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'id',       'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'op',       'in' => 'body', 'type' => 'enum', 'values' => array('set', 'adjust'), 'required' => true),
-				array('name' => 'quantity', 'in' => 'body', 'type' => 'int', 'min' => -1000000, 'max' => 1000000, 'required' => true, 'description' => 'The new quantity for set, the signed change for adjust.')
+				array('name' => 'quantity', 'in' => 'body', 'type' => 'int', 'min' => -1000000, 'max' => 1000000, 'required' => true, 'description' => 'The new quantity for set, the signed change for adjust.'),
+				array('name' => 'location', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'On a site that keeps stock per location: the location whose units change (left out or 0: the default location). An adjust stops at 0 there and takes nothing from another location; the product\'s quantity is the sum of its locations. A site without locations refuses any other value with 422 location.')
 			)
 		),
 
@@ -262,7 +263,7 @@ function api_schema() {
 			'summary' => 'Set or adjust stock for many products',
 			'description' => 'Up to 200 items in one call, because marketplaces synchronise stock in batches rather than one product at a time. Each item is reported on separately: one bad product id does not throw the rest away, and an adjust against a product that does not track stock is reported as not_tracked rather than switching tracking on. A bundle is reported as bundle: its stock follows the products in it.',
 			'params'  => array(
-				array('name' => 'items', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'integer', 'sku' => 'string', 'barcode' => 'string', 'op' => 'string', 'quantity' => 'integer'), 'max_items' => 200, 'required' => true, 'description' => 'Objects of {id, op, quantity}. sku is accepted as an alias for id; barcode looks the product up by its EAN/UPC. quantity is a whole number from -1000000 to 1000000, as for one product; an item outside that is reported as invalid and the others are applied.')
+				array('name' => 'items', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'integer', 'sku' => 'string', 'barcode' => 'string', 'op' => 'string', 'quantity' => 'integer', 'location' => 'integer'), 'max_items' => 200, 'required' => true, 'description' => 'Objects of {id, op, quantity}. sku is accepted as an alias for id; barcode looks the product up by its EAN/UPC. quantity is a whole number from -1000000 to 1000000, as for one product; an item outside that is reported as invalid and the others are applied. location names the stock location as for one product; an unknown one is reported as invalid.')
 			)
 		),
 
@@ -5150,6 +5151,7 @@ function api_error_catalogue() {
 
 		'validation_failed'        => array(422, 'A parameter is missing, the wrong type or out of range. The field is named in the answer.'),
 		'period_locked'            => array(422, 'The date falls in a period whose books are locked: nothing dated there can be issued, cancelled or paid. Date it after the lock, or have the lock moved in the panel.'),
+		'location'                 => array(422, 'location is not one of the site\'s stock locations, or the site keeps no stock per location. Leave it out to use the default.'),
 		'credit_limit'             => array(422, 'The sale would take the customer past the credit limit the store enforces. Take a payment first, or raise the limit on the account.'),
 
 		'rate_limited'             => array(429, 'Too many calls. Retry-After says how long to wait.'),

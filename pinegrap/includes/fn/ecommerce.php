@@ -2146,9 +2146,12 @@ function pg_product_stock_threshold()
  * @param int      $after      stock left after the write
  * @param int      $threshold  the low-stock line, 0 for none (pg_product_stock_threshold())
  * @param string   $source     the writer: checkout, local_sale, panel, barcode, bulk_edit
+ * @param array|null $location id, name, quantity (left there) when the site keeps
+ *                             stock per location; adds location_id, location_name
+ *                             and location_quantity to both payloads
  * @return array   list of array(event name, payload)
  */
-function pg_product_stock_events($product_id, $name, $tracked, $before, $after, $threshold, $source)
+function pg_product_stock_events($product_id, $name, $tracked, $before, $after, $threshold, $source, $location = null)
 {
     $product_id = (int) $product_id;
     $after = (int) $after;
@@ -2164,7 +2167,7 @@ function pg_product_stock_events($product_id, $name, $tracked, $before, $after, 
             'quantity'     => $after,
             'out_of_stock' => ($after <= 0),
             'source'       => (string) $source,
-        )),
+        ) + pg_stock_event_location_fields($location)),
     );
 
     $was_above = ($before === null) || ((int) $before > $threshold);
@@ -2175,7 +2178,7 @@ function pg_product_stock_events($product_id, $name, $tracked, $before, $after, 
             'name'       => (string) $name,
             'quantity'   => $after,
             'threshold'  => $threshold,
-        ));
+        ) + pg_stock_event_location_fields($location));
     }
 
     return $events;
@@ -2278,9 +2281,11 @@ function pg_product_out_of_stock_sql($tracked, $quantity, $was_flagged)
  * @param int|null $before  stock before the write; null when it was not tracked
  * @param int|null $after   stock left after the write; null reads the row
  * @param string   $source  the writer: checkout, local_sale, panel, barcode, bulk_edit, bundle
+ * @param array|null $location id, name, quantity (left there): the location the
+ *                   write changed, carried by inventory.changed and stock.low
  * @return int|null the stock left, null when the product is not there
  */
-function pg_product_stock_changed($product_id, $before, $after, $source)
+function pg_product_stock_changed($product_id, $before, $after, $source, $location = null)
 {
     $product_id = (int) $product_id;
 
@@ -2307,7 +2312,8 @@ function pg_product_stock_changed($product_id, $before, $after, $source)
         ($before === null) ? null : (int) $before,
         $after,
         pg_product_stock_threshold(),
-        $source);
+        $source,
+        $location);
 
     if (function_exists('pg_announce')) {
         foreach ($events as $event) {
@@ -8760,8 +8766,17 @@ function check_inventory($liveform)
     while ($row = mysqli_fetch_assoc($result)) {
         $products[] = $row;
     }
+    // With stock per location the cart is checked against the location the
+    // order will take its units from: what that location cannot cover is
+    // refused as the total's shortfall is, and nothing counts from another
+    // location. Without locations the total is counted as before.
+    $stock_location_id = pg_stock_order_location((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
     // loop through products in order to check inventory for order items
     foreach ($products as $product) {
+        $at_location = pg_stock_quantity_at($product['id'], $stock_location_id, $product['inventory_quantity']);
+        if ($at_location !== null) {
+            $product['inventory_quantity'] = $at_location;
+        }
         // set the starting inventory quantity
         // so later we know if the product was completely out of stock to begin with before we started looking at order items
         $product['starting_inventory_quantity'] = $product['inventory_quantity'];
