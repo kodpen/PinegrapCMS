@@ -112,6 +112,8 @@ log_activity(lang(array('string' => 'HTML import ({var:1}): {var:2} page(s)', 'v
 // JSON_HEX_TAG etc. are not needed here — this is a JSON reply, not a
 // script block — but trees can carry "</script>" in custom_html blocks and
 // the designer embeds nothing of this into markup; it parses it.
+// Which rows the import wrote is for the server's undo, not the editor.
+unset($res['created']);
 $res['status'] = 'success';
 echo encode_json($res);
 exit();

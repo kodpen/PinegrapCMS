@@ -1929,6 +1929,115 @@ function pg_bracket_suffix_name($name, $limit = 0)
     return $base . $suffix;
 }
 
+/**
+ * A name cut to fit its column before get_unique_name() checks it: the check
+ * looks for the whole name, so a longer one never matched the row the column
+ * had already cut and two items got the same name. With $keep_extension a
+ * short extension (up to five characters after the dot) stays and the part
+ * before it is cut. Pure.
+ *
+ * @param string $name
+ * @param bool   $keep_extension
+ * @param int    $limit
+ * @return string
+ */
+function pg_import_name_fit($name, $keep_extension = false, $limit = 100)
+{
+    $name = (string) $name;
+    $limit = max(1, (int) $limit);
+
+    if (mb_strlen($name, 'UTF-8') <= $limit) {
+        return $name;
+    }
+
+    $extension = '';
+
+    if ($keep_extension) {
+        $dot = mb_strrpos($name, '.', 0, 'UTF-8');
+
+        if (($dot !== false) && ($dot > 0) && ((mb_strlen($name, 'UTF-8') - $dot) <= 6)) {
+            $extension = mb_substr($name, $dot, null, 'UTF-8');
+            $name = mb_substr($name, 0, $dot, 'UTF-8');
+        }
+    }
+
+    $cut = mb_substr($name, 0, max(1, $limit - mb_strlen($extension, 'UTF-8')), 'UTF-8');
+
+    // A cut that ends on a separator leaves "name-.css" or "name-".
+    $trimmed = rtrim($cut, " -_.");
+
+    return (($trimmed !== '') ? $trimmed : $cut) . $extension;
+}
+
+// The longest tag Import My Site takes: the tag is added to every page,
+// style, file and folder name, which are 100 characters wide.
+function pg_site_import_tag_max_length()
+{
+    return 40;
+}
+
+/**
+ * The folder name Import My Site gives one import: the address without its
+ * scheme, the time of the scan and the tag, cut to the folder column. Built
+ * once at the scan and kept with it, so the name the scan shows is the one
+ * the import creates. Pure.
+ *
+ * @param string $url
+ * @param string $time_text
+ * @param string $tag
+ * @return string
+ */
+function pg_site_import_folder_name($url, $time_text, $tag)
+{
+    $name = str_replace(array('https://', 'http://'), '', (string) $url) . ' ' . (string) $time_text;
+
+    $tag = (string) $tag;
+
+    if ($tag !== '') {
+        // The tag is what tells two imports of one site apart, so the
+        // address gives way first.
+        $tail = ' ' . (string) $time_text . '-' . $tag;
+        $head = str_replace(array('https://', 'http://'), '', (string) $url);
+        $room = pg_name_max_length() - mb_strlen($tail, 'UTF-8');
+
+        if ($room >= 10) {
+            return pg_import_name_fit($head, false, $room) . $tail;
+        }
+
+        $name .= '-' . $tag;
+    }
+
+    return pg_import_name_fit($name, false, pg_name_max_length());
+}
+
+/**
+ * The scans Import My Site keeps in the session, with one more added under
+ * its id: each tab's scan is its own, so an Import takes only the scan its
+ * form came from. The oldest beyond $keep are dropped. Pure.
+ *
+ * @param mixed  $scans  What the session holds (array of id => scan)
+ * @param string $id
+ * @param array  $scan
+ * @param int    $keep
+ * @return array
+ */
+function pg_site_import_scans_add($scans, $id, $scan, $keep = 5)
+{
+    $scans = is_array($scans) ? $scans : array();
+
+    unset($scans[$id]);
+    $scans[$id] = $scan;
+
+    $keep = max(1, (int) $keep);
+
+    while (count($scans) > $keep) {
+        reset($scans);
+        unset($scans[key($scans)]);
+    }
+
+    return $scans;
+}
+
 // True when a name is longer than its column. The session is not strict, so
 // a longer value would be cut without an error; the limit is in characters,
 // as a utf8mb4 varchar's is.

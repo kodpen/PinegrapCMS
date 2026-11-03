@@ -74,6 +74,8 @@ if (!empty($res['errors'])) {
 
 $made = pg_designer_create_design_from_import($res, $project, $user);
 if (empty($made['style_id'])) {
+    // No design came of it: the folders and files the import wrote go too.
+    pg_designer_import_undo($res);
     $liveform->add_error(implode(' ', $made['errors']));
     header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($back));
     exit();
