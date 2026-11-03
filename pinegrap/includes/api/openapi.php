@@ -711,6 +711,8 @@ function api_openapi_objects()
         'Calendar'           => 'api_calendar_schema',
         'CalendarEvent'      => 'api_calendar_event_schema',
         'CalendarRecurrence' => 'api_calendar_recurrence_schema',
+        'DesignAd'           => 'api_design_ad_schema',
+        'DesignAdRegion'     => 'api_design_ad_region_schema',
     );
 
     // A module declares the objects its own endpoints answer with, the same way

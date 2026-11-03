@@ -4522,6 +4522,215 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Ads and ad regions (includes/api/resources/design_ads.php) ------- */
+
+		array(
+			'id'      => 'design.ads.list',
+			'method'  => 'GET',
+			'path'    => '/design/ads',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_ads_list',
+			'returns' => array('list' => 'DesignAd'),
+			'summary' => 'Ads',
+			'description' => 'The ads of the ad regions, as the ads screen lists them, oldest first, cursor paged. content and caption are HTML with the site\'s own links as absolute addresses. sort_order 0 is random order in a dynamic region.',
+			'params'  => array(
+				array('name' => 'ad_region_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the ads of this ad region.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'design.ads.get',
+			'method'  => 'GET',
+			'path'    => '/design/ads/{id}',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_ads_get',
+			'returns' => 'DesignAd',
+			'summary' => 'One ad',
+			'description' => 'The same fields as the list, for one ad.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.ads.create',
+			'method'  => 'POST',
+			'path'    => '/design/ads',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ads_create',
+			'dry_run' => true,
+			'returns' => 'DesignAd',
+			'status'  => 201,
+			'summary' => 'Create an ad',
+			'description' => 'Adds an ad to an ad region, as the create ad screen does, on the site at once wherever the region is placed. The name is required and no other ad may have it (409 name_taken); a region that does not exist is 422.',
+			'params'  => array(
+				array('name' => 'name',         'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The ad\'s name, which no other ad has.'),
+				array('name' => 'ad_region_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The ad region it is shown in (GET /design/ad-regions).'),
+				array('name' => 'content',      'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'The ad as HTML, stored as the screen\'s rich text editor stores it.'),
+				array('name' => 'caption',      'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'HTML a dynamic region shows on top of the content.'),
+				array('name' => 'label',        'in' => 'body', 'type' => 'string', 'max_length' => 255, 'nullable' => true, 'description' => 'The tab a dynamic region shows for the ad.'),
+				array('name' => 'sort_order',   'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'description' => 'Its place in a dynamic region, smallest first; 0 for random order.')
+			)
+		),
+
+		array(
+			'id'      => 'design.ads.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/design/ads/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ads_update',
+			'dry_run' => true,
+			'returns' => 'DesignAd',
+			'summary' => 'Change an ad',
+			'description' => 'Only the fields sent change. A name another ad has is 409 name_taken. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',         'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The ad\'s name, which no other ad has.'),
+				array('name' => 'ad_region_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The ad region it is shown in (GET /design/ad-regions).'),
+				array('name' => 'content',      'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'The ad as HTML, stored as the screen\'s rich text editor stores it.'),
+				array('name' => 'caption',      'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'HTML a dynamic region shows on top of the content.'),
+				array('name' => 'label',        'in' => 'body', 'type' => 'string', 'max_length' => 255, 'nullable' => true, 'description' => 'The tab a dynamic region shows for the ad.'),
+				array('name' => 'sort_order',   'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'description' => 'Its place in a dynamic region, smallest first; 0 for random order.')
+			)
+		),
+
+		array(
+			'id'      => 'design.ads.delete',
+			'method'  => 'DELETE',
+			'path'    => '/design/ads/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ads_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an ad',
+			'description' => 'Deletes the ad outright, as the edit ad screen does; it leaves its region at once. Cannot be undone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.ads.delete_post',
+			'method'  => 'POST',
+			'path'    => '/design/ads/{id}/delete',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ads_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an ad, addressed as a POST',
+			'description' => 'The same delete as DELETE /design/ads/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.ad_regions.list',
+			'method'  => 'GET',
+			'path'    => '/design/ad-regions',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_ad_regions_list',
+			'returns' => array('list' => 'DesignAdRegion'),
+			'summary' => 'Ad regions',
+			'description' => 'The ad regions, oldest first, cursor paged. A page style places one with its tag; ads counts the ads in it. display_type static shows one ad at a time, dynamic shows them with tabs and transitions (transition_type, transition_duration in milliseconds, 0 for the default; autoplay with interval in seconds, 0 for the default; continuous starts again after the last ad).',
+			'params'  => array(
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'design.ad_regions.get',
+			'method'  => 'GET',
+			'path'    => '/design/ad-regions/{id}',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_ad_regions_get',
+			'returns' => 'DesignAdRegion',
+			'summary' => 'One ad region',
+			'description' => 'The same fields as the list, for one ad region.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.ad_regions.create',
+			'method'  => 'POST',
+			'path'    => '/design/ad-regions',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ad_regions_create',
+			'dry_run' => true,
+			'returns' => 'DesignAdRegion',
+			'status'  => 201,
+			'summary' => 'Create an ad region',
+			'description' => 'Adds an ad region, as the create ad region screen does; place it in a page style with its tag. The name follows the screen\'s rule (English letters, numbers and dashes, at most 100 characters: 422 otherwise) and no other region may have it (409 name_taken). Fields left out take the screen\'s defaults: static, slide, continuous play.',
+			'params'  => array(
+				array('name' => 'name',                'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The name page styles place the region by (<ad>name</ad>): English letters, numbers and dashes, no other region\'s.'),
+				array('name' => 'display_type',        'in' => 'body', 'type' => 'enum', 'values' => array('static', 'dynamic'), 'description' => 'static shows one ad at a time; dynamic shows them with tabs and transitions. static when left out.'),
+				array('name' => 'transition_type',     'in' => 'body', 'type' => 'enum', 'values' => array('slide', 'fade'), 'description' => 'How a dynamic region moves between ads.'),
+				array('name' => 'transition_duration', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Milliseconds a transition takes; null for the default.'),
+				array('name' => 'autoplay',            'in' => 'body', 'type' => 'bool', 'description' => 'A dynamic region moves to the next ad by itself.'),
+				array('name' => 'interval',            'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 999, 'nullable' => true, 'description' => 'Seconds between two ads with autoplay; null for the default.'),
+				array('name' => 'continuous',          'in' => 'body', 'type' => 'bool', 'description' => 'Autoplay starts again from the first ad after the last. true when left out.')
+			)
+		),
+
+		array(
+			'id'      => 'design.ad_regions.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/design/ad-regions/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ad_regions_update',
+			'dry_run' => true,
+			'returns' => 'DesignAdRegion',
+			'summary' => 'Change an ad region',
+			'description' => 'Only the fields sent change, with the screen\'s checks (422). A name another region has is 409 name_taken; a rename leaves the tags already in page styles behind, so change them too. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',                'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The name page styles place the region by (<ad>name</ad>): English letters, numbers and dashes, no other region\'s. A rename has to be made in the page styles too.'),
+				array('name' => 'display_type',        'in' => 'body', 'type' => 'enum', 'values' => array('static', 'dynamic'), 'description' => 'static shows one ad at a time; dynamic shows them with tabs and transitions.'),
+				array('name' => 'transition_type',     'in' => 'body', 'type' => 'enum', 'values' => array('slide', 'fade'), 'description' => 'How a dynamic region moves between ads.'),
+				array('name' => 'transition_duration', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Milliseconds a transition takes; null for the default.'),
+				array('name' => 'autoplay',            'in' => 'body', 'type' => 'bool', 'description' => 'A dynamic region moves to the next ad by itself.'),
+				array('name' => 'interval',            'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 999, 'nullable' => true, 'description' => 'Seconds between two ads with autoplay; null for the default.'),
+				array('name' => 'continuous',          'in' => 'body', 'type' => 'bool', 'description' => 'Autoplay starts again from the first ad after the last.')
+			)
+		),
+
+		array(
+			'id'      => 'design.ad_regions.delete',
+			'method'  => 'DELETE',
+			'path'    => '/design/ad-regions/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ad_regions_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an ad region',
+			'description' => 'Deletes the ad region and the user accounts\' access to it, as the edit ad region screen does. 409 ad_region_has_ads while ads are still in it: delete them or move them to another region first. Cannot be undone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.ad_regions.delete_post',
+			'method'  => 'POST',
+			'path'    => '/design/ad-regions/{id}/delete',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ad_regions_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an ad region, addressed as a POST',
+			'description' => 'The same delete as DELETE /design/ad-regions/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Signing in from a device ------------------------------------ */
 
 		array(

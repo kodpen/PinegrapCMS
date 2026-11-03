@@ -83,6 +83,7 @@ require_once($pg_api_directory . '/resources/offers_create.php');
 require_once($pg_api_directory . '/resources/calendars.php');
 require_once($pg_api_directory . '/resources/webhooks.php');
 require_once($pg_api_directory . '/resources/design.php');
+require_once($pg_api_directory . '/resources/design_ads.php');
 require_once($pg_api_directory . '/resources/account.php');
 
 // API settings, read straight from the config row.
