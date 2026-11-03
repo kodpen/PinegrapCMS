@@ -41,7 +41,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_delete" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: All {var:1} will be permanently deleted.','vars'=>array(lang('key codes')))) . '" ><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="submit_delete" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: All {var:1} will be permanently deleted.','vars'=>array(lang('key codes')))) . '" ><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -61,7 +61,7 @@ if (!$_POST) {
     $query = "TRUNCATE key_codes";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
-    log_activity(lang('all key codes were deleted'), $_SESSION['sessionusername']);
+    log_activity(lang('All key codes were deleted.'), $_SESSION['sessionusername']);
     
     // forward user to view key codes screen
     header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/view_key_codes.php');

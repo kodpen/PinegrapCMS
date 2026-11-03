@@ -22,8 +22,8 @@ description: Internal ERP waybill (irsaliye; no driver sends e-Irsaliye): files,
 - An invoiced waybill cannot be cancelled; cancel keeps the number and does not open the series.
 
 ## How do the editor and document work?
-- Item rows reuse the invoice editor's `data-erp-*` markup and `erp_invoice_editor.js` as-is (no price column). Unit codes `erp_invoice_form_unit_codes()`; the document shows the name, not the code (`erp_waybill_unit_label()`).
+- Item rows reuse the invoice editor's `data-erp-*` markup and `erp_invoice_editor.js` as-is (no price column). Unit codes: one list, `erp_waybill_unit_codes()` (erp-waybill-save-checks).
 - Template: `config.erp_waybill_template` saved on the ERP settings screen (4.60, `erp_waybill_template()`), else the built-in file (erp-document-templates-settings).
 - `data-confirm-content` is a native `confirm()` (backend.src.js), not a modal: in automation `window.confirm` is overridden.
 
-Related: docs/memory/erp/erp-local-sale.md, docs/memory/erp/erp-document-numbering.md
+Related: docs/memory/erp/erp-waybill-save-checks.md, docs/memory/erp/erp-local-sale.md, docs/memory/erp/erp-document-numbering.md

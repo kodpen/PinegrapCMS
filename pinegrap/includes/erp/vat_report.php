@@ -210,7 +210,7 @@ function erp_vat_report($from, $to)
 
     // Every month of the period, so an empty one shows as nothing rather than
     // as missing.
-    for ($month = substr($from, 0, 7); $month <= substr($to, 0, 7); $month = date('Y-m', strtotime($month . '-01 +1 month'))) {
+    foreach (erp_profit_months($from, $to) as $month) {
         $months[$month] = $month_blank;
     }
 

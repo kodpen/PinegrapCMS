@@ -581,6 +581,34 @@ function erp_return_credit_refusal($parent_lines, $lines, $typed_credits = array
 }
 
 /**
+ * Why an invoice cannot be returned, or '' when it can: only an issued
+ * invoice is. A draft has no number and owes nothing yet, so a return of it
+ * would be numbered in the draft series and credit the account for a debt it
+ * never had; a cancelled invoice is already undone; a return is not returned.
+ *
+ * @param array $invoice  An erp_invoices row: doc_type, status
+ * @return string
+ */
+function erp_return_refusal($invoice)
+{
+    if ((string) ($invoice['doc_type'] ?? '') !== 'invoice') {
+        return lang('Only an invoice can be returned.');
+    }
+
+    $status = (string) ($invoice['status'] ?? '');
+
+    if ($status === 'draft') {
+        return lang('A draft is not a document yet; issue it first.');
+    }
+
+    if ($status === 'cancelled') {
+        return lang('That invoice has been cancelled.');
+    }
+
+    return '';
+}
+
+/**
  * Raise a return against an invoice.
  *
  * Everything lands in one transaction: the number, the document, its lines, the
@@ -605,12 +633,8 @@ function erp_invoice_return($data)
         return $fail(lang('The invoice could not be found.'));
     }
 
-    if ((string) $parent['doc_type'] !== 'invoice') {
-        return $fail(lang('Only an invoice can be returned.'));
-    }
-
-    if ((string) $parent['status'] === 'cancelled') {
-        return $fail(lang('That invoice has been cancelled.'));
+    if (($refusal = erp_return_refusal($parent)) !== '') {
+        return $fail($refusal);
     }
 
     $parent_lines = erp_returnable_lines($parent_id);

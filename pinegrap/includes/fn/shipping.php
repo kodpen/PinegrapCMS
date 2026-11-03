@@ -2196,3 +2196,76 @@ function pg_shipment_timeline_steps($addresses)
             : array('ts' => $delivered_estimate, 'estimate' => true),
     );
 }
+
+/**
+ * Why a tracking number cannot be stored, as far as its text goes, or ''.
+ * The order screen keeps an address's numbers in one comma-separated field
+ * and splits it again on save, so a number with a comma in it would show as
+ * two parcels there and be replaced by them on the next save.
+ *
+ * @param  string $number trimmed
+ * @return string
+ */
+function pg_tracking_number_refusal($number)
+{
+    if (strpos((string) $number, ',') !== false) {
+        return lang('A tracking number cannot contain a comma.');
+    }
+
+    return '';
+}
+
+// The longest period the shipping report draws, in days: one column a day.
+if (!defined('PG_SHIPPING_REPORT_MAX_DAYS')) {
+    define('PG_SHIPPING_REPORT_MAX_DAYS', 93);
+}
+
+/**
+ * The period the shipping report shows. The address's dates are taken as a
+ * pair (a date it leaves out comes from the session): an impossible date or
+ * an end before the start leaves the session's period as it is, so a
+ * hand-typed or shared address cannot store a period the report cannot draw.
+ * A broken stored period, or none, gives two weeks from today; a period
+ * longer than PG_SHIPPING_REPORT_MAX_DAYS is cut at that length.
+ *
+ * @param  string|null $given_start  YYYY-MM-DD from the address, null if absent
+ * @param  string|null $given_end
+ * @param  string|null $stored_start the session's period
+ * @param  string|null $stored_end
+ * @param  string      $today        YYYY-MM-DD
+ * @return string[] array(start, end)
+ */
+function pg_shipping_report_period($given_start, $given_end, $stored_start, $stored_end, $today)
+{
+    $valid = function ($date) {
+        return is_string($date)
+            && preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $parts)
+            && checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]);
+    };
+
+    $fit = function ($start, $end) use ($valid) {
+        if (!$valid($start) || !$valid($end) || ($end < $start)) {
+            return null;
+        }
+
+        $last = gmdate('Y-m-d', strtotime($start . ' 00:00:00 UTC') + (PG_SHIPPING_REPORT_MAX_DAYS - 1) * 86400);
+
+        return array($start, ($end > $last) ? $last : $end);
+    };
+
+    if (($given_start !== null) || ($given_end !== null)) {
+        $period = $fit(($given_start !== null) ? $given_start : $stored_start, ($given_end !== null) ? $given_end : $stored_end);
+
+        if ($period !== null) {
+            return $period;
+        }
+    }
+
+    $period = $fit($stored_start, $stored_end);
+
+    if ($period !== null) {
+        return $period;
+    }
+
+    return array($today, gmdate('Y-m-d', strtotime($today . ' 00:00:00 UTC') + 13 * 86400));
+}

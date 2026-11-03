@@ -1792,7 +1792,7 @@ function get_system_status_checks()
         'Directory File Integrity' => $weights['file_integrity'],
         'SSL Status'               => $weights['ssl'],
         'CA Certificate Bundle'    => $weights['ca_bundle'],
-        'CA Bundle Setting'        => $weights['ca_setting'],
+        'CA Store'                 => $weights['ca_setting'],
         'Password Hint'            => $weights['password'],
         'CAPTCHA Protection'       => $weights['captcha'],
         'Strong Password'          => $weights['strong_password'],
@@ -1861,7 +1861,7 @@ function get_system_status_checks()
         'Directory File Integrity' => 'Files',
         'SSL Status'               => 'SSL',
         'CA Certificate Bundle'    => 'CA bundle',
-        'CA Bundle Setting'        => 'CA setting',
+        'CA Store'                 => 'CA store',
         'Password Hint'            => 'Password hint',
         'Strong Password'          => 'Strong password',
         'CAPTCHA Protection'       => 'CAPTCHA',
@@ -1919,7 +1919,6 @@ function get_system_status_checks()
     // renaming a check and forgetting this list is one edit away from being
     // noticed rather than a screen away.
     $job_titles = array(
-        'CA Bundle Setting',
         'Web Server Rules',
         'CORS Preflight',
         'Write Permissions',
@@ -2093,22 +2092,109 @@ function get_system_status_checks()
         $score -= $weights['ssl'];
     }
 
+    // 🔌 CA store — a plug, because what fails is every connection out. The
+    // row always says which certificate store outbound HTTPS is verified
+    // against and why (pg_ca_bundle_config_state(): the CURL_CA_BUNDLE
+    // override, the bundled data/cacert.pem on a host whose PHP has no store
+    // or whose store failed the probe, else the server's own store). Red only
+    // when nothing verifies: the override names a missing file, or the
+    // server's store is missing or failing and the bundled file is gone too.
+    if (function_exists('pg_ca_bundle_config_state')) {
+        $ca_store = pg_ca_bundle_config_state();
+        $ca_choice = $ca_store['choice'];
+        $ca_probe_date = ($ca_choice['probe']['checked_at'] > 0) ? pg_ca_bundle_date($ca_choice['probe']['checked_at']) : '';
+        $ca_probe_error = ($ca_choice['probe']['error'] !== '') ? $ca_choice['probe']['error'] : lang('no answer');
+        $ca_store_icon = 'bi-plug-fill';
+        $ca_store_color = 'fg-success';
+
+        if ($ca_store['state'] === 'broken') {
+            $ca_store_color = 'fg-danger';
+            $ca_store_value = lang('File missing');
+            $ca_store_message = array(
+                'string' => 'CURL_CA_BUNDLE in data/config.php names a file that does not exist ({var:1}); it is ignored, and outbound HTTPS is verified against {var:2}.',
+                'vars'   => array(
+                    $ca_choice['override_missing'],
+                    ($ca_choice['file'] !== '') ? lang('the bundled data/cacert.pem') : lang('the server\'s own certificate store'),
+                ),
+            );
+            $score -= $weights['ca_setting'];
+        } elseif ($ca_store['state'] === 'needed') {
+            $ca_store_color = 'fg-danger';
+            $ca_store_value = lang('No store');
+            if ($ca_choice['probe']['state'] === 'needed') {
+                $ca_store_message = array(
+                    'string' => 'The server\'s own certificate store could not verify a connection on {var:1} ({var:2}) and the bundled data/cacert.pem is missing: outbound HTTPS calls - updates, Pinegrap AI, payments, webhooks - fail. Update the CA certificate bundle.',
+                    'vars'   => array($ca_probe_date, $ca_probe_error),
+                );
+            } else {
+                $ca_store_message = 'PHP has no certificate store of its own on this server and the bundled data/cacert.pem is missing: outbound HTTPS calls - updates, Pinegrap AI, payments, webhooks - fail. Update the CA certificate bundle.';
+            }
+            $score -= $weights['ca_setting'];
+        } elseif ($ca_choice['reason'] === 'override') {
+            $ca_store_value = lang('Override');
+            $ca_store_message = array(
+                'string' => 'Outbound HTTPS is verified against the file CURL_CA_BUNDLE in data/config.php names ({var:1}).',
+                'vars'   => array($ca_choice['file']),
+            );
+        } elseif ($ca_choice['reason'] === 'no_store') {
+            $ca_store_value = lang('Bundled file');
+            $ca_store_message = 'PHP has no certificate store of its own on this server; outbound HTTPS is verified against the bundled data/cacert.pem.';
+        } elseif ($ca_choice['reason'] === 'probe') {
+            $ca_store_value = lang('Bundled file');
+            $ca_store_message = array(
+                'string' => 'The server\'s own certificate store could not verify a connection on {var:1} ({var:2}); outbound HTTPS is verified against the bundled data/cacert.pem instead.',
+                'vars'   => array($ca_probe_date, $ca_probe_error),
+            );
+        } elseif ($ca_store['state'] === 'unknown') {
+            // Nothing is known: the probe reached nothing, or there is no
+            // cURL to probe with. Grey, not yellow: the store may well be
+            // fine, and the next probe says.
+            $ca_store_color = 'fg-secondary';
+            $ca_store_value = lang('Not probed');
+            if ($ca_probe_date !== '') {
+                $ca_store_message = array(
+                    'string' => 'Outbound HTTPS is verified against the server\'s own certificate store; the probe of {var:1} reached nothing ({var:2}), so nothing is known about it yet.',
+                    'vars'   => array($ca_probe_date, $ca_probe_error),
+                );
+            } else {
+                $ca_store_message = 'Outbound HTTPS is verified against the server\'s own certificate store, which has not been probed yet.';
+            }
+        } else {
+            $ca_store_value = lang('Server store');
+            $ca_store_message = array(
+                'string' => 'Outbound HTTPS is verified against the server\'s own certificate store, which verified a connection on {var:1}.',
+                'vars'   => array($ca_probe_date),
+            );
+        }
+
+        $output .= $makeIcon(
+            $ca_store_icon,
+            $ca_store_color,
+            'CA Store',
+            $ca_store_message,
+            $ca_store_value
+        );
+    }
+
     // 🩹 CA certificate bundle age -- a patch, because the file is a trust list
     // kept current by replacing it whole, and the padlock is SSL's.
     //
-    // Only measured when the configuration points outbound TLS at its own
-    // cacert.pem. With CURL_CA_BUNDLE empty the system store is in use and the
-    // package manager keeps that current; there is nothing here to read, so no
-    // row at all rather than a grey "not applicable". The bundle carries its
-    // own date in the header curl's mk-ca-bundle writes:
+    // Only measured when outbound TLS is verified against a file: the
+    // CURL_CA_BUNDLE override, or the bundled data/cacert.pem the site chose
+    // (pg_ca_bundle_effective()). With the server's own store in use the
+    // package manager keeps that current; there is nothing here to read, so
+    // no row at all rather than a grey "not applicable". The bundle carries
+    // its own date in the header curl's mk-ca-bundle writes:
     //   ## Certificate data from Mozilla as of: Tue Jan 10 04:12:06 2023 GMT
     // A file without that line, or with one that does not parse, is skipped
     // the same way: a guess about its age is worse than no row. Only the first
     // lines are read; the file is a few hundred kilobytes and the header is at
     // the top.
-    if (defined('CURL_CA_BUNDLE') && (CURL_CA_BUNDLE !== '') && is_file(CURL_CA_BUNDLE) && is_readable(CURL_CA_BUNDLE)) {
+    $ca_bundle_file = function_exists('pg_ca_bundle_effective') ? pg_ca_bundle_effective() : '';
+
+    if (($ca_bundle_file !== '') && is_file($ca_bundle_file) && is_readable($ca_bundle_file)) {
         $ca_bundle_stamp = 0;
-        $ca_bundle_handle = @fopen(CURL_CA_BUNDLE, 'r');
+        $ca_bundle_handle = @fopen($ca_bundle_file, 'r');
         if ($ca_bundle_handle) {
             for ($ca_bundle_line = 0; $ca_bundle_line < 10; $ca_bundle_line++) {
                 $ca_bundle_text = fgets($ca_bundle_handle);
@@ -2170,39 +2256,6 @@ function get_system_status_checks()
                 $ca_bundle_message,
                 lang(array('string' => '{var:1} months', 'vars' => array($ca_bundle_months)))
             );
-        }
-    }
-
-    // 🔌 CA bundle setting — a plug, because what fails is every connection
-    // out. Drawn only when something is wrong: CURL_CA_BUNDLE names a file
-    // that is not there, or it is empty and the host's own store could not
-    // verify a connection (a reinstall brings a config.php with the setting
-    // empty). A job row, because the repair is one click: it points the
-    // setting at the bundled data/cacert.pem.
-    if (function_exists('pg_ca_bundle_config_state')) {
-        $ca_setting = pg_ca_bundle_config_state();
-
-        if ($ca_setting['state'] === 'broken') {
-            $output .= $makeIcon(
-                'bi-plug-fill',
-                'fg-danger',
-                'CA Bundle Setting',
-                array(
-                    'string' => 'CURL_CA_BUNDLE in data/config.php points at a file that does not exist ({var:1}). Outbound HTTPS calls - updates, Pinegrap AI, payments, webhooks - cannot verify certificates and fail.',
-                    'vars'   => array($ca_setting['configured']),
-                ),
-                lang('File missing')
-            );
-            $score -= $weights['ca_setting'];
-        } elseif ($ca_setting['state'] === 'needed') {
-            $output .= $makeIcon(
-                'bi-plug-fill',
-                'fg-danger',
-                'CA Bundle Setting',
-                'This server cannot verify HTTPS certificates with its own certificate store, and CURL_CA_BUNDLE in data/config.php is empty. Outbound calls - updates, Pinegrap AI, payments, webhooks - fail. Point it at the bundled data/cacert.pem.',
-                lang('Not set')
-            );
-            $score -= $weights['ca_setting'];
         }
     }
 

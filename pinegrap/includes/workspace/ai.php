@@ -393,7 +393,7 @@ function ws_ai_http_error($response)
     }
 
     if (in_array((int) $response['errno'], array(35, 51, 53, 54, 58, 59, 60, 64, 66, 77, 80, 82, 83), true)) {
-        return lang(array('string' => 'The secure connection to Pinegrap AI failed ({var:1}). CURL_CA_BUNDLE in data/config.php may have to point at a root certificate list (data/cacert.pem).', 'vars' => mb_substr((int) $response['errno'] . ': ' . (string) $response['error'], 0, 150)));
+        return lang(array('string' => 'The secure connection to Pinegrap AI failed ({var:1}). The CA store row of System Status on the dashboard says which certificate store is in use and whether it verifies.', 'vars' => mb_substr((int) $response['errno'] . ': ' . (string) $response['error'], 0, 150)));
     }
 
     $error = trim((string) $response['error']);

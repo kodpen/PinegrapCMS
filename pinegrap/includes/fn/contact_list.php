@@ -971,3 +971,25 @@ function pg_contact_list_page($user, $filter, $groups, $list, $terms, $window)
 
     return array('total' => $total, 'filtered' => $filtered, 'rows' => pg_contact_list_rows($user, $filter, $groups, $shows_groups, $contacts));
 }
+
+/**
+ * What each sort code of the contact groups list (view_contact_groups.php)
+ * orders by. The type and the description are shown only for a group with
+ * an e-mail subscription, so they sort on the shown value: a group without
+ * one sorts as blank. Sorted on the stored text, groups whose cells looked
+ * empty came first in a descending description sort and were mixed among
+ * the Open ones in a type sort (#5262). Pure.
+ *
+ * @return array  sort code => SQL expression
+ */
+function pg_contact_group_list_order_map()
+{
+    return array(
+        'name'          => 'contact_groups.name',
+        'subscription'  => 'contact_groups.email_subscription',
+        'type'          => "IF(contact_groups.email_subscription = 1, contact_groups.email_subscription_type, '')",
+        'description'   => "IF(contact_groups.email_subscription = 1, contact_groups.description, '')",
+        'created'       => 'contact_groups.created_timestamp',
+        'last_modified' => 'contact_groups.last_modified_timestamp',
+    );
+}

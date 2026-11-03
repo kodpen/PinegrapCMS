@@ -69,10 +69,12 @@ function pg_curl_tls($ch)
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 1);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
 
-    // Servers whose CA bundle is not on the default search path can point at
-    // one instead of giving up verification.
-    if (defined('CURL_CA_BUNDLE') && CURL_CA_BUNDLE !== '' && is_file(CURL_CA_BUNDLE)) {
-        curl_setopt($ch, CURLOPT_CAINFO, CURL_CA_BUNDLE);
+    // The store the site chose (pg_ca_bundle_effective()): the CURL_CA_BUNDLE
+    // override, the shipped data/cacert.pem on a host whose own store is
+    // missing or failing, or '' for the host's own store.
+    $ca_file = pg_ca_bundle_effective();
+    if ($ca_file !== '') {
+        curl_setopt($ch, CURLOPT_CAINFO, $ca_file);
     }
 
     // Last resort for a host with no usable CA store at all.
@@ -519,7 +521,7 @@ function pg_curl_tls_hint_text($errno, $admin)
     $text = ' ' . lang('The certificate could not be verified: this server is most likely missing an up-to-date CA bundle.');
 
     if ($admin) {
-        $text .= ' ' . lang('Point CURL_CA_BUNDLE at a cacert.pem in data/config.php, or as a last resort set ALLOW_INSECURE_UPDATE_TLS to true there.');
+        $text .= ' ' . lang('Open System Status on the dashboard: its CA store row probes the server\'s own certificate store and switches outbound connections to the bundled data/cacert.pem when that store fails.');
     }
 
     return $text;
@@ -528,13 +530,16 @@ function pg_curl_tls_hint_text($errno, $admin)
 // ----------------------------------------------------------------------------
 // CA certificate bundle
 // ----------------------------------------------------------------------------
-// data/cacert.pem is the Mozilla root list an operator points CURL_CA_BUNDLE
-// at when the host's own certificate store is missing or stale. Mozilla
-// revises the list several times a year, so the copy has to be refreshable
-// from the panel; the functions below read it, fetch a fresh one from curl.se
-// and swap it into place. The payment library under includes/iyzipay-php/
-// carries a copy of its own that is deliberately left alone: includes/ is in
-// the file integrity scope and is only changed by a software release.
+// data/cacert.pem is the Mozilla root list outbound TLS is verified against
+// on a host whose own certificate store is missing or failing. The site
+// chooses it on its own (pg_ca_bundle_effective()): there is no setting to
+// make, only the CURL_CA_BUNDLE override in data/config.php for an operator
+// who wants another file. Mozilla revises the list several times a year, so
+// the copy has to be refreshable from the panel; the functions below read it,
+// fetch a fresh one from curl.se and swap it into place. The payment library
+// under includes/iyzipay-php/ carries a copy of its own that is deliberately
+// left alone: includes/ is in the file integrity scope and is only changed by
+// a software release.
 
 /**
  * Where the shipped CA bundle lives. Always the one under data/, whatever
@@ -543,6 +548,349 @@ function pg_curl_tls_hint_text($errno, $admin)
 function pg_ca_bundle_path()
 {
     return PG_FUNCTIONS_DIR . '/data/cacert.pem';
+}
+
+/**
+ * Where the last probe of the server's own certificate store is kept.
+ */
+function pg_ca_bundle_probe_file()
+{
+    return PG_FUNCTIONS_DIR . '/data/temp/ca_store.json';
+}
+
+/**
+ * Whether PHP has a certificate store of its own to verify against. Pure.
+ *
+ * $cainfo is the curl.cainfo ini value and $locations what
+ * openssl_get_cert_locations() answers: a file or directory among them that
+ * exists is a store, whatever it holds; the probe finds out whether it works.
+ * Without the OpenSSL extension ($locations false) a store is assumed, so
+ * that the probe alone decides.
+ *
+ * @param string      $cainfo
+ * @param array|false $locations
+ * @return bool
+ */
+function pg_ca_bundle_php_store_present($cainfo, $locations)
+{
+    $cainfo = trim((string) $cainfo);
+
+    if (($cainfo !== '') && is_file($cainfo)) {
+        return true;
+    }
+
+    if (!is_array($locations)) {
+        return true;
+    }
+
+    foreach (array('ini_cafile', 'default_cert_file') as $key) {
+        if (!empty($locations[$key]) && is_string($locations[$key]) && is_file($locations[$key])) {
+            return true;
+        }
+    }
+
+    foreach (array('ini_capath', 'default_cert_dir') as $key) {
+        if (!empty($locations[$key]) && is_string($locations[$key]) && is_dir($locations[$key])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * pg_ca_bundle_php_store_present() for this PHP, asked once per request.
+ *
+ * @return bool
+ */
+function pg_ca_bundle_php_store()
+{
+    static $present = null;
+
+    if ($present === null) {
+        $present = pg_ca_bundle_php_store_present(
+            (string) ini_get('curl.cainfo'),
+            function_exists('openssl_get_cert_locations') ? openssl_get_cert_locations() : false
+        );
+    }
+
+    return $present;
+}
+
+/**
+ * What a probe of the server's own store says, from its cURL error. Pure.
+ *
+ * 60 peer certificate cannot be verified, 77 no CA file to read, 35 and 51 a
+ * handshake the store could not complete: 'needed', the store fails. 0: 'ok'.
+ * Anything else - no DNS, no route, a timeout - says nothing about the
+ * store: 'unknown'.
+ *
+ * @param int $errno
+ * @return string ok|needed|unknown
+ */
+function pg_ca_bundle_probe_state_of($errno)
+{
+    $errno = (int) $errno;
+
+    if ($errno === 0) {
+        return 'ok';
+    }
+
+    if (in_array($errno, array(35, 51, 60, 77), true)) {
+        return 'needed';
+    }
+
+    return 'unknown';
+}
+
+/**
+ * The stored probe record from the text of data/temp/ca_store.json. Pure.
+ *
+ * 'state' is '' when there is no usable record: no file yet, or one that
+ * does not decode or names a state the probe never writes.
+ *
+ * @param string|false $text
+ * @return array state, checked_at, error
+ */
+function pg_ca_bundle_probe_decode($text)
+{
+    $record = array('state' => '', 'checked_at' => 0, 'error' => '');
+
+    if (!is_string($text) || ($text === '')) {
+        return $record;
+    }
+
+    $data = @json_decode($text, true);
+
+    if (!is_array($data) || !isset($data['state']) || !in_array($data['state'], array('ok', 'needed', 'unknown'), true)) {
+        return $record;
+    }
+
+    $record['state'] = $data['state'];
+    $record['checked_at'] = isset($data['checked_at']) ? (int) $data['checked_at'] : 0;
+    $record['error'] = isset($data['error']) ? (string) $data['error'] : '';
+
+    return $record;
+}
+
+/**
+ * The last probe's record, read once per request.
+ *
+ * @param bool $fresh true to read the file again (after a probe)
+ * @return array state, checked_at, error
+ */
+function pg_ca_bundle_probe_read($fresh = false)
+{
+    static $record = null;
+
+    if (($record === null) || $fresh) {
+        $record = pg_ca_bundle_probe_decode(@file_get_contents(pg_ca_bundle_probe_file()));
+    }
+
+    return $record;
+}
+
+/**
+ * Whether the probe should run again. Pure.
+ *
+ * Once a day, so that a store that breaks (a package update that empties
+ * it) or heals is noticed without anyone opening the dashboard; a probe
+ * that reached nothing is tried again after an hour.
+ *
+ * @param array $record pg_ca_bundle_probe_read()
+ * @param int   $now
+ * @return bool
+ */
+function pg_ca_bundle_probe_due($record, $now)
+{
+    $age = (int) $now - (int) $record['checked_at'];
+
+    if ($record['state'] === 'unknown') {
+        return $age > 3600;
+    }
+
+    return ($record['state'] === '') || ($age > 86400);
+}
+
+/**
+ * Probe the server's own certificate store and record the answer.
+ *
+ * One HEAD request with a five-second limit to the bundle's source, verified
+ * against the store cURL finds on its own: no CURLOPT_CAINFO, so the shipped
+ * file never hides a failing store, and never ALLOW_INSECURE_UPDATE_TLS,
+ * which would hide it the same way. PROXY_ADDRESS is honoured, as every
+ * other outbound call does. The record goes to data/temp/ca_store.json
+ * through a temporary file, so a reader never sees it half written; a
+ * data/temp that cannot be written leaves the choice at its default and the
+ * System Status row says what was found.
+ *
+ * Runs from System Status and once a day from the general job
+ * (pg_ca_bundle_probe_daily()), never from an outbound call itself.
+ *
+ * @return array state, checked_at, error
+ */
+function pg_ca_bundle_probe_run()
+{
+    $record = array('state' => 'unknown', 'checked_at' => time(), 'error' => '');
+
+    if (function_exists('curl_init')) {
+        $source = pg_ca_bundle_source_url();
+        $probe = curl_init(($source !== '') ? $source : 'https://curl.se/ca/cacert.pem');
+
+        $options = array(
+            CURLOPT_NOBODY         => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_TIMEOUT        => 5,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_PROTOCOLS      => CURLPROTO_HTTPS,
+            CURLOPT_USERAGENT      => 'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (ca-probe)',
+        );
+
+        if (defined('PROXY_ADDRESS') && (PROXY_ADDRESS != '')) {
+            $options[CURLOPT_PROXY] = (string) PROXY_ADDRESS;
+        }
+
+        curl_setopt_array($probe, $options);
+        curl_exec($probe);
+        $errno = (int) curl_errno($probe);
+        $error = (string) curl_error($probe);
+        unset($probe);
+
+        $record['state'] = pg_ca_bundle_probe_state_of($errno);
+        $record['error'] = ($errno !== 0) ? $errno . ': ' . $error : '';
+    } else {
+        $record['error'] = 'cURL is not available';
+    }
+
+    $file = pg_ca_bundle_probe_file();
+    $folder = dirname($file);
+
+    if (is_dir($folder) && is_writable($folder)) {
+        $temporary = $folder . '/ca_store.' . bin2hex(random_bytes(4)) . '.tmp';
+        $text = json_encode($record);
+
+        if ((@file_put_contents($temporary, $text, LOCK_EX) === strlen($text)) && !@rename($temporary, $file)) {
+            // rename() over an existing file fails on Windows with some PHP
+            // builds; the record is then written in place.
+            @file_put_contents($file, $text, LOCK_EX);
+            @unlink($temporary);
+        }
+    }
+
+    pg_ca_bundle_probe_read(true);
+
+    return $record;
+}
+
+/**
+ * The general job's daily probe: runs when due and while no override makes
+ * the choice (with CURL_CA_BUNDLE set the server's store is never used, so
+ * there is nothing to find out).
+ *
+ * @return array|false the record, or false when nothing ran
+ */
+function pg_ca_bundle_probe_daily()
+{
+    if (defined('CURL_CA_BUNDLE') && is_string(CURL_CA_BUNDLE) && (trim(CURL_CA_BUNDLE) !== '') && is_file(trim(CURL_CA_BUNDLE))) {
+        return false;
+    }
+
+    if (!pg_ca_bundle_probe_due(pg_ca_bundle_probe_read(), time())) {
+        return false;
+    }
+
+    return pg_ca_bundle_probe_run();
+}
+
+/**
+ * Which store an outbound TLS connection is verified against. Pure.
+ *
+ * In this order:
+ *   1. the CURL_CA_BUNDLE override, when it names a file that exists;
+ *   2. the shipped data/cacert.pem, when PHP has no store of its own or the
+ *      last probe found the server's store failing;
+ *   3. '' - the server's own store, which is also all there is when the
+ *      shipped file is missing.
+ *
+ * @param string $override    CURL_CA_BUNDLE, '' when unset or missing
+ * @param string $shipped     path of data/cacert.pem, '' when missing
+ * @param bool   $php_store   pg_ca_bundle_php_store()
+ * @param string $probe_state the record's state ('' for none yet)
+ * @return array file ('' for the server's store), reason
+ *               (override|no_store|probe|server)
+ */
+function pg_ca_bundle_choose($override, $shipped, $php_store, $probe_state)
+{
+    $override = (string) $override;
+    $shipped = (string) $shipped;
+
+    if ($override !== '') {
+        return array('file' => $override, 'reason' => 'override');
+    }
+
+    if ($shipped !== '') {
+        if (!$php_store) {
+            return array('file' => $shipped, 'reason' => 'no_store');
+        }
+
+        if ($probe_state === 'needed') {
+            return array('file' => $shipped, 'reason' => 'probe');
+        }
+    }
+
+    return array('file' => '', 'reason' => 'server');
+}
+
+/**
+ * pg_ca_bundle_choose() for this site, with what it was decided from.
+ *
+ * 'override_missing' is CURL_CA_BUNDLE when it names a file that is not
+ * there (the choice then goes on without it, and the System Status row
+ * says so); 'probe' is the last probe's record; 'shipped' says whether
+ * data/cacert.pem exists.
+ *
+ * @return array file, reason, override_missing, probe, shipped
+ */
+function pg_ca_bundle_choice()
+{
+    $override = (defined('CURL_CA_BUNDLE') && is_string(CURL_CA_BUNDLE)) ? trim(CURL_CA_BUNDLE) : '';
+    $override_missing = (($override !== '') && !is_file($override));
+    $shipped = pg_ca_bundle_path();
+    $shipped_exists = is_file($shipped);
+    $probe = pg_ca_bundle_probe_read();
+
+    $choice = pg_ca_bundle_choose(
+        $override_missing ? '' : $override,
+        $shipped_exists ? $shipped : '',
+        pg_ca_bundle_php_store(),
+        $probe['state']
+    );
+
+    $choice['override_missing'] = $override_missing ? $override : '';
+    $choice['probe'] = $probe;
+    $choice['shipped'] = $shipped_exists;
+
+    return $choice;
+}
+
+/**
+ * The CA file every outbound TLS connection verifies against, or '' for the
+ * server's own store. Every reader of CURL_CA_BUNDLE goes through here:
+ * pg_curl_tls(), api_http_request() and the stream contexts of the design
+ * import, the IMAP client and the licence check.
+ *
+ * Reads two files at most (the override and the probe record, the latter
+ * once per request) and never runs the probe itself.
+ *
+ * @return string
+ */
+function pg_ca_bundle_effective()
+{
+    $choice = pg_ca_bundle_choice();
+
+    return $choice['file'];
 }
 
 /**
@@ -606,10 +954,13 @@ function pg_ca_bundle_inspect($text)
 /**
  * The shipped bundle as the maintenance row reports it.
  *
- * 'mode' says what the running configuration actually verifies against:
- *   this    CURL_CA_BUNDLE points at data/cacert.pem
- *   other   CURL_CA_BUNDLE points at some other file (named in 'configured')
- *   system  CURL_CA_BUNDLE is empty, so cURL uses the host's own store
+ * 'mode' says what outbound TLS actually verifies against:
+ *   this     the CURL_CA_BUNDLE override points at data/cacert.pem
+ *   other    the override points at some other file (named in 'configured')
+ *   shipped  the site chose data/cacert.pem itself ('reason': no_store when
+ *            PHP has no store of its own, probe when the server's store
+ *            failed the last probe)
+ *   system   the server's own store
  * The tool always writes data/cacert.pem; the mode only tells the operator
  * whether that file is the one in use.
  */
@@ -625,6 +976,7 @@ function pg_ca_bundle_status()
         'count'      => 0,
         'size'       => 0,
         'mode'       => 'system',
+        'reason'     => 'server',
         'configured' => '',
         'source'     => pg_ca_bundle_source_url(),
     );
@@ -636,12 +988,15 @@ function pg_ca_bundle_status()
         }
     }
 
-    if (defined('CURL_CA_BUNDLE') && is_string(CURL_CA_BUNDLE) && (CURL_CA_BUNDLE !== '')) {
-        $status['configured'] = CURL_CA_BUNDLE;
+    $choice = pg_ca_bundle_choice();
+    $status['reason'] = $choice['reason'];
+
+    if ($choice['reason'] === 'override') {
+        $status['configured'] = $choice['file'];
 
         // realpath() so that a relative path, a symlink or a differently
         // spelled separator still counts as the same file.
-        $configured_real = @realpath(CURL_CA_BUNDLE);
+        $configured_real = @realpath($choice['file']);
         $shipped_real = @realpath($path);
 
         if (($configured_real !== false) && ($shipped_real !== false) && ($configured_real === $shipped_real)) {
@@ -649,169 +1004,56 @@ function pg_ca_bundle_status()
         } else {
             $status['mode'] = 'other';
         }
+    } elseif ($choice['file'] !== '') {
+        $status['mode'] = 'shipped';
     }
 
     return $status;
 }
 
 /**
- * Whether outbound TLS needs data/cacert.pem and the configuration does not
- * point at it - the state a reinstall leaves behind when the new config.php
- * comes with CURL_CA_BUNDLE empty on a host whose own store is missing.
+ * The CA store as the System Status row reports it.
+ *
+ * Runs the probe of the server's own store first, unless the CURL_CA_BUNDLE
+ * override makes the choice (that store is then never used): the widget
+ * caches its answer with the rest of the checks, so the probe costs one
+ * five-second request every ten minutes at most, and a store that broke
+ * since the general job's daily probe is noticed when the dashboard opens.
  *
  * 'state':
- *   ok        nothing to do: the setting points at a file that exists, or it
- *             is empty and the host's own store verifies a connection
- *   broken    CURL_CA_BUNDLE names a file that does not exist; every
- *             outbound call then verifies against nothing and fails
- *   needed    CURL_CA_BUNDLE is empty and a connection verified against the
- *             host's own store failed on the certificate
- *   unknown   the probe could not reach the internet at all, so nothing can
- *             be said about the store
- * 'fixable' says whether the one-click repair can help: the bundled file is
- * there and data/config.php can be written.
+ *   ok        the chosen store verifies: the override, the shipped file
+ *             (PHP has no store, or the server's store failed the probe),
+ *             or the server's own store, which the probe passed
+ *   unknown   the server's own store is in use and the probe reached
+ *             nothing, so nothing can be said about it
+ *   broken    CURL_CA_BUNDLE names a file that does not exist; the site
+ *             chose without it
+ *   needed    the server's store is missing or failing and data/cacert.pem
+ *             is missing too, so outbound HTTPS fails: update the bundle
+ * 'choice' is pg_ca_bundle_choice() after the probe.
  *
- * The probe is one HEAD request with a five-second limit, and runs only when
- * the setting is empty; the System Status widget caches its answer with the
- * rest of the checks.
- *
- * @return array state, configured, fixable, error
+ * @return array state, choice
  */
 function pg_ca_bundle_config_state()
 {
-    $config_file = PG_FUNCTIONS_DIR . '/data/config.php';
-    $configured = (defined('CURL_CA_BUNDLE') && is_string(CURL_CA_BUNDLE)) ? CURL_CA_BUNDLE : '';
+    $choice = pg_ca_bundle_choice();
 
-    $out = array(
-        'state'      => 'ok',
-        'configured' => $configured,
-        'fixable'    => is_file(pg_ca_bundle_path()) && is_file($config_file) && is_writable($config_file),
-        'error'      => '',
-    );
-
-    if ($configured !== '') {
-        if (!is_file($configured) || !is_readable($configured)) {
-            $out['state'] = 'broken';
-        }
-
-        return $out;
+    if ($choice['reason'] !== 'override') {
+        pg_ca_bundle_probe_run();
+        $choice = pg_ca_bundle_choice();
     }
 
-    if (!function_exists('curl_init')) {
-        $out['state'] = 'unknown';
-        return $out;
+    $state = 'ok';
+
+    if ($choice['override_missing'] !== '') {
+        $state = 'broken';
+    } elseif (($choice['reason'] === 'server') && !$choice['shipped'] && (!pg_ca_bundle_php_store() || ($choice['probe']['state'] === 'needed'))) {
+        $state = 'needed';
+    } elseif (($choice['reason'] === 'server') && ($choice['probe']['state'] !== 'ok')) {
+        $state = 'unknown';
     }
 
-    $source = pg_ca_bundle_source_url();
-    $probe = curl_init(($source !== '') ? $source : 'https://curl.se/ca/cacert.pem');
-
-    curl_setopt_array($probe, array(
-        CURLOPT_NOBODY         => true,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_CONNECTTIMEOUT => 5,
-        CURLOPT_TIMEOUT        => 5,
-        CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_SSL_VERIFYHOST => 2,
-        CURLOPT_USERAGENT      => 'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (ca-probe)',
-    ));
-
-    curl_exec($probe);
-    $errno = (int) curl_errno($probe);
-    $error = (string) curl_error($probe);
-    unset($probe);
-
-    // 60 peer certificate cannot be verified, 77 no CA file to read, 35 and
-    // 51 a handshake the store could not complete. Anything else - no DNS, no
-    // route, a timeout - says nothing about the store.
-    if (in_array($errno, array(35, 51, 60, 77), true)) {
-        $out['state'] = 'needed';
-        $out['error'] = $errno . ': ' . $error;
-    } elseif ($errno !== 0) {
-        $out['state'] = 'unknown';
-        $out['error'] = $errno . ': ' . $error;
-    }
-
-    return $out;
-}
-
-/**
- * Points CURL_CA_BUNDLE in data/config.php at the bundled data/cacert.pem.
- *
- * The define line is replaced where it is (a commented-out example is left
- * alone) or added at the end of the file, written as
- * dirname(__FILE__) . '/cacert.pem' so that it survives a move of the site to
- * another folder. Nothing else in the file is touched; the write goes to a
- * temporary file beside it that is renamed over it, so the configuration is
- * never half written. The running request keeps the old value: the next one
- * reads the new line.
- *
- * @return array('status' => 'success'|'unchanged'|'error', 'message' => string)
- */
-function pg_ca_bundle_config_repair()
-{
-    $config_file = PG_FUNCTIONS_DIR . '/data/config.php';
-    $line = "define('CURL_CA_BUNDLE', dirname(__FILE__) . '/cacert.pem');";
-
-    if (!is_file(pg_ca_bundle_path())) {
-        return array('status' => 'error', 'message' => lang('data/cacert.pem is missing. Update the CA certificate bundle first, then try again.'));
-    }
-
-    if (!is_file($config_file) || !is_writable($config_file)) {
-        return array('status' => 'error', 'message' => lang('data/config.php cannot be written by the web server. Add the line by hand:') . ' ' . $line);
-    }
-
-    $text = @file_get_contents($config_file);
-
-    if (($text === false) || ($text === '')) {
-        return array('status' => 'error', 'message' => lang('data/config.php could not be read.'));
-    }
-
-    $eol = (strpos($text, "\r\n") !== false) ? "\r\n" : "\n";
-    // The line up to, not including, its end: a CRLF file keeps its \r.
-    $pattern = '/^[ \t]*define\(\s*([\'"])CURL_CA_BUNDLE\1\s*,[^;]*\)\s*;[^\r\n]*(?=\r?\n|\z)/m';
-
-    if (preg_match($pattern, $text, $found)) {
-        if (trim($found[0]) === $line) {
-            return array('status' => 'unchanged', 'message' => lang('CURL_CA_BUNDLE already points at data/cacert.pem.'));
-        }
-
-        $new = preg_replace($pattern, $line, $text, 1);
-    } else {
-        // At the end, before a closing tag when the file has one.
-        if (preg_match('/\?>\s*$/', $text)) {
-            $new = preg_replace('/\?>\s*$/', $line . $eol . '?>' . $eol, $text, 1);
-        } else {
-            $new = rtrim($text) . $eol . $eol . $line . $eol;
-        }
-    }
-
-    if (!is_string($new) || ($new === $text) || (strpos($new, '<?php') !== 0 && strpos($text, '<?php') === 0)) {
-        return array('status' => 'error', 'message' => lang('data/config.php could not be changed safely. Add the line by hand:') . ' ' . $line);
-    }
-
-    $temporary = $config_file . '.' . bin2hex(random_bytes(4)) . '.tmp';
-
-    if (@file_put_contents($temporary, $new, LOCK_EX) !== strlen($new)) {
-        @unlink($temporary);
-        return array('status' => 'error', 'message' => lang('data/config.php cannot be written by the web server. Add the line by hand:') . ' ' . $line);
-    }
-
-    // rename() over an existing file fails on Windows with some PHP builds;
-    // the copy is then written in place instead.
-    if (!@rename($temporary, $config_file)) {
-        $written = (@file_put_contents($config_file, $new, LOCK_EX) === strlen($new));
-        @unlink($temporary);
-
-        if (!$written) {
-            return array('status' => 'error', 'message' => lang('data/config.php cannot be written by the web server. Add the line by hand:') . ' ' . $line);
-        }
-    }
-
-    if (function_exists('opcache_invalidate')) {
-        @opcache_invalidate($config_file, true);
-    }
-
-    return array('status' => 'success', 'message' => lang('CURL_CA_BUNDLE in data/config.php now points at data/cacert.pem.'));
+    return array('state' => $state, 'choice' => $choice);
 }
 
 /**

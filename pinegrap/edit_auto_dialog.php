@@ -119,7 +119,7 @@ if (!$_POST) {
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array( lang('auto dialog'),$auto_dialog['name'] ) )), $_SESSION['sessionusername']);
         $liveform->remove_form();
         $liveform_view_auto_dialogs = new liveform('view_auto_dialogs');
-        $liveform_view_auto_dialogs->add_notice( lang(array('string'=>'The {var:1} has been deleted.','vars'=>lang('auto dialog') )) );
+        $liveform_view_auto_dialogs->add_notice( lang('The auto dialog has been deleted.') );
 
     // Otherwise the user selected to save the auto dialog, so save it.
     } else {
@@ -149,7 +149,7 @@ if (!$_POST) {
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('auto dialog'),$liveform->get_field_value('name')))), $_SESSION['sessionusername']);
         $liveform->remove_form();
         $liveform_view_auto_dialogs = new liveform('view_auto_dialogs');
-        $liveform_view_auto_dialogs->add_notice( lang(array('string'=>'The {var:1} has been saved.','vars'=>lang('auto dialog') )) );
+        $liveform_view_auto_dialogs->add_notice( lang('The auto dialog has been saved.') );
     }
 
     

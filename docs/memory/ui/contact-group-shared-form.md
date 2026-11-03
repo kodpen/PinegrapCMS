@@ -1,6 +1,6 @@
 ---
 name: contact-group-shared-form
-description: The contact group create and edit screens share includes/forms/contact_group_form.php: what it holds, the create-only difference, what stays in the screens
+description: The contact group create and edit screens share includes/forms/contact_group_form.php: what it holds, what stays in the screens, one required message, the list sorted on shown values
 ---
 
 ## Where is the contact group form?
@@ -19,3 +19,9 @@ description: The contact group create and edit screens share includes/forms/cont
 - While the group holds contacts, Delete is a disabled `type="button"` with the reason as its title and `aria-describedby`; it used to submit after an `alert()` and come back with the same refusal (#2892). The server-side refusal stays.
 - Organize Contacts (`organize_contacts.php`) reads ticked boxes with `querySelectorAll('input[name="…"]:checked')`: with one group the named form member is the checkbox itself, `.length` is undefined and the selection was dropped (#2892).
 - Tests: `tests/contact_group_form_test.php`; `db_q_contacts_forms_test.php` (edit screen, form) and `db_q_small_functions_test.php` (create screen) pin the queries.
+
+## Why one message under the name?
+- The fixed `<div class="invalid-feedback">Required Area</div>` after the name box stays for the browser's `required` check on create, but a server refusal (name in use, name missing on edit) printed liveform's message and it together (#5260). `backend.src.css` hides a fixed `.invalid-feedback` that follows a `.pg-inline-feedback`, so every form that kept its fixed message (`ui/inline-feedback-placement.md`) shows the server's reason alone.
+
+## How does the list sort?
+- `view_contact_groups.php` shows the type and the description only for a group with an e-mail subscription, so `pg_contact_group_list_order_map()` (`includes/fn/contact_list.php`) sorts both on `IF(email_subscription = 1, …, '')`: a group without a subscription sorts as blank, not on text nobody sees (#5262). Test: `tests/contact_group_list_sort_test.php`.

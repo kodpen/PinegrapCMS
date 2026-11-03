@@ -60,12 +60,10 @@ $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id
 
 $output_state_options = '';
 
-foreach ($states as $state) {
+foreach (pg_geo_state_option_labels($states, $foreign_states) as $state) {
     $selected = ($state['id'] == ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '')) ? ' selected="selected"' : '';
 
-    $output_state_label = $foreign_states
-        ? h(pg_geo_country_label($state['country_name'], $state['country_code'])) . ': ' . h($state['name'])
-        : h($state['name']);
+    $output_state_label = h($state['label']);
 
     $count = (int) db_value("SELECT COUNT(*) FROM verified_shipping_addresses WHERE state_id = '" . escape($state['id']) . "'");
 
@@ -92,6 +90,14 @@ $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 $list_state = pg_list_state('view_verified_shipping_addresses', $sort_columns, $sort_default);
 $sort_levels = $list_state['sorts'];
 
+// The country column shows the name in the panel's language, so it sorts
+// by that name, not by the stored English one.
+$country_labels = array();
+
+foreach (db_items("SELECT code, name FROM countries") as $country) {
+    $country_labels[(string) $country['code']] = pg_geo_country_label($country['name'], $country['code']);
+}
+
 // What each sort code orders by. Only codes pg_list_state() let through
 // reach pg_list_order_by(), and it writes nothing but these.
 $order_by = pg_list_order_by($sort_levels, array(
@@ -101,7 +107,7 @@ $order_by = pg_list_order_by($sort_levels, array(
     'city'          => 'verified_shipping_addresses.city',
     'state'         => 'states.name',
     'zip_code'      => 'verified_shipping_addresses.zip_code',
-    'country'       => 'countries.name',
+    'country'       => pg_list_label_order('countries.code', $country_labels),
     'created'       => 'verified_shipping_addresses.created_timestamp',
     'last_modified' => 'verified_shipping_addresses.last_modified_timestamp',
 ));
@@ -196,7 +202,7 @@ echo
                         <div class="p-5 border-bottom">
                             <form id="state_filter" action="view_verified_shipping_addresses.php" method="get" class="d-flex align-items-center gap-3 flex-wrap">
                                 <label for="state_id" class="fw-semibold">' . lang('State') . ':</label>
-                                <select id="state_id" name="state_id" class="form-control form-control-sm w-auto" onchange="document.getElementById(\'state_filter\').submit()">
+                                <select id="state_id" name="state_id" class="form-control form-control-sm w-auto max-w-100" onchange="document.getElementById(\'state_filter\').submit()">
                                     <option value="[All]"' . (($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '') == '[All]' ? ' selected="selected"' : '') . '>[' . lang('All') . '] (' . pg_format_number($all_verified_shipping_addresses, 0) . ')</option>
                                     ' . $output_state_options . '
                                 </select>

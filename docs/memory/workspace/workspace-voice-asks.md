@@ -14,5 +14,5 @@ description: A voice message that asks Claude, Pinegrap AI or an MCP server (V4c
 
 ## What does the screen do?
 - The mic stays in place of Send while the box holds only tags (`voiceTags()`: tokens and `@ai`, nothing else); Stop sends them as the recording's body (`voiceSend()`), and they leave the box (`clearSent()`). Words in the box still stay there and do not go with it.
-- `voiceAnswers()` is false only for an MCP agent's message (it reads words alone): the mic answers Claude and Pinegrap AI too. `ws_attach` answers `ai` and `agent` and starts Claude's run when a recording asked at once.
+- `voiceAnswers()` is true for any one message: the mic answers Claude, Pinegrap AI and an MCP agent (workspace-voice-mcp-agents.md). `ws_attach` answers `ai` and `agent` and starts Claude's run when a recording asked at once.
 - Not checked in a browser with a real microphone or service; the tag test was run against the regular expressions in Node.

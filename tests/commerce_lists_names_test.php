@@ -37,7 +37,8 @@ function test_commerce_lists_names_countries_translated()
 	$source = commerce_lists_names_source('view_verified_shipping_addresses.php');
 
 	pg_assert_contains("countries.code AS country_code", $source);
-	pg_assert_contains("h(pg_geo_country_label(\$state['country_name'], \$state['country_code']))", $source);
+	pg_assert_contains("foreach (pg_geo_state_option_labels(\$states, \$foreign_states) as \$state)", $source);
+	pg_assert_contains("pg_list_label_order('countries.code', \$country_labels)", $source);
 	pg_assert_contains("h(pg_geo_country_label(\$address['country_name'], \$address['country_code']))", $source);
 	pg_assert_true(strpos($source, "h(\$address['country_name'])") === false, 'raw country name in the Country column');
 	pg_assert_true(strpos($source, "h(\$state['country_name'])") === false, 'raw country name in the state filter');

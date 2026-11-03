@@ -663,6 +663,14 @@ if (function_exists('pg_record_revisions_sweep_due') && pg_record_revisions_swee
     }
 }
 
+// The CA store (includes/fn/update.php): once a day the server's own
+// certificate store is probed with one short request, so that outbound
+// connections move to the bundled data/cacert.pem when that store fails and
+// back when it heals. With the CURL_CA_BUNDLE override set nothing runs.
+if (function_exists('pg_ca_bundle_probe_daily')) {
+    pg_ca_bundle_probe_daily();
+}
+
 // The 404 log (includes/fn/not_found_log.php): once a day the addresses not
 // asked for in 90 days go, then the row cap. A tick with nothing due reads
 // one small file.

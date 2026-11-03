@@ -30,7 +30,9 @@ if (is_array($package) && erp_accountant_stream($package)) {
     erp_accountant_count_download((int) $package['id']);
 
     if (function_exists('log_activity')) {
-        log_activity(pg_log_lang(array('string' => 'Accountant pack for {var:1} downloaded by link.', 'vars' => erp_accountant_period_label((string) $package['period_from'], (string) $package['period_to']))), 'ERP');
+        // No user: the audit trail shows the line as made through a link,
+        // not as a scheduled job (erp_audit_actor_kind()).
+        log_activity(pg_log_lang(array('string' => 'Accountant pack for {var:1} downloaded by link.', 'vars' => erp_profit_period_title((string) $package['period_from'], (string) $package['period_to']))));
     }
 
     exit();

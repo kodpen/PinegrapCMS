@@ -1702,14 +1702,15 @@ function fetch_url_content($url)
 
 function get_http_stream_context($method = 'GET')
 {
-    // Same verification as pg_curl_tls(): peer and name checked, and the
-    // configured CA bundle used when the host has one.
+    // Same verification as pg_curl_tls(): peer and name checked, against
+    // the store the site chose (pg_ca_bundle_effective()).
     $ssl_options = array(
         'verify_peer' => true,
         'verify_peer_name' => true,
     );
-    if (defined('CURL_CA_BUNDLE') && CURL_CA_BUNDLE !== '' && is_file(CURL_CA_BUNDLE)) {
-        $ssl_options['cafile'] = CURL_CA_BUNDLE;
+    $ca_file = pg_ca_bundle_effective();
+    if ($ca_file !== '') {
+        $ssl_options['cafile'] = $ca_file;
     }
 
     // Redirects are walked by import_design_fetch(), one checked hop at a

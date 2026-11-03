@@ -1571,6 +1571,13 @@ html[data-bs-theme="dark"] .accordion {
   box-shadow: 0 0 0 var(--pg-focus-ring-width)
     color-mix(in srgb, var(--pg-danger) 35%, transparent);
 }
+/* A form's own fixed message after a field (Required Area, shown by the
+   browser's validation) stays hidden while liveform's message sits before
+   it: Bootstrap's .is-invalid ~ .invalid-feedback showed both, "already in
+   use" over "Required Area". */
+.pg-inline-feedback ~ .invalid-feedback:not(.pg-inline-feedback) {
+  display: none;
+}
 .form-control.is-valid,
 .form-adorn:has(.form-ghost.is-valid),
 .chip-input:has(.form-ghost.is-valid),
@@ -4907,6 +4914,26 @@ nav.buttons.navigation .btn-solid.theme-secondary {
     flex: 1 1 calc(50% - 0.25rem);
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
+  }
+
+  /* A bar with many actions (the orders list) shows icons only: half a row
+     each still made it four rows and a fifth of the screen. The label stays
+     the accessible name and the button's title names it on hover. */
+  nav.buttons.navigation.pg-bar-icons .btn {
+    flex: 0 0 auto;
+    min-width: 2.75rem;
+  }
+
+  nav.buttons.navigation.pg-bar-icons .pg-btn-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   /* A full-width bar leaves no side gutter to keep clear, so it sits above the

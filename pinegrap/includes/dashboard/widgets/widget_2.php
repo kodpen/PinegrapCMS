@@ -161,31 +161,6 @@ function pg_dashboard_widget_2($request, $user)
                     </div>';
                 }
 
-            } elseif ($job_key === 'CA Bundle Setting') {
-
-                // One line in data/config.php. Offered to an
-                // administrator only, and only while the bundled
-                // file is there and the configuration can be
-                // written; otherwise the row's text says what to
-                // add by hand.
-                if (((int) $user['role'] === 0) && is_file(pg_ca_bundle_path()) && is_writable(PG_FUNCTIONS_DIR . '/data/config.php')) {
-
-                    $job_action = '
-                    <button type="button" class="pg-job-btn pg-job-btn-fix" id="ca_bundle_config_repair"
-                            title="' . h(lang('Writes define(\'CURL_CA_BUNDLE\', dirname(__FILE__) . \'/cacert.pem\'); into data/config.php, replacing the current CURL_CA_BUNDLE line. Nothing else in the file is changed.')) . '"
-                            data-busy-label="' . h(lang('Writing')) . '"
-                            data-idle-label="' . h(lang('Fix')) . '"
-                            data-confirm-content="' . h(lang('CURL_CA_BUNDLE in data/config.php will be pointed at the bundled data/cacert.pem.')) . '"
-                            data-failed-label="' . h(lang('The setting could not be written.')) . '">
-                        <i class="bi bi-wrench-adjustable"></i><span id="ca_bundle_config_repair_state">' . h(lang('Fix')) . '</span>
-                    </button>';
-
-                    $job_panel = '
-                    <div class="pg-job-panel pg-job-result d-none" id="ca_bundle_config_repair_result">
-                        <div class="pg-job-panel-row"><span id="ca_bundle_config_repair_message"></span></div>
-                    </div>';
-                }
-
             } elseif ($job_key === 'Write Permissions') {
 
                 // Offered only while something refuses, and only to
@@ -323,15 +298,16 @@ function pg_dashboard_widget_2($request, $user)
                 </div>',
         );
 
-        // The CA bundle. data/cacert.pem is the Mozilla root list an
-        // operator points CURL_CA_BUNDLE at when the host's own store
-        // is stale; Mozilla revises it several times a year, and a
-        // list that falls behind is why "cURL error 60" appears on a
-        // site that changed nothing. The row says what is installed
-        // and whether the running configuration actually reads it;
-        // the button fetches the current list from curl.se (or the
-        // CA_BUNDLE_SOURCE_URL mirror) and swaps it in. The library
-        // under includes/iyzipay-php/ keeps its own copy, which is
+        // The CA bundle. data/cacert.pem is the Mozilla root list the
+        // site verifies outbound connections against when the host's
+        // own store is missing or failing (pg_ca_bundle_effective());
+        // Mozilla revises it several times a year, and a list that
+        // falls behind is why "cURL error 60" appears on a site that
+        // changed nothing. The row says what is installed and whether
+        // outbound connections actually read it; the button fetches
+        // the current list from curl.se (or the CA_BUNDLE_SOURCE_URL
+        // mirror) and swaps it in. The library under
+        // includes/iyzipay-php/ keeps its own copy, which is
         // integrity-hashed and only changes with a release, so the
         // panel says so rather than leaving the operator to wonder
         // why two files carry two dates.
@@ -346,14 +322,18 @@ function pg_dashboard_widget_2($request, $user)
         }
 
         if ($ca_bundle['mode'] === 'this') {
-            $ca_bundle_use = lang('CURL_CA_BUNDLE points at this file.');
+            $ca_bundle_use = lang('CURL_CA_BUNDLE in data/config.php points at this file.');
         } elseif ($ca_bundle['mode'] === 'other') {
             $ca_bundle_use = lang(array(
-                'string' => 'CURL_CA_BUNDLE points at another file ({var:1}); the running configuration does not read this one.',
+                'string' => 'CURL_CA_BUNDLE in data/config.php points at another file ({var:1}); outbound connections do not read this one.',
                 'vars'   => array($ca_bundle['configured']),
             ));
+        } elseif ($ca_bundle['reason'] === 'no_store') {
+            $ca_bundle_use = lang('In use: PHP has no certificate store of its own on this server.');
+        } elseif ($ca_bundle['reason'] === 'probe') {
+            $ca_bundle_use = lang('In use: the server\'s own certificate store failed the last probe.');
         } else {
-            $ca_bundle_use = lang('CURL_CA_BUNDLE is not set; connections are verified against the server\'s own certificate store.');
+            $ca_bundle_use = lang('Not in use: connections are verified against the server\'s own certificate store, which the CA store row of System Status probes.');
         }
 
         $ca_bundle_rows = '
@@ -408,7 +388,7 @@ function pg_dashboard_widget_2($request, $user)
             'color'  => 'fg-primary',
             'name'   => lang('CA certificate bundle'),
             'note'   => $ca_bundle_note,
-            'hint'   => lang('The Mozilla root certificate list in data/cacert.pem, which outbound connections are verified against when CURL_CA_BUNDLE points at it. Update downloads the current list and replaces the file.'),
+            'hint'   => lang('The Mozilla root certificate list in data/cacert.pem, which outbound connections are verified against when the server has no working certificate store of its own. Update downloads the current list and replaces the file.'),
             'detail' => $ca_bundle_rows,
             'action' => $ca_bundle_action,
             'panel'  => $ca_bundle_panel,
