@@ -10045,7 +10045,9 @@ function pg_designer_widget_ghosts($page_id, $widget, $limit = 10)
 // Stored shape, version 1:
 //   {"v":1,
 //    "groups":{"g1":{"name":"Docs","color":"orange"}},
-//    "tabs":[{"id":12},{"id":13,"g":"g1"},{"id":14,"g":"g1"},{"id":15}]}
+//    "tabs":[{"id":12},{"id":13,"g":"g1"},{"id":14,"g":"g1"},{"id":15}],
+//    "proto":{"p12":{"x":0,"y":0},"s5":{"x":408,"y":0}}}
+// `proto` (optional) holds the Prototype view's frame places.
 // `id` is a page_id of the design. The editor keeps a twin of the
 // normaliser (_pgTabsNormalizeGroups()); the two are changed together.
 
@@ -10157,7 +10159,40 @@ function pg_designer_tab_layout_normalize($layout, $page_ids)
         if (!isset($members[$gid])) unset($groups[$gid]);
     }
 
-    return array('v' => 1, 'groups' => $groups, 'tabs' => $tabs);
+    $out = array('v' => 1, 'groups' => $groups, 'tabs' => $tabs);
+    $proto = pg_designer_tab_layout_proto(isset($layout['proto']) ? $layout['proto'] : null, $known);
+    if ($proto) $out['proto'] = $proto;
+    return $out;
+}
+
+/**
+ * The places of the Prototype view's frames (designer/prototype-view.md),
+ * shared by everyone who opens the design. Keys are `p<page_id>` for a page
+ * of the design and `s<shared component id>`; a place is {x, y}, whole
+ * canvas units within ±1,000,000. Other keys and values are dropped, at most
+ * 500 places are kept. Twin: PGProtoHotspots.places() reads the same shape.
+ *
+ * @param mixed $proto decoded `proto` of a layout
+ * @param array $known page_id => true, the pages of the design
+ * @return array key => {x, y}
+ */
+function pg_designer_tab_layout_proto($proto, $known)
+{
+    $out = array();
+    if (!is_array($proto)) return $out;
+    foreach ($proto as $key => $at) {
+        if (count($out) >= 500) break;
+        if (!preg_match('/^([ps])([1-9][0-9]{0,9})$/', (string)$key, $m) || !is_array($at)) continue;
+        if ($m[1] === 'p' && !isset($known[(int)$m[2]])) continue;
+        $pos = array();
+        foreach (array('x', 'y') as $axis) {
+            $v = isset($at[$axis]) ? $at[$axis] : null;
+            if (!is_numeric($v) || !is_finite((float)$v)) continue 2;
+            $pos[$axis] = (int)max(-1000000, min(1000000, round((float)$v)));
+        }
+        $out[(string)$key] = $pos;
+    }
+    return $out;
 }
 
 /**
@@ -10167,6 +10202,7 @@ function pg_designer_tab_layout_normalize($layout, $page_ids)
 function pg_designer_tab_layout_export($layout)
 {
     $layout['groups'] = (object)$layout['groups'];
+    if (isset($layout['proto'])) $layout['proto'] = (object)$layout['proto'];
     return $layout;
 }
 
