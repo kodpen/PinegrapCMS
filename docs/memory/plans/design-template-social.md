@@ -20,7 +20,7 @@ description: Plan for the Social Community template (pinegrap-social): a photo c
 
 ## Which steps are there?
 - 1 Done (#6297). Data and shared parts: `parts.php` (builders, samples; account bar, header, footer, join band, avatar, post, profile and topic cards, page shells, form fields, comment thread, staff bar); test `design_template_social_test.php`.
-- 2 Public pages: `pages_public.php` (home, topics, about, guidelines, FAQ, help, privacy, terms).
+- 2 Done (#6339). Public pages: `pages_public.php`; home places `home_posts` (step 4), `home_news` (step 6).
 - 3 Profiles: `profiles.php` (`my_profile` with the collection and samples, `people`, `member` with the member's posts, `staff_members`).
 - 4 Posts: `posts.php` (`post_new` with the collection and samples, `explore`, `tag`, `post`, `my_posts`, `saved`, home lists).
 - 5 Reports and mail: `mail.php`, `reports.php` (`report`, `report_view`, `my_reports`, `staff_reports`, `staff_report` with `report_notes`, `staff_posts`, `email_reply`, `email_comment`, notify e-mails).
