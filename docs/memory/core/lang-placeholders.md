@@ -10,7 +10,7 @@ module: lang
 - A placeholder with no value stays in the text.
 
 ## Can a value carry placeholder text into the output?
-- No. All placeholders are filled in one `strtr()` pass (#PR), so a value such as a page name `{var:2}` or `a{suffix}` is printed as typed. Before, each value was put in with `str_replace()` one after another and a later value or the suffix filled the placeholder text inside an earlier value.
+- No. All placeholders are filled in one `strtr()` pass (#6045), so a value such as a page name `{var:2}` or `a{suffix}` is printed as typed. Before, each value was put in with `str_replace()` one after another and a later value or the suffix filled the placeholder text inside an earlier value.
 
 ## Does a modifier change the plain placeholder of the same value?
 - No. `{var:1|c} … {var:1}` title-cases only the first; before, every `{var:1}` took the case of the first modifier found, and a second modifier of the same value stayed unfilled.

@@ -80,7 +80,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `innodb`: open
 
-- `lang`: open
+- `lang`: done #6045 (placeholder values re-scanned; rest reviewed: language pick, source, cache, log/staff language)
 
 - `lang_files`: open
 
