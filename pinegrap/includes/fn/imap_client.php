@@ -1014,14 +1014,14 @@ function pg_imap_login_xoauth2(&$session, $user, $token)
     $initial = in_array('SASL-IR', $session['capabilities'], true);
 
     if (!pg_imap_write($session, $tag . ' AUTHENTICATE XOAUTH2' . ($initial ? ' ' . $response : '') . "\r\n")) {
-        return pg_imap_broken($session);
+        return false;
     }
 
     $reply = pg_imap_read_response($session, $tag, true);
 
     if ($reply['continue'] && !$initial) {
         if (!pg_imap_write($session, $response . "\r\n")) {
-            return pg_imap_broken($session);
+            return false;
         }
 
         $reply = pg_imap_read_response($session, $tag, true);
@@ -1030,7 +1030,7 @@ function pg_imap_login_xoauth2(&$session, $user, $token)
     // The server's reason for refusing, then the tagged NO.
     if ($reply['continue']) {
         if (!pg_imap_write($session, "\r\n")) {
-            return pg_imap_broken($session);
+            return false;
         }
 
         $reply = pg_imap_read_response($session, $tag, false);
