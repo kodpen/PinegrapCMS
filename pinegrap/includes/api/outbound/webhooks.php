@@ -168,6 +168,13 @@ function api_webhook_events() {
 		'shipping_method.created' => 'A shipping method was created',
 		'shipping_method.updated' => 'A shipping method was changed',
 		'shipping_method.deleted' => 'A shipping method was deleted',
+		// Currencies (includes/fn/store_currencies.php): announced from the
+		// shared write functions, so the currency screens, the rate refresh
+		// (button and scheduled job) and the API alike. id, code,
+		// exchange_rate and base follow; a deletion carries id and code.
+		'currency.created'     => 'A currency was created',
+		'currency.updated'     => 'A currency was changed, or the rate refresh moved its exchange rate',
+		'currency.deleted'     => 'A currency was deleted',
 		// Uploads from the panel's file screen and writes through the API alike.
 		// A design or theme import brings its own files in bulk and stays quiet,
 		// for the same reason the contact import does.

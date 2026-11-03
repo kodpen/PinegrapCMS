@@ -15,7 +15,7 @@ description: External API (integration.php): find what the panel can do that the
 - X3 `GET /subscriptions`, `/subscriptions/{id}` (`customers:read`); `POST /commissions/{id}` status, `POST /affiliates/{id}/approve` (`customers:write`, the contact screen's right), `GET /commissions/recurring-profiles`; new `commissions:write`. Events `commission.status_changed`, `affiliate.approved`: PR #5741 (`api/api-commission-writes.md`, `api/api-subscriptions-list.md`).
 - X4 Users read: `GET /users`, `/users/{id}` (role, permission columns, last sign-in, MFA; no secrets). New `users:read`, designer ceiling. Writes: X13 (`external-api-coverage-2.md`). PR #5898 (`api/api-users-read.md`).
 - X5a Countries and states CRUD, `store:write`: PR #6005 (`api/api-store-country-state-writes.md`).
-- X5b Currencies: create, update, delete; `POST /store/currencies/rates` (`update_exchange_rates.php`). `store:write`. Event `currency.updated`.
+- X5b Currencies CRUD and `POST /store/currencies/rates`, `store:write`, events `currency.*`: PR #6051 (`api/api-store-currency-writes.md`).
 - X6 `POST /orders` as `add_order.php`, Idempotency-Key, dry run. `orders:write`. Event `order.created`.
 - X7 `POST /offers`, `POST /offers/{id}/duplicate` (`edit_offer_f.php` rules). `offers:write`. New events `offer.created|updated|deleted`.
 - X8 CRUD `/store/arrival-dates`, `/store/ship-date-adjustments`, `/store/verified-addresses`, `/store/referral-sources`. `orders:read`, `store:write`. No events.

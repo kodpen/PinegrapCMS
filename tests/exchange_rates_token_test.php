@@ -30,14 +30,14 @@ function test_exchange_rates_web_branch_checks_token()
 
 	$access = strpos($source, 'validate_ecommerce_access(', $else);
 	$token = strpos($source, 'validate_token_field()', $else);
-	$update = strpos($source, 'UPDATE currencies');
+	// The first write is the shared refresh (includes/fn/store_currencies.php).
+	$update = strpos($source, 'pg_store_currency_rates_refresh(');
 
 	pg_assert_true($access !== false);
 	pg_assert_true($token !== false);
 	pg_assert_true($update !== false);
 	pg_assert_true($access < $token);
 	pg_assert_true($token < $update);
-	pg_assert_true($token < strpos($source, 'SELECT id, code FROM currencies'));
 }
 
 // A background run has no session token, so its branch never checks one.

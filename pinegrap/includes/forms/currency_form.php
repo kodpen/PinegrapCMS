@@ -266,21 +266,3 @@ function pg_currency_form_exchange_rate_error($posted, $base)
 
     return '';
 }
-
-/**
- * Takes the base flag from every currency but the given one, so only one
- * currency is the base.
- *
- * @param string|int $id
- * @return void
- */
-function pg_currency_form_clear_other_bases($id)
-{
-    db_q(
-        "UPDATE currencies
-        SET base = '0'
-        WHERE
-            (base = '1')
-            AND (id != ?)",
-        array((string) $id)) or output_error('Query failed.');
-}
