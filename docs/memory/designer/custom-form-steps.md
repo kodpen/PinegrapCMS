@@ -20,7 +20,7 @@ module: custom_form_steps
 ## What does the browser draft keep?
 - `pg_cf_draft_key($page_id, $kind)` = `pg-cf-draft:<form|item>:<page id>`; the renderer passes it to `pg_cf_apply_steps()` except in the editor's Preview (`$mode === 'background'`) and the SEO pass, and the progress `<nav>` carries it as `data-pg-draft` with a hidden "Start over" button. A single-step form has no draft.
 - The script saves the answers and the shown step to `sessionStorage` (never `localStorage`) on every input, change and Next/Back, and restores them at load unless the server refilled a refused submission (`aria-invalid`), then fires `change` so the rule scripts re-read the form. Never kept: file, password and hidden inputs (a signature's value, tokens), `autocomplete="cc-*"` card fields, the CAPTCHA box (`.captcha`, its honeypot included) and a signature pad.
-- A submission that is not prevented and "Start over" (reset, `change`, then the draft removed: the save listener would write it back otherwise) clear it. Off inside a same-site frame (`window.frameElement`): the editor canvas and prototype play.
+- A submission that is not prevented and "Start over" (reset, `change`, then the draft removed, or the save listener writes it back) clear it. Off inside a same-site frame (`window.frameElement`): the editor canvas and prototype play.
 
 ## Tests?
 - `tests/custom_form_steps_test.php`: breaks at the start, in the middle, at the end, none, in a row, nested container, single step, tree untouched without a break, escaping, script once, renderer and palette wiring, the draft key, markup with and without it, what the draft never keeps.

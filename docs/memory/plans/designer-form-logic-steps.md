@@ -14,7 +14,7 @@ description: Steps FL1-FL4 of plans/designer-form-logic.md: Shown when rules, fo
 - FL2 (M) Steps and progress. Done (PR #5932).
   - Palette control "Step" (`CF_PALETTE`): a break node with a title; `_pg_cf_controls()` ignores it as a field; the site renderer (`custom-form-render.md`) groups the controls between breaks into `<fieldset class="pg-cf-step">` with `<legend>`, draws Back and Next buttons, a progress line ("Step 2 of 4", `aria-current`), and keeps one `<form>`; `pg_cf_steps_script()`: Next runs `reportValidity()` on the visible step only (hidden fields of FL1 excluded), focus moves to the step's first control, the browser's back key is not hijacked; a form without a break renders as today. Site CSS in the widget's stylesheet section on `--pg-*` tokens. Tests: the grouping function with breaks at the start, in the middle, at the end, none. Memory: `designer/custom-form-steps.md`.
 
-- FL3 (S) Browser draft. Done (PR #FL3PR).
+- FL3 (S) Browser draft. Done (PR #6011).
   - The answers of a stepped form are kept in `sessionStorage` under the page id and record kind (never file inputs, never a signature, never a card field), restored at load, cleared on a successful submission and on "Start over"; off when the form sits in Preview or prototype play. Memory: `designer/custom-form-steps.md` grows.
 
 - FL4 (M) Fee setting and the order writer. After questions 2-3.
