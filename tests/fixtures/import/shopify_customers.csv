@@ -1,0 +1,4 @@
+Customer ID,First Name,Last Name,Email,Accepts Email Marketing,Default Address Company,Default Address Address1,Default Address Address2,Default Address City,Default Address Province Code,Default Address Country Code,Default Address Zip,Default Address Phone,Phone,Accepts SMS Marketing,Total Spent,Total Orders,Note,Tax Exempt,Tags
+'7001,Ayşe,Demir,ayse@example.com,yes,Demir Ltd,Bağdat Cd. 10,Daire 3,İstanbul,34,TR,34730,+90 216 000 00 00,+905550000000,no,120.00,2,Prefers mornings,no,"vip, wholesale"
+'7002,John,Smith,JOHN@example.com,no,,1 Main St,,Springfield,IL,US,62701,,,no,0.00,0,,no,
+'7003,No,Mail,,yes,,,,,,,,,+15550000000,yes,0.00,0,,no,
