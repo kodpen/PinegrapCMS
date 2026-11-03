@@ -742,6 +742,7 @@ $explorer_lang = array(
     'where_used' => lang('Where is it used?'),
     'where_used_looking' => lang('Looking through the site...'),
     'where_used_none' => lang('Nothing on the site refers to this file.'),
+    'where_used_none_page' => lang('Nothing on the site refers to this page.'),
     'where_used_count' => lang('Referred to in {var:1} place(s)'),
     'where_used_more' => lang('Only the first of them are listed.'),
     // A copy of a file posted into a Workspace channel.
@@ -7165,10 +7166,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
     }
 
-    // ── Where a file is used ────────────────────────────────────────────
+    // ── Where a file or a page is used ──────────────────────────────────
     //
     // The answer is drawn where the question was asked -- in the panel, under
-    // the file it is about -- rather than in a window that has to be closed
+    // the item it is about -- rather than in a window that has to be closed
     // again before the operator can act on what it said.
     function loadFileUsage(item, container) {
 
@@ -7177,7 +7178,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         container.innerHTML = '<div class="text-center small fg-secondary py-3">' +
             '<span class="spinner-border spinner-border-sm me-3"></span>' + esc(L.where_used_looking) + '</div>';
 
-        api({ type: 'explorer_file_usage', file_id: item.id }, function (response) {
+        var request = (item.kind === 'page')
+            ? { type: 'explorer_page_usage', page_id: item.id }
+            : { type: 'explorer_file_usage', file_id: item.id };
+
+        api(request, function (response) {
 
             // The panel may have moved on to another file while this was out.
             if (!container.isConnected) { return; }
@@ -7188,7 +7193,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             }
 
             if (!response.total) {
-                container.innerHTML = '<div class="small fg-secondary"><i class="bi bi-check2 me-1"></i>' + esc(L.where_used_none) + '</div>';
+                container.innerHTML = '<div class="small fg-secondary"><i class="bi bi-check2 me-1"></i>' + esc((item.kind === 'page') ? L.where_used_none_page : L.where_used_none) + '</div>';
                 return;
             }
 
@@ -7488,7 +7493,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // to see what broke. Behind a button rather than loaded with the panel:
         // it walks several text columns without an index, which is fine for a
         // press and would not be for every click on a grid.
-        var usageBlock = ((item.kind === 'file') && !item.backup && !item.short_link)
+        var usageBlock = (((item.kind === 'file') || (item.kind === 'page')) && !item.backup && !item.short_link)
             ? ('<div id="preview_usage" class="mb-5"><button type="button" class="btn btn-sm btn-outline theme-secondary w-100 no-popover" data-role="where-used">' +
                 '<i class="bi bi-diagram-3 me-1"></i>' + esc(L.where_used) + '</button></div>')
             : '';
@@ -8388,6 +8393,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 if (state.mode === 'all') {
                     html += menuItem('bi-folder2-open', L.open_containing_folder, 'open_containing', multi);
                 }
+                html += menuItem('bi-diagram-3', L.where_used, 'where_used', multi);
             }
 
             // A folder is edited here, with no screen of its own: renamed in

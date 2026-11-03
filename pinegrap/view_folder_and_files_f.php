@@ -1209,6 +1209,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_upload.php');
 
 // The "Where used" sub-action of pg_explorer_handle().
 require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_file_usage.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_page_usage.php');
 
 // The tree, new folder, new file, rename and move sub-actions of
 // pg_explorer_handle().
@@ -1358,6 +1359,11 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
         // ── Where a file is used ────────────────────────────────────────
         case 'explorer_file_usage':
             pg_explorer_handle_file_usage($type, $request, $user, $folders_that_user_has_access_to);
+            break;
+
+        // ── Where a page is used ────────────────────────────────────────
+        case 'explorer_page_usage':
+            pg_explorer_handle_page_usage($type, $request, $user, $folders_that_user_has_access_to);
             break;
 
         // ── One field of one product ────────────────────────────────────
