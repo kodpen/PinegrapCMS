@@ -461,6 +461,7 @@ $explorer_lang = array(
     'webp_copy_fact' => lang('WebP copy {var:1} ({var:2}% lighter)'),
     'folder_settings' => lang('Folder Settings'),
     'sorting' => lang('Sorting'),
+    'sorting_whole_number' => lang('Sorting is a whole number from -9999 to 9999.'),
     'sorting_note' => lang('The order of this folder among the folders beside it'),
     'archive' => lang('Archive'),
     'archive_note' => lang('For pages and files no longer in use. While on, the pages directly in this folder answer visitors with 410 (gone), and its pages and files leave the Pages, Files and Pictures views, the site search and the editor pickers. Its files stay reachable at their address.'),
@@ -10888,6 +10889,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var taken = {};
 
         if (isNaN(start)) { start = 1; }
+        // Numbers count up from 0: a minus sign in the middle of a name is no
+        // number in its sequence ("photo-0-3").
+        if (start < 0) { start = 0; }
 
         bulkRenameItems.forEach(function (item, index) {
 
@@ -11095,7 +11099,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             '<input type="text" class="form-control form-control-sm" id="rename_pattern" value="' + esc(L.rename_pattern_default) + '" />' +
             '<div class="form-text">' + esc(L.rename_pattern_note) + '</div></div>' +
             '<div class="mb-5" style="max-width:9rem;"><label class="form-label" for="rename_start">' + esc(L.rename_start) + '</label>' +
-            '<input type="number" class="form-control form-control-sm" id="rename_start" value="1" min="0" /></div>' +
+            '<input type="number" class="form-control form-control-sm" id="rename_start" value="1" min="0" step="1" /></div>' +
             '</div>' +
 
             (anyFile
@@ -14077,7 +14081,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var orderArchiveHtml = isRoot ? '' :
                 '<div class="mb-5">' +
                 '<label class="form-label" for="settings_order_input">' + esc(L.sorting) + '</label>' +
-                '<input type="number" id="settings_order_input" class="form-control" inputmode="numeric" value="' + esc(String(folder.order)) + '" />' +
+                '<input type="number" id="settings_order_input" class="form-control" inputmode="numeric" step="1" min="-9999" max="9999" value="' + esc(String(folder.order)) + '" />' +
                 '<div class="form-text">' + esc(L.sorting_note) + '</div>' +
                 '</div>' +
                 '<div class="form-field mb-5">' +
@@ -14093,6 +14097,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 '<div class="mt-5 text-end"><button type="button" id="settings_save_button" class="btn btn-solid theme-success"><span class="bi bi-save me-3"></span>' + esc(L.save) + '</button></div>';
 
             document.getElementById('settings_save_button').addEventListener('click', function () {
+                // A sorting value that is no whole number in the range is
+                // refused here: the browser sends "12,50" as '' and the
+                // server would store 0.
+                var orderInput = isRoot ? null : document.getElementById('settings_order_input');
+
+                if (orderInput && ((orderInput.value === '') || !orderInput.checkValidity())) {
+                    toast(L.sorting_whole_number, false);
+                    orderInput.focus();
+                    return;
+                }
+
                 // The root's order and archive are not on the drawer; the
                 // server keeps the stored ones whatever is sent.
                 var payload = {

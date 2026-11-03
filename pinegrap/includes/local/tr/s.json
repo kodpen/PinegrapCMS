@@ -2729,6 +2729,7 @@
     "Sort order (within the group)": "Sıra (grup içi)",
     "Sort: {var:1}": "Sırala: {var:1}",
     "Sorting": "Sıralama",
+    "Sorting is a whole number from -9999 to 9999.": "Sıralama -9999 ile 9999 arasında bir tam sayıdır.",
     "Sound and calls": "Ses ve aramalar",
     "Sound that plays by itself": "Kendiliğinden çalan ses",
     "Soup and sandwich": "Çorba ve sandviç",
