@@ -317,3 +317,14 @@ function test_settings_accounting_card_refusals()
 	pg_assert_same(lang('The exemption code is three digits, as the tax authority lists it (for example 351).'), $refused['vat_exemption_code'], 'the save\'s own sentence');
 	pg_assert_same(array(), erp_settings_cards_refusals(array('late_fee_rate' => array('999'), 'late_fee_tax_rate' => ''), array('late_fee')), 'a list is read as empty, as the save reads it');
 }
+
+// A minus sign is not dropped: "-2" was read as 2 and saved as a 2 % fee.
+function test_settings_accounting_card_refuses_a_negative_late_fee()
+{
+	$refused = erp_settings_cards_refusals(array('late_fee_rate' => '-2', 'late_fee_tax_rate' => '-18'), array('late_fee'));
+
+	pg_assert_same(array('late_fee_rate', 'late_fee_tax_rate'), array_keys($refused), 'both negatives refused');
+	pg_assert_same(array('late_fee_rate'), array_keys(erp_settings_cards_refusals(array('late_fee_rate' => '2%', 'late_fee_tax_rate' => ' 18 '), array('late_fee'))), 'only digits and separators');
+	pg_assert_same(1.5, erp_late_fee_percent_in(' 1,5 '));
+	pg_assert_same(-1.0, erp_late_fee_percent_in('-2'));
+}
