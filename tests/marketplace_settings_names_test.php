@@ -89,7 +89,7 @@ function test_marketplace_settings_dialogs_are_named_by_their_titles()
 	pg_assert_contains('<dialog class="dialog" id="mp_new" aria-labelledby="mp_new_title">', $source);
 	pg_assert_contains('<h5 class="dialog-title" id="mp_new_title">', $source);
 	pg_assert_contains('<dialog class="drawer drawer-end" id="mp_drawer" aria-labelledby="mp_drawer_title"', $source);
-	pg_assert_contains('<h5 class="drawer-title" id="mp_drawer_title">', $source);
+	pg_assert_contains('<h5 class="drawer-title mp-name" id="mp_drawer_title">', $source);
 }
 
 function test_marketplace_settings_selected_account_is_current()

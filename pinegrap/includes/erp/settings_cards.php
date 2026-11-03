@@ -26,7 +26,7 @@ if (!defined('PG_ERP_ENTRY')) {
  * letter got theirs in 4.60, so they are listed only once that upgrade has
  * run - until then they print from the built-in files.
  *
- * @return array key => label, column, default, current, preview, log
+ * @return array key => label, column, default, current, preview, log_changed, log_reset
  */
 function erp_settings_documents()
 {
@@ -37,7 +37,8 @@ function erp_settings_documents()
             'default' => erp_invoice_default_template(),
             'current' => erp_invoice_template(),
             'preview' => 'get_erp_invoice_pdf.php',
-            'log' => 'erp invoice template',
+            'log_changed' => lang('erp invoice template was changed'),
+            'log_reset' => lang('erp invoice template was reset'),
         ),
     );
 
@@ -48,7 +49,8 @@ function erp_settings_documents()
             'default' => erp_waybill_default_template(),
             'current' => erp_waybill_template(),
             'preview' => 'get_erp_waybill_pdf.php',
-            'log' => 'erp delivery note template',
+            'log_changed' => lang('erp delivery note template was changed'),
+            'log_reset' => lang('erp delivery note template was reset'),
         );
     }
 
@@ -59,7 +61,8 @@ function erp_settings_documents()
             'default' => erp_reconciliation_default_template(),
             'current' => erp_reconciliation_template(),
             'preview' => 'get_erp_reconciliation_pdf.php',
-            'log' => 'erp reconciliation letter template',
+            'log_changed' => lang('erp reconciliation letter template was changed'),
+            'log_reset' => lang('erp reconciliation letter template was reset'),
         );
     }
 
