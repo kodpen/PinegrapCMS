@@ -60,7 +60,7 @@ description: Generated from the module field of the memory files: each includes/
 - `image_editor`: [[image-editor-access]], [[image-editor-adjust]], [[image-editor-artboard]], [[image-editor-callers]], [[image-editor-canvas-save]], [[image-editor-draw]], [[image-editor-export]], [[image-editor-fonts]], [[image-editor-glyph]], [[image-editor-keys]], [[image-editor-layers]], [[image-editor-modal]], [[image-editor-motion]], [[image-editor-parts]], [[image-editor-recycle-bin]], [[image-editor-redact]], [[image-editor-save]], [[image-editor-sticker]], [[image-editor-svg]], [[image-editor-text]], [[image-editor-vector]], [[image-editor-versions]]
 - `imap_client`: [[mail-imap-client]]
 - `innodb`: [[panel-script-number-format]]
-- `lang`: [[lang-loader]]
+- `lang`: [[lang-loader]], [[lang-placeholders]]
 - `lang_files`: [[lang-files]]
 - `layout_convert`: [[layout-form-converter]]
 - `layouts`: [[layout-code-tab]], [[layout-editor-classic]]
