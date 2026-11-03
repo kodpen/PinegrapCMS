@@ -12860,6 +12860,9 @@ html[data-bs-theme="dark"] .ws-group-icon {
   align-items: center;
   gap: .1rem;
   flex-shrink: 0;
+  /* A touch target as tall as the header's other buttons (it measured
+     23 px on a phone). */
+  min-height: 2rem;
   padding: .25rem .6rem .25rem .35rem;
   border: 0;
   border-radius: 999px;
@@ -12930,6 +12933,24 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   gap: .25rem;
   flex-shrink: 0;
   align-items: center;
+}
+/* The channel's More menu holds about twenty entries on a phone (the
+   header's own buttons move into it) and .ws-app clips what runs past the
+   screen, so the menu keeps to the screen's height and scrolls itself. */
+.ws-head-menu {
+  max-height: calc(100vh - 9rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@supports (height: 100dvh) {
+  .ws-head-menu { max-height: calc(100dvh - 9rem); }
+}
+/* The share notice above the tabs: the sentence starts from no width, so it
+   stays beside its icon instead of wrapping onto a row of its own (a phone
+   showed the icon alone on the first line). */
+.ws-share-bar-text {
+  flex: 1 1 0;
+  min-width: 0;
 }
 .ws-avatars {
   display: inline-flex;
