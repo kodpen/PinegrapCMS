@@ -11092,6 +11092,9 @@ body.pg-side-panel-open .pg-chat-launcher {
 }
 .pg-sale-res-price small { display: block; }
 .pg-sale-res[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+/* A button for an action that does nothing here: aria-disabled, not
+   disabled, so it still takes focus and names its reason. */
+.btn.pg-btn-inert { opacity: .65; cursor: default; }
 .pg-sale-res-new b { color: var(--pg-link-color); }
 .pg-sale-res-empty { padding: .7rem; color: var(--pg-fg-2); font-size: .875rem; }
 
