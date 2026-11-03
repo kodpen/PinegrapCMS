@@ -36,12 +36,17 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                            back to the defaults of an empty record.
  * @param array  $user        The signed-in user (validate_user())
  * @param int    $page_id     The page being edited, 0 for a new page
+ * @param bool   $lazy_pickers Untyped page pickers carry only their stored
+ *                            page and fill from one template when opened
+ *                            (select_page()); for the screens that print
+ *                            every type's fields at once
  * @return array  'selector'   the page type card,
  *                'properties' the System Options card,
  *                'wysiwyg'    the rich-text editor code for its message fields
  */
-function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, $page_id = 0)
+function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, $page_id = 0, $lazy_pickers = false)
 {
+    pg_page_picker_lazy($lazy_pickers);
 
     $layout_type_row_style = 'display: none';
 
@@ -2807,6 +2812,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 </div>
             </div>
         </div>';
+
+    if ($lazy_pickers) {
+        pg_page_picker_lazy(false);
+        $output_page_type_properties .= pg_page_picker_template();
+    }
 
     return array(
         'selector' => $output_page_type_selector,
