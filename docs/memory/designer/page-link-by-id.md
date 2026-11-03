@@ -12,7 +12,15 @@ description: A link outside a widget kept by page id (__page_link, #6233): fallb
 - The site, Preview, prototype.php, e-mails and the SEO crawl all pass `get_page_content()`, so `seo_link` stores the current address.
 - Inside a widget a `__page_link` the renderer did not expand still prints `#`. A shared component placed in a widget's layout is drawn after the widget closes, so it counts as outside.
 
-## What is left?
-- Editor side (canvas name, `pg_link_resolve()`/twin and the Prototype map reading the id, the arrow and Bind Data writing it): plans/designer-prototype-links.md.
+## How does the Prototype view read and write it?
+- `nodeLinks()` gives such a link (not one in text) `bound` (`boundPage()`: digits, `tab:<key>`, '' for none: then its typed href) and `pageLink`; `design()` asks digits in `request.page_ids` (designer/prototype-map-read.md). `markBound()`: the tab of that id or key, else `markHref()` of the page's current address from the maps (binned, draft), `hidden` for `hidden_ids`, else broken; the row's href is the current address.
+- An arrow of a link of its own to a tab frame: `hrefPatch(node, row, href, target)` adds `bind: {page_id}` (`boundTo()`: the page id, `tab:<key>` unsaved, made an id on Save); to a chip, a bound link gets `bind: false`. `applyPatch()` writes the address (fallback), then `_bindings.href` / `_bindParams.href` (params kept). Links in text stay by name. A row matches by `bound` when it has one.
+- A link in a widget tree with page id 0 shows as its typed href, though the site prints `#` there.
 
-Tests: `tests/page_link_by_id_test.php`.
+## How does the panel show it?
+- `_sdBoundHrefNotice()` outside a widget: `_sdPageLinkNotice()` names the page (`_sdPageLinkName()`: tabs, else the loaded page list, never fetched for it) and a "Type an address instead" button (`data-sd-page-unlink`) that drops the binding and keeps the address.
+
+## What is left?
+- Bind Data offering a page outside widgets; `pg_link_resolve()` itself stays href-only (bound links are marked before it).
+
+Tests: `tests/page_link_by_id_test.php`, `proto_hotspots_test.php` (`bound`), `prototype_map_test.php`.

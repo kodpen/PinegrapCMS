@@ -8,7 +8,7 @@ description: The Prototype view's hotspot collector (assets/js/pg_proto_hotspots
 
 ## Which nodes are hotspots?
 - `collect(tree)`: a content link (`props.href`, the `_attrs` href only when the prop is empty, `#` when both are), a btn drawn as `<a>` (`btnElement` empty or `a`), a semantic `a` with an href; each `<a href>` inside the `text` of a content or semantic node and inside custom HTML (`htmlLinks()`, reading the hrefs `pg_proto_html_hrefs()` reads: outside scripts, styles, text areas and comments; tested for parity). Each carries nodeId, source (`href`, `attrs`, `btn`, `text`), href, label, index (nth link of the text), target.
-- Not hotspots: anything with `data-bs-toggle` (dropdown, collapse, tab, modal…), a `<button>`/`<input>` btn, a bound href or text (`_bindings.href`, `_bindings.text`: drawn per request; `__page_link` links come in slice 4).
+- Not hotspots: anything with `data-bs-toggle` (dropdown, collapse, tab, modal…), a `<button>`/`<input>` btn, an href or text bound to a field (drawn per request); a `__page_link` link is one (designer/page-link-by-id.md).
 - Region nodes `menu` / `menu_sequence` and `common` / `designer` with a name become one hotspot each (source `menu` / `region`, name). The `menu_region` system widget is a shared component, not read here.
 - A `shared_ref` is not walked: its id is listed once.
 
