@@ -256,6 +256,132 @@
     }
 
     // ------------------------------------------------------------------
+    // Column preferences: order, shown or hidden, the details panel. Kept
+    // in the browser per user and list (localStorage), never on the
+    // server. Pure: a state object in, a new one out.
+    // ------------------------------------------------------------------
+
+    /** The localStorage key of a user's preferences for a list. */
+    function prefsKey(user, list) {
+        return 'pg.list.' + String(user || 0) + '.' + String(list || '');
+    }
+
+    /** A stored value read back as a state: order, hidden, details. */
+    function prefsClean(value) {
+        var state = { order: [], hidden: {}, details: false };
+
+        if (!value || (typeof value !== 'object')) {
+            return state;
+        }
+
+        if (Array.isArray(value.order)) {
+            state.order = value.order.filter(function (key) { return typeof key === 'string'; });
+        }
+
+        if (value.hidden && (typeof value.hidden === 'object')) {
+            keys(value.hidden).forEach(function (key) {
+                if (typeof value.hidden[key] === 'boolean') {
+                    state.hidden[key] = value.hidden[key];
+                }
+            });
+        }
+
+        state.details = (value.details === true);
+
+        return state;
+    }
+
+    /**
+     * The columns as the user sees them: the stored order for the keys the
+     * list still has, then its new columns where the model puts them; each
+     * hidden as stored, else as the model says. The first column (the
+     * record's name) always leads and never hides, nor does a column that
+     * is not hideable.
+     */
+    function columnsView(columns, state) {
+        var byKey = {};
+        var order = [];
+        var first = columns.length ? columns[0].key : null;
+
+        columns.forEach(function (column) {
+            byKey[column.key] = column;
+        });
+
+        state.order.forEach(function (key) {
+            if (has(byKey, key) && (key !== first) && (order.indexOf(key) < 0)) {
+                order.push(key);
+            }
+        });
+
+        columns.forEach(function (column, index) {
+            if ((index > 0) && (order.indexOf(column.key) < 0)) {
+                // A column the stored order does not know goes after the
+                // column the model puts before it.
+                var before = columns[index - 1].key;
+                var at = order.indexOf(before);
+
+                order.splice((at < 0) ? 0 : at + 1, 0, column.key);
+            }
+        });
+
+        if (first !== null) {
+            order.unshift(first);
+        }
+
+        return order.map(function (key) {
+            var column = byKey[key];
+            var copy = {};
+
+            for (var name in column) {
+                if (has(column, name)) {
+                    copy[name] = column[name];
+                }
+            }
+
+            copy.hidden = (key !== first) && (column.hideable !== false)
+                && (has(state.hidden, key) ? state.hidden[key] : !!column.hidden);
+
+            return copy;
+        });
+    }
+
+    /** A column shown or hidden (one that cannot hide is left as it is). */
+    function columnsToggle(columns, state, key) {
+        var next = prefsClean(state);
+        var view = columnsView(columns, next);
+
+        view.forEach(function (column, index) {
+            if ((column.key === key) && (index > 0) && (column.hideable !== false)) {
+                next.hidden[key] = !column.hidden;
+            }
+        });
+
+        return next;
+    }
+
+    /** A column moved by delta places; the first column stays first. */
+    function columnsMove(columns, state, key, delta) {
+        var next = prefsClean(state);
+        var order = columnsView(columns, next).map(function (column) { return column.key; });
+        var from = order.indexOf(key);
+        var to = from + delta;
+
+        if ((from > 0) && (to > 0) && (to < order.length)) {
+            order.splice(from, 1);
+            order.splice(to, 0, key);
+        }
+
+        next.order = order.slice(1);
+
+        return next;
+    }
+
+    /** The model's columns again; the details panel keeps its state. */
+    function columnsReset(state) {
+        return { order: [], hidden: {}, details: prefsClean(state).details };
+    }
+
+    // ------------------------------------------------------------------
     // The driver.
     // ------------------------------------------------------------------
 
@@ -861,6 +987,12 @@
         sortAfterClick: sortAfterClick,
         sortParse: sortParse,
         sortValue: sortValue,
+        prefsKey: prefsKey,
+        prefsClean: prefsClean,
+        columnsView: columnsView,
+        columnsToggle: columnsToggle,
+        columnsMove: columnsMove,
+        columnsReset: columnsReset,
         init: init
     };
 
