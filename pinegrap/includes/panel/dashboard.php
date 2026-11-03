@@ -47,6 +47,11 @@ function pg_panel_user_online_check($request, $action)
 {
     validate_token();
 
+    // Nothing below writes to the session: release its file lock so this
+    // poll, fired by every panel page, does not hold back the person's
+    // other panel requests while it runs.
+    session_write_close();
+
     if (USER_LOGGED_IN && defined('DB_CONNECTED')) {
         who_is_online(50);
         $response = array(
@@ -74,6 +79,10 @@ function pg_panel_sitemap_check($request, $action)
     }
 
     validate_token();
+
+    // Regenerating the sitemap and pinging the search engines can take a
+    // while and never writes to the session: release its file lock first.
+    session_write_close();
 
     if (defined('DB_CONNECTED')) {
         $current_timestamp = time();

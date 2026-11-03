@@ -20,5 +20,6 @@ description: Adding an api.php panel action: the pg_panel_actions() row and its 
 - Flags match the handler: `token` = it calls `validate_token()` (or `token_by` names the function that checks the token for it), `write` = it changes something, `public` = a storefront endpoint with no session and no form token.
 - `tests/panel_actions_test.php` reads each handler's source against its flags and compares the exempt names with a fixed list kept in the test: making an action exempt is a deliberate change in both places.
 - The body is JSON (`php://input`). A FormData post decodes to nothing: a designer gets `Invalid action.`, a lower role is stopped at the gate. Multipart needs its own script (`json-endpoint-rules.md`).
+- A read-only handler, above all a poll every page fires (`check_unread_notifications`, `user_online_check`, `sitemap_check`, the widget reads), calls `session_write_close()` right after its own session and token checks: PHP's file session lock otherwise queues the person's other panel requests behind it (#6078 measured ~100 ms steps). Not in `pg_panel_dispatch()`: `validate_user()` may still destroy the session. `tests/panel_poll_session_lock_test.php` pins the order.
 
 Related: docs/memory/core/api-php-role-gate-and-actions.md

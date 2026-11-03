@@ -45,6 +45,9 @@ function pg_panel_check_unread_notifications($request, $action)
         respond(panel_login_refusal());
     }
     $user = validate_user();
+    // The count only reads: release the session file lock so this poll does
+    // not hold back the person's other panel requests while it runs.
+    session_write_close();
     include_once(PG_FUNCTIONS_DIR . '/includes/notifications.php');
 
     // Read state is per person, so the unread filter is a join rather than a
