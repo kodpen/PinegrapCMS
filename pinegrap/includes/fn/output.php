@@ -408,12 +408,13 @@ function pg_preloader_markup()
     $session_url = (defined('OUTPUT_PATH') && defined('OUTPUT_SOFTWARE_DIRECTORY'))
         ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/session_state.php' : '';
 
-    $markup = '<div id="pg-preloader" class="pg-preloader" aria-hidden="true" data-pg-session="' . h($session_url) . '">'
+    $markup = '<div id="pg-preloader" class="pg-preloader" aria-hidden="true" data-pg-session="' . h($session_url) . '" data-pg-view="' . h(pg_session_view_key()) . '">'
             . '<div class="pg-preloader-bar"><i></i></div>'
             . '<div class="pg-preloader-mark">' . $mark
             . '<div class="pg-preloader-dots"><i></i><i></i><i></i></div>'
             . '</div></div>'
             . '<div class="pg-leave-bar" aria-hidden="true"><i></i></div>'
+            . '<style>html.pg-session-check body{visibility:hidden}</style>'
             . '<noscript><style>#pg-preloader{display:none !important;}</style></noscript>';
 
     return $markup . <<<'PGPRELOADER'
@@ -512,20 +513,42 @@ function pg_preloader_markup()
             setTimeout(function () { if (prompted()) settle(); }, 0);
         });
 
-        // Coming back through the browser's back button hands us the page
-        // exactly as it was, bar and all. The session may have ended since
-        // (signed out in another tab, timed out): then the page is loaded
-        // again, and the server sends it to sign-in.
-        window.addEventListener('pageshow', function (e) {
-            if (!e.persisted) return;
-            settle();
-            hide();
+        // A page reached through Back or Forward may come from the
+        // back/forward cache (persisted) or from the HTTP cache (a
+        // back_forward navigation), and the session that drew it may have
+        // ended or been replaced by another user's since. It stays hidden
+        // until session_state.php answers with this page's view key
+        // (pg_session_view_key()); any other answer, or none, loads it
+        // again and the server decides what to show. A reload is not a
+        // back_forward navigation, so a failing check cannot loop.
+        function historyVisit() {
+            try {
+                var n = performance.getEntriesByType('navigation')[0];
+                return !!(n && n.type === 'back_forward');
+            } catch (err) { return false; }
+        }
+        function checkSession() {
             var at = host.getAttribute('data-pg-session');
-            if (!at || !window.fetch) return;
+            // Empty when the screen drew without an open session: then a
+            // signed-in session is all that can be asked for.
+            var want = host.getAttribute('data-pg-view') || '';
+            if (!at || !window.fetch) { root.classList.remove('pg-session-check'); return; }
+            root.classList.add('pg-session-check');
             fetch(at, { credentials: 'same-origin', cache: 'no-store', headers: { 'Accept': 'application/json' } })
                 .then(function (r) { return r.ok ? r.json() : null; })
-                .then(function (d) { if (d && d.signed_in === false) location.reload(); })
-                .catch(function () {});
+                .then(function (d) {
+                    if (d && d.signed_in === true && (want === '' || d.view === want)) root.classList.remove('pg-session-check');
+                    else location.reload();
+                })
+                .catch(function () { location.reload(); });
+        }
+        if (historyVisit()) root.classList.add('pg-session-check');
+
+        // Coming back through the browser's back button hands us the page
+        // exactly as it was, bar and all.
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) { settle(); hide(); }
+            if (e.persisted || historyVisit()) checkSession();
         });
 
         if (hasNav) {
@@ -602,6 +625,42 @@ function pg_panel_no_store_screens()
 }
 
 /**
+ * The view key of a page drawn for the signed-in user of this session: a
+ * hash of a random value kept in the session and the user's id. A panel page
+ * carries it (pg_preloader_markup()) and session_state.php answers with the
+ * current one, so a page brought back by Back or Forward after a sign-out,
+ * or after another user signed in in the same browser, no longer matches.
+ * Empty without a signed-in user.
+ *
+ * @return string
+ */
+function pg_session_view_key()
+{
+    if (session_status() !== PHP_SESSION_ACTIVE || empty($_SESSION['sessionuserid'])) {
+        return '';
+    }
+    if (empty($_SESSION['software']['view_nonce']) || !is_string($_SESSION['software']['view_nonce'])) {
+        $_SESSION['software']['view_nonce'] = bin2hex(random_bytes(16));
+    }
+    return pg_session_view_key_for($_SESSION['software']['view_nonce'], $_SESSION['sessionuserid']);
+}
+
+/**
+ * @param string     $nonce   the session's random value
+ * @param int|string $user_id
+ * @return string 32 hex characters, or empty without either
+ */
+function pg_session_view_key_for($nonce, $user_id)
+{
+    $nonce = (string) $nonce;
+    $user_id = (int) $user_id;
+    if ($nonce === '' || $user_id <= 0) {
+        return '';
+    }
+    return substr(hash('sha256', $nonce . '|' . $user_id), 0, 32);
+}
+
+/**
  * Sends Clear-Site-Data: "cache" on an answer that ends a session, so the
  * browser drops this origin's HTTP cache and back/forward cache entries and
  * Back on a shared computer does not show a panel screen again. Browsers
@@ -654,8 +713,9 @@ function pg_panel_cache_is_session_default(array $headers)
 /**
  * output_header(): replaces the session's no-store headers (PHP's
  * session.cache_limiter = nocache) for panel HTML, so Back and Forward
- * restore a panel screen at once. A restored page asks session_state.php
- * whether the session is still there (pg_preloader_markup()).
+ * restore a panel screen at once. A page shown by Back or Forward stays
+ * hidden until session_state.php confirms the session and user that drew
+ * it (pg_preloader_markup(), pg_session_view_key()).
  */
 function pg_panel_cache_headers()
 {

@@ -15,7 +15,7 @@ description: Panel HTML in the browser's back/forward cache (#6081): private, no
 
 ## What protects a shared computer?
 - Every path that ends a session calls `pg_session_end_clear_cache()` right after `session_destroy()`, which sends `Clear-Site-Data: "cache"` (HTTPS only) and so also drops back/forward cache entries: `logout()`, `account_security.php` (all devices, this device), the kiosk's anonymous branch, `initialize_user()` and the device-bind kick in `includes/fn/auth.php`, `login_as_user.php`. `tests/preloader_test.php` checks every `session_destroy()` in those files is followed by it.
-- A page restored on `pageshow` (`persisted`) asks `session_state.php` (`{"signed_in": bool}`, `pg_session_signed_in()`) and reloads when the session is gone, so the server sends it to sign-in (`pg_preloader_markup()`).
+- A page shown by Back or Forward, from the back/forward cache (`persisted`) or the HTTP cache (navigation type `back_forward`, Safari, plain HTTP, an evicted entry), is hidden (`html.pg-session-check`) until `session_state.php` answers `{"signed_in": true, "view": <key>}` with the key the page carries; otherwise, or when the request fails, it reloads and the server decides (`pg_preloader_markup()`, #6143 second review). The key is `pg_session_view_key()`: a hash of a random value in the session and the user id, so another user signed in in the same browser does not match. A reload is not `back_forward`, so it cannot loop.
 
 ## In-page JSON replies?
 - They keep `no-store`: JSON fetched by a script never enters the back/forward cache, so dropping it gains nothing (`pg_list_edit_reply()` stays `private, no-store`, #6143 review).

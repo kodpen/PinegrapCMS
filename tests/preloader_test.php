@@ -91,7 +91,23 @@ function test_restored_page_asks_for_the_session()
 	$html = pg_preloader_markup();
 	pg_assert_contains('/session_state.php"', $html, 'session address on the curtain');
 	pg_assert_contains("host.getAttribute('data-pg-session')", $html, 'read on pageshow');
-	pg_assert_contains('d.signed_in === false) location.reload()', $html, 'a gone session loads the page again');
+	pg_assert_contains('data-pg-view="', $html, 'view key on the curtain');
+	pg_assert_contains("n.type === 'back_forward'", $html, 'an HTTP-cache history visit is checked too');
+	pg_assert_contains('if (e.persisted || historyVisit()) checkSession();', $html, 'checked on every history pageshow');
+	pg_assert_contains('html.pg-session-check body{visibility:hidden}', $html, 'hidden until the answer');
+	pg_assert_contains("d.signed_in === true && (want === '' || d.view === want)", $html, 'only the same session and user is shown');
+	pg_assert_contains('.catch(function () { location.reload(); })', $html, 'a failed check loads the page again');
+}
+
+function test_view_key_names_session_and_user()
+{
+	$a = pg_session_view_key_for('nonce-one', 7);
+	pg_assert_same(32, strlen($a), 'length');
+	pg_assert_same($a, pg_session_view_key_for('nonce-one', '7'), 'stable');
+	pg_assert_true($a !== pg_session_view_key_for('nonce-one', 8), 'another user');
+	pg_assert_true($a !== pg_session_view_key_for('nonce-two', 7), 'another session');
+	pg_assert_same('', pg_session_view_key_for('', 7), 'no nonce');
+	pg_assert_same('', pg_session_view_key_for('nonce-one', 0), 'no user');
 }
 
 function test_a_screen_s_own_cache_control_is_kept()
