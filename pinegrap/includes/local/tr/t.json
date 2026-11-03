@@ -3842,6 +3842,7 @@
     "The quote was signed and is accepted.": "Teklif imzalandı ve kabul edildi.",
     "The quote was turned into an invoice; changes are made on the invoice.": "Teklif faturaya dönüştü; değişiklikler faturada yapılır.",
     "The quote's lines could not be read.": "Teklifin satırları okunamadı.",
+    "The rate limit is a whole number of requests a minute, from 1 to 6000.": "Hız sınırı, dakikada 1 ile 6000 arası tam bir istek sayısıdır.",
     "The reading room seats thirty. Schools, clubs and launches can book it in the evenings.": "Okuma odası otuz kişilik. Okullar, kulüpler ve kitap lansmanları akşamları kiralayabilir.",
     "The reading room, upstairs": "Okuma odası, üst kat",
     "The reason for the error is written above.": "Hatanın nedeni yukarıda yazılmıştır.",

@@ -1525,6 +1525,7 @@
     "Not about one app": "Belirli bir uygulamayla ilgili değil",
     "Not accepted": "Onaylanmadı",
     "Not added yet": "Henüz eklenmedi",
+    "Not an IP address or range: {var:1}": "IP adresi ya da aralığı değil: {var:1}",
     "Not an address or a range: {var:1}": "Adres ya da aralık değil: {var:1}",
     "Not an e-Invoice taxpayer": "e-Fatura mükellefi değil",
     "Not an e-mail address: {var:1}": "E-posta adresi değil: {var:1}",

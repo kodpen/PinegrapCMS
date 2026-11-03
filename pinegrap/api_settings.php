@@ -247,6 +247,28 @@ if ($_POST) {
 
 		}
 
+		// An allow list entry that is no address or range, or a rate limit
+		// that is no whole number from 1 to 6000, is refused by name rather
+		// than stored: the first would refuse every call made with the key.
+		$bad_ip = $existing ? api_app_ip_allowlist_bad(isset($_POST['ip_allowlist']) ? $_POST['ip_allowlist'] : '') : '';
+		$rate = $existing ? api_app_rate_limit_in(isset($_POST['rate_limit_per_min']) ? $_POST['rate_limit_per_min'] : '') : null;
+
+		if (($bad_ip !== '') || ($rate === false)) {
+
+			if ($bad_ip !== '') {
+				$liveform->add_error(lang(array('string' => 'Not an IP address or range: {var:1}', 'vars' => h($bad_ip))));
+			}
+
+			if ($rate === false) {
+				$liveform->add_error(lang('The rate limit is a whole number of requests a minute, from 1 to 6000.'));
+			}
+
+			header('Location: ' . $screen_url);
+
+			exit();
+
+		}
+
 		if ($existing) {
 
 			$audit_before = pg_audit_fetch('api_apps', $app_id);
@@ -254,12 +276,6 @@ if ($_POST) {
 			$status = (isset($_POST['status']) && in_array($_POST['status'], array('active', 'disabled'), true))
 				? $_POST['status']
 				: 'disabled';
-
-			$rate = isset($_POST['rate_limit_per_min']) ? (int)$_POST['rate_limit_per_min'] : 120;
-
-			if ($rate < 1) { $rate = 1; }
-
-			if ($rate > 6000) { $rate = 6000; }
 
 			$expires = 0;
 
@@ -278,7 +294,7 @@ if ($_POST) {
 					ip_allowlist = '" . escape(isset($_POST['ip_allowlist']) ? $_POST['ip_allowlist'] : '') . "',
 					status = '" . escape($status) . "',
 					expires_at = '" . $expires . "',
-					rate_limit_per_min = '" . $rate . "',
+					" . (($rate === null) ? '' : "rate_limit_per_min = '" . (int)$rate . "',") . "
 					updated_timestamp = UNIX_TIMESTAMP()
 				WHERE id = '" . $app_id . "'");
 
