@@ -441,3 +441,14 @@ function test_core_relative_time_tooltip_follows_the_panel_language()
 		pg_assert_same(0, preg_match('/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/', $match[1] ?? ''), $type . ' title has no English name');
 	}
 }
+
+// escape_like() escapes the backslash before the wildcards: a typed
+// backslash is a plain character in the pattern, not MySQL's escape for the
+// next one ('C:\temp' looked for 'C:temp', '\_' matched any character).
+function test_core_escape_like_escapes_backslash()
+{
+	pg_assert_same('C:\\\\temp', escape_like('C:\\temp'));
+	pg_assert_same('a\\\\\\_b', escape_like('a\\_b'));
+	pg_assert_same('50\\% off\\_now', escape_like('50% off_now'));
+	pg_assert_same('', escape_like(''));
+}
