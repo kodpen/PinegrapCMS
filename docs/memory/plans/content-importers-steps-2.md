@@ -6,7 +6,7 @@ description: Steps IM4-IM7 of plans/content-importers.md: the WooCommerce and Sh
 ## Which steps are there?
 - Sizes, tests and memory rules as in `content-importers-steps.md`; IM4 and IM5 run beside IM2 and IM3.
 
-- IM4 (M) WooCommerce reader. After IM1.
+- IM4 (M) WooCommerce reader. Done in #6206 (`platform/import-woocommerce.md`); the product writer `write_product.php` is IM5's too.
   - `includes/import/woocommerce.php`: the products export CSV (type simple, variable, variation; parent SKU; attributes as variant sets through `commerce/catalog-variant-set-writer.md`; categories as product groups made on the way; images as media fetches; prices through the existing price cell reader; stock to `inventory_quantity`); the product import's row writer reused, not copied. Tests on the fixture. Memory: `platform/import-woocommerce.md`.
 
 - IM5 (M) Shopify reader. After IM1.
