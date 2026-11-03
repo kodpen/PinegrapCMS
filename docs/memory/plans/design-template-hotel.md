@@ -17,10 +17,10 @@ description: Plan for the Hotel template (pinegrap-hotel): rooms as a collection
 - Turkish: check shared keys in tr.json before reuse (`Process` reads İşlem).
 
 ## Which steps are there?
-- 1 Done (#6216). Data and shared parts: `parts.php` (builders, the hotel's data, sample rooms, rates, plans, offers, vouchers, pick lists; account bar, header, footer, booking band, room, plan and offer cards, page shells, form fields, comment thread, staff bar); test `design_template_hotel_test.php`.
-- 2 Public pages: `pages_public.php` (home, about, dining, spa, location, offers, rates, FAQ).
-- 3 Done (#6280). Rooms: `rooms.php` (`room_new` with the Rooms collection and samples, `rooms` with filters, `room` record page, the home's featured list `home_rooms`).
-- 4 Done (#6282). Bookings: `mail.php`, `bookings.php` (`book`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`, notify e-mails).
+- 1 Done (#6216): `parts.php` (data, samples and shared parts); test `design_template_hotel_test.php`.
+- 2 Done (#6283): `pages_public.php` (public pages; the home places `home_rooms`, `google_reviews`, `home_posts`).
+- 3 Done (#6280): `rooms.php` (the Rooms collection, list, record page, `home_rooms`).
+- 4 Done (#6282): `mail.php`, `bookings.php` (booking requests, their views, lists and e-mails).
 - 5 Events: `events.php` (`meetings`, `event_enquiry`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, notify e-mails).
 - 6 Shop: `shop.php` (Gift Vouchers group, `vouchers`, product, cart, checkout, order, `email_order`).
 - 7 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Hotel Journal", blog post, search, error); test `…_standard_test.php`.
