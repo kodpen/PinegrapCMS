@@ -13,6 +13,11 @@ description: WordPress WXR reader of the import framework: streaming walk, what 
 - Left out: `nav_menu_item`, `revision`, block editor and customizer internals (`pg_import_wp_skipped_types()`), status trash and auto-draft. publish and inherit are published; draft, pending, future and private are drafts.
 - A record's data: post type, status, body, excerpt, time, slug, old link (for redirects), parent, author (login, display name, e-mail), categories, tags, and the featured image as the attachment's source key (`_thumbnail_id`): the file item may come later in the file, so the writer looks it up then.
 
+## How do the authors come in?
+- `pg_import_wordpress_open()` puts the authors of the site head first as `user` items (`<site>:author:<login>`), so a record finds its author's account.
+- Mapping row `authors`: "As disabled panel users" or left out (names only, the items are skipped). `includes/import/write_user.php` makes a role 3 account with no password (algo 3) and `user_disabled_at` = the import time (`core/user-disabled.md`). An address an existing user holds makes no account: skipped and named, the row is left alone.
+- Undo removes an author only while it is still disabled with no password, passkey or provider; a taken-over account stays and the report lists it as Kept (`pg_import_unwrite_user()` answers `array('kept' => name)`).
+
 ## Which comments come in?
 - Type comment (or empty) with approved 1 (published) or 0 (held, unpublished). Spam, bin, pingbacks and trackbacks are left out. `parent` is the source key of the comment answered, so threads are kept. Comments follow their post as separate items.
 
@@ -25,6 +30,6 @@ description: WordPress WXR reader of the import framework: streaming walk, what 
 - The cursor is the number of items read plus the comments of the last item not yet handed out. Within one request the reader stays open; a later request opens the file again and skips that many items.
 
 ## Which mapping rows does it ask for?
-- The form posts become records of (required), its fields for title (required), body, summary, date, featured image, categories and tags, and the folders for pages and files.
+- The form posts become records of (required), its fields for title (required), body, summary, date, featured image, categories and tags, the folders for pages and files, and how authors come in.
 
-Tests: `tests/import_wordpress_test.php` on `tests/fixtures/import/wordpress.xml`.
+Tests: `tests/import_wordpress_test.php` on `tests/fixtures/import/wordpress.xml`, `tests/import_user_test.php`.

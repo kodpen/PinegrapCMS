@@ -427,7 +427,7 @@ if ($import === null) {
 
         foreach ((array) ($import['report']['lines'] ?? array()) as $line) {
             $lines .= '<tr>
-                <td>' . h(($line['result'] ?? '') === 'failed' ? lang('Failed') : lang('Skipped')) . '</td>
+                <td>' . h(array('failed' => lang('Failed'), 'kept' => lang('Kept'))[$line['result'] ?? ''] ?? lang('Skipped')) . '</td>
                 <td>' . h($writer_kinds[$line['kind'] ?? ''] ?? ($line['kind'] ?? '')) . '</td>
                 <td>' . h((string) (($line['title'] ?? '') !== '' ? $line['title'] : ($line['key'] ?? ''))) . '</td>
                 <td>' . h((string) ($line['reason'] ?? '')) . '</td>

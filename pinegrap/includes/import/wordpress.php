@@ -378,12 +378,38 @@ function pg_import_wp_reader($file)
 
 function pg_import_wordpress_open($file)
 {
+    $site = pg_import_wp_site((string) $file);
+
     return array(
         'file'    => (string) $file,
         'index'   => 0,
-        'pending' => array(),
-        'site'    => pg_import_wp_site((string) $file),
+        // The authors come first, so a record finds its author's account.
+        'pending' => pg_import_wp_author_items($site),
+        'site'    => $site,
     );
+}
+
+/**
+ * The export's authors as user items, keyed by the old site and the login.
+ * Pure.
+ *
+ * @param array $site pg_import_wp_site()
+ * @return array[]
+ */
+function pg_import_wp_author_items($site)
+{
+    $items = array();
+
+    foreach ((array) ($site['authors'] ?? array()) as $login => $author) {
+        $items[] = array(
+            'kind'       => 'user',
+            'source_key' => $site['key'] . ':author:' . $login,
+            'title'      => (string) $author['name'],
+            'data'       => $author,
+        );
+    }
+
+    return $items;
 }
 
 /**
@@ -493,6 +519,10 @@ function pg_import_wordpress_plan($item)
         return array('title' => (string) $item['title'], 'detail' => (string) ($data['url'] ?? ''));
     }
 
+    if ($kind === 'user') {
+        return array('title' => (string) $item['title'], 'detail' => (string) ($data['email'] ?? ''));
+    }
+
     if ($kind === 'comment') {
         return array('title' => (string) $item['title'], 'detail' => (string) ($data['name'] ?? ''));
     }
@@ -532,6 +562,7 @@ function pg_import_wordpress_mapping()
         'picture'     => $field(lang('Featured image')),
         'categories'  => $field(lang('Categories')),
         'tags'        => $field(lang('Tags')),
+        'authors'     => array('label' => lang('Authors'), 'type' => 'select', 'choices' => array('users' => lang('As disabled panel users'))),
         'page_folder' => array('label' => lang('Folder for pages'), 'type' => 'folder'),
         'file_folder' => array('label' => lang('Folder for files'), 'type' => 'folder'),
     );

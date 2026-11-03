@@ -43,6 +43,18 @@ function test_import_wp_detected_as_wordpress()
 	pg_assert_same('wordpress', pg_import_detect_kind((string) file_get_contents(pg_test_import_wp_file(), false, null, 0, 8192)));
 }
 
+// The authors are user items before every post, keyed by site and login.
+function test_import_wp_author_items()
+{
+	$items = pg_import_wp_author_items(pg_import_wp_site(pg_test_import_wp_file()));
+
+	pg_assert_same(2, count($items), 'count');
+	pg_assert_same('user', $items[1]['kind'], 'kind');
+	pg_assert_same('old.example.com:author:omer', $items[1]['source_key'], 'key');
+	pg_assert_same('omer@example.com', $items[1]['data']['email'], 'email');
+	pg_assert_same(array('title' => 'Ömer Yılmaz', 'detail' => 'omer@example.com'), pg_import_wordpress_plan($items[1]), 'plan');
+}
+
 // The site head: host as key prefix, the namespace version, authors by login.
 function test_import_wp_site_head()
 {
@@ -53,8 +65,9 @@ function test_import_wp_site_head()
 	pg_assert_same(array('login' => 'omer', 'name' => 'Ömer Yılmaz', 'email' => 'omer@example.com'), $site['authors']['omer'], 'author');
 }
 
-// Counts per kind: three records (two posts and the custom post type), one
-// page, two files, three comments; menu item, bin, pingback left out.
+// Counts per kind: two authors, three records (two posts and the custom post
+// type), one page, two files, three comments; menu item, bin, pingback left
+// out.
 function test_import_wp_counts_per_kind()
 {
 	$counts = array();
@@ -65,7 +78,7 @@ function test_import_wp_counts_per_kind()
 
 	ksort($counts);
 
-	pg_assert_same(array('comment' => 3, 'file' => 2, 'page' => 1, 'record' => 3), $counts);
+	pg_assert_same(array('comment' => 3, 'file' => 2, 'page' => 1, 'record' => 3, 'user' => 2), $counts);
 }
 
 // The post with a featured image and its comment thread.
@@ -130,6 +143,8 @@ function test_import_wp_page_file_and_custom_type()
 function test_import_wp_cursor_resumes()
 {
 	$cursor = pg_import_wordpress_open(pg_test_import_wp_file());
+	$author = pg_import_wordpress_next($cursor);
+	pg_import_wordpress_next($cursor);
 	$first = pg_import_wordpress_next($cursor);
 	pg_import_wordpress_next($cursor);
 
@@ -143,8 +158,9 @@ function test_import_wp_cursor_resumes()
 	$rest = pg_test_import_wp_items($saved);
 	$all = pg_test_import_wp_items();
 
+	pg_assert_same('old.example.com:author:jane', $author['source_key'], 'authors first');
 	pg_assert_same('old.example.com:post:10', $first['source_key'], 'first');
-	pg_assert_same(array_slice(array_keys($all), 2), array_keys($rest), 'rest');
+	pg_assert_same(array_slice(array_keys($all), 4), array_keys($rest), 'rest');
 }
 
 function test_import_wp_time()
