@@ -1505,6 +1505,99 @@ function api_schema() {
 
 
 		array(
+			'id' => 'store.referral_sources.list',
+			'method' => 'GET',
+			'path' => '/store/referral-sources',
+			'scope' => 'orders:read',
+			'handler' => 'api_store_referral_sources_list',
+			'returns' => array('list' => 'StoreReferralSource'),
+			'summary' => 'Referral sources',
+			'description' => 'Where customers say they heard of the store: the Lead Source list of the contact screen and checkout, in its order. One page.',
+			'params' => array()
+		),
+
+		array(
+			'id' => 'store.referral_sources.get',
+			'method' => 'GET',
+			'path' => '/store/referral-sources/{id}',
+			'scope' => 'orders:read',
+			'handler' => 'api_store_referral_sources_get',
+			'returns' => 'StoreReferralSource',
+			'summary' => 'One of the referral sources',
+			'description' => 'One row as GET /store/referral-sources lists it.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.referral_sources.create',
+			'method' => 'POST',
+			'path' => '/store/referral-sources',
+			'scope' => 'store:write',
+			'handler' => 'api_store_referral_sources_create',
+			'dry_run' => true,
+			'returns' => 'StoreReferralSource',
+			'status' => 201,
+			'summary' => 'Create a referral source',
+			'description' => 'Adds a referral source, as the screen does: a blank name or code is 422; a name or code another source has (in any case) is 409 referral_source_taken.',
+			'params' => array(
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The name the contact screen and checkout show. No other source may have it, in any case.'),
+				array('name' => 'code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The code contacts and orders keep (lead_source on a customer). No other source may have it, in any case.'),
+				array('name' => 'sort_order', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999, 'description' => 'Its place in the list, smallest first.')
+			)
+		),
+
+		array(
+			'id' => 'store.referral_sources.update',
+			'method' => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path' => '/store/referral-sources/{id}',
+			'scope' => 'store:write',
+			'handler' => 'api_store_referral_sources_update',
+			'dry_run' => true,
+			'returns' => 'StoreReferralSource',
+			'summary' => 'Change a referral source',
+			'description' => 'Only the fields sent change. A name or code another source has is 409 referral_source_taken. PATCH is accepted as well; on an IIS server send POST.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The name the contact screen and checkout show. No other source may have it, in any case.'),
+				array('name' => 'code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The code contacts and orders keep (lead_source on a customer). No other source may have it, in any case.'),
+				array('name' => 'sort_order', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999, 'description' => 'Its place in the list, smallest first.')
+			)
+		),
+
+		array(
+			'id' => 'store.referral_sources.delete',
+			'method' => 'DELETE',
+			'path' => '/store/referral-sources/{id}',
+			'scope' => 'store:write',
+			'handler' => 'api_store_referral_sources_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a referral source',
+			'description' => 'Deletes the source outright, as the screen does. Customers and orders keep the code they were written with. Cannot be undone.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.referral_sources.delete_post',
+			'method' => 'POST',
+			'path' => '/store/referral-sources/{id}/delete',
+			'scope' => 'store:write',
+			'handler' => 'api_store_referral_sources_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a referral source, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/referral-sources/{id}, for clients that cannot send DELETE.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
 			'id'      => 'store.currencies',
 			'method'  => 'GET',
 			'path'    => '/store/currencies',

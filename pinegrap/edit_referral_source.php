@@ -88,33 +88,21 @@ if (!$_POST) {
 
     // if referral source was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
-        // delete referral source
-        $query = "DELETE FROM referral_sources WHERE id = ?";
-        $result = db_q($query, array((int) $id)) or output_error('Query failed.');
+        pg_store_referral_source_delete($id) or output_error('Query failed.');
         log_activity(lang(array('string'=>'referral source ({var:1}) was deleted','vars'=>array($stored_name) )) , $_SESSION['sessionusername']);
         $liveform_view->add_notice(lang('The referral source has been deleted.'));
     // else referral source was not selected for delete
     } else {
-        // update referral source
-        $query = "UPDATE referral_sources SET
-                    name = ?,
-                    code = ?,
-                    sort_order = ?,
-                    user = ?,
-                    timestamp = UNIX_TIMESTAMP()
-                WHERE id = ?";
         $values = pg_referral_source_form_values($_POST);
-        $others = array();
-        $others_result = db_q("SELECT name, code FROM referral_sources WHERE id <> ?", array((int) $id)) or output_error('Query failed.');
-        while ($other = mysqli_fetch_assoc($others_result)) {
-            $others[] = $other;
+        $others = pg_store_referral_source_others($id);
+        if ($others === false) {
+            output_error('Query failed.');
         }
         $error = pg_referral_source_form_error($values, $others);
         if ($error !== '') {
             output_error($error . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
-        $result = db_q($query, array($values['name'], $values['code'], pg_referral_source_sort_order($values['sort_order']), (string) $user['id'], (int) $id)) or output_error('Query failed.');
-
+        pg_store_referral_source_save($id, $values, $user['id']) or output_error('Query failed.');
         log_activity(lang(array('string'=>'referral source ({var:1}) was modified','vars'=>array($values['name']) )) , $_SESSION['sessionusername']);
         $liveform_view->add_notice(lang('The referral source has been saved.'));
     }
