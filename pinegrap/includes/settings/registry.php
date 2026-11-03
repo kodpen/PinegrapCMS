@@ -102,7 +102,7 @@ function pg_settings_categories()
             ),
             'keywords' => array(
                 'pgset-organization' => pg_settings_keywords(lang('organization, company, name, address, logo, support, email, tax number, tax office, vkn, seller')),
-                'pgset-server'   => pg_settings_keywords(lang('hostname, domain, ip, ssl, https, secure mode, secure, proxy')),
+                'pgset-server'   => pg_settings_keywords(lang('hostname, domain, ip, proxy')),
                 'pgset-software' => pg_settings_keywords(lang('software, language, licence, license, subscription, error, debug')),
                 'pgset-datetime' => pg_settings_keywords(lang('date, time, timezone, format')),
             ),
@@ -141,7 +141,7 @@ function pg_settings_categories()
                 'pgset-signature' => lang('Signature Time Stamp'),
             ),
             'keywords' => array(
-                'pgset-features' => pg_settings_keywords(lang('feature, cart, comment, blog, calendar, form, ads, sharing, search, performance, mobile, prefetch, speculation rules, preload')),
+                'pgset-features' => pg_settings_keywords(lang('feature, badge, calendar, form, ads, auto dialog, sharing, social, workspace, search, performance, mobile, prefetch, speculation rules, preload')),
                 'pgset-search-tuning' => pg_settings_keywords(lang('search, synonym, synonyms, promoted, recommended, pinned result')),
                 'pgset-images'   => pg_settings_keywords(lang('image, photo, optimization, webp, avif, responsive, quality, size, upload, watermark')),
                 'pgset-revisions' => pg_settings_keywords(lang('revision, revisions, history, version, versions, restore, retention, page, designer')),
