@@ -22,5 +22,5 @@ module: page_vitals
 - `GET /reports/vitals` (`reports.vitals`, scope `visitors:read`, `includes/api/resources/reports.php`, object `VitalsReport`): `from`, `to`, `device`, `order`, `site`, `days`, `pages` (`limit` 1-100, default 10). Window by `api_visitors_window()`, at most 400 days. 503 `service_unavailable` before the database update.
 - The MCP tool `reports_vitals` comes from the route (`api/api-mcp-server.md`).
 
-## What comes later?
-- The Speed section of the Visitors overview and the dashboard `perf` card read these (`plans/web-vitals-ai-visibility-steps-2.md`).
+## Who else reads them?
+- The Speed section (`visitor_vitals.php`, `ui/visitors-speed-section.md`) and the dashboard `perf` card's page load tile.

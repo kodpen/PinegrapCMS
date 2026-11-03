@@ -120,6 +120,7 @@ function pg_panel_file_explorer($request, $action)
         case 'explorer_folder_options':
         case 'explorer_folder_access_get':
         case 'explorer_folder_access_set':
+        case 'explorer_access_user_search':
         case 'explorer_delete_check':
         case 'explorer_recycle_delete':
         case 'explorer_recycle_restore':

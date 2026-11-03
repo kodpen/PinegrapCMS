@@ -19,4 +19,4 @@ module: ai_visibility
 
 ## How long are rows kept?
 - 400 days (`PG_AI_FETCH_DAYS`): `job.php` runs `pg_ai_fetch_sweep()` once a day (state file `data/temp/ai_fetch_sweep.json`), 5,000 rows a statement within a 5-second budget.
-- Tests: `tests/ai_visibility_figures_test.php`. PR: #5601.
+- Tests: `tests/ai_visibility_figures_test.php`. PR: #5601. The screen: `ui/visitors-ai-section.md`.

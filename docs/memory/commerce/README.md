@@ -76,6 +76,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - classic-order-pages-language.md: The classic order view, receipt and preview write every label through lang(): billing Phone/Fax/PO Number, shipping method and arrival date, the order view's headings and totals (PR #5202)
 - classic-store-pages-language.md: Classic store pages and checkout steps (cart, express order, receipt, order preview, shipping, billing) print every visitor text through lang(); {var:n} keys (PR #4472, #4795)
 - counter-sale-cart-session.md: Counter sale (add_order.php) cart in its own session key and born a local order; what completion writes (order date, buyer name, no recipient); typed quantity 0 to 9999 only
+- counter-sale-cash-and-add-quantity.md: Counter sale (add_order.php): cash received short of the total is refused before the sale is claimed; the next product's quantity is a whole 1-9999 and a line never passes 9999 (#5772, #5774)
 - counter-sale-keyboard-focus.md: Create Order screen (add_order.js): focus kept on the cart row, quick-amount chip and customer card when a server answer redraws them; Enter in a quantity box keeps the box
 - country-names-display.md: Country names on screen through pg_geo_country_label() and pg_geo_sort_by_label() in the current language; the starter dumps' corrected country rows (#2522)
 - country-names-in-addresses.md: The order view's address blocks and the address book name the stored country code in the site language; the country tokens keep the code
@@ -155,6 +156,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-payment-method-normalization.md: submit_order.php payment_method normalization to the four constants, the Pay With Iyzico ENUM addition (4.48) and the old Turkish layout cause.
 - order-preview-step-links-and-installments.md: Order Preview without earlier checkout step pages in the session (pg_op_step_page_id/url, no Change link) and the Iyzipay installment table shared with Express Order (#4019)
 - order-reference-code-link.md: How the cart, quote and express order pages read the ?r= / ?reference_code= saved-cart link (one string, list = not given), and the order history screens' translated messages.
+- order-report-screen.md: view_order_report.php: default filters (no carts, no cancelled orders), first-group rule, cart figures, form state after a save error, order date filter parsing.
 - order-returns-api-timing.md: Returns over the API and the customer's timing rules (owner 2026-10-24): staff-like by default, customer_rules and its 409s, repeat before timing, OrderReturn.withdrawal, pg_return_timing()
 - order-returns-api.md: Returns over the external API: GET/POST /orders/{id}/returns, body, errors, what source api skips, the create check split and its repeat, where the refund's amount and method are
 - order-returns-classic-view.md: Returns in the classic My Account order view: listed for the owner whatever the switch, form and moves while it is on, the answer via liveform order_receipt, Bootstrap 3 markup

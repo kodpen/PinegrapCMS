@@ -136,21 +136,13 @@ if (!$_POST) {
         exit();
     }
 
-    // A hand edit is the operator's choice: it clears the mark the order's
-    // cancellation left, so restoring the order does not undo it.
-    $cancel_marker_sql = pg_schema_has('commissions', 'status_before_cancel') ? "status_before_cancel = ''," : '';
+    // The write the external API shares (includes/fn/commission_list.php):
+    // it clears the mark the order's cancellation left and announces the
+    // move.
+    if (pg_commission_status_save($id, $status, $user['id']) === false) {
+        output_error('Query failed.');
+    }
 
-    // update commission
-    $query =
-        "UPDATE commissions
-        SET
-            status = ?,
-            " . $cancel_marker_sql . "
-            last_modified_user_id = ?,
-            last_modified_timestamp = UNIX_TIMESTAMP()
-        WHERE id = ?";
-    $result = db_q($query, array((string) $liveform->get_field_value('status'), (string) $user['id'], (string) $liveform->get_field_value('id'))) or output_error('Query failed.');
-    
     log_activity(lang(array('string'=>'commission ({var:1}) was modified','vars'=>$commission['reference_code'])) , $_SESSION['sessionusername']);
     
     $liveform->remove_form();

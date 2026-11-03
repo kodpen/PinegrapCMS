@@ -63,7 +63,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - file-manager-where-used-by-id.md: "Where used" counts form, comment and contact attachments by file id, only those the viewer may open; Edit Submitted Form marks a binned or deleted attachment
 - file-manager-where-used.md: The file manager's "Where used" (explorer_file_usage): the sources it scans by name, what it reads by id, the cap, the answer
 - file-name-last-segment.md: pg_basename() and pg_file_name_stem(), not basename() or pathinfo(), for a name a person gave: before PHP 8.0 they drop the non-ASCII letters a name starts with; the doors, and pg_backup_folder_name()
-- file-object-storage.md: Uploaded files in the object store: files.storage/storage_key (11.0.152), the switch, the move job in job.php, pg_file_local_copy() and its cache sweep; what 3b and 3c still wire (PR OS3a)
+- file-object-storage.md: Uploaded files in the object store: storage columns (11.0.152), the switch, the move job, get_file.php redirect, replace and delete handling, local copies; 3c left
 - find-and-replace-architecture.md: find_and_replace.php table definition shape ($all_table_defs fields), url_raw URL rules, and ECOMMERCE/ADS gating of tables.
 - form-upload-beside-fields.md: Forms that carry a file beside typed fields (ERP expense, bank statement, ERP accounts import, Add/Edit Submitted Form): discarded body, the record in the action, the stated limit, refused uploads.
 - front-visitor-missing-keys.md: Front-end paths a visitor without a session or page properties reaches must not read session or property keys unguarded: the warning prints before the DOCTYPE where display_errors is on
@@ -91,7 +91,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - iys-client.md: İYS client (PR #1895): account in connect_apps iys, dry run, daily push of e-mail consent answers and pull of refusals, contacts.iys_email_status, campaign filter
 - iys-settings-card.md: The İYS card of Settings › Communication (includes/iys/settings.php): fields, save decision, brand check, cursor keys kept, iys_job switched on, what was not verified
 - iys-sms-channel.md: İYS MESAJ channel (PR #3806): contacts.iys_sms_status (11.0.136), the SMS consent rows pushed for a mobile number, İYS's SMS changes pulled and matched to the contacts' numbers
-- kiosk-mode.md: kiosk.php: what its query string sets in the session, how logout restarts it, and why the text parameters must be strings
+- kiosk-mode.md: kiosk.php: what its query string sets in the session, how logout restarts it (token and kiosk mode required), and why the text parameters must be strings
 - language-address-prefix.md: A target language's address prefix (/en/, /pt-br/): lower case everywhere, fallback to the lower-cased code, collision check in the languages save, router matching
 - license-check.md: The panel's licence check (license_check(), includes/fn/output.php): when it asks, the Kodpen API branch behind PG_VENDOR_API_V1 (PR #4381), the card, the key field
 - link-resolve-js-twin.md: The link resolver's browser twin (assets/js/pg_link_resolve.js, window.PGLinkResolve): what it mirrors, how parity is tested, what it cannot mirror
@@ -122,7 +122,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - page-file-cache.md: Pinegrap's own page cache on disk (PR #1402): router serving, the key, when a page is stored, stale copies, the sweep, what a hit skips
 - page-rename-redirect.md: A renamed page's old address as a 301 short link to the page (2026.11.0): where it is offered, what is skipped, why a redirect of the page's own gives its name back
 - performance-monitor-cost.md: Performance monitor cost rules (perf_monitor_shutdown()): hourly perf_stats buckets, slow requests only in perf_log, no percentile, sanity gate, flush-gated sweep, row cap, sampling.
-- proxy-https-trust.md: HTTPS behind a proxy: pg_forwarded_https() parses the forwarded headers, pg_https_peer_trusted() decides whose word counts (Trusted Proxies, Cloudflare, the constant); who asks which.
+- proxy-https-trust.md: HTTPS behind a proxy: pg_forwarded_https() parses the headers, pg_https_peer_trusted() says whose word counts (Trusted Proxies, Cloudflare, the constant); who asks which.
 - record-breadcrumb-list-step.md: The middle step of a post's BreadcrumbList JSON-LD: the list page that links its records to the record page (pg_record_list_page(), #2181), how one is picked, when there is none
 - record-page-schema-type.md: A custom form chooses the schema.org type of its record pages (BlogPosting, Article, NewsArticle, none) and their author; where each is stored, read and set.
 - redirect-after-hostname.md: Never append raw input after HOSTNAME in a redirect; use pg_safe_redirect_path() everywhere and why it checks only the first two characters (a design decision).
@@ -131,6 +131,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - scheduled-job-resume.md: Resumable dispatched passes (#4744): tick budget inside job.php's time limit, pg_cron_due_again(), the _done completion markers the health screens read, minute locks
 - scheduled-jobs-command-line-render.md: Why the search index and SEO structure jobs render pages from the command line (crontab or general job) without PHP warnings, and what a command line render lacks.
 - search-and-audits-screen.md: Search and audits screen (search_audits.php): engine cards, state, progress and failure sources, the job switch, Run now, where it is linked
+- secure-mode-proxy-offer.md: Turning Secure Mode on through a proxy not yet trusted: the Add this proxy to Trusted Proxies box, what the save lists and checks, the log line, what test_secure_mode.php reports.
 - server-config-compression-cache.md: Web-root server rules for compression and browser caching (PR #2848): static files only, a week, IIS clientCache inside the one staticContent, nginx static location after the deny rules
 - server-config-paths-and-detection.md: server_config.php path semantics: patterns carry no PATH but actions do, folder name measured (retarget), server type detection, X-Powered-By removal.
 - server-config-web-root-rules.md: includes/server_config.php: why web-root web.config/.htaccess rules live in one list, how to add a block, default-must-pass-detect invariant, repair rules.

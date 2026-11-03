@@ -519,12 +519,18 @@ function local_sale_product_label($row)
  *
  * @param string $code
  * @param int    $product_id
- * @param int    $quantity
+ * @param mixed  $quantity a whole number from 1 to 9999 (local_sale_qty_input())
  * @return array
  */
 function local_sale_add_item($code, $product_id, $quantity)
 {
-    $quantity = max(1, min(9999, (int) $quantity));
+    // Read like a line's own box: 1.5, 0 or 10000 is refused, not cut.
+    $quantity = local_sale_qty_input($quantity);
+
+    if (($quantity === null) || ($quantity < 1)) {
+        return local_sale_fail(lang('The quantity must be a whole number from 1 to 9999.'), array('field' => 'product', 'level' => 'warning'));
+    }
+
     $code = trim((string) $code);
     $product = null;
 
@@ -552,7 +558,11 @@ function local_sale_add_item($code, $product_id, $quantity)
 
     $order_id = local_sale_order_id();
     $in_cart = local_sale_cart_qty($order_id, $product['id']);
-    $stock_error = local_sale_stock_error($product, $in_cart + $quantity);
+    $stock_error = local_sale_add_qty_error($in_cart, $quantity);
+
+    if ($stock_error === '') {
+        $stock_error = local_sale_stock_error($product, $in_cart + $quantity);
+    }
 
     if ($stock_error !== '') {
         $line_id = ($in_cart > 0) ? (int) db_value("SELECT id FROM order_items WHERE order_id = '" . $order_id . "' AND product_id = '" . (int) $product['id'] . "' AND added_by_offer = '0' ORDER BY id LIMIT 1") : 0;
@@ -576,6 +586,24 @@ function local_sale_add_item($code, $product_id, $quantity)
     $line_id = (int) db_value("SELECT id FROM order_items WHERE order_id = '" . $order_id . "' AND product_id = '" . (int) $product['id'] . "' AND added_by_offer = '0' ORDER BY id DESC LIMIT 1");
 
     return local_sale_ok(lang(array('string' => '{var:1} added to the cart.', 'vars' => array(local_sale_product_label($product)))), array('line_id' => $line_id));
+}
+
+/**
+ * Why adding this many units would take the product's line past 9999, the
+ * most a line's own box accepts, or '' when it would not. add_order_item()
+ * adds to the line that is already there.
+ *
+ * @param int $in_cart   units of the product already in the cart
+ * @param int $quantity  units being added
+ * @return string
+ */
+function local_sale_add_qty_error($in_cart, $quantity)
+{
+    if (((int) $in_cart + (int) $quantity) > 9999) {
+        return lang('This line can hold at most 9999.');
+    }
+
+    return '';
 }
 
 /**
@@ -979,6 +1007,25 @@ function local_sale_split_parts($raw, $total)
 }
 
 /**
+ * How much a cash payment falls short of the total, in kurus, or 0: when the
+ * way of paying is not cash, the Received box was left empty (no change to
+ * work out, the whole total taken) or covers the total.
+ *
+ * @param string $method   the way of paying
+ * @param int    $received the Received box, kurus
+ * @param int    $total    the sale's total, kurus
+ * @return int
+ */
+function local_sale_cash_short($method, $received, $total)
+{
+    if (((string) $method !== 'cash') || ((int) $received <= 0)) {
+        return 0;
+    }
+
+    return max(0, (int) $total - (int) $received);
+}
+
+/**
  * Tills and bank accounts money can go to.
  *
  * @return array
@@ -1041,6 +1088,16 @@ function local_sale_complete($user, $input)
 
     if (!empty($line_errors)) {
         return local_sale_fail(lang('Some lines no longer fit the stock. Correct them and complete the sale again.'), array('line_errors' => $line_errors));
+    }
+
+    // Cash received short of the total is refused before the sale is
+    // claimed: the receipt is written for the whole total, so the till would
+    // record money that is not in the drawer. An empty box is the whole total.
+    $pay_method_in = (string) ($input['pay_method'] ?? '');
+    $short = local_sale_cash_short($pay_method_in, (int) ($input['received'] ?? 0), (int) local_sale_totals($lines)['gross']);
+
+    if ($short > 0) {
+        return local_sale_fail(lang(array('string' => 'The amount received is {var:1} short of the total. Correct it or split the payment.', 'vars' => array(local_sale_money_text($short)))), array('field' => 'received', 'level' => 'warning'));
     }
 
     // A split payment is checked before the sale is claimed: a part that

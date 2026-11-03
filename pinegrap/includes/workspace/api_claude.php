@@ -68,9 +68,10 @@ function ws_claude_api_routes()
             'mcp'         => false,
             'returns'     => 'WorkspaceClaudeInstructions',
             'summary'     => 'What the routine does, from the site',
-            'description' => 'For the application chosen for Claude in the Workspace Settings only. text is the routine\'s instructions for this site as it is now: the queue, the endpoints, the answer\'s shape and the rules. The short prompt pasted into the routine reads it at the start of every run and sends its own version; version is the one this site hands out, and outdated is true when the version sent is older or missing, which the Workspace Settings show until the prompt is copied again.',
+            'description' => 'For the application chosen for Claude in the Workspace Settings only. text is the routine\'s instructions for this site as it is now: the queue, the endpoints, the answer\'s shape and the rules. The short prompt pasted into the routine reads it at the start of every run and sends its own version and the Site API it was written with; version is the one this site hands out, site its current address, and outdated is true when the version sent is older or missing or the address sent is no longer this site\'s, which the Workspace Settings show until the prompt is copied again.',
             'params'      => array(
                 array('name' => 'version', 'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'The version written in the pasted prompt.'),
+                array('name' => 'site', 'in' => 'query', 'type' => 'string', 'max_length' => 250, 'description' => 'The Site API written in the pasted prompt.'),
             ),
         ),
 
@@ -648,12 +649,15 @@ function ws_api_claude_instructions($params)
     ws_api_claude_guard();
 
     $sent = $params['version'] ?? null;
+    $site = $params['site'] ?? null;
 
-    ws_claude_note_version($sent);
+    ws_claude_note_version($sent, $site);
 
     api_ok(array(
         'version'  => WS_CLAUDE_BOOTSTRAP_VERSION,
-        'outdated' => (ws_claude_version_state($sent, WS_CLAUDE_BOOTSTRAP_VERSION) !== 'current'),
+        'site'     => ws_claude_api_base(),
+        'outdated' => (ws_claude_version_state($sent, WS_CLAUDE_BOOTSTRAP_VERSION) !== 'current')
+            || (ws_claude_site_state($site, ws_claude_api_base()) === 'other'),
         'text'     => ws_claude_routine_prompt(),
     ));
 }
@@ -661,7 +665,7 @@ function ws_api_claude_instructions($params)
 // What ws_api_claude_instructions() returns.
 function ws_api_claude_instructions_schema()
 {
-    return array('version' => 'integer', 'outdated' => 'boolean', 'text' => 'string');
+    return array('version' => 'integer', 'site' => 'string', 'outdated' => 'boolean', 'text' => 'string');
 }
 
 function ws_api_claude_brief($params)

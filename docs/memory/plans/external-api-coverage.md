@@ -11,7 +11,7 @@ description: External API (integration.php): find what the panel can do that the
 - X1a Zone and tax zone writes (create, update, `/delete`, GET one), `store:write`, events `zone.*`, `tax_zone.*`: PR #5377 (`api/api-store-zone-writes.md`).
 - X1b Shipping method writes (create, update, `/delete`), `store:write`, events `shipping_method.*`: PR #5491 (`api/api-store-shipping-method-writes.md`).
 - X2 Returns: `GET /returns` (status, order_id, modified_since), `GET /returns/{id}`, `POST /returns/{id}` (approve, receive, refund, reject as `view_return.php`). `orders:*`. Events: existing `order.return.*`.
-- X3 `GET /subscriptions`, `/subscriptions/{id}` (`customers:read`); `POST /commissions/{id}` status, `POST /affiliates/{id}/approve`, `GET /commissions/recurring-profiles`; new `commissions:write`. Events `commission.status_changed`, `affiliate.approved`.
+- X3 `GET /subscriptions`, `/subscriptions/{id}` (`customers:read`); `POST /commissions/{id}` status, `POST /affiliates/{id}/approve` (`customers:write`, the contact screen's right), `GET /commissions/recurring-profiles`; new `commissions:write`. Events `commission.status_changed`, `affiliate.approved`: PR #5741 (`api/api-commission-writes.md`, `api/api-subscriptions-list.md`).
 - X4 Users read: `GET /users`, `/users/{id}` (role, permission columns, last sign-in, MFA; no secrets). New `users:read`, designer ceiling. Writes: X13 (`external-api-coverage-2.md`).
 - X5 Countries, states, currencies: create, update, delete; `POST /store/currencies/rates` (`update_exchange_rates.php`). `store:write`. Event `currency.updated`.
 - X6 `POST /orders` as `add_order.php`, Idempotency-Key, dry run. `orders:write`. Event `order.created`.

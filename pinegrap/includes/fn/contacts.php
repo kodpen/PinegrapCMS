@@ -1712,3 +1712,114 @@ function pg_contact_lead_source_check($value, array $sources, $current)
         'error' => lang(array('string' => 'The lead source "{var:1}" is not one of the referral sources.', 'vars' => array($value))),
     );
 }
+
+/**
+ * The affiliate code an approval writes: the one the contact already has,
+ * else a new one. Pure but for the generator it is given.
+ *
+ * @param mixed    $existing contacts.affiliate_code
+ * @param callable $generate generate_affiliate_code()
+ * @return string
+ */
+function pg_affiliate_approval_code($existing, $generate = 'generate_affiliate_code')
+{
+    $existing = trim((string) $existing);
+
+    return ($existing !== '') ? $existing : (string) call_user_func($generate);
+}
+
+/**
+ * What affiliate.approved carries: the contact and its code. Pure.
+ *
+ * @param int    $contact_id
+ * @param string $affiliate_code
+ * @param string $affiliate_name
+ * @return array
+ */
+function pg_affiliate_approved_event($contact_id, $affiliate_code, $affiliate_name)
+{
+    return array(
+        'id'             => (int) $contact_id,
+        'affiliate_code' => (string) $affiliate_code,
+        'affiliate_name' => ((string) $affiliate_name !== '') ? (string) $affiliate_name : null,
+    );
+}
+
+/**
+ * Approves a contact as an affiliate, as approve_affiliate.php (the link in
+ * the sign-up e-mail) and the external API (POST /affiliates/{id}/approve)
+ * do: the code is kept or made, the contact is marked approved, it gets a
+ * key code for the affiliate group offer when there is one, the welcome
+ * e-mail goes out and affiliate.approved is announced. An approved
+ * affiliate is left as it is: the request e-mail can be opened twice, and a
+ * second approval would send the welcome e-mail again.
+ *
+ * @param int $contact_id
+ * @param int $user_id the person or the application's owner
+ * @return array|string|null|false affiliate_code and email_address;
+ *                          'already_approved' when the contact is an
+ *                          approved affiliate already (nothing is written or
+ *                          sent); null when there is no such contact, false
+ *                          when a query failed
+ */
+function pg_affiliate_approve($contact_id, $user_id)
+{
+    $contact_id = (int) $contact_id;
+
+    $contact = db_item("SELECT id, email_address, affiliate_code, affiliate_name, affiliate_approved FROM contacts WHERE id = '" . $contact_id . "'");
+
+    if (!$contact) {
+        return null;
+    }
+
+    if ((int) $contact['affiliate_approved'] === 1) {
+        return 'already_approved';
+    }
+
+    $affiliate_code = pg_affiliate_approval_code($contact['affiliate_code']);
+
+    $audit_before = pg_audit_fetch('contacts', $contact_id);
+
+    $result = db_q(
+        "UPDATE contacts
+        SET
+            affiliate_approved = '1',
+            affiliate_code = ?,
+            user = ?,
+            timestamp = UNIX_TIMESTAMP()
+        WHERE id = ? AND affiliate_approved != '1'",
+        array($affiliate_code, (string) (int) $user_id, (string) $contact_id));
+
+    if (!$result) {
+        return false;
+    }
+
+    // Two approvals at once (two tabs, the link and the API): only the one
+    // that wrote the mark goes on to the key code and the welcome e-mail.
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return 'already_approved';
+    }
+
+    pg_audit_record('update', 'contacts', $contact_id, $audit_before);
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/forms/contact_form.php');
+
+    pg_contact_form_affiliate_key_code($affiliate_code, $user_id);
+
+    // The welcome page reads the code from the session, as the sign-up
+    // form's own welcome does.
+    $_SESSION['software']['affiliate_welcome']['affiliate_code'] = $affiliate_code;
+
+    email(array(
+        'to' => $contact['email_address'],
+        'bcc' => AFFILIATE_EMAIL_ADDRESS,
+        'from_name' => ORGANIZATION_NAME,
+        'from_email_address' => EMAIL_ADDRESS,
+        'subject' => lang('Welcome to the Affiliate Program'),
+        'format' => 'html',
+        'body' => get_affiliate_welcome_screen()));
+
+    pg_announce('affiliate.approved', pg_affiliate_approved_event($contact_id, $affiliate_code, (string) $contact['affiliate_name']));
+
+    return array('affiliate_code' => $affiliate_code, 'email_address' => (string) $contact['email_address']);
+}

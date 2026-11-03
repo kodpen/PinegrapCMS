@@ -273,12 +273,6 @@ pg_page_shell(
 <main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <div class="row mb-3  flex-wrap pg-print-none">
-                <div class="col-12 sm:col-12 text-center md:text-start">
-
-                    <p class="p-0 m-0">' . lang('Visitor\'s IP Address') . ': ' . h($ip_address_text) . '</p>
-                </div>
-            </div>
             <div class="row">
                 <div class="col-12">
                     <div class="card my-7">
@@ -345,7 +339,7 @@ pg_page_shell(
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Landing Page') . '</div>
-                                    <a class="pg-link-secondary text-break" href="' . OUTPUT_PATH . h($landing_page_name) . '" target="_blank">' . h($landing_page_name) . '</a>
+                                    ' . (($landing_page_name != '') ? '<a class="pg-link-secondary text-break" href="' . OUTPUT_PATH . h($landing_page_name) . '" target="_blank">' . h($landing_page_name) . '</a>' : '-') . '
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Tracking Code') . '</div>

@@ -19,6 +19,36 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 // The folder_archived value a request asks for: '1' only for an exact "1",
 // an empty string (not archived) for anything else.
+// The style options of the settings drawer with the Default option naming
+// the style the folder would take from its parents, as the details panel
+// does (pg_explorer_style_info()). The root has no parent and keeps the
+// plain label.
+function pg_explorer_folder_style_default_label($options, $folder, $device)
+{
+    if ((int) $folder['folder_parent'] <= 0) {
+        return $options;
+    }
+
+    $info = pg_explorer_style_info(0, (int) $folder['folder_parent'], $device);
+
+    if ((string) $info['name'] === '') {
+        return $options;
+    }
+
+    return pg_explorer_replace_first(
+        '>' . h(lang('Default (from the parent folder)')) . '<',
+        '>' . h(lang(array('string' => 'Default: {var:1} (from the parent folder)', 'vars' => array($info['name'])))) . '<',
+        (string) $options);
+}
+
+// $subject with the first $search replaced by $replace.
+function pg_explorer_replace_first($search, $replace, $subject)
+{
+    $at = strpos($subject, $search);
+
+    return ($at === false) ? $subject : (substr($subject, 0, $at) . $replace . substr($subject, $at + strlen($search)));
+}
+
 function pg_explorer_folder_archived_value($request)
 {
     return ((isset($request['archived']) ? (string) $request['archived'] : '') == '1') ? '1' : '';
@@ -112,8 +142,8 @@ function pg_explorer_handle_folder_settings_get($type, $request, $user)
 
     if ($user['role'] < 3) {
         $styles = array(
-            'desktop' => select_style($folder['folder_style'], 'Default (from the parent folder)'),
-            'mobile' => get_mobile_style_options($folder['mobile_style_id'], 'Default (from the parent folder)'));
+            'desktop' => pg_explorer_folder_style_default_label(select_style($folder['folder_style'], 'Default (from the parent folder)'), $folder, 'desktop'),
+            'mobile' => pg_explorer_folder_style_default_label(get_mobile_style_options($folder['mobile_style_id'], 'Default (from the parent folder)'), $folder, 'mobile'));
     }
 
     respond(array(

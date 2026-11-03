@@ -26,7 +26,7 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
             'extra classes'=>'products',
             'icon'=>'store',
             'heading'=>lang('Product Inventory Quantity Decrease'),
-            'heading_description' => lang('You can make product inventory quantity decrease transactions with the barcode of the products from the local business/warehouse. Click anywhere on this page before scanning the barcode. Also, do not use the keyboard on this page, otherwise it will detect it as a barcode.'),
+            'heading_description' => lang('You can make product inventory quantity decrease transactions with the barcode of the products from the local business/warehouse. Click an empty spot on this page before scanning; what you type into the boxes is not read as a barcode.'),
             'cancel' => true,
         
             'breadcrumb' => array(array('label' => lang('All Products'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php'), array('label' => lang('Product Inventory Quantity Decrease'))),
@@ -69,12 +69,12 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                             <table class="table-hover table">
                                 <thead>
                                     <tr>
-                                        <th class="align-middle">' . lang('ID/SKU') . '</th>
+                                        <th class="align-middle">' . lang('Product Code') . '</th>
                                         <th class="align-middle">' . lang('Short Description') . '</th>
                                         <th class="align-middle text-center">' . lang('Inventory Quantity') . '</th>
                                         <th class="align-middle text-center">' . lang('Deducted Quantity') . '</th>
                                         <th class="align-middle text-center">' . lang('New Inventory Quantity') . '</th>
-                                        <th class="align-middle text-center">' . lang('Action Time') . '</th>
+                                        <th class="align-middle text-center">' . lang('Transaction Time') . '</th>
                                     </tr>
                                 </thead>
                                 <tbody><tr class="remove_this_first_scan"><td colspan="6" class="text-center">' . lang('No action yet') . '</td></tr></tbody>
@@ -279,7 +279,7 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
 
     switch ($action) {
         case 'update_inventory_quantity':
-            $barcode = $request['barcode'];
+            $barcode = trim((string) ($request['barcode'] ?? ''));
 
             // A whole count of 1 or more: the stock column is an integer, so
             // 1.5 would be stored as 2 while the screen says 1.5.
@@ -288,7 +288,7 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
             if ($quantity === null) {
                 echo encode_json(array(
                     'status' => 'error',
-                    'message' => lang('Enter an inventory quantity.')));
+                    'message' => lang('The quantity must be a whole number from 1 to 1,000,000.')));
                 exit();
             }
 
@@ -322,7 +322,7 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
             if (mysqli_num_rows($result) == 0){
                 $response = array(
                     'status' => 'error',
-                    'message' => lang('No product found with this barcode/sku/id.') );
+                    'message' => lang('No product found with this barcode or product code.') );
                 echo encode_json($response);
                 exit();
                 break;

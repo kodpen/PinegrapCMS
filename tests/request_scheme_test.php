@@ -107,3 +107,47 @@ function test_request_scheme_peer_trust_reads_constant()
 	pg_assert_same(defined('TRUST_PROXY_SSL_HEADERS') && TRUST_PROXY_SSL_HEADERS === true, pg_https_peer_trusted('203.0.113.9', ''));
 	pg_assert_true(pg_https_peer_trusted('10.1.1.1', '10.0.0.0/8'));
 }
+
+// What the Firewall screen offers to add for the peer that sent the https
+// claim: the peer's own address, never its network. A loopback peer (a local
+// tunnel may use either family) gets both loopback addresses; a private or
+// ULA peer its one address; a public peer nothing, since a CDN or load
+// balancer is listed with its published ranges by hand.
+function test_request_scheme_peer_offer()
+{
+	pg_assert_same(array('kind' => 'loopback', 'entries' => array('127.0.0.1', '::1')), pg_https_peer_offer('127.0.0.1'));
+	pg_assert_same(array('kind' => 'loopback', 'entries' => array('127.0.0.1', '::1')), pg_https_peer_offer('127.0.0.53'));
+	pg_assert_same(array('kind' => 'loopback', 'entries' => array('127.0.0.1', '::1')), pg_https_peer_offer('::1'));
+	pg_assert_same(array('kind' => 'loopback', 'entries' => array('127.0.0.1', '::1')), pg_https_peer_offer('::ffff:127.0.0.1'), 'mapped loopback');
+
+	pg_assert_same(array('kind' => 'private', 'entries' => array('10.0.0.5')), pg_https_peer_offer('10.0.0.5'));
+	pg_assert_same(array('kind' => 'private', 'entries' => array('172.18.0.2')), pg_https_peer_offer('172.18.0.2'), 'docker network');
+	pg_assert_same(array('kind' => 'private', 'entries' => array('192.168.1.10')), pg_https_peer_offer(' 192.168.1.10 '), 'trimmed');
+	pg_assert_same(array('kind' => 'private', 'entries' => array('10.0.0.5')), pg_https_peer_offer('::ffff:10.0.0.5'), 'mapped private');
+	pg_assert_same(array('kind' => 'private', 'entries' => array('fd12:3456::1')), pg_https_peer_offer('fd12:3456::1'), 'ULA');
+
+	pg_assert_same(array('kind' => 'public', 'entries' => array()), pg_https_peer_offer('203.0.113.9'));
+	pg_assert_same(array('kind' => 'public', 'entries' => array()), pg_https_peer_offer('2a00:1450:4001:800::200e'));
+	pg_assert_same(array('kind' => 'public', 'entries' => array()), pg_https_peer_offer('104.16.1.1'), 'a Cloudflare edge is trusted before the offer is asked');
+
+	pg_assert_same(array('kind' => 'other', 'entries' => array()), pg_https_peer_offer('169.254.1.1'), 'link-local');
+	pg_assert_same(array('kind' => 'other', 'entries' => array()), pg_https_peer_offer('fe80::1'), 'link-local IPv6');
+
+	pg_assert_same(array('kind' => '', 'entries' => array()), pg_https_peer_offer(''));
+	pg_assert_same(array('kind' => '', 'entries' => array()), pg_https_peer_offer('not-an-address'));
+	pg_assert_same(array('kind' => '', 'entries' => array()), pg_https_peer_offer('10.0.0.0/8'), 'a range is no peer');
+}
+
+// The offered entries make the peer trusted once stored, and a listed
+// loopback entry trusts the other loopback address only because both are
+// offered together.
+function test_request_scheme_peer_offer_trusts_the_peer()
+{
+	foreach (array('127.0.0.1', '::1', '10.0.0.5', 'fd12:3456::1', '::ffff:192.168.1.10') as $peer) {
+		$offer = pg_https_peer_offer($peer);
+		pg_assert_true(pg_https_peer_trusted($peer, implode(',', $offer['entries']), false), $peer);
+	}
+
+	pg_assert_false(pg_https_peer_trusted('::1', '127.0.0.1', false), 'IPv6 loopback not covered by the IPv4 entry alone');
+}
+
