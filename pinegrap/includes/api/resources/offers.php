@@ -16,12 +16,12 @@
 // what the cart has to contain for it to apply, and what it then does, which is
 // what these two endpoints answer.
 //
-// Building an offer means writing seven tables in step with each other, and the
-// editor that does so is built around a screen, not a request. What an
-// application may change is the part that is one row: whether the offer is
-// switched on, the message it shows, and the dates it runs between - which is
-// what a campaign calendar kept in another system needs. The rules and the
-// results stay in the editor.
+// Building an offer means writing seven tables in step with each other; a new
+// offer or a copy goes through the editor's own validate and save
+// (offers_create.php). An existing offer's update writes the part that is one
+// row: whether the offer is switched on, the message it shows, and the dates
+// it runs between - which is what a campaign calendar kept in another system
+// needs. Its rules and results are changed in the editor.
 //
 // The row references the tables use between themselves - the rule id, the
 // action ids, the upsell page id, the user who last saved - stay inside. A
@@ -717,6 +717,8 @@ function api_offers_update($params) {
 
 	$row = api_row(api_offer_select() . " WHERE offers.id = '" . $id . "' LIMIT 1");
 
+	pg_announce('offer.updated', array('id' => $id, 'code' => (string)$row['code'], 'enabled' => ($row['status'] === 'enabled')));
+
 	$state = _pg_offer_load($id);
 
 	if ($state === false) {
@@ -731,12 +733,7 @@ function api_offers_update($params) {
 
 // Taking an offer off the shop.
 //
-// A removal rather than an edit.
-// An offer is a rule tree - conditions the cart has to meet, results the cart
-// then gets - and building one belongs with the editor that knows those rules.
-// Removing one needs none of that knowledge, and it is the thing an
-// integration that manages campaigns actually needs: a season that is over
-// should not have to be cleared by hand.
+// A season that is over should not have to be cleared by hand.
 //
 // There is no recycle bin for offers, in the panel or here, so the deletion is
 // final. The same cleanup the offers screen performs is reused rather than

@@ -617,16 +617,62 @@ function pg_system_status_detail_row($detail_row)
 }
 
 /**
+ * The checks in chip order: failed, warning, the priority checks that lead
+ * when nothing is wrong, then the rest, each group in its given order. Pure.
+ *
+ * @param array $reading_checks checks from get_system_status_checks()
+ * @return array the same checks, reordered and indexed from 0
+ */
+function pg_system_status_order($reading_checks)
+{
+    // usort() is stable only from PHP 8.0, so position is carried into the
+    // comparison -- without it the chips could reshuffle between two draws
+    // of the same card.
+    $check_ranks = array('fail' => 0, 'warn' => 1, 'info' => 3, 'ok' => 3);
+    $check_order = array();
+
+    foreach (array_values($reading_checks) as $check_index => $reading_check) {
+
+        $check_rank = isset($check_ranks[$reading_check['state']])
+            ? $check_ranks[$reading_check['state']]
+            : 3;
+
+        if (($check_rank === 3) && !empty($reading_check['priority'])) {
+            $check_rank = 2;
+        }
+
+        $check_order[] = array($check_rank, (int) $check_index, $reading_check);
+    }
+
+    usort($check_order, function ($a, $b) {
+        if ($a[0] === $b[0]) {
+            return ($a[1] < $b[1]) ? -1 : 1;
+        }
+        return ($a[0] < $b[0]) ? -1 : 1;
+    });
+
+    $ordered = array();
+
+    foreach ($check_order as $check_entry) {
+        $ordered[] = $check_entry[2];
+    }
+
+    return $ordered;
+}
+
+/**
  * The checks as chips, most urgent first: a chip with detail rows opens
  * them under itself, one with a link goes there, the rest are buttons that
  * show their explanation in a popover (welcome.php and the new dashboard
  * bind it by delegation).
  *
- * @param array $reading_checks checks from get_system_status_checks()
- * @param int   $role           the reader's role, for the links they may follow
+ * @param array  $reading_checks checks from get_system_status_checks()
+ * @param int    $role           the reader's role, for the links they may follow
+ * @param string $detail_prefix  the start of a detail panel's id, numbered by
+ *                               slot; two chip lists on one page need two
  * @return string HTML
  */
-function pg_system_status_chips($reading_checks, $role)
+function pg_system_status_chips($reading_checks, $role, $detail_prefix = 'system_status_detail_')
 {
     // A chip each, not a tile each. Twelve tiles across half a
     // card put the label at nine pixels with the value at nine
@@ -644,32 +690,8 @@ function pg_system_status_chips($reading_checks, $role)
     //
     // Order is by state and then by weight: what is broken,
     // what is uncertain, then the three security checks that
-    // lead when nothing is wrong, then the rest. usort() is
-    // stable only from PHP 8.0, so position is carried into the
-    // comparison -- without it the chips could reshuffle
-    // between two draws of the same card.
-    $check_ranks = array('fail' => 0, 'warn' => 1, 'info' => 3, 'ok' => 3);
-    $check_order = array();
-
-    foreach ($reading_checks as $check_index => $reading_check) {
-
-        $check_rank = isset($check_ranks[$reading_check['state']])
-            ? $check_ranks[$reading_check['state']]
-            : 3;
-
-        if (($check_rank === 3) && !empty($reading_check['priority'])) {
-            $check_rank = 2;
-        }
-
-        $check_order[] = array($check_rank, (int) $check_index);
-    }
-
-    usort($check_order, function ($a, $b) {
-        if ($a[0] === $b[0]) {
-            return ($a[1] < $b[1]) ? -1 : 1;
-        }
-        return ($a[0] < $b[0]) ? -1 : 1;
-    });
+    // lead when nothing is wrong, then the rest.
+    $check_order = pg_system_status_order($reading_checks);
 
     // Bootstrap's own four, so a chip is the same red as every
     // other red on the screen.
@@ -679,9 +701,8 @@ function pg_system_status_chips($reading_checks, $role)
     $check_slot = 0;
 
 
-    foreach ($check_order as $check_entry) {
+    foreach ($check_order as $health_check) {
 
-        $health_check = $reading_checks[$check_entry[1]];
         $check_slot++;
 
         $check_tone = isset($check_tones[$health_check['state']])
@@ -728,7 +749,7 @@ function pg_system_status_chips($reading_checks, $role)
             // absent from welcome.php's periodic refresh list,
             // so nothing re-renders the card and closes the
             // panel under the operator's hand.
-            $check_id = 'system_status_detail_' . $check_slot;
+            $check_id = $detail_prefix . $check_slot;
 
             $check_rows = '';
 

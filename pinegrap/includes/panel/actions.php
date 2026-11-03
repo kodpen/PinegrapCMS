@@ -192,6 +192,9 @@ function pg_panel_actions()
         'user_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_user_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'submitted_form_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_submitted_form_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'contact_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_contact_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        // Refresh now of a contact group filled by rules: every role with the
+        // contacts right and the group; the handler checks both.
+        'audience_refresh' => array('file' => 'audiences.php', 'handler' => 'pg_panel_audience_refresh', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => true),
         'product_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_product_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'page_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_page_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'commission_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_commission_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),

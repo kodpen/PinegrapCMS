@@ -19,7 +19,7 @@ description: Plan (2026-10-24; ready to start, owner 2026-11-01): a Figma/XD-lik
 
 ## Slices (one PR each)
 1. Done (#5401, #5492, #5603, #5619, #5635): the read-only map, designer/prototype-view.md.
-2. Draw and re-point arrows within today's rights, undo, the shared and Publish warnings, Save.
+2. Done #6171 (designer/prototype-view.md): draw and re-point arrows by drag within today's rights, undo, the shared and Publish warnings, Save. Open: a keyboard way to re-point a link.
 3. Done #1867 in the Preview (designer/designer-preview-play.md): a page link plays the open tab of that name, unsaved tabs too; the Prototype view's hotspots reuse `_sdPreviewPlay()`.
 4. Shared positions, thumbnails; links by page id that survive a rename, built from `__page_link` (outside widgets a new tree prop and renderer: ask first).
 - Schema: none for slices 1-3; a new table or column is asked first.
@@ -32,4 +32,4 @@ description: Plan (2026-10-24; ready to start, owner 2026-11-01): a Figma/XD-lik
 5. Breakpoint: desktop width, collapsed navbars shown as their links.
 
 ## Where to start?
-- Slice 2 next (draw and re-point arrows): start from designer/prototype-view.md and designer/prototype-hotspots.md. Read designer/README.md, designer/designer-canvas-links.md, designer/record-value-page-links.md, designer/shared-component-model.md, designer/designer-content-roles-save-gate.md; claim before code.
+- Slice 2's keyboard way (a row's menu of targets) or slice 4: start from designer/prototype-view.md and designer/prototype-hotspots.md; claim before code.
