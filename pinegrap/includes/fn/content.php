@@ -886,6 +886,48 @@ function pg_form_info_picker_format($picker_kinds)
     return '';
 }
 
+/**
+ * The row shown under a product form's reference code field: the label of the
+ * submitted form's title field and that form's title, both escaped as text.
+ * No title, no row.
+ */
+function pg_form_reference_title_row($row_class, $hidden_style, $label_width_style, $title_label, $title)
+{
+    if ($title === '') {
+        return '';
+    }
+
+    return '<tr' . $row_class . $hidden_style . '>
+
+            <td style="' . $label_width_style . '">' . h($title_label) . '</td>
+
+            <td>' . h($title) . '</td>
+
+        </tr>';
+}
+
+/**
+ * A page row read for a submitted custom billing or shipping form, with the
+ * keys its callers read always present. The express order shipping form row
+ * selects only the id (that form has no name or label width of its own), and a
+ * missing row or a LEFT JOIN without a page comes back as null.
+ *
+ * @param array|null $row
+ * @return array
+ */
+function pg_submitted_form_page($row)
+{
+    $row = is_array($row) ? $row : array();
+
+    foreach (array('id', 'type', 'form_name', 'form_label_column_width') as $key) {
+        if (!isset($row[$key])) {
+            $row[$key] = '';
+        }
+    }
+
+    return $row;
+}
+
 // get form info (i.e. field content, wysiwyg fields, file upload exists)
 function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, $label_column_width, $office_use_only, $liveform, $interface, $editable = false, $device_type = 'desktop', $folder_id_for_default_value = 0, $reference_code_field_id = 0, $express_order_form_type = '', $prefix = '')
 {
@@ -1286,15 +1328,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
 
                         ORDER BY sort_order");
                     $title = get_submitted_form_title($submitted_form['id']);
-                    if ($title != '') {
-                        $output_title_row = '<tr' . $row_class . $output_hidden_style . '>
-
-                                <td style="' . $output_label_column_width . '">' . $title_label . '</td>
-
-                                <td>' . h($title) . '</td>
-
-                            </tr>';
-                    }
+                    $output_title_row = pg_form_reference_title_row($row_class, $output_hidden_style, $output_label_column_width, (string) $title_label, (string) $title);
                 }
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
@@ -1854,7 +1888,7 @@ function get_submitted_form_content_with_form_fields($properties)
         return '';
     }
     // Get page info for the field of data.
-    $page = db_item("SELECT
+    $page = pg_submitted_form_page(db_item("SELECT
 
             page.page_id AS id,
 
@@ -1864,7 +1898,7 @@ function get_submitted_form_content_with_form_fields($properties)
 
         LEFT JOIN page ON form_fields.page_id = page.page_id
 
-        WHERE form_fields.id = '$field_id'");
+        WHERE form_fields.id = '$field_id'"));
     // If a page was not found for some reason or the page type does not support a custom form,
     // then return empty string.
     if (($page['id'] == '') || (($page['type'] != 'express order') && ($page['type'] != 'billing information') && ($page['type'] != 'shipping address and arrival'))) {
@@ -1876,7 +1910,7 @@ function get_submitted_form_content_with_form_fields($properties)
     // The properties for a custom shipping form on express order are unique, because
     // shipping and billing forms can appear on express order, so get values in unique way
     if ($page_type == 'express order' and $type == 'custom_shipping_form') {
-        $page = db_item("SELECT page_id AS id
+        $page = pg_submitted_form_page(db_item("SELECT page_id AS id
 
             FROM $page_type_table_name
 
@@ -1884,9 +1918,9 @@ function get_submitted_form_content_with_form_fields($properties)
 
                 (page_id = '" . $page['id'] . "')
 
-                AND (shipping_form = '1')");
+                AND (shipping_form = '1')"));
     } else {
-        $page = db_item("SELECT
+        $page = pg_submitted_form_page(db_item("SELECT
 
                 page_id AS id,
 
@@ -1900,7 +1934,7 @@ function get_submitted_form_content_with_form_fields($properties)
 
                 (page_id = '" . $page['id'] . "')
 
-                AND (form = '1')");
+                AND (form = '1')"));
     }
     // If page type properties could not be found, or the page does not have a form
     // enabled anymore, then return empty string.
@@ -2108,7 +2142,7 @@ function get_form_review_info($properties)
         case 'custom_billing_form':
         case 'custom_shipping_form':
             // Get page info for the field of data.
-            $page = db_item("SELECT
+            $page = pg_submitted_form_page(db_item("SELECT
 
                     page.page_id AS id,
 
@@ -2118,7 +2152,7 @@ function get_form_review_info($properties)
 
                 LEFT JOIN page ON form_fields.page_id = page.page_id
 
-                WHERE form_fields.id = '$field_id'");
+                WHERE form_fields.id = '$field_id'"));
             // If a page was not found for some reason or the page type does not support a custom form,
             // then return false.
             if (($page['id'] == '') || (($page['type'] != 'express order') && ($page['type'] != 'billing information') && ($page['type'] != 'shipping address and arrival'))) {
@@ -2130,7 +2164,7 @@ function get_form_review_info($properties)
             // The properties for a custom shipping form on express order are unique, because
             // shipping and billing forms can appear on express order, so get values in unique way
             if ($page_type == 'express order' and $type == 'custom_shipping_form') {
-                $page = db_item("SELECT page_id AS id
+                $page = pg_submitted_form_page(db_item("SELECT page_id AS id
 
                     FROM $page_type_table_name
 
@@ -2138,9 +2172,9 @@ function get_form_review_info($properties)
 
                         (page_id = '" . $page['id'] . "')
 
-                        AND (shipping_form = '1')");
+                        AND (shipping_form = '1')"));
             } else {
-                $page = db_item("SELECT
+                $page = pg_submitted_form_page(db_item("SELECT
 
                         page_id AS id,
 
@@ -2152,7 +2186,7 @@ function get_form_review_info($properties)
 
                         (page_id = '" . $page['id'] . "')
 
-                        AND (form = '1')");
+                        AND (form = '1')"));
             }
             // If page type properties could not be found, or the page does not have a form
             // enabled anymore, then return false.
