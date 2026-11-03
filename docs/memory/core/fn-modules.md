@@ -21,6 +21,7 @@ description: Generated from the module field of the memory files: each includes/
 - `background_render`: [[background-render]]
 - `backup`: [[backup-folder-download-zip]], [[backup-manager-names-and-list]], [[backup-object-storage]], [[fn-module-errors-mail-backup-consent]]
 - `booking_agenda`: [[booking-agenda]]
+- `booking_messages`: [[booking-messages]]
 - `booking_settings`: [[booking-settings]]
 - `bookings`: [[bookings-model]]
 - `bundles`: [[product-bundles]], [[product-bundles-storefront]]

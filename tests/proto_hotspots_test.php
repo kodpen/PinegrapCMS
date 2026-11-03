@@ -545,3 +545,78 @@ function test_proto_hotspots_layout_takes_shared_places()
 
 	pg_assert_same(array(array('p:p12', 0, 0), array('p:p13', 900, 50)), $out, 'a shared place moves its frame');
 }
+
+// A frame's thumbnail: one band per top-level node, through a lone wrapper.
+function test_proto_hotspots_sketch_bands()
+{
+	$tree = array('_id' => 'root', 'type' => 'root', 'props' => array(), 'children' => array(
+		array('_id' => 'w', 'type' => 'semantic', 'props' => array('tag' => 'div'), 'children' => array(
+			array('_id' => 'a', 'type' => 'semantic', 'props' => array('tag' => 'nav'), 'children' => array(
+				array('_id' => 'a1', 'type' => 'content', 'props' => array('contentType' => 'link', 'href' => '/x'), 'children' => array()),
+				array('_id' => 'a2', 'type' => 'content', 'props' => array('contentType' => 'link', 'href' => '/y'), 'children' => array()),
+			)),
+			array('_id' => 'b', 'type' => 'semantic', 'props' => array('tag' => 'section'), 'children' => array()),
+			array('_id' => 'c', 'type' => 'shared_ref', 'props' => array('sharedId' => 4), 'children' => array()),
+			array('_id' => 'd', 'type' => 'region', 'props' => array('regionType' => 'menu', 'regionName' => 'Top'), 'children' => array()),
+			array('_id' => 'e', 'type' => 'component', 'props' => array('componentType' => 'footer-minimal'), 'children' => array()),
+		)),
+	));
+	$many = array('_id' => 'root', 'type' => 'root', 'children' => array());
+	for ($i = 0; $i < 14; $i++) {
+		$many['children'][] = array('_id' => 'n' . $i, 'type' => 'semantic', 'props' => array('tag' => $i === 0 ? 'header' : 'section'), 'children' => array());
+	}
+
+	$out = proto_hotspots_test_node('out = { one: H.sketch(' . proto_hotspots_test_js($tree) . '), many: H.sketch(' . proto_hotspots_test_js($many) . '), none: H.sketch(null), empty: H.sketch({ type: "root", children: [] }) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('role' => 'nav', 'weight' => 3, 'links' => 2),
+		array('role' => 'block', 'weight' => 1, 'links' => 0),
+		array('role' => 'shared', 'weight' => 1, 'links' => 0),
+		array('role' => 'region', 'weight' => 1, 'links' => 1),
+		array('role' => 'footer', 'weight' => 1, 'links' => 0),
+	), $out['one'], 'the wrapper is looked through; roles, nodes and links per band');
+	pg_assert_same(12, count($out['many']), 'at most twelve bands');
+	pg_assert_same('header', $out['many'][0]['role'], 'header role');
+	pg_assert_same(array('role' => 'block', 'weight' => 3, 'links' => 0), $out['many'][11], 'the rest joined into the last band');
+	pg_assert_same(null, $out['none'], 'no tree, no sketch');
+	pg_assert_same(array(), $out['empty'], 'an empty page has no bands');
+}
+
+function test_proto_hotspots_sketch_boxes_fill_the_box()
+{
+	$out = proto_hotspots_test_node('out = { boxes: H.sketchBoxes([{ role: "nav", weight: 1, links: 2 }, { role: "block", weight: 16, links: 0 }, { role: "footer", weight: 4, links: 1 }], 228, 71), none: H.sketchBoxes([], 228, 71), tight: H.sketchBoxes([{ role: "block", weight: 1, links: 0 }, { role: "block", weight: 100, links: 0 }], 100, 8) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	$boxes = $out['boxes'];
+	pg_assert_same(3, count($boxes), 'one box per band');
+	pg_assert_same(0, $boxes[0]['y'], 'first at the top');
+	pg_assert_same(71, $boxes[2]['y'] + $boxes[2]['h'], 'last ends at the bottom');
+	pg_assert_same($boxes[0]['y'] + $boxes[0]['h'] + 2, $boxes[1]['y'], 'two apart');
+	pg_assert_true($boxes[1]['h'] > $boxes[2]['h'] && $boxes[2]['h'] > $boxes[0]['h'], 'heavier bands are taller');
+	pg_assert_same(array('nav', 2), array($boxes[0]['role'], $boxes[0]['links']), 'role and links carried');
+	pg_assert_same(array(), $out['none'], 'no bands, no boxes');
+	pg_assert_true($out['tight'][0]['h'] >= 3 && $out['tight'][1]['h'] >= 3, 'each at least 3 high');
+}
+
+function test_proto_hotspots_layout_makes_room_for_the_thumbnail()
+{
+	$out = proto_hotspots_test_node('var d = { pages: [{ key: "p1", name: "a", sketch: [{ role: "block", weight: 1, links: 0 }], hotspots: [{ nodeId: "n", source: "href", href: "/x", label: "X", mark: "page" }] }, { key: "p2", name: "b", sketch: [], hotspots: [] }], shared: [] };'
+		. ' var l = H.layout(d, {}); var f = l.frames;'
+		. ' out = { thumb: [f[0].thumb, f[1].thumb], h: [f[0].h, f[1].h], port: H.rowY(f[0], "h0"), plain: H.rowY(f[1], "h0") };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(84, 0), $out['thumb'], 'a frame with bands gets the strip');
+	pg_assert_same(array(44 + 84 + 30 + 10, 44 + 30 + 10), $out['h'], 'its height grows by it');
+	pg_assert_same(44 + 84 + 15, $out['port'], 'its row ports sit below the strip');
+	pg_assert_same(44 + 15, $out['plain'], 'a frame without bands is unchanged');
+}
