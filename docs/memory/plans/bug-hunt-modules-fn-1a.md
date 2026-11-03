@@ -23,7 +23,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 - `design_themes`: #6021 (a look or palette name closed its stylesheet comment; rest of the module checked clean)
 - `designer`: #6034 (svg drawing cleaner let event handlers and unquoted script URLs through)
 - `designer_fx`: clean #6050
-- `designer_theme_vars`: open
+- `designer_theme_vars`: clean (twin matches the editor on random texts)
 - `designer_vocab`: clean
 - `ecommerce`: done (#6030)
 - `editor`: open, partly hunted (#6032: a visitor image next to `{path}` became protocol-relative; checked: the rich text sanitizer and its URL, style and image helpers, `_pg_rich_text_to_inline()`, the {path} input/output helpers; next worker starts at `get_wysiwyg_editor_code()`, then the `pg_code_editor_*` functions)
