@@ -1147,10 +1147,11 @@ function ws_voice_speech_file_name($extension, $time)
  *
  * @param string $text   the answer; over WS_VOICE_SPEECH_MAX_CHARS it is cut at a sentence end
  * @param string $locale the language to speak in (tr, en-US, ...)
+ * @param string $voice  a voice's name in place of the card's, '' for the card's
  * @return array ok, error, bytes, name, mime, text (what was spoken),
  *               language (code), model, voice, provider
  */
-function ws_voice_speak($text, $locale)
+function ws_voice_speak($text, $locale, $voice = '')
 {
     $out = array(
         'ok' => false, 'error' => '', 'bytes' => '', 'name' => '', 'mime' => '', 'text' => '', 'language' => '',
@@ -1176,7 +1177,8 @@ function ws_voice_speak($text, $locale)
 
     $config = ws_voice_speech_config();
     $model = ($config['model'] !== '') ? $config['model'] : ws_voice_speech_default_model();
-    $voice = ($config['voice'] !== '') ? $config['voice'] : ws_voice_speech_default_voice();
+    $voice = trim((string) $voice);
+    $voice = ($voice !== '') ? $voice : (($config['voice'] !== '') ? $config['voice'] : ws_voice_speech_default_voice());
     $request = ws_voice_speech_request($spoken, $locale, $config['base'], $model, $voice);
 
     $answer = api_http_request('POST', $request['url'], array(
@@ -1244,15 +1246,7 @@ function ws_voice_speak_keep($channel, $message, $spoken, $user_id)
         return $out;
     }
 
-    $checked = ws_upload_inspect((string) $spoken['name'], (string) $spoken['bytes']);
-
-    if (!$checked['ok']) {
-        $out['error'] = $checked['error'];
-
-        return $out;
-    }
-
-    $stored = ws_store_file_bytes($channel, $checked['name'], $checked['extension'], (string) $spoken['bytes'], (int) $user_id);
+    $stored = ws_voice_speak_store($channel, $spoken, (int) $user_id);
 
     if (!$stored['ok']) {
         $out['error'] = $stored['error'];
@@ -1270,22 +1264,58 @@ function ws_voice_speak_keep($channel, $message, $spoken, $user_id)
         return $out;
     }
 
-    $now = time();
-
-    db("INSERT INTO ws_voice (file_id, message_id, channel_id, duration_ms, peaks, status, transcript, language, provider, model, created_at, updated_at, transcribed_at)
-        VALUES ('" . (int) $stored['file_id'] . "', '" . (int) $message['id'] . "', '" . (int) $channel['id'] . "', 0, '', 'done',
-            '" . e((string) $spoken['text']) . "', '" . e(mb_substr((string) $spoken['language'], 0, 16)) . "',
-            '" . e(mb_substr((string) $spoken['provider'], 0, 100)) . "', '" . e(mb_substr((string) $spoken['model'], 0, 100)) . "',
-            '" . $now . "', '" . $now . "', '" . $now . "')");
-
-    // Screens and apps holding the message read it again, with its sound.
-    ws_message_touch((int) $message['id']);
+    ws_voice_speak_row($channel, (int) $message['id'], (int) $stored['file_id'], $spoken);
 
     $out['ok'] = true;
     $out['file_id'] = (int) $stored['file_id'];
     $out['name'] = (string) $stored['name'];
 
     return $out;
+}
+
+/**
+ * Keeps the sound ws_voice_speak() answered as a file of the channel, in its
+ * folder with a row in the file manager, inspected as an upload is
+ * (ws_upload_inspect(), ws_store_file_bytes()).
+ *
+ * @param array $channel
+ * @param array $spoken  ws_voice_speak()'s answer, ok
+ * @param int   $user_id the owner of the file manager row
+ * @return array ok, error, file_id, name
+ */
+function ws_voice_speak_store($channel, $spoken, $user_id)
+{
+    $checked = ws_upload_inspect((string) ($spoken['name'] ?? ''), (string) ($spoken['bytes'] ?? ''));
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'file_id' => 0, 'name' => '');
+    }
+
+    return ws_store_file_bytes($channel, $checked['name'], $checked['extension'], (string) $spoken['bytes'], (int) $user_id);
+}
+
+/**
+ * The done ws_voice row of a spoken file a message carries: transcript =
+ * the spoken text, the language, provider and model, no length (the player
+ * reads the file's own), and the message marked changed so that screens
+ * and apps holding it read it again with its sound.
+ *
+ * @param array $channel
+ * @param int   $message_id
+ * @param int   $file_id
+ * @param array $spoken ws_voice_speak()'s answer, ok
+ */
+function ws_voice_speak_row($channel, $message_id, $file_id, $spoken)
+{
+    $now = time();
+
+    db("INSERT INTO ws_voice (file_id, message_id, channel_id, duration_ms, peaks, status, transcript, language, provider, model, created_at, updated_at, transcribed_at)
+        VALUES ('" . (int) $file_id . "', '" . (int) $message_id . "', '" . (int) $channel['id'] . "', 0, '', 'done',
+            '" . e((string) $spoken['text']) . "', '" . e(mb_substr((string) $spoken['language'], 0, 16)) . "',
+            '" . e(mb_substr((string) $spoken['provider'], 0, 100)) . "', '" . e(mb_substr((string) $spoken['model'], 0, 100)) . "',
+            '" . $now . "', '" . $now . "', '" . $now . "')");
+
+    ws_message_touch((int) $message_id);
 }
 
 /* ---------------------------------------------------------------------------
@@ -1421,6 +1451,206 @@ function ws_voice_answer_spoken($channel, $message_id, $parent_id, $text, $user_
     $kept = ws_voice_speak_keep($channel, $message, $spoken, (int) $user_id);
     $out['spoken'] = $kept['ok'];
     $out['error'] = $kept['error'];
+
+    return $out;
+}
+
+/* ---------------------------------------------------------------------------
+   A voice message from a text
+   --------------------------------------------------------------------------- */
+
+/**
+ * Where a voice message goes: channel_id or thread_id, one of them, each of
+ * its own kind. Pure: the handler reads the channel.
+ *
+ * @param int    $channel_id
+ * @param int    $thread_id
+ * @param string $kind the kind of the channel the id given names ('' for none)
+ * @return array|null null when it may go there, else field and error
+ */
+function ws_voice_message_target_rule($channel_id, $thread_id, $kind)
+{
+    $channel_id = (int) $channel_id;
+    $thread_id = (int) $thread_id;
+
+    if (($channel_id > 0) === ($thread_id > 0)) {
+        return array('field' => 'channel_id', 'error' => lang('Give channel_id or thread_id, one of them.'));
+    }
+
+    if (($thread_id > 0) && ((string) $kind !== 'thread')) {
+        return array('field' => 'thread_id', 'error' => lang('thread_id is not a discussion: send a channel as channel_id.'));
+    }
+
+    if (($channel_id > 0) && ((string) $kind === 'thread')) {
+        return array('field' => 'channel_id', 'error' => lang('channel_id is a discussion: send it as thread_id.'));
+    }
+
+    return null;
+}
+
+/**
+ * The HTTP status of a refusal of ws_voice_message_check() or
+ * ws_voice_message_send(), by its code.
+ *
+ * @param string $code
+ * @return int
+ */
+function ws_voice_message_status($code)
+{
+    switch ((string) $code) {
+        case 'voice_unavailable':
+        case 'voice_closed':
+            return 409;
+
+        case 'voice_failed':
+            return 503;
+
+        default:
+            return 422;
+    }
+}
+
+/**
+ * Whether a voice message can be made from a text for this channel, with
+ * nothing made: the speech service ready (voice_unavailable), the channel
+ * not keeping its recordings (voice_closed: a private channel without the
+ * switch, a guest room, a channel shared with a guest), the voice's name,
+ * something left to say once tags and marks are out, the message checks of
+ * ws_message_send_check() and the answered message (ws_message_parent_check()).
+ * Shared by the API route, its dry run and Pinegrap AI's tool.
+ *
+ * @param array  $viewer  who writes
+ * @param array  $channel the channel or discussion
+ * @param string $text    what is to be said
+ * @param array  $options app_id, parent_id (the message answered), voice
+ * @return array ok, error, code ('' for a field's 422), field, text (what
+ *               will be spoken), voice
+ */
+function ws_voice_message_check($viewer, $channel, $text, $options = array())
+{
+    $out = array('ok' => false, 'error' => '', 'code' => '', 'field' => '', 'text' => '', 'voice' => '');
+    $missing = ws_voice_speech_missing();
+
+    if (!empty($missing)) {
+        $out['code'] = 'voice_unavailable';
+        $out['error'] = lang('No speech service is set.') . ' ' . (string) reset($missing);
+
+        return $out;
+    }
+
+    if (!ws_voice_channel_allowed($channel)) {
+        $out['code'] = 'voice_closed';
+        $out['error'] = lang('No voice message is made for this channel: it keeps its recordings on the site.');
+
+        return $out;
+    }
+
+    $voice = trim((string) ($options['voice'] ?? ''));
+
+    if (($voice !== '') && !ws_voice_speech_voice_valid($voice)) {
+        $out['field'] = 'voice';
+        $out['error'] = lang('The voice name may hold letters, digits and . _ : / - only.');
+
+        return $out;
+    }
+
+    $spoken = ws_voice_speech_cut(ws_voice_answer_text($text));
+
+    if ($spoken === '') {
+        $out['field'] = 'text';
+        $out['error'] = lang('There is nothing to say.');
+
+        return $out;
+    }
+
+    // The file it is about to carry stands in for its id: the message has
+    // no words of its own, the sound is its message.
+    $message = ws_message_send_check($viewer, $channel, '', array('app_id' => (int) ($options['app_id'] ?? 0), 'file_id' => PHP_INT_MAX));
+
+    if (!$message['ok']) {
+        $out['field'] = 'text';
+        $out['error'] = $message['error'];
+
+        return $out;
+    }
+
+    $refused = ws_message_parent_check($channel, (int) ($options['parent_id'] ?? 0));
+
+    if ($refused !== '') {
+        $out['field'] = 'reply_to';
+        $out['error'] = $refused;
+
+        return $out;
+    }
+
+    $out['ok'] = true;
+    $out['text'] = $spoken;
+    $out['voice'] = $voice;
+
+    return $out;
+}
+
+/**
+ * Makes a voice message from a text and posts it: the checks above, the
+ * sound from the speech service (ws_voice_speak()), the file in the
+ * channel's folder, a message carrying it with no words of its own (as a
+ * recording is posted), and a done ws_voice row whose transcript is the
+ * text, so the player, search, recaps and bells treat it as any voice
+ * message. The service refusing (voice_failed) leaves nothing behind.
+ *
+ * @param array  $viewer  who writes
+ * @param array  $channel the channel or discussion
+ * @param string $text
+ * @param array  $options app_id, parent_id, voice
+ * @return array ok, error, code, field, message_id
+ */
+function ws_voice_message_send($viewer, $channel, $text, $options = array())
+{
+    $checked = ws_voice_message_check($viewer, $channel, $text, $options);
+    $out = array('ok' => false, 'error' => $checked['error'], 'code' => $checked['code'], 'field' => $checked['field'], 'message_id' => 0);
+
+    if (!$checked['ok']) {
+        return $out;
+    }
+
+    $spoken = ws_voice_speak($checked['text'], ws_voice_answer_locale($checked['text']), $checked['voice']);
+
+    if (!$spoken['ok']) {
+        $out['code'] = 'voice_failed';
+        $out['error'] = $spoken['error'];
+
+        return $out;
+    }
+
+    $stored = ws_voice_speak_store($channel, $spoken, (int) $viewer['id']);
+
+    if (!$stored['ok']) {
+        $out['code'] = 'voice_failed';
+        $out['error'] = $stored['error'];
+
+        return $out;
+    }
+
+    $result = ws_message_send($viewer, $channel, '', array(
+        'app_id'    => (int) ($options['app_id'] ?? 0),
+        'file_id'   => (int) $stored['file_id'],
+        'file_name' => (string) $stored['name'],
+        'parent_id' => (int) ($options['parent_id'] ?? 0),
+    ));
+
+    if (!$result['ok']) {
+        ws_upload_discard((int) $stored['file_id']);
+        $out['field'] = 'text';
+        $out['error'] = $result['error'];
+
+        return $out;
+    }
+
+    ws_voice_speak_row($channel, (int) $result['message_id'], (int) $stored['file_id'], $spoken);
+
+    $out['ok'] = true;
+    $out['error'] = '';
+    $out['message_id'] = (int) $result['message_id'];
 
     return $out;
 }

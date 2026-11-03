@@ -281,6 +281,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-voice-asks.md: A voice message that asks Claude, Pinegrap AI or an MCP server (V4c): tags beside the mic, a voice answer, asked once transcribed (ws_voice_posted(), ws_voice_ask())
 - workspace-voice-assistants.md: Voice transcripts the assistants, recaps, bells, banners and search read (V4a #2798, V4b): ws_voice_transcripts(), ws_voice_with_transcript(), ws_voice_excerpt(), ws_voice_search_or()
 - workspace-voice-mcp-agents.md: A voice message that asks an MCP agent (VA6): the microphone on its messages, ws_mcp_agent_heard() reads the transcript, the ask after the transcript, discussions
+- workspace-voice-message-route.md: "Send a voice message" from a text (VA5): POST /workspace/messages/voice and its MCP tool, ws_voice_message_check() and _send(), refusal codes, Pinegrap AI tool, Claude rule
 - workspace-voice-read-aloud.md: Assistants' answers read aloud (V5): the per-person browser switch in the channel menu, off by default, no schema; which answers are read, what is left out, when it stops
 - workspace-voice-recording.md: Voice messages (workspace_voice.js): the mic in place of Send, a sound's reply mic, the 5-minute cap, .weba/.ogg/.m4a names, the player
 - workspace-voice-screen.md: Voice transcripts on the channel screen (V3c2): recorder waveform and length, the player's peaks and transcript, the panel kick, the channel menu switch

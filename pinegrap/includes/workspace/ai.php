@@ -1843,7 +1843,7 @@ function ws_ai_claims_done($text)
  */
 function ws_ai_tool_names()
 {
-    return array('answer', 'fail', 'read_channel', 'read_task', 'search_records', 'read_record', 'propose_task', 'propose_change', 'propose_bulk_change', 'propose_scheduled_action', 'propose_flow', 'read_flow', 'add_task_note', 'read_page', 'page_set', 'page_replace', 'page_insert', 'page_remove', 'page_css', 'page_rewrite');
+    return array('answer', 'fail', 'read_channel', 'read_task', 'search_records', 'read_record', 'propose_task', 'propose_change', 'propose_bulk_change', 'propose_scheduled_action', 'propose_flow', 'read_flow', 'add_task_note', 'send_voice_message', 'read_page', 'page_set', 'page_replace', 'page_insert', 'page_remove', 'page_css', 'page_rewrite');
 }
 
 /**
@@ -3917,6 +3917,15 @@ function ws_ai_tools($row)
             'text'    => array('type' => 'string'),
         ), array('task_id', 'text'));
 
+        // A voice message from a text, where the site has a speech service
+        // and the channel does not keep its recordings (voice.php).
+        if (!$note && !$task && function_exists('ws_voice_speech_ready') && ws_voice_speech_ready()) {
+            $tools[] = $tool('send_voice_message', 'Post a voice message answering the request, only when the request asks in so many words for a voice message: the site speaks the text with its speech service. Plain sentences in the language of the request, no tags, no Markdown. Still call answer at the end.', array(
+                'text'  => array('type' => 'string', 'description' => 'What is said; kept as the voice message\'s transcript.'),
+                'voice' => array('type' => 'string', 'description' => 'A voice of the service in place of the site\'s, only when the request names one.'),
+            ), array('text'));
+        }
+
         if ($asker && ws_design_ai() && pg_design_ai_tools_allowed($row, $asker)) {
             $tools = array_merge($tools, pg_design_ai_tools());
         }
@@ -4116,6 +4125,27 @@ function ws_ai_tool_run($row, &$state, $name, $args)
             $result = ws_task_note_add($owner, $task, ws_tokens_normalise($text), (int) ws_ai_config()['app_id']);
 
             return empty($result['ok']) ? array('error' => (string) ($result['error'] ?? 'The note could not be added.')) : array('ok' => true);
+
+        case 'send_voice_message':
+            if ($note || $task || !function_exists('ws_voice_message_send')) {
+                return array('error' => 'Not from a note or a task.');
+            }
+
+            $channel = ws_ai_request_channel($row, $asker);
+            $app = ws_ai_app();
+            $writer = ($channel && $app) ? ws_assistant_writer(ws_ai_owner(), $asker, $channel) : null;
+
+            if (!$channel || !$writer) {
+                return array('error' => 'The voice message cannot be posted there.');
+            }
+
+            $sent = ws_voice_message_send($writer, $channel, (string) ($args['text'] ?? ''), array(
+                'app_id'    => (int) $app['id'],
+                'parent_id' => (int) $row['message_id'],
+                'voice'     => (string) ($args['voice'] ?? ''),
+            ));
+
+            return empty($sent['ok']) ? array('error' => (string) $sent['error']) : array('ok' => true, 'message_id' => (int) $sent['message_id']);
     }
 
     return array('error' => 'There is no tool named ' . $name . '.');
