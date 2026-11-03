@@ -126,6 +126,7 @@
     "31-60 days": "31-60 gün",
     "3D Secure": "3D Güvenlik",
     "3D Secure Enabled For your security.": "Güvenliğiniz için 3D güvenlik aktif.",
+    "3D Secure is required": "3D Secure zorunludur",
     "3D Secure verification failed. Please try again.": "3D Secure doğrulaması başarısız. Lütfen tekrar deneyiniz.",
     "3DS state insert failed.": "3DS durumu veritabanına eklenemedi.",
     "3DS state select failed.": "3DS durumu veritabanından alınamadı.",
