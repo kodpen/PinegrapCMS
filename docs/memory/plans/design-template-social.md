@@ -20,13 +20,21 @@ description: Plan for the Social Community template (pinegrap-social): a photo c
 
 ## Which steps are there?
 - 1 Done (#6297). Data and shared parts: `parts.php` (builders, samples; account bar, header, footer, join band, avatar, post, profile and topic cards, page shells, form fields, comment thread, staff bar); test `design_template_social_test.php`.
-- 2 Public pages: `pages_public.php` (home, topics, about, guidelines, FAQ, help, privacy, terms).
+
+- 2 Done (#6339). Public pages: `pages_public.php`; home places `home_posts`, `home_news`.
+
 - 3 Done (#6341). Profiles: `profiles.php` (`my_profile` and its collection, `people`, `member` with their posts, `staff_members`).
+
 - 4 Posts: `posts.php` (`post_new` with the collection and samples, `explore`, `tag`, `post`, `my_posts`, `saved`, home lists).
+
 - 5 Reports and mail: `mail.php`, `reports.php` (`report`, `report_view`, `my_reports`, `staff_reports`, `staff_report` with `report_notes`, `staff_posts`, `email_reply`, `email_comment`, notify e-mails).
+
 - 6 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Community News", blog post, search, error); test `…_standard_test.php`.
+
 - 7 Account and staff: `account.php` (sign-in pages, My Account, staff area, `blog_new`, account e-mails); test `…_account_test.php`.
+
 - 8 Assembly: `pinegrap-social.php` (order 78, icon `bi-camera`, look and palette, contact group `newsletter`, folders `posts` and `avatars`, `psc-` User Styles, search map), shared tests' lists, `designer/design-template-social.md`, plan deleted; PR body names `[NEW] Added the Social Community design template`.
+
 - L Held: likes and follows (1.1.0), only after #6296 decides general features for them.
 
 ## Which questions are open?
