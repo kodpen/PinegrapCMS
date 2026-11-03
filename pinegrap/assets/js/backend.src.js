@@ -14100,7 +14100,9 @@ $(function () {
 
         var cell = event.target.closest('td[data-pg-edit]');
 
-        if (!cell || event.target.closest('a, button, input, select, textarea, label')) {
+        // A list of the table driver edits in its own quick edit mode
+        // (pg_list_table_edit.js); a click there selects the row.
+        if (!cell || cell.closest('.pg-list-table') || event.target.closest('a, button, input, select, textarea, label')) {
             return;
         }
 
@@ -14114,7 +14116,7 @@ $(function () {
     document.addEventListener('keydown', function (event) {
         var cell = event.target;
 
-        if (cell && cell.matches && cell.matches('td[data-pg-edit]') && ((event.key === 'Enter') || (event.key === 'F2'))) {
+        if (cell && cell.matches && cell.matches('td[data-pg-edit]') && !cell.closest('.pg-list-table') && ((event.key === 'Enter') || (event.key === 'F2'))) {
             event.preventDefault();
             open(cell);
         }

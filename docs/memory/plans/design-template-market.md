@@ -21,7 +21,7 @@ description: Plan for the Marketplace template (pinegrap-market): makers' shops 
 - 1 Done (#6222): `parts.php` (data, prices and shared parts); test `design_template_market_test.php`.
 - 2 Done (#6279): `pages_public.php` (public pages; the home places `home_sellers` and `home_posts`).
 - 3 Done (#6285): `shop.php` (catalog by category and maker keys, shop pages, `cart_link`).
-- 4 Makers: `sellers.php` (`seller_new` with the Sellers collection and samples, `sellers` with filters, `seller` record page with reviews, the home's list widgets).
+- 4 Done (#6286): `sellers.php` (Sellers collection, maker list and page, `home_sellers`); `shop_url` sample `{{product_group_path:<seller key>}}`.
 - 5 Done (#6291): `mail.php`, `requests.php` (maker applications and help requests, their views, lists and e-mails).
 - 6 Done (#6292). Standard: `standard.php` (contact, inbox, conversation, newsletter, Journal blog with maker stories, blog post, search, error); test `…_standard_test.php`.
 - 7 Done (#6300). Account and staff: `account.php`; test `…_account_test.php`.

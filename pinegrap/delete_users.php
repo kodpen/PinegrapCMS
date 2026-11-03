@@ -25,9 +25,23 @@ validate_area_access($user, 'manager');
 
 validate_token_field();
 
-// if at least one user was selected; the selection is a list of ids, and a
-// single value (users=5) selects nothing
-if (isset($_POST['users']) && is_array($_POST['users']) && $_POST['users']) {
+// The users list sends its selection as the list table driver keeps it: the
+// users picked, or the whole view by its condition less the exceptions. It
+// is read back with the list's own query and the user's rights
+// (pg_user_list_selected_ids()).
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_list.php');
+$user_ids = pg_user_list_selected_ids($user, $_POST['selection'] ?? '', $_POST['list_params'] ?? '');
+
+if ($user_ids === false) {
+    output_error(lang('Query failed.'));
+}
+
+if ($user_ids === null) {
+    output_error(lang('Too many users are selected. Select fewer users and try again.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+}
+
+// if at least one user was selected
+if ($user_ids) {
     // if user is an administrator, get number of administrators in order to prevent the last administrator from being deleted
     if ($user['role'] == 0) {
         $query = "SELECT COUNT(user_id) FROM user WHERE user_role = '0'";
@@ -38,12 +52,7 @@ if (isset($_POST['users']) && is_array($_POST['users']) && $_POST['users']) {
     
     $number_of_users = 0;
 
-    foreach ($_POST['users'] as $user_id) {
-        // An entry posted as an array (users[0][]=x) is no id.
-        if (!is_scalar($user_id)) {
-            continue;
-        }
-
+    foreach ($user_ids as $user_id) {
         // get user's role so that we can determine if this logged-in user has access to delete this user
         $query = "SELECT user_role FROM user WHERE user_id = ?";
         $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
@@ -65,7 +74,7 @@ if (isset($_POST['users']) && is_array($_POST['users']) && $_POST['users']) {
             if (($user_role != 0) || ($number_of_administrators > 1)) {
                 // The account as it was, before anything that goes with it is
                 // removed.
-                $audit_user_id = is_scalar($user_id) ? (int) $user_id : 0;
+                $audit_user_id = (int) $user_id;
                 $audit_before = pg_audit_fetch('user', $audit_user_id);
 
                 // Sign-in tokens first: a token outliving its user is a row

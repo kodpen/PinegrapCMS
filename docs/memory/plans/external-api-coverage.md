@@ -20,10 +20,10 @@ description: External API (integration.php): find what the panel can do that the
   - X6a `local_sale_complete()` moves into `includes/fn/local_order.php`, free of the session cart; the screen calls it, tests pin it: PR #6107 (`erp/erp-counter-sale-completion.md`).
   - X6b The route on it: PR #6148 (`api/api-orders-create.md`).
 - X7 `POST /offers`, `POST /offers/{id}/duplicate` through the editor's validate and save, `offers:write`, events `offer.created|updated|deleted`: PR #6175 (`api/api-offers-create.md`).
-- X8 Store lookup lists, cut in three; drafts of X8b/X8c on branch `wip/external-api-coverage-x8bc`:
+- X8 Store lookup lists, cut in three:
   - X8a Shared write path of the eight screens (`fn/store_lookups.php`), `/store/referral-sources` CRUD: PR #6247 (`api/api-store-lookups.md`).
   - X8b `/store/ship-date-adjustments`, `/store/verified-addresses` CRUD (409 `adjustment_taken`): PR #6308.
-  - X8c `/store/arrival-dates` CRUD with `shipping_cutoffs` (a row the screen drops is 422).
+  - X8c `/store/arrival-dates` CRUD with `shipping_cutoffs` (a row the screen drops is 422): PR #6332 (`api/api-store-arrival-dates.md`).
 - X9 `POST /campaigns` (draft), `POST /campaigns/{id}/schedule`, campaign profiles CRUD, `GET /campaigns/sms`. `campaigns:*`. Event `campaign.sent`.
 - X10 Calendars create/update/delete, `/calendars/locations` CRUD, `GET /calendars/events/{id}/reservations`. `calendars:*` with the role-3 row rule. Event `calendar_event.reserved`.
 - X11 `POST /forms/{id}/submissions`, its `/delete`, `GET /forms/{id}/fields`. `forms:*`. Event `form.submission.deleted`; `form.submitted` exists.

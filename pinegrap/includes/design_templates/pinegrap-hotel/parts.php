@@ -670,7 +670,7 @@ $booking_band = function () use ($el, $heading, $para, $link, $container, $row, 
             $row(array(
                 $col(array(
                     $heading('h2', lang('Come and stay by the sea'), 'pht-display h2 mb-2'),
-                    $para(lang('Tell us your dates and the room you like; the reception answers within a day with the price and the room held for you.'), 'opacity-75 mb-0'),
+                    $para(lang('Tell us your dates and the room you like; the reception answers within a day with the price and the room held for you.'), 'mb-0'),
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(

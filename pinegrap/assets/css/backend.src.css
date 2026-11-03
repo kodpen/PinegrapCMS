@@ -22115,6 +22115,44 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   margin: 0;
   text-align: center;
 }
+/* Quick edit mode (pg_list_table_edit.js): each editable cell holds a
+   field; a refused value is marked and its reason stands under it. */
+.pg-list-table-quick[aria-pressed="true"] {
+  color: var(--pg-primary-ink);
+  background: color-mix(in srgb, var(--pg-primary) 14%, transparent);
+}
+.pg-list-table.is-quick-edit .pg-list-table-bar.is-empty.has-quick {
+  background: color-mix(in srgb, var(--pg-primary) 8%, transparent);
+}
+.pg-list-table-field {
+  min-width: 6rem;
+}
+.pg-list-table-grid > tbody > tr > td[aria-busy="true"] > .pg-list-table-field {
+  opacity: 0.6;
+}
+.pg-list-table-field-note {
+  margin-top: 0.125rem;
+  font-size: 0.8125rem;
+  color: var(--pg-danger-ink);
+  white-space: normal;
+  text-align: start;
+}
+.pg-list-table-grid > tbody > tr > td.pg-list-table-saved {
+  animation: pgListTableSaved 1.2s ease-out;
+}
+@keyframes pgListTableSaved {
+  from {
+    background-color: color-mix(in srgb, var(--pg-success) 30%, transparent);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-list-table-grid > tbody > tr > td.pg-list-table-saved {
+    animation: none;
+  }
+}
 }
 
 /* Unlayered: Bootstrap 6 gives .fixed-top 1020 in its helpers layer, which

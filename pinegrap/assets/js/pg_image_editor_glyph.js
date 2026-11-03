@@ -119,6 +119,14 @@
         var vr = this.viewRect(), size = Math.min(vr.w, vr.h) / 5, c = this.stickerCentre();
         var layer = { type: 'glyph', set: set, code: code, x: c[0] - size / 2, y: c[1] - size / 2, w: size, h: size, rot: 0, opacity: 1 };
 
+        if (this.swapGlyph({ type: 'glyph', set: set, code: code })) {
+            if (set === 'emoji') {
+                this.rememberEmoji(code);
+            }
+
+            return;
+        }
+
         if (set === 'bi') {
             layer.color = '#212529';
         } else {
@@ -267,10 +275,89 @@
         body.appendChild(box);
     };
 
+    // ---- changing a placed one ----
+
+    // The one selected sticker or glyph that a pick in the Sticker panel
+    // replaces while Change is on; null otherwise.
+    Editor.prototype.swapTarget = function () {
+        var l = (this.swapId && (this.tool === 'sticker') && (this.sel.length === 1) && (this.sel[0] === this.swapId)) ? this.layer(this.swapId) : null;
+
+        return (l && !l.locked && ((l.type === 'sticker') || (l.type === 'glyph'))) ? l : null;
+    };
+
+    // A pick while Change is on: that layer's sticker, icon or emoji is
+    // replaced in one undo step (M.swapGlyph()); false when nothing is
+    // being changed, so the pick adds a layer.
+    Editor.prototype.swapGlyph = function (pick) {
+        var next = M.swapGlyph(this.swapTarget(), pick);
+
+        if (!next) {
+            return false;
+        }
+
+        this.swapId = null;
+        this.change(function (doc) {
+            doc.layers = doc.layers.map(function (o) { return (o.id === next.id) ? next : o; });
+        });
+
+        return true;
+    };
+
+    // Change for one selected sticker or glyph: the Sticker tool's panel
+    // with that layer's icon or emoji section open; a pick replaces it.
+    Editor.prototype.swapButton = function (body, picked) {
+        var self = this, l = picked[0];
+
+        if ((picked.length !== 1) || l.locked || this.swapTarget()) {
+            return;
+        }
+
+        body.appendChild(el('div', { class: 'pgie-btnrow' }, [X.button('pgie-btn pgie-swap', t('glyphChange'), 'sticker', function () {
+            self.swapId = l.id;
+
+            if (l.type === 'glyph') {
+                self.glyphs[(l.set === 'bi') ? 'icons' : 'emoji'] = true;
+            }
+
+            if (self.tool !== 'sticker') {
+                self.pickTool('sticker');
+            } else {
+                self.renderPanel();
+            }
+
+            if (self.panel) {
+                self.panel.scrollTop = 0;
+            }
+        }, true)]));
+    };
+
+    // While Change is on, the Sticker panel says so first, with Cancel.
+    function swapNote(body) {
+        var self = this;
+
+        body.insertBefore(el('div', { class: 'pgie-swapnote', role: 'status' }, [
+            el('p', { class: 'pgie-note', text: t('glyphChangeHint') }),
+            el('button', { type: 'button', class: 'pgie-btn', text: t('cancel'), onclick: function () {
+                self.swapId = null;
+                self.renderPanel();
+            } })
+        ]), body.firstChild);
+    }
+
+    // A sticker's own panel starts with Change.
+    var stickerOwn = Editor.prototype.stickerPanel;
+
+    Editor.prototype.stickerPanel = function (body, picked) {
+        this.swapButton(body, picked);
+        stickerOwn.call(this, body, picked);
+    };
+
     // The colour of selected icons (an emoji keeps its own colours): Select's
     // panel and the Sticker tool's.
     Editor.prototype.glyphPanel = function (body, picked) {
         var self = this, tinted = picked.filter(function (l) { return l.set === 'bi'; });
+
+        this.swapButton(body, picked);
 
         if (!tinted.length) {
             return;
@@ -303,10 +390,23 @@
 
         this.glyphIconSection(body);
         this.glyphEmojiSection(body);
+
+        if (this.swapTarget()) {
+            swapNote.call(this, body);
+        }
     };
 
     Editor.inits.push(function () {
         this.glyphs = { icons: false, emoji: false, query: '', map: null, error: false, category: M.EMOJI.order[0] };
+        this.swapId = null;
+    });
+
+    // Change ends when its layer is no longer the one selected or another
+    // tool is chosen.
+    Editor.views.push(function () {
+        if (this.swapId && !this.swapTarget()) {
+            this.swapId = null;
+        }
     });
 
     Editor.layerTypes.glyph = {

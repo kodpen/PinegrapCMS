@@ -451,6 +451,11 @@
         this.watchThumbs(this.tbody);
 
         root.pgListTable = this;
+
+        // Quick edit mode (pg_list_table_edit.js, bundled after this file).
+        if (this.quickInit) {
+            this.quickInit();
+        }
     }
 
     Driver.prototype.build = function () {
@@ -771,8 +776,9 @@
 
             term.textContent = column.heading;
 
-            // The cell's own markup, escaped by the server where it was built.
-            value.innerHTML = cell.innerHTML;
+            // The cell's own markup, escaped by the server where it was
+            // built; a quick edit field shows what the cell holds.
+            value.innerHTML = (typeof cell.pgQuickHtml === 'string') ? cell.pgQuickHtml : cell.innerHTML;
             list.appendChild(term);
             list.appendChild(value);
         });
@@ -1155,6 +1161,10 @@
         rows.forEach(function (row) {
             self.watchThumbs(row);
         });
+
+        if (this.quickRows) {
+            this.quickRows(rows);
+        }
 
         this.say(text(this.texts.loaded, this.tbody.rows.length));
         this.paint();

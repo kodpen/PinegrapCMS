@@ -9,7 +9,7 @@ module: user_list
 - Before, they were `date('Y-m-d H:i')` / `date('d.m.Y')`: the site's zone and one fixed format, so one row mixed two zones.
 
 ## How are the users list controls named?
-- Row checkbox: `pg_user_list_select_cell()`, aria-label "Select {var:1}" with the username (the disabled last-administrator box too).
+- Rows: no checkbox since the list moved to the list table driver (#6325); a row is selected by click, the username links to the editor (`pg_user_list_edit_cells()`, `data-pg-open`) and the edit button is named "Edit".
 - Yes cells: `pg_user_list_mark()`, the `task_alt` ligature `aria-hidden` and a `visually-hidden` "Yes".
 - Folder, calendar, form and contact group cells: `pg_user_list_names_cell($names, $icon, $label)`; the button carries `$label` (Folders, Calendars, Forms, Contact Groups), the ligature is hidden, and an empty list draws a dash instead of a button with an empty menu.
 

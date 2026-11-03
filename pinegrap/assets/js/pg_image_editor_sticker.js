@@ -172,6 +172,12 @@
     Editor.prototype.addSticker = function (def) {
         var vr = this.viewRect(), m = Math.min(vr.w, vr.h), w = def.w * m / 100, h = def.h * m / 100, c = this.stickerCentre();
 
+        // Change on a placed sticker, icon or emoji (the glyph part): this
+        // one takes its place instead.
+        if (this.swapGlyph && this.swapGlyph({ type: 'sticker', kind: def.kind, label: stickerText(def), fill: def.fill, ink: def.ink })) {
+            return;
+        }
+
         this.addLayers([{ type: 'sticker', kind: def.kind, label: stickerText(def), color: def.fill, ink: def.ink, x: c[0] - w / 2, y: c[1] - h / 2, w: w, h: h, rot: 0, opacity: 1 }], 0);
     };
 

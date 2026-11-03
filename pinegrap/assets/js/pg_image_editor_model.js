@@ -3219,22 +3219,45 @@
     var ANIM_FORMATS = {
         gif: { mime: 'image/gif', ext: 'gif', edges: [240, 320, 480, 640, 800], edge: 480, maxMs: 15000, rates: [10, 15, 20, 25], rate: 15, dither: true },
         apng: { mime: 'image/png', ext: 'png', edges: [240, 320, 480, 640, 800, 1080], edge: 480, maxMs: 15000, rates: [10, 15, 20, 25], rate: 15, needs: 'deflate' },
-        webp: { mime: 'image/webp', ext: 'webp', edges: [240, 320, 480, 640, 800, 1080], edge: 480, maxMs: 15000, rates: [10, 15, 20, 25], rate: 15, needs: 'webp' }
+        webp: { mime: 'image/webp', ext: 'webp', edges: [240, 320, 480, 640, 800, 1080], edge: 480, maxMs: 15000, rates: [10, 15, 20, 25], rate: 15, needs: 'webp' },
+        // Video: even sides; codecs are tried in order by WebCodecs (the
+        // baseline H.264 profile first: no reordered frames for the muxer),
+        // recorder the MediaRecorder types where WebCodecs has none.
+        mp4: {
+            mime: 'video/mp4', ext: 'mp4', video: true, even: true, edges: [480, 640, 720, 960, 1280, 1920], edge: 1280, maxMs: 60000, rates: [24, 30], rate: 30, needs: 'mp4',
+            codecs: ['avc1.42E028', 'avc1.4D0028', 'avc1.640028'], recorder: ['video/mp4;codecs=avc1.42E028', 'video/mp4']
+        },
+        webm: {
+            mime: 'video/webm', ext: 'webm', video: true, even: true, edges: [480, 640, 720, 960, 1280, 1920], edge: 1280, maxMs: 60000, rates: [24, 30], rate: 30, needs: 'webm',
+            codecs: ['vp09.00.40.08'], recorder: ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+        }
     };
 
-    // The formats a browser with caps ({ deflate, webp }) can make.
+    // Every edge some format offers.
+    var ANIM_EDGES = Object.keys(ANIM_FORMATS).reduce(function (all, k) {
+        return all.concat(ANIM_FORMATS[k].edges.filter(function (e) { return all.indexOf(e) < 0; }));
+    }, []);
+
+    // The formats a browser with caps ({ deflate, webp, mp4, webm }) can make.
     function animFormats(caps) {
         return Object.keys(ANIM_FORMATS).filter(function (k) { return !ANIM_FORMATS[k].needs || !!(caps && caps[ANIM_FORMATS[k].needs]); });
     }
 
     // The settings on switching to format: the edge and the rate kept
-    // inside its limits.
+    // inside its limits; an edge another format lists becomes the largest
+    // of this one's under it (the picture's own edge is kept).
     function animSwitch(set, format) {
-        var f = ANIM_FORMATS[format] || ANIM_FORMATS.gif, top = f.edges[f.edges.length - 1];
+        var f = ANIM_FORMATS[format] || ANIM_FORMATS.gif, edge = Math.min(Number(set.edge) || f.edge, f.edges[f.edges.length - 1]);
+
+        if ((f.edges.indexOf(edge) < 0) && (ANIM_EDGES.indexOf(edge) >= 0)) {
+            var under = f.edges.filter(function (e) { return e <= edge; });
+
+            edge = under.length ? under[under.length - 1] : f.edges[0];
+        }
 
         return Object.assign({}, set, {
             format: ANIM_FORMATS[format] ? format : 'gif',
-            edge: Math.min(Number(set.edge) || f.edge, top),
+            edge: edge,
             fps: (f.rates.indexOf(set.fps) >= 0) ? set.fps : f.rate
         });
     }
@@ -3261,11 +3284,19 @@
     }
 
     // The frame size for out (the save's size) at a longest edge, never
-    // larger than out; whole pixels, at least 1.
-    function animSize(out, edge) {
+    // larger than out; whole pixels, at least 1; even sides (a video's
+    // chroma is halved) rounded down, at least 2.
+    function animSize(out, edge, even) {
         var long = Math.max(out.w, out.h), k = Math.min(1, Math.max(1, Number(edge) || long) / long);
+        var w = Math.max(1, Math.round(out.w * k)), h = Math.max(1, Math.round(out.h * k));
 
-        return { w: Math.max(1, Math.round(out.w * k)), h: Math.max(1, Math.round(out.h * k)) };
+        return even ? { w: Math.max(2, w - (w & 1)), h: Math.max(2, h - (h & 1)) } : { w: w, h: h };
+    }
+
+    // A video's bit rate for frames of size at fps: a tenth of a bit per
+    // pixel, at least 250 kbit/s.
+    function animBitrate(size, fps) {
+        return Math.max(250000, Math.round(size.w * size.h * fps / 10));
     }
 
     // The edges the dialog offers for out: those under its longest edge,
@@ -3316,7 +3347,7 @@
 
     var RENDER = {
         ANIM_FORMATS: ANIM_FORMATS, animFormats: animFormats, animSwitch: animSwitch, animLoops: animLoops, animDefaults: animDefaults, animSize: animSize, animEdges: animEdges,
-        animFrames: animFrames, animSamples: animSamples, animEstimate: animEstimate, animName: animName
+        animBitrate: animBitrate, animFrames: animFrames, animSamples: animSamples, animEstimate: animEstimate, animName: animName
     };
 
     // -- saving an animation into Files (pg_image_editor_render.js) --
@@ -3616,7 +3647,53 @@
         return Math.max(1, Math.min(Number(l.w) || 0, Number(l.h) || 0));
     }
 
-    var GLYPH = { EMOJI: EMOJI, iconSearch: iconSearch, emojiRecent: emojiRecent, glyphText: glyphText, glyphSize: glyphSize };
+    // A placed sticker or glyph with another one in its place: pick is a
+    // built-in sticker { type: 'sticker', kind, label, fill, ink } or a glyph
+    // { type: 'glyph', set: 'bi'|'emoji', code }. Box, turn, opacity, colour,
+    // motion and every other field stay; only the drawn thing changes, and
+    // the old type's own fields go (a sticker's kind, label and ink, a
+    // glyph's set and code). The colour is kept on an emoji too, so an emoji
+    // turned back into an icon or sticker gets it again. null when the layer
+    // or the pick is not one of these.
+    function swapGlyph(l, pick) {
+        if (!l || ((l.type !== 'sticker') && (l.type !== 'glyph')) || !pick) {
+            return null;
+        }
+
+        var next = clone(l), was = l.type;
+
+        ['kind', 'label', 'ink', 'set', 'code'].forEach(function (k) { delete next[k]; });
+
+        if (pick.type === 'sticker') {
+            if (!pick.kind) {
+                return null;
+            }
+
+            next.type = 'sticker';
+            next.kind = pick.kind;
+            next.label = ((was === 'sticker') && l.label) ? l.label : String(pick.label || '');
+            next.color = l.color || pick.fill || '#000000';
+            next.ink = ((was === 'sticker') && l.ink) ? l.ink : (pick.ink || '#ffffff');
+
+            return next;
+        }
+
+        if ((pick.type !== 'glyph') || !glyphText({ set: pick.set, code: pick.code })) {
+            return null;
+        }
+
+        next.type = 'glyph';
+        next.set = pick.set;
+        next.code = pick.code;
+
+        if ((pick.set === 'bi') && !next.color) {
+            next.color = '#212529';
+        }
+
+        return next;
+    }
+
+    var GLYPH = { EMOJI: EMOJI, iconSearch: iconSearch, emojiRecent: emojiRecent, glyphText: glyphText, glyphSize: glyphSize, swapGlyph: swapGlyph };
 
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,

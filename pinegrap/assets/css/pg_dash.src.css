@@ -710,6 +710,26 @@
     }
   }
 
+  /* Wide screens take more columns, so a narrow card stays about the
+     drawings' 380 to 480 px instead of a third of the screen. */
+  @media (min-width: 1600px) {
+    .pg-dash-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 2200px) {
+    .pg-dash-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 2800px) {
+    .pg-dash-grid {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+  }
+
   .pg-dash-grid > [data-width="M"] {
     grid-column: span 2;
   }
@@ -2521,51 +2541,63 @@
     background: var(--pgd-chart-3);
   }
 
+  /* Calendars: five weeks as a light grid of 24 px days, today in the
+     main gradient, days with items tinted cyan with a line under them. The
+     days carry the week's tile class too, so its tile look is undone. */
   .pg-dash-cal-head {
     display: flex;
+    align-items: baseline;
     justify-content: space-between;
     gap: .5rem;
-    font-size: .875rem;
   }
 
   .pg-dash-cal-range {
-    font-weight: 600;
-    color: var(--pg-fg-emphasis);
+    font-size: .8125rem;
+    font-weight: 700;
+    color: var(--pgd-strong);
   }
 
   .pg-dash-cal-count {
-    color: var(--pg-fg-2);
+    font-size: .75rem;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-cal {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: .25rem;
+    gap: 3px;
     text-align: center;
   }
 
   .pg-dash-cal-weekday {
-    font-size: .6875rem;
-    color: var(--pg-fg-2);
+    font-size: .625rem;
+    color: var(--pgd-muted);
   }
 
-  .pg-dash-cal-day {
-    padding: .125rem 0;
-    font-size: .8125rem;
-    border-radius: var(--pg-radius-sm);
+  .pg-dash-cal .pg-dash-cal-day {
+    display: block;
+    height: 1.5rem;
+    padding: 0;
+    border: 0;
+    border-radius: .4375rem;
+    background: none;
+    font-size: .75rem;
+    line-height: 1.5rem;
+    color: var(--pgd-soft);
     font-variant-numeric: tabular-nums;
   }
 
-  .pg-dash-cal-day.has-items {
-    background: color-mix(in srgb, var(--pg-dash-cat) 14%, transparent);
-    box-shadow: inset 0 -2px 0 var(--pg-dash-cat);
+  .pg-dash-cal .pg-dash-cal-day.has-items {
+    background: var(--pgd-new-bg);
+    box-shadow: inset 0 -2px 0 var(--pgd-accent-line);
+    color: var(--pgd-accent);
   }
 
-  .pg-dash-cal-day.is-today {
+  .pg-dash-cal .pg-dash-cal-day.is-today {
+    background: linear-gradient(135deg, #0e7490, #4f46e5);
+    box-shadow: none;
     font-weight: 700;
-    color: var(--pg-fg-emphasis);
-    outline: 2px solid var(--pg-dash-cat);
-    outline-offset: -2px;
+    color: #fff;
   }
 
   @media (forced-colors: active) {
@@ -2574,6 +2606,7 @@
     .pg-dash-avatar[data-presence] { box-shadow: none; outline: 2px solid CanvasText; }
     .pg-dash-avatar[data-presence="offline"] { outline-style: dashed; }
     .pg-dash-cal-day.has-items { box-shadow: none; text-decoration: underline; }
+    .pg-dash-cal .pg-dash-cal-day.is-today { outline: 2px solid CanvasText; outline-offset: -2px; }
   }
 
 
@@ -3543,8 +3576,9 @@
     flex-direction: column;
     min-width: 0;
     padding: .625rem .75rem;
-    border: var(--pg-border-width) solid var(--pg-border-color);
-    border-radius: var(--pg-border-radius);
+    border: 1px solid var(--pgd-tile-line);
+    border-radius: .8125rem;
+    background: var(--pgd-tile);
   }
 
   .pg-dash-ops-head {
@@ -3820,18 +3854,27 @@
 
   /* ── Figures on hover and keyboard focus (pgDash.chartTips) ──────────── */
 
+  /* The figure box sits in <body>, outside .pg-dash and its palette, so it
+     names its own colours: dark on a light page, light on a dark one. */
   .pg-dash-tip {
     position: fixed;
     z-index: 1080;
     max-width: 16rem;
-    padding: .25rem .5rem;
-    border-radius: var(--pg-radius);
-    background: var(--pg-fg-emphasis);
-    box-shadow: var(--pg-shadow);
+    padding: .3125rem .625rem;
+    border-radius: .5rem;
+    background: #0f172a;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .25);
     font-size: .75rem;
+    font-weight: 600;
     line-height: 1.3;
-    color: var(--pg-body-bg);
+    color: #f8fafc;
     pointer-events: none;
+  }
+
+  html[data-bs-theme="dark"] .pg-dash-tip {
+    background: #eaf2fb;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+    color: #0b1220;
   }
 
   .pg-dash-tips:focus {
