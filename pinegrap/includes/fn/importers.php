@@ -647,6 +647,17 @@ function pg_import_run($import_id, $budget)
         $state['counts'] = pg_import_tally($state['counts'], (string) ($item['kind'] ?? ''), $result['result']);
         $state['report'] = pg_import_report_add($state['report'], $result['result'], (array) $item, $result['reason']);
 
+        // What the old site showed at an address of its own gets a 301 from
+        // that path (includes/import/write_redirect.php).
+        if (($result['result'] === 'made') && pg_import_writer_load('redirect')) {
+            $redirect = pg_import_redirect_after($import, (array) $item, (int) $result['id']);
+
+            if ($redirect !== null) {
+                $state['counts'] = pg_import_tally($state['counts'], 'redirect', $redirect['result']);
+                $state['report'] = pg_import_report_add($state['report'], $redirect['result'], array('kind' => 'redirect') + (array) $item, $redirect['reason']);
+            }
+        }
+
         pg_import_cursor_write($import_id, $state);
     }
 
