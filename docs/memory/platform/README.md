@@ -89,6 +89,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - image-same-address.md: JPEG/PNG answered with its WebP derivative at its own address: switch bits, Vary, private caching behind an unconfirmed CDN, f=original in downloads and mails, no renames
 - image-settings-and-product-upload.md: Image config keys and defaults, product upload pipeline (image_profile=product), files.image_width/height cache rule, optimizable-percent badge cost.
 - image-upload-cap.md: Upload size cap (config.image_upload_max_dimension, 11.0.142, #4700): library uploads above N px shrunk in their own format; 0 off, 2560 on a new site; the doors
+- import-decisions.md: Why the content importers (WordPress, WooCommerce, Shopify) are built as they are: tables, nothing overwritten, readers on fixtures, reused writers, authors, what stays out
 - import-design-fetch.md: How the design importer fetches a page (import_design.php): each hop one api_http_request() with opt-in options, the 5-hop walk and the stream fallback kept, what changed with the move
 - import-framework.md: Content import framework (2026.11.0, 11.0.156): imports/import_items tables, reader and writer contract, cursor file, run lock, dry run, mapping rows, report, 30-day undo, import.php
 - import-media.md: Content import pages and media (2026.11.0): page items as draft designer pages, attachments and body pictures fetched into Files, body addresses rewritten, notes in the report
