@@ -166,7 +166,8 @@ function pg_password_insert_fragments($password)
 //   $data keys: email, username (both required; the caller uniquifies username),
 //   password (optional plaintext -> modern hash, algo 2; omit/empty for an
 //   external provider-only account -> stored empty, algo 3), contact_id, home
-//   (start page id), password_hint, role (default '3'), google_id. Returns the
+//   (start page id), password_hint, role (default '3'), google_id, disabled_at (a
+//   timestamp: the account starts disabled). Returns the
 //   new user_id.
 function create_member_user($data)
 {
@@ -221,6 +222,13 @@ function create_member_user($data)
     if (pg_user_has_password_changed_at()) {
         $columns[] = 'user_password_changed_at';
         $values[]  = 'UNIX_TIMESTAMP()';
+    }
+
+    // An account made disabled (an imported author) carries the moment it was
+    // disabled; everything else starts enabled with the column's default.
+    if (!empty($data['disabled_at']) && pg_user_has_disabled_at()) {
+        $columns[] = 'user_disabled_at';
+        $values[]  = (int) $data['disabled_at'];
     }
 
     // Creation time last, as the old INSERTs had it.
@@ -1864,6 +1872,51 @@ function pg_user_has_password_algo()
     }
 
     return $has;
+}
+
+// Does the user table carry user_disabled_at yet? It arrives with a
+// 2026.11.0 step (11.0.158). Until then no account is disabled; the sign-in
+// paths run on the bridge, so they ask here instead of assuming the column.
+function pg_user_has_disabled_at()
+{
+    static $has = null;
+
+    if ($has === null) {
+        $has = pg_schema_has('user', 'user_disabled_at');
+    }
+
+    return $has;
+}
+
+// Is this user row disabled? A disabled account (an imported author, or one
+// switched off on the user screen) matches no credential: no password, reset
+// link, provider, passkey or API key signs it in, and a live session ends at
+// the next validate_user(). A row read before the column existed is enabled.
+// Pure.
+function pg_user_is_disabled($row)
+{
+    return is_array($row) && ((int) ($row['user_disabled_at'] ?? 0) > 0);
+}
+
+// The same answer by id, for paths that read only a few columns.
+function pg_user_id_is_disabled($user_id)
+{
+    if (((int) $user_id <= 0) || !pg_user_has_disabled_at()) {
+        return false;
+    }
+
+    return (int) db_value("SELECT user_disabled_at FROM user WHERE user_id = '" . (int) $user_id . "'") > 0;
+}
+
+// A WHERE fragment that keeps disabled accounts out of a credential lookup
+// (leading AND, nothing on a schema that predates the column).
+function pg_user_enabled_sql($alias = '')
+{
+    if (!pg_user_has_disabled_at()) {
+        return '';
+    }
+
+    return ' AND ' . (($alias !== '') ? $alias . '.' : '') . 'user_disabled_at = 0';
 }
 
 // Does the user table carry user_password_changed_at yet? It arrives with a
