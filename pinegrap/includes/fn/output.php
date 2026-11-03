@@ -3613,6 +3613,11 @@ function output_menu($properties = false)
         if ($user['role'] < 3) {
             $menu_items[2]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/search_audits.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-activity bi-me-2\'>' . lang('Search and audits') . '</a>';
+            // PAGES > Import from another platform (import.php, managers and
+            // up), once the upgrade that adds its tables has run.
+            if (pg_schema_has('imports')) {
+                $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/import.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-arrow-in-down bi-me-2\'>' . lang('Import from another platform') . '</a>';
+            }
         }
         // PAGES > Short Links (short links sit outside the folder-based rights, so the screens are gated at manager level and users do not get the entries)
         if ($user['role'] < 3) {
@@ -4325,6 +4330,7 @@ function output_menu($properties = false)
         case 'edit_form_item_view.php':
         case 'update_search_index.php':
         case 'search_audits.php':
+        case 'import.php':
         case 'toolbar.php':
         case 'generate_layout.php':
         case 'view_short_links.php':
@@ -4585,6 +4591,7 @@ function output_menu($properties = false)
         case 'edit_javascript.php':
         case 'import_design.php':
         case 'import_zip.php':
+        case 'legacy_to_designer.php':
         case 'migration.php':
         case 'find_and_replace.php':
         case 'mass_edit.php':
