@@ -950,6 +950,7 @@
     "Move the group “{var:1}” inside “{var:2}”? With it go {var:3} groups and {var:4} channels inside it; access given on “{var:2}” reaches them too.": "“{var:1}” grubu “{var:2}” grubunun içine taşınsın mı? Onunla birlikte içindeki {var:3} grup ve {var:4} kanal da taşınır; “{var:2}” grubunda verilen yetki bunlara da ulaşır.",
     "Move the group “{var:1}” to the top level?": "“{var:1}” grubu en üst düzeye taşınsın mı?",
     "Move the group “{var:1}” to this place in “{var:2}”?": "“{var:1}” grubu “{var:2}” içinde bu sıraya taşınsın mı?",
+    "Move the playhead, then drag the layer on the stage: where you put it becomes its place at that moment.": "Oynatma çizgisini taşıyın, sonra katmanı sahnede sürükleyin: bıraktığınız yer o andaki konumu olur.",
     "Move the selected variant sets and all of their products to the Recycle Bin? They can be restored from the Recycle Bin in the Catalog Manager.": "Seçili varyant setleri ve içlerindeki tüm ürünler Geri Dönüşüm Kutusuna taşınsın mı? Katalog Yöneticisi'ndeki Geri Dönüşüm Kutusundan geri yüklenebilir.",
     "Move the selection by 1 pixel": "Seçimi 1 piksel kaydır",
     "Move the selection by 10 pixels": "Seçimi 10 piksel kaydır",

@@ -904,6 +904,7 @@
     "Select dropdown": "Açılır Liste",
     "Select every layer": "Tüm katmanları seç",
     "Select field to used as Republic of Turkey identification number": "Türkiye Cumhuriyeti kimlik numarası olarak kullanılacak alanı seçin",
+    "Select one layer to give it a path.": "Yol vermek için bir katman seçin.",
     "Select one or more {var:1}": "Bir veya daha fazla {var:1} seçin",
     "Select recipient...": "Alıcı seçin...",
     "Select return request #{var:1}": "#{var:1} numaralı iade talebini seç",
