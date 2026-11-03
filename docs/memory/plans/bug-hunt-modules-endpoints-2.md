@@ -16,9 +16,9 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `recurring` (3): done #5525 (recurring_payment_job: no web gate); the commission profile screens clean
 - Endpoints `referral` (3): add_referral_source, edit_referral_source, view_referral_sources clean
 - Endpoints `region` (3): get_region_content, save_region_content, view_regions clean; the next hunt starts at `registration`
-- Endpoints `registration` (4): open
-- Endpoints `remove` (3): open
-- Endpoints `return` (4): open
+- Endpoints `registration` (4): taken
+- Endpoints `remove` (3): taken
+- Endpoints `return` (4): taken
 - Endpoints `search` (3): open
 - Endpoints `seo` (8): open
 - Endpoints `setting` (14): open
