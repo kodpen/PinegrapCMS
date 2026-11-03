@@ -23,7 +23,7 @@ description: Plan for the Social Community template (pinegrap-social): a photo c
 - 2 Public pages: `pages_public.php` (home, topics, about, guidelines, FAQ, help, privacy, terms).
 - 3 Profiles: `profiles.php` (`my_profile` with the collection and samples, `people`, `member` with the member's posts, `staff_members`).
 - 4 Posts: `posts.php` (`post_new` with the collection and samples, `explore`, `tag`, `post`, `my_posts`, `saved`, home lists).
-- 5 Reports and mail: `mail.php`, `reports.php` (`report`, `report_view`, `my_reports`, `staff_reports`, `staff_report` with `report_notes`, `staff_posts`, `email_reply`, `email_comment`, notify e-mails).
+- 5 Done (#6340). Reports and mail: `mail.php`, `reports.php` (`report`, `report_view`, `my_reports`, `staff_reports`, `staff_report` with `report_notes`, `staff_posts`, `email_reply`, `email_comment`, notify e-mails); test `design_template_social_reports_test.php`.
 - 6 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Community News", blog post, search, error); test `…_standard_test.php`.
 - 7 Account and staff: `account.php` (sign-in pages, My Account, staff area, `blog_new`, account e-mails); test `…_account_test.php`.
 - 8 Assembly: `pinegrap-social.php` (order 78, icon `bi-camera`, look and palette, contact group `newsletter`, folders `posts` and `avatars`, `psc-` User Styles, search map), shared tests' lists, `designer/design-template-social.md`, plan deleted; PR body names `[NEW] Added the Social Community design template`.
