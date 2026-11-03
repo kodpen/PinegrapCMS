@@ -32,7 +32,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `dashboard`: clean (appearance whitelist, auto backdrop map, refresh bounds 10 s–1 day incl. INF strings, role gate; all callers load it via functions.php)
 
-- `db_maintenance`: open
+- `db_maintenance`: #5984 (MyISAM/Aria free-space share counted the holes twice)
 
 - `design_templates_custom`: #5976
 

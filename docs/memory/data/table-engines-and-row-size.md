@@ -24,4 +24,7 @@ description: Table engines since 2026.4.8 (InnoDB, MyISAM left over the limits),
 - The side summary (Tables, InnoDB n / total, MyISAM) counts `pg_db_table_catalog()`, every table of the database, not `pg_innodb_core_tables()`: the core list left 215 newer tables out and the figures did not add up (#5945, PR #5982).
 - The hourly health check (`check_and_repair_database_tables()`) reads only MyISAM/Aria tables; "Check all tables" reads all until the next hourly run. The Table health card says which: "All tables" only when the report covers the whole catalog, else "n MyISAM tables" or "no MyISAM table to read" (#5944).
 
+## How much of a table is free space?
+- MyISAM and Aria count the holes of deleted rows inside the data file: `DATA_FREE` is part of `DATA_LENGTH`. InnoDB reports the tablespace's free extents beside its pages. `pg_db_table_file_bytes()` gives the file size either way; the OPTIMIZE threshold (a fifth of the file) and the "fragmented" finding's per cent use it. Before, both divided by `bytes + free`, so a MyISAM table with half its file free read as 33 % and one at 20–25 % was never proposed (PR #5984).
+
 Related: docs/memory/data/db-helpers-and-error-contract.md, docs/memory/release/database-server-compatibility.md
