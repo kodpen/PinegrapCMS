@@ -31,7 +31,7 @@ description: Plan for the Mobile App Developer template (pinegrap-appstudio): ow
 
 - 7 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Dev Notes", blog post, search, error); test `…_standard_test.php`.
 
-- 8 Account and staff: `account.php` (sign-in, My Account, staff area, `blog_new` with samples, account e-mails); test `…_account_test.php`.
+- 8 Done (#6197). Account and staff: `account.php`; test `…_account_test.php`.
 
 - 9 Assembly: `pinegrap-appstudio.php` (order 73, icon `bi-phone`, look `glass`, palette `lavender`, contact group `newsletter`, folders, `pma-` User Styles, search map), the shared tests' lists, `designer/design-template-appstudio.md`, plan deleted; PR body names `[NEW] Added the Mobile App Developer design template`.
 
