@@ -24,4 +24,4 @@ description: Module list of plans/bug-hunt.md, part 1a2: includes/fn/ modules em
 - `language_redirect`: done #6110 (zh-Hans-HK read as Traditional; rest reviewed: Accept-Language, country, pick, referer, cookie, page hook)
 - `layout_convert`: #6083
 - `layouts`: #6043
-- `legal_documents`: open
+- `legal_documents`: #6112

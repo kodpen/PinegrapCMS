@@ -4,12 +4,12 @@ description: Legal documents (pre-information form, distance sales contract): se
 ---
 
 ## What is built?
-- Settings › Visitors and privacy › Legal Documents (`pgset-legal`): switch `ECOMMERCE_LEGAL_DOCUMENTS` and two HTML templates (schema 11.0.1, PR #540). Card and save only when the column exists.
+- Settings › Visitors and privacy › Legal Documents (`pgset-legal`): switch `ECOMMERCE_LEGAL_DOCUMENTS` and two HTML templates (schema 11.0.1, PR #540); card and save need the column.
 - Starts on only for a site installed from the Turkish starter: `install/index.php` sets it after the upgrades (`pg_legal_documents_on_for_new_site()`, PR #798), templates left NULL. The starter's language decides, not the panel's; English starter, backup and upgrade start off.
 - `includes/fn/legal_documents.php` (tests `tests/legal_documents_test.php`), `legal_document.php` (cart document page), store call in `submit_order.php` after the order number (PR #540), checkout part PR #559, kept copy for customer and staff PR #569.
 
 ## How does a template work?
-- `^^field^^`, `[[text ^^field^^ text]]`, `[[...||other]]`; values escaped, `^^order_lines^^` is the only markup. Unknown field or over 65535 bytes refuses the settings save. Built-ins `includes/legal_documents/<type>.<lang>.html` (tr, en); an unchanged built-in is stored as NULL.
+- `^^field^^`, `[[text ^^field^^ text]]`, `[[...||other]]` (no field: kept as written, #6112); values escaped, `^^order_lines^^` is the only markup. An unknown field or >65535 bytes refuses the save. Built-ins `includes/legal_documents/<type>.<lang>.html` (tr, en); an unchanged built-in is stored as NULL.
 - `^^order_lines^^` names each line by the product's short description, as the cart and the receipt do; the line's `product_name` (the Product ID / SKU) only when there is none or the product is gone (`pg_legal_document_item_name()`). Until #626 the documents printed the SKU.
 - Seller block from settings (`ORGANIZATION_*`, store e-mail, `ERP_SELLER_VKN`, `ERP_SELLER_TAX_OFFICE`, `ERP_WEB_ADDRESS`); MERSİS and return carrier are typed into the template.
 
