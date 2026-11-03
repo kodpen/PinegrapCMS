@@ -1129,3 +1129,18 @@ function pg_list_table_printed_sort($list, $value)
 
     return true;
 }
+
+/**
+ * The search box of a list in the screen's toolbar: the driver hears it by
+ * the list's name (data-pg-list-search).
+ *
+ * @param string $list the list's name, as the source gives it
+ * @return string
+ */
+function pg_list_table_search_box($list)
+{
+    return '<label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">'
+        . '<span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>'
+        . '<input type="search" class="form-ghost" data-pg-list-search="' . h($list) . '" placeholder="' . h(lang('Search')) . '" aria-label="' . h(lang('Search')) . '">'
+        . '</label>';
+}
