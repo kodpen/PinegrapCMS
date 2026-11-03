@@ -305,6 +305,7 @@
     "Delete the Widget Entirely": "Widget'ı Tamamen Sil",
     "Delete the autosave": "Otomatik kaydı sil",
     "Delete the autosave?": "Otomatik kayıt silinsin mi?",
+    "Delete the backup {var:1} permanently?": "'{var:1}' yedeği kalıcı olarak silinsin mi?",
     "Delete the column": "Sütunu sil",
     "Delete the column {var:1}? Its cells cannot be brought back.": "{var:1} sütunu silinsin mi? Hücreleri geri getirilemez.",
     "Delete the design": "Tasarımı sil",

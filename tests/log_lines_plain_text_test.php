@@ -119,7 +119,7 @@ function test_log_lines_plain_text_quick_edit_sentence_uses_raw_name()
 function test_log_lines_plain_text_backup_error_json_stays_escaped()
 {
 	pg_assert_contains(
-		"'message' => h(\$backups_error_message)",
+		"'message' => h(lang(array('string' => 'The database dump could not be written: {var:1}', 'vars' => array(\$backups_error_message))))",
 		log_lines_plain_text_test_source('includes/panel/software.php'),
 		'backup error JSON message');
 }

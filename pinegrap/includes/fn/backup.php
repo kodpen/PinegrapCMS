@@ -51,23 +51,95 @@ function pg_backup_auto_name($time)
 
 
 /**
+ * The longest folder name a hand-made backup gets; the Backup Name field
+ * carries the same maxlength. Long names made mkdir() fail on Windows paths.
+ */
+const PG_BACKUP_NAME_MAX = 100;
+
+
+/**
  * The folder a hand-made backup is written to, from the name typed for it.
  *
- * The last segment only (pg_basename(), which keeps a first letter outside
- * ASCII on PHP 7), Turkish and other Latin letters mapped to ASCII
- * (pg_ascii_file_name()), then everything outside letters, digits, "_" and
- * "-" made "_" -- dots too, so "." and ".." cannot name a folder. Runs of
- * "_" collapse and the ends are trimmed, so a second pass gives the same
- * name: every backup step sends the name back and computes it again.
+ * Turkish and other Latin letters mapped to ASCII (pg_ascii_file_name()),
+ * then everything outside letters, digits, "_" and "-" made "_" -- "/" and
+ * "\" too, so no part of the name is dropped and no path leaves
+ * data/backups, and dots, so "." and ".." cannot name a folder. Runs of "_"
+ * collapse, the name is cut to PG_BACKUP_NAME_MAX and the ends are trimmed,
+ * so a second pass gives the same name: every backup step sends the name
+ * back and computes it again.
  *
  * @param string $name
  * @return string empty when nothing usable is left
  */
 function pg_backup_folder_name($name)
 {
-    $name = preg_replace('/[^A-Za-z0-9_-]/', '_', pg_ascii_file_name(pg_basename((string) $name)));
+    $name = preg_replace('/[^A-Za-z0-9_-]/', '_', pg_ascii_file_name((string) $name));
+    $name = trim(preg_replace('/_{2,}/', '_', $name), '_');
 
-    return trim(preg_replace('/_{2,}/', '_', $name), '_');
+    return trim(substr($name, 0, PG_BACKUP_NAME_MAX), '_');
+}
+
+
+/**
+ * Whether a backup folder name belongs to the software, not to a hand-made
+ * backup: the install dumps, the automatic backups and the pre-upgrade
+ * dumps. The Backup Manager refuses to write under such a name, so a typed
+ * name cannot replace a starter site or a backup the retention manages.
+ *
+ * Compared without case: Windows and macOS folders ignore it.
+ *
+ * @param string $name a name from pg_backup_folder_name()
+ * @return bool
+ */
+function pg_backup_name_reserved($name)
+{
+    $name = strtolower((string) $name);
+
+    if (in_array($name, array('english_default', 'turkish_default'), true) || pg_backup_is_auto_name($name)) {
+        return true;
+    }
+
+    return ((strpos($name, 'pre_upgrade_') === 0) || (strpos($name, 'pre-update-') === 0));
+}
+
+
+/**
+ * The order the Backup Manager lists backups in: newest first, then by name.
+ *
+ * @param array $times backup name => the time it was taken
+ * @return array the names in that order
+ */
+function pg_backup_list_order(array $times)
+{
+    $names = array_map('strval', array_keys($times));
+
+    usort($names, function ($a, $b) use ($times) {
+        if ((int) $times[$a] !== (int) $times[$b]) {
+            return ((int) $times[$a] < (int) $times[$b]) ? 1 : -1;
+        }
+        return strcmp((string) $a, (string) $b);
+    });
+
+    return $names;
+}
+
+
+/**
+ * When a backup in data/backups was taken. A folder's own time moves
+ * whenever something is written into it (the download archive, a sync), so
+ * a folder backup takes its dump's time and falls back to the folder's only
+ * without one.
+ *
+ * @param string $path the archive or folder
+ * @return int 0 when unreadable
+ */
+function pg_backup_taken_time($path)
+{
+    if (is_dir($path) && is_file($path . '/sql.sql')) {
+        return (int) @filemtime($path . '/sql.sql');
+    }
+
+    return (int) @filemtime($path);
 }
 
 
