@@ -21,7 +21,7 @@ description: The new dashboard's drawn look (visual pass V): the --pgd-* palette
 
 ## What did dev.pinegrap.com show after V2 (#6327)?
 - The chart figure box (`.pg-dash-tip`) sits in `<body>`, outside `.pg-dash`: it read an undefined `--pg-body-bg` and was unreadable, so it names its colours per theme. `tests/dashboard_v2_look_test.php` checks that every `var()` of the stylesheet is defined.
-- The grid takes 4 columns from 1600 px, 5 from 2200, 6 from 2800 (a 2560 px screen had 800 px cards). Calendar days undo the week tile look (light 24 px grid).
+- Calendar days undo the week tile look (light 24 px grid). The width and columns on wide screens: `ui/dashboard-v2-width.md`.
 
 ## What differs from the drawings on purpose?
 - Next up's tags are words ("Form", "İçerik"), not the drawing's two-letter codes.
