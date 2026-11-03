@@ -21,7 +21,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `commission` (2): done #5113
 - Endpoints `common` (3): clean (an empty name is unchecked on purpose: ui/common-region-shared-form.md)
 - Endpoints `connect` (3): clean (connect, connect_client, connect_user_to_order)
-- Endpoints `contact` (8): #5124 (view_contacts); the rest clean (add_contact, edit_contact: #6126)
+- Endpoints `contact` (8): #5124 (view_contacts); #6139 (edit_contact: one checked id); the rest clean (add_contact: #6126)
 - Endpoints `container` (3): #5133; view_containers clean
 - Endpoints `country` (2): clean (view_countries: #5144)
 - Endpoints `currency` (3): #5147 (exchange rate 0)
