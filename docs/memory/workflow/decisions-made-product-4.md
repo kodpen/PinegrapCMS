@@ -12,5 +12,6 @@ description: Decisions list, product part 4 (2026-10-29 evening on): the carrier
 ## Do published pages prefetch same-site links with Speculation Rules? (#3184)
 - Decided (architect, 2026-10-29, the leftover of the approved `image-delivery-pipeline` plan): yes, a `<script type="speculationrules">` block with one `prefetch` rule, `source: list`, the URLs built on the server from the page's menu and navbar items (same-site page URLs only; items with a query string, acting paths such as sign-in, sign-out, cart, downloads and the panel, and off-site links left out), `eagerness: moderate`; no document-wide rule and no prerender. A Settings › Features switch, on by default (`config.speculation_prefetch`, `decisions-made-schema-4.md`). A prefetch request is recorded once as the page view and session, as today: the browser serves a followed prefetch from its own cache and makes no second request, so skipping prefetches would lose real views; the not-found log keeps skipping them; a cacheable page is served from the page cache with its usual bypass reasons; no client-side beacon. Signed-in members and staff get no rules. Only Chromium-based browsers act on the block.
 
-Related: docs/memory/workflow/decisions-made-product-3.md, docs/memory/workflow/decisions-made.md
 - Re-asked for the panel (#6082, architect, 2026-11-03): the panel stays out until a measured gain in a normal browser after #6078 and the curtain work (#6080); a proven gain comes as a new issue.
+
+Related: docs/memory/workflow/decisions-made-product-3.md, docs/memory/workflow/decisions-made.md
