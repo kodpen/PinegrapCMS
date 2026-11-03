@@ -1745,6 +1745,7 @@
     "experiment \"{var:1}\" on page {var:2}: {var:3}": "{var:2} sayfasındaki \"{var:1}\" deneyi: {var:3}",
     "experiment \"{var:1}\" was set up on page {var:2}": "{var:2} sayfasında \"{var:1}\" deneyi hazırlandı",
     "expired record{suffix}": "süresi dolmuş kayıt",
+    "explore": "kesfet",
     "export": "dışa aktarma",
     "export, markdown, attachments": "dışa aktarma, markdown, ekler",
     "extra test, add, package": "ek tetkik, ekleme, paket"
