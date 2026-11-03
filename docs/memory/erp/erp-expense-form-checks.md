@@ -11,6 +11,9 @@ as 13. `add_erp_expense.php` asks `erp_expense_number_typed($value, $signed)`
 first (amount and tax amount signed, rate with an optional `%`) and refuses
 with the field marked. The preview's `kurus()`/`rate()` read the same way
 and show `—` for a value the server refuses (#5520).
+The account form's opening balance asks `erp_amount_text_valid()`
+(`includes/erp/money.php`: optional minus, digits, `.` `,` spaces) the
+same way; before #5890 `12abc` booked 12,00 and `1e3` 13,00.
 
 ## Which field does a refused save mark?
 

@@ -89,3 +89,15 @@ function test_erp_account_tax_key_sql()
 
 	pg_assert_true(strpos($sql, 'UPPER(tax_number)') !== false, 'upper case');
 }
+
+// Two rows of one file whose numbers differ only in separators are one
+// account, like the lookup that matches them against the stored cards.
+function test_erp_import_file_key_ignores_separators()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/erp/import.php');
+
+	$a = erp_import_file_key(array('tax_number' => '734.512.8915', 'email' => '', 'title' => 'A'));
+	$b = erp_import_file_key(array('tax_number' => '7345128915', 'email' => '', 'title' => 'B'));
+
+	pg_assert_same($b, $a);
+}

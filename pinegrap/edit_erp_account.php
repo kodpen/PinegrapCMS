@@ -188,6 +188,10 @@ if (!$_POST) {
     // A sales quote is written to a customer, so a pure supplier gets no quote links.
     $show_quotes = function_exists('erp_quotes_ready') && erp_quotes_ready() && ((string) $account['kind'] !== 'supplier');
 
+    // Account prices apply to sales only (invoices, quotes, the store), so a
+    // pure supplier gets no link to them, like the quote links.
+    $show_prices = function_exists('erp_price_lists_ready') && erp_price_lists_ready() && ((string) $account['kind'] !== 'supplier');
+
     // A purchase order goes to a supplier, so a pure customer gets no new
     // order (erp_purchase_order_account_refusal()); its list still shows the
     // orders written to it before it became a customer only.
@@ -218,7 +222,7 @@ if (!$_POST) {
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                         <a class="btn btn-sm btn-outline theme-secondary" href="erp_reconciliation.php?id=' . $account_id . '"><i class="bi bi-envelope-paper me-1"></i>' . lang('Reconciliation Letter') . '</a>
-                        ' . ((function_exists('erp_price_lists_ready') && erp_price_lists_ready()) ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_account_prices.php?account_id=' . $account_id . '"><i class="bi bi-tags me-1" aria-hidden="true"></i>' . lang('Account prices') . (((($price_count = erp_account_price_count($account_id)) > 0) || ((float) ($account['discount_rate'] ?? 0) > 0)) ? ' <span class="badge theme-secondary">' . (($price_count > 0) ? (int) $price_count : h(erp_percent_text($account['discount_rate']))) . '</span>' : '') . '</a>' : '') . '
+                        ' . ($show_prices ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_account_prices.php?account_id=' . $account_id . '"><i class="bi bi-tags me-1" aria-hidden="true"></i>' . lang('Account prices') . (((($price_count = erp_account_price_count($account_id)) > 0) || ((float) ($account['discount_rate'] ?? 0) > 0)) ? ' <span class="badge theme-secondary">' . (($price_count > 0) ? (int) $price_count : h(erp_percent_text($account['discount_rate']))) . '</span>' : '') . '</a>' : '') . '
                         <a class="btn btn-sm btn-outline theme-secondary" href="erp_invoices.php?filter=open&amp;account_id=' . $account_id . '"><i class="bi bi-receipt me-1" aria-hidden="true"></i>' . lang('Open invoices') . '</a>
                         ' . (!(defined('USER_ERP_READONLY') && USER_ERP_READONLY) ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_manual_invoice.php?account_id=' . $account_id . (((string) $account['kind'] === 'supplier') ? '&amp;direction=purchase' : '') . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('New Invoice') . '</a>' : '') . '
                         ' . ($show_quotes ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_quotes.php?account_id=' . $account_id . '"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . lang('Quotes') . '</a>' : '') . '

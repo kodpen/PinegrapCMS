@@ -916,11 +916,7 @@ function erp_account_form_check_tax_number_taken($liveform, $country_code, $acco
 
     if ($lookup === null) {
         $lookup = function ($number, $account_id) {
-            $other = db_item("SELECT id, title FROM erp_accounts
-                WHERE tax_number = '" . escape($number) . "' AND status = 'active' AND id <> '" . (int) $account_id . "'
-                ORDER BY id ASC LIMIT 1");
-
-            return is_array($other) ? $other : null;
+            return erp_account_by_tax_number($number, $account_id, true);
         };
     }
 
@@ -985,12 +981,23 @@ function erp_account_form_save_fields($liveform, $country_code, $currency, $cont
         $state = '';
     }
 
+    // Saved the way erp_tax_number_check() reads it: a Turkish number as its
+    // digits (734.512.8907 is 7345128907), like the API and the New account
+    // dialog; elsewhere as typed.
+    $tax_number = (string) $liveform->get_field_value('tax_number');
+
+    // Only a number with separators asks for the country.
+    if ((preg_match('/\D/', $tax_number) === 1) && (preg_match('/^[0-9\s.\-]+$/', $tax_number) === 1)
+        && (erp_account_country($country_code) === 'TR')) {
+        $tax_number = preg_replace('/\D/', '', $tax_number);
+    }
+
     return array(
         'contact_id' => (int) $contact_id,
         'kind' => $liveform->get_field_value('kind'),
         'title' => $liveform->get_field_value('title'),
         'is_person' => ($liveform->get_field_value('is_person') === '1'),
-        'tax_number' => $liveform->get_field_value('tax_number'),
+        'tax_number' => $tax_number,
         'tax_office' => $liveform->get_field_value('tax_office'),
         'email' => $liveform->get_field_value('email'),
         'phone' => $liveform->get_field_value('phone'),
