@@ -193,6 +193,12 @@
         return String(Math.round(v * 10) / 10).replace('.', sep);
     }
 
+    // A percentage in the panel language's form (71% in English, %71 in
+    // Turkish): the label 'percent' is lang('{var:1}%').
+    function pct(v) {
+        return String(t('percent')).replace('{var:1}', String(v));
+    }
+
     // The crop shape as a border radius on screen: rounded corners take 12 %
     // of the shorter side, a circle is the ellipse in the box.
     function shapeRadius(shape, box, k) {
@@ -748,7 +754,7 @@
             this.img.style.transform = 'matrix(' + m.map(function (n) { return Math.round(n * 1e6) / 1e6; }).join(', ') + ')';
         }
 
-        this.zoomLabel.textContent = Math.round(k * 100) + ' %';
+        this.zoomLabel.textContent = pct(Math.round(k * 100));
 
         var self = this;
 
@@ -1726,7 +1732,7 @@
         // For the tool files: the editor and the helpers they build with.
         parts: {
             Editor: Editor, M: M, SVGNS: SVGNS, icons: ICONS, config: config, find: find, t: t, el: el, icon: icon,
-            section: section, tile: tile, decimal: decimal, shapeRadius: shapeRadius, button: button, colors: COLORS, swatches: swatches
+            section: section, tile: tile, decimal: decimal, pct: pct, shapeRadius: shapeRadius, button: button, colors: COLORS, swatches: swatches
         }
     };
 }());

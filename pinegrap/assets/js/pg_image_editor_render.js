@@ -25,7 +25,7 @@
 (function (X) {
     'use strict';
 
-    var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, t = X.t, el = X.el, icon = X.icon, button = X.button;
+    var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, t = X.t, el = X.el, icon = X.icon, button = X.button, pct = X.pct;
 
     X.icons.film = 'M4 4.5h16v15H4zM8 4.5v15M16 4.5v15M4 9h4M4 15h4M16 9h4M16 15h4';
     X.icons.download = 'M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14';
@@ -958,7 +958,7 @@
 
             bar.style.width = p + '%';
             bar.parentNode.setAttribute('aria-valuenow', String(p));
-            percent.textContent = p + '%';
+            percent.textContent = pct(p);
             steps.textContent = '';
             order.forEach(function (s, i) {
                 var text = t('animStep_' + s) + ((s === 'frames') && (i === at) ? ' · ' + done + ' / ' + count : '');

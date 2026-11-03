@@ -80,6 +80,7 @@ function pg_image_editor_strings_core()
         'zoomOut'        => lang('Zoom out'),
         'zoomFit'        => lang('Fit to screen'),
         'zoomActual'     => lang('Actual size'),
+        'percent'        => lang('{var:1}%'),
         'tools'          => lang('Tools'),
         'layers'         => lang('Layers'),
         'selection'      => lang('Selection'),
