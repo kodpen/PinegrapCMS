@@ -329,35 +329,31 @@
         }
 
         return pageEncoder(url).then(function (E) {
-            var enc = null;
+            var session = E.session(function (m) { handler(m); });
 
             return {
-                send: function (m) {
-                    setTimeout(function () {
-                        try {
-                            if (m.type === 'begin') {
-                                enc = E.create(m);
-                            } else if (m.type === 'sample') {
-                                enc.sample(new Uint8ClampedArray(m.data));
-                            } else if (m.type === 'estimate') {
-                                handler(Object.assign({ type: 'estimate' }, enc.estimate()));
-                            } else if (m.type === 'frame') {
-                                enc.frame(new Uint8ClampedArray(m.data));
-                                handler({ type: 'framed', index: enc.count - 1 });
-                            } else if (m.type === 'end') {
-                                var bytes = enc.end();
-
-                                handler({ type: 'file', data: bytes.buffer, mime: E.MIME.gif });
-                            }
-                        } catch (err) {
-                            handler({ type: 'error', message: String((err && err.message) || err) });
-                        }
-                    }, 0);
-                },
+                send: function (m) { setTimeout(function () { session.receive(m); }, 0); },
                 on: function (fn) { handler = fn; },
-                stop: function () { enc = null; handler = function () {}; }
+                stop: function () { session.stop(); }
             };
         });
+    }
+
+    // What this browser can encode beyond GIF (M.animFormats()): a deflate
+    // stream for APNG; a WebP canvas encoder, off the page too, for WebP.
+    function animCaps() {
+        var webp = false;
+
+        try {
+            var c = document.createElement('canvas');
+
+            c.width = c.height = 1;
+            webp = (typeof OffscreenCanvas === 'function') && (c.toDataURL('image/webp').indexOf('data:image/webp') === 0);
+        } catch (err) {
+            webp = false;
+        }
+
+        return { deflate: (typeof CompressionStream === 'function') && (typeof Response === 'function'), webp: webp };
     }
 
     // The encoder's script on the page (window.PgImageEncode).
@@ -600,16 +596,19 @@
             self.renderAnimation();
         }
 
-        main.appendChild(chips(t('animFormat'), Object.keys(M.ANIM_FORMATS).map(function (k) { return [k, t('animFormat_' + k)]; }), set.format, function (v) { change({ format: v }); }));
+        this.animKinds = this.animKinds || M.animFormats(animCaps());
+        main.appendChild(chips(t('animFormat'), this.animKinds.map(function (k) { return [k, t('animFormat_' + k)]; }), set.format, function (v) { change(M.animSwitch(set, v)); }));
         main.appendChild(chips(t('animSize'), M.animEdges(out, set.format).map(function (e) { return [e, String(e)]; }), Math.min(set.edge, Math.max(out.w, out.h)), function (v) { change({ edge: v }); }, size.w + ' × ' + size.h + ' px'));
         main.appendChild(chips(t('animRate'), f.rates.map(function (r) { return [r, String(r)]; }), set.fps, function (v) { change({ fps: v }); }, set.fps + ' ' + t('animFps')));
         main.appendChild(chips(t('animRepeat'), M.animLoops(set.loop).map(function (n) { return [n, n ? t('animTimes').replace('{n}', n) : t('animForever')]; }), set.loop, function (v) { change({ loop: v }); }));
 
-        var dither = el('input', { type: 'checkbox' });
+        if (f.dither) {
+            var dither = el('input', { type: 'checkbox' });
 
-        dither.checked = !!set.dither;
-        dither.addEventListener('change', function () { change({ dither: dither.checked }); });
-        main.appendChild(el('label', { class: 'pgie-check' }, [dither, el('span', { text: t('animDither') })]));
+            dither.checked = !!set.dither;
+            dither.addEventListener('change', function () { change({ dither: dither.checked }); });
+            main.appendChild(el('label', { class: 'pgie-check' }, [dither, el('span', { text: t('animDither') })]));
+        }
 
         this.animEls.estimate = el('div', { class: 'pgie-anim-estimate', 'aria-live': 'polite' }, [icon('clock'), el('b', { text: t('animEstimating') }), el('span')]);
         main.appendChild(this.animEls.estimate);
@@ -809,6 +808,7 @@
         this.animTask = null;
         this.animTimer = 0;
         this.animEls = null;
+        this.animKinds = null;
         this.frameCuts = null;
     });
 }(window.PgImageEditor.parts));
