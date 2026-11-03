@@ -48,6 +48,9 @@ function pg_list_table_definitions()
         'view_pages' => array('file' => 'includes/fn/page_list.php', 'source' => 'pg_page_list_source'),
         'view_users' => array('file' => 'includes/fn/user_list.php', 'source' => 'pg_user_list_source'),
         'view_contacts' => array('file' => 'includes/fn/contact_list.php', 'source' => 'pg_contact_list_source'),
+        'view_log' => array('file' => 'includes/fn/site_log_list.php', 'source' => 'pg_site_log_list_source'),
+        'view_audit_log' => array('file' => 'includes/fn/audit_list.php', 'source' => 'pg_audit_list_source'),
+        'view_waf_log' => array('file' => 'includes/fn/waf_log_list.php', 'source' => 'pg_waf_log_list_source'),
     );
 }
 
