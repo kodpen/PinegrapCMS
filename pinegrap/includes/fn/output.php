@@ -368,7 +368,8 @@ PGLOGOSVG;
  * covered until the document is ready and the curtain fades out in 100 ms.
  * A screen still building after that (the visual editor) sets
  * window.pgPreloaderHold and calls window.pgPreloaderDone() once painted;
- * only that curtain shows the mark in the middle.
+ * only that curtain shows the mark in the middle. A list screen (table.chart)
+ * is held the same way without the mark until DataTables has drawn its table.
  *
  * Leaving: no curtain. The old page stays visible; once a navigation has
  * been under way for 150 ms a thin bar runs across the top and the pointer
@@ -435,14 +436,26 @@ function pg_preloader_markup()
             host.classList.add('is-done');
         }
 
+        // A list screen prints its table.chart hidden and shows it only
+        // once DataTables has drawn it (backend.src.js), so its curtain
+        // waits for that pgPreloaderDone() instead of lifting over an empty
+        // card. Read on DOM ready: the table is not parsed yet up here. No
+        // is-hold: an everyday list never draws the mark.
+        function arrived() {
+            if (document.querySelector('table.chart') && window.jQuery && jQuery.fn && jQuery.fn.DataTable) {
+                return;
+            }
+            hide();
+        }
+
         window.pgPreloaderDone = hide;
 
         if (window.pgPreloaderHold) {
             host.classList.add('is-hold');
         } else if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', hide);
+            document.addEventListener('DOMContentLoaded', arrived);
         } else {
-            hide();
+            arrived();
         }
         timer = setTimeout(hide, 9000);
 
