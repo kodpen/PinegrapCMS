@@ -3392,6 +3392,150 @@ function pg_image_editor_action_base($request, $user)
     return array(array('status' => 'success', 'data' => $made['data'], 'type' => $types[$made['extension']]), 200);
 }
 
+/**
+ * The animation formats a file is saved in and their files.type and MIME
+ * type. Pure.
+ *
+ * @return array extension => MIME type
+ */
+function pg_image_editor_animation_formats()
+{
+    return array('gif' => 'image/gif', 'png' => 'image/apng', 'webp' => 'image/webp', 'mp4' => 'video/mp4', 'webm' => 'video/webm', 'pdf' => 'application/pdf');
+}
+
+/**
+ * An animation's format told by its bytes, never its name: GIF, APNG (an
+ * acTL chunk before the first IDAT), animated WebP (VP8X with the animation
+ * flag), MP4 (an ftyp box first), WebM (EBML with the webm doctype), PDF.
+ * Pure.
+ *
+ * @param string $bytes the file, or at least its first 4 KB
+ * @return string an extension of pg_image_editor_animation_formats(), or ''
+ */
+function pg_image_editor_animation_type($bytes)
+{
+    $bytes = (string) $bytes;
+    $head = substr($bytes, 0, 4096);
+
+    if ((strncmp($head, 'GIF89a', 6) === 0) || (strncmp($head, 'GIF87a', 6) === 0)) {
+        return 'gif';
+    }
+
+    if (strncmp($head, "\x89PNG\r\n\x1a\n", 8) === 0) {
+        // Chunks in order: an APNG's acTL comes before its first IDAT.
+        for ($at = 8; $at + 8 <= strlen($bytes);) {
+            $length = unpack('N', substr($bytes, $at, 4));
+            $type = substr($bytes, $at + 4, 4);
+
+            if ($type === 'acTL') {
+                return 'png';
+            }
+
+            if (($type === 'IDAT') || ($type === 'IEND')) {
+                return '';
+            }
+
+            $at += 12 + $length[1];
+        }
+
+        return '';
+    }
+
+    if ((strncmp($head, 'RIFF', 4) === 0) && (substr($head, 8, 8) === 'WEBPVP8X') && (strlen($head) >= 21)) {
+        return (ord($head[20]) & 0x02) ? 'webp' : '';
+    }
+
+    if (substr($head, 4, 4) === 'ftyp') {
+        return 'mp4';
+    }
+
+    // EBML: the doctype element (0x4282) names webm; plain Matroska is not
+    // a browser's video.
+    if (strncmp($head, "\x1a\x45\xdf\xa3", 4) === 0) {
+        $at = strpos(substr($head, 0, 64), "\x42\x82");
+
+        if (($at !== false) && isset($head[$at + 2])) {
+            $size = ord($head[$at + 2]) & 0x7f;
+
+            return (substr($head, $at + 3, $size) === 'webm') ? 'webm' : '';
+        }
+
+        return '';
+    }
+
+    if (strncmp($head, '%PDF-', 5) === 0) {
+        return 'pdf';
+    }
+
+    return '';
+}
+
+/**
+ * A body of image_editor_api.php that carries a file: one line of JSON (the
+ * request; JSON.stringify() writes no line end), then the file's bytes as
+ * they are, so nothing is sent base64 encoded. Pure.
+ *
+ * @param string $body
+ * @return array array(JSON text, bytes; '' when the body is JSON alone)
+ */
+function pg_image_editor_binary_body($body)
+{
+    $body = (string) $body;
+    $end = strpos($body, "\n");
+
+    return ($end === false) ? array($body, '') : array(substr($body, 0, $end), (string) substr($body, $end + 1));
+}
+
+/**
+ * The document an animation file's version keeps: the browser's (decoded as
+ * objects) with an animation member naming the file its frames are drawn
+ * from (0 for a canvas), the version_no of that file's base row and the
+ * format; '' when it may not be kept (pg_file_versions_doc_storable()).
+ * Pure.
+ *
+ * @return string JSON
+ */
+function pg_image_editor_animation_doc_json($doc, $source_id, $base_no, $format)
+{
+    $formats = pg_image_editor_animation_formats();
+
+    if (!is_object($doc) || !isset($formats[(string) $format])) {
+        return '';
+    }
+
+    $doc = clone $doc;
+
+    if (isset($doc->source) && is_object($doc->source)) {
+        $doc->source = clone $doc->source;
+        $doc->source->base = (int) $base_no;
+    }
+
+    $doc->animation = (object) array('source' => (int) $source_id, 'base' => (int) $base_no, 'format' => (string) $format);
+    $json = json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    return (is_string($json) && pg_file_versions_doc_storable($json)) ? $json : '';
+}
+
+/**
+ * The animation member of a kept document, or null for any other. Pure.
+ *
+ * @param string $json a version row's doc_json
+ * @return array|null source, base, format
+ */
+function pg_image_editor_animation_of($json)
+{
+    $doc = ((string) $json !== '') ? json_decode((string) $json, true) : null;
+    $animation = (is_array($doc) && isset($doc['animation']) && is_array($doc['animation'])) ? $doc['animation'] : null;
+    $formats = pg_image_editor_animation_formats();
+
+    if (!$animation || !isset($animation['source'], $animation['base'], $animation['format'])
+        || !is_int($animation['source']) || !is_int($animation['base']) || !is_string($animation['format']) || !isset($formats[$animation['format']])) {
+        return null;
+    }
+
+    return array('source' => $animation['source'], 'base' => $animation['base'], 'format' => $animation['format']);
+}
+
 // -- Access (pg_image_editor_access.js) --
 
 /**
