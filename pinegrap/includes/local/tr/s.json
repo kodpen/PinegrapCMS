@@ -2354,6 +2354,7 @@
     "Sorry, your order could not be completed because the billing info is incomplete. Please update the billing info below.": "Üzgünüz, fatura bilgileri eksik olduğundan siparişiniz tamamlanamadı. Lütfen aşağıdaki fatura bilgilerini güncelleyin.",
     "Sorry, your order could not be completed because the shipping info is incomplete. Please update the shipping info below.": "Üzgünüz, gönderim bilgileri eksik olduğundan siparişiniz tamamlanamadı. Lütfen aşağıdaki gönderim bilgilerini güncelleyin.",
     "Sorry, your updates could not be saved. Please try again later.": "Maalesef güncellemeleriniz kaydedilemedi. Lütfen daha sonra tekrar deneyiniz.",
+    "Sorry, {var:1} cannot be optimized: its file type ({var:2}) is not supported. The following types are supported: {var:3}.": "Maalesef {var:1} optimize edilemiyor: dosya türü ({var:2}) desteklenmiyor. Şu türler desteklenir: {var:3}.",
     "Sorry, {var:1} did not confirm the e-mail address of this account, so it cannot be used to sign in here. Please sign in with your account details.": "Üzgünüz, {var:1} bu hesabın e-posta adresini doğrulamadı; bu yüzden burada girişte kullanılamaz. Lütfen hesap bilgilerinizle giriş yapın.",
     "Sorry, {var:1} did not return the information we needed to sign you in. Please try again.": "Üzgünüz, {var:1} giriş için gereken bilgileri göndermedi. Lütfen tekrar deneyin.",
     "Sorry, {var:1} did not sign you in: {var:2}": "Üzgünüz, {var:1} girişi tamamlamadı: {var:2}",

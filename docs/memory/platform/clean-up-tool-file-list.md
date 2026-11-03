@@ -13,7 +13,12 @@ description: clean_up.php $file_list and data/temp sweep: never list a live file
 
 ## What about `data/temp`?
 - The same file sweeps `data/temp` as a DIRECTORY, so any new file placed there lands in the delete-without-asking list. It is the right place for regenerable cache. Anything not regenerated, or not regenerated as the SAME file, must be written to `$temp_keep` (example: `hash_reference.json`).
-- Kept today (#2060: the tool listed the accountant packs and the CSP reports for deletion): `hash_reference.json`, `erp_packages/` (the accountant's link reads its ZIP), `csp_reports.json`, `php_errors.log`, `shield_pending.log` (bans waiting for the database), `waf_ban_notice.log` (queued ban notices), `ai_write_usage.json` (the daily AI counter). A cache whose loss only costs a rebuild (`system_status_cache.json`, `db_health_cache.json`, `ban_shield.txt`, which `waf_ban_shield_refresh()` rewrites) stays sweepable.
+- Kept: `pg_clean_up_temp_keep()` (`includes/fn/files.php`, `tests/clean_up_list_test.php`) with the reason for each: `hash_reference.json`, `erp_packages/` (the accountant's link reads its ZIP), `csp_reports.json`, `php_errors.log`, `shield_pending.log` (bans waiting for the database), `waf_ban_notice.log` (queued ban notices), `ai_write_usage.json` (the daily AI counter) (#2060), and `server_config/`, the web.config / .htaccess copies `pg_server_config_backup()` keeps before the server rules repair rewrites them (#5870). A cache whose loss only costs a rebuild (`system_status_cache.json`, `db_health_cache.json`, `ban_shield.txt`, which `waf_ban_shield_refresh()` rewrites) stays sweepable.
+
+## How does the delete report what happened?
+- The button asks first (`data-confirm-content` with the listed count) and is `theme-danger` (#5871).
+- Each path goes through `pg_clean_up_delete_path()`, true only when it is gone; a path still there (no right, held open) is not counted or logged as deleted and is named in a warning (#5873). The counts sentence comes from `pg_clean_up_count_text()`, '' for 0/0, so an emptied list says "not found" instead of " that deleted.".
+- It returns to `system_tools.php` (`liveform('system_tools')`), as Clear Cache does (#5872).
 
 ## How is the list of what Cleanup deletes printed?
 - Each line comes from `pg_clean_up_list_row($icon, $name)` (`includes/fn/files.php`), which escapes the name. An orphan in `data/files` arrived outside the uploader (FTP, an unpacked archive) and keeps any name; before #5142 a name holding markup ran in the panel when the screen was opened.

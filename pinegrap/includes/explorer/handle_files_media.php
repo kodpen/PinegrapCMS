@@ -208,7 +208,7 @@ function pg_explorer_handle_optimize($type, $request, $user)
     // the exact case it exists for).
     $optimize_mode = ((isset($request['mode']) && ($request['mode'] == 'resize')) ? 'resize' : 'optimize');
 
-    $optimizable_types = array('jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp');
+    $optimizable_types = pg_optimizable_image_types();
     $optimized_count = 0;
     $errors = array();
 
@@ -243,7 +243,7 @@ function pg_explorer_handle_optimize($type, $request, $user)
         }
 
         if (in_array(mb_strtolower($file['type']), $optimizable_types, true) == false) {
-            $skipped[] = lang(array('string' => 'Sorry, we don\'t support optimizing that type of file ({var:1}). The following types are supported: jpg, jpeg, png, gif, bmp, tiff.', 'vars' => $file['name']));
+            $skipped[] = pg_optimize_unsupported_message($file['name'], $file['type']);
             continue;
         }
 

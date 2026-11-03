@@ -61,18 +61,10 @@ function optimize_image($file_id, $mode = 'optimize') {
 
     $file['type'] = mb_strtolower($file['type']);
 
-    if (
-        ($file['type'] != 'jpg')
-        and ($file['type'] != 'jpeg')
-        and ($file['type'] != 'png')
-        and ($file['type'] != 'gif')
-        and ($file['type'] != 'bmp')
-        and ($file['type'] != 'tiff')
-        and ($file['type'] != 'webp')
-    ) {
+    if (!in_array($file['type'], pg_optimizable_image_types(), true)) {
         return array(
             'status' => 'error',
-            'message' => lang(array('string'=>'Sorry, we don\'t support optimizing that type of file ({var:1}). The following types are supported: jpg, jpeg, png, gif, bmp, tiff.','vars'=>$file['name'])) );
+            'message' => pg_optimize_unsupported_message($file['name'], $file['type']));
     }
 
     // Only the plain mode refuses a file that has already been through it.
