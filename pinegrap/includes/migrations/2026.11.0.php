@@ -141,6 +141,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ai_fetch_daily();          // 11.0.150
 	upgrade_2026_11_0_product_preorder();        // 11.0.151
 	upgrade_2026_11_0_file_storage();            // 11.0.152
+	upgrade_2026_11_0_imports();                 // 11.0.155
 
 }
 
@@ -4558,5 +4559,45 @@ function upgrade_2026_11_0_file_storage() {
 	}
 
 	install_note('Files: each file records whether its bytes are on the web server or in the object store; every existing file stays on the web server.');
+
+}
+
+// The content import framework (2026.11.0, 11.0.155; includes/fn/importers.php).
+// imports holds one row per run of an uploaded export: its kind, the mapping
+// chosen on import.php, the counts and the report. import_items lists every
+// row a run made by writer kind and source key: idx_source lets a resumed or
+// repeated run skip a source key already written, idx_item finds the import
+// of a row, and the 30-day undo walks a run's rows. No column is added to the
+// tables the rows are written to.
+function upgrade_2026_11_0_imports() {
+
+	install_create_table('imports', "CREATE TABLE imports (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		kind        ENUM('wordpress','woocommerce','shopify') NOT NULL DEFAULT 'wordpress',
+		file_name   VARCHAR(255) NOT NULL DEFAULT '',
+		status      ENUM('uploaded','dry_run','running','done','failed','undone') NOT NULL DEFAULT 'uploaded',
+		mapping     TEXT NULL,
+		counts      TEXT NULL,
+		`cursor`    VARCHAR(255) NOT NULL DEFAULT '',
+		report      MEDIUMTEXT NULL,
+		user_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		started_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		finished_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('import_items', "CREATE TABLE import_items (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		import_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		kind        ENUM('record','page','file','comment','contact','product','redirect') NOT NULL DEFAULT 'record',
+		item_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		source_key  VARCHAR(191) NOT NULL DEFAULT '',
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_source (import_id, kind, source_key),
+		KEY idx_item (kind, item_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Import: exports of WordPress, WooCommerce and Shopify can be brought in from a file; every run keeps the list of what it made, so it can be undone for 30 days.');
 
 }

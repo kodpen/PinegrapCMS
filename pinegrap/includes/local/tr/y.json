@@ -139,6 +139,7 @@
     "You can have unlimited applications.": "Sınırsız uygulama oluşturulabilir.",
     "You can keep at most {var:1} flows.": "En fazla {var:1} akış tutabilirsiniz.",
     "You can keep at most {var:1} notes.": "En fazla {var:1} not tutabilirsiniz.",
+    "You can leave this screen; the general job carries on.": "Bu ekrandan ayrılabilirsiniz; genel görev devam eder.",
     "You can look at this flow but not run it.": "Bu akışa bakabilirsiniz ama onu çalıştıramazsınız.",
     "You can make product inventory quantity decrease transactions with the barcode of the products from the local business/warehouse. Click an empty spot on this page before scanning; what you type into the boxes is not read as a barcode.": "Yerel işletme/depodaki ürünlerin barkoduyla stok miktarı azaltma işlemleri yapabilirsiniz. Okutmadan önce sayfada boş bir yere tıklayın; kutulara yazdıklarınız barkod sayılmaz.",
     "You can make product inventory quantity decrease transactions with the barcode of the products from the local business/warehouse. Click anywhere on this page before scanning the barcode. Also, do not use the keyboard on this page, otherwise it will detect it as a barcode.": "Lokal işletmeden/depodan ürünlerin barkodu ile ürün stok miktar azaltma işlemleri yapabilirsiniz. Barkodu taramadan önce bu sayfada herhangi bir yere tıklayın. Ayrıca bu sayfadaki klavyeyi kullanmayın, aksi takdirde barkod olarak algılayacaktır.",

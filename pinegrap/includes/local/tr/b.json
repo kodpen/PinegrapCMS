@@ -577,6 +577,7 @@
     "Bring in a finished HTML page or a whole project archive. Pages become tabs, files go to the file manager.": "Hazır bir HTML sayfasını ya da tüm proje arşivini alın. Sayfalar sekme olur, dosyalar Dosya Yöneticisine gider.",
     "Bring in an .eml file": "Bir .eml dosyası al",
     "Bring in an existing form": "Var olan formu getir",
+    "Bring in posts, pages, files, comments, products and customers from a WordPress, WooCommerce or Shopify export.": "Bir WordPress, WooCommerce ya da Shopify dışa aktarımından yazıları, sayfaları, dosyaları, yorumları, ürünleri ve müşterileri getirin.",
     "Bring in what you sell on {var:1}": "{var:1} üzerinde sattıklarınızı getirin",
     "Bring it back": "Geri getir",
     "Bring notes in from another app: Markdown (.md) or text (.txt) files, or a .zip of them, such as an Obsidian vault or a Notion, Joplin or Bear export, or Evernote exports (.enex). Notes exported from here are recognised and brought up to date.": "Başka bir uygulamadaki notlarınızı getirin: Markdown (.md) ya da metin (.txt) dosyaları veya bunların .zip'i; örneğin bir Obsidian kasası ya da Notion, Joplin veya Bear dışa aktarımı; ya da Evernote dışa aktarımları (.enex). Buradan dışa aktarılmış notlar tanınır ve güncellenir.",
