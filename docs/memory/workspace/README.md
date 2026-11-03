@@ -130,6 +130,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-empty-states.md: Workspace empty lists with a small theme-coloured drawing (emptyState(), the shared ART kit / window.PGWsArt) and skeleton rows instead of "Loading…" (U4, PR #2027)
 - workspace-field-names.md: How Workspace drawer and dialog fields get their screen-reader names: formRow(), saLabelled(), ask(), labelTarget()/hasName(), the pickers
 - workspace-file-manager-files.md: A file of the file manager posted into a Workspace channel as a copy (library.php): "Send to a channel" in the file manager, "From the file manager" under the paperclip; who may pick what, refusals
+- workspace-files-object-storage.md: Workspace channel files, note attachments, guest files and ERP documents in the object store: which functions read them, which places still write the file directory, the guard test
 - workspace-flow-ai-drafts.md: Pinegrap AI drafts a flow (propose_flow, read_flow; D8a #2605): catalogue schema and hints, graph or patch, auto layout, the card's window (D8b), a patch opened onto its flow and marked (D8c)
 - workspace-flow-ai-hints.md: What Pinegrap AI is told beyond the box catalogue when it drafts a flow: a start box's subject, a condition rule's shape, approval against condition, and the hints a retry carries
 - workspace-flow-ai-start.md: New flow from a sentence (G1b #3119, #3266): ws_flow_ai_sketch() asks Pinegrap AI for a flow in propose_flow's shape, one retry, saved as a draft; the panel route and the gallery's AI card
