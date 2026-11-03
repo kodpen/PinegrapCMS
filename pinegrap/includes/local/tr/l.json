@@ -1024,6 +1024,7 @@
     "llms.txt is not served.": "llms.txt sunulmuyor.",
     "llms.txt is served.": "llms.txt sunuluyor.",
     "local sale": "yerel satış",
+    "location is not a stock location of this site.": "location bu sitenin bir stok konumu değil.",
     "locked": "kilitli",
     "locked a device of user ({var:1})": "({var:1}) kullanıcısının bir cihazı kilitlendi",
     "log, retention, upload folder, file": "log, retention, upload folder, file, gunluk, günlük, saklama, yukleme klasoru, dosya",
