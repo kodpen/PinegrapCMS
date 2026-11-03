@@ -1242,12 +1242,18 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     }
 
     // Loop through the time zones in order to prepare options for pick list.
+    // Only the first option of the zone is selected: a select shows the last
+    // selected option, so a second label of the same zone would replace the
+    // one the operator chose.
+    $timezone_selected = false;
+
     foreach ($timezones as $label => $value) {
         $selected = '';
 
         // If this timezone is the current timezone, then select it.
-        if ($value == $timezone) {
+        if (!$timezone_selected && ($value == $timezone)) {
             $selected = ' selected="selected"';
+            $timezone_selected = true;
         }
 
         $output_timezone_options .= '<option value="' . h($value) . '"' . $selected . '>' . h($label) . '</option>';
