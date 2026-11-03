@@ -95,14 +95,16 @@ if (!$_POST) {
     //
     // Same list the hub and the Settings menu draw from. It is the primary
     // control of the bar because moving between categories is what an
-    // operator does most on these screens.
+    // operator does most on these screens. The links (and Previous/Next below)
+    // carry data-pg-settings-page: without it the panel-wide handler turns a
+    // link to a settings screen into "open the dialog" over this page.
     $pg_settings_switcher = '';
 
     foreach (pg_settings_categories() as $pg_settings_other_key => $pg_settings_other) {
 
         $pg_settings_switcher .=
             '<li><a class="menu-item' . (($pg_settings_other_key === $pg_settings_key) ? ' active" aria-current="page' : '') . '"'
-            . ' href="' . h(pg_settings_url($pg_settings_other_key)) . '">'
+            . ' href="' . h(pg_settings_url($pg_settings_other_key)) . '" data-pg-settings-page>'
             . '<i class="bi ' . h($pg_settings_other['icon']) . ' me-3" aria-hidden="true"></i>'
             . h($pg_settings_other['label']) . '</a></li>';
     }
@@ -129,7 +131,7 @@ if (!$_POST) {
         $pg_settings_step_links .=
             '<a class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="tooltip"'
             . ' title="' . h($pg_settings_step_category['label']) . '"'
-            . ' href="' . h(pg_settings_url($pg_settings_step[0])) . '">'
+            . ' href="' . h(pg_settings_url($pg_settings_step[0])) . '" data-pg-settings-page>'
             . '<i class="bi ' . $pg_settings_step[1] . '" aria-hidden="true"></i></a>';
     }
 
@@ -237,10 +239,10 @@ if (!$_POST) {
 
                 <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />
 
-                <nav class="buttons navigation text-center position-sticky " style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class=" btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_save" value="Save" class="btn btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                            <button type="submit" id="create_button" name="submit_save" value="Save" class="btn btn-solid theme-success"><i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                         </div>
                     </div>
                 </nav>
