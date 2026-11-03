@@ -47,7 +47,7 @@ description: Generated from the module field of the memory files: each includes/
 - `events`: [[workspace-flows-event-depth]]
 - `explorer_side`: [[explorer-menu-tree]]
 - `file_storage`: [[file-object-storage]]
-- `files`: [[edit-file-header]], [[name-length-refusal]], [[settings-public-image-pickers]], [[stored-file-name-upload-rule]]
+- `files`: [[edit-file-header]], [[name-length-refusal]], [[settings-public-image-pickers]], [[stored-file-name-upload-rule]], [[theme-screens-names-and-returns]]
 - `forms`: [[csv-import-headings]], [[explorer-page-type-name]], [[form-data-output-escape-flag]], [[form-view-newest-comment-cut]], [[forms-api-request-checks]], [[report-dynamic-date-filter]]
 - `geo`: [[country-names-in-addresses]], [[panel-script-number-format]]
 - `google_analytics`: [[google-analytics-card]]

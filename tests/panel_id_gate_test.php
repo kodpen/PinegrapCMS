@@ -180,7 +180,7 @@ function test_panel_id_gate_file_editors_check_name_and_type()
 
 		pg_assert_true($gate !== false, $screen . ' reads the record as a design file');
 		pg_assert_contains("|| ({$variable} !== basename({$variable}))", $source, $screen . ' plain name');
-		pg_assert_contains("|| (strpos({$variable}, '..') !== false)", $source, $screen . ' no ..');
+		pg_assert_contains("pg_design_file_name_unsafe({$variable})", $source, $screen . ' no path outside the folder');
 		pg_assert_contains("pathinfo({$variable}, PATHINFO_EXTENSION)", $source, $screen . ' extension');
 		pg_assert_contains($extension, $source, $screen . ' extension list');
 		pg_assert_true(($not_found !== false) && ($gate < $not_found), $screen . ' stops on "Record not found."');
@@ -222,7 +222,7 @@ function test_panel_id_gate_file_editors_check_name_and_type()
 
 	pg_assert_true($gate !== false, 'edit_design_file reads the record as a design file');
 	pg_assert_contains("|| (\$stored_name !== basename(\$stored_name))", $source, 'edit_design_file plain name');
-	pg_assert_contains("|| (strpos(\$stored_name, '..') !== false)", $source, 'edit_design_file no ..');
+	pg_assert_contains("pg_design_file_name_unsafe(\$stored_name)", $source, 'edit_design_file no path outside the folder');
 	pg_assert_true(($not_found !== false) && ($gate < $not_found), 'edit_design_file stops on "Record not found."');
 	pg_assert_true($not_found < strpos($source, 'validate_token_field();'), 'edit_design_file gate runs before the POST branch');
 	pg_assert_contains("validate_token_field();\n\n    // Delete and rename act on the record and the stored name the gate\n    // above checked.\n    \$_POST['id'] = \$id;", $source, 'edit_design_file POST uses the gated id');

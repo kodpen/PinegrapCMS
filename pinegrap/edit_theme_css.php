@@ -33,12 +33,24 @@ $id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $file = ($id > 0) ? db_item("SELECT id, name, folder, description, theme FROM files WHERE (id = '" . $id . "') AND (design = '1')") : null;
 $file_name = is_array($file) ? (string) $file['name'] : '';
 if (
-    ($file_name === '')
+    pg_design_file_name_unsafe($file_name)
     || ($file_name !== basename($file_name))
-    || (strpos($file_name, '..') !== false)
     || (mb_strtolower(pathinfo($file_name, PATHINFO_EXTENSION)) !== 'css')
 ) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
+// Where Cancel and Save and Return go: the screen that sent the user here,
+// or the themes list when the screen was opened without one (a redirect, a
+// typed address). Save and Return used to fall back to the site's home page.
+$edit_theme_css_back = pg_safe_back_url(is_string($_REQUEST['send_to'] ?? null) ? $_REQUEST['send_to'] : '', 'view_themes.php');
+
+// reload_theme.php takes a path from the site root only.
+if (preg_match('~^https?://~i', $edit_theme_css_back)) {
+    $edit_theme_css_parts = parse_url($edit_theme_css_back);
+    $edit_theme_css_back = ($edit_theme_css_parts['path'] ?? '/') . (isset($edit_theme_css_parts['query']) ? '?' . $edit_theme_css_parts['query'] : '');
+} elseif (mb_substr($edit_theme_css_back, 0, 1) !== '/') {
+    $edit_theme_css_back = PATH . SOFTWARE_DIRECTORY . '/' . $edit_theme_css_back;
 }
 
 // if there has not been a post, then continue to output the page
@@ -84,7 +96,7 @@ if (!$_POST) {
         'title' => h($file_name) . ' | ' . lang('Edit CSS'),
         'icon' => 'design',
         'heading' => lang('Edit CSS'),
-        'cancel'=>array('enable'=>'true','url'=>pg_safe_back_url(isset($_REQUEST['send_to']) ? $_REQUEST['send_to'] : '', 'view_themes.php')),
+        'cancel'=>array('enable'=>'true','url'=>$edit_theme_css_back),
         'breadcrumb' => $pg_breadcrumb_items,
     ) ) . '<main id="content" class="container-fluid">';
 
@@ -321,12 +333,12 @@ if (!$_POST) {
             $liveform = new liveform('edit_theme_css');
             $liveform->add_notice(lang('The CSS file was edited successfully.'));
             // send the user back to reload this screen again
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . $id . '&send_to=' . urlencode($_POST['send_to'] ?? ''));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . $id . '&send_to=' . urlencode($_POST['send_to'] ?? '') . '&from=' . urlencode($_POST['from'] ?? ''));
             exit();
         } else {
             // send the user to a screen that will reload the theme so that it will clear the user's cache
             // so that the user does not view an old version of the theme
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/reload_theme.php?name=' . urlencode($file_name) . '&send_to=' . urlencode($_POST['send_to'] ?? ''));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/reload_theme.php?name=' . urlencode($file_name) . '&send_to=' . urlencode($edit_theme_css_back));
             exit();
         }
     }

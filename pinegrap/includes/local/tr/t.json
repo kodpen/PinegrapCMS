@@ -868,6 +868,7 @@
     "The Sunday ride": "Pazar turu",
     "The System Tags": "Sistem Etiketleri",
     "The Theme ({var:1}) already exists.": "Tema ({var:1}) zaten var.",
+    "The Theme Type is not valid.": "Tema türü geçersiz.",
     "The Traditional Way": "Geleneksel Yöntem",
     "The TranslateKit component the packs run on: \"Check for update\" when it shows 0.0.0.0.": "Dil paketlerinin çalıştığı TranslateKit bileşeni: 0.0.0.0 görünüyorsa \"Güncellemeyi denetle\".",
     "The Trendyol API key and secret are missing. Copy them from your Trendyol seller panel, under Account Information › Integration Information.": "Trendyol API anahtarı ve gizli anahtarı eksik. Trendyol satıcı panelinizde Hesap Bilgilerim › Entegrasyon Bilgileri altından kopyalayın.",

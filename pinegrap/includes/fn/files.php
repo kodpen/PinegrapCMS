@@ -460,6 +460,11 @@ function prepare_file_name($file_name)
     $file_name = str_replace('&', '_', $file_name);
     $file_name = str_replace('+', '_', $file_name);
     $file_name = str_replace('#', '_', $file_name);
+    // A run of dots becomes one: the theme, CSS and design file screens refuse
+    // to open a name with ".." in it, so such a record could be neither fixed
+    // nor deleted there. Asked after the length limit, which can cut the
+    // part before the extension right after a dot.
+    $file_name = preg_replace('/\.{2,}/', '.', $file_name);
     // Windows drops the dots at the end of a file name, so "photo.jpg." would
     // be written over photo.jpg while its record kept a name of its own. The
     // length limit above can leave one too. Never empty here: a name that
@@ -483,6 +488,63 @@ function prepare_file_name($file_name)
         $file_name = 'file';
     }
     return $file_name;
+}
+
+/**
+ * Whether a design file's stored name would leave the files folder when it is
+ * joined to it: empty, "." or "..", a slash or backslash, or a NUL byte. A
+ * name that merely holds two dots ("old..theme.css", stored before
+ * prepare_file_name() collapsed them) stays inside and is opened, so it can be
+ * renamed or deleted.
+ *
+ * @param mixed $name the stored name
+ * @return bool
+ */
+function pg_design_file_name_unsafe($name)
+{
+    if (!is_string($name) || ($name === '') || ($name === '.') || ($name === '..')) {
+        return true;
+    }
+
+    return strpbrk($name, "/\\\0") !== false;
+}
+
+/**
+ * Whether a single-file box arrived without a file chosen. Read before
+ * prepare_file_name(), which turns an empty name into "file".
+ *
+ * @param array|null $file the $_FILES entry
+ * @return bool
+ */
+function pg_upload_file_missing($file)
+{
+    if (!is_array($file) || !isset($file['name']) || !is_string($file['name'])) {
+        return true;
+    }
+
+    if (isset($file['error']) && is_scalar($file['error']) && ((int) $file['error'] === UPLOAD_ERR_NO_FILE)) {
+        return true;
+    }
+
+    return trim($file['name']) === '';
+}
+
+/**
+ * The sentence that says a file was stored under another name than the one
+ * typed or uploaded (letters an address cannot carry replaced), or '' when
+ * the name was kept.
+ *
+ * @param string $typed  the name as typed or uploaded
+ * @param string $stored the name stored
+ * @return string HTML
+ */
+function pg_file_name_saved_as_notice($typed, $stored)
+{
+    if ((string) $typed === (string) $stored) {
+        return '';
+    }
+
+    return lang(array('string' => 'Saved as {var:1}: a file name is its address, so letters an address cannot carry are replaced.', 'vars' => h((string) $stored)));
 }
 
 // Writes $content to $path as a whole and returns true, or returns false
