@@ -155,7 +155,7 @@ function test_contact_form_screens_use_the_shared_form()
 	}
 
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_contact.php');
-	pg_assert_contains('validate_contact_access($user, $_REQUEST[\'id\'])', $edit, 'edit: contact access check');
+	pg_assert_contains('validate_contact_access($user, $id)', $edit, 'edit: contact access check');
 	pg_assert_contains("pg_audit_record('update', 'contacts'", $edit, 'edit: update audit line');
 	pg_assert_contains("pg_audit_record('delete', 'contacts'", $edit, 'edit: delete audit line');
 
