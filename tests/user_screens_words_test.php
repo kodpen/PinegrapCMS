@@ -67,8 +67,8 @@ function test_user_screens_role_labels_match_their_conditions()
 	$tr = user_screens_words_test_tr();
 
 	// The column and its sort: a mark for role < 3, Manager and above.
-	pg_assert_contains("\$heading_link(lang('Site Manager'), 'site_manager')", $source);
-	pg_assert_contains("\$cells['manage_users'] = pg_user_list_mark(\$role < 3);", $source);
+	pg_assert_contains("\$columns['site_manager'] = array('heading' => lang('Site Manager'), 'kind' => 'check', 'sort' => 'user.user_role');", $source);
+	pg_assert_contains("\$cells['site_manager'] = pg_user_list_mark(\$role < 3);", $source);
 
 	// The filters: their condition and their label.
 	pg_assert_contains("'all_site_managers' => array('(user.user_role < 3)', lang('All Site Managers')", $source);

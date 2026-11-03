@@ -46,6 +46,7 @@ function pg_list_table_definitions()
 {
     return array(
         'view_pages' => array('file' => 'includes/fn/page_list.php', 'source' => 'pg_page_list_source'),
+        'view_users' => array('file' => 'includes/fn/user_list.php', 'source' => 'pg_user_list_source'),
     );
 }
 

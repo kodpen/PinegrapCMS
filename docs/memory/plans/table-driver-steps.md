@@ -12,7 +12,7 @@ description: Steps of the table driver plan: the driver core, its parts, the ser
 3. TD3 (M) After TD2. Columns menu (show, hide, order, reset), the details panel and its side sheet below 1024 px, both in localStorage; phone cards below 768 px; the thumbnail queue.
 
 4. TD4 (M) After TD2. Users, contacts and submitted forms move with their bulk actions (export, merge, delete all) through the resolver.
-   Cut in three, one screen each: TD4a the users list (Delete Selected); TD4b the contacts list (export, merge, delete all); TD4c the submitted forms list (export, delete all).
+   Cut in three, one screen each: TD4a done (#6325): the users list (Delete Selected); TD4b the contacts list (export, merge, delete all); TD4c the submitted forms list (export, delete all).
 
 5. TD5 (M) After TD2. Commissions, recurring commission profiles and the mail queue move.
 
