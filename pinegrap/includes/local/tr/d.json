@@ -424,6 +424,8 @@
     "Departments": "Departmanlar",
     "Departments, working days and what the planning board counts with.": "Departmanlar, çalışma günleri ve plan panosunun hesapta kullandığı değerler.",
     "Departments, working hours and capacity.": "Departmanlar, çalışma saatleri ve kapasite.",
+    "Departure": "Çıkış",
+    "Departure date": "Çıkış tarihi",
     "Dependencies": "Bağımlılıklar",
     "Depending on the page's access control, these pages can be found using the built-in site search feature.": "Sayfanın erişim kontrolüne bağlı olarak, bu sayfalar yerleşik site arama özelliği kullanılarak bulunabilir.",
     "Deploy the rule, wait a minute, then press Check through Cloudflare here.": "Kuralı yayınlayın, bir dakika bekleyin, sonra burada Cloudflare üzerinden denetle düğmesine basın.",

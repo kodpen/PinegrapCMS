@@ -23,7 +23,7 @@ description: Plan for the Hotel template (pinegrap-hotel): rooms as a collection
 
 - 3 Done (#6280). Rooms: `rooms.php` (`room_new` with the Rooms collection and samples, `rooms` with filters, `room` record page, the home's featured list `home_rooms`).
 
-- 4 Bookings: `mail.php`, `bookings.php` (`book`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`, notify e-mails).
+- 4 Done (#6282). Bookings: `mail.php`, `bookings.php` (`book`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`, notify e-mails).
 
 - 5 Events: `events.php` (`meetings`, `event_enquiry`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, notify e-mails).
 
