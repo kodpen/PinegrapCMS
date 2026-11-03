@@ -95,7 +95,7 @@ function test_seo_refresh_updates_every_indicator()
 	pg_assert_contains("data-pg-seo-badge=\"product_group:' . (int) \$_GET['id'] . '\"", seo_panel_run_source('edit_product_group.php'), 'group badge');
 	pg_assert_contains("data-pg-seo-badge=\"product:' . (int) \$seo_record_id . '\"", seo_panel_run_source('product_builder.php'), 'product badge');
 
-	$pages = seo_panel_run_source('view_pages.php');
+	$pages = seo_panel_run_source('includes/fn/page_list.php');
 	pg_assert_contains("data-pg-seo-bar=\"page:' . (int) \$page['page_id'] . '\"", $pages, 'pages list bar');
 	pg_assert_contains("data-pg-seo-badge=\"page:' . (int) \$page['page_id'] . '\"", $pages, 'pages list badge');
 	pg_assert_contains("data-pg-seo-bar=\"product:' . (int) \$id . '\"", seo_panel_run_source('includes/fn/product_list.php'), 'products list bar');

@@ -38,7 +38,7 @@ function test_content_lists_login_region_previews_escaped()
 function test_content_lists_check_marks_named()
 {
 	$paths = array(
-		'view_pages.php' => 4,
+		'includes/fn/page_list.php' => 1,
 		'view_comments.php' => 1,
 		'view_regions.php' => 3,
 		'view_fields.php' => 2,
@@ -55,20 +55,20 @@ function test_content_lists_check_marks_named()
 
 function test_content_lists_folder_and_home_ligatures()
 {
-	foreach (array('view_pages.php', 'view_design_files.php') as $path) {
+	foreach (array('includes/fn/page_list.php', 'view_design_files.php') as $path) {
 		$source = content_lists_source($path);
 		pg_assert_false(strpos($source, '<span class="material-icons d-inline">folder</span>') !== false, $path . ': folder ligature read aloud');
 		pg_assert_contains('pg_folder_list_name($', $source, $path);
 	}
 	pg_assert_contains('<span class="material-icons d-inline" aria-hidden="true">folder</span>', pg_folder_list_name('Docs'));
 
-	pg_assert_contains('<span class="material-icons" role="img" aria-label="\' . h(lang(\'Home Page\')) . \'">home</span>', content_lists_source('view_pages.php'));
+	pg_assert_contains('<span class="material-icons" role="img" aria-label="\' . h(lang(\'Home Page\')) . \'">home</span>', content_lists_source('includes/fn/page_list.php'));
 }
 
 function test_content_lists_row_checkboxes_named()
 {
 	$expect = array(
-		'view_pages.php' => '$page[\'page_name\']',
+		'includes/fn/page_list.php' => '$page[\'page_name\']',
 		'view_design_files.php' => '$file[\'name\']',
 		'view_fields.php' => '$name',
 	);
