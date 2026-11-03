@@ -351,3 +351,11 @@ function test_list_table_html_hidden_cells_texts_and_scroll_box()
 	pg_assert_contains('%n', $texts['selected']);
 	pg_assert_contains('%n', $texts['loaded']);
 }
+
+function test_list_table_html_puts_the_screens_actions_in_the_bar()
+{
+	$html = pg_list_table_html(pg_test_list_table_source(), array('rows' => array(), 'next' => null, 'total' => 0), 'Items', '<button type="button">Delete</button>');
+
+	pg_assert_contains('<span class="pg-list-table-actions"><button type="button">Delete</button></span>', $html);
+	pg_assert_contains('<span class="pg-list-table-actions"></span>', pg_list_table_html(pg_test_list_table_source(), array('rows' => array(), 'next' => null, 'total' => 0), 'Items'));
+}

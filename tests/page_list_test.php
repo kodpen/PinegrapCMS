@@ -86,3 +86,35 @@ function test_page_list_filters_keep_every_view_of_the_screen()
 	pg_assert_contains('custom_form_pages.form_name', $filters['my_custom_form_pages']['select']);
 	pg_assert_same("(page.page_type = 'standard')", $filters['my_standard_pages']['where']);
 }
+
+function test_page_list_columns_follow_the_view()
+{
+	require_once(PG_FUNCTIONS_DIR . '/seo.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+	$view = array('custom_form' => false, 'previewing_other_theme' => false, 'style_heading' => 'Desktop Page Style');
+	$columns = pg_list_table_columns(pg_page_list_columns($view));
+
+	pg_assert_same(array('name', 'folder', 'style', 'page_type', 'searchable', 'comments', 'sitemap', 'seo', 'impact', 'last_modified', 'actions'), array_keys($columns));
+	pg_assert_same(false, $columns['name']['hideable'], 'the name is never hidden');
+	pg_assert_same('style.style_name', $columns['style']['sort']);
+	pg_assert_same(false, $columns['actions']['sortable']);
+	pg_assert_same('center', $columns['sitemap']['align']);
+	pg_assert_true(strpos($columns['impact']['sort'], ' AS ') === false, 'the impact sort is an expression, no alias');
+
+	$columns = pg_list_table_columns(pg_page_list_columns(array('custom_form' => true, 'previewing_other_theme' => true, 'style_heading' => 'Mobile Page Style')));
+
+	pg_assert_same(array('name', 'form_name', 'form_enabled', 'folder', 'style'), array_slice(array_keys($columns), 0, 5));
+	pg_assert_same(false, $columns['style']['sortable'], 'a previewed theme\'s style column does not sort');
+	pg_assert_same('Mobile Page Style', $columns['style']['heading']);
+}
+
+function test_page_list_is_a_driver_list()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+	$definition = pg_list_table_definition('view_pages');
+
+	pg_assert_same('includes/fn/page_list.php', $definition['file']);
+	pg_assert_true(function_exists($definition['source']), 'the source function is in its file');
+}
