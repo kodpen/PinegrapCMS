@@ -7729,12 +7729,15 @@ function _pg_tpl_include($file)
     return include $file;
 }
 
-// One template, or null.
+// One template, or null. A template made from a design and written in this
+// request is not in the cached list yet (the Migration installs one per
+// design it carries), so it is read from its row.
 function pg_design_template($id)
 {
     $all = pg_design_templates();
     $id  = is_scalar($id) ? (string)$id : '';
-    return isset($all[$id]) ? $all[$id] : null;
+    if (isset($all[$id])) return $all[$id];
+    return function_exists('pg_design_template_custom_get') ? pg_design_template_custom_get($id) : null;
 }
 
 // What the gallery shows of a template - no trees.

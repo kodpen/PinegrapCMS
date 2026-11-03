@@ -334,6 +334,8 @@
     "Visits per minute, last 30 minutes": "Dakikalık ziyaret, son 30 dakika",
     "Visits small rooms and the people who build furniture by hand.": "Küçük odaları ve elle mobilya yapan insanları ziyaret eder.",
     "Visits today": "Bugün ziyaret",
+    "Visual Designs": "Görsel Tasarımlar",
+    "Visual Designs could not be retrieved from the source site, so the migration was aborted. An older source site cannot send them; update it first.": "Görsel tasarımlar kaynak siteden alınamadığı için taşıma durduruldu. Eski bir kaynak site bunları gönderemez; önce onu güncelleyin.",
     "Visual Editor": "Görsel Düzenleyici",
     "Visual Page Editor": "Görsel Sayfa Editörü",
     "Visual Pinegrap Editor": "Visual Pinegrap Editor",
