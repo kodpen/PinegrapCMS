@@ -368,32 +368,16 @@ function pg_mfa_setup_lifetime()
 }
 
 /**
- * Whether both tables of schema step 8.40 exist. Probed by exact name in
- * information_schema (SHOW TABLES LIKE would read '_' as a wildcard) and
- * cached for the request. Between new files landing and the upgrade running
- * this is false, and every caller treats the feature as switched off.
+ * Whether both tables of schema step 8.40 exist, asked of pg_schema_has(),
+ * which keeps the answer in a file under data/temp. Between new files
+ * landing and the upgrade running this is false, and every caller treats the
+ * feature as switched off.
  *
  * @return bool
  */
 function pg_mfa_table_exists()
 {
-    static $exists = null;
-
-    if ($exists !== null) {
-        return $exists;
-    }
-
-    if (!isset(db::$con) || !db::$con) {
-        return false;
-    }
-
-    $count = db_value("SELECT COUNT(*) FROM information_schema.TABLES
-        WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME IN ('user_mfa', 'user_mfa_recovery')");
-
-    $exists = ((int) $count === 2);
-
-    return $exists;
+    return pg_schema_has('user_mfa') && pg_schema_has('user_mfa_recovery');
 }
 
 /**
