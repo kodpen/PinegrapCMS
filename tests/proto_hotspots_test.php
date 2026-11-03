@@ -369,6 +369,36 @@ function test_proto_hotspots_draw_targets()
 	pg_assert_same('/about', $result['bare'], 'the site root when the read names no path');
 }
 
+// The keyboard menu lists the tab frames, then the chips an arrow may end
+// on, each href once.
+function test_proto_hotspots_draw_target_list()
+{
+	$laid = array(
+		'frames' => array(
+			array('id' => 'p:a', 'kind' => 'page', 'name' => 'home'),
+			array('id' => 'p:b', 'kind' => 'page', 'name' => ''),
+			array('id' => 's:5', 'kind' => 'shared', 'name' => 'Header'),
+			array('id' => 'p:c', 'kind' => 'page', 'name' => 'Home'),
+		),
+		'chips' => array(
+			array('id' => 'c:0', 'kind' => 'chip', 'mark' => 'external', 'href' => 'https://x.org/'),
+			array('id' => 'c:1', 'kind' => 'chip', 'mark' => 'broken', 'href' => '/old'),
+			array('id' => 'c:2', 'kind' => 'chip', 'mark' => 'page', 'href' => '/home'),
+		),
+	);
+	$result = proto_hotspots_test_node('out = H.drawTargets(' . proto_hotspots_test_js($laid) . ', { path: "/" });');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('id' => 'p:a', 'href' => '/home'),
+		array('id' => 'p:c', 'href' => '/Home'),
+		array('id' => 'c:0', 'href' => 'https://x.org/'),
+	), $result, 'frames first, then chips, each href once');
+}
+
 // The nth link of a piece of markup gets a new href, in double quotes and
 // escaped; the rest of the markup stays byte for byte; a link that is not
 // there answers null.
