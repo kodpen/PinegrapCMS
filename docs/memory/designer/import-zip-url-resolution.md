@@ -20,3 +20,6 @@ description: How the Import ZIP File screen resolves relative references (url_to
 ## How is a tag's reference read and rewritten?
 - Through `pg_imported_tag_pattern($tag, $attribute)` (the first attribute of that name with white space before it) and `pg_imported_tag_set_attribute()` (that one attribute, once, value taken literally). Before #5121 the patterns took the last `src=` of the tag and rewrote every `…src=`, so `<img data-src="photo.jpg" src="placeholder.gif">` came out with both pointing at the placeholder (lazy-loading themes lost their images). Tests: `tests/imported_tag_attribute_test.php`.
 - Lead, not fixed: a reference with no imported item reads `$imported_items[<url>]['name']` of a missing key, a PHP 8 warning per reference.
+
+## What does a refused ZIP import leave behind?
+- Nothing. `pg_di_entries_have_html()` refuses an archive without a page in the first pass, before any folder or file is written. Later, `$res['created']` lists the folders and files the import wrote; `pg_designer_import_undo()` deletes those files (row and disk) and each created folder that is then empty. It runs when no page could be read and in import_design_zip.php when no design came of it. Before, every refused try left an `Import / <project>` folder with its files.
