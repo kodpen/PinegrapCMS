@@ -5103,6 +5103,7 @@
     "This contact belongs to a user account and is not deleted from here.": "Bu kişi bir kullanıcı hesabına bağlı; buradan silinmez.",
     "This contact belongs to a user account and is not deleted through the API.": "Bu kişi bir kullanıcı hesabına bağlı; API üzerinden silinmez.",
     "This contact group holds {var:1} contacts. Take them out first (POST /contact-groups/{var:2}/members with remove), as the contact group screen asks.": "Bu iletişim grubunda {var:1} kişi var. İletişim grubu ekranının istediği gibi önce onları gruptan çıkarın (remove ile POST /contact-groups/{var:2}/members).",
+    "This contact group is not filled by rules, or it could not be refreshed.": "Bu kişi grubu kurallarla dolmuyor ya da yenilenemedi.",
     "This contact has no account yet; one is opened from the contact card when the sale is invoiced.": "Bu kişinin henüz carisi yok; satış faturalanırken kişi kartından açılır.",
     "This contact has no user connected to it.": "Bu kişiye bağlı bir kullanıcı yok.",
     "This contact is already linked to the account \"{var:1}\". Unlink it there first.": "Bu kişi zaten \"{var:1}\" carisine bağlı. Önce oradaki bağı kaldırın.",

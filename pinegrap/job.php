@@ -170,6 +170,18 @@ if ($preorders_ended > 0) {
 
 }
 
+// Contact groups filled by rules (includes/fn/audiences.php): each dynamic
+// group recomputed at most once an hour, the one waiting longest first, at
+// most PG_AUDIENCE_TICK_SECONDS of this tick; a big group goes on from its
+// cursor next tick. A site with no dynamic group pays one small read.
+$audiences = pg_audience_job_run();
+
+if (($audiences['added'] + $audiences['removed']) > 0) {
+
+    log_activity(lang(array('string' => 'general job recomputed {var:1} contact group(s) filled by rules: {var:2} added, {var:3} removed', 'vars' => array(pg_format_number($audiences['groups'], 0), pg_format_number($audiences['added'], 0), pg_format_number($audiences['removed'], 0)))), 'UNKNOWN');
+
+}
+
 // Shipping label documents whose time is up (includes/fn/shipment_labels.php):
 // 30 days after delivery or cancellation, 90 days after creation at the
 // latest. Once a day; the rows stay with their orders.
