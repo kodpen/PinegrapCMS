@@ -18,7 +18,7 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
 - AN3 (M) Frames and GIF. Done (#5148, part `render`, `ui/image-editor-render.md`).
   - Part `render`: `renderFrame()` and `paintLayers()` with a time; action `base` (calls `pg_image_editor_render()`, writes nothing); the encoder worker with GIF; the dialog with estimate, progress, Cancel and Download.
 
-- AN4 (M) Save into Files. `free` (AN3 and E13 are done); one at a time with the save-path steps.
+- AN4 (M) Save into Files. Done (#6229, `ui/image-editor-animation-save.md`).
   - Left by AN3: the upload limit beside the estimate (`pg_upload_limits()` in the config) and a smaller size or rate offered when over it; Save to Files beside Download.
   - Action `animation`, the type by its bytes, a new file and its version with the document, reopening it, the same-format replace, `.webm` in the MIME map.
 
@@ -30,6 +30,7 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
 
 - AN7 (M) Scenes. After AN3.
   - `doc.scenes`, the strip, transitions, the timeline and exports across scenes; the validator's cap on scenes and their layers goes in one at a time with the save-path steps.
+  - Left by AN4 (#6229 review): a canvas animation names source 0, so a replace from one canvas may name another canvas's animation as its target; tie it to its own canvas (record the canvas file, and have `pg_image_editor_animation_open()` open it as a canvas).
 
 - AN8 (M) Present and PDF. After AN7.
   - Present mode in the editor (full screen; click, Space, arrow keys, swipe); the PDF writer; video and GIF of all scenes. No live-site viewer (question 1).

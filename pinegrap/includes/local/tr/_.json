@@ -369,6 +369,7 @@
     "{customer} and {order} are filled with the channel's customer and their latest order when the reply is put in.": "{customer} ve {order}, yanıt eklenirken kanalın müşterisi ve son siparişiyle doldurulur.",
     "{date}: today's date": "{date}: bugünün tarihi",
     "{name} is downloaded.": "{name} indirildi.",
+    "{name} is saved in Files.": "{name} Dosyalara kaydedildi.",
     "{notebook}: the notebook the note goes into": "{notebook}: notun gireceği defter",
     "{n} changes": "{n} değişiklik",
     "{n} frames": "{n} kare",

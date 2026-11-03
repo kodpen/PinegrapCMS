@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-6
-description: Decisions list, workspace part 6 (2026-11-01 on): a task moved in the person's own calendar writes its due date back; the pinned My Notes row opens the Workspace list
+description: Decisions list, workspace part 6 (2026-11-01 on): a calendar move writes a task's due date back; the pinned My Notes row opens the Workspace list; the list's top and the tour's place
 ---
 
 ## Where are the rules and the earlier parts?
@@ -11,3 +11,6 @@ description: Decisions list, workspace part 6 (2026-11-01 on): a task moved in t
 
 ## Why does the pinned My Notes row open the Workspace list? (#4889)
 - Owner (2026-11-01): whichever row is used, the menu opens the Workspace list, where the notes are one of the places; the pinned row keeps its place and its address (a new tab opens the notes) but has no panel of its own (`ui/main-menu-panels.md`). Not a missing My Notes panel.
+
+## What stands at the top of the Workspace list, and where is the tour? (#6281)
+- Owner (2026-11-03, on the drawn proposal: "çok güzel bu şekilde"): Today alone over the channels; no Inbox entry, as the bell already shows the notifications (the Workspace row keeps its count); My Tasks the first Tools tile; the tour in the channel's header beside New task, as it introduces the channel screen (on a phone the channel's ⋯ menu); the head's "+" a circle; groups drawn as folders, New group at the end of Channels. Detail: `workspace/workspace-menu-list.md`, `workspace/workspace-channel-head.md`.

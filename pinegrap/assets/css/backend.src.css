@@ -12256,10 +12256,30 @@ html[data-bs-theme="dark"] .ws-group-icon {
 .ws-group-more:focus-visible {
   opacity: .85;
 }
+/* New group closes the Channels section of the list: a quiet row in the
+   channels' column, for whoever manages the groups. */
 .ws-group-new {
-  font-size: .78rem;
-  padding: .1rem .5rem;
-  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  width: 100%;
+  margin-top: .35rem;
+  padding: var(--ws-row-y, .3rem) var(--ws-space-2, .5rem);
+  border: 0;
+  border-radius: var(--ws-radius-sm);
+  background: transparent;
+  color: var(--pg-fg-2);
+  font-size: .82rem;
+  text-align: start;
+}
+.ws-group-new:is(:hover, :focus-visible) {
+  background: var(--pg-bg-2);
+  color: var(--pg-fg-body);
+}
+.ws-group-new > .bi {
+  flex: 0 0 auto;
+  width: 1rem;
+  text-align: center;
 }
 .ws-group-empty {
   padding-top: .15rem;
@@ -18087,26 +18107,29 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 :is(#ws-menu-side, .ws-side-head-tools) .ws-side-tool.active {
   color: var(--ws-accent);
 }
-/* The new channel, the settings and the tour stand beside the panel's name
-   (workspace_side.js), which then starts at the left. */
+/* The new channel and the settings stand beside the panel's name
+   (workspace_side.js), which then starts at the left; the last one keeps
+   clear of the menu's edge. */
 #menu .pg-menu-panel-head .ws-side-head-tools {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 0;
+  gap: .125rem;
   margin-left: auto;
+  padding-right: .25rem;
 }
 #menu .pg-menu-panel-head:has(.ws-side-head-tools) .pg-menu-panel-title {
   padding-right: 0;
   text-align: start;
 }
-/* Three buttons beside the name leave it little room, and a long list gives
-   the menu body a classic scrollbar that takes 15px more ("Çalışma Al…" in a
-   250px menu). The buttons are a little narrower here than in the list, with
-   no gap between them, so the name keeps to one line with the scrollbar too;
-   still over the 24px target size. */
+/* Two squares beside the name, so the solid New channel button is a circle:
+   narrowed to 1.625rem and still 1.9rem tall it was an upright oval against
+   the menu's edge. A little smaller than the list's buttons, so the name
+   keeps to one line when a long list gives the menu body a classic
+   scrollbar; still over the 24px target size. */
 #menu .pg-menu-panel-head .ws-side-head-tools .ws-side-tool {
-  width: 1.625rem;
+  width: 1.75rem;
+  height: 1.75rem;
 }
 /* The search keeps its row: its key where Ctrl+K opens it. */
 #ws-menu-side .ws-side-find-key {
@@ -18140,6 +18163,50 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 #ws-menu-side .ws-channel-link.ws-notjoined:hover,
 #ws-menu-side .ws-channel-link.ws-notjoined.active {
   opacity: 1;
+}
+/* A group reads as a folder of the Channels section: its name as written,
+   not in a section heading's capitals, its folder in the channels' own
+   column and the chevron at the end of the line, shown on hover and while
+   the group is closed. Its channels and the groups inside it hang under it
+   on a thin line of its colour. */
+#ws-menu-side .ws-group-title {
+  padding: 0;
+  font-size: .85rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+}
+#ws-menu-side .ws-group-toggle {
+  gap: .4rem;
+  padding: var(--ws-row-y, .3rem) var(--ws-space-2, .5rem);
+  border-radius: var(--ws-radius-sm);
+}
+#ws-menu-side .ws-group-icon {
+  width: 1rem;
+  height: auto;
+  background: none;
+  font-size: .9rem;
+  color: color-mix(in srgb, var(--ws-group, var(--pg-fg-2)) 80%, var(--pg-fg-emphasis));
+}
+#ws-menu-side .ws-group-toggle .ws-group-chevron {
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+#ws-menu-side .ws-group-toggle:is(:hover, :focus-visible, [aria-expanded="false"]) .ws-group-chevron {
+  opacity: .7;
+}
+#ws-menu-side .ws-group-inner {
+  margin: 1px 0 .25rem .95rem;
+  border-left: 1.5px solid color-mix(in srgb, var(--ws-group, var(--pg-border-color)) 45%, transparent);
+}
+#ws-menu-side .ws-group-inner > .ws-channel-link {
+  border-radius: 0 var(--ws-radius-sm) var(--ws-radius-sm) 0;
+}
+#ws-menu-side .ws-side-subgroup {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
 }
 /* A mention count in the workspace accent; an unread count stays neutral. */
 #ws-menu-side .ws-count.ws-count-mention {
@@ -18201,6 +18268,10 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* More alone in the last row takes the whole row. */
+#ws-menu-side .ws-side-more-tile:nth-child(odd) {
+  grid-column: 1 / -1;
 }
 /* Open, More reads as pressed: the rows it opened hang under it. */
 #ws-menu-side .ws-side-more-tile[aria-expanded="true"] {

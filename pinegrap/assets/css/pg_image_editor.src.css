@@ -2888,6 +2888,35 @@
   margin: 0;
 }
 
+/* Save to Files: the upload limit under the estimate, the smaller size
+   offered over it; the note keeps the left, the buttons the right. */
+.pgie-anim-foot {
+  flex-wrap: wrap;
+}
+
+.pgie-confirm-box .pgie-anim-foot p.pgie-note {
+  flex: 1 1 200px;
+}
+
+.pgie-anim-limit:empty {
+  display: none;
+}
+
+.pgie-anim-limit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.pgie-confirm-box .pgie-anim-limit p {
+  margin: 0;
+}
+
+.pgie-anim-limit.pgie-anim-warn p {
+  color: var(--pgie-danger);
+}
+
 @media (max-width: 599.98px) {
   .pgie-anim-body {
     grid-template-columns: 1fr;
