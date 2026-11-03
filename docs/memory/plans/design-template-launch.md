@@ -20,7 +20,7 @@ description: Plan for the Phone Launch Site template (pinegrap-launch): three mo
 ## Which steps are there?
 - 1 Done (#6163). Data and shared parts: `parts.php` (builders, the phone's data, prices, accessories, press quotes; account bar, header, footer, launch band, page shells, model card, spec table, swatches, form fields, comment thread, staff bar); test `design_template_launch_test.php`.
 
-- 2 Public pages: `pages_public.php` (home, features, camera, specs, compare, about, FAQ).
+- 2 Done (#6189). Public pages: `pages_public.php` (home, features, camera, specs, compare, about, FAQ).
 
 - 3 Shop: `shop.php` (Phones and Accessories groups, `buy`, `accessories`, product, cart, checkout, order, `email_order`).
 
