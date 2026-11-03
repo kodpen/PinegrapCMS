@@ -307,6 +307,7 @@ function get_help_url($properties = array())
         'add_zone'                         => 'commerce-cont#create-edit-zone',
         'edit_zone'                        => 'commerce-cont#create-edit-zone',
         'view_shipping_methods'            => 'commerce-cont#shipping-methods',
+        'view_stock_moves'                 => 'commerce-cont#stock-history',
         'add_shipping_method'              => 'commerce-cont#create-edit-shipping-method',
         'edit_shipping_method'             => 'commerce-cont#create-edit-shipping-method',
         'view_arrival_dates'               => 'commerce-cont#arrival-dates',

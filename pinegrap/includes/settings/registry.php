@@ -314,6 +314,10 @@ function pg_settings_categories()
             ),
             'lists' => array(
                 'product_feed_excluded_groups' => 1,
+                'stock_location_name' => 1,
+                'stock_location_address' => 1,
+                'stock_location_order' => 1,
+                'stock_location_enabled' => 1,
             ),
         ),
 

@@ -3805,7 +3805,7 @@
     "status": "durum",
     "status, account, messages, brief": "durum, hesap, mesajlar, brief",
     "status, follow, account, message": "durum, takip, hesap, mesaj",
-    "stock location, location, warehouse, shop, store, consignment, transfer, stock history": "stok konumu, konum, depo, mağaza, dükkan, konsinye, transfer, stok geçmişi",
+    "stock location, location, warehouse, shop, store, consignment, transfer, stock history": "stock location, location, warehouse, shop, store, consignment, transfer, stock history, stok konumu, konum, depo, magaza, mağaza, dukkan, dükkan, konsinye, stok gecmisi, stok geçmişi",
     "stock quantity changed": "stok miktarı değişti",
     "stock tracking off": "stok takibi kapandı",
     "stock tracking on": "stok takibi açıldı",
