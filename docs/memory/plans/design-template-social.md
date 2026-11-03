@@ -31,7 +31,7 @@ description: Plan for the Social Community template (pinegrap-social): a photo c
 
 - 6 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Community News", blog post, search, error); test `…_standard_test.php`.
 
-- 7 Account and staff: `account.php` (sign-in pages, My Account, staff area, `blog_new`, account e-mails); test `…_account_test.php`.
+- 7 Done (#6346). Account and staff: `account.php`; test `…_account_test.php`.
 
 - 8 Assembly: `pinegrap-social.php` (order 78, icon `bi-camera`, look and palette, contact group `newsletter`, folders `posts` and `avatars`, `psc-` User Styles, search map), shared tests' lists, `designer/design-template-social.md`, plan deleted; PR body names `[NEW] Added the Social Community design template`.
 
