@@ -33,9 +33,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/design_file_form.php');
 $id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $stored_name = ($id > 0) ? (string) db_value("SELECT name FROM files WHERE (id = '" . $id . "') AND (design = '1')") : '';
 if (
-    ($stored_name === '')
+    pg_design_file_name_unsafe($stored_name)
     || ($stored_name !== basename($stored_name))
-    || (strpos($stored_name, '..') !== false)
 ) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
