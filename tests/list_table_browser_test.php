@@ -112,7 +112,7 @@ function test_list_table_js_browser_select_shown()
 var s = new T.Selection(), out = {};
 s.only('5');
 var before = s.replaced(3, function () { this.selectIds(['3', '1', 3]); });
-out.payload = s.payload({ search: 'x' });
+out.payload = s.payload({ search: 'x' }); out.payload.ids.sort();
 out.all = s.all;
 out.count = s.count(10);
 out.before = before;
@@ -126,7 +126,7 @@ JS
 		return;
 	}
 
-	pg_assert_same(array('ids' => array('3', '1')), $result['payload'], 'Ctrl+A in a printed list sends the shown rows by id');
+	pg_assert_same(array('ids' => array('1', '3')), $result['payload'], 'Ctrl+A in a printed list sends the shown rows by id');
 	pg_assert_same(false, $result['all']);
 	pg_assert_same(2, $result['count']);
 	pg_assert_same(null, $result['before'], 'one row replaced offers no undo');

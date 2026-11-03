@@ -810,6 +810,7 @@ function pg_list_table_html(array $source, array $page, $label, $actions = '')
 
     $output = '<div class="pg-list-table" data-pg-list-table="' . h($source['list']) . '"'
         . ' data-pg-list-mode="' . ($source['all'] ? 'browser' : 'server') . '"'
+        . (!empty($source['printed']) ? ' data-pg-list-printed="1"' : '')
         . ' data-pg-list-columns="' . h((string) json_encode(pg_list_table_client_columns($columns), $json)) . '"'
         . ' data-pg-list-params="' . h((string) json_encode((object) $source['params_out'], $json)) . '"'
         . ' data-pg-list-sort="' . h(pg_list_sort_value($source['levels'])) . '"'
@@ -1021,4 +1022,110 @@ function pg_list_table_selected_ids(array $source, array $selection, $limit = 10
     $more = count($ids) > $limit;
 
     return array('ids' => array_slice($ids, 0, $limit), 'more' => $more);
+}
+
+/**
+ * The lists a screen prints whole without a rows action (browser mode):
+ * their sort is kept in the session by the list_table_sort action
+ * (pg_list_table_printed_sort()). A list joins this table in the step that
+ * moves its screen.
+ *
+ * @return array list names, as pg_list_state() keys them
+ */
+function pg_list_table_printed_lists()
+{
+    return array('view_menus', 'view_short_links');
+}
+
+/**
+ * A small list printed whole: the browser sorts and searches it itself
+ * (browser mode), so no SQL comes with it. The screen reads its records with
+ * its own query and rights and hands the rows over already built.
+ *
+ * Every column sorts in the browser unless its spec says 'sortable' =>
+ * false, or it is an actions or image column; a cell can carry the value it
+ * sorts by in a data-pg-sort-value attribute (pg_list_cell()'s attributes),
+ * e.g. a Unix time behind a relative date.
+ *
+ * @param array $spec 'list' (the list's name, its pg_list_state() key and
+ *                    one of pg_list_table_printed_lists()), 'columns'
+ *                    (key => spec as pg_list_table_column() takes it, without
+ *                    'sort'), 'levels' (the sort, e.g. pg_list_state()'s
+ *                    'sorts'), 'rows' (list of array('id', 'class', 'cells'
+ *                    => key => pg_list_cell())), 'edit' (quick edit, as
+ *                    pg_list_table_source() takes it)
+ * @return array array('source' => pg_list_table_source(), 'page' => the
+ *               page pg_list_table_html() prints)
+ */
+function pg_list_table_printed(array $spec)
+{
+    $specs = isset($spec['columns']) && is_array($spec['columns']) ? $spec['columns'] : array();
+    $source = pg_list_table_source(array(
+        'list' => $spec['list'] ?? '',
+        'columns' => $specs,
+        'all' => true,
+        'edit' => $spec['edit'] ?? null,
+    ));
+
+    foreach ($source['columns'] as $key => $column) {
+        $own = is_array($specs[$key] ?? null) ? $specs[$key] : array();
+
+        $source['columns'][$key]['sort'] = '';
+        $source['columns'][$key]['sortable'] = !in_array($column['kind'], array('actions', 'image'), true)
+            && (!array_key_exists('sortable', $own) || !empty($own['sortable']));
+    }
+
+    $source['levels'] = pg_list_table_levels(isset($spec['levels']) && is_array($spec['levels']) ? $spec['levels'] : array(), $source['columns']);
+    $source['printed'] = in_array($source['list'], pg_list_table_printed_lists(), true);
+    $rows = array_values(isset($spec['rows']) && is_array($spec['rows']) ? $spec['rows'] : array());
+
+    return array(
+        'source' => $source,
+        'page' => array('rows' => $rows, 'next' => null, 'total' => count($rows), 'restarted' => false),
+    );
+}
+
+/**
+ * Keeps the sort a printed list was given by a heading click in the
+ * browser, the way pg_list_state() keeps a list's sort, so the screen comes
+ * back sorted the same way. pg_list_state() checks every level against the
+ * screen's own columns when it reads them, so only the list's name and the
+ * form of the keys are checked here.
+ *
+ * @param mixed $list  one of pg_list_table_printed_lists()
+ * @param mixed $value the sort as the address carries it, e.g.
+ *                     'name:asc,created:desc' (pg_list_sort_value())
+ * @return bool false when the list or the sort was refused
+ */
+function pg_list_table_printed_sort($list, $value)
+{
+    if (!is_string($list) || !in_array($list, pg_list_table_printed_lists(), true) || !is_string($value) || ($value === '')) {
+        return false;
+    }
+
+    $levels = array();
+
+    foreach (array_slice(explode(',', $value), 0, 5) as $item) {
+        $parts = explode(':', trim($item), 2);
+        $key = trim($parts[0]);
+
+        if (!preg_match('/^[a-z][a-z0-9_]{0,39}$/', $key)) {
+            return false;
+        }
+
+        if (!isset($levels[$key])) {
+            $levels[$key] = array('sort' => $key, 'order' => (strtolower(trim($parts[1] ?? '')) === 'desc') ? 'desc' : 'asc');
+        }
+    }
+
+    $levels = array_values($levels);
+    $kept = $levels[0];
+
+    if (count($levels) > 1) {
+        $kept['then'] = array_slice($levels, 1);
+    }
+
+    $_SESSION['software']['list_state'][$list] = $kept;
+
+    return true;
 }
