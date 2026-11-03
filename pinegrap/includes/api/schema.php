@@ -759,6 +759,63 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Returns ------------------------------------------------------ */
+
+		array(
+			'id'      => 'returns.list',
+			'method'  => 'GET',
+			'path'    => '/returns',
+			'scope'   => 'orders:read',
+			'handler' => 'api_returns_list',
+			'returns' => array('list' => 'OrderReturn'),
+			'summary' => 'Return requests',
+			'description' => 'Every return request of every order, newest first, as the panel\'s Returns screen lists them, cursor paged. Each is the OrderReturn GET /orders/{id}/returns answers: the order lines it sends back, its status, when each status was reached, the refund and whether it came in time. status=open gives the ones still to be dealt with (requested, approved, shipped, received), the panel\'s default; one status gives that one. A site not yet updated to the version that keeps returns has an empty list.',
+			'params'  => array(
+				array('name' => 'status',   'in' => 'query', 'type' => 'enum', 'values' => array('open', 'requested', 'approved', 'rejected', 'shipped', 'received', 'refunded', 'closed')),
+				array('name' => 'order_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the returns of this order.'),
+				array('name' => 'limit',    'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',   'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'returns.get',
+			'method'  => 'GET',
+			'path'    => '/returns/{id}',
+			'scope'   => 'orders:read',
+			'handler' => 'api_returns_get',
+			'returns' => 'OrderReturn',
+			'summary' => 'One return request',
+			'description' => 'One return request with its lines, as GET /returns lists it.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'returns.update',
+			'method'  => 'POST',
+			'path'    => '/returns/{id}',
+			'scope'   => 'orders:write',
+			'handler' => 'api_returns_update',
+			'dry_run' => true,
+			'returns' => 'OrderReturn',
+			'summary' => 'Move a return request',
+			'description' => 'One move of the return\'s panel screen, made by the application\'s owner, with what the screen does after it. approve (from requested): the customer is mailed the carrier and code to send the goods with; without carrier and carrier_code the screen\'s suggestion is used (the delivery\'s carrier, else the site\'s default, else the latest approval\'s, and that carrier\'s latest code), a carrier sent without its code takes that carrier\'s latest code. reject (from requested): note is required, the customer is mailed it. ship (from approved): the goods are on their way back, with tracking_number; an empty carrier keeps the approval\'s. receive (from approved or shipped): the goods are back. close (from any status but rejected and closed): the case is settled outside these steps; a request closed before the goods were sent frees its lines to be asked for again. refund (from received): amount in minor units and method: driver gives the money back through the order\'s payment service (more than 0), manual records money given back another way (0 marks it refunded when the order screen already paid it back), with an optional reference; never more than is left to refund on the order; the customer is mailed for an amount over 0; the return invoice of an ERP order is issued on the panel. A field the action does not read is refused. Announced: order.return.approved, order.return.received, order.return.refunded. status_was, the status the caller last saw, refuses the move with 409 return_changed when the return has moved since. 409 return_not_movable: the action does not start from the return\'s status. 409 return_changed: another move came first. 409 return_in_progress: another return of the order is being saved; send the call again in a moment. 409 refund_driver_unavailable: the order\'s payment cannot be refunded through its service; refund it another way and record it with manual. 409 refund_refused: the payment service refused the refund, the return stays received; message has the service\'s words. A driver refund whose answer was unclear (no answer in time, an unreadable one) keeps the return refunded with refund.unclear true and answers 200: the money may have gone back, so check the payment service\'s own screen before anything else.',
+			'params'  => array(
+				array('name' => 'id',              'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'action',          'in' => 'body', 'type' => 'enum', 'values' => array('approve', 'reject', 'ship', 'receive', 'close', 'refund'), 'required' => true, 'description' => 'The move to make.'),
+				array('name' => 'status_was',      'in' => 'body', 'type' => 'enum', 'values' => array('requested', 'approved', 'rejected', 'shipped', 'received', 'refunded', 'closed'), 'description' => 'The status the caller last saw. When sent and the return has another one, nothing is done (409 return_changed).'),
+				array('name' => 'note',            'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'approve, reject: the words to the customer. Required with reject.'),
+				array('name' => 'carrier',         'in' => 'body', 'type' => 'string', 'max_length' => 32, 'nullable' => true, 'description' => 'approve, ship: the carrier the goods go back with, a carrier key the site knows, such as yurtici, or the carrier\'s name.'),
+				array('name' => 'carrier_code',    'in' => 'body', 'type' => 'string', 'max_length' => 64, 'nullable' => true, 'description' => 'approve: the code the customer gives the carrier.'),
+				array('name' => 'tracking_number', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'ship: the tracking number of the parcel sent back.'),
+				array('name' => 'amount',          'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'refund: required, minor units. 1999 is 19.99.'),
+				array('name' => 'method',          'in' => 'body', 'type' => 'enum', 'values' => array('driver', 'manual'), 'description' => 'refund: required. driver: through the order\'s payment service; manual: money given back another way, recorded.'),
+				array('name' => 'reference',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'nullable' => true, 'description' => 'refund with manual: a reference of the transfer. A driver refund keeps the service\'s own refund id.')
+			)
+		),
+
 		/* ----- Cart quotes -------------------------------------------------- */
 
 		array(
