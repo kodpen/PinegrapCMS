@@ -1,0 +1,141 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Tests for the products list on the list table driver
+ * (includes/fn/product_list.php): its columns per view, the quick edit
+ * columns keyed by their edit fields, a row's cells by column key and the
+ * list's place among the driver's lists.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+// Behind their gates these files only declare functions.
+if (!defined('PG_INIT_LOADED')) {
+	define('PG_INIT_LOADED', true);
+}
+
+require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+foreach (array('PATH' => '/', 'OUTPUT_PATH' => '/', 'OUTPUT_SOFTWARE_DIRECTORY' => 'pinegrap', 'BASE_CURRENCY_SYMBOL' => '$', 'DATE_FORMAT' => 'day_month', 'TIME_FORMAT' => 'twenty_four_hours') as $product_list_driver_test_name => $product_list_driver_test_value) {
+	if (!defined($product_list_driver_test_name)) {
+		define($product_list_driver_test_name, $product_list_driver_test_value);
+	}
+}
+
+function product_list_driver_test_view($filter, $compare_at = false)
+{
+	$_SESSION['software']['list_state']['view_products'] = array();
+
+	return pg_product_list_view($filter, true, $compare_at, true, array(1 => 'Colour', 2 => '', 3 => '', 4 => ''), true);
+}
+
+function product_list_driver_test_product($values = array())
+{
+	return array_merge(array(
+		'id' => '12', 'name' => 'MUG-1', 'enabled' => '1', 'image_name' => '', 'inventory' => '1', 'inventory_quantity' => '4',
+		'short_description' => 'Mug <big>', 'price' => '1250', 'taxable' => '1', 'form_name' => '', 'seo_score' => '0',
+		'seo_flags' => '0', 'seo_checked_at' => '0', 'seo_analysis_current' => '0', 'seo_impact' => null, 'seo_views' => '0',
+		'shippable' => '1', 'selection_type' => 'quantity', 'default_quantity' => '1', 'custom_field_1' => 'Red & blue',
+		'custom_field_2' => '', 'custom_field_3' => '', 'custom_field_4' => '', 'recurring' => '0', 'barcode_count' => '0',
+		'user' => 'ali', 'out_of_stock' => '0', 'out_of_stock_timestamp' => '0', 'timestamp' => (string) time(),
+	), $values);
+}
+
+function test_product_list_driver_columns()
+{
+	$columns = pg_list_table_columns(pg_product_list_columns(product_list_driver_test_view('all_products'), pg_pb_quick_edit_columns()));
+
+	pg_assert_same(
+		array('id', 'image', 'short_description', 'enabled', 'price', 'inventory_quantity', 'taxable', 'product_form', 'selection_type', 'default_quantity', 'shippable', 'custom_field_1', 'recurring_payment', 'seo', 'impact', 'last_modified', 'actions'),
+		array_keys($columns));
+	pg_assert_same(false, $columns['id']['hideable'], 'the name with the editor link is never hidden');
+	pg_assert_same('products.name', $columns['id']['sort']);
+	pg_assert_true($columns['seo']['hidden'], 'the score sorts through a column hidden at first');
+	pg_assert_false($columns['image']['sortable']);
+	pg_assert_false($columns['actions']['sortable']);
+	pg_assert_same("IF(products.inventory = '1', products.inventory_quantity, NULL)", $columns['inventory_quantity']['sort']);
+}
+
+function test_product_list_driver_quick_edit_columns()
+{
+	$columns = pg_list_table_columns(pg_product_list_columns(product_list_driver_test_view('all_products', true), pg_pb_quick_edit_columns()));
+	$editable = array();
+
+	foreach ($columns as $key => $column) {
+		if ($column['editable'] !== '') {
+			$editable[$key] = $column['editable'];
+		}
+	}
+
+	$expected = array('short_description' => 'text', 'enabled' => 'select', 'price' => 'money', 'inventory_quantity' => 'number');
+
+	if (isset(pg_pb_quick_edit_columns()['compare_at_price'])) {
+		$expected = array('short_description' => 'text', 'enabled' => 'select', 'price' => 'money', 'compare_at_price' => 'money', 'inventory_quantity' => 'number');
+	}
+
+	pg_assert_same($expected, $editable, 'each editable column is keyed by its edit field');
+
+	$columns = pg_list_table_columns(pg_product_list_columns(product_list_driver_test_view('all_products'), array()));
+
+	foreach ($columns as $key => $column) {
+		pg_assert_same('', $column['editable'], $key . ' is not editable without edit fields');
+	}
+}
+
+function test_product_list_driver_sort_columns_match_the_old_codes()
+{
+	$view = product_list_driver_test_view('shippable_products');
+	$sorts = pg_list_table_sort_columns(pg_list_table_columns(pg_product_list_columns($view, array())));
+
+	pg_assert_same(array(), array_values(array_diff(array_keys($view['sort_columns']), array_keys($sorts))), 'a kept sort still names its column');
+	pg_assert_false(isset($sorts['allowed_zones']), 'the zones do not sort');
+
+	$columns = pg_product_list_columns(product_list_driver_test_view('out_of_stock_products'), array());
+	pg_assert_false(isset($columns['seo']), 'no score column where the view does not sort by it');
+	pg_assert_same('out_of_stock_date', array_keys($columns)[count($columns) - 2]);
+}
+
+function test_product_list_driver_row_cells()
+{
+	$view = product_list_driver_test_view('all_products');
+	$context = array('quick_edit' => pg_pb_quick_edit_columns(), 'more_images' => array(), 'zones' => array());
+	$row = pg_product_list_row(product_list_driver_test_product(), $view, $context);
+	$columns = pg_list_table_columns(pg_product_list_columns($view, $context['quick_edit']));
+
+	pg_assert_same('12', (string) $row['id']);
+	pg_assert_same(array_keys($columns), array_keys($row['cells']), 'one cell per column, in its order');
+	pg_assert_contains('data-pg-open', $row['cells']['id']['html'], 'a double-click opens the product');
+	pg_assert_contains('edit_product.php?id=12', $row['cells']['id']['html']);
+	pg_assert_same('name', $row['cells']['id']['attributes']['data-pg-cell'], 'the name follows the enabled flag');
+	pg_assert_same('price', $row['cells']['price']['attributes']['data-pg-edit']);
+	pg_assert_same('12', $row['cells']['price']['attributes']['data-pg-edit-id']);
+	pg_assert_same('inventory_quantity', $row['cells']['inventory_quantity']['attributes']['data-pg-edit']);
+	pg_assert_contains('Mug &lt;big&gt;', $row['cells']['short_description']['html'], 'escaped');
+	pg_assert_contains('Red &amp; blue', $row['cells']['custom_field_1']['html']);
+
+	$html = pg_list_table_row_html($row, $columns);
+	pg_assert_false(strpos($html, 'name="products[]"') !== false, 'the driver selects; no check box');
+
+	$row = pg_product_list_row(product_list_driver_test_product(array('inventory' => '0')), $view, $context);
+	pg_assert_false(isset($row['cells']['inventory_quantity']['attributes']['data-pg-edit']), 'no stock to change without tracking');
+}
+
+function test_product_list_driver_is_a_driver_list()
+{
+	$definition = pg_list_table_definition('view_products');
+
+	pg_assert_same('includes/fn/product_list.php', $definition['file']);
+	pg_assert_same('pg_product_list_source', $definition['source']);
+	pg_assert_true(function_exists($definition['source']), 'the source function is in its file');
+	pg_assert_same(null, pg_product_list_source(array('role' => '3', 'manage_ecommerce' => '0'), array()), 'a user without the e-commerce right may not open it');
+}
