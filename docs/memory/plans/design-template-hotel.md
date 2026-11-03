@@ -22,7 +22,7 @@ description: Plan for the Hotel template (pinegrap-hotel): rooms as a collection
 - 3 Done (#6280): `rooms.php` (the Rooms collection, list, record page, `home_rooms`).
 - 4 Done (#6282): `mail.php`, `bookings.php` (booking requests, their views, lists and e-mails).
 - 5 Events: `events.php` (`meetings`, `event_enquiry`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, notify e-mails).
-- 6 Shop: `shop.php` (Gift Vouchers group, `vouchers`, product, cart, checkout, order, `email_order`).
+- 6 Done (#6287). Shop: `shop.php` (Gift Vouchers group, `vouchers`, product, cart, checkout, order, `email_order`).
 - 7 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Hotel Journal", blog post, search, error); test `…_standard_test.php`.
 - 8 Account and staff: `account.php` (sign-in, My Account, staff area, `blog_new` with samples, account e-mails); test `…_account_test.php`.
 - 9 Assembly: `pinegrap-hotel.php` (order 76, icon `bi-buildings`, look `elegant`, palette `cocoa`, contact group `newsletter`, folders, `pht-` User Styles, search map), the shared tests' lists, `designer/design-template-hotel.md`, plan deleted; PR body names `[NEW] Added the Hotel design template`.
