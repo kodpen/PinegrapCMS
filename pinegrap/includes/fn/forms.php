@@ -4134,7 +4134,7 @@ function get_standard_fields_for_view()
     }
     return $standard_fields;
 }
-// This function is used by form list view to create sql for filters.
+
 // Whether a field picked on the form list view screen (an order-by or a
 // filter field) is one the view can store: '' (none), a value of
 // get_standard_fields_for_view(), 'random' where $allow_random (only the first
@@ -4176,6 +4176,7 @@ function pg_form_list_view_field_allowed($value, array $standard_fields, array $
     return false;
 }
 
+// This function is used by form list view to create sql for filters.
 function prepare_sql_operation($operator, $operand_1, $operand_2)
 {
     $quote = '';
