@@ -8,7 +8,7 @@ description: Steps AP1-AP4 of plans/activitypub.md: actor, WebFinger and signatu
 - S under 400 product lines, M about 1,000. Tests in `tests/activitypub_<topic>_test.php` on fixtures in `tests/fixtures/activitypub/` (Mastodon's actor, Follow, Create(Note) and a signed request), memory under `platform/`, texts through `tr_add.php`.
 
 ## Which steps are there?
-- AP1 (M) Actor, WebFinger, signatures. `done` (#PRNUM); settings and keys in `config_text` rows `ap_settings` / `ap_keys` (no room on `config`).
+- AP1 (M) Actor, WebFinger, signatures. `done` (#6378); settings and keys in `config_text` rows `ap_settings` / `ap_keys` (no room on `config`).
   - Migration sub-step for the tables of question 1 (`install_create_table()`, in `get_tables()`, rerun twice). New `includes/fn/activitypub.php`: `pg_ap_enabled()`, `pg_ap_actor()` (the JSON-LD document: id, type Person or Organization by a setting, inbox, outbox, followers, publicKey, icon, the site's name and summary), `pg_ap_webfinger($resource)`, `pg_ap_nodeinfo()`, the key pair made once with the DKIM generator and sealed, `pg_ap_sign($method, $url, $body)` (HTTP Signatures: `(request-target)`, host, date, digest) and `pg_ap_verify($request)` (the remote key fetched through `pg_curl_run()` and cached in `data/cache/ap/`), `pg_ap_json($data)`; `router.php` answers `/.well-known/webfinger`, `/.well-known/nodeinfo` and `/@<handle>` with content negotiation. Tests: the documents against the fixtures, a signature round trip, a stale date refused. Memory: `platform/activitypub-actor.md`.
 
 - AP2 (M) Inbox and followers. After AP1.
