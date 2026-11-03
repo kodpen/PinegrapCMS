@@ -21360,6 +21360,15 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   white-space: nowrap;
   user-select: all;
 }
+/* A value's chip is never wider than its text box: a long name (a box named
+   after its title, a value with its "When empty" text) wraps inside the
+   chip, so its × stays in reach instead of beyond the side pane. */
+.wsf-values .wsf-chip {
+  max-width: 100%;
+  border-radius: .7rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .wsf-chip-skipped {
   border-style: dashed;
   border-color: var(--pg-warning-border-subtle);
