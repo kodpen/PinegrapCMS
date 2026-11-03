@@ -186,7 +186,11 @@ echo pg_page_shell(array(
         if (key === "index") {
             return refresh(key).then(function (before) {
                 if (before.running) { throw new Error(texts.busy); }
-                return fetch("update_search_index.php?continue=1", { credentials: "same-origin" });
+                // A POST with the form token: the script refuses a GET.
+                var indexBody = new FormData();
+                indexBody.append("token", token);
+                indexBody.append("continue", "1");
+                return fetch("update_search_index.php", { method: "POST", body: indexBody, credentials: "same-origin" });
             }).then(function () {
                 return refresh(key);
             }).then(function (after) {

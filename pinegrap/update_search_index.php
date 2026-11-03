@@ -43,19 +43,21 @@ if (!defined('REQUEST_URL')) {
 }
 
 // If this script is being run from a web browser (i.e. not a cron job),
-// then record login info from session for authentication later, and then unset session,
-// so that the rest of the script does not run as this user, so that content for pages and etc.
-// that will be stored in search index is generic and not specific to this user.
-// Also, verify that user has access to run this.
+// then record login info from session for authentication later, and then
+// save and close the session, so that the rest of the script does not run as
+// this user (content stored in the search index is generic, not specific to
+// this user) and so that the manager's other panel requests do not wait on the
+// session lock while pages are drawn. Closing writes the session as it was,
+// so the user stays signed in. Also, verify that user has access to run this.
+$search_index_token = '';
+
 if (isset($_SERVER['HTTP_HOST']) == true) {
     $username = $_SESSION['sessionusername'] ?? '';
     $userid = $_SESSION['sessionuserid'] ?? '';
+    $search_index_token = (string) ($_SESSION['software']['token'] ?? '');
 
-    // This command allows us to purely unset the session variables,
-    // without destroying the actual saved session data.  This is important,
-    // because when a user is done running this script, we don't want them
-    // to be logged out of the system.
-    unset($_SESSION);
+    session_write_close();
+    $_SESSION = array();
 
     // Try to find a user with the same login info and has a role of manager or above.
     // The session id is trusted; just confirm it is a manager-or-above account.
@@ -67,6 +69,14 @@ if (isset($_SERVER['HTTP_HOST']) == true) {
     if ($user_id == '') {
         log_activity(lang('access denied to update search index'), $username);
         output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
+    // A run from the panel is a POST with the form token; a link opened from
+    // another site must not start a crawl. The general job, when a browser
+    // opens job.php, dispatches this script without either.
+    if (!defined('PG_CRON_DISPATCH')
+        && !pg_search_index_web_request_valid($_SERVER['REQUEST_METHOD'] ?? '', $_POST['token'] ?? '', $search_index_token)) {
+        output_error(lang('Your session expired. Reload the page and try again.'));
     }
 }
 
@@ -1712,7 +1722,12 @@ if (!$search_index_done) {
         'vars' => array(pg_search_index_stage_label($search_index_state['stage']))));
 
     if (isset($_SERVER['HTTP_HOST']) && !defined('PG_CRON_DISPATCH')) {
-        $finish_continue = '<script>setTimeout(function () { window.location.replace(' . json_encode(PATH . SOFTWARE_DIRECTORY . '/update_search_index.php?continue=1') . '); }, 300);</script>';
+        // A POST with the form token, as the request that started it.
+        $finish_continue = '<form id="search_index_continue" method="post" action="' . h(PATH . SOFTWARE_DIRECTORY . '/update_search_index.php') . '">'
+            . '<input type="hidden" name="token" value="' . h($search_index_token) . '">'
+            . '<input type="hidden" name="continue" value="1">'
+            . '</form>'
+            . '<script>setTimeout(function () { document.getElementById("search_index_continue").submit(); }, 300);</script>';
     }
 } elseif ($index_failures > 0) {
     $finish_icon = 'bi-exclamation-triangle-fill fg-warning';
