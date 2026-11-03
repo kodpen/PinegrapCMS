@@ -68,6 +68,11 @@ function test_ws_voice_answers_are_wired()
 	pg_assert_contains("ws_voice_answer_spoken(\$channel, (int) \$sent['message_id'], (int) \$row['message_id'], \$text, (int) \$row['requested_by'])", $read('includes/workspace/ai.php'), 'Pinegrap AI');
 	pg_assert_contains("ws_voice_answer_spoken(\$channel, (int) \$sent['message_id'], (int) \$row['message_id'], \$text, (int) \$row['requested_by'])", $read('includes/workspace/api_claude.php'), 'Claude\'s answer route');
 	pg_assert_contains("ws_voice_answer_spoken(\$channel, \$reply_id, (int) \$message['id'], ws_mcp_agent_neutral(\$answer, WS_MESSAGE_MAX), (int) \$asker['id'])", $read('includes/workspace/mcp_agent.php'), 'an MCP agent');
+	$voice = $read('includes/workspace/voice.php');
+	$from = strpos($voice, 'function ws_voice_answer_spoken(');
+	$spoken = substr($voice, $from, strpos($voice, "\n}\n", $from) - $from);
+
+	pg_assert_contains("!ws_voice_channel_allowed(\$channel)", $spoken, 'a channel that keeps its recordings sends no answer out either');
 	pg_assert_contains("asked = this.answersRecording(parent)", $read('assets/js/workspace.js'), 'the screen knows an answer to a recording');
 	pg_assert_contains("(!asked && !voice.speakOn(CFG.api_url, CFG.me))", $read('assets/js/workspace.js'), 'the switch only decides other answers');
 	pg_assert_contains("window.PGWsVoice.isVoice(file.name)", $read('assets/js/workspace.js'), 'a recording by name');

@@ -1369,8 +1369,11 @@ function ws_voice_answer_locale($text)
  * it back; the answer's text stays as it is. Without a service, or when the
  * service refuses, nothing is kept and the asker's browser reads the answer
  * aloud (speakAnswer() in workspace.js); the refusal shows on the card.
- * Shared by Claude's answer route (api_claude.php), Pinegrap AI (ai.php) and
- * an MCP agent (mcp_agent.php).
+ * A channel that keeps its recordings (ws_voice_channel_allowed(): a private
+ * channel without the switch, a guest room, a channel shared with a guest, a
+ * discussion of such) sends no answer out either. Shared by Claude's answer
+ * route (api_claude.php), Pinegrap AI (ai.php) and an MCP agent
+ * (mcp_agent.php).
  *
  * @param array  $channel    where the answer was written
  * @param int    $message_id the answer
@@ -1384,6 +1387,10 @@ function ws_voice_answer_spoken($channel, $message_id, $parent_id, $text, $user_
     $out = array('spoken' => false, 'error' => '');
 
     if (!ws_voice_schema_ready() || ((int) $parent_id <= 0) || ((int) $message_id <= 0) || !ws_voice_speech_ready()) {
+        return $out;
+    }
+
+    if (!is_array($channel) || !ws_voice_channel_allowed($channel)) {
         return $out;
     }
 
