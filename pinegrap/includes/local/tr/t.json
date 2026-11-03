@@ -1980,6 +1980,7 @@
     "The description is longer than {var:1} characters.": "Açıklama {var:1} karakterden uzun.",
     "The description is public on this site, so it is shown without a key. To try a call, connect with your application key and secret.": "Bu sitede tanım herkese açık olduğu için anahtar olmadan gösteriliyor. Bir çağrı denemek için uygulama anahtarınız ve gizli anahtarınızla bağlanın.",
     "The description of {var:1} is longer than the 30,000 characters Trendyol takes.": "{var:1} ürününün açıklaması Trendyol'un kabul ettiği 30.000 karakterden uzun.",
+    "The description takes plain text: no < or > characters.": "Açıklama düz metin alır: < veya > karakteri kullanılamaz.",
     "The design \"{name}\" and its {n} page(s) will be moved to the Recycle Bin.": "\"{name}\" tasarımı ve {n} sayfası Geri Dönüşüm Kutusuna taşınacak.",
     "The design \"{name}\" will be deleted.": "\"{name}\" tasarımı silinecek.",
     "The design \"{name}\" will be moved to the Recycle Bin.": "\"{name}\" tasarımı Geri Dönüşüm Kutusuna taşınacak.",
