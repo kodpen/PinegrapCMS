@@ -81,7 +81,7 @@ description: Generated from the module field of the memory files: each includes/
 - `object_storage`: [[object-storage-client]]
 - `order_completion`: [[order-completion]], [[order-completion-account]], [[order-completion-after-lines]], [[order-completion-before-lock]], [[order-completion-context]], [[order-completion-from-payment]], [[order-completion-line-comments]], [[order-completion-lines]], [[order-completion-shipping-less]]
 - `order_list`: [[orders-list-amount-column]], [[orders-list-bulk-actions]]
-- `order_report`: [[order-report-totals]]
+- `order_report`: [[order-report-screen]], [[order-report-totals]]
 - `order_view`: [[order-screen-shipping-input]], [[order-view-screen-rows]], [[print-order-shipping-card]]
 - `output`: [[list-status-words]]
 - `page_bulk`: [[page-bulk-edit]]
