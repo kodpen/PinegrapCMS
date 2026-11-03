@@ -1769,8 +1769,9 @@ function install_heavy_tables() {
 		// on a table still on MyISAM every added index copies it too.
 		// contacts.iys_email_status (11.0.39) copies the contact list where
 		// it cannot be added in place. ship_tos.district (11.0.134) copies the
-		// recipients, one or more rows per order.
-		'2026.11.0' => array('products', 'page', 'style', 'comments', 'order_items', 'contacts', 'ship_tos'),
+		// recipients, one or more rows per order. forms.order_id, paid_at and
+		// idx_order_id (11.0.154) copy the submitted form records.
+		'2026.11.0' => array('products', 'page', 'style', 'comments', 'order_items', 'contacts', 'ship_tos', 'forms'),
 	);
 
 }

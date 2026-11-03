@@ -117,3 +117,65 @@ function test_form_fee_settings_clean()
 
 	pg_assert_same(0, pg_form_fee_settings_clean(null)['product_id'], 'nothing in: no product');
 }
+
+function test_form_fee_settings_stored_shape()
+{
+	pg_assert_same('', pg_form_fee_settings_encode(array('product_id' => 0, 'amount_min' => 500)), 'no product: nothing stored');
+	pg_assert_same('', pg_form_fee_settings_encode('junk'), 'junk: nothing stored');
+
+	$stored = pg_form_fee_settings_encode(array('product_id' => '9', 'amount_source' => 'field', 'amount_field' => 'gift', 'amount_max' => 5000, 'extra' => 1));
+	$back = pg_form_fee_settings_decode($stored);
+	pg_assert_same(9, $back['product_id'], 'product kept through JSON');
+	pg_assert_same('field', $back['amount_source'], 'source kept');
+	pg_assert_same('gift', $back['amount_field'], 'field kept');
+	pg_assert_same(5000, $back['amount_max'], 'bound kept');
+	pg_assert_true(strpos($stored, 'extra') === false, 'unknown keys never stored');
+
+	pg_assert_same(0, pg_form_fee_settings_decode(null)['product_id'], 'NULL column: no fee');
+	pg_assert_same(0, pg_form_fee_settings_decode('')['product_id'], 'empty column: no fee');
+	pg_assert_same(0, pg_form_fee_settings_decode('{broken')['product_id'], 'unreadable JSON: no fee');
+}
+
+function test_form_payment_order_columns()
+{
+	$fee = pg_form_fee(_test_form_fee_settings(array('offline' => 1)), array());
+	$contact = array(
+		'contact_id' => 4, 'user_id' => 0, 'first_name' => ' Ada ', 'last_name' => 'Lovelace',
+		'email_address' => 'ada@example.com', 'phone_number' => '555', 'country' => 'TR', 'junk' => 'x',
+	);
+	$columns = pg_form_payment_order_columns($fee, $contact, 'Registration fee', 'TRY', true);
+
+	pg_assert_same('incomplete', $columns['order']['status'], 'written incomplete: the payment completes it');
+	pg_assert_same(15000, $columns['order']['total'], 'the total is the fee');
+	pg_assert_same(15000, $columns['order']['subtotal'], 'nothing added to the subtotal');
+	pg_assert_same('TRY', $columns['order']['currency_code'], 'the site currency');
+	pg_assert_same('Ada', $columns['order']['billing_first_name'], 'billing from the contact, trimmed');
+	pg_assert_same('ada@example.com', $columns['order']['billing_email_address'], 'billing e-mail');
+	pg_assert_same('', $columns['order']['billing_city'], 'a missing contact field is empty');
+	pg_assert_same(4, $columns['order']['contact_id'], 'the contact');
+	pg_assert_same(1, $columns['order']['offline_payment_allowed'], 'offline allowed by the form and the store');
+	pg_assert_true(!isset($columns['order']['notes']), 'notes untouched');
+
+	pg_assert_same(7, $columns['item']['product_id'], 'one line of the fee product');
+	pg_assert_same(1, $columns['item']['quantity'], 'quantity 1');
+	pg_assert_same(15000, $columns['item']['price'], 'line price is the fee');
+	pg_assert_same(0, $columns['item']['tax_total'], 'no tax on top');
+	pg_assert_same('Registration fee', $columns['item']['product_name'], 'product name');
+
+	$no_store = pg_form_payment_order_columns($fee, $contact, 'Fee', 'TRY', false);
+	pg_assert_same(0, $no_store['order']['offline_payment_allowed'], 'store without offline payment: not allowed');
+
+	$refused = pg_form_fee(_test_form_fee_settings(array('amount_source' => 'field', 'amount_field' => 'a', 'amount_min' => 1000)), array('a' => '5'));
+	pg_assert_same(null, pg_form_payment_order_columns($refused, $contact, 'Fee', 'TRY', true), 'a refused fee writes no order');
+	pg_assert_same(null, pg_form_payment_order_columns(null, $contact, 'Fee', 'TRY', true), 'no fee writes no order');
+}
+
+function test_form_payment_mark_paid_once()
+{
+	$query = pg_form_payment_mark_paid_query(31, 1700000000);
+	pg_assert_true(strpos($query['sql'], 'paid_at = 0') !== false, 'only a record still unpaid is marked');
+	pg_assert_true(strpos($query['sql'], 'order_id = ?') !== false, 'found by its order');
+	pg_assert_same(array(1700000000, 31), $query['params'], 'time then order');
+	pg_assert_same(null, pg_form_payment_mark_paid_query(0, 1700000000), 'no order: nothing marked');
+	pg_assert_same(1, pg_form_payment_mark_paid_query(5, 0)['params'][0], 'a stamp is never 0, which reads as unpaid');
+}

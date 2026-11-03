@@ -141,6 +141,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ai_fetch_daily();          // 11.0.150
 	upgrade_2026_11_0_product_preorder();        // 11.0.151
 	upgrade_2026_11_0_file_storage();            // 11.0.152
+	upgrade_2026_11_0_form_fee();                // 11.0.154
 
 }
 
@@ -4558,5 +4559,25 @@ function upgrade_2026_11_0_file_storage() {
 	}
 
 	install_note('Files: each file records whether its bytes are on the web server or in the object store; every existing file stays on the web server.');
+
+}
+
+// The fee of a designed form (2026.11.0, 11.0.154; includes/fn/form_payments.php).
+// custom_form_pages.payment holds the form's payment setting as JSON in the
+// pg_form_fee_settings_clean() shape; NULL or '' is a form without a fee.
+// A record of a form with a fee points at its one-line order through
+// forms.order_id; the order carries nothing. forms.paid_at is the time the
+// order was completed, 0 while unpaid. idx_order_id serves the completion's
+// lookup of the record by its order; the Unpaid list filter reads page_id
+// first and needs no index of its own. Every existing row keeps 0 / NULL:
+// no form had a fee before this step.
+function upgrade_2026_11_0_form_fee() {
+
+	install_add_column('custom_form_pages', 'payment', "TEXT NULL");
+	install_add_column('forms', 'order_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('forms', 'paid_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('forms', 'idx_order_id', "INDEX idx_order_id (order_id)");
+
+	install_note('Forms: a form made in the visual designer can ask for a fee, charged as a one-line order of a product; every existing form stays free.');
 
 }

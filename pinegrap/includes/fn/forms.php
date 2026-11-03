@@ -4050,6 +4050,23 @@ function get_standard_fields_for_view()
             'type' => ''
         )
     );
+    // The fee of a designed form (2026.11.0, 11.0.154): the number of the
+    // order the record points at once that order is completed, and Paid
+    // while forms.paid_at is set. Offered only once the columns are there.
+    if (function_exists('pg_form_payment_ready') && pg_form_payment_ready()) {
+        $standard_fields[] = array(
+            'name' => lang('Order Number'),
+            'value' => 'order_number',
+            'sql_name' => '(SELECT orders.order_number FROM orders WHERE (forms.order_id != 0) AND (orders.id = forms.order_id) AND (orders.order_number != 0))',
+            'type' => ''
+        );
+        $standard_fields[] = array(
+            'name' => lang('Paid'),
+            'value' => 'paid',
+            'sql_name' => 'CASE WHEN (forms.paid_at > 0) THEN "Paid" ELSE "" END',
+            'type' => ''
+        );
+    }
     return $standard_fields;
 }
 // This function is used by form list view to create sql for filters.
