@@ -14,7 +14,7 @@ description: Steps AU1-AU6 of plans/audiences.md: rule model and SQL builder, re
 - AU2 (M) Recompute job. After AU1. Done in #6181 (`core/audiences-recompute.md`).
   - `pg_audience_recompute($group_id, $budget)` in `includes/fn/audiences.php`: the rule's ids against the group's rule-made xref rows (`source = rule`), inserts and deletes in chunks, pages for big groups with a cursor in `data/temp/audience_<id>.json`, `last_computed_at` on the group; the general job (`pg_cron_jobs()`, light lane) takes the group with the oldest run first within `pg_cron_time_left()`; the difference goes to `pg_announce_contact_group_members()` so Flows, webhooks and campaign-profile triggers fire as for a hand change; Refresh now from the screen runs one group with short requests as the search index does. Tests: the diff on fixed sets, the chunking, the budget stop. Memory: `core/audiences-recompute.md`.
 
-- AU3 (M) The rule editor. After AU1.
+- AU3 (M) The rule editor. After AU1. Done in #6223 (`ui/contact-group-rules.md`, contact card door included).
   - `edit_contact_group.php`: a "Members by rule" switch, the rule rows (condition pick, operator, value controls: text, number, days, a product or group picker through `pgCombobox`, a consent purpose list), all/any per level with one nesting, a live count ("about 1,240 contacts") from `pg_audience_count()`, the last run time, Refresh now; `view_contact_groups.php` shows kind and count; the contact card lists rule-made groups as read-only chips. Memory: `ui/contact-group-rules.md`.
 
 - AU4 (S) Readers and doors. After AU1.

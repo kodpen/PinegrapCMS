@@ -195,6 +195,7 @@ function pg_panel_actions()
         // Refresh now of a contact group filled by rules: every role with the
         // contacts right and the group; the handler checks both.
         'audience_refresh' => array('file' => 'audiences.php', 'handler' => 'pg_panel_audience_refresh', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => true),
+        'audience_count' => array('file' => 'audiences.php', 'handler' => 'pg_panel_audience_count', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'product_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_product_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'page_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_page_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'commission_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_commission_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
