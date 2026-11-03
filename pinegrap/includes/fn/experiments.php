@@ -175,7 +175,9 @@ function pg_experiment_bucket_parse($value)
     foreach (explode('.', $value) as $pair) {
         $parts = explode(':', $pair);
 
-        if (count($parts) !== 2 || (preg_match('/^[1-9][0-9]{0,9}$/', $parts[0]) !== 1)) {
+        // A third part is the day a goal was last counted for the pair
+        // (pg_experiment_goal_seen_parse()); the bucket is read without it.
+        if ((count($parts) < 2) || (count($parts) > 3) || (preg_match('/^[1-9][0-9]{0,9}$/', $parts[0]) !== 1)) {
             continue;
         }
 
@@ -196,12 +198,15 @@ function pg_experiment_bucket_parse($value)
 /**
  * Writes the bucket cookie's value from experiment id => key pairs, sorted
  * by id. Invalid pairs are left out; beyond PG_EXPERIMENT_COOKIE_PAIRS the
- * lowest ids (the oldest experiments) drop. Pure.
+ * lowest ids (the oldest experiments) drop. A pair whose experiment has a
+ * goal mark gets the day as a third part ("<id>:<key>:<day>"). Pure.
  *
  * @param array $pairs
+ * @param array $seen experiment id => day number (pg_experiment_day_number())
+ *                    a goal was last counted
  * @return string
  */
-function pg_experiment_bucket_format(array $pairs)
+function pg_experiment_bucket_format(array $pairs, array $seen = array())
 {
     $clean = array();
 
@@ -220,7 +225,8 @@ function pg_experiment_bucket_format(array $pairs)
     $out = array();
 
     foreach ($clean as $id => $key) {
-        $out[] = $id . ':' . $key;
+        $day = isset($seen[$id]) ? $seen[$id] : null;
+        $out[] = $id . ':' . $key . (pg_experiment_day_valid($day) ? ':' . (int) $day : '');
     }
 
     return implode('.', $out);
@@ -256,11 +262,14 @@ function pg_experiment_bucket_read()
  * @param array     $pairs  experiment id => key
  * @param bool|null $secure Secure attribute; null asks pg_request_is_https()
  *                          (the router, before it is loaded, gives its own)
+ * @param array|null $seen  goal marks (experiment id => day); null keeps the
+ *                          ones the request's cookie holds
  * @return bool false when headers are already sent
  */
-function pg_experiment_bucket_write(array $pairs, $secure = null)
+function pg_experiment_bucket_write(array $pairs, $secure = null, $seen = null)
 {
-    $value = pg_experiment_bucket_format($pairs);
+    // The goal marks the cookie holds stay with their pairs.
+    $value = pg_experiment_bucket_format($pairs, is_array($seen) ? $seen : pg_experiment_goal_seen_read());
 
     if (headers_sent()) {
         return false;
@@ -706,4 +715,402 @@ function pg_experiment_beacon_view($experiment, $experiment_id, $variant_id)
     }
 
     return null;
+}
+
+
+// ── Goals ──────────────────────────────────────────────────────────────────
+//
+// A goal is counted for the variant the visitor's pg_exp cookie holds, into
+// the hour's experiment_hourly row (goals = goals + 1), once a day per
+// experiment: the day of the last count rides on the cookie's pair as a
+// third part ("<id>:<key>:<day>"), so nothing is written per visitor. The
+// kinds: a custom form sent (custom_form.php), an order completed
+// (pg_order_complete()), a click on an element marked data-pg-goal (a small
+// script on the experiment's page posts it to page_view.php) and a page
+// reached (get_page.php, and page_view.php for a cached copy).
+
+/**
+ * The day number of a Y-m-d date: days since 1970-01-01, whatever the
+ * server's time zone; 0 for a value that is no date. Pure.
+ *
+ * @param string $ymd
+ * @return int
+ */
+function pg_experiment_day_number($ymd)
+{
+    if (!is_string($ymd) || (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $ymd, $m) !== 1) || !checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+        return 0;
+    }
+
+    return (int) floor(gmmktime(0, 0, 0, (int) $m[2], (int) $m[3], (int) $m[1]) / 86400);
+}
+
+/**
+ * Whether a value is a day number the cookie can carry (1-6 digits). Pure.
+ *
+ * @param mixed $day
+ * @return bool
+ */
+function pg_experiment_day_valid($day)
+{
+    return (is_int($day) || (is_string($day) && ctype_digit($day))) && ((int) $day > 0) && ((int) $day < 1000000);
+}
+
+/**
+ * The goal marks of a pg_exp cookie value: experiment id => the day number
+ * a goal was last counted. A pair without one, or with a malformed one, has
+ * none. Pure.
+ *
+ * @param mixed $value
+ * @return array
+ */
+function pg_experiment_goal_seen_parse($value)
+{
+    $buckets = pg_experiment_bucket_parse($value);
+    $seen = array();
+
+    if ($buckets === array()) {
+        return $seen;
+    }
+
+    foreach (explode('.', $value) as $pair) {
+        $parts = explode(':', $pair);
+
+        if ((count($parts) === 3) && isset($buckets[(int) $parts[0]]) && (preg_match('/^[1-9][0-9]{0,5}$/', $parts[2]) === 1)) {
+            $seen[(int) $parts[0]] = (int) $parts[2];
+        }
+    }
+
+    ksort($seen);
+
+    return $seen;
+}
+
+/**
+ * The goal marks of the request's pg_exp cookie.
+ *
+ * @return array experiment id => day number
+ */
+function pg_experiment_goal_seen_read()
+{
+    return pg_experiment_goal_seen_parse(isset($_COOKIE[PG_EXPERIMENT_COOKIE]) ? $_COOKIE[PG_EXPERIMENT_COOKIE] : '');
+}
+
+/**
+ * Whether a goal of an experiment may be counted today: not yet counted on
+ * that day for this cookie. Pure.
+ *
+ * @param array $seen experiment id => day number
+ * @param int   $experiment_id
+ * @param int   $today day number
+ * @return bool
+ */
+function pg_experiment_goal_due(array $seen, $experiment_id, $today)
+{
+    return !isset($seen[(int) $experiment_id]) || ((int) $seen[(int) $experiment_id] !== (int) $today);
+}
+
+/**
+ * Whether an event is an experiment's goal. Pure.
+ * - form: a custom form sent on the page goal_target names, or, without
+ *   one, on the experiment's page or one of its variant drafts (page_id)
+ * - order: any completed order
+ * - click: a marked element on the experiment's own page (experiment_id)
+ *   whose goal name is goal_target, or any marked element without one (name)
+ * - page: the page goal_target names was viewed (page_id)
+ *
+ * @param array  $experiment id, page_id, goal_kind, goal_target, variants
+ * @param string $kind
+ * @param array  $event page_id, experiment_id, name
+ * @return bool
+ */
+function pg_experiment_goal_matches(array $experiment, $kind, array $event)
+{
+    $kind = (string) $kind;
+
+    if ((string) ($experiment['goal_kind'] ?? '') !== $kind) {
+        return false;
+    }
+
+    $target = trim((string) ($experiment['goal_target'] ?? ''));
+    $page_id = (int) ($event['page_id'] ?? 0);
+
+    switch ($kind) {
+        case 'form':
+            if ($page_id <= 0) {
+                return false;
+            }
+
+            if ($target !== '') {
+                return ctype_digit($target) && ((int) $target === $page_id);
+            }
+
+            if ((int) ($experiment['page_id'] ?? 0) === $page_id) {
+                return true;
+            }
+
+            foreach ((array) ($experiment['variants'] ?? array()) as $variant) {
+                if ((int) ($variant['draft_page_id'] ?? 0) === $page_id) {
+                    return true;
+                }
+            }
+
+            return false;
+
+        case 'order':
+            return true;
+
+        case 'click':
+            return ((int) ($event['experiment_id'] ?? 0) === (int) ($experiment['id'] ?? -1))
+                && (($target === '') || ($target === (string) ($event['name'] ?? '')));
+
+        case 'page':
+            return ($page_id > 0) && ctype_digit($target) && ((int) $target === $page_id);
+    }
+
+    return false;
+}
+
+/**
+ * The count lines an event gives: one [experiment id, variant id] per
+ * running experiment the event is a goal of, whose bucket the visitor holds
+ * for a variant it still has, not counted yet today; with the goal marks
+ * updated for them. Pure.
+ *
+ * @param array  $experiments running experiments (pg_experiment_running_for_goals())
+ * @param array  $buckets experiment id => key
+ * @param array  $seen    experiment id => day number
+ * @param string $kind
+ * @param array  $event
+ * @param int    $today day number
+ * @return array lines, seen
+ */
+function pg_experiment_goal_lines(array $experiments, array $buckets, array $seen, $kind, array $event, $today)
+{
+    $lines = array();
+
+    foreach ($experiments as $experiment) {
+        $id = (int) ($experiment['id'] ?? 0);
+
+        if (($id <= 0) || !isset($buckets[$id]) || !isset($experiment['variants'][$buckets[$id]])
+            || !pg_experiment_goal_due($seen, $id, $today) || !pg_experiment_goal_matches($experiment, $kind, $event)) {
+            continue;
+        }
+
+        $lines[] = array($id, (int) $experiment['variants'][$buckets[$id]]['id']);
+        $seen[$id] = (int) $today;
+    }
+
+    ksort($seen);
+
+    return array('lines' => $lines, 'seen' => $seen);
+}
+
+/**
+ * The running experiments among some ids whose goal is of a kind, with
+ * their variants, as pg_experiment_for_page() gives them.
+ *
+ * @param array  $ids experiment ids
+ * @param string $kind
+ * @return array
+ */
+function pg_experiment_running_for_goals(array $ids, $kind)
+{
+    $ids = array_values(array_filter(array_map('intval', $ids), function ($id) {
+        return $id > 0;
+    }));
+
+    if (($ids === array()) || !function_exists('pg_schema_has') || !pg_schema_has('experiments') || !pg_schema_has('experiment_variants')) {
+        return array();
+    }
+
+    $list = implode(',', $ids);
+
+    $result = db_q(
+        "SELECT id, page_id, goal_kind, goal_target
+        FROM experiments
+        WHERE id IN ($list) AND status = 'running' AND goal_kind = ?",
+        array((string) $kind));
+
+    $experiments = array();
+
+    while ($result && ($row = mysqli_fetch_assoc($result))) {
+        $row['id'] = (int) $row['id'];
+        $row['page_id'] = (int) $row['page_id'];
+        $row['variants'] = array();
+        $experiments[$row['id']] = $row;
+    }
+
+    if ($experiments === array()) {
+        return array();
+    }
+
+    $result = db_q(
+        "SELECT id, experiment_id, draft_page_id, variant_key, weight
+        FROM experiment_variants
+        WHERE experiment_id IN (" . implode(',', array_keys($experiments)) . ")");
+
+    while ($result && ($row = mysqli_fetch_assoc($result))) {
+        if (pg_experiment_key_valid($row['variant_key']) && isset($experiments[(int) $row['experiment_id']])) {
+            $experiments[(int) $row['experiment_id']]['variants'][$row['variant_key']] = array(
+                'id' => (int) $row['id'],
+                'draft_page_id' => (int) $row['draft_page_id'],
+                'variant_key' => $row['variant_key'],
+                'weight' => (int) $row['weight'],
+            );
+        }
+    }
+
+    return array_values($experiments);
+}
+
+/**
+ * Counts one goal of a variant into this hour's experiment_hourly row: one
+ * INSERT ... ON DUPLICATE KEY UPDATE.
+ *
+ * @param int $experiment_id
+ * @param int $variant_id
+ * @return bool
+ */
+function pg_experiment_count_goal($experiment_id, $variant_id)
+{
+    $experiment_id = (int) $experiment_id;
+    $variant_id = (int) $variant_id;
+
+    if (($experiment_id <= 0) || ($variant_id <= 0) || !pg_schema_has('experiment_hourly')) {
+        return false;
+    }
+
+    $day = date('Y-m-d');
+    $hour = (int) date('G');
+
+    return db_q(
+        "INSERT INTO experiment_hourly (id, day, hour, experiment_id, variant_id, views, goals)
+        VALUES (?, ?, ?, ?, ?, 0, 1)
+        ON DUPLICATE KEY UPDATE goals = goals + 1",
+        array(pg_experiment_hourly_key($day, $hour, $experiment_id, $variant_id), $day, $hour, $experiment_id, $variant_id)) !== false;
+}
+
+/**
+ * An event that may be a goal: counted for every running experiment of that
+ * goal kind the visitor's pg_exp cookie holds a bucket of, once a day each,
+ * and the day marked in the cookie. Nothing without a bucket, for crawlers
+ * and scripts, or for signed-in staff. When the cookie can no longer be sent
+ * (headers already out), nothing is counted, so a goal never counts twice.
+ *
+ * @param string $kind form, order, click, page
+ * @param array  $event page_id, experiment_id, name (pg_experiment_goal_matches())
+ * @return int the goals counted
+ */
+function pg_experiment_goal($kind, array $event = array())
+{
+    $buckets = pg_experiment_bucket_read();
+
+    if (($buckets === array()) || headers_sent()) {
+        return 0;
+    }
+
+    $context = pg_experiment_request_context('');
+
+    if (!empty($context['bot']) || !empty($context['staff'])) {
+        return 0;
+    }
+
+    $experiments = pg_experiment_running_for_goals(array_keys($buckets), $kind);
+
+    if ($experiments === array()) {
+        return 0;
+    }
+
+    $plan = pg_experiment_goal_lines($experiments, $buckets, pg_experiment_goal_seen_read(), $kind, $event, pg_experiment_day_number(date('Y-m-d')));
+
+    if ($plan['lines'] === array()) {
+        return 0;
+    }
+
+    pg_experiment_bucket_write($buckets, null, $plan['seen']);
+
+    foreach ($plan['lines'] as $line) {
+        pg_experiment_count_goal($line[0], $line[1]);
+    }
+
+    return count($plan['lines']);
+}
+
+/**
+ * A click goal's name as an element's data-pg-goal gives it: letters,
+ * digits, - and _, at most 64; '' otherwise. Pure.
+ *
+ * @param mixed $name
+ * @return string
+ */
+function pg_experiment_goal_name($name)
+{
+    return (is_string($name) && (preg_match('/^[A-Za-z0-9_-]{1,64}$/', $name) === 1)) ? $name : '';
+}
+
+/**
+ * Puts the click goal's script before the last </body>: a click on an
+ * element marked data-pg-goal (or inside one) posts the experiment id and
+ * the element's goal name to page_view.php, once per name and page load.
+ * The variant is the one the visitor's cookie holds, so the script carries
+ * nothing else. Pure.
+ *
+ * @param string $html
+ * @param int    $experiment_id
+ * @param string $url page_view.php
+ * @return string
+ */
+function pg_experiment_click_inject($html, $experiment_id, $url)
+{
+    $html = (string) $html;
+    $at = strripos($html, '</body>');
+    $experiment_id = (int) $experiment_id;
+
+    if (($experiment_id <= 0) || ($at === false)) {
+        return $html;
+    }
+
+    $url_js = json_encode((string) $url, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES);
+
+    if (!is_string($url_js)) {
+        return $html;
+    }
+
+    $script = '<script>(function(){var u=' . $url_js . ',s={};'
+        . 'document.addEventListener("click",function(e){try{'
+        . 'var t=e.target&&e.target.closest?e.target.closest("[data-pg-goal]"):null;if(!t){return;}'
+        . 'var n=String(t.getAttribute("data-pg-goal")||"");if(s[n]){return;}s[n]=1;'
+        . 'var d=new FormData();d.append("xg",' . $experiment_id . ');d.append("xn",n);'
+        . 'if(navigator.sendBeacon&&navigator.sendBeacon(u,d)){return;}'
+        . 'if(window.fetch){fetch(u,{method:"POST",body:d,keepalive:true,credentials:"same-origin"});}'
+        . '}catch(x){}},true);})();</script>';
+
+    return substr($html, 0, $at) . $script . substr($html, $at);
+}
+
+/**
+ * get_page.php: the click goal's script for the experiment this request
+ * serves, when its goal is a click; the page as it is otherwise. The stored
+ * copy of the page cache keeps the script.
+ *
+ * @param string $html
+ * @return string
+ */
+function pg_experiment_click_script_for_served($html)
+{
+    $served = pg_experiment_served();
+
+    if (!is_array($served)) {
+        return $html;
+    }
+
+    $experiment = pg_experiment_for_page($served['page_id']);
+
+    if (!is_array($experiment) || ((string) ($experiment['goal_kind'] ?? '') !== 'click') || ((int) $experiment['id'] !== (int) $served['experiment_id'])) {
+        return $html;
+    }
+
+    return pg_experiment_click_inject($html, $experiment['id'],
+        (defined('PATH') ? PATH : '/') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : 'pinegrap') . '/page_view.php');
 }

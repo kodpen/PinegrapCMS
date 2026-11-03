@@ -49,7 +49,7 @@ description: Generated from the module field of the memory files: each includes/
 - `email_campaign_send`: [[email-campaign-send]]
 - `errors`: [[fn-module-errors-mail-backup-consent]]
 - `events`: [[workspace-flows-event-depth]]
-- `experiments`: [[page-experiments-model]], [[page-experiments-serving]]
+- `experiments`: [[experiment-goals]], [[page-experiments-model]], [[page-experiments-serving]]
 - `experiments_sheet`: [[page-experiments-sheet]]
 - `explorer_side`: [[explorer-menu-tree]]
 - `file_storage`: [[file-object-storage]], [[file-object-storage-readers]], [[object-storage-migration]], [[workspace-files-object-storage]]
