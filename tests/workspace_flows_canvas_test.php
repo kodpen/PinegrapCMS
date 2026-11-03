@@ -304,40 +304,50 @@ JS
 	pg_assert_same(array(1), $result['opened'], 'the row\'s button opens the flow');
 }
 
-// The palette is the editor's left column: the boxes in their groups, in
-// the order start, values, logic, people and tasks, message, system, found
-// by every word searched for; the start group names the flow's start once
-// it has one. Nothing floats over the canvas any more.
+// The palette is the editor's left column, laid out in the order a flow is
+// built: 1 what starts it, 2 the steps after it (message, people and tasks,
+// logic, system), 3 what ends it, then the value boxes, which no arrow joins.
+// Each section has a hint; the first says which box starts this flow once it
+// has one, and every other start box is then refused. A search keeps the
+// boxes whose name holds every word. Nothing floats over the canvas.
 function test_workspace_flows_canvas_palette_groups()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
 	preg_match('/^    var PALETTE_GROUPS = \[.*?\];$/ms', $source, $groups);
+	preg_match('/^    var PALETTE_STAGES = \[.*?\];$/ms', $source, $stages);
 	preg_match('/^    var PALETTE = \[.*?\];$/ms', $source, $palette);
 	preg_match('/^    var KINDS = \{.*?\n    \};$/ms', $source, $kinds);
-	pg_assert_true(!empty($groups) && !empty($palette) && !empty($kinds), 'the groups, the palette and the kinds are declared');
+	pg_assert_true(!empty($groups) && !empty($stages) && !empty($palette) && !empty($kinds), 'the groups, the sections, the palette and the kinds are declared');
 	pg_assert_false(strpos($source, "ui.stage.appendChild(ui.palette)") !== false, 'the palette does not float over the canvas');
 	pg_assert_false(strpos($source, 'listToggle') !== false, 'the flow list is no longer a column of the editor');
 
 	$result = ws_flows_canvas_test_node(
-		array('paletteGroups', 'paletteHeading', 'startNode', 'kindOf'),
-		($groups[0] ?? '') . "\n" . ($palette[0] ?? '') . "\n" . ($kinds[0] ?? '') . "\n" . <<<'JS'
+		array('paletteGroups', 'paletteGroupOf', 'paletteStages', 'stageHint', 'stageStart', 'startTaken', 'startNode', 'kindOf'),
+		($groups[0] ?? '') . "\n" . ($stages[0] ?? '') . "\n" . ($palette[0] ?? '') . "\n" . ($kinds[0] ?? '') . "\n" . <<<'JS'
 var names = { fl_add_manual: 'Started by hand', fl_kind_schedule: 'At a time', fl_add_task: 'Task', fl_kind_condition: 'Condition', fl_add_email: 'E-mail', fl_kind_webhook: 'Webhook', fl_kind_value: 'Value', fl_kind_constants: 'Constants', fl_add_end: 'End' };
 t = function (key, value) { return (names[key] || key) + ((value === undefined) ? '' : ' ' + value); };
 function shape(groups) { return groups.map(function (group) { return group.group + ':' + group.items.map(function (item) { return item[0]; }).join(','); }); }
+function stagesOf(stages) { return stages.map(function (stage) { return stage.stage + ':' + stage.groups.map(function (group) { return group.group; }).join(','); }); }
 state = { graph: { nodes: [] } };
 var out = {};
 out.order = shape(paletteGroups(PALETTE, '')).map(function (line) { return line.split(':')[0]; });
 out.firstItems = shape(paletteGroups(PALETTE, '')).slice(0, 2);
+out.endItems = shape(paletteGroups(PALETTE, '')).slice(-2);
 out.search = shape(paletteGroups(PALETTE, 'TIME'));
 out.words = shape(paletteGroups(PALETTE, 'by hand'));
 out.none = paletteGroups(PALETTE, 'nothing like it').length;
 names.fl_add_end = 'Bitiş';
 names.fl_add_task = 'Bir tablo satırı';
 out.turkish = [shape(paletteGroups(PALETTE, 'BİTİŞ')), shape(paletteGroups(PALETTE, 'bitis')), shape(paletteGroups(PALETTE, 'TABLO SATIRI')), shape(paletteGroups(PALETTE, 'satiri'))];
-out.heading = paletteHeading('start');
-out.logic = paletteHeading('logic');
+out.stages = stagesOf(paletteStages(paletteGroups(PALETTE, '')));
+out.stagesFound = stagesOf(paletteStages(paletteGroups(PALETTE, 'TIME')));
+out.hint = stageHint('first');
+out.noStart = stageStart();
+out.stepsHint = stageHint('steps');
+out.free = [startTaken('schedule'), startTaken('task')];
 state.graph.nodes = [{ id: 'task_1', kind: 'task' }, { id: 'schedule_1', kind: 'schedule' }];
-out.started = paletteHeading('start');
+out.started = [stageStart(), stageHint('first')];
+out.taken = [startTaken('manual'), startTaken('event'), startTaken('task'), startTaken('end')];
 console.log(JSON.stringify(out));
 JS
 	);
@@ -352,15 +362,21 @@ JS
 		return;
 	}
 
-	pg_assert_same(array('start', 'values', 'logic', 'people', 'message', 'system'), $result['order'], 'groups in the plan\'s order');
-	pg_assert_same(array('start:manual,schedule,event,join,row,no_order', 'values:constants,value'), $result['firstItems'], 'each group keeps the palette\'s order');
+	pg_assert_same(array('start', 'message', 'people', 'logic', 'system', 'end', 'values'), $result['order'], 'groups in the order a flow is built');
+	pg_assert_same(array('start:manual,schedule,event,join,row,no_order', 'message:post,email,notify,report'), $result['firstItems'], 'each group keeps the palette\'s order');
+	pg_assert_same(array('end:end', 'values:constants,value'), $result['endItems'], 'the End box has its own group, the value boxes come last');
 	pg_assert_same(array('start:schedule'), $result['search'], 'a search keeps the boxes whose name holds it, any case');
 	pg_assert_same(array('start:manual'), $result['words'], 'every word searched for');
 	pg_assert_same(0, $result['none'], 'nothing found: no group');
-	pg_assert_same(array(array('logic:end'), array('logic:end'), array('people:task'), array('people:task')), $result['turkish'], 'Turkish I, İ, ı and i fold alike in the box search');
-	pg_assert_same('fl_group_start', $result['heading'], 'no start box yet: the group\'s name');
-	pg_assert_same('fl_group_logic', $result['logic'], 'the other groups their names');
-	pg_assert_same('fl_palette_this_flow At a time', $result['started'], 'with a start: This flow: <kind>');
+	pg_assert_same(array(array('end:end'), array('end:end'), array('people:task'), array('people:task')), $result['turkish'], 'Turkish I, İ, ı and i fold alike in the box search');
+	pg_assert_same(array('first:start', 'steps:message,people,logic,system', 'last:end', 'aside:values'), $result['stages'], 'first, steps, last, then the boxes outside the order');
+	pg_assert_same(array('first:start'), $result['stagesFound'], 'a section with nothing found is left out');
+	pg_assert_same('fl_stage_first_hint', $result['hint'], 'no start box yet: which boxes start a flow');
+	pg_assert_same('', $result['noStart'], 'and no line naming a start');
+	pg_assert_same('fl_stage_steps_hint', $result['stepsHint'], 'each section its hint');
+	pg_assert_same(array(false, false), $result['free'], 'no start box yet: every start box may be added');
+	pg_assert_same(array('fl_palette_this_flow At a time', 'fl_stage_first_taken'), $result['started'], 'with a start: This flow: <kind>, and how to start it another way');
+	pg_assert_same(array(true, true, false, false), $result['taken'], 'with a start: every other start box is refused, the steps are not');
 }
 
 // The flow list says how each flow starts in a short sentence: a time box
