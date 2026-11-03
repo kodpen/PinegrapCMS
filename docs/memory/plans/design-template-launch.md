@@ -26,7 +26,7 @@ description: Plan for the Phone Launch Site template (pinegrap-launch): three mo
 
 - 4 Requests: `mail.php`, `requests.php` (`tradein`, `tradein_view`, `my_tradeins`, `staff_tradeins`, `support`, `support_view`, `my_support`, `staff_support`, `privacy`, `email_reply`, notify e-mails).
 
-- 5 Standard: `standard.php` (contact, inbox, conversation, newsletter as the launch list, Newsroom blog with sample releases, blog post, search, error); test `…_standard_test.php`.
+- 5 Done (#6217). Standard: `standard.php` (contact, inbox, conversation, launch list, Newsroom, post, search, error, e-mails); test `…_standard_test.php`.
 
 - 6 Account and staff: `account.php`; test `…_account_test.php`.
 
