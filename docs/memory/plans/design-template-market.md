@@ -23,7 +23,7 @@ description: Plan for the Marketplace template (pinegrap-market): makers' shops 
 - 3 Done (#6285): `shop.php` (catalog by category and maker keys, shop pages, `cart_link`).
 - 4 Makers: `sellers.php` (`seller_new` with the Sellers collection and samples, `sellers` with filters, `seller` record page with reviews, the home's list widgets).
 - 5 Done (#6291): `mail.php`, `requests.php` (maker applications and help requests, their views, lists and e-mails).
-- 6 Standard: `standard.php` (contact, inbox, conversation, newsletter, Journal blog with maker stories, blog post, search, error); test `…_standard_test.php`.
+- 6 Done (#6292). Standard: `standard.php` (contact, inbox, conversation, newsletter, Journal blog with maker stories, blog post, search, error); test `…_standard_test.php`.
 - 7 Account and staff: `account.php`; test `…_account_test.php`.
 - 8 Assembly: `pinegrap-market.php` (order 77, icon `bi-shop`, look and palette, group `newsletter`, folders, `pmk-` styles, search map), shared tests' lists, `designer/design-template-market.md`, plan deleted; PR body names `[NEW] Added the Marketplace design template`.
 
