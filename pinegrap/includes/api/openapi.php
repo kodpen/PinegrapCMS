@@ -640,6 +640,8 @@ function api_openapi_objects()
         'MenuItem'     => 'api_menu_item_schema',
         'Comment'      => 'api_comment_schema',
         'ShortLink'    => 'api_short_link_schema',
+        'Experiment'   => 'api_experiment_schema',
+        'ExperimentVariant' => 'api_experiment_variant_schema',
         'StoreShippingMethod' => 'api_store_shipping_method_schema',
         'StoreZone'    => 'api_store_zone_schema',
         'StoreTaxZone' => 'api_store_tax_zone_schema',

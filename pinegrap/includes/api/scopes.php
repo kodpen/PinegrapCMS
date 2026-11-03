@@ -57,6 +57,11 @@ function api_scope_groups() {
 		// drafts as a prototype by a link (never as an MCP tool).
 		'design'    => array('label' => 'Page design', 'read' => 'design:read',   'write' => 'design:write'),
 
+		// A/B experiments of the designed pages and their results. Writing
+		// starts, pauses or ends one; setting one up and publishing the
+		// winner's design stay in the panel.
+		'experiments' => array('label' => 'Experiments', 'read' => 'experiments:read', 'write' => 'experiments:write'),
+
 		// What visitors wrote under pages, records, products and events.
 		// Writing is moderation: publishing, holding, featuring, removing.
 		'comments'  => array('label' => 'Comments',   'read' => 'comments:read',  'write' => 'comments:write'),
@@ -408,6 +413,10 @@ function api_owner_scopes($owner) {
 		// read it and put changes in front of them.
 		$scopes[] = 'design:read';
 		$scopes[] = 'design:write';
+
+		// The Experiments screens open to the same people.
+		$scopes[] = 'experiments:read';
+		$scopes[] = 'experiments:write';
 
 		// The health report names the firewall's state, which jobs stopped
 		// moving, how much disk is gone and which files fail their integrity
