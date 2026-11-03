@@ -124,7 +124,7 @@ function test_order_completion_tail_writes_in_order()
 		'page e-mailed' => array("'Product Information'"),
 		'product campaigns' => array("'action' => 'product_ordered'"),
 		'private access' => array('ECOMMERCE_PRIVATE_FOLDER_ID'),
-		'reward points' => array('UPDATE user SET user_reward_points = ?'),
+		'reward points' => array('UPDATE user SET user_reward_points = user_reward_points + ?'),
 		'reward membership' => array('UPDATE contacts SET expiration_date = ? WHERE id = ?'),
 		'reward e-mail' => array('ECOMMERCE_REWARD_PROGRAM_EMAIL_SUBJECT'),
 		'contact groups' => array('"INSERT INTO contacts_contact_groups_xref ('),
