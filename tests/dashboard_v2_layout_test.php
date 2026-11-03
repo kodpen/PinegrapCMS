@@ -52,7 +52,7 @@ function test_dashboard_v2_preset_layout()
 	pg_assert_same(array('ai', 'goals', 'queue', 'activity', 'visitors'), array_column($simple['cards'], 'id'));
 	pg_assert_same('L', $simple['cards'][4]['w']);
 	pg_assert_same(0, $simple['cards'][4]['per']);
-	pg_assert_same(array('since' => 1, 'actions' => 1, 'tiles' => 1, 'status' => 1), $simple['top']);
+	pg_assert_same(array('since' => 1, 'actions' => 1, 'tiles' => 1, 'status' => 1, 'brief' => 1), $simple['top']);
 }
 
 // Unknown and unseen ids, repeats and bad values are dropped or defaulted;
@@ -91,7 +91,7 @@ function test_dashboard_v2_layout_clean()
 		array('id' => 'firewall', 'w' => 'M'),
 		array('id' => 'visitors', 'w' => 'M', 'per' => 2, 'cmp' => 0, 'badge' => 1),
 	), $clean['cards']);
-	pg_assert_same(array('since' => 0, 'actions' => 1, 'tiles' => 1, 'status' => 0), $clean['top']);
+	pg_assert_same(array('since' => 0, 'actions' => 1, 'tiles' => 1, 'status' => 0, 'brief' => 1), $clean['top']);
 	pg_assert_same(array('forms'), $clean['actions']);
 	pg_assert_same(array('visits', 'seo', 'tasks', 'inbox'), $clean['tiles']);
 	pg_assert_same($old['goals'], $clean['goals']);

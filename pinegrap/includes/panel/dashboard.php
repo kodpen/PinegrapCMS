@@ -146,7 +146,15 @@ function pg_panel_get_dashboard_brief($request, $action)
     // queue behind it.
     require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/brief.php');
 
-    $brief = pg_dashboard_brief($user, pg_changelog_sections());
+    // The new dashboard asks for its own wording and the reader's own hour.
+    if (isset($request['dashboard']) && ($request['dashboard'] === 'v2')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/layout.php');
+        require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/page_greeting.php');
+
+        $brief = pg_dashboard_v2_brief_data($user, time());
+    } else {
+        $brief = pg_dashboard_brief($user, pg_changelog_sections());
+    }
 
     session_write_close();
 

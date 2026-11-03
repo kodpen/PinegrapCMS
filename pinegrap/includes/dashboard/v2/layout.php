@@ -256,7 +256,7 @@ function pg_dashboard_v2_layout_clean($layout, $old, $visible, $shortcuts, $figu
     };
 
     $top = array();
-    foreach (array('since', 'actions', 'tiles', 'status') as $part) {
+    foreach (array('since', 'actions', 'tiles', 'status', 'brief') as $part) {
         $top[$part] = (isset($layout['top'][$part]) && !$layout['top'][$part]) ? 0 : 1;
     }
 
