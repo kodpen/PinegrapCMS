@@ -1,6 +1,6 @@
 ---
 name: notifications-one-inbox
-description: The bell as the panel's one inbox (#3817): All, Site, Workspace filters, a flow's runs folded, the meeting call, pgBellOpen(), the Workspace list's Inbox opening it with the row's count
+description: The bell as the panel's one inbox (#3817): All, Site, Workspace filters, a flow's runs folded, the meeting call, pgBellOpen() for the old inbox address, the Workspace count with no Inbox entry (#6281)
 ---
 
 ## What does the bell show for a member of the team?
@@ -15,9 +15,11 @@ description: The bell as the panel's one inbox (#3817): All, Site, Workspace fil
 ## What does a workspace row keep from the old Workspace inbox?
 - Its icon before the title (`--workspace-color`), "Join" for a meeting about to start (a new tab, http(s) only), the address it opens (`ws_bell_describe()`), read in either place read in both (`ws_bell_sync_read()`, `pg_notification_mark_read()`).
 
-## How does the Workspace list's Inbox open it?
-- `workspace_side.js` `toBell()`: a click calls `window.pgBellOpen('workspace')`, which sets the filter for this opening and clicks the bell in a `setTimeout`: clicked at once, the Inbox click still on its way up closed the bell as a click outside it (and the open had marked everything read). The kept choice comes back when the bell closes. A page without the bell falls back to the screen's own hook or the link (`workspace.php?view=home&inbox=1`, the drawer).
-- The Inbox entry carries the Workspace row's count (`ws_inbox_unread_count()`, `data.inbox`), the same figure as the row's badge (`paintRowBadge()`): with no count there, the owner saw a red badge on the row and nothing in the opened panel that said what it was (2026-11-01). The bell's Workspace chip counts the same rows.
+## What opens it on Workspace?
+- `window.pgBellOpen('workspace')` sets the filter for this opening and clicks the bell in a `setTimeout`: clicked at once, the click that asked, still on its way up, closed the bell as a click outside it (and the open had marked everything read). The kept choice comes back when the bell closes. Since #6281 its caller is `workspace.php?view=home&inbox=1`, the address of the list's old Inbox entry, at start; a page without the bell opens the workspace's drawer.
+
+## Where is the Workspace's unread count?
+- On the Workspace row of the main menu (`ws_inbox_unread_count()`, `paintRowBadge()`) and on the bell's Workspace chip: the same rows. The list has had no Inbox entry since #6281 (owner 2026-11-03, `workflow/decisions-made-workspace-6.md`: the bell already shows them). From 2026-11-01 the entry had carried the count, because a red badge on the row with nothing in the opened panel did not say what it counted.
 
 ## Why?
 - Owner (2026-10-31, `workflow/decisions-made-workspace-5.md`): since 4.83 every Workspace inbox row was also a bell row, so one item showed in two lists with two counts. `ws_inbox` stays the store for the API, sync and push; the panel is 26rem wide for the sentence and the filters.

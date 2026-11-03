@@ -2,10 +2,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Workspace - the list in the main menu's Workspace panel, on every panel
- * page: the search of the workspace with a new channel, the settings and the
- * tour beside it, the places (overview, inbox, tasks), one section of
- * channels (pinned, the groups, the rest), the person's discussions and the
- * workspace's other screens as tiles, the rarer ones behind More.
+ * page: the search of the workspace with a new channel and the settings
+ * beside it, Today, one section of channels (pinned, the groups, the rest),
+ * the person's discussions and the workspace's other screens as tiles (My
+ * Tasks first), the rarer ones behind More.
  *
  * What is in it comes from the server only (ws_side_payload(),
  * includes/workspace/nav.php), which leaves out whatever the person may not
@@ -18,10 +18,10 @@
  * any page. The workspace's screens hand in what they answer on the spot
  * (PGWsSide.attach(): assets/js/workspace.js): the channel screen opens a
  * channel, a discussion or the overview in place and adds the pin, the
- * dragging and the right-click menus. The Inbox opens the panel's bell on
- * Workspace, the one inbox (backend.src.js); only a page without the bell
- * opens the workspace's own list. Which sections and groups are closed is
- * the person's, on this browser, the same on every page.
+ * dragging and the right-click menus. The list has no inbox of its own:
+ * the panel's bell is the one inbox (backend.src.js). Which sections and
+ * groups are closed is the person's, on this browser, the same on every
+ * page.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -399,8 +399,8 @@
         var titles = state.data.titles || {};
 
         // ── Head: one search field for the whole workspace, the row to
-        // itself; a new channel, the settings and the tour beside the
-        // panel's name over it ──
+        // itself; a new channel and the settings beside the panel's name
+        // over it (the tour is played from the channel's header) ──
 
         var head = el('div', 'ws-side-head');
         var tools = el('span', 'ws-side-head-tools');
@@ -479,17 +479,6 @@
             tools.insertBefore(gear, add);
         });
 
-        // The workspace's own tour (includes/workspace/tour.php), played
-        // again from here, on the screen it is about.
-        if (typeof hooks.tour === 'function') {
-            var tour = button('btn btn-sm btn-text theme-secondary rounded-pill ws-side-tool', '', 'bi-signpost-split', t('tour_start'));
-
-            tour.setAttribute('data-ws-tour', '1');
-            tour.setAttribute('data-ws-side-key', 'tour');
-            tour.addEventListener('click', function () { hooks.tour(); });
-            tools.insertBefore(tour, add);
-        }
-
         // In the panel's head when there is one, the tool that had the
         // focus keeping it; else at the end of the search row.
         var panelHead = panel ? panel.querySelector('.pg-menu-panel-head') : null;
@@ -549,37 +538,15 @@
         }
 
         // An entry of a place of the workspace (ws_nav_groups()).
-        function navLink(box, item, active, badge) {
+        function navLink(box, item, active) {
             var node = link('ws-channel-link' + (active ? ' active' : ''), item.url);
 
             node.setAttribute('data-ws-nav', item.key);
             node.setAttribute('data-pg-menu-label', item.label);
             node.appendChild(icon(item.icon));
             node.appendChild(el('span', 'ws-channel-name', item.label));
-
-            if (badge) {
-                node.appendChild(el('span', 'ws-count ws-count-mention', badge > 99 ? '99+' : badge));
-            }
-
-            inPlace(node, item.inbox ? toBell(navHooks[item.key], item.url) : navHooks[item.key]);
+            inPlace(node, navHooks[item.key]);
             box.appendChild(node);
-        }
-
-        // The bell is the panel's one inbox (backend.src.js): the Inbox opens
-        // it on Workspace. Where a page has no bell, the workspace's own list
-        // opens as before.
-        function toBell(own, url) {
-            return function () {
-                if ((typeof window.pgBellOpen === 'function') && window.pgBellOpen('workspace')) {
-                    return;
-                }
-
-                if (typeof own === 'function') {
-                    own();
-                } else {
-                    window.location.href = url;
-                }
-            };
         }
 
         // A tile of Tools: the screen's icon in its own colour and its short
@@ -638,14 +605,12 @@
             return box;
         }
 
-        // ── The places, without a heading: Today, Inbox, My Tasks ──
+        // ── Today, without a heading, over the channels ──
 
         var top = group('', '').box;
 
-        // The Inbox carries the menu row's count, so the opened panel shows
-        // what the row's badge is about; a click opens the bell on Workspace.
         (nav.top || []).forEach(function (item) {
-            navLink(top, item, navActive(item), item.inbox ? data.inbox : 0);
+            navLink(top, item, navActive(item));
         });
 
         // Channels in a group are listed under it (pinned ones stay pinned).
@@ -761,11 +726,12 @@
                 box.style.setProperty('--ws-group', item.hex);
             }
 
+            // A folder in the channels' own column, its name as it was
+            // written; the chevron at the end of the line.
             toggle.type = 'button';
             toggle.setAttribute('aria-expanded', shut ? 'false' : 'true');
             toggle.setAttribute('data-ws-side-key', 'group:' + item.id);
             toggle.title = shut ? t('grp_expand') : t('grp_collapse');
-            toggle.appendChild(icon(shut ? 'bi-chevron-right' : 'bi-chevron-down', 'ws-group-chevron'));
             toggle.appendChild(icon(shut ? 'bi-folder2' : 'bi-folder2-open', 'ws-group-icon'));
             toggle.appendChild(el('span', 'ws-group-name', item.name));
 
@@ -785,6 +751,7 @@
                 toggle.appendChild(key);
             }
 
+            toggle.appendChild(icon(shut ? 'bi-chevron-right' : 'bi-chevron-down', 'ws-group-chevron'));
             toggle.addEventListener('click', function () {
                 writeKept('ws-groups-closed', item.id, !shut);
                 draw();
@@ -850,20 +817,12 @@
         } else {
             part(channelsBox, pinned, true, 'ws-side-pinned');
 
-            if ((children[0] || []).length || manage) {
+            if ((children[0] || []).length) {
                 var groupSection = el('div', 'ws-side-part ws-side-groups');
 
                 (children[0] || []).forEach(function (item) {
                     groupBox(item, groupSection, 0);
                 });
-
-                if (manage && (typeof hooks.newGroup === 'function')) {
-                    var newGroup = button('btn btn-sm btn-link pg-link-secondary ws-group-new', t('grp_new'), 'bi-folder-plus');
-
-                    newGroup.setAttribute('data-ws-side-key', 'new-group');
-                    newGroup.addEventListener('click', function () { hooks.newGroup(); });
-                    groupSection.appendChild(newGroup);
-                }
 
                 channelsBox.appendChild(groupSection);
             }
@@ -873,6 +832,19 @@
 
             if (!data.channels.length) {
                 channelsBox.appendChild(emptyLine('channels', t('no_channels'), 'ws-empty-side'));
+            }
+
+            // New group closes the section, a quiet row for whoever
+            // manages the groups.
+            if (manage && (typeof hooks.newGroup === 'function')) {
+                var newGroup = el('button', 'ws-group-new no-popover');
+
+                newGroup.type = 'button';
+                newGroup.setAttribute('data-ws-side-key', 'new-group');
+                newGroup.appendChild(icon('bi-folder-plus'));
+                newGroup.appendChild(el('span', 'ws-channel-name', t('grp_new')));
+                newGroup.addEventListener('click', function () { hooks.newGroup(); });
+                channelsBox.appendChild(newGroup);
             }
         }
 
@@ -995,7 +967,7 @@
                     var active = navActive(item);
 
                     if (!toolsPart.shut || active) {
-                        navLink(moreList, item, active, 0);
+                        navLink(moreList, item, active);
                     }
                 });
 
