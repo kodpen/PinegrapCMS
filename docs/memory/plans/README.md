@@ -119,8 +119,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - storefront-api-routes-cart.md: Storefront API design note: the cart routes (create, read, add/update/remove line, coupon, shipping choice), their scopes and the cart code each one calls instead of copying it
 - storefront-api-routes-checkout.md: Storefront API design note: checkout routes (create from cart, totals, payment intent through the payment driver layer, confirm), the totals functions they call, guest checkout
 - storefront-api-routes-customer.md: Storefront API design note: customer routes (sign-in, sign-up, refresh, sign-out, password reset, profile, orders, addresses, returns) with scopes, limits and the website code each one calls
-- tls-settings-in-panel-steps.md: Steps TP1-TP4 of plans/tls-settings-in-panel.md: scheme helper, Secure Mode offer, CA store chosen by the site, Workspace Claude address check; claim as [plan:tls-settings-in-panel] TP<n>
-- tls-settings-in-panel.md: Plan (owner 2026-11-02, #5375): HTTPS behind any proxy trusted through Trusted Proxies with a Secure Mode offer, the CA store chosen by the site; no TLS edit of data/config.php; steps TP1-TP4
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
 - voice-to-assistants-steps.md: Steps VA1-VA6 of plans/voice-to-assistants.md: deaf hint, keyless hearing, speech service, spoken answers, voice message route, MCP agents; claim as [plan:voice-to-assistants] VA<n>
