@@ -41,7 +41,7 @@
     "Mail Room": "Posta Odası",
     "Mail cannot be moved into the folder it is read from.": "Posta, okunduğu klasöre taşınamaz.",
     "Mail queue": "Posta kuyruğu",
-    "Mail queue worked: {var:1} sent, {var:2} not sent.": "Posta kuyruğu çalıştı: {var:1} gönderildi, {var:2} gönderilemedi.",
+    "Mail queue worked: {var:1} sent, {var:2} not sent.": "E-posta kuyruğu çalıştı: {var:1} gönderildi, {var:2} gönderilemedi.",
     "Mail service": "Posta hizmeti",
     "MailChimp": "MailChimp",
     "MailChimp Error": "MailChimp Hatası",
