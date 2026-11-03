@@ -4919,7 +4919,7 @@
     "The visitors table was rebuilt on {var:1} and its file made smaller: {var:2} before, {var:3} now.": "Ziyaretçi tablosu {var:1} tarihinde yeniden kuruldu ve dosyası küçüldü: önce {var:2}, şimdi {var:3}.",
     "The visitors table was split into one partition per month on {var:1}: {var:2} before, {var:3} now.": "Ziyaretçi tablosu {var:1} tarihinde her ay için bir bölüme ayrıldı: önce {var:2}, şimdi {var:3}.",
     "The visitors table was split into one partition per month: {var:1} before, {var:2} now.": "Ziyaretçi tablosu her ay için bir bölüme ayrıldı: önce {var:1}, şimdi {var:2}.",
-    "The visual design \"{var:1}\" was migrated as \"{var:2}\" with {var:3} pages.": "\"{var:1}\" görsel tasarımı {var:3} sayfasıyla \"{var:2}\" adıyla taşındı.",
+    "The visual design \"{var:1}\" was migrated as \"{var:2}\" with {var:3} pages.": "\"{var:1}\" görsel tasarımı {var:3} sayfayla \"{var:2}\" adıyla taşındı.",
     "The visual design \"{var:1}\" was not migrated.": "\"{var:1}\" görsel tasarımı taşınmadı.",
     "The voice message was deleted.": "Sesli mesaj silindi.",
     "The voice name may hold letters, digits and . _ : / - only.": "Ses adı yalnızca harf, rakam ve . _ : / - içerebilir.",
