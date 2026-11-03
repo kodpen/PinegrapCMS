@@ -15,7 +15,7 @@ description: Generated from the module field of the memory files: each includes/
 - `audit_list`: [[audit-log-paging]]
 - `audit_rules`: [[audit-rule-registry]]
 - `audit_view`: [[audit-trail-screen]], [[audit-trail-settings-name]]
-- `auth`: [[device-limit-and-session-sign-out]], [[erp-link-rights]], [[filtered-folder-picker-path]], [[link-rights]], [[list-row-names]], [[settings-folder-pickers]], [[sign-in-one-message]]
+- `auth`: [[device-limit-and-session-sign-out]], [[erp-link-rights]], [[filtered-folder-picker-path]], [[link-rights]], [[list-row-names]], [[settings-folder-pickers]], [[sign-in-one-message]], [[user-disabled]]
 - `aws_sign`: [[aws-sigv4-signing]]
 - `background_render`: [[background-render]]
 - `backup`: [[backup-folder-download-zip]], [[backup-manager-names-and-list]], [[backup-object-storage]], [[fn-module-errors-mail-backup-consent]]

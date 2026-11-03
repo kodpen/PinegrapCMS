@@ -5055,6 +5055,7 @@
     "This account is connected to Google.": "Bu hesap Google'a bağlı.",
     "This account is connected to Microsoft.": "Bu hesap Microsoft'a bağlı.",
     "This account is connected to {var:1}.": "Bu hesap {var:1} hesabına bağlı.",
+    "This account is disabled, so you cannot log in as this user.": "Bu hesap pasif, bu yüzden bu kullanıcı olarak giriş yapamazsınız.",
     "This account is no longer in the workspace team.": "Bu hesap artık çalışma alanı ekibinde değil.",
     "This account is paused. Nothing is sent while it is, and changes made in the meantime are not queued.": "Bu hesap duraklatılmış. Duraklatıldığı sürece hiçbir şey gönderilmez, bu sırada yapılan değişiklikler de kuyruğa alınmaz.",
     "This account is signed in on {var:1} devices, and the limit is {var:2}. To continue on this device, the oldest {var:3} will be signed out.": "Bu hesap {var:1} cihazda açık ve sınır {var:2}. Bu cihazda devam etmek için en eski {var:3} oturum kapatılacak.",

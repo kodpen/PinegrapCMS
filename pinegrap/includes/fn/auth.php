@@ -2308,11 +2308,12 @@ function validate_login($username, $password)
             (
                 (user_username = '" . escape($username) . "')
                 OR (user_email = '" . escape($username) . "')
-            )
+            )" . pg_user_enabled_sql() . "
         LIMIT 1");
 
-    // An unknown name is checked against a stand-in hash, so it costs the
-    // same as a wrong password and the time taken does not tell the two apart.
+    // An unknown name (or a disabled account, which the lookup above skips)
+    // is checked against a stand-in hash, so it costs the same as a wrong
+    // password and the time taken does not tell the two apart.
     if (!is_array($row) || !isset($row['user_id'])) {
         pg_password_dummy_verify($password);
         return false;
@@ -2390,7 +2391,7 @@ function pg_session_signed_in()
     }
 
     return (bool) db_value("SELECT user_id FROM user
-        WHERE user_id = '" . (int) $_SESSION['sessionuserid'] . "' LIMIT 1");
+        WHERE user_id = '" . (int) $_SESSION['sessionuserid'] . "'" . pg_user_enabled_sql() . " LIMIT 1");
 }
 // The username can either be a username or email address for a user.
 function validate_username($username)
@@ -2424,10 +2425,10 @@ function validate_user()
     $result = db_q($query, array((string) (int) $_SESSION['sessionuserid'])) or output_error(lang('Query failed'));
     $row = mysqli_fetch_array($result);
     $num_rows = mysqli_num_rows($result);
-    // The account was deleted out from under a live session: clear it and send
-    // back to the login screen, the same end state the old invalid-login branch
-    // reached.
-    if ($num_rows == 0) {
+    // The account was deleted or disabled under a live session: clear it and
+    // send back to the login screen, the same end state the old invalid-login
+    // branch reached.
+    if (($num_rows == 0) || pg_user_is_disabled($row)) {
         $logged_in_as_different_user = $_SESSION['software']['logged_in_as_different_user'] ?? false;
         session_unset();
         session_destroy();
@@ -4416,6 +4417,12 @@ function initialize_user()
 
         $token_user_id = pg_auth_token_verify($_COOKIE['software']['auth']);
 
+        // A disabled account's token signs nobody in; the cookie is cleared
+        // like an invalid one.
+        if ($token_user_id && pg_user_id_is_disabled($token_user_id)) {
+            $token_user_id = false;
+        }
+
         if ($token_user_id) {
 
             $user = pg_load_user_row($token_user_id);
@@ -4473,8 +4480,10 @@ function initialize_user()
             // The API sends the raw password; verify it against the stored hash.
             // pg_password_verify() also upgrades a legacy row the first time an
             // API client signs in with it.
+            // A disabled account is no match: it costs and answers what an
+            // unknown name does.
             $cred = db_item("SELECT " . pg_password_select_columns() . ", user_email, user_role FROM user
-                WHERE (user_username = '" . e(API_USERNAME) . "') OR (user_email = '" . e(API_USERNAME) . "') LIMIT 1");
+                WHERE ((user_username = '" . e(API_USERNAME) . "') OR (user_email = '" . e(API_USERNAME) . "'))" . pg_user_enabled_sql() . " LIMIT 1");
 
             $api_password_ok = false;
 
@@ -4527,8 +4536,10 @@ function initialize_user()
 
         } else {
             // The session id was verified when it was set; load the row, no
-            // password re-check.
-            $user = pg_load_user_row((int) $_SESSION['sessionuserid']);
+            // password re-check. A disabled account's session loads no user.
+            if (!pg_user_id_is_disabled((int) $_SESSION['sessionuserid'])) {
+                $user = pg_load_user_row((int) $_SESSION['sessionuserid']);
+            }
         }
     }
 

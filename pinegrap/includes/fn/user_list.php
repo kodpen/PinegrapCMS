@@ -445,7 +445,8 @@ function pg_user_list_page($view, $terms, $window)
             user.user_contact as user_contact,
             user_2.user_username as user,
             user.user_online_timestamp as last_seen,
-            user.user_timestamp as timestamp' . $view['select'] . '
+            user.user_timestamp as timestamp' . (pg_user_has_disabled_at() ? ',
+            user.user_disabled_at' : '') . $view['select'] . '
         ' . $base . $search_sql . '
         ORDER BY ' . $view['order_by'] . pg_list_limit_sql($window),
         $search['params']);
@@ -621,7 +622,13 @@ function pg_user_list_row($row, $view, $providers)
             'suffix' => ($minutes == 1) ? '' : 's'))) . '</span>';
     }
 
-    // Google, Microsoft and Apple badges beside the name, next to the
+    // A disabled account (no credential signs it in), beside the name like
+    // the lock. Never on a row read before the column existed.
+    if (pg_user_is_disabled($row)) {
+        $username_cell .= ' <span class="badge theme-secondary fw-light">' . lang('Disabled') . '</span>';
+    }
+
+        // Google, Microsoft and Apple badges beside the name, next to the
     // sign-in lock, so the admin can see at a glance which accounts can sign
     // in with which provider, and which have no other way in.
     if ($providers !== null) {
