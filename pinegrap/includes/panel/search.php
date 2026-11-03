@@ -132,6 +132,7 @@ function pg_panel_backend_search($request, $action)
 
     // ── Visitors ──────────────────────────────────────────────────────────
     if ($gate['visitors']) {
+        $actions[] = array('label' => lang('Visitors'), 'icon' => 'bi-speedometer', 'url' => $base_url . '/visitors.php', 'keys' => array('ziyaretci', 'ziyaretçi', 'visitors', 'genel bakis', 'overview', 'trafik', 'traffic', 'kaynak', 'kanal'));
         $actions[] = array('label' => lang('Visitor Reports'), 'icon' => 'bi-people', 'url' => $base_url . '/view_visitor_reports.php', 'keys' => array('ziyaretci', 'ziyaretçi', 'visitor', 'visit', 'zia', 'rap'));
         $actions[] = array('label' => lang('Visitor Report'), 'icon' => 'bi-graph-up', 'url' => $base_url . '/view_visitor_report.php', 'keys' => array('ziyaret rapor', 'visitor report', 'rapor ziy', 'ziyrapor'));
         $actions[] = array('label' => lang('Google Search Console'), 'icon' => 'bi-google', 'url' => $base_url . '/search_console.php', 'keys' => array('search console', 'arama konsolu', 'google arama', 'gsc', 'site haritasi', 'sitemap', 'tiklama', 'gosterim'));
