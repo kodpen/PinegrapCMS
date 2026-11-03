@@ -1480,6 +1480,7 @@
     "Not enough stock. Available: {var:1}": "Yeterli stok yok. Mevcut: {var:1}",
     "Not enough visits yet: about {var:1} more for each version.": "Henüz yeterli ziyaret yok: her sürüm için yaklaşık {var:1} ziyaret daha gerekiyor.",
     "Not entered": "Girilmedi",
+    "Not every day by the sea is a beach day, and a grey afternoon is the best time for the spa.": "Deniz kenarındaki her gün plaj günü değildir; bulutlu bir öğleden sonra spa için en iyi zamandır.",
     "Not for dark mode, use {var}": "Koyu modda çalışmaz, {var} kullanın",
     "Not found": "Bulunamadı",
     "Not found.": "Bulunamadı.",
