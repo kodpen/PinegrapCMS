@@ -17,7 +17,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `registration` (4): open
 - Endpoints `remove` (3): open
 - Endpoints `return` (4): open
-- Endpoints `search` (5): taken
+- Endpoints `search` (5): #6064 (simple search); rest clean
 - Endpoints `seo` (8): open
 - Endpoints `setting` (14): open
 - Endpoints `ship` (3): open

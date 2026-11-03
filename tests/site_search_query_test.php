@@ -151,6 +151,21 @@ function test_site_search_query_call_sites()
 	pg_assert_contains("'__result_type_label'   => (isset(\$r['type_label'])", _site_search_query_fn('includes/fn/widgets.php', '_render_system_widget_search_results'));
 }
 
+// The simple search of the legacy page lists no page in an archived folder
+// or in the Recycle Bin: such a page answers 410 to a visitor. Its four
+// queries (featured, regions, keywords, comments) carry the same filter.
+function test_site_search_query_legacy_simple_skips_gone_pages()
+{
+	$legacy = _site_search_query_fn('get_search_results.php', 'get_search_results');
+	$start = strpos($legacy, "if (SEARCH_TYPE == 'simple') {");
+	$end = strpos($legacy, '$search_folder_id = db_value(');
+	pg_assert_true(($start !== false) && ($end !== false) && ($end > $start), 'simple branch is found');
+	$simple = substr($legacy, (int) $start, (int) $end - (int) $start);
+	pg_assert_contains("\$sql_live_pages = \" AND (folder.folder_archived = '0')\" . pg_designer_not_binned_sql('page.page_folder');", $simple);
+	pg_assert_same(5, substr_count($simple, '$sql_live_pages'), 'defined once, used by the four queries');
+	pg_assert_same(4, substr_count($simple, 'LEFT JOIN folder ON page.page_folder = folder.folder_id'), 'each query joins the folder');
+}
+
 function test_site_search_query_template_install_refreshes_index()
 {
 	$body = _site_search_query_fn('includes/fn/designer.php', 'pg_design_template_install');
