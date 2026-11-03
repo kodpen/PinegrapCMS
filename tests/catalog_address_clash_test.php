@@ -55,3 +55,16 @@ function test_catalog_address_slug_leaves_room_for_the_suffix()
 	pg_assert_same('a_b', pg_catalog_address_slug(str_repeat('a', 1) . '_b'), 'a short name is untouched');
 	pg_assert_same(244, strlen(pg_catalog_address_slug(str_repeat('a', 244) . '_' . str_repeat('b', 20))), 'no separator left at the cut');
 }
+
+// The "[n]" numbering skips the item being saved, as the clash check does:
+// a product at "X[1]" given the taken address "X" keeps "X[1]" instead of
+// moving to "X[2]" because its own row held "X[1]".
+function test_catalog_address_duplicate_number_skips_the_item_being_saved()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/content.php');
+
+	pg_assert_contains("function get_duplicate_catalog_item_address_name_number(\$address_name, \$number = 1, \$excluded = null)", $source, 'the numbering takes the excluded ids');
+	pg_assert_contains("\$address_name .= '[' . get_duplicate_catalog_item_address_name_number(\$address_name, 1, \$excluded) . ']';", $source, 'the save passes its own ids');
+	pg_assert_contains("SELECT id FROM products where address_name = ? AND id != ?\";\n    \$result = db_q(\$query, array(\$address_name . '[' . \$number . ']', \$excluded['products']))", $source, 'products skip their own row');
+	pg_assert_contains("SELECT id FROM product_groups where address_name = ? AND id != ?\";\n    \$result = db_q(\$query, array(\$address_name . '[' . \$number . ']', \$excluded['product_groups']))", $source, 'groups skip their own row');
+}

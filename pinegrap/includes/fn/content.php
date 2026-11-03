@@ -2992,27 +2992,33 @@ function get_query_string_for_page_url($page_type, $item_id, $item_type)
     }
     return $query_string;
 }
-function get_duplicate_catalog_item_address_name_number($address_name, $number = 1)
+// The first n for which "<address name>[n]" is free in both tables. $excluded
+// (pg_catalog_address_excluded_ids()) skips the item being saved, so its own
+// "[n]" counts as free and a save does not move it to the next number.
+function get_duplicate_catalog_item_address_name_number($address_name, $number = 1, $excluded = null)
 {
+    if (!is_array($excluded)) {
+        $excluded = pg_catalog_address_excluded_ids(0);
+    }
     // assume that the address name does not already exist until we find out otherwise
     $address_name_exists = false;
     // check products table to see if there is already a product with an address name that matches the one we want to use
-    $query = "SELECT id FROM products where address_name = ?";
-    $result = db_q($query, array($address_name . '[' . $number . ']')) or output_error(lang('Query failed.'));
+    $query = "SELECT id FROM products where address_name = ? AND id != ?";
+    $result = db_q($query, array($address_name . '[' . $number . ']', $excluded['products'])) or output_error(lang('Query failed.'));
     // if there is a result, then there is already a product with that address name
     if (mysqli_num_rows($result) > 0) {
         $address_name_exists = true;
     }
     // check product groups table to see if there is already a product group with an address name that matches the one we want to use
-    $query = "SELECT id FROM product_groups where address_name = ?";
-    $result = db_q($query, array($address_name . '[' . $number . ']')) or output_error(lang('Query failed.'));
+    $query = "SELECT id FROM product_groups where address_name = ? AND id != ?";
+    $result = db_q($query, array($address_name . '[' . $number . ']', $excluded['product_groups'])) or output_error(lang('Query failed.'));
     // if there is a result, then there is already a product group with that address name
     if (mysqli_num_rows($result) > 0) {
         $address_name_exists = true;
     }
     // if the address name already exists, then use recursion to try to get a different address name
     if ($address_name_exists == true) {
-        return get_duplicate_catalog_item_address_name_number($address_name, $number + 1);
+        return get_duplicate_catalog_item_address_name_number($address_name, $number + 1, $excluded);
     } else {
         return $number;
     }
@@ -3183,7 +3189,7 @@ function prepare_catalog_item_address_name($address_name, $item_id = '', $item_t
     }
     // if the address name already exists then create a unique address name
     if ($address_name_exists == true) {
-        $address_name .= '[' . get_duplicate_catalog_item_address_name_number($address_name) . ']';
+        $address_name .= '[' . get_duplicate_catalog_item_address_name_number($address_name, 1, $excluded) . ']';
     }
     return $address_name;
 }
