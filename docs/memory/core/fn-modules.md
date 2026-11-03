@@ -7,6 +7,7 @@ description: Generated from the module field of the memory files: each includes/
 
 ## Which memory file describes an `includes/fn/` module?
 - `a11y`: [[accessibility-report]], [[editor-a11y-measurements]]
+- `activitypub`: [[activitypub-actor]]
 - `address_autocomplete`: [[address-autocomplete]]
 - `ai_prompts`: [[ai-prompt-version]]
 - `ai_visibility`: [[ai-visibility-figures]]

@@ -138,6 +138,7 @@
     "February": "Şubat",
     "FedEx": "FedEx",
     "FedEx answered without delivery dates: {var:1} Request: {var:2}": "FedEx teslim tarihi olmadan yanıt verdi: {var:1} İstek: {var:2}",
+    "Fediverse (ActivityPub): the site can be followed from Mastodon and other Fediverse services. It stays off until it is switched on.": "Fediverse (ActivityPub): site Mastodon ve diğer Fediverse servislerinden takip edilebilir. Açılana kadar kapalı kalır.",
     "Fee": "Ücret",
     "Fee Models": "Ücret Modelleri",
     "Feed address": "Akış adresi",
