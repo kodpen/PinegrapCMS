@@ -405,16 +405,28 @@
 
     // The document as an SVG file: the artboard's fill, the kept
     // definitions and every visible layer as the stage draws it, with its
-    // pictures embedded.
+    // pictures embedded. A layer that moves sits in a group of class pgm-n,
+    // which the style the server writes from this.svgMotion (M.svgMotion())
+    // animates.
     Editor.prototype.svgText = function () {
-        var self = this, a = this.doc.artboard, nodes = [];
+        var self = this, a = this.doc.artboard, nodes = [], saved = [];
 
         this.doc.layers.forEach(function (l) {
             var n = l.hidden ? null : ((l.type === 'svg') ? svgSaveNode(l) : self.layerNode(l));
 
             if (n) {
                 nodes.push(n);
+                saved.push(l);
             }
+        });
+
+        this.svgMotion = M.svgMotion(this.doc, saved);
+        (this.svgMotion ? this.svgMotion.layers : []).forEach(function (m) {
+            var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+            g.setAttribute('class', 'pgm-' + m.n);
+            g.appendChild(nodes[m.n]);
+            nodes[m.n] = g;
         });
 
         var links = [];
@@ -451,7 +463,7 @@
         }
 
         this.svgText().then(function (text) {
-            return self.request({ action: 'svg_save', mode: mode, file_id: self.svgFileId, svg: text });
+            return self.request({ action: 'svg_save', mode: mode, file_id: self.svgFileId, svg: text, motion: self.svgMotion });
         }).then(function (r) {
             if (!r || (r.status !== 'success')) {
                 self.setSaving(false);
