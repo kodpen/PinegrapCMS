@@ -79,7 +79,7 @@ function test_site_log_list_error_row()
 
 	pg_assert_contains('pg-log-row-warn', $html);
 	pg_assert_contains('data-pg-filter="warn"', $html);
-	pg_assert_contains('bg-warning fg-black', $html);
+	pg_assert_contains('theme-warning fg-black', $html);
 	pg_assert_contains('pg-log-copy', $html);
 	pg_assert_contains('pg-log-clip', $html, 'a long trace is clipped');
 	pg_assert_contains('id="pg_log_msg_error_php_errors_3"', $html);

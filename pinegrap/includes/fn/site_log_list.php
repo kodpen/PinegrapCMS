@@ -188,9 +188,9 @@ function pg_site_log_list_row($entry)
     if ($type === 'site') {
         $badge = '<span title="' . $location . '" class="badge theme-success me-1">' . lang('Site Log') . '</span>';
     } else {
-        // bg-warning needs dark text, the default white is unreadable on yellow.
+        // The warning badge needs dark text: white is unreadable on yellow.
         $class .= ($type === 'warn') ? ' pg-log-row-warn' : ' pg-log-row-error';
-        $badge = '<span title="' . $location . '" class="badge ' . (($type === 'warn') ? 'bg-warning fg-black' : 'bg-danger') . ' me-1">' . h(lang('Error Log')) . '</span>';
+        $badge = '<span title="' . $location . '" class="badge ' . (($type === 'warn') ? 'theme-warning fg-black' : 'theme-danger') . ' me-1">' . h(lang('Error Log')) . '</span>';
     }
 
     return array('id' => (string) $entry['log_id'], 'class' => $class, 'cells' => array(
