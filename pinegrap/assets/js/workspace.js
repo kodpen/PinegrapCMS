@@ -8700,11 +8700,24 @@
             toggle.setAttribute('data-bs-placement', 'bottom-end');
             wrap.appendChild(toggle);
 
-            var menu = el('ul', 'menu pg-menu-end');
+            var menu = el('ul', 'menu pg-menu-end ws-head-menu');
 
-            function item(label, iconName, handler, className) {
+            // checked (true/false) marks a choice or a switch: its state is
+            // said through aria-checked (role radio for one of a set,
+            // checkbox for an on/off switch) and drawn as a check icon.
+            function item(label, iconName, handler, className, checked, radio) {
                 var li = el('li', className || '');
                 var link = button('menu-item pg-link-body-emphasis', label, iconName);
+
+                if (typeof checked === 'boolean') {
+                    link.setAttribute('role', radio ? 'menuitemradio' : 'menuitemcheckbox');
+                    link.setAttribute('aria-checked', checked ? 'true' : 'false');
+
+                    if (checked) {
+                        link.appendChild(icon('bi-check2', 'ms-auto ps-2'));
+                    }
+                }
+
                 link.addEventListener('click', handler);
                 li.appendChild(link);
                 menu.appendChild(li);
@@ -8747,9 +8760,9 @@
 
             if (channel.joined) {
                 [['all', t('notify_all')], ['mentions', t('notify_mentions')], ['none', t('notify_none')]].forEach(function (option) {
-                    item(option[1] + (channel.notify === option[0] ? ' ✓' : ''), option[0] === 'none' ? 'bi-bell-slash' : 'bi-bell', function () {
+                    item(option[1], option[0] === 'none' ? 'bi-bell-slash' : 'bi-bell', function () {
                         api('ws_channel_notify', { channel_id: channel.id, notify: option[0] }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
-                    });
+                    }, '', channel.notify === option[0], true);
                 });
                 divider();
             }
@@ -8760,15 +8773,15 @@
             if (window.PGWsVoice && window.PGWsVoice.speakSupported() && (BOOT.claude || BOOT.ai || (BOOT.mcp || []).length)) {
                 var speaking = window.PGWsVoice.speakOn(CFG.api_url, CFG.me);
 
-                item(t('voice_speak') + (speaking ? ' ✓' : ''), speaking ? 'bi-volume-up' : 'bi-volume-mute', function () {
+                item(t('voice_speak'), speaking ? 'bi-volume-up' : 'bi-volume-mute', function () {
                     window.PGWsVoice.speakSet(CFG.api_url, CFG.me, !speaking);
                     toast(t(speaking ? 'voice_speak_off' : 'voice_speak_on'), 'info');
-                });
+                }, '', speaking);
                 divider();
             }
 
             if (BOOT.claude && channel.claude && channel.can_manage && !channel.archived) {
-                item(t('claude_allow') + (channel.claude.allowed ? ' ✓' : ''), 'bi-stars', function () {
+                item(t('claude_allow'), 'bi-stars', function () {
                     var allow = !channel.claude.allowed;
                     var asked = (allow && channel.kind === 'private') ? ask(t('claude_allow_private'), t('claude_allow'), false) : Promise.resolve(true);
 
@@ -8777,12 +8790,12 @@
                             api('ws_channel_claude', { channel_id: channel.id, allowed: allow ? 1 : 0 }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
                         }
                     });
-                });
+                }, '', !!channel.claude.allowed);
                 divider();
             }
 
             if (BOOT.ai && channel.ai && channel.can_manage && !channel.archived) {
-                item(t('ai_allow') + (channel.ai.allowed ? ' ✓' : ''), 'bi-cpu', function () {
+                item(t('ai_allow'), 'bi-cpu', function () {
                     var allow = !channel.ai.allowed;
                     var asked = (allow && channel.kind === 'private') ? ask(t('ai_allow_private'), t('ai_allow'), false) : Promise.resolve(true);
 
@@ -8791,7 +8804,7 @@
                             api('ws_channel_ai', { channel_id: channel.id, allowed: allow ? 1 : 0 }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
                         }
                     });
-                });
+                }, '', !!channel.ai.allowed);
                 divider();
             }
 
@@ -8799,7 +8812,7 @@
             // not public sends them out only once a manager agrees, told
             // which service hears them.
             if (channel.voice && channel.can_manage && !channel.archived) {
-                item(t('voice_allow') + (channel.voice.allowed ? ' ✓' : ''), 'bi-mic', function () {
+                item(t('voice_allow'), 'bi-mic', function () {
                     var allow = !channel.voice.allowed;
                     var asked = (allow && channel.kind !== 'public') ? ask(t('voice_allow_private', channel.voice.provider), t('voice_allow'), false) : Promise.resolve(true);
 
@@ -8808,7 +8821,7 @@
                             api('ws_channel_voice', { channel_id: channel.id, allowed: allow ? 1 : 0 }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
                         }
                     });
-                });
+                }, '', !!channel.voice.allowed);
                 divider();
             }
 

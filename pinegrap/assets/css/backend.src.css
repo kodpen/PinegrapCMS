@@ -12900,6 +12900,17 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   flex-shrink: 0;
   align-items: center;
 }
+/* The channel's More menu holds about twenty entries on a phone (the
+   header's own buttons move into it) and .ws-app clips what runs past the
+   screen, so the menu keeps to the screen's height and scrolls itself. */
+.ws-head-menu {
+  max-height: calc(100vh - 9rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@supports (height: 100dvh) {
+  .ws-head-menu { max-height: calc(100dvh - 9rem); }
+}
 .ws-avatars {
   display: inline-flex;
 }
