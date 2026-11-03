@@ -19,10 +19,11 @@ if (!defined('PG_DASHBOARD_V2')) {
 /**
  * The cards the grid draws, in order: the stored layout's cards the person
  * may see (unknown ids, repeats and bad values dropped or set to the card's
- * default), or every card they may see when nothing is stored. A stored card
- * the person may not see stays stored and is only skipped here.
+ * default), or every card they may see when nothing is stored (not an
+ * array). An empty list is a dashboard emptied on purpose and draws no card.
+ * A stored card the person may not see stays stored and is only skipped here.
  *
- * @param mixed $stored  the layout's cards list
+ * @param mixed $stored  the layout's cards list, null when none is stored
  * @param array $visible id => card, the cards the person may see
  * @return array list of id, w, per, cmp, badge
  */
@@ -31,9 +32,9 @@ function pg_dashboard_v2_grid_layout($stored, $visible)
     $out = array();
     $seen = array();
 
-    $entries = (is_array($stored) && !empty($stored)) ? $stored : array();
+    $entries = is_array($stored) ? $stored : array();
 
-    if (empty($entries)) {
+    if (!is_array($stored)) {
         foreach (array_keys($visible) as $id) {
             $entries[] = array('id' => $id);
         }
@@ -110,6 +111,11 @@ function pg_dashboard_v2_config($user, $row = null, $look = null)
     $stored = (is_array($layout) && isset($layout['cards']) && is_array($layout['cards']))
         ? $layout['cards']
         : pg_dashboard_v2_preset_cards($settings['preset']);
+
+    // An unknown preset has no cards: every visible card is drawn instead.
+    if (!(is_array($layout) && isset($layout['cards']) && is_array($layout['cards'])) && empty($stored)) {
+        $stored = null;
+    }
 
     $presets = array();
     foreach (pg_dashboard_v2_presets() as $key => $preset) {

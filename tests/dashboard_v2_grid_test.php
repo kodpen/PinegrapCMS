@@ -90,7 +90,7 @@ function test_dashboard_v2_change()
 
 // The stored order is kept; unknown, hidden and repeated cards are skipped;
 // bad widths and periods take the card's own; nothing stored draws every
-// visible card.
+// visible card, an empty stored list draws none.
 function test_dashboard_v2_grid_layout()
 {
 	$all = pg_dashboard_v2_cards();
@@ -100,6 +100,8 @@ function test_dashboard_v2_grid_layout()
 		array('id' => 'visitors', 'w' => 'M', 'per' => 0, 'cmp' => 0, 'badge' => 1),
 		array('id' => 'engagement', 'w' => 'S', 'per' => null, 'cmp' => 0, 'badge' => 1),
 	), pg_dashboard_v2_grid_layout(null, $visible), 'nothing stored');
+
+	pg_assert_same(array(), pg_dashboard_v2_grid_layout(array(), $visible), 'an emptied dashboard stays empty');
 
 	pg_assert_same(array(
 		array('id' => 'engagement', 'w' => 'L', 'per' => null, 'cmp' => 0, 'badge' => 0),
