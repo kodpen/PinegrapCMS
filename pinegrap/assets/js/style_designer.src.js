@@ -302,6 +302,7 @@ const StyleDesigner = (function () {
     // comment for the SQL rationale). The "0" key holds the full unfiltered
     // list for backwards compat.
     var _formItemViewPagesByForm = {}; // form_id → [{page_id, page_name, page_title}, …]
+    var _feeProductsCache         = null; // [{id, name, title, price}, …] — a form fee's product list
     var _productGroupsCache       = null; // [{id, name, parent_id, sort_order}, …] — catalog group list
     var _catalogDetailPagesCache  = null; // [{page_id, page_name, page_title}, …] — catalog detail-page candidates
     // [{id, name, parent_id, archived}, …] — the Photo Gallery widget's Folder
@@ -2358,6 +2359,110 @@ const StyleDesigner = (function () {
 
     function _cfMeta() {
         return (_design && _design.formMeta) ? _design.formMeta : { rss: {}, contact: {}, folders: [] };
+    }
+
+    // The products a form's fee may name, fetched once when the Payment rows
+    // are first drawn; [] when the list could not be read.
+    function _fetchFeeProducts(cb) {
+        if (_feeProductsCache !== null) { if (cb) cb(_feeProductsCache); return; }
+        var apiBase = (typeof path !== 'undefined' ? path : '') +
+                      (typeof software_directory !== 'undefined' ? software_directory + '/' : '') + 'api.php';
+        var token   = (typeof software_token !== 'undefined') ? software_token : '';
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', apiBase, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState !== 4) return;
+            try {
+                var resp = JSON.parse(xhr.responseText);
+                _feeProductsCache = (resp && resp.status === 'success' && Array.isArray(resp.products)) ? resp.products : [];
+            } catch (e) { _feeProductsCache = []; }
+            if (cb) cb(_feeProductsCache);
+        };
+        xhr.onerror = function () { _feeProductsCache = []; if (cb) cb(_feeProductsCache); };
+        xhr.send(JSON.stringify({ action: 'shared_component', sub_action: 'list_fee_products', token: token }));
+    }
+
+    // A form's payment setting in the shape the server keeps
+    // (pg_form_fee_settings_clean()): amounts in minor units, 0 = no bound.
+    function _cfPaymentOf(fs) {
+        var p = (fs && fs.payment && typeof fs.payment === 'object') ? fs.payment : {};
+        return {
+            product_id: parseInt(p.product_id, 10) > 0 ? parseInt(p.product_id, 10) : 0,
+            amount_source: p.amount_source === 'field' ? 'field' : 'product',
+            amount_field: String(p.amount_field || ''),
+            amount_min: parseInt(p.amount_min, 10) > 0 ? parseInt(p.amount_min, 10) : 0,
+            amount_max: parseInt(p.amount_max, 10) > 0 ? parseInt(p.amount_max, 10) : 0,
+            offline: p.offline ? 1 : 0
+        };
+    }
+
+    // Minor units as the amount box shows them, and back.
+    function _cfMinorToBox(v) { return v > 0 ? (v / 100).toFixed(2) : ''; }
+    function _cfBoxToMinor(v) {
+        var n = parseFloat(String(v || '').replace(/\s/g, '').replace(',', '.'));
+        return (isFinite(n) && n > 0) ? Math.round(n * 100) : 0;
+    }
+
+    // The Payment rows of a page's form settings: the fee product, where the
+    // amount comes from, its bounds and the offline choice. The order and
+    // the payment step are the server's (includes/fn/form_payments.php).
+    function _cfPaymentRows(fs, tree, row) {
+        var meta = _cfMeta();
+        if (!meta.payment) return '';
+        var pay = _cfPaymentOf(fs);
+        var sym = String(meta.currencySymbol || '');
+        var products = _feeProductsCache;
+        if (products === null) _fetchFeeProducts(function () { renderProperties(); });
+        var opt = function (value, label, on) {
+            return '<option value="' + esc(String(value)) + '"' + (on ? ' selected' : '') + '>' + esc(label) + '</option>';
+        };
+        var productSel = '<select class="form-control form-control-sm sd-cf-pay" data-k="product_id">' +
+            opt(0, _sdT('— No fee —'), pay.product_id === 0) +
+            (products || []).map(function (pr) {
+                var label = (pr.title ? pr.title + ' (' + pr.name + ')' : pr.name) + ' · ' + sym + _cfMinorToBox(pr.price || 0);
+                return opt(pr.id, label, pr.id === pay.product_id);
+            }).join('') +
+            ((products && pay.product_id > 0 && !products.some(function (pr) { return pr.id === pay.product_id; }))
+                ? opt(pay.product_id, '#' + pay.product_id, true) : '') +
+            '</select>';
+        var html = row(_sdT('Payment'),
+            (products === null ? '<div style="font-size:.7rem;color:#888">' + esc(_sdT('Loading…')) + '</div>' : productSel) +
+            '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
+                esc(_sdT('A product whose order the visitor pays when sending the form. The record is kept as unpaid until the payment arrives.')) +
+            '</div>');
+        if (pay.product_id === 0) return html;
+
+        var fields = (tree ? _cfFieldsOf(tree) : []).filter(function (f) {
+            return f.name && f.type !== 'file upload' && f.type !== 'information';
+        });
+        html += row(_sdT('Amount'),
+            '<select class="form-control form-control-sm sd-cf-pay" data-k="amount_source">' +
+                opt('product', _sdT('The product\'s price'), pay.amount_source === 'product') +
+                opt('field', _sdT('A figure the visitor enters'), pay.amount_source === 'field') +
+            '</select>' +
+            (pay.amount_source === 'field'
+                ? '<select class="form-control form-control-sm mt-1 sd-cf-pay" data-k="amount_field">' +
+                      opt('', _sdT('— Choose a field —'), pay.amount_field === '') +
+                      fields.map(function (f) {
+                          return opt(f.name, (f.label || f.name) + ' (' + f.name + ')', String(f.name).toLowerCase() === pay.amount_field.toLowerCase());
+                      }).join('') +
+                  '</select>' +
+                  '<div class="d-flex gap-1 mt-1">' +
+                      '<input type="text" inputmode="decimal" class="form-control form-control-sm sd-cf-pay" data-k="amount_min" value="' + esc(_cfMinorToBox(pay.amount_min)) + '" placeholder="' + esc(_sdT('Minimum')) + '">' +
+                      '<input type="text" inputmode="decimal" class="form-control form-control-sm sd-cf-pay" data-k="amount_max" value="' + esc(_cfMinorToBox(pay.amount_max)) + '" placeholder="' + esc(_sdT('Maximum')) + '">' +
+                  '</div>' +
+                  '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
+                      esc(_sdT('A figure under the minimum or over the maximum is refused, never changed. Leave a bound empty for none.')) +
+                  '</div>'
+                : '')
+        );
+        html += row(_sdT('Offline payment'),
+            '<div class="form-field">' +
+                '<div class="switch"><input class="sd-cf-pay" data-k="offline" type="checkbox" id="sd-sw-cf-pay-offline"' + (pay.offline ? ' checked' : '') + '></div>' +
+                '<label for="sd-sw-cf-pay-offline" style="font-size:.72rem">' + esc(_sdT('Allow offline payment (bank transfer) when the store takes it')) + '</label>' +
+            '</div>');
+        return html;
     }
 
     function _cfSel(cls, current, entries, blankLabel) {
@@ -36324,7 +36429,8 @@ const StyleDesigner = (function () {
                                 '<div class="switch"><input class="sd-cf-sb" data-s="quiz" type="checkbox" id="sd-sw-cf-quiz"' + (_cfFS.quiz ? ' checked' : '') + '></div>' +
                                 '<label class="" for="sd-sw-cf-quiz" style="font-size:.72rem">' + esc(_sdT('A quiz form (so the fields can carry a correct answer)')) + '</label>' +
                             '</div>'
-                        );
+                        ) +
+                        _cfPaymentRows(_cfFS, _cfTree, row);
                 }
 
                 // An existing form: which one, and what it holds.
@@ -38578,6 +38684,23 @@ const StyleDesigner = (function () {
                 // These reveal or hide the rows under them, and the quiz
                 // switch changes what every field panel offers.
                 if (typeof renderProperties === 'function') renderProperties();
+            });
+        });
+
+        // The fee: written as one object in the server's shape; the product
+        // and the amount source show or hide the rows under them.
+        document.querySelectorAll('.sd-cf-pay').forEach(function (el) {
+            el.addEventListener('change', function () {
+                var fs = _cfPageSettings();
+                var pay = _cfPaymentOf(fs);
+                var k = el.dataset.k;
+                if (k === 'offline') pay.offline = el.checked ? 1 : 0;
+                else if (k === 'product_id') pay.product_id = parseInt(el.value, 10) > 0 ? parseInt(el.value, 10) : 0;
+                else if (k === 'amount_min' || k === 'amount_max') pay[k] = _cfBoxToMinor(el.value);
+                else if (k === 'amount_source') pay.amount_source = el.value === 'field' ? 'field' : 'product';
+                else if (k === 'amount_field') pay.amount_field = String(el.value || '').slice(0, 100);
+                fs.payment = pay;
+                if ((k === 'product_id' || k === 'amount_source') && typeof renderProperties === 'function') renderProperties();
             });
         });
 

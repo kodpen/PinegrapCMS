@@ -540,6 +540,7 @@ function pg_cf_load_page_form_settings($page_id)
         'membership' => 0, 'membership_days' => 0, 'auto_registration' => 0,
         'pretty_urls' => 0, 'double_opt_in' => 0, 'collection' => 0,
         'schema_type' => 'BlogPosting', 'schema_author' => 'contact', 'share_image_field' => '',
+        'payment' => pg_form_fee_settings_decode(null),
     );
     if ($page_id <= 0 || !pg_cf_page_form_ready()) return $defaults;
     // The 11.0.27 column is read once it is there.
@@ -555,7 +556,8 @@ function pg_cf_load_page_form_settings($page_id)
                 . (pg_coll_ready() ? ', collection' : '')
                 . (pg_record_schema_type_setting_ready() ? ', schema_type' : '')
                 . (pg_blogposting_author_setting_ready() ? ', schema_author' : '')
-                . (pg_record_share_image_setting_ready() ? ', share_image_field_id' : '') . "
+                . (pg_record_share_image_setting_ready() ? ', share_image_field_id' : '')
+                . (pg_form_payment_ready() ? ', payment' : '') . "
          FROM custom_form_pages WHERE page_id = '$page_id' LIMIT 1");
     if (!is_array($row)) return $defaults;
 
@@ -612,6 +614,8 @@ function pg_cf_load_page_form_settings($page_id)
                                                           WHERE id = '" . (int)$row['share_image_field_id'] . "' AND page_id = '$page_id'
                                                             AND form_type = 'custom' AND type = 'file upload' LIMIT 1")
                                       : '',
+        // The fee (includes/fn/form_payments.php); product_id 0 is none.
+        'payment'              => pg_form_fee_settings_decode($row['payment'] ?? null),
     );
 }
 
@@ -1039,6 +1043,9 @@ function pg_cf_write_form_settings($page_id, $settings, $old_fields, $new_fields
     }
     if (array_key_exists('schema_type', $settings) && pg_record_schema_type_setting_ready()) {
         $set['schema_type'] = pg_record_schema_type($settings['schema_type']);
+    }
+    if (array_key_exists('payment', $settings) && pg_form_payment_ready()) {
+        $set['payment'] = pg_form_fee_settings_encode($settings['payment']);
     }
     if (array_key_exists('double_opt_in', $settings) && pg_fs_ready()) {
         $set['double_opt_in'] = !empty($settings['double_opt_in']) ? '1' : '0';

@@ -520,6 +520,28 @@ function pg_panel_shared_component($request, $action)
             respond(array('status' => 'success', 'groups' => $sc_pg_rows));
             break;
 
+        // ── LIST FEE PRODUCTS ───────────────────────────────────────────
+        // The products a designed form's fee may name (Custom Form
+        // Settings, Payment): id, name, title and price in minor units,
+        // the first 2000 by name. Written with the page's form settings by
+        // administrators and designers only, as the folder list below.
+        case 'list_fee_products':
+            $sc_fp_rows = db_items(
+                "SELECT id, name, short_description, price
+                     FROM products
+                     ORDER BY name ASC, id ASC
+                     LIMIT 2000"
+            );
+            respond(array('status' => 'success', 'products' => array_map(function ($row) {
+                return array(
+                    'id'    => (int)$row['id'],
+                    'name'  => (string)$row['name'],
+                    'title' => (string)$row['short_description'],
+                    'price' => (int)$row['price'],
+                );
+            }, is_array($sc_fp_rows) ? $sc_fp_rows : array())));
+            break;
+
         // ── LIST FOLDERS ────────────────────────────────────────────────
         // Every folder but the Recycle Bin and what is in it, for the
         // Photo Gallery widget's Folder picker (pg_gal_folder_choices()).

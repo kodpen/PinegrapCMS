@@ -407,6 +407,10 @@ function pg_designer_screen_render($ctx)
             // The form's double opt-in switch exists once the 11.0.27 column
             // is there; until then pg_cf_write_form_settings() drops it.
             'doubleOptIn' => function_exists('pg_fs_ready') && pg_fs_ready(),
+            // The form's Payment rows exist once the 11.0.158 columns are
+            // there and the store is on; the amounts are minor units.
+            'payment' => defined('ECOMMERCE') && (ECOMMERCE == true) && function_exists('pg_form_payment_ready') && pg_form_payment_ready(),
+            'currencySymbol' => defined('BASE_CURRENCY_SYMBOL') ? html_entity_decode((string)BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8') : '',
         ),
     ), JSON_HEX_TAG | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
