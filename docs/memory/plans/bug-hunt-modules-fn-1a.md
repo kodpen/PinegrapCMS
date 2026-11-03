@@ -28,7 +28,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `currency_rates`: open, read once with nothing found (log line, fetch, store, rate on a date); a second look or `clean`
 
-- `custom_form`: open
+- `custom_form`: done #5926 (custom shipping and billing forms stored option values outside the list); read: field sync and options, ensure/adopt form, settings write, render bindings and URL prefill, rules, rich text ids, controls and reconcile, sample seeding, shipping/billing prepare and submit, mail links, new account texts, fill-time token, form limits
 
 - `dashboard`: open
 
