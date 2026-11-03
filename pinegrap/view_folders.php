@@ -2517,19 +2517,30 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // An open dialog's backdrop would cover a body-level toast.
         pgUI.hostLayer(container);
         container.appendChild(element);
-        var instance = pgUI.toast.get(element, options.sticky ? { autohide: false } : { delay: (action || options.html) ? 9000 : 3500 });
 
-        if (action) {
-            var actionButton = element.querySelector('[data-role="toast-action"]');
-            actionButton.textContent = action.label;
-            actionButton.addEventListener('click', function () {
-                instance.hide();
-                action.run();
-            });
+        // Bootstrap 6 is a deferred module: a toast asked for while the page
+        // is still parsed (a server message) has no Toast class yet, so it is
+        // shown once Bootstrap's script has run instead of throwing.
+        function show() {
+            var instance = pgUI.toast.get(element, options.sticky ? { autohide: false } : { delay: (action || options.html) ? 9000 : 3500 });
+
+            if (!instance) { return false; }
+
+            if (action) {
+                var actionButton = element.querySelector('[data-role="toast-action"]');
+                actionButton.textContent = action.label;
+                actionButton.addEventListener('click', function () {
+                    instance.hide();
+                    action.run();
+                });
+            }
+
+            pgUI.toast.on(element, 'hidden', function () { element.remove(); });
+            instance.show();
+            return true;
         }
 
-        pgUI.toast.on(element, 'hidden', function () { element.remove(); });
-        instance.show();
+        if (!show()) { pgUI.ready(show); }
     }
 
     function api(payload, done, fail) {
@@ -16713,8 +16724,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         setErpTreeOpen(true);
     }
 
-    SERVER_MESSAGES.forEach(function (entry) {
-        toast(entry.message, entry.type === 'success', null, { html: true, tone: entry.type === 'warning' ? 'warning' : '', sticky: entry.type !== 'success' });
+    // Shown once Bootstrap's script has run (a deferred module on Bootstrap 6),
+    // so a message never stops the listing below from loading.
+    pgUI.ready(function () {
+        SERVER_MESSAGES.forEach(function (entry) {
+            toast(entry.message, entry.type === 'success', null, { html: true, tone: entry.type === 'warning' ? 'warning' : '', sticky: entry.type !== 'success' });
+        });
     });
 
     // The tour opens itself only once the grid and the tree have arrived. A
