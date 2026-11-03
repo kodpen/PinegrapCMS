@@ -22,6 +22,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 ## Files
 
 - api-calendar-event-move.md: External API POST /calendars/events/{id}: what moving an event (start, end, all_day) does to its cancelled repeats and its room bookings
+- api-calendar-writes.md: Calendar create, rename, delete over the API (calendars:write) through fn/calendar_writes.php shared with the screens; role-3 rules, name_taken, calendar_has_events
 - api-campaign-profiles.md: /campaigns/profiles CRUD (PR #6353): write path shared with the profile screens, owner-based access checks, partial updates, schedule time, refusals, user-role rows
 - api-catalogue-writes.md: External API writes to products, groups, pages and key codes: the screen's create function, list fields that replace, barcode, SEO rescoring, Recycle Bin deletes, key code vs offer code
 - api-commission-writes.md: POST /commissions/{id} status (commissions:write) through the screen's write, GET /commissions/recurring-profiles, POST /affiliates/{id}/approve (customers:write), their events
