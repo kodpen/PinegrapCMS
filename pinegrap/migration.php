@@ -726,8 +726,8 @@ if (!$_POST) {
                 VALUES (
                     '" . escape($page['name']) . "',
                     '" . escape($folder_ids[$page['folder_id']]) . "',
-                    '" . escape($style_ids[$page['style_id']]) . "',
-                    '" . escape($style_ids[$page['mobile_style_id']]) . "',
+                    '" . (int)($style_ids[$page['style_id']] ?? 0) . "',
+                    '" . (int)($style_ids[$page['mobile_style_id']] ?? 0) . "',
                     'no',
                     '" . escape($page['title']) . "',
                     '" . escape($page['search']) . "',
@@ -811,7 +811,8 @@ if (!$_POST) {
             // If this page's type has page type properties, then add them to database.
             if (
                 (check_for_page_type_properties($page['type']) == true)
-                && (is_array($page['page_type_properties']) == true)
+                && isset($page['page_type_properties'])
+                && is_array($page['page_type_properties'])
             ) {
                 $page_type_properties = $page['page_type_properties'];
 
