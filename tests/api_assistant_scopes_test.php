@@ -65,14 +65,14 @@ function api_assistant_scopes_test_groups()
 	);
 }
 
-// The five reads the key is made without.
+// The six reads the key is made without.
 function test_api_assistant_scopes_left_out_list()
 {
 	$left_out = api_assistant_scopes_left_out();
 
 	sort($left_out);
 
-	pg_assert_same(array('account:read', 'gift_cards:read', 'key_codes:read', 'site_log:read', 'system:read'), $left_out, 'the five reads left out');
+	pg_assert_same(array('account:read', 'gift_cards:read', 'key_codes:read', 'site_log:read', 'system:read', 'users:read'), $left_out, 'the six reads left out');
 }
 
 // Every group's read but the ones left out, and the Workspace and Tasks

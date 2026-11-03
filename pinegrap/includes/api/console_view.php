@@ -65,6 +65,7 @@ function api_console_endpoints_html($try_hint = '') {
 		'site_log'       => lang('Site Log'),
 		'campaigns'      => lang('Campaigns'),
 		'contact_groups' => lang('Contact Groups'),
+		'users'          => lang('Users'),
 		'files'          => lang('Files'),
 		'forms'          => lang('Forms'),
 		'seo'            => lang('SEO'),
