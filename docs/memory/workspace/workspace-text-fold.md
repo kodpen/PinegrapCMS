@@ -14,6 +14,7 @@ They use the language-neutral Unicode mapping: `İ` becomes `i` + U+0307 and `I`
 
 ## Who calls it?
 - Ctrl+K palette (`palette.php`): `ws_palette_snippet()` cuts its excerpt at `ws_text_position()`, the channel filter (name, topic) and the people filter (name, username).
+- In SQL: `ws_text_like_sql($column, $query)` keeps the plain `LIKE` and, for a word with an i letter, adds the column with `İ`/`ı` replaced by `i` against `ws_fold($query)` (utf8mb4_unicode_ci never folds `ı`). Used by `ws_message_search()` (channel search, palette messages) and the palette's decision and file groups: "YANIT" and "yanit" missed "yanıt" before (2026-11-04).
 - Channel board search (`channel_board.php`): message bodies, file names, pins, thread summaries.
 - Person and department pickers (`ws_ref_search()` in `refs.php`).
 - Tables file and note import (#3747): `wtable_import.php` keys for header deduplication, the status guess and choices, status label to key, the column match and the people map (`ws_wtable_import_people()` and the person lookup fold alike). Stored values and labels keep their spelling; the checkbox words keep their own list.

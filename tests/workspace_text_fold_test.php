@@ -81,3 +81,20 @@ function test_workspace_text_fold_position()
 	pg_assert_contains('İSMAİL', $piece, 'the excerpt holds the match written in capitals');
 	pg_assert_same('…', mb_substr($piece, 0, 1), 'the excerpt is cut at the front');
 }
+
+// The message, decision and file searches build their LIKE with
+// ws_text_like_sql(): a word with an i letter also matches the column with
+// İ and ı folded, so "YANIT" and "yanit" find "yanıt".
+function test_workspace_text_fold_like_sql()
+{
+	$sql = ws_text_like_sql('body', 'YANIT', 'utf8mb4');
+
+	pg_assert_contains("body LIKE '%YANIT%'", $sql, 'the plain LIKE stays');
+	pg_assert_contains("REPLACE(REPLACE(CONVERT(body USING utf8mb4), 'İ', 'i'), 'ı', 'i') LIKE '%yanit%'", $sql, 'the folded column against the folded word');
+	pg_assert_same('(', substr($sql, 0, 1), 'the condition is parenthesised');
+
+	pg_assert_same("(body LIKE '%ürün%')", ws_text_like_sql('body', 'ürün', 'utf8mb4'), 'a word without an i letter keeps the plain LIKE');
+	pg_assert_same("(file_name LIKE '%yanıt%')", ws_text_like_sql('file_name', 'yanıt', ''), 'no fold without a known charset');
+	pg_assert_contains("LIKE '%50\\\\%%'", ws_text_like_sql('body', '50%', 'utf8mb4'), 'the LIKE wildcards are escaped');
+	pg_assert_contains('CONVERT(body USING utf8)', ws_text_like_sql('body', 'iş', 'utf8'), 'a utf8 connection converts to utf8');
+}
