@@ -25,7 +25,7 @@ description: Plan for the Web Designer Portfolio template (pinegrap-portfolio): 
 
 - 4 Done (#6172). Briefs: `mail.php` (e-mail builders only, reads only `parts.php`; step 6 builds on it), `briefs.php`; test `…_briefs_test.php`.
 
-- 5 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog as "Journal", blog post, search, error); test `…_standard_test.php`.
+- 5 Done (#6176). Standard: `standard.php` (contact, inbox, conversation, newsletter, blog as "Journal", blog post, search, error); test `…_standard_test.php`.
 
 - 6 Account and staff: `account.php` (sign-in, My Account, the staff area, `blog_new` with sample posts, account e-mails); test `…_account_test.php`.
 
