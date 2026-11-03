@@ -279,7 +279,7 @@ pg_page_shell(
                 'primary'   => array('label' => lang('Create'), 'url' => 'add_short_link.php', 'icon' => 'bi-plus-circle'),
                 'secondary' => array(
                     (pg_short_link_redirects_ready() ? array('label' => lang('Import'), 'url' => 'import_short_links.php', 'icon' => 'bi-upload') : ''),
-                    array('label' => lang('Export'), 'url' => 'view_short_links.php?export=csv', 'icon' => 'bi-download'),
+                    array('label' => lang('Export'), 'url' => 'view_short_links.php?export=csv', 'icon' => 'bi-download', 'file' => true),
                 ),
                 'search'    => pg_list_sort_menu('view_short_links.php', $sort_columns, $sort_levels, $sort_default),
                 'view'      => (pg_not_found_log_ready() ? '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">

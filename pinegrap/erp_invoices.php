@@ -462,7 +462,7 @@ pg_page_shell([
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 ' . ($readonly ? '' : '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_manual_invoice.php"><i class="bi bi-plus-lg me-1"></i>' . lang('New Invoice') . '</a>
                 <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_invoice.php"><i class="bi bi-receipt me-1"></i>' . lang(array('string' => 'Invoice an Order')) . '</a>') . '
-                <a class="btn btn-sm btn-outline theme-secondary" href="erp_export.php?entity=invoices"><i class="bi bi-box-arrow-up me-1"></i>' . lang('Export') . '</a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="erp_export.php?entity=invoices" data-pg-no-curtain><i class="bi bi-box-arrow-up me-1"></i>' . lang('Export') . '</a>
                 <a class="btn btn-sm btn-outline theme-secondary" href="erp_aging.php"><i class="bi bi-hourglass-split me-1"></i>' . lang('Aging report') . '</a>
                 ' . ((function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_ready()) ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_invoice_recurrences.php"><i class="bi bi-arrow-repeat me-1"></i>' . lang('Repeating invoices') . '</a>' : '') . '
                 ' . $output_bulk_buttons . '

@@ -358,31 +358,31 @@ PGLOGOSVG;
 
 
 /**
- * The loading curtain.
+ * The loading curtain and the navigation bar.
  *
- * Two jobs, one element. Arriving: an admin screen assembles itself in the
- * browser — the grid settles, the sidebar snaps into place, tables take their
- * widths — and for a moment the page is a half-built layout sliding sideways,
- * which reads as a fault rather than as loading. Leaving: the curtain goes
- * back up the instant a link is clicked, so the wait for the next screen
- * happens behind it instead of on a frozen copy of the old one. Between the
- * two the panel stops flashing between pages at all.
+ * Arriving: an admin screen assembles itself in the browser — the grid
+ * settles, the sidebar snaps into place, tables take their widths. Most
+ * screens are ready within a tenth of a second of their first byte, so the
+ * curtain stays fully clear for its first 120 ms and only a screen still
+ * building after that sees it fade in (100 ms). A screen that keeps building
+ * after the document is ready (the visual editor) holds it from the first
+ * frame and shows the logo; everyday screens never show the logo.
  *
- * It is the page's own background colour with a progress bar across the top,
- * not a picture: this is on every screen, dozens of times an hour, and
- * anything with a personality of its own becomes tiring by the third visit.
- * The bar is what says "working"; the rest is deliberately nothing.
+ * Leaving: no curtain. The old page stays visible; when the next one takes
+ * longer than 150 ms a thin bar across the top and the waiting cursor say the
+ * click was taken, and they stay until the page goes (pagehide). A click or
+ * submit that a handler cancels (a confirm() answered No, an Ajax form) and
+ * a cancelled "leave this page?" prompt show nothing, because the bar is only
+ * drawn once the 150 ms are up and the event is read again then.
  *
  * Deliberately self-contained — markup, style hook and script arrive
  * together, right after <body>, so the curtain is up before any stylesheet or
  * script further down has had to load. Nothing else on the page can be relied
  * on at that point, so nothing else is.
  *
- * Four ways out, because a curtain that sticks makes the panel unusable: the
- * document being ready (the normal one), any interaction after a navigation
- * that did not happen (a cancelled "unsaved changes" prompt), a safety
- * timeout, and a CSS animation that hides the element after ten seconds even
- * if this script never ran at all.
+ * Three ways down for the arrival curtain, because a curtain that sticks
+ * makes the panel unusable: the document being ready, a safety timeout, and a
+ * CSS animation that hides it after ten seconds even if this script never ran.
  *
  * toolbar.php is excluded — it is the strip inside the frontend edit frame,
  * a few controls in a thin bar, and a curtain over the site being edited
@@ -395,9 +395,10 @@ function pg_preloader_markup()
         return '';
     }
 
-    // The mark in the middle. On a private-label install there is no mark to
-    // show — the whole point of that mode is that the software does not name
-    // itself — so those screens get the three dots and nothing else.
+    // The mark in the middle, shown only on a screen that holds the curtain.
+    // On a private-label install there is no mark to show — the whole point of
+    // that mode is that the software does not name itself — so those screens
+    // get the three dots and nothing else.
     $mark = '';
     if (!defined('PRIVATE_LABEL') or !PRIVATE_LABEL) {
         $mark = '<span class="pg-preloader-logo">' . pg_logo_svg('-pl') . '</span>';
@@ -408,6 +409,7 @@ function pg_preloader_markup()
             . '<div class="pg-preloader-mark">' . $mark
             . '<div class="pg-preloader-dots"><i></i><i></i><i></i></div>'
             . '</div></div>'
+            . '<div id="pg-progress" class="pg-progress" aria-hidden="true"><i></i></div>'
             . '<noscript><style>#pg-preloader{display:none !important;}</style></noscript>';
 
     return $markup . <<<'PGPRELOADER'
@@ -415,30 +417,36 @@ function pg_preloader_markup()
     <script>
     (function () {
         var host = document.getElementById('pg-preloader');
-        if (!host) return;
-        var timer = 0;
-
-        function hide() {
-            clearTimeout(timer);
-            // The CSS failsafe hides the curtain after ten seconds in case
-            // this script never ran. Getting here proves it did — and leaving
-            // the animation armed would let it fire `forwards` on a page left
-            // open, after which the curtain could never be raised again on
-            // the way out.
-            host.style.animation = 'none';
-            host.classList.add('is-done');
-        }
-        function show() {
-            clearTimeout(timer);
-            host.classList.remove('is-done');
-        }
-
-        window.pgPreloaderDone = hide;
-        window.pgPreloaderShow = show;
+        var bar = document.getElementById('pg-progress');
+        if (!host || !bar) return;
+        var root = document.documentElement;
 
         // A screen that keeps building after the document is ready — the
         // visual editor is the one — sets pgPreloaderHold and calls
-        // pgPreloaderDone() itself once it has actually painted.
+        // pgPreloaderDone() itself once it has actually painted. Marked here,
+        // before the first paint, so its curtain stands from the first frame.
+        if (window.pgPreloaderHold) {
+            root.classList.add('pg-preloader-held');
+        }
+
+        var safety = 0;
+        function hide() {
+            clearTimeout(safety);
+            if (host.classList.contains('is-done')) return;
+            // The fade-in and the CSS failsafe are animations, and an animated
+            // opacity outranks the is-done rule; so the opacity in effect is
+            // pinned before they are dropped, and the fade-out starts from it.
+            // Dropping them also proves the script ran: the failsafe would
+            // otherwise fire `forwards` on a page left open.
+            host.style.opacity = getComputedStyle(host).opacity;
+            host.style.animation = 'none';
+            void host.offsetWidth;
+            host.style.opacity = '';
+            host.classList.add('is-done');
+            root.classList.remove('pg-preloader-held');
+        }
+        window.pgPreloaderDone = hide;
+
         if (!window.pgPreloaderHold) {
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', hide);
@@ -446,25 +454,51 @@ function pg_preloader_markup()
                 hide();
             }
         }
-        setTimeout(hide, 9000);
-
-        // Coming back through the browser's back button hands us the page
-        // exactly as it was — curtain and all, if it was up when we left.
-        window.addEventListener('pageshow', function (e) { if (e.persisted) hide(); });
+        safety = setTimeout(hide, 9000);
 
         /* ── On the way out ──────────────────────────────────────────────
-         * Raised again the moment a navigation is asked for. The one thing
-         * it must not do is stay up when the navigation never happens — an
-         * unsaved-changes prompt that the operator cancels, a handler that
-         * calls preventDefault. So it comes down again on the first sign
-         * that somebody is still here, and on a timer regardless.
+         * A thin bar and the waiting cursor once a navigation has taken
+         * 150 ms, held until the page goes. The event that started it is
+         * read again when the time is up: a handler that ran after this
+         * listener (onsubmit="return confirm(…)", an Ajax form, a link a
+         * script answers in place) has cancelled it by then.
          */
-        function leaving() {
-            show();
-            timer = setTimeout(hide, 6000);
-            ['pointerdown', 'keydown', 'wheel'].forEach(function (evt) {
-                document.addEventListener(evt, hide, { once: true, capture: true });
-            });
+        var pending = 0, ceiling = 0, asked = null;
+        function stop() {
+            clearTimeout(pending);
+            clearTimeout(ceiling);
+            bar.classList.remove('is-on');
+            root.classList.remove('pg-navigating');
+        }
+        function leaving(e) {
+            if (pending || bar.classList.contains('is-on')) return;
+            pending = setTimeout(function () {
+                pending = 0;
+                if (e && e.defaultPrevented) return;
+                // The page asked "leave this page?" and we are still here:
+                // the answer was Stay.
+                if (asked && (asked.defaultPrevented || (typeof asked.returnValue === 'string' && asked.returnValue !== ''))) return;
+                bar.classList.add('is-on');
+                root.classList.add('pg-navigating');
+                // A navigation that never commits — an address answering
+                // with a file nobody marked — must not leave the cursor
+                // waiting for good.
+                ceiling = setTimeout(stop, 30000);
+            }, 150);
+        }
+        // Every navigation fires beforeunload before the 150 ms are up, so
+        // this always holds the event of the navigation being waited on.
+        window.addEventListener('beforeunload', function (e) { asked = e; });
+        // Coming back through the browser's back button hands us the page
+        // exactly as it was — bar and all, if it was showing when we left.
+        window.addEventListener('pageshow', function (e) { if (e.persisted) { stop(); hide(); } });
+
+        // A link or form that must not start the bar; the navigate listener
+        // below sees the same navigation a moment later and skips it too.
+        var skip = false;
+        function skipNext() {
+            skip = true;
+            setTimeout(function () { skip = false; }, 0);
         }
 
         document.addEventListener('click', function (e) {
@@ -472,39 +506,53 @@ function pg_preloader_markup()
             var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
             if (!a) return;
             if (a.target && a.target !== '_self') return;
-            if (a.hasAttribute('download') || a.hasAttribute('data-bs-toggle')) return;
+            if (a.hasAttribute('download') || a.hasAttribute('data-bs-toggle')) return skipNext();
             // A main menu row that opens its panel stays on the page; its
             // address is only for a new tab (backend.src.js, initMenuPanels()).
-            if (a.hasAttribute('data-pg-menu-panel')) return;
-            // A link a script answers on this page (the Workspace list on
-            // the channel screen opens a channel in place): this listener
-            // runs first, so it cannot wait for that script's preventDefault.
-            if (a.hasAttribute('data-pg-no-curtain')) return;
-            // A link the settings dialog answers is not a navigation, and a
-            // curtain over a page that stays put has to be waited out. Asked
-            // of the dialog rather than matched here, so there is one list of
-            // the addresses it claims.
-            if (window.pgSettingsModal && window.pgSettingsModal.asked(a)) return;
+            if (a.hasAttribute('data-pg-menu-panel')) return skipNext();
+            // A link a script answers on this page, or one that answers with
+            // a file (an export): the page stays.
+            if (a.hasAttribute('data-pg-no-curtain')) return skipNext();
+            // A link the settings dialog answers is not a navigation. Asked of
+            // the dialog rather than matched here, so there is one list of the
+            // addresses it claims.
+            if (window.pgSettingsModal && window.pgSettingsModal.asked(a)) return skipNext();
             var href = a.getAttribute('href') || '';
             if (!href || href.charAt(0) === '#') return;
             if (/^(javascript|mailto|tel|sms|data):/i.test(href)) return;
             // A link to this page with only the fragment changed is not a
-            // navigation; neither is one that leaves this origin, where the
-            // curtain would be covering a page we no longer control.
+            // navigation; neither is one that leaves this origin.
             var url;
             try { url = new URL(a.href, location.href); } catch (err) { return; }
             if (url.origin !== location.origin) return;
             if (url.href.split('#')[0] === location.href.split('#')[0]) return;
-            leaving();
+            leaving(e);
         }, true);
 
         document.addEventListener('submit', function (e) {
             var f = e.target;
             if (e.defaultPrevented || !f || f.tagName !== 'FORM') return;
-            if (f.target && f.target !== '_self') return;   // posting into a frame
-            if (f.hasAttribute('data-pg-no-curtain')) return;
-            leaving();
+            // The button's formtarget comes before the form's own target.
+            var t = (e.submitter && e.submitter.getAttribute('formtarget')) || f.getAttribute('target') || '';
+            if (t && t !== '_self') return;   // a new tab or a frame
+            if (f.hasAttribute('data-pg-no-curtain')) return skipNext();
+            leaving(e);
         }, true);
+
+        // Navigations a script starts — row buttons setting location.href,
+        // the header's back arrow, the command palette, form.submit() — fire
+        // no click or submit this listener could see; the Navigation API
+        // reports them all. Without it, links and submits are still covered.
+        if (window.navigation && navigation.addEventListener) {
+            navigation.addEventListener('navigate', function (e) {
+                if (skip || e.hashChange || typeof e.downloadRequest === 'string') return;
+                if (e.destination && e.destination.sameDocument) return;
+                var url;
+                try { url = new URL(e.destination.url); } catch (err) { return; }
+                if (url.origin !== location.origin) return;
+                leaving(null);
+            });
+        }
     })();
     </script>
 PGPRELOADER;
@@ -565,8 +613,9 @@ function pg_page_shell($properties = array())
  *
  * A slot is markup the screen built (a menu, a form, pg_filter_select()), a
  * button array, or a list of either. A button array is
- * ['label' => …, 'url' => …, 'icon' => 'bi-…', 'id' => …], plain text escaped
- * here and drawn in its slot's recipe; markup is printed as given. When the
+ * ['label' => …, 'url' => …, 'icon' => 'bi-…', 'id' => …, 'file' => true when
+ * the address answers with a download], plain text escaped here and drawn in
+ * its slot's recipe; markup is printed as given. When the
  * right-hand cluster (search, view, overflow) has no grow before it, an empty
  * grow pushes it to the bar's right end.
  *
@@ -605,7 +654,10 @@ function pg_screen_toolbar($slots, $opts = array())
                 $icon = (isset($item['icon']) && $item['icon'] !== '') ? '<i class="bi ' . h((string) $item['icon']) . ' me-2" aria-hidden="true"></i>' : '';
                 $id = (isset($item['id']) && $item['id'] !== '') ? ' id="' . h((string) $item['id']) . '"' : '';
                 $url = isset($item['url']) ? (string) $item['url'] : '#';
-                $html .= '<a class="' . $recipe . '"' . $id . ' href="' . h($url) . '">' . $icon . h((string) $item['label']) . '</a>';
+                // An address that answers with a file leaves the page where it
+                // is: no navigation bar for it (pg_preloader_markup()).
+                $file = !empty($item['file']) ? ' data-pg-no-curtain' : '';
+                $html .= '<a class="' . $recipe . '"' . $id . ' href="' . h($url) . '"' . $file . '>' . $icon . h((string) $item['label']) . '</a>';
             } elseif (is_string($item)) {
                 $html .= $item;
             }

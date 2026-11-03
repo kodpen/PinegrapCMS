@@ -177,11 +177,10 @@ function pg_settings_modal_markup($user)
 
 
                 <!--
-                    data-pg-no-curtain: the loading curtain goes up on any form
-                    submit, from a capture-phase listener on the document that
-                    runs before this form can cancel the submit. Nothing is
-                    navigating, so nothing would take the curtain back down
-                    until the operator touched the screen again.
+                    data-pg-no-curtain: the panel navigation bar starts on
+                    any form submit, from a capture-phase listener on the
+                    document that runs before this form can cancel the submit.
+                    Nothing navigates here, so the bar is skipped outright.
                 -->
                 <form class="pg-sm-body disable_shortcut" id="pg_settings_modal_form" method="post" autocomplete="off" novalidate="novalidate" data-pg-no-curtain>
                     <!--

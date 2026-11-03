@@ -93,3 +93,13 @@ function test_screen_toolbar_escaping()
 	pg_assert_false(strpos($html, 'onclick="') !== false, 'no attribute injected');
 	pg_assert_same(1, substr_count($html, 'id="button_bar"'), 'the bar keeps its id');
 }
+
+function test_screen_toolbar_file_button_keeps_the_page_quiet()
+{
+	// A button whose address answers with a file (an export) leaves the page
+	// in place, so it is marked for the panel's navigation bar to skip.
+	$html = pg_screen_toolbar(array('secondary' => array('label' => 'Export', 'url' => 'x.php?export=csv', 'file' => true)));
+	pg_assert_contains(' href="x.php?export=csv" data-pg-no-curtain>', $html, 'file button marked');
+	$html = pg_screen_toolbar(array('secondary' => array('label' => 'Import', 'url' => 'y.php')));
+	pg_assert_true(strpos($html, 'data-pg-no-curtain') === false, 'plain button not marked');
+}

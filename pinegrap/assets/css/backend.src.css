@@ -9104,27 +9104,31 @@ legend.form-label {
 }
 
 /* ── Loading curtain ──────────────────────────────────────────────────────
- * Printed straight after <body> by pg_preloader_markup(), and raised again
- * when a link is clicked, so the panel stops flashing between screens.
+ * Printed straight after <body> by pg_preloader_markup(). On arrival it is
+ * clear for its first 120 ms and then fades in over 100 ms, so a screen that
+ * is ready promptly shows nothing at all; a screen that holds it
+ * (html.pg-preloader-held, the visual editor) has it from the first frame,
+ * with the logo. On the way out there is no curtain: the thin bar
+ * .pg-progress and the waiting cursor (html.pg-navigating) come up once a
+ * navigation has taken 150 ms.
  *
- * It is the page's own background with a bar across the top and nothing
- * else. This is on every screen dozens of times an hour; anything with a
- * personality of its own is tiring by the third visit.
- *
- * The failsafe animation is the point of the block: if the inline script
- * never runs — an error above it, a blocked inline script — the curtain
- * would otherwise sit over an unusable panel forever. Ten seconds is long
- * enough that a slow page never sees it and short enough that a broken one
- * is not lost.
+ * The failsafe animation matters: if the inline script never runs — an
+ * error above it, a blocked inline script — the curtain would otherwise sit
+ * over an unusable panel forever. Ten seconds is long enough that a slow page
+ * never sees it and short enough that a broken one is not lost.
  * ---------------------------------------------------------------------- */
 .pg-preloader {
     position: fixed;
     inset: 0;
     z-index: 20000;
     background: var(--pg-bg-body, #fff);
-    opacity: 1;
+    opacity: 0;
     visibility: visible;
-    transition: opacity .26s ease, visibility 0s linear 0s;
+    transition: opacity .1s ease, visibility 0s linear 0s;
+    animation: pg-preloader-arrive .1s ease .12s forwards, pg-preloader-failsafe 0s linear 10s forwards;
+}
+.pg-preloader-held .pg-preloader {
+    opacity: 1;
     animation: pg-preloader-failsafe 0s linear 10s forwards;
 }
 /* visibility waits for the fade, so the hidden curtain is out of the layer
@@ -9133,39 +9137,48 @@ legend.form-label {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transition: opacity .26s ease, visibility 0s linear .26s;
+    transition: opacity .1s ease, visibility 0s linear .1s;
 }
-/* A done curtain stops its loops rather than running them unseen. Paused, not
-   animation:none: pgPreloaderShow() takes is-done off again on a link click,
-   and the bar and dots then carry on at once, while the mark, which rests at
-   opacity 0 until its own delayed fade-in, is left alone. */
+/* A done curtain stops its loops rather than running them unseen. */
 .pg-preloader.is-done .pg-preloader-bar i,
 .pg-preloader.is-done .pg-preloader-dots i {
     animation-play-state: paused;
 }
 
-.pg-preloader-bar {
+.pg-preloader-bar,
+.pg-progress {
     position: absolute; top: 0; left: 0; right: 0; height: 3px;
     overflow: hidden; background: rgba(128, 128, 128, .16);
 }
-.pg-preloader-bar i {
+.pg-preloader-bar i,
+.pg-progress i {
     position: absolute; top: 0; bottom: 0; left: -40%; width: 40%;
     background: linear-gradient(90deg, transparent, var(--pg-primary, #6366f1), transparent);
     animation: pg-preloader-slide 1.05s cubic-bezier(.4, 0, .2, 1) infinite;
 }
 @keyframes pg-preloader-slide { to { left: 100%; } }
 
-/* The mark in the middle: the brand lockup with the dots under it, or on a
-   private-label install the dots alone. Held back a beat — a page that
-   arrives promptly shows the bar and nothing else, which is the difference
-   between "loading" and a logo flashing at somebody twice a minute. */
+/* The navigation bar: above the page, not over it; the page stays usable. */
+.pg-progress {
+    position: fixed;
+    z-index: 20001;
+    display: none;
+    pointer-events: none;
+}
+.pg-progress.is-on { display: block; }
+html.pg-navigating, html.pg-navigating * { cursor: progress; }
+
+/* The mark in the middle: the dots, and the brand lockup above them only on
+   a screen that holds the curtain — an everyday screen never flashes a logo.
+   Held back a beat after the curtain itself. */
 .pg-preloader-mark {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
     display: flex; flex-direction: column; align-items: center; gap: 18px;
     opacity: 0;
     animation: pg-preloader-appear .45s ease .3s forwards;
 }
-.pg-preloader-logo { display: block; width: min(210px, 46vw); }
+.pg-preloader-logo { display: none; width: min(210px, 46vw); }
+.pg-preloader-held .pg-preloader-logo { display: block; }
 .pg-preloader-logo svg { display: block; width: 100%; height: auto; }
 .pg-preloader-dots {
     display: flex; gap: 7px;
@@ -9177,17 +9190,22 @@ legend.form-label {
 }
 .pg-preloader-dots i:nth-child(2) { animation-delay: .15s; }
 .pg-preloader-dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes pg-preloader-arrive { to { opacity: 1; } }
 @keyframes pg-preloader-appear { to { opacity: 1; } }
 @keyframes pg-preloader-pulse { 0%, 100% { opacity: .25; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
 @keyframes pg-preloader-failsafe { to { opacity: 0; visibility: hidden; pointer-events: none; } }
 
+/* Reduced motion drops the fades and loops, not the delays: a delay is not
+   motion, and without it the curtain and the mark would flash on every
+   screen. */
 @media (prefers-reduced-motion: reduce) {
-    .pg-preloader { transition: none; }
-    .pg-preloader-bar i { animation: none; left: 0; width: 100%; opacity: .5; }
-    .pg-preloader-mark { animation: none; opacity: 1; }
+    .pg-preloader, .pg-preloader.is-done { transition: none; }
+    .pg-preloader { animation: pg-preloader-arrive 0s linear .12s forwards, pg-preloader-failsafe 0s linear 10s forwards; }
+    .pg-preloader-bar i, .pg-progress i { animation: none; left: 0; width: 100%; opacity: .5; }
+    .pg-preloader-mark { animation: pg-preloader-appear 0s linear .3s forwards; }
     .pg-preloader-dots i { animation: none; opacity: .6; transform: none; }
 }
-@media print { .pg-preloader { display: none !important; } }
+@media print { .pg-preloader, .pg-progress { display: none !important; } }
 
 /* ══ Admin screen — user permission rows ══════════════════════════════════
    Shared by add_user.php and edit_user.php through includes/user_permissions.php.

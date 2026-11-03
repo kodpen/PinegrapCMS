@@ -251,7 +251,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - liveform-alert-markup.md: The alert around liveform's errors, warnings and notices: Bootstrap 6 alert component in the panel (PG_PANEL_OUTPUT), Bootstrap 5 markup on sites, the v5 fallback rule
 - liveform-field-names.md: Liveform field names and pagers: aria-label, file id, required import pickers, new-password on outside secret boxes, the Set Password username field, ERP fields
 - liveform-notices-trap.md: Pitfalls: notices and warnings stay in the session until remove_form(), screens must print them, and a request run twice stacks the same notice.
-- loading-curtain.md: Loading curtain printed by pg_preloader_markup() on every panel screen: structure, PRIVATE_LABEL, logo ids, Visual Editor hold, exit curtain, four ways out, exclusions.
+- loading-curtain.md: Panel transitions (pg_preloader_markup()): arrival curtain clear for 120 ms, no exit curtain, 150 ms navigation bar held until pagehide, logo only on held screens, skips.
 - login-region-shared-form.md: The login region create and edit screens share includes/forms/login_region_form.php: what it holds, the default, what stays in the screens
 - mail-queue-paging.md: The mail queue screen's e-mail and SMS lists paged on the server, the wrapping long-text cells, Retry while the queue is inactive, and the screen's wording
 - main-menu-categories.md: Main menu rows in categories (pg_menu_categories(), pg_menu_layout()): which rows, no heading over nothing, the File Manager row with the files, retired slot 3, store row names, heading look

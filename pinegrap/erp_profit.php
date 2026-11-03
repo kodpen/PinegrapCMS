@@ -282,7 +282,7 @@ pg_page_shell([
                     </div>
                     <div class="col-12 md:col-auto">
                         <button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Show') . '</button>
-                        <a class="btn btn-sm btn-outline theme-secondary" href="' . $export_url . '"><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>' . lang('Excel') . '</a>
+                        <a class="btn btn-sm btn-outline theme-secondary" href="' . $export_url . '" data-pg-no-curtain><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>' . lang('Excel') . '</a>
                     </div>
                     <div class="col-12 small fg-secondary">' . h(prepare_form_data_for_output($period['from'], 'date', false) . ' – ' . prepare_form_data_for_output($period['to'], 'date', false)) . '</div>
                     </div>
