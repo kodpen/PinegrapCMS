@@ -772,7 +772,7 @@ function pg_product_list_row($product, $view, $context)
     foreach ($view['columns'] as $code) {
         switch ($code) {
             case 'id':
-                $cells[] = pg_list_cell(h($product['name']) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" aria-label="' . h(pg_seo_link_name($product)) . '" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=product&amp;id=' . $id . get_token_query_string_field() . '">' . pg_seo_render_bar($product) . '</a>', $list_cells['name']['class'], array('data-pg-cell' => 'name'));
+                $cells[] = pg_list_cell(h($product['name']) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" data-pg-seo-bar="product:' . (int) $id . '" aria-label="' . h(pg_seo_link_name($product)) . '" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=product&amp;id=' . $id . get_token_query_string_field() . '">' . pg_seo_render_bar($product) . '</a>', $list_cells['name']['class'], array('data-pg-cell' => 'name'));
                 break;
 
             case 'short_description':

@@ -8387,6 +8387,16 @@ function initSettingsAnchors() {
 //   { sel, min, max }            → dynamic mode: counter div auto-created after each input (id = "seo_c_" + input.id)
 //   { sel, counterId, min, max } → static mode:  uses a pre-existing div with the given counterId
 //
+// Length of a title or description as the SEO score measures it
+// (pg_seo_normalize_entity() trims, then mb_strlen()): PHP's trim() set is
+// removed from both ends and a character outside the BMP counts once.
+function pgSeoMeasuredLength(value) {
+    return String(value == null ? "" : value)
+        .replace(/^[ \t\n\r\0\x0B]+|[ \t\n\r\0\x0B]+$/g, "")
+        .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "_")
+        .length;
+}
+
 function initSeoCounters(rules) {
     function renderSeoCounter(input, counterId, min, max) {
         var $input = $(input);
@@ -8404,7 +8414,7 @@ function initSeoCounters(rules) {
             describedBy.push(counterId);
             $input.attr("aria-describedby", describedBy.join(" "));
         }
-        var len = $input.val().length, cls, icon, said;
+        var len = pgSeoMeasuredLength($input.val()), cls, icon, said;
         var range = function (text) {
             return text.replace("{var:1}", len).replace("{var:2}", min).replace("{var:3}", max);
         };

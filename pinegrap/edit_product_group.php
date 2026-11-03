@@ -508,9 +508,10 @@ if (!$_POST) {
                         'row_class' => 'edit_product_group_container',
                         'form' => pg_product_group_form_cards($liveform, $group_values, array(
                             'attributes' => $output_attributes,
-                            'seo_badge' => '<span class="float-end">' . pg_seo_render_badge($seo_row) . '</span>',
+                            'seo_badge' => '<span class="float-end" data-pg-seo-badge="product_group:' . (int) $_GET['id'] . '">' . pg_seo_render_badge($seo_row) . '</span>',
                             'seo_checklist' => '<div class="col-12">
                                             ' . pg_seo_render_checklist($seo_row, 'product_group', (int) $_GET['id']) . '
+                                            ' . pg_seo_render_run_script() . '
                                         </div>')),
                         'status' => pg_product_group_form_status_card($group_values, $output_parent_product_group_row),
                         'wide' => pg_product_group_form_products_card(array(
