@@ -135,9 +135,11 @@ function test_search_index_items_render_isolated()
 
 	pg_assert_false(strpos($before, 'get_page_content(') !== false, 'no bare render before the designer branch');
 	pg_assert_same(3, substr_count($before, 'pg_search_index_render('));
-	pg_assert_same(3, substr_count($before, 'pg_search_index_keep_item('));
-	// The three renders, and the page a run ended inside.
-	pg_assert_same(4, substr_count($before, 'pg_search_index_failed('));
+	// The three renders, and the three parts a run ended inside (the page,
+	// an event, a classic record).
+	pg_assert_same(6, substr_count($before, 'pg_search_index_keep_item('));
+	// The same six, and the page item a run ended inside outside any part.
+	pg_assert_same(7, substr_count($before, 'pg_search_index_failed('));
 }
 
 // Files: shell_exec only when it exists, each file in its own try, a

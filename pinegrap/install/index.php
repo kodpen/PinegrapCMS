@@ -6445,6 +6445,26 @@ else {
 
 		}
 
+		// A new site runs the search index, the HTML structure check and the
+		// accessibility check through the general job from its first day
+		// (pg_search_audits_new_site_jobs()). The upgrade above added the
+		// dispatch switch off and its list empty, as on every upgraded site.
+		// Only a starter site: a restored backup keeps the switch it was taken
+		// with.
+		if ((get_starter_site_language($install_directory_path) !== '') && (install_column_exists('config', 'job_dispatch_enabled')) && (install_column_exists('config', 'job_dispatch'))) {
+
+			require_once(dirname(__FILE__) . '/../includes/fn/search_audits.php');
+
+			$install_job_dispatch = pg_search_audits_new_site_list((string) db_value("SELECT job_dispatch FROM config"), pg_search_audits_dispatchable());
+
+			db("UPDATE config SET job_dispatch_enabled = 1, job_dispatch = '" . e($install_job_dispatch) . "'");
+
+			$install_expected_steps++;
+
+			add_install_step(lang('Switched on the scheduled search index, HTML structure and accessibility checks'), lang('Site Settings › Updates and maintenance › Cron Jobs'));
+
+		}
+
 		// The administrator row above was written as MD5 because the starter
 		// template predates user_password_algo. Now that the upgrades have added
 		// the column, store the modern hash right away instead of leaving the

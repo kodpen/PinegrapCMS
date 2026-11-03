@@ -99,8 +99,8 @@ $pg_settings_cards[] = '
                                         ' : '') . '<div class="col-12">
                                             <div class="form-field">
                                                 <div class="switch"><input value="1"' . ($visitor_summary ? ' checked="checked"' : '') . ' class="" type="checkbox" id="visitor_summary" name="visitor_summary"/></div>
-                                                <label class="" for="visitor_summary">' . lang('Keep a daily summary before records are removed') . '</label>
-                                                <div class="form-text">' . lang('Each day is added up by source, landing page, campaign, place and device first, so the visitor report and the API still count it. Turned off, those days are gone from the visitor report; the dashboard charts keep them either way.') . '</div>
+                                                <label class="" for="visitor_summary">' . lang('Keep a daily summary of every day') . '</label>
+                                                <div class="form-text">' . lang('Every day through yesterday is added up by source, landing page, campaign, place and device, whatever the period above, so the visitor overview reads it quickly and the visitor report and the API still count a day once its records are removed. Turned off, removed days are gone from the visitor report; the dashboard charts keep them either way.') . '</div>
                                                 <div class="form-text"><a href="database_engine.php#visitor-records">' . lang('The size of the table, and a cleanup you can start yourself, are on the Database Engine screen.') . '</a></div>
                                             </div>
                                         </div>' : '') . $google_analytics_figures . '

@@ -46,6 +46,7 @@ Visitor statistics, page and article views, search engine index flags.
 - sitemap-listed-pages.md: Which pages sitemap.xml lists bare: the page types (pg_sitemap_page_types()), designed pages whose system widget stands in for an unlisted type, the home page exception, detail pages vs their records
 - translation-index-verdict.md: One rule for a translated page's robots meta, hreflang alternates and sitemap.xml under the "reviewed" policy; no kept answer means not offered; what drops or keeps the answer
 - visitor-counter-dedup-key.md: Why http_referer is not part of the visitor dedup key in init_tracking(), how the visitor IP is resolved, and the defensive user_agent column probe (2026.2.5).
+- visitor-daily-summary.md: The daily visitor summary written for every day through yesterday: what a day holds, the day order of a run, where the raw rows take over (pg_visitor_rows_from), who reads it
 - visitor-ip-early-removal.md: A visit's IP address set to 0 after config.visitor_ip_days (default 30, step 10.8) by the visitor cleanup, chunked with a cursor marker; dedup check safety, screens that show 0
 - visitor-item-links-and-chart-labels.md: How visitor report rows build item URLs, why chart and tooltip numbers differ, and why the home page is stored under many names.
 - visitor-monthly-partitions.md: The visitors table split into one partition per month (step 10.7, #499): how months are dropped, opened, converted, and what happens without partitioning
