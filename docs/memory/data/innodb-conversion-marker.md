@@ -10,5 +10,5 @@ module: innodb
 - A table in the marker that is still MyISAM, with no ALTER running on it and a start at least 30 s old, answers `aborted`. The upgrade (`retry` false) leaves it alone; the Database Engine screen (`retry` true) tries it again and shows the marker's `table` as an unfinished attempt.
 
 ## Why `earlier`?
-- The 2026.4.8 step goes on to the next table after an `aborted` one. With one entry per file, that table's conversion overwrote the record and then deleted it, so the next pass started the dead table again unattended, and the screen stopped naming it. Fixed by the bug hunt of the `innodb` module.
+- The 2026.4.8 step goes on to the next table after an `aborted` one. With one entry per file, that table's conversion overwrote the record and then deleted it, so the next pass started the dead table again unattended, and the screen stopped naming it. Fixed in #6085.
 - Tests: `tests/innodb_test.php` `test_innodb_marker_keeps_an_earlier_aborted_table`.
