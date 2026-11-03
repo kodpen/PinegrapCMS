@@ -53,6 +53,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - back-arrow-targets.md: The back arrow of a panel screen (pg_page_shell 'cancel') goes where its Save goes, send_to first; the screens fixed for it and the ones that keep another target
 - barcode-scanner-detection.md: The jQuery Scanner Detection listener on the barcode stock screens and Create Order ignores keys typed into fields, scans in an open dialog and blank codes; the Last Scans row is built as text
 - bell-refusals.md: What the bell panel shows when loading, marking unread or Delete All Notifications is refused or fails (no endless spinner, refused rows put back)
+- booking-agenda.md: Booking agenda (view_bookings.php, edit_booking.php, #6231): views, who sees what, staff-made bookings, status moves, cancel reason, audit, search
 - booking-settings.md: Settings › Bookings (category bookings): services, staff hours grid and exceptions, booking rules and widget texts in config_text; what the save writes and refuses
 - bootstrap-6-button-alignment.md: Shell rule .btn:where(.text-start|.text-end) in backend.src.css: why text-start buttons came out centred under Bootstrap 6, how the rule keeps utilities winning, the ellipsis limit
 - bootstrap-6-codemod.md: tools/bs6_migrate.php, the switch fixes and tools/check_bs6.php: contexts read, what is rewritten or reported, sizes converted once, scope, how the switch keeps the v5 look
@@ -253,6 +254,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-row-names.md: Orders, products, submitted forms, pages and files lists: row box names, SEO links, No Image, folder access by icon and word, names and descriptions that wrap instead of a cut
 - list-stale-filter.md: All Ads, Verified Shipping Addresses and Submitted Forms reset a remembered filter whose ad region, state or custom form is gone to '[All]' (pg_list_filter_known())
 - list-status-words.md: A word beside a list row's green or red state (pg_list_status_word()): product groups, key codes, arrival dates, gift cards, ERP expenses
+- list-table-driver-browser.md: List table driver in the browser (assets/js/pg_list_table.js): selection by id, Ctrl+A by condition, undo, rows on scroll, sort without reload, search box, texts, fill-height layout
 - list-table-driver.md: List table driver server core (includes/fn/list_table.php): source and column model, first rows printed, keyset batches, the list_table_rows action, the selection resolver
 - live-filter-status.md: Live filters that say what they found (API applications, Workspace MCP tools, marketplace picker and category search): hidden status region, empty line, Enter in the MCP tool filter
 - liveform-alert-markup.md: The alert around liveform's errors, warnings and notices: Bootstrap 6 alert component in the panel (PG_PANEL_OUTPUT), Bootstrap 5 markup on sites, the v5 fallback rule

@@ -44,6 +44,14 @@ if ($_POST['contacts']) {
                 $remove_from_contact_groups = array();
             }
             
+            // A group filled by rules is left to its rules: neither added to
+            // nor taken from here.
+            $add_split = pg_audience_hand_ids($add_to_contact_groups, pg_audience_dynamic_group_ids());
+            $remove_split = pg_audience_hand_ids($remove_from_contact_groups, pg_audience_dynamic_group_ids());
+            $add_to_contact_groups = $add_split['hand'];
+            $remove_from_contact_groups = $remove_split['hand'];
+            $refused_by_rule = $add_split['rule'] || $remove_split['rule'];
+
             // Who actually moved, by group, announced once per group below.
             $moved = array();
 
@@ -118,6 +126,10 @@ if ($_POST['contacts']) {
             }
             $liveform_view_contacts = new liveform('view_contacts');
             $liveform_view_contacts->add_notice( lang(array('string'=>'{var:1} contact(s) were organized','vars'=>pg_format_number($number_of_contacts, 0) )) );
+
+            if ($refused_by_rule) {
+                $liveform_view_contacts->add_notice(pg_audience_door_message());
+            }
             
             break;
 

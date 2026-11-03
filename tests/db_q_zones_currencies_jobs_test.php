@@ -131,7 +131,7 @@ function db_q_zones_currencies_jobs_test_files()
 		'add_zone.php' => 0,
 		'add_shipping_method.php' => 0,
 		'includes/fn/shipping_methods.php' => 8,
-		'add_arrival_date.php' => 2,
+		'add_arrival_date.php' => 0,
 		'add_product_group.php' => 2,
 		'edit_orders.php' => 2,
 		'view_orders_for_contact.php' => 3,

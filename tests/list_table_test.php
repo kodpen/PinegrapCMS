@@ -330,3 +330,24 @@ function test_list_table_definitions_lookup()
 		pg_assert_true(is_string($definition['source']) && ($definition['source'] !== ''), $name . ' source');
 	}
 }
+
+function test_list_table_html_hidden_cells_texts_and_scroll_box()
+{
+	$source = pg_test_list_table_source();
+	$html = pg_list_table_html($source, array('rows' => array(array('id' => 1, 'cells' => array('name' => pg_list_cell('Bag'), 'notes' => pg_list_cell('x')))), 'next' => null, 'total' => 1), 'Items');
+
+	pg_assert_contains('<td role="cell" data-pg-col="notes" class="align-middle" hidden>x</td>', $html, 'a hidden column hides its cells');
+	pg_assert_contains('<div class="pg-list-table-bar" hidden>', $html);
+	pg_assert_contains('<div class="pg-list-table-scroll" tabindex="-1"><table', $html);
+	pg_assert_contains('<div class="pg-list-table-foot"></div></div>', $html);
+	pg_assert_contains('data-pg-list-texts="', $html);
+
+	$texts = pg_list_table_texts();
+
+	foreach (array('more', 'loading', 'failed', 'retry', 'loaded', 'selected', 'all', 'clear', 'undo', 'sort') as $key) {
+		pg_assert_true(isset($texts[$key]) && ($texts[$key] !== ''), $key);
+	}
+
+	pg_assert_contains('%n', $texts['selected']);
+	pg_assert_contains('%n', $texts['loaded']);
+}

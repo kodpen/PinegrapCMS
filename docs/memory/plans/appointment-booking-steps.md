@@ -14,7 +14,7 @@ description: Steps BK1-BK5 of plans/appointment-booking.md: schema and slot engi
 - BK2 (M) Settings. After BK1. Done in #6237 (`ui/booking-settings.md`; rules and texts in `config_text`).
   - Settings › Bookings (`includes/settings/`): services (list, add, edit, order, enabled), staff (pick panel users, their services, weekly hours grid with a copy-to-all, day exceptions, time off), policies (lead time, horizon, cancellation window, reschedule allowed, hold minutes, reminder hours), the widget's texts; every box through the panel's own controls (`pgDatePicker`, chips). Memory: `ui/booking-settings.md`.
 
-- BK3 (M) Staff agenda. After BK1.
+- BK3 (M) Staff agenda. Done in #6231 (`ui/booking-agenda.md`).
   - `view_bookings.php` (day, week and list views with the period navigator of `ui/list-period-navigator-and-clock.md`, staff filter, status chips, server paging for the list) and `edit_booking.php` (a staff-made booking against the same slot engine, status changes, notes, the customer card link, cancel with a reason); the audit trail writes every change (`core/audit-trail-contacts.md` pattern); the panel search finds a booking by name or e-mail. Memory: `ui/booking-agenda.md`.
 
 - BK4 (L, two PRs) The booking widget. After BK1.

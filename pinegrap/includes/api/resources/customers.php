@@ -1009,6 +1009,8 @@ function api_customer_create_group_or_fail($owner, $sent) {
 
 	}
 
+	api_contact_group_hand_or_fail($group['id']);
+
 	return $group;
 
 }

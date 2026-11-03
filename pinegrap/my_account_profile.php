@@ -167,7 +167,7 @@ if (!$_POST) {
             pg_audit_site_record('create', 'contacts', (int) $contact_id);
             
             // check if registration contact group exists
-            $query = "SELECT id FROM contact_groups WHERE id = '" . REGISTRATION_CONTACT_GROUP_ID  . "'";
+            $query = "SELECT id FROM contact_groups WHERE (id = '" . (int) REGISTRATION_CONTACT_GROUP_ID  . "') AND " . pg_audience_hand_sql();
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // if registration contact group exists, assign contact to contact group
