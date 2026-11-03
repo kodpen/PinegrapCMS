@@ -2870,6 +2870,13 @@
             st = motionCompose(st, motionEnter(l, a.out.kind, 1 - easeAt(a.out.ease, p), MOTION_BACK[a.out.dir] || 'down', p < 1));
         }
 
+        // The layer's own keyframes on top of its presets (KEYS below).
+        var k = keyAt(l, t);
+
+        if (k) {
+            st = motionCompose(st, Object.assign(motionRest(), { opacity: k.opacity, x: k.x, y: k.y, scale: k.scale, rot: k.rot }));
+        }
+
         return st;
     }
 
@@ -2908,7 +2915,7 @@
         return ((doc && doc.layers) || []).some(function (l) {
             var a = l.anim;
 
-            return !!(a && ((a['in'] && a['in'].kind) || (a.loop && a.loop.kind) || (a.out && a.out.kind)));
+            return !!(a && ((a['in'] && a['in'].kind) || (a.loop && a.loop.kind) || (a.out && a.out.kind) || keyList(l).length));
         });
     }
 
@@ -2917,6 +2924,165 @@
         MOTION_MIN: MOTION_MIN, MOTION_MAX: MOTION_MAX, easeAt: easeAt, newMotion: newMotion, motionSpans: motionSpans, motionAt: motionAt,
         docMotion: docMotion, baseAt: baseAt, hasMotion: hasMotion
     };
+
+    // -- keyframes (pg_image_editor_keyframes.js) --
+    //
+    // A layer's anim.keys: [{ t, x, y, scale, rot, opacity, ease }] in time
+    // order; x and y move the layer (document units), scale and opacity
+    // multiply, rot adds degrees, as M.motionAt()'s state does. Between two
+    // keys the later key's ease runs; before the first and after the last
+    // the state holds. Times are ms, rounded to KEY_STEP.
+
+    var KEY_STEP = 10, KEY_NEAR = 5, KEY_SCALE = [0.05, 10];
+
+    function keyRest(t) {
+        return { t: t, x: 0, y: 0, scale: 1, rot: 0, opacity: 1, ease: 'in-out' };
+    }
+
+    function keyNumber(v, fallback) {
+        var n = Number(v);
+
+        return isFinite(n) ? n : fallback;
+    }
+
+    // The layer's keys, cleaned: objects only, numbers, limits, defaults,
+    // in time order.
+    function keyList(l) {
+        var list = (l && l.anim && Array.isArray(l.anim.keys)) ? l.anim.keys : [];
+
+        return list.filter(function (k) { return k && (typeof k === 'object'); }).map(function (k) {
+            return {
+                t: Math.max(0, Math.round(keyNumber(k.t, 0))),
+                x: keyNumber(k.x, 0),
+                y: keyNumber(k.y, 0),
+                scale: clamp(keyNumber(k.scale, 1), KEY_SCALE[0], KEY_SCALE[1]),
+                rot: keyNumber(k.rot, 0),
+                opacity: clamp(keyNumber(k.opacity, 1), 0, 1),
+                ease: (MOTION_EASES.indexOf(k.ease) >= 0) ? k.ease : 'in-out'
+            };
+        }).sort(function (a, b) { return a.t - b.t; });
+    }
+
+    // The keyed state at t, or null for a layer without keys.
+    function keyAt(l, t) {
+        var keys = keyList(l), i, a, b, e;
+
+        if (!keys.length || (t === null) || (t === undefined)) {
+            return null;
+        }
+
+        if (t <= keys[0].t) {
+            return keys[0];
+        }
+
+        for (i = 1; i < keys.length; i++) {
+            if (t < keys[i].t) {
+                a = keys[i - 1];
+                b = keys[i];
+                e = easeAt(b.ease, (t - a.t) / (b.t - a.t));
+
+                return {
+                    t: t,
+                    x: a.x + (b.x - a.x) * e,
+                    y: a.y + (b.y - a.y) * e,
+                    scale: Math.max(KEY_SCALE[0], a.scale + (b.scale - a.scale) * e),
+                    rot: a.rot + (b.rot - a.rot) * e,
+                    opacity: clamp(a.opacity + (b.opacity - a.opacity) * e, 0, 1),
+                    ease: b.ease
+                };
+            }
+        }
+
+        return keys[keys.length - 1];
+    }
+
+    // The index of the key within KEY_NEAR ms of t, or -1.
+    function keyIndex(keys, t) {
+        for (var i = 0; i < keys.length; i++) {
+            if (Math.abs(keys[i].t - t) <= KEY_NEAR) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    function keyTime(t, end) {
+        return clamp(Math.round(keyNumber(t, 0) / KEY_STEP) * KEY_STEP, 0, Math.max(0, end));
+    }
+
+    function keyClean(k) {
+        return { t: k.t, x: k.x, y: k.y, scale: k.scale, rot: k.rot, opacity: k.opacity, ease: k.ease };
+    }
+
+    // The keys with patch at t (on a timeline of end ms): the key there
+    // changed, or a new one from the state the layer has there. The first
+    // key away from 0 brings a key at rest at 0, so the layer moves from
+    // where it was put.
+    function keySet(l, t, patch, end) {
+        var keys = keyList(l), i, k;
+
+        t = keyTime(t, end);
+        i = keyIndex(keys, t);
+
+        if (!keys.length && (t > 0)) {
+            keys.push(keyRest(0));
+        }
+
+        if (i >= 0) {
+            keys[i] = keyClean(Object.assign({}, keys[i], patch, { t: keys[i].t }));
+        } else {
+            k = keyAt({ anim: { keys: keys } }, t);
+            keys.push(keyClean(Object.assign(k ? Object.assign({}, k) : keyRest(t), { ease: 'in-out' }, patch, { t: t })));
+        }
+
+        return keyList({ anim: { keys: keys } });
+    }
+
+    // The key at from moved to to; one already there gives way.
+    function keyMove(keys, from, to, end) {
+        var i = keyIndex(keys, from), moved;
+
+        if (i < 0) {
+            return keys.slice();
+        }
+
+        to = keyTime(to, end);
+        moved = Object.assign({}, keys[i], { t: to });
+
+        return keyList({ anim: { keys: keys.filter(function (k, n) { return (n !== i) && (Math.abs(k.t - to) > KEY_NEAR); }).concat([moved]) } });
+    }
+
+    function keyDrop(keys, t) {
+        var i = keyIndex(keys, t);
+
+        return keys.filter(function (k, n) { return n !== i; });
+    }
+
+    // The path the layer's centre takes: a dot [x, y, t] at each key and a
+    // line sampled at n steps from the first key to the last; null without
+    // keys.
+    function keyPath(l, n) {
+        var keys = keyList(l), cx = (Number(l.x) || 0) + (Number(l.w) || 0) / 2, cy = (Number(l.y) || 0) + (Number(l.h) || 0) / 2;
+        var line = [], from, span, i, k;
+
+        if (!keys.length) {
+            return null;
+        }
+
+        n = Math.max(1, Math.round(n || 60));
+        from = keys[0].t;
+        span = keys[keys.length - 1].t - from;
+
+        for (i = 0; i <= n; i++) {
+            k = keyAt(l, from + span * i / n);
+            line.push([cx + k.x, cy + k.y]);
+        }
+
+        return { line: line, dots: keys.map(function (q) { return [cx + q.x, cy + q.y, q.t]; }) };
+    }
+
+    var KEYS = { KEY_STEP: KEY_STEP, keyList: keyList, keyAt: keyAt, keyIndex: keyIndex, keySet: keySet, keyMove: keyMove, keyDrop: keyDrop, keyPath: keyPath };
 
     // -- tracks (pg_image_editor_tracks.js) --
     //
@@ -3152,6 +3318,49 @@
         ANIM_FORMATS: ANIM_FORMATS, animFormats: animFormats, animSwitch: animSwitch, animLoops: animLoops, animDefaults: animDefaults, animSize: animSize, animEdges: animEdges,
         animFrames: animFrames, animSamples: animSamples, animEstimate: animEstimate, animName: animName
     };
+
+    // -- saving an animation into Files (pg_image_editor_render.js) --
+
+    // Whether a file of bytes fits the server's limit (0: none known).
+    function animFits(bytes, limit) {
+        return !(Number(limit) > 0) || (Number(bytes) || 0) <= Number(limit);
+    }
+
+    // A smaller longest edge or frame rate whose file fits limit, from the
+    // estimate at set: the size scales with the frame's area and the frame
+    // count. The largest such file (the least lost), with a tenth spare;
+    // null when the settings fit or nothing offered does.
+    function animSmaller(out, set, bytes, limit) {
+        var f = ANIM_FORMATS[set.format] || ANIM_FORMATS.gif, now = animSize(out, set.edge), best = null;
+
+        if (animFits(bytes, limit)) {
+            return null;
+        }
+
+        animEdges(out, set.format).forEach(function (edge) {
+            var size = animSize(out, edge), area = (size.w * size.h) / (now.w * now.h);
+
+            f.rates.forEach(function (fps) {
+                var est = Math.round(bytes * area * fps / set.fps);
+
+                if ((size.w <= now.w) && (fps <= set.fps) && ((size.w < now.w) || (fps < set.fps)) && (est * 1.1 <= limit)
+                    && (!best || (est > best.bytes) || ((est === best.bytes) && (edge > best.edge)))) {
+                    best = { edge: edge, fps: fps, bytes: est };
+                }
+            });
+        });
+
+        return best;
+    }
+
+    // What a save into Files does: replace the animation the editor opened
+    // when it is of the same format and may be written over, else a new
+    // file.
+    function animSaveMode(made, format) {
+        return (made && made.replace && (made.format === (ANIM_FORMATS[format] || ANIM_FORMATS.gif).ext)) ? 'replace' : 'new';
+    }
+
+    var ANIMSAVE = { animFits: animFits, animSmaller: animSmaller, animSaveMode: animSaveMode };
 
     // -- access (pg_image_editor_access.js) --
 
@@ -3425,7 +3634,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, TRACKS, RENDER, ACCESS, GFONTS, GLYPH].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, ACCESS, GFONTS, GLYPH].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

@@ -51,7 +51,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-21.md: Decisions list, product part 21 (2026-11-03 on): clearing the performance log, the Migration screen, panel transitions, the panel back/forward cache, WebP behind an unconfirmed CDN
 - decisions-made-product-22.md: Decisions list, product part 22 (2026-11-01 evening on): the panel's own table driver replacing DataTables
 - decisions-made-product-23.md: Decisions list, product part 23 (2026-11-03 on): page cache copies under an experiment and audience conditions, designer page links by id outside widgets, the classic styles' bulk run
-- decisions-made-product-24.md: Decisions list, product part 24 (2026-11-01 on): the Visitors overview screen, a daily summary every day, the channel rule, Search Console joined to the pages
+- decisions-made-product-24.md: Decisions list, product part 24 (2026-11-01 on): Visitors overview, daily summary, channel rule, Search Console on pages, social likes and follows, image editor's new tools and video
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
@@ -77,7 +77,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), "Edit here" on the AI draft card, flow run notices per chain
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
-- decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): a task moved in the person's own calendar writes its due date back; the pinned My Notes row opens the Workspace list
+- decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): a calendar move writes a task's due date back; the pinned My Notes row opens the Workspace list; the list's top and the tour's place
 - decisions-made-workspace.md: Decisions list, workspace part: a typed @username in /task, a flow change box's rights, bulk product cards, model assistants, the Workspace list, the retired scheduled form
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, the PR footer (pointer), editing shared files without conflicts, API vs ERP files

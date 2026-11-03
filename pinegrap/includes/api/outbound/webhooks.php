@@ -158,6 +158,12 @@ function api_webhook_events() {
 		// and a contact's own deletion; the description says so.
 		'contact_group.members_changed' => 'Contacts were put into or taken out of a contact group through the API or the contact screens (not forms, the checkout, e-mail preferences or imports)',
 		'page.created'         => 'A page was created (not duplicated or imported pages)',
+		// Page experiments (pg_experiment_sheet_move()): the panel and the
+		// API alike. id, page_id, name and goal_kind follow; an end names
+		// winner_variant_id (0 without a winner). A resume after a pause is
+		// not a start.
+		'experiment.started'   => 'A page experiment was started for the first time',
+		'experiment.ended'     => 'A page experiment was ended, with or without a winner',
 		'page.updated'         => 'A page was changed through the API',
 		'product_group.created' => 'A product group was created through the API or the Workspace',
 		'product_group.updated' => 'A product group was changed',

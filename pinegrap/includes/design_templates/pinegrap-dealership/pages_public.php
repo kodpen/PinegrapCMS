@@ -5,9 +5,10 @@
  * Design template "Car Dealership", its public pages: home, the service
  * centre, finance, about, visit us and the questions buyers ask. Included
  * after parts.php in the same scope (its builders and the dealer's data);
- * returns the list of pages. The widgets the home places (home_vehicles,
- * home_posts, google_reviews) are built by vehicles.php and standard.php;
- * test_drive_band is the shared component of $test_drive_band.
+ * returns the list of pages. The widgets the home places (home_featured,
+ * home_used, home_posts, google_reviews) are built by vehicles.php and
+ * standard.php; test_drive_band is the shared component of
+ * $test_drive_band.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -171,7 +172,14 @@ $public_pages[] = array(
         $el('section', 'py-5', lang('Featured Cars'), array(
             $container(array(
                 $section_header(lang('In the showroom'), lang('Featured cars'), lang('All cars'), '{{page:vehicles}}'),
-                $widget('home_vehicles'),
+                $widget('home_featured'),
+            )),
+        )),
+
+        $el('section', 'py-5', lang('Used Cars'), array(
+            $container(array(
+                $section_header(lang('Checked and ready'), lang('Latest used cars'), lang('All used cars'), '{{page:used_cars}}'),
+                $widget('home_used'),
             )),
         )),
 

@@ -2,7 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the store lookup lists over the external API (referral sources)
+ * Tests for the store lookup lists over the external API (ship date
+ * adjustments, verified shipping addresses, referral sources)
  * and the write path the screens of the four lookup lists (arrival dates,
  * ship date adjustments, verified shipping addresses, referral sources)
  * share with it (includes/fn/store_lookups.php): the route rows and their
@@ -26,6 +27,7 @@ if (!defined('PG_API_PANEL')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/store_regions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/store_lookups.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/arrival_date_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/ship_date_adjustment_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/schema.php');
 
 function api_store_lookups_test_source($relative)
@@ -52,7 +54,7 @@ function test_api_store_lookups_routes()
 {
 	$expected = array();
 
-	foreach (array('referral-sources' => 'referral_sources') as $path => $key) {
+	foreach (array('ship-date-adjustments' => 'ship_date_adjustments', 'verified-addresses' => 'verified_addresses', 'referral-sources' => 'referral_sources') as $path => $key) {
 		$expected['store.' . $key . '.list']        = array('GET', '/store/' . $path, 'orders:read');
 		$expected['store.' . $key . '.get']         = array('GET', '/store/' . $path . '/{id}', 'orders:read');
 		$expected['store.' . $key . '.create']      = array('POST', '/store/' . $path, 'store:write');
@@ -89,6 +91,8 @@ function test_api_store_lookups_routes()
 function test_api_store_lookups_text_limits()
 {
 	$columns = array(
+		'store.ship_date_adjustments' => array('zip_code_prefix' => 3),
+		'store.verified_addresses' => array('company' => 50, 'address_1' => 50, 'address_2' => 50, 'city' => 50, 'zip_code' => 50),
 		'store.referral_sources' => array('name' => 50, 'code' => 50),
 	);
 
@@ -128,12 +132,33 @@ function test_api_store_referral_source_values()
 	pg_assert_true(pg_referral_source_form_error(api_store_referral_source_values(null, array('name' => 'X')), array()) !== '', 'a new source needs a code');
 }
 
+function test_api_store_ship_date_adjustment_values()
+{
+	$row = array('zip_code_prefix' => '341', 'shipping_method_id' => '4', 'adjustment' => '-2');
+
+	pg_assert_same(array('zip_code_prefix' => '341', 'shipping_method_id' => 4, 'days' => '2', 'direction' => 'earlier'), api_store_ship_date_adjustment_values($row, array()), 'a stored negative adjustment reads as earlier');
+	pg_assert_same(array('zip_code_prefix' => '341', 'shipping_method_id' => 4, 'days' => '5', 'direction' => 'earlier'), api_store_ship_date_adjustment_values($row, array('days' => 5)), 'only the days change, the direction stays');
+	pg_assert_same(array('zip_code_prefix' => '060', 'shipping_method_id' => 0, 'days' => '', 'direction' => 'later'), api_store_ship_date_adjustment_values(null, array('zip_code_prefix' => ' 060 ')), 'a new adjustment moves later by default');
+	pg_assert_same(-5, (int) pg_ship_date_adjustment_form_adjustment(5, 'earlier'), 'earlier is stored negative');
+	pg_assert_same(array('id' => 7, 'zip_code_prefix' => '341', 'shipping_method_id' => 4, 'days' => 2, 'direction' => 'earlier', 'adjustment' => -2), api_store_ship_date_adjustment_present(array('id' => '7') + $row), 'the answer splits the signed adjustment');
+}
+
+function test_api_store_verified_address_values()
+{
+	$row = array('company' => 'Acme', 'address_1' => 'Main St 1', 'address_2' => '', 'city' => 'Kadıköy', 'state_id' => '34', 'zip_code' => '34710');
+
+	$values = api_store_verified_address_values($row, array('city' => ' Üsküdar ', 'zip_code' => '34660'));
+	pg_assert_same(array('company' => 'Acme', 'address_1' => 'Main St 1', 'address_2' => '', 'city' => 'Üsküdar', 'state_id' => '34', 'zip_code' => '34660'), $values, 'only the fields sent change');
+	pg_assert_same('', api_store_verified_address_values(null, array('state_id' => 0))['state_id'], 'state 0 counts as no state');
+	pg_assert_same(null, api_store_verified_address_present($row + array('id' => '3'))['state_code'], 'no state code without its join');
+}
+
 // Each write handler checks, stops for X-Dry-Run, then writes.
 function test_api_store_lookups_check_stop_write()
 {
 	$file = 'includes/api/resources/store_lookups.php';
 
-	foreach (array('referral_sources' => 'referral_source') as $plural => $one) {
+	foreach (array('ship_date_adjustments' => 'ship_date_adjustment', 'verified_addresses' => 'verified_address', 'referral_sources' => 'referral_source') as $plural => $one) {
 		foreach (array('create', 'update') as $action) {
 			$body = api_store_lookups_test_body($file, 'api_store_' . $plural . '_' . $action);
 			$prepare = strpos($body, 'api_store_' . $one . '_prepare(');
@@ -169,6 +194,31 @@ function test_api_store_lookups_screens_share_the_write_path()
 		foreach (array('INSERT INTO ' . $rule[1], 'UPDATE ' . $rule[1], 'DELETE FROM ' . $rule[1]) as $sql) {
 			pg_assert_false(strpos($source, $sql) !== false, $file . ' keeps no ' . $sql);
 		}
+	}
+
+	// The edit screens write the row the page checked, not a posted id: a
+	// post without one saved a new row.
+	foreach (array('edit_ship_date_adjustment.php' => array('pg_store_ship_date_adjustment_save($id, ', 'pg_store_ship_date_adjustment_delete($id)'), 'edit_verified_shipping_address.php' => array('pg_store_verified_address_save($id, ', 'pg_store_verified_address_delete($id)')) as $file => $calls) {
+		$source = api_store_lookups_test_source($file);
+
+		foreach ($calls as $call) {
+			pg_assert_contains($call, $source, $file . ' writes the checked id');
+		}
+
+		pg_assert_false(strpos($source, "get_field_value('id')") !== false, $file . ' never reads the posted id');
+	}
+
+	// Checkout prints the referral sources as options: name and code escaped.
+	foreach (array('get_billing_information.php' => 2, 'get_express_order.php' => 2) as $file => $count) {
+		pg_assert_same($count, preg_match_all('/\$referral_source_options\[h\(\$\w+\[\'name\'\]\)\] = h\(\$\w+\[\'code\'\]\);/', api_store_lookups_test_source($file)), $file . ' escapes the referral sources');
+	}
+
+	// The shipping page hands verified addresses to an inline script: every
+	// text the API can write goes through escape_javascript().
+	$shipping = api_store_lookups_test_source('get_shipping_address_and_arrival.php');
+
+	foreach (array('company', 'address_1', 'address_2', 'city', 'state_code', 'zip_code', 'country_code') as $column) {
+		pg_assert_contains('"' . $column . '": "\' . escape_javascript($verified_shipping_address[\'' . $column . '\']) . \'"', $shipping, 'the shipping page escapes ' . $column);
 	}
 
 	$edit = api_store_lookups_test_source('edit_arrival_date.php');

@@ -17,7 +17,7 @@ module: importers
 ## What does a writer provide?
 - `includes/import/write_<kind>.php`: `pg_import_write_<kind>($item, $import)` → `result` made/skipped/failed, `id`, `reason`; `pg_import_unwrite_<kind>($item_id)` deletes through the kind's own path. Any other answer, made without an id, or a thrown error is failed (`pg_import_writer_answer()`).
 - A writer finds an earlier item (a comment's record) with `pg_import_item_id($related, $kind, $key)`.
-- Page, file: `import-media.md`; author IM2 (`import-wordpress.md`), record and comment IM2b, product IM4, contact IM5, redirect IM6. A kind without a writer fails: "This site cannot write this kind of item yet."
+- Page, file: `import-media.md`; author `import-wordpress.md`, record and comment `import-records.md`, product IM4, contact IM5, redirect `import-redirects.md`. A kind without a writer fails: "This site cannot write this kind of item yet."
 
 ## When is an item skipped?
 - When its source key is in `import_items` of this import or an earlier one of the same kind that is not undone (`pg_import_related_ids()`): a second upload makes nothing twice. Writers add their own checks (SKU, e-mail).

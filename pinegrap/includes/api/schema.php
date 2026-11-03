@@ -1505,6 +1505,204 @@ function api_schema() {
 
 
 		array(
+			'id' => 'store.ship_date_adjustments.list',
+			'method' => 'GET',
+			'path' => '/store/ship-date-adjustments',
+			'scope' => 'orders:read',
+			'handler' => 'api_store_ship_date_adjustments_list',
+			'returns' => array('list' => 'StoreShipDateAdjustment'),
+			'summary' => 'Ship date adjustments',
+			'description' => 'Days a shipping method\'s ship date moves for postal codes that start with a prefix. adjustment is the signed number of days (negative: earlier). One page.',
+			'params' => array()
+		),
+
+		array(
+			'id' => 'store.ship_date_adjustments.get',
+			'method' => 'GET',
+			'path' => '/store/ship-date-adjustments/{id}',
+			'scope' => 'orders:read',
+			'handler' => 'api_store_ship_date_adjustments_get',
+			'returns' => 'StoreShipDateAdjustment',
+			'summary' => 'One of the ship date adjustments',
+			'description' => 'One row as GET /store/ship-date-adjustments lists it.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.ship_date_adjustments.create',
+			'method' => 'POST',
+			'path' => '/store/ship-date-adjustments',
+			'scope' => 'store:write',
+			'handler' => 'api_store_ship_date_adjustments_create',
+			'dry_run' => true,
+			'returns' => 'StoreShipDateAdjustment',
+			'status' => 201,
+			'summary' => 'Create a ship date adjustment',
+			'description' => 'Adds an adjustment, as the ship date adjustment screen does: a prefix of other than three characters or a shipping method that does not exist is 422; a prefix and method another adjustment has is 409 adjustment_taken.',
+			'params' => array(
+				array('name' => 'zip_code_prefix', 'in' => 'body', 'type' => 'string', 'max_length' => 3, 'required' => true, 'description' => 'The first three characters of the postal codes it applies to.'),
+				array('name' => 'shipping_method_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The shipping method it applies to.'),
+				array('name' => 'days', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 999, 'required' => true, 'description' => 'How many days the ship date moves.'),
+				array('name' => 'direction', 'in' => 'body', 'type' => 'enum', 'values' => array('earlier', 'later'), 'description' => 'Which way the ship date moves. Defaults to later.')
+			)
+		),
+
+		array(
+			'id' => 'store.ship_date_adjustments.update',
+			'method' => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path' => '/store/ship-date-adjustments/{id}',
+			'scope' => 'store:write',
+			'handler' => 'api_store_ship_date_adjustments_update',
+			'dry_run' => true,
+			'returns' => 'StoreShipDateAdjustment',
+			'summary' => 'Change a ship date adjustment',
+			'description' => 'Only the fields sent change. A prefix and method another adjustment has is 409 adjustment_taken. PATCH is accepted as well; on an IIS server send POST.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'zip_code_prefix', 'in' => 'body', 'type' => 'string', 'max_length' => 3, 'description' => 'The first three characters of the postal codes it applies to.'),
+				array('name' => 'shipping_method_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The shipping method it applies to.'),
+				array('name' => 'days', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 999, 'description' => 'How many days the ship date moves.'),
+				array('name' => 'direction', 'in' => 'body', 'type' => 'enum', 'values' => array('earlier', 'later'), 'description' => 'Which way the ship date moves. Defaults to later.')
+			)
+		),
+
+		array(
+			'id' => 'store.ship_date_adjustments.delete',
+			'method' => 'DELETE',
+			'path' => '/store/ship-date-adjustments/{id}',
+			'scope' => 'store:write',
+			'handler' => 'api_store_ship_date_adjustments_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a ship date adjustment',
+			'description' => 'Deletes the adjustment outright, as the screen does. Cannot be undone.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.ship_date_adjustments.delete_post',
+			'method' => 'POST',
+			'path' => '/store/ship-date-adjustments/{id}/delete',
+			'scope' => 'store:write',
+			'handler' => 'api_store_ship_date_adjustments_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a ship date adjustment, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/ship-date-adjustments/{id}, for clients that cannot send DELETE.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.verified_addresses.list',
+			'method' => 'GET',
+			'path' => '/store/verified-addresses',
+			'scope' => 'orders:read',
+			'handler' => 'api_store_verified_addresses_list',
+			'returns' => array('list' => 'StoreVerifiedAddress'),
+			'summary' => 'Verified shipping addresses',
+			'description' => 'Shipping addresses the store has verified, newest first, cursor paged, with the code of their state and country.',
+			'params' => array(
+				array('name' => 'state_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the addresses in this state.'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id' => 'store.verified_addresses.get',
+			'method' => 'GET',
+			'path' => '/store/verified-addresses/{id}',
+			'scope' => 'orders:read',
+			'handler' => 'api_store_verified_addresses_get',
+			'returns' => 'StoreVerifiedAddress',
+			'summary' => 'One of the verified shipping addresses',
+			'description' => 'One row as GET /store/verified-addresses lists it.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.verified_addresses.create',
+			'method' => 'POST',
+			'path' => '/store/verified-addresses',
+			'scope' => 'store:write',
+			'handler' => 'api_store_verified_addresses_create',
+			'dry_run' => true,
+			'returns' => 'StoreVerifiedAddress',
+			'status' => 201,
+			'summary' => 'Create a verified shipping address',
+			'description' => 'Adds a verified shipping address, as the screen does: a blank address_1, city or zip_code, or a state that does not exist, is 422.',
+			'params' => array(
+				array('name' => 'company', 'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'address_1', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true),
+				array('name' => 'address_2', 'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'city', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The city (İlçe for a Turkish address).'),
+				array('name' => 'state_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The state (İl for a Turkish address), from GET /store/countries.'),
+				array('name' => 'zip_code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.verified_addresses.update',
+			'method' => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path' => '/store/verified-addresses/{id}',
+			'scope' => 'store:write',
+			'handler' => 'api_store_verified_addresses_update',
+			'dry_run' => true,
+			'returns' => 'StoreVerifiedAddress',
+			'summary' => 'Change a verified shipping address',
+			'description' => 'Only the fields sent change. PATCH is accepted as well; on an IIS server send POST.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'company', 'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'address_1', 'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'address_2', 'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'city', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The city (İlçe for a Turkish address).'),
+				array('name' => 'state_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The state (İl for a Turkish address), from GET /store/countries.'),
+				array('name' => 'zip_code', 'in' => 'body', 'type' => 'string', 'max_length' => 50)
+			)
+		),
+
+		array(
+			'id' => 'store.verified_addresses.delete',
+			'method' => 'DELETE',
+			'path' => '/store/verified-addresses/{id}',
+			'scope' => 'store:write',
+			'handler' => 'api_store_verified_addresses_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a verified shipping address',
+			'description' => 'Deletes the address outright, as the screen does. Cannot be undone.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.verified_addresses.delete_post',
+			'method' => 'POST',
+			'path' => '/store/verified-addresses/{id}/delete',
+			'scope' => 'store:write',
+			'handler' => 'api_store_verified_addresses_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a verified shipping address, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/verified-addresses/{id}, for clients that cannot send DELETE.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
 			'id' => 'store.referral_sources.list',
 			'method' => 'GET',
 			'path' => '/store/referral-sources',
@@ -3426,6 +3624,81 @@ function api_schema() {
 			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
 			'summary' => 'Remove a comment, addressed as a POST',
 			'description' => 'The same removal as DELETE /comments/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		/* ----- Experiments ------------------------------------------------- */
+
+		array(
+			'id'      => 'experiments.list',
+			'method'  => 'GET',
+			'path'    => '/experiments',
+			'scope'   => 'experiments:read',
+			'handler' => 'api_experiments_list',
+			'returns' => array('list' => 'Experiment'),
+			'summary' => 'Page experiments',
+			'description' => 'The A/B experiments of the designed pages, newest first, cursor paged, each with its variants and their figures. status: draft (set up, not started), running, paused or ended. Variant a is the live page (control true, draft_page_id null); the others are draft pages shown under the live page\'s address. views and goals are summed from the hourly rollup: a goal counts once a day per visitor and experiment. rate is goals over views (0-1), lift the change against the control relative to its rate, p_value the two-sided p of a two-proportion z-test against the control and significant whether it is below 0.05; verdict is ahead, behind, more (not beyond chance yet: needed_views more views each would tell at these rates), even or none (no views). Nothing about a visitor is kept. 503 service_unavailable until the database update that adds experiments has run.',
+			'params'  => array(
+				array('name' => 'status',  'in' => 'query', 'type' => 'enum', 'values' => array('draft', 'running', 'paused', 'ended')),
+				array('name' => 'page_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'The live page\'s experiments only.'),
+				array('name' => 'limit',   'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'experiments.get',
+			'method'  => 'GET',
+			'path'    => '/experiments/{id}',
+			'scope'   => 'experiments:read',
+			'handler' => 'api_experiments_get',
+			'returns' => 'Experiment',
+			'summary' => 'One page experiment with its results',
+			'description' => 'As in the list: the experiment, its goal (goal_kind form, order, click or page; goal_target the click goal\'s name or the goal page\'s id, null for the others), its dates, the winner once one was published, and each variant\'s figures and comparison with the live page.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'experiments.start',
+			'method'  => 'POST',
+			'path'    => '/experiments/{id}/start',
+			'scope'   => 'experiments:write',
+			'handler' => 'api_experiments_start',
+			'returns' => 'Experiment',
+			'summary' => 'Start or resume an experiment',
+			'description' => 'A set-up (draft) experiment starts, a paused one runs again; visitors are then drawn into its variants by their weights. A start is refused with 409 experiment_state when the page is no longer on the site, a variant is no longer a draft, another experiment runs on the page, or the experiment is running or ended. The first start stamps started_at and announces experiment.started. Stored copies of pages are made old, as after a panel change.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'experiments.pause',
+			'method'  => 'POST',
+			'path'    => '/experiments/{id}/pause',
+			'scope'   => 'experiments:write',
+			'handler' => 'api_experiments_pause',
+			'returns' => 'Experiment',
+			'summary' => 'Pause an experiment',
+			'description' => 'A running experiment pauses: every visitor sees the live page and nothing is counted until it runs again. 409 experiment_state unless it is running.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'experiments.end',
+			'method'  => 'POST',
+			'path'    => '/experiments/{id}/end',
+			'scope'   => 'experiments:write',
+			'handler' => 'api_experiments_end',
+			'returns' => 'Experiment',
+			'summary' => 'End an experiment without a winner',
+			'description' => 'A running or paused experiment ends for good, with no winner and the live page as it is; the variant draft stays in Drafts. Publishing a variant\'s design as the winner is done in the panel, where the page lock applies. Announces experiment.ended. 409 experiment_state when it is a set-up or already ended.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)

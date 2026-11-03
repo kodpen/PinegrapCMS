@@ -573,6 +573,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
     }
 
+    // Links kept by page id (in the page tree and in shared components, drawn
+    // above) point at the page's current address, so a rename reaches them;
+    // a page missing or in the bin keeps the typed href. Before the language
+    // pass, which adds its prefix to them.
+    if (stripos($content, 'data-pg-page-link=') !== false && function_exists('pg_page_link_expand')) {
+        $content = pg_page_link_expand($content);
+    }
+
     // An address segment after the page name that nothing on the page read
     // (/about/xyz, a classic system-layout page included) is not there: a 404
     // with noindex that goes into the 404 log, as a missing record or product

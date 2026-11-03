@@ -21,7 +21,7 @@ description: Plan (2026-10-24; ready to start, owner 2026-11-01): a Figma/XD-lik
 1. Done (#5401, #5492, #5603, #5619, #5635): the read-only map, designer/prototype-view.md.
 2. Done #6171, #6201 (designer/prototype-view.md): draw and re-point arrows by drag or from a row's target menu (keyboard) within today's rights, undo, the shared and Publish warnings, Save.
 3. Done #1867 in the Preview (designer/designer-preview-play.md): a page link plays the open tab of that name, unsaved tabs too; the Prototype view's hotspots reuse `_sdPreviewPlay()`.
-4. Shared frame positions done #6232 (designer/prototype-view.md). Thumbnails done (#6258, designer/prototype-thumbnails.md). Left: links by page id that survive a rename, built from `__page_link` (outside widgets by #6233: the existing shape, no new prop; `workflow/decisions-made-product-23.md`).
+4. Shared frame positions done #6232 (designer/prototype-view.md). Thumbnails done (#6258, designer/prototype-thumbnails.md). Page-id links (#6233): site #6313 (designer/page-link-by-id.md). Left (4e): the editor: canvas name, resolver twins and map read the bound id, the arrow and Bind Data write it.
 - Schema: none for slices 1-3; a new table or column is asked first.
 
 ## Which questions are answered? (1 a owner 2026-10-24; 2-5 #2446)
@@ -32,4 +32,4 @@ description: Plan (2026-10-24; ready to start, owner 2026-11-01): a Figma/XD-lik
 5. Breakpoint: desktop width, collapsed navbars shown as their links.
 
 ## Where to start?
-- Slice 4 rest: page-id links as decided in #6233. Start from designer/prototype-view.md and designer/prototype-hotspots.md; claim before code.
+- Slice 4 rest (4e): editor side of page-id links (designer/page-link-by-id.md); `nodeLinks()` skips bound hrefs. Start from designer/prototype-view.md and designer/prototype-hotspots.md; claim before code.

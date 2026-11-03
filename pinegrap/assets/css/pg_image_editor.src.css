@@ -2771,6 +2771,74 @@
   }
 }
 
+/* -- Keyframes (pg_image_editor_keyframes.js) -- */
+
+/* A diamond per key on the layer's lane, over its bars; the path of the
+   selected layer over the stage, under the selection box. */
+.pgie-trkey {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  width: 11px;
+  height: 11px;
+  margin: -5.5px 0 0 -5.5px;
+  padding: 0;
+  border: 1.5px solid var(--pgie-surface);
+  border-radius: 2px;
+  background: var(--pgie-muted);
+  transform: rotate(45deg);
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.pgie-trkey.on {
+  background: var(--pgie-sel);
+}
+
+.pgie-trkey:focus-visible {
+  outline: 2px solid var(--pgie-primary);
+  outline-offset: 2px;
+}
+
+/* A 24 px target around the small diamond. */
+.pgie-trkey::before {
+  content: "";
+  position: absolute;
+  inset: -7px;
+}
+
+.pgie-selmoved .pgie-sh {
+  display: none;
+}
+
+.pgie-keypath {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.pgie-keyline {
+  fill: none;
+  stroke: var(--pgie-sel);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+
+.pgie-keydot {
+  fill: var(--pgie-surface);
+  stroke: var(--pgie-sel);
+  stroke-width: 2;
+}
+
+.pgie-keynow {
+  fill: none;
+  stroke: var(--pgie-sel);
+  stroke-width: 2;
+}
+
 /* -- Frames and Save animation (pg_image_editor_render.js) -- */
 
 .pgie-confirm-box.pgie-anim-box {
@@ -2886,6 +2954,35 @@
 
 .pgie-confirm-box .pgie-anim-foot p {
   margin: 0;
+}
+
+/* Save to Files: the upload limit under the estimate, the smaller size
+   offered over it; the note keeps the left, the buttons the right. */
+.pgie-anim-foot {
+  flex-wrap: wrap;
+}
+
+.pgie-confirm-box .pgie-anim-foot p.pgie-note {
+  flex: 1 1 200px;
+}
+
+.pgie-anim-limit:empty {
+  display: none;
+}
+
+.pgie-anim-limit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.pgie-confirm-box .pgie-anim-limit p {
+  margin: 0;
+}
+
+.pgie-anim-limit.pgie-anim-warn p {
+  color: var(--pgie-danger);
 }
 
 @media (max-width: 599.98px) {
