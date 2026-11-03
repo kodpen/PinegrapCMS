@@ -727,7 +727,9 @@
     var dialog = null;
     var askUp = false;
 
-    function ask(message, okLabel, danger, details) {
+    // options.info: a notice with nothing to cancel (a link already made)
+    // shows only its OK button.
+    function ask(message, okLabel, danger, details, options) {
         return new Promise(function (resolve) {
             if (!dialog) {
                 dialog = el('dialog', 'dialog ws-ask-modal pg-dialog-centered');
@@ -769,6 +771,7 @@
             ok.textContent = okLabel || t('ok');
             ok.className = 'btn btn-sm rounded-pill px-5 ' + (danger ? 'btn-outline theme-warning' : 'btn-solid theme-primary');
             cancel.textContent = t('cancel');
+            cancel.hidden = !!(options && options.info);
 
             var modal = pgUI.dialog.get(dialog);
             var answered = false;
@@ -5676,7 +5679,7 @@
         group.appendChild(copy);
         details.appendChild(group);
 
-        ask(t('guest_link_help'), t('guest_link_done'), false, details);
+        ask(t('guest_link_help'), t('guest_link_done'), false, details, { info: true });
     }
 
     function guestForm(onDone) {
