@@ -43,7 +43,12 @@ function pg_cf_step_groups($children)
 {
     if (!is_array($children)) return null;
     $has = false;
-    foreach ($children as $c) if (pg_cf_is_step_break($c)) { $has = true; break; }
+    foreach ($children as $c) {
+        if (pg_cf_is_step_break($c)) {
+            $has = true;
+            break;
+        }
+    }
     if (!$has) return null;
 
     $head  = array();
