@@ -1,0 +1,876 @@
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * The panel's list table driver in the browser (window.PGListTable). A list
+ * printed by pg_list_table_html() (includes/fn/list_table.php) comes alive
+ * here: the next rows load as the list scrolls (or from "Show more"), a
+ * heading click sorts without a reload, rows are selected as in the File
+ * Manager (click, Ctrl/Cmd toggles, Shift a range, arrow keys), Ctrl+A
+ * selects the whole list by its condition, and a selection that replaced
+ * two or more rows can be undone for 10 seconds.
+ *
+ * The selection is kept by record id, never by the rows on screen, so
+ * loading, sorting or searching does not drop it. PGListTable.Selection is
+ * the pure model (no DOM; tests/list_table_js_test.php runs it in Node); its
+ * payload() is what pg_list_table_selection_parse() reads.
+ *
+ * A screen listens to 'pg-list-table:selection' on the list's root element
+ * (detail: count, payload) to enable its bulk actions, and may put them in
+ * the bar's .pg-list-table-actions box. root.pgListTable is the driver.
+ *
+ * Served minified as assets/js/pg_list_table.min.js (pg_js_bundles(),
+ * includes/fn/output.php); after editing run `php tools/build_js.php`.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+(function () {
+    'use strict';
+
+    var UNDO_MS = 10000;
+
+    function has(object, key) {
+        return Object.prototype.hasOwnProperty.call(object, key);
+    }
+
+    function keys(object) {
+        var list = [];
+
+        for (var key in object) {
+            if (has(object, key)) {
+                list.push(key);
+            }
+        }
+
+        return list;
+    }
+
+    // ------------------------------------------------------------------
+    // The selection model.
+    // ------------------------------------------------------------------
+
+    /**
+     * Either a set of ids, or the whole list by its condition less the
+     * exceptions, as of a moment (Unix seconds).
+     */
+    function Selection() {
+        this.all = false;
+        this.ids = {};
+        this.except = {};
+        this.asOf = 0;
+        this.anchor = null;
+    }
+
+    Selection.prototype.has = function (id) {
+        id = String(id);
+
+        return this.all ? !has(this.except, id) : has(this.ids, id);
+    };
+
+    /** The rows selected, out of total rows of the condition. */
+    Selection.prototype.count = function (total) {
+        return this.all ? Math.max(0, total - keys(this.except).length) : keys(this.ids).length;
+    };
+
+    Selection.prototype.snapshot = function () {
+        return {
+            all: this.all,
+            ids: keys(this.ids),
+            except: keys(this.except),
+            asOf: this.asOf,
+            anchor: this.anchor
+        };
+    };
+
+    Selection.prototype.restore = function (snapshot) {
+        var self = this;
+
+        this.all = !!snapshot.all;
+        this.ids = {};
+        this.except = {};
+        this.asOf = snapshot.asOf || 0;
+        this.anchor = (snapshot.anchor === undefined) ? null : snapshot.anchor;
+        snapshot.ids.forEach(function (id) { self.ids[id] = true; });
+        snapshot.except.forEach(function (id) { self.except[id] = true; });
+    };
+
+    /**
+     * A change that replaces the selection: answers the selection before it
+     * when that held two or more rows (it can be undone), else null.
+     */
+    Selection.prototype.replaced = function (total, change) {
+        var before = (this.count(total) >= 2) ? this.snapshot() : null;
+
+        change.call(this);
+
+        return before;
+    };
+
+    Selection.prototype.clear = function () {
+        this.all = false;
+        this.ids = {};
+        this.except = {};
+        this.asOf = 0;
+        this.anchor = null;
+    };
+
+    /** A plain click: this row alone. */
+    Selection.prototype.only = function (id) {
+        this.clear();
+        this.ids[String(id)] = true;
+        this.anchor = String(id);
+    };
+
+    /** Ctrl/Cmd click: this row in or out; under Ctrl+A an exception. */
+    Selection.prototype.toggle = function (id) {
+        id = String(id);
+
+        if (this.all) {
+            if (has(this.except, id)) {
+                delete this.except[id];
+            } else {
+                this.except[id] = true;
+            }
+        } else if (has(this.ids, id)) {
+            delete this.ids[id];
+        } else {
+            this.ids[id] = true;
+        }
+
+        this.anchor = id;
+    };
+
+    /**
+     * Shift click: the rows from the anchor to this one, in the order on
+     * screen. additive (Ctrl+Shift) keeps what was selected besides.
+     */
+    Selection.prototype.range = function (order, id, additive) {
+        id = String(id);
+
+        var from = (this.anchor === null) ? -1 : order.indexOf(this.anchor);
+        var to = order.indexOf(id);
+        var anchor = this.anchor;
+
+        if (to < 0) {
+            return;
+        }
+
+        if (from < 0) {
+            from = to;
+            anchor = id;
+        }
+
+        if (!additive) {
+            this.clear();
+        }
+
+        for (var i = Math.min(from, to); i <= Math.max(from, to); i++) {
+            if (this.all) {
+                delete this.except[order[i]];
+            } else {
+                this.ids[order[i]] = true;
+            }
+        }
+
+        this.anchor = anchor;
+    };
+
+    /** Ctrl+A: every row of the condition, as of now (Unix seconds). */
+    Selection.prototype.selectAll = function (now) {
+        this.clear();
+        this.all = true;
+        this.asOf = Math.floor(now);
+    };
+
+    /**
+     * What a bulk action sends: the ids, or the condition with its
+     * exceptions and moment (pg_list_table_selection_parse()).
+     */
+    Selection.prototype.payload = function (condition) {
+        if (!this.all) {
+            return { ids: keys(this.ids) };
+        }
+
+        return { condition: condition, except: keys(this.except), as_of: this.asOf };
+    };
+
+    // ------------------------------------------------------------------
+    // Pure helpers.
+    // ------------------------------------------------------------------
+
+    /** A text with '%n' written as the number. */
+    function text(template, number) {
+        return String(template || '').replace('%n', String(number));
+    }
+
+    /**
+     * The sort levels after a heading click: a plain click sorts by the
+     * column alone, turning it when it already leads alone; Shift adds it
+     * as the next level or turns it (pg_list_sort_toggle()'s rule).
+     */
+    function sortAfterClick(levels, key, add) {
+        var i;
+
+        if (!add) {
+            if ((levels.length >= 1) && (levels[0].sort === key)) {
+                return [{ sort: key, order: (levels[0].order === 'asc') ? 'desc' : 'asc' }];
+            }
+
+            return [{ sort: key, order: 'asc' }];
+        }
+
+        levels = levels.map(function (level) { return { sort: level.sort, order: level.order }; });
+
+        for (i = 0; i < levels.length; i++) {
+            if (levels[i].sort === key) {
+                if (levels[i].order === 'asc') {
+                    levels[i].order = 'desc';
+                } else if (levels.length > 1) {
+                    levels.splice(i, 1);
+                } else {
+                    levels[i].order = 'asc';
+                }
+
+                return levels;
+            }
+        }
+
+        levels.push({ sort: key, order: 'asc' });
+
+        return levels;
+    }
+
+    function sortParse(value) {
+        return String(value || '').split(',').filter(Boolean).map(function (pair) {
+            var parts = pair.split(':');
+
+            return { sort: decodeURIComponent(parts[0]), order: (parts[1] === 'desc') ? 'desc' : 'asc' };
+        });
+    }
+
+    function sortValue(levels) {
+        return levels.map(function (level) { return encodeURIComponent(level.sort) + ':' + level.order; }).join(',');
+    }
+
+    // ------------------------------------------------------------------
+    // The driver.
+    // ------------------------------------------------------------------
+
+    function readJson(element, name, fallback) {
+        try {
+            var value = JSON.parse(element.getAttribute(name) || '');
+
+            return (value === null) ? fallback : value;
+        } catch (e) {
+            return fallback;
+        }
+    }
+
+    function Driver(root) {
+        this.root = root;
+        this.name = root.getAttribute('data-pg-list-table');
+        this.browser = root.getAttribute('data-pg-list-mode') === 'browser';
+        this.columns = readJson(root, 'data-pg-list-columns', []);
+        this.params = readJson(root, 'data-pg-list-params', {});
+        this.texts = readJson(root, 'data-pg-list-texts', {});
+        this.levels = sortParse(root.getAttribute('data-pg-list-sort'));
+        this.next = root.getAttribute('data-pg-list-next') || null;
+        this.total = parseInt(root.getAttribute('data-pg-list-total'), 10) || 0;
+        this.search = '';
+        this.loading = false;
+        this.request = 0;
+        this.selection = new Selection();
+        this.undo = null;
+        this.undoTimer = 0;
+
+        this.scroll = root.querySelector('.pg-list-table-scroll');
+        this.table = root.querySelector('table');
+        this.tbody = this.table.tBodies[0];
+        this.empty = root.querySelector('.pg-list-table-empty');
+        this.foot = root.querySelector('.pg-list-table-foot');
+        this.bar = root.querySelector('.pg-list-table-bar');
+        this.count = root.querySelector('.pg-list-table-count');
+        this.live = root.querySelector('[data-pg-list-live]');
+
+        if (this.browser) {
+            this.total = this.tbody.rows.length;
+            this.next = null;
+        }
+
+        this.build();
+        this.bind();
+        this.fit();
+        this.paint();
+        this.watch();
+
+        root.pgListTable = this;
+    }
+
+    Driver.prototype.build = function () {
+        var self = this;
+
+        // A sortable heading's text becomes a button.
+        Array.prototype.forEach.call(this.table.tHead.rows[0].cells, function (th) {
+            if (th.getAttribute('data-pg-sortable') !== '1') {
+                return;
+            }
+
+            var button = document.createElement('button');
+
+            button.type = 'button';
+            button.className = 'pg-list-table-sort';
+            button.title = self.texts.sort || '';
+            button.textContent = th.textContent;
+            th.textContent = '';
+            th.appendChild(button);
+        });
+
+        this.more = document.createElement('button');
+        this.more.type = 'button';
+        this.more.className = 'btn btn-sm btn-outline theme-secondary pg-list-table-more';
+        this.more.textContent = this.texts.more || '';
+
+        this.status = document.createElement('p');
+        this.status.className = 'pg-list-table-status fg-secondary';
+        this.status.setAttribute('role', 'status');
+
+        this.sentinel = document.createElement('div');
+        this.sentinel.className = 'pg-list-table-sentinel';
+
+        this.foot.appendChild(this.status);
+        this.foot.appendChild(this.more);
+        this.foot.appendChild(this.sentinel);
+
+        var clear = document.createElement('button');
+
+        clear.type = 'button';
+        clear.className = 'btn btn-sm btn-text pg-list-table-clear';
+        clear.setAttribute('aria-label', this.texts.clear || '');
+        clear.title = this.texts.clear || '';
+        clear.innerHTML = '<i class="bi bi-x-lg" aria-hidden="true"></i>';
+        this.clearButton = clear;
+
+        this.undoButton = document.createElement('button');
+        this.undoButton.type = 'button';
+        this.undoButton.className = 'btn btn-sm btn-outline theme-secondary pg-list-table-undo';
+        this.undoButton.textContent = this.texts.undo || '';
+        this.undoButton.hidden = true;
+
+        this.bar.insertBefore(clear, this.bar.firstChild);
+        this.bar.appendChild(this.undoButton);
+
+        Array.prototype.forEach.call(this.tbody.rows, function (row) {
+            row.tabIndex = -1;
+        });
+    };
+
+    Driver.prototype.bind = function () {
+        var self = this;
+
+        this.table.tHead.addEventListener('click', function (event) {
+            var button = event.target.closest('.pg-list-table-sort');
+
+            if (button) {
+                self.sortBy(button.parentNode.getAttribute('data-pg-col'), event.shiftKey);
+            }
+        });
+
+        this.tbody.addEventListener('click', function (event) {
+            var row = event.target.closest('tr[data-pg-id]');
+
+            // A link, button or field inside a row does its own job.
+            if (!row || event.target.closest('a, button, input, select, textarea, label')) {
+                return;
+            }
+
+            self.pick(row, event);
+        });
+
+        this.tbody.addEventListener('dblclick', function (event) {
+            var row = event.target.closest('tr[data-pg-id]');
+
+            if (row && !event.target.closest('a, button, input, select, textarea')) {
+                self.open(row);
+            }
+        });
+
+        this.table.addEventListener('keydown', function (event) {
+            self.key(event);
+        });
+
+        this.more.addEventListener('click', function () {
+            self.load();
+        });
+
+        this.clearButton.addEventListener('click', function () {
+            self.replace(function () { this.clear(); });
+        });
+
+        this.undoButton.addEventListener('click', function () {
+            if (self.undo) {
+                self.selection.restore(self.undo);
+                self.dropUndo();
+                self.paint();
+            }
+        });
+
+        window.addEventListener('resize', function () {
+            self.fit();
+        });
+    };
+
+    /** Rows load when the end of the list comes into sight. */
+    Driver.prototype.watch = function () {
+        var self = this;
+
+        if (!('IntersectionObserver' in window)) {
+            return;
+        }
+
+        new IntersectionObserver(function (entries) {
+            if (entries[0].isIntersecting && self.next && !self.loading && !self.failed) {
+                self.load();
+            }
+        }, { root: this.scroll, rootMargin: '0px 0px 400px 0px' }).observe(this.sentinel);
+    };
+
+    /** The list fills the window from where it starts. */
+    Driver.prototype.fit = function () {
+        var top = this.root.getBoundingClientRect().top + window.pageYOffset;
+
+        this.root.style.setProperty('--pg-list-table-top', Math.max(0, Math.round(top)) + 'px');
+    };
+
+    Driver.prototype.order = function () {
+        return Array.prototype.map.call(this.tbody.rows, function (row) {
+            return row.getAttribute('data-pg-id');
+        });
+    };
+
+    Driver.prototype.pick = function (row, event) {
+        var id = row.getAttribute('data-pg-id');
+
+        if (event.shiftKey) {
+            this.selection.range(this.order(), id, event.ctrlKey || event.metaKey);
+        } else if (event.ctrlKey || event.metaKey) {
+            this.selection.toggle(id);
+        } else {
+            this.replace(function () { this.only(id); });
+        }
+
+        row.focus();
+        this.paint();
+    };
+
+    /** A change that replaces the selection, offering its undo. */
+    Driver.prototype.replace = function (change) {
+        var before = this.selection.replaced(this.total, change);
+
+        this.dropUndo();
+
+        if (before) {
+            var self = this;
+
+            this.undo = before;
+            this.undoButton.hidden = false;
+            this.undoTimer = window.setTimeout(function () {
+                self.dropUndo();
+                self.paint();
+            }, UNDO_MS);
+        }
+
+        this.paint();
+    };
+
+    Driver.prototype.dropUndo = function () {
+        window.clearTimeout(this.undoTimer);
+        this.undo = null;
+        this.undoButton.hidden = true;
+    };
+
+    /** Double-click or Enter: the row's own link, its name's first. */
+    Driver.prototype.open = function (row) {
+        var link = row.querySelector('a[data-pg-open]') || row.querySelector('td a[href]:not([href^="javascript"])');
+
+        if (link) {
+            link.click();
+        }
+    };
+
+    Driver.prototype.key = function (event) {
+        var row = event.target.closest ? event.target.closest('tr[data-pg-id]') : null;
+        var mod = event.ctrlKey || event.metaKey;
+
+        if (mod && ((event.key === 'a') || (event.key === 'A'))) {
+            event.preventDefault();
+            this.replace(function () { this.selectAll(Date.now() / 1000); });
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            if (this.selection.count(this.total) > 0) {
+                event.preventDefault();
+                this.replace(function () { this.clear(); });
+            }
+            return;
+        }
+
+        if (!row) {
+            return;
+        }
+
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            this.open(row);
+        } else if (event.key === ' ') {
+            event.preventDefault();
+            this.selection.toggle(row.getAttribute('data-pg-id'));
+            this.paint();
+        } else if ((event.key === 'ArrowDown') || (event.key === 'ArrowUp')) {
+            var to = (event.key === 'ArrowDown') ? row.nextElementSibling : row.previousElementSibling;
+
+            if (to) {
+                event.preventDefault();
+                to.focus();
+
+                if (event.shiftKey) {
+                    this.selection.range(this.order(), to.getAttribute('data-pg-id'), false);
+                    this.paint();
+                }
+            }
+        }
+    };
+
+    /** The rows, the bar and the foot drawn from the state. */
+    Driver.prototype.paint = function () {
+        var self = this;
+        var count = this.selection.count(this.total);
+
+        Array.prototype.forEach.call(this.tbody.rows, function (row) {
+            row.classList.toggle('pg-list-table-selected', self.selection.has(row.getAttribute('data-pg-id')));
+        });
+
+        this.bar.hidden = (count === 0) && !this.undo;
+        this.count.textContent = (count === 0) ? '' : text(this.selection.all ? this.texts.all : this.texts.selected, count);
+        this.clearButton.hidden = (count === 0);
+        this.empty.hidden = this.tbody.rows.length > 0;
+        this.more.hidden = !this.next || this.loading || !!this.failed;
+
+        this.root.dispatchEvent(new CustomEvent('pg-list-table:selection', {
+            detail: { count: count, payload: this.selection.payload(this.condition()) }
+        }));
+    };
+
+    Driver.prototype.condition = function () {
+        return { search: this.search, params: this.params };
+    };
+
+    Driver.prototype.say = function (message) {
+        this.live.textContent = message;
+    };
+
+    Driver.prototype.setStatus = function (message, retry) {
+        var self = this;
+
+        this.status.textContent = message || '';
+
+        if (retry) {
+            var button = document.createElement('button');
+
+            button.type = 'button';
+            button.className = 'btn btn-sm btn-text';
+            button.textContent = this.texts.retry || '';
+            button.addEventListener('click', function () {
+                self.failed = false;
+                self.load(self.pendingReset);
+            });
+            this.status.appendChild(document.createTextNode(' '));
+            this.status.appendChild(button);
+        }
+    };
+
+    /** A row built from the rows answer. */
+    Driver.prototype.row = function (data) {
+        var tr = document.createElement('tr');
+
+        tr.setAttribute('role', 'row');
+        tr.setAttribute('data-pg-id', data.id);
+        tr.tabIndex = -1;
+
+        if (data.class) {
+            tr.className = data.class;
+        }
+
+        this.columns.forEach(function (column) {
+            var cell = (data.cells && data.cells[column.key]) || { html: '', class: '' };
+            var td = document.createElement('td');
+            var cls = ((cell.class || '') + ((column.align !== 'start') ? ' text-' + column.align : '')).trim();
+
+            td.setAttribute('role', 'cell');
+            td.setAttribute('data-pg-col', column.key);
+
+            if (cls) {
+                td.className = cls;
+            }
+
+            for (var name in (cell.attrs || {})) {
+                if (has(cell.attrs, name) && /^[a-z][a-z0-9-]*$/.test(name)) {
+                    td.setAttribute(name, cell.attrs[name]);
+                }
+            }
+
+            // The server escaped every cell where it built it.
+            td.innerHTML = cell.html;
+            td.hidden = !!column.hidden;
+            tr.appendChild(td);
+        });
+
+        return tr;
+    };
+
+    /**
+     * The next batch, or the first one again (reset) after a sort or a
+     * search. A later request wins over an earlier one still running.
+     */
+    Driver.prototype.load = function (reset) {
+        var self = this;
+        var number = ++this.request;
+        var body = {
+            action: 'list_table_rows',
+            token: window.software_token || '',
+            list: this.name,
+            params: this.params,
+            search: this.search,
+            sort: sortValue(this.levels)
+        };
+
+        if (!reset) {
+            if (!this.next) {
+                return;
+            }
+
+            body.after = this.next;
+        }
+
+        this.loading = true;
+        this.failed = false;
+        this.pendingReset = !!reset;
+        this.root.setAttribute('aria-busy', 'true');
+        this.setStatus(this.texts.loading, false);
+        this.paint();
+
+        window.fetch('api.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        }).then(function (response) {
+            return response.json().catch(function () { return null; });
+        }).then(function (answer) {
+            if (number !== self.request) {
+                return;
+            }
+
+            if (!answer || (answer.status !== 'success')) {
+                throw new Error((answer && answer.message) || '');
+            }
+
+            self.take(answer, reset || !!answer.restarted);
+        }).catch(function (error) {
+            if (number !== self.request) {
+                return;
+            }
+
+            self.loading = false;
+            self.failed = true;
+            self.root.removeAttribute('aria-busy');
+            self.setStatus((error && error.message) || self.texts.failed, true);
+            self.paint();
+        });
+    };
+
+    Driver.prototype.take = function (answer, reset) {
+        var self = this;
+        var fragment = document.createDocumentFragment();
+        var rows = [];
+
+        if (reset) {
+            this.tbody.textContent = '';
+            this.scroll.scrollTop = 0;
+        }
+
+        if (typeof answer.total === 'number') {
+            this.total = answer.total;
+        }
+
+        answer.rows.forEach(function (data) {
+            var tr = self.row(data);
+
+            rows.push(tr);
+            fragment.appendChild(tr);
+        });
+
+        this.tbody.appendChild(fragment);
+        this.next = answer.next || null;
+        this.loading = false;
+        this.root.removeAttribute('aria-busy');
+        this.setStatus('', false);
+
+        // Hints, menus and lazy pictures of the new rows.
+        if (rows.length && (typeof window.pgInitInjected === 'function') && window.jQuery) {
+            window.pgInitInjected(window.jQuery(rows));
+        }
+
+        this.say(text(this.texts.loaded, this.tbody.rows.length));
+        this.paint();
+    };
+
+    /** A heading click: the server sorts, or the browser for a list printed whole. */
+    Driver.prototype.sortBy = function (key, add) {
+        this.levels = sortAfterClick(this.levels, key, add);
+        this.markSort();
+
+        if (this.browser) {
+            this.sortHere();
+            this.paint();
+        } else {
+            this.load(true);
+        }
+    };
+
+    Driver.prototype.markSort = function () {
+        var lead = this.levels[0] || null;
+
+        Array.prototype.forEach.call(this.table.tHead.rows[0].cells, function (th) {
+            if (lead && (th.getAttribute('data-pg-col') === lead.sort)) {
+                th.setAttribute('aria-sort', (lead.order === 'desc') ? 'descending' : 'ascending');
+            } else {
+                th.removeAttribute('aria-sort');
+            }
+        });
+    };
+
+    Driver.prototype.sortHere = function () {
+        var levels = this.levels;
+        var collator = new Intl.Collator(document.documentElement.lang || undefined, { numeric: true, sensitivity: 'base' });
+        var rows = Array.prototype.slice.call(this.tbody.rows);
+
+        function cellText(row, key) {
+            var cell = row.querySelector('td[data-pg-col="' + key + '"]');
+
+            return cell ? (cell.getAttribute('data-pg-sort-value') || cell.textContent.trim()) : '';
+        }
+
+        rows.sort(function (a, b) {
+            for (var i = 0; i < levels.length; i++) {
+                var result = collator.compare(cellText(a, levels[i].sort), cellText(b, levels[i].sort));
+
+                if (result !== 0) {
+                    return (levels[i].order === 'desc') ? -result : result;
+                }
+            }
+
+            return 0;
+        });
+
+        rows.forEach(function (row) {
+            this.tbody.appendChild(row);
+        }, this);
+    };
+
+    /**
+     * The search box's words. A list printed whole hides the rows that do
+     * not match (pgListTurkishMatch() of backend.js when it is there); a
+     * server list asks again. A selection of the whole list belonged to the
+     * old words, so it is replaced (with its undo).
+     */
+    Driver.prototype.setSearch = function (value) {
+        value = String(value || '').trim();
+
+        if (value === this.search) {
+            return;
+        }
+
+        this.search = value;
+
+        if (this.selection.all) {
+            this.replace(function () { this.clear(); });
+        }
+
+        if (this.browser) {
+            var match = window.pgListTurkishMatch || function (term, haystack) {
+                return haystack.toLowerCase().indexOf(term.toLowerCase()) !== -1;
+            };
+            var shown = 0;
+
+            Array.prototype.forEach.call(this.tbody.rows, function (row) {
+                row.hidden = (value !== '') && !match(value, row.textContent);
+                shown += row.hidden ? 0 : 1;
+            });
+
+            this.total = shown;
+            this.paint();
+            return;
+        }
+
+        this.load(true);
+    };
+
+    Driver.prototype.reload = function () {
+        this.load(true);
+    };
+
+    function init(scope) {
+        Array.prototype.forEach.call((scope || document).querySelectorAll('.pg-list-table[data-pg-list-table]'), function (root) {
+            if (!root.pgListTable) {
+                new Driver(root);
+            }
+        });
+    }
+
+    // A search box names its list: <input data-pg-list-search="list name">.
+    function bindSearch() {
+        var timer = 0;
+
+        document.addEventListener('input', function (event) {
+            var input = event.target;
+            var name = input && input.getAttribute && input.getAttribute('data-pg-list-search');
+
+            if (!name) {
+                return;
+            }
+
+            window.clearTimeout(timer);
+            timer = window.setTimeout(function () {
+                var root = document.querySelector('.pg-list-table[data-pg-list-table="' + name.replace(/["\\]/g, '') + '"]');
+
+                if (root && root.pgListTable) {
+                    root.pgListTable.setSearch(input.value);
+                }
+            }, 400);
+        });
+    }
+
+    window.PGListTable = {
+        Selection: Selection,
+        Driver: Driver,
+        text: text,
+        sortAfterClick: sortAfterClick,
+        sortParse: sortParse,
+        sortValue: sortValue,
+        init: init
+    };
+
+    if (typeof document !== 'undefined' && document.addEventListener) {
+        bindSearch();
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function () { init(); });
+        } else {
+            init();
+        }
+    }
+}());

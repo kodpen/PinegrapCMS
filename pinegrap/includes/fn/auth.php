@@ -638,7 +638,7 @@ function pg_member_register($form, $opts = array())
     $group_id = (isset($opts['contact_group_id']) && (int) $opts['contact_group_id'] > 0)
         ? (int) $opts['contact_group_id']
         : (int) REGISTRATION_CONTACT_GROUP_ID;
-    if ($group_id > 0 && db_value("SELECT id FROM contact_groups WHERE id = '" . $group_id . "'")) {
+    if ($group_id > 0 && db_value("SELECT id FROM contact_groups WHERE (id = '" . $group_id . "') AND " . pg_audience_hand_sql())) {
         db("INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id)
             VALUES ('" . $contact_id . "', '" . $group_id . "')");
     }
@@ -919,7 +919,7 @@ function pg_member_activate($form, $opts = array())
     $group_id = (isset($opts['contact_group_id']) && (int) $opts['contact_group_id'] > 0)
         ? (int) $opts['contact_group_id']
         : (int) MEMBERSHIP_CONTACT_GROUP_ID;
-    if ($group_id > 0 && db_value("SELECT id FROM contact_groups WHERE id = '" . $group_id . "'")) {
+    if ($group_id > 0 && db_value("SELECT id FROM contact_groups WHERE (id = '" . $group_id . "') AND " . pg_audience_hand_sql())) {
         $in_group = db_value(
             "SELECT contact_id FROM contacts_contact_groups_xref
             WHERE contact_id = '" . $contact_id . "' AND contact_group_id = '" . $group_id . "'");
@@ -2432,6 +2432,7 @@ function validate_user()
         $logged_in_as_different_user = $_SESSION['software']['logged_in_as_different_user'] ?? false;
         session_unset();
         session_destroy();
+        pg_session_end_clear_cache();
         if ($logged_in_as_different_user == false) {
             setcookie('software[auth]', '', time() - 1000, '/');
         }
@@ -4373,6 +4374,7 @@ function initialize_user()
 
             session_unset();
             session_destroy();
+            pg_session_end_clear_cache();
             setcookie('software[auth]', '', time() - 1000, '/');
             unset($_COOKIE['software']['auth']);
 

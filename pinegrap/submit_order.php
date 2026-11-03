@@ -214,7 +214,8 @@ function submit_order($type) {
     $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
     
     // if contact is not already in contact group, then add contact to Orders contact group
-    if (mysqli_num_rows($result) == 0) {
+    // (unless the group is filled by rules)
+    if ((mysqli_num_rows($result) == 0) && !pg_audience_group_is_dynamic($contact_group_id)) {
         $query =
             "INSERT INTO contacts_contact_groups_xref (
                 contact_id,
@@ -278,6 +279,15 @@ function submit_order($type) {
 
             $gift_card_plural_suffix = '';
             
+            // A card applied twice to the order (two page views racing to
+            // apply the same credit or code) counts once: each row adds its
+            // full balance below, so a repeat would cover the order with
+            // money the card does not hold.
+            foreach (pg_gift_card_applied_repeats($applied_gift_cards) as $key) {
+                db_q("DELETE FROM applied_gift_cards WHERE id = ?", array((int) $applied_gift_cards[$key]['id']));
+                unset($applied_gift_cards[$key]);
+            }
+
             // if the number of applied gift cards is greater than 1, then prepare plural suffix
             if (count($applied_gift_cards) > 1) {
                 $gift_card_plural_suffix = 's';

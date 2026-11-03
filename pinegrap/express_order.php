@@ -369,6 +369,12 @@ if (
     $order_submitted = true;
 }
 
+// A changed "Use my store credit" choice is written and the page shown again
+// with the new totals: a purchase is never charged for a total not seen.
+if (!$is_gateway_return && pg_credit_checkout_take_post((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $_POST)) {
+    $order_submitted = false;
+}
+
 // if the order has not been submitted yet, then update order items
 if ($order_submitted == false) {
     // The form posts its quantities and donation amounts as lists keyed by item
@@ -967,7 +973,8 @@ if ($order_submitted == false) {
         $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
         
         // if contact is not already in contact group, then add contact to Orders contact group
-        if (mysqli_num_rows($result) == 0) {
+        // (unless the group is filled by rules)
+        if ((mysqli_num_rows($result) == 0) && !pg_audience_group_is_dynamic($contact_group_id)) {
             $query =
                 "INSERT INTO contacts_contact_groups_xref (
                     contact_id,

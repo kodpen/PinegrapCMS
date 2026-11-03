@@ -1505,6 +1505,99 @@ function api_schema() {
 
 
 		array(
+			'id' => 'store.referral_sources.list',
+			'method' => 'GET',
+			'path' => '/store/referral-sources',
+			'scope' => 'orders:read',
+			'handler' => 'api_store_referral_sources_list',
+			'returns' => array('list' => 'StoreReferralSource'),
+			'summary' => 'Referral sources',
+			'description' => 'Where customers say they heard of the store: the Lead Source list of the contact screen and checkout, in its order. One page.',
+			'params' => array()
+		),
+
+		array(
+			'id' => 'store.referral_sources.get',
+			'method' => 'GET',
+			'path' => '/store/referral-sources/{id}',
+			'scope' => 'orders:read',
+			'handler' => 'api_store_referral_sources_get',
+			'returns' => 'StoreReferralSource',
+			'summary' => 'One of the referral sources',
+			'description' => 'One row as GET /store/referral-sources lists it.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.referral_sources.create',
+			'method' => 'POST',
+			'path' => '/store/referral-sources',
+			'scope' => 'store:write',
+			'handler' => 'api_store_referral_sources_create',
+			'dry_run' => true,
+			'returns' => 'StoreReferralSource',
+			'status' => 201,
+			'summary' => 'Create a referral source',
+			'description' => 'Adds a referral source, as the screen does: a blank name or code is 422; a name or code another source has (in any case) is 409 referral_source_taken.',
+			'params' => array(
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The name the contact screen and checkout show. No other source may have it, in any case.'),
+				array('name' => 'code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The code contacts and orders keep (lead_source on a customer). No other source may have it, in any case.'),
+				array('name' => 'sort_order', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999, 'description' => 'Its place in the list, smallest first.')
+			)
+		),
+
+		array(
+			'id' => 'store.referral_sources.update',
+			'method' => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path' => '/store/referral-sources/{id}',
+			'scope' => 'store:write',
+			'handler' => 'api_store_referral_sources_update',
+			'dry_run' => true,
+			'returns' => 'StoreReferralSource',
+			'summary' => 'Change a referral source',
+			'description' => 'Only the fields sent change. A name or code another source has is 409 referral_source_taken. PATCH is accepted as well; on an IIS server send POST.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The name the contact screen and checkout show. No other source may have it, in any case.'),
+				array('name' => 'code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The code contacts and orders keep (lead_source on a customer). No other source may have it, in any case.'),
+				array('name' => 'sort_order', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999, 'description' => 'Its place in the list, smallest first.')
+			)
+		),
+
+		array(
+			'id' => 'store.referral_sources.delete',
+			'method' => 'DELETE',
+			'path' => '/store/referral-sources/{id}',
+			'scope' => 'store:write',
+			'handler' => 'api_store_referral_sources_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a referral source',
+			'description' => 'Deletes the source outright, as the screen does. Customers and orders keep the code they were written with. Cannot be undone.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.referral_sources.delete_post',
+			'method' => 'POST',
+			'path' => '/store/referral-sources/{id}/delete',
+			'scope' => 'store:write',
+			'handler' => 'api_store_referral_sources_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a referral source, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/referral-sources/{id}, for clients that cannot send DELETE.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
 			'id'      => 'store.currencies',
 			'method'  => 'GET',
 			'path'    => '/store/currencies',
@@ -1863,7 +1956,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'ContactGroup',
 			'summary' => 'Put contacts into a group, or take them out',
-			'description' => 'Both lists in one call, as the contact screen ticks a group. A contact added that is already there, or removed that is not, is not an error; added and removed in the answer count what actually changed, and the contacts that actually moved are announced as contact_group.members_changed. Contacts are never deleted here, only their place in this group. opt_in records the choice for this group\'s e-mail of every contact in add, members already there included, so an unsubscribe from a newsletter tool is add=[id] with opt_in=false; it is ignored for a group that takes no subscriptions. Without it nothing is written: a new member counts as opted in, and a contact who opted out before and is put back stays opted out. Taking a contact out keeps its choice, as the contact screen does. Find a contact by address with GET /customers?email=, or make one with POST /customers first.',
+			'description' => 'Both lists in one call, as the contact screen ticks a group. A group filled by rules is refused with 409 contact_group_by_rule: its rules decide who is in it. A contact added that is already there, or removed that is not, is not an error; added and removed in the answer count what actually changed, and the contacts that actually moved are announced as contact_group.members_changed. Contacts are never deleted here, only their place in this group. opt_in records the choice for this group\'s e-mail of every contact in add, members already there included, so an unsubscribe from a newsletter tool is add=[id] with opt_in=false; it is ignored for a group that takes no subscriptions. Without it nothing is written: a new member counts as opted in, and a contact who opted out before and is put back stays opted out. Taking a contact out keeps its choice, as the contact screen does. Find a contact by address with GET /customers?email=, or make one with POST /customers first.',
 			'params'  => array(
 				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'add',    'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Contact ids to put into the group. Each has to exist.'),
@@ -2544,7 +2637,7 @@ function api_schema() {
 				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'A note on the record, as the panel shows it.'),
 				array('name' => 'lead_source', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'Where the customer came from: the code or the name (any case) of one of the store\'s referral sources, the Lead Source list of the contact screen. The code is stored and read back. An empty value clears it; a value the record already holds is kept even when it is no longer on the list; any other value is refused with 422.'),
 				array('name' => 'opt_in',      'in' => 'body', 'type' => 'bool', 'description' => 'Consent to be mailed. Send true only where you actually hold it; it is also the choice recorded for the e-mail of the group in contact_group_id, which is otherwise recorded as not opted in.'),
-				array('name' => 'contact_group_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The contact group the customer is filed in (GET /contact-groups); left out, none. An application whose owner has the user role reaches only customers in the groups given to that account, as on the contact screens, so its customer is always filed in one of them: the one sent, or the only one it has; with several, this is required.')
+				array('name' => 'contact_group_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The contact group the customer is filed in (GET /contact-groups); left out, none. An application whose owner has the user role reaches only customers in the groups given to that account, as on the contact screens, so its customer is always filed in one of them: the one sent, or the only one it has; with several, this is required. A group filled by rules is refused with 409 contact_group_by_rule.')
 			)
 		),
 

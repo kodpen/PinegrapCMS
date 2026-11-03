@@ -176,6 +176,7 @@ switch ($_GET['action'] ?? '') {
         } else {
             session_unset();
             session_destroy();
+            pg_session_end_clear_cache();
         }
 
         $parameters = array();

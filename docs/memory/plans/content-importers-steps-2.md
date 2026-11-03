@@ -9,7 +9,7 @@ description: Steps IM4-IM7 of plans/content-importers.md: the WooCommerce and Sh
 - IM4 (M) WooCommerce reader. Done in #6206 (`platform/import-woocommerce.md`); the product writer `write_product.php` is IM5's too.
   - `includes/import/woocommerce.php`: the products export CSV (type simple, variable, variation; parent SKU; attributes as variant sets through `commerce/catalog-variant-set-writer.md`; categories as product groups made on the way; images as media fetches; prices through the existing price cell reader; stock to `inventory_quantity`); the product import's row writer reused, not copied. Tests on the fixture. Memory: `platform/import-woocommerce.md`.
 
-- IM5 (M) Shopify reader. After IM1.
+- IM5 (M) Shopify reader. In #6236.
   - `includes/import/shopify.php`: products CSV (handle groups rows into one product, options 1-3 as variant sets, body HTML, images, prices, inventory) and customers CSV (contacts with address, phone, "accepts marketing" as `opt_in` with a consent log line naming the import as the source, tags as a contact group). Tests on the fixture. Memory: `platform/import-shopify.md`.
 
 - IM6 (S) Redirects and undo. After IM2-IM5.

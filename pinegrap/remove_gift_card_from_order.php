@@ -23,6 +23,10 @@ validate_token_field();
 // The id is one string; one not given, or given as an array, names no applied gift card.
 pg_request_single_values(array('applied_gift_card_id'));
 
+// Removing one's own store credit counts as unticking "Use my store credit",
+// or the next view of the checkout would apply it again.
+pg_credit_checkout_removed((int) ($_GET['applied_gift_card_id'] ?? 0), (int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+
 // delete applied gift card
 $query = "DELETE FROM applied_gift_cards WHERE (id = ?) AND (order_id = ?)";
 $result = db_q($query, array((string) ($_GET['applied_gift_card_id'] ?? ''), (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');

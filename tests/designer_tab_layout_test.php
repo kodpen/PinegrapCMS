@@ -125,3 +125,40 @@ function test_designer_tab_layout_export_keeps_groups_an_object()
 	pg_assert_same('{"v":1,"groups":{"7":{"name":"N","color":"red"}},"tabs":[{"id":12,"g":"7"}]}',
 		json_encode(pg_designer_tab_layout_export($l)), 'numeric group id stays an object key');
 }
+
+function test_designer_tab_layout_keeps_prototype_frame_places()
+{
+	$l = pg_designer_tab_layout_normalize(array('tabs' => array(array('id' => 12)), 'proto' => array(
+		'p12' => array('x' => 10.6, 'y' => -20),
+		's5'  => array('x' => '300', 'y' => 40),
+		'p99' => array('x' => 1, 'y' => 1),
+		'c:0' => array('x' => 1, 'y' => 1),
+		'p13' => array('x' => 'a', 'y' => 1),
+		's0'  => array('x' => 1, 'y' => 1),
+		'p14' => array('x' => 5e9, 'y' => -5e9),
+		's6'  => 'junk',
+	)), array(12, 14));
+	pg_assert_same(array(
+		'p12' => array('x' => 11, 'y' => -20),
+		's5'  => array('x' => 300, 'y' => 40),
+		'p14' => array('x' => 1000000, 'y' => -1000000),
+	), $l['proto'], 'design pages and shared components kept, rounded and bounded; the rest dropped');
+}
+
+function test_designer_tab_layout_prototype_places_are_capped_and_optional()
+{
+	$proto = array();
+	for ($i = 1; $i <= 600; $i++) {
+		$proto['s' . $i] = array('x' => $i, 'y' => 0);
+	}
+	$l = pg_designer_tab_layout_normalize(array('proto' => $proto), array(12));
+	pg_assert_same(500, count($l['proto']), 'at most 500 places');
+	pg_assert_true(isset($l['proto']['s500']) && !isset($l['proto']['s501']), 'the first 500 stay');
+
+	$l = pg_designer_tab_layout_normalize(array('proto' => array()), array(12));
+	pg_assert_false(isset($l['proto']), 'no places, no key');
+	pg_assert_same('{"v":1,"groups":{},"tabs":[{"id":12}]}', json_encode(pg_designer_tab_layout_export($l)), 'the stored shape is unchanged without places');
+
+	$l = pg_designer_tab_layout_normalize(array('proto' => array('p12' => array('x' => 1, 'y' => 2))), array(12));
+	pg_assert_same('{"v":1,"groups":{},"tabs":[{"id":12}],"proto":{"p12":{"x":1,"y":2}}}', json_encode(pg_designer_tab_layout_export($l)), 'places encode as an object');
+}

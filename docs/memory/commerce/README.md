@@ -269,6 +269,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - short-link-binned-destination.md: A short link whose page or file is in the Recycle Bin (list, CSV, redirect), and a name held by a short link in the bin (the form's message)
 - short-link-recycle-bin.md: How short links treat a product, product group, page or file in the Recycle Bin (lists, save checks on every entry point), where a deleted short link goes, and posted lists on the short link screens.
 - stock-quantity-column-bound.md: Panel stock writers refuse or skip a count past PG_INVENTORY_QUANTITY_MAX (the INT UNSIGNED top) instead of letting MySQL cut it (#4711)
+- store-credit-checkout.md: Store credit at checkout (PR #6234): open cards applied as applied_gift_cards rows before the totals, the "Use my store credit" box and per-order opt-out, the name on receipts
 - store-credit-model.md: Store credit as a gift card bound to a customer (2026.11.0, 11.0.159): gift_cards user_id/kind/reason/issued_by/expires_at, pg_credit_* writer and readers, pick order, points value, void, audit line
 - store-credit-points.md: Reward points to store credit (2026.11.0): two config_text settings, the My Account form, convert_reward_points.php, the guarded UPDATE then pg_credit_issue() kind points, the goal left as it was
 - storefront-api-missing-fields.md: Public api.php storefront actions (get_cross_sell_items, get_product, get_installment_options) read missing or malformed request fields as empty and answer in JSON, never with a warning or a 500

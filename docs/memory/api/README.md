@@ -64,6 +64,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-seo-not-found.md: GET /seo/not-found (seo.not_found, scope seo:read): the 404 log over the external API and MCP, its sorts and keyset cursor, the fields, and how a client turns a row into a redirect
 - api-store-country-state-writes.md: Country and state writes (store:write): the write path shared with the four screens (includes/fn/store_regions.php), the screens' checks, partial updates, code_taken, what a delete takes
 - api-store-currency-writes.md: Currency writes and the rate refresh (store:write) through includes/fn/store_currencies.php, shared with the screens; symbol as text, rate and base rules, currency.* events
+- api-store-lookups.md: Store lookup lists (arrival dates, ship date adjustments, verified addresses, referral sources): the write path the screens and the API share, the referral source routes, refusals, cut-off rule
 - api-store-shipping-method-writes.md: Shipping method writes (store:write): write path shared with the screens, typed fields to columns, base rate tiers, days and times, zones, excluded dates, events
 - api-store-zone-writes.md: Shipping zone and tax zone writes (store:write): shared write functions the zone screens call too, partial updates, country and state input, zone.* and tax_zone.* events
 - api-subscriptions-list.md: GET /subscriptions and /subscriptions/{id} (customers:read): every store-run subscription with its customer, the filters, updated_since on subscriptions.updated_at, the user-role row rule

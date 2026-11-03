@@ -23,6 +23,10 @@
  *   mail_queue_list_rows       a page of the e-mail queue (mail_queue.php)
  *   sms_queue_list_rows        a page of the text message queue
  *                              (mail_queue.php?tab=sms)
+ *   list_table_rows            a batch of rows of a list drawn by the list
+ *                              table driver (includes/fn/list_table.php)
+ *   booking_list_rows          a page of the bookings agenda's list view
+ *                              (view_bookings.php?view=list)
  *
  * Each action answers DataTables' page request (includes/fn/list_paging.php)
  * behind the gate of the screen it pages.
@@ -481,6 +485,95 @@ function pg_panel_queue_list_page($request, $queue)
         pg_list_search_terms($request['search'] ?? ''),
         pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100),
         time()) : false;
+
+    if ($page === false) {
+        http_response_code(500);
+        respond(array('status' => 'error', 'message' => lang('Query failed.')));
+    }
+
+    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
+}
+
+function pg_panel_list_table_rows($request, $action)
+{
+    // Kept global: helpers read the session user through `global $user`;
+    // see includes/panel/actions.php.
+    global $user;
+
+    // The general gate has checked the session (any_role). Each list's
+    // source function is its screen's gate: it answers null for a user who
+    // may not open the list.
+    $user = validate_user();
+
+    validate_token();
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+    $definition = pg_list_table_definition($request['list'] ?? '');
+
+    if ($definition === null) {
+        http_response_code(400);
+        respond(array('status' => 'error', 'message' => lang('Invalid action.')));
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/' . $definition['file']);
+
+    $params = (isset($request['params']) && is_array($request['params'])) ? $request['params'] : array();
+    $source = call_user_func($definition['source'], $user, $params);
+
+    if (!is_array($source)) {
+        http_response_code(403);
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    $source = pg_list_table_apply_sort($source, $request['sort'] ?? '');
+    pg_list_table_keep_sort($source);
+
+    $after = (isset($request['after']) && is_string($request['after']) && ($request['after'] !== '')) ? $request['after'] : null;
+    $page = pg_list_table_page($source, pg_list_search_terms($request['search'] ?? ''), $after);
+
+    if ($page === false) {
+        http_response_code(500);
+        respond(array('status' => 'error', 'message' => lang('Query failed.')));
+    }
+
+    return pg_list_table_answer($page, $source['columns']);
+}
+
+function pg_panel_booking_list_rows($request, $action)
+{
+    // Kept global: helpers read the session user through `global $user`;
+    // see includes/panel/actions.php.
+    global $user;
+
+    // The general gate has checked the session (any_role). The screen lets
+    // roles 0-2 see every staff member and a role-3 staff member their own
+    // bookings (pg_booking_agenda_user_scope()), answered here in JSON.
+    $user = validate_user();
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
+
+    if (!pg_booking_ready()) {
+        http_response_code(409);
+        respond(array('status' => 'error', 'message' => lang('The database has not been upgraded yet. Run the software update first.')));
+    }
+
+    $scope = pg_booking_agenda_user_scope($user);
+
+    if ($scope === false) {
+        http_response_code(403);
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    validate_token();
+
+    $staff = pg_booking_agenda_staff();
+
+    $page = pg_booking_agenda_list_page(
+        pg_booking_agenda_list_filters($request['filters'] ?? array(), $scope, $staff),
+        pg_list_search_terms($request['search'] ?? ''),
+        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100),
+        $staff);
 
     if ($page === false) {
         http_response_code(500);
