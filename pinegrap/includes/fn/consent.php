@@ -688,6 +688,7 @@ function pg_consent_ui_keys()
         'Keeps your visit together: the cart, signing in and the steps of a form.',
         'Keeps you signed in.',
         'Keeps showing you the same version of a page while the site compares two versions of it.',
+        'Remembers that you have visited the site before, so a page can show returning visitors something of their own.',
         'Remembers whether you chose to stay signed in.',
         'Remembers the desktop or mobile view you picked.',
         'Remembers your cookie choices.',
