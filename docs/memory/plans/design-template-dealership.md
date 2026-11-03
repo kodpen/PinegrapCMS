@@ -22,13 +22,13 @@ description: Plan for the Car Dealership template (pinegrap-dealership): vehicle
 
 - 3 Done (#6265). Vehicles: `vehicles.php`; home widgets `home_featured`, `home_used`.
 
-- 4 Test drives and trade-ins: `mail.php`, `requests.php` (`test_drive`, `test_drive_view`, `my_test_drives`, `staff_test_drives`, `tradein`, `tradein_view`, `my_tradeins`, `staff_tradeins`, `privacy`, `email_reply`, notify e-mails).
+- 4 Done (#6264). Test drives and trade-ins: `mail.php`, `requests.php` (requests, privacy, `email_reply`, e-mails); test `…_requests_test.php`.
 
-- 5 Finance: `finance_requests.php` (`finance_apply`, `finance_view`, `my_finance`, `staff_finance`, notify e-mails).
+- 5 Done (#6268). Finance: `finance_requests.php` (`finance_apply`, `finance_view`, `my_finance`, `staff_finance`).
 
-- 6 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Showroom News", blog post, search, error); test `…_standard_test.php`.
+- 6 Done (#6275). Standard: `standard.php`; test `…_standard_test.php`.
 
-- 7 Account and staff: `account.php` (sign-in, My Account, staff area, `blog_new` with samples, account e-mails); test `…_account_test.php`.
+- 7 Done (#6270). Account and staff: `account.php`; test `…_account_test.php`.
 
 - 8 Assembly: `pinegrap-dealership.php` (order 75, icon `bi-car-front`, look `corporate`, palette `cobalt`, contact group `newsletter`, folders, `pdl-` User Styles, search map), the shared tests' lists, `designer/design-template-dealership.md`, plan deleted; PR body names `[NEW] Added the Car Dealership design template`.
 

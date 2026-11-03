@@ -21,7 +21,7 @@ description: Plan for the Hotel template (pinegrap-hotel): rooms as a collection
 
 - 2 Public pages: `pages_public.php` (home, about, dining, spa, location, offers, rates, FAQ).
 
-- 3 Rooms: `rooms.php` (`room_new` with the Rooms collection and samples, `rooms` with filters, `room` record page, the home's list widgets).
+- 3 Done (#6280). Rooms: `rooms.php` (`room_new` with the Rooms collection and samples, `rooms` with filters, `room` record page, the home's featured list `home_rooms`).
 
 - 4 Bookings: `mail.php`, `bookings.php` (`book`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`, notify e-mails).
 

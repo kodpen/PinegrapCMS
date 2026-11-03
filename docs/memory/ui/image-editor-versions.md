@@ -10,10 +10,10 @@ module: image_editor
 - A save row keeps the result pixels and the document; `source.base` in it is the version_no of the base row it was drawn on (set by the server, `pg_file_versions_doc_json()`). `pg_image_editor_api()` decodes the body once as objects (`pg_image_editor_arrays()` gives the checks arrays), so the version keeps `{}` as an object (an array decode wrote `[]` and a tool's later field was lost).
 
 ## What does opening load?
-- `pg_file_versions_open_state()`: when the file is byte for byte the newest version (`pg_file_versions_matches_file()`, size then SHA-1) and that one has a document whose base row still exists, `open` answers `doc` and `base` (version id); the browser loads that base's pixels with the document (`M.versionOpenDoc()`), so crop, turns, adjustments and layers edit again. Otherwise it opens the file as it is.
+- `pg_file_versions_open_state()`: when the file is byte for byte the newest version (`pg_file_versions_matches_file()`, size then SHA-1) and that one has a document whose base row still exists, `open` answers `doc` and `base` (version id); the browser loads that base's pixels with the document (`M.versionOpenDoc()`), so crop, turns, adjustments and layers edit again; `setReady()` then redraws the panel (it listed no layers before #6273). Otherwise it opens the file as it is.
 
 ## What does a save write?
-- Replace: `pg_file_versions_before_save()` before the pixels are made: with `base` (the version the browser loaded) the pixels come from that row; a file changed outside since the newest version is kept first as a base row. Without `base` the file itself is the base, kept as a row unless the newest version is a base row holding it (version 1 at the first save). Then the file is written, then `pg_file_versions_after_save()` adds the save row (none when `doc_hash` equals the newest's) and prunes.
+- Replace: `pg_file_versions_before_save()` before the pixels are made: with `base` (the version the browser loaded) the pixels come from that row; a file changed outside since is kept first as a base row. Without `base` the file itself is the base, kept as a row unless the newest version is a base row holding it (version 1 at the first save). Then the file is written and `pg_file_versions_after_save()` adds the save row (none when `doc_hash` equals the newest's) and prunes.
 - Copy renders from `base` too and writes no versions; a canvas keeps its document (`image-editor-canvas-save.md`, `image-editor-workspace.md`).
 - A document over 1 MB or holding a data: picture (a pasted image) is not kept: the row becomes a base row, the layers flattened into its pixels.
 
@@ -27,4 +27,4 @@ module: image_editor
 - A redacted save writes `redacted = 1`, `source = 'redact'` (`ui/image-editor-redact.md`).
 
 ## What does the drawer show?
-- The top bar's Versions button with the count (icon only on a phone) opens the panel as the drawer (screen 10): each version with when, who ("You" for the one asking), kind, size, Preview (the picture over the stage, Back to editing), Restore, Delete. Picking a tool closes it.
+- The top bar's Versions button with the count (icon only on a phone) opens the drawer (screen 10): each version with when, who ("You" for the asker), kind, size, Preview (over the stage, Back to editing), Restore, Delete. Picking a tool closes it.
