@@ -229,7 +229,7 @@ if (!pg_experiment_sheet_ready()) {
                     $cells .= '<td class="text-end">' . (($rate === null) ? '&ndash;' : h(number_format($rate, 1)) . '%') . '</td>';
                 }
 
-                $body .= '<tr><th scope="row">' . h(get_absolute_time(array('timestamp' => strtotime($day), 'type' => 'date'))) . '</th>' . $cells . '</tr>';
+                $body .= '<tr><th scope="row">' . h(get_absolute_time(array('timestamp' => strtotime($day), 'type' => 'date', 'format' => 'plain_text'))) . '</th>' . $cells . '</tr>';
             }
 
             $output_chart = '
