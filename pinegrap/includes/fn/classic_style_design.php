@@ -306,6 +306,32 @@ function pg_classic_style_design_open($style_id, $user)
 }
 
 /**
+ * A classic style made a visual design: style_type 'system', style_layout
+ * 'visual_designer', the framework it was opened with ('custom': the
+ * theme keeps its own Bootstrap and scripts; an update never changes a
+ * design's framework otherwise) and one log line. style_code stays: the
+ * fallback of a page with no tree. The editor's Save of a converted style
+ * (pg_designer_screen_post()) and the bulk move call it.
+ *
+ * @param int    $style_id
+ * @param string $framework  a pg_design_frameworks() key
+ * @param string $username   for the log
+ * @return bool  false when no such style
+ */
+function pg_classic_style_mark_design($style_id, $framework, $username)
+{
+    $style_id = (int)$style_id;
+    $name = ($style_id > 0) ? db_value("SELECT style_name FROM style WHERE style_id = '$style_id' LIMIT 1") : null;
+    if ($name === null || $name === false) return false;
+    db("UPDATE style SET style_type = 'system', style_layout = 'visual_designer' WHERE style_id = '$style_id' LIMIT 1");
+    if (pg_style_framework_ready()) {
+        db("UPDATE style SET style_framework = '" . e(pg_design_framework_key((string)$framework)) . "' WHERE style_id = '$style_id' LIMIT 1");
+    }
+    log_activity(lang(array('string' => 'style ({var:1}) was made a visual design', 'vars' => array((string)$name))), (string)$username);
+    return true;
+}
+
+/**
  * Each folder's desktop style as get_style() works it out: the folder's own
  * folder_style, else its parent's, up to the root folder (0 there). A
  * parent that is missing or a loop in the rows ends the walk with 0.

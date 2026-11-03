@@ -39,10 +39,11 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/calendar_form.php');
 $liveform = new liveform('edit_calendar', $_REQUEST['id']);
 
 // get number of calendar events in this calendar
-$query = "SELECT COUNT(calendar_event_id) FROM calendar_events_calendars_xref WHERE calendar_id = ?";
-$result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
-$row = mysqli_fetch_row($result);
-$number_of_calendar_events = $row[0];
+$number_of_calendar_events = pg_calendar_event_count($id);
+
+if ($number_of_calendar_events === null) {
+    output_error('Query failed.');
+}
 
 if (!$_POST) {
     // get calendar data
@@ -131,25 +132,8 @@ if (!$_POST) {
             $row = mysqli_fetch_assoc($result);
             $calendar_name = $row['name'];
             
-            // delete calendar
-            $query = "DELETE FROM calendars WHERE id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-            
-            // delete users_calendars_xref records
-            $query = "DELETE FROM users_calendars_xref WHERE calendar_id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-            
-            // delete calendar_views_calendars_xref records
-            $query = "DELETE FROM calendar_views_calendars_xref WHERE calendar_id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-            
-            // delete calendar_event_views_calendars_xref records
-            $query = "DELETE FROM calendar_event_views_calendars_xref WHERE calendar_id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-            
-            // delete calendar_events_calendars_xref records
-            $query = "DELETE FROM calendar_events_calendars_xref WHERE calendar_id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+            // delete calendar with its user assignments and its place in the views
+            pg_calendar_delete($id) or output_error('Query failed.');
             log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('calendar'), $calendar_name) )), $_SESSION['sessionusername']);
 
             $liveform->remove_form();
@@ -183,14 +167,7 @@ if (!$_POST) {
         }
         
         // update calendar
-        $query =
-            "UPDATE calendars
-            SET
-                name = ?,
-                last_modified_user_id = ?,
-                last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = ?";
-        $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        pg_calendar_save($id, (string) $liveform->get_field_value('name'), $user['id']) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('calendar'), $liveform->get_field_value('name') ) )), $_SESSION['sessionusername']);
         
