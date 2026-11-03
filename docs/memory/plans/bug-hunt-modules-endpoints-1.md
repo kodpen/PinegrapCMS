@@ -50,7 +50,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `mail` (2): open
 - Endpoints `manifest` (2): open
 - Endpoints `marketplace` (3): open
-- Endpoints `membership` (5): PR_NUM (Google sign-up); rest clean
+- Endpoints `membership` (5): #6094 (Google sign-up); rest clean
 - Endpoints `menu` (7): done #4673
 - Endpoints `my` (4): done #4653
 - Endpoints `offer` (5): clean (add_offer, duplicate_offer, edit_offer, edit_offer_f, view_offers)
