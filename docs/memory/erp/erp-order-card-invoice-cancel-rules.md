@@ -5,7 +5,7 @@ description: The order documents card's invoice cancel (cash right with allocati
 # Order card: cancelling and re-invoicing
 
 ## Who may cancel the invoice from the card?
-- The cancel takes the invoice's allocations off first (`erp_settlement_remove()`), so with any allocation (gift cards left out, `erp_invoice_receipt_count()`) it needs `USER_MANAGE_ERP_CASH`, like the invoice screen's "remove allocation". Without it the step is `blocked` with the reason (`erp_order_flow_cancel_refusal()`), and `erp_order_flow_run()` refuses it too. Before, an ERP clerk without the cash right freed allocations here (#5231, PR #PRNUM).
+- The cancel takes the invoice's allocations off first (`erp_settlement_remove()`), so with any allocation (gift cards left out, `erp_invoice_receipt_count()`) it needs `USER_MANAGE_ERP_CASH`, like the invoice screen's "remove allocation". Without it the step is `blocked` with the reason (`erp_order_flow_cancel_refusal()`), and `erp_order_flow_run()` refuses it too. Before, an ERP clerk without the cash right freed allocations here (#5231, PR #5868).
 
 ## Does the card's cancel button ask first?
 - Yes: the step carries `confirm`, printed as `data-confirm-content` with the invoice screen's wording (`erp_order_flow_cancel_confirm()`). Before, one click cancelled for good (#5233).
