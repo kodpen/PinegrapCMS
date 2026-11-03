@@ -181,13 +181,10 @@ if (!$_POST) {
         )
     ) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                
                 <form name="form" action="add_email_campaign.php" method="post" >
                     ' . get_token_field() . '
-                    <div class="row">
-                        ' . pg_email_campaign_message_card(
+                    ' . pg_email_campaign_layout(
+                        pg_email_campaign_message_card(
                             pg_email_campaign_subject_row(''),
                             pg_email_campaign_format_row(
                                 '<div class="form-field  d-inline-grid me-5">
@@ -238,12 +235,14 @@ if (!$_POST) {
                                 ' . $output_contact_groups . '
                             </div>
                             <div class="col-12 my-3">
-                                <div class="alert theme-secondary row justify-content-between">
-                                    <div class="col-auto">
-                                    <label class="form-label" for="entered_email_address">' . lang('Also send message to the following e-mail address') . ':</label>
-                                    </div>
-                                    <div class="col-12 col-6 lg:col-4">
-                                        <input type="text" class="form-control text-end" id="entered_email_address" name="entered_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email">
+                                <div class="alert theme-secondary">
+                                    <div class="row align-items-center justify-content-between">
+                                        <div class="col-12 md:col-auto">
+                                            <label class="form-label md:mb-0" for="entered_email_address">' . lang('Also send message to the following e-mail address') . ':</label>
+                                        </div>
+                                        <div class="col-12 md:col-6 xl:col-5">
+                                            <input type="text" class="form-control text-end" id="entered_email_address" name="entered_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email">
+                                        </div>
                                     </div>
                                 </div>
                             </div>'
@@ -251,19 +250,11 @@ if (!$_POST) {
                             'from_name' => ORGANIZATION_NAME,
                             'from_email_address' => $user['email_address'],
                             'reply_email_address' => $user['email_address'],
-                        )) . pg_email_campaign_schedule_card('') . pg_email_campaign_purpose_card('commercial') . '
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                        )),
+                        pg_email_campaign_schedule_card('') . pg_email_campaign_purpose_card('commercial'),
+                        '<button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>'
+                    ) . '
                 </form>
-            </div>
-        </div>
-    
 </main>' .
     output_footer();
     
