@@ -86,11 +86,14 @@ function test_local_order_check_empty()
 {
 	$user = array('id' => 1, 'role' => 0);
 
-	foreach (array(array(0, array(local_order_test_line(1, 10, 1))), array(9, array())) as $case) {
-		$res = pg_local_order_check($user, $case[0], $case[1], array('pay_method' => 'card'));
+	foreach (array(0, 9) as $order_id) {
+		$res = pg_local_order_check($user, $order_id, array(), array('pay_method' => 'card'));
 		pg_assert_false($res['ok'], 'refused');
 		pg_assert_same('warning', $res['level']);
 	}
+
+	// Lines checked before they are written (the API) need no order yet.
+	pg_assert_true(pg_local_order_check($user, 0, array(local_order_test_line(1, 10, 1)), array('pay_method' => 'card'))['ok'], 'unwritten lines');
 }
 
 function test_local_order_check_line_errors()

@@ -79,14 +79,16 @@ function pg_local_order_pay_method($raw)
  * stops after it.
  *
  * @param array $user
- * @param int   $order_id  the incomplete order
- * @param array $lines     local_sale_lines($order_id)
+ * @param int   $order_id  the incomplete order, 0 while the lines are not written yet
+ * @param array $lines     local_sale_lines($order_id), or pg_local_order_lines() of the rows to be written
  * @param array $input     pay_method, pay_till, received (kuruş), pay_parts
  * @return array  local_sale_ok() with split (the parts, or null), or a refusal
  */
 function pg_local_order_check($user, $order_id, $lines, $input)
 {
-    if (((int) $order_id <= 0) || empty($lines)) {
+    // No order holds no lines (local_sale_lines() of 0 is empty); the API
+    // checks lines it has not written yet.
+    if (empty($lines)) {
         return local_sale_fail(lang('The cart is empty.'), array('level' => 'warning'));
     }
 
