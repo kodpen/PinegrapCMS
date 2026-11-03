@@ -342,6 +342,7 @@ function get_help_url($properties = array())
 
         // Design
         'view_styles'              => 'design#styles',
+        'legacy_to_designer'       => 'design#styles',
         'add_style'                => 'design#create-style',
         'add_custom_style'         => 'design#create-edit-custom-style',
         'edit_custom_style'        => 'design#create-edit-custom-style',

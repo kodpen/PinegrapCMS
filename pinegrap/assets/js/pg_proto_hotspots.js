@@ -839,9 +839,63 @@
         return { key: 'href', value: href };
     }
 
+    // The key a frame's place is shared under in the design's tab layout
+    // (style.style_tab_layout `proto`): 'p<page_id>' for a saved tab's
+    // frame, 's<id>' for a shared component's; '' for a chip or an unsaved
+    // tab, whose places stay in the browser.
+    function placeKey(id) {
+        var m = /^(?:p:p|s:)([1-9][0-9]{0,9})$/.exec(str(id));
+
+        return m ? (id.charAt(0) + m[1]) : '';
+    }
+
+    // The shared places as layout()'s `saved` (frame id => { x, y }). Twin
+    // of pg_designer_tab_layout_proto(): keys 'p<page_id>' or 's<id>',
+    // whole units within +-1,000,000, at most 500; the server also drops
+    // pages that are not the design's.
+    function places(proto) {
+        var out = {};
+        var count = 0;
+
+        if (!isObject(proto)) {
+            return out;
+        }
+
+        Object.keys(proto).forEach(function (key) {
+            var m = /^([ps])([1-9][0-9]{0,9})$/.exec(key);
+            var at = proto[key];
+
+            if (count >= 500 || !m || !isObject(at)) {
+                return;
+            }
+
+            var pos = {};
+            var ok = ['x', 'y'].every(function (axis) {
+                var v = at[axis];
+
+                if ((typeof v !== 'number' && typeof v !== 'string') || String(v).trim() === '' || !isFinite(Number(v))) {
+                    return false;
+                }
+
+                pos[axis] = Math.max(-1000000, Math.min(1000000, Math.round(Number(v))));
+
+                return true;
+            });
+
+            if (ok) {
+                out[(m[1] === 'p' ? 'p:p' : 's:') + m[2]] = pos;
+                count++;
+            }
+        });
+
+        return out;
+    }
+
     window.PGProtoHotspots = {
         FRAME: FRAME,
         layout: layout,
+        placeKey: placeKey,
+        places: places,
         rowY: rowY,
         LIMITS: LIMITS,
         htmlLinks: htmlLinks,
