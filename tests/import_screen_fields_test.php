@@ -67,7 +67,7 @@ function test_import_screen_fields_migration()
 	pg_assert_false(strpos($source, 'address_name') !== false, 'no label points at a missing id');
 	pg_assert_contains('<label for="url" class="form-label">', $source);
 	pg_assert_contains('<label class="form-label" for="password">', $source);
-	pg_assert_contains("'name'=>'url', 'id'=>'url', 'value' => 'https://', 'class'=>'form-control', 'required'=>'required'", $source);
+	pg_assert_contains("'type'=>'url', 'name'=>'url', 'id'=>'url', 'placeholder' => 'https://', 'class'=>'form-control', 'required'=>'required'", $source);
 	pg_assert_contains("'name'=>'username', 'id'=>'username', 'class'=>'form-control', 'size'=>'30', 'required'=>'required', 'autocomplete'=>'new-password'", $source);
 	pg_assert_contains("'name'=>'password', 'id'=>'password', 'class'=>'form-control', 'size'=>'30', 'required'=>'required', 'autocomplete'=>'new-password'", $source);
 }

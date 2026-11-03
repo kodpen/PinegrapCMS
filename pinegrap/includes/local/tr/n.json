@@ -882,6 +882,7 @@
     "No items could be imported.": "Hiçbir öğe içe aktarılamadı.",
     "No items have been added.": "Henüz ürün eklenmedi.",
     "No items in cart.": "Sepette ürün yok.",
+    "No items to migrate were found on the source site.": "Kaynak sitede taşınacak öğe bulunamadı.",
     "No items were found for {var:1}.": "{var:1} için hiçbir öğe bulunamadı.",
     "No items were found for: {var:1}": "{var:1} için ürün bulunamadı",
     "No key is entered for the speech service.": "Konuşma hizmeti için anahtar girilmemiş.",
