@@ -225,6 +225,37 @@ if (!$contact_id) {
 	));
 }
 
+// -- a plain-text campaign half sent, for the campaign edit screen -----------------
+
+$email_campaign_id = (int) seed_value("SELECT id FROM email_campaigns WHERE subject = 'Kasım bülteni' LIMIT 1");
+
+if (!$email_campaign_id) {
+	$email_campaign_id = seed_insert('email_campaigns', array(
+		'type' => 'manual',
+		'status' => 'ready',
+		'from_name' => 'Örnek Mağaza',
+		'from_email_address' => 'bulten@example.test',
+		'reply_email_address' => 'destek@example.test',
+		'subject' => 'Kasım bülteni',
+		'format' => 'plain_text',
+		'body' => "Merhaba,\n\nKasım ayının yeni ürünleri mağazamızda.",
+		'purpose' => 'commercial',
+		'created_user_id' => $admin_id,
+		'created_timestamp' => $now - 3600,
+		'last_modified_user_id' => $admin_id,
+		'last_modified_timestamp' => $now - 3600,
+	));
+
+	foreach (array(array('deniz.kaya@example.test', $contact_id, 1), array('ali.demir@example.test', 0, 0)) as $recipient) {
+		seed_insert('email_recipients', array(
+			'email_campaign_id' => $email_campaign_id,
+			'email_address' => $recipient[0],
+			'contact_id' => $recipient[1],
+			'complete' => $recipient[2],
+		));
+	}
+}
+
 // -- records the starter site brings ----------------------------------------------
 
 $product_id = (int) seed_value('SELECT id FROM products ORDER BY id LIMIT 1');
@@ -239,4 +270,5 @@ echo json_encode(array(
 	'offer_id' => $offer_id,
 	'product_group_id' => $product_group_id,
 	'contact_id' => $contact_id,
+	'email_campaign_id' => $email_campaign_id,
 )) . "\n";

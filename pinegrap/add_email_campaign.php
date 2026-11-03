@@ -235,12 +235,14 @@ if (!$_POST) {
                                 ' . $output_contact_groups . '
                             </div>
                             <div class="col-12 my-3">
-                                <div class="alert theme-secondary row justify-content-between">
-                                    <div class="col-auto">
-                                    <label class="form-label" for="entered_email_address">' . lang('Also send message to the following e-mail address') . ':</label>
-                                    </div>
-                                    <div class="col-12 col-6 lg:col-4">
-                                        <input type="text" class="form-control text-end" id="entered_email_address" name="entered_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email">
+                                <div class="alert theme-secondary">
+                                    <div class="row align-items-center justify-content-between">
+                                        <div class="col-12 md:col-auto">
+                                            <label class="form-label md:mb-0" for="entered_email_address">' . lang('Also send message to the following e-mail address') . ':</label>
+                                        </div>
+                                        <div class="col-12 md:col-6 xl:col-5">
+                                            <input type="text" class="form-control text-end" id="entered_email_address" name="entered_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email">
+                                        </div>
                                     </div>
                                 </div>
                             </div>'
