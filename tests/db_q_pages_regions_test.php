@@ -122,7 +122,8 @@ function db_q_pages_regions_test_files()
 {
 	return array(
 		'add_page.php' => 3,
-		'view_pages.php' => 1,
+		'view_pages.php' => 0,
+		'includes/fn/page_list.php' => 3,
 		'mass_edit.php' => 0,
 		'preview_theme.php' => 0,
 		'get_region_content.php' => 3,
