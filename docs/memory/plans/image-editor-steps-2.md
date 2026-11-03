@@ -14,7 +14,7 @@ description: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboa
 - E15 (M) SVG open and save. Done (#4728, `ui/image-editor-svg.md`).
 - E16 (M) Workspace canvas. Done (#4762, `ui/image-editor-workspace.md`); a note's canvas opens again only through its file.
 
-- E16b (S) Pictures in a Workspace canvas. Done (#PRNUM, `ui/image-editor-workspace.md`).
+- E16b (S) Pictures in a Workspace canvas. Done (#6312, `ui/image-editor-workspace.md`).
 
 - E17 (S) Visual designer. Done (#4777, `designer/image-editor-tool.md`).
 - E18 (S) Access. Done (#4785, `ui/image-editor-access.md`).
