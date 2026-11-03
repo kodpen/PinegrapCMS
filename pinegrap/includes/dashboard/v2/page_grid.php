@@ -212,7 +212,7 @@ function pg_dashboard_v2_edit_strings()
         'badge'       => lang('Show the "New" badge'),
         'done'        => lang('Done'),
         'add_action'  => lang('Add shortcut'),
-        'remove_item' => lang('Remove {var:1}'),
+        'remove_item' => lang('Remove {var:1} from the dashboard'),
         'tile'        => lang('Tile {var:1}'),
         'hide'        => lang('Hide'),
         'show'        => lang('Show'),
