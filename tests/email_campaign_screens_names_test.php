@@ -118,7 +118,8 @@ function test_email_campaign_edit_fields_are_named()
 {
 	$src = email_campaign_screens_source('edit_email_campaign.php');
 
-	pg_assert_contains('<select id="status" name="status" class="form-control" aria-label="' . "' . h(lang('Status')) . '" . '">', $src, 'the Status select is named');
+	pg_assert_contains('<label class="form-label" for="status">' . "' . lang('Status') . '" . '</label>', $src, 'the Status select is named by a visible label');
+	pg_assert_contains('<select id="status" name="status" class="form-control">', $src, 'the Status select carries the label\'s id');
 	pg_assert_contains('id="bcc_email_address" aria-label="' . "' . h(lang('BCC E-mail Address')) . '" . '"', $src, 'the BCC box is named');
 	pg_assert_false(strpos($src, "<p>' . \$output_bcc_email_address . '</p>") !== false, 'the BCC row is not nested in a paragraph');
 	pg_assert_contains('<textarea name="body" id="email_body"', $src, 'the plain-text body has an id');

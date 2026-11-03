@@ -181,13 +181,10 @@ if (!$_POST) {
         )
     ) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                
                 <form name="form" action="add_email_campaign.php" method="post" >
                     ' . get_token_field() . '
-                    <div class="row">
-                        ' . pg_email_campaign_message_card(
+                    ' . pg_email_campaign_layout(
+                        pg_email_campaign_message_card(
                             pg_email_campaign_subject_row(''),
                             pg_email_campaign_format_row(
                                 '<div class="form-field  d-inline-grid me-5">
@@ -251,19 +248,11 @@ if (!$_POST) {
                             'from_name' => ORGANIZATION_NAME,
                             'from_email_address' => $user['email_address'],
                             'reply_email_address' => $user['email_address'],
-                        )) . pg_email_campaign_schedule_card('') . pg_email_campaign_purpose_card('commercial') . '
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                        )),
+                        pg_email_campaign_schedule_card('') . pg_email_campaign_purpose_card('commercial'),
+                        '<button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>'
+                    ) . '
                 </form>
-            </div>
-        </div>
-    
 </main>' .
     output_footer();
     
