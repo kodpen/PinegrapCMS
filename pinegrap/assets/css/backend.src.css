@@ -17570,13 +17570,20 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-fd-window {
   margin-top: .35rem;
 }
+/* The pane looks like the Flows canvas (.pgc-stage, .pgc-viewport): its
+   surface and its grid of dots, light or dark with the panel, the dots 10 px
+   apart (the canvas's 16 px grid at the card's 128/208 scale) and moving
+   with the drawing as it scrolls. */
 .ws-fd-pane {
   max-width: 100%;
   max-height: 16rem;
   overflow: auto;
-  border: 1px solid var(--pg-border-color);
+  border: 1px solid var(--pg-border-color-translucent);
   border-radius: var(--ws-radius);
-  background: var(--pg-bg-body);
+  background-color: var(--pg-bg-1);
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--pg-fg-body) 16%, transparent) 1px, transparent 1.25px);
+  background-size: 10px 10px;
+  background-attachment: local;
 }
 .ws-fd-pane svg {
   display: block;

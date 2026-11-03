@@ -984,3 +984,23 @@ function test_ws_flow_card_threads_with_a_fallback()
 		return array($thread['from'], $thread['to'], $thread['key'], $thread['value'], $thread['type']);
 	}, $card['threads']));
 }
+
+// The card's pane looks like the Flows canvas in either theme: the canvas's
+// surface token and its grid of dots, moving with the drawing. It was the
+// page's own background with no grid, darker than the canvas in dark mode.
+function test_ws_flow_card_pane_looks_like_the_canvas()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	$block = function ($selector) use ($css) {
+		return preg_match('/\n' . preg_quote($selector, '/') . ' \{([^}]*)\}/', $css, $match) ? $match[1] : '';
+	};
+	$pane = $block('.ws-fd-pane');
+	$stage = $block('.pgc-stage');
+	$viewport = $block('.pgc-viewport');
+
+	pg_assert_true(preg_match('/background(?:-color)?: (var\(--pg-bg-1\));/', $stage) === 1, 'the canvas stands on --pg-bg-1');
+	pg_assert_contains('background-color: var(--pg-bg-1);', $pane, 'so does the pane');
+	pg_assert_true(preg_match('/background-image: (radial-gradient\([^;]*\));/', $viewport, $dots) === 1, 'the canvas draws its dots');
+	pg_assert_contains('background-image: ' . ($dots[1] ?? '?') . ';', $pane, 'the pane the same dots');
+	pg_assert_contains('background-attachment: local;', $pane, 'moving with the drawing');
+}
