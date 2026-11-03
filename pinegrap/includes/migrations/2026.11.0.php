@@ -151,6 +151,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_user_disabled();           // 11.0.160
 	upgrade_2026_11_0_booking_campaigns();       // 11.0.161
 	upgrade_2026_11_0_stock_locations();         // 11.0.162
+	upgrade_2026_11_0_order_vat_id();            // 11.0.164
 
 }
 
@@ -4968,5 +4969,20 @@ function upgrade_2026_11_0_stock_locations() {
 	install_add_column('orders', 'stock_location_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Stock locations: the tables for stock kept per location and its history are in place; nothing changes until a location is added.');
+
+}
+
+// EU VAT id on the order (2026.11.0, 11.0.164; includes/fn/vat_checkout.php).
+// vat_id is the VAT id VIES confirmed when the order took the reverse charge,
+// vat_checked_at the time of that check, vat_request_id the VIES consultation
+// number; all empty (0) on an order that was not checked. Written at checkout
+// only, never from the contact card. New columns only; no data moves.
+function upgrade_2026_11_0_order_vat_id() {
+
+	install_add_column('orders', 'vat_id', "VARCHAR(20) NOT NULL DEFAULT ''");
+	install_add_column('orders', 'vat_checked_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('orders', 'vat_request_id', "VARCHAR(32) NOT NULL DEFAULT ''");
+
+	install_note('Orders: an EU VAT id confirmed at checkout, the time of the check and its VIES consultation number are kept on the order. Existing orders are unchanged.');
 
 }
