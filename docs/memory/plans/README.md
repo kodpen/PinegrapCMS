@@ -35,7 +35,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bug-hunt-modules-endpoints-1c.md: Module list of plans/bug-hunt.md, part 3c: root endpoint groups mail, manifest and marketplace, one line each with its state
 - bug-hunt-modules-endpoints-2.md: Module list of plans/bug-hunt.md, part 4: root endpoint groups optimize to zone by area word, one line each with its state; single endpoints in endpoints-2b
 - bug-hunt-modules-endpoints-2b.md: Module list of plans/bug-hunt.md, part 5: the single root endpoints (one file per area word), six to a line, each line with its state
-- bug-hunt-modules-endpoints-2c.md: Module list of plans/bug-hunt.md, part 4c: root endpoint groups sms, state and tax, one line each with its state
+- bug-hunt-modules-endpoints-2c.md: Module list of plans/bug-hunt.md, part 4c: root endpoint groups sms, state and tax, one line each with its state; the software group's findings
 - bug-hunt-modules-endpoints-2d.md: Module list of plans/bug-hunt.md, part 4d: root endpoint groups ship and shipment, one line each with its state
 - bug-hunt-modules-fn-1.md: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y to cloudflare_tools, one line each with its state
 - bug-hunt-modules-fn-1a.md: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules collections to editor, one line each with its state
