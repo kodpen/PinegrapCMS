@@ -112,6 +112,10 @@ function get_search_results($properties) {
             // clicking a tag lands on the pages that were tagged with it.
             $promoted_page_id_list = get_page_id_list_for_sql(get_page_ids_promoted_on_keyword($query));
 
+            // A page in an archived folder or in the Recycle Bin answers 410
+            // to a visitor, so none of the queries below lists it.
+            $sql_live_pages = " AND (folder.folder_archived = '0')" . pg_designer_not_binned_sql('page.page_folder');
+
             // Get featured pages that we possibly need to include in results.
             // Featured pages are pages where the promote on keyword matches the search query.
             $featured_items = db_items(
@@ -125,8 +129,8 @@ function get_search_results($properties) {
                 LEFT JOIN folder ON page.page_folder = folder.folder_id
                 WHERE
                     (page.page_search = '1')
-                    AND (folder.folder_archived = '0')
                     AND (page.page_id IN (" . $promoted_page_id_list . "))
+                    $sql_live_pages
                 ORDER BY page.page_name ASC",
                 'id');
 
@@ -157,7 +161,7 @@ function get_search_results($properties) {
             $featured_page_id_list = get_page_id_list_for_sql(array_keys($featured_items));
 
             // get all pages that are not already featured
-            $result = mysqli_query(db::$con, "SELECT page_id, page_name, page_folder, page_title, page_meta_description, page_style FROM page WHERE page_search = 1 and page_id NOT IN (" . $featured_page_id_list . ")") or output_error('Query failed');
+            $result = mysqli_query(db::$con, "SELECT page_id, page_name, page_folder, page_title, page_meta_description, page_style FROM page LEFT JOIN folder ON page.page_folder = folder.folder_id WHERE page_search = 1 and page_id NOT IN (" . $featured_page_id_list . ")" . $sql_live_pages) or output_error('Query failed');
             while($row = mysqli_fetch_array($result))
             {
                 $this_page_id = $row['page_id'];
@@ -223,10 +227,12 @@ function get_search_results($properties) {
                     page_title,
                     page_meta_description
                 FROM page
+                LEFT JOIN folder ON page.page_folder = folder.folder_id
                 WHERE
                     (page_search = 1)
                     AND (page_id NOT IN (" . $featured_page_id_list . "))
-                    AND (page_search_keywords LIKE ?)";
+                    AND (page_search_keywords LIKE ?)
+                    $sql_live_pages";
             $result = db_q($db_query, array('%' . escape_like($query) . '%')) or output_error('Query failed.');
             while ($row = mysqli_fetch_array($result)) {
                 $this_page_id = $row['page_id'];
@@ -264,10 +270,12 @@ function get_search_results($properties) {
                     page.page_folder
                 FROM comments
                 LEFT JOIN page ON page.page_id = comments.page_id
+                LEFT JOIN folder ON page.page_folder = folder.folder_id
                 WHERE
                     (comments.item_id = '0')
                     AND (comments.published = '1')
                     AND (page.page_search = '1')
+                    $sql_live_pages
                     AND (LOWER(CONCAT_WS(',', comments.name, comments.message)) LIKE ?)";
             $result = db_q($db_query, array('%' . escape_like($query) . '%')) or output_error('Query failed.');
             while($row = mysqli_fetch_array($result)) {
