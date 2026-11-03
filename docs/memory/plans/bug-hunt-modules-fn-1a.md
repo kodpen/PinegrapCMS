@@ -22,7 +22,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 - `design_templates_custom`: #5976
 - `design_themes`: #6021 (a look or palette name closed its stylesheet comment; rest of the module checked clean)
 - `designer`: #6034 (svg drawing cleaner let event handlers and unquoted script URLs through)
-- `designer_fx`: open
+- `designer_fx`: clean #6050
 - `designer_theme_vars`: open
 - `designer_vocab`: clean
 - `ecommerce`: done (#6030)
