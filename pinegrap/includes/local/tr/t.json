@@ -5552,6 +5552,8 @@
     "This contact has no user connected to it.": "Bu kişiye bağlı bir kullanıcı yok.",
     "This contact is already linked to the account \"{var:1}\". Unlink it there first.": "Bu kişi zaten \"{var:1}\" carisine bağlı. Önce oradaki bağı kaldırın.",
     "This contact is linked to an ERP account and is not deleted through the API.": "Bu kişi bir ERP carisine bağlı; API üzerinden silinmez.",
+    "This contact is linked to the ERP account \"{var:1}\" and is not deleted.": "Bu kişi \"{var:1}\" ERP hesabına bağlıdır ve silinmez.",
+    "This contact is the user account \"{var:1}\"'s own and is not deleted. Delete the account, or merge the contact into another one, first.": "Bu kişi \"{var:1}\" kullanıcı hesabının kendi kişisidir ve silinmez. Önce hesabı silin ya da kişiyi başka bir kişiyle birleştirin.",
     "This control has no field name — it is not saved even when submitted (Form Field → Field name)": "Bu girdinin alan adı yok — gönderilse de kaydedilmez (Form Alanı → Alan adı)",
     "This conversation could not be found, or it is not yours to read.": "Bu görüşme bulunamadı ya da okuma yetkiniz yok.",
     "This conversation has ended.": "Bu görüşme sona erdi.",
