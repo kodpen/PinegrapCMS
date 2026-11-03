@@ -32,7 +32,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `dashboard`: open
 
-- `db_maintenance`: open
+- `db_maintenance`: #PRNUM (MyISAM/Aria free-space share counted the holes twice)
 
 - `design_templates_custom`: open
 

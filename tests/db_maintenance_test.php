@@ -50,6 +50,35 @@ function test_db_maintenance_optimize_candidates_thresholds()
 	pg_assert_same(array(), pg_db_optimize_candidates(array()), 'empty catalog');
 }
 
+// MyISAM and Aria count the holes inside the data file (DATA_FREE is part
+// of DATA_LENGTH); InnoDB's free extents come on top of the table's pages.
+// The share is taken of the file either way.
+function test_db_maintenance_myisam_free_space_is_inside_the_data_file()
+{
+	$mb = 1048576;
+
+	$catalog = array(
+		// 11 MB of holes in a 50 MB data file: 22 %, worth an OPTIMIZE.
+		'holey_myisam' => pg_test_db_catalog_row('myisam', 50 * $mb, 11 * $mb),
+		'holey_aria' => pg_test_db_catalog_row('aria', 50 * $mb, 11 * $mb),
+		// 11 MB free beside 50 MB of pages: 18 %, not worth it.
+		'tight_innodb' => pg_test_db_catalog_row('innodb', 50 * $mb, 11 * $mb),
+	);
+
+	pg_assert_same(array('holey_myisam', 'holey_aria'), pg_db_optimize_candidates($catalog));
+
+	$texts = array();
+
+	foreach (pg_db_table_findings(array('half_myisam' => pg_test_db_catalog_row('myisam', 40 * $mb, 20 * $mb)), array(), array('issues' => array()), array()) as $finding) {
+		if ($finding['kind'] === 'fragmented') {
+			$texts[] = $finding['text'];
+		}
+	}
+
+	pg_assert_same(1, count($texts), 'one fragmented finding');
+	pg_assert_true(strpos($texts[0], '(50 %)') !== false, 'share of the data file: ' . $texts[0]);
+}
+
 // With innodb_file_per_table off every InnoDB table reports the shared
 // tablespace's free space as its own: none of them is a candidate, and no
 // fragmented finding is written for them. MyISAM tables still are.
