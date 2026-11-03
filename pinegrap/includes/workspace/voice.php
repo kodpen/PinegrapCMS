@@ -2567,6 +2567,66 @@ function ws_voice_channel_unheard($channel)
 }
 
 /**
+ * The longest text a sender's browser may hand in as a recording's
+ * transcript, in characters: the service's own limit (ws_voice_run()).
+ */
+define('WS_VOICE_BROWSER_MAX_CHARS', 100000);
+
+/**
+ * Does the sender's browser write a recording out before it is posted?
+ * Only where no service does (transcripts switched off on the site) and the
+ * channel lets its recordings be written out (ws_voice_channel_allowed()),
+ * once the schema step has run. The browser's own model writes it on the
+ * device; nothing is sent to a third party (owner decision #5390).
+ *
+ * @param bool $schema_ready ws_voice_schema_ready()
+ * @param bool $enabled      transcripts switched on on the site
+ * @param bool $allowed      ws_voice_channel_allowed()
+ * @return bool
+ */
+function ws_voice_browser_rule($schema_ready, $enabled, $allowed)
+{
+    return $schema_ready && !$enabled && $allowed;
+}
+
+/**
+ * ws_voice_browser_rule() for a channel now: channel.voice_browser on the
+ * channel screen, and the check an upload's transcript passes.
+ *
+ * @param array $channel
+ * @return bool
+ */
+function ws_voice_browser_channel($channel)
+{
+    $ready = ws_voice_schema_ready();
+
+    return ws_voice_browser_rule($ready, $ready && ws_voice_config()['enabled'], ws_voice_channel_allowed($channel));
+}
+
+/**
+ * The transcript a sender's browser handed in with a recording, as it is
+ * kept: one trimmed line without control characters, at most
+ * WS_VOICE_BROWSER_MAX_CHARS characters; '' for nothing heard, a value that
+ * is not text, or a file the recorder did not name (a sound somebody
+ * attached is never given a text).
+ *
+ * @param mixed  $text
+ * @param string $name the name the file was posted with
+ * @return string
+ */
+function ws_voice_browser_transcript($text, $name)
+{
+    if (!is_string($text) || !ws_voice_is_recording($name)) {
+        return '';
+    }
+
+    $text = (string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $text);
+    $text = trim((string) preg_replace('/\s+/u', ' ', $text));
+
+    return (mb_strlen($text) > WS_VOICE_BROWSER_MAX_CHARS) ? rtrim(mb_substr($text, 0, WS_VOICE_BROWSER_MAX_CHARS)) : $text;
+}
+
+/**
  * The state of one message's recording: status, transcript and error of its
  * ws_voice row, null for a message without one.
  *
