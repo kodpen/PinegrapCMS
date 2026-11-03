@@ -553,6 +553,24 @@
                 n.setAttribute('aria-pressed', on ? 'true' : 'false');
             });
             custom.hidden = (s.preset !== 'custom');
+            check();
+        };
+        // A custom side must be a number of 16-8000 px: an empty or refused
+        // field (the browser reads '12,5' as '') is marked and Create waits,
+        // instead of the side silently becoming the 16 px minimum.
+        var sideOk = function (v) {
+            var n = (String(v).trim() === '') ? NaN : Number(v);
+
+            return isFinite(n) && (n >= 16) && (n <= 8000);
+        };
+        var check = function () {
+            var mine = (s.preset === 'custom'), okW = !mine || sideOk(w.value), okH = !mine || sideOk(h.value);
+
+            w.setAttribute('aria-invalid', okW ? 'false' : 'true');
+            h.setAttribute('aria-invalid', okH ? 'false' : 'true');
+            create.disabled = !(okW && okH);
+
+            return okW && okH;
         };
 
         M.BOARD_PRESETS.concat([['custom', 0, 0]]).forEach(function (p) {
@@ -589,11 +607,15 @@
             input.addEventListener('input', function () {
                 s.w = w.value;
                 s.h = h.value;
+                check();
             });
             input.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    self.closeNewImage(s);
+
+                    if (check()) {
+                        self.closeNewImage(s);
+                    }
                 }
             });
         });

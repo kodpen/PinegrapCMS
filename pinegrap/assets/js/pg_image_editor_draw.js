@@ -18,7 +18,7 @@
     'use strict';
 
     var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, find = X.find, t = X.t, el = X.el, icon = X.icon, section = X.section;
-    var button = X.button, decimal = X.decimal, swatches = X.swatches;
+    var button = X.button, decimal = X.decimal, pct = X.pct, swatches = X.swatches;
 
     X.icons.triangle = 'M12 4.5l8.5 15h-17z';
     X.icons.polygon = 'M12 3.5l7.4 4.25v8.5L12 20.5l-7.4-4.25v-8.5z';
@@ -641,7 +641,7 @@
 
         if (has('points')) {
             body.appendChild(this.drawSlider(t('starPoints'), 4, 12, shown.points || 5, String, function (v, live) { set('points', v, live); }));
-            body.appendChild(this.drawSlider(t('innerRatio'), 20, 80, Math.round((shown.inner || 0.48) * 100), function (v) { return v + ' %'; },
+            body.appendChild(this.drawSlider(t('innerRatio'), 20, 80, Math.round((shown.inner || 0.48) * 100), pct,
                 function (v, live) { set('inner', v / 100, live); }));
         }
 
@@ -661,7 +661,7 @@
             shown.dash || 'solid', function (v) { set('dash', v, false); })));
 
         body.appendChild(this.drawSlider(t('drawOpacity'), 10, 100, Math.round(100 * ((shown.opacity === undefined) ? 1 : shown.opacity)),
-            function (v) { return v + ' %'; }, function (v, live) { set('opacity', v / 100, live); }));
+            pct, function (v, live) { set('opacity', v / 100, live); }));
     };
 
     // The tool's pick and the style it draws with next.

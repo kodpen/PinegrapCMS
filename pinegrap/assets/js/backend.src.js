@@ -11108,7 +11108,13 @@ function pgBindTitlePopovers(scope) {
 
     var $scope = $(scope || document);
 
-    $scope.find('[title]:not(.popover-click):not(.no-popover)' + _pgNoTitlePopover).each(function () {
+    // The image editor (.pgie-dialog, .pgie) has no Bootstrap layer: its
+    // controls keep their native titles, whenever the editor was opened.
+    function outsideEditor() {
+        return !this.closest('.pgie-dialog, .pgie');
+    }
+
+    $scope.find('[title]:not(.popover-click):not(.no-popover)' + _pgNoTitlePopover).filter(outsideEditor).each(function () {
         pgUI.popover.get(this, {
             trigger: 'hover',
             placement: 'auto',
@@ -11117,7 +11123,7 @@ function pgBindTitlePopovers(scope) {
         });
     });
 
-    $scope.find('.popover-click[title]:not(.no-popover)' + _pgNoTitlePopover).each(function () {
+    $scope.find('.popover-click[title]:not(.no-popover)' + _pgNoTitlePopover).filter(outsideEditor).each(function () {
         pgUI.popover.get(this, {
             trigger: 'click',
             placement: 'auto',

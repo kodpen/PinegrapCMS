@@ -207,8 +207,10 @@
                 grid.appendChild(glyphButton(String.fromCodePoint(icon.code), icon.name, 'bi', function () { self.addGlyph('bi', icon.code); }));
             });
 
+            // The search reads the Bootstrap Icons names, which are English:
+            // a search in the panel's language finds nothing, so say so.
             if (!r.found) {
-                note.textContent = t('glyphIconNone');
+                note.textContent = t('glyphIconNone') + ' ' + t('glyphIconEnglish');
             } else if (r.found > SHOWN) {
                 note.textContent = t('glyphIconMore');
             }
