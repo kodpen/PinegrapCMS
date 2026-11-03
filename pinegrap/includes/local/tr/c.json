@@ -2514,6 +2514,7 @@
     "changes is a list of objects.": "changes bir nesne listesidir.",
     "changes names at least one change.": "changes en az bir değişiklik içermeli.",
     "channel must be web, pos or marketplace:<code>.": "channel web, pos ya da marketplace:<code> olmalı.",
+    "channel_id is a discussion: send it as thread_id.": "channel_id bir tartışma: thread_id olarak gönderin.",
     "channels opened": "açılan kanal",
     "chat conversation closed": "sohbet konuşması kapatıldı",
     "chat conversation deleted": "sohbet konuşması silindi",
