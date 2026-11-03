@@ -169,23 +169,7 @@ function pg_ship_date_adjustment_form_check($liveform, $id)
         ($liveform->check_field_error('zip_code_prefix') == false)
         && ($liveform->check_field_error('shipping_method_id') == false)
     ) {
-        $query =
-            "SELECT COUNT(*) AS count
-            FROM ship_date_adjustments
-            WHERE
-                (zip_code_prefix = ?)
-                AND (shipping_method_id = ?)";
-        $values = array((string) $liveform->get_field_value('zip_code_prefix'), (string) $liveform->get_field_value('shipping_method_id'));
-
-        if ($id !== null) {
-            $query .= " AND (id != ?)";
-            $values[] = (string) $id;
-        }
-
-        $result = db_q($query, $values) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
-
-        if ((int) $row['count'] > 0) {
+        if (pg_ship_date_adjustment_form_taken($liveform->get_field_value('zip_code_prefix'), $liveform->get_field_value('shipping_method_id'), $id)) {
             $liveform->mark_error('zip_code_prefix', lang('Sorry, there is already a ship date adjustment for the zip code prefix and shipping method you selected.'));
             $liveform->mark_error('shipping_method_id');
         }
@@ -194,10 +178,7 @@ function pg_ship_date_adjustment_form_check($liveform, $id)
     // A hand-made post can name a method that does not exist; the list
     // showed such an adjustment with an empty method.
     if ($liveform->check_field_error('shipping_method_id') == false) {
-        $result = db_q("SELECT COUNT(*) FROM shipping_methods WHERE id = ?", array((int) $liveform->get_field_value('shipping_method_id'))) or output_error('Query failed.');
-        $row = mysqli_fetch_row($result);
-
-        if ((int) $row[0] < 1) {
+        if (!pg_ship_date_adjustment_form_method_exists($liveform->get_field_value('shipping_method_id'))) {
             $liveform->mark_error('shipping_method_id', lang('Shipping Method is required.'));
         }
     }
@@ -246,4 +227,45 @@ function pg_ship_date_adjustment_form_days_valid($days)
 function pg_ship_date_adjustment_form_type_valid($type)
 {
     return in_array($type, array('earlier', 'later'), true);
+}
+
+/**
+ * Whether another adjustment has the zip code prefix and shipping method:
+ * checkout applies one adjustment per pair.
+ *
+ * @param mixed $zip_code_prefix
+ * @param mixed $shipping_method_id
+ * @param string|int|null $id  the adjustment being edited, null on create
+ * @return bool
+ */
+function pg_ship_date_adjustment_form_taken($zip_code_prefix, $shipping_method_id, $id)
+{
+    $query =
+        "SELECT COUNT(*) AS count
+        FROM ship_date_adjustments
+        WHERE
+            (zip_code_prefix = ?)
+            AND (shipping_method_id = ?)";
+    $values = array((string) $zip_code_prefix, (string) $shipping_method_id);
+    if ($id !== null) {
+        $query .= " AND (id != ?)";
+        $values[] = (string) $id;
+    }
+    $result = db_q($query, $values) or output_error('Query failed.');
+    $row = mysqli_fetch_assoc($result);
+    return ((int) $row['count'] > 0);
+}
+
+/**
+ * Whether the shipping method exists: a hand-made post can name one that
+ * does not, and the list showed such an adjustment with an empty method.
+ *
+ * @param mixed $shipping_method_id
+ * @return bool
+ */
+function pg_ship_date_adjustment_form_method_exists($shipping_method_id)
+{
+    $result = db_q("SELECT COUNT(*) FROM shipping_methods WHERE id = ?", array((int) $shipping_method_id)) or output_error('Query failed.');
+    $row = mysqli_fetch_row($result);
+    return ((int) $row[0] > 0);
 }
