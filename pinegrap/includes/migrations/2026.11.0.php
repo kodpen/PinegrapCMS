@@ -151,6 +151,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_user_disabled();           // 11.0.160
 	upgrade_2026_11_0_booking_campaigns();       // 11.0.161
 	upgrade_2026_11_0_stock_locations();         // 11.0.162
+	upgrade_2026_11_0_activitypub();             // 11.0.163
 
 }
 
@@ -4968,5 +4969,76 @@ function upgrade_2026_11_0_stock_locations() {
 	install_add_column('orders', 'stock_location_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Stock locations: the tables for stock kept per location and its history are in place; nothing changes until a location is added.');
+
+}
+
+// The site as a Fediverse actor (2026.11.0, 11.0.163; includes/fn/activitypub.php).
+// ap_followers holds one row per remote actor that follows the site, with
+// its inbox and shared inbox; ap_outbox the activities queued for delivery,
+// one row per inbox, retried with backoff by the general job; ap_blocks the
+// actors and domains whose requests are refused. A reply from the Fediverse
+// is a comment: comments.remote_actor and remote_id name its sender and its
+// note, so a repeated delivery or a Delete finds it; local comments keep ''.
+// The actor's settings and key pair are not config columns (the stock
+// config row has no room left, data/config-table-no-varchar.md) but two
+// config_text rows written by the code: ap_settings (JSON) and ap_keys (the
+// private key sealed with the site's key). Everything stays off until
+// ap_settings switches it on.
+function upgrade_2026_11_0_activitypub() {
+
+	install_create_table('ap_followers', "CREATE TABLE ap_followers (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		actor_id     VARCHAR(255) NOT NULL DEFAULT '',
+		inbox        VARCHAR(255) NOT NULL DEFAULT '',
+		shared_inbox VARCHAR(255) NOT NULL DEFAULT '',
+		name         VARCHAR(100) NOT NULL DEFAULT '',
+		avatar       VARCHAR(255) NOT NULL DEFAULT '',
+		followed_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_actor (actor_id(191))
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ap_outbox', "CREATE TABLE ap_outbox (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		activity_id VARCHAR(255) NOT NULL DEFAULT '',
+		inbox       VARCHAR(255) NOT NULL DEFAULT '',
+		body        MEDIUMTEXT NULL,
+		attempts    TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		next_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		state       ENUM('queued','sent','failed') NOT NULL DEFAULT 'queued',
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_due (state, next_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ap_blocks', "CREATE TABLE ap_blocks (
+		id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		kind       ENUM('actor','domain') NOT NULL DEFAULT 'actor',
+		value      VARCHAR(255) NOT NULL DEFAULT '',
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_block (kind, value(191))
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	// Instantly where the server can, so a site with many comments does not
+	// wait for a copy of the table; copied otherwise.
+	$remote = array(
+		'remote_actor' => "VARCHAR(255) NOT NULL DEFAULT ''",
+		'remote_id'    => "VARCHAR(255) NOT NULL DEFAULT ''",
+	);
+
+	if (!install_add_columns_instant('comments', $remote)) {
+
+		foreach ($remote as $column => $definition) {
+
+			install_add_column('comments', $column, $definition);
+
+		}
+
+	}
+
+	install_add_index('comments', 'idx_remote', "INDEX idx_remote (remote_id(191))");
+
+	install_note('Fediverse (ActivityPub): the site can be followed from Mastodon and other Fediverse services. It stays off until it is switched on.');
 
 }
