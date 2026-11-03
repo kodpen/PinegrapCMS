@@ -86,3 +86,14 @@ function test_site_log_list_error_row()
 	pg_assert_contains('pg-log-row-error', $html);
 	pg_assert_contains('pglogerror', $html);
 }
+
+function test_site_log_list_is_a_driver_list()
+{
+	$definition = pg_list_table_definition('view_log');
+
+	pg_assert_same('includes/fn/site_log_list.php', $definition['file']);
+	pg_assert_same('pg_site_log_list_source', $definition['source']);
+	pg_assert_true(function_exists($definition['source']), 'the source function is in its file');
+	pg_assert_same(null, pg_site_log_list_source(array('id' => 9, 'role' => 3), array('start_time' => '1', 'stop_time' => '2')), 'a basic user may not open the list');
+	pg_assert_same(null, pg_site_log_list_source(array('id' => 9, 'role' => 0), array('start_time' => 'x', 'stop_time' => '2')), 'a range that is not whole numbers');
+}
