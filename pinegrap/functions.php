@@ -232,6 +232,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/preorder.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/audiences.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/bookings.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/store_credit.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/store_credit_points.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/variant_set_copy.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/text_search.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/graph_canvas.php');
