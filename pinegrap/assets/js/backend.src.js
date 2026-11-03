@@ -2098,11 +2098,10 @@ $(document).ready(function () {
     pg_shortcuts_init();
 
     check_unread_notifications('onload_check');
-    setInterval(function () {
-        //this interval is auto check for notifications.
-        // we set this default 30 sec(30 * 1000).
+    // The bell's count every 20 seconds while the tab is in sight.
+    pg_poll_while_visible(function () {
         check_unread_notifications('scheduled_check');
-    }, 20 * 1000); // 60 * 1000 = 1min.
+    }, 20 * 1000);
 
 
 
@@ -9743,6 +9742,41 @@ function pg_background_calls_allowed() {
     return true;
 }
 
+/**
+ * Calls poll every ms milliseconds while the tab is visible. A hidden tab
+ * sends nothing; when it comes back into sight poll runs once at once and
+ * the interval starts again. The caller makes the first call on load.
+ */
+function pg_poll_while_visible(poll, ms) {
+    var timer = null;
+
+    function start() {
+        if (timer === null) {
+            timer = window.setInterval(poll, ms);
+        }
+    }
+
+    function stop() {
+        if (timer !== null) {
+            window.clearInterval(timer);
+            timer = null;
+        }
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+            stop();
+        } else if (timer === null) {
+            poll();
+            start();
+        }
+    });
+
+    if (!document.hidden) {
+        start();
+    }
+}
+
 /* ════════════════════════════════════════════════════════════════════════
    USER ONLINE HEARTBEAT (Runs on all backend pages)
 ════════════════════════════════════════════════════════════════════════ */
@@ -9768,10 +9802,9 @@ function pg_background_calls_allowed() {
         });
     }
 
-    // First heartbeat on load
+    // First heartbeat on load, then every 50 seconds while the tab is in sight.
     sendHeartbeat();
-    // Then every 50 seconds
-    setInterval(sendHeartbeat, 50000);
+    pg_poll_while_visible(sendHeartbeat, 50000);
 })();
 
 /* ════════════════════════════════════════════════════════════════════════
