@@ -30,7 +30,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `custom_form`: done #5926 (custom shipping and billing forms stored option values outside the list); read: field sync and options, ensure/adopt form, settings write, render bindings and URL prefill, rules, rich text ids, controls and reconcile, sample seeding, shipping/billing prepare and submit, mail links, new account texts, fill-time token, form limits
 
-- `dashboard`: open
+- `dashboard`: clean (appearance whitelist, auto backdrop map, refresh bounds 10 s–1 day incl. INF strings, role gate; all callers load it via functions.php)
 
 - `db_maintenance`: open
 
