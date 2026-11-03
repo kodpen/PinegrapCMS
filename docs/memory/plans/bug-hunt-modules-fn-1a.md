@@ -38,7 +38,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `design_themes`: open
 
-- `designer`: open
+- `designer`: #6034 (svg drawing cleaner let event handlers and unquoted script URLs through)
 
 - `designer_fx`: open
 
