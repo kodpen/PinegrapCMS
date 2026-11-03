@@ -152,7 +152,7 @@ function test_dealership_standard_links_and_widgets()
 		pg_assert_true(isset($w['config']['regionType'], $w['tree']), "widget $key: config and tree");
 	}
 	// The widgets the other parts place and leave to this one.
-	foreach (array('newsletter_band', 'home_posts') as $w) pg_assert_true(isset($d['widgets'][$w]), "$w is defined");
+	foreach (array('newsletter_band', 'home_posts', 'google_reviews') as $w) pg_assert_true(isset($d['widgets'][$w]), "$w is defined");
 	// The reply e-mail and the privacy page are the requests part's.
 	pg_assert_false(isset($d['widgets']['email_comment']), 'the reply e-mail widget stays the requests part\'s');
 	pg_assert_false(_test_dl_std_page('privacy') !== null, 'the privacy page stays the requests part\'s');
