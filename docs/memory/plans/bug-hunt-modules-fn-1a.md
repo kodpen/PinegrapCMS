@@ -26,7 +26,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `cron`: done #5889 (lane pick by due time: a resumable pass starved the hourly search index); read: run stamps, clock and tick budget, due-again, catalogue, AI range refresh, interval label, dispatcher, lanes, claim/release, output handler; done #5930 (`pg_cron_release()` clears only the lock stamp its own claim wrote, no schema)
 
-- `currency_rates`: open, read once with nothing found (log line, fetch, store, rate on a date); a second look or `clean`
+- `currency_rates`: #5924 (second look: Frankfurter moved to api.frankfurter.dev/v1, BGN dropped; callers, rounding, dates, failure paths checked)
 
 - `custom_form`: done #5926 (custom shipping and billing forms stored option values outside the list); read: field sync and options, ensure/adopt form, settings write, render bindings and URL prefill, rules, rich text ids, controls and reconcile, sample seeding, shipping/billing prepare and submit, mail links, new account texts, fill-time token, form limits
 
