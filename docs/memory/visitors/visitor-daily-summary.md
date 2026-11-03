@@ -16,3 +16,7 @@ module: visitor_retention
 
 ## Who reads it?
 - Reports and `GET /reports/visitors` read the summary before that moment and raw rows after it (year/month/day + at most one grouping, no filters), answer `summary_to`, and say which days a report cannot cover.
+
+## Where is the summary's state shown?
+- The Database Engine "Visitor records" card's "Daily summary" line gives the run `pg_visitor_summary_range()` returns ("On, first to last"), "On, nothing added up yet" without one, "Off" with the switch off (#6381).
+- System Status adds a "Visitor Summary" line (a job line, warning colour, no score) when the switch is on and `pg_visitor_summary_lag()` is above `PG_VISITOR_SUMMARY_LATE_DAYS` (2): days from the range's last day to today, counted from the day before the oldest visit when nothing is summarised, 0 without visits (`tests/visitor_summary_lag_test.php`). Yesterday is normal; two days back is a run not come yet.

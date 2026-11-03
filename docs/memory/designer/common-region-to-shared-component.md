@@ -14,6 +14,9 @@ description: A common region made a shared component (R2): one _editable block o
 - Owner 2026-10-27: the component is the one source. The common pass of `get_page_content.php` asks `pg_common_region_components()` (one query per request for the common regions on the page, cached) and draws the component with `pg_common_region_component_html()` (nested components, widgets, custom PHP: the page's own passes ran before). The row's content is no longer read, so a classic page, a designer `region` node and a placed `shared_ref` all show the same thing.
 - Deleting the component brings the row's content back (as it was at conversion): that is the undo. The row, its content and its grants stay after the legacy page designer retires (#3156): the tag finds the component through the row, and nothing clears them on update.
 
+## Can the region be deleted?
+- Not while its component exists (#5516, owner): the Delete branch of `edit_common_region.php` refuses before the DELETE, names the component and links to it; the button's confirmation says the same. Delete the component (content comes back), then the region. Pinned by `test_common_region_delete_refused_while_its_component_exists`.
+
 ## Which old paths stop?
 - Front-end inline editing (owner: accepted): a converted region gets no editor in edit mode, and `save_region_content.php` refuses a write.
 - `edit_common_region.php`: shows the component's name, no content field and no type change; a rename still works (the tag finds the row by name, the row the component by id). Its convert form posts no `name` and carries `disable_shortcut` (Ctrl+S would send it nameless); fixed in #2253, before which the button did nothing.

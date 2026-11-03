@@ -119,7 +119,7 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('common region')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h($component_id ? lang('This region is a shared component and cannot be deleted while the component exists. Delete the component first.') : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('common region'))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -171,9 +171,21 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
 
     // if region was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
+        // The row is the <cregion> tag's only link to its shared component
+        // and the component's undo: while the component exists the region
+        // stays, and the notice points at the component.
+        if ($component_id) {
+            $component_name = (string) db_value("SELECT name FROM shared_components WHERE id = '" . (int) $component_id . "'");
+            $liveform->add_error(
+                h(lang(array('string' => 'This common region is the shared component "{var:1}". Delete the component first; its content comes back here, then the region can be deleted.', 'vars' => $component_name)))
+                . ' <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_system_style.php?component=' . (int) $component_id . '">' . h(lang('Edit in the visual designer')) . '</a>');
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_common_region.php?id=' . $id);
+            exit();
+        }
+
         $query = "DELETE FROM cregion "
                 ."WHERE cregion_id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
+        $result = db_q($query, array((string) $id)) or output_error('Query failed');
         
         // delete users_common_regions_xref records
         $query = "DELETE FROM users_common_regions_xref WHERE common_region_id = ?";

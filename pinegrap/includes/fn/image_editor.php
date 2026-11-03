@@ -3222,6 +3222,8 @@ function pg_image_editor_action_svg_save($request, $user)
         return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
     }
 
+    $svg = pg_image_editor_svg_motion_add($svg, isset($request['motion']) ? $request['motion'] : null);
+
     $name = (string) $file['row']['name'];
 
     if ($mode === 'copy') {
@@ -3237,6 +3239,125 @@ function pg_image_editor_action_svg_save($request, $user)
     }
 
     return pg_image_editor_record($mode, $name, (int) $file['row']['folder'], 'svg', $file['row'], $user);
+}
+
+/**
+ * A sanitized SVG with its layers' motion: one <style> the server writes
+ * from the numbers (pg_image_editor_svg_motion_css()), first in the root,
+ * which gets an id when it has none. The SVG as it was when nothing moves
+ * or the numbers are refused.
+ *
+ * @param string $svg    pg_svg_sanitize()'s output
+ * @param mixed  $motion the request's motion (M.svgMotion())
+ *
+ * @return string
+ */
+function pg_image_editor_svg_motion_add($svg, $motion)
+{
+    if (!is_array($motion) || !class_exists('DOMDocument')) {
+        return $svg;
+    }
+
+    $dom = new DOMDocument();
+
+    if (!@$dom->loadXML($svg, LIBXML_NONET) || !$dom->documentElement) {
+        return $svg;
+    }
+
+    $root = $dom->documentElement;
+    $id = $root->getAttribute('id');
+
+    if (!preg_match('/^[A-Za-z][A-Za-z0-9_-]{0,63}$/', $id)) {
+        $id = 'pgsvg-' . substr(sha1($svg), 0, 10);
+    }
+
+    $css = pg_image_editor_svg_motion_css($motion, $id);
+
+    if ($css === '') {
+        return $svg;
+    }
+
+    $root->setAttribute('id', $id);
+
+    $style = $dom->createElementNS('http://www.w3.org/2000/svg', 'style');
+    $style->appendChild($dom->createCDATASection($css));
+    $root->insertBefore($style, $root->firstChild);
+
+    $out = $dom->saveXML($root);
+
+    return ($out === false) ? $svg : $out;
+}
+
+/**
+ * The @keyframes of an SVG's moving layers, from numbers only: for each
+ * layer its group (class pgm-n, a child of the root #$id: a stale class on a
+ * nested group never matches) turns about its centre
+ * through the sampled frames, the plays as the document's (0 forever),
+ * all inside prefers-reduced-motion: no-preference, so a reader who asks
+ * for less motion sees every layer at rest. '' when anything is out of
+ * range: nothing the browser sent reaches the file as text.
+ *
+ * @param mixed  $motion { duration, loop, layers: [{ n, cx, cy, frames: [[percent, opacity, x, y, scale, rot]] }] }
+ * @param string $id     the root's id
+ *
+ * @return string
+ */
+function pg_image_editor_svg_motion_css($motion, $id)
+{
+    if (!is_array($motion) || !isset($motion['duration'], $motion['layers']) || !is_array($motion['layers'])
+        || !preg_match('/^[A-Za-z][A-Za-z0-9_-]{0,63}$/', (string) $id)) {
+        return '';
+    }
+
+    $duration = $motion['duration'];
+    $loop = isset($motion['loop']) ? $motion['loop'] : 0;
+
+    if (!is_int($duration) || ($duration < 1000) || ($duration > 60000) || !is_int($loop) || ($loop < 0) || ($loop > 1000)
+        || !$motion['layers'] || (count($motion['layers']) > 500)) {
+        return '';
+    }
+
+    $number = function ($v, $min, $max) {
+        return ((is_int($v) || is_float($v)) && is_finite((float) $v) && ($v >= $min) && ($v <= $max));
+    };
+    $text = function ($v) {
+        $s = rtrim(rtrim(sprintf('%.3F', $v), '0'), '.');
+
+        return ($s === '-0') ? '0' : $s;
+    };
+
+    $rules = array();
+    $seen = array();
+
+    foreach ($motion['layers'] as $layer) {
+        if (!is_array($layer) || !isset($layer['n'], $layer['cx'], $layer['cy'], $layer['frames']) || !is_int($layer['n'])
+            || ($layer['n'] < 0) || ($layer['n'] > 9999) || isset($seen[$layer['n']])
+            || !$number($layer['cx'], -1e6, 1e6) || !$number($layer['cy'], -1e6, 1e6)
+            || !is_array($layer['frames']) || (count($layer['frames']) < 2) || (count($layer['frames']) > 101)) {
+            return '';
+        }
+
+        $seen[$layer['n']] = true;
+        $name = $id . '-pgm-' . $layer['n'];
+        $steps = array();
+        $last = -1;
+
+        foreach ($layer['frames'] as $f) {
+            if (!is_array($f) || (count($f) !== 6) || (array_keys($f) !== range(0, 5)) || !$number($f[0], 0, 100) || ($f[0] <= $last)
+                || !$number($f[1], 0, 1) || !$number($f[2], -1e6, 1e6) || !$number($f[3], -1e6, 1e6) || !$number($f[4], 0, 100) || !$number($f[5], -1e6, 1e6)) {
+                return '';
+            }
+
+            $last = $f[0];
+            $steps[] = $text($f[0]) . '%{opacity:' . $text($f[1]) . ';transform:translate(' . $text($layer['cx'] + $f[2]) . 'px,' . $text($layer['cy'] + $f[3]) . 'px) rotate('
+                . $text($f[5]) . 'deg) scale(' . $text($f[4]) . ') translate(' . $text(-$layer['cx']) . 'px,' . $text(-$layer['cy']) . 'px)}';
+        }
+
+        $rules[] = '#' . $id . ' > .pgm-' . $layer['n'] . '{transform-box:view-box;transform-origin:0 0;animation:' . $name . ' ' . $text($duration / 1000) . 's linear '
+            . ($loop ? $loop : 'infinite') . ' both}' . "\n" . '@keyframes ' . $name . '{' . implode('', $steps) . '}';
+    }
+
+    return '@media (prefers-reduced-motion: no-preference){' . "\n" . implode("\n", $rules) . "\n" . '}';
 }
 
 // -- Motion (pg_image_editor_motion.js) --

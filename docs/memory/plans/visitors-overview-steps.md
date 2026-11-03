@@ -9,7 +9,7 @@ description: Steps V1-V4 of plans/visitors-overview.md, the foundations: shell a
 - V1 (L) Shell, period and menu. `free`.
   - `visitors.php`, `includes/visitors/shell.php`, `includes/fn/visitor_periods.php`, `assets/js/pg_visitors.src.js` and `.min.js`, `assets/css/pg_visitors.src.css` and `.min.css` with the empty section blocks, both registered in their bundle lists; the period bar with the compare switch and the custom range (`pgDatePicker`); the section loader; the menu, panel search and help entries (`-design.md`). With no section file yet the screen shows the period bar and one line saying the sections are coming. `tests/visitor_periods_test.php`: bounds of every preset, Monday weeks, a DST change, a custom range, the same-hour cut, bad input. Memory: `ui/visitors-screen.md`.
 
-- V2 (M) Figures module. `free`.
+- V2 (M) Figures module. Done (#6356).
   - `includes/fn/visitor_figures.php`: `pg_visitor_totals()`, `pg_visitor_breakdown()`, `pg_visitor_summary_range()`, `pg_visitor_day_sources()`, wrappers over the content rollup for a window and a grain; the merge of summary and raw rows taken out of `includes/api/resources/visitors.php`, whose `reports/visitors` now calls the module and answers as before plus `summary_days`. `tests/visitor_figures_test.php`: the day split with a run in the middle, at the end and absent; the merge by value; the rest row. Memory: `visitors/visitor-figures-module.md`.
 
 - V3 (M) Daily summary every day. Done (#6352).

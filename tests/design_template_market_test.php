@@ -9,9 +9,8 @@
  * way the shop writes it, the shared parts load, every page link names a
  * page of the finished template and the shared parts never send a visitor
  * to a page that needs the shop, the header's search goes to the site
- * search, the stars say their figure in words, the classes are the
- * template's own, no date is written into the sample, and every literal
- * has its Turkish.
+ * search, the classes are the template's own, no date is written into
+ * the sample, and every literal has its Turkish.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -35,7 +34,6 @@ function _test_market_load()
 	include $dir . '/parts.php';
 	$cards = array();
 	foreach (array_keys($sellers) as $key) {
-		$cards[] = $seller_card($key);
 		$cards[] = $product_card($key, 0);
 	}
 	foreach (array_keys($categories) as $key) $cards[] = $category_tile($key);
@@ -48,13 +46,12 @@ function _test_market_load()
 		'promises'   => $market_promises,
 		'steps'      => $market_steps,
 		'money'      => $money,
-		'stars'      => $stars,
 		'makers_in'  => $makers_in,
 		'header'     => $header(),
 		'footer'     => $footer(),
 		'shared'     => array($account_bar_tree(), $header(), $footer(), $maker_band(), $notice(), $staff_bar()),
 		'parts'      => array_merge($cards, array(
-			$promise_row(), $stars('4.5'),
+			$promise_row(),
 			$page(array()), $staff_page(array()), $page_header(lang('Makers'), lang('Text')),
 			$section_header(lang('Makers'), lang('Makers'), lang('All Makers'), '{{page:sellers}}'),
 			$faq(1, lang('Question'), lang('Answer')), $post_card(), $ai_summary(),
@@ -112,7 +109,6 @@ function test_market_sellers_and_products_hang_together()
 		pg_assert_true((bool)preg_match('/^[a-z]+$/', $key), "$key: a key the SKU can carry");
 		pg_assert_true(isset($d['categories'][$s['category']]), "$key: known category");
 		pg_assert_true(isset($d['cities'][$s['city']]), "$key: known city");
-		pg_assert_true((bool)preg_match('/^[1-5]\.[0-9]$/', $s['rating']), "$key: rating with one decimal");
 		foreach (array('name', 'maker', 'tagline', 'story') as $f) pg_assert_true($s[$f] !== '', "$key: $f written");
 		if ($s['featured']) $featured++;
 		$used_categories[$s['category']] = true;
@@ -197,27 +193,6 @@ function test_market_makers_link_filters_by_category()
 	pg_assert_same('{{page:sellers}}?category=' . rawurlencode($d['categories']['home']['title']), $url);
 }
 
-// The stars are decorative; the words beside them say the figure.
-function test_market_stars_say_the_rating()
-{
-	$d = _test_market_load();
-	$tree = call_user_func($d['stars'], '4.5');
-	$nodes = array();
-	_test_market_nodes($tree, $nodes);
-	$full = $half = 0;
-	$text = '';
-	foreach ($nodes as $n) {
-		$c = (string)($n['props']['cssClass'] ?? '');
-		if (strpos($c, 'bi-star-fill') !== false) $full++;
-		if (strpos($c, 'bi-star-half') !== false) $half++;
-		if (strpos($c, 'bi ') === 0) pg_assert_contains('aria-hidden', json_encode($n), 'icon hidden from a screen reader');
-		if (isset($n['props']['text'])) $text .= $n['props']['text'];
-	}
-	pg_assert_same(4, $full, 'four full stars');
-	pg_assert_same(1, $half, 'one half star');
-	pg_assert_same(sprintf(lang('%s out of 5'), '4.5'), $text, 'the figure in words');
-}
-
 // Classes the template adds of its own start with pmk-; another template's
 // prefix copied in would stay unstyled (its rules are not in this one).
 function test_market_classes_are_its_own()
@@ -232,7 +207,7 @@ function test_market_classes_are_its_own()
 			if (strpos($c, 'pmk-') === 0) $own[$c] = true;
 		}
 	}
-	foreach (array('pmk-brand', 'pmk-eyebrow', 'pmk-price', 'pmk-lift', 'pmk-stars', 'pmk-band', 'pmk-search') as $c) {
+	foreach (array('pmk-brand', 'pmk-eyebrow', 'pmk-price', 'pmk-lift', 'pmk-band', 'pmk-search') as $c) {
 		pg_assert_true(isset($own[$c]), "$c is used");
 	}
 }

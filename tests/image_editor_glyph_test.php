@@ -173,22 +173,29 @@ function test_image_editor_glyph_bundled()
 	pg_assert_contains('Editor.layerTypes.glyph = {', $js);
 }
 
-// Change: a placed sticker, icon or emoji takes another one in its place;
-// every field but the drawn thing stays, and back again restores it.
+// Change: a placed sticker, icon or emoji takes another one in its place.
+// Turn, opacity, motion and what the person changed stay; the pick brings its
+// own look and proportions, fitted in the old box about the same centre.
 function test_image_editor_glyph_swap()
 {
 	$r = image_editor_glyph_node(
 		'var motion = { in: { kind: "fade", ms: 400 } };'
-		. 'var st = { id: "a1", type: "sticker", kind: "pill", label: "New", color: "#1e88e5", ink: "#ffffff", x: 10, y: 20, w: 90, h: 35, rot: 15, opacity: 0.5, motion: motion, locked: false };'
-		. 'var icon = M.swapGlyph(st, { type: "glyph", set: "bi", code: 0xf586 });'
-		. 'var emoji = M.swapGlyph(icon, { type: "glyph", set: "emoji", code: "\u{1F600}" });'
-		. 'var icon2 = M.swapGlyph(emoji, { type: "glyph", set: "bi", code: 0xf586 });'
-		. 'var star = M.swapGlyph(st, { type: "sticker", kind: "star", label: "", fill: "#fdd835", ink: "#1a1c1e" });'
-		. 'var fromEmoji = M.swapGlyph({ id: "b", type: "glyph", set: "emoji", code: "\u{1F600}", x: 1, y: 2, w: 3, h: 3, rot: 0, opacity: 1 }, { type: "sticker", kind: "pill", label: "New", fill: "#1e88e5", ink: "#ffffff" });'
-		. 'var plainEmoji = M.swapGlyph({ id: "b", type: "glyph", set: "emoji", code: "\u{1F600}", x: 1, y: 2, w: 3, h: 3 }, { type: "glyph", set: "bi", code: 0xf586 });'
-		. 'console.log(JSON.stringify({ st: st, icon: icon, emoji: emoji, icon2: icon2, star: star, fromEmoji: fromEmoji, plainEmoji: plainEmoji,'
-		. ' bad: [M.swapGlyph({ type: "text" }, { type: "glyph", set: "bi", code: 1 }), M.swapGlyph(st, { type: "glyph", set: "bi", code: 0 }), M.swapGlyph(st, { type: "sticker" }), M.swapGlyph(st, null)],'
-		. ' same: st.kind === "pill" && st.label === "New" }));'
+		. 'var PILL = { type: "sticker", kind: "pill", label: "YENI", fill: "#1e88e5", ink: "#ffffff", w: 18, h: 7 };'
+		. 'var HEART = { type: "sticker", kind: "heart", label: "", fill: "#e53935", ink: "#ffffff", w: 10, h: 9 };'
+		. 'var STAR = { type: "sticker", kind: "star", label: "", fill: "#fdd835", ink: "#1a1c1e", w: 10, h: 10 };'
+		. 'var ICON = { type: "glyph", set: "bi", code: 0xf586 }, SMILE = { type: "glyph", set: "emoji", code: "\u{1F600}" };'
+		. 'var emoji = { id: "e1", type: "glyph", set: "emoji", code: "\u{1F600}", x: 100, y: 100, w: 60, h: 60, rot: 15, opacity: 0.8, motion: motion, locked: false };'
+		. 'var burst = { id: "b1", type: "sticker", kind: "burst", label: "%20", color: "#e53935", ink: "#ffffff", x: 0, y: 0, w: 50, h: 50, rot: 0, opacity: 1 };'
+		. 'var typed = Object.assign({}, burst, { label: "-50%", color: "#8e24aa" });'
+		. 'var icon = M.swapGlyph(emoji, ICON), back = M.swapGlyph(icon, SMILE);'
+		. 'var redIcon = Object.assign({}, icon, { color: "#e53935" });'
+		. 'var pillFromEmoji = M.swapGlyph(emoji, PILL);'
+		. 'console.log(JSON.stringify({ emoji: emoji, icon: icon, back: back, star: M.swapGlyph(emoji, STAR),'
+		. ' pill: M.swapGlyph(burst, PILL, "%20"), typed: M.swapGlyph(typed, PILL, "%20"),'
+		. ' heart: M.swapGlyph(redIcon, HEART), plainHeart: M.swapGlyph(icon, HEART), emojiPill: pillFromEmoji, emojiAgain: M.swapGlyph(pillFromEmoji, SMILE),'
+		. ' burstIcon: M.swapGlyph(burst, ICON, "%20"), typedIcon: M.swapGlyph(typed, ICON, "%20"),'
+		. ' bad: [M.swapGlyph({ type: "text" }, ICON), M.swapGlyph(burst, { type: "glyph", set: "bi", code: 0 }), M.swapGlyph(burst, { type: "sticker" }), M.swapGlyph(burst, null)],'
+		. ' same: emoji.code === "\u{1F600}" && burst.kind === "burst" }));'
 	);
 
 	if ($r === null) {
@@ -198,21 +205,35 @@ function test_image_editor_glyph_swap()
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
 	pg_assert_true($r['same'], 'the layer given is not changed');
 
-	$kept = array('id', 'x', 'y', 'w', 'h', 'rot', 'opacity', 'motion', 'locked', 'color');
-
-	foreach (array('icon', 'emoji', 'icon2', 'star') as $name) {
-		foreach ($kept as $field) {
-			pg_assert_same($r['st'][$field], $r[$name][$field], $name . ' keeps ' . $field);
+	// Same proportions: the box and every other field stay.
+	foreach (array('icon', 'back', 'star') as $name) {
+		foreach (array('id', 'x', 'y', 'w', 'h', 'rot', 'opacity', 'motion', 'locked') as $field) {
+			pg_assert_same($r['emoji'][$field], $r[$name][$field], $name . ' keeps ' . $field);
 		}
 	}
 
-	pg_assert_same(array('glyph', 'bi', 0xf586), array($r['icon']['type'], $r['icon']['set'], $r['icon']['code']), 'a sticker becomes an icon');
-	pg_assert_false(isset($r['icon']['kind']) || isset($r['icon']['label']) || isset($r['icon']['ink']), 'the sticker fields go');
-	pg_assert_same(array('glyph', 'emoji'), array($r['emoji']['type'], $r['emoji']['set']), 'an icon becomes an emoji');
-	pg_assert_same($r['icon'], $r['icon2'], 'an emoji back to the icon is the icon again');
-	pg_assert_same(array('sticker', 'star', 'New', '#ffffff'), array($r['star']['type'], $r['star']['kind'], $r['star']['label'], $r['star']['ink']), 'a sticker to another keeps its label and ink');
-	pg_assert_same(array('sticker', 'pill', 'New', '#1e88e5', '#ffffff'), array($r['fromEmoji']['type'], $r['fromEmoji']['kind'], $r['fromEmoji']['label'], $r['fromEmoji']['color'], $r['fromEmoji']['ink']), 'an emoji takes the sticker\'s own label and colours');
-	pg_assert_false(isset($r['fromEmoji']['set']) || isset($r['fromEmoji']['code']), 'the glyph fields go');
-	pg_assert_same('#212529', $r['plainEmoji']['color'], 'an emoji without a colour becomes a dark icon');
+	pg_assert_same(array('glyph', 'bi', 0xf586, '#212529'), array($r['icon']['type'], $r['icon']['set'], $r['icon']['code'], $r['icon']['color']), 'an emoji becomes a dark icon');
+	pg_assert_same('emoji', $r['back']['set'], 'and back to an emoji');
+	pg_assert_same(array('sticker', 'star', '#fdd835'), array($r['star']['type'], $r['star']['kind'], $r['star']['color']), 'an emoji takes the star\'s fill');
+	pg_assert_false(isset($r['star']['set']) || isset($r['star']['code']), 'the glyph fields go');
+
+	// A sticker for a sticker brings its own look unless the person changed it.
+	pg_assert_same(array('pill', 'YENI', '#1e88e5', '#ffffff'), array($r['pill']['kind'], $r['pill']['label'], $r['pill']['color'], $r['pill']['ink']), 'burst to pill takes the pill\'s label, fill and ink');
+	pg_assert_same(array('-50%', '#8e24aa'), array($r['typed']['label'], $r['typed']['color']), 'a typed label and a chosen colour stay');
+	pg_assert_same('#e53935', $r['heart']['color'], 'an icon coloured red stays red as a heart');
+	pg_assert_same('#e53935', $r['plainHeart']['color'], 'a default icon takes the heart\'s fill');
+	pg_assert_same('#212529', $r['burstIcon']['color'], 'a burst in its own colour becomes a dark icon');
+	pg_assert_same('#8e24aa', $r['typedIcon']['color'], 'a chosen colour stays on the icon');
+	pg_assert_false(isset($r['burstIcon']['kind']) || isset($r['burstIcon']['label']) || isset($r['burstIcon']['ink']), 'the sticker fields go');
+
+	// Proportions: square to pill, pill to emoji, about the same centre.
+	$p = $r['emojiPill'];
+	pg_assert_true(abs($p['w'] - 60) < 1e-6 && abs($p['w'] / $p['h'] - 18 / 7) < 1e-6, 'the pill fits the square\'s width in its own proportions');
+	pg_assert_true(abs($p['x'] + $p['w'] / 2 - 130) < 1e-6 && abs($p['y'] + $p['h'] / 2 - 130) < 1e-6, 'about the same centre');
+	$e = $r['emojiAgain'];
+	pg_assert_true(abs($e['w'] - $p['h']) < 1e-6 && abs($e['h'] - $p['h']) < 1e-6, 'the pill back to an emoji is a square of its height');
+	pg_assert_true(abs($e['x'] + $e['w'] / 2 - 130) < 1e-6 && abs($e['y'] + $e['h'] / 2 - 130) < 1e-6, 'about the same centre');
+	pg_assert_same(15, $e['rot'], 'the turn stays');
+
 	pg_assert_same(array(null, null, null, null), $r['bad'], 'only a sticker or glyph, only a real pick');
 }

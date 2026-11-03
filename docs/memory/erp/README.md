@@ -43,6 +43,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-auto-invoice.md: An order's invoice issued on its own once it is paid or shipped (config.erp_auto_invoice_on): setting, two filters, triggers, decision, writer, invoicing lock, after-response run, refusal notice
 - erp-awaiting-transfer-orders.md: Awaiting-payment (bank transfer) orders: derived state predicate, pg_order_mark_paid, ERP settlement hook, auto-cancel sweep in job.php, cancel-reason display.
 - erp-back-targets.md: ERP detail screens go back to the filtered list they were opened from through send_to (row link, drawer Open in full, reloads, forms); which screens, which are left
+- erp-bank-statement-delete.md: A bank statement with no recorded or matched line deletes with its open lines; otherwise refused naming them; a file with no dated amount is refused at upload
 - erp-bank-statement-lines.md: ERP bank statement lines: each line once (line_hash), recording a line; what a refused step keeps, the send-once forms.
 - erp-bank-statement-matching.md: ERP bank statement matching: which till movements a line matches, cancels left out, undoing a match, which tills take a statement.
 - erp-bank-statement-suggestions.md: ERP bank statement suggestions worked out once per statement (erp_bank_statement_suggestions): one line per open invoice, the per-line buttons, the count and Record the N suggested lines.
@@ -159,6 +160,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-tax-names-zones-and-second-tax.md: ERP tax captions (erp_tax_label, config.erp_tax_name), the zone rate for store and account sales, and the second tax (4.75): columns, SQL helpers, captions, the e-document limit.
 - erp-taxpayer-lookup.md: Asking GİB about a tax number from the account form and the New account dialog (Query button, erp_taxpayer_lookup.php): e-Invoice user, mailboxes, registered name, what is kept on the card
 - erp-till-below-zero.md: A cash till (drawer, received-cheque portfolio) never goes below zero on a transfer, payment or expense: the one check, where it is asked, who skips it, what an already negative till does
+- erp-till-future-date.md: A receipt, payment, transfer or expense payment dated after today is refused by one shared check; the cheque module keeps its dates; rows already dated ahead stay
 - erp-till-inactive-payments.md: No expense, receipt, payment or transfer uses a missing till or one taken off (is_active = 0): the gates, who meets them, the cheque exception, what a repeat does then
 - erp-translation-traps.md: Short translation keys that read wrong as ERP labels (Quote, By, From, To, Count, Record, Due, Net, Method) and the longer keys ERP screens use instead.
 - erp-typed-line-numbers.md: How the document editors refuse a signed or lettered quantity or rate and a line amount past the cap
