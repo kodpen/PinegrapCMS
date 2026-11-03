@@ -198,6 +198,41 @@ function test_workspace_wtable_screen_status_choices_keep_keys()
 	pg_assert_true($check['ok'], 'the store takes them');
 }
 
+function test_workspace_wtable_screen_status_choices_never_reuse_a_held_key()
+{
+	// s2 was dropped earlier and s3 ("Done") is dropped now while a row still holds it.
+	$old = array(
+		array('key' => 's1', 'label' => 'New', 'color' => ''),
+		array('key' => 's4', 'label' => 'Running', 'color' => ''),
+		array('key' => 's3', 'label' => 'Done', 'color' => ''),
+	);
+	$choices = ws_wtable_screen_status_choices("New
+Running
+Cancelled
+On hold", $old, array('s3', 's2', '', 7));
+
+	pg_assert_same(array('s1', 's4', 's5', 's6'), array_column($choices, 'key'), 'keys held by rows are never handed to a new label');
+}
+
+function test_workspace_wtable_screen_status_choices_rename_keeps_the_key()
+{
+	$old = array(
+		array('key' => 's1', 'label' => 'New', 'color' => ''),
+		array('key' => 's3', 'label' => 'Done', 'color' => '#00aa00'),
+	);
+
+	pg_assert_same(array(
+		array('key' => 's1', 'label' => 'New', 'color' => ''),
+		array('key' => 's3', 'label' => 'Finished', 'color' => '#00aa00'),
+	), ws_wtable_screen_status_choices("New
+Finished", $old, array('s3')), 'a label changed on its own line keeps its key and colour');
+
+	pg_assert_same(array('s1', 's2', 's4'), array_column(ws_wtable_screen_status_choices("New
+Finished
+Later", $old, array('s3')), 'key'),
+		'with lines added the old label is dropped, and the new ones skip the held key');
+}
+
 function test_workspace_wtable_screen_options_from_form()
 {
 	pg_assert_same(array('decimals' => '2', 'currency' => 'usd'), ws_wtable_screen_options_from_form('money', array('decimals' => '2', 'currency' => ' usd ')));

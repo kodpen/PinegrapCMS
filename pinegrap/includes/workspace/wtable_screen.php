@@ -211,37 +211,64 @@ function ws_wtable_screen_figure($raw)
 
 /**
  * The status choices of a column from the form: one label a line. A label
- * the column had keeps its key, so the cells holding it keep their choice;
- * a new one gets the next free key. Empty lines are dropped.
+ * the column had keeps its key, so the cells holding it keep their choice.
+ * When the number of lines is unchanged, a label changed on its own line is
+ * a rename and keeps that line's key and colour. Any other new label gets a
+ * key that no current choice and no row holds, so a key dropped earlier
+ * never comes back with another meaning for the rows still holding it.
+ * Empty and repeated lines are dropped.
  *
  * @param string $lines
  * @param array  $old   the column's choices (key, label, colour)
+ * @param array  $held  the keys the table's rows hold in this column
  * @return array[] key, label, color
  */
-function ws_wtable_screen_status_choices($lines, $old = array())
+function ws_wtable_screen_status_choices($lines, $old = array(), $held = array())
 {
     $by_label = array();
+    $old_list = array();
     $used = array();
 
     foreach ((array) $old as $choice) {
         if (is_array($choice) && isset($choice['key'], $choice['label'])) {
             $by_label[(string) $choice['label']] = $choice;
+            $old_list[] = $choice;
             $used[(string) $choice['key']] = true;
         }
     }
 
-    $choices = array();
-    $next = 1;
+    foreach ((array) $held as $key) {
+        if (is_string($key) && ($key !== '')) {
+            $used[$key] = true;
+        }
+    }
+
+    $labels = array();
+    $seen = array();
 
     foreach (preg_split('/\r\n|\r|\n/', (string) $lines) as $line) {
         $label = trim($line);
 
-        if (($label === '') || isset($choices[$label])) {
+        if (($label !== '') && !isset($seen[$label])) {
+            $seen[$label] = true;
+            $labels[] = $label;
+        }
+    }
+
+    $renames = (count($labels) === count($old_list));
+    $choices = array();
+    $next = 1;
+
+    foreach ($labels as $position => $label) {
+        if (isset($by_label[$label])) {
+            $choices[] = array('key' => (string) $by_label[$label]['key'], 'label' => $label, 'color' => (string) ($by_label[$label]['color'] ?? ''));
             continue;
         }
 
-        if (isset($by_label[$label])) {
-            $choices[$label] = array('key' => (string) $by_label[$label]['key'], 'label' => $label, 'color' => (string) ($by_label[$label]['color'] ?? ''));
+        $was = $renames ? $old_list[$position] : null;
+
+        if ($was && !isset($seen[(string) $was['label']])) {
+            $choices[] = array('key' => (string) $was['key'], 'label' => $label, 'color' => (string) ($was['color'] ?? ''));
             continue;
         }
 
@@ -250,10 +277,10 @@ function ws_wtable_screen_status_choices($lines, $old = array())
         }
 
         $used['s' . $next] = true;
-        $choices[$label] = array('key' => 's' . $next, 'label' => $label, 'color' => '');
+        $choices[] = array('key' => 's' . $next, 'label' => $label, 'color' => '');
     }
 
-    return array_values($choices);
+    return $choices;
 }
 
 /**
@@ -262,9 +289,10 @@ function ws_wtable_screen_status_choices($lines, $old = array())
  * @param string     $type
  * @param array      $form decimals, currency, time, choices (lines), kinds (comma list), expression
  * @param array|null $old  the column when it is changed
+ * @param array      $held a status column's keys the table's rows hold
  * @return array
  */
-function ws_wtable_screen_options_from_form($type, $form, $old = null)
+function ws_wtable_screen_options_from_form($type, $form, $old = null, $held = array())
 {
     $form = is_array($form) ? $form : array();
     $text = function ($key) use ($form) {
@@ -290,7 +318,7 @@ function ws_wtable_screen_options_from_form($type, $form, $old = null)
             return array('time' => ($text('time') === '1'));
 
         case 'status':
-            return array('choices' => ws_wtable_screen_status_choices($text('choices'), $old['options']['choices'] ?? array()));
+            return array('choices' => ws_wtable_screen_status_choices($text('choices'), $old['options']['choices'] ?? array(), $held));
 
         case 'link':
             $kinds = array();

@@ -116,7 +116,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $type = $column ? $column['type'] : $field('type');
             $input = array(
                 'name'    => $field('name'),
-                'options' => ws_wtable_screen_options_from_form($type, (isset($_POST['options']) && is_array($_POST['options'])) ? $_POST['options'] : array(), $column),
+                'options' => ws_wtable_screen_options_from_form(
+                    $type,
+                    (isset($_POST['options']) && is_array($_POST['options'])) ? $_POST['options'] : array(),
+                    $column,
+                    ($column && ($type === 'status')) ? ws_wtable_column_held_values((int) $table['id'], (int) $column['id']) : array()
+                ),
             );
 
             if ($column) {
