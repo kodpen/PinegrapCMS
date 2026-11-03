@@ -8968,6 +8968,8 @@ function get_tables() {
 		'form_view_directory_pages',
 		'forms',
 		'gift_cards',
+		'import_items',
+		'imports',
 		'key_codes',
 		'log',
 		'login_regions',
