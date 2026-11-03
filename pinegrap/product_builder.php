@@ -4005,7 +4005,7 @@ function pg_pb_variant_sets_screen()
                         <th>' . lang('Unit Price') . '</th>
                         <th>' . lang('Parent Product Group') . '</th>
                         <th>' . lang('Enabled') . '</th>
-                        <th>' . lang('Created') . '</th>
+                        <th>' . lang('Last Modified') . '</th>
                     </tr>
                 </thead>
                 <tbody>' . $output_rows . '</tbody>

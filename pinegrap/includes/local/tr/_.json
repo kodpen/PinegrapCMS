@@ -615,6 +615,7 @@
     "{var:1} d {var:2} h": "{var:1} gün {var:2} sa",
     "{var:1} data rows": "{var:1} veri satırı",
     "{var:1} data threads": "{var:1} veri ipi",
+    "{var:1} day": "{var:1} gün",
     "{var:1} day(s)": "{var:1} gün",
     "{var:1} day(s) before": "{var:1} gün önce",
     "{var:1} day(s) left": "{var:1} gün kaldı",
