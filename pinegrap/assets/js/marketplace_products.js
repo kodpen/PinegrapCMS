@@ -125,6 +125,13 @@
             sure.classList.toggle('d-none', !counts.sure);
         }
 
+        // Send all has something to send only while a product is matched.
+        var sendAll = document.querySelector('[data-mp-bulk="shop_send_all"]');
+
+        if (sendAll && Object.prototype.hasOwnProperty.call(counts, 'matched')) {
+            sendAll.disabled = !counts.matched;
+        }
+
         if (counts.all) {
             setMeter(Math.round(100 * counts.matched / counts.all), label('matched'));
         }
@@ -499,8 +506,9 @@
             setCounts(answer.counts);
             updateBulk();
 
+            // A partly done step (some matched, some refused) tells both.
             if (answer.error) {
-                flash(answer.error, 'warning');
+                flash(answer.message ? answer.message + ' ' + answer.error : answer.error, 'warning');
             } else if (answer.message) {
                 flash(answer.message, 'success');
             }

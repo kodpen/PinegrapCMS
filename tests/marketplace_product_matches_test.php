@@ -123,3 +123,26 @@ function test_marketplace_product_matches_search_ignores_case_on_the_code()
 	pg_assert_contains("marketplace_product_map.remote_code COLLATE utf8mb4_unicode_ci LIKE '%abc-1%'", mp_matches_search_sql('abc-1'));
 	pg_assert_same('', mp_matches_search_sql('  '));
 }
+
+// The job closes a paused account's waiting rows as failed unsent, so a
+// paused account queues no listing change and no listing, as Send now.
+function test_marketplace_product_matches_listing_steps_need_an_active_account()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/listing_articles.php');
+
+	pg_assert_same(0, mp_matches_listing_update(array('id' => 3, 'provider' => 'trendyol', 'status' => 'paused'), array(1, 2)),
+		'a paused account queues no listing change');
+
+	pg_assert_same(array('queued' => 0, 'refused' => array()),
+		mp_articles_list_now(array('id' => 3, 'provider' => 'trendyol', 'status' => 'paused'), array(4)),
+		'a paused account queues no listing');
+}
+
+// Only the not sent rows come first; an unmatched row (map status NULL) sorts
+// with the matched ones by name, not after them.
+function test_marketplace_product_matches_shop_order_is_by_name()
+{
+	$body = product_matches_test_body('mp_matches_page');
+
+	pg_assert_contains("ORDER BY (marketplace_product_map.status <=> 'error') DESC, products.short_description ASC", $body);
+}

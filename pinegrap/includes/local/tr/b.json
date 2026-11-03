@@ -124,6 +124,7 @@
     "Barcode deleted.": "Barkod silindi.",
     "Barcode generated. Click Save to apply.": "Barkod oluşturuldu. Uygulamak için Kaydet'e tıklayın.",
     "Barcode not found.": "Barkod bulunamadı.",
+    "Barcode on {var:1}": "{var:1} barkodu",
     "Barcode or product code": "Barkod ya da ürün kodu",
     "Barcode preview": "Barkod önizleme",
     "Barcode saved.": "Barkod kaydedildi.",
