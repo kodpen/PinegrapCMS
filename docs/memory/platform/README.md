@@ -109,6 +109,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - notification-channels-delivery.md: Slack, Teams and Telegram delivery: targets in the sealed notify_channels entry, api_webhook_queue rows with webhook_id 0, the retry ladder, secrets masked
 - notification-channels.md: Chat notification channels (includes/fn/notify_channels.php): Slack, Teams and Telegram targets, the pure builders, the settings card and the Test button
 - object-storage-client.md: The S3-compatible client (aws_sign.php SigV4, object_storage.php put/get/head/delete/list/multipart/presign), its answers, where its settings live, the Storage card and its test (PR #5349)
+- object-storage-decisions.md: What binds the S3-compatible object storage for backups and uploaded files: legacy sites unchanged, same addresses, access checks in get_file.php, redirect only, the storage columns (#5037)
 - object-storage-health.md: Object store health: failed calls counted for the ops alert storage_unreachable, the Storage card's last test result, the System Status tile with the move job's failures
 - object-storage-migration.md: The Storage card's Uploaded files tool: move existing files, pause, resume, bring back; the switch's modes; Disk Usage and System Info counting local and stored bytes
 - ods-cell-ceiling.md: PHPExcel's .ods reader makes cells of repeated rows/columns and merged ranges only up to a ceiling, steps over empty runs at once; both importers also cap the first sheet's used range
