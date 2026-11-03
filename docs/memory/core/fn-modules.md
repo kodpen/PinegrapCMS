@@ -59,7 +59,7 @@ description: Generated from the module field of the memory files: each includes/
 - `explorer_side`: [[explorer-menu-tree]]
 - `file_storage`: [[file-object-storage]], [[file-object-storage-readers]], [[object-storage-migration]], [[workspace-files-object-storage]]
 - `files`: [[design-files-screens]], [[edit-file-header]], [[import-my-site-scans]], [[name-length-refusal]], [[settings-public-image-pickers]], [[stored-file-name-upload-rule]], [[theme-screens-names-and-returns]]
-- `form_payments`: [[custom-form-payment]]
+- `form_payments`: [[custom-form-payment]], [[custom-form-payment-staff]]
 - `forms`: [[csv-import-headings]], [[explorer-page-type-name]], [[form-data-output-escape-flag]], [[form-date-whole-value]], [[form-view-newest-comment-cut]], [[forms-api-request-checks]], [[page-form-lazy-page-pickers]], [[report-dynamic-date-filter]]
 - `geo`: [[country-names-in-addresses]], [[panel-script-number-format]]
 - `google_analytics`: [[google-analytics-card]]
