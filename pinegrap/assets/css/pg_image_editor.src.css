@@ -3000,6 +3000,150 @@
   }
 }
 
+/* -- Scenes (pg_image_editor_scenes.js) -- */
+
+/* The strip under the play bar: a card per scene in the canvas's shape
+   (--pgie-sratio), its number and duration, the transition between two,
+   then add; it scrolls sideways past the stage's width. */
+.pgie-sdock {
+  background: var(--pgie-surface);
+  border-top: 1px solid var(--pgie-line);
+}
+
+.pgie-scenes {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  overflow-x: auto;
+  overscroll-behavior: contain;
+}
+
+.pgie-scene {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pgie .pgie-scard {
+  position: relative;
+  display: block;
+  height: 64px;
+  aspect-ratio: var(--pgie-sratio, 1.5);
+  max-width: 150px;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid var(--pgie-line);
+  border-radius: 8px;
+  background: var(--pgie-hover);
+  cursor: pointer;
+}
+
+.pgie .pgie-scard.pgie-sopen {
+  border-color: var(--pgie-pline);
+}
+
+.pgie .pgie-scard.on {
+  border-color: var(--pgie-sel);
+}
+
+.pgie-sthumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.pgie-snum {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  z-index: 1;
+  min-width: 18px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--pgie-tx) 75%, transparent);
+  color: var(--pgie-surface);
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+}
+
+.pgie-sdur {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--pgie-muted);
+  font-size: 11.5px;
+}
+
+.pgie-sdur svg {
+  width: 13px;
+  height: 13px;
+}
+
+.pgie-strans {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  height: 64px;
+}
+
+.pgie .pgie-strans .pgie-ibtn {
+  border-radius: 50%;
+}
+
+.pgie .pgie-sadd {
+  display: grid;
+  place-items: center;
+  height: 64px;
+  aspect-ratio: var(--pgie-sratio, 1.5);
+  max-width: 150px;
+  border: 2px dashed var(--pgie-line);
+  border-radius: 8px;
+  background: none;
+  color: var(--pgie-muted);
+  cursor: pointer;
+}
+
+.pgie .pgie-sadd:hover:not(:disabled) {
+  border-color: var(--pgie-pline);
+  color: var(--pgie-tx);
+}
+
+.pgie .pgie-sadd:disabled {
+  opacity: 0.38;
+}
+
+.pgie-sname {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.pgie .pgie-sacts {
+  margin: 4px 0 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--pgie-line);
+}
+
+.pgie .pgie-sacts .pgie-tile:disabled {
+  opacity: 0.38;
+}
+
+/* In the sheet on a phone the strip comes first, smaller. */
+.pgie-pb > .pgie-scenes {
+  margin: -4px -4px 12px;
+  padding: 0 0 6px;
+}
+
+.pgie-pb > .pgie-scenes .pgie-scard,
+.pgie-pb > .pgie-scenes .pgie-sadd,
+.pgie-pb > .pgie-scenes .pgie-strans {
+  height: 48px;
+}
+
 /* -- Icons and emoji (pg_image_editor_glyph.js) -- */
 
 /* Change on a placed sticker, icon or emoji: the note over the Sticker panel. */
