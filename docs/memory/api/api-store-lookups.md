@@ -1,6 +1,6 @@
 ---
 name: api-store-lookups
-description: Store lookup lists (arrival dates, ship date adjustments, verified addresses, referral sources): the write path the screens and the API share, the referral source routes, refusals, cut-off rule
+description: Store lookup lists (arrival dates, ship date adjustments, verified addresses, referral sources): the write path the screens and the API share, their routes, refusals, cut-off rule
 module: store_lookups
 ---
 
@@ -15,7 +15,14 @@ module: store_lookups
 ## Which routes are there?
 - `/store/referral-sources`: list (one page, in the contact screen's order) and GET one (`orders:read`), create (201), update (POST, PATCH also accepted), DELETE and its `POST …/delete` twin (`store:write`); ids `store.referral_sources.*`, handlers in `includes/api/resources/store_lookups.php`. No events.
 - Refusals: `pg_referral_source_form_error()` without the other sources first (blank name or code, sort order outside 0-999: 422), then with them (a name or code another source has, any case: 409 `referral_source_taken`). An update lays the sent fields over the stored row (`api_store_referral_source_values()`, pure).
-- Arrival dates, ship date adjustments and verified addresses get their routes in the plan's later steps (`plans/external-api-coverage.md`).
+- `/store/ship-date-adjustments`: list (one page, by prefix and method) and GET one (`orders:read`), create, update, delete and its twin (`store:write`). A row answers `days` and `direction` (the screen's fields) beside the signed `adjustment`; an update without `direction` keeps the stored one. Refusals in the screen's order (`pg_ship_date_adjustment_form_check()`): required fields, three characters, a prefix and method another row has (409 `adjustment_taken`), a method that exists, direction, days (422 otherwise).
+- `/store/verified-addresses`: list (newest first, cursor paged, `state_id` filter, with `state_code`/`country_code`) and GET one, create, update, delete and its twin. Refusals: the screen's required fields, a state that does not exist (422).
+- Arrival dates get their routes in step X8c (`plans/external-api-coverage.md`).
+
+## Which id do the edit screens write?
+- `edit_ship_date_adjustment.php` and `edit_verified_shipping_address.php` save and delete the `$id` they checked at the top, never the posted `id` field: a POST to `?id=5` without the field inserted a new row (#6308).
+- The shipping page (`get_shipping_address_and_arrival.php`) passes verified addresses to an inline script through `escape_javascript()`, `zip_code` and `state_code` included: the API can write them (#6308).
+- Checkout's Lead Source pick list (`get_billing_information.php`, `get_express_order.php`) prints referral source names and codes through `h()`: liveform prints option keys and values raw.
 
 ## Tested?
-- `tests/api_store_lookups_test.php`: routes, scopes, field limits, the partial update, the cut-off rule, check-stop-write order, the screens calling the shared functions with no SQL of their own, placeholders. Not run against a database.
+- `tests/api_store_lookups_test.php`: routes, scopes, field limits, the partial updates, the checked id of the edit screens, the escaped Lead Source options, the cut-off rule, check-stop-write order, the screens calling the shared functions with no SQL of their own, placeholders. Not run against a database.
