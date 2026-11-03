@@ -19,11 +19,10 @@ module: list_table
 - `pg_list_table_selected_ids()` reads the ids with the list's own WHERE (rights) and `pg_list_table_selection_where()`: ids `IN`, or the search less `NOT IN` exceptions and `created <= as_of`.
 
 ## Which lists are on it?
-- Pages (`view_pages`, `pg_page_list_source()`): `ui/page-list-paging.md`.
-- Users (`view_users`, `pg_user_list_source()`, #6325): columns per view from `pg_user_list_columns($filter)`; the default view sorts by Last Modified through a hidden column of that name; `created` is `user.user_created` (0 for old accounts, so they stay in). Delete Selected posts `selection` + `list_params` to `delete_users.php` (`pg_user_list_selected_ids()`), which still skips the last administrator (the driver has no unselectable row). The `user_list_rows` action is gone.
+- Pages, users and contacts: `ui/list-table-driver-lists.md`.
 
 ## How does a screen hand its bulk actions over?
 - `pg_list_table_html()`'s fourth argument is the screen's bulk buttons, printed in the bar's `.pg-list-table-actions` (shown only while rows are selected).
 - The screen keeps a hidden `selection` field filled from `pg-list-table:selection` (`JSON.stringify(detail.payload)`) and posts it with the list's parameters (`list_params`), since an `{ids}` payload carries none; the bulk endpoint builds the source again from those parameters (the user's rights included) and calls `pg_list_table_selected_ids()`. More than 10,000 rows (`more`) is refused, not cut.
 
-Related: docs/memory/ui/list-table-driver-browser.md, docs/memory/ui/server-paged-lists.md
+Related: docs/memory/ui/list-table-driver-browser.md, docs/memory/ui/list-table-driver-lists.md, docs/memory/ui/server-paged-lists.md

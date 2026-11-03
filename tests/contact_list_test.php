@@ -195,18 +195,18 @@ function test_contact_list_row_default_view()
 	$row = pg_contact_list_row($contact, array('role' => 2), 'default', 'G1', '');
 
 	pg_assert_same('15', $row['id']);
-	pg_assert_same(12, count($row['cells']), 'check box, action, picture, 3 names, phone, e-mail, user, opt-in, groups, modified');
-	pg_assert_contains('value="15"', $row['cells'][0]['html']);
-	pg_assert_contains('edit_contact.php?id=15', $row['cells'][1]['html']);
-	pg_assert_same('&lt;b&gt;Ali&lt;/b&gt;', $row['cells'][3]['html']);
-	pg_assert_contains(lang('Mobile') . ': 2', $row['cells'][6]['html']);
-	pg_assert_contains('mailto:a@x', $row['cells'][7]['html']);
-	pg_assert_contains('edit_user.php?id=3', $row['cells'][8]['html'], 'a manager may open a user account');
-	pg_assert_contains('task_alt', $row['cells'][9]['html']);
-	pg_assert_same('G1', $row['cells'][10]['html']);
+	pg_assert_same(array('picture', 'first_name', 'last_name', 'company', 'actions', 'email', 'phone', 'user', 'opt_in', 'groups', 'last_modified'), array_keys($row['cells']), 'picture, 3 names, edit, e-mail, phone, user, opt-in, groups, modified');
+	pg_assert_contains('edit_contact.php?id=15', $row['cells']['picture']['html']);
+	pg_assert_contains('edit_contact.php?id=15', $row['cells']['actions']['html']);
+	pg_assert_same('&lt;b&gt;Ali&lt;/b&gt;', $row['cells']['first_name']['html']);
+	pg_assert_contains(lang('Mobile') . ': 2', $row['cells']['phone']['html']);
+	pg_assert_contains('mailto:a@x', $row['cells']['email']['html']);
+	pg_assert_contains('edit_user.php?id=3', $row['cells']['user']['html'], 'a manager may open a user account');
+	pg_assert_contains('task_alt', $row['cells']['opt_in']['html']);
+	pg_assert_same('G1', $row['cells']['groups']['html']);
 
 	$row = pg_contact_list_row($contact, array('role' => 3), 'default', '', '');
-	pg_assert_same('ali', $row['cells'][8]['html'], 'a user may not');
+	pg_assert_same('ali', $row['cells']['user']['html'], 'a user may not');
 }
 
 function test_contact_list_row_address_and_duplicates_views()
@@ -221,18 +221,19 @@ function test_contact_list_row_address_and_duplicates_views()
 	);
 
 	$row = pg_contact_list_row($contact, array('role' => 0), 'my_contacts_by_home_address', '', '');
-	pg_assert_same(13, count($row['cells']), 'check box, action, picture, 3 names, 5 address columns, groups, modified');
-	pg_assert_same('L1,<br />L2', $row['cells'][6]['html']);
-	pg_assert_contains('data-src="http://x/a.png"', $row['cells'][2]['html'], 'a picture by address, loaded lazily');
+	pg_assert_false(isset($row['cells']['email']), 'the address views show no e-mail');
+	pg_assert_same('L1,<br />L2', $row['cells']['address']['html']);
+	pg_assert_same('Ci', $row['cells']['city']['html']);
+	pg_assert_contains('data-src="http://x/a.png"', $row['cells']['picture']['html'], 'a picture by address, loaded lazily');
 
 	$row = pg_contact_list_row($contact, array('role' => 0), 'all_duplicate_contacts', 'G', '');
-	pg_assert_same(12, count($row['cells']), 'check box, action, picture, e-mail, 3 names, address, phone, user, groups, modified');
-	pg_assert_contains('mailto:a@x', $row['cells'][3]['html']);
-	pg_assert_same(h(lang('Business') . ': B1 BC'), $row['cells'][7]['html']);
+	pg_assert_contains('mailto:a@x', $row['cells']['email']['html']);
+	pg_assert_same(h(lang('Business') . ': B1 BC'), $row['cells']['address']['html']);
+	pg_assert_same('G', $row['cells']['groups']['html']);
 
 	$contact['file_id'] = '5';
 	$row = pg_contact_list_row($contact, array('role' => 0), 'default', '', 'pic.png');
-	pg_assert_contains('data-src="/pic.png"', $row['cells'][2]['html'], 'a picture from the file manager');
+	pg_assert_contains('data-src="/pic.png"', $row['cells']['picture']['html'], 'a picture from the file manager');
 }
 
 function test_contact_list_merge_needs_a_role_above_user()

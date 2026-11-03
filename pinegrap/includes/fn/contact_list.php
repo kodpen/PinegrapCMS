@@ -2,9 +2,10 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The contacts list (view_contacts.php), shared by the screen, its export,
- * delete-all and merge paths and the panel action that pages it
- * (contact_list_rows, includes/panel/lists.php).
+ * The contacts list (view_contacts.php) on the list table driver
+ * (includes/fn/list_table.php), shared by the screen, its export,
+ * delete-all and merge paths, the driver's list_table_rows action and the
+ * selected-row actions (edit_contacts.php, pg_contact_list_selected_ids()).
  *
  * The view comes from the address (filter); the date range, the contact
  * group or, with the advanced filters on, the checked groups and the other
@@ -12,12 +13,12 @@
  * pg_contact_list_filter() turns them into one FROM and WHERE with bound
  * values. A user with the user role sees only the contacts of the groups
  * they may edit; the groups they asked for are checked again here, so the
- * action does not rely on the screen having done it.
+ * rows action does not rely on the screen having done it.
  *
  * The duplicates view orders a contact tied to a user account before the
  * other copies of its address (pg_contact_list_duplicates_order()); that
- * order is made in PHP, so the view is printed whole on the screen instead
- * of being paged.
+ * order is made in PHP, so the view is printed whole (the driver's browser
+ * mode) instead of being read in batches.
  *
  * Loaded where it is needed (require_once), not by functions.php.
  *
@@ -542,12 +543,18 @@ function pg_contact_list_filter($user, $filter, $groups)
 
     $sort = pg_contact_list_sort($filter);
 
-    return array(
-        'from' => 'FROM contacts
+    $tables = 'contacts
             LEFT JOIN user AS contact_user ON contacts.id = contact_user.user_contact
             LEFT JOIN user AS last_modified_user ON contacts.user = last_modified_user.user_id
-            LEFT JOIN contacts_contact_groups_xref ON contacts.id = contacts_contact_groups_xref.contact_id' . $view['join'],
+            LEFT JOIN contacts_contact_groups_xref ON contacts.id = contacts_contact_groups_xref.contact_id' . $view['join'];
+
+    // 'tables' and 'condition' are the same pieces without their keywords,
+    // as the list table driver takes them (pg_contact_list_source()).
+    return array(
+        'from' => 'FROM ' . $tables,
         'where' => $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '',
+        'tables' => $tables,
+        'condition' => $conditions ? implode(' AND ', $conditions) : '',
         'params' => $params,
         'advanced' => $advanced,
         'group_filter' => $group_filter,
@@ -686,6 +693,179 @@ function pg_contact_list_select($filter)
 }
 
 /**
+ * The contacts list's columns for the list table driver, in the order the
+ * table shows them, each with the SQL it sorts by (the sort codes the
+ * screen kept before, so a kept sort still applies). The picture comes
+ * first: it is the link to the editor. The address views show the address
+ * instead of the phones, e-mail, user and opt-in; the duplicates view leads
+ * with the e-mail address and always shows the groups.
+ *
+ * @param string $filter       pg_contact_list_filter_name()'s answer
+ * @param bool   $shows_groups whether the groups are shown (the toggle)
+ * @return array key => spec, as pg_list_table_columns() takes them
+ */
+function pg_contact_list_columns($filter, $shows_groups)
+{
+    $prefix = pg_contact_list_address_prefix($filter);
+    $duplicates = ($filter == 'all_duplicate_contacts');
+
+    $columns = array('picture' => array('heading' => lang('Image'), 'width' => '5rem', 'kind' => 'image'));
+
+    if ($duplicates) {
+        $columns['email'] = array('heading' => lang('Email'), 'width' => '14rem', 'sort' => 'contacts.email_address');
+    }
+
+    $columns['first_name'] = array('heading' => lang('First Name'), 'width' => '10rem', 'sort' => 'contacts.first_name');
+    $columns['last_name'] = array('heading' => lang('Last Name'), 'width' => '10rem', 'sort' => 'contacts.last_name');
+    $columns['company'] = array('heading' => lang('Company'), 'width' => '12rem', 'sort' => 'contacts.company');
+
+    if ($duplicates) {
+        $columns['address'] = array('heading' => lang('Address'), 'width' => '16rem');
+        $columns['phone'] = array('heading' => lang('Phone'), 'width' => '12rem');
+        $columns['user'] = array('heading' => lang('User'), 'width' => '9rem', 'sort' => 'contact_user.user_username');
+    } elseif ($prefix !== '') {
+        $columns['address'] = array('heading' => lang('Address'), 'width' => '16rem');
+        $columns['city'] = array('heading' => lang('City'), 'width' => '9rem', 'sort' => 'contacts.' . $prefix . 'city');
+        $columns['state'] = array('heading' => lang('State'), 'width' => '8rem', 'sort' => 'contacts.' . $prefix . 'state');
+        $columns['zip_code'] = array('heading' => lang('Zip Code'), 'width' => '7rem', 'sort' => 'contacts.' . $prefix . 'zip_code');
+        $columns['country'] = array('heading' => lang('Country'), 'width' => '8rem', 'sort' => 'contacts.' . $prefix . 'country');
+    } else {
+        $columns['phone'] = array('heading' => lang('Phone'), 'width' => '12rem');
+        $columns['email'] = array('heading' => lang('Email'), 'width' => '14rem', 'sort' => 'contacts.email_address');
+        $columns['user'] = array('heading' => lang('User'), 'width' => '9rem', 'sort' => 'contact_user.user_username');
+        $columns['opt_in'] = array('heading' => lang('Opt-In'), 'kind' => 'check', 'sort' => 'contacts.opt_in');
+    }
+
+    if ($shows_groups || $duplicates) {
+        $columns['groups'] = array('heading' => lang('Contact Groups'), 'width' => '12rem');
+    }
+
+    $columns['last_modified'] = array('heading' => lang('Last Modified'), 'width' => '10rem', 'kind' => 'date', 'sort' => 'contacts.timestamp');
+    $columns['actions'] = array('heading' => lang('Action'), 'width' => '5rem', 'kind' => 'actions');
+
+    return $columns;
+}
+
+/**
+ * Whether the list shows the contact groups: the toggle kept in the
+ * session; the duplicates view always does.
+ *
+ * @param string $filter
+ * @return bool
+ */
+function pg_contact_list_shows_groups($filter)
+{
+    return ($filter == 'all_duplicate_contacts') || (($_SESSION['software']['view_contacts']['show_contact_groups'] ?? false) == true);
+}
+
+/**
+ * The contacts list as the list table driver's source
+ * (includes/fn/list_table.php), for the screen, the rows action and the
+ * selected-row actions (edit_contacts.php) alike. It is the screen's gate
+ * too (validate_contacts_access()). The filters are the ones the screen
+ * kept in the session; the duplicates view is small and ordered in PHP, so
+ * it is printed whole and sorted in the browser.
+ *
+ * @param array $user   the signed-in user
+ * @param array $params the list's parameters: 'filter' (the view)
+ * @return array|null pg_list_table_source(), or null when the user may not
+ *                    open the list
+ */
+function pg_contact_list_source($user, $params)
+{
+    if (!is_array($user) || (validate_contacts_access($user, true) != true)) {
+        return null;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+    $filter = pg_contact_list_filter_name((is_array($params) && isset($params['filter']) && is_string($params['filter'])) ? $params['filter'] : '');
+    $groups = pg_contact_list_groups($user);
+    pg_contact_list_prepare($user, $groups);
+    $list = pg_contact_list_filter($user, $filter, $groups);
+    $shows_groups = pg_contact_list_shows_groups($filter);
+    $duplicates = ($filter == 'all_duplicate_contacts');
+
+    return pg_list_table_source(array(
+        'list' => 'view_contacts',
+        'columns' => pg_contact_list_columns($filter, $shows_groups),
+        'from' => $list['tables'],
+        'where' => $list['condition'],
+        'params' => $list['params'],
+        'id' => 'contacts.id',
+        'id_order' => 'asc',
+        'select' => pg_contact_list_select($filter),
+        // The group join gives a contact one row per group.
+        'group' => true,
+        'search' => array('columns' => pg_contact_list_search_columns($filter, $shows_groups, $groups), 'labels' => array()),
+        'levels' => $list['sort_levels'],
+        'rows' => function ($records) use ($user, $filter, $groups, $shows_groups, $duplicates) {
+            return pg_contact_list_rows($user, $filter, $groups, $shows_groups, $duplicates ? pg_contact_list_duplicates_order($records) : $records);
+        },
+        'all' => $duplicates,
+        'params_out' => array('filter' => $filter),
+    ));
+}
+
+/**
+ * The contacts a selected-row action acts on: the selection the list table
+ * driver posted (JSON), read with the list's own query and rights. A
+ * selection of ids is read in the view the list showed, sent beside it; a
+ * condition carries its view itself.
+ *
+ * @param array $user        the signed-in user
+ * @param mixed $selection   the posted selection, JSON
+ *                           (pg_list_table_selection_parse())
+ * @param mixed $list_params the posted list parameters, JSON ('filter')
+ * @return array|false|null contact ids (empty when nothing or nothing
+ *                          reachable was selected), false when the query
+ *                          failed, null when the selection holds more than
+ *                          10,000 contacts
+ */
+function pg_contact_list_selected_ids($user, $selection, $list_params)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+    $selection = pg_list_table_selection_parse(is_string($selection) ? json_decode($selection, true) : null, time());
+
+    if ($selection === null) {
+        return array();
+    }
+
+    $params = ($selection['mode'] === 'condition') ? $selection['params'] : json_decode(is_string($list_params) ? $list_params : '', true);
+    $source = pg_contact_list_source($user, is_array($params) ? $params : array());
+
+    if ($source === null) {
+        return array();
+    }
+
+    $selected = pg_list_table_selected_ids($source, $selection);
+
+    if ($selected === false) {
+        return false;
+    }
+
+    return $selected['more'] ? null : $selected['ids'];
+}
+
+/**
+ * The link that opens a contact's editor: the picture, named after the
+ * contact, followed by a double-click or Enter on the row (data-pg-open).
+ * The editor returns to the list's view.
+ *
+ * @param int    $id
+ * @param string $name     the contact's name (pg_contact_list_row_name()), unescaped
+ * @param string $list_url the list's address with its view
+ * @param string $picture  the picture's markup
+ * @return string
+ */
+function pg_contact_list_edit_link($id, $name, $list_url, $picture)
+{
+    return '<a class="d-inline-block text-decoration-none" data-pg-open href="' . h('edit_contact.php?id=' . (int) $id . '&send_to=' . urlencode($list_url)) . '"'
+        . ' aria-label="' . h(lang(array('string' => 'Edit {var:1}', 'vars' => (string) $name))) . '">' . $picture . '</a>';
+}
+
+/**
  * The duplicates view's order: within each address the copies tied to a
  * user account first, then the others, each in the order read.
  *
@@ -729,7 +909,7 @@ function pg_contact_list_duplicates_order($contacts)
  * @param array  $groups       pg_contact_list_groups()'s answer
  * @param bool   $shows_groups whether the groups column is filled
  * @param array  $contacts     rows of pg_contact_list_select()
- * @return array list rows for pg_list_row_html() / pg_list_row_data()
+ * @return array rows as pg_list_table_page() hands them on
  */
 function pg_contact_list_rows($user, $filter, $groups, $shows_groups, $contacts)
 {
@@ -804,8 +984,8 @@ function pg_contact_list_address_line($label, $parts)
 }
 
 /**
- * The name a row's check box reads: the full name, else the company, else
- * the e-mail address.
+ * The name a row's editor link reads: the full name, else the company,
+ * else the e-mail address.
  *
  * @param array $contact a row of pg_contact_list_select()
  * @return string unescaped
@@ -823,14 +1003,14 @@ function pg_contact_list_row_name($contact)
  * @param string $filter
  * @param string $group_names the contact's groups, escaped
  * @param string $file_name   the picture's file name when the picture is a file
- * @return array array('id', 'class', 'cells')
+ * @return array array('id', 'class', 'cells' => key => pg_list_cell())
  */
 function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name)
 {
     $id = (int) $contact['id'];
     $address_view = (pg_contact_list_address_prefix($filter) !== '');
     $duplicates = ($filter == 'all_duplicate_contacts');
-    $edit_url = 'edit_contact.php?id=' . $id . '&send_to=' . h(escape_javascript(urlencode(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php?filter=' . $filter)));
+    $edit_url = h('edit_contact.php?id=' . $id . '&send_to=' . urlencode(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php?filter=' . $filter));
     $lazy = '<img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" alt="" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="';
 
     // A picture file deleted in the File Manager leaves file_id behind with
@@ -845,9 +1025,11 @@ function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name)
     }
 
     $cells = array(
-        pg_list_cell('<input class="check" type="checkbox" name="contacts[]" value="' . $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => pg_contact_list_row_name($contact)))) . '" />', 'select-all align-middle text-start'),
-        pg_list_cell('<button type="button" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $edit_url . '\'"><i class="bi bi-pencil"></i></button>', 'align-middle text-start col-reorder-none action-buttons'),
-        pg_list_cell($picture, 'align-middle text-start'),
+        'picture' => pg_list_cell(pg_contact_list_edit_link($id, pg_contact_list_row_name($contact), OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php?filter=' . $filter, $picture), 'align-middle text-start'),
+        'first_name' => pg_list_cell(h($contact['first_name'])),
+        'last_name' => pg_list_cell(h($contact['last_name'])),
+        'company' => pg_list_cell(h($contact['company'])),
+        'actions' => pg_list_cell('<a class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '" href="' . $edit_url . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>', 'align-middle text-nowrap action-buttons'),
     );
 
     $user_cell = '';
@@ -865,11 +1047,11 @@ function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name)
                 $phones[] = $label . ': ' . h($contact[$column]);
             }
         }
-    }
 
-    $email = pg_list_cell('<a class="pg-link-secondary" href="mailto:' . h($contact['email_address']) . '">' . h($contact['email_address']) . '</a>');
-    $names = array(pg_list_cell(h($contact['first_name'])), pg_list_cell(h($contact['last_name'])), pg_list_cell(h($contact['company'])));
-    $phone = pg_list_cell(implode('<br />', $phones));
+        $cells['email'] = pg_list_cell('<a class="pg-link-secondary" href="mailto:' . h($contact['email_address']) . '">' . h($contact['email_address']) . '</a>');
+        $cells['phone'] = pg_list_cell(implode('<br />', $phones));
+        $cells['user'] = pg_list_cell($user_cell);
+    }
 
     if ($duplicates) {
         $lines = array();
@@ -888,88 +1070,21 @@ function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name)
             }
         }
 
-        $cells[] = $email;
-        $cells = array_merge($cells, $names);
-        $cells[] = pg_list_cell(implode('<br />', $lines));
-        $cells[] = $phone;
-        $cells[] = pg_list_cell($user_cell);
-    } else {
-        $cells = array_merge($cells, $names);
+        $cells['address'] = pg_list_cell(implode('<br />', $lines));
+    } elseif ($address_view) {
+        $cells['address'] = pg_list_cell(h($contact['address_1']) . (($contact['address_2'] != '') ? ',<br />' . h($contact['address_2']) : ''));
 
-        if ($address_view) {
-            $street = h($contact['address_1']) . (($contact['address_2'] != '') ? ',<br />' . h($contact['address_2']) : '');
-            $cells[] = pg_list_cell($street);
-
-            foreach (array('city', 'state', 'zip_code', 'country') as $column) {
-                $cells[] = pg_list_cell(h($contact[$column]));
-            }
-        } else {
-            $cells[] = $phone;
-            $cells[] = $email;
-            $cells[] = pg_list_cell($user_cell);
-            $cells[] = pg_list_cell($contact['opt_in'] ? '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . h(lang('Yes')) . '</span>' : '', 'align-middle text-center');
+        foreach (array('city', 'state', 'zip_code', 'country') as $column) {
+            $cells[$column] = pg_list_cell(h($contact[$column]));
         }
+    } else {
+        $cells['opt_in'] = pg_list_cell($contact['opt_in'] ? '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . h(lang('Yes')) . '</span>' : '', 'align-middle text-center');
     }
 
-    $cells[] = pg_list_cell($group_names);
-    $cells[] = pg_list_cell(get_relative_time(array('timestamp' => $contact['timestamp'])) . '<br />' . h($contact['last_modified_username'] ?? ''));
+    $cells['groups'] = pg_list_cell($group_names);
+    $cells['last_modified'] = pg_list_cell(pg_list_when($contact['timestamp'], $contact['last_modified_username'] ?? ''));
 
     return array('id' => (string) $id, 'class' => '', 'cells' => $cells);
-}
-
-/**
- * One page of the list (not the duplicates view): the counts without and
- * with the search, and the rows of the page window.
- *
- * @param array  $user   the viewer (validate_user())
- * @param string $filter pg_contact_list_filter_name()'s answer
- * @param array  $groups pg_contact_list_groups()'s answer
- * @param array  $list   pg_contact_list_filter()'s answer
- * @param array  $terms  pg_list_search_terms()'s answer
- * @param array  $window pg_list_page_window()'s answer
- * @return array|false array('total', 'filtered', 'rows') or false when a
- *                     query failed
- */
-function pg_contact_list_page($user, $filter, $groups, $list, $terms, $window)
-{
-    $shows_groups = (($_SESSION['software']['view_contacts']['show_contact_groups'] ?? false) == true);
-    $base = $list['from'] . ' ' . $list['where'];
-    $search = pg_list_search_where($terms, pg_contact_list_search_columns($filter, $shows_groups, $groups));
-    $search_sql = ($search['sql'] !== '') ? (($list['where'] !== '') ? ' AND ' : ' WHERE ') . $search['sql'] : '';
-    $params = array_merge($list['params'], $search['params']);
-
-    $result = db_q('SELECT COUNT(DISTINCT contacts.id) ' . $base, $list['params']);
-
-    if (!$result) {
-        return false;
-    }
-
-    $total = (int) mysqli_fetch_row($result)[0];
-    $filtered = $total;
-
-    if ($search_sql !== '') {
-        $result = db_q('SELECT COUNT(DISTINCT contacts.id) ' . $base . $search_sql, $params);
-
-        if (!$result) {
-            return false;
-        }
-
-        $filtered = (int) mysqli_fetch_row($result)[0];
-    }
-
-    $result = db_q('SELECT ' . pg_contact_list_select($filter) . ' ' . $base . $search_sql . ' GROUP BY contacts.id ORDER BY ' . $list['order_by'] . pg_list_limit_sql($window), $params);
-
-    if (!$result) {
-        return false;
-    }
-
-    $contacts = array();
-
-    while ($row = mysqli_fetch_assoc($result)) {
-        $contacts[] = $row;
-    }
-
-    return array('total' => $total, 'filtered' => $filtered, 'rows' => pg_contact_list_rows($user, $filter, $groups, $shows_groups, $contacts));
 }
 
 /**
