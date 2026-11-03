@@ -683,6 +683,7 @@
     "The @ in an email address was chosen because it was the one symbol on the keyboard that turned up in nobody's name. That was the whole reason.": "E-posta adreslerindeki @ işareti, klavyede kimsenin adında geçmeyen tek işaret olduğu için seçilmiş. Sebebi bundan ibaret.",
     "The AI assistants' links are filled (a record anybody may open)": "Yapay zekâ asistanı bağlantıları dolu (herkesin açabildiği bir kayıt)",
     "The AI fetch table does not exist yet. Please run the software upgrade to create it.": "Yapay zekâ okuma tablosu henüz yok. Oluşturmak için lütfen yazılım güncellemesini çalıştırın.",
+    "The API URL must be a valid http or https address.": "API URL'si geçerli bir http ya da https adresi olmalıdır.",
     "The API is not installed on this site yet. Run the software upgrade to finish it.": "API bu sitede henüz kurulmadı. Tamamlamak için yazılım yükseltmesini çalıştırın.",
     "The API is switched off for this site.": "Bu site için API kapalı.",
     "The API key or the Place ID is missing or not valid.": "API anahtarı ya da Yer Kimliği eksik veya geçersiz.",

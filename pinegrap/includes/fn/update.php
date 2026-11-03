@@ -479,6 +479,102 @@ function pg_migration_request_options($data)
 }
 
 /**
+ * migration.php's reading of a pg_curl_run() answer from the source site's
+ * API. A JSON object with a non-empty string 'status' comes back as decoded,
+ * its 'message' made a string ('' when missing). Anything else (no answer,
+ * an HTTP error page, a body that is not JSON) comes back as
+ * array('status' => '', 'message' => '') - a communication error - with
+ * 'reason' saying what went wrong ('cURL error N: text', 'HTTP N', or ''
+ * when the answer simply was not JSON). Every answer carries 'errno' for
+ * pg_curl_tls_hint(). Pure.
+ *
+ * @param array $result pg_curl_run()'s answer
+ * @return array
+ */
+function pg_migration_response($result)
+{
+    $errno = isset($result['errno']) ? (int) $result['errno'] : 0;
+    $body = isset($result['body']) ? (string) $result['body'] : '';
+    $data = ($body !== '') ? json_decode($body, true) : null;
+
+    if (is_array($data) && isset($data['status']) && is_string($data['status']) && $data['status'] !== '') {
+        $data['message'] = (isset($data['message']) && is_scalar($data['message'])) ? (string) $data['message'] : '';
+        $data['errno'] = $errno;
+
+        return $data;
+    }
+
+    $error = isset($result['error']) ? trim((string) $result['error']) : '';
+    $status = isset($result['status']) ? (int) $result['status'] : 0;
+    $reason = '';
+
+    if ($errno !== 0) {
+        $reason = 'cURL error ' . $errno . ($error !== '' ? ': ' . $error : '');
+    } elseif ($error !== '') {
+        $reason = $error;
+    } elseif ($status !== 0 && ($status < 200 || $status > 299)) {
+        $reason = 'HTTP ' . $status;
+    }
+
+    return array('status' => '', 'message' => '', 'reason' => $reason, 'errno' => $errno);
+}
+
+/**
+ * The detail of a failed migration request as plain text: the source site's
+ * message, else the communication failure's reason, else ''. Pure.
+ *
+ * @param array $response pg_migration_response()'s answer
+ * @return string
+ */
+function pg_migration_failure_detail($response)
+{
+    if (isset($response['message']) && (string) $response['message'] !== '') {
+        return (string) $response['message'];
+    }
+
+    return isset($response['reason']) ? (string) $response['reason'] : '';
+}
+
+/**
+ * The " Error: <detail>" suffix (HTML) migration.php appends to a failed
+ * request's error, with the certificate hint when the failure was a TLS one.
+ *
+ * @param array $response pg_migration_response()'s answer
+ * @return string '' or HTML with a leading space
+ */
+function pg_migration_error_suffix($response)
+{
+    $detail = pg_migration_failure_detail($response);
+    $suffix = ($detail !== '') ? ' ' . lang('Error') . ': ' . h($detail) : '';
+
+    return $suffix . h(pg_curl_tls_hint(isset($response['errno']) ? $response['errno'] : 0, true));
+}
+
+/**
+ * Whether $url can be the source site's API address: an http or https
+ * scheme and a host name. Pure.
+ *
+ * @param string $url
+ * @return bool
+ */
+function pg_migration_url_valid($url)
+{
+    $url = trim((string) $url);
+
+    if ($url === '' || preg_match('/\s/', $url)) {
+        return false;
+    }
+
+    $parts = parse_url($url);
+
+    if (!is_array($parts) || !isset($parts['scheme'], $parts['host'])) {
+        return false;
+    }
+
+    return in_array(strtolower($parts['scheme']), array('http', 'https'), true) && $parts['host'] !== '';
+}
+
+/**
  * Turn a certificate-related cURL error number into a sentence in the panel
  * language.
  *

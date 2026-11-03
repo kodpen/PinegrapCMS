@@ -59,9 +59,9 @@ if (!$_POST) {
                                             <label for="url" class="form-label">' . lang('API URL') . '</label>
                                             <div class="input-group ">
                                                 <label class="input-group-text material-icons" aria-hidden="true">public</label>
-                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'url', 'id'=>'url', 'value' => 'https://', 'class'=>'form-control', 'required'=>'required', 'aria-describedby'=>'url_hint')) . '
+                                                ' . $liveform->output_field(array('type'=>'url', 'name'=>'url', 'id'=>'url', 'placeholder' => 'https://', 'class'=>'form-control', 'required'=>'required', 'aria-describedby'=>'url_hint')) . '
                                             </div>
-                                            <div class="form-text" id="url_hint">' . lang('Example') . ': <code>https://www.example.com/software_directory/api.php</code></div>
+                                            <div class="form-text" id="url_hint">' . lang('Example') . ': <code>https://www.example.com/pinegrap/api.php</code></div>
                                             <div class="form-text text-end">' . lang('If source site supports it, make sure to use \'https\' URL so login info is sent securely.') . '</div>
                                         </div>
                                         <div class="col-12"></div>
@@ -139,6 +139,15 @@ if (!$_POST) {
     $liveform->validate_required_field('username', lang(array('string'=>'{var:1} is required','vars'=>lang('Email'))));
     $liveform->validate_required_field('password', lang(array('string'=>'{var:1} is required','vars'=>lang('Password'))));
 
+    // The source site's password is read here once and never kept in the
+    // session, so the form is never drawn with it again.
+    $source_password = (string) $liveform->get_field_value('password');
+    $liveform->assign_field_value('password', '');
+
+    if (($liveform->check_field_error('url') == false) && (pg_migration_url_valid($liveform->get_field_value('url')) == false)) {
+        $liveform->mark_error('url', lang('The API URL must be a valid http or https address.'));
+    }
+
     // If no items have been selected to be migrated, then add error.
     if (
         ($liveform->get_field_value('styles') == 0)
@@ -156,15 +165,15 @@ if (!$_POST) {
             'url' => $liveform->get_field_value('url'),
             'request' => array(
                 'username' => $liveform->get_field_value('username'),
-                'password' => $liveform->get_field_value('password'),
+                'password' => $source_password,
                 'action' => 'test')));
 
         // If the response is blank, then there was a communication error,
         // so output error about that.
         if ($response['status'] == '') {
-            $liveform->mark_error('url', lang('Sorry, there was a communication error with the source site. Please check to make sure the API URL is correct.'));
+            $liveform->mark_error('url', lang('Sorry, there was a communication error with the source site. Please check to make sure the API URL is correct.') . pg_migration_error_suffix($response));
         } else if ($response['status'] == 'error') {
-            $liveform->mark_error('username', h($response['message']));
+            $liveform->mark_error('username', h($response['message'] !== '' ? $response['message'] : lang('Invalid login.')));
             $liveform->mark_error('password', '');
         }
     }
@@ -179,7 +188,7 @@ if (!$_POST) {
             'url' => $liveform->get_field_value('url'),
             'request' => array(
                 'username' => $liveform->get_field_value('username'),
-                'password' => $liveform->get_field_value('password'),
+                'password' => $source_password,
                 'action' => 'get_styles',
                 'code' => true)));
 
@@ -187,17 +196,13 @@ if (!$_POST) {
         if ($response['status'] == 'success') {
             $styles = array();
 
-            if (is_array($response['styles']) == true) {
+            if (isset($response['styles']) && is_array($response['styles'])) {
                 $styles = $response['styles'];
             }
 
         // Otherwise the request failed, so add error.
         } else {
-            $output_error_message = '';
-
-            if ($response['message'] != '') {
-                $output_error_message = ' ' . lang('Error') . ': ' . h($response['message']);
-            }
+            $output_error_message = pg_migration_error_suffix($response);
 
             $liveform->mark_error('styles', lang('Page Styles could not be retrieved from the source site, so the migration was aborted.') . $output_error_message);
         }
@@ -213,24 +218,20 @@ if (!$_POST) {
             'url' => $liveform->get_field_value('url'),
             'request' => array(
                 'username' => $liveform->get_field_value('username'),
-                'password' => $liveform->get_field_value('password'),
+                'password' => $source_password,
                 'action' => 'get_common_regions')));
 
         // If the request was successful, then store common regions for later.
         if ($response['status'] == 'success') {
             $common_regions = array();
 
-            if (is_array($response['common_regions']) == true) {
+            if (isset($response['common_regions']) && is_array($response['common_regions'])) {
                 $common_regions = $response['common_regions'];
             }
 
         // Otherwise the request failed, so add error.
         } else {
-            $output_error_message = '';
-
-            if ($response['message'] != '') {
-                $output_error_message = ' ' . lang('Error') . ': ' . h($response['message']);
-            }
+            $output_error_message = pg_migration_error_suffix($response);
 
             $liveform->mark_error('common_regions', lang('Common Regions could not be retrieved from the source site, so the migration was aborted.') . $output_error_message);
         }
@@ -246,7 +247,7 @@ if (!$_POST) {
             'url' => $liveform->get_field_value('url'),
             'request' => array(
                 'username' => $liveform->get_field_value('username'),
-                'password' => $liveform->get_field_value('password'),
+                'password' => $source_password,
                 'action' => 'get_designer_regions',
                 'content' => true)));
 
@@ -254,17 +255,13 @@ if (!$_POST) {
         if ($response['status'] == 'success') {
             $designer_regions = array();
 
-            if (is_array($response['designer_regions']) == true) {
+            if (isset($response['designer_regions']) && is_array($response['designer_regions'])) {
                 $designer_regions = $response['designer_regions'];
             }
 
         // Otherwise the request failed, so add error.
         } else {
-            $output_error_message = '';
-
-            if ($response['message'] != '') {
-                $output_error_message = ' ' . lang('Error') . ': ' . h($response['message']);
-            }
+            $output_error_message = pg_migration_error_suffix($response);
 
             $liveform->mark_error('designer_regions', lang('Designer Regions could not be retrieved from the source site, so the migration was aborted.') . $output_error_message);
         }
@@ -280,24 +277,20 @@ if (!$_POST) {
             'url' => $liveform->get_field_value('url'),
             'request' => array(
                 'username' => $liveform->get_field_value('username'),
-                'password' => $liveform->get_field_value('password'),
+                'password' => $source_password,
                 'action' => 'get_folders')));
 
         // If the request was successful, then store folders for later.
         if ($response['status'] == 'success') {
             $folders = array();
 
-            if (is_array($response['folders']) == true) {
+            if (isset($response['folders']) && is_array($response['folders'])) {
                 $folders = $response['folders'];
             }
 
         // Otherwise the request failed, so add error.
         } else {
-            $output_error_message = '';
-
-            if ($response['message'] != '') {
-                $output_error_message = ' ' . lang('Error') . ': ' . h($response['message']);
-            }
+            $output_error_message = pg_migration_error_suffix($response);
 
             $liveform->mark_error('folders_and_pages', lang('Folders could not be retrieved from the source site, so the migration was aborted.') . $output_error_message);
         }
@@ -313,24 +306,20 @@ if (!$_POST) {
             'url' => $liveform->get_field_value('url'),
             'request' => array(
                 'username' => $liveform->get_field_value('username'),
-                'password' => $liveform->get_field_value('password'),
+                'password' => $source_password,
                 'action' => 'get_pages')));
 
         // If the request was successful, then store pages for later.
         if ($response['status'] == 'success') {
             $pages = array();
 
-            if (is_array($response['pages']) == true) {
+            if (isset($response['pages']) && is_array($response['pages'])) {
                 $pages = $response['pages'];
             }
 
         // Otherwise the request failed, so add error.
         } else {
-            $output_error_message = '';
-
-            if ($response['message'] != '') {
-                $output_error_message = ' Error: ' . h($response['message']);
-            }
+            $output_error_message = pg_migration_error_suffix($response);
 
             $liveform->mark_error('folders_and_pages', lang('Pages could not be retrieved from the source site, so the migration was aborted.') . $output_error_message);
         }
@@ -543,7 +532,7 @@ if (!$_POST) {
         // Prepare name for migration folder where we will put all imported folders.
         // If a "Migration" folder already exists, then we will use "Migration[1]" or etc.
         $migration_folder_name = get_unique_name(array(
-            'name' => 'Migration',
+            'name' => lang('Migration'),
             'type' => 'folder'));
 
         $root_folder_id = db_value("SELECT folder_id FROM folder WHERE folder_parent = '0'");
@@ -813,9 +802,13 @@ if (!$_POST) {
         $message_detail .= lang(array('string'=>'{var:1} Page{suffix:1}','vars'=>number_format($number_of_pages),'suffix'=>$plural_suffix));
     }
 
-    log_activity(lang(array('string'=>'migration was completed ({var:1})','vars'=>$message_detail)), USER_USERNAME);
+    if ($message_detail !== '') {
+        log_activity(lang(array('string'=>'migration was completed ({var:1})','vars'=>$message_detail)), USER_USERNAME);
 
-    $liveform->add_notice(lang(array('string'=>'The items that you requested have been migrated ({var:1}).','vars'=>$message_detail)));
+        $liveform->add_notice(lang(array('string'=>'The items that you requested have been migrated ({var:1}).','vars'=>h($message_detail))));
+    } else {
+        $liveform->add_notice(lang('No items to migrate were found on the source site.'));
+    }
 
     // Forward user back to migration screen.
     header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/migration.php');
@@ -830,10 +823,8 @@ function send_api_request($properties)
     $url = $properties['url'];
     $request = $properties['request'];
 
-    // The body is decoded whatever the status, as before; a request that
-    // failed in cURL leaves it empty, which decodes to null and reads as a
-    // communication error to the callers.
-    $response = pg_curl_run('POST', $url, pg_migration_request_options(encode_json($request)));
-
-    return decode_json($response['body']);
+    // A request that failed in cURL, an HTTP error page or a body that is
+    // not JSON comes back with an empty status and the reason, which the
+    // callers show as a communication error.
+    return pg_migration_response(pg_curl_run('POST', $url, pg_migration_request_options(encode_json($request))));
 }
