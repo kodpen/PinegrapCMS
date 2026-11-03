@@ -283,6 +283,7 @@
     "On, a purchase invoice adds its products to stock and a sales invoice typed in the ERP takes them out; a return or a cancellation moves them back. An invoice raised from an order leaves stock alone, because the order already took the goods out. Only products that track stock and whole quantities are counted. Off, only the costs are kept.": "Açıkken alış faturası ürünlerini stoğa ekler, ERP'de elle kesilen satış faturası stoktan düşer; iade ya da iptal geri alır. Siparişten kesilen fatura stoğa dokunmaz, çünkü sipariş malı zaten stoktan düştü. Yalnız stok takibi açık ürünler ve tam sayı miktarlar sayılır. Kapalıyken yalnız maliyetler tutulur.",
     "On, nothing added up yet": "Açık, henüz bir şey toplanmadı",
     "On, through {var:1}": "Açık, {var:1} tarihine kadar",
+    "On, {var:1} to {var:2}": "Açık, {var:1} – {var:2}",
     "On: managers and the users given access to it can change its text and images, and everything inside its editable areas, on every page that shows it.": "Açıkken yöneticiler ve erişim verilen kullanıcılar bileşenin metinlerini, görsellerini ve düzenlenebilir alanlarının içindeki her şeyi değiştirebilir; değişiklik bileşeni gösteren her sayfaya yansır.",
     "Once": "Bir kez",
     "Once a month, for what sold in the month before, to the bank account you give us.": "Ayda bir, önceki ay satılanlar için, bize verdiğiniz banka hesabına.",

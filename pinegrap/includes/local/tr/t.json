@@ -1924,6 +1924,8 @@
     "The customers whose payment is late.": "Ödemesi geciken müşteriler.",
     "The daily summary is answered with text only: no tasks, no changes.": "Günlük özet yalnızca metinle yanıtlanır: görev yok, değişiklik yok.",
     "The daily summary is off: those days will be gone from the visitor report.": "Günlük özet kapalı: o günler ziyaretçi raporundan çıkacak.",
+    "The daily visitor summary has not been written yet. The general job writes every day through yesterday; check that it runs.": "Günlük ziyaretçi özeti henüz yazılmadı. Genel görev dün dahil her günü yazar; çalıştığını denetleyin.",
+    "The daily visitor summary was last written for {var:1}, {var:2} days back. The general job writes every day through yesterday; check that it runs.": "Günlük ziyaretçi özeti en son {var:1} için yazıldı, {var:2} gün önce. Genel görev dün dahil her günü yazar; çalıştığını denetleyin.",
     "The dashboard lists the comments waiting for approval, newest first.": "Panel, onay bekleyen yorumları en yenisi üstte listeler.",
     "The dashboard widgets are back in their default order.": "Panel ekranındaki widget'lar varsayılan sıralarına döndü.",
     "The data/temp or data/backups folder cannot be written.": "data/temp ya da data/backups klasörüne yazılamıyor.",
