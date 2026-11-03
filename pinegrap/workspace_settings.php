@@ -140,13 +140,17 @@ if ($_POST) {
     // One posted as a list (name[]=x) saved a department called "Array", and
     // department_id[]=x or template_id[]=x was read as record 1. Nothing is
     // written, so every setting stays as it was.
+    // tests/workspace_settings_lists_test.php checks every list a card draws
+    // (a field named x[]) against this one.
     $ws_settings_lists = pg_request_unexpected_lists($_POST, array(
-        'workdays' => 1,
-        'members'  => 1,
-        'leads'    => 1,
-        'primary'  => 1,
-        'people'   => 3,
-        'mcp_tool' => 1,
+        'workdays'      => 1,
+        'members'       => 1,
+        'leads'         => 1,
+        'primary'       => 1,
+        'people'        => 3,
+        'mcp_tool'      => 1,
+        'route_match'   => 1,
+        'route_channel' => 1,
     ));
 
     foreach ((is_array($_POST['people'] ?? null) ? $_POST['people'] : array()) as $person_id => $row) {
