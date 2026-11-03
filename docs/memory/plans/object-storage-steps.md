@@ -19,7 +19,7 @@ description: Steps OS1-OS7 of plans/object-storage.md: SigV4 client, backup targ
   - 3b: done (#5803). `get_file.php` redirects to `pg_os_presign()` after the access checks, a local file or cached copy is sent as before, settings that cannot sign answer 503; replaced files go back to local (`pg_file_storage_reconcile_run()`), deleted files' objects go in a daily orphan sweep instead of one change per delete door; `.css`/`.js` never move.
   - 3c: done (#5904). Readers through `pg_file_local_copy()` / `pg_file_reader_path()`, in-place doors through `pg_file_make_local()`, passes through `pg_file_present_path()` (`platform/file-object-storage.md`). The switch may now be offered (OS4).
 
-- OS4 (S) Migration tool and Disk Usage. After OS3.
+- OS4 (S) Migration tool and Disk Usage. Done (#5993, `platform/object-storage-migration.md`).
   - Settings › Storage: "Move existing files" starts the job over all local rows with progress (count, bytes, failures), pause and resume; "Bring back" moves them home; Disk Usage and System Status count local and stored bytes and name the store. Memory: `platform/file-object-storage.md` grows.
 
 - OS5 (M) Workspace and ERP attachments. After OS3 and question 1.

@@ -145,6 +145,26 @@ function pg_os_ready(array $config)
 
 
 /**
+ * The store's name for a person: the bucket and the endpoint's host, as
+ * Disk Usage and System Status name it. Pure.
+ *
+ * @param array $config pg_os_normalize()
+ * @return string '' when no bucket is set
+ */
+function pg_os_store_name(array $config)
+{
+    $bucket = isset($config['bucket']) ? (string) $config['bucket'] : '';
+    $host = isset($config['endpoint']) ? (string) parse_url((string) $config['endpoint'], PHP_URL_HOST) : '';
+
+    if ($bucket === '') {
+        return '';
+    }
+
+    return ($host !== '') ? $bucket . ' (' . $host . ')' : $bucket;
+}
+
+
+/**
  * What is wrong with settings about to be saved, by field name.
  *
  * @param array $config pg_os_normalize()

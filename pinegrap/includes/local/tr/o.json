@@ -212,6 +212,8 @@
     "On the canvas": "Tuvalde",
     "On the dashboard · Remove": "Panoda · Kaldır",
     "On the desktop, in the browser and on your phone, always in sync.": "Masaüstünde, tarayıcıda ve telefonunuzda; her zaman eşzamanlı.",
+    "On the disk: {var:1} files ({var:2})": "Diskte: {var:1} dosya ({var:2})",
+    "On the disk: {var:1} files ({var:2}). In the storage: {var:3} files ({var:4}).": "Diskte: {var:1} dosya ({var:2}). Depolamada: {var:3} dosya ({var:4}).",
     "On the e-invoice": "e-Faturada",
     "On the first days of every month the scheduled job builds the month before and e-mails the accountant a link that works for {var:1} days.": "Her ayın ilk günlerinde zamanlanmış iş bir önceki ayın paketini hazırlar ve muhasebeciye {var:1} gün çalışan bir bağlantı e-postalar.",
     "On the first of every month opens a task to write the monthly report, due in five days.": "Her ayın ilk günü, beş gün içinde bitmesi gereken aylık rapor görevini açar.",

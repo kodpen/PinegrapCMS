@@ -59,11 +59,148 @@ function pg_file_storage_ready()
  */
 function pg_file_storage_on($config = null)
 {
-    if ((pg_config_text('object_storage_files') !== '1') || !pg_file_storage_ready()) {
+    return pg_file_storage_running('to', $config);
+}
+
+
+/**
+ * Whether the job walks the files in a direction now: 'to' sends local
+ * files to the store, 'back' fetches stored files home. Needs the mode, the
+ * columns and a store that can take requests.
+ *
+ * @param string $direction 'to' or 'back'
+ * @param array|null $config pg_os_settings(); read when null
+ * @return bool
+ */
+function pg_file_storage_running($direction, $config = null)
+{
+    $mode = pg_file_storage_mode(pg_config_text('object_storage_files'));
+
+    if (($mode['direction'] !== $direction) || $mode['paused'] || !pg_file_storage_ready()) {
         return false;
     }
 
     return pg_os_ready(is_array($config) ? $config : pg_os_settings());
+}
+
+
+/**
+ * The switch config_text object_storage_files read: '1' moves files to the
+ * store, 'back' brings them home, either with '_paused' is held where it
+ * is; anything else is off, which is how every site starts. Pure.
+ *
+ * @param mixed $value
+ * @return array direction ('to', 'back' or ''), paused (bool)
+ */
+function pg_file_storage_mode($value)
+{
+    $modes = array(
+        '1'           => array('direction' => 'to', 'paused' => false),
+        'paused'      => array('direction' => 'to', 'paused' => true),
+        'back'        => array('direction' => 'back', 'paused' => false),
+        'back_paused' => array('direction' => 'back', 'paused' => true),
+    );
+
+    return isset($modes[(string) $value]) ? $modes[(string) $value] : array('direction' => '', 'paused' => false);
+}
+
+
+/**
+ * The switch's value after a button of the Storage card. Pause and resume
+ * keep the direction; a pause with nothing running, or a resume of nothing
+ * paused, changes nothing. Pure.
+ *
+ * @param mixed $value the current value
+ * @param string $action 'move', 'back', 'pause' or 'resume'
+ * @return string|null the new value; null when the action does not apply
+ */
+function pg_file_storage_mode_after($value, $action)
+{
+    $mode = pg_file_storage_mode($value);
+
+    if ($action === 'move') {
+        return '1';
+    }
+
+    if ($action === 'back') {
+        return 'back';
+    }
+
+    if (!in_array($action, array('pause', 'resume'), true) || ($mode['direction'] === '') || (($action === 'pause') === $mode['paused'])) {
+        return null;
+    }
+
+    $value = ($mode['direction'] === 'to') ? '1' : 'back';
+
+    return ($action === 'pause') ? (($value === '1') ? 'paused' : 'back_paused') : $value;
+}
+
+
+/**
+ * The Storage card's buttons for the switch's value, in their order: start
+ * a move, pause or resume the running walk, turn it round. Pure.
+ *
+ * @param mixed $value config_text object_storage_files
+ * @return array actions ('move', 'back', 'pause', 'resume')
+ */
+function pg_file_storage_actions($value)
+{
+    $mode = pg_file_storage_mode($value);
+
+    if ($mode['direction'] === '') {
+        return array('move');
+    }
+
+    return array($mode['paused'] ? 'resume' : 'pause', ($mode['direction'] === 'to') ? 'back' : 'move');
+}
+
+
+/**
+ * The config_text key holding the job's state for a direction.
+ *
+ * @param string $direction 'to' or 'back'
+ * @return string
+ */
+function pg_file_move_state_key($direction)
+{
+    return ($direction === 'back') ? 'object_storage_back' : 'object_storage_move';
+}
+
+
+/**
+ * Files and bytes by where they are, from the rows of a GROUP BY storage
+ * query. A row with a value this code does not know counts as local. Pure.
+ *
+ * @param array $rows storage, files, bytes
+ * @return array local_files, local_bytes, stored_files, stored_bytes
+ */
+function pg_file_storage_usage_sum(array $rows)
+{
+    $usage = array('local_files' => 0, 'local_bytes' => 0.0, 'stored_files' => 0, 'stored_bytes' => 0.0);
+
+    foreach ($rows as $row) {
+        $where = (isset($row['storage']) && ($row['storage'] === 's3')) ? 'stored' : 'local';
+        $usage[$where . '_files'] += isset($row['files']) ? (int) $row['files'] : 0;
+        $usage[$where . '_bytes'] += isset($row['bytes']) ? (float) $row['bytes'] : 0.0;
+    }
+
+    return $usage;
+}
+
+
+/**
+ * Files and bytes on the disk and in the store, by the rows. Before the
+ * storage columns every file is local.
+ *
+ * @return array pg_file_storage_usage_sum()
+ */
+function pg_file_storage_usage()
+{
+    $rows = pg_file_storage_ready()
+        ? db_items("SELECT storage, COUNT(*) AS files, SUM(size) AS bytes FROM files GROUP BY storage")
+        : db_items("SELECT 'local' AS storage, COUNT(*) AS files, SUM(size) AS bytes FROM files");
+
+    return pg_file_storage_usage_sum(is_array($rows) ? $rows : array());
 }
 
 
@@ -310,30 +447,84 @@ function pg_file_move_one(array $config, array $row)
 
 
 /**
- * One tick of the move job: the newest local files first, at most $limit of
- * them and $seconds of work, the place kept in config_text between ticks.
+ * Brings one stored file home: its bytes fetched beside the name and renamed
+ * into the file directory, then the row set back to local. The object is
+ * left to pg_file_storage_orphan_sweep(), which deletes it a day later, so
+ * an address the store signed a moment ago still answers. A local file
+ * already under the name (a replace door wrote it) is kept as the bytes.
+ *
+ * @param array $config pg_os_settings()
+ * @param array $row id, name, storage_key
+ * @return array ok, bytes; or pg_os_fail()
+ */
+function pg_file_back_one(array $config, array $row)
+{
+    $id = (int) $row['id'];
+    $name = (string) $row['name'];
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+
+    if (!is_file($path)) {
+        $partial = $path . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.part';
+        $got = pg_os_get($config, (string) $row['storage_key'], $partial);
+
+        if (empty($got['ok'])) {
+            @unlink($partial);
+
+            return $got;
+        }
+
+        if (!@rename($partial, $path)) {
+            @unlink($partial);
+
+            return pg_os_fail('write', lang(array('string' => 'The file {var:1} could not be written to the disk.', 'vars' => array($name))));
+        }
+    }
+
+    clearstatcache(true, $path);
+    $size = (int) @filesize($path);
+
+    if (!db_q("UPDATE files SET storage = 'local', storage_key = '', size = ? WHERE id = ? AND storage = 's3'", array($size, $id))) {
+        return pg_os_fail('changed', lang(array('string' => 'The file {var:1} changed while it was fetched.', 'vars' => array($name))));
+    }
+
+    pg_file_cache_forget($id);
+
+    return array('ok' => true, 'bytes' => $size);
+}
+
+
+/**
+ * One tick of the move job in the direction the switch names: to the store
+ * the newest local files first, back home the newest stored files first;
+ * at most $limit of them and $seconds of work, the place kept in config_text
+ * between ticks.
  *
  * @param int $limit
  * @param int $seconds
- * @return array moved, bytes, failed (this tick), given_up (names)
+ * @return array direction, moved, bytes, failed (this tick), given_up (names)
  */
 function pg_file_move_run($limit = 20, $seconds = 20)
 {
-    $outcome = array('moved' => 0, 'bytes' => 0, 'failed' => 0, 'given_up' => array());
+    $outcome = array('direction' => '', 'moved' => 0, 'bytes' => 0, 'failed' => 0, 'given_up' => array());
     $config = pg_os_settings();
+    $direction = pg_file_storage_running('back', $config) ? 'back' : 'to';
 
-    if (!pg_file_storage_on($config) || !defined('FILE_DIRECTORY_PATH')) {
+    if (!pg_file_storage_running($direction, $config) || !defined('FILE_DIRECTORY_PATH')) {
         return $outcome;
     }
 
-    $state = pg_file_move_state_normalize(json_decode(pg_config_text('object_storage_move'), true));
+    $outcome['direction'] = $direction;
+    $state_key = pg_file_move_state_key($direction);
+    $state = pg_file_move_state_normalize(json_decode(pg_config_text($state_key), true));
 
     if (!pg_file_move_due($state, time())) {
         return $outcome;
     }
 
     $limit = max(1, (int) $limit);
-    $sql = "SELECT id, name, type, design, theme FROM files WHERE storage = 'local'"
+    $sql = (($direction === 'back')
+            ? "SELECT id, name, type, design, theme, storage_key FROM files WHERE storage = 's3' AND storage_key <> ''"
+            : "SELECT id, name, type, design, theme FROM files WHERE storage = 'local'")
         . (($state['cursor'] > 0) ? " AND id < " . (int) $state['cursor'] : '')
         . " ORDER BY id DESC LIMIT " . $limit;
 
@@ -352,7 +543,7 @@ function pg_file_move_run($limit = 20, $seconds = 20)
         $id = (int) $row['id'];
         $names[$id] = (string) $row['name'];
 
-        if (!pg_file_storage_movable($row) || pg_file_move_given_up($state, $id)) {
+        if ((($direction === 'to') && !pg_file_storage_movable($row)) || pg_file_move_given_up($state, $id)) {
             $outcomes[$id] = null;
             continue;
         }
@@ -362,7 +553,7 @@ function pg_file_move_run($limit = 20, $seconds = 20)
             break;
         }
 
-        $result = pg_file_move_one($config, $row);
+        $result = ($direction === 'back') ? pg_file_back_one($config, $row) : pg_file_move_one($config, $row);
 
         if (!empty($result['ok'])) {
             $outcomes[$id] = true;
@@ -386,15 +577,16 @@ function pg_file_move_run($limit = 20, $seconds = 20)
 
     $next = pg_file_move_next_state($state, $outcomes, $finished, time());
 
-    pg_config_text_save('object_storage_move', json_encode($next['state']));
+    pg_config_text_save($state_key, json_encode($next['state']));
 
     foreach ($next['given_up'] as $id) {
         $outcome['given_up'][] = $names[$id];
 
-        log_activity(lang(array(
-            'string' => 'The file {var:1} could not be moved to the object store after {var:2} attempts and stays on the disk: {var:3}',
-            'vars'   => array($names[$id], pg_file_move_attempts(), $errors[$id]),
-        )), 'UNKNOWN');
+        $vars = array($names[$id], pg_file_move_attempts(), $errors[$id]);
+
+        log_activity(($direction === 'back')
+            ? lang(array('string' => 'The file {var:1} could not be brought back from the object store after {var:2} attempts and stays there: {var:3}', 'vars' => $vars))
+            : lang(array('string' => 'The file {var:1} could not be moved to the object store after {var:2} attempts and stays on the disk: {var:3}', 'vars' => $vars)), 'UNKNOWN');
     }
 
     return $outcome;
