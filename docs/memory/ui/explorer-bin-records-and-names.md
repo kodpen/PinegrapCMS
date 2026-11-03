@@ -20,6 +20,8 @@ description: File Manager bin count skips gone items, page deletes clear the rec
 - Paste and Duplicate (`explorer_paste`, `duplicate: true` from `duplicateItem()`): `pg_explorer_paste_message()` — "Duplicated as X." for one renamed copy, else the count plus "Copied under a new name: a → a[1]"; `renamed` lists the pairs, `created` carries `name`.
 - Rename of a file: when `response.name` differs from what was typed, `L.renamed_as` with the stored name.
 - Upload: every file whose `response.file.name` differs is listed in a sticky warning toast (`L.uploaded_renamed`).
+- File window (Edit) save: when `response.file.name` differs from the typed name, `L.renamed_as` in a warning toast instead of the plain saved message.
+- Zip > Extract here: `explorer_zip_extract` returns `renamed` ("entry → stored", first 20); the toast appends `L.extracted_renamed` and stays.
 - Not done: marking a taken name in the upload list before sending, and an option to replace the existing file.
 
 Related: docs/memory/ui/explorer-bin-toast.md, tests/explorer_file_manager_fixes_test.php

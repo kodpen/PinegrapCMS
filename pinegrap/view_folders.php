@@ -5582,6 +5582,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // worth naming only when it is not a standard page, and the folder
         // and the last change are what the rows are told apart by.
         var pagesColumns = (state.mode === 'all') && (state.allFilter === 'pages');
+        // The Files and Pictures views list nothing but files: the styles,
+        // impact and features of folders and pages stay empty there, and the
+        // SEO score the marks column sorts by is a page's.
+        var filesColumns = (state.mode === 'all') && ((state.allFilter === '') || (state.allFilter === 'images'));
         var columns = [];
 
         columns.push({ id: 'icon', w: 46, cls: 'text-center', cell: function (item) { return itemIconHtml(item, false); } });
@@ -5601,7 +5605,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // and a mark nobody can line up with the mark on the row above is not
         // doing its job either.
         columns.push({
-            id: 'flags', key: 'seo', label: L.flags, at: 'md', w: (pagesColumns ? 150 : 92), cls: 'text-center text-nowrap',
+            id: 'flags', key: (filesColumns ? undefined : 'seo'), label: L.flags, at: 'md', w: (pagesColumns ? 150 : 92), cls: 'text-center text-nowrap',
             cell: function (item) { return seoChipHtml(item, 20) + ' <span class="item-flags">' + itemFlagsHtml(item) + '</span>'; }
         });
 
@@ -5697,7 +5701,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             });
         }
 
-        if (siteColumns) {
+        if (siteColumns && !filesColumns) {
 
             columns.push({ id: 'style_desktop', label: L.desktop_style_short, at: 'xl', w: 130, cls: 'small',
                 cell: function (item) { return ((item.kind === 'folder') || (item.kind === 'page')) ? styleCellHtml(item.style_desktop) : ''; } });
@@ -5710,6 +5714,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             columns.push({ id: 'features', label: L.features, at: 'lg', w: 108, cls: 'text-center text-nowrap',
                 cell: function (item) { return pageFeatureIcons(item); } });
+        }
+
+        if (siteColumns) {
 
             columns.push({ id: 'access', key: 'access', label: L.access_control, at: 'xl', w: 132,
                 cell: function (item) { return '<span class="list-badge ' + item.access_control_type + '">' + esc(accessLabel(item.access_control_type)) + '</span>'; } });
