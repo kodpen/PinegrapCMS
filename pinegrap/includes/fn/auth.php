@@ -1465,35 +1465,63 @@ function pg_device_limit_exceeded($user_id)
     return (pg_auth_token_count($user_id) >= $limit);
 }
 
-// Revoke the least-recently-active tokens until only $keep active ones remain,
-// so a new device can be added without passing the limit. Ranks by the most
-// recent touch (last use, or creation for a token never used) and keeps the
-// freshest; returns how many were revoked.
-function pg_device_limit_revoke_oldest($user_id, $keep)
+// Which tokens the device limit may sign out so that only $keep remain.
+// $rows are the account's active tokens newest first, each with 'selector' and
+// 'pinned'. A pinned token is a device and counts toward $keep, but is never
+// chosen; the unpinned ones go oldest first. When too few are unpinned to get
+// down to $keep, nothing is chosen at all: signing out some devices and then
+// refusing the sign-in anyway would cost the member a device for nothing.
+function pg_device_limit_pick_evictions(array $rows, $keep)
 {
-    $user_id = (int) $user_id;
-    $keep = max(0, (int) $keep);
+    $excess = count($rows) - max(0, (int) $keep);
+    if ($excess <= 0) {
+        return array();
+    }
 
-    // Pinned sessions are counted (they are devices) but never evicted - that
-    // is the whole point of pinning. So an account whose slots are all pinned
-    // frees nothing here, and the caller has to notice that and refuse rather
-    // than sign a second device in anyway.
+    $picked = array();
+    foreach (array_reverse($rows) as $row) {
+        if (count($picked) >= $excess) {
+            break;
+        }
+        if (((int) ($row['pinned'] ?? 0)) === 1) {
+            continue;
+        }
+        $picked[] = (string) $row['selector'];
+    }
+
+    return (count($picked) < $excess) ? array() : $picked;
+}
+
+// The selectors pg_device_limit_pick_evictions() chooses for this account,
+// ranked by the most recent touch (last use, or creation for a token never
+// used). The confirmation screen counts them; the confirm action revokes them.
+function pg_device_limit_evictable($user_id, $keep)
+{
+    // Pinned sessions are counted but never evicted - that is the whole point
+    // of pinning. The column arrives with a migration, so it is asked for.
     $pin_column = pg_auth_tokens_have_pin();
 
-    $selectors = array();
+    $rows = array();
     $result = db_q(
         "SELECT selector" . ($pin_column ? ", pinned" : "") . " FROM auth_tokens
          WHERE user_id = ? AND expires_at > ?
-         ORDER BY GREATEST(last_used_at, created_at) DESC, created_at DESC", array((string) $user_id, (string) time()));
+         ORDER BY GREATEST(last_used_at, created_at) DESC, created_at DESC", array((string) (int) $user_id, (string) time()));
     if ($result) {
-        $index = 0;
         while ($r = mysqli_fetch_assoc($result)) {
-            if (($index >= $keep) && (!$pin_column || (((int) $r['pinned']) === 0))) {
-                $selectors[] = $r['selector'];
-            }
-            $index++;
+            $rows[] = array('selector' => $r['selector'], 'pinned' => $pin_column ? (int) $r['pinned'] : 0);
         }
     }
+
+    return pg_device_limit_pick_evictions($rows, $keep);
+}
+
+// Revoke the least-recently-active unpinned tokens until only $keep active
+// ones remain, so a new device can be added without passing the limit.
+// Revokes nothing when the pinned ones leave too little room; the caller
+// notices the account is still full and refuses. Returns how many went.
+function pg_device_limit_revoke_oldest($user_id, $keep)
+{
+    $selectors = pg_device_limit_evictable($user_id, $keep);
 
     foreach ($selectors as $selector) {
         pg_auth_token_revoke($selector);
@@ -2084,13 +2112,28 @@ function pg_auth_token_pinned($selector)
 // includes/authentication.php with the rest of the token primitives.
 function pg_auth_token_revoke_user($user_id, $respect_pin = false)
 {
-    $sql = "DELETE FROM auth_tokens WHERE user_id = '" . (int) $user_id . "'";
+    $where = "user_id = '" . (int) $user_id . "'";
 
     if ($respect_pin && pg_auth_tokens_have_pin()) {
-        $sql .= " AND pinned = 0";
+        $where .= " AND pinned = 0";
     }
 
-    db($sql);
+    // Device notifications end with the sign-in of their browser, as they do
+    // for a single token (pg_auth_token_revoke()); a pinned session that stays
+    // keeps its own. Read first, while the tokens still name them; the
+    // selectors are listed rather than joined so the two columns' collations
+    // never have to agree.
+    if (function_exists('pg_auth_push_bound') && pg_auth_push_bound()) {
+        $selectors = array();
+        foreach ((array) db_values("SELECT selector FROM auth_tokens WHERE " . $where) as $selector) {
+            $selectors[] = "'" . escape((string) $selector) . "'";
+        }
+        if ($selectors) {
+            db("DELETE FROM push_subscriptions WHERE auth_selector IN (" . implode(', ', $selectors) . ")");
+        }
+    }
+
+    db("DELETE FROM auth_tokens WHERE " . $where);
 
     // Devices signed in to the external API are sessions of the same person.
     // A new password or "sign out everywhere" that left a phone signed in

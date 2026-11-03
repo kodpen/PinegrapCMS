@@ -41,20 +41,25 @@ include_once(dirname(__FILE__) . '/includes/push.php');
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     validate_token_field();
 
-    $session_action = isset($_POST['pg_session_action']) ? (string) $_POST['pg_session_action'] : '';
-    $send_back = pg_safe_back_url((string) ($_POST['send_back'] ?? ''), PATH . SOFTWARE_DIRECTORY . '/view_sessions.php');
+    // A field sent as an array (name[]) reads as empty, not as a PHP warning.
+    $post_text = function ($name) {
+        return (isset($_POST[$name]) && is_scalar($_POST[$name])) ? (string) $_POST[$name] : '';
+    };
+
+    $session_action = $post_text('pg_session_action');
+    $send_back = pg_safe_back_url($post_text('send_back'), PATH . SOFTWARE_DIRECTORY . '/view_sessions.php');
 
     $target_user_id = 0;
     $target_selector = '';
 
     if ($session_action === 'revoke') {
-        $target_selector = isset($_POST['pg_selector']) ? (string) $_POST['pg_selector'] : '';
+        $target_selector = $post_text('pg_selector');
         if (!preg_match('/^[a-f0-9]{24}$/', $target_selector)) {
             go($send_back);
         }
         $target_user_id = (int) db_value("SELECT user_id FROM auth_tokens WHERE selector = '" . escape($target_selector) . "'");
     } elseif (($session_action === 'pin') || ($session_action === 'unpin')) {
-        $target_selector = isset($_POST['pg_selector']) ? (string) $_POST['pg_selector'] : '';
+        $target_selector = $post_text('pg_selector');
         if (!preg_match('/^[a-f0-9]{24}$/', $target_selector)) {
             go($send_back);
         }
@@ -63,14 +68,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
         // The subscription's owner decides who may end it or send to it, so the
         // role rule below needs no branch of its own.
-        $target_push_id = (int) ($_POST['pg_push_id'] ?? 0);
+        $target_push_id = (int) $post_text('pg_push_id');
 
         if (($target_push_id > 0) && (pg_push_schema_available())) {
             $target_user_id = (int) db_value("SELECT user_id FROM push_subscriptions WHERE id = '" . $target_push_id . "'");
         }
 
     } elseif ($session_action === 'revoke_user') {
-        $target_user_id = (int) ($_POST['pg_user_id'] ?? 0);
+        $target_user_id = (int) $post_text('pg_user_id');
     } else {
         go($send_back);
     }
@@ -407,7 +412,9 @@ foreach ($sessions as $s) {
                 . '<input type="hidden" name="pg_session_action" value="' . ($is_pinned ? 'unpin' : 'pin') . '"/>'
                 . '<input type="hidden" name="pg_selector" value="' . h((string) $s['selector']) . '"/>'
                 . '<input type="hidden" name="send_back" value="' . h($self_url) . '"/>'
-                . '<button type="submit" class="btn btn-sm btn-outline theme-secondary no-popover" data-bs-toggle="tooltip" title="' . h(lang('Pins THIS session: the device limit cannot evict it and the member cannot sign it out from their own screen. Different from the setting "Refuse new sign-ins when the limit is full", which only stops new devices - here the account is tied to this one.')) . '">'
+                . '<button type="submit" class="btn btn-sm btn-outline theme-secondary no-popover" data-bs-toggle="tooltip" title="' . h($is_pinned
+                    ? lang('Unlocks this session: the device limit may sign it out again when the account is full, and the member can sign it out from their own screen.')
+                    : lang('Locks this session: the device limit cannot sign it out and the member cannot sign it out from their own screen. Different from the setting "Refuse new sign-ins when the limit is full", which only stops new devices.')) . '">'
                 . '<i class="bi ' . ($is_pinned ? 'bi-unlock' : 'bi-pin-angle') . ' me-1"></i>'
                 . h($is_pinned ? lang('Unlock') : lang('Lock')) . '</button></form>'))
             : '')
@@ -415,7 +422,9 @@ foreach ($sessions as $s) {
         . '<input type="hidden" name="pg_session_action" value="revoke"/>'
         . '<input type="hidden" name="pg_selector" value="' . h((string) $s['selector']) . '"/>'
         . '<input type="hidden" name="send_back" value="' . h($self_url) . '"/>'
-        . '<button type="submit" class="btn btn-sm btn-outline theme-danger">' . lang('Sign out') . '</button>'
+        . '<button type="submit" class="btn btn-sm btn-outline theme-danger" data-confirm-content="' . h($is_current
+            ? lang('Sign out this session? It is this browser, so you are signed out of the panel too.')
+            : lang(array('string' => 'Sign out this session of {var:1}? They have to sign in again on that device.', 'vars' => array((string) $s['user_username'])))) . '">' . lang('Sign out') . '</button>'
         . '</form>'
         . '</div>')
         . '</td>'
@@ -426,21 +435,23 @@ if ($output_rows === '') {
     $output_rows = '<tr><td colspan="8">' . lang('No active sessions.') . '</td></tr>';
 }
 
-$output_filter_note = '';
-if ($filter_user_id > 0) {
-    $output_filter_note =
-        '<p class="mb-5"><a href="view_sessions.php">' . lang('All Sessions') . '</a></p>';
-}
-
 // The trail carries real ancestry only, which this screen has just one of:
 // the whole list, when it has been narrowed to a single account. The settings
 // are not above it -- they are a dialog that opens over whatever is on screen,
 // and the back control at the head of the strip is what offers them.
 $breadcrumb = array();
+$sessions_heading = lang('All sessions');
 
 if ($filter_user_id > 0) {
-    $breadcrumb[] = array('label' => lang('All Sessions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_sessions.php');
-    $breadcrumb[] = array('label' => (string) db_value("SELECT user_username FROM user WHERE user_id = '" . $filter_user_id . "'"));
+    $breadcrumb[] = array('label' => lang('All sessions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_sessions.php');
+
+    // An account that does not exist (any more) gets no empty crumb: the
+    // trail ends at the whole list, which is what the link leads back to.
+    $filter_username = (string) db_value("SELECT user_username FROM user WHERE user_id = '" . $filter_user_id . "'");
+    if ($filter_username !== '') {
+        $breadcrumb[] = array('label' => $filter_username);
+        $sessions_heading = lang(array('string' => 'Sessions of {var:1}', 'vars' => array($filter_username)));
+    }
 }
 
 echo pg_page_shell(array(
@@ -457,12 +468,11 @@ print '<main id="content" class="container-fluid">
         <div class="col-12">
             <div class="row mb-3 flex-wrap">
                 <div class="col-12 text-center md:text-start">
-                    <h2 class="d-inline-block">' . lang('All Sessions') . '</h2>
+                    <h2 class="d-inline-block">' . h($sessions_heading) . '</h2>
                 </div>
             </div>
-            ' . $output_filter_note . '
             <div class="alert theme-secondary">' . lang('Every sign-in carries a session token and is listed here. Sessions started before this feature are bound automatically on their next request.') . '</div>
-            ' . (($pin_column && $pin_redundant) ? '<p class="form-text" id="pg_pin_redundant_reason">' . h(lang('The setting "Refuse new sign-ins when the limit is full" already ties this account to one device, so pinning a single session adds nothing here. It becomes useful with a limit of two or more, where it stops the member freeing a slot by signing out one of their other devices.')) . '</p>' : '') . '
+            ' . (($pin_column && $pin_redundant) ? '<p class="form-text" id="pg_pin_redundant_reason">' . h(lang('With a limit of one, the setting "Refuse new sign-ins when the limit is full" already keeps every account on this site to a single device, so locking a session adds nothing here. It becomes useful with a limit of two or more, where it stops the member freeing a slot by signing out one of their other devices.')) . '</p>' : '') . '
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <div class="table-responsive">
