@@ -37,6 +37,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - audit-trail-workspace.md: How Workspace writes reach audit_log through ws_change_write(): kind to table, recycle vs deletes the helpers write, offers, the job as actor for bulk and scheduled changes
 - audit-trail-writers.md: Which save paths write audit_log rows, how they read the row before and after (pg_audit_fetch, pg_audit_record), which paths are not hooked
 - auto-registration-set-password-link.md: Accounts a form auto-registers or an administrator creates (add user, import) get a single-use set password link, not the password; who sees it, what $auto_registration_password holds.
+- build-url-host-parts.md: build_url() keeps the port and user information of the URL it is given unless a hostname property replaces the host.
 - code-comment-rules.md: Mandatory prohibitions for in-code comments: English only, no AI/session/process traces, classic what-and-why style, retroactive conversion.
 - code-editor-completion.md: Code editor completion (pg_code_editor.js): css/js sources inside an HTML editor, addCompletionRanker, colour swatches, the slot sources and the lezer lookup-cache reset
 - code-editor-emmet.md: The code editor's Emmet: the MIT emmet core in the lazy bundle, ed.expandAbbreviation() on Mod+E (why not Tab), the context from the syntax tree, tab-stops, locks, the `emmet` option (PR #2909)
