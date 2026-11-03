@@ -4133,9 +4133,10 @@ function api_schema() {
 			'handler' => 'api_notifications_list',
 			'returns' => array('list' => 'Notification'),
 			'summary' => 'This person\'s notifications',
-			'description' => 'The panel\'s bell for the same person, newest first: the same rows, the same wording, and only the kinds this account may see; the kinds also follow the caller\'s scopes: new_order and order_return rows need orders:read. Reading the list does not mark anything read. A page can come back shorter than limit with a next_cursor when many rows in between are not for this person; follow the cursor as usual. After a push arrives, ask for unread=true.',
+			'description' => 'The panel\'s bell for the same person, newest first: the same rows, the same wording, and only the kinds this account may see; the kinds also follow the caller\'s scopes: new_order and order_return rows need orders:read. Reading the list does not mark anything read. A page can come back shorter than limit with a next_cursor when many rows in between are not for this person; follow the cursor as usual. After a push arrives, ask for unread=true. A team device draws the panel\'s All / Site / Workspace chips with group, and folds the runs of one flow that ended the same way into one line by each row\'s fold key, as the panel\'s bell does.',
 			'params'  => array(
 				array('name' => 'unread', 'in' => 'query', 'type' => 'bool',     'description' => 'Only what this person has not read yet.'),
+				array('name' => 'group',  'in' => 'query', 'type' => 'enum', 'values' => array('site', 'workspace'), 'description' => 'workspace lists only what the workspace told this person, site every other row; without it every row comes back. Applied before paging.'),
 				array('name' => 'since',  'in' => 'query', 'type' => 'datetime', 'description' => 'Only notifications created at or after this moment.'),
 				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 30, 'description' => 'Rows per page.'),
 				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
