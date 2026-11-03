@@ -100,7 +100,9 @@ if (!$_POST) {
         $form_page_type,
         $form_layout_type,
         pg_page_form_redraw_type_properties(pg_page_form_new_page_properties(), $form_page_type, $posted),
-        $user);
+        $user,
+        0,
+        true);
     $output_wysiwyg_editor_code = $page_type_fields['wysiwyg'];
 
     echo

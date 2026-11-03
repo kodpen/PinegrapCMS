@@ -1,5 +1,6 @@
 {
     "KVKK Notice Page": "KVKK Aydınlatma Metni Sayfası",
+    "KVKK consent": "KVKK onayı",
     "Kargonomi could not make the carrier's order for this shipment.": "Kargonomi bu gönderi için kargo firmasının siparişini oluşturamadı.",
     "Kargonomi does not know the district {var:1} of {var:2}.": "Kargonomi {var:2} ilinin {var:1} ilçesini tanımıyor.",
     "Kargonomi does not know the province {var:1}.": "Kargonomi {var:1} ilini tanımıyor.",
@@ -50,6 +51,7 @@
     "Keep these lines as a template": "Bu satırları şablon olarak sakla",
     "Keep this on only while developing; the error text is shown to visitors.": "Yalnızca geliştirme sırasında açık tutun; hata metinleri ziyaretçiye görünür.",
     "Keep this signature with the quote and mark it accepted? A signature cannot be removed.": "Bu imza teklifle saklansın ve teklif kabul edildi olarak işaretlensin mi? İmza sonradan kaldırılamaz.",
+    "Keep this window open. Cancel writes nothing.": "Bu pencere açık kalmalı. İptal edilirse hiçbir dosya yazılmaz.",
     "Keep visitor records for": "Ziyaretçi kayıtlarını sakla",
     "Keep visitor records for 0 days (no limit), or for {var:1} to {var:2} days.": "Ziyaretçi kayıtlarını 0 gün (sınırsız) ya da {var:1} ile {var:2} gün arası saklayın.",
     "Keeping pages out of search": "Sayfayı aramadan alıkoyanlar",
@@ -57,6 +59,7 @@
     "Keeps a platform of 4,000 services running and still answers the pager on Fridays.": "4.000 servislik bir platformu ayakta tutuyor ve cuma günleri nöbet çağrılarına hâlâ kendisi bakıyor.",
     "Keeps drinks cold for 24 hours, with a leak-proof lid and a straw.": "İçecekleri 24 saat soğuk tutar; sızdırmaz kapaklı ve pipetli.",
     "Keeps repeating": "Süresiz",
+    "Keeps showing you the same version of a page while the site compares two versions of it.": "Site bir sayfanın iki sürümünü karşılaştırırken size hep aynı sürümü göstermeyi sağlar.",
     "Keeps the original file and points this page at the copy.": "Orijinal dosya kalır, bu sayfa kopyayı gösterir.",
     "Keeps you signed in.": "Oturumunuzun açık kalmasını sağlar.",
     "Keeps your visit together: the cart, signing in and the steps of a form.": "Ziyaretinizi bir arada tutar: sepet, oturum açma ve form adımları.",

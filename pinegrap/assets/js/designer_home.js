@@ -955,9 +955,11 @@
 
     // ── Shared components and system widgets (pg_designer_components_card()) ──
 
-    // Tick rows in the offcanvas panel, delete them in one go, however many:
-    // "select all" ticks every row the panel lists (it has no filter and
-    // draws every row) and the server takes any number in one request.
+    // The panel arrives empty: its rows (shared_component/home_rows) are
+    // asked when it first opens, so a closed panel costs the screen nothing.
+    // Tick rows in the panel, delete them in one go, however many: "select
+    // all" ticks every row the panel lists (it has no filter and draws every
+    // row) and the server takes any number in one request.
     // Rows still placed on a page are deleted too (force) once the operator
     // has seen where.
     (function () {
@@ -973,8 +975,53 @@
         var opener = document.getElementById('sd-comp-open');
         var total = document.getElementById('sd-comp-total');
 
+        var body = document.getElementById('sd-comp-rows');
+
         // Rows the confirmation names one by one.
         var LISTED = 20;
+
+        // 'idle' until the first open, 'loading' while asked, 'done' once
+        // the rows are in; a failed load goes back to 'idle' so the next
+        // open asks again.
+        var state = 'idle';
+
+        function notice(text) {
+            body.innerHTML = '<tr class="sd-comp-wait"><td colspan="6" class="text-center fg-secondary py-5" role="status">' + escapeHtml(text) + '</td></tr>';
+        }
+
+        function load() {
+            if (state !== 'idle') {
+                return;
+            }
+            state = 'loading';
+            api({ action: 'shared_component', sub_action: 'home_rows' })
+                .then(function (res) {
+                    if (!res || res.status !== 'success') {
+                        state = 'idle';
+                        notice((res && res.message) || say('fail'));
+                        return;
+                    }
+                    state = 'done';
+                    body.innerHTML = res.html || '';
+                    all.disabled = false;
+                    if (total) {
+                        total.textContent = String(boxes().length);
+                    }
+                    if (boxes().length) {
+                        sync();
+                    } else {
+                        retire();
+                    }
+                })
+                .catch(function () {
+                    state = 'idle';
+                    notice(say('network'));
+                });
+        }
+
+        if (opener) {
+            opener.addEventListener('click', load);
+        }
 
         // Nothing left to list: close the panel, then drop it and its button
         // once the slide-out has finished.

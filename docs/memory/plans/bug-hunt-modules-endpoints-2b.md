@@ -6,7 +6,7 @@ description: Module list of plans/bug-hunt.md, part 5: the single root endpoints
 ## Which single endpoints are hunted?
 - Endpoints view_accessibility, update_address_book, allow_or_disallow_new_comments, approve_affiliate, view_audit_log, backups: done #5130 (backups: a folder backup's download served the archive of an earlier version after an update; rest clean)
 
-- Endpoints browse_catalog_menu, cancel_order, carrier_webhook, chat, clean_up, clear_theme_designer_session: done #5142 (clean_up: names in the delete list printed raw; rest clean; leads: clear_theme_designer_session array file_id fatal, browse_catalog_menu previous_url_id not urlencoded)
+- Endpoints browse_catalog_menu, cancel_order, carrier_webhook, chat, clean_up, clear_theme_designer_session: done #5142 (clean_up: names in the delete list printed raw; rest clean)
 
 - Endpoints cloudflare, confirm_subscription, connected_apps, connections, consent_answer, view_countries: done #5144, #5161 (cloudflare: DNS table printed record names and contents raw; analytics day reads dropped one date, array dates a TypeError; confirm_subscription, connected_apps, connections, consent_answer, view_countries clean; init.php ?secure_mode=false question #5146)
 
@@ -37,3 +37,5 @@ description: Module list of plans/bug-hunt.md, part 5: the single root endpoints
 - Endpoints track_shipment, get_update_address_book, url_to_absolute, variant_set_action, welcome, wishlist: done (#4604: get_update_address_book array id and missing row; track_shipment token and throttle, url_to_absolute RFC 3986 cases, variant_set_action set check, welcome role ladder and output, wishlist token and redirect checked)
 
 - Endpoints import_zip: done (#4640: page title over several lines or with attributes; upload refusal, archive ceilings, blocked names, entry paths, escaping of skipped names, CSRF and area gate checked)
+
+- Leads clear_theme_designer_session, browse_catalog_menu, get_shopping_cart: done #6157 (array file_id fatal, previous_url_id encoded, upsell label lang())

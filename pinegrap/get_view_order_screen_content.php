@@ -216,7 +216,7 @@ function get_view_order_screen_content($properties)
         // if there is at least one order item where shipped quantities will be shown, then set various values for that
         if ($row[0] > 0) {
             $shipped_quantities_exist = TRUE;
-            $output_shipped_quantity_heading_cell = '<th style="text-align: left">(Shipped)</th>';
+            $output_shipped_quantity_heading_cell = pg_order_view_shipped_heading_cell();
             $number_of_shipped_quantity_columns = 1;
         }
     }

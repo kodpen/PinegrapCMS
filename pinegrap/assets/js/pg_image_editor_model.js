@@ -2918,6 +2918,221 @@
         docMotion: docMotion, baseAt: baseAt, hasMotion: hasMotion
     };
 
+    // -- tracks (pg_image_editor_tracks.js) --
+    //
+    // A row per layer under the play bar: a bar per phase from M.motionSpans(),
+    // dragged whole (its delay) or by an end (its length). Times are ms.
+
+    var TRACK_STEP = 100, TRACK_FINE = 10, TRACK_MIN = 100;
+
+    // A layer's bars in time order: { phase, from, to }; the loop has no end grip.
+    function trackBars(l, end) {
+        var sp = motionSpans(l, end), bars = [];
+
+        if (sp.inStart !== null) {
+            bars.push({ phase: 'in', from: sp.inStart, to: sp.inEnd });
+        }
+
+        if ((sp.loopStart !== null) && (sp.loopEnd > sp.loopStart)) {
+            bars.push({ phase: 'loop', from: sp.loopStart, to: sp.loopEnd });
+        }
+
+        if (sp.outStart !== null) {
+            bars.push({ phase: 'out', from: sp.outStart, to: sp.outEnd });
+        }
+
+        return bars;
+    }
+
+    // The times a dragged end snaps to: the start, the end and every bar's
+    // ends of the other layers, sorted, once each.
+    function trackTargets(layers, end, skipId) {
+        var seen = [0, end];
+
+        (layers || []).forEach(function (l) {
+            if (l.id === skipId) {
+                return;
+            }
+
+            trackBars(l, end).forEach(function (b) {
+                seen.push(b.from, b.to);
+            });
+        });
+
+        return seen.filter(function (n, i) { return seen.indexOf(n) === i; }).sort(function (a, b) { return a - b; });
+    }
+
+    // The nearest target within slack ms, or null.
+    function trackNear(ms, targets, slack) {
+        var best = null;
+
+        (targets || []).forEach(function (n) {
+            if ((Math.abs(n - ms) <= slack) && ((best === null) || (Math.abs(n - ms) < Math.abs(best - ms)))) {
+                best = n;
+            }
+        });
+
+        return best;
+    }
+
+    // A time on the grid: a tenth of a second, a hundredth with fine (Shift).
+    function trackRound(ms, fine) {
+        var step = fine ? TRACK_FINE : TRACK_STEP;
+
+        return Math.round(ms / step) * step;
+    }
+
+    // One end moved to ms: another bar's end within slack, else the grid.
+    function trackSnap(ms, targets, slack, fine) {
+        var near = fine ? null : trackNear(ms, targets, slack);
+
+        return (near === null) ? trackRound(ms, fine) : near;
+    }
+
+    // The phase patch ({ delay, ms } or { delay }) for a drag of dt ms on
+    // layer l as it was at the press: grip 'move' shifts the bar, 'start'
+    // and 'end' move one end. Clamped to the timeline and a 0.1 s bar; null
+    // for a phase the layer lacks. opts: { targets, slack, fine }.
+    function trackEdit(l, phase, grip, dt, end, opts) {
+        var o = opts || {}, sp = motionSpans(l, end), a = (l && l.anim && l.anim[phase]) || null;
+        var from = sp[phase + 'Start'], to = sp[phase + 'End'], len, nf, nt, s1, s2, base;
+
+        if (!a || (from === null)) {
+            return null;
+        }
+
+        // A loop runs to the exit: only its start moves.
+        if (phase === 'loop') {
+            base = (sp.inEnd === null) ? 0 : sp.inEnd;
+            nf = clamp(trackSnap(from + dt, o.targets, o.slack || 0, o.fine), base, Math.max(base, to - TRACK_MIN));
+
+            return { delay: Math.max(0, nf - base) };
+        }
+
+        len = to - from;
+
+        if (grip === 'move') {
+            nf = from + dt;
+            nt = to + dt;
+            s1 = o.fine ? null : trackNear(nf, o.targets, o.slack || 0);
+            s2 = o.fine ? null : trackNear(nt, o.targets, o.slack || 0);
+
+            if ((s1 !== null) && ((s2 === null) || (Math.abs(s1 - nf) <= Math.abs(s2 - nt)))) {
+                nf = s1;
+            } else if (s2 !== null) {
+                nf = s2 - len;
+            } else {
+                nf = trackRound(nf, o.fine);
+            }
+
+            nf = clamp(nf, 0, Math.max(0, end - len));
+            nt = nf + len;
+        } else if (grip === 'start') {
+            nt = to;
+            nf = clamp(trackSnap(from + dt, o.targets, o.slack || 0, o.fine), 0, Math.max(0, to - TRACK_MIN));
+        } else {
+            nf = from;
+            nt = clamp(trackSnap(to + dt, o.targets, o.slack || 0, o.fine), Math.min(end, from + TRACK_MIN), end);
+        }
+
+        if (phase === 'in') {
+            return { delay: Math.round(nf), ms: Math.round(nt - nf) };
+        }
+
+        return { delay: Math.round(end - nt), ms: Math.round(nt - nf) };
+    }
+
+    var TRACKS = { TRACK_STEP: TRACK_STEP, trackBars: trackBars, trackTargets: trackTargets, trackSnap: trackSnap, trackEdit: trackEdit };
+
+    // -- frames and animation files (pg_image_editor_render.js) --
+
+    // The formats the Save animation dialog offers, with their limits:
+    // longest edges (never past the picture's), the default edge, the
+    // longest animation in ms and the frame rates.
+    var ANIM_FORMATS = {
+        gif: { mime: 'image/gif', ext: 'gif', edges: [240, 320, 480, 640, 800], edge: 480, maxMs: 15000, rates: [10, 15, 20, 25], rate: 15 }
+    };
+
+    // Repeat choices: forever (0), once, three times, and the document's own.
+    function animLoops(loop) {
+        var list = [0, 1, 3];
+
+        loop = Math.max(0, Math.round(Number(loop) || 0));
+
+        if (list.indexOf(loop) < 0) {
+            list.push(loop);
+        }
+
+        return list.sort(function (a, b) { return (a === 0) ? -1 : ((b === 0) ? 1 : a - b); });
+    }
+
+    // The settings the dialog starts from; small (a phone with little
+    // memory) starts at the smallest edge.
+    function animDefaults(doc, format, small) {
+        var f = ANIM_FORMATS[format] || ANIM_FORMATS.gif;
+
+        return { format: ANIM_FORMATS[format] ? format : 'gif', edge: small ? f.edges[0] : f.edge, fps: f.rate, loop: docMotion(doc).loop, dither: true };
+    }
+
+    // The frame size for out (the save's size) at a longest edge, never
+    // larger than out; whole pixels, at least 1.
+    function animSize(out, edge) {
+        var long = Math.max(out.w, out.h), k = Math.min(1, Math.max(1, Number(edge) || long) / long);
+
+        return { w: Math.max(1, Math.round(out.w * k)), h: Math.max(1, Math.round(out.h * k)) };
+    }
+
+    // The edges the dialog offers for out: those under its longest edge,
+    // and that edge itself when it is shorter than the largest.
+    function animEdges(out, format) {
+        var f = ANIM_FORMATS[format] || ANIM_FORMATS.gif, long = Math.max(out.w, out.h);
+        var list = f.edges.filter(function (e) { return e < long; });
+
+        if (long <= f.edges[f.edges.length - 1]) {
+            list.push(long);
+        }
+
+        return list.length ? list : [long];
+    }
+
+    // How many frames one play of ms holds at fps.
+    function animFrames(ms, fps) {
+        return Math.max(1, Math.round(Math.max(0, Number(ms) || 0) * fps / 1000));
+    }
+
+    // n frame numbers spread evenly over count, each once: the samples the
+    // palette and the estimate come from.
+    function animSamples(count, n) {
+        var out = [];
+
+        for (var k = 0; k < Math.min(n, count); k++) {
+            var i = Math.floor((k + 0.5) * count / Math.min(n, count));
+
+            if (out.indexOf(i) < 0) {
+                out.push(i);
+            }
+        }
+
+        return out;
+    }
+
+    // The file's size from the encoder's header and average frame.
+    function animEstimate(header, frame, count) {
+        return Math.round((Number(header) || 0) + (Number(frame) || 0) * Math.max(0, count) + 1);
+    }
+
+    // The file name: the picture's name with the format's extension.
+    function animName(name, ext) {
+        var base = String(name || '').replace(/^.*[\\/]/, '').replace(/\.[^.]*$/, '');
+
+        return (base || 'animation') + '.' + ext;
+    }
+
+    var RENDER = {
+        ANIM_FORMATS: ANIM_FORMATS, animLoops: animLoops, animDefaults: animDefaults, animSize: animSize, animEdges: animEdges,
+        animFrames: animFrames, animSamples: animSamples, animEstimate: animEstimate, animName: animName
+    };
+
     // -- access (pg_image_editor_access.js) --
 
     // A letter picks a tool of the call: the first of its tools the call
@@ -3190,7 +3405,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, ACCESS, GFONTS, GLYPH].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, TRACKS, RENDER, ACCESS, GFONTS, GLYPH].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

@@ -10626,6 +10626,8 @@ body.pg-side-panel-open .pg-chat-launcher {
   transition: opacity .15s linear;
 }
 .pg-sm.is-busy .pg-sm-progress { opacity: 1; }
+/* The closed dialog stays display:flex, so the bar loops only while busy. */
+.pg-sm.is-busy .pg-sm-progress::after { animation-play-state: running; }
 .pg-sm-progress::after {
   position: absolute;
   inset-block: 0;
@@ -10633,7 +10635,7 @@ body.pg-side-panel-open .pg-chat-launcher {
   width: 40%;
   background: var(--pg-primary);
   content: "";
-  animation: pg-sm-slide 1.1s ease-in-out infinite;
+  animation: pg-sm-slide 1.1s ease-in-out infinite paused;
 }
 @keyframes pg-sm-slide {
   0%   { transform: translateX(-100%); }
@@ -20820,6 +20822,51 @@ html[data-bs-theme="dark"] .wsf-group-values { --wsf-kind: #e58fd0; }
    to a thin line. */
 .wsf-palette-search {
   flex-shrink: 0;
+}
+/* The palette's sections in the order a flow is built (drawPaletteGroups()):
+   a numbered heading, the box that starts this flow (first section), a hint,
+   then its boxes; a line between two sections. */
+.wsf-palette-stage {
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--ws-space-2);
+}
+.wsf-palette-stage + .wsf-palette-stage {
+  margin-top: var(--ws-space-2);
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.wsf-palette-stage-head {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: 0;
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--pg-fg-body);
+}
+.wsf-palette-stage-num {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  font-size: .75rem;
+  color: var(--ws-accent);
+  background: color-mix(in srgb, var(--ws-accent) 16%, transparent);
+}
+.wsf-palette-stage-now {
+  margin: .35rem 0 0;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--ws-accent);
+}
+.wsf-palette-stage-hint {
+  margin: .25rem 0 0;
+  font-size: .75rem;
+  line-height: 1.35;
+  color: var(--pg-fg-2);
 }
 .wsf-palette-group {
   display: flex;

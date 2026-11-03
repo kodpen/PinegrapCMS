@@ -1,11 +1,13 @@
 ---
 name: erp-counter-sale-completion
-description: Counter sale completion in local_sale_complete(): the claim and numbering order, the invoice for every sale with the ERP on, receipts and split payment, the cash right, failures as warnings.
+description: Counter sale completion in pg_local_order_complete() (shared with the API): claim and numbering order, the invoice with the ERP on, receipts and split payment, the cash right, failures as warnings.
+module: local_order
 ---
 
 ## Where does a counter sale complete?
-- `add_order.php` is a screen of JSON actions (`complete` / `complete_order`, token checked once before the dispatch); the work is `local_sale_complete($user, $input)` in `includes/local_sale.php`. The first render and every JSON answer use the same functions, so the page cannot drift from the server.
-- Order of work: stock checked again (another till may have sold the last units) → the order claimed with `UPDATE … SET status = 'complete', type = 'local' WHERE status = 'incomplete'` (a double click or a second tab gets "already completed") → order number (`local_sale_next_order_number()`, the `next_order_number` lock) → line VAT into `order_items.tax_total` (`tax = 0`) and the totals into `orders` → stock down → `order.created` announced → with the ERP on, the invoice and the money.
+- `add_order.php` is a screen of JSON actions (`complete` / `complete_order`, token checked once before the dispatch); `local_sale_complete($user, $input)` (`includes/local_sale.php`) hands the session's cart order and picked customer to `pg_local_order_complete($user, $order_id, $customer, $input)` in `includes/fn/local_order.php`, which reads no session, so the external API's `POST /orders` runs the same steps (PR #6107). The screen then lets the cart go (also on code `completed`) and remembers the payment.
+- `pg_local_order_check()` holds every refusal before a write (empty, `pg_local_order_line_errors()`, cash short, split parts); a dry run stops after it.
+- Order of work: the check (stock again since another till may have sold the last units) → the order claimed with `UPDATE … SET status = 'complete', type = 'local' WHERE status = 'incomplete'` (a double click or a second tab gets "already completed") → order number (`local_sale_next_order_number()`, the `next_order_number` lock) → line VAT into `order_items.tax_total` (`tax = 0`) and the totals into `orders` → stock down → `order.created` announced → with the ERP on, the invoice and the money.
 - Once claimed the sale stays completed: a failed invoice or receipt comes back as a warning on a completed sale, never as a sale undone. A failed invoice is retried with the `issue_invoice` action (`local_sale_issue_invoice()`).
 
 ## When is the invoice issued?

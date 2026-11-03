@@ -368,7 +368,8 @@ PGLOGOSVG;
  * covered until the document is ready and the curtain fades out in 100 ms.
  * A screen still building after that (the visual editor) sets
  * window.pgPreloaderHold and calls window.pgPreloaderDone() once painted;
- * only that curtain shows the mark in the middle.
+ * only that curtain shows the mark in the middle. A list screen (table.chart)
+ * is held the same way without the mark until DataTables has drawn its table.
  *
  * Leaving: no curtain. The old page stays visible; once a navigation has
  * been under way for 150 ms a thin bar runs across the top and the pointer
@@ -438,14 +439,26 @@ function pg_preloader_markup()
             host.classList.add('is-done');
         }
 
+        // A list screen prints its table.chart hidden and shows it only
+        // once DataTables has drawn it (backend.src.js), so its curtain
+        // waits for that pgPreloaderDone() instead of lifting over an empty
+        // card. Read on DOM ready: the table is not parsed yet up here. No
+        // is-hold: an everyday list never draws the mark.
+        function arrived() {
+            if (document.querySelector('table.chart') && window.jQuery && jQuery.fn && jQuery.fn.DataTable) {
+                return;
+            }
+            hide();
+        }
+
         window.pgPreloaderDone = hide;
 
         if (window.pgPreloaderHold) {
             host.classList.add('is-hold');
         } else if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', hide);
+            document.addEventListener('DOMContentLoaded', arrived);
         } else {
-            hide();
+            arrived();
         }
         timer = setTimeout(hide, 9000);
 
@@ -2809,7 +2822,9 @@ function pg_account_menu($user, $options = array())
                             <li><hr class="menu-divider"></li>';
 
     // ── The account's own places ────────────────────────────────────────
-    $output .= $row(get_page_type_url('my account'), 'bi-person', lang('My Account'), $parent_target);
+    // The account page is found only when the link is followed: the lookup
+    // can scan every designed page's tree (my_account_link.php).
+    $output .= $row($software_url . '/my_account_link.php', 'bi-person', lang('My Account'), $parent_target);
 
     // Connected applications (connected_apps.php), offered while the site has
     // an OAuth application switched on: that is when a person can have one.
@@ -7149,8 +7164,11 @@ function pg_js_bundles()
             'assets/js/pg_image_editor_draw.js', 'assets/js/pg_image_editor_text.js', 'assets/js/pg_image_editor_sticker.js',
             'assets/js/pg_image_editor_redact.js', 'assets/js/pg_image_editor_versions.js', 'assets/js/pg_image_editor_artboard.js',
             'assets/js/pg_image_editor_export.js', 'assets/js/pg_image_editor_vector.js', 'assets/js/pg_image_editor_svg.js',
-            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_fonts.js',
+            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_fonts.js',
             'assets/js/pg_image_editor_glyph.js'),
+        // The image editor's animation encoder, started as a worker (or on the
+        // page) by pg_image_editor_render.js.
+        'assets/js/pg_image_editor_encode.min.js'  => array('assets/js/pg_image_editor_encode.js'),
         'assets/js/pg_fx.min.js'                   => array('assets/js/pg_fx.src.js'),
         // The real-user speed beacon of public pages (includes/fn/page_vitals.php).
         'assets/js/pg_vitals.min.js'               => array('assets/js/pg_vitals.src.js'),

@@ -644,6 +644,22 @@ if (function_exists('pg_page_schedule_run')) {
     }
 }
 
+// Content imports (includes/fn/importers.php, loaded only here and on
+// import.php): a running import is worked for a short budget every tick, so
+// it carries on with the screen closed, and what imports finished more than
+// 30 days ago made can no longer be undone. With no import it is one read of
+// a small table.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/importers.php');
+
+$import_tick = pg_import_job_tick(pg_cron_time_left(20));
+
+if ($import_tick['swept'] > 0) {
+    log_activity(lang(array(
+        'string' => 'general job ended the undo of {var:1} imported item(s) older than 30 days',
+        'vars'   => array(pg_format_number($import_tick['swept'], 0)),
+    )), 'UNKNOWN');
+}
+
 // Page revisions (includes/fn/page_revisions.php): once a day the rows of
 // deleted pages go, and every page holding more revisions than the count rule
 // keeps is trimmed by the age rule. A tick with nothing due reads one small

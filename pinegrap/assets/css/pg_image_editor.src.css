@@ -2227,6 +2227,13 @@
   margin-top: 4px;
 }
 
+/* With nothing to move yet: a text or a sticker to add. */
+.pgie-actions.pgie-mstart {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin: 4px 0 8px;
+}
+
 .pgie-mwhole {
   margin: 20px 0 12px;
   padding-top: 16px;
@@ -2270,7 +2277,7 @@
   font-size: 13px;
 }
 
-.pgie-stage > .pgie-mbar {
+.pgie-stage > .pgie-mdock {
   position: absolute;
   left: 0;
   right: 0;
@@ -2361,8 +2368,214 @@
 }
 
 .pgie-pb > .pgie-mbar .pgie-mlength,
-.pgie-mbar.pgie-mshort .pgie-mlength {
+.pgie-mshort .pgie-mlength {
   display: none;
+}
+
+
+/* -- Tracks (pg_image_editor_tracks.js) -- */
+
+/* A row per layer under the play bar: names on the left, lanes on the
+   right; the playhead's line is placed by --pgie-trat (0 to 1) over the
+   lanes, which start --pgie-trname from the left. */
+.pgie-tracks {
+  --pgie-trname: 170px;
+  position: relative;
+  background: var(--pgie-surface);
+  border-top: 1px solid var(--pgie-line);
+  overflow: hidden;
+  font-size: 12px;
+  user-select: none;
+}
+
+.pgie-trhead,
+.pgie-trrow {
+  display: flex;
+  align-items: stretch;
+  height: 28px;
+}
+
+.pgie-trhead {
+  border-bottom: 1px solid var(--pgie-line);
+  color: var(--pgie-muted);
+}
+
+.pgie-trrows {
+  max-height: 150px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.pgie-trrow {
+  border-bottom: 1px solid color-mix(in srgb, var(--pgie-line) 50%, transparent);
+}
+
+.pgie-trrow.on {
+  background: var(--pgie-pw);
+}
+
+.pgie .pgie-trname {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: var(--pgie-trname);
+  min-width: 0;
+  padding: 0 10px;
+  border: 0;
+  border-right: 1px solid var(--pgie-line);
+  background: none;
+  color: var(--pgie-tx);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pgie-trhead .pgie-trname {
+  color: var(--pgie-muted);
+  font-weight: 600;
+  cursor: default;
+}
+
+.pgie-trname span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pgie-trname .pgie-ic {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+/* The lanes keep 10 px at each end so a bar's grip at 0 or at the end
+   stays inside the stage. */
+.pgie-trlane {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  margin: 0 10px;
+}
+
+.pgie-trruler {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+
+.pgie-trtick {
+  position: absolute;
+  bottom: 0;
+  width: 1px;
+  height: 5px;
+  background: var(--pgie-line);
+}
+
+/* A whole second: its number beside a longer line. */
+.pgie-trtick.pgie-trlabel {
+  top: 5px;
+  width: auto;
+  height: auto;
+  padding-left: 4px;
+  border-left: 1px solid var(--pgie-muted);
+  background: none;
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.pgie-trline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: var(--pgie-line);
+}
+
+.pgie-trbar {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  min-width: 4px;
+  border-radius: 4px;
+  background: var(--pgie-primary);
+  cursor: grab;
+  touch-action: none;
+}
+
+.pgie-trbar:active {
+  cursor: grabbing;
+}
+
+.pgie-tr-loop {
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--pgie-primary) 45%, transparent) 0 4px, transparent 4px 8px);
+  border: 1px solid color-mix(in srgb, var(--pgie-primary) 45%, transparent);
+}
+
+.pgie-tr-out {
+  background: color-mix(in srgb, var(--pgie-primary) 50%, transparent);
+}
+
+.pgie-trrow.on .pgie-trbar {
+  box-shadow: 0 0 0 2px var(--pgie-sel);
+}
+
+.pgie-trgrip {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 10px;
+  border: 2px solid var(--pgie-sel);
+  border-radius: 4px;
+  background: var(--pgie-surface);
+  cursor: ew-resize;
+}
+
+.pgie-trgrip-start {
+  left: -5px;
+}
+
+.pgie-trgrip-end {
+  right: -5px;
+}
+
+/* The selected bar's times, beside its end. */
+.pgie-trtip {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--pgie-tx);
+  color: var(--pgie-surface);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.pgie-trtip-left {
+  left: auto;
+  right: calc(100% + 12px);
+}
+
+.pgie-trplay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--pgie-trname) + 10px + (100% - var(--pgie-trname) - 20px) * var(--pgie-trat, 0));
+  width: 2px;
+  margin-left: -1px;
+  background: var(--pgie-danger);
+  pointer-events: none;
+}
+
+.pgie-trplay.pgie-tridle {
+  opacity: 0.35;
 }
 
 @media (max-width: 767.98px), (max-height: 499.98px) {
@@ -2555,6 +2768,133 @@
     width: 44px;
     height: 44px;
     transform: translate(-50%, -50%);
+  }
+}
+
+/* -- Frames and Save animation (pg_image_editor_render.js) -- */
+
+.pgie-confirm-box.pgie-anim-box {
+  width: min(660px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  overflow: auto;
+}
+
+.pgie-anim-head,
+.pgie-anim-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pgie-anim-head h2 {
+  margin: 0;
+}
+
+.pgie-anim-body {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 20px;
+  margin: 16px 0;
+}
+
+.pgie-anim-side {
+  text-align: center;
+}
+
+.pgie-anim-preview {
+  max-width: 100%;
+  border: 1px solid var(--pgie-line);
+  border-radius: 10px;
+  background: repeating-conic-gradient(var(--pgie-hover) 0 25%, var(--pgie-surface) 0 50%) 0 0 / 16px 16px;
+}
+
+.pgie-confirm-box p.pgie-anim-cap {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+.pgie-anim-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.pgie-anim-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  color: var(--pgie-muted);
+  font-size: 13px;
+}
+
+.pgie-anim-label b {
+  color: var(--pgie-tx);
+}
+
+.pgie-anim-estimate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--pgie-pline);
+  border-radius: 10px;
+  background: var(--pgie-pw);
+  color: var(--pgie-muted);
+  font-size: 13px;
+}
+
+.pgie-anim-estimate b {
+  color: var(--pgie-tx);
+  font-size: 16px;
+}
+
+.pgie-anim-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.pgie-anim-steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  color: var(--pgie-muted);
+}
+
+.pgie-anim-steps li.done {
+  color: var(--pgie-tx);
+}
+
+.pgie-anim-steps li.on {
+  color: var(--pgie-ink);
+  font-weight: 700;
+}
+
+.pgie-anim-dot {
+  width: 6px;
+  height: 6px;
+  margin: 0 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.pgie-confirm-box .pgie-anim-foot p {
+  margin: 0;
+}
+
+@media (max-width: 599.98px) {
+  .pgie-anim-body {
+    grid-template-columns: 1fr;
+  }
+
+  .pgie-animbtn .pgie-vlabel {
+    display: none;
   }
 }
 

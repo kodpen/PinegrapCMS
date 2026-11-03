@@ -12,11 +12,13 @@ description: External API (integration.php): find what the panel can do that the
 - X1b Shipping method writes (create, update, `/delete`), `store:write`, events `shipping_method.*`: PR #5491 (`api/api-store-shipping-method-writes.md`).
 - X2 Returns: `GET /returns` (status, order_id), `GET /returns/{id}`, `POST /returns/{id}` (approve, reject, ship, receive, close, refund as `view_return.php`). `orders:*`. Events: existing `order.return.*`: PR #5925 (`api/api-returns.md`).
 - X2b `modified_since` on `GET /returns` through `order_returns.updated_at` (decided in #5927).
-- X3 `GET /subscriptions`, `/subscriptions/{id}` (`customers:read`); `POST /commissions/{id}` status, `POST /affiliates/{id}/approve` (`customers:write`, the contact screen's right), `GET /commissions/recurring-profiles`; new `commissions:write`. Events `commission.status_changed`, `affiliate.approved`: PR #5741 (`api/api-commission-writes.md`, `api/api-subscriptions-list.md`).
+- X3 subscriptions read, commission and affiliate writes: PR #5741 (`api/api-commission-writes.md`, `api/api-subscriptions-list.md`).
 - X4 Users read: `GET /users`, `/users/{id}` (role, permission columns, last sign-in, MFA; no secrets). New `users:read`, designer ceiling. Writes: X13 (`external-api-coverage-2.md`). PR #5898 (`api/api-users-read.md`).
 - X5a Countries and states CRUD, `store:write`: PR #6005 (`api/api-store-country-state-writes.md`).
 - X5b Currencies CRUD and `POST /store/currencies/rates`, `store:write`, events `currency.*`: PR #6051 (`api/api-store-currency-writes.md`).
-- X6 `POST /orders` as `add_order.php`, Idempotency-Key, dry run. `orders:write`. Event `order.created`.
+- X6 `POST /orders` as `add_order.php`, Idempotency-Key, dry run, `orders:write`, event `order.created`, cut in two:
+  - X6a `local_sale_complete()` moves into `includes/fn/local_order.php`, free of the session cart; the screen calls it, tests pin it: PR #6107 (`erp/erp-counter-sale-completion.md`).
+  - X6b The route on it: PR #6148 (`api/api-orders-create.md`).
 - X7 `POST /offers`, `POST /offers/{id}/duplicate` (`edit_offer_f.php` rules). `offers:write`. New events `offer.created|updated|deleted`.
 - X8 CRUD `/store/arrival-dates`, `/store/ship-date-adjustments`, `/store/verified-addresses`, `/store/referral-sources`. `orders:read`, `store:write`. No events.
 - X9 `POST /campaigns` (draft), `POST /campaigns/{id}/schedule`, campaign profiles CRUD, `GET /campaigns/sms`. `campaigns:*`. Event `campaign.sent`.
@@ -26,7 +28,7 @@ description: External API (integration.php): find what the panel can do that the
 
 ## What is not a step?
 - Redirects: short links with `redirect_code` and `*` patterns, covered. Saved reports and the back-in-stock list wait for a client. Settings, firewall, sessions, backups, updates: no endpoint (#5238, `external-api-coverage-2.md`).
-- Issues #3411, #3412, #3413 (PR #3842), #3414 are done per `api/` memory and can be closed; #5085 (bell `group`, `fold`) is free work outside the steps.
+- #5085 (bell `group`, `fold`) is free work outside the steps.
 
 ## What is settled?
 - Each endpoint follows `api/README.md`: one schema row, a scope with its owner ceiling, the role-3 row rule, `api_request_input()`, `api_dry_run_stop()` above the first write, POST twins, `max_length` within the column, events through `pg_announce()`.

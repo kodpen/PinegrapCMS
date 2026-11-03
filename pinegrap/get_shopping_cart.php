@@ -1858,7 +1858,7 @@ function get_shopping_cart($properties) {
                 $offer['upsell_action_url'] = PATH . encode_url_path(get_page_name($offer['upsell_action_page_id']));
 
                 if ($offer['upsell_action_button_label'] == '') {
-                    $offer['upsell_action_button_label'] = 'More Info';
+                    $offer['upsell_action_button_label'] = lang('More Info');
                 }
             }
 

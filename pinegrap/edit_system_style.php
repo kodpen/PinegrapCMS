@@ -54,6 +54,9 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM style WHERE style_id = '"
 include_once('liveform.class.php');
 include_once('includes/designer_screen.php');
 
+// send_to goes into the form and back out through urlencode(): one value.
+pg_request_single_values(array('send_to'));
+
 $liveform = new liveform('edit_system_style', $_REQUEST['id']);
 $liveform->assign_field_value('id', $_REQUEST['id']);
 $liveform->assign_field_value('send_to', isset($_REQUEST['send_to']) ? $_REQUEST['send_to'] : '');

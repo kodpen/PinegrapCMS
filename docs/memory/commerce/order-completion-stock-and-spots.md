@@ -13,7 +13,7 @@ description: What a completed order or local sale does to stock and event spots:
 ## When is the product marked out of stock?
 - After each row's decrement, by one conditional update: `out_of_stock = '1'` and `out_of_stock_timestamp` where `inventory_quantity <= 0 AND out_of_stock != '1'`. The `out_stock` bell warning is raised only when that update changed a row, so once per product per order.
 - Before PR #1082 (issue #734) it compared the row's quantity with the stock read before the loop (`$quantity == $inventory_quantity`): stock 5 sold as 2 + 3 to two recipients, or 3 sold from a stock of 2, reached 0 with no flag and no warning.
-- A local sale (`local_sale_complete()` step 5) uses the same statement and bell. Before issue #1163 it compared one line's quantity with the stock read before the loop, so a product on two lines (2 + 3 of 5) reached 0 with `out_of_stock = '0'` while `inventory.changed` said `out_of_stock: true`.
+- A local sale (`pg_local_order_complete()` step 5, `includes/fn/local_order.php`) uses the same statement and bell. Before issue #1163 it compared one line's quantity with the stock read before the loop, so a product on two lines (2 + 3 of 5) reached 0 with `out_of_stock = '0'` while `inventory.changed` said `out_of_stock: true`.
 - Other writers follow the same "stock left <= 0" rule: marketplace import (`mp_order_take_stock()`), the API inventory endpoints, ERP stock, the product builder (derived on save, reset to 0 on restock).
 
 ## What does the sale tell the outside?

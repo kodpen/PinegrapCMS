@@ -3966,7 +3966,7 @@ function get_express_order($properties) {
                 $offer['upsell_action_url'] = PATH . encode_url_path(get_page_name($offer['upsell_action_page_id']));
 
                 if ($offer['upsell_action_button_label'] == '') {
-                    $offer['upsell_action_button_label'] = 'More Info';
+                    $offer['upsell_action_button_label'] = lang('More Info');
                 }
             }
 
@@ -5936,7 +5936,7 @@ function get_express_order($properties) {
                             $threedsecure = true;
                             //if this is iyzico payment than prepare to output 3Dsecure payment checkbox to disabled and checked.
                             if(ECOMMERCE_IYZIPAY_THREEDS){
-                                $threedsecure_required = ' checked disabled style="cursor:help;" title="3DSecure is required" ';
+                                $threedsecure_required = ' checked disabled style="cursor:help;" title="' . h(lang('3D Secure is required')) . '" ';
                             }
                                                         
                         break;

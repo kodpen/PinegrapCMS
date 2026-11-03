@@ -46,7 +46,7 @@ function test_view_pages_seo_tools_filter_return_url_is_built_before_the_handler
 function test_view_pages_seo_tools_filter_every_handler_exit_returns_to_the_view()
 {
 	$source = view_pages_seo_tools_filter_test_source();
-	$handlers = view_pages_seo_tools_filter_test_block($source, "if (isset(\$_GET['recalculate_seo'])", '$output_clear_button = ');
+	$handlers = view_pages_seo_tools_filter_test_block($source, "if (isset(\$_GET['recalculate_seo'])", "require_once(dirname(__FILE__) . '/includes/fn/page_list.php');");
 
 	pg_assert_same(2, substr_count($handlers, 'go($seo_return);'), 'both exits go to the filtered view');
 	pg_assert_same(0, substr_count($handlers, "go(PATH . SOFTWARE_DIRECTORY . '/view_pages.php');"), 'no exit drops the filter');

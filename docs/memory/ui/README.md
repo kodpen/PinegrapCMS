@@ -129,6 +129,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-v2-edit-mode.md: New dashboard edit mode (#4856): presets.php, dashboard_layout_save and its clean-up, pg_dash_edit.js (bar, grip, drag, card tools and settings, greeting and status parts), what Cancel and Save do
 - dashboard-v2-flows-card.md: New dashboard Flows card (cards/flows.php, renderer in pg_dash_cards_work.js): tiles, the run going on now as a path of boxes, last runs with Approve and Try again through the Workspace actions
 - dashboard-v2-personal-cards.md: New dashboard cards goals, notes (#4981), pins, perf (N12b): where goals, pins and notes are kept and saved, what a goal counts, what a pin opens, perf's helpers shared with widget 23
+- dashboard-v2-phone-keyboard.md: New dashboard on phones and from the keyboard (#6145): the edit bar keeps its row, the grid is no live region, Save buttons are solid, the shortcut remove cross is 24 px
 - dashboard-v2-pipeline-card.md: New dashboard pipeline card (cards/pipeline.php, renderer in pg_dash_cards_work.js): the line per preset, the eight spans, where each step reads its data, gates, flags and links
 - dashboard-v2-queue-card.md: The new dashboard's Next up card (queue): its sources and gates, where each count is read (Operations Desk helpers, ERP aging, the drafts folder), the row order, the actions
 - dashboard-v2-security-team-cards.md: New dashboard cards firewall, team, mytasks, waiting, week, calendars (cards/<id>.php, team.php, pg_dash_cards_security.js, pg_dash_cards_team.js): data sources, failed sign-ins figure, the task tick
@@ -222,12 +223,14 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-keys.md: The image editor's keys: shortcuts, Escape on keydown, Enter and Space to focused buttons, arrows to sliders (ownsKey), focus kept after a panel redraw, panning
 - image-editor-layers.md: The image editor's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
 - image-editor-modal.md: The image editor core (window.PgImageEditor): files, loader, bundles, the pure model, labels via lang(), options, full screen, the phone layout, recording a change
-- image-editor-motion.md: The image editor's Animate tool: layer anim and doc.motion fields, M.motionAt() and its spans, the play bar and playhead, how the stage previews a moment, what a still save sees
+- image-editor-motion.md: The image editor's Animate tool: anim and doc.motion, M.motionAt() and its spans, the play bar, the playhead and previews, the empty panel, what a still save sees
 - image-editor-parts.md: The image editor in parts: core, model, one file per tool; the hooks a tool hangs on the editor (panels, pointers, layer types), its model section, labels, API actions, styles and tests
 - image-editor-redact.md: The image editor's redaction (E10): layer fields, box and brush areas, the preview filters, the masks a save sends, the server's step 4 under Imagick and GD, metadata, versions
+- image-editor-render.md: The image editor's animation frames and GIF (AN3): renderFrame(), paintLayers() with a time, action base, the encoder worker, the Save animation dialog with estimate, progress, Cancel and Download
 - image-editor-sticker.md: The image editor's Sticker and Frame tools: the sticker layer, its label, a picture from Files, the four frames on the saved picture's edge, an artboard's background fill, how a save draws them
 - image-editor-svg.md: The image editor's SVG files: opened as layers on a transparent artboard, saved as SVG through the allowlist sanitizer pg_svg_sanitize()
 - image-editor-text.md: The image editor's text layers: fields, the one line layout the stage and the save share, typing in place, system and site fonts, resize scaling the letters, the panel
+- image-editor-tracks.md: The Animate tool's tracks under the play bar: a row per layer, the bars from M.trackBars(), dragging a bar or an end (M.trackEdit()), snapping, the dock hook in the motion part, no tracks on a phone
 - image-editor-vector.md: The image editor's vector pen: path layers as boxes with knots inside, drawing point by point, editing points and handles, smooth and corner, open and closed, convert to path
 - image-editor-versions.md: The image editor's versions (file_versions, 2026.11.0): base and save rows, what opening loads, what a save, restore and delete write, retention, the drawer, deleting a file, Disk Usage
 - image-editor-workspace.md: Workspace canvas (E16, #4762): New canvas in a channel's Insert menu and a note's toolbar, saved through workspace_file_save.php with its document in file_versions, opened again with its layers
@@ -290,14 +293,17 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - page-button-bar.md: The #button_bar strip under a screen's heading is the .pg-toolbar component: full-width nav, buttons as direct children, which wrappers are allowed, fields in it, the list filter select.
 - page-form-count-defaults.md: Create/Edit Page and the designer's Page Type pane save an emptied or zero Photo Gallery column count or Form View Directory summary box as the form's default (4 / 30 / 5), not 0
 - page-form-group-names.md: Create/Edit Page type properties and the ERP accounts import: radio questions are legends, the custom form's two e-mail blocks are named by their switch
+- page-form-lazy-page-pickers.md: Create Page / Edit Page untyped page pickers carry only their stored page and fill from one <template> when opened (select_page(), pg_page_picker_lazy()); the page list is read once per request
 - page-form-number-ranges.md: Page form System Options number boxes (quiz pass percentage, day counts, photo gallery thumbnail size) refused out of range by pg_page_form_number_errors() instead of cut by their columns
 - page-form-refused-save.md: Create Page and Edit Page come back with what was typed when a save is refused: the stored post, the redraw helpers in includes/forms/page_form.php, what is not redrawn
+- page-list-paging.md: The pages list (view_pages.php) paged on the server (PR #6114, issues #6076 #6088): views, folder access in SQL, inherited styles from one folder read, SEO refresh before the fetch
 - page-shared-form.md: The page create and edit screens share includes/forms/page_form.php: the type picker and System Options card, and the save checks; what differs and what stays in the screens
 - page-style-screen-guards.md: Page style screens: which styles the custom edit screen opens, where View Source returns, how bulk delete reads its selection
 - pages-list-bulk-edit-fixes.md: Pages list and Mass Edit fixes (#5288-#5293): a deleted page in Delete Selected, too long values, Find & Replace skips, stale SEO scores, column names and row labels
 - panel-accessible-names.md: Names screen readers get in the panel: translated aria-labels, labels that point at a field, the one required marker, chip and select2 inputs, the settings autofill decoy, user-coloured badges (#2063)
 - panel-avatar-sites.md: Where the panel draws people as the Bootstrap 6 Avatar (step B9j slices) and where the picture of letters (pg_initials_avatar_url()) stays
 - panel-avatar.md: The panel Avatar (pg_avatar_markup()): letters on eight theme tones, grey square for a nameless login, presence dot, no empty src; initials and tone on person briefs
+- panel-background-polls.md: Every panel page's background polls (bell count, heartbeat, sitemap check): session lock released, timers paused in a hidden tab, the lazy My Account link, the idle settings bar
 - panel-bfcache.md: Panel HTML in the browser's back/forward cache (#6081): private, no-cache from output_header(), the no-store screen list, Clear-Site-Data on sign-out, the session check of a restored page
 - panel-cloudflare-email-obfuscation.md: Panel body wrapped in <!--email_off--> so Cloudflare Email Obfuscation does not show staff "[email protected]"; which functions, what stays protected, the Cloudflare-side rule
 - panel-code-fields.md: Code fields on panel screens: pg_code_editor_attach(), loading through pgCodeEditorUse(), the settings dialog, releasing editors, the rich text source mode, the colour scheme

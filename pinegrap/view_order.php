@@ -283,6 +283,9 @@ if (!$_POST) {
     $billing_zip_code = $row['billing_zip_code'] ?? '';
     $billing_postcode_province = pg_shipping_postcode_province($billing_country, $billing_state, $billing_zip_code);
     $billing_district_note = pg_place_district_note($billing_country, $billing_state, $billing_city);
+    // A Turkish address's city box is its district and its state its
+    // province: the card names them as the checkout asked for them.
+    $billing_place_labels = pg_address_labels($billing_country);
     $billing_address_verified = $row['billing_address_verified'];
     $billing_phone_number = $row['billing_phone_number'] ?? '';
     $billing_fax_number = $row['billing_fax_number'] ?? '';
@@ -2996,11 +2999,11 @@ if (!$_POST) {
                                     </div>
                                     ' . pg_order_view_row(lang('Address') . ' 2', h($billing_address_2), true) . '
                                     <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('City') . ':</span>
+                                        <span class="translateable col fg-secondary">' . h(lang($billing_place_labels['city'])) . ':</span>
                                         <span class="col text-end">' . h($billing_city) . '</span>
                                     </div>
                                     <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('State') . ':</span>
+                                        <span class="translateable col fg-secondary">' . h(lang($billing_place_labels['state'])) . ':</span>
                                         <span class="col text-end">' . h($billing_state) . '</span>
                                     </div>
                                     <div class="row" >

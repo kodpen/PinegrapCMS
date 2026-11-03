@@ -1922,6 +1922,9 @@ $(document).ready(function () {
         // whatever the language; the panel language's file names it.
         $(datatable.table().container()).find('div.dt-paging nav').attr('aria-label', datatable.i18n('aria.paging', 'Pagination'));
         $('table.dataTable tbody tr td.dataTables_empty').parent('tr').addClass('unselectable');
+
+        // The loading curtain waited for the list (pg_preloader_markup()).
+        pgListCurtainDone();
     };
 
 
@@ -2024,7 +2027,15 @@ $(document).ready(function () {
             }
         }
 
-        var datatable = $("table.chart").DataTable(options);
+        // A DataTables error or a throw here must not leave the curtain
+        // up until its 9 s timer.
+        $('table.chart').one('error.dt', pgListCurtainDone);
+        try {
+            var datatable = $("table.chart").DataTable(options);
+        } catch (e) {
+            pgListCurtainDone();
+            throw e;
+        }
         datatable.buttons().container().appendTo($(".chart-buttons"));
         // A Turkish panel finds "Yıldız" for "YILDIZ" in a list searched in
         // the browser; a list paged on the server searches in SQL.
@@ -2098,11 +2109,10 @@ $(document).ready(function () {
     pg_shortcuts_init();
 
     check_unread_notifications('onload_check');
-    setInterval(function () {
-        //this interval is auto check for notifications.
-        // we set this default 30 sec(30 * 1000).
+    // The bell's count every 20 seconds while the tab is in sight.
+    pg_poll_while_visible(function () {
         check_unread_notifications('scheduled_check');
-    }, 20 * 1000); // 60 * 1000 = 1min.
+    }, 20 * 1000);
 
 
 
@@ -2964,6 +2974,14 @@ function edit_chart_content(action, name) {
  * comes back as its cells' content, with the cells' classes in DT_RowData.
  * Sorting stays the headings' links, so DataTables sends no order.
  */
+// The loading curtain of a list screen waits for its table
+// (pg_preloader_markup()); the first table drawn lifts it.
+function pgListCurtainDone() {
+    if (typeof window.pgPreloaderDone === 'function') {
+        window.pgPreloaderDone();
+    }
+}
+
 function pgListServerOptions(options, $table) {
     var params = {};
 
@@ -9743,6 +9761,41 @@ function pg_background_calls_allowed() {
     return true;
 }
 
+/**
+ * Calls poll every ms milliseconds while the tab is visible. A hidden tab
+ * sends nothing; when it comes back into sight poll runs once at once and
+ * the interval starts again. The caller makes the first call on load.
+ */
+function pg_poll_while_visible(poll, ms) {
+    var timer = null;
+
+    function start() {
+        if (timer === null) {
+            timer = window.setInterval(poll, ms);
+        }
+    }
+
+    function stop() {
+        if (timer !== null) {
+            window.clearInterval(timer);
+            timer = null;
+        }
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+            stop();
+        } else if (timer === null) {
+            poll();
+            start();
+        }
+    });
+
+    if (!document.hidden) {
+        start();
+    }
+}
+
 /* ════════════════════════════════════════════════════════════════════════
    USER ONLINE HEARTBEAT (Runs on all backend pages)
 ════════════════════════════════════════════════════════════════════════ */
@@ -9768,10 +9821,9 @@ function pg_background_calls_allowed() {
         });
     }
 
-    // First heartbeat on load
+    // First heartbeat on load, then every 50 seconds while the tab is in sight.
     sendHeartbeat();
-    // Then every 50 seconds
-    setInterval(sendHeartbeat, 50000);
+    pg_poll_while_visible(sendHeartbeat, 50000);
 })();
 
 /* ════════════════════════════════════════════════════════════════════════

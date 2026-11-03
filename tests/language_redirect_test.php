@@ -52,6 +52,8 @@ function test_language_redirect_match_reads_scripts_and_aliases()
 	pg_assert_same('zh-TW', pg_lang_match('zh-Hant', $codes), 'Traditional script');
 	pg_assert_same('zh-TW', pg_lang_match('zh-HK', $codes), 'Hong Kong');
 	pg_assert_same('zh-CN', pg_lang_match('zh-Hans-CN', $codes), 'Simplified');
+	pg_assert_same('zh-CN', pg_lang_match('zh-Hans-HK', $codes), 'Simplified script in Hong Kong: the script decides');
+	pg_assert_same('zh-TW', pg_lang_match('zh-Hant-CN', $codes), 'Traditional script in China');
 	pg_assert_same('zh-CN', pg_lang_match('zh', $codes), 'bare zh');
 	pg_assert_same('zh-TW', pg_lang_match('zh', array('en', 'zh-TW')), 'only Traditional served');
 	pg_assert_same('he', pg_lang_match('iw', $codes), 'iw');

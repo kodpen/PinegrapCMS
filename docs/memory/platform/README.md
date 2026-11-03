@@ -90,6 +90,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - image-settings-and-product-upload.md: Image config keys and defaults, product upload pipeline (image_profile=product), files.image_width/height cache rule, optimizable-percent badge cost.
 - image-upload-cap.md: Upload size cap (config.image_upload_max_dimension, 11.0.142, #4700): library uploads above N px shrunk in their own format; 0 off, 2560 on a new site; the doors
 - import-design-fetch.md: How the design importer fetches a page (import_design.php): each hop one api_http_request() with opt-in options, the 5-hop walk and the stream fallback kept, what changed with the move
+- import-framework.md: Content import framework (2026.11.0, 11.0.156): imports/import_items tables, reader and writer contract, cursor file, run lock, dry run, mapping rows, report, 30-day undo, import.php
 - import-my-site-scans.md: Import My Site keeps each scan under its own id with its folder name; long tags and names are cut before the uniqueness check; missing URL parts read as empty
 - indexnow-ping-result.md: The IndexNow ping in update_sitemap_and_ping() logs success only for HTTP 200/202; a refusal (400, 403, 422, 429) logs 'IndexNow ping failed: HTTP <code>'
 - install-command-line.md: php install/index.php install (PR #621): a starter site from PG_INSTALL_* variables without the screen; what it refuses, output and exit status, how the screen's code runs
@@ -98,6 +99,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - iys-sms-channel.md: İYS MESAJ channel (PR #3806): contacts.iys_sms_status (11.0.136), the SMS consent rows pushed for a mobile number, İYS's SMS changes pulled and matched to the contacts' numbers
 - kiosk-mode.md: kiosk.php: what its query string sets in the session, how logout restarts it (token and kiosk mode required), and why the text parameters must be strings
 - language-address-prefix.md: A target language's address prefix (/en/, /pt-br/): lower case everywhere, fallback to the lower-cased code, collision check in the languages save, router matching
+- language-redirect-matching.md: How the automatic language redirect reads a browser language tag: regions, Chinese script before region, aliases
 - license-check.md: The panel's licence check (license_check(), includes/fn/output.php): when it asks, the Kodpen API branch behind PG_VENDOR_API_V1 (PR #4381), the card, the key field
 - link-resolve-js-twin.md: The link resolver's browser twin (assets/js/pg_link_resolve.js, window.PGLinkResolve): what it mirrors, how parity is tested, what it cannot mirror
 - link-resolve-letter-case.md: The link resolver (SEO broken links, prototype viewer) matches page, file, short link, product, group and record names without letter case, as the router's database lookup does (#4976)

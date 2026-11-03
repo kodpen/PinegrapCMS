@@ -907,3 +907,22 @@ function test_legal_documents_kvkk_signup_wiring()
 	pg_assert_true(is_array(pg_consent_log_row($changes[0] + array('source' => 'signup', 'user_id' => 5), 1)), 'a valid sign-up row');
 	pg_assert_same(array(), pg_consent_log_changes(array('contract:kvkk' => array('status' => 'granted')), array('contract:kvkk' => true)), 'given before: nothing new');
 }
+
+// A bracket without a field is no condition and stays as written; it must
+// not reach on into the next bracket and take the text between with it.
+function test_legal_document_render_bracket_without_field_stays()
+{
+	pg_assert_same(
+		'[[Note]] keep  end',
+		pg_legal_document_render('[[Note]] keep [[Tax: ^^tax^^]] end', array('tax' => ''))
+	);
+	pg_assert_same(
+		'[[Note]] keep Tax: 5 end',
+		pg_legal_document_render('[[Note]] keep [[Tax: ^^tax^^]] end', array('tax' => '5'))
+	);
+	pg_assert_same(
+		'[[a||b]] none',
+		pg_legal_document_render('[[a||b]] [[^^tax^^||none]]', array('tax' => '')),
+		'a negative part with no field before it'
+	);
+}
