@@ -166,6 +166,8 @@ function get_help_url($properties = array())
         'add_calendar_event'            => 'calendars#create-edit-calendar-event',
         'edit_calendar_event'           => 'calendars#create-edit-calendar-event',
         'view_calendar_event_locations' => 'calendars#event-locations',
+        'view_bookings'                 => 'calendars',
+        'edit_booking'                  => 'calendars',
         'add_calendar_event_location'   => 'calendars#create-edit-calendar-event-location',
         'edit_calendar_event_location'  => 'calendars#create-edit-calendar-event-location',
 

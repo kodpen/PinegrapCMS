@@ -197,3 +197,21 @@ function test_booking_agenda_status_moves_offered()
 	pg_assert_same(array(), pg_booking_agenda_moves('done'));
 	pg_assert_same(array(), pg_booking_agenda_moves('cancelled'));
 }
+
+function test_booking_agenda_expired_hold_only_cancels()
+{
+	$now = 1800000000;
+
+	pg_assert_same(array('confirmed', 'cancelled'), pg_booking_agenda_moves_now(array('status' => 'held', 'hold_until' => $now + 60), $now));
+	pg_assert_same(array('cancelled'), pg_booking_agenda_moves_now(array('status' => 'held', 'hold_until' => $now - 60), $now));
+	pg_assert_same(array('cancelled', 'no_show', 'done'), pg_booking_agenda_moves_now(array('status' => 'confirmed', 'hold_until' => 0), $now));
+}
+
+function test_booking_agenda_audit_fields_leave_the_customer_out()
+{
+	$fields = pg_booking_agenda_audit_fields(array('id' => 5, 'service_id' => '2', 'staff_id' => '4', 'start_at' => '100', 'end_at' => '200',
+		'status' => 'confirmed', 'source' => 'panel', 'name' => 'Ayşe', 'email' => 'a@example.com', 'phone' => '555', 'notes' => 'Çay'));
+
+	pg_assert_same(array('service_id' => 2, 'staff_id' => 4, 'start_at' => 100, 'end_at' => 200, 'status' => 'confirmed', 'source' => 'panel', 'notes_length' => 3), $fields);
+	pg_assert_same(array(), pg_booking_agenda_audit_fields(array()));
+}

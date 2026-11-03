@@ -3484,6 +3484,16 @@ function output_menu($properties = false)
             $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendar_event_locations.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-geo-alt bi-me-2\'>' . lang('Event Locations') . '</a>';
             $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_calendar_event_location.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Calendar Event Location'))) . '</a>';
         }
+        // CALENDARS > Bookings: once a booking service exists, for those the
+        // agenda opens to (includes/fn/booking_agenda.php).
+        if (pg_booking_ready() && ((int) db_value("SELECT COUNT(*) FROM booking_services") > 0)) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
+
+            if (pg_booking_agenda_user_scope($user) !== false) {
+                $menu_items[4]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
+                $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_bookings.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar-check bi-me-2\'>' . lang('Bookings') . '</a>';
+            }
+        }
     }
 
     if ((FORMS === true) && (($user['role'] < 3) || ($user['manage_forms'] == true))) {
@@ -4160,6 +4170,8 @@ function output_menu($properties = false)
         case 'view_calendar_event_locations.php':
         case 'add_calendar_event_location.php':
         case 'edit_calendar_event_location.php':
+        case 'view_bookings.php':
+        case 'edit_booking.php':
             $active_menu = 4;
             break;
         case 'view_submitted_forms.php':
