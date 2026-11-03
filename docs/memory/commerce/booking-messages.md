@@ -7,7 +7,7 @@ module: booking_messages
 ## Who calls what when a booking changes?
 - Every path that writes a booking calls `pg_booking_changed($id, $event)` once after the write (`includes/fn/booking_messages.php`): `created`, `confirmed`, `rescheduled`, `cancelled`. It announces `booking.<event>` (webhook catalogue lists the four; `ws_events_catalog()` not yet) with `pg_booking_event_payload()` (no token), then mails and texts the customer.
 - `pg_booking_confirm()` calls `pg_booking_created()`: `booking.created`, plus `booking.confirmed` and its mail when confirmed at once. A hold announces nothing.
-- Moves (agenda, manage page, API) call it with `confirmed`, `rescheduled`, `cancelled`; a request gets no mail.
+- `edit_booking.php` calls it when `pg_booking_status_event()` names `confirmed` or `cancelled`; BK7 and BK8 call it too.
 
 ## Which mails go out?
 - Campaign profile actions `booking_confirmed`, `booking_reminder`, `booking_rescheduled`, `booking_cancelled` (#5032 question 3; step `upgrade_2026_11_0_booking_campaigns()`, 11.0.161, widens `email_campaign_profiles.action` and `email_campaigns.action`). Offered on the profile form once `pg_booking_ready()`, without commerce access; tied to no record (`action_item_id` 0), sent after the action. No profile, no mail.

@@ -6,7 +6,7 @@ description: Steps BK6-BK10 of plans/appointment-booking.md: Workspace calendar 
 ## Which steps are there?
 - Sizes, tests and memory rules as in `appointment-booking-steps.md`; BK6, BK7 and BK8 run at once after BK3 and BK4.
 
-- BK6 (S) Workspace calendar. After BK3 and BK5.
+- BK6 (S) Workspace calendar. After BK3 and BK5. The agenda's status changes call `pg_booking_changed()` (first slice); the calendar rows wait for the decision of #6302 (a booking on `ws_events` needs a kind and a link; calendar sync carries only tasks today).
   - A confirmed booking writes a `ws_events` row on the staff member's calendar (kind `booking`, linked by id, moved and removed with the booking), so `calendar_sync.php` carries it to their Google or Outlook calendar as it carries tasks; the slot engine's busy ranges read that person's `ws_events` (their synced events included) through one function in `includes/workspace/calendar.php`; the Workspace Today screen lists the day's bookings. A move made in Google is read back as a refused move (the booking owns the time), as `workspace-calendar-read.md` handles refused moves. Memory: `workspace/workspace-bookings.md`.
 
 - BK7 (S) My bookings and the manage page. After BK4 and BK5.
