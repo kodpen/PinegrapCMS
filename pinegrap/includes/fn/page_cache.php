@@ -189,7 +189,8 @@ function pg_page_cache_strip_token($html, $token)
 
 /**
  * The names of the cookies a list of response headers sets, as
- * headers_list() gives them.
+ * headers_list() gives them, without the experiment bucket (pg_exp), which
+ * keeps a page cacheable.
  *
  * @param array $headers
  * @return array
@@ -199,7 +200,9 @@ function pg_page_cache_set_cookie_names(array $headers)
     $names = array();
 
     foreach ($headers as $header) {
-        if (preg_match('/^set-cookie:\s*([^=;\s]+)\s*=/i', (string) $header, $match)) {
+        // The experiment bucket (pg_exp) is not a personal cookie: the page
+        // cache keeps one copy per variant.
+        if (preg_match('/^set-cookie:\s*([^=;\s]+)\s*=/i', (string) $header, $match) && ($match[1] !== 'pg_exp')) {
             $names[] = $match[1];
         }
     }

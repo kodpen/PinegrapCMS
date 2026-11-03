@@ -461,6 +461,10 @@ function pg_consent_catalogue($content)
         $catalogue['necessary'][] = array(PG_WISHLIST_COOKIE, true, lang('Remembers the products you saved to your favourites before signing in.'));
     }
 
+    // A page experiment keeps the variant a visitor was shown
+    // (pg_experiment_bucket_write()); written only while one runs.
+    $catalogue['necessary'][] = array('pg_exp', true, lang('Keeps showing you the same version of a page while the site compares two versions of it.'));
+
     $tracking = defined('VISITOR_TRACKING') && VISITOR_TRACKING;
 
     if ($tracking) {
@@ -678,6 +682,7 @@ function pg_consent_ui_keys()
     return array(
         'Keeps your visit together: the cart, signing in and the steps of a form.',
         'Keeps you signed in.',
+        'Keeps showing you the same version of a page while the site compares two versions of it.',
         'Remembers whether you chose to stay signed in.',
         'Remembers the desktop or mobile view you picked.',
         'Remembers your cookie choices.',
