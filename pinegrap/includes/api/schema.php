@@ -1505,6 +1505,117 @@ function api_schema() {
 
 
 		array(
+			'id' => 'store.arrival_dates.list',
+			'method' => 'GET',
+			'path' => '/store/arrival-dates',
+			'scope' => 'orders:read',
+			'handler' => 'api_store_arrival_dates_list',
+			'returns' => array('list' => 'StoreArrivalDate'),
+			'summary' => 'Arrival dates',
+			'description' => 'The arrival dates checkout offers for special days (an order placed before a shipping method\'s cut-off arrives on the date), with their shipping cut-offs, in checkout order. Dates are YYYY-MM-DD, null when unset. One page.',
+			'params' => array()
+		),
+
+		array(
+			'id' => 'store.arrival_dates.get',
+			'method' => 'GET',
+			'path' => '/store/arrival-dates/{id}',
+			'scope' => 'orders:read',
+			'handler' => 'api_store_arrival_dates_get',
+			'returns' => 'StoreArrivalDate',
+			'summary' => 'One of the arrival dates',
+			'description' => 'One row as GET /store/arrival-dates lists it.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.arrival_dates.create',
+			'method' => 'POST',
+			'path' => '/store/arrival-dates',
+			'scope' => 'store:write',
+			'handler' => 'api_store_arrival_dates_create',
+			'dry_run' => true,
+			'returns' => 'StoreArrivalDate',
+			'status' => 201,
+			'summary' => 'Create an arrival date',
+			'description' => 'Adds an arrival date, as the arrival date screen does. The screen\'s checks decide: a description with < or > (checkout prints it as HTML), a blank name, a missing or impossible date, an end before the start are 422; so is a shipping cut-off the screen would leave out.',
+			'params' => array(
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The name checkout shows.'),
+				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The line under the name at checkout.'),
+				array('name' => 'code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The code orders keep.'),
+				array('name' => 'arrival_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'The day the order arrives, YYYY-MM-DD. Required unless custom is true.'),
+				array('name' => 'start_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'required' => true, 'description' => 'The first day checkout offers it, YYYY-MM-DD.'),
+				array('name' => 'end_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'required' => true, 'description' => 'The last day checkout offers it, YYYY-MM-DD, not before start_date.'),
+				array('name' => 'enabled', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether checkout offers it. Defaults to true.'),
+				array('name' => 'default', 'in' => 'body', 'type' => 'bool', 'description' => 'true makes it the arrival date checkout selects first and takes the switch off every other one.'),
+				array('name' => 'sort_order', 'in' => 'body', 'type' => 'int', 'min' => -32768, 'max' => 32767, 'description' => 'Its place in the checkout list, smallest first.'),
+				array('name' => 'custom', 'in' => 'body', 'type' => 'bool', 'description' => 'true: the customer enters the day at checkout; arrival_date is then not needed.'),
+				array('name' => 'custom_maximum_arrival_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'With custom: the latest day a customer may enter, YYYY-MM-DD; empty for none.'),
+				array('name' => 'shipping_cutoffs', 'in' => 'body', 'type' => 'list', 'of' => array('shipping_method_id' => 'integer', 'date_and_time' => 'string'), 'max_items' => 100, 'description' => 'Replaces the shipping cut-offs: per shipping method, the last moment (YYYY-MM-DDTHH:MM, site time) an order can be placed to arrive on the date, between start_date and end_date, one per method. An empty list removes them; left out, they stay as stored.')
+			)
+		),
+
+		array(
+			'id' => 'store.arrival_dates.update',
+			'method' => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path' => '/store/arrival-dates/{id}',
+			'scope' => 'store:write',
+			'handler' => 'api_store_arrival_dates_update',
+			'dry_run' => true,
+			'returns' => 'StoreArrivalDate',
+			'summary' => 'Change an arrival date',
+			'description' => 'Only the fields sent change; shipping_cutoffs, when sent, replaces them all. Without shipping_cutoffs the stored ones stay, and new dates that leave one of them out are 422. PATCH is accepted as well; on an IIS server send POST.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The name checkout shows.'),
+				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The line under the name at checkout.'),
+				array('name' => 'code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The code orders keep.'),
+				array('name' => 'arrival_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'The day the order arrives, YYYY-MM-DD. Required unless custom is true.'),
+				array('name' => 'start_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'The first day checkout offers it, YYYY-MM-DD.'),
+				array('name' => 'end_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'The last day checkout offers it, YYYY-MM-DD, not before start_date.'),
+				array('name' => 'enabled', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether checkout offers it. Defaults to true.'),
+				array('name' => 'default', 'in' => 'body', 'type' => 'bool', 'description' => 'true makes it the arrival date checkout selects first and takes the switch off every other one.'),
+				array('name' => 'sort_order', 'in' => 'body', 'type' => 'int', 'min' => -32768, 'max' => 32767, 'description' => 'Its place in the checkout list, smallest first.'),
+				array('name' => 'custom', 'in' => 'body', 'type' => 'bool', 'description' => 'true: the customer enters the day at checkout; arrival_date is then not needed.'),
+				array('name' => 'custom_maximum_arrival_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'With custom: the latest day a customer may enter, YYYY-MM-DD; empty for none.'),
+				array('name' => 'shipping_cutoffs', 'in' => 'body', 'type' => 'list', 'of' => array('shipping_method_id' => 'integer', 'date_and_time' => 'string'), 'max_items' => 100, 'description' => 'Replaces the shipping cut-offs: per shipping method, the last moment (YYYY-MM-DDTHH:MM, site time) an order can be placed to arrive on the date, between start_date and end_date, one per method. An empty list removes them; left out, they stay as stored.')
+			)
+		),
+
+		array(
+			'id' => 'store.arrival_dates.delete',
+			'method' => 'DELETE',
+			'path' => '/store/arrival-dates/{id}',
+			'scope' => 'store:write',
+			'handler' => 'api_store_arrival_dates_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an arrival date',
+			'description' => 'Deletes the arrival date outright with its shipping cut-offs, as the arrival date screen does. Orders keep the date they were placed with. Cannot be undone.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.arrival_dates.delete_post',
+			'method' => 'POST',
+			'path' => '/store/arrival-dates/{id}/delete',
+			'scope' => 'store:write',
+			'handler' => 'api_store_arrival_dates_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an arrival date, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/arrival-dates/{id}, for clients that cannot send DELETE.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
 			'id' => 'store.ship_date_adjustments.list',
 			'method' => 'GET',
 			'path' => '/store/ship-date-adjustments',

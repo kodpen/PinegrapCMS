@@ -8,8 +8,9 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
-// The store's lookup lists over the external API: ship date adjustments,
-// verified shipping addresses and referral sources. Reads
+// The store's lookup lists over the external API: arrival dates with their
+// shipping cut-offs, ship date adjustments, verified shipping addresses and
+// referral sources. Reads
 // under orders:read, writes under store:write, with the checks of the
 // screens' forms (includes/forms/) and the write path the screens call
 // (includes/fn/store_lookups.php). No events.
@@ -18,9 +19,373 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/arrival_date_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/ship_date_adjustment_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/verified_shipping_address_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/referral_source_form.php');
+
+/* ---------------------------------------------------------------------------
+   Dates
+   --------------------------------------------------------------------------- */
+
+// A stored date as Y-m-d, null for the zero date.
+function api_store_lookup_date($stored) {
+
+	$iso = pg_date_input_iso((string)$stored);
+
+	return ($iso === '') ? null : $iso;
+
+}
+
+// A date the body sends must be a day in YYYY-MM-DD form: the form helpers
+// also read the site's own order (31/12/2026), which an API never sends.
+function api_store_lookup_check_dates($params, $fields) {
+
+	foreach ($fields as $field) {
+
+		if (isset($params[$field]) && ((string)$params[$field] !== '') && ((preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$params[$field]) !== 1) || (pg_date_input_iso((string)$params[$field]) === ''))) {
+
+			api_fail_validation(lang(array('string' => '{var:1} must be a day in YYYY-MM-DD form.', 'vars' => $field)), $field);
+
+		}
+
+	}
+
+}
+
+/* ---------------------------------------------------------------------------
+   Arrival dates
+   --------------------------------------------------------------------------- */
+
+function api_store_arrival_date_present($row, $cutoffs) {
+
+	$out = array();
+
+	foreach ($cutoffs as $cutoff) {
+
+		$out[] = array(
+			'shipping_method_id' => (int)$cutoff['shipping_method_id'],
+			'date_and_time'      => str_replace(' ', 'T', substr((string)$cutoff['date_and_time'], 0, 16))
+		);
+
+	}
+
+	return array(
+		'id'                          => (int)$row['id'],
+		'name'                        => (string)$row['name'],
+		'description'                 => (string)$row['description'],
+		'code'                        => (string)$row['code'],
+		'arrival_date'                => api_store_lookup_date($row['arrival_date']),
+		'enabled'                     => ((string)$row['status'] === 'enabled'),
+		'start_date'                  => api_store_lookup_date($row['start_date']),
+		'end_date'                    => api_store_lookup_date($row['end_date']),
+		'default'                     => ((int)$row['default_selected'] === 1),
+		'sort_order'                  => (int)$row['sort_order'],
+		'custom'                      => ((int)$row['custom'] === 1),
+		'custom_maximum_arrival_date' => api_store_lookup_date($row['custom_maximum_arrival_date']),
+		'shipping_cutoffs'            => $out
+	);
+
+}
+
+function api_store_arrival_date_schema() {
+
+	return array(
+		'id'                          => 'integer',
+		'name'                        => 'string',
+		'description'                 => 'string',
+		'code'                        => 'string',
+		'arrival_date'                => 'string?',
+		'enabled'                     => 'boolean',
+		'start_date'                  => 'string?',
+		'end_date'                    => 'string?',
+		'default'                     => 'boolean',
+		'sort_order'                  => 'integer',
+		'custom'                      => 'boolean',
+		'custom_maximum_arrival_date' => 'string?',
+		'shipping_cutoffs'            => array(array('shipping_method_id' => 'integer', 'date_and_time' => 'string'))
+	);
+
+}
+
+// An arrival date after a create or an update, as the screen's form posts
+// it: the stored row (or the empty form) with the fields sent laid over it.
+// Pure.
+function api_store_arrival_date_post($row, $params) {
+
+	$date = function ($column) use ($row) {
+
+		return ($row === null) ? '' : pg_date_input_iso((string)$row[$column]);
+
+	};
+
+	$post = array(
+		'name'                        => ($row === null) ? '' : (string)$row['name'],
+		'description'                 => ($row === null) ? '' : (string)$row['description'],
+		'code'                        => ($row === null) ? '' : (string)$row['code'],
+		'arrival_date'                => $date('arrival_date'),
+		'status'                      => (($row === null) || ((string)$row['status'] === 'enabled')) ? '1' : '0',
+		'start_date'                  => $date('start_date'),
+		'end_date'                    => $date('end_date'),
+		'default_selected'            => (($row !== null) && ((int)$row['default_selected'] === 1)) ? '1' : '0',
+		'sort_order'                  => ($row === null) ? '0' : (string)(int)$row['sort_order'],
+		'custom'                      => (($row !== null) && ((int)$row['custom'] === 1)) ? '1' : '0',
+		'custom_maximum_arrival_date' => $date('custom_maximum_arrival_date')
+	);
+
+	foreach (array('name', 'description', 'code', 'arrival_date', 'start_date', 'end_date', 'custom_maximum_arrival_date') as $field) {
+
+		if (array_key_exists($field, $params)) {
+
+			$post[$field] = trim((string)$params[$field]);
+
+		}
+
+	}
+
+	foreach (array('enabled' => 'status', 'default' => 'default_selected', 'custom' => 'custom') as $field => $key) {
+
+		if (array_key_exists($field, $params)) {
+
+			$post[$key] = $params[$field] ? '1' : '0';
+
+		}
+
+	}
+
+	if (array_key_exists('sort_order', $params)) {
+
+		$post['sort_order'] = (string)(int)$params['sort_order'];
+
+	}
+
+	return $post;
+
+}
+
+// Whether a text carries no markup: no < or > at all. Pure.
+function api_store_arrival_date_plain_text($text) {
+
+	return strpbrk((string)$text, '<>') === false;
+
+}
+
+// Stored cut-off rows in the form a body sends them. Pure.
+function api_store_arrival_date_stored_cutoff_items($rows) {
+
+	$items = array();
+
+	foreach ($rows as $row) {
+
+		$items[] = array(
+			'shipping_method_id' => (int)$row['shipping_method_id'],
+			'date_and_time'      => str_replace(' ', 'T', substr((string)$row['date_and_time'], 0, 16))
+		);
+
+	}
+
+	return $items;
+
+}
+
+// The cut-offs a body sends, as they are stored; null when none are sent.
+// One the screen would leave out is refused here instead. Without
+// shipping_cutoffs an update keeps the stored ones, so they are checked
+// against the dates sent: the screen would drop one the new dates leave out.
+function api_store_arrival_date_cutoffs($params, $post, $row) {
+
+	$sent = array_key_exists('shipping_cutoffs', $params);
+
+	if (!$sent && ($row === null)) {
+
+		return null;
+
+	}
+
+	$items = $sent
+		? array_values((array)$params['shipping_cutoffs'])
+		: api_store_arrival_date_stored_cutoff_items(api_rows("SELECT shipping_method_id, date_and_time FROM shipping_cutoffs WHERE arrival_date_id = '" . (int)$row['id'] . "' ORDER BY id ASC"));
+
+	$start = pg_date_input_iso($post['start_date']) . ' 00:00:00';
+	$end = pg_date_input_iso($post['end_date']) . ' 23:59:59';
+
+	$cutoffs = array();
+	$taken = array();
+
+	foreach ($items as $i => $item) {
+
+		$item = is_array($item) ? $item : array();
+
+		$cutoff = pg_arrival_date_form_cutoff($item['shipping_method_id'] ?? '', $item['date_and_time'] ?? '', $start, $end, $taken);
+
+		if (!$sent && ($cutoff === null)) {
+
+			api_fail_validation(lang('A stored shipping cut-off falls outside start_date and end_date: send shipping_cutoffs with the new dates.'), 'shipping_cutoffs');
+
+		}
+
+		if ($sent && (($cutoff === null) || ((int)api_value("SELECT COUNT(*) FROM shipping_methods WHERE id = '" . (int)$cutoff[0] . "'") < 1))) {
+
+			api_fail_validation(lang(array('string' => 'shipping_cutoffs item {var:1}: name a shipping method that exists and no earlier item names, and a date and time between start_date and end_date.', 'vars' => $i + 1)), 'shipping_cutoffs');
+
+		}
+
+		$cutoffs[] = $cutoff;
+		$taken[] = $cutoff[0];
+
+	}
+
+	return $sent ? $cutoffs : null;
+
+}
+
+function api_store_arrival_date_load_or_fail($id) {
+
+	$row = api_row("SELECT * FROM arrival_dates WHERE id = '" . (int)$id . "' LIMIT 1");
+
+	if ($row === null) {
+
+		api_fail_not_found(lang('Arrival Date'));
+
+	}
+
+	return $row;
+
+}
+
+function api_store_arrival_date_answer($id, $status_code = 200) {
+
+	$row = api_store_arrival_date_load_or_fail($id);
+
+	api_ok(api_store_arrival_date_present($row, api_rows("SELECT shipping_method_id, date_and_time FROM shipping_cutoffs WHERE arrival_date_id = '" . (int)$id . "' ORDER BY id ASC")), $status_code);
+
+}
+
+// GET /store/arrival-dates
+function api_store_arrival_dates_list($params) {
+
+	$rows = api_rows("SELECT * FROM arrival_dates ORDER BY sort_order ASC, arrival_date ASC, id ASC");
+
+	$cutoffs = array();
+
+	foreach (api_rows("SELECT arrival_date_id, shipping_method_id, date_and_time FROM shipping_cutoffs ORDER BY id ASC") as $cutoff) {
+
+		$cutoffs[(int)$cutoff['arrival_date_id']][] = $cutoff;
+
+	}
+
+	$out = array();
+
+	foreach ($rows as $row) {
+
+		$out[] = api_store_arrival_date_present($row, $cutoffs[(int)$row['id']] ?? array());
+
+	}
+
+	api_ok_list($out, max(1, count($out)), null);
+
+}
+
+// GET /store/arrival-dates/{id}
+function api_store_arrival_dates_get($params) {
+
+	api_store_arrival_date_answer((int)$params['id']);
+
+}
+
+// The checked arrival date of a create or an update, before anything is
+// written.
+function api_store_arrival_date_prepare($params, $row) {
+
+	api_store_lookup_check_dates($params, array('arrival_date', 'start_date', 'end_date', 'custom_maximum_arrival_date'));
+
+	$post = api_store_arrival_date_post($row, $params);
+
+	// Checkout and the layouts print the description as it is stored, as
+	// HTML; the screen is open to e-commerce users only, so a key takes
+	// plain text.
+	if (array_key_exists('description', $params) && !api_store_arrival_date_plain_text($post['description'])) {
+
+		api_fail_validation(lang('The description takes plain text: no < or > characters.'), 'description');
+
+	}
+
+	foreach (pg_arrival_date_form_errors($post) as $field => $message) {
+
+		api_fail_validation($message, $field);
+
+	}
+
+	$app = api_current_app();
+
+	return array(
+		'id'      => ($row === null) ? 0 : (int)$row['id'],
+		'name'    => trim($post['name']),
+		'values'  => pg_arrival_date_form_values($post, (int)$app['owner']['id']),
+		'cutoffs' => api_store_arrival_date_cutoffs($params, $post, $row)
+	);
+
+}
+
+// Writes what api_store_arrival_date_prepare() checked; the id.
+function api_store_arrival_date_commit($prepared) {
+
+	$saved = pg_store_arrival_date_save($prepared['id'], $prepared['values']);
+
+	if (($saved <= 0) || (($prepared['cutoffs'] !== null) && !pg_store_arrival_date_cutoffs_save($saved, $prepared['cutoffs']))) {
+
+		api_fail_server();
+
+	}
+
+	api_store_region_log(($prepared['id'] <= 0)
+		? 'Arrival date ({var:1}) was created through the API by the application {var:2} (key {var:3}).'
+		: 'Arrival date ({var:1}) was changed through the API by the application {var:2} (key {var:3}).', $prepared['name']);
+
+	return $saved;
+
+}
+
+// POST /store/arrival-dates
+function api_store_arrival_dates_create($params) {
+
+	$prepared = api_store_arrival_date_prepare($params, null);
+
+	api_dry_run_stop('created', 'arrival_date', array('name' => $prepared['name']));
+
+	api_store_arrival_date_answer(api_store_arrival_date_commit($prepared), 201);
+
+}
+
+// POST /store/arrival-dates/{id}
+function api_store_arrival_dates_update($params) {
+
+	$prepared = api_store_arrival_date_prepare($params, api_store_arrival_date_load_or_fail($params['id']));
+
+	api_dry_run_stop('updated', 'arrival_date', array('id' => $prepared['id'], 'name' => $prepared['name']));
+
+	api_store_arrival_date_answer(api_store_arrival_date_commit($prepared));
+
+}
+
+// DELETE /store/arrival-dates/{id} and its POST twin
+function api_store_arrival_dates_delete($params) {
+
+	$row = api_store_arrival_date_load_or_fail($params['id']);
+
+	api_dry_run_stop('deleted', 'arrival_date', array('id' => (int)$row['id'], 'name' => (string)$row['name']));
+
+	if (!pg_store_arrival_date_delete((int)$row['id'])) {
+
+		api_fail_server();
+
+	}
+
+	api_store_region_log('Arrival date ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).', (string)$row['name']);
+
+	api_ok(array('id' => (int)$row['id'], 'deleted' => true));
+
+}
 
 /* ---------------------------------------------------------------------------
    Ship date adjustments

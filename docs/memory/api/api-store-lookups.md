@@ -17,7 +17,7 @@ module: store_lookups
 - Refusals: `pg_referral_source_form_error()` without the other sources first (blank name or code, sort order outside 0-999: 422), then with them (a name or code another source has, any case: 409 `referral_source_taken`). An update lays the sent fields over the stored row (`api_store_referral_source_values()`, pure).
 - `/store/ship-date-adjustments`: list (one page, by prefix and method) and GET one (`orders:read`), create, update, delete and its twin (`store:write`). A row answers `days` and `direction` (the screen's fields) beside the signed `adjustment`; an update without `direction` keeps the stored one. Refusals in the screen's order (`pg_ship_date_adjustment_form_check()`): required fields, three characters, a prefix and method another row has (409 `adjustment_taken`), a method that exists, direction, days (422 otherwise).
 - `/store/verified-addresses`: list (newest first, cursor paged, `state_id` filter, with `state_code`/`country_code`) and GET one, create, update, delete and its twin. Refusals: the screen's required fields, a state that does not exist (422).
-- Arrival dates get their routes in step X8c (`plans/external-api-coverage.md`).
+- `/store/arrival-dates` and its cut-offs: `api-store-arrival-dates.md`.
 
 ## Which id do the edit screens write?
 - `edit_ship_date_adjustment.php` and `edit_verified_shipping_address.php` save and delete the `$id` they checked at the top, never the posted `id` field: a POST to `?id=5` without the field inserted a new row (#6308).
