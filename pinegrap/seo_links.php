@@ -225,25 +225,11 @@ function pg_seo_build_link_graph()
         $candidates[(int) $row['page_id']] = true;
     }
 
-    // Adjacency, page to page only. A link from a product description counts
-    // as an incoming link but not as a step in the click path, because a
-    // visitor reaches the product through a page first.
-    $outgoing = array();
-    $incoming = array();
-
-    foreach (db_items("SELECT from_type, from_id, to_id FROM seo_link WHERE to_type = 'page' AND to_id > 0") as $row) {
-        $to_id = (int) $row['to_id'];
-        $from_id = (int) $row['from_id'];
-
-        $incoming[$to_id] = isset($incoming[$to_id]) ? $incoming[$to_id] + 1 : 1;
-
-        if (((string) $row['from_type']) === 'page') {
-            // Self links say nothing about reachability.
-            if ($from_id !== $to_id) {
-                $outgoing[$from_id][$to_id] = true;
-            }
-        }
-    }
+    // Adjacency, page to page only; self links count neither way
+    // (pg_seo_link_graph_edges()).
+    $edges = pg_seo_link_graph_edges(db_items("SELECT from_type, from_id, to_id FROM seo_link WHERE to_type = 'page' AND to_id > 0"));
+    $outgoing = $edges['outgoing'];
+    $incoming = $edges['incoming'];
 
     // Breadth-first from the home page. Anything the walk never reaches has
     // no click path at all, which is a stronger statement than being deep.

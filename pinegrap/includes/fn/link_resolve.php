@@ -498,3 +498,41 @@ function pg_seo_form_address_names()
 
     return $names;
 }
+
+/**
+ * Edges of the SEO link graph from stored seo_link rows that point at a page:
+ * how many links each page receives and which pages each page links to.
+ *
+ * A page's link to itself (the navigation item of the page being viewed, a
+ * breadcrumb's last step) is neither: counted as incoming it hid an orphan
+ * page whose only link was its own menu item.
+ *
+ * @param array $rows from_type, from_id, to_id
+ * @return array incoming (page id => link count), outgoing (page id => array(page id => true))
+ */
+function pg_seo_link_graph_edges($rows)
+{
+    $incoming = array();
+    $outgoing = array();
+
+    foreach ($rows as $row) {
+        $to_id = (int) $row['to_id'];
+        $from_id = (int) $row['from_id'];
+        $from_page = (((string) $row['from_type']) === 'page');
+
+        if ($from_page && ($from_id === $to_id)) {
+            continue;
+        }
+
+        $incoming[$to_id] = isset($incoming[$to_id]) ? $incoming[$to_id] + 1 : 1;
+
+        // A link from a product description counts as an incoming link but
+        // not as a step in the click path: a visitor reaches the product
+        // through a page first.
+        if ($from_page) {
+            $outgoing[$from_id][$to_id] = true;
+        }
+    }
+
+    return array('incoming' => $incoming, 'outgoing' => $outgoing);
+}
