@@ -5570,6 +5570,9 @@ function ws_change_write_offer($viewer, $action, $record, $values)
 
     ws_change_log(lang(array('string' => 'Offer ({var:1}) was changed in the Workspace, on Claude\'s proposal.', 'vars' => (string) $record['code'])));
 
+    $enabled = (string) db_value("SELECT status FROM offers WHERE id = '" . $id . "'");
+    pg_announce('offer.updated', array('id' => $id, 'code' => (string) $record['code'], 'enabled' => ($enabled === 'enabled')));
+
     return array('ok' => true, 'error' => '', 'id' => $id);
 }
 

@@ -3596,6 +3596,54 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'offers.create',
+			'method'  => 'POST',
+			'path'    => '/offers',
+			'scope'   => 'offers:write',
+			'handler' => 'api_offers_create',
+			'dry_run' => true,
+			'status'  => 201,
+			'returns' => 'Offer',
+			'summary' => 'Create an offer with its conditions and results',
+			'description' => 'Builds an offer as the offer editor saves one, in the shape GET /offers/{id} answers: conditions the cart has to meet and actions (results) it then gets. Only code is required; a new offer is enabled, starts today, has no end and applies only the best offer, as in the editor. Condition types: subtotal {amount}, products {product_ids, quantity}, product_group {group_ids, quantity}, cart_quantity {quantity}, usage_limit {total_limit, customer_limit}, new_customer {mode: no_orders, registered or both; days}; each type once. Result types: discount_order {amount or percentage, tiers [{min_subtotal, percentage}]}, discount_product {target: product, group or cheapest; product_id or group_id; amount or percentage}, add_product {product_id, quantity, amount or percentage, both left out for the gift at full price}, discount_shipping {percentage, shipping_method_ids}. Amounts are minor units, percentages whole numbers 0-100, counts whole numbers; a field a type does not take is refused. An offer with no condition or no result is saved and reported incomplete, as in the editor. Offers may share a code; 409 code_used_by_key_code when a key code already has it (checkout would apply the offer and the key code would stop working). Send an Idempotency-Key: a retry without one creates a second offer. Announces offer.created.',
+			'params'  => array(
+				array('name' => 'code',                  'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'What the shopper types, or the name the offer is known by when require_code is false.'),
+				array('name' => 'description',           'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The message the offer shows.'),
+				array('name' => 'enabled',               'in' => 'body', 'type' => 'bool', 'description' => 'true when left out.'),
+				array('name' => 'require_code',          'in' => 'body', 'type' => 'bool', 'description' => 'Applies only when the shopper types the code (or one of its key codes). false when left out.'),
+				array('name' => 'start_date',            'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD; today when left out.'),
+				array('name' => 'end_date',              'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'YYYY-MM-DD, not before start_date; empty, null or left out for an offer with no end.'),
+				array('name' => 'scope',                 'in' => 'body', 'type' => 'enum', 'values' => array('order', 'recipient'), 'description' => 'Whether the conditions are met by the whole order or by each recipient\'s items. order when left out.'),
+				array('name' => 'multiple_recipients',   'in' => 'body', 'type' => 'bool', 'description' => 'With scope recipient: the offer may apply to more than one recipient.'),
+				array('name' => 'only_apply_best_offer', 'in' => 'body', 'type' => 'bool', 'description' => 'true when left out.'),
+				array('name' => 'upsell',                'in' => 'body', 'type' => 'object', 'description' => '{enabled, message (255), trigger_subtotal (minor units), trigger_quantity, button_label (50)}: the nudge shown to a shopper close to the offer. Kept off unless a subtotal, products, product_group or cart_quantity condition gives it something to count down.'),
+				array('name' => 'conditions',            'in' => 'body', 'type' => 'list', 'of' => array('type' => 'string', 'amount' => 'integer', 'quantity' => 'integer', 'product_ids' => 'integer[]', 'group_ids' => 'integer[]', 'total_limit' => 'integer', 'customer_limit' => 'integer', 'mode' => 'string', 'days' => 'integer'), 'max_items' => 6, 'description' => 'Objects with a type and its fields, listed in the description.'),
+				array('name' => 'actions',               'in' => 'body', 'type' => 'list', 'of' => array('type' => 'string', 'amount' => 'integer', 'percentage' => 'integer', 'tiers' => array(array('min_subtotal' => 'integer', 'percentage' => 'integer')), 'target' => 'string', 'product_id' => 'integer', 'group_id' => 'integer', 'quantity' => 'integer', 'shipping_method_ids' => 'integer[]'), 'max_items' => 20, 'description' => 'Objects with a type and its fields, listed in the description.')
+			)
+		),
+
+		array(
+			'id'      => 'offers.duplicate',
+			'method'  => 'POST',
+			'path'    => '/offers/{id}/duplicate',
+			'scope'   => 'offers:write',
+			'handler' => 'api_offers_duplicate',
+			'dry_run' => true,
+			'status'  => 201,
+			'returns' => 'Offer',
+			'summary' => 'Duplicate an offer under a new code',
+			'description' => 'The offer screen\'s Duplicate, saved at once: a new offer with the source\'s settings, conditions and results and the code sent. The fields sent replace the source\'s; a date sent makes the dates a range (end_date empty or null for no end). The source is not changed. 409 code_used_by_key_code as for POST /offers. Send an Idempotency-Key: a retry without one makes a second copy. Announces offer.created.',
+			'params'  => array(
+				array('name' => 'id',          'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'code',        'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The new offer\'s code; it may be the source\'s own.'),
+				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The message the copy shows; the source\'s when left out.'),
+				array('name' => 'enabled',     'in' => 'body', 'type' => 'bool', 'description' => 'The source\'s switch when left out.'),
+				array('name' => 'start_date',  'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD.'),
+				array('name' => 'end_date',    'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'YYYY-MM-DD, or empty or null for no end.')
+			)
+		),
+
+		array(
 			'id'      => 'offers.update',
 			'method'  => 'POST',
 			'also_accepts' => array('PATCH'),
@@ -3605,7 +3653,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'Offer',
 			'summary' => 'Switch an offer on or off, reword it or move its dates',
-			'description' => 'The offer\'s own row, the way the offer editor writes it: dates are YYYY-MM-DD, an empty end_date is an offer that runs until it is switched off, and the end may not come before the start. The conditions and the results are not writable here; an offer the editor marks incomplete stays incomplete, and switching it on does not make it do anything at checkout.',
+			'description' => 'The offer\'s own row, the way the offer editor writes it: dates are YYYY-MM-DD, an empty end_date is an offer that runs until it is switched off, and the end may not come before the start. The conditions and the results are not writable here; an offer the editor marks incomplete stays incomplete, and switching it on does not make it do anything at checkout. Announces offer.updated.',
 			'params'  => array(
 				array('name' => 'id',          'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'enabled',     'in' => 'body', 'type' => 'bool'),
@@ -3624,7 +3672,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => array('id' => 'integer', 'code' => 'string', 'deleted' => 'boolean', 'offer_status' => 'string'),
 			'summary' => 'Delete an offer',
-			'description' => 'The only write this resource has: offers can be read and removed, not created or edited. An offer is a rule tree - the conditions the cart has to meet and the results it then gets - and building one belongs with the editor that knows those rules. Removal takes the offer, its conditions, and the rule and result rows no other offer still uses. There is no recycle bin for offers, here or in the panel, so this cannot be undone. An offer whose offer_status is active is refused with 409 offer_active unless force=true is sent: an operator removing a live campaign is looking at the shop while they do it, and an application is not. A default IIS install answers DELETE itself before PHP is reached: POST /offers/{id}/delete does the same thing and always arrives.',
+			'description' => 'Removal takes the offer, its conditions, and the rule and result rows no other offer still uses. There is no recycle bin for offers, here or in the panel, so this cannot be undone. An offer whose offer_status is active is refused with 409 offer_active unless force=true is sent: an operator removing a live campaign is looking at the shop while they do it, and an application is not. Announces offer.deleted. A default IIS install answers DELETE itself before PHP is reached: POST /offers/{id}/delete does the same thing and always arrives.',
 			'params'  => array(
 				array('name' => 'id',    'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'force', 'in' => 'query', 'type' => 'bool', 'description' => 'Remove the offer even though it is running today.')

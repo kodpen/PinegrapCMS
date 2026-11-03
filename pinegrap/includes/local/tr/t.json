@@ -6463,6 +6463,7 @@
     "taken back": "indirilir",
     "taken off the calculated VAT": "hesaplanan KDV'den düşülüyor",
     "taking a fresh one": "yenisini almak",
+    "target must be one of: product, group, cheapest": "target şunlardan biri olmalıdır: product, group, cheapest",
     "task": "görev",
     "task e-mail sent to {var:1} people ({var:2} tasks listed)": "görev e-postası {var:1} kişiye gönderildi ({var:2} görev listelendi)",
     "task {var:1} “{var:2}” opened": "{var:1} “{var:2}” görevi açıldı",
@@ -6658,6 +6659,7 @@
     "ticket, pass, price": "bilet, giriş kartı, fiyat",
     "tickets": "biletler",
     "tiered": "kademeli",
+    "tiers must be a list of {min_subtotal, percentage} objects.": "tiers, {min_subtotal, percentage} nesnelerinden oluşan bir liste olmalıdır.",
     "time": "zaman",
     "time was changed on workspace task ({var:1})": "çalışma alanı görevinde ({var:1}) süre değiştirildi",
     "time was written on workspace task ({var:1})": "çalışma alanı görevine ({var:1}) süre yazıldı",
@@ -6697,5 +6699,6 @@
     "two-step verification turned off for user ({var:1})": "kullanıcının iki adımlı doğrulaması kapatıldı ({var:1})",
     "two-step, two factor, 2fa, totp, authenticator, mfa, verification code": "iki adımlı, iki faktörlü, 2fa, totp, doğrulama uygulaması, mfa, doğrulama kodu, two-step, two factor, authenticator, verification code",
     "type": "tür",
-    "type is one of {var:1}.": "type şunlardan biri olmalı: {var:1}."
+    "type is one of {var:1}.": "type şunlardan biri olmalı: {var:1}.",
+    "type must be one of: {var:1}": "type şunlardan biri olmalıdır: {var:1}"
 }
