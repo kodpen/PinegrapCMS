@@ -2137,6 +2137,137 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Campaign profiles -------------------------------------------- */
+
+		array(
+			'id'      => 'campaigns.profiles.list',
+			'method'  => 'GET',
+			'path'    => '/campaigns/profiles',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaign_profiles_list',
+			'returns' => array('list' => 'CampaignProfile'),
+			'summary' => 'Campaign profiles',
+			'description' => 'The profiles that make a campaign by themselves when something happens (a reservation, a form, an order, a booking, another campaign sent), newest first, cursor paged. The campaigns a profile made are listed by GET /campaigns?profile_id=. An account with the e-mail right but the user role sees only the profiles it created, as on the profile screens.',
+			'params'  => array(
+				array('name' => 'action',  'in' => 'query', 'type' => 'enum', 'values' => array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent', 'order_abandoned', 'order_completed', 'order_review_request', 'order_shipped', 'order_delivered', 'product_ordered', 'subscription_renewed', 'subscription_failed', 'subscription_cancelled', 'subscription_price_changed', 'booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled')),
+				array('name' => 'enabled', 'in' => 'query', 'type' => 'bool'),
+				array('name' => 'q',       'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the name.'),
+				array('name' => 'limit',   'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.profiles.get',
+			'method'  => 'GET',
+			'path'    => '/campaigns/profiles/{id}',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaign_profiles_get',
+			'returns' => 'CampaignProfile',
+			'summary' => 'One campaign profile',
+			'description' => 'One profile as GET /campaigns/profiles lists it.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.profiles.create',
+			'method'  => 'POST',
+			'path'    => '/campaigns/profiles',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaign_profiles_create',
+			'dry_run' => true,
+			'returns' => 'CampaignProfile',
+			'status'  => 201,
+			'summary' => 'Create a campaign profile',
+			'description' => 'Adds a profile with the checks of the profile screen: a value the screen refuses is 422, and so is a calendar event, custom form, followed profile, product or page that does not exist or the owner may not pick (a user-role account: a calendar it was given, a form in a folder it may edit, a profile it created), and a profile that would follow one that follows it. A name another profile has is 409 campaign_profile_name_taken.',
+			'params'  => array(
+				array('name' => 'name',            'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'No other profile may have it.'),
+				array('name' => 'enabled',         'in' => 'body', 'type' => 'bool', 'description' => 'Whether it makes campaigns. A new profile is enabled.'),
+				array('name' => 'action',          'in' => 'body', 'type' => 'enum', 'values' => array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent', 'order_abandoned', 'order_completed', 'order_review_request', 'order_shipped', 'order_delivered', 'product_ordered', 'subscription_renewed', 'subscription_failed', 'subscription_cancelled', 'subscription_price_changed', 'booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled'), 'required' => true, 'description' => 'What makes a campaign. The order_*, product_ordered and subscription_* actions need the store and an owner with the e-commerce right; the booking_* actions need the bookings database update (503 service_unavailable before it).'),
+				array('name' => 'action_item_id',  'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The record the action is tied to: the calendar event (calendar_event_reserved), the custom form page (custom_form_submitted), the profile it follows (email_campaign_sent) or the product (product_ordered). Every other action ignores it.'),
+				array('name' => 'subject',         'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true),
+				array('name' => 'format',          'in' => 'body', 'type' => 'enum', 'values' => array('plain_text', 'html'), 'description' => 'plain_text (a new profile\'s) sends body; html sends the page page_id.'),
+				array('name' => 'body',            'in' => 'body', 'type' => 'string', 'max_length' => 200000, 'nullable' => true, 'description' => 'The text of a plain-text campaign.'),
+				array('name' => 'page_id',         'in' => 'body', 'type' => 'int', 'min' => 1, 'nullable' => true, 'description' => 'The page an HTML campaign is made of; required with format html.'),
+				array('name' => 'from_name',       'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'from_email',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'reply_to',        'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'An empty string removes it.'),
+				array('name' => 'bcc',             'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'An empty string removes it.'),
+				array('name' => 'schedule_time',   'in' => 'body', 'type' => 'string', 'max_length' => 5, 'nullable' => true, 'description' => 'HH:MM on the 24-hour clock, site time: the campaign waits for this time of day. An empty string means any time.'),
+				array('name' => 'schedule_length', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999999999, 'description' => 'How many days or hours after (or before) the base.'),
+				array('name' => 'schedule_unit',   'in' => 'body', 'type' => 'enum', 'values' => array('days', 'hours')),
+				array('name' => 'schedule_period', 'in' => 'body', 'type' => 'enum', 'values' => array('before', 'after'), 'description' => 'calendar_event_reserved only; every other action sends after the action.'),
+				array('name' => 'schedule_base',   'in' => 'body', 'type' => 'enum', 'values' => array('action', 'calendar_event_start_time'), 'description' => 'calendar_event_reserved only: counted from the reservation or from the event\'s start. before with action is refused.'),
+				array('name' => 'purpose',         'in' => 'body', 'type' => 'enum', 'values' => array('commercial', 'transactional'), 'description' => 'commercial (a new profile\'s) goes only to contacts who opted in.')
+			)
+		),
+
+		array(
+			'id'           => 'campaigns.profiles.update',
+			'method'       => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'         => '/campaigns/profiles/{id}',
+			'scope'        => 'campaigns:write',
+			'handler'      => 'api_campaign_profiles_update',
+			'dry_run'      => true,
+			'returns'      => 'CampaignProfile',
+			'summary'      => 'Change a campaign profile',
+			'description'  => 'Only the fields sent change; the profile as a whole is then checked as POST /campaigns/profiles checks it. Campaigns the profile already made keep what they were made with. A name another profile has is 409 campaign_profile_name_taken. PATCH is accepted as well; on an IIS server send POST.',
+			'params'       => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',            'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'No other profile may have it.'),
+				array('name' => 'enabled',         'in' => 'body', 'type' => 'bool', 'description' => 'Whether it makes campaigns. A new profile is enabled.'),
+				array('name' => 'action',          'in' => 'body', 'type' => 'enum', 'values' => array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent', 'order_abandoned', 'order_completed', 'order_review_request', 'order_shipped', 'order_delivered', 'product_ordered', 'subscription_renewed', 'subscription_failed', 'subscription_cancelled', 'subscription_price_changed', 'booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled'), 'description' => 'What makes a campaign. The order_*, product_ordered and subscription_* actions need the store and an owner with the e-commerce right; the booking_* actions need the bookings database update (503 service_unavailable before it).'),
+				array('name' => 'action_item_id',  'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The record the action is tied to: the calendar event (calendar_event_reserved), the custom form page (custom_form_submitted), the profile it follows (email_campaign_sent) or the product (product_ordered). Every other action ignores it.'),
+				array('name' => 'subject',         'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'format',          'in' => 'body', 'type' => 'enum', 'values' => array('plain_text', 'html'), 'description' => 'plain_text (a new profile\'s) sends body; html sends the page page_id.'),
+				array('name' => 'body',            'in' => 'body', 'type' => 'string', 'max_length' => 200000, 'nullable' => true, 'description' => 'The text of a plain-text campaign.'),
+				array('name' => 'page_id',         'in' => 'body', 'type' => 'int', 'min' => 1, 'nullable' => true, 'description' => 'The page an HTML campaign is made of; required with format html.'),
+				array('name' => 'from_name',       'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'from_email',      'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'reply_to',        'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'An empty string removes it.'),
+				array('name' => 'bcc',             'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'An empty string removes it.'),
+				array('name' => 'schedule_time',   'in' => 'body', 'type' => 'string', 'max_length' => 5, 'nullable' => true, 'description' => 'HH:MM on the 24-hour clock, site time: the campaign waits for this time of day. An empty string means any time.'),
+				array('name' => 'schedule_length', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999999999, 'description' => 'How many days or hours after (or before) the base.'),
+				array('name' => 'schedule_unit',   'in' => 'body', 'type' => 'enum', 'values' => array('days', 'hours')),
+				array('name' => 'schedule_period', 'in' => 'body', 'type' => 'enum', 'values' => array('before', 'after'), 'description' => 'calendar_event_reserved only; every other action sends after the action.'),
+				array('name' => 'schedule_base',   'in' => 'body', 'type' => 'enum', 'values' => array('action', 'calendar_event_start_time'), 'description' => 'calendar_event_reserved only: counted from the reservation or from the event\'s start. before with action is refused.'),
+				array('name' => 'purpose',         'in' => 'body', 'type' => 'enum', 'values' => array('commercial', 'transactional'), 'description' => 'commercial (a new profile\'s) goes only to contacts who opted in.')
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.profiles.delete',
+			'method'  => 'DELETE',
+			'path'    => '/campaigns/profiles/{id}',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaign_profiles_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a campaign profile',
+			'description' => 'Deletes the profile outright, as its screen does. The campaigns it made stay; profiles that follow it make nothing until they are given another trigger. Cannot be undone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.profiles.delete_post',
+			'method'  => 'POST',
+			'path'    => '/campaigns/profiles/{id}/delete',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaign_profiles_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a campaign profile, addressed as a POST',
+			'description' => 'The same delete as DELETE /campaigns/profiles/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Contact groups ---------------------------------------------- */
 
 		array(

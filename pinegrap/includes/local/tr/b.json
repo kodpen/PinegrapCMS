@@ -489,6 +489,7 @@
     "Booking Rescheduled": "Randevu Taşındı",
     "Booking Row": "Randevu Satırı",
     "Booking Tips": "Randevu İpuçları",
+    "Booking actions wait for the database update that adds bookings.": "Rezervasyon eylemleri, rezervasyonları ekleyen veritabanı güncellemesini bekliyor.",
     "Booking app screens for a fitness studio": "Bir spor stüdyosu için rezervasyon uygulaması ekranları",
     "Booking cancelled": "Randevu iptal edildi",
     "Booking confirmed": "Randevu onaylandı",

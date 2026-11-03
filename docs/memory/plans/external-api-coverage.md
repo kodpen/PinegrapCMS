@@ -25,7 +25,7 @@ description: External API (integration.php): find what the panel can do that the
   - X8b `/store/ship-date-adjustments`, `/store/verified-addresses` CRUD (409 `adjustment_taken`): PR #6308.
   - X8c `/store/arrival-dates` CRUD with `shipping_cutoffs` (a row the screen drops is 422): PR #6332 (`api/api-store-arrival-dates.md`).
 - X9 Campaigns, `campaigns:*`, cut in three:
-  - X9a `/campaigns/profiles` CRUD, one write function shared with the screens.
+  - X9a `/campaigns/profiles` CRUD: PR #6353 (`api/api-campaign-profiles.md`).
   - X9b `GET /campaigns/sms`, event `campaign.sent`.
   - X9c `POST /campaigns` (draft), `.../schedule`; waits for B11 (`add_email_campaign.php`).
 - X10 Calendars create/update/delete, `/calendars/locations` CRUD, `GET /calendars/events/{id}/reservations`. `calendars:*` with the role-3 row rule. Event `calendar_event.reserved`.
