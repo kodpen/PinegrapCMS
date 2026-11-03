@@ -4,8 +4,8 @@ description: Counter sale (add_order.php): cash received short of the total is r
 ---
 
 ## Why is a short cash payment refused?
-- The cash receipt is always written for the invoice's whole total (`local_sale_complete()`); `received` only works out the change. Received 2 on a total of 6 completed the sale, recorded 6 in the till and marked the invoice paid (#5772).
-- Now `local_sale_cash_short($method, $received, $total)` (pure, kurus) gives the shortfall; `local_sale_complete()` refuses it before the order is claimed: "The amount received is X short of the total. Correct it or split the payment." The screen's `cashShort()` (`assets/js/add_order.js`) checks first and puts the cursor back in Received.
+- The cash receipt is always written for the invoice's whole total (`pg_local_order_complete()`); `received` only works out the change. Received 2 on a total of 6 completed the sale, recorded 6 in the till and marked the invoice paid (#5772).
+- Now `local_sale_cash_short($method, $received, $total)` (pure, kurus) gives the shortfall; `pg_local_order_check()` refuses it before the order is claimed: "The amount received is X short of the total. Correct it or split the payment." The screen's `cashShort()` (`assets/js/add_order.js`) checks first and puts the cursor back in Received.
 - An empty Received box is the whole total taken, as before. Only `cash` is checked.
 
 ## How is the next product's quantity read?

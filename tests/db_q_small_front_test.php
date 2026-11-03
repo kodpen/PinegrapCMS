@@ -146,6 +146,7 @@ function db_q_small_front_test_files()
 		'print_packing_slip.php' => 3,
 		'approve_affiliate.php' => 1,
 		'includes/local_sale.php' => 0,
+		'includes/fn/local_order.php' => 0,
 	);
 }
 
