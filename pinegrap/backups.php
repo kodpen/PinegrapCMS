@@ -26,6 +26,7 @@ $liveform = new liveform('backups');
 // Folders (hand-made backups, folder auto backups, the install dumps) and the
 // archives the automatic backup writes. Every download and delete below acts
 // only on a name this list returned, so nothing posted can reach outside it.
+// Newest first, by the time each backup was taken (pg_backup_taken_time()).
 function backup_list($directory){ 
 	$directory_path = 'data/backups/';
 	$l = array();
@@ -34,7 +35,7 @@ function backup_list($directory){
 	}
     foreach(array_diff(scandir($directory_path),array('..','.' )) as $backup_folder){
         if(is_dir($directory_path.'/'.$backup_folder) || (is_file($directory_path.'/'.$backup_folder) && (strtolower(substr($backup_folder, -4)) === '.zip'))){
-            $l[]=$backup_folder;
+            $l[$backup_folder] = pg_backup_taken_time($directory_path.$backup_folder);
         }
     }
     return $l; 
@@ -62,23 +63,30 @@ if ($unfinished_restore !== null) {
 	</div>';
 }
 
-$directory = backup_list(getcwd()); 
+$backup_times = backup_list(getcwd());
+$directory = pg_backup_list_order($backup_times);
 $output_rows =  '';
 if($directory){
 	foreach($directory as $backup_folder) {
 		$backup_is_archive = is_file('data/backups/'.$backup_folder);
+		// A folder without its dump (a delete that stopped half-way, a copy
+		// that never finished) cannot be restored, so it is not offered for
+		// download as if it were a backup.
+		$backup_incomplete = !$backup_is_archive && !is_file('data/backups/'.$backup_folder.'/sql.sql');
+		$backup_time = $backup_times[$backup_folder];
 		$output_rows .= '
 		<tr>
-			<td class="align-middle text-start actions-buttons">
-        	    <button type="submit" name="download_selected" value="Download '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . h(lang('Download')) . '" aria-label="' . h(lang(array('string' => 'Download {var:1}', 'vars' => array($backup_folder)))) . '"><i class="bi bi-download" aria-hidden="true"></i></button>
-        	    <button type="submit" name="delete_selected"   value="Delete '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('backup')))) . '" title="' . h(lang('Delete')) . '" aria-label="' . h(lang(array('string' => 'Delete {var:1}', 'vars' => array($backup_folder)))) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>
+			<td class="align-middle text-start actions-buttons">' . ($backup_incomplete ? '' : '
+        	    <button type="submit" name="download_selected" value="Download '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . h(lang('Download')) . '" aria-label="' . h(lang(array('string' => 'Download {var:1}', 'vars' => array($backup_folder)))) . '"><i class="bi bi-download" aria-hidden="true"></i></button>') . '
+        	    <button type="submit" name="delete_selected"   value="Delete '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " data-confirm-content="' . h(lang(array('string' => 'Delete the backup {var:1} permanently?', 'vars' => array($backup_folder)))) . '" title="' . h(lang('Delete')) . '" aria-label="' . h(lang(array('string' => 'Delete {var:1}', 'vars' => array($backup_folder)))) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>
         	</td>
 			<td>
 				'.h($backup_folder).'
-				<span class="badge rounded-pill ' . ($backup_is_archive ? 'theme-primary' : 'theme-secondary') . ' ms-1">' . ($backup_is_archive ? lang('Archive') : lang('Folder')) . '</span>
+				<span class="badge rounded-pill ' . ($backup_is_archive ? 'theme-primary' : 'theme-secondary') . ' ms-1">' . ($backup_is_archive ? lang('Archive') : lang('Folder')) . '</span>' . ($backup_incomplete ? '
+				<span class="badge rounded-pill theme-warning ms-1" title="' . h(lang('This folder holds no database dump and cannot be restored.')) . '">' . lang('Incomplete') . '</span>' : '') . '
 			</td>
-			<td data-order="' . (int) filemtime('data/backups/'.$backup_folder) . '">
-				<time datetime="' . date('c', filemtime('data/backups/'.$backup_folder)) . '">' . h(get_absolute_time(array('timestamp' => filemtime('data/backups/'.$backup_folder), 'format' => 'plain_text'))) . '</time>
+			<td data-order="' . (int) $backup_time . '">
+				<time datetime="' . date('c', $backup_time) . '">' . h(get_absolute_time(array('timestamp' => $backup_time, 'format' => 'plain_text'))) . '</time>
 			</td>
 			<td>' . h(convert_bytes_to_string($backup_is_archive ? filesize('data/backups/'.$backup_folder) : folderSize('data/backups/'.$backup_folder), 2)) . '</td>
 		</tr>';
@@ -166,7 +174,7 @@ if (!$_POST) {
 	            'extra classes'  => 'setting',
 	            'icon'           => 'setting',
 	            'heading'        => lang('Backup Manager'),
-	            'heading_description' => lang('Add, Edit, Delete or Download Website Backups.'),
+	            'heading_description' => lang('Take, download or delete website backups.'),
 	            'cancel'         => true,
 	        )
 	    ) . '
@@ -177,9 +185,11 @@ if (!$_POST) {
 
 	        <div class="row">
 	            <div class="col-12">
+	                <div class="text-break">
 	                ' . $liveform->output_errors() . '
 	                ' . $liveform->get_warnings() . '
 	                ' . $liveform->output_notices() . '
+	                </div>
 	                ' . $output_restore_notice . '
 
 	                <form name="form" id="backupform" action="backups.php"
@@ -239,7 +249,8 @@ if (!$_POST) {
 	                                            'type'  => 'text',
 	                                            'id'    => 'backup_folder_name',
 	                                            'name'  => 'backup_folder_name',
-	                                            'class' => 'form-control'
+	                                            'class' => 'form-control',
+	                                            'maxlength' => PG_BACKUP_NAME_MAX
 	                                        ]) . '
 	                                        <button type="button" id="backup"
 	                                                class="btn btn-solid theme-success ready">'
@@ -395,7 +406,7 @@ if (!$_POST) {
 		    if (is_file($dir)) {
 		        if (!unlink($dir)) {
 		            $liveform->add_warning(
-		                lang(array('string'=>'File ({var:1}) delete is unsuccess','vars'=>h($dir)))
+		                h(lang(array('string' => 'The backup {var:1} could not be deleted.', 'vars' => array($backup_folder))))
 		            );
 		        } else {
 		            $liveform->add_notice(
@@ -413,33 +424,30 @@ if (!$_POST) {
 		    try {
 		        $it = new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS);
 		        $files = new RecursiveIteratorIterator($it, RecursiveIteratorIterator::CHILD_FIRST);
-		
+
+		        // What could not be removed is counted, not listed: the paths
+		        // are the server's, and one line per entry ran off a phone's
+		        // screen. The backup's name says which one it was.
+		        $delete_left = 0;
+
 		        foreach ($files as $file) {
 		            $path = $file->getRealPath();
-		
-		            if ($file->isDir()) {
-		                if (!rmdir($path)) {
-		                    $liveform->add_warning(
-		                        lang(array('string'=>'Folder ({var:1}) delete is unsuccess','vars'=>h($path)))
-		                    );
-		                }
-		            } else {
-		                if (!unlink($path)) {
-		                    $liveform->add_warning(
-		                        lang(array('string'=>'File ({var:1}) delete is unsuccess','vars'=>h($path)))
-		                    );
-		                }
+
+		            if ($file->isDir() ? !@rmdir($path) : !@unlink($path)) {
+		                $delete_left++;
 		            }
 		        }
-		
+
 		        unset($files);
 		        unset($it);
-		
+
 		        // Try to remove the main directory
-		        if (!rmdir($dir)) {
-		            $liveform->add_warning(
-		                lang(array('string'=>'Folder ({var:1}) delete is unsuccess','vars'=>h($dir)))
-		            );
+		        if (!@rmdir($dir)) {
+		            $delete_message = $delete_left
+		                ? lang(array('string' => 'The backup {var:1} could not be deleted completely: {var:2} files or folders in it were refused. It is listed as incomplete.', 'vars' => array($backup_folder, $delete_left)))
+		                : lang(array('string' => 'The backup {var:1} could not be deleted completely: its files were deleted but the folder was refused. It is listed as incomplete.', 'vars' => array($backup_folder)));
+		            $liveform->add_warning(h($delete_message));
+		            log_activity($delete_message, $_SESSION['sessionusername']);
 		        } else {
 		            $liveform->add_notice(
 		                lang(array('string'=>'Backup ({var:1}) is deleted','vars'=>array($backup_folder)))
@@ -453,7 +461,7 @@ if (!$_POST) {
 		            // the 24 hour interval.
 		            db('UPDATE config SET last_software_auto_backup = 0');
 		        }
-		
+
 		    } catch (UnexpectedValueException $e) {
 		        // Handle inaccessible directory (permission denied, etc.). The
 		        // exception is a PHP warning, which PHP has already HTML-escaped
@@ -461,7 +469,7 @@ if (!$_POST) {
 		        $liveform->add_warning(
 		            lang(array(
 		                'string'=>'Backup folder ({var:1}) cannot be accessed: {var:2}',
-		                'vars'=>array(h($dir), filter_var(ini_get('html_errors'), FILTER_VALIDATE_BOOLEAN) ? $e->getMessage() : h($e->getMessage()))
+		                'vars'=>array(h($backup_folder), filter_var(ini_get('html_errors'), FILTER_VALIDATE_BOOLEAN) ? $e->getMessage() : h($e->getMessage()))
 		            ))
 		        );
 		        // No notice or log here

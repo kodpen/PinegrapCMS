@@ -31,7 +31,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-access.md: Decisions list, access part: public pi.php/si.php and test_secure_mode.php, guest order linking, backup, dashboard and role 3 gates, secrets shown on screen, the TLS escape flag, escape_url().
 - decisions-made-customers.md: Decisions list, customer data (owner, 2026-10-28): marketing boxes stay ticked, İYS never narrows sending, export unchanged, review order and photos, merge re-points all but consent_log
 - decisions-made-data.md: Decisions list, data part: starter dumps, orders.notes, tracking_company, secret_key*, order_items.tax, tracking_code, fixing a released migration, MySQL 5.7, ERP schema approval.
-- decisions-made-files.md: Decisions list, files part: a form file no view shows stays refused in a public folder; RSS media counts as shown with its record; folders and files are managed in the File Manager
+- decisions-made-files.md: Decisions list, files part: form files no view shows stay refused; RSS media counts as shown with its record; folders and files live in the File Manager; chat attachments open only for the sides
 - decisions-made-marketplace.md: Decisions list, marketplace part: n11 orders of products shipped from the n11 warehouse are not imported.
 - decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS, the cash-on-delivery code's orders, the member's SMS sign-in code.
 - decisions-made-panel-2.md: Decisions list, panel part 2 (2026-11-02 on): no Site Settings row in the main menu; menu icons in two colours; app-like screens print no alert boxes; user-rights trees keep the Workspace folder

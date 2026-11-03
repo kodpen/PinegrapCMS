@@ -63,6 +63,17 @@ function pg_panel_software_backup($request, $action)
     // (pg_backup_folder_name()), so they do not become underscores.
     $backup_folder_name = pg_backup_folder_name($backup_name);
 
+    // The install dumps, the automatic backups and the pre-upgrade dumps
+    // are the software's: every step refuses them, so no step can clear or
+    // rewrite one, whichever step a request starts at.
+    if (($backup_folder_name !== '') && pg_backup_name_reserved($backup_folder_name)) {
+        echo encode_json(array(
+            'status' => 'error',
+            'message' => lang(array('string' => 'The name {var:1} belongs to a backup the software keeps. Choose another name.', 'vars' => array(h($backup_folder_name))))
+        ));
+        exit();
+    }
+
     // Only the first step may start without a name; it makes its own. Every
     // later step works on a folder that must already exist under a name.
     if (($backup_folder_name === '') && ($step != 'create_backup_folder')) {
@@ -83,16 +94,42 @@ function pg_panel_software_backup($request, $action)
                 $backup_folder_name = pg_backup_folder_name($backup_name);
             }
 
-            //check if directory is exists
-            //if not exist Create directory.
-            if (!file_exists($backup_location . $backup_folder_name)) {
-                mkdir($backup_location . $backup_folder_name, 0777, true);
+            // A backup under this name already exists: the next steps would
+            // replace its dump, files and layouts, so the screen asks first
+            // and sends the step again with "overwrite".
+            if (file_exists($backup_location . $backup_folder_name) && empty($request['overwrite'])) {
+                echo encode_json(array(
+                    'status' => 'confirm',
+                    'backup_name' => $backup_folder_name,
+                    'message' => lang(array('string' => 'A backup named {var:1} already exists. Replace it with a new backup?', 'vars' => array($backup_folder_name)))
+                ));
+                exit();
             }
+
+            if (!is_dir($backup_location . $backup_folder_name)) {
+                @mkdir($backup_location . $backup_folder_name, 0777, true);
+            }
+
+            // mkdir() fails without a word when the folder is not writable
+            // or the path is too long for the system; the later steps would
+            // then fail on a missing folder with a library message.
+            if (!is_dir($backup_location . $backup_folder_name) || !pg_dir_writable($backup_location . $backup_folder_name)) {
+                $mkdir_reason = pg_dir_writable($backup_location)
+                    ? lang('the server refused a folder of that name.')
+                    : lang('the data/backups folder does not accept new files.');
+                log_activity(lang(array('string' => 'Software Backup ({var:1}) failed: {var:2}', 'vars' => array($backup_folder_name, $mkdir_reason))), $_SESSION['sessionusername']);
+                echo encode_json(array(
+                    'status' => 'error',
+                    'message' => h(lang(array('string' => 'The backup folder could not be created: {var:1}', 'vars' => array($mkdir_reason))))
+                ));
+                exit();
+            }
+
             //return success json output
             $response = array(
                 'status' => 'success',
                 'backup_name' => $backup_folder_name,
-                'message' => lang('Site backup folder create successful. Mysql dumb creating, please wait...')
+                'message' => lang('The backup folder is ready. Writing the database dump, please wait...')
             );
             echo encode_json($response);
             exit();
@@ -103,6 +140,9 @@ function pg_panel_software_backup($request, $action)
             // first backup Mysql because, if there is timeout when file copy mysql important for us. so even timeout to copy files or layouts we have mysql dump anyway.
             // The same dump the automatic backup writes: pg_backup_dump_database().
             try {
+                if (!is_dir($backup_location . $backup_folder_name) || !pg_dir_writable($backup_location . $backup_folder_name)) {
+                    throw new \Exception(lang('the backup folder is missing or does not accept files.'));
+                }
                 pg_backup_dump_database($backup_location . $backup_folder_name . '/sql.sql');
             } catch (\Exception $e) {
                 $backups_error_message = $e->getMessage();
@@ -113,10 +153,11 @@ function pg_panel_software_backup($request, $action)
                 }
 
                 log_activity(lang(array('string' => 'The database dump for the software backup failed: {var:1}', 'vars' => array($backups_error_message))), $_SESSION['sessionusername']);
-                //return error json output
+                // The dump library speaks English; the sentence around its
+                // reason is the panel's language.
                 $response = array(
                     'status' => 'error',
-                    'message' => h($backups_error_message)
+                    'message' => h(lang(array('string' => 'The database dump could not be written: {var:1}', 'vars' => array($backups_error_message))))
                 );
                 echo encode_json($response);
                 exit();
@@ -126,7 +167,7 @@ function pg_panel_software_backup($request, $action)
             $response = array(
                 'status' => 'success',
                 'backup_name' => $backup_folder_name,
-                'message' => lang('Mysql dumb created in backup directory successful. Clearing old files in directory, please wait...')
+                'message' => lang('The database dump is written. Clearing the old files, please wait...')
             );
             echo encode_json($response);
             exit();
@@ -239,7 +280,7 @@ function pg_panel_software_backup($request, $action)
             $response = array(
                 'status' => 'success',
                 'backup_name' => $backup_folder_name,
-                'message' => lang('Htaccess create in backup directory successful. Check backup folder create success or not, please wait...')
+                'message' => lang('The backup folder is closed to web access. Checking that the backup is complete, please wait...')
             );
             echo encode_json($response);
             exit();
@@ -254,14 +295,14 @@ function pg_panel_software_backup($request, $action)
                         if (file_exists($backup_location . $backup_folder_name . '/layouts')) {
                             $liveform_backups = new liveform('backups');
 
-                            log_activity(lang(array('string' => 'Software Backup ({var:1}) Success', 'vars' => array($backup_folder_name))), $_SESSION['sessionusername']);
+                            log_activity(lang(array('string' => 'Backup ({var:1}) created.', 'vars' => array($backup_folder_name))), $_SESSION['sessionusername']);
                             // Add notice to liveform.
-                            $liveform_backups->add_notice('Software Backup (' . $backup_folder_name . ') Create Success.');
+                            $liveform_backups->add_notice(h(lang(array('string' => 'Backup ({var:1}) created.', 'vars' => array($backup_folder_name)))));
                             //return success json output
                             $response = array(
                                 'status' => 'success',
                                 'backup_name' => $backup_folder_name,
-                                'message' => lang('Software Backup process Successful. Page will be refresh...')
+                                'message' => lang('The backup is complete. The page will refresh...')
                             );
                             echo encode_json($response);
                             exit();
@@ -274,7 +315,7 @@ function pg_panel_software_backup($request, $action)
             //return error json output
             $response = array(
                 'status' => 'error',
-                'message' => lang('software Backup check has error. backup maybe still created but we cant provide.')
+                'message' => lang('The backup could not be checked; its folder may still have been written.')
             );
             echo encode_json($response);
             exit();
@@ -286,7 +327,7 @@ function pg_panel_software_backup($request, $action)
             //return error json output
             $response = array(
                 'status' => 'error',
-                'message' => lang('software Backup steps error.')
+                'message' => lang('Unknown backup step.')
             );
             echo encode_json($response);
             exit();
@@ -405,7 +446,7 @@ function pg_panel_software_update($request, $action)
                 }
 
                 if ($server['error'] === 'curl_error') {
-                    log_activity(lang(array('string' => 'software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($server['curl_errno'], $server['curl_error']))));
+                    log_activity(pg_update_check_error_text($server));
                     respond(array(
                         'status' => 'error',
                         'message' => lang('No access to the update server.') . pg_curl_tls_hint($server['curl_errno'], true)
@@ -413,7 +454,7 @@ function pg_panel_software_update($request, $action)
                 }
 
                 if ($server['error'] !== '') {
-                    log_activity(lang('software update check received an invalid response from the software update server, so it is not known if there is a software update available'));
+                    log_activity(pg_update_check_error_text($server));
                     respond(array(
                         'status' => 'error',
                         'message' => lang('No response from the update server.')
@@ -455,9 +496,7 @@ function pg_panel_software_update($request, $action)
             }
 
             if ($server['error'] === 'curl_error') {
-                log_activity(
-                    lang(array('string' => 'software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($server['curl_errno'], $server['curl_error'])))
-                );
+                log_activity(pg_update_check_error_text($server));
                 //return error json output
                 $response = array(
                     'status' => 'error',
@@ -467,8 +506,17 @@ function pg_panel_software_update($request, $action)
                 exit();
             }
 
+            // An error page (HTTP 500 and the like) names its status.
+            if ($server['error'] === 'http_error') {
+                log_activity(pg_update_check_error_text($server));
+                respond(array(
+                    'status' => 'error',
+                    'message' => lang(array('string' => 'The update server answered with HTTP {var:1}.', 'vars' => array($server['http_status'])))
+                ));
+            }
+
             if ($server['error'] === 'invalid_response') {
-                log_activity(lang('software update check received an invalid response from the software update server, so it is not known if there is a software update available'));
+                log_activity(pg_update_check_error_text($server));
                 //return error json output
                 $response = array(
                     'status' => 'error',

@@ -35,6 +35,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - aws-sigv4-signing.md: includes/fn/aws_sign.php: AWS Signature Version 4 without an SDK (header signing, presigned links), tested against the AWS test suite; used by Amazon SES, written for object storage too
 - background-render.md: pg_background_render(): the one in-process page render of the passes that draw many pages; what it catches, restores and lends; which pages each pass covers and as whom (audit_run.php)
 - backup-folder-download-zip.md: Backup Manager Download of a folder backup: the archive kept inside the folder is rebuilt when the backup was updated after it.
+- backup-manager-names-and-list.md: Backup Manager hand-made backups: the folder name (no basename, 100 characters), reserved names, the overwrite question, step errors, the list's time and order, incomplete folders, delete warnings
 - backup-object-storage.md: The backup destination "S3-compatible storage" (remote type s3): its own card fields mapped onto the shared object storage client, multipart upload, the bucket's retention prune
 - backup-upload-extraction.md: Backup archives: install-screen upload streamed into data/temp and checksum-checked; the file explorer's backup extract/upload and web-root zip extract follow the same rule plus name and size limits.
 - browser-image-preshrink.md: Browser-side pre-shrink of images over server upload limits: when, EXIF orientation check, quality-before-pixels order, shrinkTo/shrinkQuality, blob name.
@@ -88,6 +89,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - image-settings-and-product-upload.md: Image config keys and defaults, product upload pipeline (image_profile=product), files.image_width/height cache rule, optimizable-percent badge cost.
 - image-upload-cap.md: Upload size cap (config.image_upload_max_dimension, 11.0.142, #4700): library uploads above N px shrunk in their own format; 0 off, 2560 on a new site; the doors
 - import-design-fetch.md: How the design importer fetches a page (import_design.php): each hop one api_http_request() with opt-in options, the 5-hop walk and the stream fallback kept, what changed with the move
+- import-my-site-scans.md: Import My Site keeps each scan under its own id with its folder name; long tags and names are cut before the uniqueness check; missing URL parts read as empty
 - indexnow-ping-result.md: The IndexNow ping in update_sitemap_and_ping() logs success only for HTTP 200/202; a refusal (400, 403, 422, 429) logs 'IndexNow ping failed: HTTP <code>'
 - install-command-line.md: php install/index.php install (PR #621): a starter site from PG_INSTALL_* variables without the screen; what it refuses, output and exit status, how the screen's code runs
 - iys-client.md: İYS client (PR #1895): account in connect_apps iys, dry run, daily push of e-mail consent answers and pull of refusals, contacts.iys_email_status, campaign filter
@@ -167,6 +169,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - update-backup-rollback.md: Backup a software update or repair writes before replacing files (pre-update-*.zip) and the rollback on Repair Software: contents, hash record, effect on files and config.version
 - update-beta-builds.md: Beta builds of one version over the Kodpen API (PR #3755): data/update_build.json, when a same-version build is offered (#3204), the re-run after replace, backup/rollback and integrity ref
 - update-channel-stable-beta.md: Update channel (stable/beta): config key, the three channel functions all callers must use, download_assistant stays stable, switching, version format.
+- update-check-errors.md: How the software update check reports a failed answer (HTTP status, cURL, invalid), the checks-off state, and its single Site Log line.
 - update-package-extraction.md: How update packages must be downloaded and extracted (pg_extract_archive, pg_looks_like_zip) so a partial install is never reported as success.
 - update-tls-verification.md: TLS on outgoing cURL: pg_curl_tls() / da_curl_tls(), no silent downgrade, the store from pg_ca_bundle_effective(), ALLOW_INSECURE_UPDATE_TLS; who uses it (classic Stripe and iyzico do not).
 - upload-drop-area-sizes.md: Upload File and Upload Design Files write the drop-area sizes and the too-big refusal in the panel's units and decimal mark, not Dropzone's

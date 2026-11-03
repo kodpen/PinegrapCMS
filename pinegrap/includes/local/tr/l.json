@@ -747,6 +747,7 @@
     "Locked on {var:1}.": "{var:1} üzerinde kilitli.",
     "Locked on {var:1}: {var:2}": "{var:1} üzerinde kilitli: {var:2}",
     "Locked up to {var:1}": "{var:1} dahil kilitli",
+    "Locks this session: the device limit cannot sign it out and the member cannot sign it out from their own screen. Different from the setting \"Refuse new sign-ins when the limit is full\", which only stops new devices.": "Bu oturumu kilitler: cihaz sınırı onu kapatamaz, üye de kendi ekranından kapatamaz. \"Sınır doluyken yeni girişi reddet\" ayarından farklıdır; o ayar yalnız yeni cihazları durdurur.",
     "Log": "Kayıtlar",
     "Log File": "Günlük Dosyası",
     "Log In": "Giriş Yap",

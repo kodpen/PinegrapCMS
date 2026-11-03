@@ -1,6 +1,6 @@
 ---
 name: decisions-made-files
-description: Decisions list, files part: a form file no view shows stays refused in a public folder; RSS media counts as shown with its record; folders and files are managed in the File Manager
+description: Decisions list, files part: form files no view shows stay refused; RSS media counts as shown with its record; folders and files live in the File Manager; chat attachments open only for the sides
 ---
 
 ## Where do these come from?
@@ -12,3 +12,4 @@ description: Decisions list, files part: a form file no view shows stays refused
 
 ## Why are there no folder screens and no classic files list? (owner, 2026-11-01, #4889)
 - The File Manager does their work: the folder screens (`add_folder.php`, `edit_folder.php`) and the classic files list (`view_files.php`) are retired and in `clean_up.php`, and its menu panel carries no Create Folder, Upload or Create File links, only the tree. The root folder's name and the site's default page styles are set in the explorer. Not a lost screen or a missing menu entry; what the explorer does not show is listed in `ui/file-manager-replaces-folder-and-file-screens.md`.
+- Panel chat attachments (#5973): a file referenced by `chat_messages.attachment_file_id` opens only for a signed-in side of that conversation or a role-0 administrator, served `private, no-store`; anyone else is refused as a submitted-form file is (#1989), whatever the folder's permission; copies already in a shared cache fall out within the week. Owner (2026-11-02 night) delegated the question to the architect; decided with the recommended option. Reason: staff conversations may carry personal data, the #1989 principle.
