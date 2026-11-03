@@ -46,14 +46,10 @@ if (!$_POST) {
                 
                 <form  method="post" class="product_attribute_form">
                     ' . get_token_field() . '
-                    ' . pg_product_attribute_form_cards($liveform) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_create" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                    ' . pg_product_attribute_form_layout(
+                        pg_product_attribute_form_cards($liveform),
+                        '
+                                        <button type="submit" id="submit_create" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>') . '
                 </form>
             </div>
         </div>
