@@ -2081,6 +2081,7 @@
     "The field holds the reference code or the address name of a record of that form; several are separated by commas.": "Alan, o formun bir kaydının başvuru kodunu veya adres adını tutar; birden çoksa virgülle ayrılır.",
     "The field holds the reference code or the address name of the other record; several are separated by commas. Only complete records are read, and never a field kept for staff only.": "Alan, diğer kaydın başvuru kodunu veya adres adını tutar; birden çoksa virgülle ayrılır. Yalnızca tamamlanmış kayıtlar okunur, yalnızca personele ayrılmış alanlar hiçbir zaman okunmaz.",
     "The field is required when that field's answer is one of these (as the option's value, upper and lower case alike).": "O alanın cevabı bunlardan biri olduğunda bu alan zorunludur (seçeneğin değeri olarak; büyük ve küçük harf fark etmez).",
+    "The field is shown when that field's answer is one of these; while hidden it is not required and nothing it holds is sent.": "Alan, o alanın yanıtı bunlardan biri olduğunda gösterilir; gizliyken zorunlu değildir ve içindeki hiçbir şey gönderilmez.",
     "The field must have a name. Please type in a name for the field.": "Alanın bir adı olmalıdır. Lütfen alan için bir ad yazın.",
     "The field name cannot contain the following special characters": "Alanın adı şu özel karakterleri içeremez",
     "The field {var:1} is not a text field and cannot be written through the API.": "{var:1} alanı bir metin alanı değil; API üzerinden yazılamaz.",
