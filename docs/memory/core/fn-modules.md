@@ -181,7 +181,7 @@ description: Generated from the module field of the memory files: each includes/
 - `visitor_insights`: [[visitors-ai-section]], [[visitors-speed-section]]
 - `visitor_periods`: [[visitors-screen]]
 - `visitor_report`: [[visitor-report-filters-and-form]]
-- `visitor_retention`: [[visitor-daily-summary]]
+- `visitor_retention`: [[visitor-channel-rule]], [[visitor-daily-summary]]
 - `voice_text`: [[voice-browser-to-text]], [[workspace-voice-browser-route]]
 - `waf_log_list`: [[waf-log-paging]]
 - `waf_notice`: [[waf-ban-notice]]
