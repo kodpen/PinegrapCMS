@@ -21,7 +21,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `commission` (2): done #5113
 - Endpoints `common` (3): clean (an empty name is unchecked on purpose: ui/common-region-shared-form.md)
 - Endpoints `connect` (3): clean (connect, connect_client, connect_user_to_order)
-- Endpoints `contact` (8): #5124 (view_contacts); the rest clean but add_contact, edit_contact: open (held by #5095)
+- Endpoints `contact` (8): #5124 (view_contacts); the rest clean but add_contact, edit_contact: taken by SE
 - Endpoints `container` (3): #5133; view_containers clean
 - Endpoints `country` (2): clean (view_countries: #5144)
 - Endpoints `currency` (3): #5147 (exchange rate 0)
@@ -33,7 +33,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `editor` (4): #5167 (editor_add_file: a closing script tag got out of escape_javascript()); editor_edit_file, editor_select_image, editor_select_page_or_file clean
 - Endpoints `email` (16): clean (access, CSRF and role-3 creator checks on the panel screens; email_a_friend, email_preferences one-click unsubscribe; email_campaign_job is web-callable by design)
 - Endpoints `erp` (77): taken by PC in slices: get_erp_* (12) done #5549 (edoc document sandbox; the rest clean); add_erp_*, edit_erp_* (20) done #5607 (allocation removal; the rest clean); erp_a* to erp_e* (22) done #5622 (cheque step date; the rest clean); erp_i* to erp_w* (23): clean #5643 (gates and areas, tokens before reads, read-only refusal through validate_erp_access(), public invoice and quote links, stock count status checks, escaping, money and period dates)
-- Endpoints `expres` (2): #5265 (a posted recurring payment period was stored unchecked); express_order.php read, the rest clean; open: get_express_order.php (only the output escaping spot-checked: calendar range, custom form content, offer code label and message)
+- Endpoints `expres` (2): #5265 (a posted recurring payment period was stored unchecked); express_order.php read, the rest clean; get_express_order.php taken by SE
 - Endpoints `field` (4): clean (OV; add_field, edit_field, delete_fields, view_fields)
 - Endpoints `file` (6): done #5407 (OV; edit_files ERP rows; add_file, edit_file, get_file ERP and key gates, get_files_for_picker clean)
 - Endpoints `find` (2): clean #6027
