@@ -18,9 +18,9 @@ description: The designer's Prototype view (_sdProtoOpen()): toolbar toggle, fra
 ## How is an arrow drawn or re-pointed (#6171)?
 - A link row of a tree (`PGProtoHotspots.drawable()`: sources href, attrs, btn, text; not a classic menu or region) has a port; dragged to a tab's frame it writes `<env.path><page name>` (the open tab's name as typed), to a chip of a site page, another site or a contact address that chip's href (`hrefTo()`); anchor, hidden, broken chips and shared frames take none. A locked tab draws nothing.
 - `_sdProtoConnect()`: the row's tab (`_sdProtoFrameTab()`, as a row click) is opened first with `_pgTabsSwitch()` and a `_collabBeatNow()` answers its lock; then `hrefPatch()` (a copy of `href`, `_attrs`, `text` or `html`; null when the node no longer holds the href the map showed: the map is read again), `_sdMayEdit(node)` (`'text'` for a link inside text), `saveState()`, the prop written, `_sdSharedMarkEdited()` for a shared frame, `render()`, the map read again. The normal Save writes it (lock, revision, `_pgPageUnchanged()`).
-- Once per opening: a shared component's warning (Save changes it everywhere, no revision), a live page's (it goes live on Publish).
+- Once per opening: a shared component's warning (Save changes it everywhere), a live page's (Publish).
 - Ctrl+Z / Ctrl+Y in the view undo the open tab and read the map again; the editor's document shortcuts skip `#sd-proto` (a Delete there removed the canvas selection).
-- No keyboard way to draw an arrow yet.
+- Keyboard (#6201): L, the menu key or Shift+F10 on a row opens `_sdProtoMenuOpen()`, the targets of `drawTargets()`; a choice calls `_sdProtoConnect()`. Escape refocuses the row; a press outside, a redraw or a close shuts it.
 
 ## What was checked how?
 - `tests/proto_hotspots_test.php` covers the collector, the layout, the print order and the arrow's href and patch; the drag's wiring in the designer was not run in a browser. The view's wiring was run once in headless Chromium on a stub harness (frames, chips, arrows, a row switching the tab and selecting its node); there is no checked-in harness for it.

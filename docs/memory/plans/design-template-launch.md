@@ -20,15 +20,15 @@ description: Plan for the Phone Launch Site template (pinegrap-launch): three mo
 ## Which steps are there?
 - 1 Done (#6163). Data and shared parts: `parts.php` (builders, the phone's data, prices, accessories, press quotes; account bar, header, footer, launch band, page shells, model card, spec table, swatches, form fields, comment thread, staff bar); test `design_template_launch_test.php`.
 
-- 2 Public pages: `pages_public.php` (home, features, camera, specs, compare, about, FAQ).
+- 2 Done (#6189). Public pages: `pages_public.php` (home, features, camera, specs, compare, about, FAQ).
 
-- 3 Shop: `shop.php` (Phones and Accessories groups, `buy`, `accessories`, product, cart, checkout, order, `email_order`).
+- 3 Done (#6202). Shop: `shop.php` (Phones and Accessories groups, `buy`, `accessories`, product, cart, checkout, order, `email_order`).
 
-- 4 Requests: `mail.php`, `requests.php` (`tradein`, `tradein_view`, `my_tradeins`, `staff_tradeins`, `support`, `support_view`, `my_support`, `staff_support`, `privacy`, `email_reply`, notify e-mails).
+- 4 Done (#6193). Requests: `mail.php`, `requests.php` (trade-in and support pages, lists, privacy, e-mails); test `…_requests_test.php`.
 
 - 5 Standard: `standard.php` (contact, inbox, conversation, newsletter as the launch list, Newsroom blog with sample releases, blog post, search, error); test `…_standard_test.php`.
 
-- 6 Account and staff: `account.php`; test `…_account_test.php`.
+- 6 Done (#6213). Account, staff, release form.
 
 - 7 Assembly: `pinegrap-launch.php` (order 74, icon `bi-phone`, look `minimal`, palette `lavender`, group `launch_list`, folders, `plx-` styles, two fonts, search map), shared tests' lists, `designer/design-template-launch.md`, plan deleted; PR body names `[NEW] Added the Phone Launch Site design template`.
 

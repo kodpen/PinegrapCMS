@@ -21,6 +21,7 @@ require_once(dirname(__FILE__) . '/seo.php');
 require_once(dirname(__FILE__) . '/seo_structure.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/page_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_type_pane.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_home.php');
 
 $liveform = new liveform('edit_page');
 
@@ -1512,10 +1513,12 @@ if (!$_POST) {
         
         // if user is above a user role, then deal with home page checkbox
         if ($user['role'] < 3) {
-            $sql_home_page = " page_home = '" . escape($_POST['home'] ?? '') . "',";
+            $home_value = pg_page_home_value($_POST['home'] ?? '');
+            $sql_home_page = " page_home = '" . $home_value . "',";
             
         // else this user does not have access to change the home page property
         } else {
+            $home_value = '';
             $sql_home_page = '';
         }
 
@@ -1780,6 +1783,18 @@ if (!$_POST) {
         if ((string) $name !== (string) $current_page_name) {
             $renamed_said = pg_short_link_page_renamed_messages(pg_short_link_page_renamed($page_id, $current_page_name, $name,
                 ($user['role'] < 3) && (($_POST['name_redirect'] ?? '') == 1), $user['id'], $current_page_folder), PATH);
+        }
+
+        // The site has one home page: a page saved as the home page takes the
+        // flag from every other page, and the next screen names them.
+        if ($home_value === 'yes') {
+            $no_longer_home = pg_page_home_claim($page_id);
+
+            if ($no_longer_home) {
+                $renamed_said['notes'] = array_merge((array) ($renamed_said['notes'] ?? array()), array(
+                    lang(array('string' => 'No longer the home page: {var:1}', 'vars' => array(implode(', ', $no_longer_home)))),
+                ));
+            }
         }
 
         // If this page is a custom form, and pretty URLs were disabled before this update,

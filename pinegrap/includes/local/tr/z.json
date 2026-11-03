@@ -37,10 +37,12 @@
     "Zoom Out (Ctrl+-)": "Uzaklaştır (Ctrl+-)",
     "Zoom controls": "Yakınlaştırma denetimleri",
     "Zoom in": "Yakınlaştır",
+    "Zoom in video without a jump in colour": "Videoda renk sıçraması olmadan yakınlaştırma",
     "Zoom out": "Uzaklaştır",
     "Zoom the canvas in / out": "Canvas yakınlaştır / uzaklaştır",
     "Zoom with the mouse wheel": "Fare tekerleğiyle zoom",
     "Zooming": "Yakınlaşma",
     "zone": "bölge",
-    "zone_ids names a zone that does not exist (GET /store/zones).": "zone_ids var olmayan bir bölgeyi gösteriyor (GET /store/zones)."
+    "zone_ids names a zone that does not exist (GET /store/zones).": "zone_ids var olmayan bir bölgeyi gösteriyor (GET /store/zones).",
+    "zoom, telephoto, periscope, concert": "yakınlaştırma, telefoto, periskop, konser"
 }

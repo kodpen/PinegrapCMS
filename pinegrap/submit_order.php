@@ -293,10 +293,18 @@ function submit_order($type) {
                         "SELECT
                             id,
                             balance,
-                            expiration_date
+                            expiration_date"
+                        . pg_credit_owner_select_sql() . "
                         FROM gift_cards
                         WHERE id = '" . $applied_gift_card['gift_card_id']  . "'")
                         ?: array('id' => ''); // the card was deleted after it was applied
+
+                    // A customer's store credit pays only that customer's order:
+                    // signed out or signed in as someone else, it is dropped as
+                    // a card that is not there.
+                    if (($gift_card['id'] != '') && !pg_credit_card_usable_by($gift_card['user_id'], pg_credit_checkout_user())) {
+                        $gift_card = array('id' => '');
+                    }
 
                     // If a gift card no longer exists, then output error.
                     if ($gift_card['id'] == '') {

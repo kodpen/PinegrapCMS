@@ -19,19 +19,19 @@ description: Plan for the Mobile App Developer template (pinegrap-appstudio): ow
 ## Which steps are there?
 - 1 Done (#6160). Data and shared parts: `parts.php` (data, samples, pick lists, header, footer, cards, store buttons, form fields, comment thread, staff bar); test `design_template_appstudio_test.php`.
 
-- 2 Public pages: `pages_public.php` (home, services with packages, process, about, FAQ, press kit).
+- 2 Done (#6196). `pages_public.php`; home widgets `home_apps`, `home_releases`, `home_posts`; `hire?type=`.
 
-- 3 Apps: `apps.php` (`app_new` with the Apps collection and samples, `apps` with filters, `app` record page, the home's list widgets).
+- 3 Done (#6199). Apps: `apps.php` (`app_new` with the Apps collection and samples, `apps` with filters, `app` record page, home `home_apps`).
 
-- 4 Releases and beta: `releases.php` (`release_new` with the Releases collection and samples, `releases` with `?app=`, `beta`, `beta_view`, `staff_beta`).
+- 4 Done (#6195). Releases and beta: `releases.php` (also `home_releases`); test `…_releases_test.php`.
 
 - 5 Support: `mail.php`, `support.php` (`support`, `support_view`, `my_tickets`, `staff_tickets`, `privacy`, `email_reply`, notify e-mails).
 
-- 6 Projects: `projects.php` (`hire`, `project_view`, `my_projects`, `staff_projects`, notify e-mails).
+- 6 Done (#6194). Projects: `projects.php` (`hire`, `project_view`, `my_projects`, `staff_projects`, e-mails).
 
-- 7 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Dev Notes", blog post, search, error); test `…_standard_test.php`.
+- 7 Done (#6203): `standard.php` (contact, inbox, conversation, newsletter, blog "Dev Notes", blog post, search, error); test `…_standard_test.php`.
 
-- 8 Account and staff: `account.php` (sign-in, My Account, staff area, `blog_new` with samples, account e-mails); test `…_account_test.php`.
+- 8 Done (#6197). Account and staff: `account.php`; test `…_account_test.php`.
 
 - 9 Assembly: `pinegrap-appstudio.php` (order 73, icon `bi-phone`, look `glass`, palette `lavender`, contact group `newsletter`, folders, `pma-` User Styles, search map), the shared tests' lists, `designer/design-template-appstudio.md`, plan deleted; PR body names `[NEW] Added the Mobile App Developer design template`.
 

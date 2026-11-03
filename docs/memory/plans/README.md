@@ -53,7 +53,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - content-importers.md: Plan (owner 2026-11-02): importers for WordPress (WXR), WooCommerce and Shopify (CSV): records, pages, media, comments, customers, products, old addresses as redirects; steps IM1-IM7
 - design-template-appstudio.md: Plan for the Mobile App Developer template (pinegrap-appstudio): own apps and release notes as collections, support and project requests, beta sign-up; parts in a folder; steps 1-9
 - design-template-launch.md: Plan for the Phone Launch Site template (pinegrap-launch): three models, specs and compare, the shop, trade-in and support requests; parts in a folder; steps 1-7
-- design-template-portfolio.md: Plan for the Web Designer Portfolio template (pinegrap-portfolio): case studies as a collection, services and packages, a project brief followed from the account; parts in a folder; steps 1-7
 - designer-form-logic-steps-2.md: Steps FL5-FL8 of plans/designer-form-logic.md: the payment step on the site, the staff side and API, template fees, close-out; claim as [plan:designer-form-logic] FL<n>
 - designer-form-logic-steps.md: Steps FL1-FL4 of plans/designer-form-logic.md: Shown when rules, form steps with progress, the browser draft, the fee setting and order writer; claim as [plan:designer-form-logic] FL<n>
 - designer-form-logic.md: Plan (owner 2026-11-02): designed forms get Shown-when rules, steps with progress, and a payment step that places a one-line order through the payment drivers; steps FL1-FL8
@@ -104,6 +103,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - prototype-sharing.md: Plan (2026-10-24; slices 1-4 done: #1867, #1579, #1595, #1578; 5 later): drafts play as a clickable prototype shared by a view-only link; flows with the team
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
 - reverse-oauth-leftovers.md: Remaining outside-account connections (calendar, notes, cloud picker, Meta, Merchant, GA4, Business Profile, social, AI), the connect.pinegrap.com broker and open decisions
+- search-and-audits-gaps-steps.md: Steps SG1-SG3 of plans/search-and-audits-gaps.md: the three jobs on for a new install, parts inside an index item, close-out; claim as [plan:search-and-audits-gaps] SG<n>
+- search-and-audits-gaps.md: Plan (owner 2026-11-03): what search-and-audits left open; the three jobs on for a new install, an index pass that resumes inside a page or record list; steps SG1-SG3
 - security-findings-2026-10.md: 2026-10-19 security audit: fixed by that day's PRs and #713; items 2-8 decided by the owner 2026-10-28 (labels, CVV, escape_like, sign-in message, gateway secrets, ERP host, rich text)
 - shipping-carrier-labels.md: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
 - shipping-management.md: Shipping plan (2026-10-08; phases 1-7 and the phase 8 postcode check done): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
