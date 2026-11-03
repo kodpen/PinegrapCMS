@@ -162,7 +162,7 @@
         var span = field("span", L.span, select({month: L.month, week: L.week}));
 
         var actions = el("div", "pg-dash-goal-actions");
-        var keep = el("button", "btn theme-primary btn-sm", L.save);
+        var keep = el("button", "btn btn-solid theme-primary btn-sm", L.save);
         keep.type = "submit";
         var stop = button("btn btn-outline theme-secondary btn-sm", L.cancel);
         actions.appendChild(keep);
