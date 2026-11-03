@@ -177,3 +177,55 @@ JS
 	pg_assert_same('name:asc,price:desc', $result['value']);
 	pg_assert_same('3 seçili', $result['text']);
 }
+
+function test_list_table_js_column_preferences()
+{
+	$result = list_table_js_test_node(<<<'JS'
+var cols = [
+	{ key: 'name', hideable: false, hidden: false },
+	{ key: 'folder', hideable: true, hidden: false },
+	{ key: 'style', hideable: true, hidden: true },
+	{ key: 'type', hideable: true, hidden: false },
+	{ key: 'actions', hideable: false, hidden: false }
+];
+function view(state) { return T.columnsView(cols, state).map(function (c) { return c.key + (c.hidden ? '-' : ''); }).join(','); }
+var out = {}, s = T.prefsClean(null);
+out.plain = view(s);
+s = T.columnsToggle(cols, s, 'style'); out.shown = view(s);
+s = T.columnsToggle(cols, s, 'folder'); out.hidden = view(s);
+out.name = view(T.columnsToggle(cols, s, 'name'));
+out.actions = view(T.columnsToggle(cols, s, 'actions'));
+s = T.columnsMove(cols, s, 'type', -2); out.moved = view(s);
+out.notFirst = view(T.columnsMove(cols, s, 'type', -1));
+out.nameStays = view(T.columnsMove(cols, s, 'name', 1));
+out.order = s.order;
+out.stored = view(T.prefsClean(JSON.parse(JSON.stringify(s))));
+out.newColumn = T.columnsView(cols.concat([{ key: 'late', hideable: true }]).slice(0, 3).concat([{ key: 'late', hideable: true }], cols.slice(3)), s).map(function (c) { return c.key; }).join(',');
+out.gone = view({ order: ['gone', 'type'], hidden: { gone: true, name: true }, details: false });
+out.junk = T.prefsClean({ order: 'x', hidden: { a: 1, b: true }, details: 'yes' });
+s.details = true; out.reset = T.columnsReset(s);
+out.key = T.prefsKey(7, 'view_pages');
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same('name,folder,style-,type,actions', $result['plain'], 'a column the model hides starts hidden');
+	pg_assert_same('name,folder,style,type,actions', $result['shown']);
+	pg_assert_same('name,folder-,style,type,actions', $result['hidden']);
+	pg_assert_same($result['hidden'], $result['name'], 'the name never hides');
+	pg_assert_same($result['hidden'], $result['actions'], 'a column that is not hideable stays');
+	pg_assert_same('name,type,folder-,style,actions', $result['moved']);
+	pg_assert_same($result['moved'], $result['notFirst'], 'nothing moves before the name');
+	pg_assert_same($result['moved'], $result['nameStays'], 'the name does not move');
+	pg_assert_same(array('type', 'folder', 'style', 'actions'), $result['order']);
+	pg_assert_same($result['moved'], $result['stored'], 'stored and read back');
+	pg_assert_same('name,type,folder,style,late,actions', $result['newColumn'], 'a new column comes after its model neighbour');
+	pg_assert_same('name,folder,style-,type,actions', $result['gone'], 'a stored key the list lost is dropped; the name is never hidden');
+	pg_assert_same(array('order' => array(), 'hidden' => array('b' => true), 'details' => false), $result['junk']);
+	pg_assert_same(array('order' => array(), 'hidden' => array(), 'details' => true), $result['reset']);
+	pg_assert_same('pg.list.7.view_pages', $result['key']);
+}

@@ -1401,6 +1401,20 @@ function pg_seo_impact_select($score_column, $checked_column)
         return "NULL AS seo_impact, '0' AS seo_views";
     }
 
+    return pg_seo_impact_sql($score_column, $checked_column) . " AS seo_impact,
+        COALESCE(seo_traffic.views, 0) AS seo_views";
+}
+
+// The impact figure of pg_seo_impact_select() as an expression without its
+// alias, so a list can sort by it and compare it in WHERE (keyset paging).
+// It reads the seo_traffic join of pg_seo_traffic_join(); without the
+// traffic table it is NULL.
+function pg_seo_impact_sql($score_column, $checked_column)
+{
+    if (!pg_seo_traffic_ready()) {
+        return 'NULL';
+    }
+
     // Two conditions, and both produce "we cannot say" rather than a number.
     //
     // seo_checked_at, not the score itself: a record that has never been
@@ -1415,8 +1429,7 @@ function pg_seo_impact_select($score_column, $checked_column)
     return
         "IF((" . $checked_column . " > 0) AND (COALESCE(seo_traffic.views, 0) > 0),
             ROUND((100 - " . $score_column . ") * LOG10(1 + seo_traffic.views)),
-            NULL) AS seo_impact,
-        COALESCE(seo_traffic.views, 0) AS seo_views";
+            NULL)";
 }
 
 // The same figure as pg_seo_impact_select(), in PHP.

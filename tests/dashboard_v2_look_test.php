@@ -34,3 +34,23 @@ function test_dashboard_v2_activity_pills_stay_in_cards()
 	$greeting = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/page_greeting.php');
 	pg_assert_false(strpos($greeting, 'pg-dash-cardbox') !== false, 'the greeting is no grid card');
 }
+
+// A rule filling every path with none would hide the area under the line,
+// whose gradient comes from its fill attribute.
+function test_dashboard_v2_line_area_keeps_its_fill()
+{
+	$css = pg_test_dashboard_v2_look_css();
+
+	pg_assert_contains('.pg-dash-line path:not(.pg-dash-line-area)', $css);
+	pg_assert_false((bool) preg_match('/^\s*\.pg-dash-line path\s*\{/m', $css), 'no rule for every path');
+}
+
+// Two charts on one page with the same gradient id would share one.
+function test_dashboard_v2_line_gradient_ids_are_unique()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_dash.js');
+
+	pg_assert_contains('"pg_dash_line_" + (++lineCount)', $js);
+	pg_assert_contains('fill: "url(#" + id + "_area)"', $js);
+	pg_assert_contains('stroke: "url(#" + id + "_stroke)"', $js);
+}

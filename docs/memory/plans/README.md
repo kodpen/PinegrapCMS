@@ -51,9 +51,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - content-importers-steps-2.md: Steps IM4-IM7 of plans/content-importers.md: the WooCommerce and Shopify readers, redirects and undo, close-out; claim as [plan:content-importers] IM<n>
 - content-importers-steps.md: Steps IM1-IM3 of plans/content-importers.md: the import framework and screen, the WordPress WXR reader, pages and media fetches; claim as [plan:content-importers] IM<n>
 - content-importers.md: Plan (owner 2026-11-02): importers for WordPress (WXR), WooCommerce and Shopify (CSV): records, pages, media, comments, customers, products, old addresses as redirects; steps IM1-IM7
-- design-template-dealership.md: Plan for the Car Dealership template (pinegrap-dealership): vehicles as a collection with filters, test drive, trade-in and finance requests followed from the account; parts in a folder; steps 1-8
 - design-template-hotel.md: Plan for the Hotel template (pinegrap-hotel): rooms as a collection with rates, booking and event enquiries followed from the account, gift vouchers in the shop; parts in a folder; steps 1-9
 - design-template-market.md: Plan for the Marketplace template (pinegrap-market): makers' shops as a Sellers collection beside the store's catalog, seller applications and order help; parts in a folder; steps 1-8
+- design-template-social.md: Plan for the Social Community template (pinegrap-social): a photo community on member-sent Posts and Profiles collections, comments, tags, saved posts; steps 1-8, likes held (#6296)
 - designer-form-logic-steps-2.md: Steps FL5-FL8 of plans/designer-form-logic.md: the payment step on the site, the staff side and API, template fees, close-out; claim as [plan:designer-form-logic] FL<n>
 - designer-form-logic-steps.md: Steps FL1-FL4 of plans/designer-form-logic.md: Shown when rules, form steps with progress, the browser draft, the fee setting and order writer; claim as [plan:designer-form-logic] FL<n>
 - designer-form-logic.md: Plan (owner 2026-11-02): designed forms get Shown-when rules, steps with progress, and a payment step that places a one-line order through the payment drivers; steps FL1-FL8
@@ -76,10 +76,14 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - image-editor-design.md: Design of plans/image-editor.md: the parts and file names, the one call and its options, the modal's look, the document model with layers in rotated space
 - image-editor-server.md: Server side of plans/image-editor.md: what the browser and the server each do, the save pipeline through the image engine, replace, copy and new, the versions table proposal, security
 - image-editor-steps-2.md: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboard, optimisation, pen, SVG, Workspace, designer, access, close-out; claim as [plan:image-editor] E<n>
+- image-editor-steps-3.md: Steps E21-E25 of plans/image-editor.md (owner 2026-11-03): change a placed sticker, text to outlines, scissors, shape builder, warp; claim as [plan:image-editor] E<n>
+- image-editor-steps-4.md: Steps E26-E29 of plans/image-editor.md (owner 2026-11-03): free deformation, area selection, select subject and remove background with an own algorithm, access; claim as [plan:image-editor] E<n>
 - image-editor-steps.md: Steps E1-E10 of plans/image-editor.md: core modal, crop, server save, adjust, layers, shapes, text, stickers, the switch that removes the old editor, redaction; claim as [plan:image-editor] E<n>
+- image-editor-video-steps.md: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, video layer, timeline, sound, effects, overlays, export, large files, reopening, phone, access; claim as [plan:image-editor-video] V<n>
+- image-editor-video.md: Plan (owner 2026-11-03): video editing inside the image editor: clips on the timeline, trim, split, effects, sound added or detached, layers over video, export with sound; held with image-editor.md
 - image-editor-visuals.md: The image editor prototype the owner approved on 2026-10-31: its screens and source in plans/image-editor/, what each screen shows and which step of plans/image-editor.md builds it
-- image-editor-workers.md: How coordinators' workers take the free steps of plans/image-editor.md and image-editor-animation.md: which run side by side, the files a step owns, what its PR shows, the holder's review
-- image-editor.md: Plan (owner 2026-10-31): Pinegrap's own image editor, a core modal with full screen on demand, replacing the bundled third-party one; held by one session; steps E1-E20
+- image-editor-workers.md: How workers take the free steps of plans/image-editor.md and its animation and video plans: which run side by side, the files a step owns, what its PR shows, the holder's review
+- image-editor.md: Plan (owner 2026-10-31): Pinegrap's own image editor, a core modal with full screen on demand, replacing the bundled third-party one; held by one session; steps E1-E29
 - kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md: release check, pin, checks before extraction, download failures and security events, beta builds, keys, P2's workflow
 - kodpen-vendor-api-client-design.md: Client contract of plans/kodpen-vendor-api-client.md: calls and headers, the licence check, card and key field, what is stored where, the switch line; updates in -design-update
 - kodpen-vendor-api-client-steps.md: Steps P1-P8 of plans/kodpen-vendor-api-client.md: changes, files, tests, memory, size, order; claim as [plan:kodpen-vendor-api-client] P<n>

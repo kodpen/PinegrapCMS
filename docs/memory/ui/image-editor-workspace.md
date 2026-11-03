@@ -1,6 +1,6 @@
 ---
 name: image-editor-workspace
-description: Workspace canvas (E16, #4762): New canvas in a channel's Insert menu and a note's toolbar, saved through workspace_file_save.php with its document in file_versions, opened again with its layers
+description: Workspace canvas (E16 #4762, E16b): New canvas in a channel or note, saved with its document in file_versions and its pictures as files beside it, opened again with its layers
 ---
 
 ## Where does "New canvas" start?
@@ -10,7 +10,12 @@ description: Workspace canvas (E16, #4762): New canvas in a channel's Insert men
 
 ## How is a canvas saved?
 - `save.url` with an artboard sends the PNG the editor draws (`picture`, `drawArtboard()`) in place of the overlay, and `name` (core `send()`). `ws_canvas_picture()` checks it against the artboard size (`pg_image_editor_take_png()`) and recompresses it.
-- The document is kept beside the file written as a `file_versions` row, source `new` (`ws_canvas_keep()`, a wrapper of `pg_image_editor_canvas_keep()` that Files shares): the canvas's file, or the new file a replace or a sent copy wrote. One that may not be kept (a pasted picture, over 1 MB: `pg_file_versions_doc_storable()`) leaves only the picture.
+- The document is kept beside the file written as a `file_versions` row, source `new` (`ws_canvas_keep()`, around `pg_image_editor_canvas_keep()` that Files shares): the canvas's file, or the new file a replace or a sent copy wrote. One that may not be kept (over 1 MB, a picture still a `data:` URL: `pg_file_versions_doc_storable()`) leaves only the picture.
+
+## What happens to a pasted or uploaded picture in a canvas? (E16b)
+- The editor's save hook sends it as `pictures` [{id, data, name}] (same as Files). Before the document is kept, `ws_canvas_pictures_keep()` writes each one as its own `files` row in the folder of the canvas's file (the channel's or the note's folder, so whoever reads the canvas reads its pictures), through the site's upload cap and the Workspace file size, and `ws_canvas_pictures_point()` points its layer at it (`src`, `fileId`). The answer carries `pictures` (layer id => {id, url}) for `takePictures()`.
+- Not `pg_image_editor_pictures_saved()`: that one checks File Manager edit access (`check_edit_access()`), which a Workspace member may lack.
+- A picture that cannot be kept (blocked name, too big, a canvas file without a folder) stays a `data:` URL: the document is not kept and the canvas opens as a flat picture. The picture files stay when the message is deleted, as Files' do.
 
 ## How does it open again?
 - "Edit the picture" on a message first asks `workspace_file_save.php?message=<id>` `{action: 'canvas'}`: `ws_canvas_open_doc()` (= `pg_image_editor_canvas_open_doc()`) answers the newest version's document while the file still holds its pixels and it is a canvas (`ws_canvas_is_doc()`: v 1, artboard, no source), else null.
@@ -20,4 +25,4 @@ description: Workspace canvas (E16, #4762): New canvas in a channel's Insert men
 - A note's canvas opens again only through its file today: no edit action on a note's link yet.
 
 ## Where is it tested?
-- `tests/workspace_canvas_test.php`: `ws_canvas_is_doc()`, `ws_canvas_doc_json()`, `ws_canvas_file_name()`, the labels and `canvasOpenDoc()` under Node.
+- `tests/workspace_canvas_test.php`: `ws_canvas_is_doc()`, `ws_canvas_doc_json()`, `ws_canvas_file_name()`, `ws_canvas_picture_name()`, a pasted picture pointed at its file and opened again as a layer (`canvasOpenDoc()` under Node), the save order, the labels.

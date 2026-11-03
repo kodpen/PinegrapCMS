@@ -37,6 +37,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-discovery-document.md: The credential-free discovery document (.well-known/pinegrap.json and GET integration.php/discovery): its fields and sources, where it is wired, which gates apply, device_signin and pairing
 - api-dry-run.md: Making an external API write rehearsable (X-Dry-Run or ?dry_run=true): the route flag, where api_dry_run_stop() goes, batch endpoints, the *_check() split, side effects a rehearsal skips
 - api-endpoint-rules.md: Writing an external API endpoint: one route row, one presenter, list paging and batch reads, body checks, nullable fields, error codes, formats, partial updates, mirroring panel changes
+- api-experiments.md: The experiments API resource (PX7, #6295): list, get with figures and the z-test, start/pause/end via the sheet move, experiments:read/write for roles 0-1, two events
 - api-fields-parameter.md: External API ?fields= on reads: which answers are trimmed row by row (paged listings and GET /webhooks, api_route_returns_listing()) and which as one record
 - api-file-endpoints.md: External API routes that send or take a file: api_send_file() and binary routes, Range/If-Range, multipart form_file uploads, $_FILES outside MCP, the Idempotency-Key fingerprint, picture copies
 - api-folder-access-widening.md: External API page and folder moves keep or narrow access: access type rank, and for private folders the aclfolder reader list (PR #1786); 409 access_widening_refused
@@ -64,7 +65,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-seo-not-found.md: GET /seo/not-found (seo.not_found, scope seo:read): the 404 log over the external API and MCP, its sorts and keyset cursor, the fields, and how a client turns a row into a redirect
 - api-store-country-state-writes.md: Country and state writes (store:write): the write path shared with the four screens (includes/fn/store_regions.php), the screens' checks, partial updates, code_taken, what a delete takes
 - api-store-currency-writes.md: Currency writes and the rate refresh (store:write) through includes/fn/store_currencies.php, shared with the screens; symbol as text, rate and base rules, currency.* events
-- api-store-lookups.md: Store lookup lists (arrival dates, ship date adjustments, verified addresses, referral sources): the write path the screens and the API share, the referral source routes, refusals, cut-off rule
+- api-store-lookups.md: Store lookup lists (arrival dates, ship date adjustments, verified addresses, referral sources): the write path the screens and the API share, their routes, refusals, cut-off rule
 - api-store-shipping-method-writes.md: Shipping method writes (store:write): write path shared with the screens, typed fields to columns, base rate tiers, days and times, zones, excluded dates, events
 - api-store-zone-writes.md: Shipping zone and tax zone writes (store:write): shared write functions the zone screens call too, partial updates, country and state input, zone.* and tax_zone.* events
 - api-subscriptions-list.md: GET /subscriptions and /subscriptions/{id} (customers:read): every store-run subscription with its customer, the filters, updated_since on subscriptions.updated_at, the user-role row rule

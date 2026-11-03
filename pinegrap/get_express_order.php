@@ -2951,7 +2951,7 @@ function get_express_order($properties) {
 
                 // loop through all referral sources to prepare all options for selection drop-down field
                 while ($row = mysqli_fetch_assoc($result)) {
-                    $referral_source_options[$row['name']] = $row['code'];
+                    $referral_source_options[h($row['name'])] = h($row['code']);
                 }
                 
                 $output_referral_source =
@@ -5680,7 +5680,7 @@ function get_express_order($properties) {
                 $referral_source_options[''] = '';
 
                 foreach ($referral_sources as $referral_source) {
-                    $referral_source_options[$referral_source['name']] = $referral_source['code'];
+                    $referral_source_options[h($referral_source['name'])] = h($referral_source['code']);
                 }
 
                 $form->set('referral_source', 'options', $referral_source_options);

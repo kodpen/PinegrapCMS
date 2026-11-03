@@ -555,8 +555,8 @@ function get_shipping_address_and_arrival($properties) {
                         "address_2": "' . escape_javascript($verified_shipping_address['address_2']) . '",
                         "city": "' . escape_javascript($verified_shipping_address['city']) . '",
                         "state_id": ' . $verified_shipping_address['state_id'] . ',
-                        "state_code": "' . $verified_shipping_address['state_code'] . '",
-                        "zip_code": "' . $verified_shipping_address['zip_code'] . '",
+                        "state_code": "' . escape_javascript($verified_shipping_address['state_code']) . '",
+                        "zip_code": "' . escape_javascript($verified_shipping_address['zip_code']) . '",
                         "country_code": "' . escape_javascript($verified_shipping_address['country_code']) . '",
                         "country_name": "' . escape_javascript($verified_shipping_address['country_name']) . '"
                     };' . "\n";

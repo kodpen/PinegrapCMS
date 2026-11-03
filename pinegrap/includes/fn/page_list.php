@@ -2,8 +2,9 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The pages list (view_pages.php), shared by the screen and the panel action
- * that pages it (page_list_rows, includes/panel/lists.php).
+ * The pages list (view_pages.php) on the list table driver: the screen,
+ * the driver's rows action (list_table_rows) and the bulk actions
+ * (edit_pages.php) read it through pg_page_list_source().
  *
  * Loaded where it is needed (require_once), not by functions.php.
  *
@@ -343,24 +344,6 @@ function pg_page_list_view($user, $filter)
     $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
     $list_state = pg_list_state('view_pages', $sort_columns, $sort_default);
 
-    // Only codes pg_list_state() let through reach pg_list_order_by(). The
-    // page id comes last, so pages of the list never overlap.
-    $order_by = pg_list_order_by($list_state['sorts'], array(
-        'name'          => 'page.page_name',
-        'form_name'     => 'custom_form_pages.form_name',
-        'form_enabled'  => 'custom_form_pages.enabled',
-        'folder'        => 'folder.folder_name',
-        'style'         => 'style.style_name',
-        'page_type'     => pg_list_label_order('page.page_type', get_page_type_names()),
-        'searchable'    => 'page.page_search',
-        'comments'      => 'page.comments',
-        'sitemap'       => 'page.sitemap',
-        'seo'           => 'page.seo_score',
-        'impact'        => 'seo_impact',
-        'last_modified' => 'page.page_timestamp',
-    ));
-    $order_by = (($order_by !== '') ? $order_by . ', ' : '') . 'page.page_id DESC';
-
     return array(
         'filter' => $filter,
         'heading' => $definition['label'],
@@ -374,7 +357,6 @@ function pg_page_list_view($user, $filter)
         'sort_columns' => $sort_columns,
         'sort_levels' => $list_state['sorts'],
         'sort_default' => $sort_default,
-        'order_by' => $order_by,
         'join' => $definition['join'],
         'select' => $definition['select'],
         'group' => $definition['group'],
@@ -394,7 +376,19 @@ function pg_page_list_view($user, $filter)
  */
 function pg_page_list_from($view)
 {
-    return 'FROM page
+    return 'FROM ' . pg_page_list_joins($view);
+}
+
+/**
+ * The page table with the joins every read of the view shares (the FROM
+ * part without FROM).
+ *
+ * @param array $view pg_page_list_view()
+ * @return string
+ */
+function pg_page_list_joins($view)
+{
+    return 'page
         LEFT JOIN folder ON page.page_folder = folder.folder_id
         LEFT JOIN style ON ' . $view['style_join'] . ' = style.style_id
         LEFT JOIN user ON page.page_user = user.user_id
@@ -424,82 +418,151 @@ function pg_page_list_search_columns($view)
 }
 
 /**
- * One page of the list: the counts without and with the search, and the
- * rows of the page window.
+ * The list's columns for the list table driver, in the order the table
+ * shows them, each with the SQL it sorts by. The style column does not
+ * sort while another theme is previewed (its styles come row by row), and
+ * the custom form view adds the form's name and state.
  *
- * @param array $view   pg_page_list_view()
- * @param array $terms  pg_list_search_terms()
- * @param array $window pg_list_page_window()
- * @return array|false array('total', 'filtered', 'rows') or false when a
- *                     query failed
+ * @param array $view pg_page_list_view()
+ * @return array key => spec, as pg_list_table_columns() takes them
  */
-function pg_page_list_page($view, $terms, $window)
+function pg_page_list_columns($view)
 {
-    $from = pg_page_list_from($view);
-    $columns = pg_page_list_search_columns($view);
-    $search = pg_list_search_where($terms, $columns['columns'], $columns['labels']);
-    $where = ' WHERE ' . $view['where'];
-    $search_sql = ($search['sql'] !== '') ? ' AND ' . $search['sql'] : '';
+    $columns = array(
+        'name' => array('heading' => lang('Name'), 'width' => '18rem', 'kind' => 'link', 'sort' => 'page.page_name'),
+    );
 
-    // DISTINCT: the RSS view's joins give a page one row per form field.
-    $result = db_q('SELECT COUNT(DISTINCT page.page_id) ' . $from . $where, array());
+    if (!empty($view['custom_form'])) {
+        $columns['form_name'] = array('heading' => lang('Form Name'), 'sort' => 'custom_form_pages.form_name');
+        $columns['form_enabled'] = array('heading' => lang('Form Enabled'), 'kind' => 'check', 'sort' => 'custom_form_pages.enabled');
+    }
 
-    if (!$result) {
+    $columns['folder'] = array('heading' => lang('Folder'), 'width' => '14rem', 'sort' => 'folder.folder_name');
+    $columns['style'] = array('heading' => $view['style_heading'], 'width' => '12rem', 'sort' => empty($view['previewing_other_theme']) ? 'style.style_name' : '');
+    $columns['page_type'] = array('heading' => lang('Page Type'), 'width' => '10rem', 'sort' => pg_list_label_order('page.page_type', get_page_type_names()));
+    $columns['searchable'] = array('heading' => lang('Searchable'), 'kind' => 'check', 'sort' => 'page.page_search');
+    $columns['comments'] = array('heading' => lang('Comments'), 'kind' => 'check', 'sort' => 'page.comments');
+    $columns['sitemap'] = array('heading' => lang('Site Map'), 'kind' => 'check', 'sort' => 'page.sitemap');
+    $columns['seo'] = array('heading' => lang('SEO'), 'kind' => 'badge', 'sort' => 'page.seo_score');
+    $columns['impact'] = array('heading' => lang('Impact'), 'kind' => 'number', 'sort' => pg_seo_impact_sql('page.seo_score', 'page.seo_checked_at'));
+    $columns['last_modified'] = array('heading' => lang('Last Modified'), 'width' => '10rem', 'kind' => 'date', 'sort' => 'page.page_timestamp');
+    $columns['actions'] = array('heading' => lang('Action'), 'width' => '9rem', 'kind' => 'actions');
+
+    return $columns;
+}
+
+/**
+ * The columns the rows are built from (pg_page_list_rows()).
+ *
+ * @param array $view pg_page_list_view()
+ * @return string
+ */
+function pg_page_list_select($view)
+{
+    return 'page.page_id,
+        page.page_name,
+        page.page_folder,
+        page.page_style,
+        page.layout_type,
+        ' . (pg_multi_page_design_ready() ? "(page.page_tree_json IS NOT NULL AND page.page_tree_json <> '') AS has_tree," : "'0' AS has_tree,") . '
+        folder.folder_name,
+        folder.folder_access_control_type,
+        style.style_name,
+        page.page_search,
+        page.page_home,
+        page.page_type,
+        page.comments,
+        page.seo_score,
+        ' . (pg_seo_schema_ready() ? 'page.seo_flags, page.seo_checked_at,' : "'0' AS seo_flags, '0' AS seo_checked_at,") . '
+        page.seo_analysis_current,
+        page.sitemap,
+        user.user_username,
+        ' . pg_seo_impact_select('page.seo_score', 'page.seo_checked_at') . ',
+        page.page_timestamp' . $view['select'];
+}
+
+/**
+ * The pages list as the list table driver's source (includes/fn/list_table.php),
+ * for the screen, the rows action and the bulk actions' selection alike.
+ * It is the screen's gate too: a basic user needs edit rights to some
+ * folder (validate_area_access($user, 'user')).
+ *
+ * @param array $user   the signed-in user
+ * @param array $params the list's parameters: 'filter' (the view)
+ * @return array|null pg_list_table_source(), or null when the user may not
+ *                    open the list
+ */
+function pg_page_list_source($user, $params)
+{
+    if (((int) $user['role'] > 3) || (((int) $user['role'] == 3) && !no_acl_check($user['id']))) {
+        return null;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/seo.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+    $filter = (is_array($params) && isset($params['filter']) && is_string($params['filter'])) ? $params['filter'] : '';
+    $view = pg_page_list_view($user, $filter);
+
+    // The traffic behind the impact figure joins only the list's read.
+    return pg_list_table_source(array(
+        'list' => 'view_pages',
+        'columns' => pg_page_list_columns($view),
+        'from' => pg_page_list_joins($view) . ' ' . pg_seo_traffic_join('page', 'page.page_id'),
+        'where' => $view['where'],
+        'id' => 'page.page_id',
+        'id_order' => 'desc',
+        'select' => pg_page_list_select($view),
+        // The RSS view's joins give a page one row per form field.
+        'group' => $view['group'],
+        'search' => pg_page_list_search_columns($view),
+        'levels' => $view['sort_levels'],
+        'rows' => function ($records) use ($view) {
+            return pg_page_list_rows($view, $records);
+        },
+        'params_out' => array('filter' => $view['filter']),
+    ));
+}
+
+/**
+ * The pages a bulk action of the list acts on: the selection the list
+ * table driver posted (JSON), read with the list's own query and rights.
+ * A selection of ids is read in the view the list showed, sent beside it;
+ * a condition carries its view itself.
+ *
+ * @param array $user        the signed-in user
+ * @param mixed $selection   the posted selection, JSON
+ *                           (pg_list_table_selection_parse())
+ * @param mixed $list_params the posted list parameters, JSON ('filter')
+ * @return array|false|null page ids (empty when nothing or nothing
+ *                          reachable was selected), false when the query
+ *                          failed, null when the selection holds more than
+ *                          10,000 pages
+ */
+function pg_page_list_selected_ids($user, $selection, $list_params)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+    $selection = pg_list_table_selection_parse(is_string($selection) ? json_decode($selection, true) : null, time());
+
+    if ($selection === null) {
+        return array();
+    }
+
+    $params = ($selection['mode'] === 'condition') ? $selection['params'] : json_decode(is_string($list_params) ? $list_params : '', true);
+    $source = pg_page_list_source($user, is_array($params) ? $params : array());
+
+    if ($source === null) {
+        return array();
+    }
+
+    $selected = pg_list_table_selected_ids($source, $selection);
+
+    if ($selected === false) {
         return false;
     }
 
-    $total = (int) mysqli_fetch_row($result)[0];
-    $filtered = $total;
-
-    if ($search_sql !== '') {
-        $result = db_q('SELECT COUNT(DISTINCT page.page_id) ' . $from . $where . $search_sql, $search['params']);
-
-        if (!$result) {
-            return false;
-        }
-
-        $filtered = (int) mysqli_fetch_row($result)[0];
-    }
-
-    // The traffic behind the impact figure joins only the page's read.
-    $result = db_q(
-        'SELECT
-            page.page_id,
-            page.page_name,
-            page.page_folder,
-            page.page_style,
-            page.layout_type,
-            ' . (pg_multi_page_design_ready() ? "(page.page_tree_json IS NOT NULL AND page.page_tree_json <> '') AS has_tree," : "'0' AS has_tree,") . '
-            folder.folder_name,
-            folder.folder_access_control_type,
-            style.style_name,
-            page.page_search,
-            page.page_home,
-            page.page_type,
-            page.comments,
-            page.seo_score,
-            ' . (pg_seo_schema_ready() ? 'page.seo_flags, page.seo_checked_at,' : "'0' AS seo_flags, '0' AS seo_checked_at,") . '
-            page.seo_analysis_current,
-            page.sitemap,
-            user.user_username,
-            ' . pg_seo_impact_select('page.seo_score', 'page.seo_checked_at') . ',
-            page.page_timestamp' . $view['select'] . '
-        ' . $from . ' ' . pg_seo_traffic_join('page', 'page.page_id') . $where . $search_sql
-        . ($view['group'] ? ' GROUP BY page.page_id' : '')
-        . ' ORDER BY ' . $view['order_by'] . pg_list_limit_sql($window),
-        $search['params']);
-
-    if (!$result) {
-        return false;
-    }
-
-    $pages = array();
-
-    while ($row = mysqli_fetch_assoc($result)) {
-        $pages[] = $row;
-    }
-
-    return array('total' => $total, 'filtered' => $filtered, 'rows' => pg_page_list_rows($view, $pages));
+    return $selected['more'] ? null : $selected['ids'];
 }
 
 /**
@@ -555,7 +618,7 @@ function pg_page_list_inherited_styles()
  * when only a desktop style was found), with [A] while a theme is previewed.
  *
  * @param array $view  pg_page_list_view()
- * @param array $pages rows of pg_page_list_page()'s read
+ * @param array $pages records of the list's read (pg_page_list_select())
  * @return array page id => array('html', 'class')
  */
 function pg_page_list_style_cells($view, $pages)
@@ -648,8 +711,9 @@ function pg_page_list_style_cells($view, $pages)
  * The list's rows for a page of pages.
  *
  * @param array $view  pg_page_list_view()
- * @param array $pages rows of pg_page_list_page()'s read
- * @return array rows as pg_list_rows_answer() takes them
+ * @param array $pages records of the list's read (pg_page_list_select())
+ * @return array rows as pg_list_table_page() hands them on: id, class,
+ *               cells by column key
  */
 function pg_page_list_rows($view, $pages)
 {
@@ -676,32 +740,33 @@ function pg_page_list_rows($view, $pages)
         $seo_url = 'get_seo_analysis.php?type=page&amp;id=' . $id . get_token_query_string_field();
         $home = ($page['page_home'] == 'yes') ? '<span class="material-icons" role="img" aria-label="' . h(lang('Home Page')) . '">home</span>' : '';
 
+        // The name opens the page's editor: a double-click or Enter on the
+        // row follows it (data-pg-open).
         $cells = array(
-            pg_list_cell('<input class="check" type="checkbox" name="pages[]" value="' . $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($page['page_name'])))) . '" />', 'select-all align-middle text-start'),
-            pg_list_cell(
-                '<button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . h(escape_javascript($edit_url)) . '\'"><i class="bi bi-pencil"></i></button>'
-                . '<button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . lang('Preview') . '" onclick="window.location.href=\'' . h(escape_javascript($link_url)) . '\'"><i class="bi bi-link"></i></button>'
-                . (($experiments_open && pg_page_is_visual_design($page)) ? '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . h(lang('Experiments')) . '" aria-label="' . h(lang('Experiments')) . '" href="page_experiments.php?page_id=' . $id . '"><i class="bi bi-signpost-split" aria-hidden="true"></i></a>' : ''),
-                'align-middle text-start action-buttons'),
-            pg_list_cell($home . h($page['page_name']) . pg_experiment_chip_html($experiment_states[$id] ?? null) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" data-pg-seo-bar="page:' . (int) $page['page_id'] . '" aria-label="' . h(pg_seo_link_name($page)) . '" title="' . lang('SEO Detail') . '" data-seo-url="' . $seo_url . '">' . pg_seo_render_bar($page) . '</a>', 'align-middle chart_label position-relative'),
+            'name' => pg_list_cell($home . '<a class="pg-link-body-emphasis text-decoration-none" data-pg-open href="' . h($edit_url) . '">' . h($page['page_name']) . '</a>' . pg_experiment_chip_html($experiment_states[$id] ?? null) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" data-pg-seo-bar="page:' . (int) $page['page_id'] . '" aria-label="' . h(pg_seo_link_name($page)) . '" title="' . lang('SEO Detail') . '" data-seo-url="' . $seo_url . '">' . pg_seo_render_bar($page) . '</a>', 'align-middle chart_label position-relative'),
         );
 
         if ($view['custom_form']) {
-            $cells[] = pg_list_cell(h($page['form_name']));
-            $cells[] = pg_list_cell(($page['enabled'] == 1) ? $check : '', 'align-middle text-center');
+            $cells['form_name'] = pg_list_cell(h($page['form_name']));
+            $cells['form_enabled'] = pg_list_cell(($page['enabled'] == 1) ? $check : '', 'align-middle');
         }
 
-        $cells[] = pg_list_cell(pg_folder_list_name($page['folder_name'], $page['folder_access_control_type']), 'align-middle text-start text-wrap ' . $page['folder_access_control_type']);
-        $cells[] = pg_list_cell($styles[$id]['html'], $styles[$id]['class']);
-        $cells[] = pg_list_cell(h(get_page_type_name($page['page_type'])));
-        $cells[] = pg_list_cell(($page['page_search'] == 1) ? $check : '', 'align-middle text-center');
-        $cells[] = pg_list_cell(($page['comments'] == '1') ? $check : '', 'align-middle text-center');
-        $cells[] = pg_list_cell(($page['sitemap'] == '1') ? $check : '', 'align-middle text-center');
-        $cells[] = pg_list_cell('<a href="javascript:void(0)" class="pg-seo-open text-decoration-none" data-pg-seo-badge="page:' . (int) $page['page_id'] . '" aria-label="' . h(pg_seo_link_name($page)) . '" title="' . lang('SEO Detail') . '" data-seo-url="' . $seo_url . '">' . pg_seo_render_badge($page) . '</a>', 'align-middle text-center');
-        $cells[] = pg_list_cell(pg_seo_render_impact($page), 'align-middle text-center');
-        $cells[] = pg_list_cell(pg_list_when($page['page_timestamp'], $page['user_username'] ?? ''));
+        $cells['folder'] = pg_list_cell(pg_folder_list_name($page['folder_name'], $page['folder_access_control_type']), 'align-middle text-start text-wrap ' . $page['folder_access_control_type']);
+        $cells['style'] = pg_list_cell($styles[$id]['html'], $styles[$id]['class']);
+        $cells['page_type'] = pg_list_cell(h(get_page_type_name($page['page_type'])));
+        $cells['searchable'] = pg_list_cell(($page['page_search'] == 1) ? $check : '', 'align-middle');
+        $cells['comments'] = pg_list_cell(($page['comments'] == '1') ? $check : '', 'align-middle');
+        $cells['sitemap'] = pg_list_cell(($page['sitemap'] == '1') ? $check : '', 'align-middle');
+        $cells['seo'] = pg_list_cell('<a href="javascript:void(0)" class="pg-seo-open text-decoration-none" data-pg-seo-badge="page:' . (int) $page['page_id'] . '" aria-label="' . h(pg_seo_link_name($page)) . '" title="' . lang('SEO Detail') . '" data-seo-url="' . $seo_url . '">' . pg_seo_render_badge($page) . '</a>', 'align-middle');
+        $cells['impact'] = pg_list_cell(pg_seo_render_impact($page), 'align-middle');
+        $cells['last_modified'] = pg_list_cell(pg_list_when($page['page_timestamp'], $page['user_username'] ?? ''));
+        $cells['actions'] = pg_list_cell(
+            '<a class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '" href="' . h($edit_url) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>'
+            . '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . h(lang('Preview')) . '" aria-label="' . h(lang('Preview')) . '" href="' . h($link_url) . '"><i class="bi bi-link" aria-hidden="true"></i></a>'
+            . (($experiments_open && pg_page_is_visual_design($page)) ? '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . h(lang('Experiments')) . '" aria-label="' . h(lang('Experiments')) . '" href="page_experiments.php?page_id=' . $id . '"><i class="bi bi-signpost-split" aria-hidden="true"></i></a>' : ''),
+            'align-middle text-nowrap action-buttons');
 
-        $rows[] = array('class' => '', 'cells' => $cells);
+        $rows[] = array('id' => $id, 'class' => '', 'cells' => $cells);
     }
 
     return $rows;

@@ -187,6 +187,7 @@
     pgDash.renderers.flows = function (body, data, entry) {
         var el = pgDash.el;
         var states = data.states || {};
+        var glyphs = {done: "bi-check-lg", waiting: "bi-hourglass-split", failed: "bi-x-lg"};
 
         body.appendChild(pgDash.tiles(data.tiles));
 
@@ -205,6 +206,10 @@
                 item.setAttribute("data-state", node.state);
                 var dot = el("span", "pg-dash-flow-dot");
                 dot.setAttribute("aria-hidden", "true");
+                // The round shows its state; the words are read out below.
+                if (glyphs[node.state]) {
+                    dot.appendChild(el("i", "bi " + glyphs[node.state]));
+                }
                 item.appendChild(dot);
                 item.appendChild(el("span", "pg-dash-flow-name", node.name));
                 item.appendChild(el("span", "visually-hidden", " (" + (states[node.state] || node.state) + ")"));

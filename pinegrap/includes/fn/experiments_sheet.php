@@ -599,7 +599,43 @@ function pg_experiment_sheet_move($experiment, $to, $winner_variant_id = 0)
         return array('ok' => false, 'error' => lang('The experiment was changed meanwhile; look again.'));
     }
 
+    // Every stored copy of the page names the experiment's weights: a move
+    // makes them old, from the panel and from the API alike.
+    if (function_exists('pg_page_cache_mark_dirty')) {
+        pg_page_cache_mark_dirty();
+    }
+
+    $event = pg_experiment_move_event($experiment['status'], $to);
+
+    if (($event !== '') && function_exists('pg_announce')) {
+        pg_announce($event, array(
+            'id' => $id,
+            'page_id' => (int) $experiment['page_id'],
+            'name' => (string) $experiment['name'],
+            'goal_kind' => (string) $experiment['goal_kind'],
+            'winner_variant_id' => ($to === 'ended') ? (int) $winner_variant_id : 0,
+        ));
+    }
+
     return array('ok' => true, 'error' => '');
+}
+
+/**
+ * The event a status move announces: experiment.started for the first start
+ * (from draft), experiment.ended for an end; '' for a pause or a resume.
+ * Pure.
+ *
+ * @param string $from
+ * @param string $to
+ * @return string
+ */
+function pg_experiment_move_event($from, $to)
+{
+    if (((string) $from === 'draft') && ((string) $to === 'running')) {
+        return 'experiment.started';
+    }
+
+    return ((string) $to === 'ended') ? 'experiment.ended' : '';
 }
 
 /**
