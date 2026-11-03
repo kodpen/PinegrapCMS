@@ -68,7 +68,7 @@ $zero = $read(pg_site_search_terms_sql('zero', 100));
 $rate_text = function ($clicks, $searches) {
     $rate = pg_site_search_click_rate($clicks, $searches);
 
-    return ($rate === null) ? '<span class="fg-secondary">-</span>' : h(pg_format_number($rate, 1)) . '%';
+    return ($rate === null) ? '<span class="fg-secondary">-</span>' : h(lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number($rate, 1)))));
 };
 
 $promote_url = function ($term) {
@@ -121,7 +121,7 @@ $tiles = '';
 
 foreach (array(
     array(lang('Searches'), pg_format_number($searches_total, 0)),
-    array(lang('Terms'), pg_format_number((int) $summary['terms'], 0)),
+    array(lang('Search terms'), pg_format_number((int) $summary['terms'], 0)),
     array(lang('No results'), pg_format_number((int) $summary['zero_results'], 0)),
     array(lang('Result clicks'), pg_format_number((int) $summary['clicks'], 0)),
     array(lang('Clicks per search'), strip_tags($rate_text($summary['clicks'], $searches_total))),
@@ -148,7 +148,7 @@ echo pg_page_shell($shell) . '
             pg_filter_select('days', $period_options, (string) $days, array('label' => lang('Period'), 'icon' => 'calendar', 'action' => 'visitor_search.php')),
         ),
     ), array('class' => 'my-5')) . '
-    <div class="row g-12">' . $tiles . '</div>
+    <div class="row g-7">' . $tiles . '</div>
     <div class="row">
         <div class="col-12 xl:col-7">
             ' . $card(lang('Top Searches'),

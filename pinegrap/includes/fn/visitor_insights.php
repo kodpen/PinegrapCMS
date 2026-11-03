@@ -263,7 +263,7 @@ function pg_visitor_insight_tiles(array $tiles)
         </div>';
     }
 
-    return '<div class="row g-12">' . $out . '</div>';
+    return '<div class="row g-7">' . $out . '</div>';
 }
 
 /**
@@ -514,7 +514,7 @@ function pg_visitor_ai_section(array $window, array $user)
     );
 
     if ($shop) {
-        $tiles[] = array('label' => lang('Orders completed'), 'text' => pg_format_number($totals['orders_completed'], 0), 'note' => strip_tags(prepare_amount($totals['order_total'] / 100)), 'tone' => '');
+        $tiles[] = array('label' => lang('Orders completed'), 'text' => pg_format_number($totals['orders_completed'], 0), 'note' => html_entity_decode(strip_tags(prepare_amount($totals['order_total'] / 100)), ENT_QUOTES, 'UTF-8'), 'tone' => '');
     }
 
     // The bots, each with what the site tells it.
