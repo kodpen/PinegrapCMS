@@ -3648,46 +3648,74 @@
     }
 
     // A placed sticker or glyph with another one in its place: pick is a
-    // built-in sticker { type: 'sticker', kind, label, fill, ink } or a glyph
-    // { type: 'glyph', set: 'bi'|'emoji', code }. Box, turn, opacity, colour,
-    // motion and every other field stay; only the drawn thing changes, and
-    // the old type's own fields go (a sticker's kind, label and ink, a
-    // glyph's set and code). The colour is kept on an emoji too, so an emoji
-    // turned back into an icon or sticker gets it again. null when the layer
-    // or the pick is not one of these.
-    function swapGlyph(l, pick) {
+    // built-in sticker { type: 'sticker', kind, label, fill, ink, w, h } (its
+    // label already translated) or a glyph { type: 'glyph', set: 'bi'|'emoji',
+    // code }; oldText is the old sticker kind's own label text (translated).
+    // Turn, opacity, motion and every other field stay. What the person
+    // changed on the old one stays too: a label other than its kind's text, a
+    // colour or ink other than its kind's (an icon's other than #212529);
+    // else the pick brings its own. The pick keeps its own proportions,
+    // fitted inside the old box about its centre; a swap between the same
+    // proportions keeps the box. The old type's own fields go (a sticker's
+    // kind, label and ink, a glyph's set and code); the colour stays on an
+    // emoji, so an emoji turned back into an icon gets it again. null when
+    // the layer or the pick is not one of these.
+    function swapGlyph(l, pick, oldText) {
         if (!l || ((l.type !== 'sticker') && (l.type !== 'glyph')) || !pick) {
             return null;
         }
 
-        var next = clone(l), was = l.type;
+        var toSticker = (pick.type === 'sticker');
 
-        ['kind', 'label', 'ink', 'set', 'code'].forEach(function (k) { delete next[k]; });
-
-        if (pick.type === 'sticker') {
-            if (!pick.kind) {
-                return null;
-            }
-
-            next.type = 'sticker';
-            next.kind = pick.kind;
-            next.label = ((was === 'sticker') && l.label) ? l.label : String(pick.label || '');
-            next.color = l.color || pick.fill || '#000000';
-            next.ink = ((was === 'sticker') && l.ink) ? l.ink : (pick.ink || '#ffffff');
-
-            return next;
-        }
-
-        if ((pick.type !== 'glyph') || !glyphText({ set: pick.set, code: pick.code })) {
+        if (toSticker ? !pick.kind : ((pick.type !== 'glyph') || !glyphText({ set: pick.set, code: pick.code }))) {
             return null;
         }
 
-        next.type = 'glyph';
-        next.set = pick.set;
-        next.code = pick.code;
+        var next = clone(l), was = l.type, def = null, i;
 
-        if ((pick.set === 'bi') && !next.color) {
-            next.color = '#212529';
+        for (i = 0; (was === 'sticker') && (i < STICKER.STICKERS.length); i++) {
+            if (STICKER.STICKERS[i].kind === l.kind) {
+                def = STICKER.STICKERS[i];
+            }
+        }
+
+        // The old colour when the person chose it, else null.
+        var own = function (value, given) {
+            return (value && (String(value).toLowerCase() !== String(given || '').toLowerCase())) ? value : null;
+        };
+        var color = (was === 'sticker') ? own(l.color, def && def.fill) : ((l.set === 'bi') ? own(l.color, '#212529') : null);
+
+        ['kind', 'label', 'ink', 'set', 'code'].forEach(function (k) { delete next[k]; });
+
+        if (toSticker) {
+            next.type = 'sticker';
+            next.kind = pick.kind;
+            next.label = ((was === 'sticker') && (String(l.label || '') !== String(oldText || ''))) ? String(l.label || '') : String(pick.label || '');
+            next.color = color || pick.fill || '#000000';
+            next.ink = ((was === 'sticker') && own(l.ink, def && def.ink)) || pick.ink || '#ffffff';
+        } else {
+            next.type = 'glyph';
+            next.set = pick.set;
+            next.code = pick.code;
+
+            if (was === 'sticker') {
+                next.color = color || '#212529';
+            } else if ((pick.set === 'bi') && !next.color) {
+                next.color = '#212529';
+            }
+        }
+
+        // The pick's own proportions inside the old box, same centre.
+        var ratio = (toSticker && (pick.w > 0) && (pick.h > 0)) ? pick.w / pick.h : 1;
+        var w = Number(l.w) || 0, h = Number(l.h) || 0;
+
+        if ((w > 0) && (h > 0) && (Math.abs(w / h - ratio) > 1e-6)) {
+            var nw = (w / h > ratio) ? h * ratio : w, nh = nw / ratio;
+
+            next.x = l.x + (w - nw) / 2;
+            next.y = l.y + (h - nh) / 2;
+            next.w = nw;
+            next.h = nh;
         }
 
         return next;
