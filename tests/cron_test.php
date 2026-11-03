@@ -210,3 +210,37 @@ function test_cron_pick_lane_by_due_time()
 
 	pg_assert_same('structure', pg_cron_pick($jobs, $runs, $now)['heavy'], 'pass resumes');
 }
+
+// A release clears the lock only while the row still carries the stamp this
+// run's claim wrote: a run that outlasted its lock leaves the next run's lock.
+function test_cron_release_query_matches_own_stamp()
+{
+	pg_assert_same(
+		"UPDATE cron_runs SET locked_until = 0 WHERE (job_name = 'backup') AND (locked_until = 1700003600)",
+		pg_cron_release_query('backup', 1700003600));
+}
+
+// Nothing claimed in this request: nothing to release.
+function test_cron_release_query_without_claim()
+{
+	pg_assert_same('', pg_cron_release_query('backup', 0));
+}
+
+// The stamp a claim took is kept per job until its release forgets it.
+function test_cron_lock_stamp_kept_per_job()
+{
+	pg_assert_same(0, pg_cron_lock_stamp('test_job_a'), 'nothing held');
+
+	pg_cron_lock_stamp('test_job_a', 1700003600);
+	pg_cron_lock_stamp('test_job_b', 1700000060);
+
+	pg_assert_same(1700003600, pg_cron_lock_stamp('test_job_a'), 'first job');
+	pg_assert_same(1700000060, pg_cron_lock_stamp('test_job_b'), 'second job');
+
+	pg_cron_lock_stamp('test_job_a', 0);
+
+	pg_assert_same(0, pg_cron_lock_stamp('test_job_a'), 'forgotten');
+	pg_assert_same(1700000060, pg_cron_lock_stamp('test_job_b'), 'other job kept');
+
+	pg_cron_lock_stamp('test_job_b', 0);
+}
