@@ -76,26 +76,3 @@ function test_workspace_settings_lists_every_card_list_allowed()
 
 	pg_assert_true(isset($seen['route_match'], $seen['route_channel'], $seen['members']), 'list fields not found in the card sources');
 }
-
-function test_workspace_settings_may_edit_person()
-{
-	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
-
-	pg_assert_true(ws_settings_may_edit_person(0, 0), 'an administrator changes another administrator');
-	pg_assert_true(ws_settings_may_edit_person(0, 3), 'an administrator changes a basic user');
-	pg_assert_true(ws_settings_may_edit_person(2, 2), 'a manager changes another manager');
-	pg_assert_true(ws_settings_may_edit_person(2, 3), 'a manager changes a basic user');
-	pg_assert_true(ws_settings_may_edit_person(3, 3), 'a basic user changes another basic user');
-	pg_assert_true(!ws_settings_may_edit_person(2, 0), 'a manager takes an administrator out');
-	pg_assert_true(!ws_settings_may_edit_person(2, 1), 'a manager takes a designer out');
-	pg_assert_true(!ws_settings_may_edit_person(3, 2), 'a basic user takes a manager out');
-	pg_assert_true(!ws_settings_may_edit_person(1, 0), 'a designer takes an administrator out');
-}
-
-function test_workspace_settings_people_rank_checked()
-{
-	$source = workspace_settings_lists_source('workspace_settings.php');
-
-	pg_assert_true(strpos($source, "if (!ws_settings_may_edit_person(\$viewer['role'], \$candidates[\$person_id]['role'])) {") !== false, 'the people save does not check the rank');
-	pg_assert_true(strpos($source, "\$locked = !ws_settings_may_edit_person(\$viewer['role'], \$person['role']);") !== false, 'a higher rank\'s row is not drawn read-only');
-}

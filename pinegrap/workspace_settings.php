@@ -36,25 +36,6 @@ $liveform = new liveform('workspace_settings');
 $self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_settings.php';
 
 /**
- * Hours as typed ("7,5", "8") in minutes, inside a range.
- *
- * @param mixed $value
- * @param int   $min
- * @param int   $max
- * @return int  0 when nothing usable was typed
- */
-function ws_settings_minutes($value, $min, $max)
-{
-    $text = str_replace(',', '.', trim((string) $value));
-
-    if (($text === '') || !is_numeric($text)) {
-        return 0;
-    }
-
-    return max($min, min($max, (int) round(((float) $text) * 60)));
-}
-
-/**
  * The ticked weekdays (1 = Monday) as the bit mask the board reads.
  *
  * @param mixed $days
@@ -175,6 +156,21 @@ if ($_POST) {
             $day = ws_settings_minutes($_POST['day_hours'] ?? '', 30, 1440);
             $mask = ws_settings_mask($_POST['workdays'] ?? array());
             $default = ws_settings_minutes($_POST['default_task_hours'] ?? '', 5, 2400);
+            $anchor = '#ws-defaults';
+
+            // Unreadable or out-of-range hours are refused, not turned into
+            // something else.
+            if ($day === null) {
+                $liveform->add_error(lang(array('string' => '{var:1}: enter the hours as a number from 0 to {var:2}.', 'vars' => array(h(lang('Hours in a working day')), 24))));
+            }
+
+            if ($default === null) {
+                $liveform->add_error(lang(array('string' => '{var:1}: enter the hours as a number from 0 to {var:2}.', 'vars' => array(h(lang('A task with no estimate counts as (hours)')), 40))));
+            }
+
+            if (($day === null) || ($default === null)) {
+                break;
+            }
 
             db("UPDATE config SET
                 ws_day_minutes = '" . (($day > 0) ? $day : 480) . "',
@@ -183,7 +179,6 @@ if ($_POST) {
 
             log_activity(lang('the workspace defaults were changed'), $username);
             $liveform->add_notice(lang('The defaults were saved.'));
-            $anchor = '#ws-defaults';
             break;
 
         case 'department':
@@ -219,10 +214,11 @@ if ($_POST) {
             }
 
             // Members, their leads and whose own department this is. Only people
-            // in the team are taken.
-            $members = array_values(array_intersect(array_map('intval', (array) ($_POST['members'] ?? array())), $team_ids));
+            // in the team are taken. A lead or somebody whose own department
+            // this is belongs to it, ticked as a member or not.
             $leads = array_map('intval', (array) ($_POST['leads'] ?? array()));
             $primary = array_map('intval', (array) ($_POST['primary'] ?? array()));
+            $members = array_values(array_unique(array_intersect(array_merge(array_map('intval', (array) ($_POST['members'] ?? array())), $leads, $primary), $team_ids)));
 
             db("DELETE FROM ws_department_members WHERE department_id = '" . $department_id . "'");
 
@@ -301,7 +297,8 @@ if ($_POST) {
 
         case 'people':
             $rows = (array) ($_POST['people'] ?? array());
-            $saved = 0;
+            $writes = array();
+            $anchor = '#ws-people';
 
             foreach ($rows as $person_id => $row) {
                 $person_id = (int) $person_id;
@@ -320,6 +317,13 @@ if ($_POST) {
                 $day = ws_settings_minutes($row['day_hours'] ?? '', 0, 1440);
                 $mask = ws_settings_mask($row['workdays'] ?? array());
 
+                // Unreadable or out-of-range hours stop the whole save, so
+                // nothing is turned into the default unasked.
+                if ($day === null) {
+                    $liveform->add_error(lang(array('string' => '{var:1}: enter the hours as a number from 0 to {var:2}.', 'vars' => array(h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Hours a day'), $candidates[$person_id]['name'])))), 24))));
+                    continue;
+                }
+
                 // A value equal to the default is stored as "the default", so
                 // the person follows it when the default changes later.
                 if ($day === (int) WS_DAY_MINUTES) {
@@ -334,21 +338,28 @@ if ($_POST) {
                 // screen they are standing on.
                 $excluded = ($person_id !== (int) $viewer['id']) && !empty($row['excluded']);
 
+                $writes[$person_id] = "('" . $person_id . "', '" . e($title) . "', '" . $day . "', '" . $mask . "', '" . ($excluded ? 1 : 0) . "', '" . time() . "')";
+            }
+
+            if ($liveform->check_form_errors()) {
+                break;
+            }
+
+            foreach ($writes as $values) {
                 db("INSERT INTO ws_profiles (user_id, title, day_minutes, workdays, excluded, updated_at)
-                    VALUES ('" . $person_id . "', '" . e($title) . "', '" . $day . "', '" . $mask . "', '" . ($excluded ? 1 : 0) . "', '" . time() . "')
+                    VALUES " . $values . "
                     ON DUPLICATE KEY UPDATE
                         title = VALUES(title),
                         day_minutes = VALUES(day_minutes),
                         workdays = VALUES(workdays),
                         excluded = VALUES(excluded),
                         updated_at = VALUES(updated_at)");
-
-                $saved++;
             }
+
+            $saved = count($writes);
 
             log_activity(lang('the workspace people settings were changed'), $username);
             $liveform->add_notice(lang(array('string' => 'Saved for {var:1} people.', 'vars' => $saved)));
-            $anchor = '#ws-people';
             break;
 
         // The working calendar: days off by hand and from calendar

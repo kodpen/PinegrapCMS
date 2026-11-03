@@ -1756,6 +1756,7 @@
     "{var:1}: another maintenance statement on {var:2} has been running for {var:3} s; wait for it to finish": "{var:1}: {var:2} üzerinde başka bir bakım komutu {var:3} sn'dir çalışıyor; bitmesini bekleyin",
     "{var:1}: another product in the same batch is sent under the barcode {var:2}.": "{var:1}: aynı toplu işlemde {var:2} barkoduyla başka bir ürün gönderiliyor.",
     "{var:1}: at most {var:2} can be returned.": "{var:1}: en fazla {var:2} adet iade edilebilir.",
+    "{var:1}: enter the hours as a number from 0 to {var:2}.": "{var:1}: saati 0 ile {var:2} arasında bir sayı olarak girin.",
     "{var:1}: left on MyISAM: {var:2}": "{var:1}: MyISAM'da bırakılanlar: {var:2}",
     "{var:1}: not restored, the current value stays.": "{var:1}: geri yüklenmedi, güncel değer kalır.",
     "{var:1}: not restored, the file of this revision has been deleted since.": "{var:1}: geri yüklenmedi, bu sürümün dosyası o zamandan beri silinmiş.",

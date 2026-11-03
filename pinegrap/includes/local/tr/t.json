@@ -2881,6 +2881,7 @@
     "The last build failed: {var:1} The file built before is still served.": "Son oluşturma başarısız oldu: {var:1} Önceki dosya sunulmaya devam ediyor.",
     "The last change was undone.": "Son değişiklik geri alındı.",
     "The last complete read of {var:1} did not find this card.": "{var:1} listesinin son tam okumasında bu kart yoktu.",
+    "The last day cannot be before the first day.": "Son gün ilk günden önce olamaz.",
     "The last day cannot be before the first.": "Son gün ilk günden önce olamaz.",
     "The last day comes before the first.": "Son gün, ilk günden önce geliyor.",
     "The last day is not valid.": "Son gün geçerli değil.",
