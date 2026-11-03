@@ -8500,9 +8500,19 @@
                 tabList.push(['board', t('tab_board')]);
             }
 
+            var paneId = nextId('ws-pane-');
+
+            // Tab semantics in full: the chosen tab is selected and the only
+            // one in the Tab order, it names the pane below, and the arrow
+            // keys, Home and End move between the tabs.
             tabList.forEach(function (tab) {
-                var item = button(self.tab === tab[0] ? 'active' : '', tab[1]);
+                var on = self.tab === tab[0];
+                var item = button(on ? 'active' : '', tab[1]);
+                item.id = paneId + '-' + tab[0];
                 item.setAttribute('role', 'tab');
+                item.setAttribute('aria-selected', on ? 'true' : 'false');
+                item.setAttribute('aria-controls', paneId);
+                item.tabIndex = on ? 0 : -1;
                 item.setAttribute('data-ws-tab', tab[0]);
                 item.addEventListener('click', function () {
                     self.tab = tab[0];
@@ -8514,6 +8524,39 @@
                     }
                 });
                 tabs.appendChild(item);
+            });
+
+            tabs.addEventListener('keydown', function (event) {
+                var all = Array.prototype.slice.call(tabs.querySelectorAll('[role="tab"]'));
+                var at = all.indexOf(document.activeElement);
+                var to = -1;
+
+                if (at < 0) {
+                    return;
+                }
+
+                if (event.key === 'ArrowRight') {
+                    to = (at + 1) % all.length;
+                } else if (event.key === 'ArrowLeft') {
+                    to = (at - 1 + all.length) % all.length;
+                } else if (event.key === 'Home') {
+                    to = 0;
+                } else if (event.key === 'End') {
+                    to = all.length - 1;
+                }
+
+                if (to >= 0) {
+                    event.preventDefault();
+                    all[to].focus();
+                    all[to].click();
+
+                    // The redraw builds new tabs: the chosen one keeps focus.
+                    var chosen = self.tabsNode ? self.tabsNode.querySelector('[data-ws-tab="' + all[to].getAttribute('data-ws-tab') + '"]') : null;
+
+                    if (chosen) {
+                        chosen.focus();
+                    }
+                }
             });
 
             center.appendChild(tabs);
@@ -8544,6 +8587,9 @@
             }
 
             var pane = el('div', 'ws-pane ws-pane-' + self.tab);
+            pane.id = paneId;
+            pane.setAttribute('role', 'tabpanel');
+            pane.setAttribute('aria-labelledby', paneId + '-' + self.tab);
             center.appendChild(pane);
             self.pane = pane;
             messageKeys(pane);
