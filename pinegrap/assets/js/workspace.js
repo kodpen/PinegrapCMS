@@ -18528,6 +18528,14 @@
                 child.classList.toggle('active', on);
                 child.setAttribute('aria-pressed', on ? 'true' : 'false');
             });
+
+            // The time view (PGWsTaskTime.myTime()) reads none of the task
+            // filters, so they leave the toolbar while it is shown.
+            [status, dept, priority, soon, searchGroup].forEach(function (control) {
+                if (control) {
+                    control.hidden = (name === 'time');
+                }
+            });
         }
 
         scopeList.forEach(function (scope) {
