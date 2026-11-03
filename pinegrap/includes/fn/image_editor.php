@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'render', 'access', 'fonts', 'glyph');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'access', 'fonts', 'glyph');
 }
 
 /**
@@ -3302,6 +3302,35 @@ function pg_image_editor_strings_tracks()
         'tracksNote'   => lang('Drag a bar on its track to change when it plays, and its ends to change how long. Shift turns off the 0.1 s step.'),
         'tracksLayers' => lang('Layers'),
         'hintTracks'   => lang('Tracks: drag to move, ends change the duration, Shift turns off the 0.1 s step. K: play or pause'),
+    );
+}
+
+// -- Keyframes (pg_image_editor_keyframes.js) --
+
+/**
+ * The keyframes part's labels: the Animate tool's Path tab, the key at the
+ * playhead and the diamonds on the tracks. {time} is a time in seconds.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_keyframes()
+{
+    return array(
+        'keysTab'     => lang('Path'),
+        'keysNote'    => lang('Move the playhead, then drag the layer on the stage: where you put it becomes its place at that moment.'),
+        'keysOne'     => lang('Select one layer to give it a path.'),
+        'keysList'    => lang('Keyframes'),
+        'keysAdd'     => lang('Add a keyframe at {time}'),
+        'keysAt'      => lang('Keyframe at {time}'),
+        'keysX'       => lang('Across'),
+        'keysY'       => lang('Down'),
+        'keysScale'   => lang('Size'),
+        'keysRot'     => lang('Turn'),
+        'keysOpacity' => lang('Opacity'),
+        'keysEase'    => lang('Easing into this keyframe'),
+        'keysRemove'  => lang('Remove keyframe'),
+        'keysClear'   => lang('Remove all keyframes'),
+        'keysDiamond' => lang('Keyframe at {time}. Drag to move it, Delete removes it.'),
     );
 }
 

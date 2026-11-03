@@ -34,7 +34,7 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
 - AN8 (M) Present and PDF. After AN7.
   - Present mode in the editor (full screen; click, Space, arrow keys, swipe); the PDF writer; video and GIF of all scenes. No live-site viewer (question 1).
 
-- AN9 (M) Keyframes. `free` after AN2. Claimed.
+- AN9 (M) Keyframes. Done (#6290, `ui/image-editor-keyframes.md`).
   - A layer's position, scale, rotation and opacity at chosen times (diamonds on its track), eased between; moving a layer with the playhead away from 0 sets one; the path shown on the stage.
 
 - AN10 (M) SVG motion. After E15 and AN1.
