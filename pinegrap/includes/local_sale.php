@@ -328,38 +328,7 @@ function local_sale_lines($order_id)
          ORDER BY oi.id"
     );
 
-    $lines = array();
-    $taxed = array();
-
-    foreach ((array) $rows as $row) {
-        $rate = local_sale_line_rate($row);
-        $net = (int) $row['price'] * (int) $row['quantity'];
-
-        $row['rate'] = $rate;
-        $row['net'] = $net;
-        $lines[] = $row;
-        $taxed[] = array('amount' => $net, 'rate' => $rate);
-    }
-
-    // The VAT per rate on the sum of the sale's lines, spread back over them,
-    // as the checkout takes it (pg_tax_by_rate()): the order's tax and its
-    // invoice's are then the e-document provider's.
-    $taxes = pg_tax_by_rate($taxed);
-
-    foreach ($lines as $index => $row) {
-        $tax = (int) $taxes[$index];
-        $rate = $row['rate'];
-        $net = $row['net'];
-
-        $lines[$index]['tax'] = $tax;
-        $lines[$index]['gross'] = $net + $tax;
-        $lines[$index]['unit_gross'] = (int) $row['price'] + pg_tax_apply_rate((int) $row['price'], $rate);
-        // What the till view shows (local_sale_prices_net()).
-        $lines[$index]['unit_till'] = local_sale_prices_net() ? (int) $row['price'] : $lines[$index]['unit_gross'];
-        $lines[$index]['amount_till'] = local_sale_prices_net() ? $net : ($net + $tax);
-    }
-
-    return $lines;
+    return pg_local_order_lines((array) $rows);
 }
 
 /**
@@ -760,39 +729,14 @@ function local_sale_billing_account()
  */
 function local_sale_set_customer($contact_id, $account_id)
 {
-    $contact_id = (int) $contact_id;
-    $account_id = (int) $account_id;
-    $erp = local_sale_erp_on();
-    $label = '';
+    $customer = pg_local_order_customer($contact_id, $account_id);
 
-    if ($contact_id > 0) {
-        $contact = db_item("SELECT id, first_name, last_name, company FROM contacts WHERE id = '" . $contact_id . "' LIMIT 1");
-        if ($contact) {
-            $person = trim(trim((string) $contact['first_name']) . ' ' . trim((string) $contact['last_name']));
-            $label = ($person !== '') ? $person : ((trim((string) $contact['company']) !== '') ? trim((string) $contact['company']) : ('#' . $contact_id));
-            // The account the contact is linked to, when it has one; the ERP
-            // opens one from the card otherwise, at invoicing.
-            $account_id = $erp ? (int) db_value("SELECT id FROM erp_accounts WHERE contact_id = '" . $contact_id . "' ORDER BY id ASC LIMIT 1") : 0;
-        } else {
-            $contact_id = 0;
-        }
-    } elseif (($account_id > 0) && $erp) {
-        $account = db_item("SELECT id, title, contact_id FROM erp_accounts WHERE id = '" . $account_id . "' LIMIT 1");
-        if ($account) {
-            $label = (string) $account['title'];
-            $contact_id = (int) $account['contact_id'];
-        } else {
-            $account_id = 0;
-        }
-    } else {
-        $account_id = 0;
-    }
-
-    if (($contact_id <= 0) && ($account_id <= 0)) {
+    if ($customer === null) {
         return local_sale_fail(lang('That customer could not be found.'));
     }
 
-    $_SESSION['ecommerce']['local_sale_customer'] = array('contact_id' => $contact_id, 'account_id' => $account_id, 'label' => $label);
+    $label = $customer['label'];
+    $_SESSION['ecommerce']['local_sale_customer'] = $customer;
 
     return local_sale_ok(lang(array('string' => 'Customer: {var:1}', 'vars' => array($label))), array('customer_changed' => true, 'level' => 'info'));
 }

@@ -564,13 +564,29 @@ function api_orders_list($params) {
 
 function api_orders_get($params) {
 
-	$id = (int)$params['id'];
+	$order = api_order_full((int)$params['id']);
+
+	if ($order === null) {
+
+		api_fail_not_found(lang('Order'));
+
+	}
+
+	api_ok($order);
+
+}
+
+// One order as GET /orders/{id} answers it: the order with its lines and its
+// shipments; null when there is no such order.
+function api_order_full($id) {
+
+	$id = (int)$id;
 
 	$row = api_row(api_order_select() . " WHERE orders.id = '" . $id . "' LIMIT 1");
 
 	if ($row === null) {
 
-		api_fail_not_found(lang('Order'));
+		return null;
 
 	}
 
@@ -617,7 +633,7 @@ function api_orders_get($params) {
 
 	}
 
-	api_ok(api_order_present($row, $items, api_order_shipments($id)));
+	return api_order_present($row, $items, api_order_shipments($id));
 
 }
 
