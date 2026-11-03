@@ -2493,10 +2493,10 @@ function get_absolute_time($properties)
         // If the type is just date, then prepare datetime attribute with just the date.
         if ($type == 'date') {
             $datetime = date('Y-m-d', $timestamp);
-            // elseIf the type is just time, then prepare datetime attribute with just the time.
-        } elseif ($type == 'time') {
-            $datetime = date('\TH:i:s\Z', $timestamp);
-            // Otherwise the type is date & time, so prepare datetime attribute with both the date and time.
+            // A time or a date and time is one moment: the attribute names it
+            // in UTC with its date. A bare time with a Z suffix is not a valid
+            // datetime value, and the site's clock marked Z was off by the
+            // site's offset.
         } else {
             $datetime = gmdate('Y-m-d\TH:i:s\Z', $timestamp);
         }
