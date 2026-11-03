@@ -41,6 +41,28 @@ function pg_import_user_by_email($email)
 }
 
 /**
+ * Why the writer skips an author for its address, '' when the address is
+ * free: none or not valid, or a user holds it. The dry run asks it too.
+ *
+ * @param array $item
+ * @return string
+ */
+function pg_import_precheck_user($item)
+{
+    $email = trim((string) (((array) ($item['data'] ?? array()))['email'] ?? ''));
+
+    if (!validate_email_address($email)) {
+        return lang('The author has no valid e-mail address.');
+    }
+
+    if (pg_import_user_by_email($email) > 0) {
+        return lang('A user with this e-mail address exists already.');
+    }
+
+    return '';
+}
+
+/**
  * The username an author asks for: the old login when it is plain letters,
  * digits, dots, dashes and underscores, else the part of the address before
  * the @ when that is, else "author". Pure; get_unique_username() makes it unique.
@@ -77,12 +99,10 @@ function pg_import_write_user($item, $import)
         return array('result' => 'failed', 'id' => 0, 'reason' => lang('The database is not up to date.'));
     }
 
-    if (!validate_email_address($email)) {
-        return array('result' => 'skipped', 'id' => 0, 'reason' => lang('The author has no valid e-mail address.'));
-    }
+    $refusal = pg_import_precheck_user($item);
 
-    if (pg_import_user_by_email($email) > 0) {
-        return array('result' => 'skipped', 'id' => 0, 'reason' => lang('A user with this e-mail address exists already.'));
+    if ($refusal !== '') {
+        return array('result' => 'skipped', 'id' => 0, 'reason' => $refusal);
     }
 
     $user_id = create_member_user(array(

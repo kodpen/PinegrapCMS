@@ -29,6 +29,46 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * Why the writer will not make a product item, '' when it will: the store
+ * is off, the row has an error, the type is not simple or variable, or the
+ * SKUs are held by other products (the simple one's, or all variations').
+ * The dry run asks it; the writer keeps its own checks for its notes.
+ *
+ * @param array $item
+ * @return string
+ */
+function pg_import_precheck_product($item)
+{
+    $data = (array) ($item['data'] ?? array());
+
+    if (!defined('ECOMMERCE') || (ECOMMERCE !== true)) {
+        return lang('The store is turned off on this site.');
+    }
+
+    if ((string) ($data['error'] ?? '') !== '') {
+        return (string) $data['error'];
+    }
+
+    if (!in_array($data['type'] ?? '', array('simple', 'variable'), true)) {
+        return lang(array('string' => 'Only simple and variable products are imported; this one is {var:1}.', 'vars' => array((string) ($data['source_type'] ?? ''))));
+    }
+
+    if ($data['type'] === 'simple') {
+        $holder = pg_product_name_holder((string) ($data['sku'] ?? ''));
+
+        return ($holder !== null) ? lang(array('string' => 'Product {var:1} holds this SKU already.', 'vars' => array((int) $holder['id']))) : '';
+    }
+
+    foreach ((array) ($data['variants'] ?? array()) as $variant) {
+        if (pg_product_name_holder((string) ($variant['sku'] ?? '')) === null) {
+            return '';
+        }
+    }
+
+    return lang('Other products hold the SKUs of all its variations already.');
+}
+
+/**
  * Writes one product item.
  *
  * @param array $item
