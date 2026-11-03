@@ -123,3 +123,95 @@ function test_workspace_canvas_model_open_doc()
 	pg_assert_same(array(), $node['odd']['layers'], 'no layers');
 	pg_assert_same(array(null, null, null, null), $node['bad'], 'no canvas, no document');
 }
+
+// A pasted picture kept as a file beside the canvas: its layer points at the
+// file, the document may then be kept, and the editor opens it again with
+// the picture as a layer.
+function test_workspace_canvas_pictures_pointed()
+{
+	$doc = json_decode(workspace_canvas_test_doc());
+	$doc->layers[] = (object) array('id' => 'p1', 'type' => 'image', 'src' => 'data:image/png;base64,AAAA', 'fileName' => 'clip.png', 'x' => 10, 'y' => 20, 'w' => 300, 'h' => 200);
+	$doc->layers[] = (object) array('id' => 'p2', 'type' => 'image', 'src' => 'data:image/jpeg;base64,BBBB');
+
+	pg_assert_same('', ws_canvas_doc_json($doc), 'not kept with the pasted pictures in it');
+
+	$left = ws_canvas_pictures_point($doc, array('p1' => array('id' => 41, 'url' => '/clip.png')));
+
+	pg_assert_same(1, $left, 'one picture left in the document');
+	pg_assert_same('', ws_canvas_doc_json($doc), 'still not kept while one is left');
+
+	$left = ws_canvas_pictures_point($doc, array('p2' => array('id' => 42, 'url' => '/Picture.jpg')));
+
+	pg_assert_same(0, $left, 'none left');
+
+	$json = ws_canvas_doc_json($doc);
+
+	pg_assert_true($json !== '', 'kept once every picture is a file');
+
+	$kept = json_decode($json, true);
+
+	pg_assert_same('/clip.png', $kept['layers'][1]['src'], 'the layer points at its file');
+	pg_assert_same(41, $kept['layers'][1]['fileId'], 'with the file id');
+	pg_assert_same(42, $kept['layers'][2]['fileId'], 'the second one too');
+	pg_assert_same(0, ws_canvas_pictures_point(null, array()), 'no document');
+
+	if (!function_exists('exec')) {
+		return;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgwscanvas');
+
+	if ($file === false) {
+		return;
+	}
+
+	file_put_contents($file, 'var M = require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_model.js') . ');' . "\n"
+		. 'console.log(JSON.stringify(M.canvasOpenDoc(' . $json . ')));');
+
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+	$node = ($code === 0) ? json_decode(implode("\n", $out), true) : null;
+
+	pg_assert_true(is_array($node), ($code === 0) ? 'node ran' : implode("\n", $out));
+
+	if (is_array($node)) {
+		pg_assert_same('image', $node['layers'][1]['type'], 'opened again: the picture is a layer');
+		pg_assert_same('/clip.png', $node['layers'][1]['src'], 'opened again: from its file');
+		pg_assert_same(41, $node['layers'][1]['fileId'], 'opened again: with its file id');
+	}
+}
+
+// The picture's file name: the name it came with, else "Picture", in the
+// type of its bytes.
+function test_workspace_canvas_picture_name()
+{
+	pg_assert_same('clip.png', ws_canvas_picture_name('clip.png', 'png'), 'its name');
+	pg_assert_same('clip.jpg', ws_canvas_picture_name('C:\\x\\clip.webp', 'jpg'), 'no folder, the type of its bytes');
+	pg_assert_same(lang('Picture') . '.png', ws_canvas_picture_name('', 'png'), 'no name');
+	pg_assert_same(lang('Picture') . '.png', ws_canvas_picture_name(array('x'), 'png'), 'no string');
+}
+
+// The save keeps the pictures as files before the document, and takes them
+// from the request before it is let go.
+function test_workspace_canvas_save_order()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_file_save.php');
+
+	pg_assert_true(substr_count($source, "ws_canvas_keep(") === 3, 'three places keep a canvas');
+	pg_assert_true(substr_count($source, "\$request['pictures'] ?? null") >= 1, 'the pictures go along');
+	pg_assert_true(strpos($source, '$pictures = $request[\'pictures\'] ?? null;') < strpos($source, 'unset($request);'), 'taken before the request is let go');
+
+	$canvas = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/canvas.php');
+	$keep = substr($canvas, (int) strpos($canvas, 'function ws_canvas_keep('));
+
+	pg_assert_true(strpos($keep, 'ws_canvas_pictures_keep(') < strpos($keep, 'pg_image_editor_canvas_keep('), 'pictures before the document');
+}
