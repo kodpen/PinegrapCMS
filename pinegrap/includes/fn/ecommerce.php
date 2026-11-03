@@ -92,7 +92,9 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
     $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product_id, (string) $ship_to_id, (string) $calendar_event_id, (string) $recurrence_number)) or output_error(lang('Query failed.'));
     // if product has already been added to order, update order item
     if (mysqli_num_rows($result) > 0) {
-        // get order item id
+        // The shopper's own line found above; the update goes to it by id, so
+        // a gift line an offer put in the same recipient for the same product
+        // (added_by_offer = 1) keeps its quantity and price.
         $row = mysqli_fetch_assoc($result);
         $order_item_id = $row['id'];
         // if this product is a donation product, update price
@@ -100,25 +102,15 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
             $query = "UPDATE order_items
                 SET
                     price = (price + ?)
-                WHERE
-                    (order_id = ?)
-                    AND (product_id = ?)
-                    AND (ship_to_id = ?)
-                    AND (calendar_event_id = ?)
-                    AND (recurrence_number = ?)" . pg_order_item_active_sql();
-            $result = db_q($query, array((string) $donation_amount, (string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product_id, (string) $ship_to_id, (string) $calendar_event_id, (string) $recurrence_number)) or output_error(lang('Query failed.'));
+                WHERE id = ?";
+            $result = db_q($query, array((string) $donation_amount, (string) $order_item_id)) or output_error(lang('Query failed.'));
             // else this product is not a donation product, so update quantity
         } else {
             $query = "UPDATE order_items
                 SET
                     quantity = (quantity + ?)
-                WHERE
-                    (order_id = ?)
-                    AND (product_id = ?)
-                    AND (ship_to_id = ?)
-                    AND (calendar_event_id = ?)
-                    AND (recurrence_number = ?)" . pg_order_item_active_sql();
-            $result = db_q($query, array((string) $quantity, (string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product_id, (string) $ship_to_id, (string) $calendar_event_id, (string) $recurrence_number)) or output_error(lang('Query failed.'));
+                WHERE id = ?";
+            $result = db_q($query, array((string) $quantity, (string) $order_item_id)) or output_error(lang('Query failed.'));
             // if there is a ship to for this order item
             if ($ship_to_id) {
                 // get ship to information
