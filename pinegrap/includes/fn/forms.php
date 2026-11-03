@@ -331,103 +331,165 @@ function get_random_string($properties = array())
 // they can edit.
 function select_page($page_id = '', $page_type = '')
 {
+    $options = pg_select_page_options($page_id, $page_type);
+
+    // The Create Page and Edit Page screens print a picker for every page
+    // type, hidden until its type is chosen; an untyped one listing every
+    // page was printed twenty-odd times. There it carries only its stored
+    // page, and the list comes from one template once it is opened
+    // (pg_page_picker_template()).
+    if (($page_type === '' || $page_type === null) && pg_page_picker_lazy()) {
+        return pg_page_select_lazy_html($options);
+    }
+
+    return pg_page_select_options_html($options);
+}
+
+// The options of select_page() as array('id', 'label', 'selected') rows, in
+// page name order, with the archived and bin marks of the stored page.
+function pg_select_page_options($page_id = '', $page_type = '')
+{
     global $user;
     $folders_that_user_has_access_to = array();
     // if user is a basic user, then get folders that user has access to
-    if ($user['role'] == 3) {
+    if (isset($user['role']) && $user['role'] == 3) {
         $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
     }
     // A posted value can be anything; only a whole id is kept.
     $keep_id = is_scalar($page_id) ? (int) $page_id : 0;
     $bin_folders = ($keep_id > 0) ? array_flip(pg_recycle_bin_folder_ids()) : array();
-    $where_values = array();
-    // if a page type was given, prepare to only return pages with that page type
-    if ($page_type) {
-        // If multiple page types were passed in an array, then prepare filter for all of them.
-        if (is_array($page_type)) {
-            $where = "WHERE (";
-            foreach ($page_type as $key => $type) {
-                if ($key != 0) {
-                    $where .= "OR ";
-                }
-                $where .= "(page.page_type = ?) ";
-                $where_values[] = (string) $type;
-            }
-            $where .= ")";
-            // Otherwise only one page type was passed, so prepare single filter.
-        } else {
-            $where = "WHERE page.page_type = ?";
-            $where_values[] = (string) $page_type;
-        }
-    } else {
-        $where = '';
-    }
-    // if there is not already a where statement, then output the starting where part
-    if ($where == '') {
-        $where .= 'WHERE ';
-        // else there is already a where statement, so add an and
-    } else {
-        $where .= ' AND ';
-    }
-    if ($keep_id > 0) {
-        $where .= '((folder.folder_archived = "0") OR (page.page_id = ?))';
-        $where_values[] = (string) $keep_id;
-    } else {
-        $where .= '(folder.folder_archived = "0")';
-    }
-    // get pages
-    $query = "SELECT
 
-            page.page_id as id,
-
-            page.page_name as name,
-
-            page.page_folder as folder_id,
-
-            folder.folder_archived
-
-        FROM page
-
-        LEFT JOIN folder ON page.page_folder = folder.folder_id
-
-        $where
-
-        ORDER BY page.page_name";
-    $result = db_q($query, $where_values) or output_error(lang('Query failed.'));
-    $pages = array();
-    // loop through all pages so they can be added to array
-    while ($row = mysqli_fetch_assoc($result)) {
-        $pages[] = $row;
-    }
-    $output = '';
-    // loop through all pages so their options can be outputted
-    foreach ($pages as $page) {
+    $options = array();
+    foreach (pg_select_page_rows($page_type) as $page) {
         // if user has access to folder that page is in, then output option
-        if (check_folder_access_in_array($page['folder_id'], $folders_that_user_has_access_to) == true) {
-            $kept = ((int) $page['id'] === $keep_id);
-            $status = pg_page_option_status((string) $page['folder_archived'] !== '0', isset($bin_folders[(int) $page['folder_id']]), true, $kept);
-            if ($status === 'skip') {
-                continue;
-            }
-            $page_name = $page['name'];
-            if ($status === 'bin') {
-                require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
-                $original = pg_recycle_parked_original($page_name, $page['id']);
-                $page_name = (($original !== '') ? $original : $page_name) . ' [' . lang('IN RECYCLE BIN') . ']';
-            } elseif ($status === 'archived') {
-                $page_name .= ' [' . lang('ARCHIVED') . ']';
-            }
-            // if this page should be selected, then select it
-            if ($kept) {
-                $selected = ' selected="selected"';
-            } else {
-                $selected = '';
-            }
-            // output option
-            $output .= '<option value="' . $page['id'] . '"' . $selected . '>' . h($page_name) . '</option>';
+        if (check_folder_access_in_array($page['folder_id'], $folders_that_user_has_access_to) != true) {
+            continue;
         }
+        $kept = ((int) $page['id'] === $keep_id);
+        $status = pg_page_option_status((string) $page['folder_archived'] !== '0', isset($bin_folders[(int) $page['folder_id']]), true, $kept);
+        if ($status === 'skip') {
+            continue;
+        }
+        $page_name = $page['name'];
+        if ($status === 'bin') {
+            require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+            $original = pg_recycle_parked_original($page_name, $page['id']);
+            $page_name = (($original !== '') ? $original : $page_name) . ' [' . lang('IN RECYCLE BIN') . ']';
+        } elseif ($status === 'archived') {
+            $page_name .= ' [' . lang('ARCHIVED') . ']';
+        }
+        $options[] = array('id' => (int) $page['id'], 'label' => (string) $page_name, 'selected' => $kept);
+    }
+    return $options;
+}
+
+// The pages of $page_type (one type, a list of types, or '' for every page),
+// archived folders included, ordered by name. Read once per request for each
+// type list: a page form asks for the same list many times.
+function pg_select_page_rows($page_type = '')
+{
+    static $cache = array();
+    $types = array();
+    if ($page_type) {
+        foreach ((array) $page_type as $type) {
+            $types[] = (string) $type;
+        }
+    }
+    $key = implode("\n", $types);
+    if (isset($cache[$key])) {
+        return $cache[$key];
+    }
+    $where = $types ? 'WHERE page.page_type IN (' . implode(', ', array_fill(0, count($types), '?')) . ')' : '';
+    $result = db_q(
+        "SELECT
+            page.page_id as id,
+            page.page_name as name,
+            page.page_folder as folder_id,
+            folder.folder_archived
+        FROM page
+        LEFT JOIN folder ON page.page_folder = folder.folder_id
+        $where
+        ORDER BY page.page_name", $types) or output_error(lang('Query failed.'));
+    $rows = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+        $rows[] = $row;
+    }
+    return $cache[$key] = $rows;
+}
+
+// $options (array('id', 'label', 'selected') rows) as <option> markup. Pure.
+function pg_page_select_options_html(array $options)
+{
+    $output = '';
+    foreach ($options as $option) {
+        $output .= '<option value="' . (int) $option['id'] . '"' . (!empty($option['selected']) ? ' selected="selected"' : '') . '>' . h($option['label']) . '</option>';
     }
     return $output;
+}
+
+// An untyped picker that waits for the page list: its selected option, so
+// the form sends the stored page unopened, and a hidden, disabled marker the
+// filling script looks for. Pure.
+function pg_page_select_lazy_html(array $options)
+{
+    $kept = array();
+    foreach ($options as $option) {
+        if (!empty($option['selected'])) {
+            $kept[] = $option;
+        }
+    }
+    return '<option value="" hidden disabled data-pg-page-fill></option>' . pg_page_select_options_html($kept);
+}
+
+// Whether untyped page pickers wait for the template: $on switches it, the
+// call answers the setting in force. Set while pg_page_form_type_fields()
+// draws for the Create Page and Edit Page screens.
+function pg_page_picker_lazy($on = null)
+{
+    static $lazy = false;
+    if ($on !== null) {
+        $lazy = (bool) $on;
+    }
+    return $lazy;
+}
+
+// The template holding every page a lazy picker offers, and the script that
+// fills a picker from it when it is first focused or pressed. The stored
+// page keeps its own option when the list has none for it (an archived or
+// binned page); otherwise the list's option is selected in its place.
+function pg_page_picker_template()
+{
+    return '<template id="pg_page_picker_options">' . pg_page_select_options_html(pg_select_page_options()) . '</template>
+        <script>
+        (function () {
+            var template = document.getElementById("pg_page_picker_options");
+            if (!template) return;
+            function fill(select) {
+                var marker = select.querySelector("option[data-pg-page-fill]");
+                if (!marker) return;
+                var value = select.value;
+                var list = template.content.cloneNode(true);
+                marker.parentNode.removeChild(marker);
+                if (value !== "") {
+                    var same = list.querySelector("option[value=\"" + parseInt(value, 10) + "\"]");
+                    if (same) {
+                        var stored = select.querySelector("option[value=\"" + parseInt(value, 10) + "\"]");
+                        if (stored) stored.parentNode.removeChild(stored);
+                        same.setAttribute("selected", "selected");
+                    }
+                }
+                select.appendChild(list);
+                select.value = value;
+            }
+            function onEvent(event) {
+                var target = event.target;
+                if (target && target.tagName === "SELECT") fill(target);
+            }
+            ["focusin", "mousedown", "touchstart"].forEach(function (type) {
+                document.addEventListener(type, onEvent, true);
+            });
+        })();
+        </script>';
 }
 // outputs the form's <select> page list for selecting a custom form: the
 // labels of the Forms screen (a repeated form name gets its page name,
