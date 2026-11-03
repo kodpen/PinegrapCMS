@@ -3694,6 +3694,7 @@
     "about us, our story, makers, since 2014": "hakkımızda, hikâyemiz, zanaatkârlar, 2014'ten beri",
     "about us, who we are, company, history": "hakkımızda, biz kimiz, şirket, tarihçe",
     "about {var:1}": "yaklaşık {var:1}",
+    "about {var:1} contacts": "yaklaşık {var:1} kişi",
     "about-me": "hakkimda",
     "abroad, remote, video call, language": "yurt dışı, uzaktan, görüntülü görüşme, dil",
     "access denied (email or username invalid: {var:1})": "erişim reddedildi (e-posta veya kullanıcı adı geçersiz: {var:1})",
