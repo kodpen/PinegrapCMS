@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Recycle bin steps for pages and page styles deleted outside the file
+ * Recycle bin steps for pages, files and page styles deleted outside the file
  * manager (the pages list, the page screen, the visual editor and the page
  * styles list): binning a page or a style, its restore record and the bin
  * listing of styles. Loaded by view_folder_and_files_f.php.
@@ -84,6 +84,57 @@ function pg_recycle_page($page_id, $user)
     pg_audit_record('recycle', 'page', (int) $page['page_id'], $audit_before);
 
     return array('status' => 'binned', 'message' => '', 'home' => ($page['page_home'] === 'yes'));
+}
+
+// Move one file into the bin the way the explorer's delete does: the row, its
+// versions and the bytes on disk stay, the row only changes folder, its name
+// is parked and one restore record remembers where it came from.
+//
+// Returns array('status' => 'binned' | 'inside' | 'error', 'message').
+// 'inside' means the file is in the bin already, where a delete is the
+// permanent one; the caller takes that path itself.
+function pg_recycle_file($file_id, $user)
+{
+    $file = db_item("SELECT id, name, folder, design FROM files WHERE id = '" . e((int) $file_id) . "'");
+
+    if (!$file) {
+        return array('status' => 'error', 'message' => lang('File not found'));
+    }
+
+    if (pg_recycle_is_inside($file['folder'])) {
+        return array('status' => 'inside', 'message' => '');
+    }
+
+    if ((check_edit_access($file['folder']) == false) || (($file['design'] == 1) && ($user['role'] > 1))) {
+        return array('status' => 'error', 'message' => lang(array('string' => 'Access denied for {var:1}.', 'vars' => $file['name'])));
+    }
+
+    $bin_id = (int) pg_recycle_folder_id(true);
+
+    if ($bin_id <= 0) {
+        return array('status' => 'error', 'message' => lang('The Recycle Bin is not available yet. Please run the upgrade.'));
+    }
+
+    $audit_before = pg_audit_fetch('files', $file['id']);
+
+    db(
+        "UPDATE files SET
+            folder = '" . e($bin_id) . "',
+            timestamp = UNIX_TIMESTAMP(),
+            user = '" . e($user['id']) . "'
+        WHERE id = '" . e($file['id']) . "'");
+
+    pg_recycle_park_name('file', $file['id'], $user);
+
+    db("DELETE FROM recycle_bin WHERE (item_type = 'file') AND (item_id = '" . e($file['id']) . "')");
+
+    db(
+        "INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
+        VALUES ('file', '" . e($file['id']) . "', '" . e((int) $file['folder']) . "', UNIX_TIMESTAMP(), '" . e($user['id']) . "')");
+
+    pg_audit_record('recycle', 'files', (int) $file['id'], $audit_before);
+
+    return array('status' => 'binned', 'message' => '');
 }
 
 // Whether page styles can go to the bin: the bin itself, plus what 2026.4.10

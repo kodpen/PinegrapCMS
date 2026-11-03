@@ -164,6 +164,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/payments.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/subscriptions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/subscription_renewal.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/form_payments.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/form_payment_step.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/subscriptions_account.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/subscriptions_operator.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/innodb.php');

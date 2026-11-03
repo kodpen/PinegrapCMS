@@ -467,7 +467,7 @@ $pg_settings_cards[] = '
                                                         <div class="pg-f-xs">
                                                             <label for="membership_expiration_warning_email_days_before_expiration" class="form-label">' . lang('Send') . '</label>
                                                             <div class="input-group">
-                                                                <input type="text" name="membership_expiration_warning_email_days_before_expiration" id="membership_expiration_warning_email_days_before_expiration" class="form-control text-end" value="' . h($membership_expiration_warning_email_days_before_expiration) . '" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal"/>
+                                                                <input type="text" name="membership_expiration_warning_email_days_before_expiration" id="membership_expiration_warning_email_days_before_expiration" class="form-control text-end" value="' . h($membership_expiration_warning_email_days_before_expiration) . '" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal"/>
                                                                 <span class="input-group-text" title="' . lang('day(s) before expiration date') . '">' . lang('day(s)') . '</span>
                                                             </div>
                                                         </div>

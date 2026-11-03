@@ -1,6 +1,6 @@
 ---
 name: marketplace-settings-screen-a11y
-description: Marketplaces account screen: phone-width rows, emphasis inks, named dialogs, current account marked, formatted counts, a refused Connect or Save drawn again
+description: Marketplaces account screen: phone-width rows, inks, named dialogs, current account, counts, a refused Connect or Save with its messages inside, long names, toolbar
 ---
 
 ## Why do question rows not use .mp-row?
@@ -23,5 +23,11 @@ description: Marketplaces account screen: phone-width rows, emphasis inks, named
 - `#new_name`, the Connect dialog's text credentials and `#edit_name` are `required`; the hidden marketplace blocks are disabled, so they are not checked. The drawer's credential boxes stay optional: blank keeps what is stored.
 - A refusal the server still makes (blank name, unknown marketplace) does not redirect, so `$mp_refused` (`create`/`update`) draws the form from `$_POST` in the same request: the posted marketplace selected, name, non-secret text credentials and Send prices as posted (`mp_settings_credential_field()` draws a create value, never into a secret box, which keeps `autocomplete="new-password"`). The script reopens `#mp_new` or `#mp_drawer` with `pgUI.ready()` + `pgUI[kind].show()`.
 - A refused Save takes `$selected_id` from the posted `account_id`: the post goes to the bare address, and the screen used to jump to the first account with the stored switches.
+- Its messages (`$mp_form_errors`) are printed inside `.dialog-body` / `.drawer-body`, not at the top of the page, where they sat under the backdrop; each names its field, and the refused boxes get `is-invalid` + `aria-invalid` (`$mp_invalid`, the `$invalid` argument of `mp_settings_credential_field()`).
+- Name and Cargo template are `maxlength="100"` and the server refuses a longer value (the columns are varchar(100); MySQL cut it silently). An emptied Days to prepare keeps the stored value instead of becoming 1.
+
+## How does a long account name fit?
+- `.mp-name` (`min-width: 0; overflow-wrap: anywhere`) on the tile name, the account card header and `#mp_drawer_title`; the drawer's `.btn-close` is `flex: 0 0 auto`. A 98-character name without spaces pushed the page to 1037px at 375px and the close button off screen.
+- The screen's actions are in `pg_screen_toolbar()`: Connect a Marketplace (primary) and the last run fact (grow), also in the empty state.
 
 Tests: `tests/marketplace_settings_names_test.php`, `tests/marketplace_settings_refused_connect_test.php`.

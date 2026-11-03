@@ -524,6 +524,10 @@ function pg_mail_reputation_counts($now)
         $sent += (int) db_value("SELECT COUNT(*) FROM mail_outbox WHERE (status = 'sent') AND (sent_at >= '" . $since . "')");
     }
 
+    // email_campaigns.start_time is a DATETIME: compared with a bare Unix
+    // timestamp, MySQL 8 refuses the query ("Incorrect DATETIME value").
+    // FROM_UNIXTIME() uses the session time zone, as the NOW() the campaign
+    // job compares the column with.
     $sent += (int) db_value(
         "SELECT COUNT(*)
         FROM email_recipients
@@ -531,7 +535,7 @@ function pg_mail_reputation_counts($now)
         WHERE
             (email_recipients.complete = '1')
             AND (email_recipients.failed = '0')
-            AND (email_campaigns.start_time >= '" . $since . "')");
+            AND (email_campaigns.start_time >= FROM_UNIXTIME(" . $since . "))");
 
     if (function_exists('pg_mail_bounces_ready') && pg_mail_bounces_ready()) {
         $row = db_item(

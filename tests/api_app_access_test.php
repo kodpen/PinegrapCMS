@@ -23,6 +23,7 @@ if (!defined('PG_API_PANEL')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/api/app_access.php');
+require_once(PG_FUNCTIONS_DIR . '/waf.php');
 
 // The served OAuth application is the oldest active one, as pg_oauth_app()
 // reads it; an expired oldest one means none is served, not the next.
@@ -155,4 +156,34 @@ function test_api_app_access_update_checks_length()
 
 	pg_assert_true($check !== false, 'update measures its text fields');
 	pg_assert_true($check < strpos($screen, 'db("UPDATE api_apps SET'), 'measured before the row is written');
+}
+
+// An allow list entry that is no address, range or wildcard is named; it
+// would match nothing and so refuse every call made with the key.
+function test_api_app_access_ip_allowlist_bad()
+{
+	pg_assert_same('', api_app_ip_allowlist_bad(''), 'empty list admits everyone');
+	pg_assert_same('', api_app_ip_allowlist_bad("1.2.3.4, 10.0.0.0/8; 192.168.1.*\n2001:db8::/32"), 'addresses, ranges and wildcards');
+	pg_assert_same('pg-test', api_app_ip_allowlist_bad('pg-test, 1.2.3.4/33'), 'the first bad entry');
+	pg_assert_same('1.2.3.4/33', api_app_ip_allowlist_bad('1.2.3.4, 1.2.3.4/33'), 'a prefix too long for IPv4');
+	pg_assert_same('', api_app_ip_allowlist_bad(array('1.2.3.4')), 'a list is not judged here');
+}
+
+// An empty rate box keeps the stored limit; anything outside 1-6000 or not a
+// whole number is refused, never stored as 1 a minute.
+function test_api_app_access_rate_limit_in()
+{
+	pg_assert_same(null, api_app_rate_limit_in(''), 'empty keeps the stored value');
+	pg_assert_same(null, api_app_rate_limit_in(' '), 'blank keeps the stored value');
+	pg_assert_same(120, api_app_rate_limit_in(' 120 '));
+	pg_assert_same(6000, api_app_rate_limit_in('6000'));
+
+	foreach (array('0', '6001', '12,50', '-5', 'abc', '1e3') as $text) {
+		pg_assert_same(false, api_app_rate_limit_in($text), 'refused: ' . $text);
+	}
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/api_settings.php');
+
+	pg_assert_true(strpos($screen, 'api_app_rate_limit_in(') < strpos($screen, 'db("UPDATE api_apps SET'), 'checked before the row is written');
+	pg_assert_same(false, strpos($screen, 'if ($rate < 1) { $rate = 1; }'), 'no silent clamp to 1');
 }

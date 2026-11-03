@@ -1174,6 +1174,7 @@
     "file ({var:1}) was deleted for the submitted form (form name: {var:2}, reference code: {var:3})": "dosya ({var:1}) gönderilen form için silindi (form adı: {var:2}, referans kodu: {var:3})",
     "file ({var:1}) was modified": "dosya ({var:1}) düzenlendi",
     "file ({var:1}) was modified via Image Editor": "dosya ({var:1}) Görsel Düzenleyici ile düzenlendi",
+    "file ({var:1}) was moved to the Recycle Bin": "dosya ({var:1}) Geri Dönüşüm Kutusuna taşındı",
     "file ({var:1}) was rotated": "dosya ({var:1}) döndürüldü",
     "file ({var:1}) was updated via Image Editor": "dosya ({var:1}) Görsel Düzenleyici ile güncellendi",
     "file attachment ({var:1}) for a comment on page ({var:2}) was deleted": "({var:2}) sayfasındaki bir yorum için dosya eki ({var:1}) silindi",

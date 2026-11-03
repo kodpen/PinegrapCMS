@@ -88,7 +88,7 @@ function pg_dashboard_v2_cards()
         // General
         'ai'         => $card(lang('Assistant'), 'bi-stars', 'general', 'M', null, 'workspace'),
         'goals'      => $card(lang('My goals'), 'bi-bullseye', 'general', 'S', null, 'all'),
-        'pipeline'   => $card(lang('Pipeline'), 'bi-funnel', 'general', 'L', 2, 'all'),
+        'pipeline'   => $card(lang('Work line'), 'bi-funnel', 'general', 'L', 2, 'all'),
         'queue'      => $card(lang('Next up'), 'bi-list-ol', 'general', 'M', null, 'all'),
         'activity'   => $card(lang('Activity'), 'bi-activity', 'general', 'S', null, 'all'),
         'flows'      => $card(lang('Flows'), 'bi-diagram-3', 'general', 'S', null, 'workspace'),

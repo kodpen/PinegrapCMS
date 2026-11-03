@@ -1388,6 +1388,51 @@ function pg_payment_hosted_card_driver($gateway = null)
 }
 
 /**
+ * The browser part of a driver whose card is typed into the service's own
+ * fields: the box assets/js/payment_hosted.js mounts the fields in, built
+ * from what prepare() answered, the token input it fills on submit, the
+ * service's script and the site's. The service's script is loaded only from
+ * a host the driver lists for the site's security policy; a failed prepare()
+ * or a script from anywhere else gives a notice instead. The box follows the
+ * form's payment_method choice (the card method) wherever it is printed.
+ *
+ * @param string     $driver     the driver key
+ * @param array      $prepare    pg_payment_answer() of prepare()
+ * @param array|null $definition the driver's definition; null reads it
+ * @return string HTML
+ */
+function pg_payment_box($driver, $prepare, $definition = null)
+{
+    $unavailable = lang('Card payments are not available right now. Please choose another payment method.');
+    $definition = is_array($definition) ? $definition : pg_payment_driver((string) $driver);
+    $client = (is_array($prepare) && isset($prepare['client']) && is_array($prepare['client'])) ? $prepare['client'] : array();
+    $script = (isset($client['script']) && is_string($client['script'])) ? $client['script'] : '';
+    $script_host = (preg_match('#^(https://[^/\s]+)/#', $script, $script_match) === 1) ? $script_match[1] : '';
+    $script_allowed = ($script_host !== '') && isset($definition['csp']['script-src']) && in_array($script_host, (array) $definition['csp']['script-src'], true);
+
+    if (empty($prepare['success']) || !$script_allowed) {
+        return '<div class="alert alert-warning small mb-3" role="alert">' . h($unavailable) . '</div>';
+    }
+
+    $config = array(
+        'driver'   => (string) $driver,
+        'client'   => $client,
+        'messages' => array(
+            'unavailable' => $unavailable,
+            'invalid'     => lang('The card details could not be read. Please check them and try again.'),
+        ),
+    );
+
+    return '<div class="pg-eo-hosted-card mb-3" data-pg-payment-hosted="' . h(json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) . '">'
+         .   '<div class="pg-eo-hosted-card-element"></div>'
+         .   '<div class="small text-danger mt-2 pg-eo-hosted-card-error" role="alert" aria-live="polite"></div>'
+         . '</div>'
+         . '<input type="hidden" name="payment_token" value="">'
+         . '<script src="' . h($script) . '"></script>'
+         . pg_js_bundle_tags('assets/js/payment_hosted.min.js', false);
+}
+
+/**
  * Whether an order has a recurring line with a price, as submit_order.php
  * decides it before the payment: the card is then kept for the renewals, and
  * the hosted card fields must be built saying so.

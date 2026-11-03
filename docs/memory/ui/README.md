@@ -169,7 +169,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - erp-link-rights.md: ERP order, receipt, contact and user links and the Record a Receipt/Payment buttons show only when the target screen admits the clerk; plain text otherwise
 - experiments-screen.md: The Experiments results screen (experiments.php, PX5 #6255): list, per-variant figures, lift, the z-test as a sentence, the daily-rate SVG, buttons posted to the sheet
 - explorer-access-drawers.md: File Manager access drawers (folder and commerce) list only rights holders, add users by search, save changed rows, None deletes the row; end date layout, inherit note
-- explorer-bin-records-and-names.md: File Manager bin count skips records of gone items, classic page deletes clear the record, bin status bar kinds; paste, Duplicate, rename and upload toasts name the name a copy or file took
+- explorer-bin-records-and-names.md: File Manager bin count skips gone items, page deletes clear the record, Edit File deletes to the bin, status bar kinds; paste, Duplicate, rename, upload and save toasts name the name a file took
 - explorer-bin-toast.md: File and Catalog Manager Delete toasts count what the server moved to the bin and show its refusal reasons
 - explorer-breadcrumb-narrow.md: Why the File and Catalog Manager's location bar scrolls to its end after every draw and on resize, and fades on its left edge.
 - explorer-bulk-rename.md: File Manager Bulk Rename shows, compares and counts file names as prepare_file_name() stores them, via explorer_rename's write-nothing preview; Apply waits for it
@@ -287,7 +287,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - main-menu-settings-row.md: The retired Site Settings row of the main menu (slot 20): what replaced it, where Translations went, which screens it marked, what is left of data-pg-settings-page
 - main-menu-states.md: Main menu on wide screens: expanded / mini / hidden, the one bar button (#menu_mode_toggle) that walks them (the drawer on phones), the cookie, server-drawn classes, Ctrl+D
 - marketplace-products-names.md: Marketplace products screen: named row boxes, focus kept on redrawn rows and when the bulk bar hides, pager spans, emphasis inks, formatted counts, announced progress and selected count
-- marketplace-settings-screen-a11y.md: Marketplaces account screen: phone-width rows, emphasis inks, named dialogs, current account marked, formatted counts, a refused Connect or Save drawn again
+- marketplace-settings-screen-a11y.md: Marketplaces account screen: phone-width rows, inks, named dialogs, current account, counts, a refused Connect or Save with its messages inside, long names, toolbar
 - mass-edit-find-replace.md: The Find & Replace card of mass_edit.php: its liveform fields, what a refused apply comes back with, the first-draw defaults; the Get Edit Form address
 - mass-edit-live-pages-and-input-vars.md: Pages › Mass Edit reads only live pages and posts only changed fields, with a max_input_vars marker
 - menu-item-shared-form.md: The menu item create and edit screens share includes/forms/menu_item_form.php
@@ -425,6 +425,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - settings-modal-search.md: The Site Settings dialog's search box (index, system tools, ranking, Turkish keywords keeping English terms) and how a text names a card's place
 - settings-organization-card.md: Site Settings General › Organization card: which fields it gathered from where, who saves them, the two support e-mail fields, the ERP Settings pointer.
 - settings-public-image-pickers.md: Site Settings pickers whose picture is shown to everyone (Site Icon, App Icon, Default Share Image, Organization Logo): list and save keep only files every visitor can open
+- settings-refused-not-clamped.md: Site Settings boxes a save refuses instead of clamping or blanking: firewall and sign-in limits, tracking days, analytics IDs, merchant fields (pg_whole_number_in_range(), pg_ga_tag_id())
 - settings-security-cards.md: Accounts and sign-in and Firewall and HTTPS (keys security, firewall): where the encryption key, blocked e-mail addresses and trusted proxies sit and which save writes them.
 - settings-system-tools.md: The System tools screen (system_tools.php): the screens beside Site Settings as cards, the dialog's one row to it, the palette rows; gates from pg_settings_tool_groups()
 - settings-window-turkish-texts.md: Site Settings window wording in Turkish (#5029, PR #5079): mid-sentence relative time, Turkish starter dollar name, translated language names, the category-switch question, settled terms

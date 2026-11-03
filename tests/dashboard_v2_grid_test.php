@@ -90,7 +90,7 @@ function test_dashboard_v2_change()
 
 // The stored order is kept; unknown, hidden and repeated cards are skipped;
 // bad widths and periods take the card's own; nothing stored draws every
-// visible card.
+// visible card, an empty stored list draws none.
 function test_dashboard_v2_grid_layout()
 {
 	$all = pg_dashboard_v2_cards();
@@ -100,6 +100,8 @@ function test_dashboard_v2_grid_layout()
 		array('id' => 'visitors', 'w' => 'M', 'per' => 0, 'cmp' => 0, 'badge' => 1),
 		array('id' => 'engagement', 'w' => 'S', 'per' => null, 'cmp' => 0, 'badge' => 1),
 	), pg_dashboard_v2_grid_layout(null, $visible), 'nothing stored');
+
+	pg_assert_same(array(), pg_dashboard_v2_grid_layout(array(), $visible), 'an emptied dashboard stays empty');
 
 	pg_assert_same(array(
 		array('id' => 'engagement', 'w' => 'L', 'per' => null, 'cmp' => 0, 'badge' => 0),
@@ -119,20 +121,20 @@ function test_dashboard_v2_visitor_dates()
 {
 	$now = mktime(15, 0, 0, 3, 10, 2026);
 
-	$today = pg_dashboard_v2_visitor_dates(0, 1, $now);
+	$today = pg_dashboard_v2_visitor_dates(0, 0, $now);
 	pg_assert_same(array('2026-03-10'), $today['dates']);
 	pg_assert_same(array('2026-03-09'), $today['compare']);
 	pg_assert_true($today['hourly']);
 
-	$week = pg_dashboard_v2_visitor_dates(1, 2, $now);
+	$week = pg_dashboard_v2_visitor_dates(1, 1, $now);
 	pg_assert_same('2026-03-04', $week['dates'][0]);
 	pg_assert_same('2026-03-10', $week['dates'][6]);
 	pg_assert_same('2026-02-25', $week['before'][0]);
 	pg_assert_same('2025-03-04', $week['compare'][0]);
 	pg_assert_false($week['hourly']);
 
-	pg_assert_same(30, count(pg_dashboard_v2_visitor_dates(2, 0, $now)['dates']));
-	pg_assert_same(array(), pg_dashboard_v2_visitor_dates(2, 0, $now)['compare']);
+	pg_assert_same(30, count(pg_dashboard_v2_visitor_dates(2, 2, $now)['dates']));
+	pg_assert_same(array(), pg_dashboard_v2_visitor_dates(2, 2, $now)['compare']);
 }
 
 function test_dashboard_v2_visitor_series()
