@@ -23,7 +23,7 @@ description: Plan for the Web Designer Portfolio template (pinegrap-portfolio): 
 
 - 3 Work: `work.php` (`project_new` with the Projects collection and its samples, `work` with category filters, `project` record page with images, facts, the story and the brief button, the list widgets the home places).
 
-- 4 Briefs: `mail.php`, `briefs.php` (`brief`, `brief_view`, `my_briefs`, `staff_briefs`, `privacy`, `email_reply`, notify e-mails).
+- 4 Done (#6172). Briefs: `mail.php`, `briefs.php` (`brief`, `brief_view`, `my_briefs`, `staff_briefs`, `privacy`, `email_reply`, notify e-mails); test `…_briefs_test.php`. `mail.php` holds only the e-mail builders (frame, header, footer, heading, paragraph, button, line, box, greeting, comment card) and reads only `parts.php`, so step 6 builds its account e-mails on it.
 
 - 5 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog as "Journal", blog post, search, error); test `…_standard_test.php`.
 
