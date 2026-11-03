@@ -955,9 +955,11 @@
 
     // ── Shared components and system widgets (pg_designer_components_card()) ──
 
-    // Tick rows in the offcanvas panel, delete them in one go, however many:
+    // The screen prints the panel empty; its rows come from
+    // shared_component/home_rows the first time it opens (a site may hold
+    // a thousand or more). Tick rows, delete them in one go, however many:
     // "select all" ticks every row the panel lists (it has no filter and
-    // draws every row) and the server takes any number in one request.
+    // lists every row) and the server takes any number in one request.
     // Rows still placed on a page are deleted too (force) once the operator
     // has seen where.
     (function () {
@@ -975,6 +977,60 @@
 
         // Rows the confirmation names one by one.
         var LISTED = 20;
+
+        var body = document.getElementById('sd-comp-rows');
+        // '' not asked yet, 'busy' asking, 'done' rows in place.
+        var loaded = '';
+
+        // One row across the table: the wait or the failure.
+        function note(text) {
+            body.innerHTML = '<tr class="sd-comp-wait"><td colspan="6" class="text-center fg-secondary py-5">' + escapeHtml(text) + '</td></tr>';
+        }
+
+        function load() {
+            if (!body || loaded !== '') {
+                return;
+            }
+            loaded = 'busy';
+            all.disabled = true;
+            api({ action: 'shared_component', sub_action: 'home_rows' })
+                .then(function (res) {
+                    if (!res || res.status !== 'success') {
+                        loaded = '';
+                        note((res && res.message) || say('fail'));
+                        return;
+                    }
+                    loaded = 'done';
+                    all.disabled = false;
+                    if (window.jQuery) {
+                        window.jQuery(body).html(res.rows || '');
+                    } else {
+                        body.innerHTML = res.rows || '';
+                    }
+                    if (typeof window.pgInitInjected === 'function') {
+                        window.pgInitInjected(body);
+                    }
+                    if (total) {
+                        total.textContent = String(boxes().length);
+                    }
+                    if (boxes().length) {
+                        sync();
+                    } else {
+                        retire();
+                    }
+                })
+                .catch(function () {
+                    loaded = '';
+                    note(say('network'));
+                });
+        }
+
+        if (window.pgUI) {
+            pgUI.drawer.on(panel, 'show', load);
+        }
+        if (opener) {
+            opener.addEventListener('click', load);
+        }
 
         // Nothing left to list: close the panel, then drop it and its button
         // once the slide-out has finished.

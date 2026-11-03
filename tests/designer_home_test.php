@@ -144,3 +144,25 @@ function test_designer_home_start_card_order()
 	pg_assert_true($ill !== false && $title > $ill && $text > $title, 'drawing, title, sentence');
 	pg_assert_true(strpos($html, '<div class="col-6 xl:col-3">') === 0, 'two by two on phones, four in a row on wide screens');
 }
+
+// The shared components panel is printed empty and filled on first open
+// (issue #6075: 1117 rows, 1.25 MB on every visit to a closed panel).
+function test_designer_home_components_panel_loads_on_open()
+{
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	$card_at = strpos($screen, 'function pg_designer_components_card(');
+	$rows_at = strpos($screen, 'function pg_designer_components_rows(');
+	pg_assert_true($card_at !== false && $rows_at !== false, 'the card and its rows are two functions');
+	$card = substr($screen, $card_at, $rows_at - $card_at);
+	pg_assert_true(strpos($card, 'pg_shared_component_usage(') === false, 'the screen works out no usage');
+	pg_assert_true(strpos($card, 'SELECT COUNT(*) FROM shared_components') !== false, 'the screen counts the rows only');
+	pg_assert_contains('id="sd-comp-rows"', $card, 'the panel has a body to fill');
+
+	$handler = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/shared_component.php');
+	pg_assert_contains("case 'home_rows':", $handler, 'the rows are a panel action');
+	pg_assert_contains('pg_designer_components_rows()', $handler, 'the action draws the same rows');
+
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/designer_home.js');
+	pg_assert_contains("sub_action: 'home_rows'", $script, 'the panel asks for its rows');
+	pg_assert_contains("pgUI.drawer.on(panel, 'show', load)", $script, 'it asks when it opens');
+}
