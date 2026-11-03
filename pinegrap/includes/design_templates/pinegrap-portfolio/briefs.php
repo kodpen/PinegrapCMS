@@ -4,8 +4,10 @@
  *
  * Design template "Web Designer Portfolio", its project briefs: the brief
  * form, the brief's own page with its messages, My Briefs and the staff's
- * list; the privacy page the consent boxes link, the brief's two e-mails
- * and the new message e-mail, and the widgets that draw them. Included
+ * list; the privacy page the consent boxes link, the brief's two e-mails,
+ * the new message e-mail, the contact form's two e-mails and the
+ * newsletter's welcome (the forms of standard.php name them), and the
+ * widgets that draw them. Included
  * after parts.php and mail.php in the same scope; returns
  * array('pages' => ..., 'widgets' => ...).
  *
@@ -223,6 +225,34 @@ $brief_pages[] = array_merge($mail_settings, array(
     )),
 ));
 
+// The contact form's notification: what the designer receives for a
+// message.
+$brief_pages[] = array_merge($mail_settings, array(
+    'key'   => 'email_new_message',
+    'name'  => lang('email-new-message'),
+    'title' => lang('New Message E-mail'),
+    'tree'  => $mail_page(array($widget('email_message_admin'))),
+));
+// The contact form's reply to the sender.
+$brief_pages[] = array_merge($mail_settings, array(
+    'key'   => 'email_message_received',
+    'name'  => lang('email-message-received'),
+    'title' => lang('Message Received E-mail'),
+    'tree'  => $mail_page(array($widget('email_message_sender'))),
+));
+// The newsletter's welcome, sent to a new subscriber.
+$brief_pages[] = array_merge($mail_settings, array(
+    'key'   => 'email_welcome',
+    'name'  => lang('email-newsletter-welcome'),
+    'title' => lang('Newsletter Welcome E-mail'),
+    'tree'  => $mail_page(array(
+        $mail_heading(lang('Welcome to the newsletter')),
+        $mail_para(lang('Thank you for subscribing. New case studies and Journal posts reach you here, a few times a month at most.')),
+        $mail_para(lang('Changed your mind? Every e-mail I send has a link to unsubscribe.'), 'small text-body-secondary mb-3'),
+        $mail_button(lang('See my work'), '{{page:work}}'),
+    )),
+));
+
 // ── Widget pieces ───────────────────────────────────────────────────────
 
 // The client's name.
@@ -303,6 +333,24 @@ $mail_brief = function () use ($mail_box, $mail_line, $span, $bind, $category_ti
         $mail_line(lang('Contact by'), array($span($contact_choices[0][1], '', lang('Contact by'), $bind('contact_method')))),
     ), lang('Project Brief'));
 };
+
+// The account a form opened for a sender who had none, in the reply
+// e-mails: the address it signs in with, and how to choose a password.
+$mail_new_account = function () use ($el, $span, $link, $bind, $show_when, $mail_style) {
+    return $el('div', 'border-top pt-3', lang('New Account'), array(
+        $el('p', 'mb-2', lang('Sign-in Email'), array(
+            $span(lang('We opened an account for you with this address:') . ' ', '', lang('Label')),
+            $span('sample@example.com', 'fw-semibold', lang('Value'), $bind('__new_account_email')),
+        ), $mail_style('margin:0 0 8px')),
+        $el('p', 'mb-0', lang('Password'), array(
+            $span(lang('To choose your password, use') . ' ', '', lang('Label')),
+            $link(lang('Forgot Password'), '{{page:forgot_password}}', ''),
+        ), $mail_style('margin:0')),
+    ), array_merge($mail_style('border-top:1px solid #e4e4e7;padding-top:16px'), $show_when('has_new_account')));
+};
+// The samples of the contact form's e-mails (a topic as the contact form offers).
+$sample_topic = lang('A question about a website');
+$sample_message = lang('Hello, could you tell me how long a company site of about ten pages usually takes?');
 
 // The form detail settings of a widget: the brief's page shows a brief
 // only to its client (and the staff), an e-mail page the one just sent.
@@ -548,16 +596,57 @@ $brief_widgets = array(
             $mail_brief(),
             $mail_para(lang('Something to add, or a file? Write to me on the brief\'s page; everything about your project stays there.')),
             $mail_button(lang('Open my brief'), '{{page:brief_view}}?r=^^reference_code^^'),
-            $el('div', 'border-top pt-3', lang('New Account'), array(
-                $el('p', 'mb-2', lang('Sign-in Email'), array(
-                    $span(lang('We opened an account for you with this address:') . ' ', '', lang('Label')),
-                    $span('sample@example.com', 'fw-semibold', lang('Value'), $bind('__new_account_email')),
-                ), $mail_style('margin:0 0 8px')),
-                $el('p', 'mb-0', lang('Password'), array(
-                    $span(lang('To choose your password, use') . ' ', '', lang('Label')),
-                    $link(lang('Forgot Password'), '{{page:forgot_password}}', ''),
-                ), $mail_style('margin:0')),
-            ), array_merge($mail_style('border-top:1px solid #e4e4e7;padding-top:16px'), $show_when('has_new_account'))),
+            $mail_new_account(),
+        )),
+    ),
+
+    // The contact form's e-mails: drawn for the message just sent.
+    'email_message_admin' => array(
+        'page'   => 'email_new_message',
+        'slug'   => lang('form-detail'),
+        'config' => array(
+            'regionType'          => 'form_item_view',
+            'custom_form_page_id' => '{{tab:contact}}',
+            'access_control'      => 'public',
+            'not_found_message'   => lang('The message could not be found.'),
+        ),
+        'tree'   => $widget_root(array(
+            $mail_heading(lang('A new message has arrived')),
+            $mail_para(lang('It came from the contact form. Answer it on the conversation page: the answer reaches the sender by e-mail and in their inbox.')),
+            $mail_box(array(
+                $mail_line(lang('Sender'), $brief_person()),
+                $mail_line(lang('Email'), array($span('jane.cooper@example.com', '', lang('Email'), $bind('email')))),
+                $mail_line(lang('Company'), array($span('Harbour Roasters', '', lang('Company'), $bind('company')))),
+                $mail_line(lang('Subject'), array($span($sample_topic, '', lang('Subject'), $bind('topic')))),
+            ), lang('Sender')),
+            $el('div', 'lh-lg', lang('Message'), array(), array_merge(array('text' => $sample_message), $bind('message'))),
+            $mail_button(lang('Open the conversation'), '{{page:conversation}}?r=^^reference_code^^'),
+            $el('p', 'small text-body-secondary mt-4 mb-0', lang('Reference'), array(
+                $span(lang('Reference Code') . ': ', '', lang('Label')),
+                $span('ABC123', '', lang('Reference Code'), $bind('reference_code')),
+            ), $mail_style('font-size:13px;color:#52525b;margin:24px 0 0')),
+        )),
+    ),
+    'email_message_sender' => array(
+        'page'   => 'email_message_received',
+        'slug'   => lang('form-detail'),
+        'config' => array(
+            'regionType'          => 'form_item_view',
+            'custom_form_page_id' => '{{tab:contact}}',
+            'access_control'      => 'public',
+            'not_found_message'   => lang('The message could not be found.'),
+        ),
+        'tree'   => $widget_root(array(
+            $mail_heading(lang('I have your message')),
+            $mail_greeting(),
+            $mail_para(lang('Thank you for writing. My answer will be on the conversation page and in your inbox, and you get an e-mail when it is there.')),
+            $mail_box(array(
+                $el('p', 'fw-semibold mb-2', lang('Subject'), array(), array_merge(
+                    array('text' => $sample_topic, '_attrs' => array($attr('style', 'font-weight:600;margin:0 0 8px'))), $bind('topic'))),
+                $el('div', 'lh-lg', lang('Message'), array(), array_merge(array('text' => $sample_message), $bind('message'))),
+            ), lang('Your Message')),
+            $mail_button(lang('Open the conversation'), '{{page:conversation}}?r=^^reference_code^^'),
+            $mail_new_account(),
         )),
     ),
 

@@ -117,6 +117,7 @@ function test_portfolio_brief_pages_and_widgets()
 	pg_assert_same(array(
 		'brief', 'brief_view', 'my_briefs', 'staff_briefs', 'privacy',
 		'email_brief_new', 'email_brief_received', 'email_reply',
+		'email_new_message', 'email_message_received', 'email_welcome',
 	), $keys, 'the brief pages in order');
 
 	$pages = array();
@@ -155,11 +156,24 @@ function test_portfolio_brief_pages_and_widgets()
 	unset($placed['newsletter_band']);
 	foreach ($placed as $key => $on) pg_assert_true(isset($b['widgets'][$key]), "placed widget $key is defined");
 
+	// The contact form's e-mails read the contact form of standard.php.
+	foreach (array('email_message_admin', 'email_message_sender') as $key) {
+		pg_assert_same('{{tab:contact}}', $b['widgets'][$key]['config']['custom_form_page_id'], "$key: reads the contact form");
+		$nodes = array();
+		_test_pdb_nodes($b['widgets'][$key]['tree'], $nodes);
+		foreach ($nodes as $node) {
+			foreach ($node['props']['_bindings'] ?? array() as $prop => $token) {
+				if ($prop === 'eo_visible_if') continue;
+				pg_assert_true(in_array($token, array('first_name', 'last_name', 'email', 'company', 'topic', 'message', 'reference_code', '__new_account_email'), true), "$key binds a contact field: $token");
+			}
+		}
+	}
+
 	// The lists and views read the brief form; the lists open the brief.
 	$controls = _test_pdb_controls($b['widgets']['brief_form']['tree']);
 	foreach ($b['widgets'] as $key => $w) {
 		$type = $w['config']['regionType'];
-		if ($type === 'form_list_view' || $type === 'form_item_view') {
+		if ($type === 'form_list_view' || ($type === 'form_item_view' && strpos($key, 'email_message_') !== 0)) {
 			pg_assert_same('{{tab:brief}}', $w['config']['custom_form_page_id'], "$key: reads the brief form");
 		}
 		if ($type === 'form_list_view') {
@@ -194,6 +208,7 @@ function test_portfolio_brief_pages_and_widgets()
 		'home', 'services', 'process', 'about', 'faq', 'project_new', 'work', 'project',
 		'brief', 'brief_view', 'my_briefs', 'staff_briefs', 'privacy',
 		'email_brief_new', 'email_brief_received', 'email_reply',
+		'email_new_message', 'email_message_received', 'email_welcome',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'forgot_password',
 	));
@@ -264,6 +279,7 @@ function test_portfolio_brief_mails()
 		pg_assert_true(strpos($json, 'max-width:600px') !== false, $p['key'] . ': the frame\'s width inline');
 	}
 	$reply = json_encode($d['briefs']['pages'][7]['tree']);
+	pg_assert_same('email_reply', $d['briefs']['pages'][7]['key'], 'the reply e-mail');
 	pg_assert_true(strpos($reply, '"regionType":"system"') !== false, 'the reply e-mail keeps the System region');
 	pg_assert_true(strpos(json_encode($d['mail_comment']), '__comment_url') !== false, 'the comment card links the comment');
 	$all = json_encode(array($d['briefs'], $d['mail_shared'], $d['mail_comment']));
