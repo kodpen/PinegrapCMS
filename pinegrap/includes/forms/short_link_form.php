@@ -419,6 +419,19 @@ function pg_short_link_form_validate_destination($liveform, $current)
             case 'file':
                 $liveform->validate_required_field('file', lang('Destination URL is required.'));
 
+                // The file has to exist, as the File Manager wizard and the
+                // External API check: a value that is no file id was stored
+                // as file 0, a deleted file as a link to nothing.
+                if ($liveform->check_field_error('file') == FALSE) {
+                    $file_value = (string) $liveform->get_field_value('file');
+
+                    if ((preg_match('/^[0-9]+$/', $file_value) !== 1) || ((int) $file_value <= 0)) {
+                        $liveform->mark_error('file', lang('Destination URL is required.'));
+                    } elseif ((int) db_value("SELECT COUNT(*) FROM files WHERE id = '" . (int) $file_value . "'") === 0) {
+                        $liveform->mark_error('file', lang('Sorry, the file could not be found.'));
+                    }
+                }
+
                 if (
                     ($liveform->check_field_error('file') == FALSE)
                     && !$kept($liveform->get_field_value('file'), 'file_id')

@@ -133,3 +133,27 @@ function test_short_link_form_url_destination_uses_the_shared_rule()
 	pg_assert_true(short_link_form_test_url_error("/a\t") !== '', 'a trailing tab is never stored');
 	pg_assert_true(short_link_form_test_url_error('/' . str_repeat('a', pg_short_link_url_max())) !== '', 'longer than the column');
 }
+
+function short_link_form_test_file_error($file)
+{
+	$form = new short_link_form_test_form(array('destination_type' => 'file', 'file' => $file));
+
+	pg_short_link_form_validate_destination($form, null);
+
+	return isset($form->errors['file']) ? $form->errors['file'] : '';
+}
+
+function test_short_link_form_file_destination_needs_a_file_id()
+{
+	// A value that is no file id is refused before the database is asked:
+	// it was stored as file 0 (or failed the INSERT in strict mode).
+	foreach (array('abc', '0', '-3', '0x1') as $file) {
+		pg_assert_true(short_link_form_test_file_error($file) !== '', $file . ' refused');
+	}
+
+	pg_assert_true(short_link_form_test_file_error('') !== '', 'empty');
+
+	// The file has to exist, as the File Manager wizard and the API check.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/short_link_form.php');
+	pg_assert_contains('SELECT COUNT(*) FROM files WHERE id = ', $source, 'the file is looked up');
+}
