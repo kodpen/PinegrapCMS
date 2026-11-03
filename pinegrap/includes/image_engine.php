@@ -1594,7 +1594,9 @@ function pg_image_edit_source_box($x, $y, $crop, $width, $height)
  * preview draws it (pictureMatrix() of the model): the quarter turn, the flips
  * of the turned picture, the straightening scaled to keep the crop covered,
  * the crop, the output size, the overlay, the crop shape. The shape comes
- * last because the preview clips the layers to it too.
+ * last because the preview clips the layers to it too, unless the canvas
+ * reaches past the picture (extend): then it cuts the picture before the
+ * canvas, whose fill shows in the cut corners, and leaves the layers whole.
  *
  * @param Imagick $image upright, sRGB
  * @param array   $edit  the recipe of pg_image_edit_validate()
@@ -1696,16 +1698,34 @@ function pg_image_edit_imagick($image, $edit, $alpha)
         pg_image_edit_redact_imagick($image, $edit['redact']);
     }
 
+    $shape = isset($edit['shape']) ? (string) $edit['shape'] : 'rect';
+    $shaped = ($shape === 'rounded') || ($shape === 'circle');
+
     if (!empty($edit['extend'])) {
         $e = $edit['extend'];
         $fill = $e['fill'] ? $e['fill'] : ($alpha ? null : array(255, 255, 255));
+        $color = $fill ? new ImagickPixel(sprintf('rgb(%d,%d,%d)', $fill[0], $fill[1], $fill[2])) : null;
+
+        // The shape is the picture's: cut before the canvas grows around it.
+        if ($shaped) {
+            pg_image_edit_imagick_shape($image, $shape);
+        }
 
         // The picture placed at x, y on a w x h canvas: what lies outside it
         // takes the fill, what lies off the canvas is trimmed.
         $image->setImageAlphaChannel(Imagick::ALPHACHANNEL_SET);
-        $image->setImageBackgroundColor($fill ? new ImagickPixel(sprintf('rgb(%d,%d,%d)', $fill[0], $fill[1], $fill[2])) : $none);
+        $image->setImageBackgroundColor($color ? $color : $none);
         $image->extentImage($e['w'], $e['h'], -$e['x'], -$e['y']);
         $image->setImagePage(0, 0, 0, 0);
+
+        // The corners the shape cut take the fill too, as GD's canvas does.
+        if ($shaped && $color) {
+            $under = new Imagick();
+            $under->newImage($e['w'], $e['h'], $color);
+            $image->compositeImage($under, Imagick::COMPOSITE_DSTOVER, 0, 0);
+            $under->clear();
+            $under->destroy();
+        }
     }
 
     if (!empty($edit['overlay'])) {
@@ -1715,14 +1735,39 @@ function pg_image_edit_imagick($image, $edit, $alpha)
         $overlay->destroy();
     }
 
-    $shape = isset($edit['shape']) ? (string) $edit['shape'] : 'rect';
-
-    if (($shape !== 'rounded') && ($shape !== 'circle')) {
+    if (!$shaped || !empty($edit['extend'])) {
         return true;
     }
 
+    // Without a canvas around the picture the shape cuts the whole result,
+    // the layers too, as the preview clips them.
+    pg_image_edit_imagick_shape($image, $shape);
+
+    // No alpha in the written format: the cut corners are white.
+    if (!$alpha) {
+        $white = new Imagick();
+        $white->newImage($image->getImageWidth(), $image->getImageHeight(), new ImagickPixel('white'));
+        $image->compositeImage($white, Imagick::COMPOSITE_DSTOVER, 0, 0);
+        $white->clear();
+        $white->destroy();
+    }
+
+    return true;
+}
+
+/**
+ * The crop shape on an Imagick picture, in place: what lies outside the
+ * ellipse (circle) or the box with rounded corners (12 % of the shorter side,
+ * as the preview draws it) becomes transparent.
+ *
+ * @param Imagick $image
+ * @param string  $shape rounded or circle
+ * @return void
+ */
+function pg_image_edit_imagick_shape($image, $shape)
+{
     // Drawing coordinates name pixel centres, so the edges of a w x h
-    // picture lie at -0.5 and w - 0.5. The shape cuts the whole canvas.
+    // picture lie at -0.5 and w - 0.5.
     $w = $image->getImageWidth();
     $h = $image->getImageHeight();
     $mask = new Imagick();
@@ -1742,17 +1787,6 @@ function pg_image_edit_imagick($image, $edit, $alpha)
     $image->compositeImage($mask, Imagick::COMPOSITE_DSTIN, 0, 0);
     $mask->clear();
     $mask->destroy();
-
-    // No alpha in the written format: the cut corners are white.
-    if (!$alpha) {
-        $white = new Imagick();
-        $white->newImage($w, $h, new ImagickPixel('white'));
-        $image->compositeImage($white, Imagick::COMPOSITE_DSTOVER, 0, 0);
-        $white->clear();
-        $white->destroy();
-    }
-
-    return true;
 }
 
 // A transparent truecolor GD canvas that keeps its alpha when written. The
@@ -1870,7 +1904,16 @@ function pg_image_edit_gd($image, $edit, $alpha)
         return false;
     }
 
+    $shape = isset($edit['shape']) ? (string) $edit['shape'] : 'rect';
+    $shaped = ($shape === 'rounded') || ($shape === 'circle');
+
     if (!empty($edit['extend'])) {
+        // The shape is the picture's: its cut corners transparent, so the
+        // canvas fill shows in them once the picture is laid on it.
+        if ($shaped) {
+            pg_image_edit_gd_shape($out, $shape, true);
+        }
+
         $out = pg_image_edit_gd_extend($out, $edit['extend'], $alpha);
 
         if (!$out) {
@@ -1892,9 +1935,9 @@ function pg_image_edit_gd($image, $edit, $alpha)
         pg_image_destroy($overlay);
     }
 
-    $shape = isset($edit['shape']) ? (string) $edit['shape'] : 'rect';
-
-    if (($shape === 'rounded') || ($shape === 'circle')) {
+    // Without a canvas around the picture the shape cuts the whole result,
+    // the layers too, as the preview clips them.
+    if ($shaped && empty($edit['extend'])) {
         pg_image_edit_gd_shape($out, $shape, $alpha);
     }
 

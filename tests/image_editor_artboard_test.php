@@ -185,6 +185,26 @@ function test_image_editor_artboard_picture_canvas()
 	pg_assert_same(0, $r['layers'], 'the layers stay where they are');
 }
 
+// The crop shape as the stage's mat cuts it: the box, its rounded corners
+// at 12 % of the shorter side, the ellipse in the box.
+function test_image_editor_artboard_crop_shape_path()
+{
+	$r = image_editor_artboard_node(
+		'var b = { x: 10, y: 20, w: 200, h: 100 };' . "\n"
+		. 'console.log(JSON.stringify({ rect: M.cropShapePath(b, "rect"), other: M.cropShapePath(b, "star"), rounded: M.cropShapePath(b, "rounded"), circle: M.cropShapePath(b, "circle") }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same('M10 20H210V120H10Z', $r['rect'], 'the box');
+	pg_assert_same($r['rect'], $r['other'], 'an unknown shape is the box');
+	pg_assert_same('M22 20H198A12 12 0 0 1 210 32V108A12 12 0 0 1 198 120H22A12 12 0 0 1 10 108V32A12 12 0 0 1 22 20Z', $r['rounded'], 'rounded corners of 12 % of the shorter side');
+	pg_assert_same('M10 70a100 50 0 1 0 200 0a100 50 0 1 0 -200 0Z', $r['circle'], 'the ellipse in the box, from its left middle');
+}
+
 // The extend step's request is checked before any pixel work.
 function test_image_editor_artboard_extend_check()
 {
