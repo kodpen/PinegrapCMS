@@ -27,6 +27,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - ai-prompt-version.md: pg_ai_prompt_version() (r + 8 hex of the rules' SHA-1), ws_ai_requests.prompt_version (11.0.112, #2829), the insert helper and its scan test, where the version is shown
 - api-php-credentials-in-body.md: api.php accepting username/password in the request body: API_USERNAME vs API_AUTHENTICATED, CSRF skip, remember-me, login throttle, WAF rate buckets.
 - api-php-role-gate-and-actions.md: api.php general role gate before handlers, the exempt column, the designer endpoint's content-role allowlist, read vs write gates on shared_component, and the role numbers to compare against.
+- audiences-rules.md: Contact groups filled by rules: the 11.0.155 columns, the condition catalogue, the one rule shape, the pure SQL builder pg_audience_sql() and what each condition family reads
 - audit-trail-contacts.md: Contacts in audit_log (#2170, #2246, #2620, #2643, #2768): which panel, API, import, İYS, Workspace, storefront, job, merge paths write a line, the label, erasure
 - audit-trail-diff.md: How pg_audit_diff() decides a field changed: values as strings, NULL and '' equal when both sides hold the field
 - audit-trail-file-content.md: How a save that writes a file's content gets an audit line even when the size stays the same (content_sha1 on both sides)

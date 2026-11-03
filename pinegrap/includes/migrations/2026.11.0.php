@@ -143,6 +143,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_product_preorder();        // 11.0.151
 	upgrade_2026_11_0_file_storage();            // 11.0.152
 	upgrade_2026_11_0_page_experiments();        // 11.0.153
+	upgrade_2026_11_0_contact_group_rules();     // 11.0.155
 
 }
 
@@ -4625,5 +4626,51 @@ function upgrade_2026_11_0_page_experiments() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Page experiments: a designed page can now be compared with a draft variant; the tables for experiments, their variants and the hourly views and goals are in place.');
+
+}
+
+// Contact groups filled by rules (2026.11.0, 11.0.155; includes/fn/audiences.php).
+// A group of kind 'dynamic' keeps its rules as JSON in rules; the general job
+// recomputes it at most once an hour (computed_at) and walks a big one in
+// pages of contact ids (compute_cursor). contacts_contact_groups_xref.source
+// says who put a contact in a group: every row written before this step is
+// 'hand', so a recompute, which removes only 'rule' rows, never touches a
+// hand-kept member. idx_group_source serves that removal.
+//
+// The xref table may be large: as 11.0.148, its column is added in place
+// where the server can; on a copying server neither the column nor the
+// index is started once this pass's budget is spent.
+function upgrade_2026_11_0_contact_group_rules() {
+
+	install_add_column('contact_groups', 'kind', "ENUM('static','dynamic') NOT NULL DEFAULT 'static'");
+	install_add_column('contact_groups', 'rules', "TEXT NULL");
+	install_add_column('contact_groups', 'computed_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('contact_groups', 'compute_cursor', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	$columns = array(
+		'source' => "ENUM('hand','form','product','rule') NOT NULL DEFAULT 'hand'",
+	);
+
+	if (!install_add_columns_instant('contacts_contact_groups_xref', $columns)) {
+
+		if (install_pass_spent()) {
+
+			install_pause(lang(array('string' => 'contact groups: who added each member is being recorded; {var:1} follows in the next pass', 'vars' => 'source')));
+
+		}
+
+		install_add_column('contacts_contact_groups_xref', 'source', $columns['source']);
+
+	}
+
+	if (install_pass_spent() && !install_index_exists('contacts_contact_groups_xref', 'idx_group_source')) {
+
+		install_pause(lang(array('string' => 'contact groups: who added each member is being recorded; {var:1} follows in the next pass', 'vars' => 'idx_group_source')));
+
+	}
+
+	install_add_index('contacts_contact_groups_xref', 'idx_group_source', "INDEX idx_group_source (contact_group_id, source)");
+
+	install_note('Contact groups: a group can be filled by rules; every member added so far stays as added by hand.');
 
 }
