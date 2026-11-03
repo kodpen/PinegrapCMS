@@ -13967,11 +13967,47 @@ const StyleDesigner = (function () {
         return !!(node && node.props && node.props._bindings && node.props._bindings.href);
     }
 
+    // The name of the page a link kept by page id opens: a tab's (by id, or
+    // by key while it is not saved), else the page list's when it is loaded;
+    // '' when neither knows it. Pages hidden from the operator are in
+    // neither.
+    function _sdPageLinkName(pageId) {
+        var ref = String(pageId == null ? '' : pageId);
+        var id = /^[1-9][0-9]*$/.test(ref) ? parseInt(ref, 10) : 0;
+        var key = /^tab:./.test(ref) ? ref.substr(4) : '';
+        var name = '';
+        (_pages || []).forEach(function (p) {
+            if (name === '' && p && ((id && parseInt(p.page_id, 10) === id) || (key && p.key === key))) name = p.page_name || _sdT('New Page');
+        });
+        if (name === '' && id && Array.isArray(_allPagesCache)) {
+            _allPagesCache.forEach(function (p) { if (name === '' && p && parseInt(p.page_id, 10) === id && !_swPageBinned(p)) name = p.page_name || ''; });
+        }
+        return name;
+    }
+
+    // In place of the URL input of a link outside a widget kept by page id
+    // (a Prototype arrow wrote it): the page it opens, which a rename does
+    // not change, and a button back to a typed address (the fallback the
+    // site prints for a page that is gone).
+    function _sdPageLinkNotice(node) {
+        var spec = (node.props._bindParams && node.props._bindParams.href) || {};
+        var name = _sdPageLinkName(spec.page_id);
+        var text = (name !== '')
+            ? _sdT('This link opens the page “{var:1}” by its id: renaming the page keeps it.', esc(name))
+            : _sdT('This link opens a page by its id; if the page is gone, it opens {var:1}.', esc(node.props.href || '#'));
+        return '<div class="sd-bound-href-note" style="font-size:.7rem;color:#6366f1;' +
+               'background:rgba(99,102,241,.06);padding:4px 8px;border-radius:3px;line-height:1.4">' +
+               '<span class="bi bi-link-45deg me-1"></span>' + text +
+               '<br><button type="button" class="btn btn-link btn-sm p-0" data-sd-page-unlink style="font-size:.7rem">' + esc(_sdT('Type an address instead')) + '</button>' +
+               '</div>';
+    }
+
     // Read-only stand-in shown in place of a URL input whose href is bound.
     // Names the Bind Data option so the designer knows WHICH binding is
     // driving it, and points at the panel where it can be cleared.
     function _sdBoundHrefNotice(node) {
         var tok = (node && node.props && node.props._bindings && node.props._bindings.href) || '';
+        if (tok === '__page_link' && !_sdSystemWidgetCfgOf(node)) return _sdPageLinkNotice(node);
         return '<div class="sd-bound-href-note" style="font-size:.7rem;color:#6366f1;' +
                'background:rgba(99,102,241,.06);padding:4px 8px;border-radius:3px;line-height:1.4">' +
                '<span class="bi bi-link-45deg me-1"></span>' +
@@ -52449,6 +52485,17 @@ const StyleDesigner = (function () {
             });
         });
 
+        // data-sd-page-unlink: a link kept by page id goes back to its typed
+        // address (_sdPageLinkNotice()); the address stays as it was.
+        document.querySelectorAll('#sd-properties [data-sd-page-unlink]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                if (!selectedNode || !_sdMayEdit(selectedNode)) return;
+                saveState();
+                window.PGProtoHotspots.applyPatch(selectedNode.props, { key: 'href', value: selectedNode.props.href || '', bind: false });
+                render();
+            });
+        });
+
         // data-btn-display: toggle Bootstrap button styling classes (no-btn / btn / btn-link)
         document.querySelectorAll('#sd-properties select[data-btn-display]').forEach(function(el) {
             el.addEventListener('change', function() {
@@ -67981,6 +68028,7 @@ const StyleDesigner = (function () {
         if (meta) head.appendChild(_sdProtoEl('span', 'sd-proto-meta', meta));
         node.appendChild(head);
         node.setAttribute('aria-label', _sdProtoFrameName(item));
+        if (item.thumb) node.appendChild(_sdProtoThumb(item));
 
         if (!item.rows.length) {
             node.appendChild(_sdProtoEl('div', 'sd-proto-empty', _sdT('No links')));
@@ -68008,6 +68056,43 @@ const StyleDesigner = (function () {
             }
             node.appendChild(r);
         });
+    }
+
+    // The frame's thumbnail: its page as bands (PGProtoHotspots.sketch()),
+    // a dot per link up to five. Drawn from numbers and roles only; it says
+    // nothing a screen reader needs (the rows list the links).
+    function _sdProtoThumb(item) {
+        var H = window.PGProtoHotspots;
+        var NS = 'http://www.w3.org/2000/svg';
+        var w = H.FRAME.w - 20;
+        var h = item.thumb - 13;
+        var wrap = _sdProtoEl('div', 'sd-proto-thumb');
+        var svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+        svg.setAttribute('width', String(w));
+        svg.setAttribute('height', String(h));
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+        H.sketchBoxes(item.sketch, w, h).forEach(function (box) {
+            var r = document.createElementNS(NS, 'rect');
+            r.setAttribute('class', 'sd-proto-sk sd-proto-sk-' + box.role);
+            r.setAttribute('x', '0');
+            r.setAttribute('y', String(box.y));
+            r.setAttribute('width', String(w));
+            r.setAttribute('height', String(box.h));
+            r.setAttribute('rx', '2');
+            svg.appendChild(r);
+            for (var i = 0; i < Math.min(5, box.links); i++) {
+                var c = document.createElementNS(NS, 'circle');
+                c.setAttribute('class', 'sd-proto-sk-link');
+                c.setAttribute('cx', String(w - 6 - i * 7));
+                c.setAttribute('cy', String(box.y + box.h / 2));
+                c.setAttribute('r', String(Math.min(2.5, box.h / 2)));
+                svg.appendChild(c);
+            }
+        });
+        wrap.appendChild(svg);
+        return wrap;
     }
 
     function _sdProtoChipText(chip) {
@@ -68111,13 +68196,17 @@ const StyleDesigner = (function () {
 
     // An arrow drawn: the row's tab opened first (its lock answered by a
     // heartbeat), then the link's node changed through saveState(), so
-    // Ctrl+Z on the canvas or in the view takes it back. A shared
+    // Ctrl+Z on the canvas or in the view takes it back. A link of its own
+    // ending on a tab is kept by page id with the address as its fallback
+    // (PGProtoHotspots.hrefPatch()), so a rename keeps it. A shared
     // component is marked changed; the warnings say where the link goes
     // live. The normal Save writes it.
     function _sdProtoConnect(from, to, port) {
         var row = _sdProtoRow(from, port);
         var href = _sdProtoArrowHref(from, to, port);
-        if (!row || href === null || href === row.href) return;
+        if (!row || href === null) return;
+        var bind = window.PGProtoHotspots.boundTo(to);
+        if (href === row.href && String(bind === null ? '' : bind) === (row.bound || '')) return;
         var key = _sdProtoFrameTab(from);
         var seq = _sdProto.seq;
 
@@ -68127,7 +68216,7 @@ const StyleDesigner = (function () {
             var sid = (from.kind === 'shared') ? from.sharedId : 0;
             var root = sid ? (_sharedCache[sid] && _sharedCache[sid].tree) : tree;
             var node = root ? findNodeById(row.nodeId, root) : null;
-            var patch = node ? H.hrefPatch(node, row, href) : null;
+            var patch = node ? H.hrefPatch(node, row, href, to) : null;
             if (!patch) {
                 sdToast(esc(_sdT('This link has changed since the map was drawn; the links are read again.')), 'warning', 4000);
                 _sdProtoLoad();
@@ -68138,7 +68227,7 @@ const StyleDesigner = (function () {
                 return;
             }
             saveState();
-            node.props[patch.key] = patch.value;
+            H.applyPatch(node.props, patch);
             if (sid) _sdSharedMarkEdited(node);
             render();
             _sdProtoWarn(from, key);

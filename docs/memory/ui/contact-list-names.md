@@ -1,6 +1,6 @@
 ---
 name: contact-list-names
-description: Contacts list (view_contacts.php): one Website filter, labels on their own field, group counts in the panel's number format, the row checkbox and Opt-In mark names, silent icon words
+description: Contacts list (view_contacts.php): one Website filter, labels on their own field, group counts in the panel's number format, the editor link and Opt-In mark names, silent icon words
 module: contact_list
 ---
 
@@ -13,7 +13,7 @@ module: contact_list
 
 ## How are counts and rows named?
 - Contact group checkbox counts (and `[None]`) go through `pg_format_number(…, 0)`, like the group select (1.234 in Turkish).
-- Row checkbox: aria-label "Select {var:1}" with `pg_contact_list_row_name()` (full name, else company, else e-mail); the duplicate `class` attribute is gone.
+- Editor link: the picture, aria-label "Edit {var:1}" with `pg_contact_list_row_name()` (full name, else company, else e-mail); rows have no checkbox since the list moved to the list table driver (#6347).
 - Opt-In column: `task_alt` is `aria-hidden` with a `visually-hidden` "Yes" (as `pg_user_list_mark()`).
 - Ligatures in the Filters heading and the Update, Merge, Merge/Opt-In/Opt-Out/Delete Selected buttons are `aria-hidden`; the landmarks are `h(lang('Button Bar'))` and `h(lang('data edit buttons'))`.
 - The advanced-filter close link needs no change: `pgInjectAriaAndRequiredMarkers()` copies its translated `title` into `aria-label`.

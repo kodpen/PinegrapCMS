@@ -40,7 +40,11 @@ function test_advanced_filters_order_panel_after_toolbar_and_toggle()
 		}
 		$toggle = strpos($page, $file . '?advanced_filters=');
 		$panel = strpos($page, '\' . $output_advanced_filters . \'');
+		// The list is a DataTables table or drawn by the list table driver.
 		$list = strpos($page, '<table class="chart');
+		if ($list === false) {
+			$list = strpos($page, 'pg_list_table_html(');
+		}
 
 		pg_assert_true($toolbar !== false && $toggle !== false && $panel !== false && $list !== false, $file . ': toolbar, toggle, panel and list are found in <main>');
 		pg_assert_true($toolbar < $panel, $file . ': the panel comes after the toolbar');

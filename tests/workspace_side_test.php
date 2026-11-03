@@ -77,12 +77,15 @@ function test_workspace_side_nav_keeps_every_place_under_its_gate()
 {
 	$staff = ws_nav_groups(array('role' => 1, 'settings' => true), workspace_side_test_flags());
 
-	pg_assert_same(array('home', 'inbox', 'tasks'), workspace_side_test_keys($staff, 'top'), 'the places, My Tasks among them');
-	pg_assert_same(array('notes', 'wtables', 'flows', 'calendar', 'board', 'timeline', 'mail'), workspace_side_test_keys($staff, 'tools'), 'the tiles');
+	pg_assert_same(array('home'), workspace_side_test_keys($staff, 'top'), 'Today alone at the top');
+	pg_assert_same(array('tasks', 'notes', 'wtables', 'flows', 'calendar', 'board', 'timeline', 'mail'), workspace_side_test_keys($staff, 'tools'), 'the tiles, My Tasks first');
 	pg_assert_same(array('scheduled', 'mcp', 'calendar_feed', 'archived', 'audit'), workspace_side_test_keys($staff, 'more'), 'behind More');
 	pg_assert_same(array('settings'), workspace_side_test_keys($staff, 'head'), 'the settings gear sits in the head');
-	pg_assert_same('/pg/workspace.php?view=home&inbox=1', $staff['top'][1]['url']);
-	pg_assert_true(!empty($staff['top'][1]['inbox']), 'the inbox entry carries the count');
+
+	// The bell is the one inbox: the list has no entry of its own for it.
+	foreach (array('head', 'top', 'tools', 'more') as $group) {
+		pg_assert_false(in_array('inbox', workspace_side_test_keys($staff, $group), true), 'no Inbox entry in ' . $group);
+	}
 
 	// A member of the team without staff's role or the settings right.
 	$member = ws_nav_groups(array('role' => 3, 'settings' => false), workspace_side_test_flags());
@@ -94,8 +97,8 @@ function test_workspace_side_nav_keeps_every_place_under_its_gate()
 		'notes' => false, 'wtables' => false, 'calendar_feed' => false, 'actions' => false, 'messages' => false, 'flows' => false, 'mcp' => false, 'mail' => false,
 	)));
 
-	pg_assert_same(array('home', 'inbox', 'tasks'), workspace_side_test_keys($none, 'top'), 'every member has the places');
-	pg_assert_same(array('calendar', 'board', 'timeline'), workspace_side_test_keys($none, 'tools'), 'only the screens every member has');
+	pg_assert_same(array('home'), workspace_side_test_keys($none, 'top'), 'every member has Today');
+	pg_assert_same(array('tasks', 'calendar', 'board', 'timeline'), workspace_side_test_keys($none, 'tools'), 'only the screens every member has');
 	pg_assert_same(array('archived'), workspace_side_test_keys($none, 'more'));
 }
 
@@ -129,13 +132,12 @@ function test_workspace_side_nav_keeps_key_label_icon_url()
 {
 	$nav = ws_side_nav(array(
 		'top'  => array(array('key' => 'home', 'label' => 'Overview', 'icon' => 'bi-house', 'url' => '/w.php', 'rail' => false, 'extra' => 1)),
-		'tools' => array(array('key' => 'inbox', 'label' => 'Inbox', 'short' => 'In', 'icon' => 'bi-inbox', 'url' => '/i.php', 'inbox' => true)),
+		'tools' => array(array('key' => 'board', 'label' => 'Planning Board', 'short' => 'Board', 'icon' => 'bi-calendar-week', 'url' => '/b.php')),
 	));
 
 	pg_assert_same(array('head', 'top', 'tools', 'more'), array_keys($nav), 'every group, in the order drawn');
-	pg_assert_same(array('key' => 'home', 'label' => 'Overview', 'short' => 'Overview', 'icon' => 'bi-house', 'url' => '/w.php', 'inbox' => false), $nav['top'][0], 'a place without a short name shows its name');
-	pg_assert_true($nav['tools'][0]['inbox'], 'the inbox flag');
-	pg_assert_same('In', $nav['tools'][0]['short'], 'a tile\'s short name');
+	pg_assert_same(array('key' => 'home', 'label' => 'Overview', 'short' => 'Overview', 'icon' => 'bi-house', 'url' => '/w.php'), $nav['top'][0], 'a place without a short name shows its name');
+	pg_assert_same('Board', $nav['tools'][0]['short'], 'a tile\'s short name');
 	pg_assert_same(array(), $nav['head'], 'an empty group stays a list');
 }
 
@@ -217,19 +219,20 @@ function test_workspace_side_keys_follow_the_layout()
 {
 	$keys = ws_side_js_keys();
 
-	foreach (array('channels', 'th_mine', 'pal_open', 'new_channel', 'tour_start') as $key) {
+	foreach (array('channels', 'th_mine', 'pal_open', 'new_channel', 'grp_new') as $key) {
 		pg_assert_true(in_array($key, $keys, true), $key . ' is a word of the list');
 	}
 
-	foreach (array('search_messages', 'my_channels', 'other_channels', 'pinned', 'th_section') as $key) {
+	foreach (array('search_messages', 'my_channels', 'other_channels', 'pinned', 'th_section', 'tour_start') as $key) {
 		pg_assert_false(in_array($key, $keys, true), $key . ' is no longer drawn');
 	}
 
 	pg_assert_same(lang('My discussions'), ws_side_js_strings()['th_mine'] ?? '', 'the discussions\' heading');
 }
 
-// One search field opens the workspace search; the message search input
-// and the sticky foot are gone, the tour button stays for the tour's ready().
+// One search field opens the workspace search; the message search input,
+// the sticky foot and the tour button are gone (the tour is played from the
+// channel's header).
 function test_workspace_side_head_is_one_search_field()
 {
 	$script = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_side.js');
@@ -239,7 +242,9 @@ function test_workspace_side_head_is_one_search_field()
 	pg_assert_false(strpos($script, 'hooks.search') !== false, 'the message search hook is not called');
 	pg_assert_contains('hooks.palette', $script, 'the search field opens the palette on the channel screen');
 	pg_assert_contains("view=home&palette=1", $script, 'and links to it elsewhere');
-	pg_assert_contains("setAttribute('data-ws-tour', '1')", $script, 'the tour button the tour waits for');
+	pg_assert_false(strpos($script, 'data-ws-tour') !== false, 'no tour button in the list');
+	pg_assert_false(strpos($script, 'hooks.tour') !== false, 'the tour hook is not called');
+	pg_assert_false(strpos($script, 'pgBellOpen') !== false, 'no Inbox entry opening the bell');
 	pg_assert_contains("' ws-notjoined'", $script, 'channels not joined are dimmed');
 }
 
@@ -282,12 +287,57 @@ function test_workspace_side_discussions_come_in_one_order()
 	pg_assert_contains('ORDER BY c.last_message_at DESC, c.id DESC', pg_test_function_source('ws_threads_for'), 'a tie keeps its order');
 }
 
-// The three buttons beside the panel's name are narrow enough for the name to
-// keep to one line when a long list gives the menu a classic scrollbar.
-function test_workspace_side_head_tools_leave_room_for_the_name()
+// The two buttons beside the panel's name are squares, so the solid New
+// channel button is a circle: narrowed to 1.625rem and still 1.9rem tall it
+// was drawn as an upright oval against the menu's edge.
+function test_workspace_side_head_tools_are_round()
 {
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 
-	pg_assert_true((bool) preg_match('/#menu \.pg-menu-panel-head \.ws-side-head-tools \{[^}]*gap: 0;[^}]*\}/', $css), 'no gap between the buttons');
-	pg_assert_true((bool) preg_match('/#menu \.pg-menu-panel-head \.ws-side-head-tools \.ws-side-tool \{[^}]*width: 1\.625rem;[^}]*\}/', $css), 'the head buttons are narrower than the list\'s');
+	pg_assert_true((bool) preg_match('/#menu \.pg-menu-panel-head \.ws-side-head-tools \.ws-side-tool \{[^}]*width: 1\.75rem;[^}]*height: 1\.75rem;[^}]*\}/', $css), 'the head buttons are squares');
+	pg_assert_false((bool) preg_match('/\.ws-side-head-tools \.ws-side-tool \{[^}]*width: 1\.625rem;/', $css), 'no narrowed, taller-than-wide button');
+}
+
+// More alone in the last row of the tiles takes the whole row, and New
+// group closes the Channels section instead of standing between the groups
+// and the other channels.
+function test_workspace_side_tiles_and_new_group_keep_their_places()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_side.js');
+
+	pg_assert_true((bool) preg_match('/#ws-menu-side \.ws-side-more-tile:nth-child\(odd\) \{[^}]*grid-column: 1 \/ -1;[^}]*\}/', $css), 'More alone in its row takes the row');
+
+	$others = strpos($script, "part(channelsBox, others, false, 'ws-side-others');");
+	$new = strpos($script, "'ws-group-new");
+
+	pg_assert_true(($others !== false) && ($new !== false) && ($new > $others), 'New group is drawn after the other channels');
+}
+
+// The tour is played from the channel's header and, where the header is too
+// narrow for its buttons, from the channel's menu; it no longer waits for a
+// button in the list, and no step points at an entry the list has lost.
+function test_workspace_tour_plays_from_the_channel_header()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$tour = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_tour.js');
+
+	preg_match('/\n        drawCenter: function \(\) \{\n(.*?)\n        \},\n/s', $js, $center);
+	preg_match('/\n        channelMenu: function \(\) \{\n(.*?)\n        \},\n/s', $js, $menu);
+
+	pg_assert_contains("'bi-signpost-split', t('tour_start')", $center[1] ?? '', 'the header has the tour button');
+	pg_assert_contains("setAttribute('data-ws-tour', '1')", $center[1] ?? '', 'which the last step rings');
+	pg_assert_contains("item(t('tour_start'), 'bi-signpost-split', function () { self.startTour(); }, 'ws-head-narrow');", $menu[1] ?? '', 'on a phone the channel menu has it');
+	pg_assert_contains('window.PGWsSide.attached()', $tour, 'the tour waits for the list to be drawn on the screen');
+	pg_assert_false(strpos($tour, 'ws-side-head-tools') !== false, 'not for a button in the list\'s head');
+
+	// The steps read from their source: building them asks the database
+	// which screens the site has.
+	preg_match_all("/'target'\\s*=>\\s*array\\(([^)]*)\\)/", pg_test_function_source('ws_tour_steps'), $found);
+
+	$targets = $found[1];
+
+	pg_assert_false(strpos(implode(' ', $targets), 'data-ws-nav="inbox"') !== false, 'no step on the Inbox entry');
+	pg_assert_true(in_array("'#notification_toggle'", $targets, true), 'the notifications step rings the bell');
+	pg_assert_same("'#ws-root .ws-head [data-ws-tour]'", end($targets), 'the last step rings the header\'s tour button');
 }

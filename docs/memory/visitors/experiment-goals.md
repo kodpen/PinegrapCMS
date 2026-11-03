@@ -7,6 +7,7 @@ module: experiments
 ## How is a goal counted?
 - `pg_experiment_goal($kind, $event)`: the visitor's buckets (`pg_exp`), the running experiments among them whose `goal_kind` is the kind (`pg_experiment_running_for_goals()`, one query plus variants), then `pg_experiment_goal_lines()` (pure): one line per experiment the event matches, for the variant the bucket names, unless counted today. Each line is one `INSERT … ON DUPLICATE KEY UPDATE goals = goals + 1` on the hour's row (`pg_experiment_count_goal()`, same key as the views).
 - Nothing without a bucket, for crawlers and scripts, or for signed-in staff; nothing when headers are already out (the mark could not be sent, so a goal never counts twice).
+- The cookie is the visitor's own and unsigned, so a script can rewrite the day mark: when a goal would count, `pg_experiment_goal_rate_exceeded()` holds an address to `PG_EXPERIMENT_GOAL_RATE_LIMIT` (10) goals a minute on the firewall's counter (scope `exp_goal`), as the page speed beacon does (#6255).
 
 ## How is "once a day" kept without a table?
 - The day of the last count (days since 1970-01-01, `pg_experiment_day_number()` of the site's date) rides on the cookie's pair: `<id>:<key>:<day>`. `pg_experiment_bucket_parse()` reads the bucket with or without it; `pg_experiment_goal_seen_parse()` reads the marks. `pg_experiment_bucket_write()` keeps the request's marks unless given new ones, so the router's draw and the resend never drop them.

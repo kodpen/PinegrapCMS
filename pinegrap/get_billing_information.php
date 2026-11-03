@@ -484,7 +484,7 @@ function get_billing_information($properties) {
 
             // loop through all referral sources to prepare all options for selection drop-down field
             while ($row = mysqli_fetch_assoc($result)) {
-                $referral_source_options[$row['name']] = $row['code'];
+                $referral_source_options[h($row['name'])] = h($row['code']);
             }
 
             $output_referral_source =
@@ -792,7 +792,7 @@ function get_billing_information($properties) {
             $referral_source_options[''] = '';
 
             foreach ($referral_sources as $referral_source_row) {
-                $referral_source_options[$referral_source_row['name']] = $referral_source_row['code'];
+                $referral_source_options[h($referral_source_row['name'])] = h($referral_source_row['code']);
             }
 
             $form->set('referral_source', 'options', $referral_source_options);

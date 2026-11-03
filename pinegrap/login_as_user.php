@@ -70,6 +70,7 @@ if (pg_user_id_is_disabled($login_as_user_id)) {
 // as different user.
 session_unset();
 session_destroy();
+pg_session_end_clear_cache();
 
 // Remove tracking code and affiliate code cookies so that
 // they don't show up under different user session.

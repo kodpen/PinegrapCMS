@@ -405,7 +405,7 @@ function pg_order_auto_register($email_address, $contact_id)
     if (
         ($contact_id > 0)
         && (REGISTRATION_CONTACT_GROUP_ID)
-        && (db_value("SELECT id FROM contact_groups WHERE id = '" . (int) REGISTRATION_CONTACT_GROUP_ID . "'"))
+        && (db_value("SELECT id FROM contact_groups WHERE (id = '" . (int) REGISTRATION_CONTACT_GROUP_ID . "') AND " . pg_audience_hand_sql()))
     ) {
         db_q(
             "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id)
@@ -3384,7 +3384,8 @@ function pg_order_complete_rewards($user_id, $contact_id, $reward_points, $order
 function pg_order_complete_contact_groups($contact_id, array $contact_groups)
 {
     foreach ($contact_groups as $contact_group_id) {
-        $result = db_q("SELECT id FROM contact_groups WHERE id = ?", array((string) $contact_group_id)) or output_error('Query failed.');
+        // a group filled by rules is never written by a product sale
+        $result = db_q("SELECT id FROM contact_groups WHERE (id = ?) AND " . pg_audience_hand_sql(), array((string) $contact_group_id)) or output_error('Query failed.');
 
         if (mysqli_num_rows($result) == 0) {
             continue;

@@ -84,6 +84,7 @@ function pg_sms_queue_list_kinds()
         'shipping'  => lang('Shipping update'),
         'otp'       => lang('Sign-in code'),
         'reminder'  => lang('Reminder'),
+        'booking'   => lang('Booking'),
         'marketing' => lang('Marketing'),
     );
 }

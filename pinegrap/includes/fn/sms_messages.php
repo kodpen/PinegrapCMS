@@ -37,7 +37,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * @return array event => kind (pg_sms_kinds()), label, text (the built-in
  *               template), fields (the ^^name^^ fields it may use), note
  *               (optional: what switching it on changes), erp (optional:
- *               only offered while the ERP module is on)
+ *               only offered while the ERP module is on), booking
+ *               (optional: only offered once the booking tables exist)
  */
 function pg_sms_message_events()
 {
@@ -98,6 +99,38 @@ function pg_sms_message_events()
             'fields' => array('store', 'account', 'count', 'total'),
             'note'   => lang('Sent with the overdue receivable reminders of the ERP module, once per account at each of the two notices, to the account\'s phone number or else its contact\'s mobile phone number. An account set not to receive reminders is not texted.'),
             'erp'    => true,
+        ),
+        // A booking's customer (includes/fn/booking_messages.php), to the
+        // phone number given with the booking: offered once the booking
+        // tables are in place.
+        'booking_confirmed' => array(
+            'kind'    => 'booking',
+            'label'   => lang('Booking confirmed'),
+            'text'    => lang('^^store^^: Your booking for ^^service^^ on ^^date^^ at ^^time^^ is confirmed. ^^manage_url^^'),
+            'fields'  => array('store', 'name', 'service', 'date', 'time', 'manage_url'),
+            'booking' => true,
+        ),
+        'booking_reminder' => array(
+            'kind'    => 'booking',
+            'label'   => lang('Booking reminder'),
+            'text'    => lang('^^store^^: A reminder of your booking for ^^service^^ on ^^date^^ at ^^time^^. ^^manage_url^^'),
+            'fields'  => array('store', 'name', 'service', 'date', 'time', 'manage_url'),
+            'note'    => lang('Sent before a confirmed booking starts, at the reminder hours of the booking settings.'),
+            'booking' => true,
+        ),
+        'booking_rescheduled' => array(
+            'kind'    => 'booking',
+            'label'   => lang('Booking rescheduled'),
+            'text'    => lang('^^store^^: Your booking for ^^service^^ has been moved to ^^date^^ at ^^time^^. ^^manage_url^^'),
+            'fields'  => array('store', 'name', 'service', 'date', 'time', 'manage_url'),
+            'booking' => true,
+        ),
+        'booking_cancelled' => array(
+            'kind'    => 'booking',
+            'label'   => lang('Booking cancelled'),
+            'text'    => lang('^^store^^: Your booking for ^^service^^ on ^^date^^ at ^^time^^ has been cancelled.'),
+            'fields'  => array('store', 'name', 'service', 'date', 'time'),
+            'booking' => true,
         ),
     );
 }
@@ -265,15 +298,17 @@ function pg_sms_message_field_list($fields)
 }
 
 /**
- * Whether the card offers an event: an ERP event only while the module is on.
+ * Whether the card offers an event: an ERP event only while the module is on,
+ * a booking event only once the booking tables are in place.
  *
  * @param array $definition pg_sms_message_events() row
  * @param bool  $erp_on     ERP_ENABLED
+ * @param bool  $booking_on pg_booking_ready()
  * @return bool
  */
-function pg_sms_message_event_shown($definition, $erp_on)
+function pg_sms_message_event_shown($definition, $erp_on, $booking_on = false)
 {
-    return empty($definition['erp']) || $erp_on;
+    return (empty($definition['erp']) || $erp_on) && (empty($definition['booking']) || $booking_on);
 }
 
 /**
@@ -385,9 +420,10 @@ function pg_sms_message_settings_fields()
     }
 
     $erp_on = defined('ERP_ENABLED') && ERP_ENABLED;
+    $booking_on = function_exists('pg_booking_ready') && pg_booking_ready();
 
     foreach (pg_sms_message_events() as $event => $definition) {
-        if (!pg_sms_message_event_shown($definition, $erp_on)) {
+        if (!pg_sms_message_event_shown($definition, $erp_on, $booking_on)) {
             $html .= '
                                         ' . pg_sms_message_event_hidden_fields($event, $settings[$event]);
             continue;

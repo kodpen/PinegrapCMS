@@ -14,6 +14,7 @@ description: Where each classic region type goes in the visual designer (common,
 | dynamic | stays PHP, edited from its node | `dynamic-region-in-designer.md` |
 | page (`pregion`) | `_editable` blocks in the page's own tree | `page-region-into-page-tree.md` |
 | menu, menu sequence, ad, tag cloud | widgets ("Make designable") | `region-node-to-widget.md` |
+- Site search and Find & Replace read the trees the converted content lives in: `tree-search.md`.
 - Every conversion is opt-in, run by a designer (role 0-1); nothing converts on its own.
 
 ## What did the owner answer on 2026-10-27?
@@ -23,5 +24,4 @@ description: Where each classic region type goes in the visual designer (common,
 
 ## What is still open?
 - A site with no visual design cannot open a component on its own.
-- Find and replace does not search shared component trees or designer page trees; site search reads no designer page tree.
 - The unread `cregion` row of a converted common region was kept "until the legacy designer retires"; the retirement removed none, and whether the rows go is not decided (asked in #3156).

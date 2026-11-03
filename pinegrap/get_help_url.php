@@ -79,6 +79,7 @@ function get_help_url($properties = array())
         'settings_firewall'   => 'site-settings#firewall',
         'settings_commerce'   => 'site-settings#commerce',
         'settings_accounting' => 'site-settings#accounting',
+        'settings_bookings'   => 'site-settings#bookings',
         'settings_privacy'    => 'site-settings#visitors-and-privacy',
         'settings_api'        => 'site-settings#api',
         'settings_maintenance' => 'site-settings#updates-and-maintenance',
@@ -166,6 +167,8 @@ function get_help_url($properties = array())
         'add_calendar_event'            => 'calendars#create-edit-calendar-event',
         'edit_calendar_event'           => 'calendars#create-edit-calendar-event',
         'view_calendar_event_locations' => 'calendars#event-locations',
+        'view_bookings'                 => 'calendars',
+        'edit_booking'                  => 'calendars',
         'add_calendar_event_location'   => 'calendars#create-edit-calendar-event-location',
         'edit_calendar_event_location'  => 'calendars#create-edit-calendar-event-location',
 

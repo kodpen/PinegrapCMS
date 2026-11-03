@@ -27,10 +27,6 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
-if (!defined('PG_FUNCTIONS_DIR')) {
-    exit;
-}
-
 // ── Node builders ───────────────────────────────────────────────────────
 // Same shapes the editor's createNode() produces; the editor gives every
 // node its id when the tabs open. $name is the node's label in the layer
@@ -646,7 +642,7 @@ $project_band = function () use ($el, $heading, $para, $link, $container, $row, 
             $row(array(
                 $col(array(
                     $heading('h2', lang('Have an app in mind?'), 'pma-display h2 fw-bold mb-2'),
-                    $para(lang('Tell me what it should do in a few lines; you get an answer and a first plan within two working days.'), 'opacity-75 mb-0'),
+                    $para(lang('Tell me what it should do in a few lines; you get an answer and a first plan within two working days.'), 'mb-0'),
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
@@ -670,7 +666,7 @@ $store_buttons = function ($sample_key = 'tally', $size = '') use ($el, $icon, $
             $el('a', trim('btn btn-dark rounded-3 d-inline-flex align-items-center gap-2 px-3 text-start ' . $size), lang('Store Link'), array(
                 $icon($icon_name, 'fs-4'),
                 $el('span', 'd-flex flex-column lh-sm', lang('Link Text'), array(
-                    $span($small, 'small opacity-75', lang('Text')),
+                    $span($small, 'small', lang('Text')),
                     $span($big, 'fw-semibold', lang('Store')),
                 )),
             ), array('href' => $sample, 'target' => '_blank', '_attrs' => array($attr('rel', 'noopener')), '_bindings' => array('href' => $field))),

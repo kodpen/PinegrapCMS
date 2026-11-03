@@ -44,7 +44,11 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_list_table_definitions()
 {
-    return array();
+    return array(
+        'view_pages' => array('file' => 'includes/fn/page_list.php', 'source' => 'pg_page_list_source'),
+        'view_users' => array('file' => 'includes/fn/user_list.php', 'source' => 'pg_user_list_source'),
+        'view_contacts' => array('file' => 'includes/fn/contact_list.php', 'source' => 'pg_contact_list_source'),
+    );
 }
 
 /**
@@ -245,7 +249,10 @@ function pg_list_table_sort_columns(array $columns)
  *                    pg_list_cell())), 'all' (true for a small list printed
  *                    whole: the browser sorts and searches it itself),
  *                    'params_out' (the list parameters the browser sends
- *                    back with every rows request)
+ *                    back with every rows request), 'edit' (quick edit:
+ *                    array('url' => the screen pg_list_edit_request()
+ *                    answers on, 'columns' => its field => definition);
+ *                    left out for a viewer who may not change the list)
  * @return array
  */
 function pg_list_table_source(array $spec)
@@ -271,7 +278,34 @@ function pg_list_table_source(array $spec)
         'rows' => $spec['rows'] ?? null,
         'all' => !empty($spec['all']),
         'params_out' => isset($spec['params_out']) && is_array($spec['params_out']) ? $spec['params_out'] : array(),
+        'edit' => pg_list_table_edit_spec($spec['edit'] ?? null, $columns),
     );
+}
+
+/**
+ * A source's quick edit, checked: the address and the definitions of the
+ * fields a cell may change (pg_list_edit_table()), kept only while some
+ * column of the list is editable. Null when nothing can change: the list
+ * gets no quick edit button then.
+ *
+ * @param mixed $edit    array('url' => string, 'columns' => field => definition)
+ * @param array $columns pg_list_table_columns()
+ * @return array|null
+ */
+function pg_list_table_edit_spec($edit, array $columns)
+{
+    if (!is_array($edit) || !isset($edit['url']) || !is_string($edit['url']) || ($edit['url'] === '')
+        || empty($edit['columns']) || !is_array($edit['columns'])) {
+        return null;
+    }
+
+    foreach ($columns as $column) {
+        if ($column['editable'] !== '') {
+            return array('url' => $edit['url'], 'columns' => $edit['columns']);
+        }
+    }
+
+    return null;
 }
 
 /**
@@ -694,7 +728,7 @@ function pg_list_table_row_html(array $row, array $columns)
             }
         }
 
-        $output .= '>' . $cell['html'] . '</td>';
+        $output .= ($columns[$key]['hidden'] ? ' hidden' : '') . '>' . $cell['html'] . '</td>';
     }
 
     return $output . '</tr>';
@@ -718,17 +752,58 @@ function pg_list_table_aria_sort(array $levels, $key)
 }
 
 /**
+ * The driver's texts, translated here; '%n' stands for a number the
+ * browser writes in.
+ *
+ * @return array
+ */
+function pg_list_table_texts()
+{
+    return array(
+        'more' => lang('Show more'),
+        'loading' => lang('Loading...'),
+        'failed' => lang('The list could not be loaded.'),
+        'retry' => lang('Try again'),
+        'loaded' => lang(array('string' => '{var:1} rows loaded', 'vars' => array('%n'))),
+        'selected' => lang(array('string' => '{var:1} selected', 'vars' => array('%n'))),
+        'all' => lang(array('string' => 'All {var:1} rows selected', 'vars' => array('%n'))),
+        'clear' => lang('Clear selection'),
+        'undo' => lang('Undo the previous selection'),
+        'sort' => lang('Sort by this column'),
+        'columns' => lang('Columns'),
+        'details' => lang('Details'),
+        'close' => lang('Close'),
+        'up' => lang('Move up'),
+        'down' => lang('Move down'),
+        'reset' => lang('Reset'),
+        'pick' => lang('Select a row to see its details.'),
+        'quick' => lang('Quick edit'),
+        'quickOn' => lang('Quick edit is on: a changed cell is saved as soon as you leave it.'),
+        'quickOff' => lang('Quick edit is off.'),
+        'saved' => lang('Saved'),
+        'saveFailed' => lang('The change could not be saved. Check the connection and try again.'),
+        'undoChange' => lang('Undo the last change'),
+        'undone' => lang('The last change was undone.'),
+        'apply' => lang(array('string' => 'Apply to {var:1} selected rows', 'vars' => array('%n'))),
+        'applied' => lang(array('string' => '{var:1} rows changed', 'vars' => array('%n'))),
+        'applyFailed' => lang(array('string' => '{var:1} rows could not be changed', 'vars' => array('%n'))),
+    );
+}
+
+/**
  * A list printed with its first batch: the headings, the rows, the empty
  * line and the live region; the column model, the list's parameters, the
  * cursor of the next batch and the count ride on data attributes for the
  * browser part (assets/js/pg_list_table.js).
  *
- * @param array  $source pg_list_table_source()
- * @param array  $page   pg_list_table_page() of the first batch
- * @param string $label  the list's name for assistive technology
+ * @param array  $source  pg_list_table_source()
+ * @param array  $page    pg_list_table_page() of the first batch
+ * @param string $label   the list's name for assistive technology
+ * @param string $actions the screen's bulk action buttons for the selection
+ *                        bar (markup, escaped by the screen)
  * @return string
  */
-function pg_list_table_html(array $source, array $page, $label)
+function pg_list_table_html(array $source, array $page, $label, $actions = '')
 {
     $columns = $source['columns'];
     $json = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE;
@@ -739,8 +814,28 @@ function pg_list_table_html(array $source, array $page, $label)
         . ' data-pg-list-params="' . h((string) json_encode((object) $source['params_out'], $json)) . '"'
         . ' data-pg-list-sort="' . h(pg_list_sort_value($source['levels'])) . '"'
         . ' data-pg-list-next="' . h((string) $page['next']) . '"'
-        . ' data-pg-list-total="' . (int) $page['total'] . '">';
+        . ' data-pg-list-total="' . (int) $page['total'] . '"'
+        . ' data-pg-list-user="' . (defined('USER_ID') ? (int) USER_ID : 0) . '"'
+        . ' data-pg-list-texts="' . h((string) json_encode(pg_list_table_texts(), $json)) . '"'
+        . ($source['edit'] ? pg_list_edit_table($source['edit']['url'], $source['edit']['columns']) : '') . '>';
 
+    // The bar stays above the rows: the selection's count and bulk actions
+    // while rows are selected, the columns menu and the details switch
+    // always. The rows scroll in their own box under a sticky heading row,
+    // so the list fills the window; the details panel stands beside them.
+    $output .= '<div class="pg-list-table-bar is-empty"><span class="pg-list-table-count" aria-live="polite"></span>'
+        . '<span class="pg-list-table-actions">' . $actions . '</span>'
+        . '<span class="pg-list-table-tools">'
+        . ($source['edit'] ? '<button type="button" class="btn btn-sm btn-text theme-secondary pg-list-table-quick" aria-pressed="false" aria-keyshortcuts="F2" title="F2">'
+            . '<i class="bi bi-pencil-square me-1" aria-hidden="true"></i>' . h(lang('Quick edit')) . '</button>' : '')
+        . '<span class="pg-menu-wrap"><button type="button" class="btn btn-sm btn-text theme-secondary pg-list-table-columns" data-bs-toggle="menu" data-bs-auto-close="outside" aria-expanded="false">'
+        . '<i class="bi bi-layout-three-columns me-1" aria-hidden="true"></i>' . h(lang('Columns')) . '</button>'
+        . '<div class="menu pg-menu-end pg-list-table-columns-menu"></div></span>'
+        . '<button type="button" class="btn btn-sm btn-text theme-secondary pg-list-table-details-switch" aria-pressed="false">'
+        . '<i class="bi bi-layout-sidebar-reverse me-1" aria-hidden="true"></i>' . h(lang('Details')) . '</button>'
+        . '</span></div>';
+    $output .= '<div class="pg-list-table-body">';
+    $output .= '<div class="pg-list-table-scroll" tabindex="-1">';
     $output .= '<table class="table pg-list-table-grid" role="table" aria-label="' . h($label) . '">';
     $output .= '<thead role="rowgroup"><tr role="row">';
 
@@ -764,6 +859,11 @@ function pg_list_table_html(array $source, array $page, $label)
 
     $output .= '</tbody></table>';
     $output .= '<p class="pg-list-table-empty fg-secondary"' . ($page['rows'] ? ' hidden' : '') . '>' . h(lang('No records found.')) . '</p>';
+    $output .= '<div class="pg-list-table-foot"></div></div>';
+    $output .= '<aside class="pg-list-table-details" aria-label="' . h(lang('Details')) . '" hidden>'
+        . '<div class="pg-list-table-details-head"><strong>' . h(lang('Details')) . '</strong>'
+        . '<button type="button" class="btn btn-sm btn-text theme-secondary pg-list-table-details-close" aria-label="' . h(lang('Close')) . '" title="' . h(lang('Close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>'
+        . '<div class="pg-list-table-details-body"></div></aside></div>';
     $output .= '<div class="visually-hidden" aria-live="polite" data-pg-list-live></div>';
 
     return $output . '</div>';

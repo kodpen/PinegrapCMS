@@ -219,6 +219,7 @@ function pg_panel_backend_search($request, $action)
 
     // ── Design ────────────────────────────────────────────────────────────
     if ($gate['design']) {
+        $actions[] = array('label' => lang('Experiments'), 'icon' => 'bi-bar-chart-line', 'url' => $base_url . '/experiments.php', 'keys' => array('deney', 'deneyler', 'ab test', 'a/b', 'experiment', 'experiments', 'varyant', 'variant'));
         $actions[] = array('label' => lang('Styles'), 'icon' => 'bi-window', 'url' => $base_url . '/view_styles.php', 'keys' => array('stil', 'stiller', 'style', 'styles', 'stl'));
         $actions[] = array('label' => lang('Add Style'), 'icon' => 'bi-window-plus', 'url' => $base_url . '/add_style.php', 'keys' => array('stil ekle', 'add style', 'yeni stil', 'stilekle'));
         $actions[] = array('label' => lang('Themes'), 'icon' => 'bi-palette', 'url' => $base_url . '/view_themes.php', 'keys' => array('tema', 'theme', 'them', 'tem'));
@@ -576,6 +577,29 @@ function pg_panel_backend_search($request, $action)
         }
     }
 
+    // ── Bookings (the agenda's viewers: roles 0-2, a role-3 staff member
+    //    their own) by the customer's name or e-mail address ─────────────
+    if (pg_booking_ready()) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
+
+        $booking_scope = pg_booking_agenda_user_scope($user);
+
+        if ($booking_scope !== false) {
+            $rows = db_items(
+                "SELECT bookings.id, bookings.name, bookings.email, bookings.start_at
+                 FROM bookings
+                 WHERE bookings.status <> 'held'
+                   AND (bookings.name LIKE '$s' OR bookings.email LIKE '$s')" . pg_booking_agenda_scope_sql($booking_scope) . "
+                 " . $rank('bookings.name', 'bookings.start_at DESC, bookings.id') . "
+                 LIMIT $per_limit"
+            );
+            foreach ($rows as $r) {
+                $sub = pg_booking_agenda_time($r['start_at'], true) . (((string) $r['email'] !== '') ? ' · ' . $r['email'] : '');
+                $add('booking', $r['id'], $r['name'], $sub, $score_fn($r['name'], $r['email']));
+            }
+        }
+    }
+
     $page = pg_panel_search_page($results, $offset, 20);
 
     echo encode_json(array('status' => 'success', 'results' => $page['results'], 'actions' => $actions, 'has_more' => $page['has_more']));
@@ -608,7 +632,8 @@ function pg_panel_search_compare($a, $b)
     static $types = array(
         'page', 'file', 'menu', 'calendar', 'email_campaign', 'form', 'user',
         'product', 'product_group', 'offer', 'order', 'style', 'contact',
-        'common_region', 'design_region', 'login_region', 'short_link'
+        'common_region', 'design_region', 'login_region', 'short_link',
+        'booking'
     );
     if ($a['score'] != $b['score']) {
         return $a['score'] < $b['score'] ? 1 : -1;

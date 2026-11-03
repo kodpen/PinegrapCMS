@@ -84,6 +84,14 @@ function api_webhook_events() {
 		// block from the panel is not announced.
 		'mail.bounced'     => 'A message to an address bounced; suppressed says whether mail to it is now stopped',
 		'mail.complained'  => 'A recipient marked a message as spam: mail to the address is stopped and its e-mail marketing consent withdrawn',
+		// A booking (includes/fn/booking_messages.php, pg_booking_changed()).
+		// id is the booking's; service_id, staff_id, user_id, name, email,
+		// start_at, end_at (UTC), status and source follow, never the manage
+		// link. A visitor's hold is not announced, nor a reminder.
+		'booking.created'     => 'A booking was made: a request, or a booking confirmed at once (booking.confirmed follows then); a visitor\'s hold of a slot is not announced',
+		'booking.confirmed'   => 'A booking was confirmed, at once or after it was requested',
+		'booking.rescheduled' => 'A booking was moved to another time; start_at and end_at are the new times',
+		'booking.cancelled'   => 'A booking was cancelled, by the customer or by staff',
 		'subscription.renewed'   => 'A subscription was charged for its next period; order_id names the renewal order',
 		'subscription.failed'    => 'A subscription\'s renewal was refused or waits for the customer to confirm the payment; status ended when the last retry failed (the end itself is not announced again)',
 		'subscription.cancelled' => 'A subscription was cancelled; it runs until next_charge_at and is not charged again (its end that day is not announced)',
@@ -150,6 +158,12 @@ function api_webhook_events() {
 		// and a contact's own deletion; the description says so.
 		'contact_group.members_changed' => 'Contacts were put into or taken out of a contact group through the API or the contact screens (not forms, the checkout, e-mail preferences or imports)',
 		'page.created'         => 'A page was created (not duplicated or imported pages)',
+		// Page experiments (pg_experiment_sheet_move()): the panel and the
+		// API alike. id, page_id, name and goal_kind follow; an end names
+		// winner_variant_id (0 without a winner). A resume after a pause is
+		// not a start.
+		'experiment.started'   => 'A page experiment was started for the first time',
+		'experiment.ended'     => 'A page experiment was ended, with or without a winner',
 		'page.updated'         => 'A page was changed through the API',
 		'product_group.created' => 'A product group was created through the API or the Workspace',
 		'product_group.updated' => 'A product group was changed',

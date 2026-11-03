@@ -17,14 +17,15 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 // The channel menu holds only the channel's own settings and actions, plus a
-// customer channel's sales quote (it is about the channel's own customer).
+// customer channel's sales quote (it is about the channel's own customer) and,
+// where the header is narrow, the header's own buttons (the tour among them).
 // Creating or changing other records is a / command or the record's own
 // screen, never an item here: a new key is added only for an item that
 // belongs to the channel itself (docs/memory/workspace/README.md key rules).
 function workspace_channel_menu_test_allowed()
 {
 	return array(
-		'channel_info', 'members', 'channel_search',
+		'channel_info', 'members', 'channel_search', 'tour_start',
 		'edit_channel', 'sales_quote_new',
 		'notify_all', 'notify_mentions', 'notify_none',
 		'voice_speak', 'claude_allow', 'ai_allow', 'voice_allow',

@@ -15,10 +15,14 @@ module: image_editor
 - The stage (`node`, SVG text, `dominant-baseline: central`) and the save (`paint`, `fillText`, `textBaseline: middle`) draw the same character in the middle of the box. Upright under a turn or flip (`UPRIGHT` in the model).
 - The server does not read layer types: a glyph reaches it only drawn into the overlay.
 
+## How is a placed one changed?
+- With one unlocked sticker or glyph selected, its panel shows Change (`swapButton()`): the Sticker tool opens (a glyph's icon or emoji section open) with a note and Cancel; a pick in the grid, icons or emoji replaces that layer in one undo step (`swapGlyph()`, the hook in `addSticker()`/`addGlyph()`) instead of adding one (#6351). Another selection or tool ends it.
+- `M.swapGlyph(l, pick)` keeps box, turn, opacity, colour, motion and every other field; the old type's own fields go (kind, label, ink / set, code). The colour stays on an emoji, so emoji → icon brings it back; sticker → sticker keeps label and ink.
+
 ## Where do the icon font and map come from?
 - The panel's own `assets/fonts/bootstrap-icons/` (font and `bootstrap-icons.json`, name => code point); `pg_image_editor_icon_urls()` puts both addresses, with the file's time, in the config as `icons`. No copy of the map in the bundle.
 - The font is loaded once per page with `FontFace` under the name `pgie-bi`, so the editor also draws icons on a site page without the panel's icon stylesheet; the map is fetched when "Icons" opens. A save waits for the font (`ready`); a document opened with icons draws again once it is there.
 - Emoji use the system's emoji fonts: each viewer sees their own system's drawing, and the saved picture keeps what the saving browser drew.
 
 ## Tests?
-- `tests/image_editor_glyph_test.php`: the emoji set and its labels, the icon search, recent emoji, `glyphText()`, `glyphSize()`, upright under a flip, the shipped font and map, the bundle order.
+- `tests/image_editor_glyph_test.php`: the emoji set and its labels, the icon search, recent emoji, `glyphText()`, `glyphSize()`, `swapGlyph()`, upright under a flip, the shipped font and map, the bundle order.
