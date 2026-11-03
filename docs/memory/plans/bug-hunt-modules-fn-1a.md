@@ -1,9 +1,9 @@
 ---
 name: bug-hunt-modules-fn-1a
-description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules collections to legal_documents, one line each with its state
+description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules collections to editor, one line each with its state
 ---
 
-## Which includes/fn/ modules (collections to legal_documents) are hunted?
+## Which includes/fn/ modules (collections to editor) are hunted?
 - `collections`: taken by LQ, #4650
 - `comments`: taken by LB — #4599
 - `commission_list`: clean
@@ -27,24 +27,3 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 - `designer_vocab`: clean
 - `ecommerce`: done (#6030)
 - `editor`: open, partly hunted (#6032: a visitor image next to `{path}` became protocol-relative; checked: the rich text sanitizer and its URL, style and image helpers, `_pg_rich_text_to_inline()`, the {path} input/output helpers; next worker starts at `get_wysiwyg_editor_code()`, then the `pg_code_editor_*` functions)
-- `email_campaign_schedule`: clean
-- `email_campaign_send`: done (#5934)
-- `errors`: #6017
-- `events`: clean
-- `explorer_side`: clean (gates match view_folders.php, view_product_groups.php and the menu rows; ids filtered; markup escaped; script builds rows with textContent)
-- `files`: done #4613
-- `form_subscription`: open
-- `forms`: done #6044 (validate_date() took a date inside longer text)
-- `geo`: done #5975
-- `google_analytics`: clean
-- `google_reviews`: done #6019
-- `image`: open
-- `image_editor`: open
-- `imap_client`: done (#6020)
-- `innodb`: open
-- `lang`: done #6045 (placeholder values re-scanned; rest reviewed: language pick, source, cache, log/staff language)
-- `lang_files`: open
-- `language_redirect`: open
-- `layout_convert`: open
-- `layouts`: #6043
-- `legal_documents`: open

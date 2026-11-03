@@ -35,7 +35,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bug-hunt-modules-endpoints-2.md: Module list of plans/bug-hunt.md, part 4: root endpoint groups optimize to zone by area word; single endpoints in bug-hunt-modules-endpoints-2b.md, one line each with its state
 - bug-hunt-modules-endpoints-2b.md: Module list of plans/bug-hunt.md, part 5: the single root endpoints (one file per area word), six to a line, each line with its state
 - bug-hunt-modules-fn-1.md: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y to cloudflare_tools, one line each with its state
-- bug-hunt-modules-fn-1a.md: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules collections to legal_documents, one line each with its state
+- bug-hunt-modules-fn-1a.md: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules collections to editor, one line each with its state
+- bug-hunt-modules-fn-1a2.md: Module list of plans/bug-hunt.md, part 1a2: includes/fn/ modules email_campaign_schedule to legal_documents, one line each with its state
 - bug-hunt-modules-fn-1b.md: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules link_resolve to pdf_merge, one line each with its state
 - bug-hunt-modules-fn-2.md: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules price_history to waf_rescue, one line each with its state
 - bug-hunt-modules-fn-2b.md: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules widgets to widgets_lists_checkout (widgets_cart and widgets_catalog in part 2d), one line each with its state
