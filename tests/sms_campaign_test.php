@@ -74,6 +74,26 @@ function test_sms_campaign_decide_refusals()
 	pg_assert_same(array(), $empty['errors']);
 }
 
+// A field posted as a list is not a value: no "Array" name or text is
+// saved, a list send is a draft and a list choice includes no group, with no
+// "Array to string conversion".
+function test_sms_campaign_decide_list_fields()
+{
+	$decision = pg_sms_campaign_decide(sms_campaign_test_post(array(
+		'name'            => array('x'),
+		'body'            => array('y'),
+		'send'            => array('now'),
+		'contact_group_3' => array('included'),
+	)), array(3, 4), 1000, null);
+
+	pg_assert_same(array(), $decision['errors']);
+	pg_assert_same('', $decision['values']['name']);
+	pg_assert_same('', $decision['values']['body']);
+	pg_assert_same('draft', $decision['values']['status']);
+	pg_assert_same(array(), $decision['values']['included']);
+	pg_assert_same(array(4), $decision['values']['excluded']);
+}
+
 // One message per number: the first contact of a number keeps it, a
 // number of an excluded group's contact is left out, and a phone that is not
 // a mobile number is skipped.
@@ -311,6 +331,15 @@ function test_sms_campaign_screen_writes_are_checked()
 	$affected = strpos($source, 'mysqli_affected_rows(db::$con) === 1');
 	$logged = strpos($source, "'SMS campaign cancelled: {var:1}'");
 	pg_assert_true(($affected !== false) && ($logged !== false) && ($affected < $logged), 'cancel log follows the affected-rows check');
+
+	// Fields posted as lists: trim() of a list start_at stopped the save, and
+	// a nested delete id cast to int deleted campaign 1.
+	pg_assert_true(strpos($source, "pg_request_single_values(array('id', 'name', 'body', 'send', 'start_at'))") !== false, 'edit fields are single values');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/view_sms_campaigns.php');
+	$skip = strpos($source, 'if (!is_scalar($id))');
+	$cast = strpos($source, '$id = (int) $id;');
+	pg_assert_true(($skip !== false) && ($cast !== false) && ($skip < $cast), 'a non-scalar delete id is skipped before the cast');
 }
 
 // An edit saved after the job claimed the campaign (or after it was

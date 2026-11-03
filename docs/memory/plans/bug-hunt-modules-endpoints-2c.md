@@ -4,6 +4,6 @@ description: Module list of plans/bug-hunt.md, part 4c: root endpoint groups sms
 ---
 
 ## Which root endpoint groups (sms, state, tax) are hunted?
-- Endpoints `sms` (3: edit_sms_campaign, sms_code, view_sms_campaigns): taken
-- Endpoints `state` (3: add_state, edit_state, view_states): taken
-- Endpoints `tax` (3: add_tax_zone, edit_tax_zone, view_tax_zones): taken
+- Endpoints `sms` (3: edit_sms_campaign, sms_code, view_sms_campaigns): done #6093 (fields posted as lists: a list `start_at` stopped the save, a list name or text was saved as "Array", a nested delete id deleted campaign 1); sms_code clean
+- Endpoints `state` (3: add_state, edit_state, view_states): clean
+- Endpoints `tax` (3: add_tax_zone, edit_tax_zone, view_tax_zones): clean
