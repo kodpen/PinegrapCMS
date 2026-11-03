@@ -1036,7 +1036,10 @@ function pg_list_table_selected_ids(array $source, array $selection, $limit = 10
  */
 function pg_list_table_printed_lists()
 {
-    return array('view_menus', 'view_short_links');
+    return array(
+        'view_menus', 'view_short_links',
+        'view_styles', 'view_themes', 'view_design_files', 'view_containers', 'view_comments',
+    );
 }
 
 /**
@@ -1145,4 +1148,30 @@ function pg_list_table_search_box($list)
         . '<span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>'
         . '<input type="search" class="form-ghost" data-pg-list-search="' . h($list) . '" placeholder="' . h(lang('Search')) . '" aria-label="' . h(lang('Search')) . '">'
         . '</label>';
+}
+
+/**
+ * A date cell of a printed list: the relative time and who made the change,
+ * sorted by the time itself.
+ *
+ * @param mixed  $timestamp Unix seconds
+ * @param string $username  '' when not known
+ * @return array pg_list_cell()
+ */
+function pg_list_table_when_cell($timestamp, $username = '')
+{
+    return pg_list_cell(pg_list_when($timestamp, (string) $username), 'align-middle', array('data-pg-sort-value' => (int) $timestamp));
+}
+
+/**
+ * A yes/no cell of a printed list: a check mark that says Yes, or nothing;
+ * sorted by 1 or 0.
+ *
+ * @param mixed $on
+ * @return array pg_list_cell()
+ */
+function pg_list_table_check_cell($on)
+{
+    return pg_list_cell($on ? '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>' : '',
+        'align-middle', array('data-pg-sort-value' => $on ? 1 : 0));
 }

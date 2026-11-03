@@ -132,3 +132,21 @@ JS
 	pg_assert_same(null, $result['before'], 'one row replaced offers no undo');
 	pg_assert_same(array('3'), $result['toggled']);
 }
+
+function test_list_table_printed_cell_helpers()
+{
+	$check = pg_list_table_check_cell(true);
+	pg_assert_same('1', $check['attributes']['data-pg-sort-value'], 'a check sorts by 1');
+	pg_assert_contains('task_alt', $check['html']);
+	pg_assert_contains('aria-label', $check['html'], 'the mark says Yes');
+
+	$none = pg_list_table_check_cell(false);
+	pg_assert_same('', $none['html']);
+	pg_assert_same('0', $none['attributes']['data-pg-sort-value']);
+
+	$when = pg_list_table_when_cell('1700000000', '');
+	pg_assert_same('1700000000', $when['attributes']['data-pg-sort-value'], 'a date sorts by its time');
+	pg_assert_true(strpos($when['html'], 'by ') === false, 'an unknown user leaves no dangling "by"');
+
+	pg_assert_true(in_array('view_themes', pg_list_table_printed_lists(), true));
+}
