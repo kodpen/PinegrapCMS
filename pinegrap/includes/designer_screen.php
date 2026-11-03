@@ -350,6 +350,10 @@ function pg_designer_screen_render($ctx)
                 'offset' => (int)date('Z'),
             ),
         ),
+        // Page experiments (2026.11.0, includes/fn/experiments_sheet.php):
+        // the sheet's address and each tab page's state, for the top bar's
+        // chip and the held variant's Publish.
+        'experiments'   => pg_experiment_editor_config($tab_page_ids, $user),
         // Tab order and groups (2026.4.8): kept in style_tab_layout, written
         // by designer/tab_layout. Without the column the strip is plain.
         'tabLayout'     => array(
@@ -530,6 +534,9 @@ function pg_designer_screen_render($ctx)
                                  operator never sees a feature they are not
                                  using. -->
                             <div class="sd-presence" id="sd-presence"></div>
+                            <!-- The page on screen in an experiment: filled by
+                                 _pgExperimentSync(), empty otherwise. -->
+                            <a class="badge d-none text-decoration-none" id="sd-experiment-chip" href="#" target="_blank" rel="noopener"></a>
                             ' . (!empty($sd_ai['enabled']) ? '<button type="button" id="sd-ai-btn" class="sd-icon-btn sd-ai-btn" title="' . h(lang('Ask the assistant')) . '" aria-expanded="false"><span class="bi bi-stars" aria-hidden="true"></span><span class="sd-ai-btn-txt">' . h(lang('Assistant')) . '</span><span class="sd-ai-btn-dot" aria-hidden="true"></span></button>' : '') . '
                             <button type="button" id="sd-main-undo" class="sd-vb-btn" onclick="StyleDesigner.undo()" title="' . lang('Undo') . ' (Ctrl+Z)" disabled><span class="bi bi-arrow-counterclockwise"></span></button>
                             <button type="button" id="sd-main-redo" class="sd-vb-btn" onclick="StyleDesigner.redo()" title="' . lang('Redo') . ' (Ctrl+Y)" disabled><span class="bi bi-arrow-clockwise"></span></button>
@@ -2269,6 +2276,11 @@ function pg_designer_settings_modal($ctx)
                 lang('A draft is kept in the private Drafts folder: visitors cannot open it, administrators can. Once published it goes back to the folder above. Applied when the design is published.'),
                 '<div class="form-field"><div class="switch"><input class="sd-page-field" type="checkbox" role="switch" id="pg_page_draft" value="1" data-page-key="page_draft"></div></div>',
                 array('for' => 'pg_page_draft', 'switch' => true)) : '') . '
+            ' . (($full && ((int)$user['role'] <= 1) && pg_experiment_sheet_ready()) ? pg_designer_setting(lang('Experiments'),
+                lang('Show part of the visitors a draft variant of this page and count which one reaches the goal more often. Saved pages on the site only.'),
+                '<a id="sd-page-experiments" class="btn btn-sm btn-outline theme-secondary" href="#" target="_blank" rel="noopener"><span class="bi bi-signpost-split me-1" aria-hidden="true"></span>' . lang('Open the Experiments sheet') . '</a>
+                <div class="sd-set-status" id="sd-page-experiment-status" aria-live="polite"></div>',
+                array()) : '') . '
         </section>' . (($full && pg_page_draft_ready() && function_exists('pg_page_schedule_ready') && pg_page_schedule_ready()) ? '
         <section class="sd-settings-group" id="sd-page-schedule-group">
             <h3 class="sd-settings-group-title">' . lang('Schedule') . '</h3>

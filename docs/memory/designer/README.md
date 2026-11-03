@@ -294,6 +294,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - page-drafts.md: Drafts of visual-designer pages (2026.4.7): the private Drafts folder, page_drafts and the folder a page returns to, how a save sets the state, new pages start as drafts, Save vs Publish, copies.
 - page-experiments-model.md: Page experiments model: the three tables (11.0.153), statuses and moves, the weighted draw, the pg_exp bucket cookie, which requests never join
 - page-experiments-serving.md: Serving a page experiment variant: body swap, the bucket at render and in the router, one cache copy per variant, private headers, views into experiment_hourly
+- page-experiments-sheet.md: The Experiments sheet (page_experiments.php, PX4 #6184): set-up with a variant draft, start/pause/end, Publish the winner through the page save, the chips, the holds on a variant draft
 - page-html-rebuild.md: Rebuild Page HTML (pg_designer_rebuild_page_code()): every designer page drawn again from its stored tree; when it runs, what stays, session cursor; per-body once-assets
 - page-link-fixed-text.md: A value of a link to another page that is fixed text, the same in every record ({name, text} in _bindParams.href.params): spec, address, list rows, the panel's Fixed text row
 - page-link-list-rows.md: A page link (__page_link) drawn in a list row sends values of the row: row params, props._pgRowLinks, the pgpl placeholder, stage 2 fill, settle, the panel's row group (W15, #1734)

@@ -50,6 +50,7 @@ description: Generated from the module field of the memory files: each includes/
 - `errors`: [[fn-module-errors-mail-backup-consent]]
 - `events`: [[workspace-flows-event-depth]]
 - `experiments`: [[page-experiments-model]], [[page-experiments-serving]]
+- `experiments_sheet`: [[page-experiments-sheet]]
 - `explorer_side`: [[explorer-menu-tree]]
 - `file_storage`: [[file-object-storage]], [[file-object-storage-readers]], [[object-storage-migration]], [[workspace-files-object-storage]]
 - `files`: [[design-files-screens]], [[edit-file-header]], [[import-my-site-scans]], [[name-length-refusal]], [[settings-public-image-pickers]], [[stored-file-name-upload-rule]], [[theme-screens-names-and-returns]]
