@@ -50,7 +50,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `editor`: open
 
-- `email_campaign_schedule`: open
+- `email_campaign_schedule`: clean
 
 - `email_campaign_send`: done (#5934)
 
