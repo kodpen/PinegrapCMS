@@ -25,7 +25,9 @@ description: External API (integration.php): find what the panel can do that the
   - X8b `/store/ship-date-adjustments`, `/store/verified-addresses` CRUD (409 `adjustment_taken`): PR #6308.
   - X8c `/store/arrival-dates` CRUD with `shipping_cutoffs` (a row the screen drops is 422): PR #6332 (`api/api-store-arrival-dates.md`).
 - X9 `POST /campaigns` (draft), `POST /campaigns/{id}/schedule`, campaign profiles CRUD, `GET /campaigns/sms`. `campaigns:*`. Event `campaign.sent`.
-- X10 Calendars create/update/delete, `/calendars/locations` CRUD, `GET /calendars/events/{id}/reservations`. `calendars:*` with the role-3 row rule. Event `calendar_event.reserved`.
+- X10 Calendars, cut in two:
+  - X10a Calendars create/update/delete (`fn/calendar_writes.php`): PR #PRNUM (`api/api-calendar-writes.md`).
+  - X10b `/calendars/locations` CRUD (screen SQL into `fn/calendar_writes.php`; role 3 refused), `GET /calendars/events/{id}/reservations`. Event `calendar_event.reserved`.
 - X11 `POST /forms/{id}/submissions`, its `/delete`, `GET /forms/{id}/fields`. `forms:*`. Event `form.submission.deleted`; `form.submitted` exists.
 - X12 CRUD for ads, ad regions, auto dialogs, common regions under `/design/`. `design:*`. No events.
 

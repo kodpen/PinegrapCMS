@@ -91,20 +91,7 @@ if (!$_POST) {
     }
     
     // create calendar
-    $query =
-        "INSERT INTO calendars (
-            name,
-            created_user_id,
-            created_timestamp,
-            last_modified_user_id,
-            last_modified_timestamp)
-        VALUES (
-            ?,
-            ?,
-            UNIX_TIMESTAMP(),
-            ?,
-            UNIX_TIMESTAMP())";
-    $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $user['id'], (string) $user['id'])) or output_error('Query failed.');
+    pg_calendar_save(0, (string) $liveform->get_field_value('name'), $user['id']) or output_error('Query failed.');
 
     log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('calendar'),$liveform->get_field_value('name') ))), $_SESSION['sessionusername']);
     
