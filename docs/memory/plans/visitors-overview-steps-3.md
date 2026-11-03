@@ -9,7 +9,7 @@ description: Steps V12-V17 of plans/visitors-overview.md: alerts, saved reports 
 - V12 (M) Alerts section. After V5, V6 and V9 (it reads their figures through the module and `pg_gsc_*`, not their files).
   - `includes/visitors/alerts.php`, drawn first on the screen: from the period and its previous one: visits down by more than 30 %; a landing page that lost more than half its visits (at least 50 before); the conversion rate halved; Google clicks down by more than 30 %; a page that lost more than half its clicks; no visit recorded today after 10:00 (tracking broken); each one line with its figures and a link to its section; nothing drawn when there is nothing. Thresholds are constants in the file; `tests/visitors_alerts_test.php` on the rules as pure functions over figure arrays. No table, no job (decision 7).
 
-- V13 (S) Saved reports tidy-up. After V3. Done: #PRNUM.
+- V13 (S) Saved reports tidy-up. After V3. Done: #6385.
   - On top of the fixes in `visitors/visitor-report-filters-and-form.md` (`includes/fn/visitor_report.php`). `view_visitor_report.php`: the period presets of `-design.md` in place of the stepper, the `start_*`/`stop_*` links still read for saved addresses; Monday weeks; the next-month link keeps the report id; the filters heading reads "Visitor Report Filters"; order columns only with `ECOMMERCE`. `view_visitor_reports.php`: heading "Saved visitor reports", a link to the overview. `view_visitor.php`: breadcrumb through the overview.
 
 - V14 (S) API routes. After V2, V4 and V10.
