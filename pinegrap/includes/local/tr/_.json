@@ -906,6 +906,7 @@
     "{var:1} is not an e-mail address.": "{var:1} geçerli bir e-posta adresi değil.",
     "{var:1} is not approved on {var:2} yet, so there is no listing to update.": "{var:1} henüz {var:2} pazaryerinde onaylanmadı, bu yüzden güncellenecek bir ilan yok.",
     "{var:1} is not in the {var:2} department.": "{var:1}, {var:2} departmanında değil.",
+    "{var:1} is not read by the action {var:2}.": "{var:1}, {var:2} işleminde okunmaz.",
     "{var:1} is not registered for e-Invoice at GİB; a document for this buyer goes as an e-Archive.": "{var:1} GİB'de e-Fatura mükellefi değil; bu alıcıya kesilen belge e-Arşiv olarak gider.",
     "{var:1} is not set to run ({var:2}).": "{var:1} çalışmaya ayarlı değil ({var:2}).",
     "{var:1} is not switched on on this site.": "Bu sitede {var:1} açık değil.",

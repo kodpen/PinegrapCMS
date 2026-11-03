@@ -697,6 +697,7 @@
     "Enter the amount as a number.": "Tutarı sayı olarak girin.",
     "Enter the amount of at least one part.": "En az bir parçanın tutarını girin.",
     "Enter the amount to refund, such as 120 or 120.50.": "İade edilecek tutarı 120 ya da 120,50 gibi yazın.",
+    "Enter the amount to refund.": "İade edilecek tutarı girin.",
     "Enter the confirmation code we texted to you. Use \"Send the code\" to get one.": "Size SMS ile gönderdiğimiz onay kodunu girin. Kod almak için \"Kodu gönder\"i kullanın.",
     "Enter the credit limit as an amount, or leave it empty for none.": "Kredi limitini tutar olarak girin ya da limit yoksa boş bırakın.",
     "Enter the date as day, month and a four-digit year, a date that exists.": "Tarihi gün, ay ve dört haneli yıl olarak, var olan bir tarih girin.",
