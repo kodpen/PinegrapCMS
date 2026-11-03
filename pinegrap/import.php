@@ -80,6 +80,18 @@ if (($import_id > 0) && ($import === null)) {
     output_error(h(lang('The import was not found.')));
 }
 
+// The redirects an import made as a CSV file (from,to,code), the form the
+// short links screen exports and imports.
+if (($import !== null) && (($_GET['export'] ?? '') === 'redirects') && pg_import_writer_load('redirect')) {
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="import-' . (int) $import['id'] . '-redirects.csv"');
+    header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: no-store, private');
+
+    echo pg_short_link_csv(pg_import_redirect_links((int) $import['id']), PATH);
+    exit();
+}
+
 // The short requests: a few seconds of work, then the screen asks again. The
 // session is closed first so other panel tabs do not wait behind them.
 if ($import_ajax) {
@@ -423,11 +435,20 @@ if ($import === null) {
 
         $body .= $card(lang('Report'), $counts_table($import['counts'], array('made' => lang('Made'), 'skipped' => lang('Skipped'), 'failed' => lang('Failed'))));
 
+        $redirects = (int) ($import['counts']['redirect']['made'] ?? 0);
+
+        if (($redirects > 0) && ($status !== 'undone')) {
+            $body .= $card(lang('Redirects'), '
+                <p>' . h(lang(array('string' => '{var:1} old address(es) now send visitors to what they became (301). They are listed with the short links.', 'vars' => array(pg_format_number($redirects, 0))))) . '</p>
+                <a class="btn btn-outline theme-secondary" href="' . h($screen_url . '?id=' . (int) $import['id'] . '&export=redirects') . '"><i class="bi bi-download me-5" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Download the redirects (CSV)')) . '</span></a>');
+        }
+
         $lines = '';
+        $line_results = array('made' => lang('Made, with a note'), 'skipped' => lang('Skipped'), 'failed' => lang('Failed'), 'kept' => lang('Kept'));
 
         foreach ((array) ($import['report']['lines'] ?? array()) as $line) {
             $lines .= '<tr>
-                <td>' . h(($line['result'] ?? '') === 'failed' ? lang('Failed') : lang('Skipped')) . '</td>
+                <td>' . h($line_results[$line['result'] ?? ''] ?? lang('Skipped')) . '</td>
                 <td>' . h($writer_kinds[$line['kind'] ?? ''] ?? ($line['kind'] ?? '')) . '</td>
                 <td>' . h((string) (($line['title'] ?? '') !== '' ? $line['title'] : ($line['key'] ?? ''))) . '</td>
                 <td>' . h((string) ($line['reason'] ?? '')) . '</td>
@@ -436,7 +457,7 @@ if ($import === null) {
 
         if ($lines !== '') {
             $more = (int) ($import['report']['more'] ?? 0);
-            $body .= $card(lang('Skipped and failed'), '<table class="table"><thead><tr>
+            $body .= $card(lang('Notes, skipped and failed'), '<table class="table"><thead><tr>
                 <th scope="col">' . h(lang('Result')) . '</th>
                 <th scope="col">' . h(lang('Kind')) . '</th>
                 <th scope="col">' . h(lang('Item')) . '</th>

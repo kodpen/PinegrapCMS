@@ -38,4 +38,4 @@ module: image_editor
 
 ## What is left out, and what never moves?
 - Redaction layers never move: one moving away in an export would show what it hides.
-- Tracks: `image-editor-tracks.md`; frames and GIF: `image-editor-render.md`. Not here yet: timeline keys other than K (AN11).
+- Tracks `image-editor-tracks.md`, keyframes `image-editor-keyframes.md`, frames `image-editor-render.md`. Not here yet: timeline keys other than K (AN11).

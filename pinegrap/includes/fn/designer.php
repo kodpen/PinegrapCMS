@@ -17,6 +17,7 @@
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_home.php');
 // initialize function that can generate HTML for a system style based on the layout and cells that were submitted which are in the areas array
 function get_system_style_code($layout, $areas, $style_name, $empty_cell_width_percentage, $additional_body_classes)
 {
@@ -3508,6 +3509,16 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     foreach ($schedule['warnings'] as $w) $warnings[] = $w;
     if ($schedule['apply']) $draft_plan['want'] = $schedule['draft'];
 
+    // A draft that is an open experiment's variant stays a draft until the
+    // experiment ends: published, its own address would answer for visitors
+    // beside the live page it is compared with.
+    if ($draft_plan['was'] && !$draft_plan['want'] && function_exists('pg_experiment_variant_hold_message')) {
+        $held = pg_experiment_variant_hold_message($page_id, $name);
+        if ($held !== '') {
+            return array('ok' => false, 'page_id' => $page_id, 'errors' => array($held), 'warnings' => $warnings);
+        }
+    }
+
     if ($dry_run) {
         return array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings, 'draft' => $draft_plan['want']);
     }
@@ -3570,9 +3581,9 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         $sitemap = 0;
     }
     // Only staff may promote a page to home; other roles keep the stored
-    // flag (UPDATE) or get '' (INSERT).
+    // flag (UPDATE) or get 'no' (INSERT). page_home is ENUM('no','yes').
     $can_set_home = ((int)$user['role'] < 3);
-    $home_str     = ($can_set_home && $flag('page_home')) ? 'yes' : '';
+    $home_str     = pg_page_home_value(($can_set_home && $flag('page_home')) ? 'yes' : 'no');
 
 
     $folder      = (int)(isset($page['page_folder']) ? $page['page_folder'] : 0);
@@ -3814,6 +3825,12 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         $page_created = true;
         update_tag_cloud_keywords_for_page($page_id, $search, $keywords, 0, '');
         log_activity(lang(array('string' => 'page ({var:1}) was created', 'vars' => array($name))), $_SESSION['sessionusername']);
+    }
+
+    // The site has one home page: a page saved as the home page takes the
+    // flag from every other page (includes/fn/page_home.php).
+    if ($page_id > 0 && $home_str === 'yes') {
+        pg_page_home_claim($page_id);
     }
 
     // The texts written with AI (page.ai_fields): the columns the editor
@@ -5682,11 +5699,15 @@ function _render_component_html($props, $pad, $kids = '')
 // An href bound to '__page_link' (a link to another page with a record's
 // values) is a sentinel the form list and form detail renderers expand per
 // link before drawing (pg_sw_page_link_bindings()). One still standing here
-// was drawn by a path that does not expand it (another widget kind, a shared
-// component nested inside the widget), so it prints '#' like the canvas and
-// is no token: an unanswered token would be swept to href="", which opens
-// the current address. An href bound to '__ref' (a field of a record the
-// record points at, pg_coll_ref_bindings()) is the same kind of sentinel.
+// inside a widget was drawn by a path that does not expand it (another widget
+// kind), so it prints '#' like the canvas and is no token: an unanswered
+// token would be swept to href="", which opens the current address. An href
+// bound to '__ref' (a field of a record the record points at,
+// pg_coll_ref_bindings()) is the same kind of sentinel. Outside a widget (a
+// page tree, a shared component, one placed in a widget's layout) a
+// '__page_link' keeps the typed href as its fallback and names its page in
+// data-pg-page-link, which the drawn page swaps for the page's current
+// address (pg_page_link_expand()): the saved body outlives a rename.
 function _apply_bindings($props, $rich_text = false)
 {
     if (empty($props['_bindings']) || !is_array($props['_bindings'])) return $props;
@@ -5697,6 +5718,7 @@ function _apply_bindings($props, $rich_text = false)
     static $renderable_props = array('text' => 1, 'html' => 1, 'src' => 1, 'alt' => 1, 'href' => 1, 'value' => 1);
     $formats = (isset($props['_bindFormats']) && is_array($props['_bindFormats'])) ? $props['_bindFormats'] : array();
     $bind_pairs = array();
+    $page_link  = null;
     foreach ($props['_bindings'] as $prop_name => $field_name) {
         if (!$field_name) continue;
         // Sanitize: field tokens are [a-z0-9_-]. The hyphen is kept: a form
@@ -5704,6 +5726,10 @@ function _apply_bindings($props, $rich_text = false)
         // no field and printed nothing.
         $safe = preg_replace('/[^a-z0-9_\-]/i', '', (string)$field_name);
         if ($safe === '') continue;
+        if ($prop_name === 'href' && $safe === '__page_link' && !_pg_page_link_in_widget()) {
+            $page_link = pg_page_link_bound_id($props);
+            continue;
+        }
         if ($prop_name === 'href' && ($safe === '__page_link' || $safe === '__ref')) {
             $props['href'] = '#';
             continue;
@@ -5745,7 +5771,90 @@ function _apply_bindings($props, $rich_text = false)
         }));
         $props['_attrs'][] = array('name' => 'data-pg-bind', 'value' => implode(';', $bind_pairs));
     }
+    if ($page_link !== null) {
+        $attrs = (isset($props['_attrs']) && is_array($props['_attrs'])) ? $props['_attrs'] : array();
+        $attrs = array_values(array_filter($attrs, function ($a) {
+            return !(is_array($a) && isset($a['name']) && $a['name'] === 'data-pg-page-link');
+        }));
+        if ($page_link > 0) $attrs[] = array('name' => 'data-pg-page-link', 'value' => (string)$page_link);
+        $props['_attrs'] = $attrs;
+    }
     return $props;
+}
+
+// Whether a system widget is being drawn: a '__page_link' still standing
+// inside one prints '#' (its renderer did not expand it).
+function _pg_page_link_in_widget()
+{
+    return function_exists('pg_sw_finish_active') && pg_sw_finish_active();
+}
+
+// The page a link outside a widget is kept by (_bindParams.href.page_id), 0
+// when it names none or a tab not yet saved. The typed href stays the
+// link's fallback.
+function pg_page_link_bound_id($props)
+{
+    $spec = (isset($props['_bindParams']['href']) && is_array($props['_bindParams']['href'])) ? $props['_bindParams']['href'] : array();
+    $page_id = isset($spec['page_id']) ? $spec['page_id'] : 0;
+    if (is_int($page_id)) return max(0, $page_id);
+    return (is_string($page_id) && ctype_digit($page_id)) ? (int)$page_id : 0;
+}
+
+// The pages the links of drawn HTML are kept by (data-pg-page-link on an
+// <a> tag), each once, in the order met.
+function pg_page_link_ids($html)
+{
+    $html = (string)$html;
+    if (stripos($html, 'data-pg-page-link=') === false) return array();
+    if (!preg_match_all('/<a\b[^>]*\sdata-pg-page-link="(\d+)"/i', $html, $m)) return array();
+    $ids = array();
+    foreach ($m[1] as $id) {
+        $id = (int)$id;
+        if ($id > 0 && !in_array($id, $ids, true)) $ids[] = $id;
+    }
+    return $ids;
+}
+
+// Drawn HTML with each link kept by page id pointing at the page's current
+// address ($bases: page id => address, '' for a page missing or in the
+// bin), so a rename reaches the link without the saved body or tree being
+// written again. A page with no address keeps the typed href. The marker
+// attribute goes either way; it is dropped from any other tag too. Attribute
+// values in the body are escaped, so a tag ends at the first '>'.
+function pg_page_link_expand_html($html, $bases)
+{
+    $html = (string)$html;
+    if (stripos($html, 'data-pg-page-link=') === false) return $html;
+    $bases = is_array($bases) ? $bases : array();
+    return preg_replace_callback('/<([a-z][a-z0-9-]*)\b[^>]*\sdata-pg-page-link="(\d+)"[^>]*>/i', function ($m) use ($bases) {
+        $tag = preg_replace('/\sdata-pg-page-link="\d+"/i', '', $m[0]);
+        $id  = (int)$m[2];
+        if (strtolower($m[1]) !== 'a' || !isset($bases[$id]) || (string)$bases[$id] === '') return $tag;
+        $href = h((string)$bases[$id]);
+        $done = 0;
+        $tag  = preg_replace_callback('/(\shref=)"[^"]*"/i', function ($h) use ($href) {
+            return $h[1] . '"' . $href . '"';
+        }, $tag, 1, $done);
+        if (!$done) $tag = substr($tag, 0, 2) . ' href="' . $href . '"' . substr($tag, 2);
+        return $tag;
+    }, $html);
+}
+
+// The page's links kept by page id pointed at the pages' current addresses
+// (pg_page_link_expand_html()), the pages read in one query
+// (pg_sw_page_link_resolve()).
+function pg_page_link_expand($html)
+{
+    $ids = pg_page_link_ids($html);
+    if (!$ids) return pg_page_link_expand_html($html, array());
+    $links = array();
+    foreach ($ids as $id) $links[$id] = array('page_id' => $id, 'params' => array(), 'base' => '');
+    $bases = array();
+    if (function_exists('pg_sw_page_link_resolve')) {
+        pg_sw_page_link_resolve($links);
+        foreach ($links as $id => $link) $bases[$id] = $link['base'];
+    }
+    return pg_page_link_expand_html($html, $bases);
 }
 
 /**
@@ -7712,12 +7821,15 @@ function _pg_tpl_include($file)
     return include $file;
 }
 
-// One template, or null.
+// One template, or null. A template made from a design and written in this
+// request is not in the cached list yet (the Migration installs one per
+// design it carries), so it is read from its row.
 function pg_design_template($id)
 {
     $all = pg_design_templates();
     $id  = is_scalar($id) ? (string)$id : '';
-    return isset($all[$id]) ? $all[$id] : null;
+    if (isset($all[$id])) return $all[$id];
+    return function_exists('pg_design_template_custom_get') ? pg_design_template_custom_get($id) : null;
 }
 
 // What the gallery shows of a template - no trees.
@@ -9220,7 +9332,7 @@ function pg_design_template_install($template_id, $user, $opts = array())
     // One home page: the one just marked.
     $home_page_id = ($home_key !== '' && isset($id_map[$home_key])) ? (int)$id_map[$home_key] : 0;
     if ($home_page_id > 0) {
-        db("UPDATE page SET page_home = '' WHERE page_home = 'yes' AND page_id <> '$home_page_id'");
+        pg_page_home_claim($home_page_id);
     }
 
     // The scores the pages list shows, as the editor's save leaves them.
@@ -10025,7 +10137,9 @@ function pg_designer_widget_ghosts($page_id, $widget, $limit = 10)
 // Stored shape, version 1:
 //   {"v":1,
 //    "groups":{"g1":{"name":"Docs","color":"orange"}},
-//    "tabs":[{"id":12},{"id":13,"g":"g1"},{"id":14,"g":"g1"},{"id":15}]}
+//    "tabs":[{"id":12},{"id":13,"g":"g1"},{"id":14,"g":"g1"},{"id":15}],
+//    "proto":{"p12":{"x":0,"y":0},"s5":{"x":408,"y":0}}}
+// `proto` (optional) holds the Prototype view's frame places.
 // `id` is a page_id of the design. The editor keeps a twin of the
 // normaliser (_pgTabsNormalizeGroups()); the two are changed together.
 
@@ -10137,7 +10251,40 @@ function pg_designer_tab_layout_normalize($layout, $page_ids)
         if (!isset($members[$gid])) unset($groups[$gid]);
     }
 
-    return array('v' => 1, 'groups' => $groups, 'tabs' => $tabs);
+    $out = array('v' => 1, 'groups' => $groups, 'tabs' => $tabs);
+    $proto = pg_designer_tab_layout_proto(isset($layout['proto']) ? $layout['proto'] : null, $known);
+    if ($proto) $out['proto'] = $proto;
+    return $out;
+}
+
+/**
+ * The places of the Prototype view's frames (designer/prototype-view.md),
+ * shared by everyone who opens the design. Keys are `p<page_id>` for a page
+ * of the design and `s<shared component id>`; a place is {x, y}, whole
+ * canvas units within ±1,000,000. Other keys and values are dropped, at most
+ * 500 places are kept. Twin: PGProtoHotspots.places() reads the same shape.
+ *
+ * @param mixed $proto decoded `proto` of a layout
+ * @param array $known page_id => true, the pages of the design
+ * @return array key => {x, y}
+ */
+function pg_designer_tab_layout_proto($proto, $known)
+{
+    $out = array();
+    if (!is_array($proto)) return $out;
+    foreach ($proto as $key => $at) {
+        if (count($out) >= 500) break;
+        if (!preg_match('/^([ps])([1-9][0-9]{0,9})$/', (string)$key, $m) || !is_array($at)) continue;
+        if ($m[1] === 'p' && !isset($known[(int)$m[2]])) continue;
+        $pos = array();
+        foreach (array('x', 'y') as $axis) {
+            $v = isset($at[$axis]) ? $at[$axis] : null;
+            if (!is_numeric($v) || !is_finite((float)$v)) continue 2;
+            $pos[$axis] = (int)max(-1000000, min(1000000, round((float)$v)));
+        }
+        $out[(string)$key] = $pos;
+    }
+    return $out;
 }
 
 /**
@@ -10147,6 +10294,7 @@ function pg_designer_tab_layout_normalize($layout, $page_ids)
 function pg_designer_tab_layout_export($layout)
 {
     $layout['groups'] = (object)$layout['groups'];
+    if (isset($layout['proto'])) $layout['proto'] = (object)$layout['proto'];
     return $layout;
 }
 

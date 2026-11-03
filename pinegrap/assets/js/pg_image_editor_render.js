@@ -329,34 +329,135 @@
         }
 
         return pageEncoder(url).then(function (E) {
-            var enc = null;
+            var session = E.session(function (m) { handler(m); });
 
             return {
-                send: function (m) {
-                    setTimeout(function () {
-                        try {
-                            if (m.type === 'begin') {
-                                enc = E.create(m);
-                            } else if (m.type === 'sample') {
-                                enc.sample(new Uint8ClampedArray(m.data));
-                            } else if (m.type === 'estimate') {
-                                handler(Object.assign({ type: 'estimate' }, enc.estimate()));
-                            } else if (m.type === 'frame') {
-                                enc.frame(new Uint8ClampedArray(m.data));
-                                handler({ type: 'framed', index: enc.count - 1 });
-                            } else if (m.type === 'end') {
-                                var bytes = enc.end();
-
-                                handler({ type: 'file', data: bytes.buffer, mime: E.MIME.gif });
-                            }
-                        } catch (err) {
-                            handler({ type: 'error', message: String((err && err.message) || err) });
-                        }
-                    }, 0);
-                },
+                send: function (m) { setTimeout(function () { session.receive(m); }, 0); },
                 on: function (fn) { handler = fn; },
-                stop: function () { enc = null; handler = function () {}; }
+                stop: function () { session.stop(); }
             };
+        });
+    }
+
+    // What this browser can encode beyond GIF (M.animFormats()): a deflate
+    // stream for APNG; a WebP canvas encoder, off the page too, for WebP.
+    function animCaps() {
+        var webp = false;
+
+        try {
+            var c = document.createElement('canvas');
+
+            c.width = c.height = 1;
+            webp = (typeof OffscreenCanvas === 'function') && (c.toDataURL('image/webp').indexOf('data:image/webp') === 0);
+        } catch (err) {
+            webp = false;
+        }
+
+        return { deflate: (typeof CompressionStream === 'function') && (typeof Response === 'function'), webp: webp };
+    }
+
+    // How this browser makes each video format: 'codecs' where its
+    // VideoEncoder takes one of the format's codecs, else 'recorder' where
+    // MediaRecorder records one of its types off a canvas, else false.
+    function animVideoCaps() {
+        var out = {};
+
+        return Promise.all(['mp4', 'webm'].map(function (k) {
+            var f = M.ANIM_FORMATS[k], list = f.codecs.slice();
+
+            function next() {
+                var codec = list.shift();
+
+                if (!codec || (typeof VideoEncoder !== 'function')) {
+                    out[k] = recorderType(f) ? 'recorder' : false;
+                    return null;
+                }
+
+                return VideoEncoder.isConfigSupported({ codec: codec, width: 640, height: 360, bitrate: 1000000, framerate: f.rate }).then(function (r) {
+                    if (r && r.supported) {
+                        out[k] = 'codecs';
+                        return null;
+                    }
+
+                    return next();
+                }, next);
+            }
+
+            return next();
+        })).then(function () { return out; });
+    }
+
+    // The first of a video format's MediaRecorder types the browser records
+    // from a canvas, or ''.
+    function recorderType(f) {
+        if ((typeof MediaRecorder !== 'function') || (typeof HTMLCanvasElement.prototype.captureStream !== 'function')) {
+            return '';
+        }
+
+        return f.recorder.filter(function (type) { return MediaRecorder.isTypeSupported(type); })[0] || '';
+    }
+
+    // A video in real time where the browser has no encoder for it: each
+    // frame drawn on canvas is handed to MediaRecorder at its time, so a
+    // frame that takes longer to draw holds the one before longer. Resolves
+    // the file; job.enc.stop() ends it unsaved.
+    function recordVideo(editor, set, size, count, canvas, job, progress) {
+        var f = M.ANIM_FORMATS[set.format], type = recorderType(f), stream, track, rec, parts = [], start = 0;
+
+        return editor.renderFrame(0, size.w, size.h, canvas).then(function () {
+            stream = canvas.captureStream(0);
+            track = stream.getVideoTracks()[0];
+            rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: M.animBitrate(size, set.fps) });
+
+            return new Promise(function (resolve, reject) {
+                job.enc = { stop: function () { if (rec.state !== 'inactive') { rec.stop(); } } };
+                rec.ondataavailable = function (e) {
+                    if (e.data && e.data.size) {
+                        parts.push(e.data);
+                    }
+                };
+                rec.onerror = function () { reject(new Error(t('animError'))); };
+                rec.onstop = function () {
+                    stream.getTracks().forEach(function (tr) { tr.stop(); });
+                    job.cancelled ? reject(null) : resolve(new Blob(parts, { type: f.mime }));
+                };
+
+                // Waits for the frame's time from the start.
+                function at(i) {
+                    var wait = start + i * 1000 / set.fps - performance.now();
+
+                    return new Promise(function (go) { setTimeout(go, Math.max(0, wait)); });
+                }
+
+                function step(i) {
+                    if (job.cancelled) {
+                        return null;
+                    }
+
+                    if (i >= count) {
+                        progress('encode', count, count);
+                        return at(count).then(function () { rec.stop(); });
+                    }
+
+                    return ((i === 0) ? Promise.resolve(canvas) : editor.renderFrame(i * 1000 / set.fps, size.w, size.h, canvas)).then(function () {
+                        return at(i);
+                    }).then(function () {
+                        if (job.cancelled) {
+                            return null;
+                        }
+
+                        track.requestFrame();
+                        editor.animPreview(canvas);
+                        progress('frames', i + 1, count);
+
+                        return step(i + 1);
+                    });
+                }
+
+                rec.start(1000);
+                start = performance.now();
+                Promise.resolve(step(0)).then(null, reject);
+            });
         });
     }
 
@@ -381,8 +482,9 @@
     // set: the dialog's settings; estimate true answers the size, else the
     // file as a Blob. progress(stage, done, count) on the way; job.cancel().
     Editor.prototype.animJob = function (set, estimate, progress) {
-        var self = this, f = M.ANIM_FORMATS[set.format], out = M.saveSize(this.doc), size = M.animSize(out, set.edge);
+        var self = this, f = M.ANIM_FORMATS[set.format], out = M.saveSize(this.doc), size = M.animSize(out, set.edge, f.even);
         var ms = M.docMotion(this.doc).duration, count = M.animFrames(ms, set.fps), job = { cancelled: false, enc: null };
+        var bitrate = M.animBitrate(size, set.fps);
         var canvas = document.createElement('canvas');
 
         job.cancel = function () {
@@ -406,12 +508,28 @@
         job.promise = new Promise(function (resolve, reject) {
             job.reject = reject;
 
+            // A video's size follows its bit rate.
+            if (f.video && estimate) {
+                resolve({ bytes: M.animEstimate(1000, bitrate / 8 / set.fps, count), count: count, size: size });
+                return;
+            }
+
             progress('base', 0, count);
 
             self.layersReady().then(function () { return self.loadBase(); }).then(function () {
+                if (f.video && ((self.animVia || {})[set.format] === 'recorder')) {
+                    progress('frames', 0, count);
+
+                    return recordVideo(self, set, size, count, canvas, job, progress).then(resolve, reject);
+                }
+
                 return encoder();
             }).then(function (enc) {
                 var drawn = 0, framed = 0, waiting = null;
+
+                if (!enc) {
+                    return null;
+                }
 
                 if (job.cancelled) {
                     enc.stop();
@@ -441,9 +559,9 @@
                         resolve(new Blob([m.data], { type: m.mime }));
                     }
                 });
-                enc.send({ type: 'begin', format: set.format, width: size.w, height: size.h, fps: set.fps, loop: set.loop, dither: set.dither, count: count });
+                enc.send({ type: 'begin', format: set.format, width: size.w, height: size.h, fps: set.fps, loop: set.loop, dither: set.dither, count: count, bitrate: bitrate, codecs: f.codecs });
 
-                var samples = M.animSamples(count, SAMPLES);
+                var samples = f.video ? [] : M.animSamples(count, SAMPLES);
 
                 // The samples one after the other, then the frames, never
                 // more than AHEAD ahead of the encoder.
@@ -544,10 +662,26 @@
         });
         this.root.appendChild(this.animBox);
         this.renderAnimation();
+
+        // The video formats join once the browser has said how it makes
+        // them; the settings are drawn again unless a file is being made.
+        if (!this.animVia) {
+            this.animVia = {};
+            animVideoCaps().then(function (via) {
+                self.animVia = via;
+                self.animKinds = null;
+
+                if (self.animBox && !self.animBox.querySelector('.pgie-anim-steps') && (via.mp4 || via.webm)) {
+                    self.renderAnimation();
+                }
+            }, function () {});
+        }
     };
 
     Editor.prototype.closeAnimation = function () {
-        if (!this.animBox) {
+        // A file being sent is written whatever happens here: the dialog
+        // waits for the answer.
+        if (!this.animBox || this.animUploading) {
             return;
         }
 
@@ -571,7 +705,7 @@
     // dithering, the estimate, Download.
     Editor.prototype.renderAnimation = function () {
         var self = this, set = this.animSet, f = M.ANIM_FORMATS[set.format], out = M.saveSize(this.doc);
-        var size = M.animSize(out, set.edge), ms = M.docMotion(this.doc).duration, long = ms > f.maxMs;
+        var size = M.animSize(out, set.edge, f.even), ms = M.docMotion(this.doc).duration, long = ms > f.maxMs;
         var box = this.animBox;
 
         box.textContent = '';
@@ -600,16 +734,22 @@
             self.renderAnimation();
         }
 
-        main.appendChild(chips(t('animFormat'), Object.keys(M.ANIM_FORMATS).map(function (k) { return [k, t('animFormat_' + k)]; }), set.format, function (v) { change({ format: v }); }));
+        this.animKinds = this.animKinds || M.animFormats(Object.assign(animCaps(), this.animVia));
+        main.appendChild(chips(t('animFormat'), this.animKinds.map(function (k) { return [k, t('animFormat_' + k)]; }), set.format, function (v) { change(M.animSwitch(set, v)); }));
         main.appendChild(chips(t('animSize'), M.animEdges(out, set.format).map(function (e) { return [e, String(e)]; }), Math.min(set.edge, Math.max(out.w, out.h)), function (v) { change({ edge: v }); }, size.w + ' × ' + size.h + ' px'));
         main.appendChild(chips(t('animRate'), f.rates.map(function (r) { return [r, String(r)]; }), set.fps, function (v) { change({ fps: v }); }, set.fps + ' ' + t('animFps')));
-        main.appendChild(chips(t('animRepeat'), M.animLoops(set.loop).map(function (n) { return [n, n ? t('animTimes').replace('{n}', n) : t('animForever')]; }), set.loop, function (v) { change({ loop: v }); }));
+        // A video's repeat is its player's.
+        if (!f.video) {
+            main.appendChild(chips(t('animRepeat'), M.animLoops(set.loop).map(function (n) { return [n, n ? t('animTimes').replace('{n}', n) : t('animForever')]; }), set.loop, function (v) { change({ loop: v }); }));
+        }
 
-        var dither = el('input', { type: 'checkbox' });
+        if (f.dither) {
+            var dither = el('input', { type: 'checkbox' });
 
-        dither.checked = !!set.dither;
-        dither.addEventListener('change', function () { change({ dither: dither.checked }); });
-        main.appendChild(el('label', { class: 'pgie-check' }, [dither, el('span', { text: t('animDither') })]));
+            dither.checked = !!set.dither;
+            dither.addEventListener('change', function () { change({ dither: dither.checked }); });
+            main.appendChild(el('label', { class: 'pgie-check' }, [dither, el('span', { text: t('animDither') })]));
+        }
 
         this.animEls.estimate = el('div', { class: 'pgie-anim-estimate', 'aria-live': 'polite' }, [icon('clock'), el('b', { text: t('animEstimating') }), el('span')]);
         main.appendChild(this.animEls.estimate);
@@ -618,9 +758,24 @@
             main.appendChild(el('p', { class: 'pgie-note pgie-anim-warn', role: 'alert', text: t('animTooLong').replace('{n}', X.decimal(f.maxMs / 1000)) }));
         }
 
-        var download = button('pgie-btn pgie-primary', t('animDownload'), 'download', function () { self.startAnimation(); }, true);
+        this.animEls.limit = el('div', { class: 'pgie-anim-limit', 'aria-live': 'polite' });
+        main.appendChild(this.animEls.limit);
+
+        var mode = M.animSaveMode(this.animFile, set.format), replace = null;
+
+        if (mode === 'replace') {
+            replace = el('input', { type: 'checkbox' });
+            replace.checked = (set.replace !== false);
+            replace.addEventListener('change', function () { set.replace = replace.checked; });
+            main.appendChild(el('label', { class: 'pgie-check' }, [replace, el('span', { text: t('animReplace').replace('{name}', this.animFile.name) })]));
+        }
+
+        var download = button('pgie-btn', t('animDownload'), 'download', function () { self.startAnimation('download'); }, true);
+        var files = button('pgie-btn pgie-primary', t('animSaveFiles'), 'check', function () { self.startAnimation((replace && replace.checked) ? 'replace' : 'new'); }, true);
 
         download.disabled = long;
+        files.disabled = long;
+        this.animEls.files = files;
 
         box.appendChild(el('div', { class: 'pgie-confirm-box pgie-anim-box' }, [
             el('div', { class: 'pgie-anim-head' }, [
@@ -628,7 +783,7 @@
                 button('pgie-ibtn', t('close'), 'close', function () { self.closeAnimation(); })
             ]),
             el('div', { class: 'pgie-anim-body' }, [el('div', { class: 'pgie-anim-side' }, [preview, this.animEls.caption]), main]),
-            el('div', { class: 'pgie-anim-foot' }, [el('p', { class: 'pgie-note', text: t('animLocal') }), download])
+            el('div', { class: 'pgie-anim-foot' }, [el('p', { class: 'pgie-note', text: t('animLocal') }), download, files])
         ]));
 
         this.animPreviewAt(size);
@@ -637,7 +792,7 @@
             this.estimateAnimation();
         }
 
-        (box.querySelector('.pgie-chip.on') || download).focus({ preventScroll: true });
+        (box.querySelector('.pgie-chip.on') || files).focus({ preventScroll: true });
     };
 
     // The preview shows the middle of the animation.
@@ -692,6 +847,7 @@
 
                 e.children[1].textContent = '≈ ' + bytesText(r.bytes);
                 e.children[2].textContent = t('animFrames').replace('{n}', r.count) + ' · ' + X.decimal(M.docMotion(self.doc).duration / 1000) + ' ' + t('motionSecondsUnit');
+                self.animLimit(r.bytes);
             }, function (err) {
                 if ((self.animTask === task) && err) {
                     self.animTask = null;
@@ -701,13 +857,72 @@
         }, ESTIMATE_DELAY);
     };
 
+    // The server's upload limit beside the estimate; over it Save to Files
+    // waits and a smaller size or rate that fits is offered (Download still
+    // works).
+    Editor.prototype.animLimit = function (bytes) {
+        var self = this, limit = Number(config().animationLimit) || 0, box = this.animEls.limit, fits = M.animFits(bytes, limit);
+        var smaller = fits ? null : M.animSmaller(M.saveSize(this.doc), this.animSet, bytes, limit);
+
+        box.textContent = '';
+        this.animEls.files.disabled = !fits;
+
+        if (!limit) {
+            return;
+        }
+
+        box.classList.toggle('pgie-anim-warn', !fits);
+        box.appendChild(el('p', { class: 'pgie-note', role: fits ? null : 'alert', text: (fits ? t('animLimit') : t('animOverLimit')).replace('{size}', bytesText(limit)) }));
+
+        if (smaller) {
+            var size = M.animSize(M.saveSize(this.doc), smaller.edge, M.ANIM_FORMATS[this.animSet.format].even);
+
+            box.appendChild(el('button', { type: 'button', class: 'pgie-btn pgie-anim-smaller', text: t('animUseSmaller').replace('{size}', size.w + ' × ' + size.h + ' px').replace('{fps}', smaller.fps + ' ' + t('animFps')).replace('{bytes}', '≈ ' + bytesText(smaller.bytes)), onclick: function () {
+                self.animSet.edge = smaller.edge;
+                self.animSet.fps = smaller.fps;
+                self.renderAnimation();
+            } }));
+        }
+    };
+
+    // The finished file into Files, after the request's line as it is
+    // (pg_image_editor_binary_body()): beside the picture, in the canvas's
+    // folder, or over the animation the editor opened.
+    Editor.prototype.saveAnimationFile = function (blob, mode, name) {
+        var self = this, cfg = config(), head = {
+            token: cfg.token || '', action: 'animation', mode: mode, doc: this.doc, base: this.versionBase || 0,
+            file_id: this.opts.fileId || 0, folder_id: (this.opts.save && this.opts.save.folderId) || 0,
+            name: (this.opts.save && this.opts.save.name) || name,
+            target: (mode === 'replace') ? this.animFile.id : 0
+        };
+
+        return fetch(cfg.api, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/octet-stream', Accept: 'application/json' },
+            body: new Blob([JSON.stringify(head) + '\n', blob])
+        }).then(function (res) {
+            return res.json().catch(function () { return null; });
+        }).then(function (r) {
+            if (!r || (r.status !== 'success')) {
+                throw new Error((r && r.message) || t('animSaveError'));
+            }
+
+            // The next save replaces this file, as when it was opened.
+            self.animFile = { id: r.id, name: r.name, format: r.format, replace: true };
+
+            return r;
+        });
+    };
+
     // The working view: the file, a bar, the steps and Cancel; at the end
-    // the file is handed to the browser to keep.
-    Editor.prototype.startAnimation = function () {
+    // the file is handed to the browser to keep (target download) or saved
+    // into Files (new, replace).
+    Editor.prototype.startAnimation = function (target) {
         var self = this, set = Object.assign({}, this.animSet), f = M.ANIM_FORMATS[set.format];
-        var name = M.animName((this.file && this.file.name) || this.opts.fileName || '', f.ext);
+        var name = (target === 'replace') ? this.animFile.name : M.animName((this.file && this.file.name) || this.opts.fileName || '', f.ext);
         var bar = el('span'), percent = el('b'), steps = el('ul', { class: 'pgie-anim-steps' });
-        var size = M.animSize(M.saveSize(this.doc), set.edge), main, side;
+        var size = M.animSize(M.saveSize(this.doc), set.edge, f.even), main, side;
 
         clearTimeout(this.animTimer);
 
@@ -736,10 +951,10 @@
         foot.appendChild(cancel);
         cancel.focus({ preventScroll: true });
 
-        var order = ['base', 'frames', 'encode'];
+        var order = (target === 'download') ? ['base', 'frames', 'encode'] : ['base', 'frames', 'encode', 'upload'];
 
         function progress(stage, done, count) {
-            var at = order.indexOf(stage), p = Math.round(100 * ((at === 0) ? 0 : (at === 1 ? 0.05 + 0.9 * done / count : 0.97)));
+            var at = order.indexOf(stage), p = Math.round(100 * ((at === 0) ? 0 : (at === 1 ? 0.05 + 0.9 * done / count : (at === 2 ? 0.96 : 0.98))));
 
             bar.style.width = p + '%';
             bar.parentNode.setAttribute('aria-valuenow', String(p));
@@ -761,6 +976,33 @@
                 return;
             }
 
+            if (target !== 'download') {
+                // Once sent the file is written: Cancel no longer stops it.
+                progress('upload', 0, 1);
+                cancel.disabled = true;
+                self.animUploading = true;
+
+                self.saveAnimationFile(blob, target, name).then(function (r) {
+                    self.animUploading = false;
+
+                    if (self.animTask === task) {
+                        self.animTask = null;
+                        self.closeAnimation();
+                        self.showMessage(t('animSaved').replace('{name}', r.name));
+                    }
+                }, function (err) {
+                    self.animUploading = false;
+
+                    if (self.animTask === task) {
+                        self.animTask = null;
+                        self.closeAnimation();
+                        self.showMessage(err.message || t('animSaveError'), true);
+                    }
+                });
+
+                return;
+            }
+
             self.animTask = null;
 
             var a = el('a', { href: URL.createObjectURL(blob), download: name });
@@ -778,6 +1020,20 @@
                 self.showMessage(err.message || t('animError'), true);
             }
         });
+    };
+
+    // An animation the editor made opens as its document; the open answer
+    // names the file, which Save to Files replaces.
+    var openFile = Editor.prototype.openFile;
+
+    Editor.prototype.openFile = function (r) {
+        this.animFile = (r && r.animation && r.animation.id) ? r.animation : null;
+
+        if (r && r.doc && (typeof r.doc === 'object')) {
+            delete r.doc.animation;
+        }
+
+        openFile.call(this, r);
     };
 
     // "Save animation" in the top bar, while something moves.
@@ -805,10 +1061,14 @@
     Editor.inits.push(function () {
         this.animBox = null;
         this.animSet = null;
+        this.animFile = null;
+        this.animUploading = false;
         this.animBase = null;
         this.animTask = null;
         this.animTimer = 0;
         this.animEls = null;
+        this.animKinds = null;
+        this.animVia = null;
         this.frameCuts = null;
     });
 }(window.PgImageEditor.parts));

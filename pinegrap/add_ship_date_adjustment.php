@@ -76,23 +76,7 @@ if (!$_POST) {
 
     $adjustment = pg_ship_date_adjustment_form_adjustment($liveform->get_field_value('adjustment_days'), $liveform->get_field_value('adjustment_type'));
 
-    db(
-        "INSERT INTO ship_date_adjustments (
-            zip_code_prefix,
-            shipping_method_id,
-            adjustment,
-            created_user_id,
-            created_timestamp,
-            last_modified_user_id,
-            last_modified_timestamp)
-        VALUES (
-            '" . escape($liveform->get_field_value('zip_code_prefix')) . "',
-            '" . escape($liveform->get_field_value('shipping_method_id')) . "',
-            '" . escape($adjustment) . "',
-            '" . USER_ID . "',
-            UNIX_TIMESTAMP(),
-            '" . USER_ID . "',
-            UNIX_TIMESTAMP())");
+    pg_store_ship_date_adjustment_save(0, $liveform->get_field_value('zip_code_prefix'), $liveform->get_field_value('shipping_method_id'), $adjustment, USER_ID) or output_error('Query failed.');
 
     log_activity(lang(array('string' => 'ship date adjustment ({var:1}) was created', 'vars' => array($liveform->get_field_value('zip_code_prefix')))), $_SESSION['sessionusername']);
     $liveform->remove_form();

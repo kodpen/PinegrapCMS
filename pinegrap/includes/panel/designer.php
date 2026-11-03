@@ -72,6 +72,17 @@ function pg_panel_get_designer_regions($request, $action)
     exit();
 }
 
+// The Migration screen of another site reads the visual designs with a user
+// name and a password in the body; the general gate lets only a designer or
+// an administrator in, as turning a design into a template.
+function pg_panel_get_designs($request, $action)
+{
+    respond(array(
+        'status'  => 'success',
+        'designs' => pg_migration_export_designs(),
+    ));
+}
+
 function pg_panel_get_styles($request, $action)
 {
     $sql_code = "";

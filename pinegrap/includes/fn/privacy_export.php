@@ -844,12 +844,18 @@ function pg_privacy_export_collect(array $found)
         $sections['refunds'] = _pg_privacy_export_select("SELECT * FROM order_refunds WHERE " . _pg_privacy_export_in('order_id', $order_ids) . " ORDER BY id", $order_ids);
     }
 
-    // Gift cards bought in the person's orders or sent to them; the code is a
-    // bearer secret, so only its end is written.
-    $gift_where = _pg_privacy_export_any(array(
+    // Gift cards bought in the person's orders or sent to them, and their
+    // store credit; the code is a bearer secret, so only its end is written.
+    $gift_parts = array(
         _pg_privacy_export_in('order_id', $order_ids),
         _pg_privacy_export_in('recipient_email_address', $emails),
-    ));
+    );
+
+    if (function_exists('pg_credit_ready') && pg_credit_ready()) {
+        $gift_parts[] = _pg_privacy_export_in('user_id', $user_ids);
+    }
+
+    $gift_where = _pg_privacy_export_any($gift_parts);
 
     $sections['gift_cards'] = _pg_privacy_export_select("SELECT * FROM gift_cards WHERE " . $gift_where . " ORDER BY id", ($gift_where !== '') ? array(1) : array());
 

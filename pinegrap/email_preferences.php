@@ -244,7 +244,7 @@ if (!$_POST) {
             pg_announce_contact_created($contact_id);
             
             // check if registration contact group exists
-            $query = "SELECT id FROM contact_groups WHERE id = ?";
+            $query = "SELECT id FROM contact_groups WHERE (id = ?) AND " . pg_audience_hand_sql();
             $result = db_q($query, array((string) REGISTRATION_CONTACT_GROUP_ID)) or output_error('Query failed.');
             
             // if registration contact group exists, assign contact to contact group
@@ -462,7 +462,8 @@ if (!$_POST) {
                 $result = db_q($query, array((string) $contact['id'], (string) $contact_group['id'])) or output_error('Query failed.');
                 
                 // if contact is not already in contact group, then add contact to contact group
-                if (mysqli_num_rows($result) == 0) {
+                // (a group filled by rules keeps only the opt-in choice)
+                if ((mysqli_num_rows($result) == 0) && !pg_audience_group_is_dynamic($contact_group['id'])) {
                     $query =
                         "INSERT INTO contacts_contact_groups_xref (
                             contact_id,

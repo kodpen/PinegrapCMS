@@ -71,12 +71,18 @@ function test_arrival_date_form_screens_use_the_shared_form()
 		pg_assert_contains('validate_token_field();', $source, $file . ': the token check');
 	}
 
-	// The create screen binds the twelve values to its twelve placeholders.
-	$add = arrival_date_form_test_source('add_arrival_date.php');
-	$insert = substr($add, strpos($add, 'INSERT INTO arrival_dates'));
+	// The shared save binds the twelve values to its twelve placeholders.
+	$save = arrival_date_form_test_source('includes/fn/store_lookups.php');
+	$insert = substr($save, strpos($save, 'INSERT INTO arrival_dates'));
 	$insert = substr($insert, 0, strpos($insert, 'UNIX_TIMESTAMP())'));
 
 	pg_assert_same(12, substr_count($insert, '?'), 'create: one placeholder per value');
+
+	foreach (array('add_arrival_date.php', 'edit_arrival_date.php') as $file) {
+		$source = arrival_date_form_test_source($file);
+		pg_assert_contains('pg_store_arrival_date_save(', $source, $file . ': the shared save');
+		pg_assert_false(strpos($source, 'arrival_dates SET') !== false || strpos($source, 'INSERT INTO arrival_dates') !== false, $file . ': no SQL of its own for the row');
+	}
 
 	// The cards close every element they open.
 	$form = arrival_date_form_test_source('includes/forms/arrival_date_form.php');
@@ -123,7 +129,8 @@ function test_arrival_date_form_errors()
 	}
 
 	$edit = arrival_date_form_test_source('edit_arrival_date.php');
-	pg_assert_true(strpos($edit, 'pg_arrival_date_form_errors($_POST)') < strpos($edit, 'DELETE FROM shipping_cutoffs'), 'the cut-offs stay while a field is wrong');
+	pg_assert_true(strpos($edit, 'pg_arrival_date_form_errors($_POST)') < strpos($edit, 'pg_store_arrival_date_delete('), 'the cut-offs stay while a field is wrong');
+	pg_assert_true(strpos($edit, 'pg_arrival_date_form_errors($_POST)') < strpos($edit, 'pg_arrival_date_form_save_cutoffs('), 'and are replaced only after the checks');
 }
 
 function test_arrival_date_form_date_text()

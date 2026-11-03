@@ -360,7 +360,7 @@ function pg_contact_form_lead_source_field($values, $sources)
         }
     }
 
-    return '<div class="col-12 my-3">
+    return '<div class="col-12 my-5">
                                             <label for="lead_source" class="form-label">' . lang('Lead Source') . '</label>
                                             <select name="lead_source" id="lead_source" class="form-control">' . $options . '</select>' . $hint . '
                                         </div>';

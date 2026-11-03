@@ -584,7 +584,7 @@ $brief_band = function () use ($el, $heading, $para, $link, $container, $row, $c
             $row(array(
                 $col(array(
                     $heading('h2', lang('Have a project in mind?'), 'pdp-display h2 fw-bold mb-2'),
-                    $para(lang('Tell me about it in a few lines; you get an answer and a first idea of the price within two working days.'), 'opacity-75 mb-0'),
+                    $para(lang('Tell me about it in a few lines; you get an answer and a first idea of the price within two working days.'), 'mb-0'),
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(

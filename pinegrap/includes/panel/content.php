@@ -151,6 +151,9 @@ function pg_panel_get_common_regions($request, $action)
     exit();
 }
 
+// The Recycle Bin, the Drafts and the Workspace folders and what is in them
+// are not sent (pg_migration_skipped_folder_ids()); every page carries
+// visual_design, which tells a target carrying the designs to leave it out.
 function pg_panel_get_folders($request, $action)
 {
     $folders = db_items(
@@ -165,6 +168,7 @@ function pg_panel_get_folders($request, $action)
                 folder_access_control_type AS access_control_type,
                 folder_archived AS archived
             FROM folder
+            " . pg_migration_skipped_folders_sql('folder_id', 'WHERE') . "
             ORDER BY
                 folder_level ASC,
                 folder_order ASC,
@@ -243,8 +247,10 @@ function pg_panel_get_pages($request, $action)
                 nofollow," : "'0' AS noindex,
                 '0' AS nofollow,") . "
                 system_region_header,
-                system_region_footer
+                system_region_footer,
+                (page_style IN (SELECT style_id FROM style WHERE style_layout = 'visual_designer')) AS visual_design
             FROM page
+            " . pg_migration_skipped_folders_sql('page_folder', 'WHERE') . "
             ORDER BY page_name ASC"
     );
 

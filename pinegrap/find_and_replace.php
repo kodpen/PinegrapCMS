@@ -225,6 +225,45 @@ if (defined('ADS') && ADS === true) {
     ];
 }
 
+// Visual designer pages and shared components: the words of their trees
+// (pg_tree_search_texts()), where a converted page or common region keeps
+// what its region rows held. A replace writes the tree as a designer save
+// would (pg_tree_search_save_page(), pg_tree_search_save_component()).
+if (pg_multi_page_design_ready()) {
+    $all_table_defs['page_tree'] = [
+        'label'        => lang('Designer Pages'),
+        'table'        => 'page',
+        'id_column'    => 'page_id',
+        'name_column'  => 'page_name',
+        'extra_select' => [],
+        'extra_join'   => '',
+        'base_where'   => "(page.page_tree_json IS NOT NULL) AND (page.page_tree_json <> '')" . pg_pages_bin_sql(pg_recycle_bin_folder_ids(), false),
+        'columns'      => ['page_tree_json'],
+        'column_labels' => ['page_tree_json' => lang('Content')],
+        'tree'         => 'page',
+        'edit_url'     => '{page_name}',
+        'url_raw'      => true,
+    ];
+}
+
+// System widgets are left out: their words come from their settings.
+if (pg_schema_has('shared_components', 'system_region_config')) {
+    $all_table_defs['shared_component'] = [
+        'label'        => lang('Shared Components'),
+        'table'        => 'shared_components',
+        'id_column'    => 'id',
+        'name_column'  => 'name',
+        'extra_select' => [],
+        'extra_join'   => '',
+        'base_where'   => 'system_region_config IS NULL',
+        'columns'      => ['tree_json'],
+        'column_labels' => ['tree_json' => lang('Content')],
+        'tree'         => 'component',
+        'edit_url'     => 'edit_system_style.php?component={id}',
+        'url_raw'      => false,
+    ];
+}
+
 // ── Match context (context snippet) ──────────────────────────────────────────
 function find_match_context($text, $find, $case_sensitive, $is_regex, $context_len = 80) {
     if ($is_regex) {
@@ -299,6 +338,11 @@ function find_replace_rows($def, $sql_select, $find, $case_sensitive, $is_regex)
     $sql_join       = !empty($def['extra_join']) ? ' ' . $def['extra_join'] : '';
     $sql_base_where = !empty($def['base_where'] ?? '') ? '(' . $def['base_where'] . ') AND ' : '';
     list($sql_where, $params) = build_find_where($def['columns'], $find, $case_sensitive, $is_regex);
+    // A tree is JSON: a term it would escape, or a regular expression, reads
+    // every tree and the count over its texts decides.
+    if (!empty($def['tree']) && !pg_tree_search_like_safe($find, $is_regex)) {
+        list($sql_where, $params) = ['1', []];
+    }
 
     $result = db_q("SELECT $sql_select FROM {$def['table']}$sql_join WHERE $sql_base_where($sql_where)", $params);
     if ($result === false) {
@@ -313,6 +357,40 @@ function find_replace_rows($def, $sql_select, $find, $case_sensitive, $is_regex)
         $items[] = $item;
     }
     return $items;
+}
+
+// The texts of a record a search reads, each as array(field label, text):
+// its columns, or the words of a designer tree's nodes.
+function find_replace_item_texts($def, $item) {
+    $texts = [];
+    foreach ($def['columns'] as $col) {
+        $label = !empty($def['column_label_from'])
+            ? (string) $item[$def['column_label_from']]
+            : ($def['column_labels'][$col] ?? $col);
+        if (empty($def['tree'])) {
+            $texts[] = [$label, (string) $item[$col]];
+            continue;
+        }
+        foreach (pg_tree_search_texts(json_decode((string) $item[$col], true)) as $text) {
+            $texts[] = [$label, $text['value']];
+        }
+    }
+    return $texts;
+}
+
+// One text with the search replaced: array(new text, replacements), or
+// null when PCRE fails on it.
+function find_replace_value($text, $find, $replace, $case_sensitive, $is_regex) {
+    $count = 0;
+    if ($is_regex) {
+        $new = @preg_replace(pg_find_replace_regex($find, $case_sensitive), $replace, (string) $text, -1, $count);
+        if ($new === null) return null;
+    } elseif ($case_sensitive) {
+        $new = str_replace($find, $replace, (string) $text, $count);
+    } else {
+        $new = pg_search_ci_replace($find, $replace, $text, $count);
+    }
+    return [$new, $count];
 }
 
 // How many times the search matches a text; -1 when a regular expression
@@ -621,19 +699,17 @@ if (!$_POST) {
             foreach ($items as $item) {
                 $col_matches = [];
 
-                foreach ($def['columns'] as $col) {
-                    $cnt = find_replace_count($item[$col], $find, $case_sensitive, $use_regex);
+                foreach (find_replace_item_texts($def, $item) as list($field, $text)) {
+                    $cnt = find_replace_count($text, $find, $case_sensitive, $use_regex);
                     if ($cnt < 0) {
                         $liveform->mark_error('find', lang('A regular expression that matches empty text cannot be used.'));
                         go($_SERVER['PHP_SELF']);
                     }
 
                     if ($cnt > 0) {
-                        $snippet = find_match_context($item[$col], $find, $case_sensitive, (bool)$use_regex);
+                        $snippet = find_match_context($text, $find, $case_sensitive, (bool)$use_regex);
                         $col_matches[] = [
-                            'field'   => !empty($def['column_label_from'])
-                                ? (string) $item[$def['column_label_from']]
-                                : ($def['column_labels'][$col] ?? $col),
+                            'field'   => $field,
                             'count'   => $cnt,
                             'snippet' => $snippet,
                         ];
@@ -787,6 +863,7 @@ if (!$_POST) {
         $number_of_items        = 0;
         $number_of_replacements = 0;
         $too_long               = [];
+        $held                   = [];
         $updates                = [];
 
         // First every new value is worked out; nothing is written while a
@@ -811,21 +888,36 @@ if (!$_POST) {
                 $replacement = 0;
                 $skip        = false;
 
-                foreach ($def['columns'] as $col) {
-                    if ($use_regex) {
-                        $pattern = pg_find_replace_regex($find, $case_sensitive);
-                        if (pg_find_replace_has_empty_match($pattern, $item[$col])) {
+                if ($use_regex) {
+                    $pattern = pg_find_replace_regex($find, $case_sensitive);
+                    foreach (find_replace_item_texts($def, $item) as list(, $text)) {
+                        if (pg_find_replace_has_empty_match($pattern, $text)) {
                             $liveform->mark_error('find', lang('A regular expression that matches empty text cannot be used.'));
                             go($_SERVER['PHP_SELF']);
                         }
-                        $count   = 0;
-                        $new_val = @preg_replace($pattern, $replace, (string) $item[$col], -1, $count);
-                        if ($new_val === null) continue;
-                    } elseif ($case_sensitive) {
-                        $new_val = str_replace($find, $replace, (string) $item[$col], $count);
-                    } else {
-                        $new_val = pg_search_ci_replace($find, $replace, $item[$col], $count);
                     }
+                }
+
+                foreach ($def['columns'] as $col) {
+                    if (!empty($def['tree'])) {
+                        // Only the words of the tree's nodes change; the tree
+                        // is written whole.
+                        $tree = json_decode((string) $item[$col], true);
+                        if (!is_array($tree)) continue;
+                        list($tree, $count) = pg_tree_search_replace($tree, function ($text) use ($find, $replace, $case_sensitive, $use_regex) {
+                            $done = find_replace_value($text, $find, $replace, $case_sensitive, $use_regex);
+                            return ($done === null) ? [$text, 0] : $done;
+                        });
+                        if ($count > 0) {
+                            $item['_tree'] = $tree;
+                            $replacement += $count;
+                        }
+                        continue;
+                    }
+
+                    $done = find_replace_value($item[$col], $find, $replace, $case_sensitive, $use_regex);
+                    if ($done === null) continue;
+                    list($new_val, $count) = $done;
 
                     if ($count > 0) {
                         // A value longer than its column would be cut without
@@ -842,6 +934,7 @@ if (!$_POST) {
                 if ($skip) {
                     $too_long[] = $item[$def['name_column']];
                 } elseif ($replacement > 0) {
+                    $item['_count'] = $replacement;
                     $updates[] = [$def, $item];
                     $number_of_replacements += $replacement;
                 }
@@ -850,6 +943,27 @@ if (!$_POST) {
 
         foreach ($updates as $update) {
             list($def, $item) = $update;
+
+            // A tree is written as a designer save writes it. A page open in
+            // the visual designer is left alone: its editor's next save would
+            // write over the replace.
+            if (!empty($def['tree'])) {
+                $tree_id = (int) $item[$def['id_column']];
+                if ($def['tree'] === 'page') {
+                    require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
+                    $saved = pg_collab_may_edit_page('', $tree_id)
+                        && pg_tree_search_save_page($tree_id, $item['_tree'], (int) $user['id']);
+                } else {
+                    $saved = pg_tree_search_save_component($tree_id, $item['_tree']);
+                }
+                if ($saved) {
+                    $number_of_items++;
+                } else {
+                    $held[] = $item[$def['name_column']];
+                    $number_of_replacements -= $item['_count'];
+                }
+                continue;
+            }
 
             $sql_set = '';
             foreach ($def['columns'] as $col) {
@@ -881,8 +995,12 @@ if (!$_POST) {
             $liveform->add_notice(h(lang('Some values were not saved because they are longer than the field allows') . ': ' . implode(', ', $too_long)));
         }
 
+        if ($held) {
+            $liveform->add_notice(h(lang('Some items were not changed because they are open in the visual designer') . ': ' . implode(', ', $held)));
+        }
+
         if ($number_of_replacements == 0) {
-            if (!$too_long) {
+            if (!$too_long && !$held) {
                 $liveform->mark_error('find', lang('Sorry, no matches were found. Please try entering different text to find.'));
             }
             go($_SERVER['PHP_SELF']);

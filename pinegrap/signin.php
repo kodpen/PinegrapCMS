@@ -142,6 +142,18 @@ if ($identity['connect_user'] > 0) {
 
 $user_id = pg_signin_match_user($identity);
 
+// The identity or the address belongs to a disabled account: neither signed
+// in, tied, nor opened again as a second account. The answer names no
+// account state.
+if (!$user_id && pg_signin_reaches_disabled($identity)) {
+    log_activity(pg_log_lang(array(
+        'string' => '{var:1} sign-in refused because the account is disabled ({var:2})',
+        'vars'   => array($label, ($email !== '') ? $email : $identity['subject']))), '');
+    pg_signin_fail(lang(array(
+        'string' => 'You signed in to {var:1} as {var:2}, but this e-mail address cannot be used on this site.',
+        'vars'   => array($label, $email))), $identity);
+}
+
 if (!$user_id && !$identity['email_verified']) {
     log_activity(pg_log_lang(array(
         'string' => '{var:1} sign-in refused for an unknown account without a verified e-mail address ({var:2})',

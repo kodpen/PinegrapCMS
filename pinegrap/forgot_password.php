@@ -106,9 +106,10 @@ if (!$form->check_form_errors()) {
             user_username AS username,
             user_email AS email
         FROM user
-        WHERE user_email = '" . e($email) . "'");
+        WHERE user_email = '" . e($email) . "'" . pg_user_enabled_sql());
 
-    // No account for this address: answer exactly as if there were one.
+    // No account for this address (a disabled account counts as none): answer
+    // exactly as if there were one.
     //
     // Naming the miss turned this form into a lookup service. Anyone could
     // submit addresses and read back which ones this site holds - a list worth

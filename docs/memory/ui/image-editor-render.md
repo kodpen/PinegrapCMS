@@ -15,13 +15,13 @@ module: image_editor
 
 ## How is the file encoded?
 - `assets/js/pg_image_editor_encode.js`, its own bundle `pg_image_editor_encode.min.js`, its address in the config's `encoder`. A worker; where the worker is refused the same file is loaded on the page (`window.PgImageEncode`) and driven through the same messages one `setTimeout` at a time.
-- Messages: `begin`, `sample` (8 frames spread over the animation, `M.animSamples()`), `estimate` or the `frame`s (never more than 2 ahead of the encoder), `end` gives the bytes.
+- Messages: `begin` (with `format`), `sample` (8 frames spread over the animation, `M.animSamples()`), `estimate` or the `frame`s (never more than 2 ahead of the encoder), `end` gives the bytes and the MIME type. One `E.session(post)` answers them for the worker and the page; APNG and WebP in `ui/image-editor-encode.md`.
 - GIF: median cut to 255 colours from the samples, a transparent index 0 when a sample has see-through pixels (then each frame whole, disposal 2), else only the changed rectangle (disposal 1); Floyd-Steinberg when dithering is on; own LZW; delays in hundredths with the rounding carried and never under 2 (`delayAt()`); the NETSCAPE2.0 count is the repeats after the first play, none for one play (`loopCount()`).
 - Tested under Node and read back by GD in `tests/image_editor_render_test.php`.
 
 ## What does the dialog offer?
 - "Save animation" in the top bar, shown while a layer or the base moves (`animMoves()`), only where the editor saves into Files (`replace`, `copy`, `new`); not with `save.url` or a callback.
-- Format (GIF; the model's `M.ANIM_FORMATS` holds each format's limits), longest edge (240-800, never past the picture's, `M.animEdges()`), frame rate 10-25, repeat (forever, once, three times, the document's own), dithering, the estimate (header plus an average sample frame encoded whole times the frames, so it errs high), Download.
+- Format (those this browser can make, `ui/image-editor-encode.md`), longest edge (240-800, 1080 for APNG and WebP, never past the picture's, `M.animEdges()`), frame rate 10-25, repeat (forever, once, three times, the document's own), dithering (GIF only), the estimate (header plus an average sample frame encoded whole times the frames, so it errs high), Download.
 - A device with `navigator.deviceMemory` 4 or less starts at 240. An animation longer than the format's 15 s is refused with a note, not cut.
 - Working: the file name, a bar, the steps (picture from the server, frames n / count, encoding), Cancel (stops the worker; nothing is written). At the end the browser downloads the file and a toast says so.
-- Not here yet: Save to Files and the upload limit (AN4), APNG and WebP (AN5), video (AN6).
+- Save to Files and the upload limit: `image-editor-animation-save.md`; MP4 and WebM: `image-editor-video-export.md`.

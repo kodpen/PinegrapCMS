@@ -27,6 +27,7 @@ function object_storage_workspace_test_allowed()
 			"\$stored_path = FILE_DIRECTORY_PATH . '/' . \$stored_name;",
 			"@unlink(FILE_DIRECTORY_PATH . '/' . basename(\$stored));",
 		),
+		'includes/workspace/canvas.php'  => array("\$path = FILE_DIRECTORY_PATH . '/' . \$name;"),
 		'includes/workspace/notes.php'   => array("\$path = FILE_DIRECTORY_PATH . '/' . \$stored_name;"),
 		'includes/workspace/changes.php' => array("\$path = FILE_DIRECTORY_PATH . '/' . \$record['name'];"),
 		'includes/erp/archive.php'       => array("\$rows[\$key]['path'] = FILE_DIRECTORY_PATH . '/' . \$row['name'];"),

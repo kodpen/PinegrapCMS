@@ -139,12 +139,14 @@ function ws_tour_steps($viewer)
         'text'      => lang('Every decision of every channel you can read, day by day. Each one opens the conversation it was taken in.'),
     );
 
+    // The bell is the one inbox, the Workspace's notifications among the
+    // site's.
     $steps[] = array(
         'art'       => 'inbox',
-        'target'    => array('#ws-menu-side [data-ws-nav="inbox"]'),
-        'placement' => 'right',
-        'title'     => lang('Inbox'),
-        'text'      => lang('Mentions, tasks given to you, notes shared with you and the answers to your questions wait in your notifications, under Workspace, until you have read them. This opens them there.'),
+        'target'    => array('#notification_toggle'),
+        'placement' => 'bottom',
+        'title'     => lang('Notifications'),
+        'text'      => lang('Mentions, tasks given to you, notes shared with you and the answers to your questions wait here until you have read them.'),
     );
 
     // Staff only, and only where the list shows them: the Flows entry once
@@ -187,10 +189,12 @@ function ws_tour_steps($viewer)
         );
     }
 
+    // The tour button in the channel's header; on Today, with no channel
+    // open, the step stands in the middle.
     $steps[] = array(
         'art'       => 'finish',
-        'target'    => array('.ws-side-head-tools [data-ws-tour]', '#ws-menu-side [data-ws-tour]'),
-        'placement' => 'right',
+        'target'    => array('#ws-root .ws-head [data-ws-tour]'),
+        'placement' => 'bottom',
         'title'     => lang('That is all'),
         'text'      => lang('Start a channel of your own, or write in one you are in. This tour is always here: the Tour of the workspace button plays it again.'),
     );

@@ -55,13 +55,28 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 define('WS_AI_ENDPOINT', 'https://ai.pinegrap.com/v1');
 
 /**
- * How long one model call may take, in seconds. A host whose web server lets
- * a request wait longer may raise it with PG_AI_CALL_TIMEOUT in
- * data/config.php.
+ * How long one model call may take, in seconds (pure): 500, or what
+ * PG_AI_CALL_TIMEOUT in data/config.php sets, from 20 to 600. A flow of
+ * ten boxes or more takes the model longer than a minute to write; a call
+ * that waits keeps going when the browser stops waiting for it
+ * (ignore_user_abort() in ws_ai_kick()), but a web server that cuts a
+ * request off sooner still ends it there.
+ *
+ * @param mixed $configured PG_AI_CALL_TIMEOUT, null when it is not set
+ * @return int seconds
  */
-define('WS_AI_CALL_TIMEOUT', (defined('PG_AI_CALL_TIMEOUT') && ((int) PG_AI_CALL_TIMEOUT >= 20)) ? min(600, (int) PG_AI_CALL_TIMEOUT) : 55);
+function ws_ai_call_timeout_for($configured)
+{
+    if (is_numeric($configured) && ((int) $configured >= 20)) {
+        return min(600, (int) $configured);
+    }
 
-/** How long a call may take when no web server can cut it off (the scheduled job). */
+    return 500;
+}
+
+define('WS_AI_CALL_TIMEOUT', ws_ai_call_timeout_for(defined('PG_AI_CALL_TIMEOUT') ? PG_AI_CALL_TIMEOUT : null));
+
+/** The least a call may take when no web server can cut it off (the scheduled job). */
 define('WS_AI_CALL_TIMEOUT_JOB', 240);
 
 /**

@@ -405,12 +405,16 @@ function pg_preloader_markup()
         $mark = '<span class="pg-preloader-logo">' . pg_logo_svg('-pl') . '</span>';
     }
 
-    $markup = '<div id="pg-preloader" class="pg-preloader" aria-hidden="true">'
+    $session_url = (defined('OUTPUT_PATH') && defined('OUTPUT_SOFTWARE_DIRECTORY'))
+        ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/session_state.php' : '';
+
+    $markup = '<div id="pg-preloader" class="pg-preloader" aria-hidden="true" data-pg-session="' . h($session_url) . '" data-pg-view="' . h(pg_session_view_key()) . '">'
             . '<div class="pg-preloader-bar"><i></i></div>'
             . '<div class="pg-preloader-mark">' . $mark
             . '<div class="pg-preloader-dots"><i></i><i></i><i></i></div>'
             . '</div></div>'
             . '<div class="pg-leave-bar" aria-hidden="true"><i></i></div>'
+            . '<style>html.pg-session-check body{visibility:hidden}</style>'
             . '<noscript><style>#pg-preloader{display:none !important;}</style></noscript>';
 
     return $markup . <<<'PGPRELOADER'
@@ -509,10 +513,42 @@ function pg_preloader_markup()
             setTimeout(function () { if (prompted()) settle(); }, 0);
         });
 
+        // A page reached through Back or Forward may come from the
+        // back/forward cache (persisted) or from the HTTP cache (a
+        // back_forward navigation), and the session that drew it may have
+        // ended or been replaced by another user's since. It stays hidden
+        // until session_state.php answers with this page's view key
+        // (pg_session_view_key()); any other answer, or none, loads it
+        // again and the server decides what to show. A reload is not a
+        // back_forward navigation, so a failing check cannot loop.
+        function historyVisit() {
+            try {
+                var n = performance.getEntriesByType('navigation')[0];
+                return !!(n && n.type === 'back_forward');
+            } catch (err) { return false; }
+        }
+        function checkSession() {
+            var at = host.getAttribute('data-pg-session');
+            // Empty when the screen drew without an open session: then a
+            // signed-in session is all that can be asked for.
+            var want = host.getAttribute('data-pg-view') || '';
+            if (!at || !window.fetch) { root.classList.remove('pg-session-check'); return; }
+            root.classList.add('pg-session-check');
+            fetch(at, { credentials: 'same-origin', cache: 'no-store', headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (d) {
+                    if (d && d.signed_in === true && (want === '' || d.view === want)) root.classList.remove('pg-session-check');
+                    else location.reload();
+                })
+                .catch(function () { location.reload(); });
+        }
+        if (historyVisit()) root.classList.add('pg-session-check');
+
         // Coming back through the browser's back button hands us the page
         // exactly as it was, bar and all.
         window.addEventListener('pageshow', function (e) {
             if (e.persisted) { settle(); hide(); }
+            if (e.persisted || historyVisit()) checkSession();
         });
 
         if (hasNav) {
@@ -553,6 +589,142 @@ function pg_preloader_markup()
     })();
     </script>
 PGPRELOADER;
+}
+
+/**
+ * Panel screens that show a secret and so never enter the browser's caches,
+ * the back/forward cache included: API keys and secrets, connected-account
+ * tokens, an account's sign-in factors and recovery, key codes, and bearer
+ * links (calendar feed, accountant access, one-time file and short links,
+ * cart quote and quote guest links, the MCP value shown once). Screens
+ * outside output_header() (sign-in, password reset and set, two-factor
+ * setup, passkeys, account security) keep PHP's session default, which is
+ * no-store already.
+ *
+ * @return string[] script file names
+ */
+function pg_panel_no_store_screens()
+{
+    return array(
+        'api_settings.php',
+        'connections.php',
+        'connected_apps.php',
+        'edit_user.php',
+        'view_key_codes.php',
+        'add_key_code.php',
+        'edit_key_code.php',
+        'import_key_codes.php',
+        'workspace_calendar_feed.php',
+        'workspace_mcp.php',
+        'erp_accountant.php',
+        'edit_erp_quote.php',
+        'view_short_links.php',
+        'view_folders.php',
+        'view_cart_quotes.php',
+    );
+}
+
+/**
+ * The view key of a page drawn for the signed-in user of this session: a
+ * hash of a random value kept in the session and the user's id. A panel page
+ * carries it (pg_preloader_markup()) and session_state.php answers with the
+ * current one, so a page brought back by Back or Forward after a sign-out,
+ * or after another user signed in in the same browser, no longer matches.
+ * Empty without a signed-in user.
+ *
+ * @return string
+ */
+function pg_session_view_key()
+{
+    if (session_status() !== PHP_SESSION_ACTIVE || empty($_SESSION['sessionuserid'])) {
+        return '';
+    }
+    if (empty($_SESSION['software']['view_nonce']) || !is_string($_SESSION['software']['view_nonce'])) {
+        $_SESSION['software']['view_nonce'] = bin2hex(random_bytes(16));
+    }
+    return pg_session_view_key_for($_SESSION['software']['view_nonce'], $_SESSION['sessionuserid']);
+}
+
+/**
+ * @param string     $nonce   the session's random value
+ * @param int|string $user_id
+ * @return string 32 hex characters, or empty without either
+ */
+function pg_session_view_key_for($nonce, $user_id)
+{
+    $nonce = (string) $nonce;
+    $user_id = (int) $user_id;
+    if ($nonce === '' || $user_id <= 0) {
+        return '';
+    }
+    return substr(hash('sha256', $nonce . '|' . $user_id), 0, 32);
+}
+
+/**
+ * Sends Clear-Site-Data: "cache" on an answer that ends a session, so the
+ * browser drops this origin's HTTP cache and back/forward cache entries and
+ * Back on a shared computer does not show a panel screen again. Browsers
+ * honour it over HTTPS only; elsewhere the pageshow session check
+ * (pg_preloader_markup()) is what remains.
+ */
+function pg_session_end_clear_cache()
+{
+    if (!headers_sent()) {
+        header('Clear-Site-Data: "cache"');
+    }
+}
+
+/**
+ * The Cache-Control a panel screen's HTML is sent with: private, no-cache
+ * (revalidated on every ordinary visit, but allowed into the back/forward
+ * cache), or private, no-store for a screen in pg_panel_no_store_screens().
+ *
+ * @param string $script the screen's path or file name
+ * @return string
+ */
+function pg_panel_cache_control($script)
+{
+    $script = strtolower(basename((string) $script));
+    if (in_array($script, pg_panel_no_store_screens(), true)) {
+        return 'private, no-store';
+    }
+    return 'private, no-cache';
+}
+
+/**
+ * Whether the Cache-Control about to be sent is still the session's own
+ * (PHP's nocache limiter) or missing; a screen that chose its own
+ * (device_pairing.php sends no-store) keeps it.
+ *
+ * @param array $headers header lines (headers_list())
+ * @return bool
+ */
+function pg_panel_cache_is_session_default(array $headers)
+{
+    foreach ($headers as $line) {
+        if (preg_match('/^\s*cache-control\s*:\s*(.*)$/i', (string) $line, $m)) {
+            // Older PHP versions add ", post-check=0, pre-check=0".
+            return strpos(strtolower(trim($m[1])), 'no-store, no-cache, must-revalidate') === 0;
+        }
+    }
+    return true;
+}
+
+/**
+ * output_header(): replaces the session's no-store headers (PHP's
+ * session.cache_limiter = nocache) for panel HTML, so Back and Forward
+ * restore a panel screen at once. A page shown by Back or Forward stays
+ * hidden until session_state.php confirms the session and user that drew
+ * it (pg_preloader_markup(), pg_session_view_key()).
+ */
+function pg_panel_cache_headers()
+{
+    if (headers_sent() || !pg_panel_cache_is_session_default(headers_list())) {
+        return;
+    }
+    header('Cache-Control: ' . pg_panel_cache_control(isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : ''));
+    header_remove('Pragma');
+    header_remove('Expires');
 }
 
 /**
@@ -1928,6 +2100,8 @@ function output_header($properties = false)
     if (!defined('PG_PANEL_OUTPUT')) {
         define('PG_PANEL_OUTPUT', true);
     }
+
+    pg_panel_cache_headers();
 
     //output
     $output = '';
@@ -3484,6 +3658,16 @@ function output_menu($properties = false)
             $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendar_event_locations.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-geo-alt bi-me-2\'>' . lang('Event Locations') . '</a>';
             $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_calendar_event_location.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Calendar Event Location'))) . '</a>';
         }
+        // CALENDARS > Bookings: once a booking service exists, for those the
+        // agenda opens to (includes/fn/booking_agenda.php).
+        if (pg_booking_ready() && ((int) db_value("SELECT COUNT(*) FROM booking_services") > 0)) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
+
+            if (pg_booking_agenda_user_scope($user) !== false) {
+                $menu_items[4]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
+                $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_bookings.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar-check bi-me-2\'>' . lang('Bookings') . '</a>';
+            }
+        }
     }
 
     if ((FORMS === true) && (($user['role'] < 3) || ($user['manage_forms'] == true))) {
@@ -3886,6 +4070,9 @@ function output_menu($properties = false)
         // the site's other languages (includes/translate/).
         $menu_items[21]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
         $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-translate bi-me-2\'>' . lang('Translations') . '</a>';
+        // VISUAL PAGE EDITOR > Experiments: the A/B experiments of designed
+        // pages and their results (experiments.php, designers).
+        $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/experiments.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart-line bi-me-2\'>' . lang('Experiments') . '</a>';
 
         // DESIGN > Menus and DESIGN > Regions. Neither is a row of the menu:
         // both are reached from the panel of Page Styles, below.
@@ -4160,6 +4347,8 @@ function output_menu($properties = false)
         case 'view_calendar_event_locations.php':
         case 'add_calendar_event_location.php':
         case 'edit_calendar_event_location.php':
+        case 'view_bookings.php':
+        case 'edit_booking.php':
             $active_menu = 4;
             break;
         case 'view_submitted_forms.php':
@@ -4437,6 +4626,10 @@ function output_menu($properties = false)
 
         // The pages of Site Settings (settings_<category>.php) have no row
         // since slot 20 was retired, so they mark none.
+        case 'experiments.php':
+        case 'page_experiments.php':
+            $active_menu = 21;
+            break;
         case 'translations.php':
             // A manager reaches it from the Pages panel; row 21 is built for
             // role < 2 only.
@@ -7033,6 +7226,9 @@ function pg_js_bundles()
         // The link resolver's browser twin (window.PGLinkResolve,
         // includes/fn/link_resolve.php).
         'assets/js/pg_link_resolve.min.js'         => array('assets/js/pg_link_resolve.js'),
+        // The list table driver (window.PGListTable, includes/fn/list_table.php),
+        // printed by the screens whose list it draws.
+        'assets/js/pg_list_table.min.js'           => array('assets/js/pg_list_table.js', 'assets/js/pg_list_table_edit.js'),
         // The Prototype view's hotspot collector (window.PGProtoHotspots).
         'assets/js/pg_proto_hotspots.min.js'       => array('assets/js/pg_proto_hotspots.js'),
         'assets/js/workspace_flow.min.js'          => array('assets/js/workspace_flow.js'),
@@ -7050,7 +7246,7 @@ function pg_js_bundles()
             'assets/js/pg_image_editor_draw.js', 'assets/js/pg_image_editor_text.js', 'assets/js/pg_image_editor_sticker.js',
             'assets/js/pg_image_editor_redact.js', 'assets/js/pg_image_editor_versions.js', 'assets/js/pg_image_editor_artboard.js',
             'assets/js/pg_image_editor_export.js', 'assets/js/pg_image_editor_vector.js', 'assets/js/pg_image_editor_svg.js',
-            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_fonts.js',
+            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_fonts.js',
             'assets/js/pg_image_editor_glyph.js'),
         // The image editor's animation encoder, started as a worker (or on the
         // page) by pg_image_editor_render.js.

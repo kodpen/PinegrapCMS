@@ -13967,11 +13967,47 @@ const StyleDesigner = (function () {
         return !!(node && node.props && node.props._bindings && node.props._bindings.href);
     }
 
+    // The name of the page a link kept by page id opens: a tab's (by id, or
+    // by key while it is not saved), else the page list's when it is loaded;
+    // '' when neither knows it. Pages hidden from the operator are in
+    // neither.
+    function _sdPageLinkName(pageId) {
+        var ref = String(pageId == null ? '' : pageId);
+        var id = /^[1-9][0-9]*$/.test(ref) ? parseInt(ref, 10) : 0;
+        var key = /^tab:./.test(ref) ? ref.substr(4) : '';
+        var name = '';
+        (_pages || []).forEach(function (p) {
+            if (name === '' && p && ((id && parseInt(p.page_id, 10) === id) || (key && p.key === key))) name = p.page_name || _sdT('New Page');
+        });
+        if (name === '' && id && Array.isArray(_allPagesCache)) {
+            _allPagesCache.forEach(function (p) { if (name === '' && p && parseInt(p.page_id, 10) === id && !_swPageBinned(p)) name = p.page_name || ''; });
+        }
+        return name;
+    }
+
+    // In place of the URL input of a link outside a widget kept by page id
+    // (a Prototype arrow wrote it): the page it opens, which a rename does
+    // not change, and a button back to a typed address (the fallback the
+    // site prints for a page that is gone).
+    function _sdPageLinkNotice(node) {
+        var spec = (node.props._bindParams && node.props._bindParams.href) || {};
+        var name = _sdPageLinkName(spec.page_id);
+        var text = (name !== '')
+            ? _sdT('This link opens the page “{var:1}” by its id: renaming the page keeps it.', esc(name))
+            : _sdT('This link opens a page by its id; if the page is gone, it opens {var:1}.', esc(node.props.href || '#'));
+        return '<div class="sd-bound-href-note" style="font-size:.7rem;color:#6366f1;' +
+               'background:rgba(99,102,241,.06);padding:4px 8px;border-radius:3px;line-height:1.4">' +
+               '<span class="bi bi-link-45deg me-1"></span>' + text +
+               '<br><button type="button" class="btn btn-link btn-sm p-0" data-sd-page-unlink style="font-size:.7rem">' + esc(_sdT('Type an address instead')) + '</button>' +
+               '</div>';
+    }
+
     // Read-only stand-in shown in place of a URL input whose href is bound.
     // Names the Bind Data option so the designer knows WHICH binding is
     // driving it, and points at the panel where it can be cleared.
     function _sdBoundHrefNotice(node) {
         var tok = (node && node.props && node.props._bindings && node.props._bindings.href) || '';
+        if (tok === '__page_link' && !_sdSystemWidgetCfgOf(node)) return _sdPageLinkNotice(node);
         return '<div class="sd-bound-href-note" style="font-size:.7rem;color:#6366f1;' +
                'background:rgba(99,102,241,.06);padding:4px 8px;border-radius:3px;line-height:1.4">' +
                '<span class="bi bi-link-45deg me-1"></span>' +
@@ -52449,6 +52485,17 @@ const StyleDesigner = (function () {
             });
         });
 
+        // data-sd-page-unlink: a link kept by page id goes back to its typed
+        // address (_sdPageLinkNotice()); the address stays as it was.
+        document.querySelectorAll('#sd-properties [data-sd-page-unlink]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                if (!selectedNode || !_sdMayEdit(selectedNode)) return;
+                saveState();
+                window.PGProtoHotspots.applyPatch(selectedNode.props, { key: 'href', value: selectedNode.props.href || '', bind: false });
+                render();
+            });
+        });
+
         // data-btn-display: toggle Bootstrap button styling classes (no-btn / btn / btn-link)
         document.querySelectorAll('#sd-properties select[data-btn-display]').forEach(function(el) {
             el.addEventListener('change', function() {
@@ -67656,10 +67703,11 @@ const StyleDesigner = (function () {
     // all three are printed before this script.
     // An arrow drawn from a link row's port to a tab's frame or to a chip of
     // a site page, another site or a contact address writes that link's
-    // href (_sdProtoConnect()): on the row's tab, opened first, so its lock,
+    // href (_sdProtoConnect(); from the keyboard L on the row picks the
+    // target from a list, _sdProtoMenuOpen()): on the row's tab, opened first, so its lock,
     // undo history and content rights answer; the normal Save writes it.
     // Classic menus and regions stay read-only.
-    var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {} };
+    var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null };
 
     var SD_PROTO_MARKS = {
         tab: { icon: 'bi-file-earmark-arrow-right', text: function () { return _sdT('Opens a page of this design'); } },
@@ -67679,7 +67727,7 @@ const StyleDesigner = (function () {
         return 'pg_proto_pos_' + ((_design && _design.styleId) ? _design.styleId : 'new');
     }
 
-    function _sdProtoSaved() {
+    function _sdProtoLocal() {
         try {
             var raw = window.localStorage.getItem(_sdProtoStoreKey());
             var parsed = raw ? JSON.parse(raw) : null;
@@ -67689,10 +67737,40 @@ const StyleDesigner = (function () {
         }
     }
 
+    function _sdProtoLocalWrite(saved) {
+        try {
+            if (Object.keys(saved).length) window.localStorage.setItem(_sdProtoStoreKey(), JSON.stringify(saved));
+            else window.localStorage.removeItem(_sdProtoStoreKey());
+        } catch (e) {}
+    }
+
+    // Where frames and chips stand: the places shared on the design
+    // (_pgTabProto, style.style_tab_layout), then this browser's on top.
+    function _sdProtoSaved() {
+        var saved = window.PGProtoHotspots.places(_pgTabProto);
+        var local = _sdProtoLocal();
+        Object.keys(local).forEach(function (id) { saved[id] = local[id]; });
+        return saved;
+    }
+
+    // A frame of a saved tab or a shared component moved by an operator who
+    // may arrange the tabs is shared with everyone opening the design, its
+    // own place in this browser dropped; chips, unsaved tabs and a
+    // content-level operator's moves stay in the browser.
     function _sdProtoKeep(item) {
-        var saved = _sdProtoSaved();
-        saved[item.id] = { x: item.x, y: item.y };
-        try { window.localStorage.setItem(_sdProtoStoreKey(), JSON.stringify(saved)); } catch (e) {}
+        var local = _sdProtoLocal();
+        var key = window.PGProtoHotspots.placeKey(item.id);
+        if (key && _pgTabLayoutEditable() && _design && _design.styleId) {
+            _pgTabProto[key] = { x: Math.round(item.x), y: Math.round(item.y) };
+            if (local[item.id]) {
+                delete local[item.id];
+                _sdProtoLocalWrite(local);
+            }
+            _pgTabsLayoutSave();
+            return;
+        }
+        local[item.id] = { x: item.x, y: item.y };
+        _sdProtoLocalWrite(local);
     }
 
     function _sdProtoEl(tag, cls, text) {
@@ -67817,10 +67895,18 @@ const StyleDesigner = (function () {
                 }
                 var row = event.target.closest ? event.target.closest('.sd-proto-row') : null;
                 if (row && (event.key === 'Enter' || event.key === ' ')) { _sdProtoOpenRow(row); return true; }
+                // L, the context menu key or Shift+F10: where the link goes,
+                // chosen from a list (the keyboard's way to draw its arrow).
+                var menuKey = (name === 'l' && !event.ctrlKey && !event.metaKey && !event.shiftKey) || event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey);
+                if (row && menuKey) return _sdProtoMenuOpen(row);
                 return false;
             }
         });
         _sdProto.canvas.bind();
+        // A press outside the target menu closes it.
+        ui.root.addEventListener('pointerdown', function (event) {
+            if (_sdProto.menu && !_sdProto.menu.el.contains(event.target)) _sdProtoMenuClose(false);
+        }, true);
         return ui;
     }
 
@@ -67861,6 +67947,7 @@ const StyleDesigner = (function () {
 
     function _sdProtoClose() {
         if (!_sdProto.open) return;
+        _sdProtoMenuClose(false);
         _sdProto.open = false;
         _sdProto.seq++;
         if (_sdProto.canvas) _sdProto.canvas.cancel();
@@ -67941,6 +68028,7 @@ const StyleDesigner = (function () {
         if (meta) head.appendChild(_sdProtoEl('span', 'sd-proto-meta', meta));
         node.appendChild(head);
         node.setAttribute('aria-label', _sdProtoFrameName(item));
+        if (item.thumb) node.appendChild(_sdProtoThumb(item));
 
         if (!item.rows.length) {
             node.appendChild(_sdProtoEl('div', 'sd-proto-empty', _sdT('No links')));
@@ -67953,6 +68041,10 @@ const StyleDesigner = (function () {
             r.setAttribute('role', 'button');
             r.setAttribute('data-row', String(i));
             r.title = row.href || '';
+            if (window.PGProtoHotspots.drawable(row)) {
+                r.title += (r.title ? ' · ' : '') + _sdT('L: choose where this link goes');
+                r.setAttribute('aria-keyshortcuts', 'L');
+            }
             r.appendChild(_sdProtoMarkIcon(row.mark));
             r.appendChild(_sdProtoEl('span', 'sd-proto-label', row.from ? row.from + ' › ' + row.label : row.label));
             if (row.draft) r.appendChild(_sdProtoEl('span', 'sd-proto-draft', _sdT('Draft')));
@@ -67964,6 +68056,43 @@ const StyleDesigner = (function () {
             }
             node.appendChild(r);
         });
+    }
+
+    // The frame's thumbnail: its page as bands (PGProtoHotspots.sketch()),
+    // a dot per link up to five. Drawn from numbers and roles only; it says
+    // nothing a screen reader needs (the rows list the links).
+    function _sdProtoThumb(item) {
+        var H = window.PGProtoHotspots;
+        var NS = 'http://www.w3.org/2000/svg';
+        var w = H.FRAME.w - 20;
+        var h = item.thumb - 13;
+        var wrap = _sdProtoEl('div', 'sd-proto-thumb');
+        var svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+        svg.setAttribute('width', String(w));
+        svg.setAttribute('height', String(h));
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+        H.sketchBoxes(item.sketch, w, h).forEach(function (box) {
+            var r = document.createElementNS(NS, 'rect');
+            r.setAttribute('class', 'sd-proto-sk sd-proto-sk-' + box.role);
+            r.setAttribute('x', '0');
+            r.setAttribute('y', String(box.y));
+            r.setAttribute('width', String(w));
+            r.setAttribute('height', String(box.h));
+            r.setAttribute('rx', '2');
+            svg.appendChild(r);
+            for (var i = 0; i < Math.min(5, box.links); i++) {
+                var c = document.createElementNS(NS, 'circle');
+                c.setAttribute('class', 'sd-proto-sk-link');
+                c.setAttribute('cx', String(w - 6 - i * 7));
+                c.setAttribute('cy', String(box.y + box.h / 2));
+                c.setAttribute('r', String(Math.min(2.5, box.h / 2)));
+                svg.appendChild(c);
+            }
+        });
+        wrap.appendChild(svg);
+        return wrap;
     }
 
     function _sdProtoChipText(chip) {
@@ -67980,6 +68109,7 @@ const StyleDesigner = (function () {
         var first = !_sdProto.layout;
         var l = H.layout(marked, _sdProtoSaved());
 
+        _sdProtoMenuClose(false);
         _sdProto.layout = l;
         _sdProto.items = l.frames.concat(l.chips);
         _sdProto.byId = {};
@@ -68066,13 +68196,17 @@ const StyleDesigner = (function () {
 
     // An arrow drawn: the row's tab opened first (its lock answered by a
     // heartbeat), then the link's node changed through saveState(), so
-    // Ctrl+Z on the canvas or in the view takes it back. A shared
+    // Ctrl+Z on the canvas or in the view takes it back. A link of its own
+    // ending on a tab is kept by page id with the address as its fallback
+    // (PGProtoHotspots.hrefPatch()), so a rename keeps it. A shared
     // component is marked changed; the warnings say where the link goes
     // live. The normal Save writes it.
     function _sdProtoConnect(from, to, port) {
         var row = _sdProtoRow(from, port);
         var href = _sdProtoArrowHref(from, to, port);
-        if (!row || href === null || href === row.href) return;
+        if (!row || href === null) return;
+        var bind = window.PGProtoHotspots.boundTo(to);
+        if (href === row.href && String(bind === null ? '' : bind) === (row.bound || '')) return;
         var key = _sdProtoFrameTab(from);
         var seq = _sdProto.seq;
 
@@ -68082,7 +68216,7 @@ const StyleDesigner = (function () {
             var sid = (from.kind === 'shared') ? from.sharedId : 0;
             var root = sid ? (_sharedCache[sid] && _sharedCache[sid].tree) : tree;
             var node = root ? findNodeById(row.nodeId, root) : null;
-            var patch = node ? H.hrefPatch(node, row, href) : null;
+            var patch = node ? H.hrefPatch(node, row, href, to) : null;
             if (!patch) {
                 sdToast(esc(_sdT('This link has changed since the map was drawn; the links are read again.')), 'warning', 4000);
                 _sdProtoLoad();
@@ -68093,7 +68227,7 @@ const StyleDesigner = (function () {
                 return;
             }
             saveState();
-            node.props[patch.key] = patch.value;
+            H.applyPatch(node.props, patch);
             if (sid) _sdSharedMarkEdited(node);
             render();
             _sdProtoWarn(from, key);
@@ -68123,6 +68257,95 @@ const StyleDesigner = (function () {
         } else {
             sdToast(esc(_sdT('This page is on the site: the changed link goes live when you click Publish.')), 'info', 6000);
         }
+    }
+
+    // The keyboard's way to draw a row's arrow: a menu of the tab frames
+    // and chips its link may be pointed at (PGProtoHotspots.drawTargets()),
+    // the current one checked; a choice goes through _sdProtoConnect() like
+    // a drawn arrow. Arrows, Home and End move, Escape closes and gives the
+    // focus back to the row. Answers whether it opened.
+    function _sdProtoMenuOpen(rowEl) {
+        var H = window.PGProtoHotspots;
+        var box = rowEl.closest('[data-node]');
+        var item = box ? _sdProto.byId[box.getAttribute('data-node')] : null;
+        var row = item && item.rows ? item.rows[parseInt(rowEl.getAttribute('data-row'), 10) || 0] : null;
+        if (!row || !H.drawable(row)) return false;
+        _sdProtoMenuClose(false);
+
+        var ui = _sdProto.ui;
+        var list = H.drawTargets(_sdProto.layout, _sdProto.env).filter(function (t) {
+            return _sdProtoArrowHref(item, _sdProto.byId[t.id], row.port) !== null;
+        });
+        var el = _sdProtoEl('div', 'sd-proto-menu');
+        el.setAttribute('role', 'menu');
+        el.setAttribute('aria-label', _sdT('Where this link goes'));
+        var head = _sdProtoEl('div', 'sd-proto-menu-head', _sdT('Where this link goes'));
+        head.setAttribute('role', 'presentation');
+        el.appendChild(head);
+        if (!list.length) {
+            var none = _sdProtoEl('div', 'sd-proto-empty', _sdT('No page or address to point it at'));
+            none.setAttribute('role', 'presentation');
+            el.appendChild(none);
+        }
+        list.forEach(function (t) {
+            var target = _sdProto.byId[t.id];
+            var b = _sdProtoEl('button', 'sd-proto-menu-item');
+            b.type = 'button';
+            b.tabIndex = -1;
+            b.title = t.href;
+            b.setAttribute('role', 'menuitemradio');
+            b.setAttribute('aria-checked', t.href === row.href ? 'true' : 'false');
+            b.appendChild(_sdProtoMarkIcon(target.kind === 'page' ? 'tab' : target.mark));
+            b.appendChild(_sdProtoEl('span', 'sd-proto-label', target.kind === 'page' ? _sdProtoFrameName(target) : _sdProtoChipText(target)));
+            b.addEventListener('click', function () {
+                _sdProtoMenuClose(true);
+                _sdProtoConnect(item, target, row.port);
+            });
+            el.appendChild(b);
+        });
+        el.addEventListener('keydown', function (event) {
+            var items = Array.prototype.slice.call(el.querySelectorAll('.sd-proto-menu-item'));
+            var at = items.indexOf(document.activeElement);
+            var go = -1;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                _sdProtoMenuClose(true);
+                return;
+            }
+            if (event.key === 'Tab') { _sdProtoMenuClose(false); return; }
+            if (event.key === 'ArrowDown') go = (at + 1) % items.length;
+            else if (event.key === 'ArrowUp') go = (at <= 0 ? items.length : at) - 1;
+            else if (event.key === 'Home') go = 0;
+            else if (event.key === 'End') go = items.length - 1;
+            if (go >= 0 && items[go]) {
+                event.preventDefault();
+                items[go].focus();
+            }
+        });
+        ui.root.appendChild(el);
+        _sdProto.menu = { el: el, rowEl: rowEl };
+
+        // Under the row, or above it when it would leave the view.
+        var r = rowEl.getBoundingClientRect();
+        var o = ui.root.getBoundingClientRect();
+        var top = r.bottom - o.top + 2;
+        if (top + el.offsetHeight > o.height) top = Math.max(4, r.top - o.top - el.offsetHeight - 2);
+        el.style.left = Math.max(4, Math.min(r.left - o.left, o.width - el.offsetWidth - 4)) + 'px';
+        el.style.top = top + 'px';
+
+        var first = el.querySelector('.sd-proto-menu-item[aria-checked="true"]') || el.querySelector('.sd-proto-menu-item');
+        if (!first) el.tabIndex = -1;
+        (first || el).focus({ preventScroll: true });
+        return true;
+    }
+
+    function _sdProtoMenuClose(refocus) {
+        var m = _sdProto.menu;
+        if (!m) return;
+        _sdProto.menu = null;
+        if (m.el.parentNode) m.el.parentNode.removeChild(m.el);
+        if (refocus && m.rowEl.isConnected) m.rowEl.focus({ preventScroll: true });
     }
 
     // A row's element selected on the canvas: its tab opened first (a
@@ -70924,6 +71147,7 @@ const StyleDesigner = (function () {
     var _PG_TAB_GROUP_COLORS = ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange'];
     var _pgTabGroups = {};            // gid → { name, color }
     var _pgTabGroupsCollapsed = {};   // gid → true, this browser only
+    var _pgTabProto = {};             // 'p<page_id>' / 's<id>' → { x, y }: Prototype view frames
     var _pgTabLayoutTimer = 0;
     var _pgTabDrag = null;
     var _pgTabDragClickBlock = 0;
@@ -70973,8 +71197,12 @@ const StyleDesigner = (function () {
     // named ones.
     function _pgTabsApplyLayout(layout) {
         _pgTabGroups = {};
+        _pgTabProto = {};
         _pages.forEach(function (p) { p.tabGroup = ''; });
         if (!_pgTabLayoutReady() || !layout || typeof layout !== 'object') return;
+        if (layout.proto && typeof layout.proto === 'object') {
+            Object.keys(layout.proto).forEach(function (k) { _pgTabProto[k] = layout.proto[k]; });
+        }
         var groups = (layout.groups && typeof layout.groups === 'object') ? layout.groups : {};
         Object.keys(groups).forEach(function (gid) {
             var g = groups[gid];
@@ -71035,7 +71263,9 @@ const StyleDesigner = (function () {
             }
             tabs.push(t);
         });
-        return { v: 1, groups: groups, tabs: tabs };
+        var out = { v: 1, groups: groups, tabs: tabs };
+        if (Object.keys(_pgTabProto).length) out.proto = _pgTabProto;
+        return out;
     }
 
     // `now`: no debounce (the editor is about to navigate).
@@ -73574,6 +73804,12 @@ const StyleDesigner = (function () {
         var list = keys.map(_pgPageByKey).filter(function (p) {
             return p && p.access !== 'locked' && !p.pickedPending && (!!p.page_draft !== on);
         });
+        // An open experiment's variant stays a draft; the server refuses it too.
+        var held = on ? [] : list.filter(_pgExperimentHeld);
+        if (held.length) {
+            list = list.filter(function (p) { return !_pgExperimentHeld(p); });
+            if (!list.length) { sdToast(esc(_sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.')), 'info', 4000); return; }
+        }
         // The home page stays on the site; the server would refuse it too.
         var home = on ? list.filter(function (p) { return p.page_home; }) : [];
         if (on) list = list.filter(function (p) { return !p.page_home; });
@@ -73682,7 +73918,53 @@ const StyleDesigner = (function () {
         box.disabled = home || waits;
         box.title    = home ? _sdT('The home page stays on the site.')
                      : (waits ? _sdT('The page stays a draft until its publish time.') : '');
+        if (_pgExperimentHeld(p)) {
+            box.disabled = true;
+            box.title = _sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.');
+        }
         _pgSyncScheduleFields(p, home);
+    }
+
+    // ── Experiments ──
+    // A page in an A/B experiment (page_experiments.php): a chip in the top
+    // bar says so - the experiment's status on the live page, "Variant of
+    // <page>" on its variant draft - and opens the Experiments sheet. A
+    // variant stays a draft while its experiment is open; the server refuses
+    // its publish and its bin too (pg_experiment_variant_hold_message()).
+    // The states are read when the editor opens.
+    function _pgExperimentOf(p) {
+        var ex = _design && _design.experiments;
+        if (!ex || !ex.pages || !p || !(p.page_id > 0)) return null;
+        return ex.pages[String(p.page_id)] || null;
+    }
+    function _pgExperimentHeld(p) { var st = _pgExperimentOf(p); return !!(st && st.held); }
+    function _pgExperimentSync(a) {
+        var ex = (_design && _design.experiments) || {};
+        var st = _pgExperimentOf(a);
+        var labels = { running: _sdT('Experiment running'), paused: _sdT('Experiment paused'), draft: _sdT('Experiment set up') };
+        var themes = { running: 'theme-success', paused: 'theme-warning', draft: 'theme-secondary' };
+        var text = (st && labels[st.status])
+            ? (st.role === 'variant' ? _sdT('Variant of {var:1}').replace('{var:1}', st.live_page_name) : labels[st.status]) : '';
+        // The sheet belongs to the live page; a variant's chip opens it too.
+        var sheet = function (id) { return (ex.ready && id > 0) ? ex.url + id : ''; };
+        var chip = document.getElementById('sd-experiment-chip');
+        if (chip) {
+            var url = text ? sheet(st.live_page_id) : '';
+            chip.className = 'badge text-decoration-none ' + (text ? themes[st.status] : 'd-none');
+            chip.textContent = text;
+            chip.title = text ? labels[st.status] : '';
+            if (url) chip.setAttribute('href', url); else chip.removeAttribute('href');
+        }
+        var link = document.getElementById('sd-page-experiments');
+        var status = document.getElementById('sd-page-experiment-status');
+        if (link) {
+            var own = (a && !a.page_draft) ? sheet(a.page_id) : (st ? sheet(st.live_page_id) : '');
+            link.classList.toggle('disabled', !own);
+            if (own) link.setAttribute('href', own); else link.removeAttribute('href');
+        }
+        if (status) {
+            status.textContent = text ? text : ((a && a.page_draft) ? _sdT('A draft is not on the site: it can be a variant, not the page tested.') : '');
+        }
     }
 
     // ── Scheduled publishing ──
@@ -73829,10 +74111,11 @@ const StyleDesigner = (function () {
         // Publish puts it on. A page on the site has one, Publish.
         var pub = document.getElementById('sd-publish-page');
         if (pub) {
-            var both = draft && _pgDraftsCanChange() && !!a && !a.pickedPending;
+            var both = draft && _pgDraftsCanChange() && !!a && !a.pickedPending && !_pgExperimentHeld(a);
             pub.classList.toggle('d-none', !both);
             btn.classList.toggle('sd-publish-solo', both);
         }
+        _pgExperimentSync(a);
         var more = document.querySelector('.sd-publish-more');
         if (!more) return;
         var anyDraft = _pages.some(function (p) { return !!p.page_draft; });
@@ -73842,7 +74125,7 @@ const StyleDesigner = (function () {
             if (b && b.parentNode) b.parentNode.classList.toggle('d-none', !on);
         };
         show('page-draft',   !!a && !draft && !a.page_home && !a.pickedPending);
-        show('page-publish', draft);
+        show('page-publish', draft && !_pgExperimentHeld(a));
         show('all-draft',    anyLive);
         show('all-publish',  anyDraft);
     }

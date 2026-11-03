@@ -312,7 +312,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // The edge check: sets the confirmation (bit 8 of
+    // The edge check (includes/fn/image_vary_check.php, the test the general
+    // job runs too): sets the confirmation (bit 8 of
     // config.image_derivative_formats) only when each browser got its own
     // copy, and takes it back when the edge gave one copy to both.
     if (($action === 'image_vary_check') && pg_image_delivery_ready()) {
@@ -321,24 +322,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($same_address['on'])) {
             $liveform->mark_error('error', lang('Switch on "Send WebP at the picture\'s own address" in Site Settings › Features › Image Optimization first.'));
         } else {
-            $vary_check = pg_cloudflare_image_vary_check();
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_vary_check.php');
+
+            $vary_check = pg_image_vary_test_run($_SESSION['sessionusername']);
             $vary_file = h($vary_check['file']);
 
             switch ($vary_check['verdict']) {
                 case 'ok':
-                    db("UPDATE config SET image_derivative_formats = image_derivative_formats | 8");
-                    @unlink(PG_FUNCTIONS_DIR . '/data/temp/system_status_cache.json');
                     $liveform->add_notice(lang(array('string' => 'Cloudflare kept a copy of {var:1} per format. The confirmation is set: browsers that read WebP now get it through Cloudflare.', 'vars' => $vary_file)));
-                    log_activity(lang('Cloudflare check passed: the edge keeps a copy of each picture per format.'), $_SESSION['sessionusername']);
                     break;
 
                 case 'shared':
-                    if (!empty($same_address['cdn'])) {
-                        db("UPDATE config SET image_derivative_formats = image_derivative_formats & ~8");
-                        @unlink(PG_FUNCTIONS_DIR . '/data/temp/system_status_cache.json');
-                        log_activity(lang('Cloudflare check failed: the confirmation that the CDN keeps a copy per format was taken back.'), $_SESSION['sessionusername']);
+                    if ($vary_check['mode'] === 'original') {
+                        $liveform->mark_error('error', lang(array('string' => 'Cloudflare gave the same copy of {var:1} to a browser that reads WebP and to one that does not, and keeps pictures marked private too. Visitors get the original through Cloudflare until a check passes.', 'vars' => $vary_file)));
+                    } else {
+                        $liveform->mark_error('error', lang(array('string' => 'Cloudflare gave the same copy of {var:1} to a browser that reads WebP and to one that does not: the cache rule is missing or not in effect yet. Visitors get WebP through Cloudflare, but the edge keeps no copy of pictures until a check passes.', 'vars' => $vary_file)));
                     }
-                    $liveform->mark_error('error', lang(array('string' => 'Cloudflare gave the same copy of {var:1} to a browser that reads WebP and to one that does not: the cache rule is missing or not in effect yet. Visitors get the original through Cloudflare until a check passes.', 'vars' => $vary_file)));
                     break;
 
                 case 'no_webp':

@@ -227,6 +227,7 @@ function test_product_list_sort_sql_follows_the_cell()
 
 function test_user_list_start_page_sorts_by_name()
 {
-	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/user_list.php');
-	pg_assert_true(strpos($source, "'start_page'    => 'start_page.page_name'") !== false, 'the Start Page heading sorts by the page name it shows');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_list.php');
+	$columns = pg_user_list_columns('all_my_users');
+	pg_assert_same('start_page.page_name', $columns['start_page']['sort'], 'the Start Page heading sorts by the page name it shows');
 }

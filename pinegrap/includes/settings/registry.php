@@ -341,6 +341,29 @@ function pg_settings_categories()
             ),
         ),
 
+        'bookings' => array(
+            'label' => lang('Bookings'),
+            'group' => 'selling',
+            'icon'  => 'bi-calendar-check',
+            'description' => lang('The services that can be booked, the staff who take them, the booking rules and the booking widget\'s texts.'),
+            'sections' => array(
+                'pgset-booking-services' => lang('Services'),
+                'pgset-booking-staff'    => lang('Staff'),
+                'pgset-booking-policy'   => lang('Booking rules'),
+                'pgset-booking-texts'    => lang('Booking widget texts'),
+            ),
+            'keywords' => array(
+                'pgset-booking-services' => pg_settings_keywords(lang('booking, appointment, service, duration, length, buffer, price, reservation')),
+                'pgset-booking-staff'    => pg_settings_keywords(lang('booking, appointment, staff, working hours, opening hours, time off, holiday, day off, schedule')),
+                'pgset-booking-policy'   => pg_settings_keywords(lang('booking, appointment, lead time, horizon, cancellation, reschedule, hold, reminder, confirmation')),
+                'pgset-booking-texts'    => pg_settings_keywords(lang('booking, appointment, widget, text, heading, message')),
+            ),
+            'lists' => array(
+                'booking_service' => 2,
+                'booking_staff'   => 3,
+            ),
+        ),
+
         'api' => array(
             'label' => lang('Integrations'),
             'group' => 'running',

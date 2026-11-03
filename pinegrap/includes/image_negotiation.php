@@ -9,8 +9,10 @@
  * picture's WebP derivative at that same address, and every other reader
  * (mail programs, feeds, marketplaces fetching by URL) the original. The
  * answer then varies on Accept, so a cache that ignores Vary would hand its
- * first copy to everyone: a request that came through a CDN or proxy gets
- * the original until the operator confirms the edge keeps a copy per format.
+ * first copy to everyone: through a CDN or proxy nobody has confirmed keeps a
+ * copy per format, both answers go out private, so the edge keeps neither;
+ * when the self-test found an edge that keeps private answers too, the
+ * original goes until the next test.
  *
  * Pure functions: get_file.php, which never loads functions.php, decides
  * with them on the config row the router already read.
@@ -127,21 +129,41 @@ function pg_image_same_address_settings($row)
 }
 
 /**
+ * How a picture is answered through a CDN or proxy nobody has confirmed,
+ * from the self-test's stored state (includes/fn/image_vary_check.php,
+ * same_address.json beside the derivatives): private (negotiated, kept by
+ * no shared cache) until a test found an edge that keeps private answers
+ * too, then original until the next test.
+ *
+ * @param array|null $stored the decoded state
+ * @return string private, original
+ */
+function pg_image_same_address_mode($stored)
+{
+    return (is_array($stored) && isset($stored['mode']) && ($stored['mode'] === 'original'))
+        ? 'original'
+        : 'private';
+}
+
+/**
  * What the System Status line says about WebP at a picture's own address.
  *
  * off: the switch is off (an upgraded site until the operator switches it
  * on). no_webp: on, but this server cannot write WebP, so every reader gets
- * the original. cdn: on, but the panel was reached through a CDN or proxy
- * and nobody has confirmed it keeps a copy per format, so requests through
- * it get the original. on: pictures go out as WebP where the browser reads
- * it.
+ * the original. private: on, the panel was reached through a CDN or proxy
+ * nobody has confirmed keeps a copy per format, so pictures are negotiated
+ * and the edge keeps no copy of them. original: the same, but the self-test
+ * found the edge keeps private answers too, so requests through it get the
+ * original. on: pictures go out as WebP where the browser reads it, and a
+ * CDN in front (confirmed) keeps a copy per format.
  *
- * @param array $same_address on, cdn => bool (pg_image_delivery_settings())
- * @param bool  $webp_written the server writes WebP (pg_image_derivative_formats())
- * @param bool  $behind_proxy pg_image_behind_proxy() of the panel's request
- * @return string off, no_webp, cdn, on
+ * @param array  $same_address on, cdn => bool (pg_image_delivery_settings())
+ * @param bool   $webp_written the server writes WebP (pg_image_derivative_formats())
+ * @param bool   $behind_proxy pg_image_behind_proxy() of the panel's request
+ * @param string $mode         pg_image_same_address_mode()
+ * @return string off, no_webp, private, original, on
  */
-function pg_image_same_address_state($same_address, $webp_written, $behind_proxy)
+function pg_image_same_address_state($same_address, $webp_written, $behind_proxy, $mode = 'private')
 {
     if (!is_array($same_address) || empty($same_address['on'])) {
         return 'off';
@@ -152,7 +174,7 @@ function pg_image_same_address_state($same_address, $webp_written, $behind_proxy
     }
 
     if ($behind_proxy && empty($same_address['cdn'])) {
-        return 'cdn';
+        return ($mode === 'original') ? 'original' : 'private';
     }
 
     return 'on';
@@ -174,11 +196,12 @@ function pg_image_original_asked($query)
 }
 
 /**
- * Whether the request is Cloudflare Tools' edge check (?pg_vary_check= and
- * 16 hex characters, fresh for every check): it is negotiated through a CDN
- * before the operator confirmed the CDN, since the check is what confirms
- * it. Its own query makes it its own cache entry, so a CDN that ignores Vary
- * hands that copy to no other reader of the picture.
+ * Whether the request is the self-test's (includes/fn/image_vary_check.php):
+ * ?pg_vary_check= and 16 hex characters, fresh for every test. It is
+ * negotiated through a CDN before anyone confirmed the CDN, whatever mode
+ * the last test left, since the test is what confirms it. Its own query
+ * makes it its own cache entry, so a CDN that ignores Vary hands that copy
+ * to no other reader of the picture.
  *
  * @param array $query $_GET
  * @return bool
@@ -192,6 +215,21 @@ function pg_image_vary_check_asked($query)
 }
 
 /**
+ * Whether the self-test asks for the private answer (pg_vary_cache=private
+ * beside its token): it shows whether the edge keeps an answer marked
+ * private, which the public test address cannot.
+ *
+ * @param array $query $_GET
+ * @return bool
+ */
+function pg_image_vary_check_private($query)
+{
+    return pg_image_vary_check_asked($query)
+        && isset($query['pg_vary_cache'])
+        && ($query['pg_vary_cache'] === 'private');
+}
+
+/**
  * The format a picture asked for at its own address is answered in.
  *
  * Only a JPEG or PNG asked for without f= (plain or with w=) is negotiated:
@@ -201,17 +239,24 @@ function pg_image_vary_check_asked($query)
  *
  * vary says the answer depends on Accept (Vary: Accept goes out with it);
  * it is false whenever the switch is off, so a site that has not switched it
- * on sends exactly what it sent before.
+ * on sends exactly what it sent before. private says no shared cache may keep
+ * the answer: it came through a CDN or proxy nobody has confirmed keeps a
+ * copy per format (bit 8), so whatever the edge does with Vary, it hands
+ * nobody a wrong copy. In the original mode (the self-test found the edge
+ * keeps private answers too) such a request gets the original, public, as a
+ * single copy for everyone.
  *
  * @param array|null $row       the config row
  * @param string     $extension the file's, lower case
  * @param array      $query     $_GET
  * @param array      $server    $_SERVER
- * @return array format ('webp', or '' for the original's own), vary (bool)
+ * @param string     $mode      pg_image_same_address_mode()
+ * @return array format ('webp', or '' for the original's own), vary (bool),
+ *               private (bool)
  */
-function pg_image_negotiated_format($row, $extension, $query, $server)
+function pg_image_negotiated_format($row, $extension, $query, $server, $mode = 'private')
 {
-    $none = array('format' => '', 'vary' => false);
+    $none = array('format' => '', 'vary' => false, 'private' => false);
 
     if (!in_array(strtolower((string) $extension), array('jpg', 'jpeg', 'jpe', 'png'), true)) {
         return $none;
@@ -227,15 +272,25 @@ function pg_image_negotiated_format($row, $extension, $query, $server)
         return $none;
     }
 
-    if (pg_image_behind_proxy($server) && !$settings['cdn'] && !pg_image_vary_check_asked($query)) {
-        return array('format' => '', 'vary' => true);
+    $private = false;
+
+    if (pg_image_behind_proxy($server) && !$settings['cdn']) {
+
+        if (pg_image_vary_check_asked($query)) {
+            $private = pg_image_vary_check_private($query);
+        } elseif ($mode === 'original') {
+            return array('format' => '', 'vary' => true, 'private' => false);
+        } else {
+            $private = true;
+        }
     }
 
     $accept = (is_array($server) && isset($server['HTTP_ACCEPT'])) ? $server['HTTP_ACCEPT'] : '';
 
     return array(
-        'format' => pg_image_accepts($accept, 'image/webp') ? 'webp' : '',
-        'vary'   => true);
+        'format'  => pg_image_accepts($accept, 'image/webp') ? 'webp' : '',
+        'vary'    => true,
+        'private' => $private);
 }
 
 /**

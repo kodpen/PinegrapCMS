@@ -84,7 +84,7 @@ function test_dashboard_brief_feature_links_follow_their_screens()
 function test_user_list_calendar_column_needs_the_module()
 {
 	$list = dashboard_module_gates_source('includes/fn/user_list.php');
-	pg_assert_true(strpos($list, "if (CALENDARS === true) {\n            \$columns['manage_calendars']") !== false, 'Calendar Manager column needs Calendars on');
+	pg_assert_true(strpos($list, "if (defined('CALENDARS') && (CALENDARS === true)) {\n            \$columns['manage_calendars']") !== false, 'Calendar Manager column needs Calendars on');
 }
 
 function test_user_list_filters_follow_the_modules()

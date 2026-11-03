@@ -257,6 +257,7 @@ function pg_sms_kinds()
         'otp'       => false,
         'reminder'  => false,
         'stock'     => false,
+        'booking'   => false,
         'marketing' => true,
     );
 }

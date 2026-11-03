@@ -695,5 +695,11 @@ function pg_booking_confirm($booking, $status, $now, $source = 'site')
         db_q("UPDATE bookings SET manage_token = ? WHERE id = ?", array(hash('sha256', $token), $id));
     }
 
+    // booking.created (and booking.confirmed with its mail and text when it
+    // is confirmed at once), after the row is complete.
+    if (function_exists('pg_booking_created')) {
+        pg_booking_created($id, $status);
+    }
+
     return array('answer' => 'ok', 'id' => $id, 'token' => $token);
 }

@@ -67,6 +67,16 @@ if (isset($_POST['vp'])) {
     exit();
 }
 
+// A click on an element marked data-pg-goal on a page experiment's page
+// (pg_experiment_click_inject()): counted for the variant the visitor's
+// pg_exp cookie holds, once a day; nothing else is counted for it.
+if (isset($_POST['xg'])) {
+    if (is_string($_POST['xg']) && ctype_digit($_POST['xg'])) {
+        pg_experiment_goal('click', array('experiment_id' => (int) $_POST['xg'], 'name' => pg_experiment_goal_name($_POST['xn'] ?? '')));
+    }
+    exit();
+}
+
 $page_view_payload = (isset($_POST['p']) && is_string($_POST['p'])) ? $_POST['p'] : '';
 $page_view_signature = (isset($_POST['s']) && is_string($_POST['s'])) ? $_POST['s'] : '';
 
@@ -89,6 +99,9 @@ if ($page_view['exp_id'] > 0) {
         pg_experiment_count_view($page_view_experiment[0], $page_view_experiment[1]);
     }
 }
+
+// A cached copy of a page another page's experiment names as its goal.
+pg_experiment_goal('page', array('page_id' => (int) $page_view['page_id']));
 
 if (defined('VISITOR_TRACKING') && VISITOR_TRACKING) {
 

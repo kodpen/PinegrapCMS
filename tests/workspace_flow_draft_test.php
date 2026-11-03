@@ -308,6 +308,65 @@ function test_ws_flow_ai_problem_hints()
 	pg_assert_contains('retry_after', implode(' ', ws_flow_ai_problem_hints($retry, $catalogue)), 'a retry left without minutes (a set change) brings the hint');
 }
 
+// A post box with an arrow leaving it on yes was meant as the question: it
+// becomes an approval box in the same channel (the request's when the post
+// had none), its message the question, the person who asked the one who
+// answers, its arrows on yes on approved and on no on rejected. A post box
+// with no such arrow, and a graph drafted with nobody asking, stay as sent.
+// Before, the draft kept the post box and an arrow on yes it does not have:
+// nothing waited for the answer and the flow could not be published.
+function test_ws_flow_ai_graph_reads_a_question()
+{
+	$keys = workspace_flow_draft_keys();
+	$args = array(
+		'boxes'  => array(
+			array('id' => 'start', 'kind' => 'manual'),
+			array('id' => 'ask', 'kind' => 'post', 'settings' => array('body' => "Evet mi?\nCevap verin", 'channel_id' => 3)),
+			array('id' => 'yes', 'kind' => 'post', 'label' => 'Evet seçildi', 'settings' => array('body' => 'Evet seçildi', 'channel_id' => 3)),
+			array('id' => 'no', 'kind' => 'post', 'settings' => array('body' => 'Hayır', 'channel_id' => 3)),
+		),
+		'arrows' => array(
+			array('from' => 'start', 'to' => 'ask'),
+			array('from' => 'ask', 'to' => 'yes', 'on' => 'yes'),
+			array('from' => 'ask', 'to' => 'no', 'on' => 'no'),
+		),
+	);
+	$made = ws_flow_ai_graph($args, $keys, array('asker' => 7, 'channel' => 2));
+
+	pg_assert_true($made['ok'], 'made');
+
+	$by = array();
+
+	foreach ($made['graph']['nodes'] as $node) {
+		$by[$node['id']] = $node;
+	}
+
+	pg_assert_same('approval', $by['ask']['kind'], 'the post box that takes yes asks the question');
+	pg_assert_same(3, $by['ask']['config']['channel_id'], 'in its own channel');
+	pg_assert_same('Evet mi? Cevap verin', $by['ask']['config']['title'], 'its message the question');
+	pg_assert_same(array(7), $by['ask']['config']['approvers'], 'the person who asked answers');
+	pg_assert_same('post', $by['yes']['kind'], 'the other posts stay posts');
+	pg_assert_same(array('next', 'approved', 'rejected'), array_column($made['graph']['edges'], 'on'), 'yes leaves on approved, no on rejected');
+	pg_assert_same(array(), array_values(array_filter(ws_flow_graph_check($made['graph']), function ($problem) {
+		return empty($problem['warning']);
+	})), 'publishable as drafted');
+
+	$args['boxes'][1]['settings']['channel_id'] = -1;
+	$own = ws_flow_ai_graph($args, $keys, array('asker' => 7, 'channel' => 2));
+	pg_assert_same(2, $own['graph']['nodes'][1]['config']['channel_id'], 'a post with no channel of its own asks in the request\'s');
+
+	$plain = ws_flow_ai_graph($args, $keys);
+	pg_assert_same('post', $plain['graph']['nodes'][1]['kind'], 'nobody asking: kept as sent');
+
+	unset($args['arrows'][1], $args['arrows'][2]);
+	$args['arrows'][] = array('from' => 'ask', 'to' => 'yes');
+	pg_assert_same('post', ws_flow_ai_graph($args, $keys, array('asker' => 7, 'channel' => 2))['graph']['nodes'][1]['kind'], 'a post with no yes or no arrow stays a post');
+
+	$wiring = workspace_flow_draft_code('ws_flow_ai_propose');
+	pg_assert_contains("ws_flow_ai_graph(\$args, \$keys, array('asker' => (int) \$asker['id'], 'channel' => (int) \$row['channel_id']))", $wiring, 'the request\'s asker and channel');
+	pg_assert_contains("'asker' => (int) \$viewer['id']", workspace_flow_draft_code('ws_flow_ai_sketch'), 'the sketch\'s person too');
+}
+
 // No invented kind and no invented setting.
 function test_ws_flow_ai_node_refusals()
 {
