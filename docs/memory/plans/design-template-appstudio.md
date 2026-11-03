@@ -27,7 +27,7 @@ description: Plan for the Mobile App Developer template (pinegrap-appstudio): ow
 
 - 5 Support: `mail.php`, `support.php` (`support`, `support_view`, `my_tickets`, `staff_tickets`, `privacy`, `email_reply`, notify e-mails).
 
-- 6 Projects: `projects.php` (`hire`, `project_view`, `my_projects`, `staff_projects`, notify e-mails).
+- 6 Done (#6194). Projects: `projects.php` (`hire`, `project_view`, `my_projects`, `staff_projects`, e-mails).
 
 - 7 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Dev Notes", blog post, search, error); test `…_standard_test.php`.
 
