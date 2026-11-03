@@ -5271,6 +5271,18 @@ function pg_password_reset_limits()
 }
 
 /**
+ * The address typed into the forgot password form: one string, else ''
+ * (a posted email[] array, which e() would refuse with a TypeError).
+ *
+ * @param  mixed  $value The form's email field
+ * @return string
+ */
+function pg_password_reset_email($value)
+{
+    return is_scalar($value) ? (string) $value : '';
+}
+
+/**
  * @param  string $email Address the reset was requested for
  * @return void          Denies and exits when either ceiling is passed
  */
