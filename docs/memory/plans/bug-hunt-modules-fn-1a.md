@@ -40,7 +40,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `designer`: open
 
-- `designer_fx`: clean (PR pending; read: normalizer ranges and dropped fields, attribute order and defaults, panel-name filter, marker pattern, head style and fail-safe, inject at `</head>` and the last `</body>`; the editor twins, the canvas and code-view paths, every component case, and `pg_fx.src.js` entrance, stagger, repeat, hover, click, sticky, parallax, reduced motion, replay)
+- `designer_fx`: clean (PR pending)
 
 - `designer_theme_vars`: open
 
