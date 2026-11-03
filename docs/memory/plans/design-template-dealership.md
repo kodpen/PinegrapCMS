@@ -28,7 +28,7 @@ description: Plan for the Car Dealership template (pinegrap-dealership): vehicle
 
 - 6 Done (#6275). Standard: `standard.php`; test `…_standard_test.php`.
 
-- 7 Account and staff: `account.php` (sign-in, My Account, staff area, `blog_new` with samples, account e-mails); test `…_account_test.php`.
+- 7 Done (#6270). Account and staff: `account.php`; test `…_account_test.php`.
 
 - 8 Assembly: `pinegrap-dealership.php` (order 75, icon `bi-car-front`, look `corporate`, palette `cobalt`, contact group `newsletter`, folders, `pdl-` User Styles, search map), the shared tests' lists, `designer/design-template-dealership.md`, plan deleted; PR body names `[NEW] Added the Car Dealership design template`.
 
