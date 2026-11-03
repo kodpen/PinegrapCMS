@@ -199,7 +199,10 @@ function api_webhook_events() {
 		// A design or theme import brings its own files in bulk and stays quiet,
 		// for the same reason the contact import does.
 		'file.created'         => 'A file was uploaded (not design or theme imports)',
-		'form.submitted'       => 'A visitor submitted a form'
+		'form.submitted'       => 'A visitor submitted a form',
+		// The order's completion when the payment service confirmed it, or the
+		// payment staff recorded for an offline one.
+		'form.paid'            => 'The fee of a designed form\'s record was paid'
 	);
 
 	// A module announces its own events from its own file. The core list wins a

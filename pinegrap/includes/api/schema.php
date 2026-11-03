@@ -2795,6 +2795,69 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'calendars.create',
+			'method'  => 'POST',
+			'path'    => '/calendars',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendars_create',
+			'dry_run' => true,
+			'returns' => 'Calendar',
+			'status'  => 201,
+			'summary' => 'Add a calendar',
+			'description' => 'A new, empty calendar, as on the calendar screen. Names are unique: 409 name_taken when another calendar has it. Closed to an owner with the user role, who reaches only the calendars assigned to them (403 forbidden). Events are added with POST /calendars/events.',
+			'params'  => array(
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/calendars/{id}',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendars_update',
+			'dry_run' => true,
+			'returns' => 'Calendar',
+			'summary' => 'Rename a calendar',
+			'description' => 'Names are unique: 409 name_taken when another calendar has it. A calendar outside the ones the owner may open is answered 404. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',   'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 100)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.delete',
+			'method'  => 'DELETE',
+			'path'    => '/calendars/{id}',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendars_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove a calendar',
+			'description' => 'With its user assignments and its place on the calendar pages. Only an empty calendar is removed: 409 calendar_has_events while an event is on it; delete the events or move them to another calendar first. A calendar outside the ones the owner may open is answered 404.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.delete_post',
+			'method'  => 'POST',
+			'path'    => '/calendars/{id}/delete',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendars_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove a calendar, addressed as a POST',
+			'description' => 'The same removal as DELETE /calendars/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Webhooks ----------------------------------------------------- */
 
 		array(
@@ -4901,6 +4964,113 @@ function api_schema() {
 			'summary' => 'Wake this person\'s devices',
 			'description' => 'Sends a push to every registration this person holds and says how many the push services accepted. Each device then shows whatever its bell holds.',
 			'params'  => array()
+		),
+
+		/* ----- Bookings ---------------------------------------------------- */
+
+		array(
+			'id'      => 'bookings.list',
+			'method'  => 'GET',
+			'path'    => '/bookings',
+			'scope'   => 'bookings:read',
+			'handler' => 'api_bookings_list',
+			'returns' => array('list' => 'Booking'),
+			'summary' => 'Appointment bookings',
+			'description' => 'The bookings of the staff agenda by start time, earliest first, cursor paged. status: held (a visitor\'s slot kept for ten minutes while the form is filled; hold_until says until when), requested, confirmed, cancelled, no_show or done; without status every one but held is listed. Times are ISO-8601 UTC; the site\'s zone is site.timezone of GET /meta. source says where it was made: site (the booking widget), panel (the agenda) or api. An owner with the user role reaches only their own staff member\'s bookings. 503 service_unavailable until the database update that adds bookings has run.',
+			'params'  => array(
+				array('name' => 'status',     'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'One status or a comma list of them.'),
+				array('name' => 'staff_id',   'in' => 'query', 'type' => 'int', 'min' => 1),
+				array('name' => 'service_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
+				array('name' => 'from',       'in' => 'query', 'type' => 'datetime', 'description' => 'Only bookings that start at or after this moment.'),
+				array('name' => 'to',         'in' => 'query', 'type' => 'datetime', 'description' => 'Only bookings that start at or before this moment; a bare day counts whole.'),
+				array('name' => 'limit',      'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',     'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'bookings.slots',
+			'method'  => 'GET',
+			'path'    => '/bookings/slots',
+			'scope'   => 'bookings:read',
+			'handler' => 'api_bookings_slots',
+			'returns' => array('day' => 'string', 'timezone' => 'string', 'service_id' => 'integer', 'slots' => 'BookingSlot[]'),
+			'summary' => 'Free times of a day for a service',
+			'description' => 'The starts a staff-made booking may take on the day (in the site\'s zone, named in timezone): the service\'s length and buffers over the staff member\'s hours and day exceptions, minus holidays, their other bookings and live holds, and the busy times of their Workspace calendar, as the agenda offers them. Starts already past are left out; the visitors\' lead time and horizon do not apply. Without staff every enabled staff member who gives the service is asked. POST /bookings accepts exactly these starts. 404 not_found for a service or staff member that is not enabled.',
+			'params'  => array(
+				array('name' => 'service', 'in' => 'query', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The service\'s id.'),
+				array('name' => 'staff',   'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'The staff member\'s id; every one by default.'),
+				array('name' => 'day',     'in' => 'query', 'type' => 'string', 'max_length' => 10, 'required' => true, 'description' => 'YYYY-MM-DD in the site\'s zone.')
+			)
+		),
+
+		array(
+			'id'      => 'bookings.get',
+			'method'  => 'GET',
+			'path'    => '/bookings/{id}',
+			'scope'   => 'bookings:read',
+			'handler' => 'api_bookings_get',
+			'returns' => 'Booking',
+			'summary' => 'One booking',
+			'description' => 'As in the list.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'bookings.create',
+			'method'  => 'POST',
+			'path'    => '/bookings',
+			'scope'   => 'bookings:write',
+			'handler' => 'api_bookings_create',
+			'dry_run' => true,
+			'status'  => 201,
+			'returns' => 'Booking',
+			'summary' => 'Book a time for a customer',
+			'description' => 'A staff-made booking, as the agenda makes it (source api). The staff member must be enabled and give the service, and start_at must be one of the day\'s free starts of GET /bookings/slots; a name and an e-mail address or a phone are needed. 409 slot_taken when the time is no longer free, also when another booking took it at the same moment. Announces booking.created, and booking.confirmed with the customer\'s mail and text when it is confirmed. Answers 201 with the booking.',
+			'params'  => array(
+				array('name' => 'service_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'staff_id',   'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'start_at',   'in' => 'body', 'type' => 'datetime', 'required' => true, 'description' => 'The start, ISO-8601 with its zone.'),
+				array('name' => 'name',       'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'email',      'in' => 'body', 'type' => 'string', 'max_length' => 191),
+				array('name' => 'phone',      'in' => 'body', 'type' => 'string', 'max_length' => 40),
+				array('name' => 'notes',      'in' => 'body', 'type' => 'string', 'max_length' => 2000),
+				array('name' => 'status',     'in' => 'body', 'type' => 'enum', 'values' => array('confirmed', 'requested'), 'default' => 'confirmed', 'description' => 'requested waits for a confirmation and sends no mail yet.')
+			)
+		),
+
+		array(
+			'id'      => 'bookings.status',
+			'method'  => 'POST',
+			'path'    => '/bookings/{id}/status',
+			'scope'   => 'bookings:write',
+			'handler' => 'api_bookings_status',
+			'dry_run' => true,
+			'returns' => 'Booking',
+			'summary' => 'Change a booking\'s status',
+			'description' => 'confirmed (a request or a visitor\'s live hold), no_show or done, as the agenda offers it: cancelled, no_show and done are final, and a hold that ran out can only be cancelled. 409 booking_state when the booking cannot move there, or was changed meanwhile. A booking becoming confirmed announces booking.confirmed and mails the customer. To cancel, use POST /bookings/{id}/cancel.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'status', 'in' => 'body', 'type' => 'enum', 'values' => array('confirmed', 'no_show', 'done'), 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'bookings.cancel',
+			'method'  => 'POST',
+			'path'    => '/bookings/{id}/cancel',
+			'scope'   => 'bookings:write',
+			'handler' => 'api_bookings_cancel',
+			'dry_run' => true,
+			'returns' => 'Booking',
+			'summary' => 'Cancel a booking',
+			'description' => 'The booking is cancelled and its time is free again; the row is kept. A reason is added to the notes as "Cancelled: <reason>". Announces booking.cancelled and tells the customer, except for a visitor\'s hold. 409 booking_state when it is already in a final status, or was changed meanwhile.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'reason', 'in' => 'body', 'type' => 'string', 'max_length' => 500)
+			)
 		)
 
 	);

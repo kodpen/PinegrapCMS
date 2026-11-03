@@ -219,11 +219,13 @@ function test_commerce_delete_confirm_screens_use_the_helpers()
 		'edit_country.php' => "pg_country_form_delete_confirm(...pg_zone_form_member_delete_counts('country', ",
 		'edit_shipping_method.php' => 'pg_shipping_method_form_delete_confirm(...pg_shipping_method_form_delete_counts(',
 		'edit_zone.php' => 'pg_zone_form_delete_confirm(...$usage)',
-		'edit_product_attribute.php' => 'pg_product_attribute_form_delete_confirm(...pg_product_attribute_form_delete_counts(',
+		'edit_product_attribute.php' => 'pg_product_attribute_form_delete_confirm(...$usage)',
 	);
 
 	// Edit Zone reads the counts once: the summary column shows them too.
 	pg_assert_contains('$usage = pg_zone_form_delete_counts($id);', (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_zone.php'), 'edit_zone.php counts the zone\'s users');
+	// So does Edit Product Attribute: its Summary shows the products and groups.
+	pg_assert_contains('$usage = pg_product_attribute_form_delete_counts($id);', (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_product_attribute.php'), 'edit_product_attribute.php counts its products and groups');
 
 	foreach ($pins as $file => $pin) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);

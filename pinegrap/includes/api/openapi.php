@@ -642,6 +642,8 @@ function api_openapi_objects()
         'ShortLink'    => 'api_short_link_schema',
         'Experiment'   => 'api_experiment_schema',
         'ExperimentVariant' => 'api_experiment_variant_schema',
+        'Booking'      => 'api_booking_schema',
+        'BookingSlot'  => 'api_booking_slot_schema',
         'StoreShippingMethod' => 'api_store_shipping_method_schema',
         'StoreZone'    => 'api_store_zone_schema',
         'StoreTaxZone' => 'api_store_tax_zone_schema',

@@ -329,10 +329,21 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
 
     // Delete in chunks of 200: each chunk's rows are read before its deletes and
     // written to the Audit Trail after them, a delete line per contact.
+    // A contact a user account or an ERP account holds stays and is named in
+    // the notice; the rest are deleted.
+    $delete_refusals = array();
+
     foreach (array_chunk($contacts, 200) as $chunk) {
         $audit_ids = array();
+        $chunk_refusals = pg_contact_delete_refusals(array_column($chunk, 'id'));
+        $delete_refusals += $chunk_refusals;
 
-        foreach ($chunk as $contact) {
+        foreach ($chunk as $i => $contact) {
+            if (isset($chunk_refusals[(int) $contact['id']])) {
+                unset($chunk[$i]);
+                continue;
+            }
+
             $audit_ids[] = (int) $contact['id'];
         }
 
@@ -401,6 +412,12 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
 
             $contact_group_list = $row['name'];
         }
+    }
+
+    $number_of_contacts -= count($delete_refusals);
+
+    if ($delete_refusals) {
+        $liveform->add_warning(h(pg_contact_delete_refused_notice($delete_refusals)));
     }
 
     // if at least one contact was deleted

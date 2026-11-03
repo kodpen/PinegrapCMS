@@ -62,6 +62,11 @@ function api_scope_groups() {
 		// winner's design stay in the panel.
 		'experiments' => array('label' => 'Experiments', 'read' => 'experiments:read', 'write' => 'experiments:write'),
 
+		// The appointment bookings of the staff agenda. Writing books a free
+		// time for a customer, moves a booking's status and cancels one; the
+		// services and the staff members' hours stay in the panel.
+		'bookings'  => array('label' => 'Bookings',   'read' => 'bookings:read',  'write' => 'bookings:write'),
+
 		// What visitors wrote under pages, records, products and events.
 		// Writing is moderation: publishing, holding, featuring, removing.
 		'comments'  => array('label' => 'Comments',   'read' => 'comments:read',  'write' => 'comments:write'),
@@ -431,6 +436,22 @@ function api_owner_scopes($owner) {
 		// so handing it to a machine sits with the same roles. A designer
 		// reaches the accounts below it, as on the screen.
 		$scopes[] = 'users:read';
+
+	}
+
+	// The agenda opens to roles 0 to 2 and to a role-3 user who is an enabled
+	// staff member, who sees only their own bookings
+	// (pg_booking_agenda_user_scope()); the endpoints filter for that.
+	if (($role <= 2) || (($role === 3) && function_exists('pg_booking_ready') && pg_booking_ready())) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
+
+		if (pg_booking_agenda_user_scope(array('id' => isset($owner['id']) ? (int)$owner['id'] : 0, 'role' => $role)) !== false) {
+
+			$scopes[] = 'bookings:read';
+			$scopes[] = 'bookings:write';
+
+		}
 
 	}
 

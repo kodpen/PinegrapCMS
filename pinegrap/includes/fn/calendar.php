@@ -19,6 +19,27 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * The name of a duplicated calendar event: the original's with the copy
+ * suffix, the original cut so the suffix still fits the column.
+ *
+ * @param string $name
+ * @param int    $max   calendar_events.name length
+ * @return string
+ */
+function pg_calendar_event_copy_name($name, $max = 100)
+{
+    $name = (string) $name;
+    $suffix_length = mb_strlen(lang(array('string' => '{var:1} (copy)', 'vars' => '')));
+    $copy = lang(array('string' => '{var:1} (copy)', 'vars' => $name));
+
+    if (mb_strlen($copy) <= $max) {
+        return $copy;
+    }
+
+    return lang(array('string' => '{var:1} (copy)', 'vars' => rtrim(mb_substr($name, 0, max(0, $max - $suffix_length)))));
+}
+
+/**
  * The seven days of a calendar row in column order, as date('w') counts
  * them (0 = Sunday), for a week that starts on the given day.
  *

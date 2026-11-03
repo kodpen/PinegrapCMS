@@ -38,7 +38,7 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
 - AN9 (M) Keyframes. Done (#6290, `ui/image-editor-keyframes.md`).
   - A layer's position, scale, rotation and opacity at chosen times (diamonds on its track), eased between; moving a layer with the playhead away from 0 sets one; the path shown on the stage.
 
-- AN10 (M) SVG motion. `free` (E15 and AN1 are done).
+- AN10 (M) SVG motion. Done (#6349, `ui/image-editor-svg-motion.md`).
   - E19's content (`image-editor-animation-output.md`): the presets as `@keyframes` in the saved SVG.
 
 - AN11 (S) Access and close-out. The holder.
