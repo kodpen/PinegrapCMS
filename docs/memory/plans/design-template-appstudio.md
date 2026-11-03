@@ -29,7 +29,7 @@ description: Plan for the Mobile App Developer template (pinegrap-appstudio): ow
 
 - 6 Done (#6194). Projects: `projects.php` (`hire`, `project_view`, `my_projects`, `staff_projects`, e-mails).
 
-- 7 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Dev Notes", blog post, search, error); test `…_standard_test.php`.
+- 7 Done (#6203): `standard.php` (contact, inbox, conversation, newsletter, blog "Dev Notes", blog post, search, error); test `…_standard_test.php`.
 
 - 8 Account and staff: `account.php` (sign-in, My Account, staff area, `blog_new` with samples, account e-mails); test `…_account_test.php`.
 
