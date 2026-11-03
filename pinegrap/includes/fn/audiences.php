@@ -1281,3 +1281,263 @@ function pg_audience_job_run($budget = PG_AUDIENCE_TICK_SECONDS)
 
     return $totals;
 }
+
+// The rule editor (AU3): edit_contact_group.php draws the rules from this
+// catalogue, posts them as JSON and asks for a count while they change.
+
+/**
+ * What the rule editor draws from: every condition with its family, value
+ * kind, operators and labels, the families, contact fields, consents and
+ * subscription states, and the condition cap of a level.
+ *
+ * @return array
+ */
+function pg_audience_editor_data()
+{
+    $operators = pg_audience_operators();
+    $conditions = array();
+
+    foreach (pg_audience_conditions() as $key => $entry) {
+        $ops = array();
+
+        foreach ($entry['ops'] as $op) {
+            $ops[] = array('op' => $op, 'label' => $operators[$op]);
+        }
+
+        $conditions[] = array(
+            'key' => $key,
+            'label' => $entry['label'],
+            'family' => $entry['family'],
+            'value' => $entry['value'],
+            'window' => !empty($entry['window']),
+            'ops' => $ops,
+        );
+    }
+
+    $options = function (array $list) {
+        $out = array();
+
+        foreach ($list as $id => $label) {
+            $out[] = array('id' => (string) $id, 'text' => (string) $label);
+        }
+
+        return $out;
+    };
+
+    $statuses = array();
+
+    foreach (pg_audience_subscription_statuses() as $status) {
+        $statuses[] = array('id' => $status, 'text' => function_exists('pg_subscription_customer_status_label') ? pg_subscription_customer_status_label($status) : $status);
+    }
+
+    return array(
+        'conditions' => $conditions,
+        'families' => array(
+            'contact' => lang('Contact'),
+            'consent' => lang('Consent'),
+            'membership' => lang('Membership'),
+            'orders' => lang('Orders'),
+            'returns' => lang('Returns'),
+            'subscriptions' => lang('Subscriptions'),
+            'forms' => lang('Forms'),
+            'visits' => lang('Visits'),
+            'groups' => lang('Contact Groups'),
+        ),
+        'fields' => $options(pg_audience_contact_fields()),
+        'consents' => $options(pg_audience_consents()),
+        'statuses' => $statuses,
+        'max' => PG_AUDIENCE_MAX_CONDITIONS,
+    );
+}
+
+/**
+ * The record ids a rule set names, by picker kind, each once in the order
+ * met (nested sets included): a form answer names its form field.
+ *
+ * @param mixed $rules
+ * @return array kind => int[]
+ */
+function pg_audience_rules_refs($rules)
+{
+    $refs = array('product' => array(), 'product_group' => array(), 'contact_group' => array(), 'form' => array(), 'form_field' => array());
+    $catalogue = pg_audience_conditions();
+    $walk = function (array $level) use (&$walk, &$refs, $catalogue) {
+        foreach ($level['conditions'] as $condition) {
+            if (isset($condition['conditions'])) {
+                $walk($condition);
+                continue;
+            }
+
+            $kind = $catalogue[$condition['key']]['value'];
+            $id = ($kind === 'form_field') ? $condition['field'] : ($condition['value'] ?? null);
+
+            if (isset($refs[$kind]) && !in_array($id, $refs[$kind], true)) {
+                $refs[$kind][] = $id;
+            }
+        }
+    };
+
+    $walk(pg_audience_rules_clean($rules));
+
+    return $refs;
+}
+
+/**
+ * The kind and rules a save of the contact group form writes: 'dynamic'
+ * only when the switch is on; the rules are cleaned and kept either way, so
+ * a group switched back to static keeps them for a later switch. 'count' is
+ * the number of conditions left at the top level.
+ *
+ * @param array $post
+ * @return array array('kind', 'rules' => JSON text, 'count')
+ */
+function pg_audience_editor_posted(array $post)
+{
+    $kind = (isset($post['kind']) && ($post['kind'] === 'dynamic')) ? 'dynamic' : 'static';
+    $rules = pg_audience_rules_clean(isset($post['rules']) && is_string($post['rules']) ? $post['rules'] : array());
+
+    return array(
+        'kind' => $kind,
+        'rules' => json_encode($rules, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'count' => count($rules['conditions']),
+    );
+}
+
+/**
+ * Whether two stored rule sets select differently, compared in their
+ * cleaned shape (key order and dropped keys do not count).
+ *
+ * @param mixed $old
+ * @param mixed $new
+ * @return bool
+ */
+function pg_audience_rules_changed($old, $new)
+{
+    return pg_audience_rules_clean((string) $old) !== pg_audience_rules_clean((string) $new);
+}
+
+/**
+ * The count line of the editor: exact under 100, rounded above ("about
+ * 1,240 contacts"), '' when there is no count.
+ *
+ * @param int|null $count
+ * @return string
+ */
+function pg_audience_count_text($count)
+{
+    if ($count === null) {
+        return '';
+    }
+
+    $count = max(0, (int) $count);
+
+    if ($count === 0) {
+        return lang('No contacts');
+    }
+
+    if ($count === 1) {
+        return lang('1 contact');
+    }
+
+    if ($count < 100) {
+        return lang(array('string' => '{var:1} contacts', 'vars' => array(pg_format_number($count, 0))));
+    }
+
+    $step = ($count < 10000) ? 10 : (($count < 100000) ? 100 : 1000);
+
+    return lang(array('string' => 'about {var:1} contacts', 'vars' => array(pg_format_number(round($count / $step) * $step, 0))));
+}
+
+/**
+ * The names of the records a rule set names, for the editor's pickers to
+ * show a stored choice: kind => array(id => text).
+ *
+ * @param mixed $rules
+ * @return array
+ */
+function pg_audience_ref_labels($rules)
+{
+    $labels = array();
+
+    foreach (pg_audience_rules_refs($rules) as $kind => $ids) {
+        $labels[$kind] = array();
+
+        if (!$ids) {
+            continue;
+        }
+
+        $marks = implode(', ', array_fill(0, count($ids), '?'));
+
+        foreach (pg_audience_picker_rows($kind, 'id IN (' . $marks . ')', $ids, count($ids)) as $row) {
+            $labels[$kind][(string) $row['id']] = $row['text'];
+        }
+    }
+
+    return $labels;
+}
+
+/**
+ * The editor's picker search: up to 20 records of one kind whose name
+ * contains the text, as {id, text}.
+ *
+ * @param string $kind product, product_group, contact_group, form or form_field
+ * @param string $q
+ * @return array
+ */
+function pg_audience_picker_search($kind, $q)
+{
+    $q = pg_audience_text($q);
+
+    if ($q === '') {
+        return array();
+    }
+
+    return pg_audience_picker_rows($kind, 'name LIKE ?', array(pg_list_like_pattern($q)), 20);
+}
+
+/**
+ * Rows {id, text} of one picker kind matching a condition on the kind's
+ * `id` and `name` columns (both given by a derived table, so the condition
+ * reads the same for every kind).
+ *
+ * @param string $kind
+ * @param string $where  on id and name, with ? placeholders
+ * @param array  $params
+ * @param int    $limit
+ * @return array
+ */
+function pg_audience_picker_rows($kind, $where, array $params, $limit)
+{
+    switch ($kind) {
+        case 'product':
+            $from = "SELECT id, TRIM(CONCAT(short_description, ' (', name, ')')) AS name FROM products";
+            break;
+        case 'product_group':
+            $from = "SELECT id, TRIM(CONCAT(name, IF(short_description <> '', CONCAT(' - ', short_description), ''))) AS name FROM product_groups";
+            break;
+        case 'contact_group':
+            $from = 'SELECT id, name FROM contact_groups';
+            break;
+        case 'form':
+            $from = "SELECT custom_form_pages.page_id AS id, IF(custom_form_pages.form_name <> '', custom_form_pages.form_name, page.page_name) AS name"
+                . ' FROM custom_form_pages INNER JOIN page ON page.page_id = custom_form_pages.page_id';
+            break;
+        case 'form_field':
+            $from = "SELECT form_fields.id, CONCAT(IF(custom_form_pages.form_name <> '', custom_form_pages.form_name, page.page_name), ': ', IF(form_fields.label <> '', form_fields.label, form_fields.name)) AS name"
+                . ' FROM form_fields INNER JOIN custom_form_pages ON custom_form_pages.page_id = form_fields.page_id'
+                . ' INNER JOIN page ON page.page_id = form_fields.page_id'
+                . " WHERE form_fields.type NOT IN ('information', 'file upload')";
+            break;
+        default:
+            return array();
+    }
+
+    $result = db_q('SELECT id, name FROM (' . $from . ') AS pick WHERE ' . $where . ' ORDER BY name LIMIT ' . (int) $limit, $params);
+    $rows = array();
+
+    while ($result && ($row = mysqli_fetch_assoc($result))) {
+        $rows[] = array('id' => (int) $row['id'], 'text' => (string) $row['name']);
+    }
+
+    return $rows;
+}
