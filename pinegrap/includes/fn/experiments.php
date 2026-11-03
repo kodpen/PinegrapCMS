@@ -253,10 +253,12 @@ function pg_experiment_bucket_read()
  * needs no consent; it is listed in pg_consent_catalogue(). $_COOKIE is
  * updated too, so a later read in this request sees it.
  *
- * @param array $pairs experiment id => key
+ * @param array     $pairs  experiment id => key
+ * @param bool|null $secure Secure attribute; null asks pg_request_is_https()
+ *                          (the router, before it is loaded, gives its own)
  * @return bool false when headers are already sent
  */
-function pg_experiment_bucket_write(array $pairs)
+function pg_experiment_bucket_write(array $pairs, $secure = null)
 {
     $value = pg_experiment_bucket_format($pairs);
 
@@ -264,7 +266,11 @@ function pg_experiment_bucket_write(array $pairs)
         return false;
     }
 
-    $secure = function_exists('pg_request_is_https') && pg_request_is_https();
+    if ($secure === null) {
+        $secure = function_exists('pg_request_is_https') && pg_request_is_https();
+    }
+
+    $secure = (bool) $secure;
     $expires = ($value === '') ? time() - 86400 : pg_experiment_bucket_expires(time());
 
     if (PHP_VERSION_ID >= 70300) {
@@ -287,7 +293,27 @@ function pg_experiment_bucket_write(array $pairs)
         $_COOKIE[PG_EXPERIMENT_COOKIE] = $value;
     }
 
+    pg_experiment_bucket_sent(true);
+
     return true;
+}
+
+/**
+ * Whether this request sent the pg_exp cookie (the router's draw or the
+ * page's); with true, notes that it did.
+ *
+ * @param bool|null $set
+ * @return bool
+ */
+function pg_experiment_bucket_sent($set = null)
+{
+    static $sent = false;
+
+    if ($set === true) {
+        $sent = true;
+    }
+
+    return $sent;
 }
 
 /**
@@ -410,3 +436,274 @@ function pg_experiment_for_page($page_id)
     return $experiment;
 }
 
+
+// ── Serving a variant ──────────────────────────────────────────────────────
+//
+// get_page.php asks pg_experiment_serve() once, before the page is drawn: a
+// visitor who joins gets their bucket read or drawn, and get_page_content()
+// takes the body of the variant's draft (pg_experiment_body_page_id()) while
+// the title, meta tags, structured data and address stay the live page's.
+// The page cache keeps one copy per variant (pg_page_cache_variant_key()) and
+// the router draws the bucket itself from the weights the stored copy
+// carries (pg_page_cache_experiment_route()).
+
+/**
+ * The variant key that marks the live page: the one without a draft. '' when
+ * every variant has a draft. Pure.
+ *
+ * @param array $variants key => [draft_page_id, ...]
+ * @return string
+ */
+function pg_experiment_control_key(array $variants)
+{
+    foreach ($variants as $key => $variant) {
+        if ((int) ($variant['draft_page_id'] ?? 0) === 0) {
+            return (string) $key;
+        }
+    }
+
+    return '';
+}
+
+/**
+ * The weights of an experiment's variants, key => weight. Pure.
+ *
+ * @param array $variants key => [weight, ...]
+ * @return array
+ */
+function pg_experiment_weights(array $variants)
+{
+    $weights = array();
+
+    foreach ($variants as $key => $variant) {
+        $weights[(string) $key] = max(0, (int) ($variant['weight'] ?? 0));
+    }
+
+    return $weights;
+}
+
+/**
+ * The variant a visitor sees: the key their bucket holds while that variant
+ * still has a weight, else a new draw. Pure.
+ *
+ * @param array    $weights key => weight
+ * @param string   $bucket  the key the cookie holds for this experiment, ''
+ * @param float    $random  for the draw
+ * @return array ['key' => string ('' when nothing can be drawn), 'drawn' => bool]
+ */
+function pg_experiment_pick(array $weights, $bucket, $random)
+{
+    $bucket = (string) $bucket;
+
+    if (($bucket !== '') && isset($weights[$bucket]) && is_numeric($weights[$bucket]) && ((float) $weights[$bucket] > 0)) {
+        return array('key' => $bucket, 'drawn' => false);
+    }
+
+    $key = pg_experiment_draw($weights, $random);
+
+    return array('key' => $key, 'drawn' => ($key !== ''));
+}
+
+/**
+ * The page whose body is drawn for a page: the variant's draft while this
+ * request serves one of it, else the page itself. Pure over the served
+ * state.
+ *
+ * @param int        $page_id
+ * @param array|null $served pg_experiment_served()
+ * @return int
+ */
+function pg_experiment_body_page_for($page_id, $served)
+{
+    $page_id = (int) $page_id;
+
+    if (!is_array($served) || ((int) ($served['page_id'] ?? 0) !== $page_id) || ((int) ($served['draft_page_id'] ?? 0) <= 0)) {
+        return $page_id;
+    }
+
+    return (int) $served['draft_page_id'];
+}
+
+/**
+ * The experiment this request serves, set once by pg_experiment_serve();
+ * with an argument, sets it (false clears it).
+ *
+ * @param array|false|null $set
+ * @return array|null experiment_id, page_id, key, variant_id, draft_page_id,
+ *                    control_key (the live page's key), weights, drawn
+ */
+function pg_experiment_served($set = null)
+{
+    static $served = null;
+
+    if ($set === false) {
+        $served = null;
+    } elseif (is_array($set)) {
+        $served = $set;
+    }
+
+    return $served;
+}
+
+/**
+ * get_page.php, before the page is drawn: whether a running experiment of
+ * the page serves this request a variant. A visitor who joins gets the key
+ * their pg_exp cookie holds or a new draw, and the cookie is sent when it
+ * was drawn now. Crawlers, staff, the designer, Preview, prototype play and
+ * e-mail bodies get the live page and nothing is set.
+ *
+ * @param int    $page_id
+ * @param string $mode  get_page_content()'s mode
+ * @param bool   $email the page is drawn as an e-mail body
+ * @return array|null pg_experiment_served()
+ */
+function pg_experiment_serve($page_id, $mode = 'preview', $email = false)
+{
+    pg_experiment_served(false);
+
+    if ($email) {
+        return null;
+    }
+
+    $experiment = pg_experiment_for_page($page_id);
+
+    if (($experiment === null) || (pg_experiment_request_excluded(pg_experiment_request_context($mode)) !== '')) {
+        return null;
+    }
+
+    $weights = pg_experiment_weights($experiment['variants']);
+    $buckets = pg_experiment_bucket_read();
+    $pick = pg_experiment_pick($weights, isset($buckets[$experiment['id']]) ? $buckets[$experiment['id']] : '', pg_experiment_random());
+
+    if ($pick['key'] === '') {
+        return null;
+    }
+
+    if ($pick['drawn']) {
+        $buckets[$experiment['id']] = $pick['key'];
+        pg_experiment_bucket_write($buckets);
+    }
+
+    $variant = $experiment['variants'][$pick['key']];
+
+    return pg_experiment_served(array(
+        'experiment_id' => $experiment['id'],
+        'page_id' => (int) $page_id,
+        'key' => $pick['key'],
+        'variant_id' => $variant['id'],
+        'draft_page_id' => $variant['draft_page_id'],
+        'control_key' => pg_experiment_control_key($experiment['variants']),
+        'weights' => $weights,
+        'drawn' => $pick['drawn'],
+    ));
+}
+
+/**
+ * get_page_content(): the page whose body is drawn for $page_id in this
+ * request (the served variant's draft, else the page).
+ *
+ * @param int $page_id
+ * @return int
+ */
+function pg_experiment_body_page_id($page_id)
+{
+    return pg_experiment_body_page_for($page_id, pg_experiment_served());
+}
+
+/**
+ * The generated body of a variant's draft; '' when the draft is gone or has
+ * none, and then the live page's body is drawn.
+ *
+ * @param int $draft_page_id
+ * @return string
+ */
+function pg_experiment_variant_code($draft_page_id)
+{
+    if (((int) $draft_page_id <= 0) || !function_exists('pg_multi_page_design_ready') || !pg_multi_page_design_ready()) {
+        return '';
+    }
+
+    $code = db_value("SELECT page_tree_code FROM page WHERE page_id = '" . (int) $draft_page_id . "' LIMIT 1");
+
+    return is_string($code) ? $code : '';
+}
+
+/**
+ * pg_page_cache_apply() took every Set-Cookie line of a cacheable answer
+ * away: a bucket sent in this request (drawn by the router or by
+ * pg_experiment_serve()) is sent again, or the visitor would draw anew on
+ * every page.
+ */
+function pg_experiment_bucket_resend()
+{
+    if (pg_experiment_bucket_sent()) {
+        pg_experiment_bucket_write(pg_experiment_bucket_read());
+    }
+}
+
+/**
+ * The bucket key of an experiment_hourly row: sha1 of
+ * "day|hour|experiment|variant". Pure.
+ *
+ * @param string $day Y-m-d
+ * @param int    $hour
+ * @param int    $experiment_id
+ * @param int    $variant_id
+ * @return string
+ */
+function pg_experiment_hourly_key($day, $hour, $experiment_id, $variant_id)
+{
+    return sha1((string) $day . '|' . (int) $hour . '|' . (int) $experiment_id . '|' . (int) $variant_id);
+}
+
+/**
+ * Counts one view of a variant into this hour's experiment_hourly row: one
+ * INSERT ... ON DUPLICATE KEY UPDATE.
+ *
+ * @param int $experiment_id
+ * @param int $variant_id
+ * @return bool
+ */
+function pg_experiment_count_view($experiment_id, $variant_id)
+{
+    $experiment_id = (int) $experiment_id;
+    $variant_id = (int) $variant_id;
+
+    if (($experiment_id <= 0) || ($variant_id <= 0) || !pg_schema_has('experiment_hourly')) {
+        return false;
+    }
+
+    $day = date('Y-m-d');
+    $hour = (int) date('G');
+
+    return db_q(
+        "INSERT INTO experiment_hourly (id, day, hour, experiment_id, variant_id, views, goals)
+        VALUES (?, ?, ?, ?, ?, 1, 0)
+        ON DUPLICATE KEY UPDATE views = views + 1",
+        array(pg_experiment_hourly_key($day, $hour, $experiment_id, $variant_id), $day, $hour, $experiment_id, $variant_id)) !== false;
+}
+
+/**
+ * The experiment and variant a page-view beacon names, when that experiment
+ * still runs on the page and the variant is one of its own; null otherwise.
+ * Pure over the running experiment.
+ *
+ * @param array|null $experiment pg_experiment_for_page() of the beacon's page
+ * @param int        $experiment_id
+ * @param int        $variant_id
+ * @return array|null [experiment_id, variant_id]
+ */
+function pg_experiment_beacon_view($experiment, $experiment_id, $variant_id)
+{
+    if (!is_array($experiment) || ((int) $experiment_id <= 0) || ((int) $experiment['id'] !== (int) $experiment_id)) {
+        return null;
+    }
+
+    foreach ($experiment['variants'] as $variant) {
+        if ((int) $variant['id'] === (int) $variant_id) {
+            return array((int) $experiment_id, (int) $variant_id);
+        }
+    }
+
+    return null;
+}

@@ -17,7 +17,7 @@ module: experiments
 ## What is in the pg_exp cookie?
 - `<experiment id>:<key>` pairs joined by dots, sorted by id, at most 20 (oldest ids drop), keys `[a-z0-9]{1,8}`. 90 days, path `/`, HttpOnly, `SameSite=Lax`. `pg_experiment_bucket_read()` / `_write()`; write also updates `$_COOKIE`.
 - Listed in `pg_consent_catalogue()` under necessary (strictly functional, no consent).
-- `pg_page_cache_set_cookie_names()` leaves it out, so setting it keeps a page cacheable. The cacheable path still runs `header_remove('Set-Cookie')`: serving (PX2) must re-send the bucket or the visitor redraws.
+- `pg_page_cache_set_cookie_names()` leaves it out, so setting it keeps a page cacheable. The cacheable path still runs `header_remove('Set-Cookie')`, then sends a bucket written in the request again (`page-experiments-serving.md`).
 
 ## Which requests never join?
 - `pg_experiment_request_excluded()` (pure, first reason wins): `bot` (`pg_request_is_automated()`, the firewall's verdict), `staff` (signed in, role below 3), `designer` (get_page_content mode `edit`), `preview` (`pg_request_is_panel_preview()`), `prototype` (`PG_PROTOTYPE_ENTRY`). Facts from `pg_experiment_request_context($mode)`. They always get the live page.

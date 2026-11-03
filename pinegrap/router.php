@@ -721,6 +721,9 @@ function router_page_cache_module()
     }
 
     require_once(dirname(__FILE__) . '/includes/fn/page_cache.php');
+    // The bucket of a page experiment is read and drawn from a stored copy's
+    // weights; nothing there runs a query.
+    require_once(dirname(__FILE__) . '/includes/fn/experiments.php');
 }
 
 /**

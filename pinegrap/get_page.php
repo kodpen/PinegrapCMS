@@ -2757,8 +2757,15 @@ else
 		$view_page_mode = 'preview';
 	}
 	require_once (dirname(__FILE__) . '/get_page_content.php');
+	// A running page experiment serves a visitor who joins the body of their
+	// variant (includes/fn/experiments.php) and counts the view; the page
+	// cache keeps that copy under the variant.
+	$pg_experiment = function_exists('pg_experiment_serve') ? pg_experiment_serve($page_id, $view_page_mode, $email_mode) : null;
 	$content = get_page_content($page_id, '', '', $view_page_mode, $email_mode, array() , $toolbar, $device_type);
 	$rendered_html_page = true;
+	if (is_array($pg_experiment) && (($_SERVER['REQUEST_METHOD'] ?? '') !== 'HEAD')) {
+		pg_experiment_count_view($pg_experiment['experiment_id'], $pg_experiment['variant_id']);
+	}
 	// if the toolbar should be outputted, then output it
 	if ($toolbar == true)
 	{

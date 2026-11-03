@@ -80,6 +80,16 @@ if (($page_view === null) || pg_request_is_automated()) {
     exit();
 }
 
+// A page experiment's copy counts a view of its variant while that
+// experiment still runs on the page, outside the visitor tracking switch.
+if ($page_view['exp_id'] > 0) {
+    $page_view_experiment = pg_experiment_beacon_view(pg_experiment_for_page($page_view['page_id']), $page_view['exp_id'], $page_view['variant_id']);
+
+    if ($page_view_experiment !== null) {
+        pg_experiment_count_view($page_view_experiment[0], $page_view_experiment[1]);
+    }
+}
+
 if (defined('VISITOR_TRACKING') && VISITOR_TRACKING) {
 
     // init_tracking() reads the referring site from the request; here that
