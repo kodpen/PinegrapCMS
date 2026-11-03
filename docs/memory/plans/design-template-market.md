@@ -26,7 +26,7 @@ description: Plan for the Marketplace template (pinegrap-market): makers' shops 
 
 - 4 Makers: `sellers.php` (`seller_new` with the Sellers collection and samples, `sellers` with filters, `seller` record page with reviews, the home's list widgets).
 
-- 5 Requests: `mail.php`, `requests.php` (`apply`, `application_view`, `my_applications`, `staff_applications`, `help`, `help_view`, `my_help`, `staff_help`, `privacy`, `email_reply`, notify e-mails).
+- 5 Done (#6291). Requests: `mail.php`, `requests.php` (`apply`, `application_view`, `my_applications`, `staff_applications`, `help`, `help_view`, `my_help`, `staff_help`, `privacy`, `email_reply`, notify e-mails).
 
 - 6 Standard: `standard.php` (contact, inbox, conversation, newsletter, Journal blog with maker stories, blog post, search, error); test `…_standard_test.php`.
 
