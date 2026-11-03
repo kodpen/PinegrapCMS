@@ -98,6 +98,10 @@ if (!$_POST) {
         $liveform->assign_field_value('rules', (string) $group_rules['rules']);
     }
     
+    // A static group's hand, form and product rows, reviewed when it is
+    // switched to rules.
+    $switch_review = ($may_edit_rules && ($group_rules['kind'] !== 'dynamic')) ? pg_audience_switch_counts($id) : null;
+
     // if there are no contacts in this contact group, allow delete
     if ($number_of_contacts == 0) {
         $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact group')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
@@ -131,7 +135,7 @@ if (!$_POST) {
                 <form name="form" action="edit_contact_group.php" method="post" >
                     ' . get_token_field() . '
                     ' . pg_contact_group_form_card($liveform) . '
-                    ' . ($audience_ready ? pg_contact_group_rules_card($liveform, $group_rules, $may_edit_rules) : '') . '
+                    ' . ($audience_ready ? pg_contact_group_rules_card($liveform, $group_rules, $may_edit_rules, $switch_review) : '') . '
 
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
@@ -249,6 +253,12 @@ if (!$_POST) {
             $due = (($posted_rules['kind'] === 'dynamic') && (($group_rules['kind'] !== 'dynamic') || pg_audience_rules_changed($group_rules['rules'], $posted_rules['rules'])));
 
             db_q('UPDATE contact_groups SET kind = ?, rules = ?' . ($due ? ', computed_at = 0' : '') . ' WHERE id = ?', array($posted_rules['kind'], $posted_rules['rules'], $id)) or output_error('Query failed.');
+
+            // The switch review's choice for the rows the group had while
+            // static runs once the switch is saved; keep touches nothing.
+            if (($posted_rules['kind'] === 'dynamic') && ($group_rules['kind'] !== 'dynamic')) {
+                pg_audience_switch_apply($id, pg_audience_switch_action($_POST)) or output_error('Query failed.');
+            }
         }
         log_activity(lang(array('string'=>'contact group (name: {var:1}) was modified','vars'=>$liveform->get_field_value('name') )), $_SESSION['sessionusername']);
         $liveform->remove_form();

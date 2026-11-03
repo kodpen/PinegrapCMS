@@ -20,7 +20,7 @@ description: Steps AU1-AU6 of plans/audiences.md: rule model and SQL builder, re
 
 - AU4b (S) Rows the recompute cannot reach. Done in #6307 (`core/audiences-recompute.md`, `core/audiences-doors.md`).
 
-- AU4c (S) Switch review screen. After AU3 (#6223) lands; touches its files (`contact_group_form.php`, `edit_contact_group.php`).
+- AU4c (S) Switch review screen. Done in #6418 (`ui/contact-group-rules.md`, `core/audiences-doors.md`).
   - Decided in #6319: when a group is switched to dynamic, show the count of its hand, form and product rows ("1,240 by hand, 30 from forms, 12 from products") from `pg_audience_switch_review()` and offer remove them or turn them into `rule` rows; default touches nothing. Run the chosen action's statements after the switch is saved. Memory: `core/audiences-doors.md`, `ui/contact-group-rules.md`.
 
 - AU5 (S) Audience token. After AU2 and PX6.

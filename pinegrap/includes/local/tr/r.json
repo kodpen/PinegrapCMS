@@ -1472,6 +1472,7 @@
     "Rule and result records that no offer uses will be permanently deleted.": "Hiçbir teklifin kullanmadığı kural ve sonuç kayıtları kalıcı olarak silinecek.",
     "Rules": "Kurallar",
     "Rules name another folder, not {var:1}": "Kurallar başka bir klasörü gösteriyor, {var:1} değil",
+    "Rules never remove these members. Remove them now, or let the rules decide them: those the rules do not select leave at the next refresh.": "Kurallar bu üyeleri hiçbir zaman çıkarmaz. Onları şimdi çıkarın ya da kuralların karar vermesine izin verin: kuralların seçmedikleri bir sonraki yenilemede gruptan çıkar.",
     "Rules that move work forward on their own.": "İşi kendiliğinden ilerleten kurallar.",
     "Run": "Çalıştır",
     "Run #{var:1} · {var:2}": "Çalıştırma #{var:1} · {var:2}",
