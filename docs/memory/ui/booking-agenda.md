@@ -16,11 +16,11 @@ module: booking_agenda
 ## How is a staff-made booking written?
 - A GET step chooses staff, service (only those the staff member gives) and the day; `pg_booking_agenda_free_slots()` runs `pg_booking_slots()` over the staff member's hours, their other bookings and their Workspace busy times (`pg_booking_agenda_ws_busy()`: own, department and company `ws_events`, an all-day event +1 s). Staff are not held to the visitors' lead time or horizon; policy is only the zone (step = service length).
 - The POST checks `pg_booking_agenda_check()` (staff gives the service, a time, a name, a valid e-mail or a phone), that the start is still offered, then `pg_booking_confirm()` without an id (source `panel`, status confirmed or requested): `'taken'` is "This time has just been taken".
-- No reschedule on this screen (BK5 owns the moved-booking messages).
+- No reschedule on this screen.
 
 ## How do status changes and cancels work?
 - Offered moves: `pg_booking_agenda_moves_now()` = `pg_booking_can_move()` limited to confirmed / cancelled / no-show / done; a hold past `hold_until` only cancels. A live hold confirmed here goes through `pg_booking_confirm()` with its id (stores the manage token).
-- Other changes are one UPDATE `WHERE id AND status = <status read>`; 0 rows is "changed meanwhile". A cancel writes `slot_at = NULL` in the same UPDATE and appends "Cancelled: <reason>" to the notes (`pg_booking_cancel_notes()`): there is no reason column.
+- Other changes are one UPDATE `WHERE id AND status = <status read>` (`pg_booking_agenda_status_write()`, shared with the API); false: "changed meanwhile". A cancel writes `slot_at = NULL` in the same UPDATE and appends "Cancelled: <reason>" to the notes (`pg_booking_cancel_notes()`): there is no reason column.
 
 ## What goes into the audit trail?
 - `pg_audit()` type `booking`, actions create / update / cancel, label `#id`, fields from `pg_booking_agenda_audit_fields()`: service, staff, start, end, status, source and `notes_length`. Name, e-mail, phone and notes stay out, so erasure of a person (later step) does not need the trail. `audit_view.php` links the type to `edit_booking.php?id=`.
