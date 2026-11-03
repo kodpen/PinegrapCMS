@@ -23,7 +23,7 @@ description: Plan for the Mobile App Developer template (pinegrap-appstudio): ow
 
 - 3 Apps: `apps.php` (`app_new` with the Apps collection and samples, `apps` with filters, `app` record page, the home's list widgets).
 
-- 4 Releases and beta: `releases.php` (`release_new` with the Releases collection and samples, `releases` with `?app=`, `beta`, `beta_view`, `staff_beta`).
+- 4 Done (#6195). Releases and beta: `releases.php` (also `home_releases`); test `…_releases_test.php`.
 
 - 5 Support: `mail.php`, `support.php` (`support`, `support_view`, `my_tickets`, `staff_tickets`, `privacy`, `email_reply`, notify e-mails).
 
