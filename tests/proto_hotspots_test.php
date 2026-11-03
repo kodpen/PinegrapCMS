@@ -495,3 +495,53 @@ function test_proto_hotspots_is_bundled()
 
 	pg_assert_same(array('assets/js/pg_proto_hotspots.js'), isset($bundles['assets/js/pg_proto_hotspots.min.js']) ? $bundles['assets/js/pg_proto_hotspots.min.js'] : null, 'the collector has its bundle');
 }
+
+// The frame places shared in the design's tab layout read as layout()'s
+// `saved`, the twin of pg_designer_tab_layout_proto(), and the key a frame
+// is shared under.
+function test_proto_hotspots_shared_places()
+{
+	$proto = array(
+		'p12' => array('x' => 10.6, 'y' => -20),
+		's5'  => array('x' => '300', 'y' => 40),
+		'c:0' => array('x' => 1, 'y' => 1),
+		'p13' => array('x' => 'a', 'y' => 1),
+		's0'  => array('x' => 1, 'y' => 1),
+		'p14' => array('x' => 5e9, 'y' => -5e9),
+		's6'  => 'junk',
+	);
+	$out = proto_hotspots_test_node('out = { places: H.places(' . proto_hotspots_test_js($proto) . '), none: H.places(null), keys: ["p:p12", "s:5", "p:new1_2", "c:0", "s:0", "x"].map(H.placeKey) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'p:p12' => array('x' => 11, 'y' => -20),
+		's:5'   => array('x' => 300, 'y' => 40),
+		'p:p14' => array('x' => 1000000, 'y' => -1000000),
+	), $out['places'], 'the shared places by frame id');
+	pg_assert_same(array(), $out['none'], 'no layout, no places');
+	pg_assert_same(array('p12', 's5', '', '', '', ''), $out['keys'], 'saved tabs and shared components are shared, the rest not');
+
+	// The PHP normaliser keeps the same places for the design's pages.
+	$php = pg_designer_tab_layout_normalize(array('proto' => $proto), array(12, 14));
+	$back = array();
+	foreach ($php['proto'] as $key => $at) {
+		$back[($key[0] === 'p' ? 'p:p' : 's:') . substr($key, 1)] = $at;
+	}
+	pg_assert_same($back, $out['places'], 'twin of pg_designer_tab_layout_proto()');
+}
+
+function test_proto_hotspots_layout_takes_shared_places()
+{
+	$out = proto_hotspots_test_node('var d = { pages: [{ key: "p12", name: "home", hotspots: [] }, { key: "p13", name: "about", hotspots: [] }], shared: [] };'
+		. ' var l = H.layout(d, H.places({ p13: { x: 900, y: 50 } }));'
+		. ' out = l.frames.map(function (f) { return [f.id, f.x, f.y]; });');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(array('p:p12', 0, 0), array('p:p13', 900, 50)), $out, 'a shared place moves its frame');
+}
