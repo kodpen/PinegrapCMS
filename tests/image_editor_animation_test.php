@@ -139,3 +139,22 @@ function test_image_editor_animation_model()
 	pg_assert_same(null, $r['under'], 'nothing to offer under the limit');
 	pg_assert_same(array('new', 'replace', 'new', 'new'), $r['modes'], 'replace only the same format');
 }
+
+// A document the browser sends never keeps an animation member: a still or
+// canvas save could otherwise name another file as its source. Only rows
+// marked on the server open as an animation.
+function test_image_editor_animation_marker_from_the_browser_is_dropped()
+{
+	$doc = json_decode('{"v":1,"source":{"fileId":7,"width":40,"height":30},"geometry":{},"adjust":{},"layers":[],"animation":{"source":99,"base":1,"format":"gif"}}');
+	$kept = json_decode(pg_file_versions_doc_json($doc, 1), true);
+
+	pg_assert_false(isset($kept['animation']), 'a still save drops it');
+	pg_assert_true(isset($doc->animation), 'the request itself is left alone');
+
+	$board = json_decode('{"v":1,"artboard":{"width":100,"height":80,"background":"#fff"},"layers":[],"animation":{"source":99,"base":1,"format":"gif"}}');
+	$kept = json_decode(pg_image_editor_canvas_doc_json($board), true);
+
+	pg_assert_false(isset($kept['animation']), 'a canvas save drops it');
+	pg_assert_same('animation', pg_image_editor_animation_source(), 'the server-side marker');
+	pg_assert_true(strlen(pg_image_editor_animation_source()) <= 16, 'fits file_versions.source');
+}

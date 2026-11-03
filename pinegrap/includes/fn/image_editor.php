@@ -1863,7 +1863,7 @@ function pg_file_versions_doc_json($doc, $base_no)
         return '';
     }
 
-    $doc = clone $doc;
+    $doc = pg_image_editor_animation_strip(clone $doc);
     $doc->source = clone $doc->source;
     $doc->source->base = (int) $base_no;
     $json = json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -2696,7 +2696,7 @@ function pg_image_editor_canvas_doc_json($doc)
         return '';
     }
 
-    $json = json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $json = json_encode(pg_image_editor_animation_strip($doc), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
     return (is_string($json) && pg_file_versions_doc_storable($json)) ? $json : '';
 }
@@ -3548,6 +3548,33 @@ function pg_image_editor_animation_doc_json($doc, $source_id, $base_no, $format)
 }
 
 /**
+ * The version rows action animation writes are marked by their source, on
+ * the server; the document's animation member alone proves nothing. Pure.
+ */
+function pg_image_editor_animation_source()
+{
+    return 'animation';
+}
+
+/**
+ * A document the browser sent, without an animation member: only action
+ * animation writes one (pg_image_editor_animation_doc_json()). Works on the
+ * object decode, which it copies. Pure.
+ *
+ * @param mixed $doc
+ * @return mixed
+ */
+function pg_image_editor_animation_strip($doc)
+{
+    if (is_object($doc) && property_exists($doc, 'animation')) {
+        $doc = clone $doc;
+        unset($doc->animation);
+    }
+
+    return $doc;
+}
+
+/**
  * The animation member of a kept document, or null for any other. Pure.
  *
  * @param string $json a version row's doc_json
@@ -3613,7 +3640,9 @@ function pg_image_editor_animation_file($file_id)
     $newest = (($path !== '') && is_file($path)) ? pg_file_versions_newest((int) $row['id']) : null;
     $animation = $newest ? pg_image_editor_animation_of($newest['doc_json']) : null;
 
-    if (!$animation || !pg_file_versions_matches_file($newest, $path)) {
+    // Only a row action animation wrote: a document a still save kept is
+    // the browser's, which could name any file as its source.
+    if (!$animation || ((string) $newest['source'] !== pg_image_editor_animation_source()) || !pg_file_versions_matches_file($newest, $path)) {
         return null;
     }
 
@@ -3766,22 +3795,26 @@ function pg_image_editor_action_animation($request, $user)
         }
 
     } elseif ($file_id > 0) {
-        $row = db_item("SELECT id, name, folder FROM files WHERE id = '" . $file_id . "' LIMIT 1");
+        // A saved canvas, with the same checks as opening it (the bin, an
+        // ERP document, edit access).
+        $file = pg_image_editor_file($file_id, $user);
 
-        if (!$row) {
-            return pg_image_editor_refusal(lang('Sorry, we could not find the file.'));
+        if ($file['refusal']) {
+            return $file['refusal'];
         }
 
-        $folder = (int) $row['folder'];
-        $stem = (string) $row['name'];
+        $folder = (int) $file['row']['folder'];
+        $stem = (string) $file['row']['name'];
 
     } else {
         $folder = isset($request['folder_id']) ? (int) $request['folder_id'] : 0;
         $stem = isset($request['name']) ? (string) $request['name'] : '';
+    }
 
-        if ($folder <= 0) {
-            return pg_image_editor_refusal(lang('Invalid request.'));
-        }
+    // A file outside every folder (an ERP document's) gets no animation
+    // beside it.
+    if ($folder <= 0) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
     // The bin folder takes no new file, as the File Manager's upload and
@@ -3836,7 +3869,7 @@ function pg_image_editor_action_animation($request, $user)
     $json = pg_file_versions_ready() ? pg_image_editor_animation_doc_json($doc, $source_id, $base_no, $format) : '';
 
     if ($json !== '') {
-        pg_file_versions_add((int) $record[0]['id'], $path, $json, ($mode === 'replace') ? 'save' : 'new', $user['id'], false, $format);
+        pg_file_versions_add((int) $record[0]['id'], $path, $json, pg_image_editor_animation_source(), $user['id'], false, $format);
 
         if ($mode === 'replace') {
             pg_file_versions_prune((int) $record[0]['id']);
