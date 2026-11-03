@@ -46,3 +46,43 @@ function test_page_list_broken_folder_chain_has_no_style()
 
 	pg_assert_same(array(5 => 0, 6 => 0, 7 => 0), pg_page_list_folder_styles($folders, 'desktop'));
 }
+
+function test_page_list_filter_name_falls_back_to_default()
+{
+	$filters = array('all_my_pages' => array(), 'my_home_pages' => array());
+
+	pg_assert_same('my_home_pages', pg_page_list_filter_name('my_home_pages', $filters));
+	pg_assert_same('default', pg_page_list_filter_name('seo_orphan', $filters), 'a view the upgrade has not made available');
+	pg_assert_same('default', pg_page_list_filter_name(array('my_home_pages'), $filters), 'a view sent as an array');
+	pg_assert_same('default', pg_page_list_filter_name('', $filters));
+}
+
+function test_page_list_where_keeps_archive_bin_and_folders()
+{
+	pg_assert_same(
+		"(page.page_home = 'yes') AND ((folder.folder_archived = '0' OR folder.folder_archived IS NULL) AND (page.page_folder NOT IN (9)))",
+		pg_page_list_where("(page.page_home = 'yes')", false, array(9), null));
+
+	pg_assert_same(
+		"((folder.folder_archived = '1') OR (page.page_folder IN (9))) AND (page.page_folder IN (3, 4))",
+		pg_page_list_where('', true, array(9), array('3', 4)));
+
+	pg_assert_same(
+		"((folder.folder_archived = '0' OR folder.folder_archived IS NULL)) AND (1 = 0)",
+		pg_page_list_where('', false, array(), array()),
+		'no folder the user can reach lists nothing');
+}
+
+function test_page_list_filters_keep_every_view_of_the_screen()
+{
+	$filters = pg_page_list_filters();
+
+	foreach (array('all_my_pages', 'all_my_archived_pages', 'my_home_pages', 'my_rss_enabled_pages', 'my_custom_form_pages', 'my_private_pages') as $name) {
+		pg_assert_true(isset($filters[$name]), $name);
+	}
+
+	pg_assert_same('public', $filters['my_sitemap_pages']['access']);
+	pg_assert_same(true, $filters['my_rss_enabled_pages']['group']);
+	pg_assert_contains('custom_form_pages.form_name', $filters['my_custom_form_pages']['select']);
+	pg_assert_same("(page.page_type = 'standard')", $filters['my_standard_pages']['where']);
+}
