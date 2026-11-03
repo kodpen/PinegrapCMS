@@ -18,7 +18,7 @@ description: Plan for the Car Dealership template (pinegrap-dealership): vehicle
 ## Which steps are there?
 - 1 Done (#6214). Data and shared parts: `parts.php` (builders, the dealer, makes, bodies, fuels, sample vehicles, services, finance terms, pick lists; account bar, header, footer, test drive band, vehicle card and facts, page shells, form fields, comment thread, staff bar); test `design_template_dealership_test.php`.
 
-- 2 Done (#6262). Public pages: `pages_public.php` (home, service, finance, about, visit, FAQ); the home places widgets `home_vehicles` (step 3), `google_reviews` and `home_posts` (step 6) and the shared `test_drive_band`; test `…_public_test.php`.
+- 2 Done (#6262). Public pages: `pages_public.php`; the home places `home_vehicles` (step 3), `google_reviews`, `home_posts` (step 6).
 
 - 3 Vehicles: `vehicles.php` (`vehicle_new` with the Vehicles collection and samples, `vehicles` with filters, `new_cars`, `used_cars`, `vehicle` record page, the home's list widgets).
 
