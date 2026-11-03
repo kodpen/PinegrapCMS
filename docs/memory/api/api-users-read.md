@@ -4,7 +4,7 @@ description: External API GET /users and /users/{id} (users:read, roles 0-1): th
 ---
 
 ## Which routes and scope?
-- `GET /users`, `GET /users/{id}` (`includes/api/resources/users.php`), scope `users:read` in `api_scope_groups()` with no write half yet (the writes are step X13 of `plans/external-api-coverage-2.md`). `api_owner_scopes()` gives it to roles 0-1 only, although `view_users.php` opens to managers: the list of every account with its rights and second factor is the map of who reaches what (PR #PRNUM).
+- `GET /users`, `GET /users/{id}` (`includes/api/resources/users.php`), scope `users:read` in `api_scope_groups()` with no write half yet (the writes are step X13 of `plans/external-api-coverage-2.md`). `api_owner_scopes()` gives it to roles 0-1 only, although `view_users.php` opens to managers: the list of every account with its rights and second factor is the map of who reaches what (PR #5898).
 - `api_assistant_scopes_left_out()` leaves `users:read` out of an assistant's key, like `site_log:read` and `system:read`; an administrator can add it in Application Access.
 
 ## Which rows does an owner reach?
