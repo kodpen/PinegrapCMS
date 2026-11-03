@@ -2711,6 +2711,8 @@
     "Step Head": "Adım Başlığı",
     "Step Number": "Adım Numarası",
     "Step Number Circle": "Adım Numarası Dairesi",
+    "Step break (the controls after it are the next step)": "Adım ayracı (ardından gelen alanlar sonraki adımdır)",
+    "Step {var:1} of {var:2}": "Adım {var:1} / {var:2}",
     "Step {var}": "Adım {var}",
     "Step-by-step guides for the things people do every day.": "Her gün yapılan işler için adım adım rehberler.",
     "Steps": "Adımlar",

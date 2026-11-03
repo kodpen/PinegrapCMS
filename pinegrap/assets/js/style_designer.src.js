@@ -2919,6 +2919,7 @@ const StyleDesigner = (function () {
         floating:   { label: _sdT('Floating label'),   control: 'floating', type: 'text',           icon: 'bi-textarea-t',               name: 'metin' },
         label:      { label: _sdT('Label'),           control: 'label',    type: '',               icon: 'bi-tag',                      name: '' },
         group:      { label: _sdT('Field group'),       control: 'wrapper',  type: '',               icon: 'bi-bounding-box',             name: '' },
+        step:       { label: _sdT('Step'),             control: 'step',     type: '',               icon: 'bi-signpost-split',           name: '' },
         submit:     { label: _sdT('Submit button'),   control: 'submit',   type: '',               icon: 'bi-send',                     name: '' },
         reset:      { label: _sdT('Reset button'),  control: 'reset',    type: '',               icon: 'bi-arrow-counterclockwise',   name: '' },
         captcha:    { label: _sdT('CAPTCHA'),          control: 'captcha',  type: '',               icon: 'bi-shield-check',             name: '' },
@@ -2928,7 +2929,7 @@ const StyleDesigner = (function () {
     // The palette's Form category, from the table above, in this order.
     var CF_PALETTE_ORDER = ['text', 'email', 'tel', 'number', 'url', 'password', 'textarea', 'select', 'multi',
                             'checkbox', 'checkgroup', 'radiogroup', 'toggle', 'date', 'time', 'datetime', 'file',
-                            'color', 'range', 'hidden', 'floating', 'label', 'group', 'submit', 'reset', 'captcha', 'form'];
+                            'color', 'range', 'hidden', 'floating', 'label', 'group', 'step', 'submit', 'reset', 'captcha', 'form'];
 
     /**
      * A ready-to-fill block for one palette kind.
@@ -2969,6 +2970,12 @@ const StyleDesigner = (function () {
             case 'reset':
                 return createNode('semantic', { tag: 'button', cssClass: 'btn btn-outline-secondary', text: _sdT('Reset'),
                     customName: _sdT('Reset'), _attrs: [{ name: 'type', value: 'reset' }] });
+            case 'step':
+                // A break: the controls after it, up to the next break, are
+                // one step of the form on the site (Back, Next, progress).
+                // Its text is the step's title, its classes the legend's.
+                return createNode('semantic', { tag: 'div', cssClass: 'h5 border-top pt-3 mt-4', text: _sdT('Step'),
+                    customName: _sdT('Step'), _bindings: { section: 'form_step' } });
             case 'captcha':
                 // The site-wide CAPTCHA. The container disappears with it when
                 // the setting is off or the visitor is signed in.
@@ -41592,6 +41599,8 @@ const StyleDesigner = (function () {
             // visitor and when the setting is off, and the container goes
             // with it — an empty box under a heading reads as a failure.
             out.push(['captcha',           _sdT('CAPTCHA (depends on the site setting; hidden for a signed-in visitor)')]);
+            // A break: what follows it is the next step of the form.
+            out.push(['form_step',         _sdT('Step break (the controls after it are the next step)')]);
         } else if (type === 'login_form') {
             // Each block is the server's ready-made element and is
             // absent - container included - when its feature is off.
