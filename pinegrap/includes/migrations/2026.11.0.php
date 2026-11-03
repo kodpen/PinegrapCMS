@@ -149,6 +149,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_form_fee();                // 11.0.158
 	upgrade_2026_11_0_store_credit();            // 11.0.159
 	upgrade_2026_11_0_user_disabled();           // 11.0.160
+	upgrade_2026_11_0_booking_campaigns();       // 11.0.161
 
 }
 
@@ -4852,5 +4853,62 @@ function upgrade_2026_11_0_store_credit() {
 	install_add_index('gift_cards', 'idx_user', "INDEX idx_user (user_id)");
 
 	install_note('Gift cards: a card can belong to a customer as store credit, with where it came from, why it was issued and when it expires.');
+
+}
+
+// The booking e-mails (2026.11.0, 11.0.161; includes/fn/booking_messages.php).
+// Campaign profiles of four new actions mail a booking's customer when it is
+// confirmed, before it starts, when it is moved and when it is cancelled. A
+// campaign made from such a profile copies the action into
+// email_campaigns.action, so both lists are widened, as
+// upgrade_2026_11_0_subscription_price_notice() does: the list is read first
+// and only appended to, each value once, the null rule and the default kept.
+function upgrade_2026_11_0_booking_campaigns() {
+
+	$actions = array('booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled');
+
+	foreach (array('email_campaign_profiles', 'email_campaigns') as $table) {
+
+		$action = install_column_info($table, 'action');
+
+		if (!$action) {
+
+			continue;
+
+		}
+
+		preg_match_all("/'((?:[^']|'')*)'/", (string) $action['Type'], $matches);
+
+		$values = $matches[1];
+		$added = false;
+
+		foreach ($actions as $value) {
+
+			if (!in_array($value, $values, true)) {
+
+				$values[] = $value;
+				$added = true;
+
+			}
+
+		}
+
+		if (!$added) {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => $table . '.action booking_*')));
+
+			continue;
+
+		}
+
+		$definition = "ENUM('" . implode("','", $values) . "')"
+			. ((($action['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+			. (($action['Default'] !== null) ? " DEFAULT '" . e((string) $action['Default']) . "'" : '');
+
+		install_modify_column($table, 'action', $definition);
+
+	}
+
+	install_note('E-mail campaigns: automatic e-mails gain the booking confirmed, booking reminder, booking rescheduled and booking cancelled actions. Nothing is sent until such a profile is created.');
 
 }
