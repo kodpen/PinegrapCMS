@@ -26,46 +26,14 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 // The parts as the template file reads them: parts.php, mail.php, then
-// standard.php in the same scope. Read once per run. Where mail.php is not
-// in the tree yet, the e-mail builders are stood in by plain nodes of the
-// same signatures, which is all these tests read of them.
+// standard.php in the same scope. Read once per run.
 function _test_social_std_load()
 {
 	static $out = null;
 	if ($out !== null) return $out;
 	$dir = PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-social';
 	include $dir . '/parts.php';
-	if (is_file($dir . '/mail.php')) {
-		include $dir . '/mail.php';
-	} else {
-		$mail_style = function ($css) use ($attr) {
-			return array('_attrs' => array($attr('style', $css)));
-		};
-		$mail_page = function ($children) use ($el, $shared) {
-			return array('type' => 'root', 'props' => array('cssClass' => ''), 'children' => array(
-				$shared('email_header'), $el('div', 'p-4', '', $children), $shared('email_footer'),
-			));
-		};
-		$mail_heading = function ($text) use ($heading) {
-			return $heading('h1', $text, 'h4');
-		};
-		$mail_para = function ($text, $class = 'mb-3', $style = '') use ($para) {
-			return $para($text, $class);
-		};
-		$mail_button = function ($text, $href, $extra = array()) use ($el, $link) {
-			return $el('p', 'my-4', '', array($link($text, $href, 'btn btn-primary', array(), $extra)));
-		};
-		$mail_line = function ($label, $values) use ($el) {
-			return $el('p', 'mb-1', $label, $values);
-		};
-		$mail_box = function ($children, $name) use ($el) {
-			return $el('div', 'p-3', $name, $children);
-		};
-		$mail_greeting = function () use ($el) {
-			return $el('p', 'mb-3', '');
-		};
-		$mail_settings = array('folder' => 'private', 'search' => false, 'sitemap' => false, 'noindex' => true);
-	}
+	include $dir . '/mail.php';
 	$out = include $dir . '/standard.php';
 	return $out;
 }
@@ -210,6 +178,10 @@ function test_social_standard_contact_newsletter_and_threads()
 	pg_assert_same('{{tab:contact}}', $w['inbox_list']['config']['custom_form_page_id']);
 	pg_assert_same(true, $w['inbox_list']['config']['viewer_filter']);
 	pg_assert_same('all', $w['site_search']['config']['search_scope']);
+
+	// The sender's confirmation greets them by the name the contact form
+	// recorded.
+	pg_assert_contains('"_bindings":{"text":"first_name"}', json_encode($w['email_message_sender']['tree']), 'greeting binds first_name');
 }
 
 // Ids are unique per page and carry the template's sc- prefix (the comment

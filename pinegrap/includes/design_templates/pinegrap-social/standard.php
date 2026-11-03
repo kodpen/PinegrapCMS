@@ -806,7 +806,7 @@ $standard_widgets = array(
         ),
         'tree'   => $widget_root(array(
             $mail_heading(lang('Your message has reached us')),
-            $mail_greeting(),
+            $mail_greeting('first_name', lang('Jane')),
             $mail_para(lang('Thank you for writing to us. Our answer will be on the conversation page and in your inbox, and we will let you know by e-mail when it is there.')),
             $mail_box(array(
                 $el('p', 'fw-semibold mb-2', lang('Subject'), array(), array_merge(
