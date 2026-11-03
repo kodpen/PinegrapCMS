@@ -139,15 +139,34 @@ $file['name'] = $_GET['name'];
 // when we check if the file exists on the file system, that check will be successful
 // on case-sensitive operating systems (e.g. Unix).  This is necessary,
 // because the visitor might not request the file with the correct case.
+// Where the bytes are (files.storage, 2026.11.0): until the upgrade has run
+// the columns are missing and the query fails (false, mysqli reporting is
+// off), so the file is read as local with the older query.
 $query =
     "SELECT
         id,
         name,
         folder AS folder_id,
-        attachment
+        attachment,
+        type,
+        size,
+        storage,
+        storage_key
     FROM files
     WHERE name = '" . escape($file['name']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = @mysqli_query(db::$con, $query);
+
+if ($result === false) {
+    $query =
+        "SELECT
+            id,
+            name,
+            folder AS folder_id,
+            attachment
+        FROM files
+        WHERE name = '" . escape($file['name']) . "'";
+    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+}
 
 // if the file does not exist, then output error
 if (mysqli_num_rows($result) == 0) {
@@ -160,6 +179,10 @@ $file['id'] = $row['id'];
 $file['name'] = $row['name'];
 $file['folder_id'] = $row['folder_id'];
 $file['attachment'] = $row['attachment'];
+$file['type'] = isset($row['type']) ? (string) $row['type'] : '';
+$file['size'] = isset($row['size']) ? (int) $row['size'] : 0;
+$file['stored'] = isset($row['storage']) && ($row['storage'] === 's3') && !empty($row['storage_key']);
+$file['storage_key'] = $file['stored'] ? (string) $row['storage_key'] : '';
 
 // The DKIM signing key lives in the file directory so the mailer can read it,
 // and older installations registered it in a public folder. It must never
@@ -307,8 +330,11 @@ if (defined('FILE_DIRECTORY_PATH') == false) {
     define('FILE_DIRECTORY_PATH', dirname(__FILE__) . '/data/files');
 }
 
-// if the file does not exist on the file system, then output error
-if (file_exists(FILE_DIRECTORY_PATH . '/' . $file['name']) == FALSE) {
+// if the file does not exist on the file system, then output error. A file
+// in the object store has no bytes here; it is answered further below.
+$file['local'] = file_exists(FILE_DIRECTORY_PATH . '/' . $file['name']);
+
+if (!$file['local'] && !$file['stored']) {
     output_error(get_file_text('Sorry, a record of the file exists in the database, but the actual file does not exist on the file system.  The administrator should restore the file on the file system or delete the file in the control panel and re-upload the file.'), 404);
 }
 
@@ -1102,12 +1128,53 @@ if ((isset($_GET['w']) || isset($_GET['f']) || ($image_negotiation['format'] !==
     }
 }
 
+// A file in the object store, past every access check above
+// (includes/file_store_serve.php): a local file or a cached copy is sent as
+// any file is; otherwise the browser goes to a presigned address that lives
+// five minutes, asked to answer with this file's type and name. The
+// settings are read before the connection closes.
+$file_store_answer = '';
+$file_store_url = '';
+$file_store_copy = '';
+
+if ($file['stored'] && !$file['local']) {
+    require_once(dirname(__FILE__) . '/includes/file_store_serve.php');
+
+    $file_store_copy = pg_file_serve_cached_copy($file['id'], $file['type'], $file['size']);
+
+    if ($file_store_copy === '') {
+        $file_store_type = isset($mimetype[$extension]) ? $mimetype[$extension] : 'application/octet-stream';
+
+        $file_store_url = pg_os_presign(
+            pg_file_serve_store_config(db::$con),
+            $file['storage_key'],
+            300,
+            array(
+                'content_type' => $file_store_type,
+                'disposition'  => pg_file_serve_disposition($file['name'], $file_store_type !== 'application/octet-stream'),
+            ));
+    }
+
+    $file_store_answer = pg_file_serve_plan(false, $file_store_copy, $file_store_url);
+}
+
 if (isset(db::$con) && db::$con) {
     @mysqli_close(db::$con);
     db::$con = null;
 }
 
-$file['path'] = FILE_DIRECTORY_PATH . '/' . $file['name'];
+if ($file_store_answer === 'unavailable') {
+    output_error(get_file_text('Sorry, the file that you requested cannot be reached right now. Please try again later.'), 503);
+}
+
+if ($file_store_answer === 'redirect') {
+    // Short enough that a kept answer never outlives the address it names.
+    header('Cache-Control: private, max-age=240');
+    header('Location: ' . $file_store_url, true, 302);
+    exit();
+}
+
+$file['path'] = ($file_store_answer === 'copy') ? $file_store_copy : FILE_DIRECTORY_PATH . '/' . $file['name'];
 $file['download_name'] = $file['name'];
 
 // A responsive derivative: the picture at one of a few fixed widths, or as
@@ -1305,7 +1372,7 @@ if ($if_modified_since == $last_modified) {
 // We can't use x-sendfile for CSS files because they might contain paths that need to be replaced.
 // A derivative is sent by PHP as well: it is small, and it sits in
 // data/cache/img, which mod_xsendfile's XSendFilePath may not allow.
-} else if (defined('XSENDFILE') and XSENDFILE and ($derivative_status !== 'derivative')) {
+} else if (defined('XSENDFILE') and XSENDFILE and ($derivative_status !== 'derivative') and ($file_store_answer !== 'copy')) {
     // we have to use an absolute path because x-sendfile assumes relative paths
     // are relative to the virtual files directory
     header('X-Sendfile: ' . FILE_DIRECTORY_PATH . '/' . $file['name']);

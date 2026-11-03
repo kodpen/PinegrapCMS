@@ -87,7 +87,8 @@ function pg_file_storage_key($id, $name)
 /**
  * Whether the move job may take a row. Design and theme files stay on the
  * disk: the designer, the code editors and the theme screens read and write
- * them by path all the time. The DKIM key stays (pg_file_withheld()).
+ * them by path all the time. So do style sheets and scripts, and the DKIM
+ * key (pg_file_withheld()).
  *
  * @param array $row id, name, design, theme
  * @return bool
@@ -97,6 +98,12 @@ function pg_file_storage_movable(array $row)
     $name = isset($row['name']) ? trim((string) $row['name']) : '';
 
     if (($name === '') || ($name !== pg_basename($name)) || pg_file_withheld($name)) {
+        return false;
+    }
+
+    // get_file.php rewrites {path} in a style sheet or script as it sends
+    // it, which a redirect to the store would skip.
+    if (in_array(strtolower((string) substr(strrchr($name, '.'), 1)), array('css', 'js'), true)) {
         return false;
     }
 
@@ -620,4 +627,162 @@ function pg_file_cache_sweep()
     }
 
     return $freed;
+}
+
+
+/**
+ * Stored rows whose name has a file on the disk again: a door that replaces
+ * a file's bytes writes them locally, and get_file.php already sends that
+ * file. The row goes back to local, its cached copy goes, and the move job
+ * sends the new bytes on a later pass; the old object is left to
+ * pg_file_storage_orphan_sweep(). Walks the stored rows by id, $limit a
+ * tick, the place kept in config_text object_storage_reconcile.
+ *
+ * @param int $limit
+ * @return int rows set back to local
+ */
+function pg_file_storage_reconcile_run($limit = 500)
+{
+    if (!pg_file_storage_ready() || !defined('FILE_DIRECTORY_PATH')) {
+        return 0;
+    }
+
+    $cursor = (int) pg_config_text('object_storage_reconcile');
+    $rows = db_items("SELECT id, name FROM files WHERE storage = 's3' AND id > " . $cursor . " ORDER BY id LIMIT " . max(1, (int) $limit));
+
+    if (!is_array($rows)) {
+        return 0;
+    }
+
+    $reset = 0;
+
+    foreach ($rows as $row) {
+        if (is_file(FILE_DIRECTORY_PATH . '/' . $row['name'])
+            && db_q("UPDATE files SET storage = 'local', storage_key = '' WHERE id = ? AND storage = 's3'", array((int) $row['id']))) {
+            pg_file_cache_forget((int) $row['id']);
+            $reset++;
+        }
+    }
+
+    // A short page is the end of the walk; the next tick starts again.
+    $last = $rows ? (int) $rows[count($rows) - 1]['id'] : 0;
+    pg_config_text_save('object_storage_reconcile', (count($rows) < (int) $limit) ? '' : (string) $last);
+
+    return $reset;
+}
+
+
+/**
+ * Which listed objects no row names any more. Only keys the move job makes
+ * (files/<id>/...) are looked at, and only those older than a day, so an
+ * object just sent whose row is about to be marked is never taken. Pure.
+ *
+ * @param array $items pg_os_list() items: key, modified
+ * @param array|null $referenced storage_key => true for every stored row;
+ *                               null when the rows could not be read
+ * @param int $now
+ * @return array keys to delete; none without a confirmed list of rows
+ */
+function pg_file_storage_orphans(array $items, $referenced, $now)
+{
+    $orphans = array();
+
+    // A failed read would make every object look unnamed and delete live files.
+    if (!is_array($referenced)) {
+        return $orphans;
+    }
+
+    foreach ($items as $item) {
+        $key = isset($item['key']) ? (string) $item['key'] : '';
+
+        if ((preg_match('#^files/[0-9]+/#', $key) === 1) && !isset($referenced[$key])
+            && !empty($item['modified']) && (((int) $now - (int) $item['modified']) > 86400)) {
+            $orphans[] = $key;
+        }
+    }
+
+    return $orphans;
+}
+
+
+/**
+ * Deletes the objects of deleted and replaced files: once a day, a listing
+ * of files/ compared with the keys the rows hold, at most 200 deletions a
+ * pass. Every delete door of the product removes only the row and the local
+ * bytes, so this one pass covers them all. Runs while a store is set up,
+ * whether or not the switch is on, so files moved earlier are still cleaned.
+ *
+ * @return int objects deleted
+ */
+function pg_file_storage_orphan_sweep()
+{
+    $config = pg_os_settings();
+
+    if (!pg_file_storage_ready() || !pg_os_ready($config)) {
+        return 0;
+    }
+
+    $last = (int) pg_config_text('object_storage_orphan_sweep');
+
+    if ((time() - $last) < 86400) {
+        return 0;
+    }
+
+    pg_config_text_save('object_storage_orphan_sweep', (string) time());
+
+    $listing = pg_os_list($config, 'files/', array('limit' => 5000));
+
+    if (empty($listing['ok'])) {
+        return 0;
+    }
+
+    $deleted = 0;
+    $referenced = pg_file_storage_referenced_keys();
+
+    foreach (array_slice(pg_file_storage_orphans($listing['items'], $referenced, time()), 0, 200) as $key) {
+        $done = pg_os_delete($config, $key);
+
+        if (!empty($done['ok'])) {
+            $deleted++;
+        }
+    }
+
+    return $deleted;
+}
+
+
+/**
+ * The object keys the stored rows hold. Read with mysqli_query() itself: a
+ * failed read must stop only the sweep, where db_values() answers it with an
+ * empty list (during an upgrade) or ends the whole job (pg_db_run()). An
+ * empty list is trusted only when a count of stored rows confirms it.
+ *
+ * @return array|null storage_key => true; null when the rows cannot be read
+ */
+function pg_file_storage_referenced_keys()
+{
+    if (!class_exists('db') || empty(db::$con)) {
+        return null;
+    }
+
+    $result = @mysqli_query(db::$con, "SELECT storage_key FROM files WHERE storage = 's3'");
+
+    if (!$result) {
+        return null;
+    }
+
+    $referenced = array();
+
+    while ($row = mysqli_fetch_row($result)) {
+        $referenced[(string) $row[0]] = true;
+    }
+
+    if ($referenced) {
+        return $referenced;
+    }
+
+    $count = @mysqli_query(db::$con, "SELECT COUNT(*) FROM files WHERE storage = 's3'");
+    $row = $count ? mysqli_fetch_row($count) : null;
+
+    return (is_array($row) && ((int) $row[0] === 0)) ? $referenced : null;
 }
