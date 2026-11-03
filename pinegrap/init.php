@@ -1029,6 +1029,12 @@ if (!empty($_SERVER['HTTP_HOST'])) {
         if (function_exists('pg_page_cache_watch_session')) {
             pg_page_cache_watch_session();
         }
+
+        // A download answer tells the panel page that asked for it to stop
+        // its leaving bar (includes/fn/output.php, pg_preloader_markup()).
+        if (function_exists('pg_download_marker_watch')) {
+            pg_download_marker_watch();
+        }
     }
 }
 

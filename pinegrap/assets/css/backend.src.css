@@ -9103,29 +9103,32 @@ legend.form-label {
   }
 }
 
-/* ── Loading curtain ──────────────────────────────────────────────────────
- * Printed straight after <body> by pg_preloader_markup(), and raised again
- * when a link is clicked, so the panel stops flashing between screens.
+/* ── Loading curtain and leaving bar ──────────────────────────────────────
+ * Printed straight after <body> by pg_preloader_markup().
  *
- * It is the page's own background with a bar across the top and nothing
- * else. This is on every screen dozens of times an hour; anything with a
- * personality of its own is tiring by the third visit.
+ * Arriving, the curtain is the page's own background with a bar across the
+ * top. It stays transparent for its first 120 ms and fades in over 100 ms,
+ * so a screen ready by then shows nothing; the script fades it out again in
+ * 100 ms once the document is ready. Only a held curtain (the visual editor,
+ * .is-hold) shows the mark in the middle.
  *
  * The failsafe animation is the point of the block: if the inline script
  * never runs — an error above it, a blocked inline script — the curtain
  * would otherwise sit over an unusable panel forever. Ten seconds is long
  * enough that a slow page never sees it and short enough that a broken one
  * is not lost.
+ *
+ * Leaving, there is no curtain: html.pg-is-leaving shows the thin bar at the
+ * top and the progress pointer over the old page until it is gone.
  * ---------------------------------------------------------------------- */
 .pg-preloader {
     position: fixed;
     inset: 0;
     z-index: 20000;
     background: var(--pg-bg-body, #fff);
-    opacity: 1;
+    opacity: 0;
     visibility: visible;
-    transition: opacity .26s ease, visibility 0s linear 0s;
-    animation: pg-preloader-failsafe 0s linear 10s forwards;
+    animation: pg-preloader-arrive .1s ease .12s forwards, pg-preloader-failsafe 0s linear 10s forwards;
 }
 /* visibility waits for the fade, so the hidden curtain is out of the layer
    tree entirely rather than sitting invisibly on top of every screen. */
@@ -9133,36 +9136,49 @@ legend.form-label {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transition: opacity .26s ease, visibility 0s linear .26s;
+    transition: opacity .1s ease, visibility 0s linear .1s;
 }
-/* A done curtain stops its loops rather than running them unseen. Paused, not
-   animation:none: pgPreloaderShow() takes is-done off again on a link click,
-   and the bar and dots then carry on at once, while the mark, which rests at
-   opacity 0 until its own delayed fade-in, is left alone. */
+/* A done curtain stops its loops rather than running them unseen. */
 .pg-preloader.is-done .pg-preloader-bar i,
 .pg-preloader.is-done .pg-preloader-dots i {
     animation-play-state: paused;
 }
 
-.pg-preloader-bar {
+.pg-preloader-bar,
+.pg-leave-bar {
     position: absolute; top: 0; left: 0; right: 0; height: 3px;
     overflow: hidden; background: rgba(128, 128, 128, .16);
 }
-.pg-preloader-bar i {
+.pg-preloader-bar i,
+.pg-leave-bar i {
     position: absolute; top: 0; bottom: 0; left: -40%; width: 40%;
     background: linear-gradient(90deg, transparent, var(--pg-primary, #6366f1), transparent);
     animation: pg-preloader-slide 1.05s cubic-bezier(.4, 0, .2, 1) infinite;
 }
 @keyframes pg-preloader-slide { to { left: 100%; } }
+@keyframes pg-preloader-arrive { to { opacity: 1; } }
+
+/* The leaving bar: display:none keeps its loop stopped until it is wanted. */
+.pg-leave-bar {
+    position: fixed;
+    z-index: 20001;
+    display: none;
+    pointer-events: none;
+}
+html.pg-is-leaving .pg-leave-bar { display: block; }
+html.pg-is-leaving,
+html.pg-is-leaving * { cursor: progress !important; }
 
 /* The mark in the middle: the brand lockup with the dots under it, or on a
-   private-label install the dots alone. Held back a beat — a page that
-   arrives promptly shows the bar and nothing else, which is the difference
-   between "loading" and a logo flashing at somebody twice a minute. */
+   private-label install the dots alone. Only a held curtain draws it, and a
+   beat late, so everyday transitions never show a logo. */
 .pg-preloader-mark {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-    display: flex; flex-direction: column; align-items: center; gap: 18px;
+    display: none; flex-direction: column; align-items: center; gap: 18px;
     opacity: 0;
+}
+.pg-preloader.is-hold .pg-preloader-mark {
+    display: flex;
     animation: pg-preloader-appear .45s ease .3s forwards;
 }
 .pg-preloader-logo { display: block; width: min(210px, 46vw); }
@@ -9181,13 +9197,17 @@ legend.form-label {
 @keyframes pg-preloader-pulse { 0%, 100% { opacity: .25; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
 @keyframes pg-preloader-failsafe { to { opacity: 0; visibility: hidden; pointer-events: none; } }
 
+/* Less motion keeps every delay (a delay is not motion) and drops the fades
+   and the sliding loops. */
 @media (prefers-reduced-motion: reduce) {
-    .pg-preloader { transition: none; }
-    .pg-preloader-bar i { animation: none; left: 0; width: 100%; opacity: .5; }
-    .pg-preloader-mark { animation: none; opacity: 1; }
+    .pg-preloader { animation-duration: 0s, 0s; }
+    .pg-preloader.is-done { transition: none; }
+    .pg-preloader-bar i,
+    .pg-leave-bar i { animation: none; left: 0; width: 100%; opacity: .5; }
+    .pg-preloader.is-hold .pg-preloader-mark { animation-duration: 0s; }
     .pg-preloader-dots i { animation: none; opacity: .6; transform: none; }
 }
-@media print { .pg-preloader { display: none !important; } }
+@media print { .pg-preloader, .pg-leave-bar { display: none !important; } }
 
 /* ══ Admin screen — user permission rows ══════════════════════════════════
    Shared by add_user.php and edit_user.php through includes/user_permissions.php.
@@ -10606,6 +10626,8 @@ body.pg-side-panel-open .pg-chat-launcher {
   transition: opacity .15s linear;
 }
 .pg-sm.is-busy .pg-sm-progress { opacity: 1; }
+/* The closed dialog stays display:flex, so the bar loops only while busy. */
+.pg-sm.is-busy .pg-sm-progress::after { animation-play-state: running; }
 .pg-sm-progress::after {
   position: absolute;
   inset-block: 0;
@@ -10613,7 +10635,7 @@ body.pg-side-panel-open .pg-chat-launcher {
   width: 40%;
   background: var(--pg-primary);
   content: "";
-  animation: pg-sm-slide 1.1s ease-in-out infinite;
+  animation: pg-sm-slide 1.1s ease-in-out infinite paused;
 }
 @keyframes pg-sm-slide {
   0%   { transform: translateX(-100%); }

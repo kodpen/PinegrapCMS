@@ -214,7 +214,10 @@ if (!empty($_POST['quick_add'])) {
     exit();
 }
 
-// get all order items in cart
+// The lines in the cart. A line saved for later is not on the cart form and
+// is not bought at checkout: it keeps its fields, requires nothing, and no
+// required-field, free-item or shipping check counts it, as submit_order.php
+// and the shipping screens leave it out.
 $query =
     "SELECT
         order_items.id,
@@ -239,7 +242,7 @@ $query =
         products.submit_form_quantity_type
     FROM order_items
     LEFT JOIN products ON order_items.product_id = products.id
-    WHERE order_items.order_id = ?";
+    WHERE order_items.order_id = ?" . pg_order_item_active_sql('order_items');
 $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
 
 $order_items = array();
@@ -946,7 +949,7 @@ check_reservations($liveform);
 // before we proceed with checkout, we need to check product dependencies.
 // $order_items was read before this request's quantities were saved, so a
 // line just set to 0 is gone and requires nothing.
-$pg_lines_in_cart = array_map('intval', (array) db_values("SELECT id FROM order_items WHERE order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'"));
+$pg_lines_in_cart = array_map('intval', (array) db_values("SELECT id FROM order_items WHERE order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'" . pg_order_item_active_sql('order_items')));
 foreach ($order_items as $order_item) {
     if (!in_array((int) $order_item['id'], $pg_lines_in_cart, true)) {
         continue;
@@ -959,7 +962,7 @@ foreach ($order_items as $order_item) {
             FROM order_items
             WHERE
                 (order_id = ?)
-                AND (product_id = ?)";
+                AND (product_id = ?)" . pg_order_item_active_sql('order_items');
         $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $order_item['required_product'])) or output_error('Query failed.');
 
         // if required product is not in cart, add product to cart and add notice, so user knows that required product was added to cart
@@ -995,7 +998,7 @@ $query = "SELECT
          WHERE
             (order_items.order_id = ?)
             AND (order_items.ship_to_id > 0)
-            AND (order_items.price <= 0)";
+            AND (order_items.price <= 0)" . pg_order_item_active_sql('order_items');
 $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
 
 $free_order_items = array();
@@ -1012,7 +1015,7 @@ foreach ($free_order_items as $key => $value) {
              WHERE
                 (order_id = ?)
                 AND (ship_to_id = ?)
-                AND (price > 0)";
+                AND (price > 0)" . pg_order_item_active_sql('order_items');
     $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $free_order_items[$key]['ship_to_id'])) or output_error('Query failed.');
     
     // if a non-free order item could not be found, add error
@@ -1090,7 +1093,7 @@ if ($express_order_name) {
     $query = "SELECT order_items.id " .
              "FROM order_items " .
              "LEFT JOIN products ON products.id = order_items.product_id " .
-             "WHERE order_items.order_id = ? AND products.shippable = 1";
+             "WHERE order_items.order_id = ? AND products.shippable = 1" . pg_order_item_active_sql('order_items');
     $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
 
     // if there is at least one product in cart that is shippable
@@ -1146,7 +1149,7 @@ if ($express_order_name) {
                         products.extra_shipping_cost
                      FROM order_items
                      LEFT JOIN products ON products.id = order_items.product_id
-                     WHERE order_items.order_id = ? AND order_items.ship_to_id = ?
+                     WHERE order_items.order_id = ? AND order_items.ship_to_id = ?" . pg_order_item_active_sql('order_items') . "
                      ORDER BY order_items.id ASC";
             $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $ship_to_id)) or output_error('Query failed.');
 

@@ -166,6 +166,12 @@ function software_update_check($return_details = false)
 
     $details['response'] = $response;
 
+    // The answer replaces the "update available" notification: without this
+    // every check, and every opening of the Software Updater, added one more
+    // row to the bell while an update waited, and an answer that offers
+    // nothing left the old one standing.
+    db("DELETE FROM notifications WHERE action = 'software_update'");
+
     // figure out if new version is greater than old version
 
     $new_version = trim($response['version']);

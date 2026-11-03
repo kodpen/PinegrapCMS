@@ -49,8 +49,8 @@ function test_list_page_state_survives_init_and_query()
 {
 	$js = list_page_state_script();
 
-	pg_assert_contains("if (!options.serverSide) {\n            datatable.draw(false);", $js, 'the init draw keeps the restored page');
-	pg_assert_true(strpos($js, "if (!options.serverSide) {\n            datatable.draw();") === false, 'a bare draw() would put the list back on page 1');
+	pg_assert_contains('options["displayStart"] = pgListKept.start;', $js, 'the first draw opens on the restored page');
+	pg_assert_true(strpos($js, "if (!options.serverSide) {\n            datatable.draw(") === false, 'no second draw after init: a bare draw() would put the list back on page 1');
 	pg_assert_contains("history.replaceState(history.state, '', '?' + params + location.hash);", $js, 'the ?query= handler keeps the history state');
 	pg_assert_true(strpos($js, "history.replaceState(null, '', '?' + params + location.hash);") === false, 'the ?query= handler no longer wipes the history state');
 }

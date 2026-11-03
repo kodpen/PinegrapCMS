@@ -21,4 +21,4 @@ description: New dashboard cards goals, notes (#4981), pins, perf (N12b): where 
 - Widget 23's helpers in `widgets/widget_23.php`: `pg_dashboard_perf_summary($since)` (totals, the grading page, five slowest pages) and `pg_dashboard_perf_grade()` (the thresholds), called by the widget too, its output unchanged. The ring is the share of requests under `PERF_MONITOR_SLOW_MS`; tiles average, page load p75 (visitors' browsers, last 7 days, only when measured: `ui/visitors-speed-section.md`), slow requests, requests; gate role < 3 and monitoring on.
 
 ## Why is subs not built?
-- It reads the licence from the vendor API client, which is not switched on yet (`plans/kodpen-vendor-api-client-steps.md`, P8): step N12c. Unbuilt, it is neither drawn nor offered.
+- The owner dropped the Subscriptions card with no plan; it may be looked at again later (`workflow/decisions-made-product-21.md`). It is neither drawn nor offered.

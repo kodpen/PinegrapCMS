@@ -8,7 +8,7 @@ description: Steps FL1-FL4 of plans/designer-form-logic.md: Shown when rules, fo
 - S under 400 product lines, M about 1,000. Tests in `tests/custom_form_<topic>_test.php` (pure functions, red first; the parity test renders a rule-less form before and after), memory under `designer/`, texts through `tr_add.php`, `php tools/build_js.php` after the designer script, `node --check` on `style_designer.src.js`.
 
 ## Which steps are there?
-- FL1 (M) Shown when. `free` after question 1.
+- FL1 (M) Shown when. Done (PR #6130).
   - `pg_cf_rules_clean()` accepts `shown_when` (field name + answers, the `required_when` shape); `pg_cf_rule_verdict()` returns `hidden` for a field whose rule does not match, and `pg_cf_check_rules()` then drops the posted value and skips required (question 1); `pg_cf_apply_field_bindings()` writes `data-pg-shown-when` and `data-pg-shown-answers`; `pg_cf_validation_script()` toggles `hidden` on the field's row and `disabled` on its controls on change and at load; a hidden field that is the "other field" of another rule cascades. Designer: a "Shown when" row in the Form Field panel beside "Required when" (`_cfRulesOf()`, `_cfWriteRules()`), a chip on the canvas control. A cached page re-evaluates at load, so stale markup never shows a wrong branch. Memory: `designer/custom-form-shown-when.md`.
 
 - FL2 (M) Steps and progress. Done (PR #5932).

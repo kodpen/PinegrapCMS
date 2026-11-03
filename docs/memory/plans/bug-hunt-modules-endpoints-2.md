@@ -21,19 +21,17 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `seo` (8): done #6091 (self link hid an orphan page); the rest clean
 - Endpoints `setting` (14): clean
 - Endpoints `shipping` (9): done #6086
-- Endpoints `shopping` (2): open
-- Endpoints `short` (5): open
-- Endpoints `software` (3): open
+- Endpoints `shopping` (2): #6113
+- Endpoints `short` (5): clean
+- Endpoints `software` (3): done #6121, see -2c
 - Endpoints `style` (4): clean; lead: view_styles counts stored, not inherited, mobile ids
 - Endpoints `submitted` (5): done #6098 (edit_submitted_form: one checked id); the rest clean
-- Endpoints `subscription` (3): open
-- Endpoints `system` (5): open
+- Endpoints `subscription` (3): clean
+- Endpoints `system` (5): #6111
 - Endpoints `theme` (6): done #4725, #4739, #4764; lead: theme_designer Cancel calls an undefined `theme_designer_cancel_confirm()`
-- Endpoints `translation` (3): open
+- Endpoints `translation` (3): clean
 - Endpoints `user` (5): done #4489, #4505 (add_user, edit_user, delete_users, import_users, view_users)
-- Endpoints `verified` (3): open
-- Endpoints `view` (2): open
-- Endpoints `visitor` (3): open
+- Endpoints `verified` (3), `visitor` (6): clean; `view` (2): #6116 (shipped heading lang())
 - Endpoints `waf` (4): done (#4601, #4620)
 - Endpoints `workspace` (21): open
-- Endpoints `zone` (3): open
+- Endpoints `zone` (3): clean
