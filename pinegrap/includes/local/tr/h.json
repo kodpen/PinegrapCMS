@@ -583,6 +583,7 @@
     "How many sign-in, form or checkout requests one address may have running at the same time. Catches a request that waits on e-mail or a payment gateway while holding a database connection, which the per-minute limits above cannot see. 0 turns it off.": "Bir adresin aynı anda kaç giriş, form ya da ödeme isteğini çalışır durumda tutabileceği. E-posta ya da ödeme kuruluşunu beklerken veritabanı bağlantısı tutan isteği yakalar; yukarıdaki dakikalık sınırlar bunu göremez. 0 kapatır.",
     "How many to return: {var:1}": "İade edilecek adet: {var:1}",
     "How many values there are": "Kaç değer olduğu",
+    "How members see you": "Üyeler sizi nasıl görüyor",
     "How moderation works": "Moderasyon nasıl işler",
     "How much a weak score costs, weighed against how many people see the page": "Zayıf skorun maliyeti, sayfayı kaç kişinin gördüğüyle birlikte tartılmış hâli",
     "How much does a website cost?": "Bir web sitesi ne kadar tutar?",
