@@ -7,6 +7,7 @@ description: A visual design's look and colour palette (style.style_look / style
 - Two independent stylesheets (`includes/fn/design_themes.php`): the look (`style.style_look`; `assets/css/themes/looks/<key>.css`, only `--pg-*` tokens: corners, shadows, lines, type) and the colour palette (`style.style_palette`; `assets/css/themes/palettes/<key>.css`). Columns from 2026.4.5 (`pg_design_look_ready()`).
 - A value is `''` (plain Bootstrap), a built-in key, or `file-<id>`: a look or palette made in the editor, saved as a design CSS file in the file manager that starts with `/*! pg-theme {json} */`, so other designs can wear it. Nothing is written into the pages.
 - Only Bootstrap designs wear them: a design without a framework gets none (`pg_design_theme_assets()`).
+- The name the operator types goes into the stylesheet's comment line through `pg_design_theme_comment_text()`, which strips `*/` until none is left: one `str_replace()` let `**//` close the comment and the rule after it was dropped (`tests/design_themes_comment_test.php`).
 - The theme file (`style.theme_id`, a `files` row with `design = 1`, "Save as theme" → `designer/theme_save`) is a separate stylesheet, chosen in the same Theme pane.
 
 ## In what order do the stylesheets load?

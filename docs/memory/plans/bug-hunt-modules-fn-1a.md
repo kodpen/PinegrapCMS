@@ -36,7 +36,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `design_templates_custom`: #5976
 
-- `design_themes`: open
+- `design_themes`: #6021 (a look or palette name closed its stylesheet comment; rest of the module checked clean)
 
 - `designer`: open
 
