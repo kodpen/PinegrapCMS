@@ -28,7 +28,7 @@ description: Plan for the Phone Launch Site template (pinegrap-launch): three mo
 
 - 5 Standard: `standard.php` (contact, inbox, conversation, newsletter as the launch list, Newsroom blog with sample releases, blog post, search, error); test `…_standard_test.php`.
 
-- 6 Account and staff: `account.php`; test `…_account_test.php`.
+- 6 Done (#6213). Account, staff, release form.
 
 - 7 Assembly: `pinegrap-launch.php` (order 74, icon `bi-phone`, look `minimal`, palette `lavender`, group `launch_list`, folders, `plx-` styles, two fonts, search map), shared tests' lists, `designer/design-template-launch.md`, plan deleted; PR body names `[NEW] Added the Phone Launch Site design template`.
 
