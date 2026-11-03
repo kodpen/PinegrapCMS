@@ -253,8 +253,21 @@
     };
 
     // A line of points with an optional dashed comparison line, as inline
-    // SVG scaled to its box. The label says what it shows; the figures are
-    // also in the tiles, so the picture is never the only place they are.
+    // SVG scaled to its box: the line runs cyan into indigo into fuchsia over
+    // an area that fades down (the stylesheet colours the gradient stops).
+    // The label says what it shows; the figures are also in the tiles, so
+    // the picture is never the only place they are.
+    var lineCount = 0;
+
+    function gradient(id, attrs, stops) {
+        var node = svgEl("linearGradient", attrs);
+        node.setAttribute("id", id);
+        stops.forEach(function (stop) {
+            node.appendChild(svgEl("stop", {offset: stop[0], "class": stop[1]}));
+        });
+        return node;
+    }
+
     pgDash.line = function (points, compare, label, compareLabel, tips) {
         var width = 600;
         var height = 160;
@@ -262,11 +275,17 @@
         var all = (points || []).concat(compare || []);
         var max = Math.max.apply(null, all.concat([1]));
         var count = Math.max((points || []).length, (compare || []).length, 2);
+        var id = "pg_dash_line_" + (++lineCount);
 
         var svg = svgEl("svg", {viewBox: "0 0 " + width + " " + height, preserveAspectRatio: "none", role: "img", "class": "pg-dash-line"});
         var title = svgEl("title", {});
         title.textContent = label + (compareLabel ? " · " + compareLabel : "");
         svg.appendChild(title);
+
+        var defs = svgEl("defs", {});
+        defs.appendChild(gradient(id + "_area", {x1: 0, y1: 0, x2: 0, y2: 1}, [[0, "pg-dash-line-area-top"], [1, "pg-dash-line-area-bottom"]]));
+        defs.appendChild(gradient(id + "_stroke", {x1: 0, y1: 0, x2: 1, y2: 0}, [[0, "pg-dash-line-from"], [0.6, "pg-dash-line-mid"], [1, "pg-dash-line-to"]]));
+        svg.appendChild(defs);
 
         function path(series) {
             return series.map(function (value, i) {
@@ -276,11 +295,19 @@
             }).join(" ");
         }
 
+        if (points && points.length) {
+            var last = pad + ((points.length - 1) * (width - 2 * pad)) / (count - 1);
+            svg.appendChild(svgEl("path", {
+                d: path(points) + " L" + last.toFixed(1) + " " + (height - pad) + " L" + pad + " " + (height - pad) + " Z",
+                "class": "pg-dash-line-area",
+                fill: "url(#" + id + "_area)"
+            }));
+        }
         if (compare && compare.length) {
             svg.appendChild(svgEl("path", {d: path(compare), "class": "pg-dash-line-compare", "vector-effect": "non-scaling-stroke"}));
         }
         if (points && points.length) {
-            svg.appendChild(svgEl("path", {d: path(points), "class": "pg-dash-line-main", "vector-effect": "non-scaling-stroke"}));
+            svg.appendChild(svgEl("path", {d: path(points), "class": "pg-dash-line-main", stroke: "url(#" + id + "_stroke)", "vector-effect": "non-scaling-stroke"}));
         }
 
         // The hovered or focused point: a thin rule across the chart. The
@@ -321,7 +348,7 @@
         svg.appendChild(title);
         (values || []).forEach(function (value, i) {
             var h = Math.max(1, ((value || 0) / max) * height);
-            svg.appendChild(svgEl("rect", {x: (i * step + step * 0.15).toFixed(1), y: (height - h).toFixed(1), width: (step * 0.7).toFixed(1), height: h.toFixed(1), rx: 1.5}));
+            svg.appendChild(svgEl("rect", {x: (i * step + step * 0.15).toFixed(1), y: (height - h).toFixed(1), width: (step * 0.7).toFixed(1), height: h.toFixed(1), rx: 2}));
         });
         if (tips && tips.length) {
             pgDash.chartTips(svg, tips, {mark: pgDash.markBars(svg)});
