@@ -3998,6 +3998,8 @@ function pg_image_editor_strings_glyph()
         'glyphRecent'        => lang('Recently used'),
         'glyphColor'         => lang('Icon colour'),
         'glyphEmojiCategory' => lang('Emoji category'),
+        'glyphChange'        => lang('Change'),
+        'glyphChangeHint'    => lang('Pick a sticker, icon or emoji to put in its place.'),
         'emojiCat_smileys'   => lang('Smileys'),
         'emojiCat_people'    => lang('People'),
         'emojiCat_nature'    => lang('Animals and nature'),
