@@ -1772,8 +1772,9 @@ function install_heavy_tables() {
 		// recipients, one or more rows per order. contacts_contact_groups_xref
 		// .source with its index (11.0.155) copies every group membership.
 		// forms.order_id, paid_at and idx_order_id (11.0.158) copy the
-		// submitted form records.
-		'2026.11.0' => array('products', 'page', 'style', 'comments', 'order_items', 'contacts', 'ship_tos', 'contacts_contact_groups_xref', 'forms'),
+		// submitted form records. orders.stock_location_id (11.0.162) copies
+		// the orders.
+		'2026.11.0' => array('products', 'page', 'style', 'comments', 'order_items', 'contacts', 'ship_tos', 'contacts_contact_groups_xref', 'forms', 'orders'),
 	);
 
 }
