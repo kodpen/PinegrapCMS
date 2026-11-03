@@ -32,4 +32,4 @@ description: Plan (2026-10-24; ready to start, owner 2026-11-01): a Figma/XD-lik
 5. Breakpoint: desktop width, collapsed navbars shown as their links.
 
 ## Where to start?
-- Every slice is done (4f #6376). Left: close the plan: move the answered questions and the planned rules above into designer/prototype-view.md (or a new designer/ file if it is full), the useful parts of plans/designer-prototype-links-code.md into designer/page-link-by-id.md and designer/prototype-hotspots.md, point the files that name these two plans at the topic files, then delete both plans.
+- All slices done (4f #6376). Left: close the plan: decisions to designer/prototype-view.md, the -code plan to designer/page-link-by-id.md, fix the links to both plans, delete them.
