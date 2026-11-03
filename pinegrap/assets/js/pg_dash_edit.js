@@ -696,7 +696,9 @@
                 var label = drawn ? drawn.textContent : config.edit.shortcuts[key].label;
                 var chip = el("span", "pg-dash-btn pg-dash-action-edit" + (i === 0 ? " pg-dash-btn-main" : ""));
                 chip.appendChild(el("span", "pg-dash-action-label", label));
-                var drop = button("pg-dash-action-remove", "", fmt(S.remove_item, label));
+                // The remove label names the shortcut without its live count.
+                var plain = config.edit.shortcuts[key] ? config.edit.shortcuts[key].label : label;
+                var drop = button("pg-dash-action-remove", "", fmt(S.remove_item, plain));
                 drop.appendChild(icon("bi-x-lg"));
                 drop.addEventListener("click", function () {
                     state.actions.splice(i, 1);

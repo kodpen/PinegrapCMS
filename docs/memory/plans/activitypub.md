@@ -19,9 +19,10 @@ description: Plan (owner 2026-11-02): the site as a Fediverse actor over Activit
 - A remote reply is a comment: the comment rules, moderation, notification mails and erasure apply as to any comment; nothing from the Fediverse writes anywhere else.
 - Counting and delivery obey the WAF: the inbox has its own rate bucket, a blocked domain is refused at the signature check.
 
-## Which questions are decided? (#5041)
+## Which questions are decided? (#5041, #6391)
 1. `ap_followers`, `ap_outbox`, `ap_blocks`, `comments.remote_actor` / `remote_id`, settings and sealed keys in `config.ap_*`; shape in the issue.
 2. Owner: records of chosen forms and pages of chosen folders; never drafts or private-folder pages.
+3. Like and Announce: one `ap_reactions` row per actor, kind and object, counts by `COUNT(*)` (#6391, architect; shape in `workflow/decisions-made-schema-10.md`); AP2's PR corrects its step line.
 
 ## Where does it start?
 - AP1 alone, then AP2 and AP3 together. Read `core/README.md` and `designer/README.md` key rules, `designer/comment-thread-rules.md`, `designer/comments-widget-contract.md`, `designer/form-feed-item-guid-enclosure.md`, `core/mail-queue-permanent-errors.md`, `router.php` (the well-known branches). Steps: `activitypub-steps.md`, `-steps-2.md`.

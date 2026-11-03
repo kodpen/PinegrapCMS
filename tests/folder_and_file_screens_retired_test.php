@@ -138,6 +138,8 @@ function test_folder_and_file_screens_retired_root_settings_keep_order_and_archi
 	pg_assert_same(array(4, '1'), pg_explorer_folder_settings_order_archive(array('folder_parent' => 0, 'folder_order' => 4, 'folder_archived' => '1'), array()), 'an archived root stays so');
 	pg_assert_same(array(9, '1'), pg_explorer_folder_settings_order_archive($child, array('order' => '9', 'archived' => '1')), 'another folder takes the request');
 	pg_assert_same(array(0, ''), pg_explorer_folder_settings_order_archive($child, array('archived' => 'yes')), 'only an exact 1 archives');
+	pg_assert_same(array(9999, ''), pg_explorer_folder_settings_order_archive($child, array('order' => '99999999999')), 'a huge order is held at the top of the range');
+	pg_assert_same(array(-9999, ''), pg_explorer_folder_settings_order_archive($child, array('order' => '-99999999999')), 'a huge negative order is held at the bottom');
 
 	$handler = folder_and_file_screens_retired_source('includes/explorer/handle_folders.php');
 	pg_assert_contains("'is_root' => ((int) \$folder['folder_parent'] == 0),", $handler, 'the drawer is told the root');

@@ -84,6 +84,26 @@ function erp_late_fee_settings($reload = false)
 }
 
 /**
+ * A typed percent of the late fee card. erp_fx_rate_in() drops every
+ * character that is not a digit or a separator, so "-2" would read as 2 and
+ * pass the range check; a minus sign or any other character gives -1, which
+ * the caller's range check refuses.
+ *
+ * @param string $text  not empty
+ * @return float
+ */
+function erp_late_fee_percent_in($text)
+{
+    $text = trim((string) $text);
+
+    if (!preg_match('/^[0-9.,]+$/', $text)) {
+        return -1.0;
+    }
+
+    return erp_fx_rate_in($text);
+}
+
+/**
  * Save the terms from the settings screen. An empty tax rate means the
  * account's own rate: what a product without a rate of its own is sold to
  * that account at.
@@ -98,13 +118,13 @@ function erp_late_fee_settings_save($rate_text, $tax_rate_text)
         return array('success' => false, 'error' => lang('Late payment fees come with the software update; run the update to use them.'), 'field' => '_error');
     }
 
-    $rate = (trim((string) $rate_text) === '') ? 0.0 : erp_fx_rate_in($rate_text);
+    $rate = (trim((string) $rate_text) === '') ? 0.0 : erp_late_fee_percent_in($rate_text);
 
     if (($rate < 0) || ($rate > ERP_LATE_FEE_MAX_RATE)) {
         return array('success' => false, 'error' => lang(array('string' => 'The monthly rate runs from 0 to {var:1}.', 'vars' => ERP_LATE_FEE_MAX_RATE)), 'field' => 'late_fee_rate');
     }
 
-    $tax_rate = (trim((string) $tax_rate_text) === '') ? null : erp_fx_rate_in($tax_rate_text);
+    $tax_rate = (trim((string) $tax_rate_text) === '') ? null : erp_late_fee_percent_in($tax_rate_text);
 
     if (($tax_rate !== null) && (($tax_rate < 0) || ($tax_rate > 100))) {
         return array('success' => false, 'error' => lang('The tax rate runs from 0 to 100.'), 'field' => 'late_fee_tax_rate');
