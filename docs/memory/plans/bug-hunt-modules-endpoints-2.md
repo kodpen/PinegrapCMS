@@ -23,8 +23,8 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `ship` (3): open
 - Endpoints `shipment` (3): open
 - Endpoints `shipping` (9): open
-- Endpoints `shopping` (2): open
-- Endpoints `short` (5): open
+- Endpoints `shopping` (2): #6113
+- Endpoints `short` (5): clean
 - Endpoints `sms` (3): open
 - Endpoints `software` (3): open
 - Endpoints `state` (3): open
