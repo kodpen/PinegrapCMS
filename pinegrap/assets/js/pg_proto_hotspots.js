@@ -366,6 +366,132 @@
         return out;
     }
 
+    // ── Thumbnails ──
+
+    // At most this many bands in a sketch; the rest are joined into the last.
+    var SKETCH_MAX = 12;
+
+    // What a top-level node of a tree stands for in a frame's thumbnail.
+    function sketchRole(node) {
+        var props = propsOf(node);
+        var tag = str(props.tag).toLowerCase();
+        var component = str(props.componentType).toLowerCase();
+
+        if (node.type === 'shared_ref') {
+            return 'shared';
+        }
+
+        if (node.type === 'region') {
+            return 'region';
+        }
+
+        if (tag === 'nav' || component.indexOf('navbar') === 0) {
+            return 'nav';
+        }
+
+        if (tag === 'header') {
+            return 'header';
+        }
+
+        if (tag === 'footer' || component.indexOf('footer') === 0) {
+            return 'footer';
+        }
+
+        return 'block';
+    }
+
+    function sketchWeight(node) {
+        var count = 0;
+
+        (function walk(n) {
+            if (!isObject(n)) {
+                return;
+            }
+
+            count++;
+
+            if (n.type !== 'shared_ref') {
+                (Array.isArray(n.children) ? n.children : []).forEach(walk);
+            }
+        })(node);
+
+        return count;
+    }
+
+    // The bands of a page's thumbnail, top to bottom: one per top-level node
+    // (through a lone wrapper the page sits in), each { role, weight (nodes
+    // in it), links (hotspots in it) }. Roles: nav, header, footer, shared,
+    // region, block. Reads the tree only; null for no tree.
+    function sketch(tree) {
+        if (!isObject(tree)) {
+            return null;
+        }
+
+        var top = Array.isArray(tree.children) ? tree.children : [];
+
+        // A page held in one plain wrapper is drawn by the wrapper's children.
+        for (var depth = 0; depth < 2 && top.length === 1 && isObject(top[0]) && sketchRole(top[0]) === 'block' && Array.isArray(top[0].children) && top[0].children.length > 1; depth++) {
+            top = top[0].children;
+        }
+
+        var bands = [];
+
+        top.forEach(function (node) {
+            if (!isObject(node)) {
+                return;
+            }
+
+            var band = { role: sketchRole(node), weight: sketchWeight(node), links: collect(node).hotspots.length };
+
+            if (bands.length < SKETCH_MAX) {
+                bands.push(band);
+                return;
+            }
+
+            var last = bands[SKETCH_MAX - 1];
+
+            last.role = 'block';
+            last.weight += band.weight;
+            last.links += band.links;
+        });
+
+        return bands;
+    }
+
+    // Where the bands of a sketch go in a w x h box: heights by the square
+    // root of their weight, each at least 3 high, 2 apart; each { y, h,
+    // role, links }, whole units.
+    function sketchBoxes(bands, w, h) {
+        var list = Array.isArray(bands) ? bands : [];
+        var gap = 2;
+        var min = 3;
+
+        if (!list.length) {
+            return [];
+        }
+
+        var room = Math.max(0, h - gap * (list.length - 1) - min * list.length);
+        var total = 0;
+
+        list.forEach(function (band) { total += Math.sqrt(Math.max(1, band.weight)); });
+
+        var out = [];
+        var y = 0;
+        var used = 0;
+
+        list.forEach(function (band, i) {
+            used += Math.sqrt(Math.max(1, band.weight));
+
+            var end = (i === list.length - 1) ? h : Math.round(min * (i + 1) + gap * i + room * used / total);
+            var height = Math.max(min, end - y);
+
+            out.push({ y: y, h: height, role: band.role, links: band.links });
+            y += height + gap;
+        });
+
+        return out;
+    }
+
     // Every tab once, every shared component once (from `shared`, id =>
     // { name, tree }, the designer's _sharedCache; one not fetched yet
     // gets no hotspots and loaded: false), and the request for the map
@@ -399,7 +525,7 @@
                 var tree = (entry && entry.tree) ? entry.tree : null;
                 var found = tree ? collect(tree) : { hotspots: [], shared: [], menus: [], regions: [] };
 
-                byId[sid] = { id: sid, name: entry ? str(entry.name) : '', loaded: !!tree, pages: 0, hotspots: found.hotspots, sharedIn: found.shared };
+                byId[sid] = { id: sid, name: entry ? str(entry.name) : '', loaded: !!tree, pages: 0, hotspots: found.hotspots, sharedIn: found.shared, sketch: tree ? sketch(tree) : null };
                 reach[sid] = [];
                 out.shared.push(byId[sid]);
                 take(found);
@@ -423,7 +549,7 @@
             var found = collect(page.tree);
             var key = String(page.key !== undefined ? page.key : '');
 
-            out.pages.push({ key: key, pageId: parseInt(page.page_id, 10) || 0, name: str(page.page_name), hotspots: found.hotspots, shared: found.shared });
+            out.pages.push({ key: key, pageId: parseInt(page.page_id, 10) || 0, name: str(page.page_name), hotspots: found.hotspots, shared: found.shared, sketch: sketch(page.tree) });
             take(found);
             found.shared.forEach(function (sid) { frame(sid, key, []); });
         });
@@ -576,7 +702,7 @@
     }
 
     // The sizes of what layout() places, in canvas units.
-    var FRAME = { w: 248, head: 44, row: 30, pad: 10, gap: 160, chipW: 200, chipH: 36, chipGap: 12 };
+    var FRAME = { w: 248, head: 44, thumb: 84, row: 30, pad: 10, gap: 160, chipW: 200, chipH: 36, chipGap: 12 };
 
     // The marks that end on a chip, in the order the chips are stacked.
     var CHIP_MARKS = ['page', 'anchor', 'contact', 'external', 'hidden', 'broken'];
@@ -655,6 +781,8 @@
         [['page', marked.pages || []], ['shared', marked.shared || []]].forEach(function (group) {
             group[1].forEach(function (frame) {
                 var rows = rowsOf(frame);
+                var bands = Array.isArray(frame.sketch) ? frame.sketch : [];
+                var thumb = bands.length ? FRAME.thumb : 0;
                 var item = {
                     id: (group[0] === 'page') ? 'p:' + frame.key : 's:' + frame.id,
                     kind: group[0],
@@ -664,10 +792,12 @@
                     pages: (group[0] === 'shared') ? frame.pages : 0,
                     loaded: (group[0] === 'shared') ? frame.loaded : true,
                     rows: rows,
+                    sketch: bands,
+                    thumb: thumb,
                     x: x,
                     y: 0,
                     w: FRAME.w,
-                    h: FRAME.head + Math.max(1, rows.length) * FRAME.row + FRAME.pad
+                    h: FRAME.head + thumb + Math.max(1, rows.length) * FRAME.row + FRAME.pad
                 };
 
                 x += FRAME.w + FRAME.gap;
@@ -715,7 +845,7 @@
     function rowY(frame, port) {
         var index = parseInt(String(port).replace(/^h/, ''), 10) || 0;
 
-        return FRAME.head + index * FRAME.row + FRAME.row / 2;
+        return FRAME.head + ((frame && frame.thumb) || 0) + index * FRAME.row + FRAME.row / 2;
     }
 
     // ── Drawing an arrow ──
@@ -894,6 +1024,8 @@
     window.PGProtoHotspots = {
         FRAME: FRAME,
         layout: layout,
+        sketch: sketch,
+        sketchBoxes: sketchBoxes,
         placeKey: placeKey,
         places: places,
         rowY: rowY,

@@ -67981,6 +67981,7 @@ const StyleDesigner = (function () {
         if (meta) head.appendChild(_sdProtoEl('span', 'sd-proto-meta', meta));
         node.appendChild(head);
         node.setAttribute('aria-label', _sdProtoFrameName(item));
+        if (item.thumb) node.appendChild(_sdProtoThumb(item));
 
         if (!item.rows.length) {
             node.appendChild(_sdProtoEl('div', 'sd-proto-empty', _sdT('No links')));
@@ -68008,6 +68009,43 @@ const StyleDesigner = (function () {
             }
             node.appendChild(r);
         });
+    }
+
+    // The frame's thumbnail: its page as bands (PGProtoHotspots.sketch()),
+    // a dot per link up to five. Drawn from numbers and roles only; it says
+    // nothing a screen reader needs (the rows list the links).
+    function _sdProtoThumb(item) {
+        var H = window.PGProtoHotspots;
+        var NS = 'http://www.w3.org/2000/svg';
+        var w = H.FRAME.w - 20;
+        var h = item.thumb - 13;
+        var wrap = _sdProtoEl('div', 'sd-proto-thumb');
+        var svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+        svg.setAttribute('width', String(w));
+        svg.setAttribute('height', String(h));
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+        H.sketchBoxes(item.sketch, w, h).forEach(function (box) {
+            var r = document.createElementNS(NS, 'rect');
+            r.setAttribute('class', 'sd-proto-sk sd-proto-sk-' + box.role);
+            r.setAttribute('x', '0');
+            r.setAttribute('y', String(box.y));
+            r.setAttribute('width', String(w));
+            r.setAttribute('height', String(box.h));
+            r.setAttribute('rx', '2');
+            svg.appendChild(r);
+            for (var i = 0; i < Math.min(5, box.links); i++) {
+                var c = document.createElementNS(NS, 'circle');
+                c.setAttribute('class', 'sd-proto-sk-link');
+                c.setAttribute('cx', String(w - 6 - i * 7));
+                c.setAttribute('cy', String(box.y + box.h / 2));
+                c.setAttribute('r', String(Math.min(2.5, box.h / 2)));
+                svg.appendChild(c);
+            }
+        });
+        wrap.appendChild(svg);
+        return wrap;
     }
 
     function _sdProtoChipText(chip) {
