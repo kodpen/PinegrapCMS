@@ -46,7 +46,7 @@ function pg_test_unchecked_db_q_writes($file)
 function test_checked_writes_country_shipping_currency()
 {
 	$expected = array(
-		'edit_country.php' => 8,
+		'edit_country.php' => 0,
 		'edit_shipping_method.php' => 0,
 		'includes/forms/currency_form.php' => 1,
 	);

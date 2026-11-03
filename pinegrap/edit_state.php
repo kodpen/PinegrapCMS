@@ -111,34 +111,14 @@ if (!$_POST || $errors) {
 } else {
     // if state was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
-        // delete state
-        $query = "DELETE FROM states WHERE id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-        
-        // delete state references in zones_states_xref
-        $query = "DELETE FROM zones_states_xref WHERE state_id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-        
-        // delete state references in tax_zones_states_xref
-        $query = "DELETE FROM tax_zones_states_xref WHERE state_id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-        
-        // delete verified shipping addresses for this state
-        $query = "DELETE FROM verified_shipping_addresses WHERE state_id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        // The state, its places in shipping and tax zones and its verified
+        // shipping addresses.
+        pg_store_state_delete($id) or output_error('Query failed.');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('state'), $_POST['name']) )), $_SESSION['sessionusername']);
 
     // else state was not selected for delete
     } else {
-        // update state
-        $query = "UPDATE states SET
-                    name = ?,
-                    code = ?,
-                    country_id = ?,
-                    user = ?,
-                    timestamp = UNIX_TIMESTAMP()
-                WHERE id = ?";
-        $result = db_q($query, array($values['name'], $values['code'], $values['country_id'], (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        pg_store_state_save($id, $values, (int) $user['id']) or output_error('Query failed.');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('state'), $_POST['name']) )), $_SESSION['sessionusername']);
 
     }
