@@ -3069,10 +3069,8 @@ function pg_designer_screen_post($ctx)
         // takes the one the editor opened it with (custom: the theme keeps
         // its own Bootstrap and scripts).
         if ($converting) {
-            if (pg_style_framework_ready()) {
-                db("UPDATE style SET style_framework = '" . e(pg_design_framework_key($style_data['framework'])) . "' WHERE style_id = '$style_id'");
-            }
-            log_activity(lang(array('string' => 'style ({var:1}) was made a visual design', 'vars' => array($style_name))), $_SESSION['sessionusername']);
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/classic_style_design.php');
+            pg_classic_style_mark_design($style_id, $style_data['framework'], $_SESSION['sessionusername']);
         }
     }
 
