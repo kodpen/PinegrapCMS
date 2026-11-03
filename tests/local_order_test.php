@@ -146,7 +146,7 @@ function test_local_order_screen_hands_over_its_cart()
 
 	// The claim comes before every write and the check before the claim.
 	$check = strpos($order, '$checked = pg_local_order_check(');
-	$claim = strpos($order, "WHERE id = '\" . \$order_id . \"' AND status = 'incomplete'\");");
+	$claim = strpos($order, "UPDATE orders SET status = 'complete', type = 'local'");
 	$number = strpos($order, '$order_number = local_sale_next_order_number();');
 	pg_assert_true(($check !== false) && ($claim !== false) && ($check < $claim), 'checked, then claimed');
 	pg_assert_true(($number !== false) && ($claim < $number), 'claimed, then numbered');

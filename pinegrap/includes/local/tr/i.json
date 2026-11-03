@@ -996,6 +996,7 @@
     "it is empty.": "sayfa boş.",
     "it is removed from all of them.": "hepsinden kaldırılacak.",
     "item(s)": "öğe",
+    "items must list objects of {product_id, quantity} with whole numbers.": "items, tam sayılarla {product_id, quantity} nesnelerini listelemelidir.",
     "its own design": "kendi tasarımı",
     "iys, ileti yönetim sistemi, consent, permission, brand, marketing, opt-in, refusal": "iys, ileti yönetim sistemi, izin, onay, marka, pazarlama, ticari ileti, ret, consent, permission, brand, marketing, opt-in, refusal",
     "iyzico": "iyzico",

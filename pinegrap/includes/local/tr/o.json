@@ -1076,6 +1076,7 @@
     "Order ({var:1}) was accepted, but one or more gift cards could not be redeemed. The order should not be fulfilled until the payment is settled. Total to redeem: {var:2}. Total redeemed: {var:3}.": "Sipariş ({var:1}) kabul edildi, ancak bir veya daha fazla hediye kartından tutar düşülemedi. Ödeme sorunu çözülene kadar sipariş hazırlanmamalıdır. Düşülecek toplam: {var:2}. Düşülen toplam: {var:3}.",
     "Order ({var:1}) was changed in the Workspace, on Claude's proposal.": "Sipariş ({var:1}) Çalışma Alanı'nda Claude'un önerisiyle değiştirildi.",
     "Order ({var:1}) was changed through the API by the application {var:2} (key {var:3}).": "Sipariş ({var:1}), {var:2} uygulaması tarafından API üzerinden değiştirildi (anahtar {var:3}).",
+    "Order ({var:1}) was created through the API by the application {var:2} (key {var:3}).": "Sipariş ({var:1}) API üzerinden {var:2} uygulaması tarafından oluşturuldu (anahtar {var:3}).",
     "Order ({var:1}) was deleted.": "Sipariş ({var:1}) silindi.",
     "Order ({var:1}) was synced with MailChimp.": "Sipariş ({var:1}) MailChimp ile senkronize edildi.",
     "Order Abandoned": "Sipariş Yarım Bırakıldı",

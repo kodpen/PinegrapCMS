@@ -52,6 +52,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-openapi-declarations.md: How a route and an object are declared for the OpenAPI document: returns, field schemas beside presenters, nested nullable objects, list item types, 201/204, the panel's loader, check_api_schema.php
 - api-openapi-nullable-fields.md: When an external API field is declared nullable (string? in the resource's *_schema()), what decides it, and the tests that guard it
 - api-order-money-fields.md: The external API's order totals, the gift card and instalment amounts, and payment_installment (PR #3842)
+- api-orders-create.md: POST /orders records a counter (local) sale through the counter screen's completion: lines, customer, payment, the checks before the write, dry run, Idempotency-Key, what it answers
 - api-orders-list.md: GET /orders: status comma list, sort placed_desc, modified_since on last_modified_timestamp, cursor marks, and the writers that move the stamp (pg_order_touch_sql(), PR #2258)
 - api-product-bundles.md: Product bundles in the external API: the bundle block on Product, the bundle fields POST /products/{id} writes, what it refuses, the price batch and inventory answers for a bundle
 - api-response-json-encoding.md: API and MCP answers as JSON (pg_json_encode_answer()): broken UTF-8 bytes, keys too, become U+FFFD on every PHP version; INF or NAN becomes a 500 or -32603, never an empty body

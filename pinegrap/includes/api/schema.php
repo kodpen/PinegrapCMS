@@ -622,6 +622,28 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'orders.create',
+			'method'  => 'POST',
+			'path'    => '/orders',
+			'scope'   => 'orders:write',
+			'handler' => 'api_orders_create',
+			'dry_run' => true,
+			'status'  => 201,
+			'returns' => 'LocalSale',
+			'summary' => 'Record a counter sale',
+			'description' => 'A local sale, the order Add Local Order on the order screens completes, rung up by the application\'s owner: type local, no shipping address, the products at their catalogue price with their VAT. The lines are checked the way the till checks its cart - a product switched off, or more units of a product that tracks its stock than it has (lines of one product counted together), is refused with 422 naming the product, and nothing is written. Then the order is numbered, the stock goes down, order.created is announced and, with the ERP module on, the invoice is issued (walk-in sales to the walk-in account) and the money recorded in the till or bank account given, when the owner holds the ERP cash right. Once the order exists it stays complete: an invoice or payment that could not be recorded comes back in warnings, with the order. Send an Idempotency-Key: a retried call then answers the first sale instead of selling twice. A dry run makes every check and answers the line count, units, total and customer.',
+			'params'  => array(
+				array('name' => 'items',          'in' => 'body', 'type' => 'list', 'of' => array('product_id' => 'integer', 'quantity' => 'integer'), 'max_items' => 100, 'required' => true, 'description' => 'Objects of {product_id, quantity}: quantity a whole number from 1 to 9999. A product named twice is one line of both quantities.'),
+				array('name' => 'contact_id',     'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The customer (GET /customers). Left out with account_id, the sale is a walk-in sale.'),
+				array('name' => 'account_id',     'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'An ERP account to bill instead of a contact; only with the ERP module on.'),
+				array('name' => 'payment_method', 'in' => 'body', 'type' => 'enum', 'values' => array('cash', 'card', 'transfer', 'cheque', 'other', 'later', 'split'), 'description' => 'How the customer paid; later (the default) records no money. With the ERP module off it is not recorded anywhere.'),
+				array('name' => 'till_id',        'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The ERP till or bank account the payment goes to; without it the invoice stays open with a warning.'),
+				array('name' => 'received',       'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Cash handed over, in minor units: less than the total is refused. Not stored.'),
+				array('name' => 'payment_parts',  'in' => 'body', 'type' => 'list', 'of' => array('method' => 'string', 'till_id' => 'integer', 'amount' => 'integer'), 'max_items' => 2, 'description' => 'With split only: up to two {method (cash, card, transfer, cheque or other), till_id, amount in minor units}; what they leave stays owed on the account. Needs the ERP module and the owner\'s ERP cash right.')
+			)
+		),
+
+		array(
 			'id'      => 'orders.get',
 			'method'  => 'GET',
 			'path'    => '/orders/{id}',
