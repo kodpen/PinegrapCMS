@@ -68,20 +68,14 @@ if (!$_POST) {
 
     $liveform->validate_required_field('quantity', lang('Quantity is required.'));
 
-    $quantity = $liveform->get('quantity');
-
-    // Remove commas from quantity.
-    $quantity = str_replace(',', '', $quantity);
+    // A whole number above 0, else 0 (pg_key_code_form_quantity()).
+    $quantity = pg_key_code_form_quantity($liveform->get('quantity'));
 
     // If there is not already an error for the quantity field,
-    // and value is not a number greater than 0, then add error.
+    // and value is not a whole number greater than 0, then add error.
     if (
         (!$liveform->check_field_error('quantity'))
-        &&
-        (
-            !is_numeric($quantity)
-            || ($quantity <= 0)
-        )
+        && ($quantity < 1)
     ) {
         $liveform->mark_error('quantity', lang('Please enter a valid quantity.'));
     }

@@ -176,3 +176,28 @@ function pg_key_code_form_generate($taken = null)
 
     return '';
 }
+
+/**
+ * The number of key codes the create screen is asked for: a whole number
+ * above 0 (commas as thousands separators allowed), 0 for anything else.
+ * A decimal is refused rather than cut: the number box turns a typed ","
+ * into ".", so "2,5" posts 2.5, which created two codes, and 0.5 created
+ * none while the screen reported them created.
+ *
+ * @param mixed $typed
+ * @return int
+ */
+function pg_key_code_form_quantity($typed)
+{
+    if (!is_scalar($typed)) {
+        return 0;
+    }
+
+    $quantity = str_replace(',', '', trim((string) $typed));
+
+    if (!preg_match('/^[0-9]{1,9}$/', $quantity)) {
+        return 0;
+    }
+
+    return (int) $quantity;
+}

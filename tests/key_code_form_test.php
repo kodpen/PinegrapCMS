@@ -267,3 +267,27 @@ function test_key_code_form_refuses_codes_longer_than_the_column()
 	pg_assert_same(array('offer_code'), array_keys($errors), 'an offer code longer than the column');
 	pg_assert_contains('longer than 50 characters', $errors['offer_code'], 'with the same words');
 }
+
+function test_key_code_form_quantity_is_a_whole_number()
+{
+	$cases = array(
+		array('1', 1, 'one'),
+		array(' 25 ', 25, 'spaces around'),
+		array('1,000', 1000, 'thousands comma'),
+		array('0', 0, 'zero'),
+		array('', 0, 'empty'),
+		array('0.5', 0, 'a half created nothing yet said created'),
+		array('2.5', 0, 'the number mask posts "2,5" as 2.5: two codes, not 2.5'),
+		array('1e2', 0, 'exponent'),
+		array('-3', 0, 'negative'),
+		array('abc', 0, 'text'),
+		array(array('5'), 0, 'array'),
+	);
+
+	foreach ($cases as $case) {
+		pg_assert_same($case[1], pg_key_code_form_quantity($case[0]), $case[2]);
+	}
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/add_key_code.php');
+	pg_assert_contains('pg_key_code_form_quantity(', $source, 'create screen reads the quantity through it');
+}

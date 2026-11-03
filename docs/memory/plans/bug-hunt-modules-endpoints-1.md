@@ -42,11 +42,11 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `form` (6, and get_form_view_directory_screen_content): done #4571, #4582
 - Endpoints `generate` (3): open
 - Endpoints `gift` (3): done #4576, #4586
-- Endpoints `google` (3): open
+- Endpoints `google` (3): clean #6092
 - Endpoints `image` (3): open
-- Endpoints `key` (5): open
+- Endpoints `key` (5): done #6092
 - Endpoints `login` (4): taken by KZ: #4594; the rest clean
-- Endpoints `logout` (2): open
+- Endpoints `logout` (2): clean #6092
 - Endpoints `mail` (2): open
 - Endpoints `manifest` (2): open
 - Endpoints `marketplace` (3): open
