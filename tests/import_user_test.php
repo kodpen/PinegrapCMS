@@ -111,9 +111,16 @@ function db($sql) {
 	return true;
 }
 
-// The record writer as the framework sees it: its delete path only.
-function pg_import_write_record($item, $import) { return array('result' => 'failed'); }
-function pg_import_unwrite_record($item_id) { $GLOBALS['removed'][] = 'record:' . $item_id; return true; }
+// The record writer's own delete path, its database calls stubbed.
+function db_q($sql, $params = array()) {
+	if (strpos($sql, 'DELETE FROM forms WHERE id = ?') === 0) {
+		$GLOBALS['removed'][] = 'record:' . $params[0];
+	}
+	return true;
+}
+function pg_signature_delete($form_id) { return true; }
+function pg_sfv_delete_views($column, $id) {}
+function pg_comment_delete_record_thread($form_id) { return array(); }
 
 require $pg_dir . '/includes/fn/importers.php';
 

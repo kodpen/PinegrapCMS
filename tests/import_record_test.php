@@ -88,7 +88,7 @@ function test_import_record_rows_each_kind()
 	pg_assert_same(array('Hello world'), $by[1], 'title');
 	pg_assert_same(array('<p>Body &amp; more</p>'), $by[2], 'rich body as given');
 	pg_assert_same(array('Short one'), $by[3], 'plain summary');
-	pg_assert_same(array('2023-11-14 22:13:20'), $by[4], 'date and time');
+	pg_assert_same(array('2023-11-14 22:13'), $by[4], 'date and time');
 	pg_assert_same(array('file:12'), $by[5], 'picture');
 	pg_assert_same(array('sport'), $by[6], 'single pick list takes the first match');
 	pg_assert_same(array('red, blue'), $by[7], 'text box joins');

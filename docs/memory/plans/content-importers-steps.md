@@ -13,7 +13,7 @@ description: Steps IM1-IM3 of plans/content-importers.md: the import framework a
 
 - IM2 (M) WordPress WXR reader, disabled users and the author writer. In #6185 (decided in #6186).
   - `includes/import/wordpress.php`: a streaming XML reader (`XMLReader`, never the whole file in memory) over `<item>` elements: post types, status (published, draft as a draft record), dates in the site zone, author, categories and tags, the content with shortcodes stripped or kept as text (a fixed list: gallery, caption, embed), `wp:postmeta` for the featured image, comments under the item; `pg_import_wp_item()` maps to a record of the chosen form (title, body through `pg_sanitize_rich_text()`, excerpt, date, picture), to a page (handed to IM3), or to an attachment (handed to IM3); authors per question 2. Tests on the fixture: counts per kind, a post with a featured image and three comments, a draft. Memory: `platform/import-wordpress.md`.
-- IM2b (M) Record and comment writers. After IM2.
+- IM2b (M) Record and comment writers. Done in #6244.
   - `includes/import/write_record.php`: a post as a record of the mapped form (title, body through `pg_sanitize_rich_text()`, excerpt, date, categories and tags, picture from the file item when IM3 made it); `user_id` is the author's account (`pg_import_item_id($related, 'user', '<site>:author:<login>')`, else the user holding the author's address, else 0); a draft is an incomplete record. `write_comment.php`: comments on the record with threads (`parent` source key) and held ones unpublished. Unwrite paths through the kinds' own deletes; undo runs newest first, so records go before their author (`tests/import_user_test.php`).
 
 - IM3 (M) Pages and media. Done in #6190.

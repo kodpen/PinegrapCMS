@@ -19,7 +19,7 @@ module: importers
 ## How is a body rewritten?
 - `pg_import_media_localize()`: the source of each `<img>` (data-src, data-lazy-src, src, then the widest srcset) is fetched, at most 25 per item; `pg_import_media_rewrite()` sets `src` to `OUTPUT_PATH` + stored name and drops srcset, sizes and the lazy loaders' attributes; other tags stay byte for byte.
 - A picture that fails keeps its address and is named in the writer's reason. The report lists a made item with a reason as "Made, with a note" (`pg_import_report_add()`).
-- The record writer (IM2) calls the same `pg_import_media_localize()` for its body and `pg_import_media_fetch()` or the picture's source key for the featured image.
+- The record writer (`import-records.md`) calls the same `pg_import_media_localize()` for its body and `pg_import_media_fetch()` or the picture's source key for the featured image.
 
 ## How does a page item become a page?
 - Only a designer or an administrator's import writes pages (the tree is design markup); otherwise failed with a reason.
