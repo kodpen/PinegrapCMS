@@ -3483,6 +3483,8 @@
     "The poll has to close later than now.": "Oylamanın kapanışı şu andan sonra olmalı.",
     "The poll is closed.": "Oylama kapandı.",
     "The post is on the blog and the home page at once, and members can comment on it. Change or delete it with Edit on its page.": "Yazı hemen blogda ve ana sayfada yer alır, üyeler de altına yorum yazabilir. Değiştirmek ya da silmek için sayfasındaki Düzenle bağlantısını kullanın.",
+    "The post is private on the old site, so it is not imported.": "Yazı eski sitede özel, bu yüzden içe aktarılmadı.",
+    "The post is protected by a password on the old site, so it is not imported.": "Yazı eski sitede parolayla korunuyor, bu yüzden içe aktarılmadı.",
     "The post is published.": "Yazı yayınlandı.",
     "The post is what the member typed: copy it into your browser rather than following it.": "Gönderinin adresi üyenin yazdığıdır: tıklamak yerine tarayıcınıza kopyalayın.",
     "The post of this comment was not imported.": "Bu yorumun ait olduğu yazı içe aktarılmadı.",

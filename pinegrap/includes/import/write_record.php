@@ -14,8 +14,12 @@
  *   that could not be fetched and still stands at its old address.
  * - Categories and tags meet an option or reference field by label (case
  *   ignored); a name no choice carries is named in the report.
- * - The record belongs to the author's imported account, else the user who
- *   holds the author's address, else nobody. A draft is an incomplete record.
+ * - The record belongs to the author's account this import made, else to
+ *   nobody: an existing account is never matched by its address, which
+ *   registration does not verify. A draft is an incomplete record, and gets
+ *   no pretty address until it is completed.
+ * - A private or password-protected post is skipped: a record's visibility
+ *   does not follow complete, so it would be readable on the site.
  * - A featured image whose attachment comes later in the export is attached
  *   when that file is fetched (pg_import_record_attach_picture()).
  *
@@ -33,7 +37,6 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/import/media.php');
-require_once(PG_FUNCTIONS_DIR . '/includes/import/write_user.php');
 
 /**
  * The source key prefix of a record waiting for its featured image: the
@@ -71,6 +74,28 @@ function pg_import_record_plain_text($html)
 function pg_import_record_complete($item)
 {
     return (string) ($item['data']['status'] ?? '') !== 'draft';
+}
+
+/**
+ * Why a post is not made a record, '' when it is: the old site kept a
+ * private or password-protected post from its readers. Pure.
+ *
+ * @param array $item
+ * @return string
+ */
+function pg_import_record_withheld($item)
+{
+    $data = (array) ($item['data'] ?? array());
+
+    if (!empty($data['protected'])) {
+        return lang('The post is protected by a password on the old site, so it is not imported.');
+    }
+
+    if ((string) ($data['wp_status'] ?? '') === 'private') {
+        return lang('The post is private on the old site, so it is not imported.');
+    }
+
+    return '';
 }
 
 /**
@@ -293,8 +318,8 @@ function pg_import_record_form_fields($page_id)
 }
 
 /**
- * The account a post belongs to: the author's imported account, else the
- * user holding the author's address, else 0.
+ * The account a post belongs to: the author's account an import of this
+ * export made (still there), else 0.
  *
  * @param array $item
  * @param int[] $related
@@ -309,7 +334,7 @@ function pg_import_record_author_id($item, $related)
         return $user_id;
     }
 
-    return pg_import_user_by_email((string) ($item['data']['author']['email'] ?? ''));
+    return 0;
 }
 
 /**
@@ -324,6 +349,12 @@ function pg_import_write_record($item, $import)
 
     if (($page_id <= 0) || ((int) db_value("SELECT COUNT(*) FROM custom_form_pages WHERE page_id = '" . $page_id . "'") === 0)) {
         return array('result' => 'failed', 'id' => 0, 'reason' => lang('The form chosen for the posts is not there.'));
+    }
+
+    $withheld = pg_import_record_withheld($item);
+
+    if ($withheld !== '') {
+        return array('result' => 'skipped', 'id' => 0, 'reason' => $withheld);
     }
 
     $data = (array) ($item['data'] ?? array());
@@ -397,7 +428,8 @@ function pg_import_write_record($item, $import)
             source_key = '" . e(mb_substr(PG_IMPORT_PICTURE_WAIT . $picture_key, 0, 191)) . "'");
     }
 
-    if (check_if_pretty_urls_are_enabled($page_id)) {
+    // An incomplete record gets its address when it is completed.
+    if (pg_import_record_complete($item) && check_if_pretty_urls_are_enabled($page_id)) {
         update_submitted_form_address_name($form_id);
     }
 

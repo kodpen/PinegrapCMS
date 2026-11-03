@@ -232,3 +232,41 @@ function test_import_record_writers_wired()
 	pg_assert_true(strpos($comment, 'pg_comment_refresh_record_info(') !== false, 'record counters');
 	pg_assert_true(strpos($comment, 'pg_comment_replies_ready()') !== false, 'parent column only when ready');
 }
+
+// A post the old site kept from its readers never becomes a record: a
+// record's visibility does not follow complete.
+function test_import_record_withheld()
+{
+	pg_assert_same('', pg_import_record_withheld(pg_test_import_record_item(array('wp_status' => 'publish', 'protected' => false))), 'published');
+	pg_assert_same('', pg_import_record_withheld(pg_test_import_record_item(array('wp_status' => 'draft', 'status' => 'draft'))), 'a draft comes in incomplete');
+	pg_assert_true(pg_import_record_withheld(pg_test_import_record_item(array('wp_status' => 'private'))) !== '', 'private');
+	pg_assert_true(pg_import_record_withheld(pg_test_import_record_item(array('wp_status' => 'publish', 'protected' => true))) !== '', 'password');
+}
+
+// The fixture's posts carry the old status and the password flag.
+function test_import_record_fixture_status_fields()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/import/wordpress.php');
+
+	$cursor = pg_import_wordpress_open(PG_FUNCTIONS_DIR . '/../tests/fixtures/import/wordpress.xml');
+	$seen = array();
+
+	while (($item = pg_import_wordpress_next($cursor)) !== null) {
+		if ($item['kind'] === 'record') {
+			pg_assert_true(array_key_exists('protected', $item['data']), 'password flag of ' . $item['source_key']);
+			$seen[] = $item['data']['wp_status'];
+		}
+	}
+
+	pg_assert_true(in_array('draft', $seen, true) && in_array('publish', $seen, true), 'old statuses read');
+}
+
+// The record's owner comes only from an account the import made, never
+// from an address match against existing accounts.
+function test_import_record_owner_not_by_address()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/import/write_record.php');
+
+	pg_assert_false(strpos($source, 'pg_import_user_by_email(') !== false, 'no address match');
+	pg_assert_true(strpos($source, 'pg_import_record_complete($item) && check_if_pretty_urls_are_enabled(') !== false, 'no pretty address for an incomplete record');
+}
