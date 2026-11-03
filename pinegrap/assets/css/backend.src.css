@@ -22153,6 +22153,17 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     animation: none;
   }
 }
+
+/* Bookings week (view_bookings.php?view=week): seven day columns from xl up.
+   A flex item's min-width is its content, so a booking's unbreakable first
+   line (time and status badge) widened the columns until Saturday and Sunday
+   wrapped to a second row; the columns may shrink and that line wraps. */
+.pg-bookings-week > section {
+  min-width: 0;
+}
+.pg-bookings-week .list-group-item .d-flex {
+  flex-wrap: wrap;
+}
 }
 
 /* Unlayered: Bootstrap 6 gives .fixed-top 1020 in its helpers layer, which
