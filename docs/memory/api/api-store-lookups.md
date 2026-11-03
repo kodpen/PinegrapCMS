@@ -20,7 +20,7 @@ module: store_lookups
 - Arrival dates get their routes in step X8c (`plans/external-api-coverage.md`).
 
 ## Which id do the edit screens write?
-- `edit_ship_date_adjustment.php` and `edit_verified_shipping_address.php` save and delete the `$id` they checked at the top, never the posted `id` field: a POST to `?id=5` without the field inserted a new row (fixed in X8b).
+- `edit_ship_date_adjustment.php` and `edit_verified_shipping_address.php` save and delete the `$id` they checked at the top, never the posted `id` field: a POST to `?id=5` without the field inserted a new row (#6308).
 - Checkout's Lead Source pick list (`get_billing_information.php`, `get_express_order.php`) prints referral source names and codes through `h()`: liveform prints option keys and values raw.
 
 ## Tested?

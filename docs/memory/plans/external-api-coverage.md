@@ -22,7 +22,7 @@ description: External API (integration.php): find what the panel can do that the
 - X7 `POST /offers`, `POST /offers/{id}/duplicate` through the editor's validate and save, `offers:write`, events `offer.created|updated|deleted`: PR #6175 (`api/api-offers-create.md`).
 - X8 Store lookup lists, cut in three; drafts of X8b/X8c on branch `wip/external-api-coverage-x8bc`:
   - X8a Shared write path of the eight screens (`fn/store_lookups.php`), `/store/referral-sources` CRUD: PR #6247 (`api/api-store-lookups.md`).
-  - X8b `/store/ship-date-adjustments`, `/store/verified-addresses` CRUD (409 `adjustment_taken`).
+  - X8b `/store/ship-date-adjustments`, `/store/verified-addresses` CRUD (409 `adjustment_taken`): PR #6308.
   - X8c `/store/arrival-dates` CRUD with `shipping_cutoffs` (a row the screen drops is 422).
 - X9 `POST /campaigns` (draft), `POST /campaigns/{id}/schedule`, campaign profiles CRUD, `GET /campaigns/sms`. `campaigns:*`. Event `campaign.sent`.
 - X10 Calendars create/update/delete, `/calendars/locations` CRUD, `GET /calendars/events/{id}/reservations`. `calendars:*` with the role-3 row rule. Event `calendar_event.reserved`.
