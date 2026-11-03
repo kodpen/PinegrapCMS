@@ -31,7 +31,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 - `email_campaign_send`: done (#5934)
 - `errors`: #6017
 - `events`: clean
-- `explorer_side`: open
+- `explorer_side`: clean (gates match view_folders.php, view_product_groups.php and the menu rows; ids filtered; markup escaped; script builds rows with textContent)
 - `files`: done #4613
 - `form_subscription`: open
 - `forms`: done #6044 (validate_date() took a date inside longer text)
