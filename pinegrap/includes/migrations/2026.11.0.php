@@ -150,6 +150,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_store_credit();            // 11.0.159
 	upgrade_2026_11_0_user_disabled();           // 11.0.160
 	upgrade_2026_11_0_booking_campaigns();       // 11.0.161
+	upgrade_2026_11_0_form_list_view_address();  // 11.0.163
 
 }
 
@@ -4910,5 +4911,59 @@ function upgrade_2026_11_0_booking_campaigns() {
 	}
 
 	install_note('E-mail campaigns: automatic e-mails gain the booking confirmed, booking reminder, booking rescheduled and booking cancelled actions. Nothing is sent until such a profile is created.');
+
+}
+
+// The form list view sorts and filters by a submission's address name
+// (2026.11.0, 11.0.163; get_standard_fields_for_view() in includes/fn/forms.php),
+// but its order-by and filter field columns are ENUMs that never listed
+// 'address_name', so a view set to it was saved with ''. Each list is read
+// first and only appended to, the null rule and the default kept, so a value
+// another step added stays ('random' in order_by_1 included) and a second run
+// finds the value and changes nothing.
+function upgrade_2026_11_0_form_list_view_address() {
+
+	$columns = array(
+		array('form_list_view_pages', 'order_by_1_standard_field'),
+		array('form_list_view_pages', 'order_by_2_standard_field'),
+		array('form_list_view_pages', 'order_by_3_standard_field'),
+		array('form_list_view_filters', 'standard_field'),
+	);
+
+	foreach ($columns as $column) {
+
+		list($table, $name) = $column;
+
+		$info = install_column_info($table, $name);
+
+		if (!$info) {
+
+			continue;
+
+		}
+
+		preg_match_all("/'((?:[^']|'')*)'/", (string) $info['Type'], $matches);
+
+		$values = $matches[1];
+
+		if (in_array('address_name', $values, true)) {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => $table . '.' . $name . ' address_name')));
+
+			continue;
+
+		}
+
+		$values[] = 'address_name';
+
+		$definition = "ENUM('" . implode("','", $values) . "')"
+			. ((($info['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+			. (($info['Default'] !== null) ? " DEFAULT '" . e((string) $info['Default']) . "'" : '');
+
+		install_modify_column($table, $name, $definition);
+
+	}
+
+	install_note('Form list views: the order-by and filter fields can hold the address name. Existing views do not change.');
 
 }
