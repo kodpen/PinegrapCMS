@@ -15,6 +15,7 @@ module: widgets_accessibility
 
 ## How is the conformance decided?
 - `pg_a11y_conformance()` (pure) over the report's stored findings (`pg_a11y_report_summary()`, codes the rule registry still names): `unchecked` until a full pass has finished (no claim, never "full" for a site never checked, as #2041 for the report), `full` with no finding, `none` when error findings stand on at least half the pages checked (`pg_a11y_pages()`), else `partial`. The automatic check covers only part of each criterion; the statement says so under "Assessment approach".
+- Pages: the ones the last full pass checked (`pg_a11y_pass_record()`), also for the half-the-pages verdict. "Assessment approach" (`pg_a11y_assessment_text()`) says "M of N" when some could not be rendered and "every night" only while `seo_a11y_job` is switched on (#5853).
 - Known limitations: `pg_a11y_statement_limits()` one row per check with findings, errors first, then by page count; label, criterion with name, level, pages.
 
 ## Tokens and flags?
