@@ -17,6 +17,6 @@ module: file_storage
 - Copy last use: `pg_file_cache_used()` moves only the access time; the modification time is the fetch time a derivative's signature reads (`pg_image_derivative_signature()`), so derivatives of a used copy stay valid. The sweep takes `pg_file_cache_last_use()` (later of the two). `pg_file_cache_sweep()` hourly: unused 7 days, `.part` over a day, then LRU above 1 GB. No `GLOB_BRACE` (musl).
 
 ## Which readers go through the copy?
-- Through the copy (#OS3c): image editor open/save/restore and SVG open, file window view and save, office preview, Prepare WebP, rotate, optimize, zip, copy, search index text of PDF/office/txt (a file it cannot read keeps its last text). Left local on purpose: front-end `<picture>` helpers (`pg_image_is_animated()` etc. on page render; a stored file gets no srcset), the warm-up, `get_photo_gallery.php` sizes, design and theme files.
+- Through the copy (#5904): image editor open/save/restore and SVG open, file window view and save, office preview, Prepare WebP, rotate, optimize, zip, copy, search index text of PDF/office/txt (a file it cannot read keeps its last text). Left local on purpose: front-end `<picture>` helpers (`pg_image_is_animated()` etc. on page render; a stored file gets no srcset), the warm-up, `get_photo_gallery.php` sizes, design and theme files.
 
 Tests: `tests/object_storage_files_test.php`.
