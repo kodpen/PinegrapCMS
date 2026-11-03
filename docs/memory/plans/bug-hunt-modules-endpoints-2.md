@@ -17,7 +17,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `registration` (4): open
 - Endpoints `remove` (3): open
 - Endpoints `return` (4): open
-- Endpoints `search` (3): open
+- Endpoints `search` (5: get_search_results, search_audits, search_audits_run, search_console, update_search_index): taken by Arzu worker
 - Endpoints `seo` (8): open
 - Endpoints `setting` (14): open
 - Endpoints `ship` (3): open
