@@ -10,7 +10,6 @@ description: The eleven feature plans approved 2026-11-02: index and order, how 
 
 ## Which plans, in which order?
 1. `object-storage.md` (OS1-OS7): S3-compatible backup target, then media.
-2. `web-vitals-ai-visibility.md` (WV1-WV6): real-user web vitals, AI crawler and AI referral figures.
 3. `designer-form-logic.md` (FL1-FL8): shown-when rules, steps, a payment step in designed forms.
 4. `appointment-booking.md` (BK1-BK10): services, staff hours, slots, a booking widget.
 5. `page-experiments.md` (PX1-PX8): A/B variants of a page and audience rules on elements.

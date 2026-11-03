@@ -55,3 +55,4 @@ Visitor statistics, page and article views, search engine index flags.
 - visitor-rollup-tables.md: The hourly visitor summary tables (visitor_stats_hourly, visitor_content_hourly), bucket_key hashing, and how content items are identified (2026.3.4).
 - visitor-table-size-figures.md: Where the visitor card, the System Status line and the shrink/move before-after sizes get their record count and file size, and how each figure says its source
 - visitor-texts-list.md: Referring address and user agent of a visit kept once each in visitor_texts and named by number in visitors (step 10.6): writer, readers, prune, old rows, upgrade limits
+- web-vitals-ai-visibility-decisions.md: Decisions behind the page speed figures and the AI visibility view (owner 2026-11-02, #5040): privacy, where the beacon is off, derived data, table shapes, unverified bots, where the screens go

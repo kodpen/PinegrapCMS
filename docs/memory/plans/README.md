@@ -123,9 +123,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
 - voice-to-assistants-steps.md: Steps VA1-VA6 of plans/voice-to-assistants.md: deaf hint, keyless hearing, speech service, spoken answers, voice message route, MCP agents; claim as [plan:voice-to-assistants] VA<n>
 - voice-to-assistants.md: Plan (owner 2026-11-02): recordings reach every assistant in channels and discussions, assistants answer by voice, any caller can post a voice message; steps VA1-VA6
-- web-vitals-ai-visibility-steps-2.md: Steps WV4-WV6 of plans/web-vitals-ai-visibility.md: AI visibility figures and referrals, the Speed and AI sections with the card, close-out; claim as [plan:web-vitals-ai-visibility] WV<n>
-- web-vitals-ai-visibility-steps.md: Steps WV1-WV3 of plans/web-vitals-ai-visibility.md: the vitals beacon and rollup, the figures and API route, the AI fetch counter; claim as [plan:web-vitals-ai-visibility] WV<n>
-- web-vitals-ai-visibility.md: Plan (owner 2026-11-02): real-user web vitals per page from a beacon into an hourly rollup, and an AI visibility view (AI crawler fetches, AI referrals); steps WV1-WV6
 - workspace-agent-handles.md: Plan (2026-10-21, steps 1 and 5 done, 4 waits for 2): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1-3 (#1462, #1523, #1726) and question 6 done): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
 - workspace-menu-layout.md: Plan (owner decision 2026-10-30) for a tidier Workspace list in the main menu: search, places, one Channels section, discussions, Tools tiles; channel screen unchanged
