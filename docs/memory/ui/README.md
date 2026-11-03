@@ -404,7 +404,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - settings-card-save-rules.md: Rules for writing settings cards and their save modules: own columns only, $sql_* splice, prep.php $row, balanced divs, registry.php sections.
 - settings-dashboard-card.md: Dashboard card in Site Settings > Appearance (pgset-dashboard): card style, panel backdrop, per-sign-in refresh time, Reset Widgets; role < 2 gate; how a save reaches the dashboard behind the dialog
 - settings-filter-autofill.md: Settings category screens: a password manager wrote the saved username ("admin") into the toolbar filter and every section card vanished; the token and the focus guard that stop it (PR #1700)
-- settings-folder-pickers.md: Site Settings folder pickers (product images, Grant Private Access, API uploads) leave out the Workspace's folders and the Recycle Bin; their saves refuse them; a stored one is shown marked
+- settings-folder-pickers.md: Site Settings and page folder pickers leave out the Workspace (settings also the Recycle Bin); settings saves refuse them; a stored one is shown marked
 - settings-group-names.md: Site Settings groups, user rights Select / Select All and the other two-list Select All switches (Organize Contacts, calendar event) named by their heading
 - settings-input-keyboards.md: Phone keyboard and auto-capitalisation of the Site Settings and Workspace mailbox boxes for web addresses, hosts, user names, address lists and Merchant numbers.
 - settings-invalid-fields.md: A refused Site Settings save names its marked fields (pg_settings_marked_fields()); the dialog marks them with pgFieldInvalid(), shows the notice and focuses the first (#3026)

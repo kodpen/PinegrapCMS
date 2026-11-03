@@ -617,6 +617,7 @@
     "{var:1} contact(s) have placed orders but have no account. Open an account for each of them from their contact card?": "{var:1} kişi sipariş vermiş ama cari hesabı yok. Her biri için kişi kartından bir cari açılsın mı?",
     "{var:1} contact(s) were deleted": "{var:1} kişi silindi.",
     "{var:1} contact(s) were merged successfully": "{var:1} kişi başarıyla birleştirildi",
+    "{var:1} contact(s) were not deleted because a user account or an ERP account holds them: {var:2}.": "{var:1} kişi silinmedi, çünkü bir kullanıcı hesabı ya da ERP hesabı onları tutuyor: {var:2}.",
     "{var:1} contact(s) were opted-in": "{var:1} kişiye ileti izni verildi.",
     "{var:1} contact(s) were opted-out": "{var:1} kişinin ileti izni kaldırıldı.",
     "{var:1} contact(s) were organized": "{var:1} kişi organize edildi",

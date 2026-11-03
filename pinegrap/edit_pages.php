@@ -153,7 +153,7 @@ if (!$_POST) {
             <div class="col-12 sm:col-6">
                 <div class="form-floating mt-1 mb-3">
                     <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                    <select class="form-control" id="folder"><option value=""></option>' . select_folder() . '</select>
+                    <select class="form-control" id="folder"><option value=""></option>' . pg_page_select_folder() . '</select>
                 </div>
             </div>
             
