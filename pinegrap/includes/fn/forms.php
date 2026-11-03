@@ -951,8 +951,6 @@ function get_product_group_options($product_group_id = 0, $parent_product_group_
 function get_ad_region_options()
 {
     global $user;
-    // Setup first option
-    $ad_region_options[''] = '';
     $sql_join = '';
     $where = '';
     $where_values = array();
@@ -971,11 +969,32 @@ function get_ad_region_options()
         $where
         ORDER BY name";
     $result = db_q($query, $where_values) or output_error(lang('Query failed.'));
-    // loop through each ad region and add it to array
+    $rows = array();
     while ($row = mysqli_fetch_assoc($result)) {
-        $ad_region_options[h($row['name'])] = $row['id'];
+        $rows[] = $row;
     }
-    return $ad_region_options;
+    return pg_ad_region_option_list($rows);
+}
+/**
+ * The Ad Region pick list from (id, name) rows: a blank first entry, then
+ * escaped name => id. The label is the array key, so a region whose name
+ * an earlier one already uses (stored before names were capped at the
+ * column's length) gets its id after the name instead of replacing it.
+ *
+ * @param array $rows  Rows with 'id' and 'name', in display order
+ * @return array
+ */
+function pg_ad_region_option_list(array $rows)
+{
+    $options = array('' => '');
+    foreach ($rows as $row) {
+        $label = h($row['name']);
+        if (array_key_exists($label, $options)) {
+            $label .= ' (#' . $row['id'] . ')';
+        }
+        $options[$label] = $row['id'];
+    }
+    return $options;
 }
 // get an array of states for pick lists
 function get_state_options()

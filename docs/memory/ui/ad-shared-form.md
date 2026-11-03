@@ -20,3 +20,6 @@ description: The ad create and edit screens share includes/forms/ad_form.php: wh
 - Create: the screen's role-3 gate (no editable region, no access), the INSERT, the notice on the ad list.
 - Edit: the not-found guard, the role-3 access check on the ad's current region, the record load (sort order 0 shown empty), the hidden id and `send_to`, delete, the UPDATE, `send_to` or the notice.
 - Tests: `tests/ad_form_test.php` (value order with a stub liveform, the sort order rule, both screens on the form, the empty-region hint per role); `db_q_pages_regions_test.php` and `db_q_regions_styles_menus_test.php` count the queries of the screens and the form.
+
+## What does the Ad Region select show for two regions with one name?
+- `get_ad_region_options()` builds its list with `pg_ad_region_option_list($rows)` (`includes/fn/forms.php`). The label is the array key, so a second region with a name already listed is shown as `name (#id)` instead of replacing the first. New names cannot clash (100-character cap, #5888); this covers regions stored before it (#5748).

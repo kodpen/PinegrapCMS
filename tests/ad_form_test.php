@@ -146,3 +146,21 @@ function test_view_ads_filter_and_alignment()
 	pg_assert_contains('<td class="align-middle text-center">\' . $output_label', $source, 'Label cells are centred like their heading');
 	pg_assert_contains("elseif (\$ad['ad_region_display_type'] == 'dynamic')", $source, 'an ad without a region is not shown as Dynamic');
 }
+
+function test_ad_region_options_keep_regions_that_share_a_name()
+{
+	$options = pg_ad_region_option_list(array(
+		array('id' => '4', 'name' => 'banner'),
+		array('id' => '7', 'name' => 'banner'),
+		array('id' => '9', 'name' => 'side'),
+	));
+
+	pg_assert_same(array('' => '', 'banner' => '4', 'banner (#7)' => '7', 'side' => '9'), $options);
+}
+
+function test_ad_region_options_escape_the_name()
+{
+	$options = pg_ad_region_option_list(array(array('id' => '3', 'name' => 'a&b')));
+
+	pg_assert_same(array('' => '', 'a&amp;b' => '3'), $options);
+}
