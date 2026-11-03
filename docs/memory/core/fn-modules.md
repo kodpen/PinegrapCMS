@@ -94,6 +94,7 @@ description: Generated from the module field of the memory files: each includes/
 - `output`: [[list-status-words]]
 - `page_bulk`: [[page-bulk-edit]]
 - `page_facts`: [[page-conditions]]
+- `page_list`: [[page-list-paging]]
 - `page_vitals`: [[page-vitals-beacon]], [[page-vitals-figures]]
 - `payments`: [[card-brand-switches]], [[payment-driver-paytr-installments]], [[payment-gateway-secrets]]
 - `pdf_merge`: [[shipment-label-bulk]]
