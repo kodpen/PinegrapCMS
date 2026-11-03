@@ -1,6 +1,6 @@
 ---
 name: settings-folder-pickers
-description: Site Settings folder pickers (product images, Grant Private Access, API uploads) and the page folder pickers leave out the Workspace's folders and the Recycle Bin; their saves refuse them; a stored one is shown marked
+description: Site Settings and page folder pickers leave out the Workspace (settings also the Recycle Bin); settings saves refuse them; a stored one is shown marked
 module: auth
 ---
 
