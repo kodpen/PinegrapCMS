@@ -98,7 +98,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - contact-form-checks.md: Create/Edit Contact save checks: membership date and negative rate refused, role 3 keeps a group on edit, picture posted as file_id or image_url, notes box, wording
 - contact-group-shared-form.md: The contact group create and edit screens share includes/forms/contact_group_form.php: what it holds, what stays in the screens, one required message, the list sorted on shown values
 - contact-list-filters.md: Contacts list filters (contact_list.php): offered groups only, [None] from [All], range to today, box search, typed date, period links keep the view, export formula guard
-- contact-list-names.md: Contacts list (view_contacts.php): one Website filter, labels on their own field, group counts in the panel's number format, the row checkbox and Opt-In mark names, silent icon words
+- contact-list-names.md: Contacts list (view_contacts.php): one Website filter, labels on their own field, group counts in the panel's number format, the editor link and Opt-In mark names, silent icon words
 - contact-orders-list.md: All Orders for Contact (view_orders_for_contact.php): open carts left out, a Status column with the orders list's badge, paid_at probed
 - contact-shared-form.md: The contact create and edit screens share includes/forms/contact_form.php: what it holds, what stays in the screens
 - contact-user-list-view-kept.md: Contacts and Users lists keep their view (filter) through Export, Delete All, Merge, Advanced Filters, Create and Import
@@ -260,6 +260,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-stale-filter.md: All Ads, Verified Shipping Addresses and Submitted Forms reset a remembered filter whose ad region, state or custom form is gone to '[All]' (pg_list_filter_known())
 - list-status-words.md: A word beside a list row's green or red state (pg_list_status_word()): product groups, key codes, arrival dates, gift cards, ERP expenses
 - list-table-driver-browser.md: List table driver in the browser (assets/js/pg_list_table.js): selection, Ctrl+A, undo, rows on scroll, sort, search, columns menu, details panel, phone cards, thumbnails, layout
+- list-table-driver-lists.md: Which screens are on the list table driver (pages, users, contacts): their sources, columns, bulk actions through the resolver, what each keeps
 - list-table-driver.md: List table driver server core (includes/fn/list_table.php): source and column model, first rows printed, keyset batches, the list_table_rows action, the selection resolver
 - list-table-quick-edit.md: Quick edit mode of the list table driver (assets/js/pg_list_table_edit.js): the source's edit key, F2, save on leave, refused values, undo, apply to the selected rows
 - live-filter-status.md: Live filters that say what they found (API applications, Workspace MCP tools, marketplace picker and category search): hidden status region, empty line, Enter in the MCP tool filter
@@ -389,7 +390,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - send-once-screens.md: The panel screens that send once for longer than the window guard's 3 s (stock scans, refunds, exports, imports, SVG copies, ERP e-mails), and the symptom each one fixed.
 - seo-default-share-image-warning.md: The SEO card's Default Share Image warning names each form once, told apart, without binned forms, five names then a count
 - seo-panel-run-buttons.md: SEO detail panel and SEO card: Refresh score / Analyze HTML run the link step, work on every edit screen, update every score shown; counter measures like the score; missing page is not found
-- server-paged-lists.md: DataTables lists paged on the server (submitted forms, contacts, products): data-pg-list-action, the JSON page action, search, counts, row cells, what select all and bulk buttons act on
+- server-paged-lists.md: DataTables lists paged on the server (submitted forms, products): data-pg-list-action, the JSON page action, search, counts, row cells, what select all and bulk buttons act on
 - settings-card-chrome.md: Settings dialog visual details: acrylic glass mode (advanced-visuals, pg-settings-open) and the pg-alert-dismissible padding rule.
 - settings-card-field-widths.md: Settings card control width classes pg-f-xs/sm/md/lg, how to pick one from field attributes, and why not to write style width or malformed col classes.
 - settings-card-layout-pitfalls.md: CSS pitfalls of the settings card row layout: no nested :has(), specificity of :has() rules, tagin and form-label predicates, divider alignment with text.

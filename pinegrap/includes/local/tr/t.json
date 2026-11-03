@@ -6469,6 +6469,7 @@
     "Too many codes were asked for. Please wait a few minutes and try again.": "Çok fazla kod istendi. Lütfen birkaç dakika bekleyip yeniden deneyin.",
     "Too many codes were sent. Please wait an hour and try again.": "Çok fazla kod gönderildi. Lütfen bir saat bekleyip yeniden deneyin.",
     "Too many connection tests. Please try again later.": "Çok fazla bağlantı testi yapıldı. Lütfen daha sonra tekrar deneyin.",
+    "Too many contacts are selected. Select fewer contacts and try again.": "Çok fazla kişi seçildi. Daha az kişi seçip yeniden deneyin.",
     "Too many e-mails bounce or are marked as spam": "Çok fazla e-posta geri dönüyor veya spam olarak işaretleniyor",
     "Too many failed attempts. Clears on its own in {var:1} minutes.": "Çok fazla başarısız deneme. {var:1} dakika içinde kendiliğinden açılır.",
     "Too many failed attempts. Please try again in {var:1} minutes.": "Çok fazla hatalı deneme yapıldı. Lütfen {var:1} dakika sonra tekrar deneyin.",
