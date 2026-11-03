@@ -492,7 +492,7 @@ function get_help_url($properties = array())
         'view_audit_log' => 'security#audit-trail',
         'developer_lock' => 'security#developer-lock',
         'device_limit'   => 'security#devices',
-        'device_pairing' => 'security#devices',
+        'device_pairing' => 'api#device-sessions-signin',
         'mfa'            => 'security#two-step-verification',
     );
 
