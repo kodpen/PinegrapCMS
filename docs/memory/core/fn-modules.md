@@ -175,6 +175,7 @@ description: Generated from the module field of the memory files: each includes/
 - `user_list`: [[user-list-folder-filters]], [[user-screens-names-and-dates]]
 - `variant_set_copy`: [[product-group-copy]]
 - `vat_check`: [[eu-vat-check]]
+- `vat_checkout`: [[eu-vat-checkout]]
 - `vendor_api`: [[vendor-api-client]]
 - `visitor_figures`: [[visitor-figures-module]]
 - `visitor_insights`: [[visitors-ai-section]], [[visitors-speed-section]]
