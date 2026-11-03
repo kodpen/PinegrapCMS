@@ -133,3 +133,117 @@ function pg_contact_group_form_values($liveform)
         (string) $liveform->get_field_value('description'),
     );
 }
+
+/**
+ * The "Members by rule" card of the edit screen: the switch that makes the
+ * group fill itself, the rule editor (assets/js/pg_audience_editor.js), the
+ * live count, the last run and Refresh now. A viewer who may not edit rules
+ * (the user role) sees a read-only line for a group filled by rules and no
+ * card for another.
+ *
+ * @param liveform $liveform kind and rules as the form holds them
+ * @param array    $group    the stored group: id, kind, computed_at, compute_cursor
+ * @param bool     $may_edit
+ * @return string
+ */
+function pg_contact_group_rules_card($liveform, array $group, $may_edit)
+{
+    $stored_dynamic = (($group['kind'] ?? 'static') === 'dynamic');
+
+    if (!$may_edit) {
+        if (!$stored_dynamic) {
+            return '';
+        }
+
+        return '
+                    <div class="alert theme-info my-7" role="note">' . h(lang('The rules of this group decide who is in it; a Manager or above can change them.')) . '</div>';
+    }
+
+    $dynamic = ($liveform->get_field_value('kind') === 'dynamic');
+    $rules = pg_audience_rules_clean((string) $liveform->get_field_value('rules'));
+
+    if (!empty($group['compute_cursor'])) {
+        $last_run = lang('A refresh is under way.');
+    } elseif (!empty($group['computed_at'])) {
+        $last_run = lang(array('string' => 'Last refreshed {var:1}.', 'vars' => array(get_relative_time(array('timestamp' => $group['computed_at'])))));
+    } else {
+        $last_run = lang('Not refreshed yet.');
+    }
+
+    $config = array(
+        'catalogue' => pg_audience_editor_data(),
+        'rules' => $rules,
+        'labels' => pg_audience_ref_labels($rules),
+        'source' => 'edit_contact_group.php?request=pick&kind=',
+        'group' => (int) $group['id'],
+        'text' => array(
+            'match' => lang('Contacts that match'),
+            'all' => lang('all'),
+            'any' => lang('any'),
+            'of' => lang('of these conditions'),
+            'nested' => lang('Group of conditions'),
+            'add' => lang('Add condition'),
+            'add_nested' => lang('Add a group of conditions'),
+            'remove' => lang('Remove'),
+            'condition' => lang('Condition'),
+            'operator' => lang('Operator'),
+            'value' => lang('Value'),
+            'field' => lang('Field'),
+            'days' => lang('days'),
+            'window' => lang('within the last (days)'),
+            'search' => lang('Type to search'),
+            'counting' => lang('Counting…'),
+            'count_failed' => lang('The contacts could not be counted.'),
+            'refresh_failed' => lang('The group could not be refreshed.'),
+            'refreshed' => lang('Refreshed: {added} added, {removed} removed, {members} members.'),
+            'refreshing' => lang('Refreshing: {added} added, {removed} removed so far.'),
+        ),
+    );
+
+    $output_refresh = '';
+
+    if ($stored_dynamic) {
+        $output_refresh = '
+                                            <button type="button" id="pg_audience_refresh" class="btn btn-sm btn-outline theme-primary"><span class="material-icons me-3" aria-hidden="true">refresh</span><span class="pg-btn-label">' . h(lang('Refresh now')) . '</span></button>
+                                            <span class="form-text">' . h(lang('Refresh now uses the saved rules.')) . '</span>';
+    }
+
+    return '
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card my-7" id="pg_audience_card">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Members by rule') . '
+                                </h2>
+                                <div class="card-body">
+                                    <div class="form-field">
+                                        <div class="switch"><input type="checkbox" name="kind" id="kind" value="dynamic" class="collapse-switcher no-bs" data-bs-target="#pg_audience_rules_row"' . ($dynamic ? ' checked="checked"' : '') . '></div>
+                                        <label for="kind">' . lang('Fill this group by rules') . '</label>
+                                        <div class="form-text">' . lang('Contacts who match the rules are added and taken out by themselves, about once an hour. Contacts added by hand, by a form or by a product stay.') . '</div>
+                                    </div>
+                                    <div class="collapse" id="pg_audience_rules_row">
+                                        <input type="hidden" name="rules" id="rules" value="' . h(json_encode($rules, JSON_UNESCAPED_UNICODE)) . '">
+                                        <div id="pg_audience_editor" class="my-5" data-pg-audience="' . h(json_encode($config, JSON_UNESCAPED_UNICODE)) . '"></div>
+                                        <p class="fw-bold my-3" id="pg_audience_count" role="status" aria-live="polite"></p>
+                                        <div class="d-flex flex-wrap align-items-center gap-3 my-3">
+                                            <span id="pg_audience_last_run">' . h($last_run) . '</span>' . $output_refresh . '
+                                            <span id="pg_audience_refresh_status" role="status" aria-live="polite"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>';
+}
+
+/**
+ * The script tags the rule card needs: the field wrappers for the pickers
+ * and the editor.
+ *
+ * @return string
+ */
+function pg_contact_group_rules_scripts()
+{
+    return pg_fields_script()
+        . '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_audience_editor.js?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_audience_editor.js') . '" defer></script>';
+}

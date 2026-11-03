@@ -306,9 +306,11 @@ function pg_form_payment_order_write($record_id, $fee, $contact)
 }
 
 /**
- * The statement that marks the records of a completed order paid. Pure.
+ * The statement that marks the records of a paid order paid. Pure.
  * paid_at is written once: a second completion message for the same order
- * finds no record still at 0 and changes nothing.
+ * finds no record still at 0 and changes nothing. The order's own paid_at
+ * decides: an offline payment completes the order with paid_at 0, and its
+ * record waits until staff record the payment (pg_order_mark_paid()).
  *
  * @param  int $order_id
  * @param  int $now
@@ -323,15 +325,17 @@ function pg_form_payment_mark_paid_query($order_id, $now)
     }
 
     return array(
-        'sql'    => 'UPDATE forms SET paid_at = ? WHERE order_id = ? AND paid_at = 0',
+        'sql'    => 'UPDATE forms INNER JOIN orders ON orders.id = forms.order_id'
+            . ' SET forms.paid_at = ? WHERE forms.order_id = ? AND forms.paid_at = 0 AND orders.paid_at > 0',
         'params' => array(max(1, (int) $now), $order_id),
     );
 }
 
 /**
- * Marks the record a completed order paid for, called by pg_order_complete()
- * for every order it completes; an order no record points at changes
- * nothing.
+ * Marks the record a paid order paid for, called by pg_order_complete() for
+ * every order it completes and by pg_order_mark_paid() when staff record a
+ * payment; an order no record points at, or one not yet paid, changes
+ * nothing. A record marked by this call is announced as form.paid.
  *
  * @param  int      $order_id
  * @param  int|null $now
@@ -351,5 +355,113 @@ function pg_form_payment_mark_paid($order_id, $now = null)
 
     db_q($query['sql'], $query['params']) or output_error('Query failed.');
 
-    return mysqli_affected_rows(db::$con) > 0;
+    if (mysqli_affected_rows(db::$con) <= 0) {
+        return false;
+    }
+
+    $row = db_item(
+        "SELECT forms.id, forms.page_id, forms.reference_code, forms.contact_id, forms.order_id,
+            forms.paid_at, orders.order_number
+        FROM forms
+        LEFT JOIN orders ON orders.id = forms.order_id
+        WHERE forms.order_id = '" . e((int) $order_id) . "'
+        LIMIT 1"
+    );
+
+    if ($row) {
+        pg_announce('form.paid', pg_form_paid_event_payload($row));
+    }
+
+    return true;
+}
+
+/**
+ * A record's payment: 'none' (no fee order, or a schema before the fee
+ * columns), 'unpaid' (an order not yet paid) or 'paid'. Pure.
+ *
+ * @param  array $row forms row, order_id and paid_at when present
+ * @return string
+ */
+function pg_form_payment_state($row)
+{
+    if ((int) ($row['order_id'] ?? 0) <= 0) {
+        return 'none';
+    }
+
+    return ((int) ($row['paid_at'] ?? 0) > 0) ? 'paid' : 'unpaid';
+}
+
+/**
+ * The condition that keeps the records whose fee order is not yet paid.
+ * Pure; the caller checks pg_form_payment_ready() first.
+ *
+ * @param  string $table the forms table's name or alias in the query
+ * @return string
+ */
+function pg_form_payment_unpaid_where($table = 'forms')
+{
+    return '(' . $table . '.order_id > 0 AND ' . $table . '.paid_at = 0)';
+}
+
+/**
+ * The form.paid payload: identifiers only, as form.submitted, since a form
+ * carries whatever the operator drew on it; a subscriber reads the record
+ * from /forms/{id}/submissions/{submission_id}. Pure.
+ *
+ * @param  array $row forms row with order_number
+ * @return array
+ */
+function pg_form_paid_event_payload($row)
+{
+    $contact_id = (int) ($row['contact_id'] ?? 0);
+    $paid_at = (int) ($row['paid_at'] ?? 0);
+    $order_number = (string) ($row['order_number'] ?? '');
+
+    return array(
+        'id'             => (int) ($row['id'] ?? 0),
+        'form_id'        => (int) ($row['page_id'] ?? 0),
+        'reference_code' => (string) ($row['reference_code'] ?? ''),
+        'contact_id'     => ($contact_id > 0) ? $contact_id : null,
+        'order_id'       => (int) ($row['order_id'] ?? 0),
+        'order_number'   => (($order_number !== '') && ($order_number !== '0')) ? $order_number : null,
+        'paid_at'        => ($paid_at > 0) ? gmdate('Y-m-d\TH:i:s\Z', $paid_at) : null,
+    );
+}
+
+/**
+ * A record's fee for the staff screens: the state (pg_form_payment_state())
+ * and its order's id, number, payment method, status and paid_at; null when
+ * the schema has no fee columns or the record no fee order.
+ *
+ * @param  int $record_id
+ * @return array|null state, order
+ */
+function pg_form_payment_record($record_id)
+{
+    if (!pg_form_payment_ready()) {
+        return null;
+    }
+
+    $row = db_item(
+        "SELECT forms.order_id, forms.paid_at, orders.id AS found_order_id, orders.order_number,
+            orders.payment_method, orders.status, orders.paid_at AS order_paid_at
+        FROM forms
+        LEFT JOIN orders ON orders.id = forms.order_id
+        WHERE forms.id = '" . e((int) $record_id) . "'"
+    );
+
+    if (!$row || (pg_form_payment_state($row) === 'none')) {
+        return null;
+    }
+
+    return array(
+        'state' => pg_form_payment_state($row),
+        'order' => ((int) $row['found_order_id'] > 0) ? array(
+            'id'             => (int) $row['found_order_id'],
+            'order_number'   => (string) $row['order_number'],
+            'payment_method' => (string) $row['payment_method'],
+            'status'         => (string) $row['status'],
+            'paid_at'        => (int) $row['order_paid_at'],
+        ) : null,
+    );
 }

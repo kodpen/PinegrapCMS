@@ -720,3 +720,40 @@ function test_proto_hotspots_panel_page_link_notice()
 	pg_assert_contains("if (tok === '__page_link' && !_sdSystemWidgetCfgOf(node)) return _sdPageLinkNotice(node);", $source, 'outside a widget the note names the page');
 	pg_assert_contains("window.PGProtoHotspots.applyPatch(selectedNode.props, { key: 'href', value: selectedNode.props.href || '', bind: false });", $source, 'the button drops the binding, the address stays');
 }
+
+// Which nodes Bind Data offers a page for outside a widget: a link of its
+// own drawn as <a> (content link, btn drawn as <a>, semantic a), whatever
+// its href is bound to now; never a toggle, a <button>, a text or a picture.
+function test_proto_hotspots_page_linkable()
+{
+	$nodes = array(
+		array('type' => 'content', 'props' => array('contentType' => 'link', 'href' => '/a')),
+		array('type' => 'content', 'props' => array('contentType' => 'link', 'href' => '', '_bindings' => array('href' => '__record__url'))),
+		array('type' => 'component', 'props' => array('componentType' => 'btn', 'href' => '/b')),
+		array('type' => 'component', 'props' => array('componentType' => 'btn', 'btnElement' => 'button')),
+		array('type' => 'semantic', 'props' => array('tag' => 'A', 'href' => '/c')),
+		array('type' => 'semantic', 'props' => array('tag' => 'a')),
+		array('type' => 'content', 'props' => array('contentType' => 'link', 'href' => '#m', '_attrs' => array(array('name' => 'data-bs-toggle', 'value' => 'modal')))),
+		array('type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => '<a href="/d">d</a>')),
+		array('type' => 'content', 'props' => array('contentType' => 'image', 'src' => '/x.png')),
+		null,
+	);
+	$out = proto_hotspots_test_node('out = ' . proto_hotspots_test_js($nodes) . '.map(function (n) { return H.pageLinkable(n); });');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, true, true, false, true, true, false, false, false, false), $out);
+}
+
+// Bind Data outside a widget offers a page for a link that may hold one,
+// with the page select under it, and starts no value rows there.
+function test_proto_hotspots_bind_data_offers_a_page_outside_widgets()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+
+	pg_assert_contains("var linkable = !!(window.PGProtoHotspots && window.PGProtoHotspots.pageLinkable(node));", $source, 'the panel asks the collector which links may be kept by id');
+	pg_assert_contains("var extra = (withPage && current === SW_PAGE_LINK_TOKEN) ? _sdPageLinkPageRow(node) : '';", $source, 'the page select sits under the chosen option');
+	pg_assert_contains("params: inWidget ? [{ name: '', token: '' }] : []", $source, 'outside a widget no value row is started');
+}

@@ -435,6 +435,43 @@ function pg_visitor_day_add($day, $offset)
 }
 
 /**
+ * Days the summary may be behind before System Status reports it: the job
+ * writes yesterday on its first run of the day, so one day back is normal
+ * and two is a run that has not come yet.
+ */
+if (!defined('PG_VISITOR_SUMMARY_LATE_DAYS')) {
+    define('PG_VISITOR_SUMMARY_LATE_DAYS', 2);
+}
+
+/**
+ * How many days back the summary's last day is from $today.
+ *
+ * With nothing summarized it counts from the day before the oldest visit,
+ * so a job that never ran shows as late once there are days to write; with
+ * no visit there is nothing to write and the answer is 0.
+ *
+ * @param string $last       Last summarized day (Y-m-d), '' for none
+ * @param string $oldest_day Day of the oldest visitor row, '' for none
+ * @param string $today      Y-m-d
+ * @return int
+ */
+function pg_visitor_summary_lag($last, $oldest_day, $today)
+{
+    if ($last === '') {
+        if ($oldest_day === '') {
+            return 0;
+        }
+
+        $last = pg_visitor_day_add($oldest_day, -1);
+    }
+
+    // Noon UTC on both sides keeps a clock change out of the count.
+    $days = (int) round(((int) strtotime($today . ' 12:00:00 UTC') - (int) strtotime($last . ' 12:00:00 UTC')) / 86400);
+
+    return max(0, $days);
+}
+
+/**
  * The days a run of the summary writes, in the order it writes them.
  *
  * Yesterday and the day before come first: written again when $rewrite_recent

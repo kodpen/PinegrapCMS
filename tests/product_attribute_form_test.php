@@ -76,7 +76,9 @@ function test_product_attribute_form_screens_use_shared_form()
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 
 		pg_assert_contains('includes/forms/product_attribute_form.php', $source, $file . ' loads the form');
-		pg_assert_contains('pg_product_attribute_form_cards($liveform)', $source, $file . ' prints the shared cards');
+		pg_assert_contains('pg_product_attribute_form_cards($liveform', $source, $file . ' prints the shared cards');
+		pg_assert_contains('pg_product_attribute_form_layout(', $source, $file . ' draws the wide edit layout');
+		pg_assert_false(strpos($source, '<nav class="buttons navigation') !== false, $file . ' keeps no save bar of its own');
 		pg_assert_contains('pg_product_attribute_form_check($liveform, ', $source, $file . ' checks the name and options the shared way');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 		pg_assert_false(strpos($source, 'init_product_attribute_options') !== false, $file . ' keeps no copy of the cards');
@@ -85,4 +87,45 @@ function test_product_attribute_form_screens_use_shared_form()
 	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/product_attribute_form.php');
 	pg_assert_contains('db_q($query, $values)', $form, 'the name check binds its values');
 	pg_assert_false((bool) preg_match('/(?<![\w>$])e\s*\(/', $form), 'the form escapes no value into SQL');
+}
+
+function test_product_attribute_form_layout_columns_in_order()
+{
+	$html = pg_product_attribute_form_layout('<i>CARDS</i>', '<b>BUTTONS</b>');
+
+	$cards = strpos($html, '<div class="row"><i>CARDS</i>');
+	$bar = strpos($html, '<div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">');
+	$buttons = strpos($html, '<b>BUTTONS</b>');
+
+	pg_assert_true($cards !== false, 'the columns open the row');
+	pg_assert_true($bar !== false && $bar > $cards, 'sticky save bar after the columns');
+	pg_assert_true($buttons !== false && $buttons > $bar, 'buttons in the save bar');
+	pg_assert_contains('<nav class="buttons navigation text-center mb-7"', $html, 'shared save bar component');
+}
+
+function test_product_attribute_form_cards_columns()
+{
+	// The cards read the screen's liveform; the source is checked so the test needs no session.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/product_attribute_form.php');
+	$start = strpos($source, 'function pg_product_attribute_form_cards(');
+	$cards = substr($source, $start, strpos($source, 'function pg_product_attribute_form_layout(') - $start);
+
+	$form = strpos($cards, '<div class="col-12 lg:col-8 2xl:col-9 order-1">');
+	$options = strpos($cards, 'init_product_attribute_options(');
+	$status = strpos($cards, '<div class="col-12 lg:col-4 2xl:col-3 order-2">');
+	$sticky = strpos($cards, '<div class="position-sticky" style="top:3.3rem;">');
+
+	pg_assert_true($form !== false, 'form column');
+	pg_assert_true($options !== false && $options > $form, 'option list in the form column');
+	pg_assert_true($status !== false && $status > $options, 'status column after the form column');
+	pg_assert_true($sticky !== false && $sticky > $status, 'sticky box inside the status column');
+	pg_assert_contains('id="product_attribute_summary_options"', $cards, 'option count the script keeps current');
+	pg_assert_contains('is_array($usage)', $cards, 'product and group counts only on edit');
+
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+	$start = strpos($script, 'function init_product_attribute_options(');
+	$init = substr($script, $start, strpos($script, 'function init_product_attributes(') - $start);
+
+	pg_assert_contains("#product_attribute_summary_options", $init, 'the script updates the Summary');
+	pg_assert_false(strpos($init, '.parent().parent().parent()') !== false, 'buttons find their row with closest()');
 }

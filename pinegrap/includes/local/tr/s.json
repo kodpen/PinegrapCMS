@@ -3171,6 +3171,7 @@
     "Stock quantity": "Stok adedi",
     "Stock running low": "Stok azalıyor",
     "Stock seeding (inflow) failed: {var:1}": "Başlangıç stok girişi başarısız oldu: {var:1}",
+    "Stock tracking is off for this product; the count is used when tracking is turned on.": "Bu ürünün stok takibi kapalı; miktar takip açılınca kullanılır.",
     "Stock value": "Stok değeri",
     "Stock value (when the pack was prepared)": "Stok değeri (paketin hazırlandığı an)",
     "Stock warning every morning": "Her sabah stok uyarısı",

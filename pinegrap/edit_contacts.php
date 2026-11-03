@@ -185,6 +185,15 @@ if ($contact_ids) {
             foreach ($contact_ids as $contact_id) {
                 // if user has access to contact, then continue
                 if (validate_contact_access($user, $contact_id) == true) {
+                    // A contact a user account or an ERP account holds stays
+                    // and is named in the notice; the others are deleted.
+                    $refused = pg_contact_delete_refusals(array($contact_id));
+
+                    if ($refused) {
+                        $delete_refusals = ($delete_refusals ?? array()) + $refused;
+                        continue;
+                    }
+
                     $audit_before += pg_audit_fetch_many('contacts', array($contact_id));
 
                     // delete contact
@@ -212,6 +221,10 @@ if ($contact_ids) {
             
             $liveform_view_contacts = new liveform('view_contacts');
             $liveform_view_contacts->add_notice( lang(array('string'=>'{var:1} contact(s) were deleted','vars'=>pg_format_number($number_of_contacts, 0) )) );
+
+            if (!empty($delete_refusals)) {
+                $liveform_view_contacts->add_warning(h(pg_contact_delete_refused_notice($delete_refusals)));
+            }
             
             break;
             

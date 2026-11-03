@@ -57,6 +57,7 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                                     <div class="text-center">
                                         <button type="button" id="barcode_read_button" class="btn btn-sm btn-white border my-1">' . lang('Read') . '</button>
                                         <div id="barcode_status" class="visually-hidden" role="status" aria-live="polite"></div>
+                                        <div id="barcode_untracked" class="alert theme-warning d-none" role="alert"></div>
                                     </div>
                                 </div>
                             </div>
@@ -176,6 +177,16 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                                     $("#action_logs tbody").prepend(row);
                                     // Said to screen readers too: the table row is not announced.
                                     document.getElementById("barcode_status").textContent = "' . escape_javascript(lang('{var:1}: the inventory quantity is now {var:2}.')) . '".replace("{var:1}", function(){ return String(response.data.name); }).replace("{var:2}", function(){ return String(response.data.new_inventory_quantity); });
+                                    // A product with stock tracking off keeps the count for when
+                                    // tracking is turned on; the row and the status line say so.
+                                    if (String(response.data.inventory) !== "1") {
+                                        var untracked = "' . escape_javascript(lang('Stock tracking is off for this product; the count is used when tracking is turned on.')) . '";
+                                        $("<div class=\'small fg-warning\'>").text(untracked).appendTo(row.children().first());
+                                        document.getElementById("barcode_status").textContent += " " + untracked;
+                                        $("#barcode_untracked").text(untracked).removeClass("d-none");
+                                    } else {
+                                        $("#barcode_untracked").addClass("d-none").text("");
+                                    }
                                 }
                                 if(response.status == "error"){
                                     alert(response.message);

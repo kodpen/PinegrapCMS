@@ -431,6 +431,105 @@ function pg_contact_merge_schema_columns()
 // This function merges duplicate contacts together and then forwards the user back to the all duplicate contacts view.
 // Every record that names a merged contact is re-pointed to the contact that stays (pg_contact_holders()); a group
 // of duplicates where more than one contact has an ERP account is left as it is and counted in $refused.
+/**
+ * The contacts of $ids that may not be deleted, from the rows that hold
+ * them: a contact a user account holds (user.user_contact) is the account's
+ * own, and one an ERP account is linked to carries its ledger. Deleting
+ * either would leave the holder pointing at nothing, so the panel and the
+ * API refuse both; an account holder is named first.
+ *
+ * @param array $ids       contact ids
+ * @param array $user_rows rows with contact_id and username
+ * @param array $erp_rows  rows with contact_id and title
+ * @return array contact id => array('reason' => 'account'|'erp', 'holder' => name)
+ */
+function pg_contact_delete_refusal_list(array $ids, array $user_rows, array $erp_rows)
+{
+    $wanted = array();
+
+    foreach ($ids as $id) {
+        $wanted[(int) $id] = true;
+    }
+
+    $refusals = array();
+
+    foreach (array('account' => array($user_rows, 'username'), 'erp' => array($erp_rows, 'title')) as $reason => $source) {
+        foreach ($source[0] as $row) {
+            $id = (int) $row['contact_id'];
+
+            if (isset($wanted[$id]) && !isset($refusals[$id])) {
+                $refusals[$id] = array('reason' => $reason, 'holder' => (string) $row[$source[1]]);
+            }
+        }
+    }
+
+    ksort($refusals);
+
+    return $refusals;
+}
+
+/**
+ * pg_contact_delete_refusal_list() over the site's user and ERP accounts.
+ *
+ * @param array $ids contact ids
+ * @return array contact id => array('reason', 'holder')
+ */
+function pg_contact_delete_refusals(array $ids)
+{
+    $list = array();
+
+    foreach ($ids as $id) {
+        if ((int) $id > 0) {
+            $list[] = (int) $id;
+        }
+    }
+
+    if (!$list) {
+        return array();
+    }
+
+    $in = implode(',', array_unique($list));
+    $users = db_items("SELECT user_contact AS contact_id, user_username AS username FROM user WHERE user_contact IN (" . $in . ")");
+    $erp = pg_schema_has('erp_accounts')
+        ? db_items("SELECT contact_id, title FROM erp_accounts WHERE contact_id IN (" . $in . ")")
+        : array();
+
+    return pg_contact_delete_refusal_list($list, is_array($users) ? $users : array(), is_array($erp) ? $erp : array());
+}
+
+/**
+ * The notice of a bulk delete for the contacts it left: how many, and the
+ * accounts that hold them (the first ten). '' when none was left.
+ *
+ * @param array $refusals contact id => entry of pg_contact_delete_refusals()
+ * @return string plain text
+ */
+function pg_contact_delete_refused_notice(array $refusals)
+{
+    if (!$refusals) {
+        return '';
+    }
+
+    $holders = array_slice(array_values(array_unique(array_column($refusals, 'holder'))), 0, 10);
+
+    return lang(array('string' => '{var:1} contact(s) were not deleted because a user account or an ERP account holds them: {var:2}.', 'vars' => array(pg_format_number(count($refusals), 0), implode(', ', $holders))));
+}
+
+/**
+ * The sentence that says why a contact is not deleted.
+ *
+ * @param array $refusal one entry of pg_contact_delete_refusals()
+ * @return string plain text
+ */
+function pg_contact_delete_refusal_text(array $refusal)
+{
+    if ($refusal['reason'] === 'account') {
+        return lang(array('string' => 'This contact is the user account "{var:1}"\'s own and is not deleted. Delete the account, or merge the contact into another one, first.', 'vars' => $refusal['holder']));
+    }
+
+    return lang(array('string' => 'This contact is linked to the ERP account "{var:1}" and is not deleted.', 'vars' => $refusal['holder']));
+}
+
 function merge_contacts($contacts, &$refused = 0)
 {
     $refused = 0;
