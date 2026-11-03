@@ -231,24 +231,12 @@ $file_list = array(
 // alone for the same reason; the bookkeeping file beside it really is a cache
 // and goes. A live endpoint must never be listed for deletion, here or above.
 //
-// The rest of the list is data nothing writes again:
-// - erp_packages: the accountant packs; the link sent to the accountant reads
-//   the ZIP from there (erp_accountant_directory()).
-// - csp_reports.json: the only record of the Content Security Policy reports
-//   in the firewall log.
-// - php_errors.log: the site's PHP error log, a diagnostic record.
-// - shield_pending.log: bans the request guard recorded before the database
-//   was reachable, waiting to be written (waf_shield_pending_line()).
-// - waf_ban_notice.log: ban notices queued for the next mail run
-//   (waf_ban_notice_queue()).
-// - ai_write_usage.json: today's AI writing counter; deleting it resets the
-//   daily limit.
+// The rest of what stays is data nothing writes again, listed with the
+// reason for each in pg_clean_up_temp_keep() (includes/fn/files.php): the
+// accountant packs, the firewall's CSP reports and queues, the PHP error log,
+// today's AI counter and the server rules repair's backups.
 $temp_directory = 'data/temp';
-$temp_keep = array(
-    '.', '..', '.htaccess', 'hash_reference.json',
-    'erp_packages', 'csp_reports.json', 'php_errors.log',
-    'shield_pending.log', 'waf_ban_notice.log', 'ai_write_usage.json',
-);
+$temp_keep = pg_clean_up_temp_keep();
 
 if (is_dir($temp_directory)) {
 
@@ -315,45 +303,17 @@ if (!$_POST) {
 
     // if there is at least 1 folder or file.
     if($folder_counter != 0 || $file_counter != 0){
-        $folder_text = '';
-        $folder_suffix = '';
-        // if there is at least 1 folder
-        if($folder_counter != 0){
-            //create a suffix
-            if($folder_counter != 1){
-                $folder_suffix = 's';
-            }else{
-                $folder_suffix = '';
-            }
-            $folder_text = ' ' . $folder_counter . ' ' . lang('folder');
+        $output_counter_info = '<div class="alert theme-success">' . pg_clean_up_count_text('Found{var:1}{suffix:1}{var:2}{var:3}{suffix:2} that can be cleaned.', $folder_counter, $file_counter) . '</div>';
 
-        }       
-        $and_text = '';
-        // if folder and file both more than 0 
-        if($folder_counter != 0 && $file_counter != 0){
-            $and_text = ' ' . lang('and');
-        }
-        $file_text = '';
-        $file_suffix = '';
-        // if there is at least 1 file
-        if($file_counter != 0){
-            //create a suffix
-            if($file_counter != 1){
-                $file_suffix = 's';
-            }else{
-                $file_suffix = '';
-            }
-            $file_text = ' ' . $file_counter . ' ' . lang('file');
-
-        }
-        $output_counter_info = '<div class="alert theme-success">' . lang(array('string'=>'Found{var:1}{suffix:1}{var:2}{var:3}{suffix:2} that can be cleaned.','vars'=>array($folder_text,$and_text,$file_text),'suffix'=>array($folder_suffix,$file_suffix) )) . '</div>';
-
-        $output_delete_button = '<button type="submit" id="delete_button" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">auto_delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete all unnecessary files and folders') ) . '</span></button>';
+        // The delete is permanent, so the panel's click handler asks first
+        // (data-confirm-content) and the button wears the danger colour.
+        $confirm_text = lang(array('string' => 'Permanently delete everything listed ({var:1})? This cannot be undone.', 'vars' => ($folder_counter + $file_counter)));
+        $output_delete_button = '<button type="submit" id="delete_button" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h($confirm_text) . '"><span class="material-icons me-3">auto_delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete all unnecessary files and folders') ) . '</span></button>';
     }else{
         include_once('liveform.class.php');
-        $liveform = new liveform('settings');
+        $liveform = new liveform('system_tools');
         $liveform->add_notice(lang('Congratulations, the files or folders that need to be deleted were not found'));
-        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url());
+        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/system_tools.php');
         exit();
     }
     
@@ -402,24 +362,13 @@ if (!$_POST) {
 
 }else{
     validate_token_field();
-    //function that delete all files and subfolders with files.
-    function deleteAll($dir) {
-        // Use scandir instead of glob to avoid matching '.' and '..'
-        // (glob with {,.}* pattern was matching parent directory via '..')
-        foreach(array_diff(scandir($dir), array('.', '..')) as $item) {
-            $path = $dir . '/' . $item;
-            if(is_dir($path))
-                deleteAll($path);
-            else
-                unlink($path);
-        }
-        rmdir($dir);
-    }
-
     $folder_counter = 0;
     $file_counter = 0;
     $output_counter_info = '';
     $deleted_names = array();
+    // What was listed but is still there: no right to delete it, or held
+    // open by another request. Reported by name, never counted as deleted.
+    $failed_names = array();
 
     // Orphans were detected under FILE_DIRECTORY_PATH, so delete them there.
     // Re-check the file right before unlinking so a concurrent upload or a
@@ -434,12 +383,13 @@ if (!$_POST) {
 
     foreach($file_list as $file){
         if(file_exists($file)){
-            if(is_dir($file)){
-                deleteAll($file);
+            $is_folder = is_dir($file);
+            if(!pg_clean_up_delete_path($file)){
+                $failed_names[] = $file;
+            }elseif($is_folder){
                 $folder_counter++;
                 $deleted_names[] = $file;
             }else{
-                unlink($file);
                 $file_counter++;
                 $deleted_names[] = $file;
             }
@@ -456,43 +406,26 @@ if (!$_POST) {
         }
     }
 
-    $folder_text = '';
-    $folder_suffix = '';
-    // if there is at least 1 folder
-    if($folder_counter != 0){
-        //create a suffix
-        if($folder_counter != 1){
-            $folder_suffix = 's';
-        }else{
-            $folder_suffix = '';
-        }
-        $folder_text = ' ' . $folder_counter . ' ' . lang('folder');
-    }       
-    $and_text = '';
-    // if folder and file both more than 0 
-    if($folder_counter != 0 && $file_counter != 0){
-        $and_text = ' ' . lang('and');
-    }
-    $file_text = '';
-    $file_suffix = '';
-    // if there is at least 1 file
-    if($file_counter != 0){
-        //create a suffix
-        if($file_counter != 1){
-            $file_suffix = 's';
-        }else{
-            $file_suffix = '';
-        }
-        $file_text = ' ' . $file_counter . ' ' . lang('file');
-
-    }
-    $output_counter_info = lang(array('string'=>'{var:1}{suffix:1}{var:2}{var:3}{suffix:2} that deleted.','vars'=>array($folder_text,$and_text,$file_text),'suffix'=>array($folder_suffix,$file_suffix) ));
-    log_activity( lang(array('string'=>'{var:1}{suffix:1}{var:2}{var:3}{suffix:2} that deleted with clean up tool. [{var:4}]','vars'=>array($folder_text,$and_text,$file_text,implode(', ', $deleted_names)),'suffix'=>array($folder_suffix,$file_suffix) )), $_SESSION['sessionusername']);
-
     include_once('liveform.class.php');
-    $liveform = new liveform('settings');
-    $liveform->add_notice($output_counter_info);
-    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url());
+    $liveform = new liveform('system_tools');
+
+    $output_counter_info = pg_clean_up_count_text('{var:1}{suffix:1}{var:2}{var:3}{suffix:2} that deleted.', $folder_counter, $file_counter);
+
+    if ($output_counter_info !== '') {
+        log_activity(pg_clean_up_count_text('{var:1}{suffix:1}{var:2}{var:3}{suffix:2} that deleted with clean up tool. [{var:4}]', $folder_counter, $file_counter, array(implode(', ', $deleted_names))), $_SESSION['sessionusername']);
+        $liveform->add_notice($output_counter_info);
+    }
+
+    if ($failed_names) {
+        log_activity(lang(array('string' => 'The clean up tool could not delete: {var:1}', 'vars' => implode(', ', $failed_names))), $_SESSION['sessionusername']);
+        $liveform->add_warning(h(lang(array('string' => 'These could not be deleted (the web server may not remove them, or they are in use): {var:1}', 'vars' => implode(', ', $failed_names)))));
+    } elseif ($output_counter_info === '') {
+        // The list emptied between the preview and the click (a second tab,
+        // another run): there was nothing left to delete.
+        $liveform->add_notice(lang('Congratulations, the files or folders that need to be deleted were not found'));
+    }
+
+    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/system_tools.php');
     exit();
 
 }

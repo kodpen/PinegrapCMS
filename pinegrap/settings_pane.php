@@ -134,9 +134,9 @@ if (!$_POST) {
 
     $category = pg_settings_category($pane);
 
-    // What a tool left in this form on its way here. purge_cache.php,
-    // clean_up.php, cloudflare.php and software_update.php all finish on a
-    // screen of their own and send the operator back to the settings with a
+    // What a tool left in this form on its way here. cloudflare.php and
+    // software_update.php finish on a screen of their own and send the
+    // operator back to the settings with a
     // sentence to read; there is no settings screen left to read it on, so the
     // dialog is handed it with the first pane it asks for.
     $notices  = array();

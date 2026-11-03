@@ -2033,3 +2033,29 @@ function pg_image_warmup_run($directory, $seconds = 10, $settings = null, $fetch
     return $result;
 }
 
+/**
+ * The file types optimize_image() (optimize_image.php) compresses or resizes.
+ * 'tif' is not among them: the optimizer has never taken that spelling.
+ *
+ * @return array lower-case extensions
+ */
+function pg_optimizable_image_types()
+{
+    return array('jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp');
+}
+
+/**
+ * The answer for a file the image optimizer does not take: the file's name,
+ * its type and the list of the types it does take.
+ *
+ * @param string $name the file name
+ * @param string $type its extension as stored in files.type
+ * @return string plain text
+ */
+function pg_optimize_unsupported_message($name, $type)
+{
+    return lang(array(
+        'string' => 'Sorry, {var:1} cannot be optimized: its file type ({var:2}) is not supported. The following types are supported: {var:3}.',
+        'vars'   => array((string) $name, mb_strtolower((string) $type), implode(', ', pg_optimizable_image_types())),
+    ));
+}

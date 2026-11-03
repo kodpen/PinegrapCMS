@@ -627,6 +627,7 @@
     "Perks": "Ayrıcalıklar",
     "Permanent": "Kalıcı",
     "Permanent: an address you name, for good": "Kalıcı: adını sizin verdiğiniz, süresiz adres",
+    "Permanently delete everything listed ({var:1})? This cannot be undone.": "Listelenen her şey ({var:1}) kalıcı olarak silinsin mi? Bu işlem geri alınamaz.",
     "Permission": "Yetki",
     "Permission denied.": "İzin reddedildi.",
     "Permission denied: You are not authorized to access site settings.": "İzin reddedildi: Site ayarlarına erişme yetkiniz yok.",
