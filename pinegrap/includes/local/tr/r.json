@@ -737,6 +737,7 @@
     "Rename Form": "Yeniden Adlandırma Formu",
     "Rename file, move it to another folder, or change its description.": "Dosyayı yeniden adlandırın, başka bir klasöre taşıyın veya açıklamasını değiştirin.",
     "Rename group": "Grubu yeniden adlandır",
+    "Rename one of them first.": "Önce birinin adını değiştirin.",
     "Rename the passkey (passkey list)": "Geçiş anahtarını yeniden adlandır (geçiş anahtarı listesi)",
     "Rename {var:1} item(s)": "{var:1} öğeyi yeniden adlandır",
     "Rename {var:1} item(s)...": "{var:1} öğeyi yeniden adlandır...",
