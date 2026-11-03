@@ -655,6 +655,15 @@ function pg_credit_checkout_sync($order_id)
         return 0;
     }
 
+    // Two page views of the same order (two tabs, two devices) would both
+    // read no row and both insert the card; the lock makes the read and the
+    // writes one step per order. Not taken (busy for 5 s): nothing is written,
+    // the other view does it, and submit_order() counts a repeat once anyway.
+    $lock = 'pg_credit_checkout_' . $order_id;
+    if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 5)") !== 1) {
+        return pg_credit_balance($user_id);
+    }
+
     $cards = pg_credit_cards($user_id);
     $plan = pg_credit_checkout_plan(
         $cards,
@@ -675,12 +684,42 @@ function pg_credit_checkout_sync($order_id)
             array($row['gift_card_id'], $order_id, $row['code'], $row['old_balance']));
     }
 
+    db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
+
     $balance = 0;
     foreach ($cards as $card) {
         $balance += (int) $card['balance'];
     }
 
     return $balance;
+}
+
+/**
+ * The keys of applied_gift_cards rows that repeat a card already on the
+ * order: the same gift_card_id for a card of this system, the same code for
+ * a Givex card. The first row (lowest key order as given) stays.
+ *
+ * @param array $rows  applied_gift_cards rows: id, gift_card_id, code, givex
+ * @return array  keys of $rows to remove
+ */
+function pg_gift_card_applied_repeats(array $rows)
+{
+    $seen = array();
+    $repeats = array();
+
+    foreach ($rows as $key => $row) {
+        $card = ((int) $row['givex'] === 0)
+            ? 'id:' . (int) $row['gift_card_id']
+            : 'givex:' . (string) $row['code'];
+
+        if (isset($seen[$card])) {
+            $repeats[] = $key;
+        } else {
+            $seen[$card] = true;
+        }
+    }
+
+    return $repeats;
 }
 
 /**

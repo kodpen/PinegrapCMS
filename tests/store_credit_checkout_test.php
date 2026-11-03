@@ -114,3 +114,19 @@ function test_store_credit_checkout_wanted_follows_the_order()
 	pg_assert_same(false, pg_credit_checkout_wanted(12, 12), 'opted out for this order');
 	pg_assert_same(true, pg_credit_checkout_wanted(13, 12), 'an opt-out of an earlier order does not carry over');
 }
+
+function test_gift_card_applied_repeats_counts_a_card_once()
+{
+	$rows = array(
+		0 => array('id' => 40, 'gift_card_id' => 7, 'code' => 'AAA', 'givex' => '0'),
+		1 => array('id' => 41, 'gift_card_id' => 7, 'code' => 'AAA', 'givex' => '0'),
+		2 => array('id' => 42, 'gift_card_id' => 8, 'code' => 'BBB', 'givex' => '0'),
+		3 => array('id' => 43, 'gift_card_id' => 0, 'code' => '6034', 'givex' => '1'),
+		4 => array('id' => 44, 'gift_card_id' => 0, 'code' => '6034', 'givex' => '1'),
+		5 => array('id' => 45, 'gift_card_id' => 0, 'code' => '6035', 'givex' => '1'),
+	);
+
+	pg_assert_same(array(1, 4), pg_gift_card_applied_repeats($rows), 'two rows of one card: the second goes; a Givex card repeats by code');
+	pg_assert_same(array(), pg_gift_card_applied_repeats(array_slice($rows, 2, 2, true)), 'different cards: nothing removed');
+	pg_assert_same(array(), pg_gift_card_applied_repeats(array()), 'no rows');
+}
