@@ -2137,6 +2137,137 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Campaign profiles -------------------------------------------- */
+
+		array(
+			'id'      => 'campaigns.profiles.list',
+			'method'  => 'GET',
+			'path'    => '/campaigns/profiles',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaign_profiles_list',
+			'returns' => array('list' => 'CampaignProfile'),
+			'summary' => 'Campaign profiles',
+			'description' => 'The profiles that make a campaign by themselves when something happens (a reservation, a form, an order, a booking, another campaign sent), newest first, cursor paged. The campaigns a profile made are listed by GET /campaigns?profile_id=. An account with the e-mail right but the user role sees only the profiles it created, as on the profile screens.',
+			'params'  => array(
+				array('name' => 'action',  'in' => 'query', 'type' => 'enum', 'values' => array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent', 'order_abandoned', 'order_completed', 'order_review_request', 'order_shipped', 'order_delivered', 'product_ordered', 'subscription_renewed', 'subscription_failed', 'subscription_cancelled', 'subscription_price_changed', 'booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled')),
+				array('name' => 'enabled', 'in' => 'query', 'type' => 'bool'),
+				array('name' => 'q',       'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the name.'),
+				array('name' => 'limit',   'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.profiles.get',
+			'method'  => 'GET',
+			'path'    => '/campaigns/profiles/{id}',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaign_profiles_get',
+			'returns' => 'CampaignProfile',
+			'summary' => 'One campaign profile',
+			'description' => 'One profile as GET /campaigns/profiles lists it.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.profiles.create',
+			'method'  => 'POST',
+			'path'    => '/campaigns/profiles',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaign_profiles_create',
+			'dry_run' => true,
+			'returns' => 'CampaignProfile',
+			'status'  => 201,
+			'summary' => 'Create a campaign profile',
+			'description' => 'Adds a profile with the checks of the profile screen: a value the screen refuses is 422, and so is a calendar event, custom form, followed profile, product or page that does not exist or the owner may not pick (a user-role account: a calendar it was given, a form in a folder it may edit, a profile it created), and a profile that would follow one that follows it. A name another profile has is 409 campaign_profile_name_taken.',
+			'params'  => array(
+				array('name' => 'name',            'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'No other profile may have it.'),
+				array('name' => 'enabled',         'in' => 'body', 'type' => 'bool', 'description' => 'Whether it makes campaigns. A new profile is enabled.'),
+				array('name' => 'action',          'in' => 'body', 'type' => 'enum', 'values' => array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent', 'order_abandoned', 'order_completed', 'order_review_request', 'order_shipped', 'order_delivered', 'product_ordered', 'subscription_renewed', 'subscription_failed', 'subscription_cancelled', 'subscription_price_changed', 'booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled'), 'required' => true, 'description' => 'What makes a campaign. The order_*, product_ordered and subscription_* actions need the store and an owner with the e-commerce right; the booking_* actions need the bookings database update (503 service_unavailable before it).'),
+				array('name' => 'action_item_id',  'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The record the action is tied to: the calendar event (calendar_event_reserved), the custom form page (custom_form_submitted), the profile it follows (email_campaign_sent) or the product (product_ordered). Every other action ignores it.'),
+				array('name' => 'subject',         'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true),
+				array('name' => 'format',          'in' => 'body', 'type' => 'enum', 'values' => array('plain_text', 'html'), 'description' => 'plain_text (a new profile\'s) sends body; html sends the page page_id.'),
+				array('name' => 'body',            'in' => 'body', 'type' => 'string', 'max_length' => 200000, 'nullable' => true, 'description' => 'The text of a plain-text campaign.'),
+				array('name' => 'page_id',         'in' => 'body', 'type' => 'int', 'min' => 1, 'nullable' => true, 'description' => 'The page an HTML campaign is made of; required with format html.'),
+				array('name' => 'from_name',       'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'from_email',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'reply_to',        'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'An empty string removes it.'),
+				array('name' => 'bcc',             'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'An empty string removes it.'),
+				array('name' => 'schedule_time',   'in' => 'body', 'type' => 'string', 'max_length' => 5, 'nullable' => true, 'description' => 'HH:MM on the 24-hour clock, site time: the campaign waits for this time of day. An empty string means any time.'),
+				array('name' => 'schedule_length', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999999999, 'description' => 'How many days or hours after (or before) the base.'),
+				array('name' => 'schedule_unit',   'in' => 'body', 'type' => 'enum', 'values' => array('days', 'hours')),
+				array('name' => 'schedule_period', 'in' => 'body', 'type' => 'enum', 'values' => array('before', 'after'), 'description' => 'calendar_event_reserved only; every other action sends after the action.'),
+				array('name' => 'schedule_base',   'in' => 'body', 'type' => 'enum', 'values' => array('action', 'calendar_event_start_time'), 'description' => 'calendar_event_reserved only: counted from the reservation or from the event\'s start. before with action is refused.'),
+				array('name' => 'purpose',         'in' => 'body', 'type' => 'enum', 'values' => array('commercial', 'transactional'), 'description' => 'commercial (a new profile\'s) goes only to contacts who opted in.')
+			)
+		),
+
+		array(
+			'id'           => 'campaigns.profiles.update',
+			'method'       => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'         => '/campaigns/profiles/{id}',
+			'scope'        => 'campaigns:write',
+			'handler'      => 'api_campaign_profiles_update',
+			'dry_run'      => true,
+			'returns'      => 'CampaignProfile',
+			'summary'      => 'Change a campaign profile',
+			'description'  => 'Only the fields sent change; the profile as a whole is then checked as POST /campaigns/profiles checks it. Campaigns the profile already made keep what they were made with. A name another profile has is 409 campaign_profile_name_taken. PATCH is accepted as well; on an IIS server send POST.',
+			'params'       => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',            'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'No other profile may have it.'),
+				array('name' => 'enabled',         'in' => 'body', 'type' => 'bool', 'description' => 'Whether it makes campaigns. A new profile is enabled.'),
+				array('name' => 'action',          'in' => 'body', 'type' => 'enum', 'values' => array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent', 'order_abandoned', 'order_completed', 'order_review_request', 'order_shipped', 'order_delivered', 'product_ordered', 'subscription_renewed', 'subscription_failed', 'subscription_cancelled', 'subscription_price_changed', 'booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled'), 'description' => 'What makes a campaign. The order_*, product_ordered and subscription_* actions need the store and an owner with the e-commerce right; the booking_* actions need the bookings database update (503 service_unavailable before it).'),
+				array('name' => 'action_item_id',  'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The record the action is tied to: the calendar event (calendar_event_reserved), the custom form page (custom_form_submitted), the profile it follows (email_campaign_sent) or the product (product_ordered). Every other action ignores it.'),
+				array('name' => 'subject',         'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'format',          'in' => 'body', 'type' => 'enum', 'values' => array('plain_text', 'html'), 'description' => 'plain_text (a new profile\'s) sends body; html sends the page page_id.'),
+				array('name' => 'body',            'in' => 'body', 'type' => 'string', 'max_length' => 200000, 'nullable' => true, 'description' => 'The text of a plain-text campaign.'),
+				array('name' => 'page_id',         'in' => 'body', 'type' => 'int', 'min' => 1, 'nullable' => true, 'description' => 'The page an HTML campaign is made of; required with format html.'),
+				array('name' => 'from_name',       'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'from_email',      'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'reply_to',        'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'An empty string removes it.'),
+				array('name' => 'bcc',             'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'An empty string removes it.'),
+				array('name' => 'schedule_time',   'in' => 'body', 'type' => 'string', 'max_length' => 5, 'nullable' => true, 'description' => 'HH:MM on the 24-hour clock, site time: the campaign waits for this time of day. An empty string means any time.'),
+				array('name' => 'schedule_length', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999999999, 'description' => 'How many days or hours after (or before) the base.'),
+				array('name' => 'schedule_unit',   'in' => 'body', 'type' => 'enum', 'values' => array('days', 'hours')),
+				array('name' => 'schedule_period', 'in' => 'body', 'type' => 'enum', 'values' => array('before', 'after'), 'description' => 'calendar_event_reserved only; every other action sends after the action.'),
+				array('name' => 'schedule_base',   'in' => 'body', 'type' => 'enum', 'values' => array('action', 'calendar_event_start_time'), 'description' => 'calendar_event_reserved only: counted from the reservation or from the event\'s start. before with action is refused.'),
+				array('name' => 'purpose',         'in' => 'body', 'type' => 'enum', 'values' => array('commercial', 'transactional'), 'description' => 'commercial (a new profile\'s) goes only to contacts who opted in.')
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.profiles.delete',
+			'method'  => 'DELETE',
+			'path'    => '/campaigns/profiles/{id}',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaign_profiles_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a campaign profile',
+			'description' => 'Deletes the profile outright, as its screen does. The campaigns it made stay; profiles that follow it make nothing until they are given another trigger. Cannot be undone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.profiles.delete_post',
+			'method'  => 'POST',
+			'path'    => '/campaigns/profiles/{id}/delete',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaign_profiles_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a campaign profile, addressed as a POST',
+			'description' => 'The same delete as DELETE /campaigns/profiles/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Contact groups ---------------------------------------------- */
 
 		array(
@@ -2664,6 +2795,69 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'calendars.create',
+			'method'  => 'POST',
+			'path'    => '/calendars',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendars_create',
+			'dry_run' => true,
+			'returns' => 'Calendar',
+			'status'  => 201,
+			'summary' => 'Add a calendar',
+			'description' => 'A new, empty calendar, as on the calendar screen. Names are unique: 409 name_taken when another calendar has it. Closed to an owner with the user role, who reaches only the calendars assigned to them (403 forbidden). Events are added with POST /calendars/events.',
+			'params'  => array(
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/calendars/{id}',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendars_update',
+			'dry_run' => true,
+			'returns' => 'Calendar',
+			'summary' => 'Rename a calendar',
+			'description' => 'Names are unique: 409 name_taken when another calendar has it. A calendar outside the ones the owner may open is answered 404. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',   'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 100)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.delete',
+			'method'  => 'DELETE',
+			'path'    => '/calendars/{id}',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendars_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove a calendar',
+			'description' => 'With its user assignments and its place on the calendar pages. Only an empty calendar is removed: 409 calendar_has_events while an event is on it; delete the events or move them to another calendar first. A calendar outside the ones the owner may open is answered 404.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.delete_post',
+			'method'  => 'POST',
+			'path'    => '/calendars/{id}/delete',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendars_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove a calendar, addressed as a POST',
+			'description' => 'The same removal as DELETE /calendars/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Webhooks ----------------------------------------------------- */
 
 		array(
@@ -3122,7 +3316,7 @@ function api_schema() {
 			'handler' => 'api_reports_visitors',
 			'returns' => 'VisitorBreakdown',
 			'summary' => 'Visits by source, campaign, landing page or place',
-			'description' => 'Visits started on the days of the window counted by one thing about them, largest first, with what they led to: page views, forms submitted, orders created, checked out and completed, and the completed order total in minor units - the figures the visitor report screen sums. by: referrer_host, search_engine, search_terms (what a search engine sent), channel (pay_per_click when the tracking code carries the pay-per-click flag of the SEO settings, organic when a search engine referred it, otherwise neither), landing_page, tracking_code, utm_source, utm_medium, utm_campaign, utm_term, utm_content, country, state, city, form (the custom form submitted), site_search_terms or device (desktop, mobile or tablet, from the browser). A null value is a visit without one: no referrer is a direct visit. totals covers every visit in the window, not only the rows returned. Only totals are given; a single visit is not. Defaults to the last thirty days; a window is at most 400 days. Days older than the visitor retention period are answered from the daily summary: summary_to is the last such day of the window (null when none), the totals of those days stay exact, and a value outside the top 100 of its day is counted in the totals but not listed in rows.',
+			'description' => 'Visits started on the days of the window counted by one thing about them, largest first, with what they led to: page views, forms submitted, orders created, checked out and completed, and the completed order total in minor units - the figures the visitor report screen sums. by: referrer_host, search_engine, search_terms (what a search engine sent), channel (pay_per_click when the tracking code carries the pay-per-click flag of the SEO settings, organic when a search engine referred it, otherwise neither), landing_page, tracking_code, utm_source, utm_medium, utm_campaign, utm_term, utm_content, country, state, city, form (the custom form submitted), site_search_terms or device (desktop, mobile or tablet, from the browser). A null value is a visit without one: no referrer is a direct visit. totals covers every visit in the window, not only the rows returned. Only totals are given; a single visit is not. Defaults to the last thirty days; a window is at most 400 days. Days the daily summary holds (yesterday and before, once summarized) are answered from it and the other days from the visits themselves: summary_days counts the summarized days of the window, summary_to is the last of them (null when none held a visit), the totals of those days stay exact, and a value outside the top 100 of its day is counted in the totals but not listed in rows.',
 			'params'  => array(
 				array('name' => 'by',    'in' => 'query', 'type' => 'enum', 'values' => array('referrer_host', 'search_engine', 'search_terms', 'channel', 'landing_page', 'tracking_code', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'country', 'state', 'city', 'form', 'site_search_terms', 'device'), 'required' => true),
 				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
@@ -4770,6 +4964,113 @@ function api_schema() {
 			'summary' => 'Wake this person\'s devices',
 			'description' => 'Sends a push to every registration this person holds and says how many the push services accepted. Each device then shows whatever its bell holds.',
 			'params'  => array()
+		),
+
+		/* ----- Bookings ---------------------------------------------------- */
+
+		array(
+			'id'      => 'bookings.list',
+			'method'  => 'GET',
+			'path'    => '/bookings',
+			'scope'   => 'bookings:read',
+			'handler' => 'api_bookings_list',
+			'returns' => array('list' => 'Booking'),
+			'summary' => 'Appointment bookings',
+			'description' => 'The bookings of the staff agenda by start time, earliest first, cursor paged. status: held (a visitor\'s slot kept for ten minutes while the form is filled; hold_until says until when), requested, confirmed, cancelled, no_show or done; without status every one but held is listed. Times are ISO-8601 UTC; the site\'s zone is site.timezone of GET /meta. source says where it was made: site (the booking widget), panel (the agenda) or api. An owner with the user role reaches only their own staff member\'s bookings. 503 service_unavailable until the database update that adds bookings has run.',
+			'params'  => array(
+				array('name' => 'status',     'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'One status or a comma list of them.'),
+				array('name' => 'staff_id',   'in' => 'query', 'type' => 'int', 'min' => 1),
+				array('name' => 'service_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
+				array('name' => 'from',       'in' => 'query', 'type' => 'datetime', 'description' => 'Only bookings that start at or after this moment.'),
+				array('name' => 'to',         'in' => 'query', 'type' => 'datetime', 'description' => 'Only bookings that start at or before this moment; a bare day counts whole.'),
+				array('name' => 'limit',      'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',     'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'bookings.slots',
+			'method'  => 'GET',
+			'path'    => '/bookings/slots',
+			'scope'   => 'bookings:read',
+			'handler' => 'api_bookings_slots',
+			'returns' => array('day' => 'string', 'timezone' => 'string', 'service_id' => 'integer', 'slots' => 'BookingSlot[]'),
+			'summary' => 'Free times of a day for a service',
+			'description' => 'The starts a staff-made booking may take on the day (in the site\'s zone, named in timezone): the service\'s length and buffers over the staff member\'s hours and day exceptions, minus holidays, their other bookings and live holds, and the busy times of their Workspace calendar, as the agenda offers them. Starts already past are left out; the visitors\' lead time and horizon do not apply. Without staff every enabled staff member who gives the service is asked. POST /bookings accepts exactly these starts. 404 not_found for a service or staff member that is not enabled.',
+			'params'  => array(
+				array('name' => 'service', 'in' => 'query', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The service\'s id.'),
+				array('name' => 'staff',   'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'The staff member\'s id; every one by default.'),
+				array('name' => 'day',     'in' => 'query', 'type' => 'string', 'max_length' => 10, 'required' => true, 'description' => 'YYYY-MM-DD in the site\'s zone.')
+			)
+		),
+
+		array(
+			'id'      => 'bookings.get',
+			'method'  => 'GET',
+			'path'    => '/bookings/{id}',
+			'scope'   => 'bookings:read',
+			'handler' => 'api_bookings_get',
+			'returns' => 'Booking',
+			'summary' => 'One booking',
+			'description' => 'As in the list.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'bookings.create',
+			'method'  => 'POST',
+			'path'    => '/bookings',
+			'scope'   => 'bookings:write',
+			'handler' => 'api_bookings_create',
+			'dry_run' => true,
+			'status'  => 201,
+			'returns' => 'Booking',
+			'summary' => 'Book a time for a customer',
+			'description' => 'A staff-made booking, as the agenda makes it (source api). The staff member must be enabled and give the service, and start_at must be one of the day\'s free starts of GET /bookings/slots; a name and an e-mail address or a phone are needed. 409 slot_taken when the time is no longer free, also when another booking took it at the same moment. Announces booking.created, and booking.confirmed with the customer\'s mail and text when it is confirmed. Answers 201 with the booking.',
+			'params'  => array(
+				array('name' => 'service_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'staff_id',   'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'start_at',   'in' => 'body', 'type' => 'datetime', 'required' => true, 'description' => 'The start, ISO-8601 with its zone.'),
+				array('name' => 'name',       'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'email',      'in' => 'body', 'type' => 'string', 'max_length' => 191),
+				array('name' => 'phone',      'in' => 'body', 'type' => 'string', 'max_length' => 40),
+				array('name' => 'notes',      'in' => 'body', 'type' => 'string', 'max_length' => 2000),
+				array('name' => 'status',     'in' => 'body', 'type' => 'enum', 'values' => array('confirmed', 'requested'), 'default' => 'confirmed', 'description' => 'requested waits for a confirmation and sends no mail yet.')
+			)
+		),
+
+		array(
+			'id'      => 'bookings.status',
+			'method'  => 'POST',
+			'path'    => '/bookings/{id}/status',
+			'scope'   => 'bookings:write',
+			'handler' => 'api_bookings_status',
+			'dry_run' => true,
+			'returns' => 'Booking',
+			'summary' => 'Change a booking\'s status',
+			'description' => 'confirmed (a request or a visitor\'s live hold), no_show or done, as the agenda offers it: cancelled, no_show and done are final, and a hold that ran out can only be cancelled. 409 booking_state when the booking cannot move there, or was changed meanwhile. A booking becoming confirmed announces booking.confirmed and mails the customer. To cancel, use POST /bookings/{id}/cancel.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'status', 'in' => 'body', 'type' => 'enum', 'values' => array('confirmed', 'no_show', 'done'), 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'bookings.cancel',
+			'method'  => 'POST',
+			'path'    => '/bookings/{id}/cancel',
+			'scope'   => 'bookings:write',
+			'handler' => 'api_bookings_cancel',
+			'dry_run' => true,
+			'returns' => 'Booking',
+			'summary' => 'Cancel a booking',
+			'description' => 'The booking is cancelled and its time is free again; the row is kept. A reason is added to the notes as "Cancelled: <reason>". Announces booking.cancelled and tells the customer, except for a visitor\'s hold. 409 booking_state when it is already in a final status, or was changed meanwhile.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'reason', 'in' => 'body', 'type' => 'string', 'max_length' => 500)
+			)
 		)
 
 	);

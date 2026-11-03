@@ -193,6 +193,17 @@
     };
 
     /**
+     * Ctrl+A in a list printed whole: the rows the search shows, by id (the
+     * server has no condition to resolve for such a list).
+     */
+    Selection.prototype.selectIds = function (ids) {
+        var self = this;
+
+        this.clear();
+        ids.forEach(function (id) { self.ids[String(id)] = true; });
+    };
+
+    /**
      * What a bulk action sends: the ids, or the condition with its
      * exceptions and moment (pg_list_table_selection_parse()).
      */
@@ -207,6 +218,50 @@
     // ------------------------------------------------------------------
     // Pure helpers.
     // ------------------------------------------------------------------
+
+    /**
+     * Two sort values of a list printed whole: numbers as numbers, the rest
+     * by the collator (the page's language, so Turkish letters sort in their
+     * place); an empty value comes first, as NULL does in MySQL.
+     */
+    function compareSortValues(a, b, collator) {
+        var number = /^-?\d+(\.\d+)?$/;
+
+        a = String(a);
+        b = String(b);
+
+        if ((a === '') || (b === '')) {
+            return (a === b) ? 0 : ((a === '') ? -1 : 1);
+        }
+
+        if (number.test(a) && number.test(b)) {
+            return parseFloat(a) - parseFloat(b);
+        }
+
+        return collator.compare(a, b);
+    }
+
+    /**
+     * The ids of rows ({id, values: key => sort value}) in the order of the
+     * sort levels; rows that tie keep their order.
+     */
+    function sortRows(rows, levels, collator) {
+        return rows.map(function (row, index) {
+            return { row: row, index: index };
+        }).sort(function (a, b) {
+            for (var i = 0; i < levels.length; i++) {
+                var result = compareSortValues(a.row.values[levels[i].sort] || '', b.row.values[levels[i].sort] || '', collator);
+
+                if (result !== 0) {
+                    return (levels[i].order === 'desc') ? -result : result;
+                }
+            }
+
+            return a.index - b.index;
+        }).map(function (item) {
+            return String(item.row.id);
+        });
+    }
 
     /** A text with '%n' written as the number. */
     function text(template, number) {
@@ -406,6 +461,7 @@
         this.root = root;
         this.name = root.getAttribute('data-pg-list-table');
         this.browser = root.getAttribute('data-pg-list-mode') === 'browser';
+        this.printed = root.getAttribute('data-pg-list-printed') === '1';
         this.model = readJson(root, 'data-pg-list-columns', []);
         this.storeKey = prefsKey(root.getAttribute('data-pg-list-user'), root.getAttribute('data-pg-list-table'));
         this.prefs = prefsClean(this.readPrefs());
@@ -440,6 +496,12 @@
         if (this.browser) {
             this.total = this.tbody.rows.length;
             this.next = null;
+
+            // The kept sort may name a column the server could not order
+            // by: the browser sorts the printed rows once.
+            if (this.levels.length) {
+                this.sortHere();
+            }
         }
 
         this.build();
@@ -873,11 +935,23 @@
         this.root.style.setProperty('--pg-list-table-top', Math.max(0, Math.round(top)) + 'px');
     };
 
+    /** The ids of the rows on screen, in order; rows the search hid are not. */
     Driver.prototype.order = function () {
-        return Array.prototype.map.call(this.tbody.rows, function (row) {
+        return Array.prototype.filter.call(this.tbody.rows, function (row) {
+            return !row.hidden;
+        }).map(function (row) {
             return row.getAttribute('data-pg-id');
         });
     };
+
+    /** The next or previous row the search did not hide. */
+    function shownSibling(row, down) {
+        do {
+            row = down ? row.nextElementSibling : row.previousElementSibling;
+        } while (row && row.hidden);
+
+        return row;
+    }
 
     Driver.prototype.pick = function (row, event) {
         var id = row.getAttribute('data-pg-id');
@@ -938,7 +1012,13 @@
 
         if (mod && ((event.key === 'a') || (event.key === 'A'))) {
             event.preventDefault();
-            this.replace(function () { this.selectAll(Date.now() / 1000); });
+            if (this.browser) {
+                var shown = this.order();
+
+                this.replace(function () { this.selectIds(shown); });
+            } else {
+                this.replace(function () { this.selectAll(Date.now() / 1000); });
+            }
             return;
         }
 
@@ -962,7 +1042,7 @@
             this.selection.toggle(row.getAttribute('data-pg-id'));
             this.paint();
         } else if ((event.key === 'ArrowDown') || (event.key === 'ArrowUp')) {
-            var to = (event.key === 'ArrowDown') ? row.nextElementSibling : row.previousElementSibling;
+            var to = shownSibling(row, event.key === 'ArrowDown');
 
             if (to) {
                 event.preventDefault();
@@ -988,7 +1068,7 @@
         this.bar.classList.toggle('is-empty', (count === 0) && !this.undo);
         this.count.textContent = (count === 0) ? '' : text(this.selection.all ? this.texts.all : this.texts.selected, count);
         this.clearButton.hidden = (count === 0);
-        this.empty.hidden = this.tbody.rows.length > 0;
+        this.empty.hidden = this.browser ? (this.order().length > 0) : (this.tbody.rows.length > 0);
         this.more.hidden = !this.next || this.loading || !!this.failed;
 
         this.root.dispatchEvent(new CustomEvent('pg-list-table:selection', {
@@ -1182,6 +1262,7 @@
         if (this.browser) {
             this.sortHere();
             this.paint();
+            this.keepSort();
         } else {
             this.load(true);
         }
@@ -1200,31 +1281,47 @@
     };
 
     Driver.prototype.sortHere = function () {
-        var levels = this.levels;
         var collator = new Intl.Collator(document.documentElement.lang || undefined, { numeric: true, sensitivity: 'base' });
-        var rows = Array.prototype.slice.call(this.tbody.rows);
+        var byId = {};
+        var rows = Array.prototype.map.call(this.tbody.rows, function (row) {
+            var values = {};
 
-        function cellText(row, key) {
-            var cell = row.querySelector('td[data-pg-col="' + key + '"]');
+            Array.prototype.forEach.call(row.cells, function (cell) {
+                var key = cell.getAttribute('data-pg-col');
 
-            return cell ? (cell.getAttribute('data-pg-sort-value') || cell.textContent.trim()) : '';
-        }
-
-        rows.sort(function (a, b) {
-            for (var i = 0; i < levels.length; i++) {
-                var result = collator.compare(cellText(a, levels[i].sort), cellText(b, levels[i].sort));
-
-                if (result !== 0) {
-                    return (levels[i].order === 'desc') ? -result : result;
+                if (key) {
+                    values[key] = cell.hasAttribute('data-pg-sort-value') ? cell.getAttribute('data-pg-sort-value') : cell.textContent.trim();
                 }
-            }
+            });
 
-            return 0;
+            byId[row.getAttribute('data-pg-id')] = row;
+
+            return { id: row.getAttribute('data-pg-id'), values: values };
         });
 
-        rows.forEach(function (row) {
-            this.tbody.appendChild(row);
+        sortRows(rows, this.levels, collator).forEach(function (id) {
+            this.tbody.appendChild(byId[id]);
         }, this);
+    };
+
+    /**
+     * A printed list's sort, kept in the session for the screen's next
+     * visit (the list_table_sort action). Nothing waits for the answer: the
+     * rows are already sorted.
+     */
+    Driver.prototype.keepSort = function () {
+        if (!this.printed || !window.fetch) {
+            return;
+        }
+
+        window.fetch('api.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'list_table_sort', token: window.software_token || '', list: this.name, sort: sortValue(this.levels) })
+        }).catch(function () {
+            // Offline: the sort lasts for this page.
+        });
     };
 
     /**
@@ -1307,6 +1404,8 @@
         sortAfterClick: sortAfterClick,
         sortParse: sortParse,
         sortValue: sortValue,
+        compareSortValues: compareSortValues,
+        sortRows: sortRows,
         prefsKey: prefsKey,
         prefsClean: prefsClean,
         columnsView: columnsView,

@@ -15,7 +15,7 @@ description: Steps V12-V17 of plans/visitors-overview.md: alerts, saved reports 
 - V14 (S) API routes. After V2, V4 and V10.
   - `includes/api/resources/visitors.php`: `reports/visitors` gains `by=channel`; new `reports/search` (totals, by day, queries, pages from `seo_search_daily`; `linked: false` when not linked) and `reports/pages` (V10's join), declared in `api_schema()` with the reports scope, `php tools/check_api_schema.php` green. Memory: `api/api-visitor-reports.md`.
 
-- V15 (S) Settings and status lines. After V3.
+- V15 (S) Settings and status lines. After V3. Done in #6381.
   - The Visitor records card (Database engine) shows the summary's range; System Status adds a line when the summary's last day is more than two days back (`pg_visitor_summary_range()`), no score effect, as the table-size warning.
 
 - V17 (M) Speed, AI and site search sections. After V1.

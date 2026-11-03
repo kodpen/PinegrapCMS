@@ -289,7 +289,7 @@
     // replaced in one undo step (M.swapGlyph()); false when nothing is
     // being changed, so the pick adds a layer.
     Editor.prototype.swapGlyph = function (pick) {
-        var next = M.swapGlyph(this.swapTarget(), pick);
+        var l = this.swapTarget(), next = M.swapGlyph(l, pick, (l && (l.type === 'sticker')) ? this.stickerKindText(l.kind) : '');
 
         if (!next) {
             return false;

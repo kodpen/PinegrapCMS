@@ -552,11 +552,11 @@ function pg_contact_form_affiliate_card($values)
  * The contact groups the user may put a contact in, by name.
  *
  * @param array $user
- * @return array  Rows of id, name, email_subscription
+ * @return array  Rows of id, name, email_subscription, kind
  */
 function pg_contact_form_groups($user)
 {
-    $result = mysqli_query(db::$con, "SELECT id, name, email_subscription FROM contact_groups ORDER BY name") or output_error('Query failed.');
+    $result = mysqli_query(db::$con, "SELECT id, name, email_subscription, " . pg_contact_form_kind_column() . " FROM contact_groups ORDER BY name") or output_error('Query failed.');
 
     $contact_groups = array();
 
@@ -611,10 +611,21 @@ function pg_contact_form_group_states($contact_id, $contact_groups)
 function pg_contact_form_group_cells($contact_groups, $states)
 {
     $output = '';
+    $output_by_rule = '';
 
     foreach ($contact_groups as $contact_group) {
         $id = h($contact_group['id']);
         $state = $states[$contact_group['id']] ?? array('in' => false, 'opt_in' => true);
+
+        // A group filled by rules shows as a read-only chip when the contact
+        // is in it, and has no switch.
+        if (($contact_group['kind'] ?? 'static') === 'dynamic') {
+            if ($state['in']) {
+                $output_by_rule .= '<li><a class="badge theme-secondary fw-normal" href="edit_contact_group.php?id=' . $id . '">' . h($contact_group['name']) . '</a></li>';
+            }
+
+            continue;
+        }
 
         $contact_group_target = '';
         $output_opt_in = '';
@@ -647,7 +658,27 @@ function pg_contact_form_group_cells($contact_groups, $states)
         </div>';
     }
 
+    if ($output_by_rule !== '') {
+        $output .= '
+        <div class="col-12 my-3">
+            <div class="form-label" id="contact_groups_by_rule_label">' . lang('Members by rule') . '</div>
+            <ul class="list-unstyled d-flex flex-wrap gap-2 m-0" aria-labelledby="contact_groups_by_rule_label">' . $output_by_rule . '</ul>
+            <div class="form-text">' . lang('The rules of these groups decide who is in them; they are not changed here.') . '</div>
+        </div>';
+    }
+
     return $output;
+}
+
+/**
+ * The kind column of contact_groups for a SELECT list: the column once the
+ * upgrade has added it, 'static' for every group before.
+ *
+ * @return string
+ */
+function pg_contact_form_kind_column()
+{
+    return pg_audience_ready() ? 'kind' : "'static' AS kind";
 }
 
 /**
@@ -868,7 +899,11 @@ function pg_contact_bulk_set_opt_in($user, $contact_ids, $opt_in)
  */
 function pg_contact_form_all_groups()
 {
-    $result = mysqli_query(db::$con, "SELECT id, name, email_subscription FROM contact_groups") or output_error('Query failed.');
+    // A group filled by rules is never ticked by hand: its members come from
+    // the recompute (includes/fn/audiences.php), so the save neither adds to
+    // it nor takes an unticked contact out of it.
+    $where = pg_audience_ready() ? " WHERE kind <> 'dynamic'" : '';
+    $result = mysqli_query(db::$con, "SELECT id, name, email_subscription FROM contact_groups" . $where) or output_error('Query failed.');
 
     $contact_groups = array();
 

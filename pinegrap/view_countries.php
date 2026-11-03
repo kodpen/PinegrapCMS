@@ -76,6 +76,9 @@ while ($row = mysqli_fetch_array($result)) {
     $country_rows[] = $row;
 }
 
+// Two rows with the same name on screen carry their code.
+$country_rows = pg_geo_label_disambiguate($country_rows);
+
 // Sorted by name first: by the name on screen in the panel language's
 // order, not by the stored English name the query orders by ("Türkiye"
 // among the T's, not where "Turkey" was).

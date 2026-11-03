@@ -835,3 +835,35 @@ function decode_ssl_keys($key_base64, $iv_base64)
     $decrypted = openssl_decrypt($key, $crypto_method, $crypto_key, OPENSSL_RAW_DATA, $iv);
     return ($decrypted !== false) ? $decrypted : '';
 }
+
+/**
+ * Whether a panel user may open a file a team chat message carries: a side
+ * (initiator or target) of a conversation carrying it, or a role-0
+ * administrator. A conversation between two staff members may carry
+ * personal data, so the folder's own permission does not decide.
+ *
+ * @param int   $user_id       0 when nobody is signed in
+ * @param int   $role          the user's role
+ * @param array $conversations rows with initiator_user_id and target_user_id
+ * @return bool
+ */
+function pg_chat_attachment_access_verdict($user_id, $role, $conversations)
+{
+    $user_id = (int) $user_id;
+
+    if ($user_id <= 0) {
+        return false;
+    }
+
+    if ((int) $role === 0) {
+        return true;
+    }
+
+    foreach ((array) $conversations as $conversation) {
+        if (((int) $conversation['initiator_user_id'] === $user_id) || ((int) $conversation['target_user_id'] === $user_id)) {
+            return true;
+        }
+    }
+
+    return false;
+}

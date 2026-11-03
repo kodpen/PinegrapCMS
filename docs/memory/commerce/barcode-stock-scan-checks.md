@@ -18,3 +18,6 @@ module: ecommerce
 
 ## Which test covers it?
 - `tests/barcode_stock_checks_test.php` (the reader, source pins of both screens and the save). Not scanned on a live instance.
+
+## What happens on a product with stock tracking off?
+- The count is written as before (Modify Selected and the Catalog Manager do the same); the answer's `inventory` is read by the screen, and when it is not `1` the table row, the status line and a warning box say "Stock tracking is off for this product; the count is used when tracking is turned on." `out_of_stock` and `inventory.changed` are untouched (#5788). Pinned by `test_barcode_stock_screens_warn_on_an_untracked_product`.

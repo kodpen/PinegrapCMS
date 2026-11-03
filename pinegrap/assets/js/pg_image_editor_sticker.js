@@ -167,6 +167,14 @@
 
     // ---- stickers ----
 
+    // A sticker kind's own label text (Change keeps a label only when the
+    // person typed another).
+    Editor.prototype.stickerKindText = function (kind) {
+        var def = M.STICKERS.filter(function (d) { return d.kind === kind; })[0];
+
+        return def ? stickerText(def) : '';
+    };
+
     // A built-in sticker in the middle of what the stage shows, sized to
     // the picture's shorter side, selected.
     Editor.prototype.addSticker = function (def) {
@@ -174,7 +182,7 @@
 
         // Change on a placed sticker, icon or emoji (the glyph part): this
         // one takes its place instead.
-        if (this.swapGlyph && this.swapGlyph({ type: 'sticker', kind: def.kind, label: stickerText(def), fill: def.fill, ink: def.ink })) {
+        if (this.swapGlyph && this.swapGlyph({ type: 'sticker', kind: def.kind, label: stickerText(def), fill: def.fill, ink: def.ink, w: def.w, h: def.h })) {
             return;
         }
 

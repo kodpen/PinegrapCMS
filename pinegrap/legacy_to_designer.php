@@ -6,7 +6,9 @@
  * (includes/fn/legacy_to_designer.php). Each style with its pages, own and
  * by folder, its regions by type, what stays classic, what needs a look
  * first and whether the designer opens it. Reached from All Page Styles;
- * designers and administrators, as the conversion itself. Writes nothing.
+ * designers and administrators, as the conversion itself. The chosen styles'
+ * dry run (includes/fn/legacy_to_designer_plan.php) lists what a bulk move
+ * would write for each. Writes nothing.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -18,9 +20,21 @@ include('init.php');
 $user = validate_user();
 validate_area_access($user, 'designer');
 
-require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_plan.php');
 
 $report = pg_ltd_report();
+
+// The dry run of the chosen styles: read only, so a token check is all a
+// post needs.
+$chosen = array();
+$plan = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    validate_token_field();
+    foreach ((array)($_POST['styles'] ?? array()) as $id) {
+        if ((int)$id > 0) $chosen[(int)$id] = true;
+    }
+    $plan = pg_ltd_plan(array_keys($chosen));
+}
 
 $state_badges = array(
     'ready'     => array('theme-success', lang('Ready')),
@@ -125,6 +139,7 @@ foreach ($report as $s) {
 
     $output_action = '';
     if ($s['state'] !== 'blocked') {
+        $output_action .= '<input class="check m-1" type="checkbox" name="styles[]" value="' . (int)$s['id'] . '" form="ltd_dry_run" aria-label="' . h($s['name']) . '"' . (isset($chosen[$s['id']]) ? ' checked' : '') . '>';
         $output_action = '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . h(lang('Open in the visual designer')) . '" href="edit_system_style.php?id=' . (int)$s['id'] . '&amp;classic=1"><i class="bi bi-magic"></i></a>';
     }
 
@@ -172,6 +187,28 @@ $output_table = $report
         </table>'
     : '<p class="p-7 mb-0">' . h(lang('There is no classic style left: every style is a visual design.')) . '</p>';
 
+$output_plan = '';
+if ($plan !== null) {
+    $output_plan = $plan ? '' : '<p class="mb-0">' . h(lang('Choose the styles to move first.')) . '</p>';
+    foreach ($plan as $p) {
+        $output_plan .= pg_ltd_plan_html($p);
+    }
+    $output_plan = '
+    <div class="card my-7" id="ltd-dry-run">
+        <div class="card-header"><h2 class="h5 mb-0">' . h(lang('Dry run')) . '</h2>
+            <div class="small fg-secondary">' . h(lang('What moving the chosen styles would write. Nothing has been changed.')) . '</div></div>
+        <div class="card-body">' . $output_plan . '</div>
+    </div>';
+}
+
+$output_form = $report
+    ? '<form id="ltd_dry_run" method="post" action="legacy_to_designer.php#ltd-dry-run" class="d-flex align-items-center gap-3 my-7">'
+        . get_token_field() . '
+        <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-clipboard-check me-1"></i>' . h(lang('Dry run')) . '</button>
+        <span class="small fg-secondary">' . h(lang('Tick the styles to move, then see what would be written for each.')) . '</span>
+    </form>'
+    : '';
+
 print
 pg_page_shell([
         'title' => lang('Move to the visual designer'),
@@ -185,6 +222,7 @@ pg_page_shell([
         'secondary' => array('label' => lang('All Page Styles'), 'url' => 'view_styles.php', 'icon' => 'bi-arrow-left'),
     )) . '
     <div class="row g-7 my-7">' . $output_summary . '</div>
+    ' . $output_plan . $output_form . '
     <div class="card my-7">
         <div class="card-body p-0 table-responsive">' . $output_table . '</div>
     </div>

@@ -43,7 +43,7 @@ function test_contact_user_link_rights_submitted_form_list_asks_per_row()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
 
-	pg_assert_true(strpos($source, 'pg_submitted_form_list_row($row, $contacts_access && pg_can_open_contact($user, $row[\'contact_id\'], $contacts_access))') !== false, 'each row asks whether its contact opens for the viewer');
+	pg_assert_true(strpos($source, 'pg_submitted_form_list_row($record, $contacts_access && pg_can_open_contact($user, $record[\'contact_id\'], $contacts_access))') !== false, 'each row asks whether its contact opens for the viewer');
 	pg_assert_true(_contact_user_link_rights_pin('includes/fn/submitted_form_list.php', 'edit_contact.php', '$contacts_access', 1) === 1);
 }
 

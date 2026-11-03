@@ -150,6 +150,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_store_credit();            // 11.0.159
 	upgrade_2026_11_0_user_disabled();           // 11.0.160
 	upgrade_2026_11_0_booking_campaigns();       // 11.0.161
+	upgrade_2026_11_0_stock_locations();         // 11.0.162
 	upgrade_2026_11_0_form_list_view_address();  // 11.0.163
 
 }
@@ -4911,6 +4912,63 @@ function upgrade_2026_11_0_booking_campaigns() {
 	}
 
 	install_note('E-mail campaigns: automatic e-mails gain the booking confirmed, booking reminder, booking rescheduled and booking cancelled actions. Nothing is sent until such a profile is created.');
+
+}
+
+// Stock per location (2026.11.0, 11.0.162; includes/fn/stock_locations.php).
+// stock_locations are the places units are kept (warehouse, shop,
+// consignment); product_stock holds a product's quantity at one location,
+// one row per pair; stock_moves records every change made through the
+// writer (signed delta, quantity left at the location, reason, reference,
+// who). products.inventory_quantity stays and is kept as the sum of a
+// product's rows by the writer, so every reader of the total is unchanged.
+// shipping_methods.stock_location_id and orders.stock_location_id name the
+// location an order ships from (0 = the default). New tables and columns
+// only; no data moves: rows appear when the operator adds the first location.
+function upgrade_2026_11_0_stock_locations() {
+
+	install_create_table('stock_locations', "CREATE TABLE stock_locations (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name        VARCHAR(100) NOT NULL DEFAULT '',
+		address     TEXT NULL,
+		enabled     TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		is_default  TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		sort_order  SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('product_stock', "CREATE TABLE product_stock (
+		product_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		location_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		quantity     INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (product_id, location_id),
+		KEY idx_location (location_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('stock_moves', "CREATE TABLE stock_moves (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		product_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		location_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		delta           INT NOT NULL DEFAULT 0,
+		quantity_after  INT UNSIGNED NOT NULL DEFAULT 0,
+		reason          VARCHAR(32) NOT NULL DEFAULT '',
+		ref             VARCHAR(64) NOT NULL DEFAULT '',
+		note            VARCHAR(255) NOT NULL DEFAULT '',
+		user_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_product (product_id, created_at),
+		KEY idx_location (location_id, created_at),
+		KEY idx_created (created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('shipping_methods', 'stock_location_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('orders', 'stock_location_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Stock locations: the tables for stock kept per location and its history are in place; nothing changes until a location is added.');
 
 }
 

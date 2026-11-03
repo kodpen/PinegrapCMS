@@ -2137,7 +2137,7 @@ function select_country($country_id = '')
         $rows[] = $row;
     }
 
-    return pg_country_select_options(pg_geo_sort_by_label($rows), $country_id);
+    return pg_country_select_options(pg_geo_sort_by_label(pg_geo_label_disambiguate($rows)), $country_id);
 }
 
 /**

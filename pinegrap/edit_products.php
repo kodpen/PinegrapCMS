@@ -61,6 +61,21 @@ if (!$_POST) {
 
     validate_token_field();
 
+    // The products the list's selection stands for, read with the list's own
+    // query and the user's rights (pg_product_list_selected_ids()): the rows
+    // picked one by one, or the whole view by its condition. A product in the
+    // Recycle Bin is on no view, so it is never among them.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_list.php');
+    $product_ids = pg_product_list_selected_ids($user, $_POST['selection'] ?? '', $_POST['list_params'] ?? '');
+
+    if ($product_ids === false) {
+        output_error(lang('Query failed.'));
+    }
+
+    if ($product_ids === null) {
+        output_error(lang('Too many products are selected. Select fewer products and try again.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    }
+
     // The shared readers of the price amount and the stock quantity.
     require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_products_bulk.php');
 
@@ -128,7 +143,7 @@ if (!$_POST) {
     }
 
     // If at least one product was selected then continue.
-    if ($_POST['products']) {
+    if ($product_ids) {
         $number_of_products = 0;
         
         switch ($_POST['action']) {
@@ -164,7 +179,7 @@ if (!$_POST) {
                     $change_besides_price = pg_products_mass_change_besides_price($_POST, $quantity_value);
 
                     // Loop through selected products in order to edit them.
-                    foreach ($_POST['products'] as $product_id) {
+                    foreach ($product_ids as $product_id) {
                         // A product in the Recycle Bin is not changed, as on
                         // Edit Product and in the Catalog Manager: the list
                         // does not show one, but a selection made before it
@@ -497,12 +512,12 @@ if (!$_POST) {
 
             // Assign a new barcode to each selected product.
             case 'assign_barcodes':
-                if (defined('BARCODE_ENABLED') && BARCODE_ENABLED && !empty($_POST['products'])) {
+                if (defined('BARCODE_ENABLED') && BARCODE_ENABLED && $product_ids) {
                     $bc_type  = BARCODE_DEFAULT_TYPE;
                     $assigned = 0;
                     $now      = date('Y-m-d H:i:s');
 
-                    foreach ($_POST['products'] as $pid) {
+                    foreach ($product_ids as $pid) {
                         $pid = (int)$pid;
                         if (!$pid) continue;
 
@@ -557,7 +572,7 @@ if (!$_POST) {
                     include_once('product_builder.php');
                 }
 
-                foreach ((array) $_POST['products'] as $product_id) {
+                foreach ($product_ids as $product_id) {
                     // Cast once, up front: the value comes straight out of $_POST.
                     $product_id = (int) $product_id;
 

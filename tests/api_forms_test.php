@@ -123,3 +123,29 @@ function test_api_forms_every_route_applies_the_folder_rule()
 
 	pg_assert_contains('api_form_owner_filter(', api_forms_test_function_source('api_form_submission_owned'), 'the submission loader');
 }
+
+// A record with a fee says whether it is paid and the order's number; one
+// without a fee answers null for both, and a pre-upgrade row has neither key.
+function test_api_forms_submission_payment_fields()
+{
+	$row = array(
+		'id' => 5, 'page_id' => 3, 'reference_code' => 'R', 'complete' => 1, 'contact_id' => 0,
+		'quiz_score' => 0, 'submitted_timestamp' => 0, 'last_modified_timestamp' => 0,
+	);
+
+	$none = api_form_submission_present($row, array());
+	pg_assert_same(null, $none['order_number'], 'no fee: no order number');
+	pg_assert_same(null, $none['paid'], 'no fee: paid is null');
+
+	$unpaid = api_form_submission_present($row + array('order_id' => 9, 'paid_at' => 0, 'order_number' => '0'), array());
+	pg_assert_same(false, $unpaid['paid'], 'a fee order not yet paid');
+	pg_assert_same(null, $unpaid['order_number'], 'an incomplete order has no number');
+
+	$paid = api_form_submission_present($row + array('order_id' => 9, 'paid_at' => 1700000000, 'order_number' => '1009'), array());
+	pg_assert_same(true, $paid['paid'], 'paid');
+	pg_assert_same('1009', $paid['order_number'], 'the order number');
+
+	$schema = api_form_submission_schema();
+	pg_assert_same('string?', $schema['order_number'], 'declared');
+	pg_assert_same('boolean?', $schema['paid'], 'declared');
+}
