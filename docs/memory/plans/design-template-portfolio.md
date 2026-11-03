@@ -27,7 +27,7 @@ description: Plan for the Web Designer Portfolio template (pinegrap-portfolio): 
 
 - 5 Done (#6176). Standard: `standard.php` (contact, inbox, conversation, newsletter, blog as "Journal", blog post, search, error); test `…_standard_test.php`.
 
-- 6 Account and staff: `account.php` (sign-in, My Account, the staff area, `blog_new` with sample posts, account e-mails); test `…_account_test.php`.
+- 6 Done (#6177). Account and staff: `account.php` (sign-in, My Account, the staff area, `blog_new` with sample posts, account e-mails); test `…_account_test.php`.
 
 - 7 Assembly: `pinegrap-portfolio.php` (order 72, icon `bi-vector-pen`, look `bold`, palette `graphite`, contact group `newsletter`, folders, `pdp-` User Styles with two fonts, search map), the shared tests' lists, `designer/design-template-portfolio.md`, plan deleted; PR body names `[NEW] Added the Web Designer Portfolio design template`.
 

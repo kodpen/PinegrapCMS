@@ -853,6 +853,7 @@
     "Most services register the site on their own when it connects. A service that wants an application of its own: register one in its developer settings with the redirect address {var:1} and enter its client ID here, and its secret if it gave one.": "Çoğu hizmet, site bağlanırken onu kendiliğinden kaydeder. Kendi uygulamasını isteyen bir hizmette, geliştirici ayarlarında yönlendirme adresi {var:1} olan bir uygulama kaydedin ve istemci kimliğini, verdiyse gizli anahtarını da buraya girin.",
     "Most short: {var:1}": "En çok eksik: {var:1}",
     "Most viewed this week": "Bu hafta en çok görüntülenenler",
+    "Most visitors arrive on a phone. A page that works on a small screen is clearer on a large one too.": "Ziyaretçilerin çoğu telefondan gelir. Küçük ekranda işleyen bir sayfa büyük ekranda da daha anlaşılırdır.",
     "Most visitors decide in a few seconds whether a site is going to be easy. The good news is that the things that make the difference are small.": "Ziyaretçilerin çoğu bir sitenin kolay olup olmayacağına birkaç saniyede karar verir. İyi haber şu ki farkı yaratan şeyler küçüktür.",
     "Most work": "En çok iş",
     "Most-read Pages per Bot": "Bota Göre En Çok Okunan Sayfalar",
