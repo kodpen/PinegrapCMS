@@ -351,7 +351,7 @@ if ($backup_settings_ready) {
     $output_backup_settings = '
                     <div class="pg-f-xs">
                         <label for="backup_keep" class="form-label">' . lang('Automatic backups to keep') . '</label>
-                        <input type="number" name="backup_keep" id="backup_keep" min="0" step="1" class="form-control" value="' . h($backup_keep) . '" />
+                        <input type="number" name="backup_keep" id="backup_keep" min="0" max="9999" step="1" class="form-control" value="' . h($backup_keep) . '" />
                     </div>
                     <div class="col-12">
                         <div class="form-text">' . lang('The automatic backup keeps one backup per week; every run in the same week replaces it. Older weeks beyond this number are deleted. 0 keeps all of them. Backups taken by hand and the install dumps are never deleted.') . '</div>

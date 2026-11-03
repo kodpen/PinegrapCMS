@@ -975,7 +975,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $output_enforcement = '';
     // if there is enforcement tell user its
     if( defined('ENFORCEMENT_SOFTWARE_LANGUAGE') ){
-        $output_enforcement = '(' . lang('Enforcement: ') . ENFORCEMENT_SOFTWARE_LANGUAGE . ')';
+        $output_enforcement = ' (' . lang('Enforcement: ') . ENFORCEMENT_SOFTWARE_LANGUAGE . ')';
     }
     $software_language = $row['software_language'];
     if($software_language != NULL){
