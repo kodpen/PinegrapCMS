@@ -44,7 +44,7 @@ function test_dashboard_v2_shop_cards_are_built()
 function test_dashboard_v2_shop_windows_last_7_days()
 {
 	$midnight = mktime(0, 0, 0, 3, 10, 2026);
-	$windows = pg_dashboard_v2_shop_windows(1, 1, $midnight);
+	$windows = pg_dashboard_v2_shop_windows(1, 0, $midnight);
 
 	pg_assert_same(array(mktime(0, 0, 0, 3, 4, 2026), mktime(0, 0, 0, 3, 11, 2026)), $windows['now']);
 	pg_assert_same(array(mktime(0, 0, 0, 2, 25, 2026), mktime(0, 0, 0, 3, 4, 2026)), $windows['before'], 'the 7 days before');
@@ -55,7 +55,7 @@ function test_dashboard_v2_shop_windows_last_7_days()
 function test_dashboard_v2_shop_windows_today_against_last_year()
 {
 	$midnight = mktime(0, 0, 0, 3, 10, 2026);
-	$windows = pg_dashboard_v2_shop_windows(0, 2, $midnight);
+	$windows = pg_dashboard_v2_shop_windows(0, 1, $midnight);
 
 	pg_assert_same(array($midnight, mktime(0, 0, 0, 3, 11, 2026)), $windows['now']);
 	pg_assert_same(array(mktime(0, 0, 0, 3, 10, 2025), mktime(0, 0, 0, 3, 11, 2025)), $windows['before']);

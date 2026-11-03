@@ -538,6 +538,17 @@
     gap: .375rem;
   }
 
+  /* The opened checks sit in their own box: the browser lays out what
+     follows the summary in the details content box, where the gap above
+     does not reach. */
+  .pg-dash-status-more-list {
+    display: flex;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .375rem;
+  }
+
   .pg-dash-status-more > summary {
     display: inline-flex;
     align-items: center;
@@ -2047,6 +2058,14 @@
     gap: .625rem;
     color: inherit;
     text-decoration: none;
+  }
+
+  /* A row that is one link: the link fills the row and may shrink below
+     its text, so a long name ends in an ellipsis instead of widening the
+     card. */
+  .pg-dash-item > .pg-dash-item-link {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .pg-dash-item-main {

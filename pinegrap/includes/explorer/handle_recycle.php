@@ -379,7 +379,7 @@ function pg_explorer_handle_recycle_delete($type, $request, $user)
     }
 
     if ($binned > 0) {
-        log_activity(lang(array('string' => '{var:1} item(s) were moved to the recycle bin', 'vars' => $binned)), $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => '{var:1} item(s) moved to the Recycle Bin', 'vars' => $binned)), $_SESSION['sessionusername']);
     }
 
     respond(array(
@@ -389,7 +389,7 @@ function pg_explorer_handle_recycle_delete($type, $request, $user)
         'errors' => $errors,
         'message' => (count($errors) > 0)
             ? implode(' ', $errors)
-            : lang(array('string' => '{var:1} item(s) were moved to the recycle bin', 'vars' => $binned))));
+            : lang(array('string' => '{var:1} item(s) moved to the Recycle Bin', 'vars' => $binned))));
 }
 
 // Where a restored folder, page or file goes: the folder it came from, or

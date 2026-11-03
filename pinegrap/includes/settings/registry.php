@@ -347,7 +347,7 @@ function pg_settings_categories()
             'icon'  => 'bi-calendar-check',
             'description' => lang('The services that can be booked, the staff who take them, the booking rules and the booking widget\'s texts.'),
             'sections' => array(
-                'pgset-booking-services' => lang('Services'),
+                'pgset-booking-services' => lang('Bookable services'),
                 'pgset-booking-staff'    => lang('Staff'),
                 'pgset-booking-policy'   => lang('Booking rules'),
                 'pgset-booking-texts'    => lang('Booking widget texts'),

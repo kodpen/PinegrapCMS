@@ -23,6 +23,28 @@ if (!defined('PG_DASHBOARD_V2')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/pipeline.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/visitors.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/shop.php');
+
+// The edit mode's Compare is 0 previous period, 1 last year, 2 off; the
+// pipeline, Visitor Summaries and Ecommerce Summary cards read it alike.
+function test_dashboard_v2_compare_means_the_same_on_every_card()
+{
+	$now = mktime(15, 0, 0, 3, 10, 2026);
+	$midnight = mktime(0, 0, 0, 3, 10, 2026);
+
+	$pipe = pg_dashboard_v2_pipeline_window(1, 0, $now);
+	pg_assert_same($pipe['start'], $pipe['before'][1], 'pipeline: 0 ends where the period starts');
+	pg_assert_same('2026-02-25', pg_dashboard_v2_visitor_dates(1, 0, $now)['compare'][0], 'visitors: 0 is the period before');
+	pg_assert_same(mktime(0, 0, 0, 2, 25, 2026), pg_dashboard_v2_shop_windows(1, 0, $midnight)['before'][0], 'shop: 0 is the period before');
+
+	pg_assert_same(strtotime('-1 year', pg_dashboard_v2_pipeline_window(1, 1, $now)['start']), pg_dashboard_v2_pipeline_window(1, 1, $now)['before'][0], 'pipeline: 1 is a year back');
+	pg_assert_same('2025-03-04', pg_dashboard_v2_visitor_dates(1, 1, $now)['compare'][0], 'visitors: 1 is a year back');
+	pg_assert_same(mktime(0, 0, 0, 3, 4, 2025), pg_dashboard_v2_shop_windows(1, 1, $midnight)['before'][0], 'shop: 1 is a year back');
+
+	pg_assert_same(null, pg_dashboard_v2_pipeline_window(1, 2, $now)['before'], 'pipeline: 2 is off');
+	pg_assert_same(array(), pg_dashboard_v2_visitor_dates(1, 2, $now)['compare'], 'visitors: 2 is off');
+}
 
 function test_dashboard_v2_pipeline_preset_falls_back_to_the_first_default()
 {

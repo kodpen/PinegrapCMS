@@ -921,7 +921,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                                     </div>
                                                     <div class="pg-f-xs">
                                                         <label for="merchant_return_days" class="form-label">' . lang('Return Window (days)') . '</label>
-                                                        <input type="text" inputmode="numeric" name="merchant_return_days" id="merchant_return_days" class="form-control" value="' . (($merchant_return_days >= 0) ? (int) $merchant_return_days : '') . '"/>
+                                                        <input type="text" inputmode="numeric" maxlength="4" name="merchant_return_days" id="merchant_return_days" class="form-control" value="' . (($merchant_return_days >= 0) ? (int) $merchant_return_days : '') . '"/>
                                                         <div class="form-text">' . lang('Leave blank to leave the return policy out of the markup. Enter 0 if returns are not accepted.') . '</div>
                                                     </div>
                                                     <div class="pg-f-md">
