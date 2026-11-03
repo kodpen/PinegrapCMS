@@ -30,8 +30,8 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `state` (3): open
 - Endpoints `style` (4): open
 - Endpoints `submitted` (5): open
-- Endpoints `subscription` (3): open
-- Endpoints `system` (5): open
+- Endpoints `subscription` (3): clean
+- Endpoints `system` (5): #6111
 - Endpoints `tax` (3): open
 - Endpoints `theme` (6): done #4725, #4739, #4764; lead: theme_designer Cancel calls an undefined `theme_designer_cancel_confirm()`
 - Endpoints `translation` (3): open
