@@ -25,17 +25,17 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `shipping` (9): done #6086
 - Endpoints `shopping` (2): open
 - Endpoints `short` (5): open
-- Endpoints `software` (3): open
+- Endpoints `software` (3): taken
 - Endpoints `style` (4): clean; lead: view_styles counts stored, not inherited, mobile ids
 - Endpoints `submitted` (5): done #6098 (edit_submitted_form: one checked id); the rest clean
 - Endpoints `subscription` (3): open
 - Endpoints `system` (5): open
 - Endpoints `theme` (6): done #4725, #4739, #4764; lead: theme_designer Cancel calls an undefined `theme_designer_cancel_confirm()`
-- Endpoints `translation` (3): open
+- Endpoints `translation` (3): taken
 - Endpoints `user` (5): done #4489, #4505 (add_user, edit_user, delete_users, import_users, view_users)
 - Endpoints `verified` (3): open
 - Endpoints `view` (2): open
 - Endpoints `visitor` (3): open
 - Endpoints `waf` (4): done (#4601, #4620)
 - Endpoints `workspace` (21): open
-- Endpoints `zone` (3): open
+- Endpoints `zone` (3): taken
