@@ -526,7 +526,14 @@ function test_designer_page_link_values_missing_page_and_bare()
 // A sentinel no renderer expanded prints '#', never a token swept to href="".
 function test_designer_page_link_apply_bindings_sentinel()
 {
-	$props = _apply_bindings(array('href' => '/typed', '_bindings' => array('href' => '__page_link', 'text' => 'title')));
+	// Inside a widget; outside one the typed href is the fallback
+	// (page_link_by_id_test.php).
+	pg_sw_finish_open(array('sid' => 3, 'kind' => 'form_item_view'));
+	try {
+		$props = _apply_bindings(array('href' => '/typed', '_bindings' => array('href' => '__page_link', 'text' => 'title')));
+	} finally {
+		pg_sw_finish_close();
+	}
 	pg_assert_same('#', $props['href']);
 	pg_assert_same('^^title^^', $props['text']);
 	pg_assert_same(array(array('name' => 'data-pg-bind', 'value' => 'text:title')), $props['_attrs'], 'no data-pg-bind pair for the href');
