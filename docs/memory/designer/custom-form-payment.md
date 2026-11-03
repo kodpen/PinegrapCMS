@@ -23,7 +23,7 @@ module: form_payments
 - `pg_form_payment_mark_paid($order_id)` is called by `pg_order_complete()` after the order number is given (every order) and by `pg_order_mark_paid()` (Payment Received). It marks only when the order itself is paid: `UPDATE forms INNER JOIN orders … WHERE forms.order_id = ? AND forms.paid_at = 0 AND orders.paid_at > 0` (#6367). An offline payment completes the order with `paid_at` 0, so its record stays unpaid until staff record the payment; before, completion marked it paid. A second message changes nothing; a record marked by the call is announced as `form.paid`.
 - System fields `order_number` (the completed order's number) and `paid` ("Paid" or '') join `get_standard_fields_for_view()` once the columns exist.
 - Staff screen, API and `form.paid`: `custom-form-payment-staff.md`.
-- Not yet: the payment step on the site and the confirmation mail when paid (FL5); the list badge and the Unpaid filter on `view_submitted_forms.php` (`pg_form_payment_unpaid_where()` is ready), left out of #6367 while #6366 moved that list to the table driver.
+- Not yet: the payment step on the site and the confirmation mail when paid (FL5).
 
 ## Where does the designer set it?
 - Custom Form Settings, last rows (`_cfPaymentRows()`): the fee product (`list_fee_products`, the first 2000 by name), the amount source, the field and min/max in major units (stored in minor units), offline. Drawn only when `formMeta.payment` (store on and columns there). Written as one `payment` object (`.sd-cf-pay` handler).
