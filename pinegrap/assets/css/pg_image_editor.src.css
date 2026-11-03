@@ -3060,3 +3060,36 @@
 .pgie .pgie-glyphfind {
   width: 100%;
 }
+
+/* -- Shape builder (pg_image_editor_builder.js) -- */
+
+/* Five operations: three tiles a row. */
+.pgie-tiles.pgie-pftiles {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pgie .pgie-tile:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* The regions the overlapping shapes make; the ones a drag touched. */
+.pgie-bregion {
+  fill: transparent;
+  stroke: var(--pgie-sel);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+/* A light wash shows on any fill colour. */
+.pgie-bregion.pgie-bmerge {
+  fill: rgba(255, 255, 255, 0.45);
+  stroke-width: 2;
+  stroke-dasharray: none;
+}
+
+.pgie-bregion.pgie-bremove {
+  fill: rgba(229, 57, 53, 0.35);
+  stroke: #e53935;
+  stroke-dasharray: none;
+}

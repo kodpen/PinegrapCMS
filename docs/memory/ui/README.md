@@ -219,6 +219,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-adjust.md: The image editor's Adjust tool: eight adjustments, nine filters as fixed values of them, one colour matrix shared by the preview and the server, the vignette and sharpening, the GD colour layer
 - image-editor-animation-save.md: Saving an animation into Files (AN4): Save to Files, the upload limit, action animation (binary body, type by bytes), its version with the document, reopening, same-format replace
 - image-editor-artboard.md: The image editor canvas (E12): New image dialog, Canvas tool on a board and on a photo (grow or trim with a fill), outward frames, Image tool, the ARTBOARD model section
+- image-editor-builder.md: The image editor's Shape builder: pathfinder buttons, the drag that merges or removes overlap regions, and the model's own path booleans (flatten, Martinez-Rueda, refit)
 - image-editor-callers.md: Who opens the image editor and how (#4609): the openImageEditor alias, data-pg-image-edit buttons, the live site's copy into content, Workspace's save.url, the redirect
 - image-editor-canvas-save.md: How a photo's grown or trimmed canvas and an outward frame are saved (extend step), pictures from the computer as files rows, a canvas file keeping and reopening its document
 - image-editor-crop.md: The image editor's crop tool: geometry in the document, the rotated space, cover scale, crop mode with its undo and Cancel, ratios, handles, turns and flips, shape, output size, keys

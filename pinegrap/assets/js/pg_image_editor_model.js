@@ -150,15 +150,15 @@
     // ---- tools ----
 
     var PROFILES = {
-        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'scissors', 'motion'],
-        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'image', 'vector', 'scissors', 'frame', 'motion'],
+        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'scissors', 'builder', 'motion'],
+        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'image', 'vector', 'scissors', 'builder', 'frame', 'motion'],
         annotate: ['arrow', 'rect', 'text', 'pen', 'redact'],
         optimise: ['export']
     };
 
     // Tools a caller may name: the rail's and the marking tools of the mini
     // bar (one draw kind each).
-    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'scissors', 'artboard', 'image', 'export', 'motion',
+    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'scissors', 'builder', 'artboard', 'image', 'export', 'motion',
         'arrow', 'line', 'rect', 'ellipse', 'pen'];
 
     // The tools of one call: the caller's list (known names, first mention
@@ -1297,7 +1297,7 @@
         }
 
         if (l.type === 'path') {
-            return [curvePoints(pathKnots(l), !!l.closed, 16)];
+            return [curvePoints(pathKnots(l), !!l.closed, 16)].concat(subKnots(l).map(function (sub) { return curvePoints(sub.knots, sub.closed, 16); }));
         }
 
         if (l.type === 'pen') {
@@ -1347,7 +1347,8 @@
     function hitShape(l, p, slack) {
         var q = [l.mirror ? l.w - p[0] : p[0], p[1]], reach = (l.stroke || 1) / 2 + slack, lines = outline(l), i, j;
 
-        if ((l.fill === 'solid' || l.fill === 'soft') && isClosed(l) && inside(q, lines[0])) {
+        // A path with more contours (outlined letters) is inside any of them.
+        if ((l.fill === 'solid' || l.fill === 'soft') && isClosed(l) && (l.subs ? lines : [lines[0]]).some(function (line) { return inside(q, line); })) {
             return true;
         }
 
@@ -2334,18 +2335,45 @@
 
     // A path's box and knots after its knots (in its box's frame) changed:
     // the box fits the curve again, its angle and mirror kept.
-    function refitPath(l, knots) {
-        var b = knotBounds(knots, l.closed), w = Math.max(1, b.w), h = Math.max(1, b.h);
-        var x0 = b.x + b.w / 2 - w / 2, y0 = b.y + b.h / 2 - h / 2, c = drawnPoint(l, x0 + w / 2, y0 + h / 2);
+    // subs: the path's other contours ({ knots, closed }, knots in its
+    // box's frame), else the layer's own; the box fits them all and they
+    // come back as parts of it too.
+    function refitPath(l, knots, subs) {
+        var more = subs || subKnots(l), b = knotBounds(knots, l.closed);
 
-        return {
-            x: c[0] - w / 2, y: c[1] - h / 2, w: w, h: h,
-            knots: moveKnots(knots, function (px, py) { return [frac(px - x0, w), frac(py - y0, h)]; })
-        };
+        more.forEach(function (sub) {
+            var o = knotBounds(sub.knots, sub.closed), x1 = Math.max(b.x + b.w, o.x + o.w), y1 = Math.max(b.y + b.h, o.y + o.h);
+
+            b.x = Math.min(b.x, o.x);
+            b.y = Math.min(b.y, o.y);
+            b.w = x1 - b.x;
+            b.h = y1 - b.y;
+        });
+
+        var w = Math.max(1, b.w), h = Math.max(1, b.h), x0 = b.x + b.w / 2 - w / 2, y0 = b.y + b.h / 2 - h / 2, c = drawnPoint(l, x0 + w / 2, y0 + h / 2);
+        var part = function (px, py) { return [frac(px - x0, w), frac(py - y0, h)]; };
+        var out = { x: c[0] - w / 2, y: c[1] - h / 2, w: w, h: h, knots: moveKnots(knots, part) };
+
+        if (more.length) {
+            out.subs = more.map(function (sub) { return { knots: moveKnots(sub.knots, part), closed: !!sub.closed }; });
+        }
+
+        return out;
+    }
+
+    // A path's other contours (outlined letters, their holes) in its box's
+    // frame, as pathKnots() gives the first.
+    function subKnots(l) {
+        return (l.subs || []).map(function (sub) {
+            return { knots: moveKnots(sub.knots || [], function (u, v) { return [u * l.w, v * l.h]; }), closed: !!sub.closed };
+        });
     }
 
     function pathShape(l) {
-        return { d: knotsD(pathKnots(l), !!l.closed), head: null, closed: !!l.closed };
+        return {
+            d: knotsD(pathKnots(l), !!l.closed) + subKnots(l).map(function (sub) { return knotsD(sub.knots, sub.closed); }).join(''),
+            head: null, closed: !!l.closed
+        };
     }
 
     // Knot i made smooth (handles along its neighbours' direction, a sixth
@@ -2659,7 +2687,7 @@
 
     var VECTOR = {
         segments: segments, cubicAt: cubicAt, knotsD: knotsD, curvePoints: curvePoints, knotBounds: knotBounds, pathLayer: pathLayer,
-        pathKnots: pathKnots, refitPath: refitPath, pathShape: pathShape, smoothKnot: smoothKnot, cornerKnot: cornerKnot,
+        pathKnots: pathKnots, subKnots: subKnots, refitPath: refitPath, pathShape: pathShape, smoothKnot: smoothKnot, cornerKnot: cornerKnot,
         moveKnot: moveKnot, moveHandle: moveHandle, nearestOnPath: nearestOnPath, splitAt: splitAt, shapeKnots: shapeKnots,
         nearestCut: nearestCut, lineCuts: lineCuts, cutKnots: cutKnots
     };
@@ -3877,6 +3905,960 @@
 
     var GLYPH = { EMOJI: EMOJI, iconSearch: iconSearch, emojiRecent: emojiRecent, glyphText: glyphText, glyphSize: glyphSize, swapGlyph: swapGlyph };
 
+    // -- shape builder (pg_image_editor_builder.js) --
+
+    // Closed shapes and paths combined as areas: their outlines are
+    // flattened to polygons (FLAT_TOL px from the curve), the polygons
+    // clipped with the Martinez-Rueda sweep, and the rings that come out
+    // fitted to curves again (FIT_TOL px). A result's holes wind against
+    // its outer rings, so the nonzero and even-odd rules fill it alike.
+
+    var FLAT_TOL = 0.25, FIT_TOL = 0.5, GRID = 1024;
+
+    // The polygon of one cubic segment from a to b (its end point onward),
+    // split until each piece lies within tol of its chord.
+    function flattenSegment(a, b, tol, out) {
+        var walk = function (p0, p1, p2, p3, depth) {
+            var dx = p3[0] - p0[0], dy = p3[1] - p0[1], len = Math.hypot(dx, dy) || 1e-9;
+            var d1 = Math.abs((p1[0] - p3[0]) * dy - (p1[1] - p3[1]) * dx) / len, d2 = Math.abs((p2[0] - p3[0]) * dy - (p2[1] - p3[1]) * dx) / len;
+
+            if ((depth > 16) || (d1 + d2 <= tol)) {
+                out.push(p3);
+                return;
+            }
+
+            var m = function (u, v) { return [(u[0] + v[0]) / 2, (u[1] + v[1]) / 2]; };
+            var q0 = m(p0, p1), q1 = m(p1, p2), q2 = m(p2, p3), r0 = m(q0, q1), r1 = m(q1, q2), s = m(r0, r1);
+
+            walk(p0, q0, r0, s, depth + 1);
+            walk(s, r1, q2, p3, depth + 1);
+        };
+
+        walk([a.x, a.y], [a.ox, a.oy], [b.ix, b.iy], [b.x, b.y], 0);
+    }
+
+    // A closed contour's polygon (knots in any frame), on the GRID, its
+    // repeated points dropped.
+    function flattenRing(knots, tol) {
+        var pts = knots.length ? [[knots[0].x, knots[0].y]] : [], out = [];
+
+        segments(knots, true).forEach(function (s) { flattenSegment(s[0], s[1], tol || FLAT_TOL, pts); });
+        pts.forEach(function (p) {
+            var q = [Math.round(p[0] * GRID) / GRID, Math.round(p[1] * GRID) / GRID], last = out[out.length - 1];
+
+            if (!last || (last[0] !== q[0]) || (last[1] !== q[1])) {
+                out.push(q);
+            }
+        });
+
+        if ((out.length > 1) && (out[0][0] === out[out.length - 1][0]) && (out[0][1] === out[out.length - 1][1])) {
+            out.pop();
+        }
+
+        return out;
+    }
+
+    // A closed shape's or path's contours as polygons in the rotated space,
+    // or null for a layer that is not a closed area.
+    function layerRings(l) {
+        if (!l || !isClosed(l) || (l.type === 'pen')) {
+            return null;
+        }
+
+        var kc = (l.type === 'path') ? [{ knots: pathKnots(l), closed: true }].concat(subKnots(l)) : [shapeKnots(l)];
+        var rings = kc.filter(function (c) { return c.closed && (c.knots.length > 2); }).map(function (c) {
+            return flattenRing(moveKnots(c.knots, function (u, v) { return drawnPoint(l, u, v); }), FLAT_TOL);
+        }).filter(function (r) { return r.length > 2; });
+
+        return rings.length ? rings : null;
+    }
+
+    function ringArea(r) {
+        var a = 0, i, j;
+
+        for (i = 0, j = r.length - 1; i < r.length; j = i++) {
+            a += (r[j][0] - r[i][0]) * (r[j][1] + r[i][1]);
+        }
+
+        return a / 2;
+    }
+
+    // The area of rings wound as clipRings() gives them.
+    function ringsArea(rings) {
+        return rings.reduce(function (s, r) { return s + ringArea(r); }, 0);
+    }
+
+    // ---- the Martinez-Rueda sweep ----
+
+    var EV_NORMAL = 0, EV_NONE = 1, EV_SAME = 2, EV_DIFF = 3, evId = 0;
+
+    function sweepEvent(p, left, other, subject) {
+        return { p: p, left: left, other: other, subject: subject, type: EV_NORMAL, inOut: false, otherInOut: false, inResult: false, id: ++evId, ring: 0 };
+    }
+
+    function samePoint(a, b) {
+        return (a[0] === b[0]) && (a[1] === b[1]);
+    }
+
+    function signedArea(p0, p1, p2) {
+        return (p0[0] - p2[0]) * (p1[1] - p2[1]) - (p1[0] - p2[0]) * (p0[1] - p2[1]);
+    }
+
+    function evBelow(e, p) {
+        return e.left ? (signedArea(e.p, e.other.p, p) > 0) : (signedArea(e.other.p, e.p, p) > 0);
+    }
+
+    function evVertical(e) {
+        return e.p[0] === e.other.p[0];
+    }
+
+    // The queue's order: left to right, bottom to top, a right end before a
+    // left one, the lower segment first.
+    function compareEvents(a, b) {
+        var p = a.p, q = b.p;
+
+        if (p[0] !== q[0]) {
+            return (p[0] > q[0]) ? 1 : -1;
+        }
+
+        if (p[1] !== q[1]) {
+            return (p[1] > q[1]) ? 1 : -1;
+        }
+
+        if (a.left !== b.left) {
+            return a.left ? 1 : -1;
+        }
+
+        if (signedArea(p, a.other.p, b.other.p) !== 0) {
+            return evBelow(a, b.other.p) ? -1 : 1;
+        }
+
+        if (a.subject !== b.subject) {
+            return (!a.subject && b.subject) ? 1 : -1;
+        }
+
+        return (a.id > b.id) ? 1 : -1;
+    }
+
+    // The sweep line's order of two left events: the lower segment first.
+    function compareSegments(a, b) {
+        if (a === b) {
+            return 0;
+        }
+
+        if ((signedArea(a.p, a.other.p, b.p) !== 0) || (signedArea(a.p, a.other.p, b.other.p) !== 0)) {
+            if (samePoint(a.p, b.p)) {
+                return evBelow(a, b.other.p) ? -1 : 1;
+            }
+
+            if (a.p[0] === b.p[0]) {
+                return (a.p[1] < b.p[1]) ? -1 : 1;
+            }
+
+            if (compareEvents(a, b) === 1) {
+                return evBelow(b, a.p) ? 1 : -1;
+            }
+
+            return evBelow(a, b.p) ? -1 : 1;
+        }
+
+        if (a.subject !== b.subject) {
+            return a.subject ? -1 : 1;
+        }
+
+        if (samePoint(a.p, b.p) && samePoint(a.other.p, b.other.p)) {
+            return (a.id > b.id) ? 1 : -1;
+        }
+
+        return (compareEvents(a, b) === 1) ? 1 : -1;
+    }
+
+    // A binary heap of events, the first by compareEvents() on top.
+    function eventQueue() {
+        var h = [];
+
+        return {
+            size: function () { return h.length; },
+            push: function (e) {
+                var i = h.push(e) - 1, up;
+
+                while (i > 0 && compareEvents(h[i], h[up = (i - 1) >> 1]) < 0) {
+                    h[i] = h[up];
+                    h[up] = e;
+                    i = up;
+                }
+            },
+            pop: function () {
+                var top = h[0], last = h.pop(), i = 0, n = h.length, l, r, m;
+
+                if (n) {
+                    h[0] = last;
+
+                    for (;;) {
+                        l = 2 * i + 1;
+                        r = l + 1;
+                        m = i;
+
+                        if ((l < n) && (compareEvents(h[l], h[m]) < 0)) { m = l; }
+                        if ((r < n) && (compareEvents(h[r], h[m]) < 0)) { m = r; }
+                        if (m === i) { break; }
+
+                        h[i] = h[m];
+                        h[m] = last;
+                        i = m;
+                    }
+                }
+
+                return top;
+            }
+        };
+    }
+
+    // Points closer than WELD px are one point: the same corner reached by
+    // two cuts in other runs differs in its last digits.
+    var WELD = 1e-5;
+
+    // b's points moved onto a's within WELD.
+    function weldRings(a, b) {
+        var cells = {}, cell = function (v) { return Math.floor(v / WELD); };
+
+        a.forEach(function (r) {
+            r.forEach(function (p) { cells[cell(p[0]) + ',' + cell(p[1])] = p; });
+        });
+
+        return b.map(function (r) {
+            return r.map(function (p) {
+                for (var dx = -1; dx <= 1; dx++) {
+                    for (var dy = -1; dy <= 1; dy++) {
+                        var q = cells[(cell(p[0]) + dx) + ',' + (cell(p[1]) + dy)];
+
+                        if (q && (Math.abs(q[0] - p[0]) <= WELD) && (Math.abs(q[1] - p[1]) <= WELD)) {
+                            return q;
+                        }
+                    }
+                }
+
+                return p;
+            });
+        });
+    }
+
+    // A crossing on a fine binary grid, so the same crossing found again
+    // from other pieces of the same edges is the same point.
+    function onGrid(p) {
+        return [Math.round(p[0] * 1048576) / 1048576, Math.round(p[1] * 1048576) / 1048576];
+    }
+
+    // Where segments a1-a2 and b1-b2 meet: no point, one, or the two ends
+    // of their overlap. A point near an end is that end.
+    function segmentCross(a1, a2, b1, b2) {
+        var va = [a2[0] - a1[0], a2[1] - a1[1]], vb = [b2[0] - b1[0], b2[1] - b1[1]], e = [b1[0] - a1[0], b1[1] - a1[1]];
+        var kross = va[0] * vb[1] - va[1] * vb[0], la = va[0] * va[0] + va[1] * va[1], lb = vb[0] * vb[0] + vb[1] * vb[1], s, t, at;
+        var snap = function (p) {
+            var ends = [a1, a2, b1, b2], i;
+
+            for (i = 0; i < 4; i++) {
+                if (Math.abs(p[0] - ends[i][0]) < WELD && Math.abs(p[1] - ends[i][1]) < WELD) {
+                    return ends[i];
+                }
+            }
+
+            return p;
+        };
+
+        if (kross * kross > 1e-10 * la * lb) {
+            s = (e[0] * vb[1] - e[1] * vb[0]) / kross;
+            t = (e[0] * va[1] - e[1] * va[0]) / kross;
+
+            if ((s < 0) || (s > 1) || (t < 0) || (t > 1)) {
+                return [];
+            }
+
+            return [snap((s === 0) ? a1 : ((s === 1) ? a2 : ((t === 0) ? b1 : ((t === 1) ? b2 : onGrid([a1[0] + s * va[0], a1[1] + s * va[1]])))))];
+        }
+
+        kross = e[0] * va[1] - e[1] * va[0];
+
+        if (kross * kross > 1e-10 * la * (e[0] * e[0] + e[1] * e[1])) {
+            return [];
+        }
+
+        s = (va[0] * e[0] + va[1] * e[1]) / la;
+        t = s + (va[0] * vb[0] + va[1] * vb[1]) / la;
+        at = function (v) { return snap((v <= 0) ? a1 : ((v >= 1) ? a2 : onGrid([a1[0] + v * va[0], a1[1] + v * va[1]]))); };
+
+        if ((Math.min(s, t) > 1) || (Math.max(s, t) < 0)) {
+            return [];
+        }
+
+        if ((Math.min(s, t) === 1) || (Math.max(s, t) === 0)) {
+            return [at(Math.min(s, t))];
+        }
+
+        return [at(Math.min(s, t)), at(Math.max(s, t))];
+    }
+
+    // Splits the segment of left event e at p: two segments, four events.
+    function divideSegment(e, p, queue) {
+        var r = sweepEvent(p, false, e, e.subject), l = sweepEvent(p, true, e.other, e.subject);
+
+        r.ring = l.ring = e.ring;
+
+        if (compareEvents(l, e.other) > 0) {
+            e.other.left = true;
+            l.left = false;
+        }
+
+        e.other.other = l;
+        e.other = r;
+        queue.push(l);
+        queue.push(r);
+    }
+
+    // Splits two neighbours on the sweep line where they cross; 2 when
+    // they share their left part (their types are set).
+    function crossEvents(a, b, queue) {
+        var x = segmentCross(a.p, a.other.p, b.p, b.other.p), ev = [], leftSame = false, rightSame = false;
+
+        if (!x.length || ((x.length === 1) && (samePoint(a.p, b.p) || samePoint(a.other.p, b.other.p)))) {
+            return 0;
+        }
+
+        if ((x.length === 2) && (a.subject === b.subject)) {
+            return 0;
+        }
+
+        if (x.length === 1) {
+            if (!samePoint(a.p, x[0]) && !samePoint(a.other.p, x[0])) {
+                divideSegment(a, x[0], queue);
+            }
+
+            if (!samePoint(b.p, x[0]) && !samePoint(b.other.p, x[0])) {
+                divideSegment(b, x[0], queue);
+            }
+
+            return 1;
+        }
+
+        if (samePoint(a.p, b.p)) {
+            leftSame = true;
+        } else {
+            ev.push.apply(ev, (compareEvents(a, b) === 1) ? [b, a] : [a, b]);
+        }
+
+        if (samePoint(a.other.p, b.other.p)) {
+            rightSame = true;
+        } else {
+            ev.push.apply(ev, (compareEvents(a.other, b.other) === 1) ? [b.other, a.other] : [a.other, b.other]);
+        }
+
+        if (leftSame) {
+            b.type = EV_NONE;
+            a.type = (b.inOut === a.inOut) ? EV_SAME : EV_DIFF;
+
+            if (!rightSame) {
+                divideSegment(ev[1].other, ev[0].p, queue);
+            }
+
+            return 2;
+        }
+
+        if (rightSame) {
+            divideSegment(ev[0], ev[1].p, queue);
+            return 3;
+        }
+
+        if (ev[0] !== ev[3].other) {
+            divideSegment(ev[0], ev[1].p, queue);
+            divideSegment(ev[1], ev[2].p, queue);
+            return 3;
+        }
+
+        divideSegment(ev[0], ev[1].p, queue);
+        divideSegment(ev[3].other, ev[2].p, queue);
+
+        return 3;
+    }
+
+    function evInResult(e, op) {
+        if (e.type === EV_NONE) {
+            return false;
+        }
+
+        if (e.type === EV_SAME) {
+            return (op === 'intersect') || (op === 'union');
+        }
+
+        if (e.type === EV_DIFF) {
+            return op === 'difference';
+        }
+
+        if (op === 'intersect') {
+            return !e.otherInOut;
+        }
+
+        if (op === 'union') {
+            return e.otherInOut;
+        }
+
+        return (op === 'difference') ? (e.subject ? e.otherInOut : !e.otherInOut) : true;
+    }
+
+    // Whether the sweep enters or leaves each polygon along e, from the
+    // segment below it.
+    function evFields(e, prev, op) {
+        if (!prev) {
+            e.inOut = false;
+            e.otherInOut = true;
+        } else if (e.subject === prev.subject) {
+            e.inOut = !prev.inOut;
+            e.otherInOut = prev.otherInOut;
+        } else {
+            e.inOut = !prev.otherInOut;
+            e.otherInOut = evVertical(prev) ? !prev.inOut : prev.inOut;
+        }
+
+        e.inResult = evInResult(e, op);
+    }
+
+    function ringsBox(rings) {
+        var b = [Infinity, Infinity, -Infinity, -Infinity];
+
+        rings.forEach(function (r) {
+            r.forEach(function (p) {
+                b = [Math.min(b[0], p[0]), Math.min(b[1], p[1]), Math.max(b[2], p[0]), Math.max(b[3], p[1])];
+            });
+        });
+
+        return b;
+    }
+
+    // The rings (polygons in one frame, even-odd) of a and b combined: op is
+    // union, intersect, difference (a without b) or xor. The result's rings
+    // are simple, outer ones of positive ringArea(), holes negative.
+    function clipRings(a, b, op) {
+        var ba = ringsBox(a), bb = ringsBox(b), queue = eventQueue(), line = [], done = [], e, i, prev, next;
+
+        b = weldRings(a, b);
+
+        if (!a.length || !b.length || (ba[0] > bb[2]) || (bb[0] > ba[2]) || (ba[1] > bb[3]) || (bb[1] > ba[3])) {
+            return nestRings((op === 'intersect') ? [] : ((op === 'difference') ? a : a.concat(b)));
+        }
+
+        [a, b].forEach(function (rings, which) {
+            rings.forEach(function (r, ri) {
+                r.forEach(function (p, pi) {
+                    var q = r[(pi + 1) % r.length], e1, e2;
+
+                    if (samePoint(p, q)) {
+                        return;
+                    }
+
+                    e1 = sweepEvent(p, false, null, !which);
+                    e2 = sweepEvent(q, false, e1, !which);
+                    e1.other = e2;
+                    e1.ring = e2.ring = which * 1e6 + ri + 1;
+                    (compareEvents(e1, e2) > 0 ? e2 : e1).left = true;
+                    queue.push(e1);
+                    queue.push(e2);
+                });
+            });
+        });
+
+        var find = function (ev) {
+            var lo = 0, hi = line.length;
+
+            while (lo < hi) {
+                var mid = (lo + hi) >> 1;
+
+                if (compareSegments(line[mid], ev) < 0) {
+                    lo = mid + 1;
+                } else {
+                    hi = mid;
+                }
+            }
+
+            return lo;
+        };
+
+        while (queue.size()) {
+            e = queue.pop();
+            done.push(e);
+
+            if (e.left) {
+                i = find(e);
+                line.splice(i, 0, e);
+                prev = line[i - 1] || null;
+                next = line[i + 1] || null;
+                evFields(e, prev, op);
+
+                if (next && (crossEvents(e, next, queue) === 2)) {
+                    evFields(e, prev, op);
+                    evFields(next, e, op);
+                }
+
+                if (prev && (crossEvents(prev, e, queue) === 2)) {
+                    evFields(prev, line[line.indexOf(prev) - 1] || null, op);
+                    evFields(e, prev, op);
+                }
+            } else {
+                e = e.other;
+                i = line.indexOf(e);
+
+                if (i >= 0) {
+                    prev = line[i - 1];
+                    next = line[i + 1];
+                    line.splice(i, 1);
+
+                    if (prev && next) {
+                        crossEvents(prev, next, queue);
+                    }
+                }
+            }
+        }
+
+        return nestRings(joinEdges(done.filter(function (ev) { return ev.left && ev.inResult; })));
+    }
+
+    // The result's edges (left events) joined into rings, split where a
+    // ring meets itself.
+    function joinEdges(edges) {
+        var at = {}, used = [], rings = [], key = function (p) { return p[0] + ',' + p[1]; };
+
+        edges.forEach(function (ev, n) {
+            [ev.p, ev.other.p].forEach(function (p) { (at[key(p)] = at[key(p)] || []).push(n); });
+        });
+
+        edges.forEach(function (ev, n) {
+            if (used[n]) {
+                return;
+            }
+
+            var ring = [ev.p], from = ev.p, to = ev.other.p, cur = n, guard = edges.length + 1;
+
+            used[n] = true;
+
+            while (!samePoint(to, ring[0]) && guard--) {
+                var din = Math.atan2(to[1] - from[1], to[0] - from[0]), best = -1, bestTurn = Infinity;
+
+                at[key(to)].forEach(function (m) {
+                    if (used[m] || (m === cur)) {
+                        return;
+                    }
+
+                    var o = samePoint(edges[m].p, to) ? edges[m].other.p : edges[m].p, turn = Math.atan2(o[1] - to[1], o[0] - to[0]) - din;
+
+                    while (turn <= -Math.PI) { turn += 2 * Math.PI; }
+                    while (turn > Math.PI) { turn -= 2 * Math.PI; }
+
+                    if (turn < bestTurn) {
+                        bestTurn = turn;
+                        best = m;
+                    }
+                });
+
+                if (best < 0) {
+                    break;
+                }
+
+                used[best] = true;
+                ring.push(to);
+                from = to;
+                to = samePoint(edges[best].p, to) ? edges[best].other.p : edges[best].p;
+                cur = best;
+            }
+
+            splitRing(ring).forEach(function (r) { rings.push(r); });
+        });
+
+        return rings;
+    }
+
+    // A ring that passes a point twice (rings touching there) as simple
+    // rings, one per loop.
+    function splitRing(ring) {
+        var out = [], seen = {}, stack = [], i;
+
+        for (i = 0; i < ring.length; i++) {
+            var key = ring[i][0] + ',' + ring[i][1];
+
+            if (seen.hasOwnProperty(key)) {
+                var loop = stack.splice(seen[key]);
+
+                loop.forEach(function (p) { delete seen[p[0] + ',' + p[1]]; });
+
+                if (loop.length > 2) {
+                    out.push(loop);
+                }
+            }
+
+            seen[key] = stack.length;
+            stack.push(ring[i]);
+        }
+
+        if (stack.length > 2) {
+            out.push(stack);
+        }
+
+        return out;
+    }
+
+    // Rings wound by depth: one inside an even number of others winds
+    // positive (an outer ring), the rest negative (holes). Slivers under
+    // half a pixel go.
+    function nestRings(rings) {
+        rings = rings.filter(function (r) { return (r.length > 2) && (Math.abs(ringArea(r)) >= 0.5); });
+
+        return rings.map(function (r) {
+            var p = [(r[0][0] + r[1][0]) / 2, (r[0][1] + r[1][1]) / 2], depth = 0, a = ringArea(r);
+
+            rings.forEach(function (o) {
+                if ((o !== r) && inside(p, o)) {
+                    depth++;
+                }
+            });
+
+            return ((a > 0) === !(depth % 2)) ? r : r.slice().reverse();
+        });
+    }
+
+    // Rings split into islands: each outer ring with the holes straight
+    // inside it.
+    function ringIslands(rings) {
+        var outers = rings.filter(function (r) { return ringArea(r) > 0; }), out = outers.map(function (r) { return [r]; });
+
+        rings.forEach(function (h) {
+            if (ringArea(h) > 0) {
+                return;
+            }
+
+            var best = -1, bestArea = Infinity, p = [(h[0][0] + h[1][0]) / 2, (h[0][1] + h[1][1]) / 2];
+
+            outers.forEach(function (o, i) {
+                if (inside(p, o) && (ringArea(o) < bestArea)) {
+                    best = i;
+                    bestArea = ringArea(o);
+                }
+            });
+
+            if (best >= 0) {
+                out[best].push(h);
+            }
+        });
+
+        return out;
+    }
+
+    // Whether p lies in the area of rings (even-odd).
+    function insideRings(p, rings) {
+        return rings.reduce(function (n, r) { return n + (inside(p, r) ? 1 : 0); }, 0) % 2 === 1;
+    }
+
+    // ---- the operations ----
+
+    // items [{ id, rings }] bottom to top combined by op: unite, minusFront
+    // (the bottom one without the rest), intersect, exclude, divide. Gives
+    // [{ id, rings }]: the layer whose style each result takes (the top
+    // one; the bottom one for minusFront; for divide each piece's top
+    // cover) and its rings; [] when nothing is left.
+    function pathfinder(op, items) {
+        var top = items[items.length - 1], fold = function (kind, list) {
+            return list.slice(1).reduce(function (acc, it) { return clipRings(acc, it.rings, kind); }, nestRings(list[0].rings));
+        };
+        var rings;
+
+        if (items.length < 2) {
+            return [];
+        }
+
+        if (op === 'divide') {
+            return builderRegions(items).map(function (r) { return { id: r.id, rings: r.rings }; });
+        }
+
+        if (op === 'minusFront') {
+            rings = clipRings(nestRings(items[0].rings), fold('union', items.slice(1)), 'difference');
+            return rings.length ? [{ id: items[0].id, rings: rings }] : [];
+        }
+
+        rings = fold({ unite: 'union', intersect: 'intersect', exclude: 'xor' }[op] || 'union', items);
+
+        return rings.length ? [{ id: top.id, rings: rings }] : [];
+    }
+
+    // The pieces the items' outlines cut each other into: [{ rings,
+    // members (ids covering it, bottom to top), id (the top member) }], one
+    // per island. Each piece is the overlap of its members less the other
+    // items, cut from the items' own outlines (pieces cut from pieces share
+    // edges, which the sweep takes less exactly).
+    function builderRegions(items) {
+        var out = [], own = items.map(function (it) { return nestRings(it.rings); });
+        var visit = function (last, members, area) {
+            var rest = area;
+
+            items.forEach(function (it, j) {
+                if (rest.length && (members.indexOf(j) < 0)) {
+                    rest = clipRings(rest, own[j], 'difference');
+                }
+            });
+
+            ringIslands(rest).forEach(function (rings) {
+                var ids = members.map(function (j) { return items[j].id; });
+
+                out.push({ rings: rings, members: ids, id: ids[ids.length - 1] });
+            });
+
+            for (var j = last + 1; j < items.length; j++) {
+                var both = clipRings(area, own[j], 'intersect');
+
+                if (both.length) {
+                    visit(j, members.concat([j]), both);
+                }
+            }
+        };
+
+        own.forEach(function (rings, i) { visit(i, [i], rings); });
+
+        return out;
+    }
+
+    // The index of the region under p, or -1.
+    function regionAt(regions, p) {
+        for (var i = 0; i < regions.length; i++) {
+            if (insideRings(p, regions[i].rings)) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    // A shape builder drag over regions: the regions touched (indexes)
+    // merged into one piece in the style of the first, or dropped with
+    // remove. Gives the ids of the layers it changes (every member of a
+    // touched region) and their pieces [{ id, rings }]: the merged one, and
+    // the untouched regions that one of them covers, each in the style of
+    // its top member among them.
+    function builderMerge(regions, touched, remove) {
+        var hit = {}, ids = [], pieces = [], merged = [];
+
+        if (!touched.length) {
+            return { ids: [], pieces: [] };
+        }
+
+        touched.forEach(function (i) {
+            hit[i] = true;
+            regions[i].members.forEach(function (id) {
+                if (ids.indexOf(id) < 0) {
+                    ids.push(id);
+                }
+            });
+        });
+
+        if (!remove) {
+            merged = touched.reduce(function (acc, i) { return acc.length ? clipRings(acc, regions[i].rings, 'union') : nestRings(regions[i].rings); }, []);
+        }
+
+        regions.forEach(function (r, i) {
+            var own = r.members.filter(function (id) { return ids.indexOf(id) >= 0; });
+
+            if (!hit[i] && own.length) {
+                pieces.push({ id: own[own.length - 1], rings: r.rings });
+            }
+        });
+
+        if (merged.length) {
+            pieces.unshift({ id: regions[touched[0]].id, rings: merged });
+        }
+
+        return { ids: ids, pieces: pieces };
+    }
+
+    // ---- back to curves ----
+
+    // A closed polygon's knots: straight runs between corners (turns over
+    // CORNER radians) stay lines, curved runs are fitted with cubic
+    // segments (within FIT_TOL); only the corners are sharp knots.
+    var CORNER = 0.6;
+
+    function ringKnots(ring) {
+        var n = ring.length, starts = [], beziers = [], sharp = {}, dir = function (a, b) { return Math.atan2(b[1] - a[1], b[0] - a[0]); }, i, k;
+
+        for (i = 0; i < n; i++) {
+            var turn = dir(ring[i], ring[(i + 1) % n]) - dir(ring[(i + n - 1) % n], ring[i]);
+
+            while (turn <= -Math.PI) { turn += 2 * Math.PI; }
+            while (turn > Math.PI) { turn -= 2 * Math.PI; }
+
+            if (Math.abs(turn) > CORNER) {
+                starts.push(i);
+            }
+        }
+
+        var round = !starts.length;
+
+        for (k = 0; k < (round ? 1 : starts.length); k++) {
+            var from = round ? 0 : starts[k], to = round ? 0 : starts[(k + 1) % starts.length], run = [ring[from]];
+
+            for (i = (from + 1) % n; ; i = (i + 1) % n) {
+                run.push(ring[i]);
+
+                if (i === to) {
+                    break;
+                }
+            }
+
+            sharp[beziers.length] = !round;
+
+            if (straightRun(run)) {
+                beziers.push([run[0], run[0], run[run.length - 1], run[run.length - 1]]);
+            } else if (round) {
+                fitCubic(run, 0, run.length - 1, unit(ring[1], ring[n - 1]), unit(ring[n - 1], ring[1]), beziers);
+            } else {
+                fitCubic(run, 0, run.length - 1, unit(run[1], run[0]), unit(run[run.length - 2], run[run.length - 1]), beziers);
+            }
+        }
+
+        return beziers.map(function (bz, j) {
+            var before = beziers[(j + beziers.length - 1) % beziers.length];
+
+            return { x: bz[0][0], y: bz[0][1], ix: before[2][0], iy: before[2][1], ox: bz[1][0], oy: bz[1][1], s: !sharp[j] };
+        });
+    }
+
+    function straightRun(run) {
+        var a = run[0], b = run[run.length - 1];
+
+        return run.every(function (p) { return segmentDistance(p, a, b) <= FLAT_TOL; });
+    }
+
+    function unit(a, b) {
+        var dx = a[0] - b[0], dy = a[1] - b[1], d = Math.hypot(dx, dy) || 1;
+
+        return [dx / d, dy / d];
+    }
+
+    // Schneider's least-squares fit of cubic segments to pts[first..last]
+    // with the end tangents t1 (out of the first point) and t2 (into the
+    // last, pointing back); pushes [p0, c1, c2, p3] onto out.
+    function fitCubic(pts, first, last, t1, t2, out) {
+        var count = last - first + 1, u, bz, err, i, it;
+
+        if (count === 2) {
+            var d = Math.hypot(pts[last][0] - pts[first][0], pts[last][1] - pts[first][1]) / 3;
+
+            out.push([pts[first], [pts[first][0] + t1[0] * d, pts[first][1] + t1[1] * d], [pts[last][0] + t2[0] * d, pts[last][1] + t2[1] * d], pts[last]]);
+            return;
+        }
+
+        u = [0];
+
+        for (i = first + 1; i <= last; i++) {
+            u.push(u[u.length - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+        }
+
+        u = u.map(function (v) { return v / (u[u.length - 1] || 1); });
+
+        for (it = 0; it < 6; it++) {
+            bz = fitBezier(pts, first, last, u, t1, t2);
+            err = fitError(pts, first, last, bz, u);
+
+            if (err.max <= FIT_TOL) {
+                out.push(bz);
+                return;
+            }
+
+            if (err.max > FIT_TOL * 16) {
+                break;
+            }
+
+            u = u.map(function (v, j) { return newtonRoot(bz, pts[first + j], v); });
+        }
+
+        var split = Math.min(Math.max(err.at, first + 1), last - 1), tc = unit(pts[split - 1], pts[split + 1]);
+
+        fitCubic(pts, first, split, t1, tc, out);
+        fitCubic(pts, split, last, [-tc[0], -tc[1]], t2, out);
+    }
+
+    function bezierAt(bz, t) {
+        var m = 1 - t;
+
+        return [m * m * m * bz[0][0] + 3 * m * m * t * bz[1][0] + 3 * m * t * t * bz[2][0] + t * t * t * bz[3][0],
+            m * m * m * bz[0][1] + 3 * m * m * t * bz[1][1] + 3 * m * t * t * bz[2][1] + t * t * t * bz[3][1]];
+    }
+
+    function fitBezier(pts, first, last, u, t1, t2) {
+        var p0 = pts[first], p3 = pts[last], c = [[0, 0], [0, 0]], x = [0, 0], i;
+
+        for (i = 0; i < u.length; i++) {
+            var t = u[i], m = 1 - t, b1 = 3 * t * m * m, b2 = 3 * t * t * m, a1 = [t1[0] * b1, t1[1] * b1], a2 = [t2[0] * b2, t2[1] * b2];
+            var b0 = m * m * m + b1, b3 = b2 + t * t * t, q = pts[first + i];
+            var tmp = [q[0] - (p0[0] * b0 + p3[0] * b3), q[1] - (p0[1] * b0 + p3[1] * b3)];
+
+            c[0][0] += a1[0] * a1[0] + a1[1] * a1[1];
+            c[0][1] += a1[0] * a2[0] + a1[1] * a2[1];
+            c[1][1] += a2[0] * a2[0] + a2[1] * a2[1];
+            x[0] += a1[0] * tmp[0] + a1[1] * tmp[1];
+            x[1] += a2[0] * tmp[0] + a2[1] * tmp[1];
+        }
+
+        c[1][0] = c[0][1];
+
+        var det = c[0][0] * c[1][1] - c[1][0] * c[0][1], seg = Math.hypot(p3[0] - p0[0], p3[1] - p0[1]);
+        var al = det ? (x[0] * c[1][1] - x[1] * c[0][1]) / det : 0, ar = det ? (c[0][0] * x[1] - c[1][0] * x[0]) / det : 0;
+
+        if ((al < seg * 1e-6) || (ar < seg * 1e-6)) {
+            al = ar = seg / 3;
+        }
+
+        return [p0, [p0[0] + t1[0] * al, p0[1] + t1[1] * al], [p3[0] + t2[0] * ar, p3[1] + t2[1] * ar], p3];
+    }
+
+    function fitError(pts, first, last, bz, u) {
+        var max = 0, at = Math.floor((first + last) / 2), i;
+
+        for (i = first + 1; i < last; i++) {
+            var p = bezierAt(bz, u[i - first]), d = Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]);
+
+            if (d > max) {
+                max = d;
+                at = i;
+            }
+        }
+
+        return { max: max, at: at };
+    }
+
+    // One Newton step of t towards the point of the curve nearest p.
+    function newtonRoot(bz, p, t) {
+        var q = bezierAt(bz, t), m = 1 - t, d1 = [], d2 = [], j;
+
+        for (j = 0; j < 2; j++) {
+            d1[j] = 3 * (m * m * (bz[1][j] - bz[0][j]) + 2 * m * t * (bz[2][j] - bz[1][j]) + t * t * (bz[3][j] - bz[2][j]));
+            d2[j] = 6 * (m * (bz[2][j] - 2 * bz[1][j] + bz[0][j]) + t * (bz[3][j] - 2 * bz[2][j] + bz[1][j]));
+        }
+
+        var num = (q[0] - p[0]) * d1[0] + (q[1] - p[1]) * d1[1], den = d1[0] * d1[0] + d1[1] * d1[1] + (q[0] - p[0]) * d2[0] + (q[1] - p[1]) * d2[1];
+
+        return den ? Math.min(1, Math.max(0, t - num / den)) : t;
+    }
+
+    // A path layer's box, knots and subs (rot 0) for rings in the rotated
+    // space, the largest outer ring first.
+    function ringsPath(rings) {
+        var order = rings.slice().sort(function (a, b) { return ringArea(b) - ringArea(a); });
+        var contours = order.map(function (r) { return { knots: ringKnots(r), closed: true }; });
+        var fit = refitPath({ x: 0, y: 0, w: 1, h: 1, rot: 0, closed: true }, contours[0].knots, contours.slice(1));
+
+        return { x: fit.x, y: fit.y, w: fit.w, h: fit.h, rot: 0, closed: true, knots: fit.knots, subs: fit.subs || [] };
+    }
+
+    var BUILDER = {
+        flattenRing: flattenRing, layerRings: layerRings, ringArea: ringArea, ringsArea: ringsArea, clipRings: clipRings,
+        ringIslands: ringIslands, insideRings: insideRings, pathfinder: pathfinder, builderRegions: builderRegions, regionAt: regionAt,
+        builderMerge: builderMerge, ringKnots: ringKnots, ringsPath: ringsPath
+    };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -3893,7 +4875,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, ACCESS, GFONTS, GLYPH].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, ACCESS, GFONTS, GLYPH, BUILDER].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');
