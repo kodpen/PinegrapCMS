@@ -17,7 +17,7 @@ description: Steps AU1-AU6 of plans/audiences.md: rule model and SQL builder, re
 - AU3 (M) The rule editor. After AU1.
   - `edit_contact_group.php`: a "Members by rule" switch, the rule rows (condition pick, operator, value controls: text, number, days, a product or group picker through `pgCombobox`, a consent purpose list), all/any per level with one nesting, a live count ("about 1,240 contacts") from `pg_audience_count()`, the last run time, Refresh now; `view_contact_groups.php` shows kind and count; the contact card lists rule-made groups as read-only chips. Memory: `ui/contact-group-rules.md`.
 
-- AU4 (S) Readers and doors. After AU1.
+- AU4 (S) Readers and doors. After AU1. Done in #PRNUM (`core/audiences-doors.md`).
   - The doors that add a contact to a group by hand refuse a dynamic group with one message: the contact card tick boxes, forms' contact groups, products' contact groups, import, the API `contact_groups` members routes and MCP (`api/api-endpoint-rules.md`: the refusal shape); campaigns, SMS campaigns, the account's group list and exports read as today; erasure recomputes nothing (the xref rows go with the contact). Tests on the guard function. Memory: `core/audiences-rules.md` grows.
 
 - AU5 (S) Audience token. After AU2 and PX6.

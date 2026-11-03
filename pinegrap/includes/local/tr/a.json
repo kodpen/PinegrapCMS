@@ -229,6 +229,7 @@
     "A contact cannot be added to and removed from a group in the same call.": "Bir kişi aynı istekte hem gruba eklenip hem gruptan çıkarılamaz.",
     "A contact for that email address could not be found.": "Bu e-posta adresi için bir kişi bulunamadı.",
     "A contact form that works": "Çalışan bir iletişim formu",
+    "A contact group filled by rules cannot be changed by hand; its rules decide who is in it.": "Kurallarla dolan bir kişi grubu elle değiştirilemez; içinde kimin olacağına kuralları karar verir.",
     "A contact group with the name {var:1} already exists (id {var:2}).": "{var:1} adında bir iletişim grubu zaten var (id {var:2}).",
     "A contact is changed": "Kişi değiştirildi",
     "A contact with the e-mail address \"{var:1}\" already exists, so the row was not imported.": "\"{var:1}\" e-posta adresine sahip bir kişi zaten var, bu yüzden satır içe aktarılmadı.",
