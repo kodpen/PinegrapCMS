@@ -426,6 +426,8 @@ function erp_cheque_create($data, $user_id)
         // A given cheque leaves its till before the bank pays it, so the
         // given-cheques till is below zero until then.
         'allow_below_zero' => true,
+        // A cheque keeps the dates written on it and its steps.
+        'allow_future_date' => true,
     ));
 
     if (empty($posted['success'])) {
@@ -630,6 +632,8 @@ function erp_cheque_step($id, $step, $options, $user_id)
             'description' => mb_substr((($step === 'collect') ? lang(array('string' => '{var:1} collected', 'vars' => $name)) : lang(array('string' => '{var:1} paid by the bank', 'vars' => $name))), 0, 255),
             'created_by' => (int) $user_id,
             'allow_below_zero' => true,
+            // A cheque keeps the dates written on it and its steps.
+            'allow_future_date' => true,
             // The cheque already sits in its portfolio; taking that till off
             // must not strand it there.
             'allow_inactive_till' => true,
@@ -674,6 +678,8 @@ function erp_cheque_step($id, $step, $options, $user_id)
                 : lang(array('string' => '{var:1} bounced', 'vars' => $name))) . (($reason !== '') ? ': ' . $reason : ''), 0, 255),
             'created_by' => (int) $user_id,
             'allow_below_zero' => true,
+            // A cheque keeps the dates written on it and its steps.
+            'allow_future_date' => true,
             'allow_inactive_till' => true,
         ));
 

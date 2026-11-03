@@ -321,6 +321,46 @@ if ($erp_document === false) {
     }
 }
 
+// A file a team chat message carries opens only for a side of that
+// conversation or a role-0 administrator, whatever its folder allows: staff
+// conversations may carry personal data. Before the chat tables or the
+// attachment column exist the query fails and nothing is a chat attachment.
+$chat_attachment = false;
+
+if ($erp_document === false) {
+    $chat_result = @mysqli_query(db::$con, "SELECT c.initiator_user_id, c.target_user_id
+        FROM chat_messages m
+        INNER JOIN chat_conversations c ON c.id = m.conversation_id AND c.channel = 'backend'
+        WHERE m.attachment_file_id = '" . (int) $file['id'] . "' AND m.attachment_file_id > 0");
+    $chat_conversations = array();
+
+    while (($chat_result !== false) && ($chat_row = mysqli_fetch_assoc($chat_result))) {
+        $chat_conversations[] = $chat_row;
+    }
+
+    if ($chat_conversations) {
+        $chat_attachment = true;
+
+        if (defined('USER_LOGGED_IN') == false) {
+            initialize_user();
+        }
+
+        if (USER_LOGGED_IN == false) {
+            get_file_sign_in_redirect('index.php');
+        }
+
+        $chat_user = pg_load_user_row((int) USER_ID);
+        $chat_allowed = is_array($chat_user)
+            && pg_chat_attachment_access_verdict((int) $chat_user['id'], (int) $chat_user['role'], $chat_conversations);
+
+        if (!$chat_allowed) {
+            log_activity(pg_log_lang(array('string' => 'access denied to file attachment ({var:1})', 'vars' => array($file['name']))), $_SESSION['sessionusername']);
+            header('Cache-Control: no-store');
+            output_error(get_file_text('Sorry, you do not have access to view this file attachment.'), 403);
+        }
+    }
+}
+
 // If a file directory path is not set, then set it to the default which is a path
 // inside the software directory. A custom file directory path is used when
 // an adminstrator wants the file directory to be located in a different area.
@@ -1350,7 +1390,7 @@ if ($image_negotiation['private']) {
 if ($derivative_status === 'busy') {
     header('Cache-Control: no-store');
 } else {
-    header('Cache-Control: ' . ($erp_document ? 'private, no-store' : ($cache_control_type . ', max-age=604800')));
+    header('Cache-Control: ' . (($erp_document || $chat_attachment) ? 'private, no-store' : ($cache_control_type . ', max-age=604800')));
 }
 
 // Set the pragma cache.  Technically, this header should not be necessary,

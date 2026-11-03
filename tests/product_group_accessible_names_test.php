@@ -53,7 +53,7 @@ function test_product_group_accessible_names_move_buttons_are_named_buttons()
 function test_product_group_accessible_names_option_label_and_default_option()
 {
 	$options = product_group_accessible_names_js_function('init_product_attribute_options');
-	pg_assert_contains('class="option_label form-control" aria-label="\' + h(label[\'Option\']) + \'"', $options);
+	pg_assert_contains('class="option_label form-control flex-grow-1 w-auto" style="flex-basis:14rem; min-width:0;" aria-label="\' + h(label[\'Option\']) + \'"', $options);
 
 	$form = product_group_accessible_names_source('includes/forms/product_attribute_form.php');
 	pg_assert_contains('"Option":"\' . lang(\'Option\') . \'"', $form);

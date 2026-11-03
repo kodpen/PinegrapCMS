@@ -5047,20 +5047,20 @@ function init_product_attribute_options(properties) {
             id = option.id;
         }
 
+        // One row per option: the label field, the 'No Thanks' switch and
+        // the move and remove buttons on one line, wrapping on a phone.
         $('.option_list').append(
-            '<div class="col-12 lg:col-7 my-3 option option_' + current_id + '">\
-                <div class="p-3 border rounded-4">\
-                    <input type="hidden" name="option_id" value="' + id + '" class="option_id">\
-                    <div class="input-group">\
-                        <input type="text" name="option_label" maxlength="255" class="option_label form-control" aria-label="' + h(label['Option']) + '">\
-                        <button type="button" class="move move_up btn btn-solid theme-primary no-popover" aria-label="' + h(label['Move Up']) + '"><span class="material-icons" aria-hidden="true">north</span></button>\
-                        <button type="button" class="move move_down btn btn-solid theme-primary no-popover" aria-label="' + h(label['Move Down']) + '"><span class="material-icons" aria-hidden="true">south</span></button>\
-                        <button type="button" class="remove btn btn-solid theme-danger no-popover" aria-label="' + h(label['Remove']) + '"><span class="material-icons" aria-hidden="true">delete</span></button>\
-                    </div>\
-                    <div class="form-field form-text m-3">\
-                      <input class="check option_no_value" type="checkbox" id="option_no_value_' + current_id + '" name="option_no_value" value="1">\
-                      <label class="" for="option_no_value_' + current_id + '">' + label['\u0027No Thanks\u0027 Option'] + '</label>\
-                    </div>\
+            '<div class="option option_' + current_id + ' d-flex flex-wrap align-items-center gap-3 p-3 border rounded-4" role="listitem">\
+                <input type="hidden" name="option_id" value="' + id + '" class="option_id">\
+                <input type="text" name="option_label" maxlength="255" class="option_label form-control flex-grow-1 w-auto" style="flex-basis:14rem; min-width:0;" aria-label="' + h(label['Option']) + '">\
+                <div class="form-field mb-0">\
+                    <div class="switch"><input class="option_no_value" type="checkbox" id="option_no_value_' + current_id + '" name="option_no_value" value="1"></div>\
+                    <label class="" for="option_no_value_' + current_id + '">' + label['\u0027No Thanks\u0027 Option'] + '</label>\
+                </div>\
+                <div class="btn-group ms-auto">\
+                    <button type="button" class="move move_up btn btn-outline theme-secondary no-popover" aria-label="' + h(label['Move Up']) + '"><span class="material-icons" aria-hidden="true">north</span></button>\
+                    <button type="button" class="move move_down btn btn-outline theme-secondary no-popover" aria-label="' + h(label['Move Down']) + '"><span class="material-icons" aria-hidden="true">south</span></button>\
+                    <button type="button" class="remove btn btn-outline theme-danger no-popover" aria-label="' + h(label['Remove']) + '"><span class="material-icons" aria-hidden="true">delete</span></button>\
                 </div>\
             </div>');
 
@@ -5078,7 +5078,7 @@ function init_product_attribute_options(properties) {
         }
 
         $('.option_' + current_id + ' .move_up').click(function () {
-            var option = $(this).parent().parent().parent();
+            var option = $(this).closest('.option');
 
             option.after(option.prev());
 
@@ -5086,7 +5086,7 @@ function init_product_attribute_options(properties) {
         });
 
         $('.option_' + current_id + ' .move_down').click(function () {
-            var option = $(this).parent().parent().parent();
+            var option = $(this).closest('.option');
 
             option.before(option.next());
 
@@ -5094,12 +5094,29 @@ function init_product_attribute_options(properties) {
         });
 
         $('.option_' + current_id + ' .remove').click(function () {
-            $(this).parent().parent().parent().remove();
+            $(this).closest('.option').remove();
 
             update_move_buttons();
+            update_summary();
         });
 
+        $('.option_' + current_id + ' .option_label').on('input', update_summary);
+
         update_move_buttons();
+        update_summary();
+    }
+
+    // The Summary counts the options that have a label, as the save does.
+    function update_summary() {
+        var count = 0;
+
+        $('.option_label').each(function () {
+            if ($.trim($(this).val()) !== '') {
+                count++;
+            }
+        });
+
+        $('#product_attribute_summary_options').text(count);
     }
 
     // Prepare options when form is submitted.

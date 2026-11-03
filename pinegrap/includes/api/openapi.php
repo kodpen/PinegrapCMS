@@ -667,6 +667,7 @@ function api_openapi_objects()
         'AuditLogEntry' => 'api_audit_log_schema',
         'Campaign'     => 'api_campaign_schema',
         'CampaignRecipient' => 'api_campaign_recipient_schema',
+        'CampaignProfile' => 'api_campaign_profile_schema',
         'ContactGroup' => 'api_contact_group_schema',
         'ContactGroupMember' => 'api_contact_group_member_schema',
         'KeyCode'      => 'api_key_code_schema',
