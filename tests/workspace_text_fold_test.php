@@ -30,6 +30,25 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/refs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/commands.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/palette.php');
 
+// The Decision Timeline and My Notes search in SQL: the plain LIKE, the
+// Turkish collation for I and ı, and the column folded to one i letter.
+function test_workspace_text_fold_search_sql()
+{
+	$sql = ws_search_like_sql('plani', array('n.title', 'n.body'), 'utf8mb4');
+
+	pg_assert_contains("n.title LIKE '%plani%'", $sql, 'the plain match stays');
+	pg_assert_contains("REPLACE(REPLACE(CONVERT(n.body USING utf8mb4), 'İ', 'i'), 'ı', 'i') LIKE '%plani%'", $sql, 'the column is folded for any i letter');
+
+	$sql = ws_search_like_sql('PLANI', array('body'), 'utf8mb4');
+
+	pg_assert_contains("CONVERT(body USING utf8mb4) COLLATE utf8mb4_turkish_ci LIKE '%PLANI%'", $sql, 'I meets ı under Turkish rules');
+	pg_assert_contains("LIKE '%plani%'", $sql, 'the word is folded too');
+
+	pg_assert_contains("LIKE '%50\\\\%%'", ws_search_like_sql('50%', array('body'), 'utf8mb4'), 'a % stands for itself');
+	pg_assert_same('', ws_search_like_sql('  ', array('body'), 'utf8mb4'), 'no word, no condition');
+	pg_assert_same("(body LIKE '%plani%')", ws_search_like_sql('plani', array('body'), ''), 'without a connection only the plain match');
+}
+
 // The dotted and dotless i, small and capital, fold to one letter, so a
 // search typed either way finds the name written the other way.
 function test_workspace_text_fold_turkish_letters()
