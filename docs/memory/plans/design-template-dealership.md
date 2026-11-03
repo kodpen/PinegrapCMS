@@ -12,11 +12,11 @@ description: Plan for the Car Dealership template (pinegrap-dealership): vehicle
 - Not built (new behaviour): a finance calculator or credit check, price-range filters, live stock feeds, online reservation with a payment, saved searches with alerts.
 
 ## Why parts in a folder?
-- As Real Estate and App Studio: steps 1-7 write `includes/design_templates/pinegrap-dealership/` (not globbed); step 8's main file includes them in one scope, each return kept as `$…_part`. Classes `pdl-`, field ids `dl-`. Trap: `parts.php` keeps the samples in `$vehicles`; no part may return into that name.
+- As Real Estate and App Studio: steps 1-7 write `includes/design_templates/pinegrap-dealership/`; step 8's main file includes them in one scope, each return kept as `$…_part`. Classes `pdl-`, field ids `dl-`. Trap: `parts.php` keeps the samples in `$vehicles`; no part may return into that name.
 - Turkish: check every shared key in tr.json before reuse; a wrong one gets the template's own key.
 
 ## Which steps are there?
-- 1 Data and shared parts: `parts.php` (builders, the dealer, makes, bodies, fuels, sample vehicles, services, finance terms, pick lists; account bar, header, footer, test drive band, vehicle card and facts, page shells, form fields, comment thread, staff bar); test `design_template_dealership_test.php`.
+- 1 Done (#6214). Data and shared parts: `parts.php` (builders, the dealer, makes, bodies, fuels, sample vehicles, services, finance terms, pick lists; account bar, header, footer, test drive band, vehicle card and facts, page shells, form fields, comment thread, staff bar); test `design_template_dealership_test.php`.
 
 - 2 Public pages: `pages_public.php` (home, service, finance, about, visit, FAQ).
 
