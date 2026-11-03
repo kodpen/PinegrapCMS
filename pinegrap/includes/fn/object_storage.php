@@ -461,6 +461,11 @@ function pg_os_request(array $config, $method, $object_key, array $options = arr
         fclose($handle);
     }
 
+    // Counted for the operations alert storage_unreachable.
+    if (function_exists('pg_os_health_unreachable') && pg_os_health_unreachable($result)) {
+        pg_os_health_record($result);
+    }
+
     return $result;
 }
 

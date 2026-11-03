@@ -520,6 +520,18 @@ if (!$object_storage_ready) {
 
 } else {
 
+    // The last "Save and test" result, kept until the next test.
+    $object_storage_last_test = function_exists('pg_os_health_test_last') ? pg_os_health_test_last() : null;
+    $output_object_storage_last_test = '';
+
+    if ($object_storage_last_test) {
+        $object_storage_last_when = get_relative_time(array('timestamp' => $object_storage_last_test['at'], 'format' => 'plain_text'));
+        $output_object_storage_last_test = '
+                        <div class="form-text ' . ($object_storage_last_test['ok'] ? 'fg-success' : 'fg-danger') . '">' . ($object_storage_last_test['ok']
+            ? h(lang(array('string' => 'Last test {var:1}: passed.', 'vars' => array($object_storage_last_when))))
+            : h(lang(array('string' => 'Last test {var:1}: failed. {var:2}', 'vars' => array($object_storage_last_when, $object_storage_last_test['message']))))) . '</div>';
+    }
+
     $output_object_storage_settings = '
                     <input type="hidden" name="object_storage_card" value="1"/>
                     <div class="col-12">
@@ -562,7 +574,7 @@ if (!$object_storage_ready) {
                     </div>
                     <div class="col-12">
                         <button type="submit" name="object_storage_test" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
-                        <div class="form-text">' . lang('Writes a small file to the bucket, reads it back and deletes it.') . '</div>
+                        <div class="form-text">' . lang('Writes a small file to the bucket, reads it back and deletes it.') . '</div>' . $output_object_storage_last_test . '
                     </div>';
 }
 

@@ -142,6 +142,7 @@
     "Calligraphy Nib Set": "Kaligrafi Uç Seti",
     "Callout": "Vurgu Kutusu",
     "Callout content goes here.": "Vurgu içeriği buraya gelir.",
+    "Calls to the object storage failed in the last hour. Files already there are not served until it answers again.": "Son bir saatte nesne depolamaya yapılan çağrılar başarısız oldu. Oradaki dosyalar, depolama yeniden yanıt verene kadar sunulamaz.",
     "Camera details are kept only when a JPEG is saved as a JPEG.": "Kamera bilgileri yalnızca JPEG, JPEG olarak kaydedilirken korunur.",
     "Campaign": "Kampanya",
     "Campaign %": "Kampanya %",

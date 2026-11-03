@@ -80,6 +80,7 @@ description: Generated from the module field of the memory files: each includes/
 - `not_found_log`: [[not-found-log-screen]]
 - `notify_channels`: [[notification-channels]], [[notification-channels-delivery]]
 - `object_storage`: [[object-storage-client]]
+- `object_storage_health`: [[object-storage-health]]
 - `order_completion`: [[order-completion]], [[order-completion-account]], [[order-completion-after-lines]], [[order-completion-before-lock]], [[order-completion-context]], [[order-completion-from-payment]], [[order-completion-line-comments]], [[order-completion-lines]], [[order-completion-shipping-less]]
 - `order_list`: [[orders-list-amount-column]], [[orders-list-bulk-actions]]
 - `order_report`: [[order-report-screen]], [[order-report-totals]]

@@ -539,6 +539,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         } elseif (post_value('object_storage_test')) {
 
             $object_storage_test = pg_os_test(pg_os_settings());
+            pg_os_health_test_save($object_storage_test, time());
 
             $liveform->add_notice($object_storage_test['ok']
                 ? lang('The storage accepted, returned and deleted the test file.')
