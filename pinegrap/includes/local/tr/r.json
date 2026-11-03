@@ -1353,6 +1353,8 @@
     "Row: the product is ordered by quantity": "Satır: ürün adetle sipariş edilir",
     "Row: the product is out of stock": "Satır: ürün stokta yok",
     "Row: the review has a text": "Satır: yorumun metni var",
+    "Row: the service has a description": "Satır: hizmetin açıklaması var",
+    "Row: the service has a price": "Satır: hizmetin fiyatı var",
     "Row: the store replied": "Satır: mağaza cevap verdi",
     "Row: the visitor may edit it": "Satır: ziyaretçi düzenleyebilir",
     "Row: the visitor picks the day": "Satır: günü ziyaretçi seçer",

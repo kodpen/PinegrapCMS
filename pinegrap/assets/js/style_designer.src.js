@@ -11519,6 +11519,7 @@ const StyleDesigner = (function () {
                     tag_cloud_region:     _sdT('Tag Cloud'),
                     google_reviews:       _sdT('Google Reviews'),
                     accessibility_statement: _sdT('Accessibility Statement'),
+                    booking:              _sdT('Booking'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -39062,7 +39063,8 @@ const StyleDesigner = (function () {
         shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
         order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1,
         tag_cloud_region: 1, order_form: 1, folder_view: 1, photo_gallery: 1,
-        affiliate_sign_up_form: 1, google_reviews: 1, accessibility_statement: 1
+        affiliate_sign_up_form: 1, google_reviews: 1, accessibility_statement: 1,
+        booking: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -41082,6 +41084,21 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // booking token palette — has loop_area (one row per service a visitor
+    // may book). Mirrors _render_system_widget_booking() in widgets_booking.php.
+    var SW_BOOKING_TOKEN_GROUPS = [
+        { label: _sdT('Booking'), tokens: [
+            ['__service_total',       _sdT('Number of services offered')]
+        ]},
+        { label: _sdT('Service (loop_area)'), tokens: [
+            ['__service_id',          _sdT('Service number')],
+            ['__service_name',        _sdT('Service name')],
+            ['__service_description', _sdT('Service description')],
+            ['__service_length',      _sdT('Service length ("60 min")')],
+            ['__service_price',       _sdT('Service price (empty when free)')]
+        ]}
+    ];
+
     // accessibility_statement token palette — has loop_area (one row per
     // known limitation). Mirrors _render_system_widget_accessibility_statement()
     // in widgets_accessibility.php.
@@ -41168,7 +41185,8 @@ const StyleDesigner = (function () {
         ad_region:         SW_AD_REGION_TOKEN_GROUPS,
         tag_cloud_region:  SW_TAG_CLOUD_TOKEN_GROUPS,
         google_reviews:    SW_GOOGLE_REVIEWS_TOKEN_GROUPS,
-        accessibility_statement: SW_ACCESSIBILITY_STATEMENT_TOKEN_GROUPS
+        accessibility_statement: SW_ACCESSIBILITY_STATEMENT_TOKEN_GROUPS,
+        booking:           SW_BOOKING_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -41747,7 +41765,19 @@ const StyleDesigner = (function () {
     // name the canvas gives a bound container.
     function _sdSectionOptions(type) {
         var out = [];
-        if (type === 'catalog_listing') {
+        if (type === 'booking') {
+            // The parts pg_booking.js shows, hides and fills
+            // (pg_booking_widget_parts()).
+            out.push(['booking_step_service', _sdT('Step: choose a service')]);
+            out.push(['booking_step_staff',   _sdT('Step: choose a person (skipped when one person takes the service)')]);
+            out.push(['booking_step_when',    _sdT('Step: choose a day and a time')]);
+            out.push(['booking_step_details', _sdT('Step: the held time and the visitor\'s details')]);
+            out.push(['booking_staff',        _sdT('People to choose from (filled on the page)')]);
+            out.push(['booking_calendar',     _sdT('Month calendar of the free days (filled on the page)')]);
+            out.push(['booking_times',        _sdT('Free times of the chosen day (filled on the page)')]);
+            out.push(['booking_summary',      _sdT('The held time (filled on the page)')]);
+            out.push(['booking_status',       _sdT('Status line read out to screen readers')]);
+        } else if (type === 'catalog_listing') {
             out.push(['group_tree',        _sdT('Category Tree (nested list)')]);
             out.push(['filters_offcanvas', _sdT('Filter Offcanvas')]);
             out.push(['attribute_filters', _sdT('Attribute Filter UI (legacy)')]);
@@ -43229,6 +43259,12 @@ const StyleDesigner = (function () {
             ['has_enforcement', _sdT('An enforcement procedure is set')],
             ['has_last_check',  _sdT('The date of the last full check is known')]
         ],
+        booking: [
+            ['has_services',            _sdT('A service can be booked online')],
+            ['no_services',             _sdT('No service can be booked online yet')],
+            ['service_has_price',       _sdT('Row: the service has a price')],
+            ['service_has_description', _sdT('Row: the service has a description')]
+        ],
         google_reviews: [
             ['has_reviews',      _sdT('Google has a review of the business to show')],
             ['no_reviews',       _sdT('Google shows the business without a review')],
@@ -43562,6 +43598,10 @@ const StyleDesigner = (function () {
                 aOpts.push(['passkey_remove',          _sdT('Remove the passkey (passkey list)')]);
                 aOpts.push(['passkey_send_code',       _sdT('Send the code by e-mail (add a passkey form)')]);
                 aOpts.push(['mfa_recovery_send_code',  _sdT('Send the code by e-mail (new recovery codes form)')]);
+            }
+            if (region === 'booking' && (isBtnLike || cur.action === 'booking_service' || cur.action === 'booking_back')) {
+                aOpts.push(['booking_service', _sdT('Choose this service (loop_area)')]);
+                aOpts.push(['booking_back',    _sdT('Back to the previous step')]);
             }
             if (region === 'order_view') {
                 aOpts.push(['order_cancel_submit', _sdT('Cancel the order (cancellation form)')]);
@@ -57121,7 +57161,8 @@ const StyleDesigner = (function () {
         { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' },
         { type: 'tag_cloud_region',  label: _sdT('Tag Cloud'),         slug: _sdT('tag-cloud'),         icon: 'bi-tags' },
         { type: 'google_reviews',    label: _sdT('Google Reviews'),    slug: _sdT('google-reviews'),    icon: 'bi-google' },
-        { type: 'accessibility_statement', label: _sdT('Accessibility Statement'), slug: _sdT('accessibility-statement'), icon: 'bi-universal-access' }
+        { type: 'accessibility_statement', label: _sdT('Accessibility Statement'), slug: _sdT('accessibility-statement'), icon: 'bi-universal-access' },
+        { type: 'booking',           label: _sdT('Booking'),           slug: _sdT('booking'),           icon: 'bi-calendar-check' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
@@ -64168,6 +64209,70 @@ const StyleDesigner = (function () {
                             }))
                         ])
                     ])
+                ]);
+            }
+
+            case 'booking': {
+                // The steps of an appointment: a service from the list, a
+                // person (or anyone), a free day and time, then the held
+                // time. pg_booking.js shows one step at a time and fills the
+                // people, the calendar, the times and the held time into
+                // their bound parts. Mirrors _render_system_widget_booking().
+                var bkStep = function (part, label, heading, children, back) {
+                    var kids = [createNode('semantic', { tag: 'h2', cssClass: 'h5 mb-3', text: heading, customName: _sdT('Heading') })].concat(children);
+                    if (back) {
+                        kids.push(createNode('semantic', { tag: 'button', cssClass: 'btn btn-link px-0 mt-3', text: _sdT('Back'), customName: _sdT('Back'),
+                            _attrs: [{ name: 'type', value: 'button' }], _bindings: { action: 'booking_back' } }));
+                    }
+                    return createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: label, _bindings: { section: part } }, kids);
+                };
+                var bkFill = function (part, label, cls) {
+                    return createNode('semantic', { tag: 'div', cssClass: cls, customName: label, _bindings: { section: part } });
+                };
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'section', cssClass: '', customName: _sdT('Booking'),
+                        _attrs: [{ name: 'aria-label', value: _sdT('Booking') }], _bindings: { eo_visible_if: 'has_services' } }, [
+                        bkStep('booking_step_service', _sdT('Service step'), _sdT('Choose a service'), [
+                            createNode('semantic', { tag: 'div', cssClass: 'list-group', customName: _sdT('Services') }, [
+                                createNode('loop_area', {}, [
+                                    createNode('semantic', { tag: 'button', cssClass: 'list-group-item list-group-item-action d-flex justify-content-between align-items-start gap-3 text-start', customName: _sdT('Service'),
+                                        _attrs: [{ name: 'type', value: 'button' }], _bindings: { action: 'booking_service' } }, [
+                                        createNode('semantic', { tag: 'span', cssClass: '', customName: _sdT('Name and description') }, [
+                                            createNode('semantic', { tag: 'span', cssClass: 'd-block fw-semibold', text: _sdT('Service name'), customName: _sdT('Service name'),
+                                                _bindings: { text: '__service_name' } }),
+                                            createNode('semantic', { tag: 'span', cssClass: 'd-block small text-body-secondary', text: _sdT('Service description'), customName: _sdT('Service description'),
+                                                _bindings: { text: '__service_description', eo_visible_if: 'service_has_description' } })
+                                        ]),
+                                        createNode('semantic', { tag: 'span', cssClass: 'text-end small text-nowrap', customName: _sdT('Length and price') }, [
+                                            createNode('semantic', { tag: 'span', cssClass: 'd-block', text: '60 min', customName: _sdT('Service length'),
+                                                _bindings: { text: '__service_length' } }),
+                                            createNode('semantic', { tag: 'span', cssClass: 'd-block fw-semibold', text: '500,00 TL', customName: _sdT('Service price'),
+                                                _bindings: { text: '__service_price', eo_visible_if: 'service_has_price' } })
+                                        ])
+                                    ])
+                                ])
+                            ])
+                        ], false),
+                        bkStep('booking_step_staff', _sdT('Person step'), _sdT('Choose a person'), [
+                            bkFill('booking_staff', _sdT('People'), 'd-flex flex-wrap gap-2')
+                        ], true),
+                        bkStep('booking_step_when', _sdT('Day and time step'), _sdT('Choose a day and a time'), [
+                            createNode('semantic', { tag: 'div', cssClass: 'row g-3', customName: _sdT('Day and time') }, [
+                                createNode('semantic', { tag: 'div', cssClass: 'col-12 col-md-auto', customName: _sdT('Day column') }, [
+                                    bkFill('booking_calendar', _sdT('Calendar'), '')
+                                ]),
+                                createNode('semantic', { tag: 'div', cssClass: 'col-12 col-md', customName: _sdT('Time column') }, [
+                                    bkFill('booking_times', _sdT('Times'), 'd-flex flex-wrap gap-2')
+                                ])
+                            ])
+                        ], true),
+                        bkStep('booking_step_details', _sdT('Details step'), _sdT('Your appointment'), [
+                            createNode('semantic', { tag: 'p', cssClass: 'alert alert-info', customName: _sdT('Held time'), _bindings: { section: 'booking_summary' } })
+                        ], true),
+                        createNode('semantic', { tag: 'p', cssClass: 'small text-body-secondary mb-0', customName: _sdT('Status'), _bindings: { section: 'booking_status' } })
+                    ]),
+                    createNode('semantic', { tag: 'p', cssClass: 'text-body-secondary', text: _sdT('No service can be booked online yet.'), customName: _sdT('No services'),
+                        _bindings: { eo_visible_if: 'no_services' } })
                 ]);
             }
 

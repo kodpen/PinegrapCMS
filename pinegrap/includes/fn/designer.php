@@ -1224,6 +1224,13 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_google_reviews($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'booking' — appointments: service, staff, day, time and the
+            // hold (widgets_booking.php).
+            if ($region_type === 'booking') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_booking($tree_json, $sid, $cfg, $mode);
+            }
+
             // 'accessibility_statement' — the statement from Site Settings and
             // the nightly accessibility report (widgets_accessibility.php).
             if ($region_type === 'accessibility_statement') {

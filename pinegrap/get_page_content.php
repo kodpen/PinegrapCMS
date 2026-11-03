@@ -676,6 +676,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = pg_wishlist_inject($content);
     }
 
+    // ── Booking widget ──────────────────────────────────────────────────────────
+    // A booking widget with services (data-pg-booking) brings its script
+    // (pg_booking_widget_inject()); its calendar comes with the site's date
+    // control, which the same attribute brings. Not in an e-mail.
+    if (!$email && strpos($content, 'data-pg-booking=') !== false && function_exists('pg_booking_widget_inject')) {
+        $content = pg_booking_widget_inject($content);
+    }
+
     // ── Rich-text editor for designed forms ─────────────────────────────────────
     // A designed form's rich-text text areas carry data-pg-rich-text; one
     // editor for all of them is loaded once everything is drawn in, so a

@@ -17,7 +17,7 @@ description: Steps BK1-BK5 of plans/appointment-booking.md: schema and slot engi
 - BK3 (M) Staff agenda. After BK1.
   - `view_bookings.php` (day, week and list views with the period navigator of `ui/list-period-navigator-and-clock.md`, staff filter, status chips, server paging for the list) and `edit_booking.php` (a staff-made booking against the same slot engine, status changes, notes, the customer card link, cancel with a reason); the audit trail writes every change (`core/audit-trail-contacts.md` pattern); the panel search finds a booking by name or e-mail. Memory: `ui/booking-agenda.md`.
 
-- BK4 (L, two PRs) The booking widget. After BK1.
+- BK4 (L, two PRs) The booking widget. After BK1. 4a done in #6224 (policy defaults in `pg_booking_policy()` until BK2); 4b next.
   - 4a: system widget `booking` in `includes/fn/widgets_booking.php` with its starter layout and palette entry (`designer/system-widget-change-checklist.md`): the service and staff steps, the month view on `pg_datetime.js` with disabled days from a slot query endpoint (`booking_slots.php`, root, rate-limited, anonymous), the time list, the hold. 4b: the details step (name, e-mail, phone, notes; a signed-in account prefilled; consent linking the privacy page as the templates do), the confirmation panel, the "just taken" and "expired hold" paths, phone layout, keyboard and screen reader names. Browser try on desktop and phone. Memory: `designer/booking-widget.md`.
 
 - BK5 (M) Mails, SMS, .ics and reminders. After BK1 and question 3.

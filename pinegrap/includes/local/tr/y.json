@@ -365,6 +365,7 @@
     "Your answer": "Yanıtınız",
     "Your answer goes to {var:1} and cannot be changed afterwards. This link works until {var:2}.": "Yanıtınız {var:1} adlı kişiye iletilir ve sonradan değiştirilemez. Bu bağlantı {var:2} tarihine kadar geçerli.",
     "Your application has reached us. We read every one and answer within a week; if it fits, we invite you for a coffee and a short talk in one of our cafés.": "Başvurunuz bize ulaştı. Her başvuruyu okur, bir hafta içinde yanıt veririz; uygun olursa sizi kafelerimizden birinde bir kahve ve kısa bir sohbete davet ederiz.",
+    "Your appointment": "Randevunuz",
     "Your appointment requests, their status and our messages, newest first.": "Randevu talepleriniz, durumları ve mesajlarımız; en yenisi üstte.",
     "Your appointments": "Randevularınız",
     "Your approval is awaited until {var:1}": "Onayınız {var:1} tarihine kadar bekleniyor",

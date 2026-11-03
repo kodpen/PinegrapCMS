@@ -135,3 +135,69 @@ function test_booking_widget_ws_busy()
 		pg_booking_ws_busy($events, $staff, array(20 => array(7))),
 		'named people, the department and the company; an all-day event ends a second later');
 }
+
+function test_booking_widget_render()
+{
+	$node = function ($tag, $props, $children = array()) {
+		return array('type' => 'semantic', 'props' => array('tag' => $tag) + $props, 'children' => $children);
+	};
+	$tree = json_encode(array('type' => 'root', 'props' => array(), 'children' => array(
+		$node('div', array('_bindings' => array('section' => 'booking_step_service')), array(
+			array('type' => 'loop_area', 'props' => array(), 'children' => array(
+				$node('button', array('text' => 'x', '_bindings' => array('action' => 'booking_service', 'text' => '__service_name'),
+					'_attrs' => array(array('name' => 'type', 'value' => 'submit')))),
+			)),
+		)),
+		$node('div', array('_bindings' => array('section' => 'booking_times'))),
+		$node('div', array('_bindings' => array('section' => 'not_ours'))),
+		$node('p', array('text' => 'none', '_bindings' => array('eo_visible_if' => 'no_services'))),
+	)));
+	$services = array(array('id' => 3, 'name' => '<b>Cut</b>', 'description' => '', 'length_minutes' => 45, 'price' => 0));
+	$staff = array(array('id' => 9, 'user_id' => 1, 'name' => 'Ayşe', 'service_ids' => '[3]', 'enabled' => 1));
+
+	$html = _render_system_widget_booking($tree, 41, array(), 'preview', array($services, $staff));
+
+	pg_assert_contains('data-pg-booking-part="step_service"', $html);
+	pg_assert_contains('data-pg-booking-part="times"', $html);
+	pg_assert_false(strpos($html, 'not_ours') !== false, 'only the widget\'s own parts are marked');
+	pg_assert_contains('data-pg-booking-action="service"', $html);
+	pg_assert_contains('data-pg-booking-service="3"', $html, 'the row\'s service id');
+	pg_assert_contains('type="button"', $html, 'a service button never submits');
+	pg_assert_false(strpos($html, 'type="submit"') !== false, 'the stored type is replaced');
+	pg_assert_contains('&lt;b&gt;Cut&lt;/b&gt;', $html, 'the name is escaped');
+	pg_assert_false(strpos($html, '>none<') !== false, 'the empty note is gone with services');
+	pg_assert_true(preg_match('/^<div data-pg-booking="([^"]+)">/', $html, $m) === 1, 'the settings wrap the widget');
+	$settings = json_decode(html_entity_decode($m[1], ENT_QUOTES, 'UTF-8'), true);
+	pg_assert_same(array('3' => array(array('id' => 9, 'name' => 'Ayşe'))), $settings['staff']);
+	pg_assert_contains('/booking_slots.php', $settings['url']);
+
+	$empty = _render_system_widget_booking($tree, 42, array(), 'preview', array(array(), array()));
+	pg_assert_contains('>none<', $empty, 'no service: the note');
+	pg_assert_false(strpos($empty, 'data-pg-booking=') !== false, 'no settings, so no script');
+}
+
+function test_booking_widget_inject()
+{
+	$page = '<html><body><div data-pg-booking="{}"></div></body></html>';
+	$out = pg_booking_widget_inject($page, '/s/pg_booking.js');
+	pg_assert_contains('<script src="/s/pg_booking.js" defer></script>' . "\n" . '</body>', $out);
+	pg_assert_same($out, pg_booking_widget_inject($out, '/s/pg_booking.js'), 'once');
+	pg_assert_same('<p>x</p>', pg_booking_widget_inject('<p>x</p>', '/s/pg_booking.js'), 'no widget, nothing');
+	pg_assert_same(1, preg_match(pg_site_datetime_pattern(), $page), 'the widget brings the date control');
+	pg_assert_same(0, preg_match(pg_site_datetime_pattern(), '<div data-pg-booking-part="x">'), 'a part does not');
+}
+
+function test_booking_widget_registered()
+{
+	$labels = pg_sw_type_labels();
+	pg_assert_true(isset($labels['booking']), 'panel label');
+	pg_assert_contains('_render_system_widget_booking(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php'));
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_contains("{ type: 'booking',", $js, 'in SW_TYPES');
+	pg_assert_contains("case 'booking': {", $js, 'has a starter tree');
+	pg_assert_contains('booking:           SW_BOOKING_TOKEN_GROUPS', $js, 'has a token palette');
+
+	foreach (pg_booking_widget_parts() as $part) {
+		pg_assert_contains("'" . $part . "'", $js, 'the editor offers part ' . $part);
+	}
+}
