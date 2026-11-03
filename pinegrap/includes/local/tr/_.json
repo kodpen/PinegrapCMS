@@ -170,6 +170,7 @@
     "$99": "99 $",
     "%d lessons": "%d ders",
     "%d min": "%d dk",
+    "%s out of 5": "5 üzerinden %s",
     "%s: Classroom": "%s: Sınıf",
     "%{var:1} off shipping ({var:2})": "kargoya %{var:1} indirim ({var:2})",
     "& Time": "ve Saati",

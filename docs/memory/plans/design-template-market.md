@@ -18,7 +18,7 @@ description: Plan for the Marketplace template (pinegrap-market): makers' shops 
 - As Launch and App Studio: steps 1-7 write `includes/design_templates/pinegrap-market/` (not globbed); step 8's main file includes them in one scope, each return kept as `$…_part`. Classes `pmk-`, field ids `mk-`. Trap: `parts.php` keeps the samples in `$sellers` and `$market_products`; no part may return into those names.
 
 ## Which steps are there?
-- 1 Data and shared parts: `parts.php` (data, prices; account bar, header with search, footer, page shells, product, maker and category cards, form fields, comment thread, staff bar); test `design_template_market_test.php`.
+- 1 Done (#6222). Data and shared parts: `parts.php` (data, prices; account bar, header with search, footer, page shells, product, maker and category cards, form fields, comment thread, staff bar); test `design_template_market_test.php`.
 
 - 2 Public pages: `pages_public.php` (home, categories, how it works, sell with us, about, FAQ, gift guide).
 
