@@ -18,7 +18,7 @@ description: Module list of plans/bug-hunt.md, part 1a2: includes/fn/ modules em
 - `image`: open
 - `image_editor`: open
 - `imap_client`: done (#6020)
-- `innodb`: #PRNUM (the conversion marker kept one table, so converting another erased the record of a copy that died and the next upgrade pass restarted it; rest reviewed: capability, status, row size counts, server rule, convert flow, state texts)
+- `innodb`: #6099 (the conversion marker kept one table, so converting another erased the record of a copy that died and the next upgrade pass restarted it; rest reviewed: capability, status, row size counts, server rule, convert flow, state texts)
 - `lang`: done #6045 (placeholder values re-scanned; rest reviewed: language pick, source, cache, log/staff language)
 - `lang_files`: open
 - `language_redirect`: open
