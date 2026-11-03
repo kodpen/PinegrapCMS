@@ -137,3 +137,23 @@ function test_dashboard_v2_perf_grade_and_shape()
 	pg_assert_same('bad', pg_dashboard_v2_perf_shape(100, 0, 500)['tone']);
 	pg_assert_same(0, pg_dashboard_v2_perf_shape(0, 0, 0)['fast'], 'no requests');
 }
+
+// A personal save starts from the person's own cards, else from the role
+// default the page draws (never its goals, pins or notes), else the preset.
+function test_dashboard_v2_personal_base()
+{
+	$preset = array('cards' => array(array('id' => 'visitors')), 'goals' => array(), 'pins' => array(), 'notes' => '');
+	$own = json_encode(array('cards' => array(array('id' => 'notes')), 'notes' => 'mine'));
+	$default = json_encode(array('cards' => array(array('id' => 'shop')), 'goals' => array(array('name' => 'theirs')), 'pins' => array('x'), 'notes' => 'theirs'));
+
+	pg_assert_same(json_decode($own, true), pg_dashboard_v2_personal_base($own, $default, $preset), 'own cards kept');
+
+	$base = pg_dashboard_v2_personal_base('', $default, $preset);
+	pg_assert_same(array(array('id' => 'shop')), $base['cards'], 'the role default is the start');
+	pg_assert_same(array(), $base['goals'], 'not the goals of the one who shared it');
+	pg_assert_same(array(), $base['pins']);
+	pg_assert_same('', $base['notes']);
+
+	pg_assert_same('kept', pg_dashboard_v2_personal_base(json_encode(array('notes' => 'kept')), $default, $preset)['notes'], 'own parts without cards stay');
+	pg_assert_same($preset, pg_dashboard_v2_personal_base('', '', $preset), 'no default: the preset');
+}
