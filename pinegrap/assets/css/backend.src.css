@@ -11241,6 +11241,18 @@ body.pg-side-panel-open .pg-chat-launcher {
 @media (min-width: 1024px) {
   .pg-sale-status { position: sticky; top: 3.3rem; }
 }
+/* Database Engine: the side column sticks beside the long table list, but
+   it is taller than a short window, so it scrolls inside itself rather than
+   leaving its lower cards out of reach until the end of the page. */
+@media (min-width: 1024px) {
+  .pg-engine-side {
+    position: sticky;
+    top: 3.3rem;
+    max-height: calc(100vh - 4.3rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
 .pg-sale-total { padding: 1rem 1rem .85rem; }
 .pg-sale-total-label {
   font-size: .72rem;

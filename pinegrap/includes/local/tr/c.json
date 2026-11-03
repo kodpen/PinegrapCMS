@@ -682,6 +682,7 @@
     "Check a web address": "Web adresini kontrol et",
     "Check again": "Tekrar dene",
     "Check all tables": "Tüm tabloları denetle",
+    "Check all tables now? Every table is read in full and a broken MyISAM table is repaired; on a large database that takes minutes. Take a backup first.": "Tüm tablolar şimdi denetlensin mi? Her tablo baştan sona okunur, bozuk bulunan MyISAM tabloları onarılır; büyük bir veritabanında dakikalar sürer. Önce yedek alın.",
     "Check box as text": "Onay kutusu metin olarak",
     "Check failed": "Denetim yapılamadı",
     "Check for Updates": "Güncellemeleri Kontrol Et",

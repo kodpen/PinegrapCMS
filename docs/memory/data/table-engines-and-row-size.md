@@ -20,4 +20,8 @@ description: Table engines since 2026.4.8 (InnoDB, MyISAM left over the limits),
 ## Where is table maintenance?
 - `includes/fn/db_maintenance.php`: the table catalog (`pg_db_table_catalog()`), the server's facts and version check (`pg_db_server_facts()`, `pg_db_server_supported()`), OPTIMIZE / CHECK / REPAIR TABLE on one table, and the findings the Database Engine screen lists. It and `innodb.php` call `mysqli_query()` directly: a failure there is one of the answers, not the end of the request.
 
+## What do the Database Engine screen's counts cover?
+- The side summary (Tables, InnoDB n / total, MyISAM) counts `pg_db_table_catalog()`, every table of the database, not `pg_innodb_core_tables()`: the core list left 215 newer tables out and the figures did not add up (#5945, PR #5982).
+- The hourly health check (`check_and_repair_database_tables()`) reads only MyISAM/Aria tables; "Check all tables" reads all until the next hourly run. The Table health card says which: "All tables" only when the report covers the whole catalog, else "n MyISAM tables" or "no MyISAM table to read" (#5944).
+
 Related: docs/memory/data/db-helpers-and-error-contract.md, docs/memory/release/database-server-compatibility.md
