@@ -10,7 +10,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `api` (5): taken by LF: #4615; the rest clean
 - Endpoints `arrival` (3): clean (add_arrival_date, edit_arrival_date, view_arrival_dates)
 - Endpoints `auto` (4): clean (add_auto_dialog, edit_auto_dialog, view_auto_dialogs, auto_backup)
-- Endpoints `barcode` (3): clean (barcode_decrease_inventory, barcode_increase_inventory, barcode_menu; the decrease to 0 is a decision)
+- Endpoints `barcode` (3): clean (decrease and increase inventory, menu; the decrease to 0 is a decision)
 - Endpoints `billing` (2): done #5016
 - Endpoints `calendar` (13): done #5049
 - Endpoints `cart` (4): done #4561
