@@ -94,16 +94,27 @@ if ($_POST) {
     // saved template, so a later upgrade of the file reaches that installation.
     $template = isset($_POST['reset']) ? '' : str_replace("\r\n", "\n", (string) ($_POST['template'] ?? ''));
 
+    // The stored value before this save: NULL means the built-in template.
+    $stored_template = db_value("SELECT " . $document['column'] . " FROM config LIMIT 1");
+
     if (trim($template) === '' || $template === str_replace("\r\n", "\n", $default_template)) {
         db("UPDATE config SET " . $document['column'] . " = NULL");
         $liveform->add_notice(isset($_POST['reset'])
             ? lang(array('string' => 'The built-in template is back in use for: {var:1}.', 'vars' => $document['label']))
             : lang(array('string' => 'The template has been saved: {var:1}.', 'vars' => $document['label'])));
-        log_activity(lang($document['log'] . ' was reset'), $_SESSION['sessionusername']);
+
+        // Only Reset to Default is logged as a reset. A Save that leaves the
+        // built-in template in use changed something only when it replaced a
+        // saved template.
+        if (isset($_POST['reset'])) {
+            log_activity($document['log_reset'], $_SESSION['sessionusername']);
+        } elseif ($stored_template !== null && $stored_template !== '') {
+            log_activity($document['log_changed'], $_SESSION['sessionusername']);
+        }
     } else {
         db("UPDATE config SET " . $document['column'] . " = '" . escape($template) . "'");
         $liveform->add_notice(lang(array('string' => 'The template has been saved: {var:1}.', 'vars' => $document['label'])));
-        log_activity(lang($document['log'] . ' was changed'), $_SESSION['sessionusername']);
+        log_activity($document['log_changed'], $_SESSION['sessionusername']);
     }
 
     go($doc_url);
@@ -299,8 +310,8 @@ foreach ($placeholders as $group => $names) {
 
     foreach ($names as $name => $description) {
         $output_placeholders .= '
-                                        <dt class="col-6 font-monospace fw-normal text-truncate">{{' . h($name) . '}}</dt>
-                                        <dd class="col-6 fg-secondary mb-1">' . h($description) . '</dd>';
+                                        <dt class="col-12 font-monospace fw-normal text-break">{{' . h($name) . '}}</dt>
+                                        <dd class="col-12 fg-secondary mb-3">' . h($description) . '</dd>';
     }
 
     $output_placeholders .= '
