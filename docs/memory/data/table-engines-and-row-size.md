@@ -21,6 +21,6 @@ description: Table engines since 2026.4.8 (InnoDB, MyISAM left over the limits),
 - `includes/fn/db_maintenance.php`: the table catalog (`pg_db_table_catalog()`), the server's facts and version check (`pg_db_server_facts()`, `pg_db_server_supported()`), OPTIMIZE / CHECK / REPAIR TABLE on one table, and the findings the Database Engine screen lists. It and `innodb.php` call `mysqli_query()` directly: a failure there is one of the answers, not the end of the request.
 
 ## How much of a table is free space?
-- MyISAM and Aria count the holes of deleted rows inside the data file: `DATA_FREE` is part of `DATA_LENGTH`. InnoDB reports the tablespace's free extents beside its pages. `pg_db_table_file_bytes()` gives the file size either way; the OPTIMIZE threshold (a fifth of the file) and the "fragmented" finding's per cent use it. Before, both divided by `bytes + free`, so a MyISAM table with half its file free read as 33 % and one at 20–25 % was never proposed (PR #PRNUM).
+- MyISAM and Aria count the holes of deleted rows inside the data file: `DATA_FREE` is part of `DATA_LENGTH`. InnoDB reports the tablespace's free extents beside its pages. `pg_db_table_file_bytes()` gives the file size either way; the OPTIMIZE threshold (a fifth of the file) and the "fragmented" finding's per cent use it. Before, both divided by `bytes + free`, so a MyISAM table with half its file free read as 33 % and one at 20–25 % was never proposed (PR #5984).
 
 Related: docs/memory/data/db-helpers-and-error-contract.md, docs/memory/release/database-server-compatibility.md
