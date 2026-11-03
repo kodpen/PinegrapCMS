@@ -11,7 +11,7 @@ description: The new dashboard's shop cards (shop, salesmap, ops, orders, offers
 - `fx`: `pg_dashboard_currencies()`, moved out of widget 16, plus the `currency_rates` history for the seven-day line; a day without a rate takes the last earlier one, as an invoice would.
 
 ## Why is money decoded?
-- `BASE_CURRENCY_SYMBOL` is an HTML entity (`&#8378;`); card texts are written with `textContent`, so `pg_dashboard_v2_money()` (`run.php`) decodes it. The first browser run printed `&#8378;14.112,97`. `prepare_amount()` returns that HTML: the pipeline's orders note read "Ortalama &#8378;4.180,80" on dev until it called `pg_dashboard_v2_money()`; `tests/dashboard_v2_shop_test.php` keeps `prepare_amount(` out of every card file.
+- `BASE_CURRENCY_SYMBOL` is an HTML entity (`&#8378;`); card texts are written with `textContent`, so `pg_dashboard_v2_money()` (`run.php`) decodes it. The first browser run printed `&#8378;14.112,97`. `prepare_amount()` returns that HTML: the pipeline's orders note read "Ortalama &#8378;4.180,80" on dev until it called `pg_dashboard_v2_money()`; `tests/dashboard_v2_shop_test.php` keeps `prepare_amount(` out of every card file (#6359).
 
 ## How is the map drawn?
 - `pg_dash_cards_shop.js` fetches the map file once a page and copies only path ids and shapes into a fresh SVG (`role="img"`, labelled); a region with sales gets `data-step` 1-4, coloured from the card colour; the legend repeats the steps. Region figures are also in the rows, so the colours never carry them alone.
