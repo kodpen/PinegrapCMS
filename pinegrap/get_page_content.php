@@ -111,6 +111,20 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // database, in which case this stays '' and style_code is used as before.
     $page_tree_code = isset($row['page_tree_code']) ? (string)$row['page_tree_code'] : '';
 
+    // A page experiment's variant swaps in its draft's body only: the title,
+    // meta tags, structured data and address above stay the live page's.
+    $page_body_id = function_exists('pg_experiment_body_page_id') ? pg_experiment_body_page_id((int) $page_id) : (int) $page_id;
+
+    if ($page_body_id !== (int) $page_id) {
+        $variant_code = pg_experiment_variant_code($page_body_id);
+
+        if ($variant_code !== '') {
+            $page_tree_code = $variant_code;
+        } else {
+            $page_body_id = (int) $page_id;
+        }
+    }
+
     // Remember the requested device type, because we might change this below
     // if a mobile style does not exist.  We want to remember the requested device type,
     // because we still want to output the appropriate mobile switch.
@@ -159,7 +173,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // translations: from page_translations while the source body is
     // unchanged, drawn now otherwise. The page's own body stays as it is.
     if (defined('FRONTEND_LANGUAGE') && ($page_tree_code !== '')) {
-        $page_tree_code = pg_tr_page_body($page_id, $page_tree_code, $style_name, (string) ($row['additional_body_classes'] ?? ''));
+        $page_tree_code = pg_tr_page_body($page_body_id, $page_tree_code, $style_name, (string) ($row['additional_body_classes'] ?? ''));
     }
 
     // The page's own generated layout wins when it has one; the style's code
