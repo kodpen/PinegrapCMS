@@ -20,7 +20,7 @@ description: Plan for the Marketplace template (pinegrap-market): makers' shops 
 ## Which steps are there?
 - 1 Done (#6222). Data and shared parts: `parts.php` (data, prices; account bar, header with search, footer, page shells, product, maker and category cards, form fields, comment thread, staff bar); test `design_template_market_test.php`.
 
-- 2 Public pages: `pages_public.php` (home, categories, how it works, sell with us, about, FAQ, gift guide).
+- 2 Done (#6279). Public pages: `pages_public.php`; home places `home_sellers` (step 4) and `home_posts` (step 6).
 
 - 3 Shop: `shop.php` (category and maker groups, `shop`, product, cart, checkout, order, `email_order`).
 
