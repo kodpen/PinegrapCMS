@@ -98,7 +98,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - contact-form-checks.md: Create/Edit Contact save checks: membership date and negative rate refused, role 3 keeps a group on edit, picture posted as file_id or image_url, notes box, wording
 - contact-group-shared-form.md: The contact group create and edit screens share includes/forms/contact_group_form.php: what it holds, what stays in the screens, one required message, the list sorted on shown values
 - contact-list-filters.md: Contacts list filters (contact_list.php): offered groups only, [None] from [All], range to today, box search, typed date, period links keep the view, export formula guard
-- contact-list-names.md: Contacts list (view_contacts.php): one Website filter, labels on their own field, group counts in the panel's number format, the row checkbox and Opt-In mark names, silent icon words
+- contact-list-names.md: Contacts list (view_contacts.php): one Website filter, labels on their own field, group counts in the panel's number format, the editor link and Opt-In mark names, silent icon words
 - contact-orders-list.md: All Orders for Contact (view_orders_for_contact.php): open carts left out, a Status column with the orders list's badge, paid_at probed
 - contact-shared-form.md: The contact create and edit screens share includes/forms/contact_form.php: what it holds, what stays in the screens
 - contact-user-list-view-kept.md: Contacts and Users lists keep their view (filter) through Export, Delete All, Merge, Advanced Filters, Create and Import
@@ -139,6 +139,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-v2-share.md: New dashboard role defaults and lock (#4975): the Share with the team section, dashboard_role_default, which layout and look a person sees, why the lock never binds administrators and designers
 - dashboard-v2-shop-cards.md: The new dashboard's shop cards (shop, salesmap, ops, orders, offers, fx): where each reads its data, the widget queries they share, money as plain text, the map drawing
 - dashboard-v2-side-panel.md: New dashboard side panel (#4888): gallery.php data, pg_dash_panel.js (work area, gallery, Add card tile, top section, look) and its hooks with the edit script
+- dashboard-v2-width.md: How wide the new dashboard gets and how many columns its grid takes: the 118rem cap, columns by the dashboard's own width (container queries), edit mode, the fallback
 - dashboard-visitor-head-wrap.md: Visitor Summaries card head on a narrow card: the legend wraps below the figures, the figure lines keep to one line
 - dashboard-welcome-card.md: The dashboard top card (welcome.php, .pg-clockbar): greeting on the left, time and date on the right in one full-width card; phone stacking, themes, ids the scripts read
 - dashboard-widget-files.md: Adding a dashboard widget: includes/dashboard/widgets/widget_<id>.php and its function contract, the welcome.php registry entry, retired ids never reused, the refresh and solo lists, charts.
@@ -234,6 +235,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-parts.md: The image editor in parts: core, model, one file per tool; the hooks a tool hangs on the editor (panels, pointers, layer types), its model section, labels, API actions, styles and tests
 - image-editor-redact.md: The image editor's redaction (E10): layer fields, box and brush areas, the preview filters, the masks a save sends, the server's step 4 under Imagick and GD, metadata, versions
 - image-editor-render.md: The image editor's animation frames and GIF (AN3): renderFrame(), paintLayers() with a time, action base, the encoder worker, the Save animation dialog with estimate, progress, Cancel and Download
+- image-editor-scissors.md: The image editor's Scissors tool: a click cuts a path or shape at a point, a drag cuts every path the line crosses; the model's cut functions
 - image-editor-sticker.md: The image editor's Sticker and Frame tools: the sticker layer, its label, a picture from Files, the four frames on the saved picture's edge, an artboard's background fill, how a save draws them
 - image-editor-svg.md: The image editor's SVG files: opened as layers on a transparent artboard, saved as SVG through the allowlist sanitizer pg_svg_sanitize()
 - image-editor-text.md: The image editor's text layers: fields, the one line layout the stage and the save share, typing in place, system and site fonts, resize scaling the letters, the panel
@@ -260,6 +262,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-stale-filter.md: All Ads, Verified Shipping Addresses and Submitted Forms reset a remembered filter whose ad region, state or custom form is gone to '[All]' (pg_list_filter_known())
 - list-status-words.md: A word beside a list row's green or red state (pg_list_status_word()): product groups, key codes, arrival dates, gift cards, ERP expenses
 - list-table-driver-browser.md: List table driver in the browser (assets/js/pg_list_table.js): selection, Ctrl+A, undo, rows on scroll, sort, search, columns menu, details panel, phone cards, thumbnails, layout
+- list-table-driver-lists.md: Which screens are on the list table driver (pages, users, contacts): their sources, columns, bulk actions through the resolver, what each keeps
 - list-table-driver.md: List table driver server core (includes/fn/list_table.php): source and column model, first rows printed, keyset batches, the list_table_rows action, the selection resolver
 - list-table-quick-edit.md: Quick edit mode of the list table driver (assets/js/pg_list_table_edit.js): the source's edit key, F2, save on leave, refused values, undo, apply to the selected rows
 - live-filter-status.md: Live filters that say what they found (API applications, Workspace MCP tools, marketplace picker and category search): hidden status region, empty line, Enter in the MCP tool filter
@@ -389,7 +392,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - send-once-screens.md: The panel screens that send once for longer than the window guard's 3 s (stock scans, refunds, exports, imports, SVG copies, ERP e-mails), and the symptom each one fixed.
 - seo-default-share-image-warning.md: The SEO card's Default Share Image warning names each form once, told apart, without binned forms, five names then a count
 - seo-panel-run-buttons.md: SEO detail panel and SEO card: Refresh score / Analyze HTML run the link step, work on every edit screen, update every score shown; counter measures like the score; missing page is not found
-- server-paged-lists.md: DataTables lists paged on the server (submitted forms, contacts, products): data-pg-list-action, the JSON page action, search, counts, row cells, what select all and bulk buttons act on
+- server-paged-lists.md: DataTables lists paged on the server (submitted forms, products): data-pg-list-action, the JSON page action, search, counts, row cells, what select all and bulk buttons act on
 - settings-card-chrome.md: Settings dialog visual details: acrylic glass mode (advanced-visuals, pg-settings-open) and the pg-alert-dismissible padding rule.
 - settings-card-field-widths.md: Settings card control width classes pg-f-xs/sm/md/lg, how to pick one from field attributes, and why not to write style width or malformed col classes.
 - settings-card-layout-pitfalls.md: CSS pitfalls of the settings card row layout: no nested :has(), specificity of :has() rules, tagin and form-label predicates, divider alignment with text.

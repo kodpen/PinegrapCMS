@@ -914,7 +914,8 @@ function ws_api_claude_answer($params)
 
     // Checked before anything is written: a change that cannot be made
     // refuses the answer, so it comes back with the change fixed or left out.
-    $changes = ws_changes_input($params['changes'] ?? array(), (int) $row['requested_by'], (int) $row['channel_id']);
+    // A flow draft waits under the answer as an application's would.
+    $changes = ws_changes_input($params['changes'] ?? array(), (int) $row['requested_by'], (int) $row['channel_id'], 0, false, true);
 
     if (!$changes['ok']) {
         api_fail_validation($changes['error'], 'changes');

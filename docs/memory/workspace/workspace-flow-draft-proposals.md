@@ -1,11 +1,12 @@
 ---
 name: workspace-flow-draft-proposals
-description: An application proposes a flow as a draft card ({type: flow} in workspace.changes.propose, A8): what is sent, checked, kept, how the card opens it, what happens to {type: scheduled}
+description: An application, or Claude in a channel answer, proposes a flow as a draft card ({type: flow}, A8): what is sent, checked, kept, how the card opens it, {type: scheduled}
 ---
 
 ## What does the application send?
 - One more change in `workspace.changes.propose` (channel route only; the task twin answers 422): `{type: flow, action: draft, data, reason}`. `data` is the flow as `POST /workspace/flows` takes it: name, nodes, edges, notes, or template (+ answers), and channel_id (its home).
-- Shape first (`ws_flow_draft_proposal_input()`, pure, includes/workspace/flow_draft.php): action draft, data an object, nodes/edges/notes lists, template a string and never beside boxes, answers an object.
+- Claude puts the same change in its answer in a channel: `ws_api_claude_answer()` calls `ws_changes_input(…, 0, false, true)` (`$drafts`); a task run still refuses it. The site's instructions (`ws_claude_routine_prompt()`) say to read `GET /workspace/flow-kinds` first, one start box, outcomes per kind, approval for a yes-or-no question, no x and y. Before (2026-11-03) Claude answered that no tool of its could build a flow and wrote the design out.
+- Shape first (`ws_flow_draft_proposal_input()`, pure, includes/workspace/flow_draft.php): action draft, data an object, nodes/edges/notes lists, template a string and never beside boxes, answers an object. Boxes all in one place (`ws_flow_draft_unplaced()`: none sent, or the same x and y, more than one box) are laid out with `ws_flow_auto_layout()`; boxes with places keep them.
 
 ## What is checked?
 - `ws_flow_draft_proposal_row()` for the person (`ws_ai_viewer()`): `ws_can_schedule()`, a template filled for them (`ws_api_flow_from_template()`), then `ws_flow_save_check()`, the check of `POST /workspace/flows` (flow limit, name, home readable). Any refusal is 422 on `changes[i]`, dry run included. Problems that stop publishing are not refused: the card names up to three.
@@ -24,4 +25,4 @@ description: An application proposes a flow as a draft card ({type: flow} in wor
 - `GET /workspace/changes?type=flow` lists them; record.type flow, fields the card's lines.
 
 ## Tests
-- tests/workspace_flow_draft_test.php.
+- tests/workspace_flow_draft_test.php, tests/workspace_claude_flow_drafts_test.php.

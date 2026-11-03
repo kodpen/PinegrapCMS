@@ -190,7 +190,6 @@ function pg_panel_actions()
         'get_form' => array('file' => 'content.php', 'handler' => 'pg_panel_get_form', 'exempt' => false, 'any_role' => true, 'token' => false, 'write' => false),
         'get_forms' => array('file' => 'content.php', 'handler' => 'pg_panel_get_forms', 'exempt' => false, 'any_role' => true, 'token' => false, 'write' => false),
         'submitted_form_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_submitted_form_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
-        'contact_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_contact_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         // Refresh now of a contact group filled by rules: every role with the
         // contacts right and the group; the handler checks both.
         'audience_refresh' => array('file' => 'audiences.php', 'handler' => 'pg_panel_audience_refresh', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => true),

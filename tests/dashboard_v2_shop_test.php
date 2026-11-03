@@ -213,3 +213,15 @@ function test_dashboard_v2_shop_money_is_plain_text()
 	pg_assert_same('&#8378;', htmlspecialchars_decode('&#8378;'), 'the entity the store keeps is not decoded by h()-style helpers');
 	pg_assert_same('₺', html_entity_decode('&#8378;', ENT_QUOTES | ENT_HTML5, 'UTF-8'));
 }
+
+// prepare_amount() returns HTML: the pipeline's orders box read
+// "Average &#8378;4.180,80". No card sends it.
+function test_dashboard_v2_cards_send_no_html_money()
+{
+	$files = glob(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/*.php');
+
+	pg_assert_true(count($files) > 10, 'the card files are found');
+	foreach ($files as $file) {
+		pg_assert_false(strpos((string) file_get_contents($file), 'prepare_amount(') !== false, basename($file) . ' sends plain-text money');
+	}
+}

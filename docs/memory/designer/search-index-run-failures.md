@@ -5,7 +5,7 @@ description: How update_search_index.php survives a bad page, event, record or f
 
 ## What did it fix?
 - One page whose render threw an `Error`, failed a query (`output_error()` exits) or one office file the converter could not read ended the run, and every later run at the same place: later pages and every designer record never got in (fixed by #4733).
-- Before that (#1197 follow-up) a run that left designer records out still said "updated successfully"; only one `error_log` line knew.
+- Before (#1197), a run that left records out said "updated successfully".
 
 ## How is each item read?
 - Pages, calendar events and classic form records: `pg_search_index_render($page_id, $properties)` (`includes/fn/site_search.php`): `pg_error_throws(true)`, `catch (Throwable)`, `finally` puts back `$_GET` (whole array), the output buffer level and the flag. Designer records keep their own `try` ([[designer-records-site-search]]).
@@ -18,7 +18,7 @@ description: How update_search_index.php survives a bad page, event, record or f
 - The finish window: a warning icon and "updated, but N item(s) could not be read. The Site Log names them." instead of the success sentence. `#finish_message` keeps its id: the status region copies its text.
 
 ## What if the run stops before its end?
-`$search_index_run` holds the stage (pages, records, files, sweep) and the last item started; a shutdown function writes "The search index run stopped before its end: …" with `pg_search_index_stop_note()` (pure): stage, item and `error_get_last()` only when fatal (message, file basename and line). `done` is set at the end of every run, also one that stops at its time budget ([[search-index-resumable-pass]]). A process killed by a signal runs no shutdown function.
+`$search_index_run` holds the stage (pages, records, files, sweep) and the last item started; a shutdown function writes "The search index run stopped before its end: …" with `pg_search_index_stop_note()` (pure): stage, item and `error_get_last()` only when fatal (message, file basename and line). `done` is set at the end of every run, also one that stops at its time budget ([[search-index-resumable-pass]]). A process killed by a signal runs no shutdown function. What a dead run keeps: [[search-index-item-parts]].
 
 ## Which tests cover it?
 `tests/search_index_isolation_test.php` (render isolation with an `Error` and `output_error()`, notes, file reader, stop note, source checks); `tests/designer_search_index_test.php` (designer branch).
