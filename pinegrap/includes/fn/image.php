@@ -104,13 +104,38 @@ function get_dominant_area_color($file_path)
     $sample_step = max(1, round(min($width, $height) / 50));
     $color_count = array();
 
+    // A palette image (GIF, 8-bit PNG) answers imagecolorat() with a palette
+    // index, not a colour: its colour is looked up in the palette.
+    $palette = !imageistruecolor($image);
+    $transparent = $palette ? imagecolortransparent($image) : -1;
+
     // Loop through pixels with sampling
     for ($x = 0; $x < $width; $x += $sample_step) {
         for ($y = 0; $y < $height; $y += $sample_step) {
             $rgb = imagecolorat($image, $x, $y);
-            $r = ($rgb >> 16) & 0xFF;
-            $g = ($rgb >> 8) & 0xFF;
-            $b = $rgb & 0xFF;
+
+            if ($palette) {
+                if ($rgb === $transparent) {
+                    continue;
+                }
+
+                $c = imagecolorsforindex($image, $rgb);
+                $r = $c['red'];
+                $g = $c['green'];
+                $b = $c['blue'];
+                $alpha = $c['alpha'];
+            } else {
+                $r = ($rgb >> 16) & 0xFF;
+                $g = ($rgb >> 8) & 0xFF;
+                $b = $rgb & 0xFF;
+                $alpha = ($rgb >> 24) & 0x7F;
+            }
+
+            // A fully transparent pixel shows what is behind the picture
+            // (the background of a logo), not the picture's colour.
+            if ($alpha >= 127) {
+                continue;
+            }
 
             // Round color to reduce noise (group similar tones). Rounding pushes
             // values from 240 up to 256, which is one past a byte, so clamp.
@@ -125,6 +150,10 @@ function get_dominant_area_color($file_path)
             }
             $color_count[$hex]++;
         }
+    }
+
+    if (!$color_count) {
+        return $fallback;
     }
 
     // Sort by frequency
