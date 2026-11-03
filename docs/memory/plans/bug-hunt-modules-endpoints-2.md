@@ -28,8 +28,8 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `sms` (3): open
 - Endpoints `software` (3): open
 - Endpoints `state` (3): open
-- Endpoints `style` (4): open
-- Endpoints `submitted` (5): open
+- Endpoints `style` (4): taken by RX
+- Endpoints `submitted` (5): taken by RX
 - Endpoints `subscription` (3): open
 - Endpoints `system` (5): open
 - Endpoints `tax` (3): open
