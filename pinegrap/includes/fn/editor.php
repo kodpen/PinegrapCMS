@@ -199,21 +199,16 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
             }
             $output_editor_properties .= 'stylesSet: []';
         }
-        $output_folder_id = '';
-        if ($folder_id) {
-            $output_folder_id = '&folder_id=' . $folder_id;
-        }
-        $output_filebrowser_properties = '';
-        // If the user is logged in and the user is a manager or above,
-        // or if the user has edit access to at least one folder,
-        // then output settings and plugin so that user can browse images/link items,
-        // and upload files.
-        if ((USER_LOGGED_IN == true) && ((USER_ROLE < 3) || (no_acl_check(USER_ID) == true))) {
-            $output_filebrowser_properties = 'filebrowserBrowseUrl: "' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/editor_select_page_or_file.php",
-                filebrowserImageBrowseUrl: "' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/editor_select_image.php",
-                filebrowserWindowWidth: "850",
-                filebrowserWindowHeight: "740",';
-        }
+        // Browsing and uploading are offered only to someone the upload
+        // endpoint accepts: a visitor on a form with a rich-text field got an
+        // Upload tab that could only refuse, and the page carried the
+        // session token in its upload addresses.
+        $output_filebrowser_properties = _pg_wysiwyg_file_properties(
+            (USER_LOGGED_IN == true) && ((USER_ROLE < 3) || (no_acl_check(USER_ID) == true)),
+            OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY,
+            $_SESSION['software']['token'] ?? '',
+            $folder_id
+        );
         $output_include_source_plugin = '';
         $output_remove_sourcedialog_plugin = '';
         $output_editor_initialization = '';
@@ -303,9 +298,6 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
                     },
                     disableNativeSpellChecker: false,
                     ' . $output_filebrowser_properties . '
-                    filebrowserUploadMethod: "form",
-                    filebrowserUploadUrl: "' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/editor_add_file.php?token=' . escape_javascript($_SESSION['software']['token'] ?? '') . $output_folder_id . '",
-                    filebrowserImageUploadUrl: "' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/editor_add_file.php?token=' . escape_javascript($_SESSION['software']['token'] ?? '') . $output_folder_id . '",
                     image_previewText: " ",
                     removeButtons: "addFile,addImage",
                     removeDialogTabs: "image:Link",
@@ -584,6 +576,31 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
                 });
             </script>';
     }
+}
+
+/**
+ * The CKEditor settings that let the editor browse and upload files, for
+ * get_wysiwyg_editor_code(): empty when $allowed is false (a visitor, or a
+ * user with no folder to edit), so the Link and Image dialogs show no Browse
+ * button and no Upload tab. $base is the software address, $folder_id the
+ * folder an upload goes to (0: the endpoint's default).
+ */
+function _pg_wysiwyg_file_properties($allowed, $base, $token, $folder_id)
+{
+    if (!$allowed) {
+        return '';
+    }
+
+    $upload = escape_javascript($base . '/editor_add_file.php?token=' . rawurlencode((string) $token)
+        . (((int) $folder_id > 0) ? '&folder_id=' . (int) $folder_id : ''));
+
+    return 'filebrowserBrowseUrl: "' . escape_javascript($base . '/editor_select_page_or_file.php') . '",
+                filebrowserImageBrowseUrl: "' . escape_javascript($base . '/editor_select_image.php') . '",
+                filebrowserWindowWidth: "850",
+                filebrowserWindowHeight: "740",
+                filebrowserUploadMethod: "form",
+                filebrowserUploadUrl: "' . $upload . '",
+                filebrowserImageUploadUrl: "' . $upload . '",';
 }
 
 /**

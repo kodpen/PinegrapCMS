@@ -26,4 +26,4 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 - `designer_theme_vars`: clean (twin matches the editor on random texts)
 - `designer_vocab`: clean
 - `ecommerce`: done (#6030)
-- `editor`: open, partly hunted (#6032: a visitor image next to `{path}` became protocol-relative; checked: the rich text sanitizer and its URL, style and image helpers, `_pg_rich_text_to_inline()`, the {path} input/output helpers; next worker starts at `get_wysiwyg_editor_code()`, then the `pg_code_editor_*` functions)
+- `editor`: done (#6032: a visitor image next to `{path}` became protocol-relative; #6065: CKEditor upload settings outside the file gate, visitors got an Upload tab and the token; checked: the rich text sanitizer and its helpers, `_pg_rich_text_to_inline()`, the {path} helpers, `get_wysiwyg_editor_code()`, the `pg_code_editor_*` functions)
