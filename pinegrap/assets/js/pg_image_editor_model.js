@@ -1297,7 +1297,7 @@
         }
 
         if (l.type === 'path') {
-            return [curvePoints(pathKnots(l), !!l.closed, 16)];
+            return [curvePoints(pathKnots(l), !!l.closed, 16)].concat(subKnots(l).map(function (sub) { return curvePoints(sub.knots, sub.closed, 16); }));
         }
 
         if (l.type === 'pen') {
@@ -1347,7 +1347,8 @@
     function hitShape(l, p, slack) {
         var q = [l.mirror ? l.w - p[0] : p[0], p[1]], reach = (l.stroke || 1) / 2 + slack, lines = outline(l), i, j;
 
-        if ((l.fill === 'solid' || l.fill === 'soft') && isClosed(l) && inside(q, lines[0])) {
+        // A path with more contours (outlined letters) is inside any of them.
+        if ((l.fill === 'solid' || l.fill === 'soft') && isClosed(l) && (l.subs ? lines : [lines[0]]).some(function (line) { return inside(q, line); })) {
             return true;
         }
 
@@ -2334,18 +2335,45 @@
 
     // A path's box and knots after its knots (in its box's frame) changed:
     // the box fits the curve again, its angle and mirror kept.
-    function refitPath(l, knots) {
-        var b = knotBounds(knots, l.closed), w = Math.max(1, b.w), h = Math.max(1, b.h);
-        var x0 = b.x + b.w / 2 - w / 2, y0 = b.y + b.h / 2 - h / 2, c = drawnPoint(l, x0 + w / 2, y0 + h / 2);
+    // subs: the path's other contours ({ knots, closed }, knots in its
+    // box's frame), else the layer's own; the box fits them all and they
+    // come back as parts of it too.
+    function refitPath(l, knots, subs) {
+        var more = subs || subKnots(l), b = knotBounds(knots, l.closed);
 
-        return {
-            x: c[0] - w / 2, y: c[1] - h / 2, w: w, h: h,
-            knots: moveKnots(knots, function (px, py) { return [frac(px - x0, w), frac(py - y0, h)]; })
-        };
+        more.forEach(function (sub) {
+            var o = knotBounds(sub.knots, sub.closed), x1 = Math.max(b.x + b.w, o.x + o.w), y1 = Math.max(b.y + b.h, o.y + o.h);
+
+            b.x = Math.min(b.x, o.x);
+            b.y = Math.min(b.y, o.y);
+            b.w = x1 - b.x;
+            b.h = y1 - b.y;
+        });
+
+        var w = Math.max(1, b.w), h = Math.max(1, b.h), x0 = b.x + b.w / 2 - w / 2, y0 = b.y + b.h / 2 - h / 2, c = drawnPoint(l, x0 + w / 2, y0 + h / 2);
+        var part = function (px, py) { return [frac(px - x0, w), frac(py - y0, h)]; };
+        var out = { x: c[0] - w / 2, y: c[1] - h / 2, w: w, h: h, knots: moveKnots(knots, part) };
+
+        if (more.length) {
+            out.subs = more.map(function (sub) { return { knots: moveKnots(sub.knots, part), closed: !!sub.closed }; });
+        }
+
+        return out;
+    }
+
+    // A path's other contours (outlined letters, their holes) in its box's
+    // frame, as pathKnots() gives the first.
+    function subKnots(l) {
+        return (l.subs || []).map(function (sub) {
+            return { knots: moveKnots(sub.knots || [], function (u, v) { return [u * l.w, v * l.h]; }), closed: !!sub.closed };
+        });
     }
 
     function pathShape(l) {
-        return { d: knotsD(pathKnots(l), !!l.closed), head: null, closed: !!l.closed };
+        return {
+            d: knotsD(pathKnots(l), !!l.closed) + subKnots(l).map(function (sub) { return knotsD(sub.knots, sub.closed); }).join(''),
+            head: null, closed: !!l.closed
+        };
     }
 
     // Knot i made smooth (handles along its neighbours' direction, a sixth
@@ -2478,7 +2506,7 @@
 
     var VECTOR = {
         segments: segments, cubicAt: cubicAt, knotsD: knotsD, curvePoints: curvePoints, knotBounds: knotBounds, pathLayer: pathLayer,
-        pathKnots: pathKnots, refitPath: refitPath, pathShape: pathShape, smoothKnot: smoothKnot, cornerKnot: cornerKnot,
+        pathKnots: pathKnots, subKnots: subKnots, refitPath: refitPath, pathShape: pathShape, smoothKnot: smoothKnot, cornerKnot: cornerKnot,
         moveKnot: moveKnot, moveHandle: moveHandle, nearestOnPath: nearestOnPath, splitAt: splitAt, shapeKnots: shapeKnots
     };
 
@@ -3649,6 +3677,790 @@
 
     var GLYPH = { EMOJI: EMOJI, iconSearch: iconSearch, emojiRecent: emojiRecent, glyphText: glyphText, glyphSize: glyphSize };
 
+    // -- outlines (pg_image_editor_outline.js) --
+
+    // A font file read for its outlines (TrueType glyf or CFF), its
+    // character map (formats 4 and 12), advances and pair kerning (GPOS
+    // pair adjustments of the kern feature, else the kern table). Throws on
+    // what it cannot read: WOFF, WOFF2, a collection, a CID-keyed CFF.
+    function fontRead(buf) {
+        var b = (buf instanceof Uint8Array) ? buf : new Uint8Array(buf), v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+        var tag = function (o) { return String.fromCharCode(b[o], b[o + 1], b[o + 2], b[o + 3]); };
+        var t = {}, n, i, f;
+
+        if (['\u0000\u0001\u0000\u0000', 'OTTO', 'true'].indexOf(tag(0)) < 0) {
+            throw new Error('font');
+        }
+
+        n = v.getUint16(4);
+
+        for (i = 0; i < n; i++) {
+            t[tag(12 + 16 * i)] = v.getUint32(12 + 16 * i + 8);
+        }
+
+        if (!t.head || !t.maxp || !t.hhea || !t.hmtx || !t.cmap || !(t['CFF '] || (t.glyf && t.loca))) {
+            throw new Error('font');
+        }
+
+        f = {
+            v: v, t: t, upm: v.getUint16(t.head + 18) || 1000, longLoca: v.getInt16(t.head + 50) === 1, count: v.getUint16(t.maxp + 4),
+            metrics: v.getUint16(t.hhea + 34), ascent: v.getInt16(t.hhea + 4), descent: v.getInt16(t.hhea + 6)
+        };
+        f.cmap = fontCmap(v, t.cmap);
+        f.cff = t['CFF '] ? fontCff(v, t['CFF ']) : null;
+        f.pairs = t.GPOS ? fontGposPairs(v, t.GPOS) : [];
+        f.kern = (!f.pairs.length && t.kern) ? fontKernTable(v, t.kern) : {};
+
+        return f;
+    }
+
+    // The character map's lookup: the best Unicode subtable, format 12
+    // before format 4.
+    function fontCmap(v, at) {
+        var n = v.getUint16(at + 2), best = null, i, o, pid, eid, fmt, rank;
+
+        for (i = 0; i < n; i++) {
+            pid = v.getUint16(at + 4 + 8 * i);
+            eid = v.getUint16(at + 6 + 8 * i);
+            o = at + v.getUint32(at + 8 + 8 * i);
+            fmt = v.getUint16(o);
+            rank = ((pid === 0) || ((pid === 3) && ((eid === 1) || (eid === 10)))) ? ((fmt === 12) ? 2 : ((fmt === 4) ? 1 : 0)) : 0;
+
+            if (rank && (!best || (rank > best.rank))) {
+                best = { o: o, rank: rank };
+            }
+        }
+
+        if (!best) {
+            throw new Error('font');
+        }
+
+        o = best.o;
+
+        if (best.rank === 2) {
+            return function (cp) {
+                for (var g = 0, count = v.getUint32(o + 12), p; g < count; g++) {
+                    p = o + 16 + 12 * g;
+
+                    if ((cp >= v.getUint32(p)) && (cp <= v.getUint32(p + 4))) {
+                        return v.getUint32(p + 8) + cp - v.getUint32(p);
+                    }
+                }
+
+                return 0;
+            };
+        }
+
+        return function (cp) {
+            var seg = v.getUint16(o + 6), ends = o + 14, starts = ends + seg + 2, deltas = starts + seg, ranges = deltas + seg, s, start, ro, g;
+
+            for (s = 0; (s < seg) && (cp <= 0xffff); s += 2) {
+                if (cp <= v.getUint16(ends + s)) {
+                    start = v.getUint16(starts + s);
+
+                    if (cp < start) {
+                        return 0;
+                    }
+
+                    ro = v.getUint16(ranges + s);
+
+                    if (!ro) {
+                        return (cp + v.getInt16(deltas + s)) & 0xffff;
+                    }
+
+                    g = v.getUint16(ranges + s + ro + 2 * (cp - start));
+
+                    return g ? ((g + v.getInt16(deltas + s)) & 0xffff) : 0;
+                }
+            }
+
+            return 0;
+        };
+    }
+
+    // The kern table's horizontal format 0 pairs as { 'left,right': value }.
+    function fontKernTable(v, at) {
+        var out = {}, n = (v.getUint16(at) === 0) ? v.getUint16(at + 2) : 0, o = at + 4, i, p, count;
+
+        for (i = 0; i < n; i++) {
+            if (((v.getUint16(o + 4) >> 8) === 0) && (v.getUint16(o + 4) & 1)) {
+                for (p = 0, count = v.getUint16(o + 6); p < count; p++) {
+                    out[v.getUint16(o + 14 + 6 * p) + ',' + v.getUint16(o + 16 + 6 * p)] = v.getInt16(o + 18 + 6 * p);
+                }
+            }
+
+            o += v.getUint16(o + 2);
+        }
+
+        return out;
+    }
+
+    // The pair adjustment subtables (lookup type 2, or 9 holding one) that
+    // the kern feature uses, in lookup order.
+    function fontGposPairs(v, at) {
+        var feats = at + v.getUint16(at + 6), looks = at + v.getUint16(at + 8), used = [], out = [], i, j, fo, l, type, sub, so;
+
+        for (i = 0; i < v.getUint16(feats); i++) {
+            if (String.fromCharCode(v.getUint8(feats + 2 + 6 * i), v.getUint8(feats + 3 + 6 * i), v.getUint8(feats + 4 + 6 * i), v.getUint8(feats + 5 + 6 * i)) === 'kern') {
+                fo = feats + v.getUint16(feats + 6 + 6 * i);
+
+                for (j = 0; j < v.getUint16(fo + 2); j++) {
+                    if (used.indexOf(v.getUint16(fo + 4 + 2 * j)) < 0) {
+                        used.push(v.getUint16(fo + 4 + 2 * j));
+                    }
+                }
+            }
+        }
+
+        used.sort(function (a, c) { return a - c; }).forEach(function (index) {
+            l = looks + v.getUint16(looks + 2 + 2 * index);
+            type = v.getUint16(l);
+
+            for (sub = 0; sub < v.getUint16(l + 4); sub++) {
+                so = l + v.getUint16(l + 6 + 2 * sub);
+
+                if ((type === 9) && (v.getUint16(so + 2) === 2)) {
+                    out.push(so + v.getUint32(so + 4));
+                } else if (type === 2) {
+                    out.push(so);
+                }
+            }
+        });
+
+        return out;
+    }
+
+    // A glyph's index in a coverage table, or -1.
+    function fontCoverage(v, at, g) {
+        var n = v.getUint16(at + 2), i, o;
+
+        for (i = 0; i < n; i++) {
+            if (v.getUint16(at) === 1) {
+                if (v.getUint16(at + 4 + 2 * i) === g) {
+                    return i;
+                }
+            } else {
+                o = at + 4 + 6 * i;
+
+                if ((g >= v.getUint16(o)) && (g <= v.getUint16(o + 2))) {
+                    return v.getUint16(o + 4) + g - v.getUint16(o);
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    // A glyph's class in a class definition table (0 when not listed).
+    function fontClass(v, at, g) {
+        var i, o;
+
+        if (v.getUint16(at) === 1) {
+            i = g - v.getUint16(at + 2);
+
+            return ((i >= 0) && (i < v.getUint16(at + 4))) ? v.getUint16(at + 6 + 2 * i) : 0;
+        }
+
+        for (i = 0; i < v.getUint16(at + 2); i++) {
+            o = at + 4 + 6 * i;
+
+            if ((g >= v.getUint16(o)) && (g <= v.getUint16(o + 2))) {
+                return v.getUint16(o + 4);
+            }
+        }
+
+        return 0;
+    }
+
+    function bitCount(n) {
+        for (var c = 0; n; n >>= 1) {
+            c += n & 1;
+        }
+
+        return c;
+    }
+
+    // The advance change between glyphs a and b in font units: the first
+    // pair subtable that holds the pair, else the kern table.
+    function fontKerning(f, a, c) {
+        var v = f.v, i, s, cov, vf1, size, adv, o, k, n;
+
+        for (i = 0; i < f.pairs.length; i++) {
+            s = f.pairs[i];
+            cov = fontCoverage(v, s + v.getUint16(s + 2), a);
+
+            if (cov < 0) {
+                continue;
+            }
+
+            vf1 = v.getUint16(s + 4);
+            size = 2 * (bitCount(vf1) + bitCount(v.getUint16(s + 6)));
+            adv = (vf1 & 4) ? 2 * bitCount(vf1 & 3) : -1;
+
+            if (v.getUint16(s) === 1) {
+                o = s + v.getUint16(s + 10 + 2 * cov);
+
+                for (k = 0, n = v.getUint16(o); k < n; k++) {
+                    if (v.getUint16(o + 2 + k * (2 + size)) === c) {
+                        return (adv < 0) ? 0 : v.getInt16(o + 4 + k * (2 + size) + adv);
+                    }
+                }
+            } else if (v.getUint16(s) === 2) {
+                k = fontClass(v, s + v.getUint16(s + 10), c);
+
+                if (k < v.getUint16(s + 14)) {
+                    o = s + 16 + (fontClass(v, s + v.getUint16(s + 8), a) * v.getUint16(s + 14) + k) * size;
+
+                    return (adv < 0) ? 0 : v.getInt16(o + adv);
+                }
+            }
+        }
+
+        return f.kern[a + ',' + c] || 0;
+    }
+
+    function fontAdvance(f, g) {
+        return f.v.getUint16(f.t.hmtx + 4 * Math.min(g, f.metrics - 1));
+    }
+
+    function fontGlyph(f, cp) {
+        var g = f.cmap(cp);
+
+        return (g > 0) && (g < f.count) ? g : 0;
+    }
+
+    // Contours as cubic knots in font units (y up): move, line, curve and
+    // close, each closed contour ending on its first point.
+    function knotPen() {
+        var list = [], cur = null;
+        var close = function () {
+            if (cur && (cur.length > 1)) {
+                var a = cur[0], z = cur[cur.length - 1];
+
+                if ((Math.abs(a.x - z.x) < 1e-9) && (Math.abs(a.y - z.y) < 1e-9)) {
+                    a.ix = z.ix;
+                    a.iy = z.iy;
+                    cur.pop();
+                }
+
+                if (cur.length > 1) {
+                    list.push(cur);
+                }
+            }
+
+            cur = null;
+        };
+
+        return {
+            move: function (x, y) { close(); cur = [knot(x, y)]; },
+            line: function (x, y) { cur.push(knot(x, y)); },
+            curve: function (x1, y1, x2, y2, x, y) {
+                var z = cur[cur.length - 1];
+
+                z.ox = x1;
+                z.oy = y1;
+                cur.push({ x: x, y: y, ix: x2, iy: y2, ox: x, oy: y, s: false });
+            },
+            done: function () { close(); return list; }
+        };
+    }
+
+    // A TrueType glyph's points per contour ({ x, y, on }), components
+    // placed by their offsets and matrices.
+    function ttPoints(f, g, depth) {
+        var v = f.v, loca = f.t.loca, at = f.longLoca ? v.getUint32(loca + 4 * g) : 2 * v.getUint16(loca + 2 * g);
+        var end = f.longLoca ? v.getUint32(loca + 4 * g + 4) : 2 * v.getUint16(loca + 2 * g + 2), o = f.t.glyf + at, nc, out = [];
+
+        if ((end <= at) || (depth > 8)) {
+            return out;
+        }
+
+        nc = v.getInt16(o);
+
+        if (nc < 0) {
+            var flags = 0x20, p = o + 10, comp, dx, dy, a, bb, c, d;
+
+            while (flags & 0x20) {
+                flags = v.getUint16(p);
+                comp = v.getUint16(p + 2);
+                p += 4;
+                dx = (flags & 1) ? v.getInt16(p) : v.getInt8(p);
+                dy = (flags & 1) ? v.getInt16(p + 2) : v.getInt8(p + 1);
+                p += (flags & 1) ? 4 : 2;
+                a = d = 1;
+                bb = c = 0;
+
+                if (flags & 8) {
+                    a = d = v.getInt16(p) / 16384;
+                    p += 2;
+                } else if (flags & 0x40) {
+                    a = v.getInt16(p) / 16384;
+                    d = v.getInt16(p + 2) / 16384;
+                    p += 4;
+                } else if (flags & 0x80) {
+                    a = v.getInt16(p) / 16384;
+                    bb = v.getInt16(p + 2) / 16384;
+                    c = v.getInt16(p + 4) / 16384;
+                    d = v.getInt16(p + 6) / 16384;
+                    p += 8;
+                }
+
+                // Point-matched placement (no x, y values) is read as no shift.
+                if (!(flags & 2)) {
+                    dx = dy = 0;
+                }
+
+                ttPoints(f, comp, depth + 1).forEach(function (contour) {
+                    out.push(contour.map(function (q) { return { x: a * q.x + c * q.y + dx, y: bb * q.x + d * q.y + dy, on: q.on }; }));
+                });
+            }
+
+            return out;
+        }
+
+        var ends = [], i, total, flag = [], fl, rep, x = 0, y = 0, pts = [], q = o + 10;
+
+        for (i = 0; i < nc; i++) {
+            ends.push(v.getUint16(q));
+            q += 2;
+        }
+
+        total = nc ? ends[nc - 1] + 1 : 0;
+        q += 2 + v.getUint16(q);
+
+        while (flag.length < total) {
+            fl = v.getUint8(q++);
+            flag.push(fl);
+
+            if (fl & 8) {
+                for (rep = v.getUint8(q++); rep > 0; rep--) {
+                    flag.push(fl);
+                }
+            }
+        }
+
+        for (i = 0; i < total; i++) {
+            if (flag[i] & 2) {
+                x += (flag[i] & 16) ? v.getUint8(q) : -v.getUint8(q);
+                q += 1;
+            } else if (!(flag[i] & 16)) {
+                x += v.getInt16(q);
+                q += 2;
+            }
+
+            pts.push({ x: x, on: !!(flag[i] & 1) });
+        }
+
+        for (i = 0; i < total; i++) {
+            if (flag[i] & 4) {
+                y += (flag[i] & 32) ? v.getUint8(q) : -v.getUint8(q);
+                q += 1;
+            } else if (!(flag[i] & 32)) {
+                y += v.getInt16(q);
+                q += 2;
+            }
+
+            pts[i].y = y;
+        }
+
+        for (i = 0, q = 0; i < nc; i++) {
+            out.push(pts.slice(q, ends[i] + 1));
+            q = ends[i] + 1;
+        }
+
+        return out;
+    }
+
+    // Quadratic contours as cubic knots: two curve points in a row have an
+    // on-curve point between them.
+    function ttContours(f, g) {
+        var pen = knotPen();
+
+        ttPoints(f, g, 0).forEach(function (pts) {
+            var n = pts.length, s = -1, i, at, p, q, e, mid = function (a, c) { return { x: (a.x + c.x) / 2, y: (a.y + c.y) / 2, on: true }; };
+
+            if (n < 2) {
+                return;
+            }
+
+            for (i = 0; (i < n) && (s < 0); i++) {
+                s = pts[i].on ? i : -1;
+            }
+
+            var ring = (s < 0) ? [mid(pts[0], pts[1])].concat(pts.slice(1), pts.slice(0, 1)) : pts.slice(s).concat(pts.slice(0, s));
+
+            ring.push(ring[0]);
+            at = ring[0];
+            pen.move(at.x, at.y);
+
+            for (i = 1; i < ring.length; i++) {
+                p = ring[i];
+
+                if (p.on) {
+                    pen.line(p.x, p.y);
+                    at = p;
+                    continue;
+                }
+
+                q = ring[i + 1] || ring[0];
+                e = q.on ? q : mid(p, q);
+
+                if (q.on) {
+                    i++;
+                }
+
+                pen.curve(at.x + 2 / 3 * (p.x - at.x), at.y + 2 / 3 * (p.y - at.y), e.x + 2 / 3 * (p.x - e.x), e.y + 2 / 3 * (p.y - e.y), e.x, e.y);
+                at = e;
+            }
+        });
+
+        return pen.done();
+    }
+
+    // A CFF INDEX: its items as [start, end] offsets and where it ends.
+    function cffIndex(v, at) {
+        var n = v.getUint16(at), size, base, items = [], i, off = function (k) {
+            for (var r = 0, j = 0; j < size; j++) {
+                r = r * 256 + v.getUint8(at + 3 + k * size + j);
+            }
+
+            return r;
+        };
+
+        if (!n) {
+            return { items: items, end: at + 2 };
+        }
+
+        size = v.getUint8(at + 2);
+        base = at + 2 + (n + 1) * size;
+
+        for (i = 0; i < n; i++) {
+            items.push([base + off(i), base + off(i + 1)]);
+        }
+
+        return { items: items, end: base + off(n) };
+    }
+
+    // A CFF DICT as { operator: [operands] } (12 x as 1200 + x).
+    function cffDict(v, at, end) {
+        var out = {}, ops = [], b, n;
+
+        while (at < end) {
+            b = v.getUint8(at++);
+
+            if (b <= 21) {
+                out[(b === 12) ? 1200 + v.getUint8(at++) : b] = ops;
+                ops = [];
+            } else if (b === 28) {
+                ops.push(v.getInt16(at));
+                at += 2;
+            } else if (b === 29) {
+                ops.push(v.getInt32(at));
+                at += 4;
+            } else if (b === 30) {
+                // A real number: read past its nibbles.
+                do {
+                    n = v.getUint8(at++);
+                } while (((n & 15) !== 15) && ((n >> 4) !== 15));
+                ops.push(0);
+            } else if (b >= 32 && b <= 246) {
+                ops.push(b - 139);
+            } else if (b >= 247 && b <= 250) {
+                ops.push((b - 247) * 256 + v.getUint8(at++) + 108);
+            } else if (b >= 251 && b <= 254) {
+                ops.push(-(b - 251) * 256 - v.getUint8(at++) - 108);
+            }
+        }
+
+        return out;
+    }
+
+    function cffBias(n) {
+        return (n < 1240) ? 107 : ((n < 33900) ? 1131 : 32768);
+    }
+
+    function fontCff(v, at) {
+        var names = cffIndex(v, at + v.getUint8(at + 2)), tops = cffIndex(v, names.end), strings = cffIndex(v, tops.end);
+        var top = tops.items.length ? cffDict(v, tops.items[0][0], tops.items[0][1]) : {}, priv = top[18] || [0, 0], pd, subrs;
+
+        if (top[1230] || !top[17]) {
+            throw new Error('font');
+        }
+
+        pd = cffDict(v, at + priv[1], at + priv[1] + priv[0]);
+        subrs = pd[19] ? cffIndex(v, at + priv[1] + pd[19][0]).items : [];
+
+        return { glyphs: cffIndex(v, at + top[17][0]).items, gsubrs: cffIndex(v, strings.end).items, subrs: subrs };
+    }
+
+    // A Type 2 charstring run into knots; hints are skipped.
+    function cffContours(f, g) {
+        var v = f.v, c = f.cff, pen = knotPen(), s = [], stems = 0, width = false, x = 0, y = 0, open = false, done = false;
+        var shift = function (odd) {
+            if (!width) {
+                width = true;
+
+                if (odd) {
+                    s.shift();
+                }
+            }
+        };
+        var moveTo = function (dx, dy) {
+            x += dx;
+            y += dy;
+            pen.move(x, y);
+            open = true;
+        };
+        var lineTo = function (dx, dy) {
+            x += dx;
+            y += dy;
+            pen.line(x, y);
+        };
+        var curveTo = function (a, b, cc, d, e, h) {
+            var x1 = x + a, y1 = y + b, x2 = x1 + cc, y2 = y1 + d;
+
+            x = x2 + e;
+            y = y2 + h;
+            pen.curve(x1, y1, x2, y2, x, y);
+        };
+        var run = function (range, depth) {
+            var p = range[0], b, i, op, horiz, five, last, list, bias, dx, dy, y0, x0;
+
+            if (depth > 10) {
+                return;
+            }
+
+            while ((p < range[1]) && !done) {
+                b = v.getUint8(p++);
+
+                if ((b >= 32) || (b === 28)) {
+                    if (b === 28) {
+                        s.push(v.getInt16(p));
+                        p += 2;
+                    } else if (b <= 246) {
+                        s.push(b - 139);
+                    } else if (b <= 250) {
+                        s.push((b - 247) * 256 + v.getUint8(p++) + 108);
+                    } else if (b <= 254) {
+                        s.push(-(b - 251) * 256 - v.getUint8(p++) - 108);
+                    } else {
+                        s.push(v.getInt32(p) / 65536);
+                        p += 4;
+                    }
+                    continue;
+                }
+
+                op = (b === 12) ? 1200 + v.getUint8(p++) : b;
+
+                switch (op) {
+                case 1: case 3: case 18: case 23:
+                    shift(s.length % 2);
+                    stems += s.length >> 1;
+                    break;
+                case 19: case 20:
+                    shift(s.length % 2);
+                    stems += s.length >> 1;
+                    p += (stems + 7) >> 3;
+                    break;
+                case 21:
+                    shift(s.length > 2);
+                    moveTo(s[s.length - 2], s[s.length - 1]);
+                    break;
+                case 22:
+                    shift(s.length > 1);
+                    moveTo(s[s.length - 1], 0);
+                    break;
+                case 4:
+                    shift(s.length > 1);
+                    moveTo(0, s[s.length - 1]);
+                    break;
+                case 5:
+                    for (i = 0; i + 1 < s.length; i += 2) {
+                        lineTo(s[i], s[i + 1]);
+                    }
+                    break;
+                case 6: case 7:
+                    for (i = 0, horiz = (op === 6); i < s.length; i++, horiz = !horiz) {
+                        lineTo(horiz ? s[i] : 0, horiz ? 0 : s[i]);
+                    }
+                    break;
+                case 8: case 24:
+                    for (i = 0; i + 6 <= s.length - ((op === 24) ? 2 : 0); i += 6) {
+                        curveTo(s[i], s[i + 1], s[i + 2], s[i + 3], s[i + 4], s[i + 5]);
+                    }
+
+                    if (op === 24) {
+                        lineTo(s[i], s[i + 1]);
+                    }
+                    break;
+                case 25:
+                    for (i = 0; i + 2 <= s.length - 6; i += 2) {
+                        lineTo(s[i], s[i + 1]);
+                    }
+                    curveTo(s[i], s[i + 1], s[i + 2], s[i + 3], s[i + 4], s[i + 5]);
+                    break;
+                case 26: case 27:
+                    i = 0;
+                    dy = 0;
+
+                    if (s.length % 2) {
+                        dy = s[0];
+                        i = 1;
+                    }
+
+                    for (; i + 3 < s.length; i += 4, dy = 0) {
+                        if (op === 27) {
+                            curveTo(s[i], dy, s[i + 1], s[i + 2], s[i + 3], 0);
+                        } else {
+                            curveTo(dy, s[i], s[i + 1], s[i + 2], 0, s[i + 3]);
+                        }
+                    }
+                    break;
+                case 30: case 31:
+                    for (i = 0, horiz = (op === 31); i + 3 < s.length; horiz = !horiz) {
+                        five = (s.length - i === 5);
+                        last = five ? s[i + 4] : 0;
+
+                        if (horiz) {
+                            curveTo(s[i], 0, s[i + 1], s[i + 2], last, s[i + 3]);
+                        } else {
+                            curveTo(0, s[i], s[i + 1], s[i + 2], s[i + 3], last);
+                        }
+
+                        i += five ? 5 : 4;
+                    }
+                    break;
+                case 10: case 29:
+                    list = (op === 10) ? c.subrs : c.gsubrs;
+                    bias = s.pop() + cffBias(list.length);
+
+                    if (list[bias]) {
+                        run(list[bias], depth + 1);
+                    }
+                    continue;
+                case 11:
+                    return;
+                case 14:
+                    shift(s.length % 2);
+                    done = true;
+                    break;
+                case 1235:
+                    curveTo(s[0], s[1], s[2], s[3], s[4], s[5]);
+                    curveTo(s[6], s[7], s[8], s[9], s[10], s[11]);
+                    break;
+                case 1234:
+                    y0 = y;
+                    curveTo(s[0], 0, s[1], s[2], s[3], 0);
+                    curveTo(s[4], 0, s[5], y0 - y, s[6], 0);
+                    break;
+                case 1236:
+                    y0 = y;
+                    curveTo(s[0], s[1], s[2], s[3], s[4], 0);
+                    curveTo(s[5], 0, s[6], s[7], s[8], y0 - y - s[7]);
+                    break;
+                case 1237:
+                    x0 = x;
+                    y0 = y;
+                    dx = s[0] + s[2] + s[4] + s[6] + s[8];
+                    dy = s[1] + s[3] + s[5] + s[7] + s[9];
+                    curveTo(s[0], s[1], s[2], s[3], s[4], s[5]);
+
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        curveTo(s[6], s[7], s[8], s[9], s[10], y0 - (y + s[7] + s[9]));
+                    } else {
+                        curveTo(s[6], s[7], s[8], s[9], x0 - (x + s[6] + s[8]), s[10]);
+                    }
+                    break;
+                }
+
+                s = [];
+            }
+        };
+
+        if (c.glyphs[g]) {
+            run(c.glyphs[g], 0);
+        }
+
+        return open ? pen.done() : [];
+    }
+
+    // A glyph's contours as knots in font units (y up).
+    function fontContours(f, g) {
+        return f.cff ? cffContours(f, g) : ttContours(f, g);
+    }
+
+    // Letters drawn by shaping their neighbours (Arabic, Syriac, Thaana,
+    // N'Ko, the Indic scripts, Tibetan, Myanmar, Khmer, Mongolian): their
+    // outlines need a shaper this reader does not have.
+    function outlineNeedsShaping(text) {
+        return /[؀-߿ऀ-෿ༀ-࿿က-႟ក-᢯ꡀ-꡿ﭐ-﷿ﹰ-﻿]/.test(String(text || ''));
+    }
+
+    // A text layer's letters as contours of knots in its box's frame (px,
+    // 0, 0 its corner, y down) from font f, on the text tool's layout lay
+    // (textLayout()): each line's baseline, its spaced characters' x as
+    // laid out, else the font's advances and pair kerning from the aligned
+    // side. missing lists the characters the font does not have.
+    function outlineText(f, l, lay) {
+        var k = lay.size / f.upm, contours = [], missing = [], inner = lay.w - 2 * lay.pad;
+
+        lay.lines.forEach(function (line) {
+            var chars = Array.from(line.text || ''), gids = chars.map(function (ch) { return fontGlyph(f, ch.codePointAt(0)); });
+            var xs = [], at = 0, free;
+
+            gids.forEach(function (g, i) {
+                xs.push(at);
+                at += fontAdvance(f, g) * k + ((i + 1 < gids.length) ? fontKerning(f, g, gids[i + 1]) * k : 0);
+            });
+            free = inner - at;
+
+            gids.forEach(function (g, i) {
+                var x0 = line.chars ? line.x + line.chars[i][1] : lay.pad + ((l.align === 'center') ? free / 2 : ((l.align === 'right') ? free : 0)) + xs[i];
+
+                if (!g && /\S/.test(chars[i])) {
+                    missing.push(chars[i]);
+                    return;
+                }
+
+                fontContours(f, g).forEach(function (ks) {
+                    contours.push(moveKnots(ks, function (px, py) { return [x0 + px * k, line.base - py * k]; }));
+                });
+            });
+        });
+
+        return { contours: contours, missing: missing };
+    }
+
+    // The fields of the path layer that takes a text's place: its box
+    // fitted to the letters (the text's angle kept), the first contour as
+    // its knots and the rest as subs; closed and filled in the text's
+    // colour; the outline as a stroke under the fill (ink), the shadow as
+    // the text's in px.
+    function outlineLayer(l, contours) {
+        var fx = textEffects(l), stub = { x: l.x, y: l.y, w: l.w, h: l.h, rot: l.rot || 0, closed: true };
+        var fit = refitPath(stub, contours[0], contours.slice(1).map(function (ks) { return { knots: ks, closed: true }; }));
+        var out = {
+            type: 'path', x: fit.x, y: fit.y, w: fit.w, h: fit.h, rot: l.rot || 0, opacity: (l.opacity === undefined) ? 1 : l.opacity,
+            knots: fit.knots, subs: fit.subs || [], closed: true, fill: 'solid', color: l.color || '#000000', stroke: 0, dash: 'solid'
+        };
+
+        if (fx.outline) {
+            out.stroke = fx.outline.width * 2;
+            out.ink = fx.outline.color;
+        }
+
+        if (fx.shadow && !l.bg) {
+            out.shadow = fx.shadow;
+        }
+
+        return out;
+    }
+
+    var OUTLINE = {
+        fontRead: fontRead, fontGlyph: fontGlyph, fontAdvance: fontAdvance, fontKerning: fontKerning, fontContours: fontContours,
+        outlineNeedsShaping: outlineNeedsShaping, outlineText: outlineText, outlineLayer: outlineLayer
+    };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -3665,7 +4477,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, ACCESS, GFONTS, GLYPH].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, ACCESS, GFONTS, GLYPH, OUTLINE].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');
