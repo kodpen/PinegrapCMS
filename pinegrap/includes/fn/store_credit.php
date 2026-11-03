@@ -89,15 +89,66 @@ function pg_credit_card_open(array $card, $now)
 {
     $balance = isset($card['balance']) ? (int) $card['balance'] : 0;
     $expires = isset($card['expires_at']) ? (int) $card['expires_at'] : 0;
+    $date = isset($card['expiration_date']) ? (string) $card['expiration_date'] : '0000-00-00';
 
-    return ($balance > 0) && (($expires === 0) || ($expires > (int) $now));
+    // expiration_date is what the checkout refuses a card by, and the gift
+    // card screen edits only that, so both must allow the card.
+    $date_open = ($date === '') || ($date === '0000-00-00') || ($date >= date('Y-m-d', (int) $now));
+
+    return ($balance > 0) && (($expires === 0) || ($expires > (int) $now)) && $date_open;
+}
+
+/**
+ * Whether a card may be applied by a customer at checkout: a plain gift card
+ * (no owner) by anyone with its code, a customer's credit only by that
+ * customer signed in as themselves.
+ *
+ * @param int $card_user_id  gift_cards.user_id
+ * @param int $customer      pg_credit_checkout_user()
+ * @return bool
+ */
+function pg_credit_card_usable_by($card_user_id, $customer)
+{
+    $card_user_id = (int) $card_user_id;
+
+    return ($card_user_id === 0) || (($card_user_id > 0) && ($card_user_id === (int) $customer));
+}
+
+/**
+ * The customer a checkout spends credit for: the signed-in user, or 0 for a
+ * guest and for staff placing an order on someone's behalf (ghost).
+ *
+ * @return int
+ */
+function pg_credit_checkout_user()
+{
+    if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN || !defined('USER_ID')) {
+        return 0;
+    }
+
+    if (!empty($_SESSION['software']['ghost'])) {
+        return 0;
+    }
+
+    return max(0, (int) USER_ID);
+}
+
+/**
+ * The owner column for a SELECT on gift_cards, with a comma in front; before
+ * the upgrade every card is unowned.
+ *
+ * @return string
+ */
+function pg_credit_owner_select_sql()
+{
+    return pg_credit_ready() ? ', user_id' : ', 0 AS user_id';
 }
 
 /**
  * Which cards cover an amount, oldest expiry first: a card that expires
  * soonest is spent first, a card that never expires last, and two cards with
- * the same expiry by id. A card with no balance (spent or voided) or past its
- * expiry is never picked. The last card picked gives only what is still
+ * the same expiry by id. A card with no balance (spent or voided), past its
+ * expires_at or past an expiration_date given in the row is never picked. The last card picked gives only what is still
  * needed; when the cards hold less than the amount, every open card is
  * taken in full and the sum says how much is covered.
  *
@@ -197,7 +248,8 @@ function pg_credit_open_sql($user_id, $now)
 {
     return "user_id = " . (int) $user_id
         . " AND balance > 0"
-        . " AND (expires_at = 0 OR expires_at > " . (int) $now . ")";
+        . " AND (expires_at = 0 OR expires_at > " . (int) $now . ")"
+        . " AND (expiration_date = '0000-00-00' OR expiration_date >= '" . date('Y-m-d', (int) $now) . "')";
 }
 
 /**
@@ -207,7 +259,7 @@ function pg_credit_open_sql($user_id, $now)
  * @param int      $user_id
  * @param int|null $now
  * @return array  gift_cards rows: id, code, amount, balance, kind, reason,
- *                issued_by, expires_at, created_timestamp
+ *                issued_by, expires_at, expiration_date, created_timestamp
  */
 function pg_credit_cards($user_id, $now = null)
 {
@@ -220,7 +272,7 @@ function pg_credit_cards($user_id, $now = null)
     $now = ($now === null) ? time() : (int) $now;
 
     $rows = db_items(
-        "SELECT id, code, amount, balance, kind, reason, issued_by, expires_at, created_timestamp
+        "SELECT id, code, amount, balance, kind, reason, issued_by, expires_at, expiration_date, created_timestamp
         FROM gift_cards
         WHERE " . pg_credit_open_sql($user_id, $now) . "
         ORDER BY (expires_at = 0), expires_at, id");

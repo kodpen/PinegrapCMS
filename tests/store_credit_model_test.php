@@ -130,7 +130,7 @@ function test_store_credit_audit_label_hides_the_code()
 
 function test_store_credit_open_sql_reads_only_open_cards()
 {
-	pg_assert_same('user_id = 5 AND balance > 0 AND (expires_at = 0 OR expires_at > 99)', pg_credit_open_sql('5abc', 99), 'integers only');
+	pg_assert_true(strpos(pg_credit_open_sql('5abc', 99), 'user_id = 5 AND balance > 0 AND (expires_at = 0 OR expires_at > 99)') === 0, 'integers only');
 }
 
 function test_store_credit_upgrade_step_is_called_and_idempotent()
@@ -149,4 +149,42 @@ function test_store_credit_upgrade_step_is_called_and_idempotent()
 
 	pg_assert_true(strpos($body, "install_add_index('gift_cards', 'idx_user'") !== false, 'the user index');
 	pg_assert_true(strpos($body, 'db(') === false, 'no direct schema SQL');
+}
+
+function test_store_credit_card_usable_only_by_its_customer()
+{
+	pg_assert_true(pg_credit_card_usable_by(0, 0), 'a plain gift card for a guest');
+	pg_assert_true(pg_credit_card_usable_by(0, 12), 'a plain gift card for anyone signed in');
+	pg_assert_true(pg_credit_card_usable_by(12, 12), 'credit for its own customer');
+	pg_assert_true(!pg_credit_card_usable_by(12, 0), 'credit never for a guest or a ghost order');
+	pg_assert_true(!pg_credit_card_usable_by(12, 13), 'credit never for another customer');
+	pg_assert_true(pg_credit_card_usable_by('12', '12'), 'database strings compare as ids');
+}
+
+function test_store_credit_typed_code_paths_check_the_owner()
+{
+	foreach (array('express_order.php', 'order_preview.php', 'submit_order.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+
+		pg_assert_true(strpos($source, 'pg_credit_owner_select_sql()') !== false, $file . ' reads the owner');
+		pg_assert_true(strpos($source, "pg_credit_card_usable_by(\$gift_card['user_id'], pg_credit_checkout_user())") !== false, $file . ' refuses another customer\'s credit');
+	}
+}
+
+function test_store_credit_pick_honours_an_edited_expiration_date()
+{
+	$saved = date_default_timezone_get();
+	date_default_timezone_set('UTC');
+	$now = gmmktime(12, 0, 0, 11, 3, 2026);
+
+	$cards = array(
+		array('id' => 1, 'code' => 'C1', 'balance' => 100, 'expires_at' => 0, 'expiration_date' => '2026-11-02'),
+		array('id' => 2, 'code' => 'C2', 'balance' => 100, 'expires_at' => 0, 'expiration_date' => '2026-11-03'),
+		array('id' => 3, 'code' => 'C3', 'balance' => 100, 'expires_at' => 0, 'expiration_date' => '0000-00-00'),
+	);
+
+	pg_assert_same(array(2, 3), array_column(pg_credit_pick($cards, 500, $now), 'id'), 'a card the checkout refuses is not picked; its last day still counts');
+	pg_assert_true(strpos(pg_credit_open_sql(1, $now), "expiration_date >= '2026-11-03'") !== false, 'the balance query reads the same date');
+
+	date_default_timezone_set($saved);
 }
