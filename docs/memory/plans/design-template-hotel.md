@@ -25,7 +25,7 @@ description: Plan for the Hotel template (pinegrap-hotel): rooms as a collection
 
 - 4 Bookings: `mail.php`, `bookings.php` (`book`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`, notify e-mails).
 
-- 5 Events: `events.php` (`meetings`, `event_enquiry`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, notify e-mails).
+- 5 Done (#6289). Events: `events.php` (`meetings`, `event_enquiry`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, notify e-mails).
 
 - 6 Shop: `shop.php` (Gift Vouchers group, `vouchers`, product, cart, checkout, order, `email_order`).
 
