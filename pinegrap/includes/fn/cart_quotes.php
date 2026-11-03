@@ -781,7 +781,7 @@ function pg_cart_quote_state_label($state)
 {
     $labels = array(
         'open'      => lang('Open'),
-        'ordered'   => lang('Ordered'),
+        'ordered'   => lang('Order placed'),
         'expired'   => lang('Expired'),
         'cancelled' => lang('Cancelled'),
     );

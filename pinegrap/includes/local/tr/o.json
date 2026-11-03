@@ -1170,6 +1170,7 @@
     "Order number (empty before the order is placed)": "Sipariş numarası (sipariş verilmeden önce boş)",
     "Order number (empty when not from an order)": "Sipariş numarası (siparişten değilse boş)",
     "Order online and pick it up at the counter the same day.": "Çevrimiçi sipariş verin, aynı gün tezgâhtan teslim alın.",
+    "Order placed": "Sipariş verildi",
     "Order receipt e-mail": "Sipariş fişi e-postası",
     "Order received": "Sipariş alındı",
     "Order reference code": "Sipariş referans kodu",
