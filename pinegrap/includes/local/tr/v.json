@@ -15,6 +15,7 @@
     "VAT exemption": "KDV istisnası",
     "VAT exemption code": "KDV istisna kodu",
     "VAT from the store's tax zone; the product has no rate of its own.": "KDV mağazanın vergi bölgesinden; ürünün kendi oranı yok.",
+    "VAT id verified: the order is invoiced without VAT under the reverse charge.": "KDV numarası doğrulandı: sipariş tersine vergilendirme (reverse charge) kapsamında KDV'siz faturalanır.",
     "VAT included": "KDV dahil",
     "VAT rate": "KDV oranı",
     "VAT rate (%)": "KDV oranı (%)",
