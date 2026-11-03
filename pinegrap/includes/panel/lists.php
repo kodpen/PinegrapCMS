@@ -23,6 +23,8 @@
  *   mail_queue_list_rows       a page of the e-mail queue (mail_queue.php)
  *   sms_queue_list_rows        a page of the text message queue
  *                              (mail_queue.php?tab=sms)
+ *   list_table_rows            a batch of rows of a list drawn by the list
+ *                              table driver (includes/fn/list_table.php)
  *
  * Each action answers DataTables' page request (includes/fn/list_paging.php)
  * behind the gate of the screen it pages.
@@ -488,4 +490,50 @@ function pg_panel_queue_list_page($request, $queue)
     }
 
     return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
+}
+
+function pg_panel_list_table_rows($request, $action)
+{
+    // Kept global: helpers read the session user through `global $user`;
+    // see includes/panel/actions.php.
+    global $user;
+
+    // The general gate has checked the session (any_role). Each list's
+    // source function is its screen's gate: it answers null for a user who
+    // may not open the list.
+    $user = validate_user();
+
+    validate_token();
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+    $definition = pg_list_table_definition($request['list'] ?? '');
+
+    if ($definition === null) {
+        http_response_code(400);
+        respond(array('status' => 'error', 'message' => lang('Invalid action.')));
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/' . $definition['file']);
+
+    $params = (isset($request['params']) && is_array($request['params'])) ? $request['params'] : array();
+    $source = call_user_func($definition['source'], $user, $params);
+
+    if (!is_array($source)) {
+        http_response_code(403);
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    $source = pg_list_table_apply_sort($source, $request['sort'] ?? '');
+    pg_list_table_keep_sort($source);
+
+    $after = (isset($request['after']) && is_string($request['after']) && ($request['after'] !== '')) ? $request['after'] : null;
+    $page = pg_list_table_page($source, pg_list_search_terms($request['search'] ?? ''), $after);
+
+    if ($page === false) {
+        http_response_code(500);
+        respond(array('status' => 'error', 'message' => lang('Query failed.')));
+    }
+
+    return pg_list_table_answer($page, $source['columns']);
 }
