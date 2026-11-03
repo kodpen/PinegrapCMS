@@ -6,7 +6,7 @@ description: Steps E21-E25 of plans/image-editor.md (owner 2026-11-03): change a
 ## Which steps are there?
 - Owner 2026-11-03 (`workflow/decisions-made-product-24.md`): the small tools first (E21-E23, side by side), then E24-E28 (`image-editor-steps-4.md`); the animation steps run beside them; video last (`image-editor-video.md`). Sizes, files and review as in `image-editor-workers.md`.
 
-- E21 (S) Change a placed sticker, icon or emoji. `free`, beside E22 and E23.
+- E21 (S) Change a placed sticker, icon or emoji. `free`, beside E22 and E23. Done (#6351).
   - With one sticker, Bootstrap icon or emoji layer selected, a Change button in its panel opens the Sticker grid (and the glyph part's icon and emoji sections); a pick replaces that layer's glyph instead of adding a layer. Place, size, turn, colour, opacity and motion stay; one undo step.
   - Tests: the swap keeps every field but the glyph (model); in the browser an emoji to an icon and back, undo.
 
