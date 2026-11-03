@@ -174,6 +174,40 @@ function ws_event_applies($event, $user_id, $departments)
 }
 
 /**
+ * Does a plan item belong in a calendar narrowed to a person and/or a
+ * department? A person sees what applies to them (ws_event_applies()); a
+ * department sees company items, its own items and items naming one of
+ * its members. 0 is no filter. Pure.
+ *
+ * @param array $event               scope, department_id, people
+ * @param int   $person_id
+ * @param int[] $person_departments  the person's departments
+ * @param int   $department_id
+ * @param int[] $department_people   the department's members
+ * @return bool
+ */
+function ws_event_in_view($event, $person_id, $person_departments, $department_id, $department_people)
+{
+    if (((int) $person_id > 0) && !ws_event_applies($event, (int) $person_id, array_map('intval', (array) $person_departments))) {
+        return false;
+    }
+
+    if ((int) $department_id <= 0) {
+        return true;
+    }
+
+    if ($event['scope'] === 'company') {
+        return true;
+    }
+
+    if ($event['scope'] === 'department') {
+        return (int) $event['department_id'] === (int) $department_id;
+    }
+
+    return (bool) array_intersect(array_map('intval', (array) $event['people']), array_map('intval', (array) $department_people));
+}
+
+/**
  * Minutes of an event that fall on one day, bounded by the working day.
  *
  * @param array  $event
