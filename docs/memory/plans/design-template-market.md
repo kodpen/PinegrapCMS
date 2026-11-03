@@ -18,20 +18,13 @@ description: Plan for the Marketplace template (pinegrap-market): makers' shops 
 - As Launch and App Studio: steps 1-7 write `includes/design_templates/pinegrap-market/` (not globbed); step 8's main file includes them in one scope, each return kept as `$…_part`. Classes `pmk-`, field ids `mk-`. Trap: `parts.php` keeps the samples in `$sellers` and `$market_products`; no part may return into those names.
 
 ## Which steps are there?
-- 1 Done (#6222). Data and shared parts: `parts.php` (data, prices; account bar, header with search, footer, page shells, product, maker and category cards, form fields, comment thread, staff bar); test `design_template_market_test.php`.
-
-- 2 Done (#6279). Public pages: `pages_public.php`; home places `home_sellers` (step 4) and `home_posts` (step 6).
-
-- 3 Done (#6285). Shop: `shop.php`, `cart_link`; group keys = category/maker keys; uses Launch's `$mail_*`, `maker_band`.
-
+- 1 Done (#6222): `parts.php` (data, prices and shared parts); test `design_template_market_test.php`.
+- 2 Done (#6279): `pages_public.php` (public pages; the home places `home_sellers` and `home_posts`).
+- 3 Done (#6285): `shop.php` (catalog by category and maker keys, shop pages, `cart_link`).
 - 4 Makers: `sellers.php` (`seller_new` with the Sellers collection and samples, `sellers` with filters, `seller` record page with reviews, the home's list widgets).
-
-- 5 Done (#6291). Requests: `mail.php`, `requests.php` (`apply`, `application_view`, `my_applications`, `staff_applications`, `help`, `help_view`, `my_help`, `staff_help`, `privacy`, `email_reply`, notify e-mails).
-
+- 5 Done (#6291): `mail.php`, `requests.php` (maker applications and help requests, their views, lists and e-mails).
 - 6 Standard: `standard.php` (contact, inbox, conversation, newsletter, Journal blog with maker stories, blog post, search, error); test `…_standard_test.php`.
-
 - 7 Account and staff: `account.php`; test `…_account_test.php`.
-
 - 8 Assembly: `pinegrap-market.php` (order 77, icon `bi-shop`, look and palette, group `newsletter`, folders, `pmk-` styles, search map), shared tests' lists, `designer/design-template-market.md`, plan deleted; PR body names `[NEW] Added the Marketplace design template`.
 
 ## Where to start?
