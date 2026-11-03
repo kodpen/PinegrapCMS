@@ -63,7 +63,9 @@ function pg_lang_shard_of($key)
 // the map's order, which keeps that file's lines where they are. Four-space
 // indent, unescaped Unicode, slashes and line separators, a final newline.
 // JSON_FORCE_OBJECT keeps an object when every key is numeric ("10001"
-// decodes to an integer key).
+// decodes to an integer key). false when a key or value is not valid UTF-8:
+// json_encode() has no text for it, and "\n" written in its place would
+// empty the file.
 function pg_lang_file_encode(array $map, $sorted = true)
 {
     $clean = array();
@@ -84,7 +86,9 @@ function pg_lang_file_encode(array $map, $sorted = true)
         $flags |= JSON_UNESCAPED_LINE_TERMINATORS;
     }
 
-    return json_encode($clean, $flags) . "\n";
+    $json = json_encode($clean, $flags);
+
+    return is_string($json) ? $json . "\n" : false;
 }
 
 // A language map split into shards: shard name => map in strcmp order, the
@@ -200,9 +204,14 @@ function pg_lang_shard_problems($name, $text)
 
 // Writes a language file through a temporary file and rename(): lang() reads
 // the file on every request, and a half-written one does not decode, so every
-// text of that page would fall back to English. Returns true on success.
+// text of that page would fall back to English. Returns true on success;
+// false, writing nothing, when $text is not a string (an encoder's failure).
 function pg_lang_write_file($path, $text)
 {
+    if (!is_string($text)) {
+        return false;
+    }
+
     $temporary = $path . '.tmp-' . getmypid();
 
     if (@file_put_contents($temporary, $text) !== strlen($text)) {

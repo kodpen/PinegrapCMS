@@ -61,6 +61,24 @@ function test_lang_files_encode_keeps_order()
 	pg_assert_same("{\n    \"Save\": \"Kaydet\",\n    \"Bold\": \"Kalın\"\n}\n", pg_lang_file_encode(array('Save' => 'Kaydet', 'Bold' => 'Kalın'), false));
 }
 
+// Text that is not UTF-8 (a value typed in a Latin-1 console) has no JSON
+// form: the encoder answers false and the writer refuses it, instead of
+// writing an empty shard that drops every other key of that letter.
+function test_lang_files_encode_refuses_invalid_utf8()
+{
+	pg_assert_same(false, pg_lang_file_encode(array('Apple' => 'Elma', 'Avocado' => "caf\xe9")), 'a value');
+	pg_assert_same(false, pg_lang_file_encode(array("caf\xe9" => 'x'), false), 'a key');
+
+	$path = sys_get_temp_dir() . '/pg_lang_write_' . getmypid() . '.json';
+	file_put_contents($path, "{\n    \"Apple\": \"Elma\"\n}\n");
+
+	pg_assert_false(pg_lang_write_file($path, false), 'nothing to write');
+	pg_assert_same("{\n    \"Apple\": \"Elma\"\n}\n", (string) file_get_contents($path), 'the file is kept');
+	pg_assert_same(array(), glob($path . '.tmp-*'), 'no temporary file left');
+
+	@unlink($path);
+}
+
 // The Turkish wording ships as shards only: every shard in its exact form
 // with each key in its own shard, and no single tr.json beside the folder.
 function test_lang_files_turkish_shards()

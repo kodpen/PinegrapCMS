@@ -20,7 +20,7 @@ description: Module list of plans/bug-hunt.md, part 1a2: includes/fn/ modules em
 - `imap_client`: done (#6020)
 - `innodb`: #6085
 - `lang`: done #6045 (placeholder values re-scanned; rest reviewed: language pick, source, cache, log/staff language)
-- `lang_files`: open
+- `lang_files`: done #6071 (non-UTF-8 value emptied a shard; rest reviewed: shards, split, add, merge3, checks, cache)
 - `language_redirect`: open
 - `layout_convert`: #6083
 - `layouts`: #6043
