@@ -1672,14 +1672,78 @@ function ws_flow_ai_edge_outcome($edge, $kind)
 }
 
 /**
+ * A box the model meant as a question, made the box that asks it (pure): a
+ * post or check-in box with an arrow leaving it on yes, no, approved or
+ * rejected says something and waits for no answer, so it has none of those
+ * outcomes and nothing would wait for the answer. It becomes an approval box
+ * in its own channel (the request's when it had none), its message the
+ * question, the person who asked the one who answers; its arrows on yes,
+ * done or next leave on approved, on no on rejected. Any other box, and a
+ * post with no such arrow, stays as sent.
+ *
+ * @param array $graph   ws_flow_graph_normalize()
+ * @param array $context asker (user id), channel (the request's channel id)
+ * @return array the graph
+ */
+function ws_flow_ai_question_boxes($graph, $context)
+{
+    $asker = (int) ($context['asker'] ?? 0);
+    $channel = (int) ($context['channel'] ?? 0);
+
+    if ($asker <= 0) {
+        return $graph;
+    }
+
+    $asks = array();
+
+    foreach ($graph['edges'] as $edge) {
+        if (in_array($edge['on'], array('yes', 'no', 'approved', 'rejected'), true)) {
+            $asks[(string) $edge['from']] = true;
+        }
+    }
+
+    foreach ($graph['nodes'] as $index => $node) {
+        if (!isset($asks[(string) $node['id']]) || !in_array($node['kind'], array('post', 'checkin'), true)) {
+            continue;
+        }
+
+        $question = ($node['kind'] === 'post') ? (string) $node['config']['body'] : (string) $node['config']['question'];
+        $in = (int) $node['config']['channel_id'];
+
+        $graph['nodes'][$index]['kind'] = 'approval';
+        $graph['nodes'][$index]['config'] = ws_flow_config_normalize('approval', array(
+            'channel_id' => ($in > 0) ? $in : $channel,
+            'title'      => ($question !== '') ? $question : (string) $node['label'],
+            'approvers'  => array($asker),
+        ));
+
+        foreach ($graph['edges'] as $at => $edge) {
+            if ((string) $edge['from'] !== (string) $node['id']) {
+                continue;
+            }
+
+            if (in_array($edge['on'], array('yes', 'done', 'next'), true)) {
+                $graph['edges'][$at]['on'] = 'approved';
+            } elseif ($edge['on'] === 'no') {
+                $graph['edges'][$at]['on'] = 'rejected';
+            }
+        }
+    }
+
+    return $graph;
+}
+
+/**
  * A new flow the model sent as boxes and arrows, as a graph laid out on the
  * canvas (pure). The graph's own check is made afterwards.
  *
- * @param array $args boxes, arrows
- * @param array $keys ws_flow_ai_setting_keys()
+ * @param array $args    boxes, arrows
+ * @param array $keys    ws_flow_ai_setting_keys()
+ * @param array $context asker, channel: a post meant as a question is read
+ *                       for them (ws_flow_ai_question_boxes()); none, as sent
  * @return array ok, error, graph
  */
-function ws_flow_ai_graph($args, $keys)
+function ws_flow_ai_graph($args, $keys, $context = array())
 {
     $boxes = $args['boxes'] ?? null;
     $arrows = $args['arrows'] ?? array();
@@ -1713,7 +1777,7 @@ function ws_flow_ai_graph($args, $keys)
         $graph['edges'][] = ws_flow_ai_edge_outcome($edge, $kind_of[$edge['from']] ?? '');
     }
 
-    return array('ok' => true, 'error' => '', 'graph' => ws_flow_auto_layout(ws_flow_graph_normalize($graph), array()));
+    return array('ok' => true, 'error' => '', 'graph' => ws_flow_auto_layout(ws_flow_ai_question_boxes(ws_flow_graph_normalize($graph), $context), array()));
 }
 
 /**
@@ -2108,7 +2172,7 @@ function ws_flow_ai_propose($row, &$state, $args)
             return array('error' => 'changes are for a flow that exists (flow_id). A new flow is sent as name, boxes and arrows.');
         }
 
-        $made = ws_flow_ai_graph($args, $keys);
+        $made = ws_flow_ai_graph($args, $keys, array('asker' => (int) $asker['id'], 'channel' => (int) $row['channel_id']));
 
         if (!$made['ok']) {
             return array('error' => $made['error']);
@@ -2490,9 +2554,10 @@ function ws_flow_ai_sketch_parse($content)
  * @param array    $keys     ws_flow_ai_setting_keys()
  * @param string   $fallback the name when the model gave none
  * @param callable $problems graph => texts, ws_flow_ai_problem_texts()
+ * @param array    $context  asker, channel (ws_flow_ai_graph())
  * @return array ok, error (for the model), name, graph, problems, reason
  */
-function ws_flow_ai_sketch_read($content, $keys, $fallback, $problems = 'ws_flow_ai_problem_texts')
+function ws_flow_ai_sketch_read($content, $keys, $fallback, $problems = 'ws_flow_ai_problem_texts', $context = array())
 {
     $fail = function ($error) {
         return array('ok' => false, 'error' => $error, 'name' => '', 'graph' => null, 'problems' => array(), 'reason' => '');
@@ -2507,7 +2572,7 @@ function ws_flow_ai_sketch_read($content, $keys, $fallback, $problems = 'ws_flow
         return $fail('This is a new flow: send name, boxes and arrows, no flow_id or changes.');
     }
 
-    $made = ws_flow_ai_graph($args, $keys);
+    $made = ws_flow_ai_graph($args, $keys, $context);
 
     if (!$made['ok']) {
         return $fail($made['error']);
@@ -2539,9 +2604,10 @@ function ws_flow_ai_sketch_read($content, $keys, $fallback, $problems = 'ws_flow
  * @param string   $language
  * @param callable $ask       messages => pg_ai_chat()'s answer (ok, text, error)
  * @param callable $problems  graph => texts, ws_flow_ai_problem_texts()
+ * @param array    $context   asker, channel (ws_flow_ai_graph())
  * @return array ok, error (for the person), name, graph, problems, reason, tries
  */
-function ws_flow_ai_sketch_draft($sentence, $catalogue, $language, $ask, $problems = 'ws_flow_ai_problem_texts')
+function ws_flow_ai_sketch_draft($sentence, $catalogue, $language, $ask, $problems = 'ws_flow_ai_problem_texts', $context = array())
 {
     $keys = ws_flow_ai_setting_keys($catalogue);
     $messages = ws_flow_ai_sketch_messages($sentence, $catalogue, $language);
@@ -2554,7 +2620,7 @@ function ws_flow_ai_sketch_draft($sentence, $catalogue, $language, $ask, $proble
             return array('ok' => false, 'error' => (string) ($reply['error'] ?? ''), 'tries' => $try);
         }
 
-        $read = ws_flow_ai_sketch_read((string) $reply['text'], $keys, $sentence, $problems);
+        $read = ws_flow_ai_sketch_read((string) $reply['text'], $keys, $sentence, $problems, $context);
 
         if ($read['ok'] && empty($read['problems'])) {
             break;
@@ -2615,7 +2681,7 @@ function ws_flow_ai_sketch($viewer, $sentence, $channel_id = 0, $ask = null)
         };
     }
 
-    $draft = ws_flow_ai_sketch_draft($sentence, ws_flow_ai_catalogue(), ws_ai_request_language($sentence), $ask);
+    $draft = ws_flow_ai_sketch_draft($sentence, ws_flow_ai_catalogue(), ws_ai_request_language($sentence), $ask, 'ws_flow_ai_problem_texts', array('asker' => (int) $viewer['id'], 'channel' => (int) $channel_id));
 
     if (!$draft['ok']) {
         return $fail($draft['error']);
