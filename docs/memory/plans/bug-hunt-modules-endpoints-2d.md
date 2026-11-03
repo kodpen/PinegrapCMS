@@ -4,5 +4,5 @@ description: Module list of plans/bug-hunt.md, part 4d: root endpoint groups shi
 ---
 
 ## Which root endpoint groups (ship, shipment) are hunted?
-- Endpoints `ship` (3: add_ship_date_adjustment, edit_ship_date_adjustment, view_ship_date_adjustments): taken
-- Endpoints `shipment` (3: import_shipments, shipment_label, track_shipment; shipment_tracking_job is a job): taken
+- Endpoints `ship` (3: add_ship_date_adjustment, edit_ship_date_adjustment, view_ship_date_adjustments): clean (#6103)
+- Endpoints `shipment` (3: import_shipments, shipment_label, track_shipment, shipment_tracking_job): clean (#6103)
