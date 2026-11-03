@@ -20,6 +20,7 @@ module: list_table
 
 ## Which lists are on it?
 - Pages (`view_pages`, `pg_page_list_source()`): `ui/page-list-paging.md`.
+- Quick edit of a list: `ui/list-table-quick-edit.md`.
 
 ## How does a screen hand its bulk actions over?
 - `pg_list_table_html()`'s fourth argument is the screen's bulk buttons, printed in the bar's `.pg-list-table-actions` (shown only while rows are selected).
