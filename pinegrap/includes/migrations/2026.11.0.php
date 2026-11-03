@@ -151,6 +151,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_user_disabled();           // 11.0.160
 	upgrade_2026_11_0_booking_campaigns();       // 11.0.161
 	upgrade_2026_11_0_stock_locations();         // 11.0.162
+	upgrade_2026_11_0_search_engines();          // 11.0.163
 
 }
 
@@ -4968,5 +4969,48 @@ function upgrade_2026_11_0_stock_locations() {
 	install_add_column('orders', 'stock_location_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Stock locations: the tables for stock kept per location and its history are in place; nothing changes until a location is added.');
+
+}
+
+// Today's search engines appended to visitors.referring_search_engine:
+// Yandex was counted as a referral and the rest as plain referring sites.
+// The type is read first and only missing names are appended, after the
+// last value, so the column keeps one byte per row and the table is not
+// rewritten; a value a later release added stays.
+function upgrade_2026_11_0_search_engines() {
+
+	$info = install_column_info('visitors', 'referring_search_engine');
+
+	if (!is_array($info)) {
+		return install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => 'visitors.referring_search_engine')));
+	}
+
+	$type = trim((string)$info['Type']);
+
+	if (preg_match('/^enum\(.*\)$/is', $type) !== 1) {
+		return install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'visitors.referring_search_engine')));
+	}
+
+	$add = array();
+
+	foreach (array('Yandex', 'DuckDuckGo', 'Ecosia', 'Brave Search', 'Qwant', 'Startpage', 'Baidu', 'Naver', 'Seznam') as $name) {
+
+		if (strpos($type, "'" . $name . "'") === false) {
+			$add[] = "'" . $name . "'";
+		}
+
+	}
+
+	if (count($add) === 0) {
+		return install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'visitors.referring_search_engine')));
+	}
+
+	// The column's own collation is kept: another one would rewrite the table.
+	$collation = (string)db_value("SELECT COLLATION_NAME FROM information_schema.COLUMNS
+		WHERE (TABLE_SCHEMA = DATABASE()) AND (TABLE_NAME = 'visitors') AND (COLUMN_NAME = 'referring_search_engine')");
+
+	$collate = (preg_match('/^[A-Za-z0-9_]+$/', $collation) === 1) ? " COLLATE " . $collation : '';
+
+	return install_modify_column('visitors', 'referring_search_engine', preg_replace('/\)$/', ',' . implode(',', $add) . ')', $type) . $collate . " NOT NULL DEFAULT ''");
 
 }
