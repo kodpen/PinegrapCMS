@@ -17,7 +17,7 @@ description: Plan for the Mobile App Developer template (pinegrap-appstudio): ow
 - Turkish: `Paid` reads Ödenmiş, so the price model says `Paid app` (Ücretli).
 
 ## Which steps are there?
-- 1 Done (#PRNUM). Data and shared parts: `parts.php` (data, samples, pick lists, header, footer, cards, store buttons, form fields, comment thread, staff bar); test `design_template_appstudio_test.php`.
+- 1 Done (#6160). Data and shared parts: `parts.php` (data, samples, pick lists, header, footer, cards, store buttons, form fields, comment thread, staff bar); test `design_template_appstudio_test.php`.
 
 - 2 Public pages: `pages_public.php` (home, services with packages, process, about, FAQ, press kit).
 
