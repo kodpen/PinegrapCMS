@@ -7,7 +7,8 @@
  * shipping_address_and_arrival.php (the forced methods when none fits every
  * line) leave a saved-for-later line out with pg_order_item_active_sql(),
  * as update_shipping_cost_for_ship_to() in shipping.php does. The queries
- * need a database, so the source is read.
+ * need a database, so the source is read. Then the public API's list values
+ * reaching get_shipping_methods() in shipping.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -42,4 +43,23 @@ function test_shipping_address_forced_methods_leave_saved_lines_out()
 
 	pg_assert_same(1, count($queries), 'one line query');
 	pg_assert_true(strpos($queries[0], 'pg_order_item_active_sql(') !== false, 'a saved line does not choose the forced methods');
+}
+
+// The public API hands get_shipping_methods() its request body as it came: a
+// field sent as a list is empty, not a TypeError from trim(). Without an
+// order in the session the call ends before any query.
+function test_shipping_methods_api_list_values_are_empty()
+{
+	require_once PG_FUNCTIONS_DIR . '/shipping.php';
+	$session = $_SESSION ?? null;
+	$_SESSION = array();
+
+	try {
+		$response = get_shipping_methods(array('ship_to_id' => array(1), 'address_1' => array('x'), 'zip_code' => array(1), 'country' => array('TR'), 'state' => array(), 'arrival_date' => array()));
+	} catch (TypeError $error) {
+		$response = array('status' => 'TypeError');
+	}
+
+	$_SESSION = $session;
+	pg_assert_same('error', $response['status'], 'the missing order is answered, no TypeError');
 }
