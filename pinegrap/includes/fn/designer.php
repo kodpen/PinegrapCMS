@@ -3508,6 +3508,16 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     foreach ($schedule['warnings'] as $w) $warnings[] = $w;
     if ($schedule['apply']) $draft_plan['want'] = $schedule['draft'];
 
+    // A draft that is an open experiment's variant stays a draft until the
+    // experiment ends: published, its own address would answer for visitors
+    // beside the live page it is compared with.
+    if ($draft_plan['was'] && !$draft_plan['want'] && function_exists('pg_experiment_variant_hold_message')) {
+        $held = pg_experiment_variant_hold_message($page_id, $name);
+        if ($held !== '') {
+            return array('ok' => false, 'page_id' => $page_id, 'errors' => array($held), 'warnings' => $warnings);
+        }
+    }
+
     if ($dry_run) {
         return array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings, 'draft' => $draft_plan['want']);
     }
