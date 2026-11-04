@@ -212,6 +212,9 @@ $file_list = array(
     'assets/templates',
     'assets/tiny_mce_3_5_10',
     'assets/vendor',
+    // The logo of the third-party image editor the software used before its
+    // own; nothing shows it since the image editor became pg_image_editor.js.
+    'assets/images/icon_image_editor.png',
 );
 
 // Everything the software drops in data/temp is a cache or a scratch file that is written
