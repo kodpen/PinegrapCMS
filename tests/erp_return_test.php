@@ -525,3 +525,17 @@ function test_erp_return_lines_left_credit_line_below_zero()
 
 	pg_assert_same(false, erp_return_lines_left($lines));
 }
+
+// 1.15 of a 13.10 line back: 13.10 x 1.15 is 15.065, so 15.07 on every PHP
+// version. round() on the float product (1506.4999...) gave 15.06 on PHP
+// 8.4+, so the piece takes the editor's rule, erp_line_total().
+function test_erp_return_part_line_total_rounds_the_exact_product()
+{
+	$parents = array(pg_test_erp_return_line(1, 2, 1310, 0, 0, array('line_total' => 2620)));
+	$built = erp_return_build($parents, array(1 => 1.15));
+
+	pg_assert_same(1507, $built['lines'][0]['line_total']);
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/returns.php');
+	pg_assert_same(0, preg_match('/round\(\s*\(int\)\s*\$parent\[\'unit_price\'\]\s*\*/', $source));
+}
