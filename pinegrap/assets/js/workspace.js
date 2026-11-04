@@ -5981,7 +5981,7 @@
             api: api, t: t, el: el, icon: icon, button: button, avatar: avatar, avatarStack: avatarStack, clear: clear,
             offcanvas: offcanvas, showOffcanvas: showOffcanvas, hideOffcanvas: hideOffcanvas,
             formRow: formRow, select: select, nextId: nextId, ask: ask, fail: fail, toast: toast,
-            richField: richField, peoplePicker: peoplePicker, homeCard: homeCard, touchScreen: touchScreen,
+            richField: richField, peoplePicker: peoplePicker, touchScreen: touchScreen,
             cfg: CFG, dateField: pgDateField,
             openTask: function (taskId) { taskDrawer.open(taskId, null, taskDrawer.onSaved); }
         };
