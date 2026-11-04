@@ -282,6 +282,15 @@
             }
         }
 
+        // The selection's areas (Erase, Adjust inside), as a save sends them.
+        if (this.areaMasks) {
+            var areas = this.areaMasks();
+
+            if (areas.length) {
+                body.masks = areas;
+            }
+        }
+
         return fetch(cfg.api, {
             method: 'POST',
             credentials: 'same-origin',
