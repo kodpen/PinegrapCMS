@@ -867,10 +867,70 @@ function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'track
     return ($result === null) ? $body : $result;
 }
 
+// The create_auto_email_campaigns() calls a contact_group.members_changed
+// event makes: one per contact it put into the group, each once, with the
+// group as the profiles' action_item_id. Every other event, and a change that
+// only took contacts out, makes none.
+function pg_contact_group_joined_campaign_calls($event, $data)
+{
+    $calls = array();
+
+    if (((string) $event !== 'contact_group.members_changed') || !is_array($data) || ((int) ($data['id'] ?? 0) <= 0)) {
+        return $calls;
+    }
+
+    $seen = array();
+
+    foreach ((array) ($data['added'] ?? array()) as $contact_id) {
+        $contact_id = (int) $contact_id;
+
+        if (($contact_id <= 0) || isset($seen[$contact_id])) {
+            continue;
+        }
+
+        $seen[$contact_id] = true;
+
+        $calls[] = array(
+            'action' => 'contact_group_joined',
+            'action_item_id' => (int) $data['id'],
+            'contact_id' => $contact_id,
+        );
+    }
+
+    return $calls;
+}
+
+// Heard from pg_announce(): every door that puts contacts into a group (the
+// contact screens, a form, an order, the API, the rule recompute) announces
+// contact_group.members_changed there, so a profile with the "joined a
+// group" action sends each contact who joined one mail under the purpose
+// rules of every profile mail (create_auto_email_campaigns()). One count
+// first: a recompute pass of thousands reads no contact while no enabled
+// profile follows the group.
+function pg_contact_group_joined_heard($event, $data)
+{
+    $calls = pg_contact_group_joined_campaign_calls($event, $data);
+
+    if (!$calls) {
+        return;
+    }
+
+    if ((int) db_value(
+        "SELECT COUNT(*) FROM email_campaign_profiles
+        WHERE (enabled = '1') AND (action = 'contact_group_joined') AND (action_item_id = '" . (int) $calls[0]['action_item_id'] . "')"
+    ) < 1) {
+        return;
+    }
+
+    foreach ($calls as $call) {
+        create_auto_email_campaigns($call);
+    }
+}
+
 // Create function that is used to see if auto email campaigns need to be created after a specific action has occurred
 // and then create them if necessary.
 // Properties:
-// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_review_request", "order_shipped", "order_delivered", "product_ordered", "subscription_renewed", "subscription_failed", "subscription_cancelled", "subscription_price_changed", "booking_confirmed", "booking_reminder", "booking_rescheduled", "booking_cancelled"
+// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_review_request", "order_shipped", "order_delivered", "product_ordered", "subscription_renewed", "subscription_failed", "subscription_cancelled", "subscription_price_changed", "booking_confirmed", "booking_reminder", "booking_rescheduled", "booking_cancelled", "contact_group_joined"
 // action_item_id: The id of item that is related to the action (e.g. the calendar event id)
 // campaign_item_id: The id stored on the campaign when it differs from the profiles'
 // action_item_id: a booking's mail is made from the profiles of item 0 and keeps the
@@ -1361,6 +1421,9 @@ function create_auto_email_campaigns($properties)
                     break;
                 case 'booking_cancelled':
                     $log_action = lang('booking cancelled');
+                    break;
+                case 'contact_group_joined':
+                    $log_action = lang('joined a contact group');
                     break;
                 default:
                     $log_action = $action;
