@@ -326,6 +326,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         pg_config_text_save('credit_points_smallest', ($credit_points_smallest_minor > 0) ? (string) $credit_points_smallest_minor : '');
     }
 
+    // The bonus on refunds given as store credit: a config_text row, '' is
+    // none.
+    if (array_key_exists('credit_refund_bonus', $_POST)) {
+        pg_config_text_save('credit_refund_bonus', pg_credit_refund_parse_bonus(post_value('credit_refund_bonus')));
+    }
+
     // Product feeds: their own JSON column, written after the screen's
     // columns. A new address that cannot be shown again (no site key) is shown
     // once here; a build asked for, or caused by a feed just switched on, is

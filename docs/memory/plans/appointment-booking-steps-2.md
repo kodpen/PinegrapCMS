@@ -16,6 +16,7 @@ description: Steps BK6-BK10 of plans/appointment-booking.md: Workspace calendar 
   - Resource `bookings` in `includes/api/resources/bookings.php` with the schema rows (`api/api-endpoint-rules.md`): list, get, create (staff-made), update status, cancel, plus `GET /bookings/slots?service=&staff=&day=`; scope `bookings:*` with its owner ceiling; `dry_run`; MCP tools follow the routes; the `booking.*` events of BK5 in the webhook catalogue. Memory: `api/api-bookings.md`.
 
 - BK9 (S) Deposits. After BK4 and the forms' payment step (FL5, merged: `designer/custom-form-payment-step.md`).
+  - Decided in #6632 (`workflow/decisions-made-schema-10.md`): `booking_services.deposit` (minor units) and `deposit_product_id`, `bookings.order_id` (indexed) and `paid_at`, the form-fee shape; the booking is marked paid once from `pg_order_complete()` / `pg_order_mark_paid()` as `pg_form_payment_mark_paid()` does, and confirms then; the service form in Settings › Bookings gets the deposit and the product picker.
   - A service with a price may ask for a deposit at the details step: the widget hands the amount to the form payment step (the fee product named in the service), the booking confirms on `pg_order_complete()`, else stays requested and the hold expires; "paid on arrival" marks nothing. Memory: `commerce/bookings-model.md` grows.
 
 - BK10 (S) Templates and close-out. After BK1-BK9.

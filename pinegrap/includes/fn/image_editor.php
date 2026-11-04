@@ -1303,7 +1303,8 @@ function pg_image_editor_strings_layers()
 {
     return array(
         'noLayers'       => lang('No layers yet.'),
-        'hintSelect'     => lang('Click a layer to select it, with Shift to add more. Drag to move it; the handles resize and turn it. Ctrl+V pastes a picture.'),
+        'hintSelect'     => lang('Click a layer to select it, with Shift to add more, or drag a box over layers. Drag a layer to move it; the handles resize and turn it. Ctrl+V pastes a picture.'),
+        'selectAll'      => lang('Select all'),
         'layer_image'    => lang('Picture'),
         'rotate'         => lang('Rotate'),
         'show'           => lang('Show'),
@@ -4671,9 +4672,10 @@ function pg_image_editor_strings_builder()
         'pfIntersect'    => lang('Intersect'),
         'pfExclude'      => lang('Exclude'),
         'pfDivide'       => lang('Divide'),
-        'pathfinderNote' => lang('Select two or more closed shapes or paths to combine them. Or drag across the regions where shapes overlap to merge or remove them.'),
-        'builderNote'    => lang('Drag across the regions of the selected shapes to merge or remove them; Alt while dragging removes them too.'),
-        'hintBuilder'    => lang('Drag across overlapping regions: merge them. Alt-drag: remove them.'),
+        'pathfinderNote' => lang('Select two or more closed shapes or paths to combine them, or click where shapes overlap to unite them. A drag across regions merges or removes only those regions.'),
+        'builderNote'    => lang('Click where the selected shapes overlap to unite them; drag across their regions to merge or remove only those. Alt while dragging removes them too.'),
+        'hintBuilder'    => lang('Click where shapes overlap: unite them. Drag across regions: merge only those. Alt-drag: remove them.'),
+        'selectShapes'   => lang('Select all shapes'),
         'builderDrag'    => lang('Dragging across regions'),
         'builderMerge'   => lang('Merge'),
         'builderRemove'  => lang('Remove'),
