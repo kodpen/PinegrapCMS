@@ -19,7 +19,7 @@ description: Steps E26-E29 of plans/image-editor.md (owner 2026-11-03): free def
   - The server draws the mask: a step of `includes/image_engine.php` (GD and Imagick) from the selection (`M.selectionRings()`, feathered), as the redaction masks are. It changes the save path: one at a time with the other save-path steps.
   - Tests: the engine step under GD and Imagick (alpha out, the JPEG fill).
 
-- E28 (M) Select subject and remove background. `free` once E27 is merged.
+- E28 (M) Select subject and remove background. `free` once E27 is merged. Cut in three, E28a-E28c (`image-editor-steps-6.md`): the whole step is far over 1,000 product lines.
   - Own algorithm, no model (owner 2026-11-03): GrabCut in a worker on the picture scaled to 800 px. The start box from an edge and saliency map, or one the person draws; colour models of 5 Gaussians each for subject and background; an own max-flow min-cut (Boykov-Kolmogorov); five rounds. Keep and Remove brushes refine it; the edge is feathered at full size by a guided filter. The result is an E27 selection, so Erase, Copy to a layer and Redact work on it.
   - Remove background: select subject, then erase the rest; a colour, a blur of the picture or another picture from Files may fill it.
   - A downloadable model may come later as an option (owner); not in this step.
