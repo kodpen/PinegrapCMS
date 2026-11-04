@@ -40,7 +40,8 @@ function test_state_form_both_screens_draw_the_shared_card()
 {
 	foreach (array('add_state.php', 'edit_state.php') as $file) {
 		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
-		pg_assert_contains('pg_state_form_card(', $source, $file . ' draws the shared card');
+		pg_assert_contains('pg_state_form_cards(', $source, $file . ' draws the shared cards');
+		pg_assert_contains('pg_state_form_layout(', $source, $file . ' draws the wide layout with the save bar');
 		pg_assert_contains('pg_state_form_values($_POST)', $source, $file . ' reads the posted values through the shared helper');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 		pg_assert_contains('validate_ecommerce_access($user)', $source, $file . ' keeps its gate');
@@ -79,4 +80,21 @@ function test_state_form_country_must_exist()
 	foreach (array('add_state.php', 'edit_state.php') as $file) {
 		pg_assert_contains("pg_state_form_country_error(\$values['country_id'])", file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ' checks the country');
 	}
+}
+
+function test_state_form_selected_label()
+{
+	pg_assert_same('Türkiye', pg_state_form_selected_label('<option value="1">Almanya</option><option value="2" selected="selected">Türkiye</option>'), 'the selected country');
+	pg_assert_same('A &amp; B', pg_state_form_selected_label('<option value="3" selected="selected">A &amp; B</option>'), 'kept as the option prints it');
+	pg_assert_same('', pg_state_form_selected_label('<option value="" selected="selected">Select a country</option><option value="1">Almanya</option>'), 'the empty choice of a lost country');
+	pg_assert_same('', pg_state_form_selected_label('<option value="1">Almanya</option>'), 'none selected');
+}
+
+function test_state_form_screens_use_the_wide_layout()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/state_form.php');
+	pg_assert_contains('col-12 lg:col-8 2xl:col-9 order-1', $source, 'the form column');
+	pg_assert_contains('col-12 lg:col-4 2xl:col-3 order-2', $source, 'the status column');
+	pg_assert_contains('col-12 order-3 position-sticky', $source, 'the sticky save bar');
+	pg_assert_contains('formnovalidate', file_get_contents(PG_FUNCTIONS_DIR . '/edit_state.php'), 'Delete is not held back by an emptied required box');
 }
