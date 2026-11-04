@@ -234,6 +234,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - guided-tour.md: The guided tour engine (assets/js/pg_tour.js, pg_tour.css): who uses it, how steps are counted, Back at the start, how a step is read out, where focus goes at the end, the bubble's size
 - icon-ligature-button-names.md: Buttons whose content is a Material Icons ligature (north, south, delete, living) are named by that word; how the product attribute and product group screens name them (#2893)
 - image-editor-access.md: The image editor's access part: tool letters, the keyboard help sheet, shortcut names on the controls, Tab kept inside, reduced motion, the two-finger twist
+- image-editor-actions.md: The image editor's selection bar on a small screen: which commands show (M.actionList()), where it sits, when it hides, why it exists, how it was checked
 - image-editor-adjust.md: The image editor's Adjust tool: eight adjustments, nine filters as fixed values of them, one colour matrix shared by the preview and the server, the vignette and sharpening, the GD colour layer
 - image-editor-animation-save.md: Saving an animation into Files (AN4): Save to Files, the upload limit, action animation (binary body, type by bytes), its version with the document, reopening, same-format replace
 - image-editor-area.md: The image editor's Select area tool (E27a): shapes, magic wand, add and subtract, invert, feather, marching ants, doc.selection, the outline traced from pixels, Redact the selection

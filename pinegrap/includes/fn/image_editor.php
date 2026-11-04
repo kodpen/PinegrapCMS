@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'fonts', 'glyph', 'warp', 'outline', 'builder');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'fonts', 'glyph', 'warp', 'outline', 'builder', 'actions');
 }
 
 /**
@@ -4762,6 +4762,22 @@ function pg_image_editor_strings_builder()
         'builderDrag'    => lang('Dragging across regions'),
         'builderMerge'   => lang('Merge'),
         'builderRemove'  => lang('Remove'),
+    );
+}
+
+// -- Selection bar (pg_image_editor_actions.js) --
+
+/**
+ * The selection bar's own labels; its commands use the labels of the parts
+ * that own them (Duplicate, Delete, Invert…).
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_actions()
+{
+    return array(
+        'actBar'     => lang('Selection actions'),
+        'actOptions' => lang('Options'),
     );
 }
 

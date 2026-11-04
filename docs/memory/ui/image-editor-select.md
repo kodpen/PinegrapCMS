@@ -12,4 +12,4 @@ description: How the image editor's Select tool picks layers: a click, Shift, a 
 - A closed shape or path without a fill was hit only on its line, so shapes drawn with Draw (no fill by default) were hard to select, one by one or several. A press inside one takes it where no other layer lies: a second `M.hitLayer()` pass tests `M.insideRings()` on `M.layerRings()` (#6613).
 
 ## Where is the selection used?
-- The layer keys, the panel's arrange, align, opacity, duplicate and delete: `image-editor-layers.md`; the combine buttons and the builder's click: `image-editor-builder.md`.
+- The layer keys, the panel's arrange, align, opacity, duplicate and delete: `image-editor-layers.md`; on a small screen Duplicate and Delete in the selection bar: `image-editor-actions.md`; the combine buttons and the builder's click: `image-editor-builder.md`.
