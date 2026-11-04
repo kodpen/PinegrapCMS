@@ -50,7 +50,10 @@
            .gift_card .internet_sale .sale_address .payment_method
            .payment_date .carrier .carrier_tax_id .shipment_date .note
            .generated_at .tax_inclusive .withholding .amount_payable .tax2
-           .signed_by
+           .signed_by .cancelled
+  A cancelled invoice (invoice.is_cancelled) prints label.cancelled as a
+  ribbon at the top and in the footer of every page. A template that does not
+  print label.cancelled anywhere gets a plain ribbon put in at the top.
   signature .image_data_uri .signer_name .signed_at (a signed quote only;
            empty on an invoice, so a block opened with # on it prints
            nothing there)
@@ -100,9 +103,12 @@
     .foot { position: fixed; bottom: -8mm; left: 0; right: 0; font-size: 7.5pt; color: #777; border-top: 1px solid #ccc; padding-top: 4px; }
     .foot td { padding: 0; }
     .foot td.r { text-align: right; }
+    .cancelled-ribbon { border: 2px solid #b00020; color: #b00020; text-align: center; font-weight: bold; font-size: 16pt; letter-spacing: 4px; padding: 4px 0; margin-bottom: 10px; }
+    .foot .cancelled { color: #b00020; font-weight: bold; letter-spacing: 1px; }
 </style>
 </head>
 <body>
+{{#invoice.is_cancelled}}<div class="cancelled-ribbon">{{label.cancelled}}</div>{{/invoice.is_cancelled}}
 
 <table class="head">
     <tr>
@@ -228,7 +234,7 @@
 <div class="foot">
     <table>
         <tr>
-            <td>{{seller.title}} &nbsp;&middot;&nbsp; {{invoice.title}} {{invoice.full_number}}{{#invoice.order_number}} &nbsp;&middot;&nbsp; {{label.order}} {{invoice.order_number}}{{/invoice.order_number}}</td>
+            <td>{{#invoice.is_cancelled}}<span class="cancelled">{{label.cancelled}}</span> &nbsp;&middot;&nbsp; {{/invoice.is_cancelled}}{{seller.title}} &nbsp;&middot;&nbsp; {{invoice.title}} {{invoice.full_number}}{{#invoice.order_number}} &nbsp;&middot;&nbsp; {{label.order}} {{invoice.order_number}}{{/invoice.order_number}}</td>
             <td class="r">{{label.generated_at}}: {{generated_at}}</td>
         </tr>
     </table>

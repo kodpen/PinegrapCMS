@@ -306,6 +306,7 @@ function erp_audit_event_text($row)
         'erp.invoice.paid' => lang('Invoice paid in full'),
         'erp.invoice.cancelled' => lang('Invoice cancelled'),
         'erp.invoice.edoc_changed' => lang('E-document status changed'),
+        'erp.invoice.note_changed' => lang('Invoice note changed'),
         'erp.account.created' => lang('Account opened'),
         'erp.waybill.created' => lang('Delivery note issued'),
         'erp.waybill.cancelled' => lang('Delivery note cancelled'),
