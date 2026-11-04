@@ -146,6 +146,9 @@ function test_image_editor_area_color_pixel()
 	$mono = pg_image_editor_mask_color(array(), 'mono');
 	$grey = pg_image_edit_color_pixel($mono, 200, 40, 90);
 	pg_assert_true(($grey[0] === $grey[1]) && ($grey[1] === $grey[2]), 'mono gives grey (' . implode(',', $grey) . ')');
+	$table = pg_image_edit_gamma_table(0.5);
+	pg_assert_same(array(0, 128, 255), array($table[0], $table[64], $table[255]), 'the gamma table holds the mapped values');
+	pg_assert_same(pg_image_edit_color_pixel($mono, 200, 40, 90), pg_image_edit_color_pixel($mono, 200, 40, 90, pg_image_edit_gamma_table($mono['gamma'])), 'a given table gives the same pixel');
 	pg_assert_same(array(255, 0, 151), pg_image_edit_color_pixel(array('matrix' => array(3, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0), 'gamma' => 0.5), 200, 40, 90), 'clamped, then the gamma');
 }
 

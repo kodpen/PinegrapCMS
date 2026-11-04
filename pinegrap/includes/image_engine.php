@@ -2229,22 +2229,42 @@ function pg_image_edit_redact_gd($image, $regions)
 }
 
 /**
+ * The gamma of a colour step as a table of the 256 values it maps, so a
+ * pixel loop looks it up instead of calling pow(). Pure.
+ *
+ * @param float $gamma the exponent of pg_image_edit_color()
+ * @return int[] 0-255 => 0-255
+ */
+function pg_image_edit_gamma_table($gamma)
+{
+    $table = array();
+
+    for ($i = 0; $i < 256; $i++) {
+        $table[$i] = (int) round(255 * pow($i / 255, $gamma));
+    }
+
+    return $table;
+}
+
+/**
  * One pixel through a colour step of pg_image_edit_color(): the matrix on
  * 0-255 values, rounded and kept in range, then the gamma, as applyColor()
  * of assets/js/pg_image_editor_model.js does it. Pure.
  *
- * @param array $color matrix (20 numbers) and gamma
+ * @param array      $color matrix (20 numbers) and gamma
+ * @param int[]|null $table pg_image_edit_gamma_table() of the gamma, made
+ *                          here when not given
  * @return array r, g, b
  */
-function pg_image_edit_color_pixel($color, $r, $g, $b)
+function pg_image_edit_color_pixel($color, $r, $g, $b, $table = null)
 {
     $m = $color['matrix'];
+    $table = $table ? $table : pg_image_edit_gamma_table($color['gamma']);
     $out = array();
 
     foreach (array(0, 5, 10) as $row) {
         $v = $m[$row] * $r + $m[$row + 1] * $g + $m[$row + 2] * $b + $m[$row + 4] * 255;
-        $v = ($v < 0) ? 0 : (($v > 255) ? 255 : (int) round($v));
-        $out[] = (int) round(255 * pow($v / 255, $color['gamma']));
+        $out[] = $table[($v < 0) ? 0 : (($v > 255) ? 255 : (int) round($v))];
     }
 
     return $out;
@@ -2329,6 +2349,7 @@ function pg_image_edit_masks_gd($image, $masks, $alpha)
         }
 
         $fill = ($area['op'] === 'erase') ? ($area['fill'] ? $area['fill'] : ($alpha ? null : array(255, 255, 255))) : null;
+        $table = ($area['op'] === 'color') ? pg_image_edit_gamma_table($area['color']['gamma']) : null;
         $w = min($area['w'], imagesx($image) - $area['x'], imagesx($mask));
         $h = min($area['h'], imagesy($image) - $area['y'], imagesy($mask));
 
@@ -2348,7 +2369,7 @@ function pg_image_edit_masks_gd($image, $masks, $alpha)
                     $to = $rgb;
                     $opacity *= 1 - $a;
                 } else {
-                    $to = $fill ? $fill : pg_image_edit_color_pixel($area['color'], $rgb[0], $rgb[1], $rgb[2]);
+                    $to = $fill ? $fill : pg_image_edit_color_pixel($area['color'], $rgb[0], $rgb[1], $rgb[2], $table);
 
                     // A fill covers the see-through part as well.
                     if ($fill) {
