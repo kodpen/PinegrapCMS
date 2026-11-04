@@ -697,7 +697,7 @@ function test_ws_flow_card_try_flow()
 	$card = ws_flow_card_tries($viewer, null, array('nodes' => array(array('id' => 'start', 'try' => true, 'said' => '', 'failed' => false))));
 	pg_assert_same('', $card['nodes'][0]['said'], 'no flow, no line');
 
-	$read = workspace_flow_draft_code('ws_flow_draft_card_graph_read');
+	$read = workspace_flow_draft_code('ws_flow_draft_card_source');
 	pg_assert_contains("ws_flow_card_try_flow(\$viewer,'opened'", str_replace(' ', '', $read), 'opened');
 	pg_assert_contains("'new':'patch'", str_replace(' ', '', $read), 'waiting');
 	pg_assert_contains('ws_flow_box_try(', workspace_flow_draft_code('ws_flow_card_tries'), 'the F4e try');
@@ -741,7 +741,7 @@ function test_ws_flow_card_graph_patch()
 // and the card carries the window only to the person it was proposed to.
 function test_ws_flow_card_graph_wiring()
 {
-	$read = workspace_flow_draft_code('ws_flow_draft_card_graph_read');
+	$read = workspace_flow_draft_code('ws_flow_draft_card_source');
 	pg_assert_contains("['requested_by']", $read, 'only the person it was proposed to');
 	pg_assert_contains('ws_can_schedule(', $read, 'who builds flows');
 	pg_assert_contains('ws_can_post_channel(', $read, 'where they may still post');
@@ -759,6 +759,136 @@ function test_ws_flow_card_graph_wiring()
 	pg_assert_true($case !== false, 'the panel action is there');
 	pg_assert_contains('ws_flow_draft_card_graph_read(', substr($actions, (int) $case, 300), 'and reads it');
 	pg_assert_contains("'ws_flow_draft_graph'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/actions.php'), 'the panel lets it through');
+}
+
+// The read-only canvas of the card draws the graph at its real places,
+// named, marked and with the removed boxes listed as the thumbnail lists them.
+function test_ws_flow_card_view()
+{
+	$keys = workspace_flow_draft_keys();
+	$graph = ws_flow_graph_normalize(array(
+		'nodes' => array(
+			array('id' => 'start', 'kind' => 'manual', 'x' => 400, 'y' => 96),
+			array('id' => 'task_1', 'kind' => 'task', 'x' => 688, 'y' => 96, 'config' => array('title' => 'One')),
+			array('id' => 'old', 'kind' => 'task', 'x' => 688, 'y' => 224, 'label' => 'Old one', 'config' => array('title' => 'Old')),
+			array('id' => 'vals', 'kind' => 'constants', 'x' => 400, 'y' => 352),
+		),
+		'edges' => array(array('from' => 'start', 'to' => 'task_1', 'on' => 'next'), array('from' => 'start', 'to' => 'old', 'on' => 'next')),
+	));
+	$plain = ws_flow_card_view($graph);
+	$by = array();
+
+	foreach ($plain['graph']['nodes'] as $node) {
+		$by[$node['id']] = $node;
+	}
+
+	pg_assert_same(array(688, 96), array($by['task_1']['x'], $by['task_1']['y']), 'a box keeps its real place, never the thumbnail\'s scaled one');
+	pg_assert_same('One', $by['task_1']['config']['title'], 'with its settings, for the canvas\'s meta lines');
+	pg_assert_same(array(), $plain['mark'], 'nothing marked without a patch');
+	pg_assert_same(array(), $plain['removed'], 'nothing removed');
+	pg_assert_same(ws_flow_box_names($graph['nodes']), (array) $plain['names'], 'named as the canvas names them');
+
+	$tries = array();
+
+	foreach ($plain['nodes'] as $node) {
+		$tries[$node['id']] = $node['try'];
+	}
+
+	pg_assert_same(array('start' => true, 'task_1' => true, 'old' => true, 'vals' => false), $tries, 'a value box is not tried');
+
+	$made = ws_flow_patch_apply($graph, array(
+		array('op' => 'add', 'id' => 'tell', 'kind' => 'notify', 'label' => 'Tell', 'settings' => array('text' => 'Done')),
+		array('op' => 'set', 'id' => 'task_1', 'label' => 'First'),
+		array('op' => 'remove', 'id' => 'old'),
+	), $keys);
+	pg_assert_true($made['ok'], 'made');
+
+	$view = ws_flow_card_view($made['graph'], $made['ops']);
+	pg_assert_same(ws_flow_patch_marks($made['ops'], $made['graph']), $view['mark'], 'the marks of ws_flow_patch_marks()');
+	pg_assert_same(array('Old one'), $view['removed'], 'a removed box by name');
+	pg_assert_same(ws_flow_card_graph($made['graph'], $made['ops'])['removed'], $view['removed'], 'as the thumbnail lists them');
+
+	$view['nodes'][0]['said'] = 'It would post';
+	$view['nodes'][1]['failed'] = true;
+	$view['nodes'][1]['said'] = 'It would not run: no one';
+	$keyed = ws_flow_card_view_tries($view['nodes']);
+	pg_assert_same(array('said' => 'It would post', 'failed' => false), $keyed['start'], 'a box\'s dry run by its id');
+	pg_assert_true($keyed['task_1']['failed'], 'a refusal stays a refusal');
+	pg_assert_true(!isset($keyed['vals']), 'a box that is not tried has no line');
+}
+
+// A patch's removed boxes: one added and removed in the same patch is not
+// listed, nor one the graph still holds.
+function test_ws_flow_patch_removed()
+{
+	$graph = array('nodes' => array(array('id' => 'kept')));
+
+	pg_assert_same(array(), ws_flow_patch_removed(null, $graph), 'no patch');
+	pg_assert_same(array('Gone', 'bare'), ws_flow_patch_removed(array(
+		array('op' => 'remove', 'id' => 'gone', 'name' => 'Gone'),
+		array('op' => 'remove', 'id' => 'bare'),
+		array('op' => 'add', 'id' => 'brief'),
+		array('op' => 'remove', 'id' => 'brief'),
+		array('op' => 'remove', 'id' => 'kept', 'name' => 'Kept'),
+		'junk',
+	), $graph), 'by name, else by id');
+}
+
+// The embed's lists carry labels only: no form options, column settings,
+// tool descriptions or the scheduled config's other parts.
+function test_ws_flow_embed_lists()
+{
+	$lists = ws_flow_embed_lists(array(
+		'metrics'   => array('open_tasks' => array('label' => 'Open tasks', 'kind' => 'count', 'scope' => 'channel', 'group' => 'tasks')),
+		'targets'   => array(array('id' => '7', 'name' => 'Weekly', 'status' => 'active', 'trigger_only' => false)),
+		'repeats'   => array('daily' => 'Every day'),
+		'operators' => array('eq' => 'is'),
+		'events'    => array('list' => array('task.done' => array('label' => 'A task is done', 'filters' => array('x'))), 'forms' => array('f'), 'statuses' => array('s')),
+		'tables'    => array(array('id' => 3, 'name' => 'Leads', 'edit' => true, 'columns' => array(array('id' => 9, 'name' => 'Stage', 'type' => 'select', 'options' => array('choices' => array('a')))))),
+		'mcp'       => array(array('id' => 2, 'alias' => 'crm', 'name' => 'CRM', 'tools' => array(array('name' => 'find', 'description' => 'Finds')), 'asks' => array('send'))),
+		'changes'   => array('product' => array('label' => 'Product', 'tag' => 'p', 'actions' => array('update'), 'fields' => array('price' => array('kind' => 'money', 'label' => 'Price', 'values' => array(), 'labels' => array(), 'column' => true)))),
+		'records'   => array('task' => array('label' => 'Task', 'tag' => 't', 'fields' => array('status' => array('kind' => 'enum', 'label' => 'Status', 'values' => array('open'), 'labels' => array('open' => 'Open'), 'column' => true)))),
+	));
+
+	pg_assert_same(array(array('key' => 'open_tasks', 'label' => 'Open tasks')), $lists['metrics'], 'a metric by key and label');
+	pg_assert_same(array(array('id' => 7, 'name' => 'Weekly')), $lists['targets'], 'a target by id and name');
+	pg_assert_same(array('daily' => 'Every day'), (array) $lists['repeats'], 'repeats');
+	pg_assert_same(array('task.done' => array('label' => 'A task is done')), (array) $lists['events']['list'], 'an event by its label');
+	pg_assert_same(array(), $lists['events']['forms'], 'no event filters');
+	pg_assert_same(array(array('id' => 9, 'name' => 'Stage', 'type' => 'select')), $lists['tables'][0]['columns'], 'a column without its settings');
+	pg_assert_same(array(array('name' => 'find')), $lists['mcp'][0]['tools'], 'a tool by name only');
+	pg_assert_same(array('send'), $lists['mcp'][0]['asks'], 'the tools that ask first');
+	pg_assert_true(!isset($lists['mcp'][0]['name']), 'no server title beside the alias');
+	pg_assert_same('Product', $lists['changes']->product['label'], 'a change kind by label');
+	pg_assert_same(array('price' => array('label' => 'Price')), (array) $lists['changes']->product['fields'], 'its fields by label');
+	pg_assert_same('Status', ((array) $lists['records']->task['fields'])['status']['label'], 'a record field by label');
+
+	$empty = ws_flow_embed_lists(array());
+	pg_assert_same(null, $empty['events'], 'no events where there are none');
+	pg_assert_same(array(), $empty['targets'], 'nothing for a reader with no lists');
+}
+
+// The embed's panel actions: the view with the card's rights, the config
+// for anyone the Workspace lets in.
+function test_ws_flow_card_view_wiring()
+{
+	pg_assert_contains('ws_flow_draft_card_source(', workspace_flow_draft_code('ws_flow_draft_card_view_read'), 'the view reads with the card\'s rights');
+	pg_assert_contains('ws_flow_draft_card_source(', workspace_flow_draft_code('ws_flow_draft_card_graph_read'), 'as the thumbnail does');
+	pg_assert_true(strpos(workspace_flow_draft_code('ws_flow_card_view'), 'WS_FLOW_CARD_BOX_W') === false, 'no scaling');
+
+	$config = workspace_flow_draft_code('ws_flow_embed_config');
+	pg_assert_contains('ws_flow_embed_lists(', $config, 'labels only');
+	pg_assert_true(strpos($config, 'ws_flow_templates_for') === false, 'without the gallery');
+
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$panel = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/actions.php');
+
+	foreach (array('ws_flow_draft_view' => 'ws_flow_draft_card_view_read(', 'ws_flow_embed_config' => 'ws_flow_embed_config(') as $action => $reads) {
+		$case = strpos($actions, "case '" . $action . "':");
+		pg_assert_true($case !== false, $action . ' is there');
+		pg_assert_contains($reads, substr($actions, (int) $case, 300), $action . ' reads it');
+		pg_assert_contains("'" . $action . "'", $panel, 'the panel lets ' . $action . ' through');
+	}
 }
 
 // What stops publishing, from the graph's own check: ws_flow_problems() also
