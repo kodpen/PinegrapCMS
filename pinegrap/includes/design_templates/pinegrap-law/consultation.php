@@ -93,12 +93,55 @@ $consultation_pages[] = array(
                                 $el('li', '', lang('Step'), array(), array('text' => lang('Questions or more documents? Write under your request.'))),
                             )),
                         )),
+                        $el('div', 'p-4 rounded-3 border border-primary-subtle mb-4', lang('Online Booking'), array(
+                            $heading('h2', lang('Know what you need?'), 'h5 fw-semibold mb-2'),
+                            $para(lang('Book a first consultation online: pick a lawyer or anyone free, then a free day and hour.'), 'small text-body-secondary mb-3'),
+                            $link(lang('Book a Time'), '{{page:book_online}}', 'btn btn-sm btn-primary px-3'),
+                        )),
                         $el('div', 'p-4 rounded-3 border mb-4', lang('Confidentiality'), array(
                             $el('p', 'd-flex align-items-center gap-2 fw-semibold mb-2', lang('Title'), array(
                                 $icon('bi-lock', 'text-primary'),
                                 $span(lang('Confidential'), '', lang('Text')),
                             )),
                             $para(lang('Only the firm\'s lawyers and staff read what you send, and it stays under professional secrecy whether or not we take the matter.'), 'small text-body-secondary mb-0'),
+                        )),
+                        $el('div', 'p-4 rounded-3 border', lang('Office hours'), array(
+                            $heading('h2', lang('Office hours'), 'h5 fw-semibold mb-3'),
+                            $hours(),
+                        )),
+                    ), '', '4'),
+                ), '4', '', 'g-lg-5'),
+            )),
+        )),
+    ), false),
+);
+
+// Online booking of a first consultation: the Booking widget offers the
+// free times of the consultations and lawyers set up under Bookings and
+// holds the one picked while the visitor fills in their details. Beside the
+// request form, which stays for a matter that needs the conflict check and
+// documents first.
+$consultation_pages[] = array(
+    'key'              => 'book_online',
+    'name'             => lang('book-a-time'),
+    'folder'           => 'public',
+    'title'            => lang('Book a Time'),
+    'meta_description' => lang('Book a first consultation online: choose the consultation, a lawyer or anyone free, then a free day and hour.'),
+    'tree'             => $page(array(
+        $page_header(lang('Book a Time'), lang('Choose the consultation, a lawyer or anyone free, then a free day and hour. We check for a conflict of interest before we meet.')),
+        $el('section', 'py-5', lang('Content'), array(
+            $container(array(
+                $row(array(
+                    $col(array(
+                        $el('div', 'card border-0 shadow-sm rounded-3', lang('Booking Card'), array(
+                            $el('div', 'card-body p-4 p-lg-5', lang('Card Body'), array($widget('online_booking'))),
+                        )),
+                    ), '', '8'),
+                    $col(array(
+                        $el('div', 'p-4 rounded-3 bg-body-tertiary mb-4', lang('Booking Request'), array(
+                            $heading('h2', lang('Documents to send first?'), 'h5 fw-semibold mb-2'),
+                            $para(lang('Tell us about your matter and attach your documents; a lawyer replies within one working day.'), 'small text-body-secondary mb-3'),
+                            $link(lang('Send a Request'), '{{page:consultation}}', 'btn btn-sm btn-outline-primary px-3'),
                         )),
                         $el('div', 'p-4 rounded-3 border', lang('Office hours'), array(
                             $heading('h2', lang('Office hours'), 'h5 fw-semibold mb-3'),
@@ -520,6 +563,16 @@ $mail_detail = function ($page, $form, $missing) {
 };
 
 $consultation_widgets = array(
+
+    // The online booking: the editor's layout of the Booking widget. Its
+    // services and staff are the site's own (Bookings); with none set up
+    // the widget says so.
+    'online_booking' => array(
+        'page'   => 'book_online',
+        'slug'   => lang('online-booking'),
+        'config' => array('regionType' => 'booking'),
+        'tree'   => 'starter',
+    ),
 
     // The consultation request: the fields are the page's form. The Status
     // is the staff's (office use only): a visitor never sees it, and every

@@ -68,7 +68,7 @@ function _test_law_page_keys()
 {
 	$keys = array(
 		'home', 'practice', 'lawyers', 'results', 'fees', 'about', 'faq', 'careers',
-		'consultation', 'consultation_view', 'my_consultations', 'staff_consultations', 'privacy',
+		'consultation', 'book_online', 'consultation_view', 'my_consultations', 'staff_consultations', 'privacy',
 		'application', 'application_view', 'staff_applications',
 		'email_consultation_new', 'email_consultation_received', 'email_application_new', 'email_application_received', 'email_reply',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
@@ -276,6 +276,22 @@ function _test_law_controls($tree)
 	return $out;
 }
 
+// The online booking page places the Booking widget with the editor's
+// layout, and it and the request form link to each other.
+function test_law_online_booking_page()
+{
+	$d = _test_law_load();
+	$w = $d['consultation']['widgets']['online_booking'];
+	pg_assert_same('book_online', $w['page']);
+	pg_assert_same('booking', $w['config']['regionType']);
+	pg_assert_same('starter', $w['tree']);
+	$pages = array();
+	foreach ($d['consultation']['pages'] as $p) $pages[$p['key']] = json_encode($p['tree']);
+	pg_assert_true(strpos($pages['book_online'], '"templateWidget":"online_booking"') !== false, 'the page places the widget');
+	pg_assert_true(strpos($pages['book_online'], '{{page:consultation}}') !== false, 'the booking page links the request form');
+	pg_assert_true(strpos($pages['consultation'], '{{page:book_online}}') !== false, 'the request form links the booking page');
+}
+
 function test_law_consultation_pages_and_widgets()
 {
 	$d = _test_law_load();
@@ -283,7 +299,7 @@ function test_law_consultation_pages_and_widgets()
 	$keys = array();
 	foreach ($c['pages'] as $p) $keys[] = $p['key'];
 	pg_assert_same(array(
-		'consultation', 'consultation_view', 'my_consultations', 'staff_consultations', 'privacy', 'careers', 'application',
+		'consultation', 'book_online', 'consultation_view', 'my_consultations', 'staff_consultations', 'privacy', 'careers', 'application',
 		'application_view', 'staff_applications', 'email_consultation_new', 'email_consultation_received',
 		'email_application_new', 'email_application_received', 'email_reply',
 	), $keys, 'the consultation and careers pages in order');

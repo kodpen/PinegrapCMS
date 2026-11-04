@@ -152,7 +152,7 @@ $law_css = implode("\n", array(
 
 return array(
     'name'        => lang('Law Firm'),
-    'version'     => '1.0.0',
+    'version'     => '1.1.0',
     'framework'   => 'bootstrap5',
     'order'       => 68,
     'icon'        => 'bi-bank',
