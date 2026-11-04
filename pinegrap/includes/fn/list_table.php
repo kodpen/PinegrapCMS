@@ -1048,6 +1048,8 @@ function pg_list_table_printed_lists()
         'view_menus', 'view_short_links',
         'view_orders', 'view_gift_cards', 'view_key_codes', 'view_shipping_methods',
         'view_styles', 'view_themes', 'view_design_files', 'view_containers', 'view_comments',
+        'view_regions_all_ad_regions', 'view_regions_all_login_regions', 'view_regions_all_dynamic_regions',
+        'view_regions_all_designer_regions', 'view_regions_all_common_regions', 'view_ads', 'view_fields',
     );
 }
 

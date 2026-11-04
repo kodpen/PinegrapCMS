@@ -16,6 +16,8 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once PG_FUNCTIONS_DIR . '/includes/fn/region_list.php';
+
 function content_lists_source($path)
 {
 	return (string) file_get_contents(dirname(__DIR__) . '/pinegrap/' . $path);
@@ -23,24 +25,22 @@ function content_lists_source($path)
 
 function test_content_lists_login_region_previews_escaped()
 {
-	$source = content_lists_source('view_regions.php');
+	$source = content_lists_source('includes/fn/region_list.php');
 
 	foreach (array('not_logged_in_header', 'not_logged_in_footer', 'logged_in_header', 'logged_in_footer') as $field) {
-		pg_assert_contains('<td class="align-middle">\' . h($' . $field . ') . \'</td>', $source, $field . ' cell');
-		pg_assert_contains('if (mb_strlen($' . $field . ') > 50) {', $source, $field . ' limit');
+		pg_assert_contains("'" . $field . "' => pg_list_cell(pg_region_list_preview(\$row['" . $field . "'])),", $source, $field . ' cell');
 	}
 
-	pg_assert_false(strpos($source, '> 100') !== false, 'one limit for the test and the cut');
-	pg_assert_false(strpos($source, 'tex-center') !== false, 'tex-center typo');
-	pg_assert_contains('<td class="align-middle text-center">\' . $login_form . \'</td>', $source);
+	pg_assert_contains("return h((mb_strlen(\$text) > 50) ? mb_substr(\$text, 0, 50) . '...' : \$text);", $source, 'cut to 50, then escaped');
+	pg_assert_same('&lt;h3&gt;x', pg_region_list_preview('<h3>x'), 'stored markup is shown as text');
+	pg_assert_same(str_repeat('a', 50) . '...', pg_region_list_preview(str_repeat('a', 60)));
 }
 
 function test_content_lists_check_marks_named()
 {
 	$paths = array(
 		'includes/fn/page_list.php' => 1,
-		'view_regions.php' => 3,
-		'view_fields.php' => 2,
+		'includes/fn/field_list.php' => 1,
 		'view_menu_items.php' => 1,
 	);
 
@@ -54,6 +54,7 @@ function test_content_lists_check_marks_named()
 	// pg_list_table_check_cell(), which names them.
 	pg_assert_same(3, substr_count(content_lists_source('view_comments.php'), 'pg_list_table_check_cell('), 'view_comments.php: check cells');
 	pg_assert_same(1, substr_count(content_lists_source('view_design_files.php'), 'pg_list_table_check_cell('), 'view_design_files.php: check cells');
+	pg_assert_same(4, substr_count(content_lists_source('includes/fn/region_list.php'), 'pg_list_table_check_cell('), 'region_list.php: check cells');
 }
 
 function test_content_lists_folder_and_home_ligatures()
@@ -70,15 +71,11 @@ function test_content_lists_folder_and_home_ligatures()
 
 function test_content_lists_row_checkboxes_named()
 {
-	// The pages and design files lists select by row on the list table
-	// driver: no checkboxes.
-	$expect = array(
-		'view_fields.php' => '$name',
-	);
-
-	foreach ($expect as $path => $row_name) {
-		pg_assert_contains('aria-label="\' . h(lang(array(\'string\' => \'Select {var:1}\', \'vars\' => array(' . $row_name . ')))) . \'"', content_lists_source($path), $path);
-	}
+	// The pages, design files and fields lists select by row on the list
+	// table driver: no checkboxes. Delete Selected on the fields list gets
+	// the selection as fields[].
+	pg_assert_false(strpos(content_lists_source('view_fields.php'), 'type="checkbox"') !== false, 'view_fields.php: no row checkboxes');
+	pg_assert_contains("'ids_field' => \$designer_form ? '' : 'fields[]',", content_lists_source('view_fields.php'));
 }
 
 function test_content_lists_file_download_and_thumbnail()

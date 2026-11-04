@@ -13,8 +13,9 @@ module: list_table, submitted_form_list
 
 - Orders, gift cards, key codes and shipping methods (TD8a), printed whole with quick edit: `ui/list-table-commerce-lists.md`.
 - Printed whole in browser mode (`pg_list_table_printed()`, TD9a): menus (`view_menus.php`, the name opens the menu's items) and short links (`view_short_links.php`, the name opens the editor, a Visit column for a link with an address). No bulk actions.
-- Printed whole, TD9b: themes, containers, comments (verified and question filters stay server filters; the box searches the rows), styles (Delete Selected posts `styles[]` to `delete_styles.php`; a classic style's "Open in the visual designer" is an actions column) and design files (Modify Selected and Delete Selected post `files[]` to `edit_files.php`; thumbnails through `data-pg-thumb`; a file in an archived folder is an italic row). The name links to the editor (`data-pg-open`) everywhere.
+- Printed whole, TD9b: themes, containers, comments (verified and question filters stay server filters; the box searches the rows), styles (Delete Selected posts `styles[]` to `delete_styles.php`; a classic style's "Open in the visual designer" is an actions column) and design files (Modify Selected and Delete Selected post `files[]` to `edit_files.php`; thumbnails through `data-pg-thumb`; a file in an archived folder is an italic row). The name opens the editor (`data-pg-open`).
 
+- TD9c: `ui/list-table-region-lists.md`.
 - Site Log, audit trail, firewall log (`view_log`, `view_audit_log`, `view_waf_log`, #6386): no bulk actions; `ui/site-log-paging.md`, `ui/audit-log-paging.md`, `ui/waf-log-paging.md`.
 
 ## What do they share?
