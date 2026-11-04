@@ -28,6 +28,9 @@ module: page_facts
 ## What does the editor offer?
 - Bind Data's "Show only when a value…" rows (`_sdConditionRows()`) on any element outside a widget, in a section "Show by the visit"; the list is `SD_PAGE_FACTS` (= `pg_page_fact_tokens()`, `tests/page_facts_test.php`) and, when the page holds a detail widget, the record's (`_sdPageRecordOptions()`: found, then "Record: <value>" of the kinds present). A hand-written row on another value is listed and the note says the element always shows. The canvas names the condition with the chip and keeps drawing the element.
 
+## What about the visitor's audience?
+- Country, device, returning, UTM, member, group and experiment variant are page facts too, with their own cache rule ([[audience-conditions]]).
+
 ## What is left?
 - Facts inside a widget's tree; a canvas state for the facts.
 
