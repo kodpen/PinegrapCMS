@@ -3635,6 +3635,7 @@
     "The payment could not be verified. Please try again.": "Ödeme doğrulanamadı. Lütfen yeniden deneyin.",
     "The payment has been cancelled and {var:1} invoice(s) reopened.": "Ödeme iptal edildi ve {var:1} fatura yeniden açıldı.",
     "The payment has been cancelled.": "Ödeme iptal edildi.",
+    "The payment has been refunded for order(s) {var:1}.": "{var:1} numaralı sipariş(ler)in ödemesi iade edildi.",
     "The payment has been refunded.": "Ödeme iade edildi.",
     "The payment library keeps its own copy of the bundle; that one is refreshed with software releases and is not touched here.": "Ödeme kütüphanesi paketin kendi kopyasını taşır; o kopya yazılım sürümleriyle yenilenir ve burada dokunulmaz.",
     "The payment of this expense could not be found.": "Bu giderin ödemesi bulunamadı.",
