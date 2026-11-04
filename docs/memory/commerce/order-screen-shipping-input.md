@@ -16,6 +16,13 @@ module: order_view
 
 ## How is the shipped quantity read?
 - `pg_order_shipped_quantity($value, $ordered)`: blank hides it, else a whole number from 0 to the ordered quantity; anything else is an error from `update_order()` (#5279).
+- The screen refuses a bad quantity on its own box before calling `update_order()`.
+
+## Can a refused save leave part of it written?
+- No. `update_order()` runs `pg_order_update_request_error()` over every recipient and line (recipient and item found and owned, dates, shipped quantities) before any `UPDATE ship_tos`, `pg_shipment_record()` or `pg_shipment_prune()`.
+- Before, a quantity refused on a later line kept the save's tracking numbers; the next save saw them as old, so `order.shipped`, the shipped mail and SMS and the invoice on shipment never came.
+
+## How is the shipped quantity field drawn?
 - The field is an integer mask without minus or right alignment, `min=0`, `max=<ordered>` (the + button stops there), and is named by `aria-label` "Shipped Qty".
 
 ## Where is the payment date?
