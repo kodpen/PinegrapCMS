@@ -798,9 +798,7 @@ pg_page_shell([
 <main id="content" class="container-fluid p-0">
 <div class="ws-shell">
 <div class="ws-shell-main">
-    ' . $liveform->output_errors() . '
-    ' . $liveform->get_warnings() . '
-    ' . $liveform->output_notices() . '
+    ' . ws_screen_messages($liveform) . '
     ' . pg_screen_toolbar(array(
         // Opens the new department form at the top of the Departments card.
         'primary'   => '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-toggle="collapse" data-bs-target="#ws-dept-new" aria-controls="ws-dept-new" aria-expanded="false"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New department')) . '</button>',

@@ -292,7 +292,7 @@ $help = '
    The screen
    --------------------------------------------------------------------------- */
 
-$liveform_messages = $liveform->output_errors() . $liveform->output_notices();
+$liveform_messages = ws_screen_messages($liveform);
 
 $liveform->remove_form();
 
