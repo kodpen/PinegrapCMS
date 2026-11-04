@@ -6,9 +6,9 @@ description: Steps V12-V17 of plans/visitors-overview.md: alerts, saved reports 
 ## Which steps are there?
 - Sizes and claiming: `visitors-overview-steps.md`; what a step owns: `visitors-overview-workers.md`.
 
-- Done: V13 #6385, V15 #6381, V17 #6475
+- Done: V13 #6385, V15 #6381, V17 #6475, V12 #6505
 
-- V12 (M) Alerts section. After V5, V6 and V9 (it reads their figures through the module and `pg_gsc_*`, not their files).
+- V12 (M) Alerts section. Done (#6505). After V5, V6 and V9 (it reads their figures through the module and `pg_gsc_*`, not their files).
   - `includes/visitors/alerts.php`, drawn first on the screen: from the period and its previous one: visits down by more than 30 %; a landing page that lost more than half its visits (at least 50 before); the conversion rate halved; Google clicks down by more than 30 %; a page that lost more than half its clicks; no visit recorded today after 10:00 (tracking broken); each one line with its figures and a link to its section; nothing drawn when there is nothing. Thresholds are constants in the file; `tests/visitors_alerts_test.php` on the rules as pure functions over figure arrays. No table, no job (decision 7).
 
 - V14 (S) API routes. After V2, V4 and V10.
