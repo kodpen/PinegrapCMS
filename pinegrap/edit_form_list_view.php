@@ -71,12 +71,6 @@ $custom_form_page_id = $row['custom_form_page_id'];
 $custom_form_folder_id = $row['page_folder'];
 $custom_form_name = $row['form_name'];
 
-if (isset($custom_form_name) == true) {
-    $output_custom_form_information = lang('Displays submitted forms from') . ': ' . h($custom_form_name);
-}else {
-    $output_custom_form_information = lang('Displays submitted forms from') . ': ' . lang('None');
-}
-
 // validate user's access to custom form
 if (check_edit_access($custom_form_folder_id) == false) {
     log_activity(lang('access denied to edit form list view because user does not have access to modify folder that custom form is in'), $_SESSION['sessionusername']);
@@ -703,12 +697,6 @@ if (!$_POST) {
             <div class="row">
             <div class="col-12">
                 ' . $form->get_messages() . '
-                <div class="row mb-3 flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        <p>' . $output_custom_form_information . '</p>
-                    </div>
-                </div>
                 <dialog class="dialog dialog-xl" id="hints" aria-labelledby="hints_title">
                             <div class="dialog-header">
                                 <h5 class="dialog-title" id="hints_title">' . lang('Hints') . '</h5>
@@ -755,39 +743,24 @@ if (!$_POST) {
                     <input type="hidden" id="last_filter_number" name="last_filter_number" value="0" />
                     ' . $output_mysql_version_new_hidden_field . '
                     <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 ' . lang('Field Options') . '
-                                </div>
-                                <div class="card-body">
+                                </h2>
+                                <div class="card-body pt-0">
                                     <div class="row">
                                         <div class="col-12 my-3">
                                             <div class="form-text text-start">' . lang(array('string'=>'Header (code that is outputted before the list of Submitted Forms){var:1}','vars'=>$collection_field_marker)) . '</div>
                                             <textarea id="header_content" name="header_content" aria-label="' . h(lang('Header')) . '">' . h($header) . '</textarea>
                                             ' . pg_code_editor_attach(array('id' => 'header_content', 'code_type' => 'mixed')) . '
                                         </div>
-                                        <div class="col-12 md:col-auto lg:col my-3 ">
-                                            <p class="mb-0 fg-primary ">' . lang('System Fields') . '</p>
-                                            <ul class="list-group overflow-auto pe-1" style="min-height:100px;height:150px;max-height:500px;resize: vertical;">
-                                                ' . $output_available_standard_fields . '
-                                            </ul>
-                                        </div>
-                                        <div class="col-12 md:col my-3">
-                                            <p class="mb-0 forms-color">' . lang('Form Fields') . '</p>
-                                            <ul class="list-group overflow-auto pe-1" style="min-height:100px;height:150px;max-height:500px;resize: vertical;">
-                                                ' . $output_available_custom_fields . '
-                                            </ul>
-                                        </div>
-                                        <div class="col-12 text-end my-3">
-                                            <button type="button" class="btn btn-link pg-link-secondary" data-bs-toggle="dialog" data-bs-target="#hints"><span class="material-icons me-1" aria-hidden="true">info</span>' . lang('Hints') . '</button>
-                                        </div>
-                                        <div class="col mt-5">
+                                        <div class="col-12 my-3">
                                             <div class="form-text text-start">' . lang(array('string'=>'Display layout of submitted form data fields within View{var:1}','vars'=>$collection_field_marker)) . '</div>
                                             <textarea id="layout" name="layout" aria-label="' . h(lang('Layout')) . '">' . h($layout) . '</textarea>
                                             ' . pg_code_editor_attach(array('id' => 'layout', 'code_type' => 'mixed')) . '
                                         </div>
-                                        <div class="col-12 my-3 mt-12">
+                                        <div class="col-12 my-3">
                                             <div class="form-text text-start">' . lang(array('string'=>'Footer (code that is outputted after the list of Submitted Forms){var:1}','vars'=>$collection_field_marker)) . '</div>
                                             <textarea id="footer_content" name="footer_content" aria-label="' . h(lang('Footer')) . '">' . h($footer) . '</textarea>
                                             ' . pg_code_editor_attach(array('id' => 'footer_content', 'code_type' => 'mixed')) . '
@@ -795,13 +768,11 @@ if (!$_POST) {
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 ' . lang('Sort & Filter Options') . '
-                                </div>
-                                <div class="card-body">
+                                </h2>
+                                <div class="card-body pt-0">
                                     <div class="row">
                                         <div class="col-12 my-3">
                                             <div class="row g-2 align-items-center my-3">
@@ -856,13 +827,11 @@ if (!$_POST) {
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 ' . lang('Search & Browser Options') . '
-                                </div>
-                                <div class="card-body">
+                                </h2>
+                                <div class="card-body pt-0">
                                     <div class="row">
                                         <div class="col-12 my-3">
                                             <div class="form-field">
@@ -968,14 +937,54 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Summary') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <dl class="mb-0">
+                                            <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
+                                                <dt class="fw-normal">' . lang('Page') . '</dt>
+                                                <dd class="mb-0 fw-bold text-end text-break">' . h($page['name']) . '</dd>
+                                            </div>
+                                            <div class="d-flex justify-content-between gap-3 py-2">
+                                                <dt class="fw-normal">' . lang('Displays submitted forms from') . '</dt>
+                                                <dd class="mb-0 fw-bold text-end text-break">' . (isset($custom_form_name) ? h($custom_form_name) : lang('None')) . '</dd>
+                                            </div>
+                                        </dl>
+                                    </div>
+                                </div>
+                                <div class="card mb-7">
+                                    <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center justify-content-between gap-3 row-gap-1">
+                                        <h2 class="h5 mb-0 text-uppercase fg-primary fw-bold">' . lang('Available variables') . '</h2>
+                                        <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#hints"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('Hints') . '</button>
+                                    </div>
+                                    <div class="card-body pt-0">
+                                        <p class="mb-0 fg-primary">' . lang('System Fields') . '</p>
+                                        <ul class="list-group overflow-auto pe-1 mb-5" style="min-height:100px;height:220px;max-height:600px;resize:vertical;">
+                                            ' . $output_available_standard_fields . '
+                                        </ul>
+                                        <p class="mb-0 forms-color">' . lang('Form Fields') . '</p>
+                                        <ul class="list-group overflow-auto pe-1" style="min-height:100px;height:220px;max-height:600px;resize:vertical;">
+                                            ' . $output_available_custom_fields . '
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </nav>
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">
+                                        <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                    </div>
+                                </div>
+                            </nav>
+                        </div>
+                    </div>
                 </form>
             </div>
         </div>

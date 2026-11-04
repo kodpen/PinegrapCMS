@@ -166,6 +166,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dynamic-region-shared-form.md: The dynamic region create and edit screens share includes/forms/dynamic_region_form.php: what it holds, the label fix, what stays in the screens
 - edit-css-screen-layout.md: Edit CSS (edit_theme_css.php) on the wide edit layout: the code card, the Summary rows, the save bar, what stays in the screen
 - edit-file-header.md: Edit File (edit_file.php) layout and status column: preview, Summary mirroring the File Manager details ("W × H px", optimized, last change with name, address), access, Where is it used?
+- edit-js-screen-layout.md: Edit JS (edit_javascript.php) on the wide edit layout: the code card, the Summary rows, the save bar, what stays in the screen
 - edit-screen-wide-layout.md: Owner decision for panel edit screens: a wide screen is not spent on one column of stacked cards; form column, sticky status column, sticky save bar, modeled on product_builder.php.
 - edit-user-return-key.md: Return in an Edit User field saves through a hidden nameless first submit; the Create Contact button saves the form first, then creates and opens the contact
 - email-campaign-profile-follow-ring.md: A campaign profile may not follow itself or a profile that follows it, on the edit screen and in the import
@@ -218,6 +219,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - form-card-headings.md: Create and edit screens on includes/forms/*.php: card titles are h2.h5, group titles inside a card h3.hN, only dialog titles keep h4-h6; why the look did not change
 - form-date-whole-value.md: validate_date() takes a site-format date only when the whole value is one; prepare_form_data_for_input() trims a date before splitting it
 - form-field-shared-form.md: The form field create and edit screens share includes/forms/field_form.php: wide layout with the type first, a Summary (form, type, name, Last Modified), what stays in the screens
+- form-item-view-layout.md: edit_form_item_view.php in the wide layout (B11) through includes/forms/form_item_view_form.php: layout card, sticky Summary and variables, save bar; what stays in the screen
 - form-item-view-variables.md: Variables a form item view layout (and form e-mail subject/body) can use: ^^field^^, conditional blocks, date and check box formats, and where the edit screen's clickable list comes from
 - form-list-view-field-columns.md: Which order-by and filter fields a form list view can store, the address_name ENUM widening and the screen's refusal of other values
 - form-mail-link-variables.md: ^^email_preferences_url^^ and ^^confirm_subscription_url^^ in form e-mails: who gets a link, where and in which order they are filled in, why they are not standard fields (PR #1385)
@@ -233,6 +235,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - guided-tour.md: The guided tour engine (assets/js/pg_tour.js, pg_tour.css): who uses it, how steps are counted, Back at the start, how a step is read out, where focus goes at the end, the bubble's size
 - icon-ligature-button-names.md: Buttons whose content is a Material Icons ligature (north, south, delete, living) are named by that word; how the product attribute and product group screens name them (#2893)
 - image-editor-access.md: The image editor's access part: tool letters, the keyboard help sheet, shortcut names on the controls, Tab kept inside, reduced motion, the two-finger twist
+- image-editor-actions.md: The image editor's selection bar on a small screen: which commands show (M.actionList()), where it sits, when it hides, why it exists, how it was checked
 - image-editor-adjust.md: The image editor's Adjust tool: eight adjustments, nine filters as fixed values of them, one colour matrix shared by the preview and the server, the vignette and sharpening, the GD colour layer
 - image-editor-animation-save.md: Saving an animation into Files (AN4): Save to Files, the upload limit, action animation (binary body, type by bytes), its version with the document, reopening, same-format replace
 - image-editor-area.md: The image editor's Select area tool (E27a): shapes, magic wand, add and subtract, invert, feather, marching ants, doc.selection, the outline traced from pixels, Redact the selection
