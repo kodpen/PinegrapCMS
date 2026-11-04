@@ -1,6 +1,6 @@
 ---
 name: cloudflare-image-vary-rule
-description: WebP at the own address through a CDN: Cloudflare Tools Cache Rule (Vary Accept), the token-free self-test that sets bit 8 only on cache hits, or picks private or original (#5536, #6144, #PRNUM)
+description: WebP at the own address through a CDN: Cloudflare Tools Cache Rule (Vary Accept), the token-free self-test that sets bit 8 only on cache hits, or picks private or original (#5536, #6144, #6667)
 module: cloudflare_tools, image_vary_check
 ---
 
@@ -19,7 +19,7 @@ module: cloudflare_tools, image_vary_check
 - `pg_image_vary_outcome()`: `ok` sets bit 8 (public again); `shared` and `not_cached` take bit 8 back if set (`shared` picks mode `private` or `original`, `not_cached` keeps the last mode); `not_proxied` leaves bit 8 as the operator set it, mode `private`. `pg_image_vary_test_run()` applies it, writes `data/cache/img/same_address.json` (mode, verdict, private, bits, time), drops the System Status cache on a change and writes the Site Log.
 - When: the general job while bits 1+4 are on, confirmed or not: once when the stored bits differ (the switch or the confirmation changed, by hand too), then daily (weekly after `not_proxied`). The card's check button runs the same test; the rule writer stays the one-click way back to edge caching. Each test address is fresh, so a copy it leaves at the edge reaches nobody else.
 
-## Why must the cache prove it? (#PRNUM)
+## Why must the cache prove it? (#6667)
 - On dev.pinegrap.com the server's own requests were answered in the right format without coming out of Cloudflare's cache, so the old three-fetch test said `ok` and set bit 8 while Cloudflare gave its first copy (WebP) to every reader; a confirmation was never tested again, and ticking it off was undone by the next job tick.
 
 Pinned by `tests/cloudflare_image_vary_test.php` and `tests/image_negotiation_test.php`.

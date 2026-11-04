@@ -1,6 +1,6 @@
 ---
 name: image-same-address-switches
-description: WebP at a picture's own address: bits 4 and 8 of config.image_derivative_formats, the two Image Optimization switches, clamp, new-install default, System Status line (#5350, #6144, #PRNUM)
+description: WebP at a picture's own address: bits 4 and 8 of config.image_derivative_formats, the two Image Optimization switches, clamp, new-install default, System Status line (#5350, #6144, #6667)
 module: image
 ---
 
