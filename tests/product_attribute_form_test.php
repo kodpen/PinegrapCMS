@@ -143,3 +143,15 @@ function test_product_attribute_form_cards_columns()
 	pg_assert_contains("#product_attribute_summary_options", $init, 'the script updates the Summary');
 	pg_assert_false(strpos($init, '.parent().parent().parent()') !== false, 'buttons find their row with closest()');
 }
+
+function test_product_attribute_form_long_label()
+{
+	$fits = str_repeat('Ö', 255);
+	$long = str_repeat('Ö', 256);
+
+	pg_assert_same(255, pg_product_attribute_form_length($fits), 'a multibyte text is counted in characters, not bytes');
+	pg_assert_same('', pg_product_attribute_form_long_label(array(array('label' => $fits), array('label' => 'Kırmızı'))), 'labels of 255 characters fit');
+	pg_assert_same($long, pg_product_attribute_form_long_label(array(array('label' => 'Kırmızı'), array('label' => $long))), 'a label of 256 characters is returned');
+	pg_assert_same('', pg_product_attribute_form_long_label(array()), 'no options, nothing too long');
+	pg_assert_same('abcd', pg_product_attribute_form_long_label(array(array('label' => 'abc'), array('label' => 'abcd')), 3), 'the limit can be given');
+}

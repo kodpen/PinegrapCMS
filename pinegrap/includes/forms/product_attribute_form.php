@@ -122,6 +122,41 @@ function pg_product_attribute_form_duplicate_label($options)
 }
 
 /**
+ * Length of a text in characters (UTF-8), as the varchar columns count it.
+ *
+ * @param string $text
+ * @return int
+ */
+function pg_product_attribute_form_length($text)
+{
+    $text = (string) $text;
+
+    return function_exists('mb_strlen') ? mb_strlen($text, 'UTF-8') : (int) preg_match_all('/./su', $text);
+}
+
+/**
+ * The first option label longer than the label column holds; a longer one
+ * would be cut on save without an error, and two labels that differ only
+ * after the limit would be stored identical.
+ *
+ * @param array $options  Cleaned options
+ * @param int   $max      Longest label allowed, in characters
+ * @return string  The too long label, '' when every label fits
+ */
+function pg_product_attribute_form_long_label($options, $max = 255)
+{
+    foreach ($options as $option) {
+        $label = (string) $option['label'];
+
+        if (pg_product_attribute_form_length($label) > $max) {
+            return $label;
+        }
+    }
+
+    return '';
+}
+
+/**
  * Whether a new option label reads as one an attribute already has
  * (pg_product_attribute_form_label_keys()).
  *
@@ -298,9 +333,10 @@ function pg_product_attribute_form_layout($cards, $buttons)
 }
 
 /**
- * Checks the posted name is free, at least one option has a label and no
- * label is given twice; errors are marked on the form. The required check stays in the screens, which
- * word it differently.
+ * Checks the posted name is free, the name, label and option labels fit
+ * their columns, at least one option has a label and no label is given
+ * twice; errors are marked on the form. The required check stays in the
+ * screens, which word it differently.
  *
  * @param liveform $liveform
  * @param string|null $id  Edited attribute's id, null on create
@@ -308,6 +344,17 @@ function pg_product_attribute_form_layout($cards, $buttons)
  */
 function pg_product_attribute_form_check($liveform, $id)
 {
+    // The columns are varchar(100) and varchar(255): a longer text would be
+    // cut on save without an error, and a name cut to an existing one would
+    // pass the uniqueness check below.
+    if (($liveform->check_field_error('name') == false) && (pg_product_attribute_form_length($liveform->get_field_value('name')) > 100)) {
+        $liveform->mark_error('name', lang(array('string' => '{var:1} can be at most {var:2} characters long.', 'vars' => array(lang('Name'), 100))));
+    }
+
+    if (pg_product_attribute_form_length($liveform->get_field_value('label')) > 255) {
+        $liveform->mark_error('label', lang(array('string' => '{var:1} can be at most {var:2} characters long.', 'vars' => array(lang('Label'), 255))));
+    }
+
     if ($liveform->check_field_error('name') == false) {
         $query = "SELECT COUNT(*) AS count FROM product_attributes WHERE (name = ?)";
         $values = array((string) $liveform->get_field_value('name'));
@@ -334,6 +381,10 @@ function pg_product_attribute_form_check($liveform, $id)
 
         if ($duplicate !== '') {
             $liveform->mark_error('', lang(array('string' => 'The option {var:1} is entered more than once.', 'vars' => array(h($duplicate)))));
+        }
+
+        if (pg_product_attribute_form_long_label($options) !== '') {
+            $liveform->mark_error('', lang(array('string' => 'An option can be at most {var:1} characters long.', 'vars' => array(255))));
         }
     }
 

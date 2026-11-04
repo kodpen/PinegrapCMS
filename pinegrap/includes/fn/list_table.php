@@ -1067,6 +1067,7 @@ function pg_list_table_printed_lists()
         'view_styles', 'view_themes', 'view_design_files', 'view_containers', 'view_comments',
         'view_regions_all_ad_regions', 'view_regions_all_login_regions', 'view_regions_all_dynamic_regions',
         'view_regions_all_designer_regions', 'view_regions_all_common_regions', 'view_ads', 'view_fields',
+        'view_product_attributes', 'view_cart_quotes', 'view_returns', 'view_subscriptions', 'view_orders_for_contact',
     );
 }
 

@@ -168,6 +168,40 @@ function erp_typed_number_ok($value)
 }
 
 /**
+ * Whether a typed unit price reads as a figure.
+ *
+ * erp_kurus() drops everything but digits and separators, so 'abc' would
+ * save as 0 and '12abc' as 12. A price is digits and separators with an
+ * optional minus sign (refused later as negative, with its own message) and
+ * at most one currency sign or upper-case code (TL, TRY) before or after
+ * it, as a pasted amount carries. Empty is fine: the line checks decide
+ * about it.
+ *
+ * @param mixed $value
+ * @return bool
+ */
+function erp_typed_price_ok($value)
+{
+    if (is_int($value) || is_float($value)) {
+        return true;
+    }
+
+    if (!is_string($value)) {
+        return false;
+    }
+
+    $raw = preg_replace('/[\s\x{00A0}\x{202F}]+/u', '', $value);
+
+    if (($raw === null) || ($raw === '')) {
+        return true;
+    }
+
+    $raw = preg_replace('/^(?:\p{Sc}|[A-Z]{2,3})|(?:\p{Sc}|[A-Z]{2,3})$/u', '', $raw);
+
+    return ($raw !== null) && (bool) preg_match('/^-?(?=.*[0-9])[0-9.,]+$/', $raw);
+}
+
+/**
  * Read a quantity typed by an operator: a decimal with up to four places.
  *
  * Both separators are accepted. When both appear, the last is the decimal
