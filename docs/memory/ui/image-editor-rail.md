@@ -13,6 +13,7 @@ module: image_editor
 - `this.tool` stays the mode's own tool, so each mode keeps its panel, hint, letter (`M.toolKey()`) and pointer handling; only the rail button is the group's (`toolButtons[groupId]`, pressed in each of its modes).
 - A press opens the mode shown last (`this.railLast`, recorded in `render()` so a letter or leaving Crop counts), Crop the first time (`M.railOpen()`); pressing it again while one of its modes shows toggles the sheet as any tool does.
 - `modeSwitch()` draws the switch (`.pgie-seg.pgie-modes`, role group, label `railMode`) at the top of the panel body; a mode's label is `mode_<tool>` when defined (`mode_vector` is Pen), else `tool_<tool>`. A switch goes through `pickTool()`, which keeps the selection.
+- The switch wraps (flex, each button at least its label's width): at 1280×800 the five photo modes in equal columns overflowed the 304 px panel ("Alan seç" on two lines, "Çerçeve" past its button); now four sit on the first row and Frame on the second, and the phone's wider sheet keeps one row. A longer language wraps the same way.
 
 ## Where is it tested?
 - `tests/image_editor_rail_test.php`: the profiles' items, the modes, the reopened mode, the letters. The DOM part was checked in a headless browser at 1280×800 and 390×780 (#6819).
