@@ -274,3 +274,26 @@ JS
 	pg_assert_same(array('warn', 1), $result['server'], 'sent with the parameters, asked once');
 	pg_assert_same(array(false, 2), $result['cleared']);
 }
+
+// The details panel's sections: the name first, then the pictures, the
+// label/value lines and the buttons; an empty cell is left out.
+function test_list_table_js_details_sections()
+{
+	$result = list_table_js_test_node(<<<'JS'
+var T = window.PGListTable;
+var cols = [{ key: 'name' }, { key: 'pic', kind: 'image' }, { key: 'price', kind: 'money' }, { key: 'note' }, { key: 'actions', kind: 'actions' }, { key: 'seo', kind: 'badge' }];
+var filled = { name: 1, pic: 1, price: 1, actions: 1, seo: 1 };
+var out = {};
+out.full = T.detailsSections(cols, function (key) { return !!filled[key]; });
+out.bare = T.detailsSections(cols, function () { return false; });
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('title' => 'name', 'pictures' => array('pic'), 'fields' => array('price', 'seo'), 'actions' => array('actions')), $result['full'], 'in the user\'s order, the empty note left out');
+	pg_assert_same(array('title' => 'name', 'pictures' => array(), 'fields' => array(), 'actions' => array()), $result['bare'], 'the name always leads');
+}

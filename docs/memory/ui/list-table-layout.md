@@ -8,8 +8,8 @@ module: list_table
 - Details panel (`aside.pg-list-table-details`): every column of the current row (last clicked, or the keyboard's), hidden ones too, in the user's order, from the cells' markup. Beside the rows (20rem) from 1024 px, a fixed side sheet below.
 - Below 768 px each row is a card: the heading is visually hidden, each shown cell led by its `data-pg-label` (set on every cell); a cell's `text-center`/`text-end` still aligns it.
 
-## What layout rule does every details panel follow?
-- Owner (2026-11-04): the details must never look scattered; one rule for every list, kept in CSS so no list draws its own. A header strip ("Ayrıntılar" and close), then the first column (the record's name) as the panel's heading, then one line per column in the user's order: a fixed label column (`--pg-list-table-label`, 8rem, small muted text) and the value beside it, a hairline between lines, the same padding everywhere; an empty value reads as a dash; images shrink to the width. The phone card uses the same label width.
+## What layout rule does the details panel follow?
+- `ui/details-panel-rule.md`: name first, pictures, label/value lines with a fixed label column, buttons last, empty values left out. The phone card uses the same label width.
 
 ## How does the list look?
 - One framed surface (border, large radius, card background): the bar is its header strip, rows and details its body.

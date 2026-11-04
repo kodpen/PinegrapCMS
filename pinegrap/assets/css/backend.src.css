@@ -22195,11 +22195,12 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   flex: 1 1 auto;
   min-width: 0;
 }
-/* The details panel, one rule for every list: a header strip (title and
-   close), the record's name as the panel's heading, then one line per
-   column in the user's column order, a fixed label column at the left and
-   the value at the right, a hairline between lines; an empty value reads
-   as a dash. */
+/* The details panel, one rule for every list (ui/details-panel-rule.md):
+   a header strip (title and close), then in this order the record's name
+   as the heading, its pictures, one line per other column (a fixed label
+   column at the left, the value at the right, a hairline between lines,
+   the same spacing everywhere), and the row's buttons last. A column with
+   nothing in its cell is left out (pg_list_table.js detailsSections()). */
 .pg-list-table-details {
   display: flex;
   flex-direction: column;
@@ -22222,14 +22223,35 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   color: var(--pg-fg-2);
 }
 .pg-list-table-details-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
   flex: 1 1 auto;
   overflow: auto;
   padding: 0.75rem 1rem 1rem;
+}
+.pg-list-table-details-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+  overflow-wrap: anywhere;
+}
+.pg-list-table-details-pictures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.pg-list-table-details-pictures img,
+.pg-list-table-details dd img {
+  max-width: 100%;
+  height: auto;
 }
 .pg-list-table-details dl {
   display: grid;
   grid-template-columns: var(--pg-list-table-label) minmax(0, 1fr);
   margin: 0;
+  border-bottom: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
 }
 .pg-list-table-details dt,
 .pg-list-table-details dd {
@@ -22250,31 +22272,13 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   line-height: 1.5rem;
   overflow-wrap: anywhere;
 }
-.pg-list-table-details dd:empty::before {
-  content: "\2014";
-  color: var(--pg-fg-3);
+.pg-list-table-details-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
 }
-/* The first column is the record's name: the panel's heading. */
-.pg-list-table-details dt:first-child {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-.pg-list-table-details dt:first-child + dd {
-  grid-column: 1 / -1;
-  padding-block: 0 0.75rem;
-  border-top: 0;
-  font-size: 1rem;
-  font-weight: 600;
-}
-.pg-list-table-details dd .btn {
-  margin: 0 0.25rem 0 0 !important;
-}
-.pg-list-table-details dd img {
-  max-width: 100%;
-  height: auto;
+.pg-list-table-details-actions .btn {
+  margin: 0 !important;
 }
 /* Below 1024 px the details panel is a sheet over the list's right side. */
 @media (max-width: 1023.98px) {

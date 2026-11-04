@@ -443,6 +443,33 @@
     }
 
     /** The model's columns again; the details panel keeps its state. */
+    /**
+     * The details panel's sections, one rule for every list: the first
+     * column (the record's name) as the title, then the pictures, then a
+     * label/value line per other column, then the row's buttons; a column
+     * whose cell holds nothing is left out. columns: in the user's order;
+     * hasValue(key): whether the row's cell shows anything.
+     */
+    function detailsSections(columns, hasValue) {
+        var sections = { title: null, pictures: [], fields: [], actions: [] };
+
+        columns.forEach(function (column, index) {
+            if (index === 0) {
+                sections.title = column.key;
+            } else if (!hasValue(column.key)) {
+                return;
+            } else if (column.kind === 'image') {
+                sections.pictures.push(column.key);
+            } else if (column.kind === 'actions') {
+                sections.actions.push(column.key);
+            } else {
+                sections.fields.push(column.key);
+            }
+        });
+
+        return sections;
+    }
+
     function columnsReset(state) {
         return { order: [], hidden: {}, details: prefsClean(state).details };
     }
@@ -829,28 +856,61 @@
             return;
         }
 
-        var list = document.createElement('dl');
+        // The cell's own markup, escaped by the server where it was built;
+        // a quick edit field shows what the cell holds.
+        var cells = {};
+        var headings = {};
 
         this.columns.forEach(function (column) {
-            var cell = row.querySelector('td[data-pg-col="' + column.key + '"]');
+            cells[column.key] = row.querySelector('td[data-pg-col="' + column.key + '"]');
+            headings[column.key] = column.heading;
+        });
 
-            if (!cell || (column.kind === 'actions' && !cell.textContent.trim() && !cell.querySelector('a, button'))) {
+        var markup = function (key) {
+            return (typeof cells[key].pgQuickHtml === 'string') ? cells[key].pgQuickHtml : cells[key].innerHTML;
+        };
+        var sections = detailsSections(this.columns.filter(function (column) { return !!cells[column.key]; }), function (key) {
+            return !!(cells[key].textContent.trim() || cells[key].querySelector('img, svg, i, input, select, button, a[href]'));
+        });
+        var block = function (className, keys) {
+            if (!keys.length) {
                 return;
             }
 
-            var term = document.createElement('dt');
-            var value = document.createElement('dd');
+            var div = document.createElement('div');
 
-            term.textContent = column.heading;
+            div.className = className;
+            div.innerHTML = keys.map(markup).join('');
+            body.appendChild(div);
+        };
 
-            // The cell's own markup, escaped by the server where it was
-            // built; a quick edit field shows what the cell holds.
-            value.innerHTML = (typeof cell.pgQuickHtml === 'string') ? cell.pgQuickHtml : cell.innerHTML;
-            list.appendChild(term);
-            list.appendChild(value);
-        });
+        if (sections.title) {
+            var title = document.createElement('h3');
 
-        body.appendChild(list);
+            title.className = 'pg-list-table-details-title';
+            title.innerHTML = markup(sections.title);
+            body.appendChild(title);
+        }
+
+        block('pg-list-table-details-pictures', sections.pictures);
+
+        if (sections.fields.length) {
+            var list = document.createElement('dl');
+
+            sections.fields.forEach(function (key) {
+                var term = document.createElement('dt');
+                var value = document.createElement('dd');
+
+                term.textContent = headings[key];
+                value.innerHTML = markup(key);
+                list.appendChild(term);
+                list.appendChild(value);
+            });
+
+            body.appendChild(list);
+        }
+
+        block('pg-list-table-details-actions', sections.actions);
     };
 
     /**
@@ -1527,6 +1587,7 @@
         columnsToggle: columnsToggle,
         columnsMove: columnsMove,
         columnsReset: columnsReset,
+        detailsSections: detailsSections,
         init: init
     };
 
