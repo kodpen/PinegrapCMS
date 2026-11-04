@@ -207,6 +207,40 @@ function pg_credit_staff_gift_card_info_html(array $card, $owner)
 }
 
 /**
+ * Whether the gift card screen may delete a card. A card bound to a customer
+ * is store credit: deleting it would drop the credit with no audit line and
+ * break its redemption history, so it is voided on the customer's screen
+ * (pg_credit_void()) instead.
+ *
+ * @param int|string $credit_user_id gift_cards.user_id, 0 for a plain card
+ * @return bool
+ */
+function pg_credit_staff_gift_card_deletable($credit_user_id)
+{
+    return (int) $credit_user_id <= 0;
+}
+
+/**
+ * The note the gift card screen prints in place of Delete for store credit,
+ * pointing to the customer's store credit section where the card is voided.
+ *
+ * @param int         $user_id the card's customer
+ * @param string|null $send_to the page edit_user.php returns to; null when the
+ *                             viewer may not open the account (no link)
+ * @return string HTML
+ */
+function pg_credit_staff_gift_card_delete_note_html($user_id, $send_to)
+{
+    $sentence = h(lang('This store credit cannot be deleted here. Void it on the customer\'s screen.'));
+
+    if ($send_to !== null) {
+        $sentence .= ' <a href="edit_user.php?id=' . (int) $user_id . '&amp;send_to=' . h(urlencode((string) $send_to)) . '#store_credit">' . h(lang('Open the customer\'s store credit')) . '</a>';
+    }
+
+    return '<p class="small fg-secondary mt-2 mb-0"><i class="bi bi-info-circle me-2" aria-hidden="true"></i>' . $sentence . '</p>';
+}
+
+/**
  * The customer's bound cards, newest first, open or not.
  *
  * @param int $user_id

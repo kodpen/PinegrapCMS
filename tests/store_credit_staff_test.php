@@ -105,3 +105,24 @@ function test_store_credit_staff_gift_card_info()
 	pg_assert_contains("pg_list_status_word(lang('Store credit'))", $list, 'the list marks credit under the code');
 	pg_assert_contains("'<span hidden>' . h(\$gift_card['code']) . '</span>'", $list, 'the search finds the code without dashes');
 }
+
+function test_store_credit_staff_gift_card_delete_note()
+{
+	$sentence = h(lang('This store credit cannot be deleted here. Void it on the customer\'s screen.'));
+
+	$linked = pg_credit_staff_gift_card_delete_note_html(7, 'edit_gift_card.php?id=3');
+	pg_assert_contains('href="edit_user.php?id=7&amp;send_to=edit_gift_card.php%3Fid%3D3#store_credit"', $linked, 'the customer screen link');
+	pg_assert_contains($sentence, $linked, 'the sentence');
+
+	$plain = pg_credit_staff_gift_card_delete_note_html(7, null);
+	pg_assert_false(strpos($plain, '<a ') !== false, 'no link when the viewer may not open the account');
+	pg_assert_contains($sentence, $plain, 'the sentence without a link');
+
+	pg_assert_true(pg_credit_staff_gift_card_deletable(0), 'an ordinary gift card is deleted');
+	pg_assert_false(pg_credit_staff_gift_card_deletable(5), 'store credit is not');
+	pg_assert_false(pg_credit_staff_gift_card_deletable('5'), 'store credit read as a string is not');
+
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_gift_card.php');
+	pg_assert_contains('pg_credit_staff_gift_card_delete_note_html(', $edit, 'the screen prints the note');
+	pg_assert_contains('pg_credit_staff_gift_card_deletable(', $edit, 'the screen checks before deleting');
+}

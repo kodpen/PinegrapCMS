@@ -1,6 +1,6 @@
 ---
 name: gift-card-screens-store-credit
-description: Gift card screens: store credit shown with its owner and kind, credit balance edits audited, code search without dashes, amount and quantity box sizes
+description: Gift card screens: store credit shown with its owner and kind, no Delete for store credit, credit balance edits audited, code search without dashes, amount and quantity box sizes
 ---
 
 ## How do the gift card screens show store credit?
@@ -13,7 +13,9 @@ description: Gift card screens: store credit shown with its owner and kind, cred
 - After the balance is written (both the guarded and the old-form path), `pg_audit('update', 'store_credit', id, before, after, pg_credit_audit_label(code))` with `pg_credit_audit_fields()`; plain gift cards write no audit line. Every other credit change was already audited.
 
 ## Is Delete on a store credit card allowed?
-- Still a plain `DELETE FROM gift_cards` with a Site Log line and no audit; whether to refuse it for `user_id` > 0 or audit it like a void is an owner question (decision issue), not settled here.
+- No (owner, #6688, `decisions-made-product-27.md`). `pg_credit_staff_gift_card_deletable()` is false for `user_id` > 0: the screen drops the Delete button and prints `pg_credit_staff_gift_card_delete_note_html()` under the button bar (void it on the customer's screen, a link to `edit_user.php?id=<user_id>#store_credit` when `pg_can_open_user()` and the account exists). A posted `submit_delete` for such a card gets a form error and nothing is deleted. Ordinary cards (`user_id` = 0) are deleted as before with a Site Log line.
+- Why: the delete dropped the row with no `pg_audit()` line and broke `applied_gift_cards`, the customer's list and the audit link; `pg_credit_void()` (unchanged) keeps the row and audits.
+- The external API's `DELETE /gift-cards/{id}` (`includes/api/resources/gift_cards.php`) is not covered by this rule.
 
 ## How does the list search find a code typed without dashes?
 - The driver searches `row.textContent`; the code cell prints the dashed code, so the stored code (`4059436642850475`) sits beside it in `<span hidden>`. Hidden text stays out of quick edit field names: `rowNameText()` in `pg_list_table_edit.js` skips `hidden` and `aria-hidden` nodes and puts a space around block children (the notes field used to be named "Notes: 6579-…-5163Expired").
@@ -23,4 +25,4 @@ description: Gift card screens: store credit shown with its owner and kind, cred
 - Quantity: `maxlength` 4 with the 1,000 limit, 9 (what `pg_gift_card_form_quantity()` reads) in the `limit=false` mode, where 12000 used to be cut to 1200.
 
 ## Which tests cover it?
-- `tests/gift_card_form_test.php` (box lengths, save bar icons), `tests/store_credit_staff_test.php` (`test_store_credit_staff_gift_card_info`), `tests/list_table_quick_edit_js_test.php` (`test_list_table_quick_edit_row_name`). The edit screen's queries were not run on a database.
+- `tests/gift_card_form_test.php` (box lengths, save bar icons), `tests/store_credit_staff_test.php` (`test_store_credit_staff_gift_card_info`, `test_store_credit_staff_gift_card_delete_note`), `tests/list_table_quick_edit_js_test.php` (`test_list_table_quick_edit_row_name`). The edit screen's queries were not run on a database.

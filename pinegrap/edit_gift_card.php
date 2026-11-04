@@ -219,13 +219,26 @@ if (!$_POST) {
     // card with no order has no "created manually" sentence.
     $credit_user_id = (int) $gift_card['credit_user_id'];
 
+    // Store credit has no Delete: it is voided on the customer's screen,
+    // which keeps the row, its redemptions and an audit line.
+    $output_delete = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('gift card')))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>';
+    $output_delete_note = '';
+
     if ($credit_user_id > 0) {
+        $credit_send_to = null;
+
         if ((string) $gift_card['credit_username'] === '') {
             $output_owner = '#' . $credit_user_id;
         } else if (pg_can_open_user($user, $gift_card['credit_user_role'])) {
             $output_owner = '<a href="edit_user.php?id=' . $credit_user_id . '&amp;send_to=' . h(urlencode($request_uri)) . '#store_credit">' . h($gift_card['credit_username']) . '</a>';
+            $credit_send_to = $request_uri;
         } else {
             $output_owner = h($gift_card['credit_username']);
+        }
+
+        if (!pg_credit_staff_gift_card_deletable($credit_user_id)) {
+            $output_delete = '';
+            $output_delete_note = pg_credit_staff_gift_card_delete_note_html($credit_user_id, $credit_send_to);
         }
 
         $output_credit_info = pg_credit_staff_gift_card_info_html(array(
@@ -347,8 +360,9 @@ if (!$_POST) {
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                            <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('gift card')))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>
+                            ' . $output_delete . '
                         </div>
+                        ' . $output_delete_note . '
                     </div>
                 </nav>
             </div>
@@ -368,6 +382,12 @@ if (!$_POST) {
     
     // If the user selected to delete this gift card, then delete it.
     if ($liveform->get_field_value('submit_delete') == 'Delete') {
+        // Store credit is voided on the customer's screen, never deleted here.
+        if (!pg_credit_staff_gift_card_deletable($gift_card['credit_user_id'])) {
+            $liveform->mark_error('', lang('This store credit cannot be deleted here. Void it on the customer\'s screen.'));
+            go($_SERVER['PHP_SELF'] . '?id=' . (int) $gift_card['id']);
+        }
+
         db("DELETE FROM gift_cards WHERE id = '" . e($liveform->get_field_value('id')) . "'");
         
         log_activity(lang(array('string'=>'gift card ({var:1}) was deleted','vars'=>output_gift_card_code($gift_card['code']))), $_SESSION['sessionusername']);
