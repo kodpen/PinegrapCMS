@@ -9,7 +9,6 @@ description: The eleven feature plans approved 2026-11-02: index and order, how 
 - Pinegrap's audience is mixed (bloggers, shops, agencies, corporate sites) and global: nothing in these plans is built around one country, and products or invoices are never put first.
 
 ## Which plans, in which order?
-3. `designer-form-logic.md` (FL1-FL8): shown-when rules, steps, a payment step in designed forms.
 4. `appointment-booking.md` (BK1-BK10): services, staff hours, slots, a booking widget.
 5. `page-experiments.md` (PX1-PX8): A/B variants of a page and audience rules on elements.
 6. `audiences.md` (AU1-AU6): rule-driven contact groups.
