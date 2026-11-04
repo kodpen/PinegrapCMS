@@ -235,7 +235,7 @@ function api_campaign_load_or_fail($id) {
 
 }
 
-function api_campaign_answer($id) {
+function api_campaign_answer($id, $status_code = 200) {
 
 	$row = api_campaign_load_or_fail($id);
 
@@ -261,7 +261,7 @@ function api_campaign_answer($id) {
 
 	}
 
-	api_ok($out);
+	api_ok($out, $status_code);
 
 }
 
@@ -885,5 +885,178 @@ function api_campaigns_sms_list($params) {
 	}
 
 	api_ok_list($out, $limit, $next);
+
+}
+
+// The contact group ids sent in one list, checked against the groups that
+// exist and that the owner may reach (validate_contact_group_access(), as on
+// the create screen). Returns the ids, or the first one refused as a string.
+function api_campaign_group_ids($ids, $owner) {
+
+	$ids = array_values(array_unique(array_map('intval', (array)$ids)));
+
+	if (empty($ids)) {
+
+		return array();
+
+	}
+
+	$known = array();
+
+	foreach (api_rows("SELECT id FROM contact_groups WHERE id IN (" . implode(',', $ids) . ")") as $row) {
+
+		$known[(int)$row['id']] = true;
+
+	}
+
+	foreach ($ids as $id) {
+
+		if (!isset($known[$id]) || !validate_contact_group_access($owner, $id)) {
+
+			return (string)$id;
+
+		}
+
+	}
+
+	return $ids;
+
+}
+
+// A new manual campaign, made as the create screen makes one: the same
+// checks, the same recipients picked from the same groups and the same rows
+// (includes/fn/email_campaign_create.php). It is kept paused (a draft) until
+// POST /campaigns/{id}/schedule releases it, so creating one never sends.
+// A plain-text message only: an HTML campaign is a page rendered for the
+// panel user who picks it, which an application has no session for.
+function api_campaigns_create($params) {
+
+	$app = api_current_app();
+
+	$owner = $app['owner'];
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/forms/email_campaign_form.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_create.php');
+
+	$values = array(
+		'subject'             => trim((string)$params['subject']),
+		'from_email_address'  => trim((string)$params['from_email']),
+		'reply_email_address' => isset($params['reply_to']) ? trim((string)$params['reply_to']) : ''
+	);
+
+	$fields = array('subject' => 'subject', 'from_email_address' => 'from_email', 'reply_email_address' => 'reply_to');
+
+	foreach (pg_email_campaign_field_errors($values) as $key => $message) {
+
+		api_fail_validation($message, $fields[$key]);
+
+	}
+
+	$included = api_campaign_group_ids(isset($params['contact_group_ids']) ? $params['contact_group_ids'] : array(), $owner);
+	$excluded = api_campaign_group_ids(isset($params['excluded_contact_group_ids']) ? $params['excluded_contact_group_ids'] : array(), $owner);
+
+	foreach (array('contact_group_ids' => $included, 'excluded_contact_group_ids' => $excluded) as $field => $ids) {
+
+		if (!is_array($ids)) {
+
+			api_fail_validation(lang(array('string' => 'There is no contact group {var:1} that you may use.', 'vars' => $ids)), $field);
+
+		}
+
+	}
+
+	$entered = isset($params['email_address']) ? trim((string)$params['email_address']) : '';
+
+	if (($entered !== '') && !validate_email_address($entered)) {
+
+		api_fail_validation(lang('That is not an e-mail address.'), 'email_address');
+
+	}
+
+	if (empty($included) && ($entered === '')) {
+
+		api_fail_validation(lang('Please select at least one recipient.'), 'contact_group_ids');
+
+	}
+
+	$groups = array();
+
+	foreach ($excluded as $id) { $groups[$id] = 'excluded'; }
+	foreach ($included as $id) { $groups[$id] = 'included'; }
+
+	api_dry_run_stop('created', 'campaign', array('contact_group_ids' => $included, 'excluded_contact_group_ids' => $excluded));
+
+	$picked = pg_email_campaign_pick_recipients($owner, (string)$params['purpose'], $groups, $entered);
+
+	if ($picked === false) {
+
+		api_fail(500, 'server_error', lang('The campaign could not be saved.'));
+
+	}
+
+	if (empty($picked['recipients'])) {
+
+		api_fail_validation(lang('The contact groups chosen hold no address this campaign may go to.'), 'contact_group_ids');
+
+	}
+
+	$id = pg_email_campaign_insert(array(
+		'from_name'           => isset($params['from_name']) ? (string)$params['from_name'] : '',
+		'from_email_address'  => $values['from_email_address'],
+		'reply_email_address' => $values['reply_email_address'],
+		'subject'             => $values['subject'],
+		'format'              => 'plain_text',
+		'body'                => (string)$params['body'],
+		'page_id'             => '',
+		'start_time'          => api_campaign_start_time(isset($params['send_at']) ? $params['send_at'] : ''),
+		'purpose'             => (string)$params['purpose'],
+		'status'              => 'paused'
+	), $picked, (int)$owner['id']);
+
+	if (!$id) {
+
+		api_fail(500, 'server_error', lang('The campaign could not be saved.'));
+
+	}
+
+	log_activity(lang(array(
+		'string' => 'Campaign (subject: {var:1}) was created through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array($values['subject'], $app['name'], $app['api_key'])
+	)), $owner['username']);
+
+	api_campaign_answer($id, 201);
+
+}
+
+// Releases a draft (paused) campaign for the e-mail job, at send_at or as
+// soon as the job runs. Nothing is sent by this call.
+function api_campaigns_schedule($params) {
+
+	$app = api_current_app();
+
+	$row = api_campaign_load_or_fail($params['id']);
+
+	$id = (int)$row['id'];
+
+	if ((string)$row['status'] !== 'paused') {
+
+		api_fail(409, 'campaign_not_paused', lang('Only a paused campaign can be scheduled.'));
+
+	}
+
+	$start_time = api_campaign_start_time(array_key_exists('send_at', $params) ? $params['send_at'] : '');
+
+	api_dry_run_stop('updated', 'campaign', array('id' => $id, 'status' => 'ready', 'start_time' => $start_time));
+
+	api_exec("UPDATE email_campaigns SET status = 'ready', start_time = '" . escape($start_time) . "',
+			last_modified_user_id = '" . (int)$app['owner']['id'] . "', last_modified_timestamp = UNIX_TIMESTAMP()
+		WHERE id = '" . $id . "' AND status = 'paused'");
+
+	log_activity(lang(array(
+		'string' => 'Campaign (subject: {var:1}) was scheduled through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array((string)$row['subject'], $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	api_campaign_answer($id);
 
 }

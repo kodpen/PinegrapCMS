@@ -21,6 +21,7 @@ ini_set('memory_limit', '-1');
 include('init.php');
 require_once(dirname(__FILE__) . '/includes/forms/email_campaign_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_recipients.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_create.php');
 $user = validate_user();
 validate_email_access($user);
 
@@ -319,142 +320,33 @@ if (!$_POST) {
         }
     }
     
-    $recipients = array();
-    $recipients_contact_id_xref = array();
-    
-    // get all contact groups
-    $query = "SELECT id FROM contact_groups";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    
-    $contact_groups = array();
-    
-    while ($row = mysqli_fetch_assoc($result)) {
-        $contact_groups[] = $row['id'];
-    }
-    
-    $included_contact_groups = array();
-    
-    // loop through all contact groups in order to get included e-mail addresses
-    foreach ($contact_groups as $contact_group_id) {
-        // if this contact group was included, then get e-mail addresses for this contact group
-        if (($_POST['contact_group_' . $contact_group_id] ?? '') == 'included') {
-            // if user has access to contact group, then continue
-            if (validate_contact_group_access($user, $contact_group_id) == true) {
-                // store this included contact group in array, so later we can store which contact groups were included
-                $included_contact_groups[] = $contact_group_id;
-                
-                // get e-mail subscription information about contact group
-                $query =
-                    "SELECT email_subscription
-                    FROM contact_groups
-                    WHERE id = ?";
-                $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
-                $row = mysqli_fetch_assoc($result);
-                $email_subscription = $row['email_subscription'];
-                
-                // a commercial campaign takes opted-in contacts only, a
-                // transactional one every contact of the group with an address
-                $query = pg_email_campaign_recipient_query($_POST['purpose'], $email_subscription == 1);
-                $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
-                
-                // loop through all contact e-mail addresses
-                while ($row = mysqli_fetch_assoc($result)) {
-                    $email_address = mb_strtolower($row['email_address']);
-                    $recipients[] = $email_address;
-                    
-                    // prevent duplicate entries from overwriting the first contact id found for this e-mail address
-                    if (!array_key_exists($email_address, $recipients_contact_id_xref)) {
-                        $recipients_contact_id_xref[$email_address] = $row['id'];
-                    }
-                }
-            }
+    // The included and excluded groups as the form posts them
+    // (contact_group_<id>), and the one entered address.
+    $groups = array();
+
+    foreach ($_POST as $name => $value) {
+        if ((preg_match('/^contact_group_(\d+)$/', (string) $name, $match) === 1) && is_string($value)) {
+            $groups[(int) $match[1]] = $value;
         }
     }
-    
-    // remove duplicate e-mail addresses before we exclude e-mail addresses
-    $recipients = array_unique($recipients);
-    
-    $excluded_contact_groups = array();
-    
-    // loop through all contact groups in order to get excluded e-mail addresses
-    foreach ($contact_groups as $contact_group_id) {
-        // if this contact group was excluded, then get e-mail addresses for this contact group
-        if (($_POST['contact_group_' . $contact_group_id] ?? '') == 'excluded') {
-            // if user has access to contact group, then continue
-            if (validate_contact_group_access($user, $contact_group_id) == true) {
-                // store this excluded contact group in array, so later we can store which contact groups were excluded
-                $excluded_contact_groups[] = $contact_group_id;
-                
-                // get all contacts in this contact group
-                $query =
-                    "SELECT contacts.email_address
-                    FROM contacts_contact_groups_xref
-                    LEFT JOIN contacts ON contacts_contact_groups_xref.contact_id = contacts.id
-                    WHERE
-                        (contacts_contact_groups_xref.contact_group_id = ?)
-                        AND (contacts.email_address != '')";
-                $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
-                
-                // loop through all contact e-mail addresses
-                while ($row = mysqli_fetch_assoc($result)) {
-                    // check if this e-mail address has been included
-                    $key = array_search(mb_strtolower($row['email_address']), $recipients);
-                    
-                    // if this e-mail address has been included, then exclude this e-mail address
-                    if ($key !== false) {
-                        unset($recipients[$key]);
-                    }
-                }
-            }
-        }
+
+    $entered_email_address = is_string($_POST['entered_email_address'] ?? null) ? $_POST['entered_email_address'] : '';
+
+    if (($entered_email_address !== '') && (validate_email_address($entered_email_address) == false)) {
+        output_error(lang('The address you entered under Also send message to the following e-mail address is not valid.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
-    
-    // if entered e-mail address was entered
-    if (is_string($_POST['entered_email_address'] ?? null) && ($_POST['entered_email_address'] !== '')) {
-        // if e-mail address is valid
-        if (validate_email_address($_POST['entered_email_address']) == true) {
-            $recipients[] = mb_strtolower($_POST['entered_email_address']);
-            
-            // if user has a role that is greater than user role, then possibly create contact for entered e-mail address
-            if ($user['role'] < 3) {
-                // determine if entered e-mail address is already in use by a contact
-                $query = "SELECT id
-                         FROM contacts
-                         WHERE email_address = ?";
-                $result_contacts = db_q($query, array((string) ($_POST['entered_email_address'] ?? ''))) or output_error('Query failed.');
 
-                // determine if entered e-mail address is already in use by a user
-                $query = "SELECT user_id
-                         FROM user
-                         WHERE user_email = ?";
-                $result_users = db_q($query, array((string) ($_POST['entered_email_address'] ?? ''))) or output_error('Query failed.');
+    $picked = pg_email_campaign_pick_recipients($user, $_POST['purpose'], $groups, $entered_email_address);
 
-                // if entered e-mail address is not in use by a contact or a user, create contact for entered e-mail address
-                if ((mysqli_num_rows($result_contacts) == 0) && (mysqli_num_rows($result_users) == 0)) {
-                    $query = "INSERT INTO contacts
-                             (email_address, user, timestamp)
-                             VALUES (?, ?, UNIX_TIMESTAMP())";
-                    $result = db_q($query, array((string) ($_POST['entered_email_address'] ?? ''), (string) $user['id'])) or output_error('Query failed.');
-
-                    // Read the id first: the audit line is itself an insert.
-                    $new_contact_id = (int) mysqli_insert_id(db::$con);
-                    pg_audit_record('create', 'contacts', $new_contact_id);
-                }
-            }
-
-        // else e-mail address is not valid, so generate error
-        } else {
-            output_error(lang('The address you entered under Also send message to the following e-mail address is not valid.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
+    if ($picked === false) {
+        output_error(lang('Query failed.'));
     }
 
     // if there are no recipients, output error
-    if (!$recipients) {
+    if (!$picked['recipients']) {
         output_error(lang('Please select at least one recipient.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
-    // remove duplicate e-mail addresses
-    $recipients = array_unique($recipients);
     
     // get subject
     $subject = $_POST['subject'];
@@ -587,90 +479,21 @@ if (!$_POST) {
         $body = preg_replace('/<\/body>/i', $footer, $body);
     }
 
-    // wrap long lines (RFC 821)
-    $body = wordwrap($body, 900, "\n", 1);
-    
-    // create e-mail campaign
-    $query =
-        "INSERT INTO email_campaigns (
-            from_name,
-            from_email_address,
-            reply_email_address,
-            subject,
-            format,
-            body,
-            page_id,
-            start_time,
-            purpose,
-            created_user_id,
-            created_timestamp,
-            last_modified_user_id,
-            last_modified_timestamp)
-        VALUES (
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            UNIX_TIMESTAMP(),
-            ?,
-            UNIX_TIMESTAMP())";
-    $result = db_q($query, array((string) ($_POST['from_name'] ?? ''), (string) ($_POST['from_email_address'] ?? ''), (string) ($_POST['reply_email_address'] ?? ''), (string) ($_POST['subject'] ?? ''), (string) ($_POST['format'] ?? ''), (string) $body, (string) ($_POST['page_id'] ?? ''), (string) prepare_form_data_for_input((string) ($_POST['start_time'] ?? ''), 'date and time'), (string) ($_POST['purpose'] ?? ''), (string) $user['id'], (string) $user['id'])) or output_error('Query failed.');
-    
-    $email_campaign_id = mysqli_insert_id(db::$con);
-    
-    // loop through all recipients in order to create record in database for each recipient
-    foreach ($recipients as $email_address) {
-        if (array_key_exists($email_address, $recipients_contact_id_xref)) {
-            $contact_id = $recipients_contact_id_xref[$email_address];
-        } else {
-            $contact_id = 0;
-        }
-        
-        // create e-mail recipients
-        $query =
-            "INSERT INTO email_recipients (
-                email_campaign_id,
-                email_address,
-                contact_id)
-            VALUES (
-                ?,
-                ?,
-                ?)";
-        $result = db_q($query, array((string) $email_campaign_id, (string) $email_address, (string) $contact_id)) or output_error('Query failed.');
-    }
-    
-    // loop through included contact groups in order to store contacts groups that were included in this e-mail campaign
-    foreach ($included_contact_groups as $contact_group_id) {
-        $query =
-            "INSERT INTO contact_groups_email_campaigns_xref (
-                contact_group_id,
-                email_campaign_id,
-                type)
-            VALUES (
-                ?,
-                ?,
-                'included')";
-        $result = db_q($query, array((string) $contact_group_id, (string) $email_campaign_id)) or output_error('Query failed.');
-    }
-    
-    // loop through excluded contact groups in order to store contacts groups that were excluded in this e-mail campaign
-    foreach ($excluded_contact_groups as $contact_group_id) {
-        $query =
-            "INSERT INTO contact_groups_email_campaigns_xref (
-                contact_group_id,
-                email_campaign_id,
-                type)
-            VALUES (
-                ?,
-                ?,
-                'excluded')";
-        $result = db_q($query, array((string) $contact_group_id, (string) $email_campaign_id)) or output_error('Query failed.');
+    $email_campaign_id = pg_email_campaign_insert(array(
+        'from_name'           => (string) ($_POST['from_name'] ?? ''),
+        'from_email_address'  => $_POST['from_email_address'],
+        'reply_email_address' => $_POST['reply_email_address'],
+        'subject'             => $_POST['subject'],
+        'format'              => $_POST['format'],
+        'body'                => $body,
+        'page_id'             => $_POST['page_id'],
+        'start_time'          => prepare_form_data_for_input((string) ($_POST['start_time'] ?? ''), 'date and time'),
+        'purpose'             => $_POST['purpose'],
+        'status'              => 'ready',
+    ), $picked, $user['id']);
+
+    if (!$email_campaign_id) {
+        output_error(lang('Query failed.'));
     }
 
     $log_page = '';
