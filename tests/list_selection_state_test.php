@@ -60,14 +60,15 @@ function test_every_checkbox_list_switch_shows_the_mixed_state()
 
 function test_erp_bulk_buttons_start_disabled()
 {
-	foreach (array('erp_invoices.php' => 3, 'erp_account_sync.php' => 5) as $file => $expected) {
+	// erp_invoices.php: the menu toggle and its three bulk actions.
+	foreach (array('erp_invoices.php' => 4, 'erp_account_sync.php' => 5) as $file => $expected) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 
-		preg_match_all('/<span class="enable-on-selected[^"]*">(.*?)<\/span>\';/s', $source, $groups);
+		preg_match_all('/<(span|div) class="[^"]*enable-on-selected[^"]*">(.*?)<\/\1>\';/s', $source, $groups);
 
 		$buttons = 0;
 
-		foreach ($groups[1] as $group) {
+		foreach ($groups[2] as $group) {
 			preg_match_all('/<button [^>]*>/', $group, $tags);
 
 			foreach ($tags[0] as $tag) {
