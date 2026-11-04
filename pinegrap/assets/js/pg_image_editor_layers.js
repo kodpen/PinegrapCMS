@@ -608,33 +608,9 @@
         }
 
         if (picked.length) {
-            var arrange = function (how) {
-                self.change(function (doc) { doc.layers = M.reorder(doc.layers, self.sel, how); });
-            };
-            var align = function (how) {
-                var target = (picked.length > 1) ? M.bounds(free) : self.viewRect(), moves = M.align(free.map(function (l) { return M.bounds([l]); }), how, target);
-
-                self.change(function (doc) {
-                    free.forEach(function (o, i) {
-                        var l = find(doc, o.id);
-
-                        l.x += moves[i][0];
-                        l.y += moves[i][1];
-                    });
-                });
-            };
-            var spread = function (axis) {
-                var moves = M.distribute(free.map(function (l) { return M.bounds([l]); }), axis);
-
-                self.change(function (doc) {
-                    free.forEach(function (o, i) {
-                        var l = find(doc, o.id);
-
-                        l.x += moves[i][0];
-                        l.y += moves[i][1];
-                    });
-                });
-            };
+            var arrange = function (how) { self.arrangeLayers(how); };
+            var align = function (how) { self.alignLayers(how); };
+            var spread = function (axis) { self.spreadLayers(axis); };
             var opacity = Math.round(100 * ((picked[0].opacity === undefined) ? 1 : picked[0].opacity));
             var value = el('span', { class: 'pgie-val', text: pct(opacity) });
             var slider = el('input', { type: 'range', class: 'pgie-range', min: '0', max: '100', step: '1', value: String(opacity), 'aria-label': t('opacity') });
@@ -685,6 +661,46 @@
         }
 
         this.layerList(body);
+    };
+
+    // The selected layers moved in the stack: 'top', 'up', 'down', 'bottom'
+    // (the panel's Arrange, the context menu's Order).
+    Editor.prototype.arrangeLayers = function (how) {
+        var ids = this.sel;
+
+        this.change(function (doc) { doc.layers = M.reorder(doc.layers, ids, how); });
+    };
+
+    // The unlocked selected layers lined up on how ('left' … 'bottom'): on
+    // their joint box when two or more are selected, else on the canvas.
+    Editor.prototype.alignLayers = function (how) {
+        var picked = this.selected(), free = picked.filter(function (l) { return !l.locked; });
+        var target = (picked.length > 1) ? M.bounds(free) : this.viewRect();
+
+        if (free.length) {
+            this.moveLayers(free, M.align(free.map(function (l) { return M.bounds([l]); }), how, target));
+        }
+    };
+
+    // The unlocked selected layers spaced evenly along axis 'x' or 'y'.
+    Editor.prototype.spreadLayers = function (axis) {
+        var free = this.selected().filter(function (l) { return !l.locked; });
+
+        if (free.length >= 3) {
+            this.moveLayers(free, M.distribute(free.map(function (l) { return M.bounds([l]); }), axis));
+        }
+    };
+
+    // Layers list moved by moves[i] ([dx, dy]), one undo step.
+    Editor.prototype.moveLayers = function (list, moves) {
+        this.change(function (doc) {
+            list.forEach(function (o, i) {
+                var l = find(doc, o.id);
+
+                l.x += moves[i][0];
+                l.y += moves[i][1];
+            });
+        });
     };
 
     // The icon beside a layer's name in the list, by its type.
