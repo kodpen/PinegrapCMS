@@ -5931,17 +5931,35 @@
         }).catch(fail);
     }
 
-    // A card of the overview: a title, a link to the whole list, a body.
-    function homeCard(title, iconName, moreUrl, moreLabel) {
-        var node = el('section', 'card ws-home-card');
-        var head = el('div', 'card-header d-flex align-items-center gap-3');
-        var heading = el('h3', 'h6 mb-0 flex-grow-1');
-        heading.appendChild(icon(iconName, 'me-1'));
-        heading.appendChild(document.createTextNode(title));
+    // A card of Today in the new dashboard's frame (pg_dash.js frame()):
+    // the category's icon chip, the title, a count badge kept hidden until
+    // there is one, the link to the whole list at the end, then the body.
+    // Today's cards are fixed, so the frame has no period, grip or menu.
+    function todayCard(id, title, iconName, width, category, moreUrl, moreLabel) {
+        var node = el('section', 'card pg-dash-card pg-dash-cardbox ws-today-card');
+        var titleId = 'ws_today_card_' + id;
+
+        node.setAttribute('data-card', id);
+        node.setAttribute('data-width', width);
+        node.setAttribute('data-category', category);
+        node.setAttribute('aria-labelledby', titleId);
+
+        var head = el('header', 'pg-dash-card-head');
+        var chip = el('span', 'pg-dash-card-icon');
+        chip.setAttribute('aria-hidden', 'true');
+        chip.appendChild(icon(iconName));
+        head.appendChild(chip);
+
+        var heading = el('h2', 'pg-dash-card-title', title);
+        heading.id = titleId;
         head.appendChild(heading);
 
+        var badge = el('span', 'pg-dash-card-badge ws-today-count');
+        badge.hidden = true;
+        head.appendChild(badge);
+
         if (moreUrl) {
-            var more = el('a', 'small text-decoration-none text-nowrap', moreLabel);
+            var more = el('a', 'ws-today-more', moreLabel);
             more.href = moreUrl;
             more.appendChild(icon('bi-arrow-right-short'));
             head.appendChild(more);
@@ -5949,10 +5967,10 @@
 
         node.appendChild(head);
 
-        var body = el('div', 'card-body p-3');
+        var body = el('div', 'pg-dash-card-body');
         node.appendChild(body);
 
-        return { node: node, body: body };
+        return { node: node, head: head, badge: badge, body: body };
     }
 
     // What the feature files draw with (workspace_approvals.js,
@@ -7495,72 +7513,108 @@
             });
         },
 
-        // The overview as drawn: the greeting, only here, with the ways to
-        // start; then what waits for the person, their tasks due today or
-        // before, today's calendar; then what happened in their channels and
-        // the latest decisions; the channels to join and what this place is
-        // for at the end.
+        // Today as drawn, in the new dashboard's design: the greeting card,
+        // only here, with the ways to start; then the cards in a fixed order
+        // (what waits for the person, their tasks due today or before,
+        // today's calendar, what happened in their channels, the latest
+        // decisions, the channels to join, what this place is for).
         drawHome: function (body, data) {
             var self = this;
+            var look = CFG.today_look || {};
 
             clear(body);
 
             var waitingCount = (data.talk || []).filter(function (item) { return item.unread; }).length
                 + (data.approvals || []).length + (data.acks || []).length;
 
-            var hello = el('div', 'ws-home-hello');
-            var words = el('div', 'ws-home-hello-text');
+            // The new dashboard's container: its columns follow this width,
+            // its palette and the person's card face apply inside it.
+            var page = el('div', 'pg-dash ws-today' + (look.calm ? ' pg-dash-calm' : ''));
+            page.setAttribute('data-widget-theme', look.style || 'flat');
 
-            words.appendChild(el('p', 'ws-home-date', data.date));
-            words.appendChild(el('h1', 'ws-home-greeting', t('home_greeting', data.greeting || '', data.name)));
+            var top = el('div', 'pg-dash-top');
+            var hello = el('section', 'card pg-dash-card pg-dash-greeting ws-today-greeting');
+            hello.setAttribute('aria-labelledby', 'ws_today_greeting');
+
+            hello.appendChild(el('p', 'pg-dash-greeting-when', data.date));
+
+            // The translated sentence, the name in it drawn in the gradient.
+            var greeting = el('h1', 'pg-dash-greeting-title');
+            var words = t('home_greeting', data.greeting || '', data.name);
+            var at = data.name ? words.lastIndexOf(data.name) : -1;
+
+            greeting.id = 'ws_today_greeting';
+
+            if (at < 0) {
+                greeting.textContent = words;
+            } else {
+                greeting.appendChild(document.createTextNode(words.slice(0, at)));
+                greeting.appendChild(el('span', 'pg-dash-name', data.name));
+                greeting.appendChild(document.createTextNode(words.slice(at + data.name.length)));
+            }
+
+            hello.appendChild(greeting);
+
             // The counts as parts that wrap whole, each dot at a line's end.
-            var lead = el('p', 'ws-home-lead');
+            var lead = el('p', 'ws-today-lead');
             var parts = data.lead || [];
 
             parts.forEach(function (part, index) {
                 var last = (index === parts.length - 1);
 
-                lead.appendChild(el('span', 'ws-home-lead-part', last ? part : part + ' ·'));
+                lead.appendChild(el('span', 'ws-today-lead-part', last ? part : part + ' ·'));
 
                 if (!last) {
                     lead.appendChild(document.createTextNode(' '));
                 }
             });
 
-            words.appendChild(lead);
-            hello.appendChild(words);
+            hello.appendChild(lead);
 
             // A way to start, always in sight.
-            var start = el('div', 'ws-home-start');
+            var start = el('nav', 'pg-dash-actions ws-today-start');
             var created = function (id) { self.reloadChannels(id); };
-            var publicButton = button('btn btn-sm btn-solid theme-primary rounded-pill px-4', t('home_new_channel'), 'bi-plus-lg');
+            start.setAttribute('aria-label', t('home_start'));
+
+            var publicButton = button('pg-dash-btn pg-dash-btn-main', t('home_new_channel'), 'bi-plus-lg');
             publicButton.addEventListener('click', function () { channelForm(null, { kind: 'public' }, created); });
             start.appendChild(publicButton);
 
-            var privateButton = button('btn btn-sm btn-outline theme-secondary rounded-pill px-4', t('home_new_private'), 'bi-lock');
+            var privateButton = button('pg-dash-btn', t('home_new_private'), 'bi-lock');
             privateButton.addEventListener('click', function () { channelForm(null, { kind: 'private' }, created); });
             start.appendChild(privateButton);
 
             if ((CFG.guests || {}).can_host) {
-                var guestButton = button('btn btn-sm btn-outline theme-secondary rounded-pill px-4', t('guest_start'), 'bi-door-open');
+                var guestButton = button('pg-dash-btn', t('guest_start'), 'bi-door-open');
                 guestButton.addEventListener('click', function () { guestForm(created); });
                 start.appendChild(guestButton);
             }
 
             hello.appendChild(start);
-            body.appendChild(hello);
+            top.appendChild(hello);
+            page.appendChild(top);
 
-            var first = el('div', 'ws-home-grid ws-home-grid-3');
-            first.appendChild(self.homeWaiting(data, waitingCount));
-            first.appendChild(self.homeDue(data));
-            first.appendChild(self.homeCalendar(data));
-            body.appendChild(first);
+            var grid = el('div', 'pg-dash-grid ws-today-grid');
+            grid.appendChild(self.homeWaiting(data, waitingCount));
+            grid.appendChild(self.homeDue(data));
+            grid.appendChild(self.homeCalendar(data));
+            grid.appendChild(self.homeDigest(data));
+            grid.appendChild(self.homeDecisions(data));
 
-            var second = el('div', 'ws-home-grid ws-home-grid-2');
-            second.appendChild(self.homeDigest(data));
+            // Public channels the person is not in yet, only when there are.
+            if (data.join.length) {
+                grid.appendChild(self.homeJoin(data));
+            }
 
-            // Beside it: the latest decisions, unfiltered.
-            var decisions = homeCard(t('home_decisions'), 'bi-clock-history', CFG.urls.timeline, t('nav_timeline'));
+            grid.appendChild(self.homeAbout(data));
+            page.appendChild(grid);
+            body.appendChild(page);
+        },
+
+        // The latest decisions, unfiltered, a link to the Decision Timeline.
+        homeDecisions: function (data) {
+            var self = this;
+            var decisions = todayCard('decisions', t('home_decisions'), 'bi-clock-history', 'S', 'general', CFG.urls.timeline, t('nav_timeline'));
 
             if (!data.decisions.length) {
                 decisions.body.appendChild(el('div', 'ws-home-empty', t('home_decisions_empty')));
@@ -7595,51 +7649,61 @@
             });
 
             decisions.body.appendChild(line);
-            second.appendChild(decisions.node);
 
-            body.appendChild(second);
+            return decisions.node;
+        },
 
-            // Public channels the person is not in yet.
-            if (data.join.length) {
-                var join = homeCard(t('home_join'), 'bi-door-open');
+        // Public channels the person is not in yet, each with Join.
+        homeJoin: function (data) {
+            var self = this;
+            var join = todayCard('join', t('home_join'), 'bi-door-open', 'S', 'general');
 
-                data.join.forEach(function (channel) {
-                    var row = el('div', 'ws-home-row ws-home-join');
-                    row.appendChild(icon('bi-hash', 'fg-secondary'));
+            data.join.forEach(function (channel) {
+                var row = el('div', 'ws-home-row ws-home-join');
+                row.appendChild(icon('bi-hash', 'fg-secondary'));
 
-                    var text = el('span', 'ws-home-row-text');
-                    text.appendChild(el('span', 'ws-home-row-title', channel.name));
-                    text.appendChild(el('small', 'fg-secondary', (channel.topic ? channel.topic + ' · ' : '') + t('home_members', channel.members)));
-                    row.appendChild(text);
+                var text = el('span', 'ws-home-row-text');
+                text.appendChild(el('span', 'ws-home-row-title', channel.name));
+                text.appendChild(el('small', 'fg-secondary', (channel.topic ? channel.topic + ' · ' : '') + t('home_members', channel.members)));
+                row.appendChild(text);
 
-                    var joinButton = button('btn btn-sm btn-outline theme-primary rounded-pill', t('join'));
-                    joinButton.addEventListener('click', function () {
-                        joinButton.disabled = true;
-                        api('ws_channel_join', { channel_id: channel.id }).then(function () {
-                            self.reloadChannels(channel.id);
-                        }).catch(function (error) {
-                            joinButton.disabled = false;
-                            fail(error);
-                        });
+                var joinButton = button('btn btn-sm btn-outline theme-primary rounded-pill', t('join'));
+                joinButton.addEventListener('click', function () {
+                    joinButton.disabled = true;
+                    api('ws_channel_join', { channel_id: channel.id }).then(function () {
+                        self.reloadChannels(channel.id);
+                    }).catch(function (error) {
+                        joinButton.disabled = false;
+                        fail(error);
                     });
-                    row.appendChild(joinButton);
-                    join.body.appendChild(row);
                 });
+                row.appendChild(joinButton);
+                join.body.appendChild(row);
+            });
 
-                body.appendChild(join.node);
-            }
-            // What this place is for: open for somebody who has not written
-            // anything yet, folded for the others.
-            var about = el('details', 'card ws-home-about');
+            return join.node;
+        },
+
+        // What this place is for: open for somebody who has not written
+        // anything yet, folded for the others. The whole row of the grid,
+        // its heading in the card frame's look.
+        homeAbout: function (data) {
+            var about = el('details', 'card pg-dash-card pg-dash-cardbox ws-today-card ws-home-about');
+            about.setAttribute('data-card', 'about');
+            about.setAttribute('data-width', 'L');
+            about.setAttribute('data-category', 'general');
             about.open = !!data.newcomer;
 
-            var summary = el('summary', 'card-header');
-            summary.appendChild(icon('bi-info-circle', 'me-1'));
-            summary.appendChild(document.createTextNode(t('home_about')));
+            var summary = el('summary', 'pg-dash-card-head');
+            var chip = el('span', 'pg-dash-card-icon');
+            chip.setAttribute('aria-hidden', 'true');
+            chip.appendChild(icon('bi-info-circle'));
+            summary.appendChild(chip);
+            summary.appendChild(el('span', 'pg-dash-card-title', t('home_about')));
             about.appendChild(summary);
 
-            var aboutBody = el('div', 'card-body');
-            aboutBody.appendChild(el('p', 'mb-5', t('home_about_text')));
+            var aboutBody = el('div', 'pg-dash-card-body');
+            aboutBody.appendChild(el('p', 'mb-0', t('home_about_text')));
 
             var tiles = el('div', 'row g-3');
             var tileList = [
@@ -7670,15 +7734,17 @@
 
             aboutBody.appendChild(tiles);
             about.appendChild(aboutBody);
-            body.appendChild(about);
 
+            return about;
         },
 
-        // A card's heading with the count of what is in it, when there is
-        // any; in the accent for what waits for an answer.
+        // A card's count of what is in it, when there is any, in the frame's
+        // badge; in the accent for what waits for an answer.
         homeCount: function (card, count, hot) {
             if (count > 0) {
-                card.node.querySelector('h3').appendChild(el('span', 'ws-count ws-home-count' + (hot ? ' ws-home-count-hot' : ''), count > 99 ? '99+' : String(count)));
+                card.badge.textContent = count > 99 ? '99+' : String(count);
+                card.badge.classList.toggle('ws-today-count-hot', !!hot);
+                card.badge.hidden = false;
             }
         },
 
@@ -7688,7 +7754,7 @@
         // the ones already read only while the card has fewer than five rows.
         homeWaiting: function (data, count) {
             var self = this;
-            var card = homeCard(t('home_waiting'), 'bi-inbox');
+            var card = todayCard('waiting', t('home_waiting'), 'bi-inbox', 'S', 'team');
             var helpers = featureHelpers();
             var rows = 0;
 
@@ -7738,7 +7804,7 @@
         // pressing.
         homeDue: function (data) {
             var self = this;
-            var card = homeCard(t('home_due'), 'bi-check2-square', CFG.urls.tasks, t('my_tasks'));
+            var card = todayCard('due', t('home_due'), 'bi-check2-square', 'S', 'team', CFG.urls.tasks, t('my_tasks'));
             var list = (data.due && data.due.length) ? data.due : data.tasks;
 
             self.homeCount(card, data.tasks_due || 0);
@@ -7833,7 +7899,7 @@
         // events (home.php): the hour, a bar, the title; the one going on
         // now marked, the ones over dimmed, a meeting's call to join.
         homeCalendar: function (data) {
-            var card = homeCard(t('home_calendar'), 'bi-calendar-event', CFG.urls.calendar || '', t('home_calendar_more'));
+            var card = todayCard('calendar', t('home_calendar'), 'bi-calendar-event', 'S', 'team', CFG.urls.calendar || '', t('home_calendar_more'));
             var items = data.calendar || [];
 
             if (!items.length) {
@@ -7886,7 +7952,7 @@
         // last message.
         homeDigest: function (data) {
             var self = this;
-            var card = homeCard(t('home_digest'), 'bi-chat-square-text');
+            var card = todayCard('digest', t('home_digest'), 'bi-chat-square-text', 'M', 'general');
             var items = data.digest || [];
 
             if (!items.length) {

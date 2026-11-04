@@ -690,9 +690,79 @@ function ws_home_js_strings()
         'home_about_claude'   => lang('Write @Claude in a channel: it reads the conversation, answers, and proposes tasks and record changes that you approve.'),
         'home_new_channel'    => lang('New channel'),
         'home_new_private'    => lang('New private channel'),
+        'home_start'          => lang('Shortcuts'),
         'nav_work'            => lang('Work and planning'),
         'nav_records'         => lang('Decisions and archive'),
         'nav_timeline'        => lang('Decision Timeline'),
         'nav_open'            => lang('Open the menu'),
     );
+}
+
+/**
+ * The card face Today draws in: the person's new-dashboard look (style and
+ * calm), so both pages match. The backdrop and the dense switch are left
+ * out: the Workspace keeps its own background and density button. An
+ * unknown style falls back to flat.
+ *
+ * @param array|null $look pg_dashboard_v2_look()'s answer
+ * @return array style, calm (0 or 1)
+ */
+function ws_today_look($look)
+{
+    $styles = pg_dashboard_appearance_choices()['widget_theme'];
+    $style = (is_array($look) && isset($look['style']) && is_string($look['style'])) ? $look['style'] : '';
+
+    return array(
+        'style' => in_array($style, $styles, true) ? $style : 'flat',
+        'calm'  => (is_array($look) && !empty($look['calm'])) ? 1 : 0,
+    );
+}
+
+/**
+ * The person's look for Today, read the way the new dashboard reads it:
+ * their own stored look over the site's Appearance values.
+ *
+ * @param array $user
+ * @return array ws_today_look()'s answer
+ */
+function ws_today_look_for($user)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/layout.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/page_status.php');
+
+    $site = null;
+    $result = @mysqli_query(db::$con, "SELECT * FROM dashboard");
+
+    if ($result) {
+        $site = mysqli_fetch_assoc($result);
+    }
+
+    $row = pg_dashboard_v2_row_for($user);
+
+    return ws_today_look(pg_dashboard_v2_look(is_array($row) && isset($row['look']) ? $row['look'] : '', is_array($site) ? $site : null));
+}
+
+/**
+ * The stylesheets Today draws with: the new dashboard's (palette, card
+ * frame, grid) and its own (assets/css/ws_today.src.css), minified unless
+ * the environment asks for the sources.
+ *
+ * @return string HTML link tags
+ */
+function ws_today_stylesheets()
+{
+    $bundles = pg_css_bundles();
+    $output = '';
+
+    foreach (array('assets/css/pg_dash.min.css', 'assets/css/ws_today.min.css') as $minified) {
+        $file = $minified;
+
+        if ((defined('ENVIRONMENT_SUFFIX') && (ENVIRONMENT_SUFFIX !== 'min')) || !is_file(PG_FUNCTIONS_DIR . '/' . $minified)) {
+            $file = $bundles[$minified];
+        }
+
+        $output .= '<link rel="stylesheet" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $file . '?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/' . $file)) . '">';
+    }
+
+    return $output;
 }

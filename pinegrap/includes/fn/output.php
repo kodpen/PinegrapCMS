@@ -2016,6 +2016,7 @@ function pg_css_bundles()
         'assets/css/pg_image_editor.min.css' => 'assets/css/pg_image_editor.src.css',
         'assets/css/pg_dash.min.css' => 'assets/css/pg_dash.src.css',
         'assets/css/pg_visitors.min.css' => 'assets/css/pg_visitors.src.css',
+        'assets/css/ws_today.min.css' => 'assets/css/ws_today.src.css',
     );
 }
 
