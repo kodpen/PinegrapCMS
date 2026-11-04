@@ -12379,7 +12379,7 @@
                 // picture stands in.
                 function draw(answer) {
                     self.flowEmbedKit().then(function (config) {
-                        if (!drawing.isConnected) {
+                        if (!node.open) {
                             return;
                         }
 
@@ -12399,8 +12399,12 @@
 
                                 var target = (picked.id === 'post') ? message : date;
 
-                                target.focus();
-                                target.scrollIntoView({ block: 'nearest' });
+                                // After the canvas has focused the box it
+                                // selected.
+                                setTimeout(function () {
+                                    target.focus();
+                                    target.scrollIntoView({ block: 'nearest' });
+                                }, 0);
                             }
                         });
 
@@ -12412,8 +12416,10 @@
                     });
                 }
 
+                // A late answer (the change event of a box left as the
+                // drawer closes) draws nothing in a closed drawer.
                 function still(answer) {
-                    if (!drawing.isConnected) {
+                    if (!node.open) {
                         return;
                     }
 
