@@ -17,9 +17,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, not before 2026.11.0 ships): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - agent-channel.md: DRAFT, not to be started (owner, 2026-10-29): a Workspace channel as the messaging space of agents and people: wake rules, claim queue, memory, doors; the full plan stays with the owner
-- appointment-booking-steps-2.md: Steps BK6-BK10 of plans/appointment-booking.md: Workspace calendar rows, My bookings and manage page, API, deposits, templates and close-out; claim as [plan:appointment-booking] BK<n>
-- appointment-booking-steps.md: Steps BK1-BK5 of plans/appointment-booking.md: schema and slot engine, settings, the staff agenda, the booking widget, mails, SMS and reminders; claim as [plan:appointment-booking] BK<n>
-- appointment-booking.md: Plan (owner 2026-11-02): appointments with real time slots: services, staff hours, a booking widget, confirmations and reminders, the agenda, Workspace calendars; steps BK1-BK10
+- booking-retention.md: Open work left by the appointment booking plan: prune cancelled bookings after 400 days, personal data export and erasure cover bookings; claim as [plan:booking-retention] BR1
 - bootstrap-6-components.md: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped for native Bootstrap 6 components, the conditions research found, what stays as it is
 - bootstrap-6-findings.md: Research of 2026-10-25 behind plans/bootstrap-6-panel.md: old browsers, conflict rates, work size, hot spots, the visual editor split, third-party coupling
 - bootstrap-6-panel-steps.md: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status (each done step names its PR); claim as [plan:bootstrap-6-panel] B<n>

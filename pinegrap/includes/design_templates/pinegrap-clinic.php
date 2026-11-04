@@ -27,6 +27,10 @@
  * Completed, Cancelled); the messages under it are the page's comments,
  * mailed to the patient and to the practice.
  *
+ * The online booking page beside the form books a free time at once with
+ * the booking widget, from the services and staff hours set up in
+ * Settings › Bookings.
+ *
  * Placeholders, filled when the template is opened (pg_design_template_prepare()):
  *   {{page:<key>}}                  address of the template page with that key
  *   {{tab:<key>}}                   that page in a widget setting; its id once published
@@ -1351,6 +1355,11 @@ $pages[] = array(
                             $icon('bi-exclamation-triangle', 'mt-1'),
                             $span(lang('Chest pain, trouble breathing or heavy bleeding? Do not wait for an appointment: call 112.'), '', lang('Text')),
                         ), array('_attrs' => array($attr('role', 'note')))),
+                        $el('div', 'p-4 rounded-4 border border-primary-subtle mb-4', lang('Book a Free Time'), array(
+                            $heading('h2', lang('Pick a free time now'), 'h5 fw-bold mb-2'),
+                            $para(lang('Choose the service, the doctor and one of the free times; the time is yours at once.'), 'small text-body-secondary mb-3'),
+                            $link(lang('Book Online'), '{{page:book_online}}', 'btn btn-sm btn-outline-primary rounded-pill px-3'),
+                        )),
                         $el('div', 'p-4 rounded-4 bg-body-tertiary mb-4', lang('How It Works'), array(
                             $heading('h2', lang('What happens next'), 'h5 fw-bold mb-3'),
                             $el('ol', 'small text-body-secondary ps-3 mb-0', lang('List'), array(
@@ -1362,6 +1371,47 @@ $pages[] = array(
                         $el('div', 'p-4 rounded-4 border mb-4', lang('What to Bring'), array(
                             $heading('h2', lang('What to bring'), 'h5 fw-bold mb-3'),
                             $check_list(array(lang('Your ID card'), lang('Your insurance card'), lang('A list of your medicines'), lang('Earlier results and reports')), 'list-unstyled small mb-0'),
+                        )),
+                        $el('div', 'p-4 rounded-4 border', lang('Opening hours'), array(
+                            $heading('h2', lang('Opening hours'), 'h5 fw-bold mb-3'),
+                            $hours(),
+                        )),
+                    ), '', '4'),
+                ), '4', '', 'g-lg-5'),
+            )),
+        )),
+    ), false),
+);
+
+// Online booking: the booking widget shows the services set up in
+// Settings › Bookings, the free days and times of the doctors, and holds
+// the chosen time while the patient writes their details. The request form
+// stays beside it for a visit that needs a word first.
+$pages[] = array(
+    'key'              => 'book_online',
+    'name'             => lang('book-online'),
+    'folder'           => 'public',
+    'title'            => lang('Book Online'),
+    'meta_description' => lang('Choose a service, a doctor and a free time, and book your appointment in a minute.'),
+    'tree'             => $page(array(
+        $page_header(lang('Book Online'), lang('Choose a service, a doctor and one of the free times. The time is yours as soon as you confirm.')),
+        $el('section', 'py-5', lang('Content'), array(
+            $container(array(
+                $row(array(
+                    $col(array(
+                        $el('div', 'card border-0 shadow-sm', lang('Booking Card'), array(
+                            $el('div', 'card-body p-4 p-lg-5', lang('Card Body'), array($widget('booking_slots'))),
+                        )),
+                    ), '', '8'),
+                    $col(array(
+                        $el('div', 'alert alert-danger d-flex gap-2', lang('Emergency Note'), array(
+                            $icon('bi-exclamation-triangle', 'mt-1'),
+                            $span(lang('Chest pain, trouble breathing or heavy bleeding? Do not wait for an appointment: call 112.'), '', lang('Text')),
+                        ), array('_attrs' => array($attr('role', 'note')))),
+                        $el('div', 'p-4 rounded-4 bg-body-tertiary mb-4', lang('Ask First'), array(
+                            $heading('h2', lang('Rather ask first?'), 'h5 fw-bold mb-2'),
+                            $para(lang('Not sure which doctor or test you need? Send us a request and we will find the right time together.'), 'small text-body-secondary mb-3'),
+                            $link(lang('Request an Appointment'), '{{page:appointment}}', 'btn btn-sm btn-outline-primary rounded-pill px-3'),
                         )),
                         $el('div', 'p-4 rounded-4 border', lang('Opening hours'), array(
                             $heading('h2', lang('Opening hours'), 'h5 fw-bold mb-3'),
@@ -2389,6 +2439,16 @@ $widgets = array(
             )),
             $loop(array()),
         )),
+    ),
+
+    // Online booking: the widget's starter layout (service, doctor, day and
+    // time, details, confirmation); the services and hours come from
+    // Settings › Bookings.
+    'booking_slots' => array(
+        'page'   => 'book_online',
+        'slug'   => lang('booking'),
+        'config' => array('regionType' => 'booking'),
+        'tree'   => 'starter',
     ),
 
     // The appointment request: the fields are the page's form. The Status
@@ -3488,7 +3548,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Clinic'),
-    'version'     => '1.2.0',
+    'version'     => '1.3.0',
     'framework'   => 'bootstrap5',
     'order'       => 50,
     'icon'        => 'bi-heart-pulse',
