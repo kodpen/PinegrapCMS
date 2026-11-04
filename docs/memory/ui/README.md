@@ -304,7 +304,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - liveform-field-names.md: Liveform field names and pagers: aria-label, file id, required import pickers, new-password on outside secret boxes, the Set Password username field, ERP fields
 - liveform-notices-trap.md: Pitfalls: notices and warnings stay in the session until remove_form(), screens must print them, and a request run twice stacks the same notice.
 - loading-curtain.md: Panel transitions (pg_preloader_markup()): arrival curtain after 120 ms and held screens, the leaving bar after 150 ms until pagehide, what never shows it, the download cookie
-- login-region-shared-form.md: The login region create and edit screens share includes/forms/login_region_form.php: what it holds, the default, what stays in the screens
+- login-region-shared-form.md: The login region create and edit screens share includes/forms/login_region_form.php: the columns, the Summary, the save bar, the default, what stays in the screens
 - mail-queue-paging.md: The mail queue screen's e-mail and SMS lists on the list table driver, the row confirm, the wrapping long-text cells, Retry while the queue is inactive, and the screen's wording
 - main-menu-categories.md: Main menu rows in categories (pg_menu_categories(), pg_menu_layout()): which rows, no heading over nothing, the File Manager row with the files, retired slot 3, store row names, heading look
 - main-menu-drawer-focus.md: The phone main menu drawer (below lg) is inert while shut, Escape gives focus back to the bar button, focus leaving it shuts it; the symptoms they fixed
