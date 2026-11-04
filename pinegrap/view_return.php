@@ -373,7 +373,7 @@ if (in_array('shipped', $actions, true) || in_array('received', $actions, true))
                     <form method="post" action="view_return.php" class="mb-5">
                         ' . $form_keys . '
                         <div class="row g-5 align-items-end">
-                            <div class="col-12 md:col-5">
+                            <div class="col-12 md:col">
                                 <label for="tracking_number" class="form-label">' . h(lang('Tracking number of the parcel')) . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'name' => 'tracking_number', 'id' => 'tracking_number', 'maxlength' => '100', 'class' => 'form-control', 'autocomplete' => 'off')) . '
                             </div>
@@ -381,8 +381,8 @@ if (in_array('shipped', $actions, true) || in_array('received', $actions, true))
                                 <label for="shipped_carrier" class="form-label">' . h(lang('Return carrier')) . '</label>
                                 <select class="form-control" id="shipped_carrier" name="carrier">' . $carrier_options('', lang('As approved')) . '</select>
                             </div>
-                            <div class="col-12 md:col-3">
-                                <button type="submit" name="action" value="shipped" class="btn btn-sm btn-outline theme-secondary w-100">' . h(lang('Record as Sent Back')) . '</button>
+                            <div class="col-12 md:col-auto">
+                                <button type="submit" name="action" value="shipped" class="btn btn-outline theme-secondary w-100">' . h(lang('Record as Sent Back')) . '</button>
                             </div>
                         </div>
                         <div class="form-text">' . h(lang('When the customer says the parcel left without doing so on their order page. The refund is due 14 days after the parcel reached the carrier.')) . '</div>
