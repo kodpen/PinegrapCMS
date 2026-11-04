@@ -70,8 +70,11 @@
             return;
         }
 
-        // Five sliders, the rest under Details.
-        M.ADJUST.forEach(function (d, i) {
+        // Five sliders, the rest under Details; an area takes no vignette or
+        // sharpening (the server's mask step is a colour step).
+        var local = (this.adjustTarget(this.doc) !== this.doc);
+
+        M.ADJUST.filter(function (d) { return !local || ((d[0] !== 'vignette') && (d[0] !== 'sharpen')); }).forEach(function (d, i) {
             if ((i < 5) || self.adjustMore) {
                 body.appendChild(self.adjustSlider(d));
             }
@@ -83,21 +86,33 @@
         } }, [el('span', { text: t('details') }), icon('chev')]));
     };
 
+    // What the sliders and filters change in doc: the document itself, or
+    // an Adjust inside layer being edited (pg_image_editor_area.js).
+    Editor.prototype.adjustTarget = function (doc) {
+        return doc;
+    };
+
     // One adjustment set to n; at 0 it leaves the document, so a slider moved
     // and brought back matches the opening document (settleDirty()).
     Editor.prototype.setAdjust = function (key, n, step) {
+        var self = this;
+
         this.change(function (doc) {
+            var target = self.adjustTarget(doc);
+
+            target.adjust = target.adjust || {};
+
             if (n) {
-                doc.adjust[key] = n;
+                target.adjust[key] = n;
             } else {
-                delete doc.adjust[key];
+                delete target.adjust[key];
             }
         }, step, true);
     };
 
     // A slider of one adjustment; a double click sets it back to 0.
     Editor.prototype.adjustSlider = function (d) {
-        var self = this, key = d[0], value = Number(this.doc.adjust[key]) || 0;
+        var self = this, key = d[0], value = Number((this.adjustTarget(this.doc).adjust || {})[key]) || 0;
         var shown = function (n) { return ((n > 0) ? '+' : '') + n; };
         var label = el('span', { class: 'pgie-val', text: shown(value) });
         var slider = el('input', { type: 'range', class: 'pgie-range', min: String(d[1]), max: String(d[2]), step: '1', value: String(value), 'aria-label': t('adj_' + key) });
@@ -122,10 +137,10 @@
         var grid = el('div', { class: 'pgie-filters', role: 'group', 'aria-label': t('filters') });
 
         M.FILTER_NAMES.forEach(function (name) {
-            var on = ((self.doc.filter || 'none') === name);
+            var on = ((self.adjustTarget(self.doc).filter || 'none') === name);
 
             grid.appendChild(el('button', { type: 'button', class: 'pgie-ftile' + (on ? ' on' : ''), 'aria-pressed': on ? 'true' : 'false', onclick: function () {
-                self.change(function (doc) { doc.filter = name; });
+                self.change(function (doc) { self.adjustTarget(doc).filter = name; });
             } }, [
                 el('span', { class: 'pgie-fthumb', style: thumbs[name] ? 'background-image: url(' + thumbs[name] + ')' : null }),
                 el('span', { text: t('filter_' + name) })
