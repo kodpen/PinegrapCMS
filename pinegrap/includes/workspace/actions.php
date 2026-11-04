@@ -778,6 +778,7 @@ function ws_handle_action($action, $request)
 
         case 'ws_flow_publish':
         case 'ws_flow_pause':
+        case 'ws_flow_resume':
         case 'ws_flow_bin':
             $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'edit');
 
@@ -789,6 +790,10 @@ function ws_handle_action($action, $request)
                 $result = ws_flow_publish($viewer, $flow, array('draft_rev' => (int) ($request['draft_rev'] ?? 0)));
             } elseif ($action === 'ws_flow_pause') {
                 $result = ws_flow_pause($viewer, $flow);
+            } elseif ($action === 'ws_flow_resume') {
+                // The version it was paused at, not the draft
+                // (ws_flow_resume_check()).
+                $result = ws_flow_resume($viewer, $flow);
             } else {
                 $result = ws_flow_bin($viewer, $flow);
             }

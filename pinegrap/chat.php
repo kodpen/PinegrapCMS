@@ -1476,11 +1476,17 @@ function pg_chat_close($conversation_id)
 
     $message_id = mysqli_insert_id(db::$con);
 
+    // The closer's read cursor moves onto the closing message, like a
+    // sender's on their own message: their own close never shows as unread
+    // to them, while the other side still sees it as new.
+    $my_read_column = ($side == 'initiator') ? 'initiator_last_read_id' : 'target_last_read_id';
+
     db("UPDATE chat_conversations SET
             status = 'closed',
             closed_at = '" . e($now) . "',
             closed_by = '" . e($me) . "',
             last_message_id = '" . e($message_id) . "',
+            " . $my_read_column . " = '" . e($message_id) . "',
             last_message_at = '" . e($now) . "',
             last_message_preview = '" . e(lang('Conversation closed.')) . "'
         WHERE id = '" . e((int) $conversation['id']) . "'");
@@ -1724,6 +1730,7 @@ function pg_chat_panel_strings()
         'chars_left' => lang('Characters left'),
         'delete' => lang('Delete'),
         'cancel' => lang('Cancel'),
+        'request_failed' => lang('An error occurred.'),
         'loading' => lang('Loading'),
         'online' => lang('Online'),
         'away' => lang('Away'),
@@ -1781,7 +1788,31 @@ function pg_chat_render_backend_launcher()
         $ai = array(
             'label' => lang('AI Chat'),
             'script' => defined('CHAT_AI_SCRIPT_URL') ? CHAT_AI_SCRIPT_URL : 'https://f6eda156-883d-45b2-9c7e-e7f09bd50f24.search.ai.cloudflare.com/assets/v0.0.40/search-snippet.es.js',
-            'api' => defined('CHAT_AI_API_URL') ? CHAT_AI_API_URL : 'https://f6eda156-883d-45b2-9c7e-e7f09bd50f24.search.ai.cloudflare.com/'
+            'api' => defined('CHAT_AI_API_URL') ? CHAT_AI_API_URL : 'https://f6eda156-883d-45b2-9c7e-e7f09bd50f24.search.ai.cloudflare.com/',
+            // The snippet's own texts, passed as its "translations"
+            // attribute; it merges them over its English defaults.
+            'translations' => array(
+                'chatTitle' => lang('Chat'),
+                'chatPlaceholder' => lang('Type a message'),
+                'chatInputAriaLabel' => lang('Message'),
+                'sendButtonLabel' => lang('Send'),
+                'sendButtonAriaLabel' => lang('Send message'),
+                'chatEmptyTitle' => lang('Start a Conversation'),
+                'chatEmptyDescription' => lang('Send a message to begin chatting'),
+                'historyTitle' => lang('History'),
+                'newChatButton' => lang('New Chat'),
+                'clearChatButton' => lang('Clear Chat'),
+                'toggleSidebarTitle' => lang('Toggle sidebar'),
+                'deleteChatTitle' => lang('Delete Chat'),
+                'noChatsYet' => lang('No chats yet'),
+                'yesterday' => lang('Yesterday'),
+                'justNow' => lang('Just now'),
+                'loadingAriaLabel' => lang('Loading'),
+                'loadingMessages' => array(lang('Searching...')),
+                'errorPrefix' => lang('Error') . ':',
+                'unknownError' => lang('Unknown error'),
+                'closeAriaLabel' => lang('Close')
+            )
         );
     }
 
@@ -1848,7 +1879,9 @@ function pg_chat_render_backend_launcher()
             #pg-chat-root .pg-chat-chip { flex-shrink: 0; font-size: 0.59375rem; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: var(--pg-fg-2); border: 1px solid var(--pg-border-color); border-radius: 5px; padding: 0 4px; line-height: 1.58; }
             #pg-chat-root .pg-chat-ai-avatar { width: 2.125rem; height: 2.125rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; background: linear-gradient(135deg, #20c997, #0dcaf0); font-size: 1rem; }
             #pg-chat-root .pg-chat-ai-frame { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
-            #pg-chat-root .pg-chat-ai-frame chat-page-snippet { display: block; height: 100%; }
+            #pg-chat-root .pg-chat-ai-frame chat-page-snippet { display: block; height: 100%; --search-snippet-background: var(--pg-bg-body); --search-snippet-surface: var(--pg-bg-1); --search-snippet-text-color: var(--pg-fg-body); --search-snippet-text-secondary: var(--pg-fg-2); --search-snippet-text-description: var(--pg-fg-2); --search-snippet-border-color: var(--pg-border-color); --search-snippet-hover-background: var(--pg-bg-2); --search-snippet-assistant-message-bg: var(--pg-bg-2); --search-snippet-assistant-message-text: var(--pg-fg-body); }
+            html[data-bs-theme="dark"] #pg-chat-root .pg-chat-ai-frame chat-page-snippet { color-scheme: dark; }
+            html:not([data-bs-theme="dark"]) #pg-chat-root .pg-chat-ai-frame chat-page-snippet { color-scheme: light; }
             #pg-chat-root .pg-chat-dot { width: 10px; height: 10px; bottom: 0; right: 0; }
             #pg-chat-root .pg-chat-dot-online { background: #10b981; }
             #pg-chat-root .pg-chat-dot-away { background: #f59e0b; }

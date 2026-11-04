@@ -504,6 +504,10 @@ if ($ip_address != '') {
 $output_affiliate = '';
 // If the affiliate program is enabled and this order had an affiliate code, prepare affiliate output.
 if (AFFILIATE_PROGRAM and $affiliate_code) {
+    // The name stays empty, and its row hidden, when no contact carries the
+    // code any more or the contact has no affiliate name.
+    $output_affiliate_name = '';
+
     // get affiliate information from contact
     $query = "SELECT id, affiliate_name FROM contacts WHERE affiliate_code = ?";
     $result = db_q($query, array((string) $affiliate_code)) or output_error('Query failed.');
@@ -525,10 +529,7 @@ if (AFFILIATE_PROGRAM and $affiliate_code) {
         '<div class="card mt-5">
             <div class="card-body">
                 <hr/>
-                <div class="row">
-                    <span class="translateable col fg-secondary">' . lang('Affiliate Name') . ':</span>
-                    <span class="col text-end">' . $output_affiliate_name . '</span>
-                </div>
+                ' . pg_order_view_row(lang('Affiliate Name'), $output_affiliate_name) . '
                 <div class="row">
                     <span class="translateable col fg-secondary">' . lang('Affiliate Code') . ':</span>
                     <span class="col text-end">' . h($affiliate_code) . '</span>

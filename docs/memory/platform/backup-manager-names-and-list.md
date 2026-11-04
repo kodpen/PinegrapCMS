@@ -12,6 +12,8 @@ module: backup
 ## Which names are refused?
 - `pg_backup_name_reserved()`: `english_default`, `turkish_default` (the starter sites), `pg_backup_is_auto_name()` names, and `pre_upgrade_` / `pre-update-` prefixes, without case. Every `software_backup` step refuses them, so no request can clear a starter site's files.
 
+- A typed name that reduces to nothing (`!!!`, `../..`, Cyrillic only) is refused by `create_backup_folder` with "The backup name is not valid."; only an empty field gets the host-date name. Before, such a name silently became the host-date backup.
+
 ## May a starter-site dump be deleted?
 - Yes (owner decision, #6445): `english_default` / `turkish_default` keep their Delete button. For those folders only (`pg_backup_is_starter_dump()`, without case; archives do not count) the row's `data-confirm-content` says a later install from this copy no longer offers that language and the panel does not bring the dump back (`get_available_starter_sites()` lists only folders on disk). Other backups keep the plain confirmation; the write side stays refused.
 

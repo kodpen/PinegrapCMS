@@ -415,3 +415,77 @@ function pg_order_shipped_quantity($value, $ordered)
 
     return array('ok' => true, 'show' => 1, 'quantity' => (int) $value);
 }
+
+/**
+ * The first reason update_order() refuses a shipping save, or '' when the
+ * save may go ahead. Every recipient and line is checked before anything is
+ * written: a refusal found halfway through used to leave the dates and the
+ * tracking numbers of the save stored, and the next save no longer saw those
+ * numbers as new, so the shipment was never announced.
+ *
+ * @param array $recipients the request's recipients (id, ship_date,
+ *                          delivery_date, items with id and shipped_quantity)
+ * @param mixed $order_id   the order the save is for
+ * @param array $ship_tos   ship_tos rows by id (order_id)
+ * @param array $items      order_items rows by id (recipient_id, quantity)
+ * @return string
+ */
+function pg_order_update_request_error(array $recipients, $order_id, array $ship_tos, array $items)
+{
+    foreach ($recipients as $recipient_request) {
+
+        $recipient_request = is_array($recipient_request) ? $recipient_request : array();
+        $recipient_id = (isset($recipient_request['id']) && is_scalar($recipient_request['id'])) ? (string) $recipient_request['id'] : '';
+
+        if (($recipient_id === '') || !isset($ship_tos[$recipient_id])) {
+            return 'The recipient could not be found.';
+        }
+
+        if ((string) $ship_tos[$recipient_id]['order_id'] !== (string) $order_id) {
+            return 'The recipient does not belong to that order.';
+        }
+
+        // Each date is a real day or empty: anything else would be stored
+        // as 0000-00-00 and wipe the saved date.
+        if (isset($recipient_request['ship_date']) || isset($recipient_request['delivery_date'])) {
+
+            foreach (array('ship_date', 'delivery_date') as $date_key) {
+                $date_value = isset($recipient_request[$date_key]) ? $recipient_request[$date_key] : '';
+
+                if (!is_scalar($date_value)
+                    || (!in_array((string) $date_value, array('', '0000-00-00'), true) && (pg_shipment_date((string) $date_value) !== (string) $date_value))
+                ) {
+                    return lang('The ship or delivery date is not a valid date.');
+                }
+            }
+        }
+
+        if (!isset($recipient_request['items']) || !is_array($recipient_request['items'])) {
+            continue;
+        }
+
+        foreach ($recipient_request['items'] as $item_request) {
+
+            $item_request = is_array($item_request) ? $item_request : array();
+            $item_id = (isset($item_request['id']) && is_scalar($item_request['id'])) ? (string) $item_request['id'] : '';
+
+            if (($item_id === '') || !isset($items[$item_id])) {
+                return 'The item could not be found (id: ' . $item_id . ').';
+            }
+
+            if ((string) $items[$item_id]['recipient_id'] !== $recipient_id) {
+                return 'The item (id: ' . $item_id . ') does not belong to that recipient (id: ' . $recipient_id . ').';
+            }
+
+            if (!isset($item_request['shipped_quantity'])) {
+                continue;
+            }
+
+            if (!pg_order_shipped_quantity($item_request['shipped_quantity'], $items[$item_id]['quantity'])['ok']) {
+                return lang(array('string' => 'The shipped quantity must be a whole number from 0 to {var:1}.', 'vars' => array((int) $items[$item_id]['quantity'])));
+            }
+        }
+    }
+
+    return '';
+}

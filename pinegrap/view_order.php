@@ -553,7 +553,7 @@ if (!$_POST) {
         $output_number_of_installment_row =
             '<div class="row" >
                 <span class="translateable col fg-secondary">' . lang('Number of Installments') . ':</span>
-                <span class="col">' . $payment_installment . '</span>
+                <span class="col text-end">' . $payment_installment . '</span>
             </div>
             <div class="row" >
                 <span class="translateable col fg-secondary">' . lang('Installment Charge') . ':</span>
@@ -722,6 +722,10 @@ if (!$_POST) {
     // If the affiliate program is enabled and this order had an affiliate code, prepare affiliate output.
     if (AFFILIATE_PROGRAM and $affiliate_code) {
 
+        // The name stays empty, and its row hidden, when no contact carries
+        // the code any more or the contact has no affiliate name.
+        $output_affiliate_name = '';
+
         // get affiliate information from contact
         $query = "SELECT id, affiliate_name FROM contacts WHERE affiliate_code = ?";
         $result = db_q($query, array((string) $affiliate_code)) or output_error('Query failed.');
@@ -745,10 +749,7 @@ if (!$_POST) {
                     ' . lang('Affiliate Information') . '
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <span class="translateable col fg-secondary">' . lang('Affiliate Name') . ':</span>
-                        <span class="col text-end">' . $output_affiliate_name . '</span>
-                    </div>
+                    ' . pg_order_view_row(lang('Affiliate Name'), $output_affiliate_name) . '
                     <div class="row">
                         <span class="translateable col fg-secondary">' . lang('Affiliate Code') . ':</span>
                         <span class="col text-end">' . h($affiliate_code) . '</span>
@@ -977,7 +978,13 @@ if (!$_POST) {
                 $output_delivery_date_field = '';
                 $output_shipping_tracking_numbers = '';
                 $output_shipping_tracking_numbers_field = '';
-                $output_tracking_numbers_caption = '<span class="col fg-secondary mt-5">' . lang('Tracking Numbers') . ':</span>';
+                $output_shipment_labels = '';
+
+                // An incomplete order takes no shipment, so its card shows no
+                // empty ship date, delivery date or tracking number labels.
+                $output_tracking_numbers_caption = ($status != 'incomplete')
+                    ? '<span class="col fg-secondary mt-5">' . lang('Tracking Numbers') . ':</span>'
+                    : '';
                 
                 // If the order is complete, then output ship date and shipping tracking numbers.
                 if ($status != 'incomplete') {
@@ -1248,6 +1255,28 @@ if (!$_POST) {
                     $output_custom_field_cells .= '<span class="col text-end order_custom_field">' . prepare_form_data_for_output($data, $type, $prepare_for_html) . '</span>';
                 }
                 
+                $output_ship_dates_row = '';
+
+                if ($status != 'incomplete') {
+                    $output_ship_dates_row =
+                        '<div class="row pt-1 mb-5 justify-content-center">
+                            <div class="col-auto">
+                                <label class="form-label">' . lang('Ship Date') . ':</label>
+                                ' . $output_ship_date_field . '
+                            </div>
+                            <div class="col-auto ">
+                                <label class="form-label">' . lang('Delivery Date') . ':</label>
+                                ' . $output_delivery_date_field . '
+                            </div>
+                        </div>';
+                }
+
+                // The order list's shipment tracking button jumps to the first
+                // card; the others carry their address id, so no id repeats.
+                $tracking_anchor_id = ($output_shipping_details === '')
+                    ? 'trackin_number_from_view_orders'
+                    : 'trackin_number_from_view_orders_' . (int) $ship_tos[$key]['ship_to_id'];
+
                 // Appended, one card per address: an order shipped to two
                 // addresses shows both, and saving it keeps the first one's
                 // tracking numbers.
@@ -1257,7 +1286,7 @@ if (!$_POST) {
                             <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 ' . lang('Shipping Information') . '
                                 <div class="print_packing_slip float-end pg-print-none">
-                                    <button type="button" class="btn btn-link pg-link-secondary py-0 mb-3 position-relative" title="' . lang('Print Packing Slip') . '" aria-label="' . h(lang('Print Packing Slip')) . '" onclick="window.open(\'print_packing_slip.php?ship_to_id=' . $ship_tos[$key]['ship_to_id'] . '\', \'\', \'width=750, height=600, resizable=1, scrollbars=1\'); return false;"><span class="material-icons me-1">print</span>' . lang('Print') . '</button>
+                                    <button type="button" class="btn btn-sm btn-text theme-secondary position-relative" title="' . lang('Print Packing Slip') . '" aria-label="' . h(lang('Print Packing Slip')) . '" onclick="window.open(\'print_packing_slip.php?ship_to_id=' . $ship_tos[$key]['ship_to_id'] . '\', \'\', \'width=750, height=600, resizable=1, scrollbars=1\'); return false;"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print') . '</button>
                                 </div>
                             </div>
                             <div class="card-body">
@@ -1290,23 +1319,14 @@ if (!$_POST) {
                                             <span class="translateable col fg-secondary">' . lang('Req. Arrival Date') . ':</span>
                                             <span class="col text-end ">' . $output_arrival_date . '</span>
                                         </div>
-                                        <div class="row pt-1 mb-5 justify-content-center">
-                                            <div class="col-auto">
-                                                <label class="form-label">' . lang('Ship Date') . ':</label>
-                                                ' . $output_ship_date_field . '
-                                            </div>
-                                            <div class="col-auto ">
-                                                <label class="form-label">' . lang('Delivery Date') . ':</label>
-                                                ' . $output_delivery_date_field . '
-                                            </div>
-                                        </div>
+                                        ' . $output_ship_dates_row . '
 
                                     </div>
 
-                                    <div class="col-12 pt-7" id="trackin_number_from_view_orders">
+                                    <div class="col-12 pt-7" id="' . $tracking_anchor_id . '">
                                         <div class="row">
                                             <span class="col fg-secondary">' . lang('Shipping Method') . ':</span>
-                                            <span class="col-auto badge">' . $shipping_method . '</span>
+                                            <span class="col text-end">' . $shipping_method . '</span>
                                         </div>
                                         <div class="row">
                                             ' . $output_tracking_numbers_caption . '
@@ -1810,7 +1830,7 @@ if (!$_POST) {
         // if the order is complete, then output save (a cancelled order has
         // nothing to save: its shipping is read only)
         if (($status != 'incomplete') && ($status != 'cancelled')) {
-            $output_save_button = '<button type="submit" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>';
+            $output_save_button = '<button type="submit" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>';
         }
 
         // if the order is cancelled, output a restore button to revert it to complete
@@ -2331,7 +2351,7 @@ if (!$_POST) {
         // The payment provider's own merchant panel, at this order's
         // transaction when one is known, in a tab of its own.
         $gateway_url = 'https://' . $output_payment_mode . '.iyzipay.com/' . ($transaction_id ? 'transactions/' . rawurlencode($transaction_id) : 'dashboard');
-        $output_gateway_buttons = '<a class="btn btn-link pg-link-secondary py-0 mb-3" href="' . h($gateway_url) . '" target="_blank" rel="noopener noreferrer" title="' . h(ECOMMERCE_PAYMENT_GATEWAY) . '"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => '{var:1} panel', 'vars' => ECOMMERCE_PAYMENT_GATEWAY))) . '</a>';
+        $output_gateway_buttons = '<a class="btn btn-sm btn-text theme-secondary" href="' . h($gateway_url) . '" target="_blank" rel="noopener noreferrer" title="' . h(ECOMMERCE_PAYMENT_GATEWAY) . '"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => '{var:1} panel', 'vars' => ECOMMERCE_PAYMENT_GATEWAY))) . '</a>';
 
 	}
 
@@ -2350,7 +2370,7 @@ if (!$_POST) {
         && ($refund_remaining_cents > 0);
 
     if ($refund_offered) {
-        $output_gateway_buttons .= '<button type="button" class="btn btn-link pg-link-secondary py-0 mb-3" data-bs-toggle="dialog" data-bs-target="#payment-refund-modal"><i class="bi bi-arrow-return-left me-1"></i>' . lang('Refund') . '</button>';
+        $output_gateway_buttons .= '<button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#payment-refund-modal"><i class="bi bi-arrow-return-left me-1"></i>' . lang('Refund') . '</button>';
     }
 
     // With the ERP on, a card refund is chosen by line and quantity instead of
@@ -2465,11 +2485,11 @@ if (!$_POST) {
     $output_mark_paid_button = '';
     if ($order_awaiting_payment) {
         $output_mark_paid_button =
-            '<form method="post" class="d-inline-block me-3 mb-3">
+            '<form method="post" class="d-inline">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . h($_GET['id']) . '">
                 <input type="hidden" name="send_to" value="' . h($_GET['send_to'] ?? '') . '">
-                <button type="submit" name="submit_mark_paid" value="paid" class="btn btn-solid theme-primary btn-sm" data-confirm-content="' . ($order_payment_pending ? lang('Record that PayPal completed the payment for this order?') : lang('Record that the bank transfer for this order has arrived?')) . '"><i class="bi bi-cash-coin me-1"></i>' . lang('Payment Received') . '</button>
+                <button type="submit" name="submit_mark_paid" value="paid" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-confirm-content="' . ($order_payment_pending ? lang('Record that PayPal completed the payment for this order?') : lang('Record that the bank transfer for this order has arrived?')) . '"><i class="bi bi-cash-coin me-1"></i>' . lang('Payment Received') . '</button>
             </form>';
     }
 
@@ -2607,7 +2627,7 @@ if (!$_POST) {
         }
 
         $output_cancel_button =
-            '<button type="button" class="btn btn-link pg-link-danger py-0 mb-3" data-bs-toggle="dialog" data-bs-target="#order-cancel-modal"><i class="bi bi-x-circle me-1"></i>' . lang('Cancel Order') . '</button>';
+            '<button type="button" class="btn btn-sm btn-outline theme-warning" data-bs-toggle="dialog" data-bs-target="#order-cancel-modal"><i class="bi bi-x-circle me-1"></i>' . lang('Cancel Order') . '</button>';
 
         $output_cancel_modal =
             '<dialog class="dialog" id="order-cancel-modal" aria-labelledby="order-cancel-modal-label">
@@ -2748,16 +2768,16 @@ if (!$_POST) {
         // Paraşüt holds the first, and creates one only if it was deleted there.
         $output_parasut_shipment_button = '';
         if ($has_shippable) {
-            $shipment_btn_class = $parasut_shipment_id ? 'pg-link-success' : ($is_mixed ? 'pg-link-warning' : 'pg-link-secondary');
+            $shipment_btn_class = $parasut_shipment_id ? 'theme-success' : ($is_mixed ? 'theme-warning' : 'theme-secondary');
             $shipment_btn_title = ($parasut_shipment_id !== '')
                 ? h(lang('This order already has a shipment document in Paraşüt.'))
-                : ($is_mixed ? h(lang('E-Shipment (only shippable items will be included)')) : 'Paraşüt E-İrsaliye');
+                : ($is_mixed ? h(lang('E-Shipment (only shippable items will be included)')) : 'Paraşüt ' . h(lang('E-Shipment')));
             $shipment_mixed_icon = $is_mixed ? ' <i class="bi bi-exclamation-triangle-fill fg-warning small"></i>' : '';
-            $shipment_btn_action = ' onclick="pgConfirm({title:\'Paraşüt E-İrsaliye\', message:\'' . $js_confirm_shipment . '\', confirmText:\'' . lang('Continue') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'primary\'}).then(function(ok){if(ok) document.getElementById(\'parasut-e-irsaliye-form\').submit();}); return false;"
+            $shipment_btn_action = ' onclick="pgConfirm({title:\'Paraşüt ' . h(lang('E-Shipment')) . '\', message:\'' . $js_confirm_shipment . '\', confirmText:\'' . lang('Continue') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'primary\'}).then(function(ok){if(ok) document.getElementById(\'parasut-e-irsaliye-form\').submit();}); return false;"
                 title="' . $shipment_btn_title . '"';
             $output_parasut_shipment_button = '
             <button type="button"
-                class="btn btn-link py-0 mb-3 ' . $shipment_btn_class . '"' . $shipment_btn_action . '>
+                class="btn btn-sm btn-text ' . $shipment_btn_class . '"' . $shipment_btn_action . '>
                 <i class="bi bi-truck me-1"></i>' . lang('E-Shipment') . $shipment_mixed_icon . $output_parasut_shipment_badge . '
             </button>';
         }
@@ -2779,7 +2799,7 @@ if (!$_POST) {
         $output_parasut_invoice_button = ($parasut_erp_invoice['state'] === 'none')
             ? '
             <button type="button"
-                class="btn btn-link py-0 mb-3 ' . ($parasut_invoice_sent ? ($parasut_exported ? 'pg-link-success' : 'pg-link-warning') : ($parasut_invoice_unsure ? 'pg-link-warning' : 'pg-link-secondary')) . '"' . $output_parasut_invoice_action . '>
+                class="btn btn-sm btn-text ' . ($parasut_invoice_sent ? ($parasut_exported ? 'theme-success' : 'theme-warning') : ($parasut_invoice_unsure ? 'theme-warning' : 'theme-secondary')) . '"' . $output_parasut_invoice_action . '>
                 <i class="bi bi-receipt me-1"></i>' . lang('Create Invoice') . $output_parasut_invoice_badge . '
             </button>'
             : '';
@@ -2816,17 +2836,17 @@ if (!$_POST) {
             $erp_waybill = db_item("SELECT id, full_number FROM erp_waybills WHERE order_id = '" . (int) $_GET['id'] . "' AND status <> 'cancelled' ORDER BY id ASC LIMIT 1");
             if ($erp_waybill) {
                 $output_erp_waybill = '
-                <a class="btn btn-link pg-link-success py-0 mb-3" href="edit_erp_waybill.php?id=' . (int) $erp_waybill['id'] . '" title="' . lang('Delivery Note') . '"><i class="bi bi-truck me-1"></i>' . h($erp_waybill['full_number']) . '</a>';
+                <a class="btn btn-sm btn-text theme-success" href="edit_erp_waybill.php?id=' . (int) $erp_waybill['id'] . '" title="' . lang('Delivery Note') . '"><i class="bi bi-truck me-1"></i>' . h($erp_waybill['full_number']) . '</a>';
             } elseif ($erp_writes && (((int) $erp_order['contact_id'] > 0) || ((int) $erp_order['erp_account_id'] > 0))) {
                 $output_erp_waybill = '
-                <a class="btn btn-link pg-link-secondary py-0 mb-3" href="add_erp_waybill.php?order_id=' . (int) $_GET['id'] . '" title="' . lang('Delivery Note') . '"><i class="bi bi-truck me-1"></i>' . lang('Issue the Delivery Note') . '</a>';
+                <a class="btn btn-sm btn-text theme-secondary" href="add_erp_waybill.php?order_id=' . (int) $_GET['id'] . '" title="' . lang('Delivery Note') . '"><i class="bi bi-truck me-1"></i>' . lang('Issue the Delivery Note') . '</a>';
             }
         }
 
         if ($erp_invoice) {
             $output_erp_buttons = '
             <div class="btn-group btn-group-sm flex-wrap">
-                <a class="btn btn-link pg-link-success py-0 mb-3" href="edit_erp_invoice.php?id=' . (int) $erp_invoice['id'] . '" title="' . lang('Invoice') . '"><i class="bi bi-receipt me-1"></i>' . h($erp_invoice['full_number']) . '</a>' . $output_erp_waybill . '
+                <a class="btn btn-sm btn-text theme-success" href="edit_erp_invoice.php?id=' . (int) $erp_invoice['id'] . '" title="' . lang('Invoice') . '"><i class="bi bi-receipt me-1"></i>' . h($erp_invoice['full_number']) . '</a>' . $output_erp_waybill . '
             </div>';
         } elseif ($erp_writes && $erp_order && in_array((string) $erp_order['status'], array('complete', 'exported'), true)) {
             if (((int) $erp_order['contact_id'] > 0) || ((int) $erp_order['erp_account_id'] > 0)) {
@@ -2835,11 +2855,11 @@ if (!$_POST) {
                 ' . get_token_field() . '
                 <input type="hidden" name="order_id" value="' . (int) $_GET['id'] . '" />
                 <input type="hidden" name="from_order_screen" value="1" />
-                <button type="submit" name="submit_create" value="Create" class="btn btn-link pg-link-secondary py-0 mb-3" data-confirm-content="' . h(lang('An invoice is issued for this order from the ERP, with a number from the sales series. Continue?')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Issue the Invoice') . '</button>
+                <button type="submit" name="submit_create" value="Create" class="btn btn-sm btn-text theme-secondary" data-confirm-content="' . h(lang('An invoice is issued for this order from the ERP, with a number from the sales series. Continue?')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Issue the Invoice') . '</button>
             </form>' . $output_erp_waybill;
             } else {
                 $output_erp_buttons = '
-            <span class="btn btn-link pg-link-secondary py-0 mb-3 disabled" title="' . h(lang('No walk-in sales account is named on the ERP settings card, so this sale cannot be invoiced unless a customer is picked.')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Issue the Invoice') . '</span>';
+            <span class="btn btn-sm btn-text theme-secondary disabled" title="' . h(lang('No walk-in sales account is named on the ERP settings card, so this sale cannot be invoiced unless a customer is picked.')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Issue the Invoice') . '</span>';
             }
         }
     }
@@ -2862,7 +2882,7 @@ if (!$_POST) {
     $output_workspace_button = '';
     if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
         require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
-        $workspace_button = ws_record_button($user, 'order', (int) $_GET['id'], lang('Order') . ' ' . $order_number, 'btn btn-link pg-link-secondary py-0 mb-3');
+        $workspace_button = ws_record_button($user, 'order', (int) $_GET['id'], lang('Order') . ' ' . $order_number, 'btn btn-sm btn-text theme-secondary');
         if ($workspace_button !== '') {
             $output_workspace_button = '
             <div class="btn-group btn-group-sm flex-wrap">' . $workspace_button . '</div>';
@@ -2873,7 +2893,8 @@ if (!$_POST) {
 
     pg_page_shell(
         array(
-            'title'=> '#' . $order_number . ' - ' . lang('Order'),
+            // An incomplete order has no number yet: its tab names the order id.
+            'title'=> (((string) $order_number !== '') ? '#' . $order_number : lang('Incomplete') . ' #' . (int) $id) . ' - ' . lang('Order'),
             'extra classes'=>'store view_order',
             'icon'=>'store',
             'heading'=>lang('View Order'),
@@ -2892,8 +2913,8 @@ if (!$_POST) {
                 ' . $output_payment_pending_banner . '
                 ' . $output_refund_banner . '
                 ' . pg_screen_toolbar(array(
+                    'primary' => $output_mark_paid_button,
                     'secondary' => array(
-                        $output_mark_paid_button,
                         $output_gateway_buttons,
                         $output_cancel_button,
                         $output_parasut_buttons,
@@ -3057,7 +3078,7 @@ if (!$_POST) {
                                     ' . ($contact_tax_number !== '' || $contact_tax_office !== '' ? '
                                     <hr/>
                                     <div class="row">
-                                        <span class="translateable col fg-secondary">VKN / TCKN:</span>
+                                        <span class="translateable col fg-secondary">' . h((pg_erp_store_country() === 'TR') ? lang('VKN / TCKN') : lang('Tax number')) . ':</span>
                                         <span class="col text-end">' . h($contact_tax_number) . '</span>
                                     </div>
                                     <div class="row">
@@ -3091,7 +3112,7 @@ if (!$_POST) {
                             <div class=" btn-group flex-wrap justify-content-center pg-print-none">
                                 ' . $output_save_button . '
                                 ' . $output_restore_button . '
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('order')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('order')))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -3557,15 +3578,25 @@ if (!$_POST) {
                 }
 
                 $recipient['items'] = db_items(
-                    "SELECT id
+                    "SELECT id, quantity
                     FROM order_items
                     WHERE ship_to_id = '" . e($recipient['id']) . "'");
 
                 // Loop through order items in order to prepare shipped quantity.
                 foreach ($recipient['items'] as $item_key => $item) {
 
-                    $item['shipped_quantity'] =
-                        $liveform->get('order_item_id_' . $item['id'] . '_shipped_quantity');
+                    $item_field = 'order_item_id_' . $item['id'] . '_shipped_quantity';
+
+                    // Refused here, on its own box, before anything is saved.
+                    if (!pg_order_shipped_quantity($liveform->get($item_field), $item['quantity'])['ok']) {
+                        $liveform->mark_error($item_field, lang(array('string' => 'The shipped quantity must be a whole number from 0 to {var:1}.', 'vars' => array((int) $item['quantity']))));
+                        go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . (int) $order['id'] . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
+                    }
+
+                    $item = array(
+                        'id' => $item['id'],
+                        'shipped_quantity' => $liveform->get($item_field),
+                    );
 
                     $recipient['items'][$item_key] = $item;
                 }
