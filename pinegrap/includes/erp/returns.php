@@ -209,7 +209,7 @@ function erp_return_build($parent_lines, $quantities)
 
         $share = ($sold > 0) ? ($wanted / $sold) : 0;
 
-        $line_total = (int) round((int) $parent['unit_price'] * $wanted);
+        $line_total = erp_line_total((int) $parent['unit_price'], $wanted);
         $discount = (int) round((int) $parent['discount_amount'] * $share);
 
         // Each piece is rounded on its own: two halves of 10.01 off both

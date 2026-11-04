@@ -594,11 +594,35 @@ function api_validate_bounds($param, $value) {
 
 }
 
+// Whether a value fits a field that takes one value. A JSON list or object
+// decodes to an array, and (string) on an array gives "Array" with a PHP
+// warning: a text field was stored as "Array" with 200. Only the list and
+// object types take one.
+function api_value_is_single($param, $raw) {
+
+	$type = isset($param['type']) ? $param['type'] : 'string';
+
+	if (in_array($type, array('list', 'object'), true)) {
+
+		return true;
+
+	}
+
+	return !is_array($raw) && !is_object($raw);
+
+}
+
 function api_validate_value($param, $raw) {
 
 	$name = $param['name'];
 
 	$type = isset($param['type']) ? $param['type'] : 'string';
+
+	if (!api_value_is_single($param, $raw)) {
+
+		api_fail_validation(lang(array('string' => '{var:1} must be a single value, not a list or an object.', 'vars' => $name)), $name);
+
+	}
 
 	switch ($type) {
 
