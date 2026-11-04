@@ -30,4 +30,5 @@ description: Cafe and Clinic templates: event weekdays, price hint, rating numbe
 
 ## Which buttons open a booking form with the choice made?
 - Clinic (PR #4567, #4547): a doctor profile's "Book an Appointment" sends `?department=<service title>&doctor=<name · specialty>`; "Book this check-up" sends `?reason=<package title>` (the form has no package field). Each Services section's "Book this service" sends `?department=<service title>` (#4806, 1.1.1). The form's Specialty, Doctor and Reason fields carry `_cf.url_param` ([[custom-form-url-prefill]]).
+- Clinic 1.3.0: `book_online` books a free time with the booking widget beside the appointment form ([[booking-templates]]).
 - Café: an event card's "Book a Table" is a `__page_link` with `cafe` and `day` (row tokens `cafe`, `event_date`; `date` is a reserved name) and the reservation form's Café and Date fields read them. A Locations card's "Book a Table" sends `?cafe=<café name>` (`$reservation_query`, #4806, 1.1.1).

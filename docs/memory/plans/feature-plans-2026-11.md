@@ -9,7 +9,6 @@ description: The eleven feature plans approved 2026-11-02: index and order, how 
 - Pinegrap's audience is mixed (bloggers, shops, agencies, corporate sites) and global: nothing in these plans is built around one country, and products or invoices are never put first.
 
 ## Which plans, in which order?
-4. `appointment-booking.md` (BK1-BK10): services, staff hours, slots, a booking widget.
 8. `store-credit.md` (SC1-SC7): spendable points, refunds to credit, auto-applied balance.
 
 ## How does a coordinator hold a plan?
