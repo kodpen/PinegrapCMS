@@ -54,6 +54,12 @@ function pg_announce($event, $data = array())
         pg_ap_heard($event);
     }
 
+    // Contacts put into a group get the mail of the campaign profiles that
+    // follow the group (includes/fn/mail.php).
+    if (function_exists('pg_contact_group_joined_heard')) {
+        pg_contact_group_joined_heard($event, (array) $data);
+    }
+
     // Chosen Workspace events to the Slack, Teams and Telegram targets.
     if (function_exists('pg_notify_announced')) {
         pg_notify_announced($event, (array) $data);

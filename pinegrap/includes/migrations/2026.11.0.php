@@ -157,6 +157,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_search_engines();          // 11.0.166
 	upgrade_2026_11_0_ap_reactions();            // 11.0.167
 	upgrade_2026_11_0_return_updated_at();       // 11.0.168
+	upgrade_2026_11_0_contact_group_joined_campaigns(); // 11.0.170
 
 }
 
@@ -5201,5 +5202,50 @@ function upgrade_2026_11_0_return_updated_at() {
 		WHERE updated_at = 0");
 
 	install_note('Returns: the time of a return\'s last change is kept, so the external API lists the returns changed since a given moment.');
+
+}
+
+// Campaign-profile action "joined a group" (2026.11.0, 11.0.170;
+// pg_contact_group_joined_heard() in includes/fn/mail.php): a profile of
+// action contact_group_joined names the group in action_item_id and sends
+// one mail to each contact put into it. Both action columns take the value,
+// because create_auto_email_campaigns() copies the profile's action into the
+// campaign row and an unlisted value is stored as ''. As in
+// upgrade_2026_11_0_booking_campaigns(): the list is read first and only
+// widened at its end, the null rule and the default kept as they are.
+function upgrade_2026_11_0_contact_group_joined_campaigns() {
+
+	foreach (array('email_campaign_profiles', 'email_campaigns') as $table) {
+
+		$action = install_column_info($table, 'action');
+
+		if (!$action) {
+
+			continue;
+
+		}
+
+		preg_match_all("/'((?:[^']|'')*)'/", (string) $action['Type'], $matches);
+
+		if (in_array('contact_group_joined', $matches[1], true)) {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => $table . '.action contact_group_joined')));
+
+			continue;
+
+		}
+
+		$values = $matches[1];
+		$values[] = 'contact_group_joined';
+
+		$definition = "ENUM('" . implode("','", $values) . "')"
+			. ((($action['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+			. (($action['Default'] !== null) ? " DEFAULT '" . e((string) $action['Default']) . "'" : '');
+
+		install_modify_column($table, 'action', $definition);
+
+	}
+
+	install_note('E-mail campaigns: automatic e-mails gain the joined a contact group action, one e-mail to each contact put into the chosen group. Nothing is sent until such a profile is created.');
 
 }

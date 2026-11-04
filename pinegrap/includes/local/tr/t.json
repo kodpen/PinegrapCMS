@@ -1857,6 +1857,8 @@
     "The contact could not be saved.": "Kişi kaydedilemedi.",
     "The contact for the affiliate could not be found.": "Ortaklık için kişi bulunamadı.",
     "The contact form, this blog and the staff directory are all forms: sent here, listed there.": "İletişim formu, bu blog ve personel rehberi birer formdur: burada gönderilir, orada listelenir.",
+    "The contact group action waits for the database update that adds it.": "Kişi grubu eylemi, onu ekleyen veritabanı güncellemesini bekliyor.",
+    "The contact group does not exist.": "Kişi grubu yok.",
     "The contact group for the custom form could not be changed, because you do not have access to the contact group you selected.": "Seçtiğiniz rehber grubuna erişiminiz olmadığı için özel formun rehber grubu değiştirilemedi.",
     "The contact group has been created.": "Rehber grubu oluşturuldu.",
     "The contact group has been deleted.": "Rehber grubu silindi.",
