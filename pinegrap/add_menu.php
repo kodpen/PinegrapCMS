@@ -78,6 +78,7 @@ if (!$_POST) {
     $liveform->add_fields_to_session();
     
     pg_menu_form_validate_name($liveform, null);
+    pg_menu_form_validate_classes($liveform);
 
     // if there is an error, forward user back to add menu screen
     if ($liveform->check_form_errors() == true) {

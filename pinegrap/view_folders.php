@@ -116,13 +116,17 @@ $liveform = new liveform('view_folder_and_files');
 $liveform_pages = new liveform('view_pages');
 $liveform_folders = new liveform('view_folders');
 
+// The product group screens (create, edit, delete) leave their notice for
+// the address they return to, view_product_groups.php.
+$liveform_groups = ($explorer_area == 'catalog') ? new liveform('view_product_groups') : null;
+
 // The explorer is a full-height application screen: an alert box above it
 // pushed the whole explorer down and its status bar off the window. The
 // pending messages are handed to the script and shown as its own toasts
 // (SERVER_MESSAGES), errors first, then warnings, then notices.
 $explorer_messages = array();
 
-foreach (array($liveform, $liveform_pages, $liveform_folders) as $explorer_liveform) {
+foreach (array_filter(array($liveform, $liveform_pages, $liveform_folders, $liveform_groups)) as $explorer_liveform) {
     $explorer_messages = array_merge($explorer_messages, pg_designer_screen_messages(
         $explorer_liveform->get_errors(),
         $explorer_liveform->get_warning_messages(),
@@ -16848,4 +16852,8 @@ echo output_footer();
 $liveform->remove_form('view_folder_and_files');
 $liveform_pages->remove_form('view_pages');
 $liveform_folders->remove_form('view_folders');
+
+if ($liveform_groups) {
+    $liveform_groups->remove_form('view_product_groups');
+}
 ?>

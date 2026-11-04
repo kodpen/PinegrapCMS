@@ -37,6 +37,35 @@ function test_menu_form_screens_use_shared_form()
 	pg_assert_contains('SELECT id FROM menus WHERE (name = ?)', $form, 'the uniqueness check binds the name');
 }
 
+function test_menu_copy_name_fits_the_column()
+{
+	pg_assert_same('main-1', pg_dash_suffix_name('main'));
+	pg_assert_same('main-3', pg_dash_suffix_name('main-2'));
+	pg_assert_same('main-menu-1', pg_dash_suffix_name('main-menu'), 'a dash without a number');
+
+	$hundred = 'pg-test-p04-long-' . str_repeat('w', 83);
+	$copy = pg_dash_suffix_name($hundred, 100);
+	pg_assert_same(100, mb_strlen($copy, 'UTF-8'), 'the copy fits the column');
+	pg_assert_same(mb_substr($hundred, 0, 98, 'UTF-8') . '-1', $copy, 'the base is cut, not the suffix');
+	pg_assert_false($copy === $hundred, 'the copy differs from the original');
+	pg_assert_same(mb_substr($hundred, 0, 97, 'UTF-8') . '-10', pg_dash_suffix_name(mb_substr($hundred, 0, 98, 'UTF-8') . '-9', 100), 'a longer number cuts one more');
+
+	$files = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/files.php');
+	pg_assert_contains('pg_dash_suffix_name($name, pg_name_max_length())', $files, 'the menu branch of get_unique_name() uses the limit');
+}
+
+function test_menu_form_checks_lengths()
+{
+	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/menu_form.php');
+	pg_assert_contains("lang('Name can be at most 100 characters long.')", $form, 'the name length is checked');
+	pg_assert_contains("lang('Classes can be at most 255 characters long.')", $form, 'the classes length is checked');
+
+	foreach (array('add_menu.php', 'edit_menu.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('pg_menu_form_validate_classes($liveform)', $source, $file . ' checks the classes');
+	}
+}
+
 function test_menu_form_name_pattern()
 {
 	pg_assert_same('[A-Za-z0-9\\-]+', pg_menu_form_name_pattern(null), 'a new name takes letters, numbers and dashes');

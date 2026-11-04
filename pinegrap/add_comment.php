@@ -753,6 +753,14 @@ if ($published == '1') {
 // Creating a notification.
 create_notification(array('action'=>'new_comment', 'type'=>'success', 'title'=>$message, 'send_to'=>urlencode($send_to), 'comment_id'=>$comment_id, 'user'=>$name));
 
+// A published reply to a comment from the Fediverse goes back to its sender
+// as a Note (includes/fn/activitypub_comments.php). The module is loaded only
+// on a site that has the feature's settings.
+if (($published == '1') && ($parent_id > 0) && ($comment_id > 0) && function_exists('pg_config_text') && (pg_config_text('ap_settings') !== '')) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub_comments.php');
+    pg_ap_reply_send($comment_id);
+}
+
 
 // if the added comments session array is not initialized, then initialize it
 if (isset($_SESSION['software']['added_comments']) == FALSE) {

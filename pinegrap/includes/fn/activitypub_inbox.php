@@ -368,8 +368,7 @@ function pg_ap_inbox_apply($actions, $site)
 
             case 'reply':
                 if (function_exists('pg_ap_reply_receive')) {
-                    pg_ap_reply_receive($action['note'], $action['actor'], $site);
-                    $done[] = 'reply';
+                    $done[] = pg_ap_reply_receive($action['note'], $action['actor'], $site);
                 } else {
                     $done[] = 'reply not stored: comments from the Fediverse are not handled yet';
                 }
@@ -377,10 +376,10 @@ function pg_ap_inbox_apply($actions, $site)
 
             case 'note_deleted':
                 if (function_exists('pg_ap_reply_deleted')) {
-                    pg_ap_reply_deleted($action['object'], $action['actor']);
+                    $done[] = 'note deleted, comments removed: ' . pg_ap_reply_deleted($action['object'], $action['actor']);
+                } else {
+                    $done[] = 'note deleted';
                 }
-
-                $done[] = 'note deleted';
                 break;
 
             default:
@@ -406,10 +405,6 @@ function pg_ap_forget_actor($actor_id)
 
     if (function_exists('pg_ap_forget_comments')) {
         pg_ap_forget_comments($actor_id);
-    }
-
-    if (function_exists('pg_ap_reply_actor_deleted')) {
-        pg_ap_reply_actor_deleted($actor_id);
     }
 }
 
