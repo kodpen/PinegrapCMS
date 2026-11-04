@@ -161,8 +161,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     // The bulk actions sit in the list's selection bar, which shows while
     // rows are selected, and post the selection to edit_products.php, which
     // reads it with the list's own query and rights. Modify Selected first
-    // asks for the changes in its window, which submits the form.
-    $output_bulk_buttons = '<button type="button" value="Modify Selected" class="btn btn-sm btn-solid theme-primary" onclick="window.open(\'edit_products.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'edit\',\'product\')"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Modify Selected') . '</button>'
+    // asks for the changes in its dialog, whose Save submits the form.
+    $output_bulk_buttons = '<button type="button" value="Modify Selected" class="no-submit btn btn-sm btn-solid theme-primary" data-pg-modify-open><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Modify Selected') . '</button>'
         . '<button type="button" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . h($catalog_bin ? lang(array('string' => 'Selected {var:1} will be moved to the Recycle Bin. They can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('products')))) : lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('products'))))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang('Delete Selected') . '</button>';
 
     $output = '
@@ -192,26 +192,17 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                                 </div>
                             </form>
                 </nav>
-                <form name="form" action="edit_products.php" method="post" class="disable_shortcut">
+                <form name="form" id="view_products_form" action="edit_products.php" method="post" class="disable_shortcut">
                     ' . get_token_field() . '
                     <input type="hidden" name="action">
                     <input type="hidden" name="selection">
                     <input type="hidden" name="list_params" value="' . h(encode_json(array('filter' => $filter))) . '">
-                    <input type="hidden" name="edit_enabled">
-                    <input type="hidden" name="edit_allowed_zones">
-                    <input type="hidden" name="edit_disallowed_zones">
-                    <input type="hidden" name="edit_change_price_method">
-                    <input type="hidden" name="edit_price_value">
-                    <input type="hidden" name="edit_inventory">
-                    <input type="hidden" name="edit_inventory_quantity_process">
-                    <input type="hidden" name="edit_tax_rate_method">
-                    <input type="hidden" name="edit_tax_rate_value">
-                    <input type="hidden" name="edit_inventory_quantity">
                     ' . pg_list_table_html($list_source, $list_page, $view['heading'], $output_bulk_buttons) . '
                 </form>
             </div>
         </div>
         ' . pg_seo_render_detail_offcanvas() . '
+        ' . pg_product_modify_dialog('view_products_form') . '
     ';
 
     // What a barcode label needs besides the product, which its button

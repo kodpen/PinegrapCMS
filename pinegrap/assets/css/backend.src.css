@@ -10142,9 +10142,23 @@ body.pg-side-panel-open .pg-chat-launcher {
 
   /* Anything the two columns were not expecting takes a line of its own under
      them rather than being wedged into a cell it does not belong in. Stated
-     before the placements below so that the placements win. */
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > *,
-  .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > * {
+     before the placements below so that the placements win.
+
+     The predicate sits on the child itself (the child is, or has a sibling
+     that is, the label and the control), never on the cell followed by
+     `> *`. Chromium answers a rule of the form `X:has(…) > *` by restyling
+     the WHOLE document on every element added or removed anywhere on the
+     page, whether or not any X exists: on the visual editor (some 18,000
+     elements) that was 250-450 ms per redraw. A sibling :has() on the
+     subject is restyled only where the siblings change. The weight is the
+     old rule's (0,6,1), so the placements below still win. The second
+     selector holds a field whose own children include the switch; the third
+     a field after such a one in the same cell. A field BEFORE it cannot be
+     reached from the child without the slow form; no settings card puts a
+     switch field beside another field in one cell. */
+  .pg-set-card .row > [class] > :is(.form-label, .form-label ~ *, :has(~ .form-label)):is(input.form-control:not(.tagin), select.form-control, .input-group, .form-adorn, .form-range, :is(input.form-control:not(.tagin), select.form-control, .input-group, .form-adorn, .form-range) ~ *, :has(~ :is(input.form-control:not(.tagin), select.form-control, .input-group, .form-adorn, .form-range))),
+  .pg-set-card .row > [class] > .form-field > :is(:is(input[type="checkbox"], .switch), :is(input[type="checkbox"], .switch) ~ *, :has(~ :is(input[type="checkbox"], .switch))):is(.form-field > *),
+  .pg-set-card .row > [class] > .form-field:has(> :is(input[type="checkbox"], .switch)) ~ .form-field > * {
     grid-column: 1 / -1;
   }
 

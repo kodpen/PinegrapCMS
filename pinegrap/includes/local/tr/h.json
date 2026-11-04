@@ -73,6 +73,7 @@
     "Handed to the bank for collection. The money moves when the bank collects it.": "Çek bankaya tahsile verildi. Para, banka tahsil edince hareket eder.",
     "Handed to the region's code as $dregion_attribute. Quotes and angle brackets are left out.": "Bölgenin koduna $dregion_attribute olarak verilir. Tırnak ve açılı ayraçlar atılır.",
     "Handed to {var:1} colleague(s).": "{var:1} çalışma arkadaşına verildi.",
+    "Handle": "Kullanıcı adı",
     "Handling": "Hazırlama Süresi",
     "Handling Time": "Hazırlama Süresi",
     "Handling a Report": "Şikâyetle İlgilenmek",

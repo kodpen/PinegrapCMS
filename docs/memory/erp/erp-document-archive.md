@@ -5,8 +5,8 @@ description: ERP documents kept as issued (4.65, includes/erp/archive.php): what
 
 ## What is kept, and where?
 - The PDF a sales invoice or delivery note was issued with, the provider's copy of an e-document once GİB accepted it (only when the bytes are a PDF), every e-mailed reconciliation letter (with an `erp_reconciliation_log` row) and expense receipts (a new photo is kept beside the old one, `$again`: erp-expense-receipts.md).
-- Through `includes/erp/archive.php` only (`erp_archive_store()`): the file directory (`FILE_DIRECTORY_PATH`) and a `files` row with `folder = 0`, `erp_doc_type` / `erp_doc_id` set, named `erp-<type>-<number>-<random>.pdf`. Never a new folder or a write path of its own. The first copy is the document; a later call returns it.
-- Written to a temporary file, then renamed; never ask `is_writable()` (on Windows it reads the read-only flag).
+- Through `includes/erp/archive.php` only (`erp_archive_store()`): the file directory (`FILE_DIRECTORY_PATH`) and a `files` row with `folder = 0`, `erp_doc_type` / `erp_doc_id` set, named `erp-<type>-<number>-<random>.pdf`. No folder or write path of its own. The first copy is the document; a later call returns it.
+- Written to a temporary file, then renamed; never ask `is_writable()` (Windows reads the read-only flag).
 
 ## Why is nothing of ours kept for a purchase invoice?
 - Its document is the supplier's (the incoming e-invoice). Our sales layout printed the store as its seller, and that copy went into the accountant pack's `belgeler/Alis_faturalari/` (#3997, decided in #4104). `erp_archive_keeps_rendering($direction)` (sales only) gates `erp_event_invoice()`'s deferral, `erp_archive_invoice()`, the pack's kept/rendered copy, the PDF / Download buttons of `edit_erp_invoice.php` and the drawer, and `get_erp_invoice_pdf.php` (a notice page for PDF, download and `?html=1`). Purchase PDFs kept before stay in `files`, unused; no data step. Test: `tests/erp_purchase_invoice_no_pdf_test.php`.
@@ -14,10 +14,10 @@ description: ERP documents kept as issued (4.65, includes/erp/archive.php): what
 
 ## When is it rendered?
 - Asked for where the document is announced (`erp_archive_defer()` from `erp_event_invoice()` / `erp_event_waybill()`), which is inside the writer's transaction; the render runs at the end of the request, so a rolled-back writer leaves nothing to keep. The queue empties as it runs, so a document written during shutdown (the automatic invoice) still gets its copy.
-- Endpoints serve `erp_archive_file()` first; a live render only for the template preview, `?html=1`, or a document issued before 4.65 (its first opening keeps it). Move to today replaces the kept PDF.
+- Endpoints serve `erp_archive_file()` first; a live render only for the template preview, `?html=1`, a cancelled invoice (erp-invoice-note-and-cancelled-pdf.md) or a document issued before 4.65 (its first opening keeps it). Move to today replaces the kept PDF.
 
 ## Who may open one?
-- `get_file.php`: a file named `erp-…` whose `erp_doc_type` is set is served only to a signed-in user with the ERP right (role below 3 or `manage_erp`); anyone else gets a 404. Without that check a folderless file is public, and an invoice is personal data.
+- `get_file.php`: a file named `erp-…` whose `erp_doc_type` is set is served only to a signed-in user with the ERP right (role below 3 or `manage_erp`); anyone else gets a 404 (a folderless file is otherwise public).
 - A new query that lists files leaves ERP rows out (`erp_doc_type = ''`); a file operation by id (delete, move, rename, replace) refuses them: docs/memory/platform/erp-documents-in-file-manager.md.
 
 ## How does the file manager show them?

@@ -48,6 +48,7 @@ include_once('liveform.class.php');
 // used to live here was a second implementation that quietly fell behind.
 include_once('product_builder.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/product_group_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_list.php');
 $liveform = new liveform('edit_product_group');
 
 // if the form has not been submitted
@@ -547,43 +548,41 @@ if (!$_POST) {
                                         ' . $output_delete_button,
                         'bar_extra' => $group_binned ? '' : '
                                     <span class="enable-on-selected">
-                                        <button type="button" value="Modify Selected" title="' . lang('Modify Selected Products') . '" aria-label="' . h(lang('Modify Selected Products')) . '" data-bs-content="' . lang('All selected products will be modified. However, the changes you made on this page will be removed. If you have made any changes, save first.') . '" class="btn btn-sm my-1 btn-solid theme-primary p-3 disabled" onclick="convert_product_group_to_product_form(\'edit_products.php\')"><span class="material-icons" aria-hidden="true">living</span></button>
+                                        <button type="button" value="Modify Selected" title="' . lang('Modify Selected Products') . '" aria-label="' . h(lang('Modify Selected Products')) . '" data-bs-content="' . lang('All selected products will be modified. However, the changes you made on this page will be removed. If you have made any changes, save first.') . '" class="btn btn-sm my-1 btn-solid theme-primary p-3 disabled no-submit" id="product_group_modify_open" data-pg-modify-open><span class="material-icons" aria-hidden="true">living</span></button>
                                     </span>')) . '
                     <input type="hidden" name="max_input_vars_test" value="true">
                     
                     <input type="hidden" name="action" value="edit">
-                    <input type="hidden" name="edit_enabled">
-                    <input type="hidden" name="edit_allowed_zones">
-                    <input type="hidden" name="edit_disallowed_zones">
-                    <input type="hidden" name="edit_change_price_method">
-                    <input type="hidden" name="edit_price_value">
-                    <input type="hidden" name="edit_inventory">
-                    <input type="hidden" name="edit_inventory_quantity_process">
-                    <input type="hidden" name="edit_tax_rate_method">
-                    <input type="hidden" name="edit_tax_rate_value">
-                    <input type="hidden" name="edit_inventory_quantity">
                 </form>
+                <form id="product_group_modify_form" action="edit_products.php" method="post" class="disable_shortcut">
+                    ' . get_token_field() . '
+                    <input type="hidden" name="action">
+                    <input type="hidden" name="selection">
+                    <input type="hidden" name="list_params" value="' . h(encode_json(array('filter' => 'all_products'))) . '">
+                </form>
+                ' . pg_product_modify_dialog('product_group_modify_form', lang('Warning! If you have made changes in this product group, these changes will disappear and you will be directed to the View Products page when you edit the products. Are you sure about this action?')) . '
                 <script>
-                    function convert_product_group_to_product_form(action){
-                        var form = $("form.product_group_form");
-                        var default_action = form.attr("action");
-                        pgConfirm({
-                            title: "' . lang('Warning') . '",
-                            message: "' . lang('Warning! If you have made changes in this product group, these changes will disappear and you will be directed to the View Products page when you edit the products. Are you sure about this action?') . '",
-                            confirmText: "' . lang('Continue') . '",
-                            cancelText: "' . lang('Cancel') . '",
-                            variant: "warning"
-                        }).then(function(ok){
-                            if (ok) {
-                                form.attr("action", action);
-                                window.open("edit_products.php", "popup", "toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500");
-                                form.find(".edit_product_group_container .card:not(.edit_products)").remove();
-                                $("html").animate({ scrollTop: 0 }, "slow");
-                            } else {
-                                form.attr("action", default_action);
-                            }
+                    // Modify Selected changes the products ticked in the group\'s
+                    // list through the products list\'s dialog; the post goes to
+                    // edit_products.php, which returns to the products list, so
+                    // the dialog warns that unsaved changes of the group are lost.
+                    (function () {
+                        var button = document.getElementById("product_group_modify_open");
+                        var form = document.getElementById("product_group_modify_form");
+
+                        if (!button || !form) {
+                            return;
+                        }
+
+                        // The products ticked when the dialog opens are the ones changed.
+                        button.addEventListener("click", function () {
+                            var ids = Array.prototype.map.call(
+                                document.querySelectorAll(\'form.product_group_form input[name="products[]"]:checked\'),
+                                function (box) { return parseInt(box.value, 10); }
+                            );
+                            form.elements.selection.value = JSON.stringify({ ids: ids });
                         });
-                    }
+                    }());
                 </script>
             </div>
         </div>

@@ -17,7 +17,7 @@ description: Manual ERP invoices: files and endpoints, the draft boundary (_D se
 - Then: header UPDATE (`AND status = 'draft'`), `erp_invoice_snapshot_account()`, line figures rewritten, `erp_account_post()`, `erp_account_refresh_balance()`, `erp_stock_post_invoice()`; after the commit `erp_stock_apply_pending()` and the `erp.invoice.created` event.
 
 ## What may change on an issued invoice?
-- Figures and lines never: it goes back by return or cancel. `edit_erp_invoice.php` sends a draft to the editor; on an issued invoice the screen edits only `notes` (`erp_action=notes`, POST with token).
+- Figures and lines never: it goes back by return or cancel. `edit_erp_invoice.php` sends a draft to the editor; on an issued invoice the screen edits only the internal note (`erp_action=notes` → `erp_invoice_notes_save()`, never printed on the kept copy: erp-invoice-note-and-cancelled-pdf.md).
 - Until the document reaches an e-document provider, two e-document steps also touch it: completing the buyer and carrier (`erp_edoc_invoice_party_fix()`, card and copy together, logged) and moving the date to today (`erp_edoc_invoice_redate()`).
 
 ## How is `includes/erp/invoice_manual.php` split?

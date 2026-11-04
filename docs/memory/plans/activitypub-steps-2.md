@@ -9,7 +9,7 @@ description: Steps AP5-AP8 of plans/activitypub.md: moderation and blocks, the F
 - AP5 (S) Moderation. `done` (#6483); blocks and erasure in `platform/activitypub-moderation.md`.
   - `ap_blocks` rows (actor or domain) from the comment moderation screen and the Fediverse screen; a block deletes that actor's comments and follower row and refuses its signature; erasure requests from a remote actor (Delete of an actor) handled by the same path. Memory: `platform/activitypub-inbox.md` grows.
 
-- AP6 (S) The Fediverse screen. After AP2 and AP3.
+- AP6 (S) The Fediverse screen. `done` (#6597); screen and rules in `ui/fediverse-settings.md`.
   - Settings › Fediverse (`includes/settings/`): the switch, handle (checked against the people's names), name, summary, avatar, what is published, the followers list, the delivery log with failures and "Try again", a "Look me up" check that fetches the site's own WebFinger through the public address; pages print `<link rel="alternate" type="application/activity+json">`. Memory: `ui/fediverse-settings.md`.
 
 - AP7 (S) API and personal data. After AP4-AP6.

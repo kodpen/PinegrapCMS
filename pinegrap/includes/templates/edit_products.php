@@ -8,361 +8,239 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
-// This file is a view partial. It is required from a page that has already run
-// init.php and it depends on the constants and variables that bootstrap sets up.
-// Requested directly over the web it runs with none of them and dies on the first
-// constant it touches -- which is exactly how it turned up in the error log.
+// This file is a view partial: the Modify Selected dialog of the products
+// list and the product group screen, printed by pg_product_modify_dialog()
+// (includes/fn/product_list.php), which sets the variables it reads. Its
+// fields belong to the page's form by their form attribute ($form_id), so
+// they post with it to edit_products.php.
+// Requested directly over the web it runs with none of them and dies on the
+// first constant it touches, so it refuses the request instead.
 if (!defined('PG_INIT_LOADED')) {
     http_response_code(403);
     exit;
 }
+
+$owner = ' form="' . h($form_id) . '"';
+$select_options = function ($options) {
+    $html = '';
+    foreach ($options as $label => $value) {
+        $html .= '<option value="' . h($value) . '">' . h($label) . '</option>';
+    }
+    return $html;
+};
 ?>
-<?=output_header_secure(array('title'=>lang('Modify Products'),'icon'=>'store'))?>
-<script type="text/javascript">
-	function assignBarcodes() {
-		opener.document.form.action.value = 'assign_barcodes';
-		opener.document.form.submit();
-		window.close();
-	}
-
-	function edit_products() {
-		// The window has no real submit, so the browser never checks the
-		// boxes' own limits: the tax rate box (0..100) is asked here, and a
-		// stock process without a figure is stopped before anything is sent.
-		if (document.getElementById("tax_rate_method").value == "set") {
-			var tax_rate_box = document.getElementById("tax_rate_value");
-			tax_rate_box.required = true;
-			var tax_rate_valid = tax_rate_box.reportValidity();
-			tax_rate_box.required = false;
-			if (!tax_rate_valid) {
-				return;
-			}
-		}
-		if ((document.getElementById("inventory_quantity_process").value != "") && (document.getElementById("inventory_quantity").value == "")) {
-			var quantity_box = document.getElementById("inventory_quantity");
-			quantity_box.setCustomValidity(<?=json_encode(lang('Enter an inventory quantity.'))?>);
-			quantity_box.reportValidity();
-			quantity_box.setCustomValidity("");
-			return;
-		}
-		// If the user selected an option for the enabled field then update field in the form.
-		if(document.getElementById("enabled").value != "") {
-			opener.document.form.edit_enabled.value = document.getElementById("enabled").value;
-		}
-		// If the user selected an option for the enabled field then update field in the form.
-		if(document.getElementById("change_price_method").value != "") {
-			var $change_price_value = document.getElementById("change_price_method").value;
-			opener.document.form.edit_change_price_method.value = $change_price_value;
-			var $price_value = document.getElementById("price_value").value;
-			opener.document.form.edit_price_value.value = $price_value;
-		}
-
-		// If the user selected an option for the inventory field then update field in the form.
-		if(document.getElementById("inventory").value != "") {
-			opener.document.form.edit_inventory.value = document.getElementById("inventory").value;
-		}
-		// If the user selected an option for the inventory_quantity_process field then update field in the form.
-		if(document.getElementById("inventory_quantity_process").value != "") {
-			opener.document.form.edit_inventory_quantity_process.value = document.getElementById("inventory_quantity_process").value;
-		}
-		// If the user selected an option for the inventory_quantity field then update field in the form.
-		if(document.getElementById("inventory_quantity").value != "") {
-			opener.document.form.edit_inventory_quantity.value = document.getElementById("inventory_quantity").value;
-		}
-		// The location a quantity change goes to, on a site that keeps stock
-		// per location. The lists that open this window have no field for it,
-		// so it is added to their form here.
-		var location_select = document.getElementById("inventory_location");
-		if (location_select && (document.getElementById("inventory_quantity_process").value != "")) {
-			var opener_form = opener.document.form;
-			var location_field = opener_form.elements.namedItem("edit_inventory_location");
-			if (!location_field) {
-				location_field = opener.document.createElement("input");
-				location_field.type = "hidden";
-				location_field.name = "edit_inventory_location";
-				opener_form.appendChild(location_field);
-			}
-			location_field.value = location_select.value;
-		}
-		// The tax rate carries two fields: what to do, and the rate it needs when
-		// the answer is "set". Clearing needs no rate, so the value only travels
-		// with the method that uses it.
-		if(document.getElementById("tax_rate_method").value != "") {
-			opener.document.form.edit_tax_rate_method.value = document.getElementById("tax_rate_method").value;
-			opener.document.form.edit_tax_rate_value.value = document.getElementById("tax_rate_value").value;
-		}
-		
-		// If shipping is enabled, then deal with allowed/disallowed zones.
-		if(document.form.allowed_zones) { 
-			opener.document.form.edit_allowed_zones.value = "";
-			// Loop through all allowed zone checkboxes.
-			for(i = 0; i < document.form.allowed_zones.length; i++) {
-				// If zone checkbox is checked, then add zone to hidden form field on opener.
-				if(document.form.allowed_zones[i].checked == true) {
-					// If there is already zones in the list of zones, then add a comma first.
-					if(opener.document.form.edit_allowed_zones.value) {
-						opener.document.form.edit_allowed_zones.value += ",";
-					}
-					opener.document.form.edit_allowed_zones.value += document.form.allowed_zones[i].value;
-				}
-			}
-			opener.document.form.edit_disallowed_zones.value = "";
-			// Loop through all disallowed zone checkboxes.
-			for(i = 0; i < document.form.disallowed_zones.length; i++) {
-				// If zone checkbox is checked, then add zone to hidden form field on opener.
-				if(document.form.disallowed_zones[i].checked == true) {
-					// If there is already zones in the list of zones, then add a comma first.
-					if(opener.document.form.edit_disallowed_zones.value) {
-						opener.document.form.edit_disallowed_zones.value += ",";
-					}
-					opener.document.form.edit_disallowed_zones.value += document.form.disallowed_zones[i].value;
-				}
-			}
-		}
-		opener.document.form.submit();
-		window.close();
-	}
-
-	// A zone is either allowed or disallowed: ticking it in one card clears
-	// it in the other.
-	document.addEventListener("change", function (event) {
-		var box = event.target;
-		if (!box.checked || ((box.name != "allowed_zones") && (box.name != "disallowed_zones"))) {
-			return;
-		}
-		var other = document.getElementById(((box.name == "allowed_zones") ? "disallowed_zone_" : "allowed_zone_") + box.value);
-		if (other) {
-			other.checked = false;
-		}
-	});
-</script>
-
-<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
-    <div class="container-fluid">
-		<span class="navbar-text me-auto">
-			<?=lang(array('string'=>'Modify Products' ))?>
-		</span>
-        <ul class="navbar-nav ms-auto">
-            <li class="nav-item pg-menu-wrap no-popover"  title="<?=lang('Software Theme')?>">
-                <button class="nav-link nav-link-sm position-relative pg-menu-caret d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
-                <ul aria-labelledby="bd-theme" class="menu shadow pg-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-menu-min-width: 8rem;">
-                    <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i><?=lang('Light')?></button></li>
-                    <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i><?=lang('Dark')?></button></li>
-                    <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i><?=lang('Auto')?></button></li>
-                </ul>
-            </li>
-            <li class="nav-item">
-                <button title="<?=lang(array('string'=>'Close' ))?>" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.close()" aria-label="<?=h(lang('Close'))?>">
-                    <span class="bi bi-x-lg"></span>
-                </button>
-            </li>
-        </ul>
+<dialog class="dialog dialog-lg dialog-scrollable" id="product_modify_dialog" aria-labelledby="product_modify_dialog_title" data-pg-modify-form="<?=h($form_id)?>">
+    <div class="dialog-header">
+        <h5 class="dialog-title" id="product_modify_dialog_title"><i class="bi bi-pencil me-5" aria-hidden="true"></i><?=lang(array('string'=>'Modify Products' ))?></h5>
+        <button type="button" class="btn-close no-submit" data-bs-dismiss="dialog" aria-label="<?=h(lang('Close'))?>"></button>
     </div>
-</nav>
-<main id="content" class="container-fluid">
-    <p class="mt-1 mb-3"><?=lang(array('string'=>'You may update the selected Products via the form below.' ))?></p>
-	<form name="form">
-		<div class="row">
-			<div class="col-xs-12 sm:col-6 md:col-4 lg:col-3">
-				<div class="form-floating mt-1 mb-3">
-					<label for="enabled" class="form-label"><?=lang(array('string'=>'Status' ))?></label>
-					<?=$liveform->output_field(array(
-						'type' => 'select',
-						'id' => 'enabled',
-						'name' => 'enabled',
-						'class'=>'form-control',
-						'options' => $enabled_options))?>
-				</div>
-			</div>
-		</div>
-		<div class="row mt-1 mb-3">
-			<div class="col-xs-12 sm:col-6 md:col-4 lg:col-3">
-				<div class="form-floating  mt-1 mb-3">
-					<label for="change_price_method" class="form-label"><?=lang(array('string'=>'Price Change Method' ))?></label>
-					<?=$liveform->output_field(array(
-						'type' => 'select',
-						'id' => 'change_price_method',
-						'name' => 'change_price_method',
-						'class'=>'form-control collapse-if-selected',
-						'data-bs-target'=>'#increase_price_row',
-						'options' => $price_change_method_options,
-						'onchange'=>'change_price_methodfunc()'))?>
-				</div>
-				<div class="popover fade bs-popover-bottom p-0 mb-3 w-100 collapse" id="increase_price_row">
-                    <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                    <div class="popover-body">
-                        <div class="row">
-							<label for="price_value" id="price_value_label" class="form-label"><?=h(lang('Amount'))?></label>
-							<div class="input-group my-1">
-								<span id="value_type" class="input-group-text"><?=BASE_CURRENCY_CODE?></span>
-								<?=$liveform->output_field(array_merge(array(
-									'type' => 'text',
-									'id' => 'price_value',
-									'inputmode' => 'decimal',
-									'class'=>'form-control'), pg_money_mask_attributes()))?>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-		<div class="row mt-1 mb-3">
-			<div class="col-12 sm:col-6 md:col-4 lg:col-3">
-				<div class="form-floating mt-1 mb-3">
-					<label for="tax_rate_method" class="form-label"><?=lang(array('string'=>'Tax Rate' ))?></label>
-					<?=$liveform->output_field(array(
-						'type' => 'select',
-						'id' => 'tax_rate_method',
-						'name' => 'tax_rate_method',
-						'class'=>'form-control',
-						'options' => $tax_rate_method_options))?>
-				</div>
-			</div>
-			<div class="col-12 sm:col-6 md:col-4 lg:col-3">
-				<label for="tax_rate_value" class="form-label"><?=h(lang('New Tax Rate'))?></label>
-				<div class="input-group mb-3">
-					<?=$liveform->output_field(array(
-						'type' => 'number',
-						'id' => 'tax_rate_value',
-						'name' => 'tax_rate_value',
-						'min' => '0',
-						'max' => '100',
-						'step' => '0.001',
-						'placeholder' => '20',
-						'aria-describedby' => 'tax_rate_value_hint',
-						'class'=>'form-control'))?>
-					<span class="input-group-text">%</span>
-				</div>
-				<div class="form-text" id="tax_rate_value_hint"><?=lang(array('string'=>'Used only when the rate is being set.' ))?></div>
-			</div>
-		</div>
-		<div class="row mt-1 mb-3">
-			<div class="col-12 sm:col-6 md:col-4 lg:col-3">
-				<div class="form-floating  mt-1 mb-3">
-					<label for="inventory" class="form-label"><?=lang(array('string'=>'Track Inventory' ))?></label>
-					<?=$liveform->output_field(array(
-						'type' => 'select',
-						'id' => 'inventory',
-						'name' => 'inventory',
-						'class'=>'form-control',
-						'options' => $inventory_options))?>
-				</div>
-			</div>
-			<div class="col-12 sm:col-6 md:col-auto">
-				<div class="form-floating  mt-1 mb-3">
-					<label for="inventory_quantity_process" class="form-label"><?=lang(array('string'=>'Inventory Quantity Process' ))?></label>
-					<?=$liveform->output_field(array(
-						'type' => 'select',
-						'id' => 'inventory_quantity_process',
-						'name' => 'inventory_quantity_process',
-						'class'=>'form-control collapse-if-selected',
-						'data-bs-target'=>'#increase_quantity_row',
-						'options' => $inventory_quantity_process_options))?>
-				</div>
-				<div class="popover fade bs-popover-bottom p-0 mb-3 w-100 collapse" id="increase_quantity_row">
-                    <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                    <div class="popover-body">
-                        <div class="row">
-							<label for="inventory_quantity" class="form-label"><?=h(lang('Quantity'))?></label>
-							<div class="input-group number-controls">
-                                <button class="btn material-icons minus border border-end-0" type="button" aria-label="<?=h(lang('Decrease'))?>">remove</button>
-                                <?=$liveform->output_field(array(
-									'type' => 'text',
-									'id' => 'inventory_quantity',
-									'name' => 'inventory_quantity',
-									'class'=>'form-control text-center border-start-0 border-end-0',
-									'maxlength'=>'9',
-									'inputmode'=>'numeric',
-									'data-inputmask-alias'=>'integer',
-									'data-inputmask-allowminus'=>'false',
-									'data-inputmask-placeholder'=>'0'
-									))?>
-                                <button class="btn material-icons plus border border-start-0" type="button" aria-label="<?=h(lang('Increase'))?>">add</button>
-							</div>
-						</div>
-						<?php if ($stock_locations): ?>
-						<div class="row mt-3">
-							<label for="inventory_location" class="form-label"><?=h(lang('Location'))?></label>
-							<select id="inventory_location" class="form-control">
-								<?php foreach ($stock_locations as $stock_location): ?>
-								<option value="<?=(int) $stock_location['id']?>"><?=h($stock_location['name'])?></option>
-								<?php endforeach; ?>
-							</select>
-						</div>
-						<?php endif; ?>
-					</div>
-				</div>
-			</div>
-		</div>
-		<?php if (ECOMMERCE_SHIPPING): ?>
-		<div class="row ">
-			<div class="col-xs-12  sm:col-12 md:col-8 lg:col-6 card-group">
-				<div class="card mt-1 mb-3">
-					<div class="card-header"><?=lang(array('string'=>'Allow Shipping Zones') )?></div>
-					<div class="card-body">
-						<?php foreach($zones as $zone): ?>
-						<div class="form-field">
-							<?=$liveform->output_field(array(
-								'type' => 'checkbox',
-								'id' => 'allowed_zone_' . $zone['id'],
-								'name' => 'allowed_zones',
-								'value' => $zone['id'],
-								'class' => 'checkbox check'))?>
-							<label class="" for="allowed_zone_<?=$zone['id']?>"><?=h($zone['name'])?></label>    
-						</div>
-						<?php endforeach ?>
-					</div>
-				</div>
-				<div class="card mt-1 mb-3">
-					<div class="card-header"><?=lang(array('string'=>'Disallow Shipping Zones') )?></div>
-					<div class="card-body">
-						<?php foreach($zones as $zone): ?>
-						<div class="form-field">
-							<?=$liveform->output_field(array(
-								'type' => 'checkbox',
-								'id' => 'disallowed_zone_' . $zone['id'],
-								'name' => 'disallowed_zones',
-								'value' => $zone['id'],
-								'class' => 'checkbox check'))?>
-							<label class="" for="disallowed_zone_<?=$zone['id']?>"><?=h($zone['name'])?></label>
-						</div>
-						<?php endforeach ?>
-					</div>
-				</div>
-			</div>
-		</div>
-		<?php endif ?>
-		<nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="<?=h(lang('data edit buttons'))?>">
-			<div class="container">
-				<div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
-					<button type="button" name="submit_save" value="Modify Products" class="btn mb-1 mt-1  btn-solid theme-primary submit-primary" onclick="edit_products()"><span class="material-icons me-3">save</span><?=lang(array('string'=>'Modify Products') )?></button>
-					<?php if (defined('BARCODE_ENABLED') && BARCODE_ENABLED): ?>
-					<button type="button" class="btn mb-1 mt-1 btn-outline theme-secondary" onclick="assignBarcodes()"><i class="bi bi-upc-scan me-3"></i><?=lang('Assign Barcodes')?></button>
-					<?php endif ?>
-				</div>
-			</div>
-		</nav>
-	</form>
-</main>
+    <div class="dialog-body">
+        <p class="small fg-secondary"><?=lang(array('string'=>'You may update the selected Products via the form below.' ))?></p>
+        <?php if ($warning !== ''): ?>
+        <div class="alert theme-warning small" role="alert"><?=h($warning)?></div>
+        <?php endif; ?>
+        <div class="row g-7">
+            <div class="col-12 md:col-6">
+                <label for="enabled" class="form-label"><?=lang(array('string'=>'Status' ))?></label>
+                <select id="enabled" name="edit_enabled" class="form-control"<?=$owner?>><?=$select_options($enabled_options)?></select>
+            </div>
+            <div class="col-12 md:col-6">
+                <label for="change_price_method" class="form-label"><?=lang(array('string'=>'Price Change Method' ))?></label>
+                <select id="change_price_method" name="edit_change_price_method" class="form-control collapse-if-selected" data-bs-target="#increase_price_row"<?=$owner?>><?=$select_options($price_change_method_options)?></select>
+                <div class="collapse" id="increase_price_row">
+                    <div class="border rounded-4 p-5 mt-5">
+                        <label for="price_value" id="price_value_label" class="form-label"><?=h(lang('Amount'))?></label>
+                        <div class="input-group">
+                            <span id="value_type" class="input-group-text"><?=h(BASE_CURRENCY_CODE)?></span>
+                            <input type="text" id="price_value" name="edit_price_value" inputmode="decimal" class="form-control"<?=pg_money_mask_html()?><?=$owner?>>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 md:col-6">
+                <label for="tax_rate_method" class="form-label"><?=lang(array('string'=>'Tax Rate' ))?></label>
+                <select id="tax_rate_method" name="edit_tax_rate_method" class="form-control"<?=$owner?>><?=$select_options($tax_rate_method_options)?></select>
+            </div>
+            <div class="col-12 md:col-6">
+                <label for="tax_rate_value" class="form-label"><?=h(lang('New Tax Rate'))?></label>
+                <div class="input-group">
+                    <input type="number" id="tax_rate_value" name="edit_tax_rate_value" min="0" max="100" step="0.001" placeholder="20" aria-describedby="tax_rate_value_hint" class="form-control"<?=$owner?>>
+                    <span class="input-group-text">%</span>
+                </div>
+                <div class="form-text" id="tax_rate_value_hint"><?=lang(array('string'=>'Used only when the rate is being set.' ))?></div>
+            </div>
+            <div class="col-12 md:col-6">
+                <label for="inventory" class="form-label"><?=lang(array('string'=>'Track Inventory' ))?></label>
+                <select id="inventory" name="edit_inventory" class="form-control"<?=$owner?>><?=$select_options($inventory_options)?></select>
+            </div>
+            <div class="col-12 md:col-6">
+                <label for="inventory_quantity_process" class="form-label"><?=lang(array('string'=>'Inventory Quantity Process' ))?></label>
+                <select id="inventory_quantity_process" name="edit_inventory_quantity_process" class="form-control collapse-if-selected" data-bs-target="#increase_quantity_row"<?=$owner?>><?=$select_options($inventory_quantity_process_options)?></select>
+                <div class="collapse" id="increase_quantity_row">
+                    <div class="border rounded-4 p-5 mt-5">
+                        <label for="inventory_quantity" class="form-label"><?=h(lang('Quantity'))?></label>
+                        <div class="input-group number-controls">
+                            <button class="btn material-icons minus border border-end-0 no-submit" type="button" aria-label="<?=h(lang('Decrease'))?>">remove</button>
+                            <input type="text" id="inventory_quantity" name="edit_inventory_quantity" class="form-control text-center border-start-0 border-end-0" maxlength="9" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false" data-inputmask-placeholder="0"<?=$owner?>>
+                            <button class="btn material-icons plus border border-start-0 no-submit" type="button" aria-label="<?=h(lang('Increase'))?>">add</button>
+                        </div>
+                        <?php if ($stock_locations): ?>
+                        <label for="inventory_location" class="form-label mt-5"><?=h(lang('Location'))?></label>
+                        <select id="inventory_location" name="edit_inventory_location" class="form-control"<?=$owner?>>
+                            <?php foreach ($stock_locations as $stock_location): ?>
+                            <option value="<?=(int) $stock_location['id']?>"><?=h($stock_location['name'])?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <?php if ($zones !== null): ?>
+            <?php foreach (array('allowed' => lang('Allow Shipping Zones'), 'disallowed' => lang('Disallow Shipping Zones')) as $zone_list => $zone_title): ?>
+            <div class="col-12 md:col-6">
+                <fieldset class="border rounded-4 p-5 h-100">
+                    <legend class="form-label fs-md float-none w-auto px-1 mb-3"><?=$zone_title?></legend>
+                    <?php foreach ($zones as $zone): ?>
+                    <div class="form-field">
+                        <input type="checkbox" id="<?=$zone_list?>_zone_<?=(int) $zone['id']?>" name="<?=$zone_list?>_zones" value="<?=(int) $zone['id']?>" class="checkbox check">
+                        <label for="<?=$zone_list?>_zone_<?=(int) $zone['id']?>"><?=h($zone['name'])?></label>
+                    </div>
+                    <?php endforeach; ?>
+                </fieldset>
+            </div>
+            <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+        <input type="hidden" name="edit_allowed_zones"<?=$owner?>>
+        <input type="hidden" name="edit_disallowed_zones"<?=$owner?>>
+    </div>
+    <div class="dialog-footer">
+        <?php if (defined('BARCODE_ENABLED') && BARCODE_ENABLED): ?>
+        <button type="button" class="btn btn-outline theme-secondary no-submit me-auto" data-pg-modify-barcodes><i class="bi bi-upc-scan me-5" aria-hidden="true"></i><?=lang('Assign Barcodes')?></button>
+        <?php endif ?>
+        <button type="button" class="btn btn-solid theme-secondary no-submit" data-bs-dismiss="dialog"><?=lang('Cancel')?></button>
+        <button type="button" class="btn btn-solid theme-primary no-submit" data-pg-modify-save><i class="bi bi-check-lg me-5" aria-hidden="true"></i><?=lang(array('string'=>'Modify Products') )?></button>
+    </div>
+</dialog>
 <script>
-	function change_price_methodfunc(){
-		var base_currency = '<?=h(BASE_CURRENCY_CODE)?>';
-		var percentiles = '\%';
-		var $value_type =  document.getElementById("value_type");
-		var $change_price = document.getElementById("change_price_method").value;
-		var price_value_label = document.getElementById("price_value_label");
-		
-		// The visible label names the box for the chosen method: an amount in
-		// the base currency or a percent.
-		if(($change_price == '1') || ($change_price == '2')){
-			$value_type.innerHTML = base_currency;
-			price_value_label.textContent = <?=json_encode(lang('Amount'))?>;
-		}
-		else if(($change_price == '3') || ($change_price == '4')){
-			$value_type.innerHTML = percentiles;
-			price_value_label.textContent = <?=json_encode(lang('Percent'))?>;
-		}
-		
-	}
+    // Modify Selected: the dialog opens empty, so nothing left from an earlier
+    // opening is posted; Save checks the boxes the post needs, writes the zone
+    // lists and submits the page form only once the dialog has closed.
+    (function () {
+        var dialog = document.getElementById("product_modify_dialog");
+        var form = dialog ? document.getElementById(dialog.getAttribute("data-pg-modify-form")) : null;
+
+        if (!dialog || !form) {
+            return;
+        }
+
+        function field(id) {
+            return document.getElementById(id);
+        }
+
+        function ticked(name) {
+            return Array.prototype.map.call(
+                dialog.querySelectorAll('input[name="' + name + '"]:checked'),
+                function (box) { return box.value; }
+            ).join(",");
+        }
+
+        function send(action) {
+            form.elements.action.value = action;
+            dialog.querySelectorAll("[data-pg-modify-save], [data-pg-modify-barcodes]").forEach(function (button) {
+                button.disabled = true;
+            });
+            pgUI.dialog.hide(dialog).then(function () {
+                form.submit();
+            });
+        }
+
+        // The box of the price change names an amount in the base currency
+        // or a percent, as the method says.
+        function change_price_methodfunc() {
+            var method = field("change_price_method").value;
+            var price_value_label = field("price_value_label");
+
+            if ((method == "1") || (method == "2")) {
+                field("value_type").textContent = <?=json_encode(BASE_CURRENCY_CODE)?>;
+                price_value_label.textContent = <?=json_encode(lang('Amount'))?>;
+            } else if ((method == "3") || (method == "4")) {
+                field("value_type").textContent = "%";
+                price_value_label.textContent = <?=json_encode(lang('Percent'))?>;
+            }
+        }
+
+        // Opens the dialog empty.
+        function open() {
+            dialog.querySelectorAll("select").forEach(function (select) {
+                select.selectedIndex = 0;
+                select.dispatchEvent(new Event("change", { bubbles: true }));
+            });
+            dialog.querySelectorAll("input[type=text], input[type=number]").forEach(function (box) {
+                box.value = "";
+            });
+            dialog.querySelectorAll("input[type=checkbox]").forEach(function (box) {
+                box.checked = false;
+            });
+            dialog.querySelectorAll("[data-pg-modify-save], [data-pg-modify-barcodes]").forEach(function (button) {
+                button.disabled = false;
+            });
+            pgUI.dialog.show(dialog);
+        }
+
+        document.addEventListener("click", function (event) {
+            if (event.target.closest("[data-pg-modify-open]")) {
+                open();
+            }
+        });
+
+        dialog.addEventListener("change", function (event) {
+            var box = event.target;
+
+            if (box.id == "change_price_method") {
+                change_price_methodfunc();
+            }
+
+            // A zone is either allowed or disallowed: ticking it in one list
+            // clears it in the other.
+            if (box.checked && ((box.name == "allowed_zones") || (box.name == "disallowed_zones"))) {
+                var other = field(((box.name == "allowed_zones") ? "disallowed_zone_" : "allowed_zone_") + box.value);
+                if (other) {
+                    other.checked = false;
+                }
+            }
+        });
+
+        dialog.querySelector("[data-pg-modify-save]").addEventListener("click", function () {
+            // The boxes' own limits are asked here: the tax rate box (0..100)
+            // when a rate is being set, and a stock process needs a figure.
+            if (field("tax_rate_method").value == "set") {
+                var tax_rate_box = field("tax_rate_value");
+                tax_rate_box.required = true;
+                var tax_rate_valid = tax_rate_box.reportValidity();
+                tax_rate_box.required = false;
+                if (!tax_rate_valid) {
+                    return;
+                }
+            }
+            if ((field("inventory_quantity_process").value != "") && (field("inventory_quantity").value == "")) {
+                var quantity_box = field("inventory_quantity");
+                quantity_box.setCustomValidity(<?=json_encode(lang('Enter an inventory quantity.'))?>);
+                quantity_box.reportValidity();
+                quantity_box.setCustomValidity("");
+                return;
+            }
+
+            form.elements.edit_allowed_zones.value = ticked("allowed_zones");
+            form.elements.edit_disallowed_zones.value = ticked("disallowed_zones");
+            send("edit");
+        });
+
+        var barcodes = dialog.querySelector("[data-pg-modify-barcodes]");
+        if (barcodes) {
+            barcodes.addEventListener("click", function () {
+                send("assign_barcodes");
+            });
+        }
+    }());
 </script>
-<?=output_footer_secure();?>

@@ -133,6 +133,7 @@ function erp_webhook_events()
         'erp.invoice.paid' => 'An ERP invoice was paid in full',
         'erp.invoice.cancelled' => 'An ERP invoice was cancelled',
         'erp.invoice.edoc_changed' => 'An ERP invoice\'s e-document status changed (sent to the provider, accepted or rejected by GİB)',
+        'erp.invoice.note_changed' => 'An issued ERP invoice\'s internal note was changed; the document kept at issue is not printed again. Also carries notes',
         'erp.receipt.created' => 'A receipt or a payment was recorded in the ERP',
         'erp.receipt.cancelled' => 'A receipt or a payment was cancelled in the ERP',
         'erp.waybill.created' => 'An ERP delivery note was issued',

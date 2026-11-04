@@ -84,7 +84,7 @@ function test_settings_deep_links_name_a_listed_card()
 	$cards = settings_deep_links_test_cards();
 	$links = settings_deep_links_test_links();
 
-	pg_assert_same(14, count($cards), 'the registry\'s categories are read');
+	pg_assert_same(15, count($cards), 'the registry\'s categories are read');
 	pg_assert_true(count($links) >= 30, 'the links are found (' . count($links) . ')');
 
 	foreach ($links as $link) {

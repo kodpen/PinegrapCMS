@@ -98,13 +98,15 @@ function erp_event_time($unix)
 }
 
 /**
- * Announce an invoice: issued, paid or cancelled.
+ * Announce an invoice: issued, paid or cancelled, its e-document status or
+ * its internal note changed.
  *
  * @param int    $invoice_id
- * @param string $event  'erp.invoice.created' | 'erp.invoice.paid' | 'erp.invoice.cancelled' | 'erp.invoice.edoc_changed'
+ * @param string $event  'erp.invoice.created' | 'erp.invoice.paid' | 'erp.invoice.cancelled' | 'erp.invoice.edoc_changed' | 'erp.invoice.note_changed'
+ * @param array  $extra  Fields one event adds to the common shape (note_changed: notes)
  * @return int
  */
-function erp_event_invoice($invoice_id, $event)
+function erp_event_invoice($invoice_id, $event, $extra = array())
 {
     $invoice = db_item("SELECT id, full_number, direction, doc_type, status, account_id, order_id,
             parent_invoice_id, issue_date, due_date, currency, grand_total, paid_total,
@@ -155,7 +157,7 @@ function erp_event_invoice($invoice_id, $event)
             'gib_number' => (string) $invoice['gib_number'],
             'gib_uuid' => (string) $invoice['gib_uuid'],
         ),
-    ));
+    ) + (array) $extra);
 }
 
 /**
