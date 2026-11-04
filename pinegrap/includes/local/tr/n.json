@@ -1334,6 +1334,7 @@
     "No story is waiting for review.": "İnceleme bekleyen yazı yok.",
     "No structured data on a catalog page": "Katalog sayfasında yapılandırılmış veri yok",
     "No styling": "Stil yok",
+    "No subject was found; draw a rectangle round it and try again.": "Konu bulunamadı; çevresine bir dikdörtgen çizip yeniden deneyin.",
     "No submitted forms were imported, because there were no rows of data in the CSV file.": "CSV dosyasında veri satırı olmadığı için gönderilen formlar içe aktarılmadı.",
     "No subscription needed: buy the course you want and keep it.": "Abonelik gerekmez: istediğiniz kursu satın alın, sizde kalsın.",
     "No such endpoint.": "Böyle bir uç nokta yok.",

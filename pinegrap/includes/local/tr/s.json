@@ -956,6 +956,8 @@
     "Select recipient...": "Alıcı seçin...",
     "Select return request #{var:1}": "#{var:1} numaralı iade talebini seç",
     "Select several to delete": "Silmek için birden çok seç",
+    "Select subject": "Konuyu seç",
+    "Select subject cannot read this picture.": "Konuyu seç bu resmi okuyamıyor.",
     "Select the Body": "Gövdeyi Seç",
     "Select the Custom Form": "Özel Formu Seçin",
     "Select the Page, File, or Short Link that you want to link to.": "Bağlamak istediğiniz Sayfayı, Dosyayı veya Kısa Bağlantıyı seçin.",

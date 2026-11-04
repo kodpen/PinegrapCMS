@@ -4644,6 +4644,7 @@
     "The subject and the body can use these fields:": "Konu ve gövde şu alanları kullanabilir:",
     "The subject and the body can use these fields; the e-mail carries the booking as a calendar file (.ics).": "Konu ve gövde bu alanları kullanabilir; e-posta randevuyu bir takvim dosyası (.ics) olarak taşır.",
     "The subject and the body can use these fields; the expiring e-mail goes {var:1} days before a card ends, once.": "Konu ve gövde bu alanları kullanabilir; süre dolumu e-postası kart bitmeden {var:1} gün önce bir kez gider.",
+    "The subject could not be found.": "Konu bulunamadı.",
     "The subject is plain text: no data can be bound into it.": "Konu düz metindir: içine veri bağlanamaz.",
     "The subject of your message": "Mesajınızın konusu",
     "The submission could not be deleted.": "Gönderim silinemedi.",

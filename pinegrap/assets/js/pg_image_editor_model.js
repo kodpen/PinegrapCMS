@@ -6942,6 +6942,8 @@
     // space, or kind wand with the seed point (at, turned space),
     // tolerance (0-100) and contiguous. A wand's outline is worked out from
     // the picture each time the document opens, so only its seed is kept.
+    // Kind subject (pg_image_editor_subject.js) keeps its rings (rings) and
+    // the box the cut started from, since the cut takes too long to redo.
 
     var AREA_MAX_POINTS = 4000, AREA_MAX_OPS = 40;
 
@@ -7188,7 +7190,7 @@
         }
 
         (sel.ops || []).slice(0, AREA_MAX_OPS).forEach(function (o, i) {
-            var rings = (o.kind === 'wand') ? (wands && wands[i]) : (o.ring ? [o.ring] : null);
+            var rings = (o.kind === 'wand') ? (wands && wands[i]) : (o.rings || (o.ring ? [o.ring] : null));
 
             if (!rings || !rings.length) {
                 return;
@@ -7243,9 +7245,74 @@
         return (rings && rings.length) ? clipRings(nestRings([all]), rings, 'difference') : nestRings([all]);
     }
 
+    // A closed ring with the points that lie within tol of the line between
+    // their neighbours kept dropped (Douglas-Peucker from its two farthest
+    // points apart).
+    function simplifyRing(r, tol) {
+        if (r.length < 5) {
+            return r.slice();
+        }
+
+        var far = 0, best = -1, keep = new Uint8Array(r.length);
+
+        r.forEach(function (p, i) {
+            var d = Math.hypot(p[0] - r[0][0], p[1] - r[0][1]);
+
+            if (d > best) {
+                best = d;
+                far = i;
+            }
+        });
+
+        var run = function (a, b) {
+            var stack = [[a, b]];
+
+            while (stack.length) {
+                var s = stack.pop(), i0 = s[0], i1 = s[1], p0 = r[i0 % r.length], p1 = r[i1 % r.length];
+                var dx = p1[0] - p0[0], dy = p1[1] - p0[1], len = Math.hypot(dx, dy), top = -1, at = -1;
+
+                for (var i = i0 + 1; i < i1; i++) {
+                    var p = r[i % r.length];
+                    var d = len ? Math.abs(dx * (p[1] - p0[1]) - dy * (p[0] - p0[0])) / len : Math.hypot(p[0] - p0[0], p[1] - p0[1]);
+
+                    if (d > top) {
+                        top = d;
+                        at = i;
+                    }
+                }
+
+                if (top > tol) {
+                    keep[at % r.length] = 1;
+                    stack.push([i0, at], [at, i1]);
+                }
+            }
+        };
+
+        keep[0] = keep[far] = 1;
+        run(0, far);
+        run(far, r.length);
+
+        return r.filter(function (p, i) { return keep[i]; });
+    }
+
+    // The rings of a subject's mask (a byte a pixel, w x h) in the turned
+    // space through the matrix m: specks and holes under 0.05 % of the
+    // picture go, the pixel steps are smoothed within 0.75 px.
+    function subjectRings(mask, w, h, m) {
+        var least = Math.max(4, w * h * 0.0005);
+        var rings = maskRings(mask, w, h).filter(function (r) { return Math.abs(ringArea(r)) >= least; }).map(function (r) {
+            return simplifyRing(r, 0.75);
+        }).filter(function (r) { return r.length > 2; });
+
+        return nestRings(mapRings(rings, m).map(function (r) {
+            return r.map(function (p) { return [areaRound(p[0]), areaRound(p[1])]; });
+        }));
+    }
+
     var SELECTION = {
         AREA_MAX_OPS: AREA_MAX_OPS, areaDragged: areaDragged, areaRect: areaRect, areaEllipse: areaEllipse, areaLasso: areaLasso, wandMask: wandMask,
-        maskRings: maskRings, mapRings: mapRings, selectionRings: selectionRings, areaLayer: areaLayer, areaPoints: areaPoints, areaRest: areaRest
+        maskRings: maskRings, mapRings: mapRings, selectionRings: selectionRings, areaLayer: areaLayer, areaPoints: areaPoints, areaRest: areaRest,
+        simplifyRing: simplifyRing, subjectRings: subjectRings
     };
 
     var api = {
