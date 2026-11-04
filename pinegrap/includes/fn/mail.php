@@ -843,7 +843,7 @@ function get_email_campaign_profile_options($exclude_ids = array(), $keep_id = 0
  *                       subscription_confirm_url (subscription payment failed)
  * @return string
  */
-function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'tracking_url', 'subscription_card_url', 'subscription_confirm_url', 'booking_manage_url'))
+function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'tracking_url', 'subscription_card_url', 'subscription_confirm_url', 'booking_manage_url', 'credit_account_url'))
 {
     $body = (string) $body;
     $names = array();
@@ -930,7 +930,7 @@ function pg_contact_group_joined_heard($event, $data)
 // Create function that is used to see if auto email campaigns need to be created after a specific action has occurred
 // and then create them if necessary.
 // Properties:
-// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_review_request", "order_shipped", "order_delivered", "product_ordered", "subscription_renewed", "subscription_failed", "subscription_cancelled", "subscription_price_changed", "booking_confirmed", "booking_reminder", "booking_rescheduled", "booking_cancelled", "contact_group_joined"
+// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_review_request", "order_shipped", "order_delivered", "product_ordered", "subscription_renewed", "subscription_failed", "subscription_cancelled", "subscription_price_changed", "booking_confirmed", "booking_reminder", "booking_rescheduled", "booking_cancelled", "contact_group_joined", "credit_issued", "credit_expiring"
 // action_item_id: The id of item that is related to the action (e.g. the calendar event id)
 // campaign_item_id: The id stored on the campaign when it differs from the profiles'
 // action_item_id: a booking's mail is made from the profiles of item 0 and keeps the
@@ -1424,6 +1424,12 @@ function create_auto_email_campaigns($properties)
                     break;
                 case 'contact_group_joined':
                     $log_action = lang('joined a contact group');
+                    break;
+                case 'credit_issued':
+                    $log_action = lang('store credit issued');
+                    break;
+                case 'credit_expiring':
+                    $log_action = lang('store credit expiring');
                     break;
                 default:
                     $log_action = $action;

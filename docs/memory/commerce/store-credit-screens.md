@@ -21,8 +21,8 @@ module: store_credit_staff, store_credit_account
 - Built-in `my_account.php` and `my_account_system.php`: a "Store credit" section before the order history (`$store_credit`); the conversion form moved there from the Account block. `$reward_points_credit` is still passed for custom layouts written before.
 - Designer my_account widget: section `store_credit` (shop sites) by `pg_credit_account_section_html()` (Bootstrap 5.3.8) and flag `has_store_credit`; the JS starter has its heading and section after My Bookings. A conversion posts to `convert_reward_points.php` and comes back to the page; the widget's `my_account` Messages node prints the notice.
 
-## What is left for the next steps?
-- The `credit_issued` / `credit_expiring` mails and the expiry job: `plans/store-credit-steps-2.md` (SC5c).
+## What about mails and expiry?
+- `store-credit-mails.md`: `credit_issued` / `credit_expiring` and the job that closes ended cards.
 
 ## Tests?
 - `tests/store_credit_staff_test.php`: amount, last day (end of the day, today valid, impossible dates), reason, card state, rights.

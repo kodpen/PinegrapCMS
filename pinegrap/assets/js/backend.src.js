@@ -5948,6 +5948,12 @@ function change_email_campaign_profile_action() {
             $('#standard_schedule_period_and_base').addClass('show');
             break;
 
+        case 'credit_issued':
+        case 'credit_expiring':
+            $('#credit_fields_row').addClass('show');
+            $('#standard_schedule_period_and_base').addClass('show');
+            break;
+
         default:
             $('#standard_schedule_period_and_base').addClass('show');
             break;

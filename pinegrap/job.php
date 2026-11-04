@@ -929,6 +929,16 @@ if (function_exists('pg_booking_reminders_run')) {
 
 }
 
+// Store credit (pg_credit_mails_run() in includes/fn/store_credit_mails.php):
+// the credit_expiring notices whose moment fell since the last pass, then the
+// customer cards whose end has come are closed. Before the mail pass, so a
+// notice made now goes out in this run.
+if (function_exists('pg_credit_mails_run')) {
+
+    pg_credit_mails_run(time());
+
+}
+
 // Queued e-mail (includes/fn/mail_queue.php): password resets, order receipts,
 // form and comment notifications that email() handed over instead of sending
 // inside the visitor's request.

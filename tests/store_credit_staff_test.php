@@ -66,6 +66,7 @@ function test_store_credit_staff_card_state()
 	pg_assert_same('open', pg_credit_staff_card_state(array('balance' => 500, 'expires_at' => 0, 'expiration_date' => '0000-00-00'), $now), 'never expiring');
 	pg_assert_same('used', pg_credit_staff_card_state(array('balance' => 0, 'expires_at' => 0, 'expiration_date' => '0000-00-00'), $now), 'spent or voided');
 	pg_assert_same('expired', pg_credit_staff_card_state(array('balance' => 500, 'expires_at' => $now - 1, 'expiration_date' => '2026-11-03'), $now), 'past its end');
+	pg_assert_same('expired', pg_credit_staff_card_state(array('balance' => 0, 'expires_at' => $now - 1, 'expiration_date' => '2026-11-03'), $now), 'closed by the expiry pass');
 }
 
 function test_store_credit_staff_rights_are_the_commerce_ones()
