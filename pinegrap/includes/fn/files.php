@@ -402,6 +402,53 @@ function pg_clean_up_list_row($icon, $name)
 }
 
 /**
+ * The Summary card of the Cleanup tool's status column (clean_up.php, the
+ * product_builder layout of ui/edit-screen-wide-layout.md): how many folders,
+ * files and expired payment records the delete removes, and that it cannot
+ * be undone. $records is null when e-commerce is off, so the row is left out.
+ *
+ * @param int      $folders
+ * @param int      $files    files only, without the payment records
+ * @param int|null $records  expired iyzipay_3ds_state rows, null to hide
+ * @return string
+ */
+function pg_clean_up_summary($folders, $files, $records = null)
+{
+    $rows = array(
+        lang('Folders') => (int) $folders,
+        lang('Files') => (int) $files,
+    );
+
+    if ($records !== null) {
+        $rows[lang('Expired payment records')] = (int) $records;
+    }
+
+    $output = '';
+    $last = count($rows);
+    $number = 0;
+    foreach ($rows as $label => $value) {
+        $number++;
+        $output .= '
+                                            <div class="d-flex justify-content-between gap-3 py-2' . (($number < $last) ? ' border-bottom' : '') . '">
+                                                <dt class="fw-normal">' . h($label) . '</dt>
+                                                <dd class="mb-0 fw-bold text-end">' . pg_format_number($value, 0) . '</dd>
+                                            </div>';
+    }
+
+    return '
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Summary') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <dl class="mb-3">' . $output . '
+                                        </dl>
+                                        <p class="small fg-danger mb-0"><span class="material-icons align-middle me-2" aria-hidden="true">warning</span>' . lang('Everything listed here is deleted permanently.') . '</p>
+                                    </div>
+                                </div>';
+}
+
+/**
  * The names under data/temp that the Cleanup tool (clean_up.php) never lists:
  * the directory guard and the records nothing writes again as the same file.
  * hash_reference.json is this installation's own integrity baseline;
