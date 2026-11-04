@@ -1149,6 +1149,8 @@ if (!$_POST) {
             page_search,
             page_search_keywords,
             page_folder,
+            page_style,
+            mobile_style_id,
             " . (pg_ai_fields_ready('page') ? "ai_fields," : "NULL AS ai_fields,") . "
             sitemap
         FROM page
@@ -1169,6 +1171,8 @@ if (!$_POST) {
     $current_page_search = $row['page_search'];
     $current_search_keywords = $row['page_search_keywords'];
     $current_page_folder = $row['page_folder'];
+    $current_page_style = $row['page_style'];
+    $current_mobile_style_id = $row['mobile_style_id'];
     $current_sitemap = $row['sitemap'];
     $current_ai_fields = $row['ai_fields'];
     
@@ -1323,7 +1327,7 @@ if (!$_POST) {
                 @unlink(FILE_DIRECTORY_PATH . '/' . $attachment['name']);
                 
                 // log that the file was deleted
-                log_activity(lang(array('string'=>'file attachment ({var:1}) for a comment was deleted because the page ({var:2}) was deleted','vars'=>array($attachment['name'],$_POST['name']))), $_SESSION['sessionusername']);
+                log_activity(lang(array('string'=>'file attachment ({var:1}) for a comment was deleted because the page ({var:2}) was deleted','vars'=>array($attachment['name'],$current_page_name))), $_SESSION['sessionusername']);
             }
         }
         
@@ -1388,7 +1392,7 @@ if (!$_POST) {
             unlink(LAYOUT_DIRECTORY_PATH . '/' . $page_id . '.php');
         }
         
-        log_activity(lang(array('string'=>'page ({var:1}) was deleted','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'page ({var:1}) was deleted','vars'=>$current_page_name)), $_SESSION['sessionusername']);
         
         // add notice
         $liveform_view_pages = new liveform('view_pages');
@@ -1473,6 +1477,16 @@ if (!$_POST) {
 
         $form_url = URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . (int) $_POST['id'] . '&send_to=' . urlencode((string) ($_POST['send_to'] ?? ''));
 
+        // A folder that is not there, or a move into the Workspace folder or
+        // the Recycle Bin, would leave the page where nobody sees it.
+        pg_page_form_refuse($liveform, pg_page_form_folder_errors($_POST['folder'] ?? '', (int) $current_page_folder), $form_url);
+
+        // A style deleted while the form was open, or one the pickers do not
+        // offer; the stored ones are kept as they are.
+        if ($user['role'] < 3) {
+            pg_page_form_refuse($liveform, pg_page_form_style_errors($_POST, (int) $current_page_style, (int) $current_mobile_style_id), $form_url);
+        }
+
         $clean_name = pg_page_form_clean_name($name, $_POST['type']);
         pg_page_form_refuse($liveform, array_filter(array('name' => $clean_name['error'])), $form_url);
         $name = $clean_name['name'];
@@ -1531,6 +1545,11 @@ if (!$_POST) {
             $pretty_urls_old = check_if_pretty_urls_are_enabled($_POST['id']);
         }
         
+        // Set when the save went on without a part it refused (the type
+        // change, a contact group or private folder): the message is shown
+        // on this screen, not left for its next visit.
+        $save_refused_part = false;
+
         if ($may_save_page_type) {
             // assume that we can update the page type until we find out otherwise
             $update_page_type = true;
@@ -1544,6 +1563,7 @@ if (!$_POST) {
 
                 if (mysqli_num_rows($result) > 0) {
                     $update_page_type = false;
+                    $save_refused_part = true;
                     $liveform->mark_error('', lang('The page type for this page could not be changed because there are submitted forms for this page.  All submitted forms for this page must be deleted before the page type for this page is allowed to be changed.'));
                 }
             }
@@ -1565,6 +1585,7 @@ if (!$_POST) {
                 $properties = $checked['properties'];
 
                 foreach ($checked['errors'] as $checked_error) {
+                    $save_refused_part = true;
                     $liveform->mark_error('', $checked_error);
                 }
 
@@ -1643,33 +1664,13 @@ if (!$_POST) {
         // if user role is Administrator, Designer, or Manager, then allow user to change desktop style and mobile style for page
         if ($user['role'] < 3) {
             $sql_style_fields =
-                "page_style = '" . escape($_POST['style'] ?? '') . "',
-                mobile_style_id = '" . escape($_POST['mobile_style_id'] ?? '') . "',";
+                "page_style = '" . (int) ($_POST['style'] ?? 0) . "',
+                mobile_style_id = '" . (int) ($_POST['mobile_style_id'] ?? 0) . "',";
         }
-        
+
         // if sitemap was enabled and the selected page type is a valid page type for the sitemap,
         // then include this page in the sitemap
-        if (
-            (($_POST['sitemap'] ?? 0) == 1)
-            &&
-            (
-                ($_POST['type'] == 'standard')
-                || ($_POST['type'] == 'folder view')
-                || ($_POST['type'] == 'photo gallery')
-                || ($_POST['type'] == 'custom form')
-                || ($_POST['type'] == 'form list view')
-                || ($_POST['type'] == 'form item view')
-                || ($_POST['type'] == 'form view directory')
-                || ($_POST['type'] == 'calendar view')
-                || ($_POST['type'] == 'calendar event view')
-                || ($_POST['type'] == 'catalog')
-                || ($_POST['type'] == 'catalog detail')
-                || ($_POST['type'] == 'express order')
-                || ($_POST['type'] == 'order form')
-                || ($_POST['type'] == 'shopping cart')
-                || ($_POST['type'] == 'search results')
-            )
-        ) {
+        if ((($_POST['sitemap'] ?? 0) == 1) && pg_page_form_sitemap_type($_POST['type'])) {
             $sitemap = 1;
             
         // else sitemap was disabled or the selected page type is not a valid page type for the sitemap,
@@ -1865,6 +1866,10 @@ if (!$_POST) {
         // else we don't need to forward the user to the form designer so forward the user to the page
         } else {
             $location = URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to);
+        }
+
+        if ($save_refused_part) {
+            $location = URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . (int) $_POST['id'] . '&send_to=' . urlencode($send_to);
         }
 
         // A site page shows no panel notice, so a save with something to

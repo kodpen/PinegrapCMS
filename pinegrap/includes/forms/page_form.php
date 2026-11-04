@@ -4067,8 +4067,10 @@ function pg_page_rename_notice($said, $location, $edit_url)
  * The number boxes of the System Options a save refuses, as field id =>
  * message: a quiz pass percentage outside 0-100, a day count that is not a
  * whole number of 0 or more (trial, private access and offer length, read
- * only while their switch is on) and a photo gallery thumbnail size below
- * 1. An empty box is left to the stored default. The session is not strict,
+ * only while their switch is on), a photo gallery thumbnail size below 1,
+ * and a minus sign, a decimal or a value out of range in the catalog, form
+ * view directory, calendar view and gallery column boxes. An empty box is
+ * left to the stored default. The session is not strict,
  * so these values would otherwise be cut by their columns without a word
  * (TINYINT keeps 127 of a percentage of 150, UNSIGNED keeps 0 of -5). Pure.
  *
@@ -4112,5 +4114,200 @@ function pg_page_form_number_errors($page_type, $source)
         }
     }
 
+    // The other whole-number boxes: field => array(minimum, maximum), the
+    // maximum null where the column is a 32-bit UNSIGNED one (nine digits
+    // always fit) and 99 where the box and its TINYINT column are smaller.
+    $ranges = array(
+        'catalog' => array(
+            'catalog_number_of_featured_items' => array(0, 99),
+            'catalog_number_of_new_items' => array(0, 99),
+            'catalog_number_of_columns' => array(1, 99),
+            'catalog_image_width' => array(0, null),
+            'catalog_image_height' => array(0, null),
+        ),
+        'form view directory' => array(
+            'form_view_directory_summary_days' => array(0, null),
+            'form_view_directory_summary_maximum_number_of_results' => array(0, null),
+        ),
+        'calendar view' => array(
+            'calendar_view_number_of_upcoming_events' => array(0, null),
+        ),
+        'photo gallery' => array(
+            'photo_gallery_number_of_columns' => array(1, 99),
+        ),
+    );
+
+    foreach ($ranges[$page_type] ?? array() as $field => $range) {
+        $typed = $value($field);
+
+        if ($typed === '') {
+            continue;
+        }
+
+        list($minimum, $maximum) = $range;
+
+        if (!$whole($typed) || ((int) $typed < $minimum) || (($maximum !== null) && ((int) $typed > $maximum))) {
+            $errors[$field] = ($maximum === null)
+                ? lang(array('string' => 'Enter a whole number of {var:1} or more.', 'vars' => array($minimum)))
+                : lang(array('string' => 'Enter a whole number from {var:1} to {var:2}.', 'vars' => array($minimum, $maximum)));
+        }
+    }
+
     return $errors;
+}
+
+/**
+ * Which way a posted page folder is refused, or '' when it is accepted. A
+ * folder that is not there (deleted or binned in another tab, a crafted id)
+ * is 'missing': nothing would show the page, and the region lookup found no
+ * style. The Workspace's folder and what is below it is 'workspace', since
+ * the page pickers leave it out. The page's own stored folder is never
+ * refused for the bin or the Workspace, as its picker keeps showing it.
+ * Pure over the rows.
+ *
+ * @param mixed    $posted    The submitted folder
+ * @param array    $rows      folder_id => array('folder_parent' => ...)
+ * @param int      $workspace The Workspace's folder, 0 when there is none
+ * @param int      $bin       The Recycle Bin folder, 0 when there is none
+ * @param int|null $current   The page's stored folder, null for a new page
+ * @return string
+ */
+function pg_page_form_folder_verdict($posted, $rows, $workspace, $bin, $current = null)
+{
+    $posted = is_scalar($posted) ? trim((string) $posted) : '';
+
+    if ((preg_match('/^\d{1,10}$/', $posted) !== 1) || ((int) $posted < 1) || !isset($rows[(int) $posted])) {
+        return 'missing';
+    }
+
+    $folder_id = (int) $posted;
+
+    if (($current !== null) && ($folder_id === (int) $current)) {
+        return '';
+    }
+
+    if (pg_folder_in_bin_chain($rows, $folder_id, (int) $bin)) {
+        return 'missing';
+    }
+
+    if (pg_page_folder_left_out($folder_id, $rows, (int) $workspace)) {
+        return 'workspace';
+    }
+
+    return '';
+}
+
+/**
+ * The folder error of a page save, as array('folder' => message), or an
+ * empty array.
+ *
+ * @param mixed    $posted  The submitted folder
+ * @param int|null $current The page's stored folder, null for a new page
+ * @return array
+ */
+function pg_page_form_folder_errors($posted, $current = null)
+{
+    $tree = pg_folder_access_tree();
+    $verdict = pg_page_form_folder_verdict($posted, $tree['rows'], (int) pg_workspace_folder_id(), (int) $tree['bin'], $current);
+
+    if ($verdict === 'missing') {
+        return array('folder' => lang('The folder you selected no longer exists. Please select another folder.'));
+    }
+
+    if ($verdict === 'workspace') {
+        return array('folder' => lang('A page cannot be placed in the Workspace folder. Please select another folder.'));
+    }
+
+    return array();
+}
+
+/**
+ * Whether a posted page style may be saved: 0 (inherit from the folder), the
+ * page's stored style, or a style the picker offers. The desktop picker
+ * (select_style()) leaves out mobile layouts and visual-editor designs; the
+ * mobile one (get_mobile_style_options()) offers only custom and mobile
+ * styles while the mobile site is on. Pure.
+ *
+ * @param mixed      $posted    The submitted style id
+ * @param string     $device    'desktop' or 'mobile'
+ * @param array|null $style     The style row (style_type, style_layout),
+ *                              null when no such style exists
+ * @param int        $stored    The page's stored style, 0 for a new page
+ * @param bool       $mobile_on MOBILE
+ * @return bool
+ */
+function pg_page_form_style_ok($posted, $device, $style, $stored, $mobile_on)
+{
+    $posted = is_scalar($posted) ? trim((string) $posted) : 'x';
+
+    if ($posted === '') {
+        return true;
+    }
+
+    if (preg_match('/^\d{1,10}$/', $posted) !== 1) {
+        return false;
+    }
+
+    $style_id = (int) $posted;
+
+    if (($style_id === 0) || ($style_id === (int) $stored)) {
+        return true;
+    }
+
+    if (!is_array($style)) {
+        return false;
+    }
+
+    $layout = (string) ($style['style_layout'] ?? '');
+
+    if ($device === 'mobile') {
+        return !$mobile_on || (($style['style_type'] ?? '') === 'custom') || ($layout === 'one_column_mobile');
+    }
+
+    return ($layout !== 'one_column_mobile') && ($layout !== 'visual_designer');
+}
+
+/**
+ * The style errors of a page save, as field => message: a style deleted
+ * while the form was open, or one its picker does not offer.
+ *
+ * @param array $source        The submitted fields
+ * @param int   $stored_style  The page's stored desktop style, 0 when new
+ * @param int   $stored_mobile The page's stored mobile style, 0 when new
+ * @return array
+ */
+function pg_page_form_style_errors($source, $stored_style = 0, $stored_mobile = 0)
+{
+    $errors = array();
+    $fields = array('style' => array('desktop', $stored_style), 'mobile_style_id' => array('mobile', $stored_mobile));
+
+    foreach ($fields as $field => $setting) {
+        $posted = $source[$field] ?? '';
+        $style = (is_scalar($posted) && ((int) $posted > 0))
+            ? db_item("SELECT style_type, style_layout FROM style WHERE style_id = '" . (int) $posted . "'")
+            : null;
+
+        if (!pg_page_form_style_ok($posted, $setting[0], $style ?: null, (int) $setting[1], defined('MOBILE') && MOBILE)) {
+            $errors[$field] = lang('The page style you selected cannot be used. Please select another style.');
+        }
+    }
+
+    return $errors;
+}
+
+/**
+ * Whether a page of this type may be listed in the site map: the types
+ * Edit Page, Create Page and the API agree on. Pure.
+ *
+ * @param string $page_type
+ * @return bool
+ */
+function pg_page_form_sitemap_type($page_type)
+{
+    return in_array((string) $page_type, array(
+        'standard', 'folder view', 'photo gallery', 'custom form', 'form list view',
+        'form item view', 'form view directory', 'calendar view', 'calendar event view',
+        'catalog', 'catalog detail', 'express order', 'order form', 'shopping cart',
+        'search results',
+    ), true);
 }
