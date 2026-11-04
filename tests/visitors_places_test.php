@@ -37,7 +37,7 @@ function test_visitors_places_top_skips_empty_values_and_keeps_the_limit()
 	pg_assert_same(2, count($top));
 	pg_assert_same('Istanbul', $top[0]['label']);
 	pg_assert_same(300, $top[0]['value']);
-	pg_assert_same(pg_format_number(300, 0) . ' · ' . pg_format_number(30, 0) . ' %', $top[0]['text'], 'share of all visits, not of the known ones');
+	pg_assert_same(pg_format_number(300, 0) . ' · ' . pg_visitors_percent(30, 0), $top[0]['text'], 'share of all visits, not of the known ones');
 	pg_assert_same('Ankara', $top[1]['label']);
 
 	pg_assert_same(array(), pg_visitors_places_top(array(array('value' => '', 'visits' => 9)), 9, 10), 'only the empty value: no row');
@@ -90,11 +90,11 @@ function test_visitors_places_split_leaves_out_an_empty_unknown_part()
 
 function test_visitors_places_share_text_rounds_by_size()
 {
-	pg_assert_same(pg_format_number(33, 0) . ' %', pg_visitors_places_share_text(1, 3));
-	pg_assert_same(pg_format_number(2.5, 1) . ' %', pg_visitors_places_share_text(1, 40));
-	pg_assert_same('< ' . pg_format_number(0.1, 1) . ' %', pg_visitors_places_share_text(1, 5000), 'a tiny part is not shown as 0');
-	pg_assert_same(pg_format_number(0, 1) . ' %', pg_visitors_places_share_text(0, 10));
-	pg_assert_same(pg_format_number(0, 1) . ' %', pg_visitors_places_share_text(0, 0));
+	pg_assert_same(pg_visitors_percent(33, 0), pg_visitors_places_share_text(1, 3));
+	pg_assert_same(pg_visitors_percent(2.5, 1), pg_visitors_places_share_text(1, 40));
+	pg_assert_same('< ' . pg_visitors_percent(0.1, 1), pg_visitors_places_share_text(1, 5000), 'a tiny part is not shown as 0');
+	pg_assert_same(pg_visitors_percent(0, 1), pg_visitors_places_share_text(0, 10));
+	pg_assert_same(pg_visitors_percent(0, 1), pg_visitors_places_share_text(0, 0));
 }
 
 function test_visitors_places_split_bar_draws_segments_and_escapes_labels()

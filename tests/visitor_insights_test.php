@@ -4,7 +4,7 @@
  *
  * Tests for the Speed and AI visibility sections' pure helpers
  * (includes/fn/visitor_insights.php): the period window, how a figure is
- * written and rated, the trend line's points, the AI fetch summary and the
+ * written and rated, the AI fetch summary, the most-read pages a bot and the
  * dashboard perf card's page speed tile.
  *
  * @author      Erdal Güral (Kodpen)
@@ -65,17 +65,48 @@ function test_vitals_tone_follows_the_thresholds()
 function test_visitor_insight_percent()
 {
 	pg_assert_same('-', pg_visitor_insight_percent(null));
-	pg_assert_same(pg_format_number(83, 0) . '%', pg_visitor_insight_percent(0.8274));
+	pg_assert_same(lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number(83, 0)))), pg_visitor_insight_percent(0.8274), 'through the language\'s percent form');
 }
 
-function test_visitor_spark_points_scale_and_skip_gaps()
+function test_visitor_insight_figure_cell_carries_tone_and_sort()
 {
-	pg_assert_same('', pg_visitor_spark_points(array(), 100, 50));
-	pg_assert_same('', pg_visitor_spark_points(array(null, null), 100, 50));
-	pg_assert_same('0,50 50,25 100,0', pg_visitor_spark_points(array(0, 5, 10), 100, 50));
-	pg_assert_same('0,25 100,0', pg_visitor_spark_points(array(5, null, 10), 100, 50), 'a gap is skipped');
-	pg_assert_same('0,40 100,35', pg_visitor_spark_points(array(4, 6), 100, 50, 20), 'the ceiling sets the top');
-	pg_assert_same('50,0', pg_visitor_spark_points(array(3), 100, 50), 'one value sits in the middle');
+	$cell = pg_visitor_insight_figure_cell('lcp', 4600);
+
+	pg_assert_contains('fg-danger', $cell['html'], 'a poor figure is red');
+	pg_assert_contains('text-nowrap', $cell['html'], 'the figure and its unit stay together');
+	pg_assert_contains(h(pg_vitals_display('lcp', 4600)), $cell['html']);
+	pg_assert_same(4600, $cell['sort']);
+
+	$cell = pg_visitor_insight_figure_cell('inp', null);
+
+	pg_assert_same(-1, $cell['sort'], 'no figure sorts first');
+	pg_assert_true(strpos($cell['html'], 'fg-') === false, 'no figure, no tone');
+}
+
+function test_visitor_ai_page_rows_give_a_row_a_bot()
+{
+	$bots = array(
+		array('bot' => 'OAI-SearchBot', 'kind' => 'search', 'fetches' => 40),
+		array('bot' => 'ChatGPT-User', 'kind' => 'agent', 'fetches' => 12),
+		array('bot' => 'Claude-User', 'kind' => 'agent', 'fetches' => 0),
+		array('bot' => 'unverified', 'kind' => 'unverified', 'fetches' => 9),
+	);
+	$pages = array(
+		array('bot' => 'ChatGPT-User', 'label' => 'pricing', 'url' => '/pricing', 'fetches' => 7),
+		array('bot' => 'ChatGPT-User', 'label' => '', 'url' => '', 'fetches' => 2),
+		array('bot' => 'OAI-SearchBot', 'label' => 'blog <b>', 'url' => '/blog', 'fetches' => 30),
+	);
+
+	$rows = pg_visitor_ai_page_rows($bots, $pages);
+
+	pg_assert_same(2, count($rows), 'bots without a page have no row');
+	pg_assert_contains('OAI-SearchBot', $rows[0][0]['html'], 'in the order of the bots table');
+	pg_assert_contains('ChatGPT-User', $rows[1][0]['html']);
+	pg_assert_contains('href="/blog"', $rows[0][1]['html']);
+	pg_assert_contains('blog &lt;b&gt;', $rows[0][1]['html'], 'names are escaped');
+	pg_assert_contains('<span class="visually-hidden">' . h(lang('Fetches')) . ': </span>' . pg_format_number(30, 0), $rows[0][1]['html'], 'the count is named for screen readers');
+	pg_assert_true(strpos($rows[1][1]['html'], 'pricing') < strpos($rows[1][1]['html'], h(lang('Deleted page'))), 'most read first, a deleted page named');
+	pg_assert_same(array(), pg_visitor_ai_page_rows($bots, array()));
 }
 
 function test_ai_fetch_summary_keeps_unverified_apart()
