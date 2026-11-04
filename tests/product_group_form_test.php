@@ -76,6 +76,16 @@ function test_product_group_form_edit_save_scoped_to_listed_members()
 	pg_assert_true(strpos($source, '"DELETE FROM products_groups_xref WHERE product_group = ?"' . "\n") === false, 'no group-wide delete');
 }
 
+// The top group's display type is not saved, so its choice is disabled.
+function test_product_group_form_root_display_type_disabled()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/product_group_form.php');
+
+	pg_assert_contains("<fieldset' . (\$form['is_root'] ? ' disabled aria-describedby=\"display_type_root_note\"' : '') . '>", $source, 'the fieldset is disabled for the top group');
+	pg_assert_contains("'is_root' => false", $source, 'other groups keep the choice');
+	pg_assert_contains("'is_root' => (\$parent_id == 0),", (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_product_group.php'), 'the edit screen passes the flag');
+}
+
 function test_product_group_form_sort_order()
 {
 	pg_assert_same(0, pg_product_group_form_sort_order(''), 'an empty box is 0');

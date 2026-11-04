@@ -83,7 +83,9 @@ function pg_product_group_form_unselected_rows($products, $show_image)
  * @param array $values  The stored row (raw), array() on create; 'images'
  *                       the picker's file names, cover first
  * @param array $form    'is_new', 'attributes' (edit: the attributes block),
- *                       'seo_badge', 'seo_checklist' (edit)
+ *                       'seo_badge', 'seo_checklist' (edit), 'is_root'
+ *                       (edit of the top group: its display type is not
+ *                       saved, so the choice is shown disabled)
  * @return string
  */
 function pg_product_group_form_cards($liveform, $values, $form)
@@ -92,7 +94,7 @@ function pg_product_group_form_cards($liveform, $values, $form)
         'name' => '', 'short_description' => '', 'full_description' => '', 'details' => '',
         'code' => '', 'keywords' => '', 'display_type' => 'browse', 'address_name' => '', 'title' => '',
         'meta_description' => '', 'meta_keywords' => '', 'images' => array()), $values);
-    $form = array_merge(array('is_new' => false, 'attributes' => '', 'seo_badge' => '', 'seo_checklist' => ''), $form);
+    $form = array_merge(array('is_new' => false, 'attributes' => '', 'seo_badge' => '', 'seo_checklist' => '', 'is_root' => false), $form);
 
     // A new group's name is a liveform field, so a refused save keeps it.
     if ($form['is_new']) {
@@ -136,7 +138,7 @@ function pg_product_group_form_cards($liveform, $values, $form)
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">
-                                            <fieldset>
+                                            <fieldset' . ($form['is_root'] ? ' disabled aria-describedby="display_type_root_note"' : '') . '>
                                                 <legend class="form-label fs-md">' . lang('Display Type') . '</legend>
                                                 <div class="form-field  d-inline-grid me-5" title="' . lang('Display contents for browsing on catalog page') . '">
                                                     <input class="radio collapse-switcher"  type="radio" id="browse" name="display_type" value="browse" aria-describedby="display_type_browse_help" ' . $display_type_browse_checked . '/>
@@ -149,6 +151,7 @@ function pg_product_group_form_cards($liveform, $values, $form)
                                                     <span class="visually-hidden" id="display_type_select_help">' . lang('Display contents for selection on catalog detail page') . '</span>
                                                 </div>
                                             </fieldset>
+                                            ' . ($form['is_root'] ? '<div class="form-text" id="display_type_root_note">' . h(lang('The top product group is always shown for browsing.')) . '</div>' : '') . '
                                             <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="display_type_select_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                                 <div class="popover-body">

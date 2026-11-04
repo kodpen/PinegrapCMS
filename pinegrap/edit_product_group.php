@@ -524,6 +524,7 @@ if (!$_POST) {
                         'row_class' => 'edit_product_group_container',
                         'form' => pg_product_group_form_cards($liveform, $group_values, array(
                             'attributes' => $output_attributes,
+                            'is_root' => ($parent_id == 0),
                             'seo_badge' => '<span class="float-end" data-pg-seo-badge="product_group:' . (int) $_GET['id'] . '">' . pg_seo_render_badge($seo_row) . '</span>',
                             'seo_checklist' => '<div class="col-12">
                                             ' . pg_seo_render_checklist($seo_row, 'product_group', (int) $_GET['id']) . '
