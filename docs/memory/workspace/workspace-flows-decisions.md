@@ -32,3 +32,4 @@ description: Lasting decisions behind Workspace Flows ("Akışlar"): the three u
 
 ## Where were the steps?
 - F1-F8, R1-R3 and D1-D9 are built, each named in its topic file above (F1 #1503, F2 #1529, F3 #1551, last D9 #3422). The plan files were deleted after the close-out.
+- A loop in one flow (owner 2026-11-04, #6845 #6846 #6847: a Read a row box, Repeat N times, date words in a derived value): `workflow/decisions-made-product-30.md`, steps in `plans/flows-loop-in-one-flow.md`.
