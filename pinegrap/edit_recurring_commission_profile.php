@@ -77,45 +77,26 @@ if (!$_POST) {
             'breadcrumb' => array(array('label' => lang('All Commission Profiles'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_recurring_commission_profiles.php'), array('label' => lang('Edit Recurring Commission Profile'))),
         ]) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                ' . $liveform->output_errors() . '
-                ' . $liveform->get_warnings() . '
-                ' . $liveform->output_notices() . '
-                ' . pg_commission_edit_summary($recurring_commission_profile) . '
-                <form action="edit_recurring_commission_profile.php" method="post">
-                    ' . get_token_field() . '
-                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$_GET['id'])) . '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+    ' . $liveform->output_errors() . '
+    ' . $liveform->get_warnings() . '
+    ' . $liveform->output_notices() . '
+    <form action="edit_recurring_commission_profile.php" method="post">
+        ' . get_token_field() . '
+        ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$id)) . '
+        ' . pg_commission_edit_layout('
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Status') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 my-3">
-                                            <div class="form-field">
-                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'id'=>'enabled', 'name'=>'enabled', 'value'=>'1', 'class'=>'no-bs')) . '</div>
-                                                <label class="" for="enabled">' . lang('Enable') . '</label>
-                                            </div>
-                                        </div>
+                                </h2>
+                                <div class="card-body pt-0">
+                                    <div class="form-field my-3">
+                                        <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'id'=>'enabled', 'name'=>'enabled', 'value'=>'1', 'class'=>'no-bs')) . '</div>
+                                        <label for="enabled">' . lang('Enable') . '</label>
                                     </div>
-                                </div>       
-                            </div> 
-                        </div>
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
-                </form>
-            </div>
-        </div>
-    
+                                </div>
+                            </div>', $recurring_commission_profile, '
+                                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>') . '
+    </form>
 </main>' .
     output_footer();
     

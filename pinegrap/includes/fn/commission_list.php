@@ -257,7 +257,7 @@ function pg_commission_list_cancelled_badge($order_status)
 }
 
 /**
- * The summary an edit screen prints above its form, so the operator sees
+ * The Summary card of an edit screen's status column, so the operator sees
  * which commission or profile the status change is for: affiliate name and
  * code, the reference code (a commission), the amount, the order (linked to
  * its screen, marked when cancelled) and, for a profile, the product, start
@@ -295,19 +295,60 @@ function pg_commission_edit_summary($record)
     }
 
     $output = '';
+    $last = count($rows);
+    $number = 0;
     foreach ($rows as $label => $value) {
+        $number++;
         $output .= '
-                        <dt class="col-12 sm:col-4 lg:col-3">' . h($label) . '</dt>
-                        <dd class="col-12 sm:col-8 lg:col-9">' . (($value !== '') ? $value : '&mdash;') . '</dd>';
+                                            <div class="d-flex justify-content-between gap-3 py-2' . (($number < $last) ? ' border-bottom' : '') . '">
+                                                <dt class="fw-normal">' . h($label) . '</dt>
+                                                <dd class="mb-0 fw-bold text-end text-break">' . (($value !== '') ? $value : '&mdash;') . '</dd>
+                                            </div>';
     }
 
     return '
-                <div class="card my-7">
-                    <div class="card-body">
-                        <dl class="row mb-0">' . $output . '
-                        </dl>
-                    </div>
-                </div>';
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Summary') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <dl class="mb-0">' . $output . '
+                                        </dl>
+                                    </div>
+                                </div>';
+}
+
+/**
+ * The row of a commission or profile edit screen (the product_builder
+ * layout, ui/edit-screen-wide-layout.md): the form column with the given
+ * cards, the sticky status column with the record's Summary
+ * (pg_commission_edit_summary()) and the sticky save bar.
+ *
+ * @param string $cards    The form column's cards
+ * @param array  $record   The record pg_commission_edit_summary() reads
+ * @param string $buttons  The buttons inside the bar's group
+ * @return string
+ */
+function pg_commission_edit_layout($cards, $record, $buttons)
+{
+    return '
+                    <div class="row">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">' . $cards . '
+                        </div>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">' . pg_commission_edit_summary($record) . '
+                            </div>
+                        </div>
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">' . $buttons . '
+                                    </div>
+                                </div>
+                            </nav>
+                        </div>
+                    </div>';
 }
 
 /**
