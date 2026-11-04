@@ -17,7 +17,7 @@ description: Plan: Reset Encryption Key re-seals every value sealed with the key
 
 - RK2 (M) The module entries. Each module above adds its entries (connect rows by provider, connectors, e-document, Paraşüt, backup, product feeds, MFA, subscriptions); a JSON value with sealed fields names the fields. Tests: each entry's selector and fields against a fixture row. Memory: each module file gains a "re-sealed on a key reset" line. The Google secret block later in `security.save.php` seals with the constant (old key): in a reset it must not undo its entry.
 
-- RK3 (S) The card. Done (#RK3PR): two lists split by the registry's areas, the box only under the lost list, the counts in the save's notice. The warn-and-confirm list becomes "will be re-sealed", the confirmation box stays only for the HMAC-keyed items, the success message gives the counts; counts per area: `pg_encryption_key_reset_counts()` (#6392). Memory: `ui/settings-security-cards.md`.
+- RK3 (S) The card. Done (#6506): two lists split by the registry's areas, the box only under the lost list, the counts in the save's notice. The warn-and-confirm list becomes "will be re-sealed", the confirmation box stays only for the HMAC-keyed items, the success message gives the counts; counts per area: `pg_encryption_key_reset_counts()` (#6392). Memory: `ui/settings-security-cards.md`.
 
 ## Open questions
 - Whether a site with thousands of two-step keys needs the general job (`release/migration-long-steps.md` pattern) instead of the save request: RK1 measures with its counts and asks only if a real site exceeds the request budget.
