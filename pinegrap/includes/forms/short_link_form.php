@@ -268,12 +268,28 @@ function pg_short_link_form_cards($liveform, $form)
                             </div>
                         </div>
                         <script>
+                            // A name with a * always redirects, so "Open as a short link" is
+                            // not offered for it; a chosen 0 moves to 301, as the save would.
+                            function pg_short_link_pattern_answer() {
+                                var $name = $(\'#name\');
+                                var $open = $(\'#redirect_code option[value="0"]\');
+                                if (!$name.length || !$open.length) {
+                                    return;
+                                }
+                                var pattern = String($name.val()).indexOf(\'*\') !== -1;
+                                $open.prop(\'disabled\', pattern);
+                                if (pattern && $(\'#redirect_code\').val() === \'0\') {
+                                    $(\'#redirect_code\').val(\'301\');
+                                }
+                            }
                             $(document).ready(function() {
                                 change_short_link_destination_type($("select#destination_type option:selected").val());
+                                pg_short_link_pattern_answer();
                             });
                             $(document).on(\'input\', \'#name\', function () {
                                 var $address = $(\'#short_link_summary_address\');
                                 $address.text($address.data(\'base\') + this.value);
+                                pg_short_link_pattern_answer();
                             });
                             $(document).on(\'change\', \'#destination_type\', function () {
                                 $(\'#short_link_summary_destination\').text(this.value === \'\' ? \'\' : $(this).find(\'option:selected\').text());
@@ -647,6 +663,29 @@ function pg_short_link_form_validate_destination($liveform, $current)
 }
 
 /**
+ * The answer a form posted, before pg_short_link_answer_for() settles it.
+ * A pattern name cannot show its destination, so a posted 0 (the select
+ * offers it before the script disables it, or a hand-made post) keeps the
+ * stored 301 or 302 instead of being turned into 301 without a word.
+ *
+ * @param int|null $posted  The posted answer, null when the form had no field
+ * @param string $name
+ * @param int $current_code  The stored answer, 0 on create
+ * @return int|null
+ */
+function pg_short_link_form_posted_answer($posted, $name, $current_code)
+{
+    if (($posted === 0)
+        && pg_short_link_is_pattern($name)
+        && in_array((int) $current_code, array(301, 302), true)
+    ) {
+        return (int) $current_code;
+    }
+
+    return $posted;
+}
+
+/**
  * How it answers, checked with the name and the destination it goes with:
  * an address may not lead back to the link or round a loop. Run only on a
  * form without errors.
@@ -668,7 +707,7 @@ function pg_short_link_form_answer($liveform, $short_link_id, $name, $current_co
                 'name' => $name,
                 'destination_type' => $liveform->get_field_value('destination_type'),
                 'url' => ($liveform->get_field_value('destination_type') == 'url') ? $liveform->get_field_value('url') : ''),
-            pg_short_link_redirects_ready() ? (int) $liveform->get_field_value('redirect_code') : null,
+            pg_short_link_form_posted_answer(pg_short_link_redirects_ready() ? (int) $liveform->get_field_value('redirect_code') : null, $name, $current_code),
             (int) $current_code);
 
         if ($short_link_answer['problem'] !== null) {
