@@ -6,7 +6,7 @@ description: Steps E23b and E30 of plans/image-editor.md (owner 2026-11-03 and -
 ## Which steps are there?
 - Owner decisions in `workflow/decisions-made-product-24.md`. Sizes, files and review as in `image-editor-workers.md`.
 
-- E23b (S) One Vektör rail item (owner 2026-11-03). After E24 and E25.
+- E23b (S) One Vektör rail item (owner 2026-11-03). `free` (E24 and E25 are done).
   - The pen, the scissors, E24's shape builder and E25's warp (E26's free deformation when it comes) share one Vektör item in the rail and the phone's tool bar: a mode switch at the top of its panel, the item highlighted in each mode; each mode keeps its hint, letter and pointer handling. The desktop rail keeps its labels at 1280×800.
   - Tests: the profiles' rail lists one item for the group; a mode switch keeps the selection. In the browser: the rail at 1280×800 with labels, the phone's tool bar.
 

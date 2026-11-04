@@ -6,17 +6,17 @@ description: Steps E26-E29 of plans/image-editor.md (owner 2026-11-03): free def
 ## Which steps are there?
 - Order and decisions as in `image-editor-steps-3.md`. E27 and E28 change the save path: one at a time with the other save-path steps (`image-editor-workers.md`).
 
-- E26 (M) Free deformation, a mode of the Vektör item (`image-editor-steps-5.md` E23b). After E25.
+- E26 (M) Free deformation, a mode of the Vektör item (`image-editor-steps-5.md` E23b). `free` once E23b is merged.
   - Pins on a path layer (or outlined text); dragging one bends the shape around the others (moving least squares, rigid). Kept as `puppet` {pins at rest and moved} and drawn on the flattened outline; Expand bakes it.
   - Tests: one pin moves the whole shape, two pins keep their distance at rest, a symmetric pull gives a symmetric shape.
 
-- E27 (M) Area selection. After E21-E23 (order, owner).
+- E27 (M) Area selection. `free` (E21-E23 are done; order, owner).
   - A Select area tool on the picture: rectangle, ellipse, lasso, polygon, magic wand (tolerance, contiguous); Shift adds, Alt subtracts; invert, feather, marching ants. Kept in the document as `selection` (shapes, wand seed points and tolerance), so it opens again.
   - What it does: Erase (see-through: a PNG, WebP or AVIF keeps it; a JPEG saves as a PNG copy unless a fill colour is chosen), Keep only (crop to it), Copy to a layer (a cut-out picture layer), Redact (E10 on its shape), Adjust inside (the Adjust panel scoped to it).
   - The server draws the mask: a step of `includes/image_engine.php` (GD and Imagick) from the selection, as the redaction masks are.
   - Tests: each shape and the wand's flood fill rasterised in the model; the engine step under GD and Imagick (alpha out, the JPEG fill).
 
-- E28 (M) Select subject and remove background. After E27.
+- E28 (M) Select subject and remove background. `free` once E27 is merged.
   - Own algorithm, no model (owner 2026-11-03): GrabCut in a worker on the picture scaled to 800 px. The start box from an edge and saliency map, or one the person draws; colour models of 5 Gaussians each for subject and background; an own max-flow min-cut (Boykov-Kolmogorov); five rounds. Keep and Remove brushes refine it; the edge is feathered at full size by a guided filter. The result is an E27 selection, so Erase, Copy to a layer and Redact work on it.
   - Remove background: select subject, then erase the rest; a colour, a blur of the picture or another picture from Files may fill it.
   - A downloadable model may come later as an option (owner); not in this step.
