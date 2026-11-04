@@ -36,7 +36,7 @@ function test_returns_list_item_names_visible()
 {
 	$source = returns_commission_names_source('view_returns.php');
 	pg_assert_false(strpos($source, "title=\"' . h(implode(', ', \$names))") !== false, 'item names only in a title');
-	pg_assert_contains("<div class=\"small fg-secondary\">' . h(implode(', ', \$names)) . '</div>", $source);
+	pg_assert_contains("<div class=\"small fg-secondary text-wrap\">' . h(implode(', ', \$names)) . '</div>", $source);
 }
 
 function test_recurring_commission_profile_edit_names()
