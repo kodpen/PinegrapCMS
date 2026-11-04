@@ -7,7 +7,7 @@ description: Coordinator session: one per account, keeps its cloud workers on fr
 - Sessions waited to be told to go on at 20-30% quota use; a coordinator keeps its workers busy.
 
 ## What does it do each turn?
-- Reads the state from GitHub and the plan files, not its memory: open PRs and drafts, the queue count (Working mode 8); `plans/README.md`, open plan steps and `bug` issues (`test-coordinator.md`) only when a slot is free.
+- Reads the state from GitHub, not its memory: open PRs and drafts, the queue count (Working mode 8); free steps and issues only when a slot is free, by `php tools/free_work.php` (`coordinator-context.md`).
 - Picks work no open PR holds: one plan or area per worker, never two workers on the same files or the same plan (Claim work, step 1); steps of one plan in parallel when the owner assigned them so or when they touch different files.
 - Starts each worker as a cloud session with a short brief: the plan step or task, the memory folder, and "follow CLAUDE.md". The worker claims with its own draft PR and works as every session does, its plan's next steps included (Working mode 2 and 6).
 - Keeps 4 to 10 workers busy, as many as `coordinator-quota.md` sets.
