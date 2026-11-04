@@ -160,5 +160,5 @@ function test_folder_and_file_screens_retired_duplicate_with_find_and_replace()
 	pg_assert_contains("go(\$location);", $screen, 'it redirects there');
 	pg_assert_contains("\$notice_form = pg_redirect_notice_form(\$location);", $screen, 'its notice is left on the screen the redirect opens');
 
-	pg_assert_contains('href="<?=h($back_url)?>"', folder_and_file_screens_retired_source('includes/templates/duplicate_folder.php'), 'the crumb goes back to the File Manager');
+	pg_assert_contains("array('label' => lang('File Manager'), 'url' => \$back_url),", $screen, 'the crumb goes back to the File Manager');
 }
