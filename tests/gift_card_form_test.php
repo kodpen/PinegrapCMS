@@ -168,6 +168,19 @@ function test_gift_card_form_edit_keeps_the_balance_guard()
 }
 
 /**
+ * The save bar's icons are hidden from screen readers: the Material Icons
+ * ligatures were read out, naming the buttons "saveKaydet" and "deleteSil".
+ */
+function test_gift_card_form_edit_buttons_name_only_their_label()
+{
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_gift_card.php');
+
+	pg_assert_contains('<i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">', $edit, 'the save icon');
+	pg_assert_contains('<i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">', $edit, 'the delete icon');
+	pg_assert_false(strpos($edit, 'material-icons me-3') !== false, 'no ligature icon in the save bar');
+}
+
+/**
  * The quantity of a create is a whole number of cards: a fraction used to
  * pass the "above 0" check and create the whole part only (0.5 none at all)
  * while the screen said the cards were created.
