@@ -17703,6 +17703,52 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-fd-pane svg {
   display: block;
 }
+/* A card at rest: the picture opens the canvas (flowWindow()). */
+.ws-fd-stage > .ws-fd-pane {
+  cursor: zoom-in;
+}
+.ws-fd-stage > .ws-fd-pane:focus-visible {
+  outline: 2px solid rgb(var(--ws-accent-rgb));
+  outline-offset: 2px;
+}
+.ws-fd-box.is-still {
+  cursor: inherit;
+}
+.ws-fd-window.is-loading .ws-fd-stage {
+  opacity: .6;
+  cursor: progress;
+}
+/* An open card: the Flows canvas read-only (PGWsFlow.embed()) in a 20 rem
+   pane, 40 rem when Larger, the full width of the card; on a phone a larger
+   pane stays inside the screen. The canvas draws its own frame and takes
+   pinch and drag itself. */
+.ws-fd-stage.is-open {
+  position: relative;
+  width: 100%;
+  height: 20rem;
+}
+/* The canvas fills the pane, on a phone too (the Flows screen's stage is
+   60vh there). */
+.ws-fd-stage .pgc-stage {
+  height: 100%;
+}
+.ws-fd-stage.is-open.is-large {
+  height: 40rem;
+}
+@media (max-width: 575.98px) {
+  .ws-fd-stage.is-open.is-large {
+    height: min(40rem, 75vh);
+  }
+}
+.ws-fd-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: .25rem;
+  margin-bottom: .25rem;
+}
+.ws-fd-detail {
+  margin-top: .35rem;
+}
 /* The mini flow window in px, to the visual spec: control arrows 2 px with a
    filled head, data threads 1 px in their type's tone, boxes 128 x 60. */
 .ws-fd-arrow {
@@ -17805,19 +17851,6 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 }
 .ws-fd-try {
   white-space: pre-line;
-}
-/* Edit here: a box's form under the card's window. */
-.ws-fd-form {
-  max-width: 32rem;
-  margin-top: .5rem;
-  padding: .75rem;
-  border: 1px solid var(--pg-border-color);
-  border-radius: .5rem;
-  background: var(--pg-body-bg);
-  color: var(--pg-body-color);
-}
-.ws-fd-form .mb-5 {
-  margin-bottom: .6rem;
 }
 .ws-draft-actions {
   display: flex;
