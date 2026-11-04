@@ -13,7 +13,7 @@ description: Plan: Reset Encryption Key re-seals every value sealed with the key
 - HMACs keyed with the key cannot be re-sealed and are re-issued by nature: device tokens and pairings (`api/api-device-refresh-rotation.md`, `api/api-device-pairing.md`), form-issued tokens, e-mail preference links, idempotency fingerprints. The card's warning keeps naming them: connected devices pair again.
 
 ## Steps
-- RK1 (S) The registry and the key-parameter helpers. Done (#PRNUM): `pg_reseal_registry()`, `pg_reseal_run()`, the `$key` parameters; `platform/encryption-key-reseal-registry.md`.
+- RK1 (S) The registry and the key-parameter helpers. Done (#6487): `pg_reseal_registry()`, `pg_reseal_run()`, the `$key` parameters; `platform/encryption-key-reseal-registry.md`.
 
 - RK2 (M) The module entries. Each module above adds its entries (connect rows by provider, connectors, e-document, Paraşüt, backup, product feeds, MFA, subscriptions); a JSON value with sealed fields names the fields. Tests: each entry's selector and fields against a fixture row. Memory: each module file gains a "re-sealed on a key reset" line. The Google secret block later in `security.save.php` seals with the constant (old key): in a reset it must not undo its entry.
 
