@@ -988,8 +988,12 @@ if (count($engine_health['issues']) == 0) {
                         <div>' . h(lang('The tables have not been checked yet.')) . '</div>
                     </div>';
 
-    $health_list .= '
+    // The summary for a check that found no MyISAM table already says
+    // what the two checks read; the note would repeat it.
+    if (($health_when === '') || ($engine_health['tables'] > 0)) {
+        $health_list .= '
                     <div class="small fg-secondary">' . h(lang('The hourly check reads the MyISAM tables; "Check all tables" reads every table, InnoDB included.')) . '</div>';
+    }
 
 } else {
 
@@ -1186,7 +1190,6 @@ echo '
                     <div class="card mb-12">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Tables on MyISAM')) . '</span>
-                            <a class="btn btn-sm btn-outline theme-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
                         </div>
                         <div class="card-body">' . $engine_list . '
                         </div>
@@ -1306,9 +1309,16 @@ echo '
                 return;
             }
             var form = document.getElementById("pg_engine_form");
+            // Remember which buttons this click locked, so a failed step
+            // gives back exactly those and leaves the ones the page drew
+            // disabled as they were.
+            var locked = [];
             var buttons = document.querySelectorAll(".pg-engine-action, #pg_visitor_cleanup");
             for (var i = 0; i < buttons.length; i++) {
-                buttons[i].disabled = true;
+                if (!buttons[i].disabled) {
+                    buttons[i].disabled = true;
+                    locked.push(buttons[i]);
+                }
             }
             form.elements["action"].value = "visitor_cleanup";
             form.elements["table"].value = "visitors";
@@ -1352,7 +1362,9 @@ echo '
                     .catch(function (error) {
                         progress.textContent = failed + " " + error.message;
                         progress.className = "small mt-3 fg-danger";
-                        button.disabled = false;
+                        for (var j = 0; j < locked.length; j++) {
+                            locked[j].disabled = false;
+                        }
                     });
             };
             progress.textContent = starting;
