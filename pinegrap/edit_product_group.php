@@ -307,7 +307,7 @@ if (!$_POST) {
                 // new attributes array that we can use to sort the attributes.
                 foreach ($attributes_without_sort_order as $attribute) {
                     // If there is a sort order for this attribute, then set it.
-                    if ($sort_orders[$attribute['id']]) {
+                    if (isset($sort_orders[$attribute['id']])) {
                         $sort_order = $sort_orders[$attribute['id']]['sort_order'];
 
                     } else {
@@ -370,7 +370,7 @@ if (!$_POST) {
                     $attribute = array('sort_order' => $sort_order) + $attribute;
 
                     $attribute['options'] = array_values($options);
-                    $attribute['default_option_id'] = $sort_orders[$attribute['id']]['default_option_id'];
+                    $attribute['default_option_id'] = isset($sort_orders[$attribute['id']]) ? $sort_orders[$attribute['id']]['default_option_id'] : 0;
 
                     $attributes[] = $attribute;
                 }
