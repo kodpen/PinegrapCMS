@@ -321,6 +321,53 @@
         return levels.map(function (level) { return encodeURIComponent(level.sort) + ':' + level.order; }).join(',');
     }
 
+    /**
+     * The levels after a sort menu action, without Shift: 'reverse' turns
+     * level at, 'remove' drops it (never the last one), 'add' puts key as the
+     * next level in order (a key already sorted by is left where it is).
+     */
+    function sortEdit(levels, action, at, key, order) {
+        levels = levels.map(function (level) { return { sort: level.sort, order: level.order }; });
+
+        if ((action === 'reverse') && levels[at]) {
+            levels[at].order = (levels[at].order === 'desc') ? 'asc' : 'desc';
+        } else if ((action === 'remove') && levels[at] && (levels.length > 1)) {
+            levels.splice(at, 1);
+        } else if ((action === 'add') && key && !levels.some(function (level) { return level.sort === key; })) {
+            levels.push({ sort: key, order: (order === 'desc') ? 'desc' : 'asc' });
+        }
+
+        return levels;
+    }
+
+    /**
+     * What a sort mark on a heading shows: for each sorted column its place
+     * (1, 2, ...) and direction. The place is shown only when there is more
+     * than one level; the lead's direction is its aria-sort.
+     */
+    function sortMarks(levels) {
+        var marks = {};
+
+        levels.forEach(function (level, index) {
+            marks[level.sort] = { level: index + 1, order: level.order, numbered: levels.length > 1 };
+        });
+
+        return marks;
+    }
+
+    /**
+     * Whether the select all button stands as "Deselect all": the whole
+     * condition is selected, or every row a list printed whole shows (shown,
+     * its ids; null for a server list, whose loaded rows are not all of it).
+     */
+    function allSelected(selection, shown) {
+        if (selection.all) {
+            return true;
+        }
+
+        return !!shown && (shown.length > 0) && shown.every(function (id) { return selection.has(id); });
+    }
+
     // ------------------------------------------------------------------
     // Column preferences: order, shown or hidden, the details panel. Kept
     // in the browser per user and list (localStorage), never on the
@@ -569,14 +616,29 @@
         clear.innerHTML = '<i class="bi bi-x-lg" aria-hidden="true"></i>';
         this.clearButton = clear;
 
+        // Select all does what Ctrl+A does; it reads "Deselect all" while
+        // everything is selected.
+        this.allButton = document.createElement('button');
+        this.allButton.type = 'button';
+        this.allButton.className = 'btn btn-sm btn-text theme-secondary pg-list-table-all';
+        this.allButton.setAttribute('aria-keyshortcuts', 'Control+A');
+
+        // The undo of a replaced selection is a small offer of its own: the
+        // count and the bulk actions go at once, it stays for 10 seconds.
         this.undoButton = document.createElement('button');
         this.undoButton.type = 'button';
-        this.undoButton.className = 'btn btn-sm btn-outline theme-secondary pg-list-table-undo';
-        this.undoButton.textContent = this.texts.undo || '';
+        this.undoButton.className = 'btn btn-sm btn-text theme-secondary pg-list-table-undo';
+        this.undoButton.innerHTML = '<i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>';
+        this.undoButton.appendChild(document.createTextNode(this.texts.undo || ''));
         this.undoButton.hidden = true;
 
+        var tools = this.bar.querySelector('.pg-list-table-tools');
+
         this.bar.insertBefore(clear, this.bar.firstChild);
-        this.bar.insertBefore(this.undoButton, this.bar.querySelector('.pg-list-table-tools'));
+        this.bar.insertBefore(this.allButton, tools);
+        this.bar.insertBefore(this.undoButton, tools);
+        this.buildSortMenu(tools);
+        this.markSort();
 
         Array.prototype.forEach.call(this.tbody.rows, function (row) {
             row.tabIndex = -1;
@@ -624,6 +686,24 @@
         this.clearButton.addEventListener('click', function () {
             self.replace(function () { this.clear(); });
         });
+
+        this.allButton.addEventListener('click', function () {
+            if (self.allSelected()) {
+                self.replace(function () { this.clear(); });
+            } else {
+                self.selectAll();
+            }
+        });
+
+        if (this.sortMenu) {
+            this.sortMenu.addEventListener('click', function (event) {
+                var target = event.target.closest('[data-pg-sort-action]');
+
+                if (target) {
+                    self.sortAction(target);
+                }
+            });
+        }
 
         this.undoButton.addEventListener('click', function () {
             if (self.undo) {
@@ -856,9 +936,22 @@
     /**
      * Thumbnails (img[data-pg-thumb]) load as they come into sight, at most
      * six at a time, so a long list of pictures does not hold up the rows.
+     * A picture a list's cell draws for the panel's lazy loader
+     * (img.lazy[data-src], e.g. pg_product_image_cell_content()) is taken
+     * over: that loader watches the window, and these rows scroll in their
+     * own box, so it loaded the first screen only and never a later batch.
      */
     Driver.prototype.watchThumbs = function (scope) {
         var self = this;
+
+        if (scope.querySelectorAll) {
+            Array.prototype.forEach.call(scope.querySelectorAll('img.lazy[data-src]'), function (img) {
+                img.setAttribute('data-pg-thumb', img.getAttribute('data-src'));
+                img.removeAttribute('data-src');
+                img.classList.remove('lazy');
+            });
+        }
+
         var images = scope.querySelectorAll ? scope.querySelectorAll('img[data-pg-thumb]') : [];
 
         if (!images.length) {
@@ -905,9 +998,17 @@
             img.removeAttribute('data-pg-thumb');
             this.thumbs.running++;
 
-            var done = function () {
+            var done = function (event) {
                 this.removeEventListener('load', done);
                 this.removeEventListener('error', done);
+
+                // A picture that cannot load shows the panel's broken
+                // picture square (backend.src.js), not the loading mark.
+                if ((event.type === 'error') && window.pgLazyFailedSrc && (this.src !== window.pgLazyFailedSrc)) {
+                    this.src = window.pgLazyFailedSrc;
+                    this.classList.add('pg-lazy-failed');
+                }
+
                 self.thumbs.running--;
                 self.pumpThumbs();
             };
@@ -1002,6 +1103,25 @@
         this.undoButton.hidden = true;
     };
 
+    /**
+     * Ctrl+A or the select all button: the whole list by its condition (a
+     * Ctrl+click then leaves a row out), or the rows a list printed whole
+     * shows.
+     */
+    Driver.prototype.selectAll = function () {
+        if (this.browser) {
+            var shown = this.order();
+
+            this.replace(function () { this.selectIds(shown); });
+        } else {
+            this.replace(function () { this.selectAll(Date.now() / 1000); });
+        }
+    };
+
+    Driver.prototype.allSelected = function () {
+        return allSelected(this.selection, this.browser ? this.order() : null);
+    };
+
     /** Double-click or Enter: the row's own link, its name's first. */
     Driver.prototype.open = function (row) {
         var link = row.querySelector('a[data-pg-open]') || row.querySelector('td a[href]:not([href^="javascript"])');
@@ -1017,13 +1137,7 @@
 
         if (mod && ((event.key === 'a') || (event.key === 'A'))) {
             event.preventDefault();
-            if (this.browser) {
-                var shown = this.order();
-
-                this.replace(function () { this.selectIds(shown); });
-            } else {
-                this.replace(function () { this.selectAll(Date.now() / 1000); });
-            }
+            this.selectAll();
             return;
         }
 
@@ -1070,9 +1184,14 @@
             row.classList.toggle('pg-list-table-selected', self.selection.has(row.getAttribute('data-pg-id')));
         });
 
-        this.bar.classList.toggle('is-empty', (count === 0) && !this.undo);
+        var all = this.allSelected();
+
+        this.bar.classList.toggle('is-empty', count === 0);
         this.count.textContent = (count === 0) ? '' : text(this.selection.all ? this.texts.all : this.texts.selected, count);
         this.clearButton.hidden = (count === 0);
+        this.allButton.innerHTML = '<i class="bi ' + (all ? 'bi-x-square' : 'bi-check2-all') + ' me-1" aria-hidden="true"></i>';
+        this.allButton.appendChild(document.createTextNode((all ? this.texts.deselectAll : this.texts.selectAll) || ''));
+        this.allButton.hidden = this.browser ? (this.order().length === 0) : (this.total === 0);
         this.empty.hidden = this.browser ? (this.order().length > 0) : (this.tbody.rows.length > 0);
         this.more.hidden = !this.next || this.loading || !!this.failed;
 
@@ -1265,14 +1384,14 @@
         this.root.removeAttribute('aria-busy');
         this.setStatus('', false);
 
-        // Hints, menus and lazy pictures of the new rows.
-        if (rows.length && (typeof window.pgInitInjected === 'function') && window.jQuery) {
-            window.pgInitInjected(window.jQuery(rows));
-        }
-
+        // Lazy pictures, then hints and menus of the new rows.
         rows.forEach(function (row) {
             self.watchThumbs(row);
         });
+
+        if (rows.length && (typeof window.pgInitInjected === 'function') && window.jQuery) {
+            window.pgInitInjected(window.jQuery(rows));
+        }
 
         if (this.quickRows) {
             this.quickRows(rows);
@@ -1288,8 +1407,18 @@
 
     /** A heading click: the server sorts, or the browser for a list printed whole. */
     Driver.prototype.sortBy = function (key, add) {
-        this.levels = sortAfterClick(this.levels, key, add);
+        this.setLevels(sortAfterClick(this.levels, key, add));
+    };
+
+    /** New sort levels, from a heading or the sort menu. */
+    Driver.prototype.setLevels = function (levels) {
+        if (!levels.length) {
+            return;
+        }
+
+        this.levels = levels;
         this.markSort();
+        this.drawSortMenu();
 
         if (this.browser) {
             this.sortHere();
@@ -1300,16 +1429,181 @@
         }
     };
 
+    /**
+     * The headings' sort marks: aria-sort (and its arrow) on the lead; with
+     * more than one level each sorted heading shows its place, and a later
+     * level its direction.
+     */
     Driver.prototype.markSort = function () {
         var lead = this.levels[0] || null;
+        var marks = sortMarks(this.levels);
 
         Array.prototype.forEach.call(this.table.tHead.rows[0].cells, function (th) {
-            if (lead && (th.getAttribute('data-pg-col') === lead.sort)) {
+            var key = th.getAttribute('data-pg-col');
+            var button = th.querySelector('.pg-list-table-sort');
+            var old = button ? button.querySelector('.pg-list-table-sort-mark') : null;
+            var mark = has(marks, key) ? marks[key] : null;
+
+            if (lead && (key === lead.sort)) {
                 th.setAttribute('aria-sort', (lead.order === 'desc') ? 'descending' : 'ascending');
             } else {
                 th.removeAttribute('aria-sort');
             }
+
+            if (old) {
+                old.parentNode.removeChild(old);
+            }
+
+            if (!button || !mark || (!mark.numbered && (mark.level === 1))) {
+                return;
+            }
+
+            var span = document.createElement('span');
+
+            span.className = 'pg-list-table-sort-mark fg-secondary text-nowrap';
+            span.setAttribute('aria-hidden', 'true');
+            // The place, then (for a later level) the direction: the lead's
+            // arrow is drawn after the button by the stylesheet.
+            span.innerHTML = ((mark.level <= 9) ? '<i class="bi bi-' + mark.level + '-circle-fill small ms-1"></i>' : '')
+                + ((mark.level > 1) ? '<span class="ms-1">' + ((mark.order === 'desc') ? '\u2193' : '\u2191') + '</span>' : '');
+            button.appendChild(span);
         });
+    };
+
+    /**
+     * The sort menu: the screen's toolbar menu for this list
+     * ([data-pg-list-sort-menu], pg_list_sort_menu()) taken over so it
+     * follows the headings, else one in the bar. It adds, turns and removes
+     * levels without Shift.
+     */
+    Driver.prototype.buildSortMenu = function (tools) {
+        var name = String(this.name || '').replace(/["\\]/g, '');
+        var wrap = document.querySelector('[data-pg-list-sort-menu="' + name + '"]');
+        var self = this;
+
+        this.sortable = this.model.filter(function (column) {
+            return self.table.tHead.querySelector('th[data-pg-col="' + String(column.key).replace(/["\\]/g, '') + '"][data-pg-sortable="1"]');
+        });
+
+        if (!this.sortable.length) {
+            return;
+        }
+
+        if (wrap) {
+            this.sortDefault = sortParse(wrap.getAttribute('data-pg-sort-default'));
+        } else if (tools) {
+            wrap = document.createElement('span');
+            wrap.className = 'pg-menu-wrap';
+            wrap.innerHTML = '<button type="button" class="btn btn-sm btn-text theme-secondary pg-menu-caret" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-auto-close="outside" aria-expanded="false"></button>'
+                + '<ul class="menu pg-menu-end" style="min-width: min(20rem, 90vw);"></ul>';
+            tools.insertBefore(wrap, tools.firstChild);
+            this.sortDefault = [];
+        } else {
+            return;
+        }
+
+        this.sortButton = wrap.querySelector('[data-bs-toggle]');
+        this.sortMenu = wrap.querySelector('.menu');
+        this.drawSortMenu();
+    };
+
+    Driver.prototype.drawSortMenu = function () {
+        if (!this.sortMenu) {
+            return;
+        }
+
+        var texts = this.texts;
+        var headings = {};
+        var levels = this.levels;
+        var html = '';
+
+        function esc(value) {
+            var div = document.createElement('div');
+
+            div.textContent = String(value);
+
+            return div.innerHTML.replace(/"/g, '&quot;');
+        }
+
+        this.model.forEach(function (column) {
+            headings[column.key] = column.heading;
+        });
+
+        levels.forEach(function (level, index) {
+            var asc = (level.order !== 'desc');
+
+            html += '<li class="d-flex align-items-center gap-1 px-5 py-1">'
+                + '<span class="fg-secondary small">' + (index + 1) + '.</span>'
+                + '<span class="flex-grow-1 text-truncate">' + esc(has(headings, level.sort) ? headings[level.sort] : level.sort) + '</span>'
+                + '<button type="button" class="btn btn-sm btn-text theme-secondary text-nowrap" data-pg-sort-action="reverse" data-pg-sort-at="' + index + '" title="' + esc(texts.sortReverse || '') + '">'
+                + '<i class="bi bi-caret-' + (asc ? 'up' : 'down') + '-fill me-1" aria-hidden="true"></i>' + esc((asc ? texts.ascending : texts.descending) || '') + '</button>'
+                + ((levels.length > 1) ? '<button type="button" class="btn btn-sm btn-text theme-secondary" data-pg-sort-action="remove" data-pg-sort-at="' + index + '" title="' + esc(texts.sortRemove || '')
+                    + '" aria-label="' + esc(texts.sortRemove || '') + '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>' : '')
+                + '</li>';
+        });
+
+        var options = '';
+
+        this.sortable.forEach(function (column) {
+            if (levels.some(function (level) { return level.sort === column.key; })) {
+                return;
+            }
+
+            ['asc', 'desc'].forEach(function (order) {
+                options += '<option value="' + esc(column.key + ':' + order) + '">'
+                    + esc(String(((order === 'asc') ? texts.sortAsc : texts.sortDesc) || '%s').replace('%s', column.heading)) + '</option>';
+            });
+        });
+
+        if (options !== '') {
+            html += '<li class="d-flex gap-1 px-5 py-3">'
+                + '<select class="form-control form-control-sm pg-list-table-sort-then" aria-label="' + esc(texts.sortThen || '') + '">'
+                + '<option value="" selected>' + esc(texts.sortThen || '') + '</option>' + options + '</select>'
+                + '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-pg-sort-action="add">' + esc(texts.sortAdd || '') + '</button></li>';
+        }
+
+        if (this.sortDefault.length && (sortValue(this.sortDefault) !== sortValue(levels))) {
+            html += '<li><hr class="menu-divider"></li>'
+                + '<li><button type="button" class="menu-item pg-link-body-emphasis" data-pg-sort-action="reset"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i>'
+                + esc(texts.sortReset || '') + '</button></li>';
+        }
+
+        this.sortMenu.innerHTML = html;
+        this.sortButton.innerHTML = '<i class="bi bi-sort-down me-1" aria-hidden="true"></i>' + esc(texts.sortBy || '')
+            + ((levels.length > 1) ? ' <span class="badge rounded-pill theme-secondary">' + levels.length + '</span>' : '');
+    };
+
+    /** A sort menu button: reverse or remove a level, add one, or reset. */
+    Driver.prototype.sortAction = function (target) {
+        var action = target.getAttribute('data-pg-sort-action');
+        var at = parseInt(target.getAttribute('data-pg-sort-at'), 10);
+        var focus = null;
+
+        if (action === 'reset') {
+            this.setLevels(this.sortDefault);
+        } else if (action === 'add') {
+            var select = this.sortMenu.querySelector('.pg-list-table-sort-then');
+            var pair = (select && select.value) ? select.value.split(':') : null;
+
+            if (!pair) {
+                if (select) {
+                    select.focus();
+                }
+
+                return;
+            }
+
+            this.setLevels(sortEdit(this.levels, 'add', -1, pair[0], pair[1]));
+            focus = '.pg-list-table-sort-then';
+        } else {
+            this.setLevels(sortEdit(this.levels, action, at));
+            focus = '[data-pg-sort-action="' + action + '"][data-pg-sort-at="' + Math.min(at, this.levels.length - 1) + '"]';
+        }
+
+        // The menu was drawn again: the focus goes back into it.
+        var again = focus ? this.sortMenu.querySelector(focus) : null;
+
+        (again || this.sortButton).focus();
     };
 
     Driver.prototype.sortHere = function () {
@@ -1519,6 +1813,9 @@
         sortAfterClick: sortAfterClick,
         sortParse: sortParse,
         sortValue: sortValue,
+        sortEdit: sortEdit,
+        sortMarks: sortMarks,
+        allSelected: allSelected,
         compareSortValues: compareSortValues,
         sortRows: sortRows,
         prefsKey: prefsKey,
