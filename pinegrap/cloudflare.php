@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 $user = validate_user();
 // Administrators only, like the settings menu entry that leads here.
 validate_area_access($user, 'administrator');
@@ -828,7 +829,28 @@ $analytics_note = $analytics_reasons
 
 
 // -------------------- DNS TABLE --------------------
-$table_rows = '';
+// Every record is printed: the list table driver sorts and searches them in
+// the browser (browser mode) and keeps a heading's sort. A row's Delete asks,
+// then posts the one form below the list (no form inside a row).
+$dns_columns = array(
+    'name' => array('heading' => lang('Name')),
+    'type' => array('heading' => lang('Type'), 'kind' => 'badge'),
+    'content' => array('heading' => lang('Content')),
+    'ttl' => array('heading' => lang('TTL'), 'kind' => 'number'),
+    'proxied' => array('heading' => lang('Proxied'), 'kind' => 'badge'),
+    'actions' => array('heading' => lang('Actions'), 'kind' => 'actions'),
+);
+$dns_sort_columns = array();
+
+foreach ($dns_columns as $key => $spec) {
+    if ($key !== 'actions') {
+        $dns_sort_columns[$key] = $spec['heading'];
+    }
+}
+
+$dns_state = pg_list_state('cloudflare_dns', $dns_sort_columns, array('sort' => 'type', 'order' => 'asc'));
+$dns_rows = array();
+
 foreach ($records as $r) {
     $data_content = isset($r['content']) ? $r['content'] : (isset($r['data']['target']) ? $r['data']['target'] : '');
         $attrs = 'data-id="'.htmlspecialchars((string)$r['id'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'" 
@@ -865,25 +887,26 @@ foreach ($records as $r) {
     }
 
 
-    $table_rows .= '<tr>
-        <td>
-            <button class="btn btn-sm btn-outline theme-warning" data-bs-toggle="dialog" data-bs-target="#editModal" aria-label="' . h(lang('Edit')) . '" '.$attrs.'>
-                <i class="bi bi-pencil-square"></i>
-            </button>
-            <form method="post" style="display:inline" onsubmit="event.preventDefault(); var f=this; pgConfirm({title:\'' . h(escape_javascript(lang('Delete'))) . '\', message:\'' . h(escape_javascript(lang('Are you sure you want to delete this record?'))) . '\', confirmText:\'' . h(escape_javascript(lang('Delete'))) . '\', cancelText:\'' . h(escape_javascript(lang('Cancel'))) . '\', variant:\'danger\'}).then(function(ok){if(ok) f.submit();}); return false;">
-                '.get_token_field().'
-                <input type="hidden" name="action" value="delete_record">
-                <input type="hidden" name="id" value="' . htmlspecialchars((string)$r['id'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '">
-                <button type="submit" class="btn btn-sm btn-outline theme-danger" aria-label="' . h(lang('Delete')) . '"><i class="bi bi-trash"></i></button>
-            </form>
-        </td>
-        <td><span class="badge theme-info">' . htmlspecialchars((string)$r['type'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '</span></td>
-        <td>' . h(truncate($r['name'], 50)) . '</td>
-        <td>' . h(truncate($data_content, 50)) . '</td>
-        <td>'.(($r['ttl'] == 1) ? lang('Auto') : (int)$r['ttl']).'</td>
-        <td>'.(!empty($r['proxied']) ? '<span class="badge theme-success">' . lang('Yes') . '</span>' : '<span class="badge theme-secondary">' . lang('No') . '</span>').'</td>
-    </tr>';
+    $dns_rows[] = array(
+        'id' => (string) $r['id'],
+        'cells' => array(
+            'name' => pg_list_cell(h(truncate($r['name'], 50)), 'align-middle', array('data-pg-sort-value' => (string) $r['name'])),
+            'type' => pg_list_cell('<span class="badge theme-info">' . h((string) $r['type']) . '</span>', 'align-middle', array('data-pg-sort-value' => (string) $r['type'])),
+            'content' => pg_list_cell(h(truncate($data_content, 50)), 'align-middle', array('data-pg-sort-value' => (string) $data_content)),
+            'ttl' => pg_list_cell(($r['ttl'] == 1) ? lang('Auto') : (string) (int) $r['ttl'], 'align-middle', array('data-pg-sort-value' => (int) $r['ttl'])),
+            'proxied' => pg_list_cell(!empty($r['proxied']) ? '<span class="badge theme-success">' . lang('Yes') . '</span>' : '<span class="badge theme-secondary">' . lang('No') . '</span>', 'align-middle', array('data-pg-sort-value' => !empty($r['proxied']) ? 1 : 0)),
+            'actions' => pg_list_cell('<button type="button" class="btn btn-sm btn-outline theme-warning" data-bs-toggle="dialog" data-bs-target="#editModal" aria-label="' . h(lang('Edit')) . '" ' . $attrs . '><i class="bi bi-pencil-square" aria-hidden="true"></i></button>'
+                . ' <button type="button" class="btn btn-sm btn-outline theme-danger pg-cf-delete" data-id="' . h((string) $r['id']) . '" aria-label="' . h(lang('Delete')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>', 'align-middle text-nowrap'),
+        ),
+    );
 }
+
+$dns_list = pg_list_table_printed(array(
+    'list' => 'cloudflare_dns',
+    'columns' => $dns_columns,
+    'levels' => $dns_state['sorts'],
+    'rows' => $dns_rows,
+));
 
 // -------------------- TABS ACTIVE --------------------
 $active_24h = ($period === '24h') ? 'active" aria-current="page' : '';
@@ -1039,15 +1062,20 @@ print pg_page_shell([
     <div class="card my-7">
       <div class="card-header d-flex justify-content-between align-items-center">
         <label class="form-label mb-0 fw-bold"><i class="bi bi-hdd-network"></i> ' . lang('DNS Records') . '</label>
-        <button class="btn btn-solid theme-primary btn-sm" data-bs-toggle="dialog" data-bs-target="#addModal"><i class="bi bi-plus-circle"></i> ' . lang('Add Record') . '</button>
+        <div class="d-flex gap-3 align-items-center">
+          ' . pg_list_table_search_box('cloudflare_dns') . '
+          <button class="btn btn-solid theme-primary btn-sm" data-bs-toggle="dialog" data-bs-target="#addModal"><i class="bi bi-plus-circle"></i> ' . lang('Add Record') . '</button>
+        </div>
       </div>
-      <div class="card-body">
-        <table class="table chart table-striped w-100">
-          <thead ><tr><th>' . lang('Actions') . '</th><th>' . lang('Type') . '</th><th>' . lang('Name') . '</th><th>' . lang('Content') . '</th><th>' . lang('TTL') . '</th><th>' . lang('Proxied') . '</th></tr></thead>
-          <tbody>'.$table_rows.'</tbody>
-        </table>
+      <div class="card-body p-0">
+        ' . pg_list_table_html($dns_list['source'], $dns_list['page'], lang('DNS Records')) . '
       </div>
     </div>
+    <form method="post" id="pg-cf-delete-form" class="d-none">
+      ' . get_token_field() . '
+      <input type="hidden" name="action" value="delete_record">
+      <input type="hidden" name="id" value="">
+    </form>
 
     <!-- Zone Logs -->
     <div class="card my-7">
@@ -1232,6 +1260,20 @@ document.addEventListener("DOMContentLoaded", function() {
     toggleExtraFields(editType, "edit");
   }
 
+  // Delete of a record: confirmed, then the one form below the list is
+  // posted. Delegated, since the list table driver draws its rows again.
+  document.addEventListener("click", function (event) {
+    var button = event.target && event.target.closest ? event.target.closest(".pg-cf-delete") : null;
+    if (!button) return;
+    event.preventDefault();
+    pgConfirm({title: ' . json_encode(lang('Delete')) . ', message: ' . json_encode(lang('Are you sure you want to delete this record?')) . ', confirmText: ' . json_encode(lang('Delete')) . ', cancelText: ' . json_encode(lang('Cancel')) . ', variant: "danger"}).then(function (ok) {
+      if (!ok) return;
+      var form = document.getElementById("pg-cf-delete-form");
+      form.elements["id"].value = button.getAttribute("data-id") || "";
+      form.submit();
+    });
+  });
+
   var editModal = document.getElementById("editModal");
   pgUI.dialog.on(editModal, "show", function (event) {
     var button = event.relatedTarget;
@@ -1270,7 +1312,7 @@ document.addEventListener("DOMContentLoaded", function() {
 </script>
 
 </main>
-' . get_date_picker_format() . pg_fields_script() . output_footer();
+' . get_date_picker_format() . pg_fields_script() . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . output_footer();
 
 $liveform->remove_form();
 ?>
