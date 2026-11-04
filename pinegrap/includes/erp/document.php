@@ -273,6 +273,8 @@ function erp_invoice_document_labels()
         'note' => lang('Note'),
         'generated_at' => lang('Generated at'),
         'signed_by' => lang('Signed by'),
+        // The ribbon a cancelled document carries (invoice.is_cancelled).
+        'cancelled' => lang('CANCELLED'),
     );
 }
 
@@ -610,7 +612,51 @@ function erp_invoice_html($invoice_id, $template = null)
         $template = erp_invoice_template();
     }
 
-    return erp_template_render($template, $data);
+    return erp_invoice_html_render($template, $data);
+}
+
+/**
+ * The template filled in with the document's data. A cancelled invoice is
+ * never handed out unmarked: a template that does not print label.cancelled
+ * itself (one saved before the ribbon existed) gets the ribbon put in at the
+ * top of the page.
+ *
+ * @param string $template
+ * @param array  $data  erp_invoice_document_data()
+ * @return string
+ */
+function erp_invoice_html_render($template, $data)
+{
+    $html = erp_template_render((string) $template, $data);
+
+    if (!empty($data['invoice']['is_cancelled']) && (strpos((string) $template, 'label.cancelled') === false)) {
+        $html = erp_document_ribbon_add($html, (string) ($data['label']['cancelled'] ?? 'CANCELLED'));
+    }
+
+    return $html;
+}
+
+/**
+ * A ribbon across the top of the first page, right after the opening body
+ * tag (in front of everything when the document has none). Styled inline,
+ * so it needs nothing from the template's own stylesheet.
+ *
+ * @param string $html
+ * @param string $text  The words on it, escaped here
+ * @return string
+ */
+function erp_document_ribbon_add($html, $text)
+{
+    $html = (string) $html;
+    $ribbon = '<div class="pg-cancelled-ribbon" style="border:2px solid #b00020;color:#b00020;text-align:center;'
+        . 'font-weight:bold;font-size:16pt;letter-spacing:4px;padding:4px 0;margin:0 0 10px 0;">' . h((string) $text) . '</div>';
+
+    if (preg_match('/<body\b[^>]*>/i', $html, $match, PREG_OFFSET_CAPTURE)) {
+        $position = $match[0][1] + strlen($match[0][0]);
+        return substr($html, 0, $position) . $ribbon . substr($html, $position);
+    }
+
+    return $ribbon . $html;
 }
 
 /**
