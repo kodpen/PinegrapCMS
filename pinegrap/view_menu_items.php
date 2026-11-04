@@ -176,8 +176,8 @@ $menu_items = get_menu_items($_GET['id']);
 foreach ($menu_items as $menu_item) {
     $indentation_padding = 20 * ($menu_item['level'] - 1);
     
-    // Add link url for onclick event.
-    $output_link_url = 'edit_menu_item.php?id=' . $menu_item['id'] . '&from=' . h(escape_javascript(urlencode(($_GET['from'] ?? '')))) . '&send_to=' . h(escape_javascript(urlencode(($_GET['send_to'] ?? ''))));
+    // The item's editor, coming back to this menu.
+    $output_link_url = h('edit_menu_item.php?id=' . (int) $menu_item['id'] . '&from=' . urlencode((string) ($_GET['from'] ?? '')) . '&send_to=' . urlencode((string) ($_GET['send_to'] ?? '')));
     
     $number_of_results++;
     
@@ -219,12 +219,11 @@ foreach ($menu_items as $menu_item) {
         $output_last_modifier_user = '';
     }
 
-    $output_rows .= 
-        '<tr class="pointer" onclick="">
-            <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-            </td>
-            <td class="align-middle chart_label" style="padding-left: ' . $indentation_padding . 'px">' . h($menu_item['name']) . '</td>
+    // The name opens the item; its indent shows the level. The tree's order
+    // is the menu's order, so the table is plain: no sorting, no search.
+    $output_rows .=
+        '<tr>
+            <td class="align-middle" style="padding-left: ' . (8 + $indentation_padding) . 'px"><a href="' . $output_link_url . '">' . h($menu_item['name']) . '</a></td>
             <td class="align-middle">' . h($link_to_value) . '</td>
             <td class="align-middle">' . $output_security_check_mark . '</td>
             <td class="align-middle">' . get_relative_time(array('timestamp' => $menu_item['created_timestamp'])) . $output_created_user . '</td>
@@ -273,15 +272,14 @@ pg_page_shell( array(
             <div id="menu_items_table_card" class="card my-7">
                 <input type="hidden" name="menu_id" value="' . h($_GET['id']) . '" />
                 <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table " style="width:100%;display:none">
+                    <table class="table table-hover mb-0">
                         <thead>
                             <tr>
-                                <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th>' . lang('Name') . '</th>
-                                <th>' . lang('Link') . '</th>
-                                <th>' . lang('Security') . '</th>
-                                <th>' . lang('Created') . '</th>
-                                <th>' . lang('Last Modified') . '</th>
+                                <th scope="col">' . lang('Name') . '</th>
+                                <th scope="col">' . lang('Link') . '</th>
+                                <th scope="col">' . lang('Security') . '</th>
+                                <th scope="col">' . lang('Created') . '</th>
+                                <th scope="col">' . lang('Last Modified') . '</th>
                             </tr>
                         </thead>
                         <tbody>' . $output_rows . '</tbody>
