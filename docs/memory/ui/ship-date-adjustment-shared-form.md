@@ -5,7 +5,10 @@ description: The ship date adjustment create and edit screens share includes/for
 
 ## Where is the ship date adjustment form?
 - `includes/forms/ship_date_adjustment_form.php` (gate `PG_FUNCTIONS_DIR`). `add_ship_date_adjustment.php` and `edit_ship_date_adjustment.php` stay at the root as thin wrappers and `require_once` it.
-- `pg_ship_date_adjustment_form_card($liveform)` prints the Options card (zip code prefix, shipping method, days + earlier/later) and loads the shipping methods itself.
+- `pg_ship_date_adjustment_form_card($liveform, $status_rows)` prints the two columns and loads the shipping methods itself; `pg_ship_date_adjustment_form_layout($cards, $buttons)` wraps them in the row with the sticky save bar; `…_status_row()` draws one Summary row.
+
+## How is the screen laid out?
+- The product_builder pattern (`ui/edit-screen-wide-layout.md`, B11): the form column holds Options (zip code prefix, shipping method, days + earlier/later); the sticky status column holds a Summary of the prefix, the method and the adjustment ("3 days later"), following the fields as they change. Edit adds Last Modified (`last_modified_timestamp` and its user, joined in the record load).
 - `…_shipping_method_options($methods, $selected)` and `…_adjustment_type_options($value)` (later when empty) build the two pick lists.
 - The edit screen's input group had no `w-auto`; the shared card uses the create screen's `w-auto` for both.
 
