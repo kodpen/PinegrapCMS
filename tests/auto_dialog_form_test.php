@@ -114,3 +114,31 @@ function test_auto_dialog_list_enabled_cell_is_read_as_a_word()
 	pg_assert_contains("<span class=\"visually-hidden\"><?=lang('Yes')?></span>", $template, 'an enabled dialog reads Yes');
 	pg_assert_contains("<span class=\"visually-hidden\"><?=lang('No')?></span>", $template, 'a disabled dialog reads No');
 }
+
+function test_auto_dialog_template_lays_out_form_status_and_save_bar()
+{
+	$template = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/edit_auto_dialog.php');
+
+	$form = strpos($template, 'class="col-12 lg:col-8 2xl:col-9 order-1"');
+	$status = strpos($template, 'class="col-12 lg:col-4 2xl:col-3 order-2"');
+	$bar = strpos($template, 'class="col-12 order-3 position-sticky"');
+	pg_assert_true($form !== false && $status !== false && $bar !== false, 'form column, status column and save bar');
+	pg_assert_true($form < $status && $status < $bar, 'the status column follows the form column, the bar comes last');
+	pg_assert_contains('<div class="position-sticky" style="top:3.3rem;">', $template, 'the status box sticks under the top bar');
+	pg_assert_true(strpos($template, "'id' => 'enabled'") > $status, 'the Enabled switch sits in the status column');
+
+	foreach (array('page', 'width', 'height', 'delay', 'frequency') as $field) {
+		pg_assert_contains('auto_dialog_summary_<?=$summary_row[0]?>', $template, 'the Summary cells carry an id');
+		pg_assert_contains("array('" . $field . "', lang(", $template, $field . ' has a Summary row');
+	}
+	pg_assert_contains('<?=h(($summary_value === \'\')', $template, 'the Summary value is escaped');
+}
+
+function test_auto_dialog_edit_loads_the_last_change()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_auto_dialog.php');
+
+	pg_assert_contains('LEFT JOIN user ON auto_dialogs.last_modified_user_id = user.user_id', $source, 'the user of the last change');
+	pg_assert_contains('auto_dialogs.last_modified_timestamp', $source, 'the time of the last change');
+	pg_assert_contains("WHERE auto_dialogs.id = '", $source, 'the id is read from the auto dialog table');
+}

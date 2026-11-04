@@ -35,17 +35,20 @@ $liveform = new liveform('edit_auto_dialog');
 
 $auto_dialog = db_item(
     "SELECT
-        id,
-        name,
-        enabled,
-        url,
-        width,
-        height,
-        delay,
-        frequency,
-        page
+        auto_dialogs.id,
+        auto_dialogs.name,
+        auto_dialogs.enabled,
+        auto_dialogs.url,
+        auto_dialogs.width,
+        auto_dialogs.height,
+        auto_dialogs.delay,
+        auto_dialogs.frequency,
+        auto_dialogs.page,
+        auto_dialogs.last_modified_timestamp,
+        user.user_username
     FROM auto_dialogs
-    WHERE id = '" . e($_REQUEST['id']) . "'");
+    LEFT JOIN user ON auto_dialogs.last_modified_user_id = user.user_id
+    WHERE auto_dialogs.id = '" . e($_REQUEST['id']) . "'");
 
 // If the form has not been submitted, then output it.
 if (!$_POST) {
