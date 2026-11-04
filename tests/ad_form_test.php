@@ -32,6 +32,11 @@ function ad_form_test_liveform($fields)
 		{
 			return isset($this->fields[$name]) ? $this->fields[$name] : null;
 		}
+
+		public function output_field($attributes)
+		{
+			return '<input id="' . $attributes['id'] . '">';
+		}
 	};
 }
 
@@ -167,4 +172,38 @@ function test_ad_region_options_escape_the_name()
 	$options = pg_ad_region_option_list(array(array('id' => '3', 'name' => 'a&b')));
 
 	pg_assert_same(array('' => '', 'a&amp;b' => '3'), $options);
+}
+
+function test_ad_form_wide_layout()
+{
+	$liveform = ad_form_test_liveform(array('ad_region_id' => '3', 'sort_order' => ''));
+
+	pg_assert_contains('col-12 lg:col-8 2xl:col-9 order-1', pg_ad_form_cards($liveform), 'the cards sit in the form column');
+	pg_assert_same('Sidebar <A>', pg_ad_form_region_label(array('' => '', 'Sidebar <A>' => '3'), '3'), 'the chosen region is named');
+	pg_assert_same("\u{2014}", pg_ad_form_region_label(array('' => '', 'Sidebar' => '3'), ''), 'no region reads a dash');
+	pg_assert_same("\u{2014}", pg_ad_form_region_label(array('' => '', 'Sidebar' => '3'), '9'), 'a region not in the list reads a dash');
+	pg_assert_same(lang('Random'), pg_ad_form_sort_order_label(' '), 'a blank sort order reads Random');
+	pg_assert_same('12', pg_ad_form_sort_order_label('12'), 'a sort order is shown as typed');
+
+	$row = pg_ad_form_status_row('Extra <b>', 'x', false);
+	pg_assert_contains('<dt class="fw-normal">Extra &lt;b&gt;</dt>', $row, 'the label is escaped');
+	pg_assert_contains('border-bottom', $row, 'a row that is not the last draws a line');
+
+	$layout = pg_ad_form_layout('<div class="order-1"></div><div class="order-2"></div>', '<button>Go</button>');
+	pg_assert_contains('col-12 order-3 position-sticky" style="bottom:0; z-index:3;"', $layout, 'the save bar sticks on its own column');
+	pg_assert_contains('<button>Go</button>', $layout, 'the buttons sit in the bar');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/ad_form.php');
+	pg_assert_contains('col-12 lg:col-4 2xl:col-3 order-2', $source, 'the region and Summary sit in the status column');
+	pg_assert_contains('class="position-sticky" style="top:3.3rem;"', $source, 'the status box sticks below the top bar');
+}
+
+function test_ad_screens_use_wide_layout()
+{
+	pg_assert_contains('pg_ad_form_cards($liveform) . pg_ad_form_status($liveform)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_ad.php'), 'create prints the form and status columns');
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_ad.php');
+	pg_assert_contains("pg_ad_form_status(\$liveform, pg_ad_form_status_row(lang('Last Modified')", $edit, 'edit shows the last change');
+	foreach (array('add_ad.php', 'edit_ad.php') as $file) {
+		pg_assert_contains('pg_ad_form_layout(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ' draws the shared save bar');
+	}
 }
