@@ -7739,10 +7739,12 @@
         },
 
         // A card's count of what is in it, when there is any, in the frame's
-        // badge; in the accent for what waits for an answer.
+        // badge; in the accent for what waits for an answer. The badge
+        // shows at most 99+, its label the whole number.
         homeCount: function (card, count, hot) {
             if (count > 0) {
                 card.badge.textContent = count > 99 ? '99+' : String(count);
+                card.badge.title = String(count);
                 card.badge.classList.toggle('ws-today-count-hot', !!hot);
                 card.badge.hidden = false;
             }
@@ -7752,18 +7754,21 @@
         // (workspace_approvals.js, workspace_acks.js), then the replies to
         // their messages and the mentions of them, the unread ones marked;
         // the ones already read only while the card has fewer than five rows.
+        // Every row starts with a sign of the same size (a face or an
+        // icon), so the texts line up.
         homeWaiting: function (data, count) {
             var self = this;
             var card = todayCard('waiting', t('home_waiting'), 'bi-inbox', 'S', 'team');
             var helpers = featureHelpers();
+            var list = el('div', 'ws-today-rows');
             var rows = 0;
 
-            card.node.classList.add('ws-home-waiting');
+            card.node.classList.add('ws-today-waiting');
             self.homeCount(card, count, true);
 
             [window.PGWsApprovals, window.PGWsAcks].forEach(function (feature) {
                 if (feature && feature.homeRows) {
-                    rows += feature.homeRows(data, self, helpers, card.body);
+                    rows += feature.homeRows(data, self, helpers, list);
                 }
             });
 
@@ -7772,28 +7777,26 @@
                     return;
                 }
 
-                var row = button('ws-home-row' + (item.unread ? ' ws-home-unread' : ''));
-                var face = el('span', 'ws-home-face');
+                var row = button('ws-today-row' + (item.unread ? ' ws-today-unread' : ''));
+                var face = el('span', 'ws-today-sign ws-today-face');
                 face.appendChild(avatar(item.sender));
                 row.appendChild(face);
 
-                var text = el('span', 'ws-home-row-text');
-                var meta = el('small', 'ws-home-row-meta');
+                var text = el('span', 'ws-today-row-text');
+                var meta = el('small', 'ws-today-row-meta');
                 meta.appendChild(el('b', '', item.sender ? item.sender.name : ''));
                 meta.appendChild(document.createTextNode(' ' + (item.kind === 'reply' ? t('home_reply') : t('home_mention')) + ' · '));
                 meta.appendChild(icon(item.channel.private ? 'bi-lock' : 'bi-hash'));
                 meta.appendChild(document.createTextNode(item.channel.name + ' · ' + item.time));
                 text.appendChild(meta);
-                text.appendChild(el('span', 'ws-home-row-quote', item.text));
+                text.appendChild(el('span', 'ws-today-row-quote', item.text));
                 row.appendChild(text);
                 row.addEventListener('click', function () { self.open(item.channel.id, item.id); });
-                card.body.appendChild(row);
+                list.appendChild(row);
                 rows++;
             });
 
-            if (!rows) {
-                card.body.appendChild(el('div', 'ws-home-empty', t('home_waiting_empty')));
-            }
+            card.body.appendChild(rows ? list : el('p', 'pg-dash-card-empty', t('home_waiting_empty')));
 
             return card.node;
         },
@@ -7801,26 +7804,29 @@
         // The person's tasks due today or before, the earliest first; with
         // none, the ones coming up. Each is ticked off from here, as in the
         // task lists, or opened. Under them how many are open, overdue and
-        // pressing.
+        // pressing, as the dashboard's chips; the pressing one links to the
+        // pressing list (?urgent=1).
         homeDue: function (data) {
             var self = this;
             var card = todayCard('due', t('home_due'), 'bi-check2-square', 'S', 'team', CFG.urls.tasks, t('my_tasks'));
             var list = (data.due && data.due.length) ? data.due : data.tasks;
+            var rows = el('div', 'ws-today-rows');
 
+            card.node.classList.add('ws-today-due');
             self.homeCount(card, data.tasks_due || 0);
 
             if (!(data.due && data.due.length) && data.tasks.length) {
-                card.body.appendChild(el('div', 'ws-home-sub', t('home_tasks')));
+                card.body.appendChild(el('div', 'pg-dash-rows-title', t('home_tasks')));
             }
 
             if (!list.length) {
-                card.body.appendChild(el('div', 'ws-home-empty', t('home_tasks_empty')));
+                card.body.appendChild(el('p', 'pg-dash-card-empty', t('home_tasks_empty')));
             }
 
             list.forEach(function (task) {
                 var hot = (task.priority === 'urgent' || task.priority === 'high');
-                var row = el('div', 'ws-home-row ws-home-task' + (hot ? ' ws-home-row-hot ws-home-row-' + task.priority : ''));
-                var done = el('input', 'check ws-home-done');
+                var row = el('div', 'ws-today-row ws-today-task' + (hot ? ' ws-today-task-' + task.priority : ''));
+                var done = el('input', 'check ws-today-done');
 
                 done.type = 'checkbox';
                 done.title = t('mark_done');
@@ -7831,59 +7837,66 @@
                     }
 
                     done.disabled = true;
-                    row.classList.add('ws-home-task-done');
+                    row.classList.add('ws-today-task-done');
                     api('ws_task_status', { task_id: task.id, status: 'done' }).then(function () {
                         toast(t('task_saved'), 'success');
                         self.showHome(false);
                     }).catch(function (error) {
                         done.checked = false;
                         done.disabled = false;
-                        row.classList.remove('ws-home-task-done');
+                        row.classList.remove('ws-today-task-done');
                         fail(error);
                     });
                 });
                 row.appendChild(done);
 
-                var open = button('ws-home-task-open');
-                var text = el('span', 'ws-home-row-text');
+                var open = button('ws-today-task-open');
+                var text = el('span', 'ws-today-row-text');
                 // The badge sits beside the shortened title, never inside
                 // it, so a long title cannot cut it off.
-                var head = el('span', 'ws-home-task-head');
-                head.appendChild(el('span', 'ws-home-row-title', task.title));
+                var head = el('span', 'ws-today-task-head');
+                head.appendChild(el('span', 'ws-today-row-title', task.title));
 
                 if (hot) {
                     head.appendChild(el('span', 'ws-priority ws-priority-' + task.priority, (BOOT.priorities || {})[task.priority] || task.priority));
                 }
 
                 text.appendChild(head);
-                text.appendChild(el('small', task.overdue ? 'fg-danger' : 'fg-secondary', task.number + ' · ' + task.due_label));
+                text.appendChild(el('small', 'ws-today-row-meta' + (task.overdue ? ' ws-today-late' : ''), task.number + ' · ' + task.due_label));
                 open.appendChild(text);
                 open.addEventListener('click', function () {
                     taskDrawer.open(task.id, null, function () { self.showHome(false); });
                 });
                 row.appendChild(open);
-                card.body.appendChild(row);
+                rows.appendChild(row);
             });
+
+            if (list.length) {
+                card.body.appendChild(rows);
+            }
 
             // The due ones the card has no room for, a link to all of them.
             if (data.due && data.due.length && ((data.tasks_due || 0) > data.due.length)) {
-                var more = el('a', 'ws-home-more', t('home_tasks_more', data.tasks_due - data.due.length));
+                var more = el('a', 'ws-today-due-more', t('home_tasks_more', data.tasks_due - data.due.length));
                 more.href = CFG.urls.tasks;
                 card.body.appendChild(more);
             }
 
             if (data.tasks_open) {
-                var counts = el('div', 'ws-home-counts');
-                counts.appendChild(el('span', '', t('home_tasks_count', data.tasks_open)));
+                var counts = el('div', 'pg-dash-chips ws-today-chips');
+                counts.appendChild(el('span', 'pg-dash-chip', t('home_tasks_count', data.tasks_open)));
 
                 if (data.tasks_overdue) {
-                    counts.appendChild(el('span', 'fg-danger', t('home_tasks_overdue', data.tasks_overdue)));
+                    var late = el('span', 'pg-dash-chip', t('home_tasks_overdue', data.tasks_overdue));
+                    late.setAttribute('data-tone', 'bad');
+                    counts.appendChild(late);
                 }
 
                 // The pressing ones, a link to all of them.
                 if (data.tasks_hot) {
-                    var hotLink = el('a', 'ws-home-hot');
+                    var hotLink = el('a', 'pg-dash-chip ws-today-hot');
                     hotLink.href = CFG.urls.tasks + '?urgent=1';
+                    hotLink.setAttribute('data-tone', 'warn');
                     hotLink.appendChild(icon('bi-fire', 'me-1'));
                     hotLink.appendChild(document.createTextNode(t('home_tasks_hot', data.tasks_hot)));
                     counts.appendChild(hotLink);

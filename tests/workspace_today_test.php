@@ -90,3 +90,33 @@ function test_workspace_today_drawn_in_dashboard_cards()
 	pg_assert_contains("'card pg-dash-card pg-dash-cardbox ws-today-card ws-home-about'", workspace_today_test_method('homeAbout'), 'What is the Workspace? is a card of the grid');
 	pg_assert_contains('card.badge', workspace_today_test_method('homeCount'), 'a count goes into the frame\'s badge');
 }
+
+function test_workspace_today_waiting_and_due_cards_in_the_dashboard_rows()
+{
+	$waiting = workspace_today_test_method('homeWaiting');
+	$due = workspace_today_test_method('homeDue');
+
+	pg_assert_contains("el('div', 'ws-today-rows')", $waiting, 'waiting rows sit in one list');
+	pg_assert_contains("'pg-dash-card-empty', t('home_waiting_empty')", $waiting, 'an empty card says so in the dashboard\'s words');
+	pg_assert_false(strpos($waiting . $due, 'ws-home-') !== false, 'no old Overview classes left in the two cards');
+
+	pg_assert_contains("'pg-dash-chips ws-today-chips'", $due, 'the counts are the dashboard\'s chips');
+	pg_assert_contains("hotLink.href = CFG.urls.tasks + '?urgent=1';", $due, 'pressing links to the pressing list');
+	pg_assert_contains("hotLink.setAttribute('data-tone', 'warn');", $due);
+	pg_assert_contains("late.setAttribute('data-tone', 'bad');", $due, 'overdue in the bad tone');
+
+	foreach (array('workspace_approvals.js', 'workspace_acks.js') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/' . $file);
+		$rows = substr($source, (int) strpos($source, 'function homeRows'));
+
+		pg_assert_contains("h.button('ws-today-row ws-today-unread')", $rows, $file . ' draws Today\'s rows');
+		pg_assert_contains("el('span', 'ws-today-sign')", $rows, $file . ' puts its icon in a face-sized box');
+		pg_assert_false(strpos($rows, 'ws-home-') !== false, $file . ' uses no old Overview classes');
+	}
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/ws_today.src.css');
+
+	foreach (array('.ws-today .ws-today-row {', '.ws-today .ws-today-sign {', '.ws-today .ws-today-task-head {', '.ws-today .ws-today-task-done .ws-today-row-title {') as $rule) {
+		pg_assert_contains($rule, $css, $rule . ' is styled');
+	}
+}

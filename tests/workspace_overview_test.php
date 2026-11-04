@@ -151,7 +151,7 @@ function test_workspace_overview_cards_act_from_the_page()
 	pg_assert_contains("taskDrawer.open(task.id", $due, 'the rest of the row opens it');
 	pg_assert_contains('/^https?:/i.test(item.meeting_url)', $calendar, 'a meeting link is followed only when it is a web address');
 	pg_assert_contains("call.rel = 'noopener noreferrer';", $calendar);
-	pg_assert_contains('feature.homeRows(data, self, helpers, card.body)', $waiting, 'approvals and read receipts draw their own rows');
+	pg_assert_contains('feature.homeRows(data, self, helpers, list)', $waiting, 'approvals and read receipts draw their own rows');
 
 	foreach (array('workspace_approvals.js', 'workspace_acks.js') as $file) {
 		pg_assert_contains('homeRows: homeRows', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/' . $file), $file . ' gives the overview its rows');
