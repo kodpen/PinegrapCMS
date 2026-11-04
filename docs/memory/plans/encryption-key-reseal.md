@@ -15,7 +15,7 @@ description: Plan: Reset Encryption Key re-seals every value sealed with the key
 ## Steps
 - RK1 (S) The registry and the key-parameter helpers. Done (#6487): `pg_reseal_registry()`, `pg_reseal_run()`, the `$key` parameters; `platform/encryption-key-reseal-registry.md`.
 
-- RK2 (M) The module entries. Done (#PRNUM): every module's entries, JSON `fields`, the key reset moved last in `security.save.php`.
+- RK2 (M) The module entries. Done (#6501): every module's entries, JSON `fields`, the key reset moved last in `security.save.php`.
 
 - RK3 (S) The card. The warn-and-confirm list becomes "will be re-sealed", the confirmation box stays only for the HMAC-keyed items, the success message gives the counts; counts per area: `pg_encryption_key_reset_counts()` (#6392); `pg_reseal_run()` areas add subscriptions, translation, activitypub, workspace (labels needed). Memory: `ui/settings-security-cards.md`.
 
