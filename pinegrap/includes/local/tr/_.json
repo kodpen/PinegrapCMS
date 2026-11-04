@@ -1546,6 +1546,7 @@
     "{var:1} table(s) checked, {var:2} issue(s) found, {var:3} repaired.": "{var:1} tablo denetlendi, {var:2} sorun bulundu, {var:3} onarıldı.",
     "{var:1} table(s) had issues but were repaired.": "{var:1} tablonun sorunları vardı ancak onarıldı.",
     "{var:1} tables": "{var:1} tablo",
+    "{var:1} takes a number, such as {var:2}.": "{var:1} bir sayı alır, örneğin {var:2}.",
     "{var:1} takes a whole number from {var:2} to {var:3}.": "{var:1} için {var:2} ile {var:3} arasında bir tam sayı girin.",
     "{var:1} takes an amount, such as {var:2}.": "{var:1} için {var:2} gibi bir tutar girin.",
     "{var:1} takes an e-mail address.": "{var:1} bir e-posta adresi alır.",

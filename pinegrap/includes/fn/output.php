@@ -1593,6 +1593,7 @@ function pg_list_edit_cell_attributes($columns, $field, $id, $value)
  *            field; a pasted value often brings a line break)
  *   integer  an int, or '' when the column allows empty
  *   money    the digits and separators as typed, spaces taken out
+ *   decimal  the same, for a figure that is not an amount (a weight)
  *   select   the value of one of the options, as a string
  *
  * @param array $column the column's definition
@@ -1653,6 +1654,19 @@ function pg_list_edit_parse($column, $raw)
 
             if (preg_match('/^[0-9]+([.,][0-9]+)*$/', $value) !== 1) {
                 return $fail(lang(array('string' => '{var:1} takes an amount, such as {var:2}.', 'vars' => array($label, pg_format_number(12.5, 2)))));
+            }
+
+            return $pass($value);
+
+        case 'decimal':
+            $value = preg_replace('/[\s\x{00A0}]+/u', '', $value);
+
+            if (($value === '') && !empty($column['empty'])) {
+                return $pass('');
+            }
+
+            if (preg_match('/^[0-9]+([.,][0-9]+)*$/', $value) !== 1) {
+                return $fail(lang(array('string' => '{var:1} takes a number, such as {var:2}.', 'vars' => array($label, pg_format_number(1.5, 1)))));
             }
 
             return $pass($value);

@@ -486,7 +486,7 @@ function pg_product_list_columns($view, $quick_edit)
         'last_modified' => '10rem', 'out_of_stock_date' => '10rem',
     );
     // The input each quick edit field type opens as.
-    $inputs = array('text' => 'text', 'select' => 'select', 'money' => 'money', 'integer' => 'number');
+    $inputs = array('text' => 'text', 'select' => 'select', 'money' => 'money', 'integer' => 'number', 'decimal' => 'number');
 
     $spec = function ($code, $heading) use ($view, $sql, $kinds, $widths, $quick_edit, $inputs) {
         $column = array('heading' => $heading, 'kind' => $kinds[$code] ?? 'text');
@@ -499,8 +499,11 @@ function pg_product_list_columns($view, $quick_edit)
             $column['sort'] = $sql[$code];
         }
 
-        if (isset($quick_edit[$code]['type'], $inputs[$quick_edit[$code]['type']])) {
-            $column['editable'] = $inputs[$quick_edit[$code]['type']];
+        // The ID column changes the product code (pg_pb_quick_edit_field_of()).
+        $field = $quick_edit ? pg_pb_quick_edit_field_of($code) : $code;
+
+        if (isset($quick_edit[$field]['type'], $inputs[$quick_edit[$field]['type']])) {
+            $column['editable'] = $inputs[$quick_edit[$field]['type']];
         }
 
         return $column;
@@ -983,6 +986,22 @@ function pg_product_list_row($product, $view, $context)
             case 'out_of_stock_date':
                 $cells[$code] = pg_list_cell(get_relative_time(array('timestamp' => $product['out_of_stock_timestamp'])));
                 break;
+        }
+    }
+
+    // Every other value the product screen changes opens as a field in
+    // quick edit (pg_pb_quick_edit_more_fields()).
+    $more = pg_pb_quick_edit_more_fields();
+
+    foreach (array_keys($cells) as $code) {
+        $field = pg_pb_quick_edit_field_of($code);
+
+        if (isset($more[$field], $quick_edit[$field])) {
+            $attributes = pg_list_edit_cell_attributes($quick_edit, $field, $id, pg_pb_quick_edit_value($field, $product));
+
+            if ($attributes) {
+                $cells[$code]['attributes'] = array_merge($cells[$code]['attributes'] ?? array(), array_map('strval', $attributes));
+            }
         }
     }
 
