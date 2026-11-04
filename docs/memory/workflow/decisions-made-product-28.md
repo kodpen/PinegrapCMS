@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-28
-description: Decisions list, product part 28 (2026-11-04 afternoon on): a changed expense updates its active repeat; a duplicated profile starts disabled; the API does not delete store credit
+description: Decisions list, product part 28 (2026-11-04 afternoon on): a changed expense updates its active repeat; a duplicated profile starts disabled; the new logo; the API does not delete store credit
 ---
 
 ## Where are the rules and the earlier parts?
