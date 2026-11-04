@@ -480,7 +480,7 @@ foreach ($lines as $line) {
             ' . ($output_line_thumbs
                 ? '<td class="align-middle" style="width:3.5rem">' . erp_product_thumb((string) ($line['image_name'] ?? ''), 40) . '</td>'
                 : '') . '
-            <td class="align-middle">' . h($line['description'])
+            <td class="align-middle text-break" style="min-width:12rem">' . h($line['description'])
                 . ((trim((string) ($line['withholding_code'] ?? '')) !== '')
                     ? '<div class="small fg-secondary">' . h(lang(array('string' => 'VAT withholding {var:1}: {var:2}', 'vars' => array(
                         erp_withholding_label((string) $line['withholding_code'], (float) $line['withholding_rate'], false),
@@ -516,7 +516,7 @@ if (function_exists('erp_stock_ready') && erp_stock_ready() && ((string) $invoic
 
         $stock_rows .= '
                         <tr>
-                            <td class="align-middle">' . h($product_name) . ((trim((string) $move['product_sku']) !== '') ? '<div class="small fg-secondary font-monospace">' . h($move['product_sku']) . '</div>' : '') . '</td>
+                            <td class="align-middle text-break" style="min-width:10rem">' . h($product_name) . ((trim((string) $move['product_sku']) !== '') ? '<div class="small fg-secondary font-monospace">' . h($move['product_sku']) . '</div>' : '') . '</td>
                             <td class="align-middle">' . h($stock_kinds[(string) $move['kind']] ?? (string) $move['kind']) . '</td>
                             <td class="align-middle">' . h(erp_stock_effect_text($move)) . '</td>
                             <td class="align-middle text-end text-nowrap" data-sort="' . (int) $move['unit_cost'] . '">' . h(erp_money_out((int) $move['unit_cost'])) . '</td>

@@ -126,7 +126,7 @@ if (!$_POST) {
                                 <label for="order_id" class="form-label">' . lang('Order') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'select', 'id' => 'order_id', 'name' => 'order_id',
-                                    'class' => 'form-control', 'options' => $order_options)) . '
+                                    'class' => 'form-control', 'data-pg-combobox' => '', 'options' => $order_options)) . '
                                 <div class="form-text">' . lang('Completed orders that are linked to a contact or an account and have not been invoiced yet. Orders still awaiting payment are marked.') . '</div>
                             </div>
                         </div>
@@ -149,6 +149,7 @@ if (!$_POST) {
         </div>
     </div>
 </main>' .
+    get_date_picker_format() . pg_fields_script() .
     output_footer();
 
     $liveform->remove_form();
