@@ -607,6 +607,66 @@ function ws_fold($text)
 }
 
 /**
+ * A search phrase as an SQL condition over some columns, with the fold of
+ * ws_fold(): one of the columns holds the phrase as typed, or under Turkish
+ * case rules, or with İ, I, ı and i as one letter (pg_list_search_where()'s
+ * three alternatives, so "plani" and "PLANI" find "Planı"). The values are
+ * escaped into the text, % and _ stand for themselves. '' for an empty
+ * phrase. Pure but for the escaping.
+ *
+ * @param string   $search
+ * @param string[] $columns SQL expressions
+ * @param string   $charset the connection charset CONVERT() names
+ *                          (pg_list_search_connection_charset()), '' for the
+ *                          plain match only
+ * @return string "(… OR …)" or ''
+ */
+function ws_search_like_sql($search, $columns, $charset)
+{
+    $search = trim((string) $search);
+
+    if ($search === '') {
+        return '';
+    }
+
+    $where = pg_list_search_where(array($search), $columns, array(), (string) $charset);
+    $sql = pg_db_bind($where['sql'], $where['params'], 'escape');
+
+    return ($sql === null) ? '(1 = 0)' : $sql;
+}
+
+/**
+ * A LIKE '%…%' condition on a column that finds the words the way ws_fold()
+ * does: utf8mb4_unicode_ci folds I with i but never with ı, so "YANIT" and
+ * "yanit" missed "yanıt". The plain LIKE stays (it keeps the collation's ş/s
+ * folding); a word with an i letter adds the column with İ and ı replaced by
+ * i (REPLACE is case-sensitive, I already equals i) against the folded word.
+ * The scan is the same, a '%…%' pattern uses no index either way.
+ *
+ * @param string      $column  a column name the caller wrote, never input
+ * @param string      $query
+ * @param string|null $charset connection charset for CONVERT; null reads it
+ *                             (pg_list_search_connection_charset())
+ * @return string parenthesised SQL condition
+ */
+function ws_text_like_sql($column, $query, $charset = null)
+{
+    $query = (string) $query;
+
+    if ($charset === null) {
+        $charset = function_exists('pg_list_search_connection_charset') ? pg_list_search_connection_charset() : '';
+    }
+
+    $sql = $column . " LIKE '%" . e(escape_like($query)) . "%'";
+
+    if (in_array($charset, array('utf8', 'utf8mb4'), true) && preg_match('/[iIıİ]/u', $query)) {
+        $sql .= " OR REPLACE(REPLACE(CONVERT(" . $column . ' USING ' . $charset . "), 'İ', 'i'), 'ı', 'i') LIKE '%" . e(escape_like(ws_fold($query))) . "%'";
+    }
+
+    return '(' . $sql . ')';
+}
+
+/**
  * Where a needle first stands in a text, case and dotted or dotless i
  * ignored (ws_fold()).
  *

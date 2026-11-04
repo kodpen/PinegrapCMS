@@ -17,7 +17,7 @@ description: Plan (owner 2026-10-31): Pinegrap's own image editor, a core modal 
 - `image-editor-visuals.md`: the prototype screens the owner approved, in `plans/image-editor/`, and the prototype's source. Look at the screen of a step before starting it; the work follows them.
 - `image-editor-design.md`: parts, the call, the look, the document model.
 - `image-editor-server.md`: browser and server work, the save pipeline, versions, security.
-- `image-editor-steps.md` (E1-E10), `image-editor-steps-2.md` (E11-E20), `-steps-3.md` (E21-E25) and `-steps-4.md` (E26-E29); `image-editor-workers.md`: which steps run side by side, a step's files, the review.
+- `image-editor-steps.md` (E1-E10), `image-editor-steps-2.md` (E11-E20), `-steps-3.md` (E21-E25), `-steps-4.md` (E26-E29) and `-steps-5.md` (E23b, E30); `image-editor-workers.md`: which steps run side by side, a step's files, the review.
 - `image-editor-animation.md` and `image-editor-video.md`: the plans held with this one.
 
 ## Which decisions bind it?

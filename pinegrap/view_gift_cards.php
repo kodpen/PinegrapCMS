@@ -17,6 +17,8 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/commerce_list.php');
 
 // A gift card's notes changed in place on the list (pg_list_edit_request() in
 // includes/fn/output.php). Answered in JSON, before anything below draws the
@@ -210,90 +212,70 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $gift_cards = mysqli_fetch_items($result);
 
-    $output_rows = '';
+    // Every gift card is printed: the list table driver sorts and searches
+    // them in the browser (browser mode).
+    $list_rows = array();
 
-    // if there is at least one result to display
-    if ($gift_cards) {
+    foreach ($gift_cards as $gift_card) {
+        $id = (int) $gift_card['id'];
+        $expired = ($gift_card['expiration_date'] != '0000-00-00') && ($gift_card['expiration_date'] < $current_date);
 
-        foreach ($gift_cards as $gift_card) {
-            // If this gift card has a balance and has not expired,
-            // then use class that shows green color.
-            if (
-                ($gift_card['balance'])
-                &&
-                (
-                    ($gift_card['expiration_date'] == '0000-00-00')
-                    || ($gift_card['expiration_date'] >= $current_date)
-                )
-            ) {
-                $output_status_class = 'status_enabled fg-success';
-                $output_state = '';
-
-            // Otherwise this gift card has expired or is used up, so use class
-            // that shows red color and say which.
-            } else {
-                $output_status_class = 'status_disabled fg-danger';
-                $output_state = (($gift_card['expiration_date'] != '0000-00-00') && ($gift_card['expiration_date'] < $current_date))
-                    ? pg_list_status_word(lang('Expired'))
-                    : pg_list_status_word(lang('No balance'));
-            }
-
-            $output_expiration_date = '';
-
-            if ($gift_card['expiration_date'] != '0000-00-00') {
-                $output_expiration_date = get_absolute_time(array('timestamp' => strtotime($gift_card['expiration_date']), 'type' => 'date'));
-            }
-
-            $output_from_name = '';
-            $output_delivery_date = '';
-
-            // If there is a recipient, then output order info.
-            if ($gift_card['recipient_email_address'] != '') {
-                if ($gift_card['from_name'] != '') {
-                    $output_from_name = h($gift_card['from_name']);
-
-                } else {
-                    $output_from_name = lang('Anonymous');
-                }
-                
-                if ($gift_card['delivery_date'] == '0000-00-00') {
-                    $output_delivery_date = lang('Immediate');
-
-                } else {
-                    $output_delivery_date = get_absolute_time(array('timestamp' => strtotime($gift_card['delivery_date']), 'type' => 'date'));
-                }
-            }
-
-            $created_username = '';
-            
-            if ($gift_card['created_username']) {
-                $created_username = lang(array('string'=>'by {var:1}','vars'=>array( h($gift_card['created_username']) ) ) );
-            }
-            
-            // The cells a quick edit can change, drawn by the same function
-            // that draws them again in the answer to an edit. Notes on more
-            // than one line change only on the gift card's screen.
-            $list_cells = pg_gift_card_list_cells($gift_card);
-
-            $output_rows .=
-                '<tr>
-                    <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_gift_card.php?id=' . $gift_card['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                        <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
-                    </td>
-                    <td class="chart_label align-middle"><span class=" badge fw-lighter ' . $output_status_class . '">' . output_gift_card_code($gift_card['code']) . '</span>' . $output_state . '</td>
-                    <td class="align-middle text-end"><span class=" badge theme-secondary  fw-lighter">' . pg_format_money($gift_card['balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
-                    <td class="align-middle text-end"><span class=" badge theme-primary  fw-lighter">' . pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
-                    <td class="align-middle">' . $output_expiration_date . '</td>
-                    <td class="' . $list_cells['notes']['class'] . '"' . (pg_gift_card_notes_fit_list($gift_card['notes']) ? pg_list_edit_cell($quick_edit, 'notes', $gift_card['id'], $gift_card['notes']) : '') . '>' . $list_cells['notes']['html'] . '</td>
-                    <td class="align-middle">' . $output_from_name . '</td>
-                    <td class="align-middle">' . h($gift_card['recipient_email_address']) . '</td>
-                    <td class="align-middle">' . $output_delivery_date . '</td>
-                    <td class="align-middle">' . get_relative_time(array('timestamp' => $gift_card['created_timestamp'])) . ' ' . $created_username . '</td>
-                    <td class="' . $list_cells['last_modified']['class'] . '" data-pg-cell="last_modified">' . $list_cells['last_modified']['html'] . '</td>
-                </tr>';
+        // Green while it has a balance and has not expired; red otherwise,
+        // with the reason under the code.
+        if ($gift_card['balance'] && !$expired) {
+            $output_status_class = 'status_enabled fg-success';
+            $output_state = '';
+        } else {
+            $output_status_class = 'status_disabled fg-danger';
+            $output_state = $expired ? pg_list_status_word(lang('Expired')) : pg_list_status_word(lang('No balance'));
         }
+
+        $expires = ($gift_card['expiration_date'] != '0000-00-00') ? strtotime($gift_card['expiration_date']) : 0;
+        $output_from_name = '';
+        $output_delivery_date = '';
+        $delivery = 0;
+
+        // A card with a recipient says who sent it and when it goes out.
+        if ($gift_card['recipient_email_address'] != '') {
+            $output_from_name = ($gift_card['from_name'] != '') ? h($gift_card['from_name']) : h(lang('Anonymous'));
+
+            if ($gift_card['delivery_date'] == '0000-00-00') {
+                $output_delivery_date = h(lang('Immediate'));
+            } else {
+                $delivery = strtotime($gift_card['delivery_date']);
+                $output_delivery_date = get_absolute_time(array('timestamp' => $delivery, 'type' => 'date'));
+            }
+        }
+
+        // The cells a quick edit can change, drawn by the same function that
+        // draws them again in the answer to an edit. Notes on more than one
+        // line change only on the gift card's screen.
+        $list_cells = pg_gift_card_list_cells($gift_card);
+
+        $list_rows[] = array(
+            'id' => $id,
+            'cells' => array(
+                'code' => pg_list_cell(pg_commerce_list_open_link('edit_gift_card.php?id=' . $id, '<span class="badge fw-lighter ' . $output_status_class . '">' . output_gift_card_code($gift_card['code']) . '</span>') . $output_state, 'align-middle', array('data-pg-sort-value' => (string) $gift_card['code'])),
+                'balance' => pg_list_cell('<span class="badge theme-secondary fw-lighter">' . pg_format_money($gift_card['balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span>', 'align-middle', array('data-pg-sort-value' => (string) (int) $gift_card['balance'])),
+                'original_amount' => pg_list_cell('<span class="badge theme-primary fw-lighter">' . pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span>', 'align-middle', array('data-pg-sort-value' => (string) (int) $gift_card['amount'])),
+                'expiration_date' => pg_list_cell($expires ? get_absolute_time(array('timestamp' => $expires, 'type' => 'date')) : '', 'align-middle', array('data-pg-sort-value' => (string) (int) $expires)),
+                'notes' => pg_list_cell($list_cells['notes']['html'], $list_cells['notes']['class'], pg_gift_card_notes_fit_list($gift_card['notes']) ? pg_list_edit_cell_attributes($quick_edit, 'notes', $id, $gift_card['notes']) : array()),
+                'from' => pg_list_cell($output_from_name),
+                'recipient' => pg_list_cell(h($gift_card['recipient_email_address'])),
+                'delivery_date' => pg_list_cell($output_delivery_date, 'align-middle', array('data-pg-sort-value' => (string) (int) $delivery)),
+                'created' => pg_list_cell(pg_list_when($gift_card['created_timestamp'], (string) $gift_card['created_username']), 'align-middle', array('data-pg-sort-value' => (string) (int) $gift_card['created_timestamp'])),
+                'last_modified' => pg_list_cell($list_cells['last_modified']['html'], $list_cells['last_modified']['class'], array('data-pg-sort-value' => (string) (int) $gift_card['last_modified_timestamp'])),
+            ),
+        );
     }
+
+    $list = pg_list_table_printed(array(
+        'list' => 'view_gift_cards',
+        'columns' => pg_commerce_list_specs(pg_gift_card_list_columns(), $sort_columns, $quick_edit),
+        'levels' => $sort_levels,
+        'rows' => $list_rows,
+        'edit' => array('url' => 'view_gift_cards.php', 'columns' => $quick_edit),
+    ));
 
     // Get active balance.
 
@@ -355,58 +337,19 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
                 ' . pg_screen_toolbar(array(
                     'primary'   => array('label' => lang('Create'), 'url' => 'add_gift_card.php', 'icon' => 'bi-plus-circle'),
                     'secondary' => '<form id="export_form" class="disable_shortcut" method="get"><button type="submit" name="submit_data" value="Export Gift Cards" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang('Export') . '</button></form>',
-                    'search'    => pg_list_sort_menu('view_gift_cards.php', $sort_columns, $sort_levels, $sort_default),
+                    'search'    => array(pg_list_table_search_box('view_gift_cards'), pg_list_sort_menu('view_gift_cards.php', $sort_columns, $sort_levels, $sort_default)),
                 )) . '
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative">
-                        <table class="chart table-hover table " style="width:100%;display:none"' . pg_list_edit_table('view_gift_cards.php', $quick_edit) . '>
-                            <thead>
-                                <tr>
-                                    <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                    <th>' . get_column_heading(lang('Code'), $sort_levels, '', '', 'code') . '</th>
-                                    <th class="text-center">' . get_column_heading(lang('Balance'), $sort_levels, '', '', 'balance') . '</th>
-                                    <th class="text-center">' . get_column_heading(lang('Original Amt'), $sort_levels, '', '', 'original_amount') . '</th>
-                                    <th>' . get_column_heading(lang('Expiration Date'), $sort_levels, '', '', 'expiration_date') . '</th>
-                                    <th>' . get_column_heading(lang('Notes'), $sort_levels, '', '', 'notes') . '</th>
-                                    <th>' . get_column_heading(lang('From'), $sort_levels, '', '', 'from') . '</th>
-                                    <th>' . get_column_heading(lang('Recipient'), $sort_levels, '', '', 'recipient') . '</th>
-                                    <th>' . get_column_heading(lang('Delivery Date'), $sort_levels, '', '', 'delivery_date') . '</th>
-                                    <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>' . $output_rows . '</tbody>
-                        </table>
-                    </div>
+                <div class="d-flex flex-wrap gap-5 mb-3 small">
+                    <div><span class="fg-secondary">' . lang('Active Balance') . '</span> <strong>' . pg_format_money($active_balance / 100, BASE_CURRENCY_SYMBOL) . '</strong></div>
+                    <div><span class="fg-secondary">' . lang('Expired Balance') . '</span> <strong>' . pg_format_money($expired_balance / 100, BASE_CURRENCY_SYMBOL) . '</strong></div>
+                    <div><span class="fg-secondary">' . lang('Total Balance') . '</span> <strong>' . pg_format_money($total_balance / 100, BASE_CURRENCY_SYMBOL) . '</strong></div>
                 </div>
-                <div class="d-flow-root">
-                    <div class="col-12 sm:col-6 md:col-4 lg:col-3  sm:float-end">
-                        <div class="card my-7 border-primary">
-                            <div class="card-body ">
-                                <div class="row">
-                                    <div class="col-12 text-center">
-                                        <h5>' . lang('Active Balance') . '</h5>
-                                        <p class="fw-bolder">' . pg_format_money($active_balance / 100, BASE_CURRENCY_SYMBOL) . '</p>
-                                        <hr/>
-                                    </div>
-                                    <div class="col-12 text-center">
-                                        <h5>' . lang('Expired Balance') . '</h5>
-                                        <p class="fw-bolder">' . pg_format_money($expired_balance / 100, BASE_CURRENCY_SYMBOL) . '</p>
-                                        <hr/>
-                                    </div>
-                                    <div class="col-12 text-center ">
-                                        <h5>' . lang('Total Balance') . '</h5>
-                                        <p class="fw-bolder">' . pg_format_money($total_balance / 100, BASE_CURRENCY_SYMBOL) . '</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                ' . pg_list_table_html($list['source'], $list['page'], lang('All Gift Cards')) . '
             </div>
         </div>
     
-</main>' .
+</main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
     output_footer();
 
     $liveform->remove_form();

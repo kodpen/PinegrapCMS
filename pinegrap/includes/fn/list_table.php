@@ -50,6 +50,14 @@ function pg_list_table_definitions()
         'view_contacts' => array('file' => 'includes/fn/contact_list.php', 'source' => 'pg_contact_list_source'),
         'view_submitted_forms' => array('file' => 'includes/fn/submitted_form_list.php', 'source' => 'pg_submitted_form_list_source'),
         'view_products' => array('file' => 'includes/fn/product_list.php', 'source' => 'pg_product_list_source'),
+        'view_log' => array('file' => 'includes/fn/site_log_list.php', 'source' => 'pg_site_log_list_source'),
+        'view_audit_log' => array('file' => 'includes/fn/audit_list.php', 'source' => 'pg_audit_list_source'),
+        'view_waf_log' => array('file' => 'includes/fn/waf_log_list.php', 'source' => 'pg_waf_log_list_source'),
+        'view_stock_moves' => array('file' => 'includes/fn/stock_moves.php', 'source' => 'pg_stock_move_list_source'),
+        'view_commissions' => array('file' => 'includes/fn/commission_list.php', 'source' => 'pg_commission_list_source'),
+        'view_recurring_commission_profiles' => array('file' => 'includes/fn/commission_list.php', 'source' => 'pg_commission_profile_list_source'),
+        'mail_queue' => array('file' => 'includes/fn/mail_queue_list.php', 'source' => 'pg_mail_queue_list_source'),
+        'mail_queue_sms' => array('file' => 'includes/fn/mail_queue_list.php', 'source' => 'pg_sms_queue_list_source'),
     );
 }
 
@@ -771,7 +779,19 @@ function pg_list_table_texts()
         'all' => lang(array('string' => 'All {var:1} rows selected', 'vars' => array('%n'))),
         'clear' => lang('Clear selection'),
         'undo' => lang('Undo the previous selection'),
-        'sort' => lang('Sort by this column'),
+        'sort' => lang('Sort (Shift+click adds a level)'),
+        'sortBy' => lang('Sort by'),
+        'ascending' => lang('Ascending'),
+        'descending' => lang('Descending'),
+        'sortAsc' => lang(array('string' => '{var:1}, ascending', 'vars' => array('%s'))),
+        'sortDesc' => lang(array('string' => '{var:1}, descending', 'vars' => array('%s'))),
+        'sortReverse' => lang('Reverse the direction'),
+        'sortRemove' => lang('Remove this sort level'),
+        'sortThen' => lang('Then sort by'),
+        'sortAdd' => lang('Add'),
+        'sortReset' => lang('Reset the sort order'),
+        'selectAll' => lang('Select all'),
+        'deselectAll' => lang('Deselect all'),
         'columns' => lang('Columns'),
         'details' => lang('Details'),
         'close' => lang('Close'),
@@ -813,6 +833,7 @@ function pg_list_table_html(array $source, array $page, $label, $actions = '')
     $output = '<div class="pg-list-table" data-pg-list-table="' . h($source['list']) . '"'
         . ' data-pg-list-mode="' . ($source['all'] ? 'browser' : 'server') . '"'
         . (!empty($source['printed']) ? ' data-pg-list-printed="1"' : '')
+        . (!empty($source['ids_field']) ? ' data-pg-list-ids-field="' . h($source['ids_field']) . '"' : '')
         . ' data-pg-list-columns="' . h((string) json_encode(pg_list_table_client_columns($columns), $json)) . '"'
         . ' data-pg-list-params="' . h((string) json_encode((object) $source['params_out'], $json)) . '"'
         . ' data-pg-list-sort="' . h(pg_list_sort_value($source['levels'])) . '"'
@@ -868,6 +889,10 @@ function pg_list_table_html(array $source, array $page, $label, $actions = '')
         . '<button type="button" class="btn btn-sm btn-text theme-secondary pg-list-table-details-close" aria-label="' . h(lang('Close')) . '" title="' . h(lang('Close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>'
         . '<div class="pg-list-table-details-body"></div></aside></div>';
     $output .= '<div class="visually-hidden" aria-live="polite" data-pg-list-live></div>';
+
+    if (!empty($source['ids_field'])) {
+        $output .= '<span class="pg-list-table-ids" hidden></span>';
+    }
 
     return $output . '</div>';
 }
@@ -1036,7 +1061,11 @@ function pg_list_table_selected_ids(array $source, array $selection, $limit = 10
  */
 function pg_list_table_printed_lists()
 {
-    return array('view_menus', 'view_short_links');
+    return array(
+        'view_menus', 'view_short_links',
+        'view_orders', 'view_gift_cards', 'view_key_codes', 'view_shipping_methods',
+        'view_styles', 'view_themes', 'view_design_files', 'view_containers', 'view_comments',
+    );
 }
 
 /**
@@ -1055,7 +1084,11 @@ function pg_list_table_printed_lists()
  *                    'sort'), 'levels' (the sort, e.g. pg_list_state()'s
  *                    'sorts'), 'rows' (list of array('id', 'class', 'cells'
  *                    => key => pg_list_cell())), 'edit' (quick edit, as
- *                    pg_list_table_source() takes it)
+ *                    pg_list_table_source() takes it), 'ids_field' (the
+ *                    name of the form field the selected ids are posted in,
+ *                    e.g. 'styles[]', for a screen whose bulk endpoint reads
+ *                    a list of ids: the driver keeps one hidden field per
+ *                    selected row inside the list)
  * @return array array('source' => pg_list_table_source(), 'page' => the
  *               page pg_list_table_html() prints)
  */
@@ -1079,6 +1112,7 @@ function pg_list_table_printed(array $spec)
 
     $source['levels'] = pg_list_table_levels(isset($spec['levels']) && is_array($spec['levels']) ? $spec['levels'] : array(), $source['columns']);
     $source['printed'] = in_array($source['list'], pg_list_table_printed_lists(), true);
+    $source['ids_field'] = (isset($spec['ids_field']) && is_string($spec['ids_field']) && preg_match('/^[a-z][a-z0-9_]*(\[\])?$/', $spec['ids_field'])) ? $spec['ids_field'] : '';
     $rows = array_values(isset($spec['rows']) && is_array($spec['rows']) ? $spec['rows'] : array());
 
     return array(
@@ -1145,4 +1179,66 @@ function pg_list_table_search_box($list)
         . '<span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>'
         . '<input type="search" class="form-ghost" data-pg-list-search="' . h($list) . '" placeholder="' . h(lang('Search')) . '" aria-label="' . h(lang('Search')) . '">'
         . '</label>';
+}
+
+/**
+ * A date cell of a printed list: the relative time and who made the change,
+ * sorted by the time itself.
+ *
+ * @param mixed  $timestamp Unix seconds
+ * @param string $username  '' when not known
+ * @return array pg_list_cell()
+ */
+function pg_list_table_when_cell($timestamp, $username = '')
+{
+    return pg_list_cell(pg_list_when($timestamp, (string) $username), 'align-middle', array('data-pg-sort-value' => (int) $timestamp));
+}
+
+/**
+ * A yes/no cell of a printed list: a check mark that says Yes, or nothing;
+ * sorted by 1 or 0.
+ *
+ * @param mixed $on
+ * @return array pg_list_cell()
+ */
+function pg_list_table_check_cell($on)
+{
+    return pg_list_cell($on ? '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>' : '',
+        'align-middle', array('data-pg-sort-value' => $on ? 1 : 0));
+}
+
+/**
+ * The SEO column of a list: its heading, a narrow width and the score it
+ * sorts by. The bar sits in this column of its own, never under the
+ * record's name, so rows keep one height.
+ *
+ * @param string $sort the SQL expression of the score ('' when the list
+ *                     does not sort by it)
+ * @return array spec, as pg_list_table_column() takes it
+ */
+function pg_list_table_seo_column($sort)
+{
+    return array('heading' => lang('SEO'), 'width' => '7.5rem', 'kind' => 'badge', 'sort' => (string) $sort);
+}
+
+/**
+ * The SEO column's cell: the score bar with its number, opening the
+ * record's analysis; a fresh analysis redraws it (data-pg-seo-bar). Needs
+ * seo.php.
+ *
+ * @param string $type 'page' or 'product'
+ * @param int    $id
+ * @param array  $row  the record with seo_score, seo_flags and
+ *                     seo_analysis_current
+ * @return array pg_list_cell()
+ */
+function pg_list_table_seo_cell($type, $id, array $row)
+{
+    $key = $type . ':' . (int) $id;
+    $url = 'get_seo_analysis.php?type=' . rawurlencode($type) . '&amp;id=' . (int) $id . get_token_query_string_field();
+
+    return pg_list_cell('<a href="javascript:void(0)" class="pg-seo-open pg-list-table-seo text-decoration-none" data-pg-seo-bar="' . h($key) . '"'
+        . ' aria-label="' . h(pg_seo_link_name($row)) . '" title="' . h(lang('SEO Detail')) . '" data-seo-url="' . $url . '">'
+        . pg_seo_render_bar($row) . '</a>',
+        'align-middle', array('data-pg-sort-value' => pg_seo_row_scored($row) ? (int) $row['seo_score'] : -1));
 }

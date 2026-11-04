@@ -18,4 +18,5 @@ description: Header account menu (pg_account_menu()): fixed card, phone sheet, w
 - Menu rows carry no colour, logout included (`admin-screen-toolbar-rules.md`), and no `title` (every titled element gets a hover popover).
 
 ## Where did the keyboard shortcuts go?
-- Out of the menu (nobody found the accordion). `pg_shortcuts_dialog()` prints `#pg_shortcuts` on every screen; `?` outside a field opens it, and the search box offers a "Keyboard Shortcuts" chip (`command-palette.md`). On Apple devices the `kbd[data-pg-mod]` keys read ⌘.
+- Out of the menu (nobody found the accordion). `pg_shortcuts_dialog()` prints `#pg_shortcuts` on every screen; `?` outside a field opens it, and the search box offers a "Keyboard Shortcuts" chip (`command-palette.md`). On Apple devices every `[data-pg-mod]` reads ⌘ (`pg_shortcuts_init()`): the sheet's Ctrl keys and the Ctrl+K hints of the header field and the search box. Ctrl+Q keeps Ctrl (its row's third item is `false`): ⌘Q quits the browser.
+- The menu's rows never shrink (`#header .pg-usermenu > li { flex-shrink: 0 }`): the opened licence card shrank in the capped or phone-sheet column and hid Check License and Buy License below its edge.

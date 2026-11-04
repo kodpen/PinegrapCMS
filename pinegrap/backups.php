@@ -74,11 +74,16 @@ if($directory){
 		// download as if it were a backup.
 		$backup_incomplete = !$backup_is_archive && !is_file('data/backups/'.$backup_folder.'/sql.sql');
 		$backup_time = $backup_times[$backup_folder];
+		// A starter-site dump stays deletable, but its confirmation names
+		// what is lost: the installer offers only the dumps on disk.
+		$backup_delete_confirm = (!$backup_is_archive && pg_backup_is_starter_dump($backup_folder))
+			? lang(array('string' => 'Delete the backup {var:1} permanently? It is a starter site: a later install made from this copy no longer offers this language, and the panel does not bring the backup back.', 'vars' => array($backup_folder)))
+			: lang(array('string' => 'Delete the backup {var:1} permanently?', 'vars' => array($backup_folder)));
 		$output_rows .= '
 		<tr>
 			<td class="align-middle text-start actions-buttons">' . ($backup_incomplete ? '' : '
         	    <button type="submit" name="download_selected" value="Download '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . h(lang('Download')) . '" aria-label="' . h(lang(array('string' => 'Download {var:1}', 'vars' => array($backup_folder)))) . '"><i class="bi bi-download" aria-hidden="true"></i></button>') . '
-        	    <button type="submit" name="delete_selected"   value="Delete '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " data-confirm-content="' . h(lang(array('string' => 'Delete the backup {var:1} permanently?', 'vars' => array($backup_folder)))) . '" title="' . h(lang('Delete')) . '" aria-label="' . h(lang(array('string' => 'Delete {var:1}', 'vars' => array($backup_folder)))) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>
+        	    <button type="submit" name="delete_selected"   value="Delete '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " data-confirm-content="' . h($backup_delete_confirm) . '" title="' . h(lang('Delete')) . '" aria-label="' . h(lang(array('string' => 'Delete {var:1}', 'vars' => array($backup_folder)))) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>
         	</td>
 			<td>
 				'.h($backup_folder).'

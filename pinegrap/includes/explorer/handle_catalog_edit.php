@@ -168,6 +168,11 @@ function pg_explorer_handle_catalog_quick_edit($type, $request, $user)
             respond(array('status' => 'error', 'message' => lang('Stock is not tracked for this product.')));
         }
 
+        // Kept per location: one figure here would not say where.
+        if (pg_stock_screen_locations()) {
+            respond(array('status' => 'error', 'message' => lang('Stock is kept per location: change it on the product screen.')));
+        }
+
         $quick_number = pg_explorer_catalog_quick_quantity($quick_value);
 
         if ($quick_number === null) {

@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 $user = validate_user();
 validate_area_access($user, 'user');
 $liveform = new liveform('view_comments');
@@ -25,10 +26,6 @@ $liveform = new liveform('view_comments');
 // make sure the session values that this screen reads below actually exist
 if (isset($_SESSION['software']['comments']) == false) {
     $_SESSION['software']['comments'] = array();
-}
-
-if (isset($_SESSION['software']['comments']['query']) == false) {
-    $_SESSION['software']['comments']['query'] = '';
 }
 
 // The verified purchase filter: '' lists every comment, 'yes' the reviews of
@@ -75,10 +72,7 @@ if ($questions_ready) {
     }
 }
 
-// these are only ever appended to further below, so they have to start out empty
 $where = '';
-$output_rows = '';
-$number_of_results = 0;
 
 // The columns this list sorts by, in the order the table shows them.
 // pg_list_state() keeps the choice in the session as a code, so it survives
@@ -108,25 +102,9 @@ $order_by = pg_list_order_by($sort_levels, array(
     'submitted'      => 'created_timestamp',
 ));
 
-// get total number of comments
-$query = "SELECT COUNT(page_id) FROM comments";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-$row = mysqli_fetch_row($result);
-$all_comments = $row[0];
-
-
-$search_query = pg_search_lower($_SESSION['software']['comments']['query'] ?? '');
-
-// create where clause for sql
-$sql_search = "(LOWER(CONCAT_WS(',',  comments.name,comments.message,user.user_username)) LIKE '" . escape(pg_list_like_pattern($search_query)) . "')";
-
-// The search and the verified filter narrow the list together.
+// The verified and question filters narrow the list together; the search
+// box searches the printed rows in the browser.
 $conditions = array();
-
-if (($_SESSION['software']['comments']['query'] ?? '') != '') {
-    // Get only the results the user wanted in the search.
-    $conditions[] = $sql_search;
-}
 
 $sql_verified = pg_review_verified_filter_sql($verified);
 
@@ -198,115 +176,79 @@ while ($row = mysqli_fetch_assoc($result)) {
 // site (the page is not on it) and a badge saying where its page is.
 $bin_folders = array_flip(array_map('intval', (array) pg_recycle_bin_folder_ids()));
 
-// loop through styles in order to prepare to output them
+// Every comment the user may edit is printed: the list table driver sorts
+// and searches them in the browser (browser mode) and keeps a heading's sort
+// in the session.
+$list_rows = array();
+
 foreach ($comments as $comment) {
-    // if user does not have access then output error
-
-
-
     $folder_id = $comment['page_folder'];
     $binned = isset($bin_folders[(int) $comment['page_folder']]);
 
-
-    // Set checkmark in variable
-    $output_checkmark = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
-
-    // if user can access folder of page that comment published.
-    if (check_edit_access($folder_id) == true) {
-    
-
-        $output_link_url = 'edit_comment.php?id=' . $comment['id'];
-
-        // if comment published, then prepare to output check mark image
-        $output_published_check_mark='';
-        if ($comment['published'] == '1') {
-            $output_published_check_mark = $output_checkmark;
-        }   
-
-        // if comment featured, then prepare to output check mark image
-        $output_featured_check_mark='';
-        if ($comment['featured'] == '1') {
-            $output_featured_check_mark = $output_checkmark;
-        }   
-
-        // if publish cancel, then prepare to output check mark image
-        $output_publishcancel_check_mark='';
-        if ($comment['publish_cancel'] == '1') {
-            $output_publishcancel_check_mark = $output_checkmark;
-        }  
-
-        $created_username = '';
-        
-        if ($comment['created_username']) {
-            $created_username = ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($comment['created_username']) ) ) );
-        }else{
-            $created_username = ' ' . lang(array('string'=>'by [{var:1}]','vars'=>lang('Unknown') ) );
-        }
-        
-        $output_date_and_time ='';
-        if($comment['publish_date_and_time'] > 0 && $comment['publish_date_and_time'] != '0000-00-00 00:00:00'){
-            // In the site's date and time format, as Edit Comment shows it.
-            $output_date_and_time = h(prepare_form_data_for_output($comment['publish_date_and_time'], 'date and time', false));
-        }
-
-
-
-        
-        $output_reference_button = '';
-        $form_reference_code = '';
-        if ($binned) {
-            // The page is in the Recycle Bin: no address to go to.
-        }else if($comment['item_type'] === 'submitted_form'){
-            //if this is custom page check referance code from forms
-            $form_reference_code = $comment['reference_code'];
-            if($form_reference_code != ''){
-                $output_reference_button = '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " href="' . h(OUTPUT_PATH . get_page_name($comment['page_id']) . pg_comment_view_query('?r=' . $form_reference_code, $comment['id']) . '#c-' . $comment['id']) . '" title="' . lang('Go To Comment') . '"><i class="bi bi-link"></i></a>';
-            }
-
-        }else if($comment['item_type'] === 'product_group'){
-            //if this is product group check address name from product groups
-            $product_group_address_name = $comment['product_group_address_name'];
-            if($product_group_address_name != ''){
-                $output_reference_button = '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " href="' . h(OUTPUT_PATH . get_page_name($comment['page_id']) . '/' . $product_group_address_name . pg_comment_view_query('', $comment['id']) . '#c-' . $comment['id']) . '" title="' . lang('Go To Comment') . '"><i class="bi bi-link"></i></a>';
-            }
-        
-        }else if($comment['item_type'] === 'product'){
-            //if this is product group check address name from product groups
-            $product_address_name = $comment['product_address_name'];
-            if($product_address_name != ''){
-                $output_reference_button = '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " href="' . h(OUTPUT_PATH . get_page_name($comment['page_id']) . '/' . $product_address_name . pg_comment_view_query('', $comment['id']) . '#c-' . $comment['id']) . '" title="' . lang('Go To Comment') . '"><i class="bi bi-link"></i></a>';
-            }
-        }else if($comment['item_type'] === ''){
-            $output_reference_button = '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " href="' . h(OUTPUT_PATH . get_page_name($comment['page_id']) . pg_comment_view_query('', $comment['id']) . '#c-' . $comment['id']) . '" title="' . lang('Go To Comment') . '"><i class="bi bi-link"></i></a>';
-        }
-
-
-
-
-
-
-        $number_of_results++;
-
-        
-
-
-        $output_rows .= '
-            <tr>
-                <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                    ' . $output_reference_button . '
-                </td>
-                <td class="align-middle chart_label">' . pg_comment_list_name($comment['name']) . ((int) $comment['verified_order_id'] > 0 ? ' <span class="badge theme-success fw-light">' . h(lang('Verified purchase')) . '</span>' : '') . (($comment['kind'] ?? 'comment') !== 'comment' ? ' <span class="badge ' . ((($comment['kind'] === 'question') && ((int) $comment['answer_count'] === 0)) ? 'theme-warning' : 'theme-secondary') . ' fw-light">' . h(pg_product_question_badge($comment['kind'], (int) $comment['answer_count'] > 0)) . '</span>' : '') . ($binned ? ' <span class="badge theme-secondary fw-light">' . h(lang('In the Recycle Bin')) . '</span>' : '') . '</td>
-                <td class="align-middle text-center">' . $output_published_check_mark . '</td>
-                <td class="align-middle text-center">' . $output_featured_check_mark . '</td>
-                <td class="align-middle"><span class="badge theme-primary fw-light">'.$output_date_and_time.'</span></td>
-                <td class="align-middle text-center">' . $output_publishcancel_check_mark . '</td>
-                <td class="align-middle">' . (pg_comment_file_is_image($comment['file_name'] ?? '') ? '<img src="' . h(OUTPUT_PATH . encode_url_path($comment['file_name'])) . '" alt="' . h(lang('Photo')) . '" loading="lazy" class="img-thumbnail float-start me-2" style="width: 50px; height: 50px; object-fit: cover">' : '') . '<p>' . h(truncate($comment['message'], 84, $dots = "...")) . '</p></td>
-                <td class="align-middle">' . get_relative_time(array('timestamp' =>  $comment['created_timestamp'])) . $created_username . '</td>
-            </tr>';
+    // Only comments on pages in folders the user can edit.
+    if (check_edit_access($folder_id) != true) {
+        continue;
     }
-        
+
+    $output_date_and_time = '';
+
+    if ($comment['publish_date_and_time'] > 0 && $comment['publish_date_and_time'] != '0000-00-00 00:00:00') {
+        // In the site's date and time format, as Edit Comment shows it.
+        $output_date_and_time = h(prepare_form_data_for_output($comment['publish_date_and_time'], 'date and time', false));
+    }
+
+    // The comment's place on the site, when it has one.
+    $comment_url = '';
+
+    if ($binned) {
+        // The page is in the Recycle Bin: no address to go to.
+    } else if (($comment['item_type'] === 'submitted_form') && ($comment['reference_code'] != '')) {
+        $comment_url = OUTPUT_PATH . get_page_name($comment['page_id']) . pg_comment_view_query('?r=' . $comment['reference_code'], $comment['id']);
+    } else if (($comment['item_type'] === 'product_group') && ($comment['product_group_address_name'] != '')) {
+        $comment_url = OUTPUT_PATH . get_page_name($comment['page_id']) . '/' . $comment['product_group_address_name'] . pg_comment_view_query('', $comment['id']);
+    } else if (($comment['item_type'] === 'product') && ($comment['product_address_name'] != '')) {
+        $comment_url = OUTPUT_PATH . get_page_name($comment['page_id']) . '/' . $comment['product_address_name'] . pg_comment_view_query('', $comment['id']);
+    } else if ($comment['item_type'] === '') {
+        $comment_url = OUTPUT_PATH . get_page_name($comment['page_id']) . pg_comment_view_query('', $comment['id']);
+    }
+
+    $output_reference_button = ($comment_url === '') ? '' : '<a class="btn btn-sm btn-text theme-secondary" href="' . h($comment_url . '#c-' . $comment['id']) . '" title="' . h(lang('Go To Comment')) . '" aria-label="' . h(lang('Go To Comment')) . '"><i class="bi bi-link" aria-hidden="true"></i></a>';
+
+    $output_name = pg_comment_list_name($comment['name'])
+        . ((int) $comment['verified_order_id'] > 0 ? ' <span class="badge theme-success fw-light">' . h(lang('Verified purchase')) . '</span>' : '')
+        . (($comment['kind'] ?? 'comment') !== 'comment' ? ' <span class="badge ' . ((($comment['kind'] === 'question') && ((int) $comment['answer_count'] === 0)) ? 'theme-warning' : 'theme-secondary') . ' fw-light">' . h(pg_product_question_badge($comment['kind'], (int) $comment['answer_count'] > 0)) . '</span>' : '')
+        . ($binned ? ' <span class="badge theme-secondary fw-light">' . h(lang('In the Recycle Bin')) . '</span>' : '');
+
+    $list_rows[] = array(
+        'id' => $comment['id'],
+        'cells' => array(
+            'name' => pg_list_cell('<a href="edit_comment.php?id=' . (int) $comment['id'] . '" data-pg-open>' . $output_name . '</a>'),
+            'published' => pg_list_table_check_cell($comment['published'] == '1'),
+            'featured' => pg_list_table_check_cell($comment['featured'] == '1'),
+            'scheduled' => pg_list_cell(($output_date_and_time === '') ? '' : '<span class="badge theme-primary fw-light">' . $output_date_and_time . '</span>', 'align-middle', array('data-pg-sort-value' => ($output_date_and_time === '') ? '' : (string) $comment['publish_date_and_time'])),
+            'publish_cancel' => pg_list_table_check_cell($comment['publish_cancel'] == '1'),
+            'message' => pg_list_cell((pg_comment_file_is_image($comment['file_name'] ?? '') ? '<img src="' . h(OUTPUT_PATH . encode_url_path($comment['file_name'])) . '" alt="' . h(lang('Photo')) . '" loading="lazy" class="img-thumbnail float-start me-2" style="width: 50px; height: 50px; object-fit: cover">' : '') . '<p>' . h(truncate($comment['message'], 84, $dots = "...")) . '</p>'),
+            'submitted' => pg_list_table_when_cell($comment['created_timestamp'], $comment['created_username'] ?? ''),
+            'go' => pg_list_cell($output_reference_button),
+        ),
+    );
 }
+
+$list = pg_list_table_printed(array(
+    'list' => 'view_comments',
+    'columns' => array(
+        'name' => array('heading' => lang('Name')),
+        'published' => array('heading' => lang('Published'), 'kind' => 'check'),
+        'featured' => array('heading' => lang('Featured'), 'kind' => 'check'),
+        'scheduled' => array('heading' => lang('At a Scheduled Time'), 'kind' => 'date'),
+        'publish_cancel' => array('heading' => lang('Cancel if Added First'), 'kind' => 'check'),
+        'message' => array('heading' => lang('Message'), 'sortable' => false),
+        'submitted' => array('heading' => lang('Submitted'), 'kind' => 'date'),
+        'go' => array('heading' => lang('Go To Comment'), 'kind' => 'actions'),
+    ),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+));
 
 
 // The verified filter in the toolbar's filter slot. It submits
@@ -352,34 +294,15 @@ print
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
             ' . pg_screen_toolbar(array(
-                'search' => array(pg_list_sort_menu('view_comments.php', $sort_columns, $sort_levels, $sort_default), $output_verified_filter, $output_question_filter),
+                'search' => array(pg_list_table_search_box('view_comments'), pg_list_sort_menu('view_comments.php', $sort_columns, $sort_levels, $sort_default), $output_verified_filter, $output_question_filter),
             )) . '
             <div class="disable_shortcut">
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative">
-                        <table class="chart table-hover table " style="width:100%;display:none">
-                            <thead>
-                                <tr>
-                                    <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                    <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                    <th>' . get_column_heading(lang('Published'), $sort_levels, '', '', 'published') . '</th>
-                                    <th>' . get_column_heading(lang('Featured'), $sort_levels, '', '', 'featured') . '</th>
-                                    <th>' . get_column_heading(lang('At a Scheduled Time'), $sort_levels, '', '', 'scheduled') . '</th>
-                                    <th>' . get_column_heading(lang('Cancel if Added First'), $sort_levels, '', '', 'publish_cancel') . '</th>
-                                    <th>' . lang('Message') . '</th>
-                                    <th>' . get_column_heading(lang('Submitted'), $sort_levels, '', '', 'submitted') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ' . $output_rows . '
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                ' . pg_list_table_html($list['source'], $list['page'], lang('Comments')) . '
             </div>
         </div>
     </div>
 </main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 ' .
 output_footer();
 $liveform->remove_form('view_comments');

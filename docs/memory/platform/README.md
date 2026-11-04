@@ -31,11 +31,14 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - accessibility-compliance.md: Why Pinegrap has accessibility and consent tools (Circular 2025/10, EU Accessibility Act, KVKK cookie guide), which piece covers what, and what is left for later
 - accessibility-report.md: Accessibility report (seo_a11y_job.php, includes/fn/a11y.php, view_accessibility.php): server-side WCAG 2.2 checks, a11y_ codes in seo_issue, the resumable pass, screen, PDF, API filter
 - accessibility-statement.md: Accessibility statement (system widget accessibility_statement, view_accessibility.php?statement=1): settings card, conformance verdict from the nightly report, known limitations, W3C structure
+- activitypub-actor.md: The Fediverse actor: settings and keys in config_text, the addresses router.php hands to activitypub.php, the documents, HTTP Signatures (window, key cache, rotation).
+- activitypub-inbox.md: The ActivityPub inbox: the checks a delivery passes, what each activity does to ap_followers, ap_reactions and ap_outbox, the AP4 hooks, the log and the inbox's WAF bucket.
+- activitypub-moderation.md: Fediverse blocks (ap_blocks) by actor or domain: what a block removes, how values are stored, the comment screen's buttons, the erasure path shared with a Delete of the actor.
 - audit-rule-registry.md: Audit rule registry (includes/fn/audit_rules.php): per concept the SEO and a11y codes, WCAG criterion, severities, editor rule ids, document/browser flags; tools/check_audit_rules.php
 - aws-sigv4-signing.md: includes/fn/aws_sign.php: AWS Signature Version 4 without an SDK (header signing, presigned links), tested against the AWS test suite; used by Amazon SES, written for object storage too
 - background-render.md: pg_background_render(): the one in-process page render of the passes that draw many pages; what it catches, restores and lends; which pages each pass covers and as whom (audit_run.php)
 - backup-folder-download-zip.md: Backup Manager Download of a folder backup: the archive kept inside the folder is rebuilt when the backup was updated after it.
-- backup-manager-names-and-list.md: Backup Manager hand-made backups: the folder name (no basename, 100 characters), reserved names, the overwrite question, step errors, the list's time and order, incomplete folders, delete warnings
+- backup-manager-names-and-list.md: Backup Manager: the folder name (no basename, 100 characters), reserved names, starter-dump delete, the overwrite question, step errors, list time and order, incomplete folders
 - backup-object-storage.md: The backup destination "S3-compatible storage" (remote type s3): its own card fields mapped onto the shared object storage client, multipart upload, the bucket's retention prune
 - backup-upload-extraction.md: Backup archives: install-screen upload streamed into data/temp and checksum-checked; the file explorer's backup extract/upload and web-root zip extract follow the same rule plus name and size limits.
 - browser-image-preshrink.md: Browser-side pre-shrink of images over server upload limits: when, EXIF orientation check, quality-before-pixels order, shrinkTo/shrinkQuality, blob name.
@@ -60,6 +63,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - docker-image-publishing.md: Docker images on GHCR (PR #737): docker-publish.yml on a published release, pinegrap-app/-web for amd64 and arm64, tags v<version> and latest, re-run by tag, compose PG_IMAGE_TAG, package visibility
 - docker.md: docker/ compose stack (PR #565): app (PHP-FPM 8.3), web (nginx), MariaDB 10.11, cron gated on the database version, one-shot install service, data volume, nginx rules in step, CI check
 - editor-image-upload-refusals.md: The rich text editor's Image > Upload (editor_add_file.php): a discarded body, a missing file, an upload error code or a failed copy() is refused in the dialog, never inserted as a picture.
+- encryption-key-reseal-registry.md: Reset Encryption Key re-seals what pg_reseal_registry() lists in the same save; entry fields, the four kinds, done/skipped/failed counts, the $key parameters of the sealing helpers
 - erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the five doors that refuse it by name, and the image editor's save that used to write over it
 - error-reporting.md: How PHP error_reporting is set in init.php and router.php via SET_ERROR_REPORTING, and why E_DEPRECATED is not overridable from config.
 - file-manager-page-where-used.md: The File Manager's "Where used" for a page (explorer_page_usage): menu items, short links, links in content, page settings, products/offers/events and site settings that point at it
@@ -97,6 +101,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - import-my-site-scans.md: Import My Site keeps each scan under its own id with its folder name; long tags and names are cut before the uniqueness check; missing URL parts read as empty
 - import-records.md: Content import record and comment writers (2026.11.0): a post as a record of the mapped form, field kinds, categories and tags, author account, late featured image, comment threads, undo paths
 - import-redirects.md: Content import redirects (2026.11.0): which items keep their old address as a 301 short link, destinations, refusals, report line, CSV download, undo
+- import-screen.md: import.php screen rules: menu entry, picker choices (no Recycle Bin or Workspace, path labels), field rows by type, dry run refusals, discard and 7-day sweep, undo answers
 - import-shopify.md: Shopify products and customers CSV import (2026.11.0, #6236): rows grouped by handle, product items as WooCommerce, the contact writer, consent line, tag groups, undo
 - import-woocommerce.md: WooCommerce products CSV import (2026.11.0, #6206): reader, item shape, variable products as variant sets, categories as groups, the product writer and its undo
 - import-wordpress.md: WordPress WXR reader of the import framework: streaming walk, what each item becomes, skipped internals, comment threads, dates, shortcodes, cursor, mapping rows
@@ -181,7 +186,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - update-backup-rollback.md: Backup a software update or repair writes before replacing files (pre-update-*.zip) and the rollback on Repair Software: contents, hash record, effect on files and config.version
 - update-beta-builds.md: Beta builds of one version over the Kodpen API (PR #3755): data/update_build.json, when a same-version build is offered (#3204), the re-run after replace, backup/rollback and integrity ref
 - update-channel-stable-beta.md: Update channel (stable/beta): config key, the three channel functions all callers must use, download_assistant stays stable, switching, version format.
-- update-check-errors.md: How the software update check reports a failed answer (HTTP status, cURL, invalid), the checks-off state, and its single Site Log line.
+- update-check-errors.md: How the software update check reports a failed answer (HTTP status, cURL, invalid), the checks-off state, its single Site Log line, and the one "update available" bell row.
 - update-package-extraction.md: How update packages must be downloaded and extracted (pg_extract_archive, pg_looks_like_zip) so a partial install is never reported as success.
 - update-tls-verification.md: TLS on outgoing cURL: pg_curl_tls() / da_curl_tls(), no silent downgrade, the store from pg_ca_bundle_effective(), ALLOW_INSECURE_UPDATE_TLS; who uses it (classic Stripe and iyzico do not).
 - upload-drop-area-sizes.md: Upload File and Upload Design Files write the drop-area sizes and the too-big refusal in the panel's units and decimal mark, not Dropzone's

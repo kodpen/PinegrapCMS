@@ -61,6 +61,18 @@ function test_backup_name_reserved()
 	}
 }
 
+// Only the two install dumps take the delete confirmation that names the
+// lost language choice; other reserved names and archives do not.
+function test_backup_is_starter_dump()
+{
+	foreach (array('english_default', 'Turkish_Default', 'TURKISH_DEFAULT') as $name) {
+		pg_assert_same(true, pg_backup_is_starter_dump($name), $name);
+	}
+	foreach (array('english_default.zip', 'my_english_default', 'auto_backup_2026-11-45', 'pre_upgrade_2026_11_0_x', '', 'b') as $name) {
+		pg_assert_same(false, pg_backup_is_starter_dump($name), $name);
+	}
+}
+
 // Newest first; the same time falls back to the name.
 function test_backup_list_order()
 {

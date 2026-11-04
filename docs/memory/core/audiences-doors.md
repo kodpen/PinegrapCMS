@@ -18,7 +18,8 @@ module: audience_doors
 - Readers: campaigns, SMS campaigns, the account's group list, exports, `GET` members read the xref rows whatever their source.
 - Erasure deletes a contact's xref rows and recomputes nothing.
 - A merge (`merge_contacts()`, both blocks) re-inserts each group row with a source from `pg_contact_merge_group_source()` (pure, `includes/fn/contacts.php`): a hand, form or product row of any merged contact wins, else `rule`; before the upgrade no source is read or written (#6307). Before, every row came back `hand`, so a merged contact stayed in a dynamic group the rule no longer selected.
-- Hand, form and product rows of a group switched to dynamic stay: the recompute never touches them (#6319). The switch screen will show their count and offer remove or turn into `rule` rows, default keep (step AU4c); its pure helper `pg_audience_switch_review()` (`includes/fn/audiences.php`: the count query, counts by source, the two actions' statements) is in (#6307).
+- Hand, form and product rows of a group switched to dynamic stay: the recompute never touches them (#6319). The switch review (AU4c) shows their count and offers keep (default), remove or let the rules decide them; `pg_audience_switch_review()` (pure, `includes/fn/audiences.php`) holds the count query and the two actions' statements, `pg_audience_switch_apply()` runs the chosen one after the switch is saved.
+- Remove announces the contacts that leave (no rule row beside the removed one) as `members_changed` removals; turn into `rule` changes no membership and announces nothing: the next recompute deletes the turned rows its rule does not select and announces that.
 - The form and product editors still list every group; the sale or submission skips a dynamic one.
 
 ## Tests?

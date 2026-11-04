@@ -23,6 +23,7 @@ if (!validate_erp_access($user)) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_stock');
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
@@ -42,7 +43,9 @@ $products = erp_stock_costed_products();
 $moves = erp_stock_recent_moves($product_id, 200);
 $kinds = erp_stock_kinds();
 
-$output_rows = '';
+// Every costed product is printed: the list table driver sorts and searches
+// them in the browser (browser mode). The product opens its movements.
+$list_rows = array();
 $total_value = 0;
 $product_title = '';
 
@@ -56,21 +59,31 @@ foreach ($products as $row) {
         $product_title = $name;
     }
 
-    $output_rows .= '
-        <tr>
-            <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Stock movements') . '" onclick="window.location.href=\'erp_stock.php?product_id=' . (int) $row['product_id'] . '#erp_stock_moves\'"><i class="bi bi-list-ul"></i></button>
-            </td>
-            <td style="max-width:280px" class="text-wrap text-break align-middle">' . h($name)
-                . ((trim((string) $row['product_sku']) !== '') ? '<div class="small fg-secondary font-monospace">' . h($row['product_sku']) . '</div>' : '') . '</td>
-            <td class="align-middle text-end" data-order="' . ($tracked ? (int) $row['inventory_quantity'] : -1) . '">'
-                . ($tracked ? h(erp_quantity_text($row['inventory_quantity'])) : '<span class="fg-secondary">' . lang('Stock not tracked') . '</span>') . '</td>
-            <td class="align-middle text-end" data-order="' . (int) $row['avg_cost'] . '">' . h(erp_money_out((int) $row['avg_cost'])) . '</td>
-            <td class="align-middle text-end" data-order="' . (int) $row['last_cost'] . '">' . h(erp_money_out((int) $row['last_cost']))
-                . (((string) $row['last_cost_date'] > '0000-00-00') ? '<div class="small fg-secondary">' . h(prepare_form_data_for_output((string) $row['last_cost_date'], 'date')) . '</div>' : '') . '</td>
-            <td class="align-middle text-end fw-bold" data-order="' . $value . '">' . ($tracked ? h(erp_money_out($value)) : '<span class="fg-secondary fw-normal">—</span>') . '</td>
-        </tr>';
+    $list_rows[] = array(
+        'id' => (int) $row['product_id'],
+        'cells' => array(
+            'product' => pg_list_cell('<a href="erp_stock.php?product_id=' . (int) $row['product_id'] . '#erp_stock_moves" data-pg-open>' . h($name) . '</a>'
+                . ((trim((string) $row['product_sku']) !== '') ? '<div class="small fg-secondary font-monospace">' . h($row['product_sku']) . '</div>' : ''), 'align-middle text-wrap text-break', array('data-pg-sort-value' => $name)),
+            'stock' => pg_list_cell($tracked ? h(erp_quantity_text($row['inventory_quantity'])) : '<span class="fg-secondary">' . lang('Stock not tracked') . '</span>', 'align-middle', array('data-pg-sort-value' => (string) ($tracked ? (int) $row['inventory_quantity'] : -1))),
+            'avg_cost' => pg_list_cell(h(erp_money_out((int) $row['avg_cost'])), 'align-middle', array('data-pg-sort-value' => (string) (int) $row['avg_cost'])),
+            'last_cost' => pg_list_cell(h(erp_money_out((int) $row['last_cost']))
+                . (((string) $row['last_cost_date'] > '0000-00-00') ? '<div class="small fg-secondary">' . h(prepare_form_data_for_output((string) $row['last_cost_date'], 'date')) . '</div>' : ''), 'align-middle', array('data-pg-sort-value' => (string) (int) $row['last_cost'])),
+            'value' => pg_list_cell($tracked ? h(erp_money_out($value)) : '<span class="fg-secondary">—</span>', 'align-middle fw-bold', array('data-pg-sort-value' => (string) $value)),
+        ),
+    );
 }
+
+$list = pg_list_table_printed(array(
+    'list' => 'erp_stock',
+    'columns' => array(
+        'product' => array('heading' => lang('Product'), 'kind' => 'link'),
+        'stock' => array('heading' => lang('Stock'), 'kind' => 'number'),
+        'avg_cost' => array('heading' => lang('Average cost'), 'kind' => 'money'),
+        'last_cost' => array('heading' => lang('Last purchase'), 'kind' => 'money'),
+        'value' => array('heading' => lang('Stock value'), 'kind' => 'money'),
+    ),
+    'rows' => $list_rows,
+));
 
 // A product with no cost yet is not among the costed products: its name
 // comes from the products table, and a product that is gone says so.
@@ -180,31 +193,7 @@ pg_page_shell(array(
             ' . $output_low . '
 
             <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table" style="width:100%;display:none;">
-                        <thead>
-                            <tr>
-                                <th class="noVis">' . lang(array('string' => 'Action')) . '</th>
-                                <th>' . lang('Product') . '</th>
-                                <th class="text-end">' . lang('Stock') . '</th>
-                                <th class="text-end">' . lang('Average cost') . '</th>
-                                <th class="text-end">' . lang('Last purchase') . '</th>
-                                <th class="text-end">' . lang('Stock value') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>' . $output_rows . '</tbody>
-                        <tfoot>
-                            <tr>
-                                <th></th>
-                                <th>' . lang('Total') . '</th>
-                                <th></th>
-                                <th></th>
-                                <th></th>
-                                <th class="text-end">' . h(erp_money_out($total_value)) . '</th>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
+                ' . pg_list_table_html($list['source'], $list['page'], lang('Stock and cost')) . '
                 ' . $output_notes . '
             </div>
 
@@ -235,7 +224,7 @@ pg_page_shell(array(
         </div>
     </div>
 </main>
-' .
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();
 
 $liveform->remove_form();

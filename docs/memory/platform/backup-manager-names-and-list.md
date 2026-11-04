@@ -1,6 +1,6 @@
 ---
 name: backup-manager-names-and-list
-description: Backup Manager hand-made backups: the folder name (no basename, 100 characters), reserved names, the overwrite question, step errors, the list's time and order, incomplete folders, delete warnings
+description: Backup Manager: the folder name (no basename, 100 characters), reserved names, starter-dump delete, the overwrite question, step errors, list time and order, incomplete folders
 module: backup
 ---
 
@@ -12,7 +12,12 @@ module: backup
 ## Which names are refused?
 - `pg_backup_name_reserved()`: `english_default`, `turkish_default` (the starter sites), `pg_backup_is_auto_name()` names, and `pre_upgrade_` / `pre-update-` prefixes, without case. Every `software_backup` step refuses them, so no request can clear a starter site's files.
 
+<<<<<<< HEAD
 - A typed name that reduces to nothing (`!!!`, `../..`, Cyrillic only) is refused by `create_backup_folder` with "The backup name is not valid."; only an empty field gets the host-date name. Before, such a name silently became the host-date backup.
+=======
+## May a starter-site dump be deleted?
+- Yes (owner decision, #6445): `english_default` / `turkish_default` keep their Delete button. For those folders only (`pg_backup_is_starter_dump()`, without case; archives do not count) the row's `data-confirm-content` says a later install from this copy no longer offers that language and the panel does not bring the dump back (`get_available_starter_sites()` lists only folders on disk). Other backups keep the plain confirmation; the write side stays refused.
+>>>>>>> origin/development
 
 ## What happens when the name already exists?
 - `create_backup_folder` answers `status: confirm` with the question; `software_backup_runSteps()` (`backend.src.js`) asks through `pgConfirm()` and sends the step again with `overwrite: true`. Updating a backup under its name stays possible (`backup-folder-download-zip.md`), only no longer silent.

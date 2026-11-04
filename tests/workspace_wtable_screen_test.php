@@ -157,6 +157,30 @@ function test_workspace_wtable_screen_amount_hint_written_the_site_way()
 	});
 }
 
+function test_workspace_wtable_screen_date_cells_round_trip()
+{
+	$dated = array('type' => 'date', 'options' => array());
+	$timed = array('type' => 'date', 'options' => array('time' => true));
+
+	pg_assert_same('2026-11-20', ws_wtable_screen_cell_to_form($dated, '2026-11-20'), 'a date field is a native date input');
+	pg_assert_same('2026-11-20T14:30', ws_wtable_screen_cell_to_form($timed, '2026-11-20 14:30'), 'a date and time field is a native datetime-local input');
+	pg_assert_same('2026-11-20T00:00', ws_wtable_screen_cell_to_form($timed, '2026-11-20'), 'a date stored without a time is midnight');
+	pg_assert_same('2026-11-20', ws_wtable_screen_cell_to_form($dated, '2026-11-20 14:30'), 'a date field drops a stored time');
+	pg_assert_same('', ws_wtable_screen_cell_to_form($dated, 'soon'), 'what is no date leaves the field empty');
+
+	pg_assert_same('2026-11-20 14:30', ws_wtable_screen_cell_from_form($timed, ws_wtable_screen_cell_to_form($timed, '2026-11-20 14:30')), 'round trip with a time');
+	pg_assert_same('2026-11-20', ws_wtable_screen_cell_from_form($dated, ws_wtable_screen_cell_to_form($dated, '2026-11-20')), 'round trip without a time');
+	pg_assert_same('2026-11-20 14:30', ws_wtable_screen_cell_from_form($timed, '2026-11-20T14:30:00'), 'seconds a browser adds are dropped');
+}
+
+function test_workspace_wtable_screen_date_text_in_the_site_format()
+{
+	pg_assert_same('20.11.2026', ws_wtable_screen_date_text('2026-11-20', 'day_month', 'twenty_four_hours'));
+	pg_assert_same('20.11.2026 14:30', ws_wtable_screen_date_text('2026-11-20 14:30', 'day_month', 'twenty_four_hours'));
+	pg_assert_same('11/20/2026 2:30 PM', ws_wtable_screen_date_text('2026-11-20 14:30', 'month_day', 'twelve_hours'));
+	pg_assert_same('soon', ws_wtable_screen_date_text('soon', 'day_month', 'twenty_four_hours'), 'anything else as it was');
+}
+
 function test_workspace_wtable_screen_cells_from_form()
 {
 	pg_assert_same(true, ws_wtable_screen_cell_from_form(array('type' => 'checkbox'), '1'));
@@ -196,6 +220,41 @@ function test_workspace_wtable_screen_status_choices_keep_keys()
 
 	$check = ws_wtable_column_options_check('status', array('choices' => $choices));
 	pg_assert_true($check['ok'], 'the store takes them');
+}
+
+function test_workspace_wtable_screen_status_choices_never_reuse_a_held_key()
+{
+	// s2 was dropped earlier and s3 ("Done") is dropped now while a row still holds it.
+	$old = array(
+		array('key' => 's1', 'label' => 'New', 'color' => ''),
+		array('key' => 's4', 'label' => 'Running', 'color' => ''),
+		array('key' => 's3', 'label' => 'Done', 'color' => ''),
+	);
+	$choices = ws_wtable_screen_status_choices("New
+Running
+Cancelled
+On hold", $old, array('s3', 's2', '', 7));
+
+	pg_assert_same(array('s1', 's4', 's5', 's6'), array_column($choices, 'key'), 'keys held by rows are never handed to a new label');
+}
+
+function test_workspace_wtable_screen_status_choices_rename_keeps_the_key()
+{
+	$old = array(
+		array('key' => 's1', 'label' => 'New', 'color' => ''),
+		array('key' => 's3', 'label' => 'Done', 'color' => '#00aa00'),
+	);
+
+	pg_assert_same(array(
+		array('key' => 's1', 'label' => 'New', 'color' => ''),
+		array('key' => 's3', 'label' => 'Finished', 'color' => '#00aa00'),
+	), ws_wtable_screen_status_choices("New
+Finished", $old, array('s3')), 'a label changed on its own line keeps its key and colour');
+
+	pg_assert_same(array('s1', 's2', 's4'), array_column(ws_wtable_screen_status_choices("New
+Finished
+Later", $old, array('s3')), 'key'),
+		'with lines added the old label is dropped, and the new ones skip the held key');
 }
 
 function test_workspace_wtable_screen_options_from_form()

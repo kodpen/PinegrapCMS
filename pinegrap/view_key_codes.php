@@ -17,6 +17,8 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/commerce_list.php');
 
 // A key code enabled or disabled in place on the list (pg_list_edit_request()
 // in includes/fn/output.php). Answered in JSON, before anything below draws
@@ -28,6 +30,12 @@ if (pg_list_edit_requested()) {
     });
 
     $saved = pg_key_code_quick_update($edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id']);
+
+    // The code is the row's link to its key code, drawn again around the
+    // code the answer redraws.
+    if (isset($saved['cells']['code']['html'])) {
+        $saved['cells']['code']['html'] = pg_commerce_list_open_link('edit_key_code.php?id=' . (int) $edit['id'], $saved['cells']['code']['html']);
+    }
 
     pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
 }
@@ -153,13 +161,43 @@ if (($_GET['submit_data'] ?? '') == 'Export Key Codes') {
     // Get the current date so that later we can figure out if key codes have expired.
     $current_date = date('Y-m-d');
 
-    // The cells a quick edit can change, drawn by the same function that
-    // draws them again in the answer to an edit: the code, green when it
-    // works at checkout today (enabled, not expired, its offer running), the
-    // enabled mark and the last change.
-    foreach ($key_codes as $key => $key_code) {
-        $key_codes[$key]['cells'] = pg_key_code_list_cells($key_code, $current_date);
+    // Every key code is printed: the list table driver sorts and searches
+    // them in the browser (browser mode). The cells a quick edit can change
+    // are drawn by the same function that draws them again in the answer to
+    // an edit: the code, green when it works at checkout today (enabled, not
+    // expired, its offer running), the enabled mark and the last change.
+    $list_rows = array();
+
+    foreach ($key_codes as $key_code) {
+        $cells = pg_key_code_list_cells($key_code, $current_date);
+        $id = (int) $key_code['id'];
+        $expires = ($key_code['expiration_date'] != '0000-00-00') ? strtotime($key_code['expiration_date']) : 0;
+
+        $list_rows[] = array(
+            'id' => $id,
+            'cells' => array(
+                'code' => pg_list_cell(pg_commerce_list_open_link('edit_key_code.php?id=' . $id, $cells['code']['html']), $cells['code']['class'], array('data-pg-sort-value' => (string) $key_code['code'])),
+                'offer_code' => pg_list_cell($key_code['offer_id']
+                    ? '<a class="pg-link-secondary" href="edit_offer.php?id=' . (int) $key_code['offer_id'] . '" title="' . h(lang('Edit Offer')) . '">' . h($key_code['offer_code']) . '</a>'
+                    : h($key_code['offer_code'])),
+                'offer_message' => pg_list_cell(h($key_code['offer_description'])),
+                'enabled' => pg_list_cell($cells['enabled']['html'], $cells['enabled']['class'], pg_list_edit_cell_attributes($quick_edit, 'enabled', $id, !empty($key_code['enabled']) ? '1' : '0') + array('data-pg-sort-value' => !empty($key_code['enabled']) ? '1' : '0')),
+                'expiration_date' => pg_list_cell($expires ? get_absolute_time(array('timestamp' => $expires, 'type' => 'date')) : '', 'align-middle', array('data-pg-sort-value' => (string) (int) $expires)),
+                'notes' => pg_list_cell(nl2br(h($key_code['notes']))),
+                'single_use' => pg_list_cell($key_code['single_use'] ? '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . h(lang('Yes')) . '</span>' : '', 'align-middle text-center', array('data-pg-sort-value' => $key_code['single_use'] ? '1' : '0')),
+                'report' => pg_list_cell('<span class="badge fw-light theme-secondary">' . h(($key_code['report'] == 'key_code') ? lang('Key Code') : lang('Offer Code')) . '</span>'),
+                'last_modified' => pg_list_cell($cells['last_modified']['html'], $cells['last_modified']['class'], array('data-pg-sort-value' => (string) (int) $key_code['last_modified_timestamp'])),
+            ),
+        );
     }
+
+    $list = pg_list_table_printed(array(
+        'list' => 'view_key_codes',
+        'columns' => pg_commerce_list_specs(pg_key_code_list_columns(), $sort_columns, $quick_edit),
+        'levels' => $sort_levels,
+        'rows' => $list_rows,
+        'edit' => array('url' => 'view_key_codes.php', 'columns' => $quick_edit),
+    ));
 
     echo pg_page_shell([
         'title'=> lang('All Key Codes'),
@@ -171,7 +209,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Key Codes') {
 
     require('includes/templates/view_key_codes.php');
 
-    echo output_footer();
+    echo pg_js_bundle_tags('assets/js/pg_list_table.min.js') . output_footer();
 
     $liveform->remove();
 }

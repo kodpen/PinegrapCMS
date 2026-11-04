@@ -110,6 +110,8 @@ function pg_panel_actions()
         // A role's default layout and its lock: administrators and
         // designers, so it keeps the general gate; the handler checks too.
         'dashboard_role_default' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_role_default', 'exempt' => false, 'token' => true, 'write' => true),
+        // Removing a role's default and its lock: the same gate.
+        'dashboard_role_default_remove' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_role_default_remove', 'exempt' => false, 'token' => true, 'write' => true),
         // The caller's own goals, pins or notes on the new dashboard, every
         // backend role; the handler checks the session, the token and the
         // role's lock.
@@ -193,17 +195,10 @@ function pg_panel_actions()
         // contacts right and the group; the handler checks both.
         'audience_refresh' => array('file' => 'audiences.php', 'handler' => 'pg_panel_audience_refresh', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => true),
         'audience_count' => array('file' => 'audiences.php', 'handler' => 'pg_panel_audience_count', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
-        'commission_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_commission_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
-        'commission_profile_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_commission_profile_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
-        'site_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_site_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
-        'audit_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_audit_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'booking_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_booking_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'audit_log_changes' => array('file' => 'lists.php', 'handler' => 'pg_panel_audit_log_changes', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'list_table_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_list_table_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'list_table_sort' => array('file' => 'lists.php', 'handler' => 'pg_panel_list_table_sort', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
-        'waf_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_waf_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
-        'mail_queue_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_mail_queue_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
-        'sms_queue_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_sms_queue_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'get_pages' => array('file' => 'content.php', 'handler' => 'pg_panel_get_pages', 'exempt' => false, 'token' => false, 'write' => false),
         'test' => array('file' => 'content.php', 'handler' => 'pg_panel_test', 'exempt' => false, 'token' => false, 'write' => false),
         // A basic user sorts the menus they may edit.
@@ -361,7 +356,6 @@ function pg_panel_actions()
         'ws_flow_ai_sketch',
         'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove',
         'ws_flow_from_draft', 'ws_flow_draft_graph', 'ws_flow_scheduled_new', 'ws_flow_scheduled_copy',
-        'ws_flow_draft_box', 'ws_flow_draft_box_save',
         'ws_flow_scheduled_edit',
         'ws_channel_customer', 'ws_channel_customer_history',
         'ws_channel_customer_followup',

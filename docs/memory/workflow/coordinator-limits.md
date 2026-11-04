@@ -1,6 +1,6 @@
 ---
 name: coordinator-limits
-description: Coordinator rules: model and effort, the quota guard before a worker starts, 4 to 10 workers by the 5-hour quota, a new worker for a decided draft PR, hand-over by a desktop session at depth 6
+description: Coordinator rules: model and effort, the quota guard before a worker starts, 4 to 10 workers by the 5-hour quota, a new worker for a decided draft PR, no hand-over at depth 7
 ---
 
 ## Why?
@@ -21,6 +21,6 @@ description: Coordinator rules: model and effort, the quota guard before a worke
 - The 30-minute check finds it by listing the drafts whose body has `Decision: #` and reading each issue's state; no polling of sessions.
 
 ## What happens at session depth 8?
-- A session started by another session is one step deeper in the lineage (`get_session`, `lineage.depth`, limit 8). At depth 8 it can start no session and set no schedule (`create_session`, `send_later` and `create_trigger` are refused), and no setting raises the limit: the eighteenth hand-over by `create_session` reached it on 2026-11-02 (#5412). A coordinator reads its depth when it starts. At 6 or more it never starts its successor with `create_session`: it asks the owner in its reply for a desktop session ("How is one started?" in `coordinator.md`), opens an `architect` issue so the architect relays the ask, and keeps its workers and check-ins until that session archives it. Six is the last safe step: a depth-7 coordinator's workers are born at 8 and cannot set their safety check-in.
+- A session started by another session is one step deeper in the lineage (`get_session`, `lineage.depth`, limit 8). At depth 8 it can start no session and set no schedule (`create_session`, `send_later` and `create_trigger` are refused), and no setting raises the limit: the eighteenth hand-over by `create_session` reached it on 2026-11-02 (#5412). Below 8 nothing is limited. A coordinator hands over with `create_session` while its successor can still start workers, so up to depth 6 (the successor is born at 7). At depth 7 it does not hand over and asks no one for one: it keeps its workers and check-ins and works on, whatever its context size.
 
 Related: docs/memory/workflow/coordinator.md, docs/memory/workflow/session-lifecycle.md, docs/memory/workflow/architect.md

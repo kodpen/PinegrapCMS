@@ -3300,6 +3300,58 @@ function pg_pb_form_values($set = NULL)
 }
 
 /**
+ * The quantity box of the inventory switch. On a site with stock locations
+ * the edit screen shows one box per enabled location and the total read
+ * only: the total is the sum of the rows (includes/fn/stock_locations.php)
+ * and is never posted. Each box carries the quantity it opened with, so the
+ * save applies the difference and units sold meanwhile stay sold. A new
+ * product, a variant row and a bundle keep the one box: a new product's
+ * count lands at the default location on its first stock change.
+ *
+ * @param string     $mode       'create' or 'edit'
+ * @param int        $product_id
+ * @param string|int $total      products.inventory_quantity
+ * @return string
+ */
+function pg_pb_render_stock_quantity($mode, $product_id, $total)
+{
+    $locations = pg_stock_screen_locations();
+    $is_bundle = $product_id && pg_bundle_ids_among(array((int) $product_id));
+
+    if (!$locations || ($mode !== 'edit') || $is_bundle) {
+        return '<div class="col-12 sm:col-6 lg:col-4">
+                <label for="inventory_quantity" class="form-label">' . lang('Inventory Quantity') . '</label>
+                <input type="number" min="0" name="inventory_quantity" id="inventory_quantity" class="form-control" value="' . h($total) . '" />
+                ' . (($mode === 'edit') ? '<input type="hidden" name="inventory_quantity_was" value="' . h($total) . '" />' : '') . '
+                <div class="form-text pg-pb-group-only d-none">' . lang('Starting stock for every variant; each row can differ.') . '</div>
+                ' . ($locations ? '<div class="form-text">' . lang('The starting stock goes to the default location.') . '</div>' : '') . '
+            </div>';
+    }
+
+    $quantities = pg_stock_screen_quantities(pg_stock_locations(), pg_stock_rows($product_id), (int) $total);
+    $output = '';
+
+    foreach ($locations as $location) {
+        $id = (int) $location['id'];
+        $quantity = isset($quantities[$id]) ? $quantities[$id] : 0;
+
+        $output .= '<div class="col-12 sm:col-6 lg:col-4">
+                <label for="stock_location_' . $id . '" class="form-label">' . h($location['name']) . '</label>
+                <input type="number" min="0" step="1" name="stock_location[' . $id . ']" id="stock_location_' . $id . '" class="form-control" value="' . $quantity . '" />
+                <input type="hidden" name="stock_location_was[' . $id . ']" value="' . $quantity . '" />
+            </div>';
+    }
+
+    return '<div class="col-12"><div class="form-label mb-0">' . lang('Stock by location') . '</div></div>'
+        . $output . '
+        <div class="col-12 sm:col-6 lg:col-4">
+            <label for="inventory_quantity_total" class="form-label">' . lang('Total') . '</label>
+            <input type="number" id="inventory_quantity_total" class="form-control" value="' . h((int) $total) . '" readonly />
+        </div>';
+}
+
+
+/**
  * The pre-order switch beside the back order one, with the date the stock
  * is expected (includes/fn/preorder.php); '' before the upgrade adds the
  * columns. An ended pre-order is drawn off: saving it again would be
@@ -4560,6 +4612,16 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         }
     }
 
+    // Stock per location: the product's quantity at each location and its
+    // last moves (includes/fn/stock_moves.php); '' on a site without
+    // locations or for a product that tracks no inventory.
+    $output_stock_moves_card = '';
+
+    if (($pg_mode === 'edit') && function_exists('pg_schema_has') && pg_schema_has('stock_moves')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_moves.php');
+        $output_stock_moves_card = pg_stock_product_moves_card($pg_product_id);
+    }
+
     $output_barcode_card = '';
 
     if (($pg_mode === 'edit') && defined('BARCODE_ENABLED') && BARCODE_ENABLED) {
@@ -5532,12 +5594,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                 'name'  => 'inventory',
                                                 'label' => lang('Inventory Tracking'),
                                                 'panel' =>
-                                                    '<div class="col-12 sm:col-6 lg:col-4">
-                                                        <label for="inventory_quantity" class="form-label">' . lang('Inventory Quantity') . '</label>
-                                                        <input type="number" min="0" name="inventory_quantity" id="inventory_quantity" class="form-control" value="' . h($v('inventory_quantity', '')) . '" />
-                                                        ' . (($pg_mode === 'edit') ? '<input type="hidden" name="inventory_quantity_was" value="' . h($v('inventory_quantity', '')) . '" />' : '') . '
-                                                        <div class="form-text pg-pb-group-only d-none">' . lang('Starting stock for every variant; each row can differ.') . '</div>
-                                                    </div>
+                                                    pg_pb_render_stock_quantity($pg_mode, $pg_product_id, $v('inventory_quantity', '')) . '
                                                     <div class="col-12 mt-5">
                                                         <label for="out_of_stock_message" class="form-label">' . lang('Out of Stock Message') . '</label>
                                                         <textarea id="out_of_stock_message" name="out_of_stock_message">' . h($v('out_of_stock_message')) . '</textarea>
@@ -6156,6 +6213,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                     -->
                     ' . $output_workspace_card . '
                     ' . $output_barcode_card . '
+                    ' . $output_stock_moves_card . '
                     ' . pg_pb_render_preview($pg_mode !== 'edit') . '
                 </div>
             </div>
@@ -6555,7 +6613,15 @@ function pg_pb_update_product($product_id)
     $stock_guarded    = FALSE;
     $stock_kept       = NULL;
 
-    if ($stock_was && !($bundle_posted && $product['bundle'])) {
+    // On a site with stock locations the screen posts one quantity per
+    // location and no total (pg_pb_render_stock_quantity()): the stored total
+    // stays in the row and the differences go through the writer below.
+    $stock_by_location = isset($_POST['stock_location']) && is_array($_POST['stock_location'])
+        && pg_stock_screen_locations() && !($bundle_posted && $product['bundle']);
+
+    if ($stock_by_location) {
+        $stock_action = 'keep';
+    } elseif ($stock_was && !($bundle_posted && $product['bundle'])) {
         $stock_action = pg_pb_stock_save_action(
             $product['inventory_quantity'],
             $stock_was_posted,
@@ -6637,6 +6703,28 @@ function pg_pb_update_product($product_id)
             }
 
             pg_pb_update_row('products', $flag, 'id', $product_id);
+        }
+    }
+
+    // The quantities by location, once tracking is written: each change is
+    // the difference to the figure the screen opened with, so the total moves
+    // by what the operator changed and a sale meanwhile stays sold. A refused
+    // change (a sale took the units) keeps the stored count, as above.
+    if ($stock_by_location && ($product['inventory'] === '1')) {
+        $stock_posted = pg_stock_posted_changes(
+            pg_stock_locations(),
+            $_POST['stock_location'],
+            isset($_POST['stock_location_was']) ? $_POST['stock_location_was'] : array());
+        $stock_applied = pg_stock_apply_changes($product_id, $stock_posted['changes'], 'panel');
+
+        if ($stock_applied['total'] !== null) {
+            $product['inventory_quantity'] = (string) $stock_applied['total'];
+            pg_stock_refresh_out_of_stock($product_id);
+        }
+
+        if (!$stock_applied['ok']) {
+            $stock_kept = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . (int) $product_id . "'");
+            $product['inventory_quantity'] = (string) $stock_kept;
         }
     }
 
@@ -7177,6 +7265,16 @@ function pg_pb_validate_product_post($user, $product_id = 0)
             output_error(h($variant_problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
     }
+
+    // A quantity by location that is not a whole count of zero or more is
+    // refused before anything is written, as the prices above.
+    if (isset($_POST['stock_location']) && is_array($_POST['stock_location'])) {
+        $stock_check = pg_stock_posted_changes(pg_stock_screen_locations(), $_POST['stock_location'], array());
+
+        if (!$stock_check['ok']) {
+            output_error(lang('Enter an inventory quantity.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
+    }
 }
 
 
@@ -7370,7 +7468,230 @@ function pg_pb_quick_edit_columns()
 
     $columns['inventory_quantity'] = array('type' => 'integer', 'label' => lang('Inventory Quantity'), 'min' => 0, 'max' => 9999999);
 
+    // Every other value of the list the product screen changes.
+    foreach (pg_pb_quick_edit_more_fields() as $field => $more) {
+        $columns[$field] = $more['edit'];
+    }
+
     return $columns;
+}
+
+/**
+ * The product list's other cells that change in place: every column the
+ * product screen sets with one box, switch or choice, field => 'column'
+ * (the products column), 'kind' (how it is read and written: name, text,
+ * email, whole, money, decimal, select, switch), 'edit' (the definition
+ * pg_list_edit_parse() reads it with) and, where they differ from the
+ * field, 'code' (the list's column) and 'row' (the list read's key). A
+ * block the product screen does not draw is not offered either: the
+ * shipping figures while the store does not ship, Start where the gateway
+ * takes no start day. Left on the product screen: the dimensions (three
+ * boxes in one cell), the zones, the pages, folder and contact group
+ * chosen from the site, and the order receipt message (rich text).
+ *
+ * @return array field => array('column', 'kind', 'edit'[, 'code', 'row'])
+ */
+function pg_pb_quick_edit_more_fields()
+{
+    static $fields = null;
+
+    if ($fields !== null) {
+        return $fields;
+    }
+
+    $yes_no = array('1' => lang('Yes'), '0' => lang('No'));
+
+    $field = function ($column, $kind, $edit) {
+        return array('column' => $column, 'kind' => $kind, 'edit' => $edit);
+    };
+
+    $switch = function ($column, $label) use ($field, $yes_no) {
+        return $field($column, 'switch', array('type' => 'select', 'label' => $label, 'options' => $yes_no));
+    };
+
+    // The product screen's count boxes take seven digits.
+    $whole = function ($column, $label) use ($field) {
+        return $field($column, 'whole', array('type' => 'integer', 'label' => $label, 'min' => 0, 'max' => 9999999));
+    };
+
+    $text = function ($column, $label, $max, $kind = 'text') use ($field) {
+        return $field($column, $kind, array('type' => 'text', 'label' => $label, 'max' => $max));
+    };
+
+    $periods = array();
+
+    foreach (get_payment_period_options() as $label => $value) {
+        $periods[$value] = $label;
+    }
+
+    $fields = array(
+        'name' => array('code' => 'id') + $field('name', 'name', array('type' => 'text', 'label' => lang('Product ID / SKU'), 'max' => 100, 'required' => true)),
+        'taxable' => $switch('taxable', lang('Taxable')),
+        'product_form' => $text('form_name', lang('Product Form'), 100),
+        'selection_type' => $field('selection_type', 'select', array('type' => 'select', 'label' => lang('Selection Type'), 'options' => array(
+            'checkbox' => lang('Checkbox'),
+            'quantity' => lang('Quantity'),
+            'donation' => lang('Donation'),
+            'autoselect' => lang('Auto-Select'),
+        ))),
+        'default_quantity' => $whole('default_quantity', lang('Default Quantity')),
+    );
+
+    foreach (pg_pb_custom_product_field_labels() as $number => $label) {
+        if ($label !== '') {
+            $fields['custom_field_' . $number] = $text('custom_field_' . $number, $label, 255);
+        }
+    }
+
+    if (!defined('ECOMMERCE_SHIPPING') || ECOMMERCE_SHIPPING) {
+        $fields += array(
+            'shippable' => $switch('shippable', lang('Shippable')),
+            'weight' => $field('weight', 'decimal', array('type' => 'decimal', 'label' => lang('Weight'))),
+            'pwp' => $whole('primary_weight_points', lang('PWP')),
+            'swp' => $whole('secondary_weight_points', lang('SWP')),
+            'cont_req' => $switch('container_required', lang('Cont Req')),
+            'prep' => $whole('preparation_time', lang('Prep')),
+            'free_ship' => $switch('free_shipping', lang('Free Ship')),
+            'extra_ship' => $field('extra_shipping_cost', 'money', array('type' => 'money', 'label' => lang('Extra Ship'))),
+        );
+    }
+
+    $fields['recurring_payment'] = $switch('recurring', lang('Recurring Payment'));
+
+    if (!defined('ECOMMERCE_PAYMENT_GATEWAY') || (ECOMMERCE_PAYMENT_GATEWAY != 'ClearCommerce')) {
+        $fields['start'] = array('row' => 'recurring_start') + $whole('start', lang('Start'));
+    }
+
+    $fields += array(
+        'number_of_payments' => $whole('number_of_payments', lang('Number of Payments')),
+        'payment_period' => $field('payment_period', 'select', array('type' => 'select', 'label' => lang('Payment Period'), 'options' => $periods)),
+        'allow_to_schedule' => $switch('recurring_schedule_editable_by_customer', lang('Allow to Schedule')),
+        'membership_renewal' => $whole('membership_renewal', lang('Membership Renewal')),
+        'order_receipt_bcc' => array('invalid' => 'The order receipt bcc e-mail address is invalid.') + $text('order_receipt_bcc_email_address', lang('Order Receipt BCC'), 100, 'email'),
+        'email_page_bcc' => array('invalid' => 'The BCC e-mail address is invalid.') + $text('email_bcc', lang('E-mail Page BCC'), 100, 'email'),
+    );
+
+    return $fields;
+}
+
+/**
+ * The quick edit field of a product list column: its own code, or the
+ * field whose 'code' names it (the ID column changes the product code).
+ *
+ * @param string $code
+ * @return string
+ */
+function pg_pb_quick_edit_field_of($code)
+{
+    foreach (pg_pb_quick_edit_more_fields() as $field => $more) {
+        if (isset($more['code']) && ($more['code'] === $code)) {
+            return $field;
+        }
+    }
+
+    return (string) $code;
+}
+
+/**
+ * The change one of pg_pb_quick_edit_more_fields() asks for, checked the way
+ * the product screen checks the same box, or why it cannot be made: an
+ * e-mail address that is not one, a default quantity outside the product's
+ * minimum and maximum, an amount or a weight the column cannot hold. Whether
+ * a product code is another product's is the caller's (it reads the
+ * catalogue).
+ *
+ * @param string $field
+ * @param mixed  $value   as pg_list_edit_parse() read it
+ * @param array  $current the stored row (minimum_quantity and
+ *                        maximum_quantity for the default quantity)
+ * @return array array('ok' => bool, 'change' => column => value, 'message' => the refusal)
+ */
+function pg_pb_quick_more_change($field, $value, $current)
+{
+    $fields = pg_pb_quick_edit_more_fields();
+
+    $fail = function ($message) {
+        return array('ok' => false, 'change' => array(), 'message' => $message);
+    };
+
+    if (!isset($fields[$field])) {
+        return $fail(lang('This column cannot be changed here.'));
+    }
+
+    $more = $fields[$field];
+    $label = $more['edit']['label'];
+    $value = is_scalar($value) ? (string) $value : '';
+
+    switch ($more['kind']) {
+        case 'switch':
+            $value = ($value === '1') ? '1' : '0';
+            break;
+
+        case 'whole':
+            if ($field === 'default_quantity') {
+                $problem = pg_pb_number_fields_problem(array(
+                    'default_quantity' => $value,
+                    'minimum_quantity' => (string) (int) ($current['minimum_quantity'] ?? 0),
+                    'maximum_quantity' => (string) (int) ($current['maximum_quantity'] ?? 0),
+                ));
+
+                if ($problem !== '') {
+                    return $fail($problem);
+                }
+            }
+
+            $value = (int) $value;
+            break;
+
+        case 'money':
+            if (pg_pb_price_above_column_top($value)) {
+                return $fail(lang(array('string' => '{var:1} is too large.', 'vars' => array($label))));
+            }
+
+            $value = pg_pb_price_to_cents($value);
+            break;
+
+        case 'decimal':
+            // decimal(12,4): eight digits before the point.
+            $number = round(pg_pb_decimal_from_input($value), 4);
+
+            if ($number >= 100000000) {
+                return $fail(lang(array('string' => '{var:1} is too large.', 'vars' => array($label))));
+            }
+
+            $value = number_format($number, 4, '.', '');
+            break;
+
+        case 'email':
+            if (($value !== '') && (validate_email_address($value) == false)) {
+                return $fail(lang($more['invalid']));
+            }
+
+            break;
+    }
+
+    return array('ok' => true, 'change' => array($more['column'] => $value), 'message' => '');
+}
+
+/**
+ * A product of the list with one of pg_pb_quick_edit_more_fields()'s cells
+ * as the stored value says it, for the log line: Yes or No, an amount, a
+ * choice's label.
+ *
+ * @param string $field
+ * @param array  $product
+ * @return string
+ */
+function pg_pb_quick_more_shown($field, $product)
+{
+    $more = pg_pb_quick_edit_more_fields()[$field];
+    $value = pg_pb_quick_edit_value($field, $product);
+
+    if (isset($more['edit']['options'][$value])) {
+        return (string) $more['edit']['options'][$value];
+    }
+
+    return $value;
 }
 
 /**
@@ -7458,6 +7779,31 @@ function pg_pb_quick_edit_value($field, $product)
         return pg_format_input_amount(((int) $product['price']) / 100);
     }
 
+    $more = pg_pb_quick_edit_more_fields();
+
+    if (isset($more[$field])) {
+        // The list's read names the start day recurring_start.
+        $key = (isset($more[$field]['row']) && array_key_exists($more[$field]['row'], $product)) ? $more[$field]['row'] : $more[$field]['column'];
+        $raw = isset($product[$key]) ? (string) $product[$key] : '';
+
+        switch ($more[$field]['kind']) {
+            case 'switch':
+                return ($raw === '1') ? '1' : '0';
+            case 'money':
+                return pg_format_input_amount(((int) $raw) / 100);
+            case 'decimal':
+                // 1.5000 shows as 1.5, in the site's decimal style.
+                $separators = function_exists('pg_number_separators') ? pg_number_separators() : array('decimal' => '.');
+                $shown = rtrim(rtrim(number_format((float) $raw, 4, '.', ''), '0'), '.');
+
+                return str_replace('.', (string) ($separators['decimal'] ?? '.'), $shown);
+            case 'whole':
+                return (string) (int) $raw;
+        }
+
+        return $raw;
+    }
+
     // Empty for none, which is also what clears it.
     if ($field === 'compare_at_price') {
         $compare_at = pg_compare_at_price_value(isset($product['compare_at_price']) ? $product['compare_at_price'] : null);
@@ -7485,16 +7831,25 @@ function pg_pb_quick_edit_value($field, $product)
  * @param mixed  $value as pg_list_edit_parse() read it
  * @return array the answer for pg_list_edit_reply()
  */
-function pg_pb_quick_update($product_id, $field, $value)
+function pg_pb_quick_update($product_id, $field, $value, $user = null)
 {
     $product_id = (int) $product_id;
     $columns = pg_pb_quick_edit_columns();
+    $more = pg_pb_quick_edit_more_fields();
+    $more_columns = array();
+
+    foreach ($more as $more_field) {
+        $more_columns[$more_field['column']] = $more_field['column'];
+    }
+
+    unset($more_columns['name']);
 
     // A product in the Recycle Bin is not on the list this is called from; a
     // row left on a page opened before it went there is refused like a
     // missing one, or switching it on would put it back on sale from the bin.
     $current = db_item(
-        "SELECT id, name, short_description, enabled, price, inventory, inventory_quantity, keywords"
+        "SELECT id, name, short_description, enabled, price, inventory, inventory_quantity, keywords,
+            minimum_quantity, maximum_quantity, products." . implode(', products.', $more_columns)
         . (isset($columns['compare_at_price']) ? ', compare_at_price' : '')
         . (pg_bundles_ready() ? ', bundle, bundle_pricing' : '') . "
         FROM products
@@ -7557,17 +7912,41 @@ function pg_pb_quick_update($product_id, $field, $value)
                 return array('ok' => false, 'code' => 'not_tracked', 'message' => lang('This product does not track stock. Turn stock tracking on in the product first.'));
             }
 
+            // Kept per location: one figure here would not say where.
+            if (pg_stock_screen_locations()) {
+                return array('ok' => false, 'code' => 'locations', 'message' => lang('Stock is kept per location: change it on the product screen.'));
+            }
+
             $change['inventory'] = '1';
             $change['inventory_quantity'] = (int) $value;
             pg_pb_apply_stock_flag($change, $product_id);
             break;
 
         default:
-            return array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.'));
+            // Every other value the product screen changes, checked as it
+            // checks the same box.
+            $asked = pg_pb_quick_more_change($field, $value, $current);
+
+            if (!$asked['ok']) {
+                return array('ok' => false, 'code' => 'invalid', 'message' => $asked['message']);
+            }
+
+            // A product code is one product's (pg_pb_validate_product_post()):
+            // only a changed code is looked up, as on the product screen.
+            if (($field === 'name') && ($asked['change']['name'] !== trim((string) $current['name']))) {
+                $holder = pg_product_name_holder($asked['change']['name'], $product_id);
+
+                if ($holder) {
+                    return array('ok' => false, 'code' => 'invalid', 'message' => pg_product_name_taken_text($asked['change']['name'], $holder));
+                }
+            }
+
+            $change = $asked['change'];
     }
 
+    $column = isset($more[$field]) ? $more[$field]['column'] : $field;
     $product = array_merge($current, $change);
-    $changed = ((string) $current[$field] !== (string) $product[$field]);
+    $changed = ((string) $current[$column] !== (string) $product[$column]);
 
     // The same value again writes nothing and logs nothing; the list is still
     // redrawn from what is stored.
@@ -7577,7 +7956,7 @@ function pg_pb_quick_update($product_id, $field, $value)
 
         // The analysis reads the short description and the enabled flag
         // (pg_seo_recalculate()); the price and the stock are not part of it.
-        if (($field === 'short_description') || ($field === 'enabled')) {
+        if (in_array($field, array('short_description', 'enabled', 'name'), true)) {
             $change['seo_analysis_current'] = 0;
         }
 
@@ -7597,10 +7976,11 @@ function pg_pb_quick_update($product_id, $field, $value)
             pg_pb_sync_tag_cloud_keywords($product_id, $current['keywords'], ($change['enabled'] === '1'));
         }
 
-        // No connector sends the "was" price (n11 gets the one price as both
-        // its list and its sale price), so a change of it tells a marketplace
-        // nothing new.
-        if (!in_array($field, array('short_description', 'compare_at_price'), true) && function_exists('pg_marketplace_product_changed')) {
+        // A marketplace is told about what its connectors send: availability,
+        // the price, the stock, the product code and the weight. No connector
+        // sends the "was" price (n11 gets the one price as both its list and
+        // its sale price), so a change of it tells a marketplace nothing new.
+        if (in_array($field, array('enabled', 'price', 'inventory_quantity', 'name', 'weight'), true) && function_exists('pg_marketplace_product_changed')) {
             pg_marketplace_product_changed($product_id);
         }
 
@@ -7608,7 +7988,11 @@ function pg_pb_quick_update($product_id, $field, $value)
         // announced with the same {id, name}; the same value again is not.
         pg_announce('product.updated', array('id' => (int) $product_id, 'name' => $current['name']));
 
-        $shown = function ($product) use ($field) {
+        $shown = function ($product) use ($field, $more) {
+            if (isset($more[$field])) {
+                return pg_pb_quick_more_shown($field, $product);
+            }
+
             switch ($field) {
                 case 'enabled':
                     return ((string) $product['enabled'] === '1') ? lang('Enabled') : lang('Disabled');
@@ -7629,6 +8013,19 @@ function pg_pb_quick_update($product_id, $field, $value)
                 'vars'   => array($current['name'], $columns[$field]['label'], $shown($current), $shown($product)),
             )),
             $_SESSION['sessionusername'] ?? '');
+    }
+
+    // The other values are drawn by the list's own row, read again through
+    // its source in the view the screen shows (the session's).
+    if (isset($more[$field])) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_list.php');
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table_edit.php');
+
+        $source = pg_product_list_source(is_array($user) ? $user : validate_user(), array('filter' => $_SESSION['software']['view_products']['filter'] ?? ''));
+        $row = $source ? pg_list_table_record_row($source, $product_id) : null;
+
+        return array('ok' => true, 'value' => pg_pb_quick_edit_value($field, $product))
+            + pg_list_table_edit_answer($row, isset($more[$field]['code']) ? $more[$field]['code'] : $field, array('last_modified'));
     }
 
     $cells = pg_pb_list_cells($product);

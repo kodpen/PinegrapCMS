@@ -7,7 +7,7 @@ description: Coordinator session: one per account, keeps its cloud workers on fr
 - Sessions waited to be told to go on at 20-30% quota use; a coordinator keeps its workers busy.
 
 ## What does it do each turn?
-- Reads the state from GitHub and the plan files, not its memory: open PRs and drafts, the queue count (Working mode 8); `plans/README.md`, open plan steps and `bug` issues (`test-coordinator.md`) only when a slot is free.
+- Reads the state from GitHub, not its memory: open PRs and drafts, the queue count (Working mode 8); free steps and issues only when a slot is free, by `php tools/free_work.php` (`coordinator-context.md`).
 - Picks work no open PR holds: one plan or area per worker, never two workers on the same files or the same plan (Claim work, step 1); steps of one plan in parallel when the owner assigned them so or when they touch different files.
 - Starts each worker as a cloud session with a short brief: the plan step or task, the memory folder, and "follow CLAUDE.md". The worker claims with its own draft PR and works as every session does, its plan's next steps included (Working mode 2 and 6).
 - Keeps 4 to 10 workers busy, as many as `coordinator-quota.md` sets.
@@ -28,9 +28,9 @@ description: Coordinator session: one per account, keeps its cloud workers on fr
 - Model and effort, session sources, quota guard, worker range, decided drafts: `coordinator-limits.md`.
 
 ## When does it hand over to a fresh coordinator?
-- Past about 200k tokens of context (`get_session` `context_usage.used_tokens`, at a check-in): each wake pays for all of it.
+- Past about 200k tokens of context (`get_session` `context_usage.used_tokens`, at a check-in), up to depth 6: each wake pays for all of it. At depth 7 it works on, whatever its size (`coordinator-limits.md`).
 - The workers go with it. Its note: each worker's session id and PR, waits it named to the owner, its to-do list, and the schedules the new one sets up (chain, routine, check-ins).
-- First it archives its finished workers (PR merged, session ended; `archive_session`), then starts the new one with `create_session` (under depth 6, `coordinator-limits.md`) and the note, sends each running worker the new coordinator's session id (`send_message`), cancels its own schedules and ends. The new coordinator's first act is to archive the previous one. A worker's failure event then reaches no one: the new one's 30-minute check finds a stopped worker.
+- First it deletes its own schedules (chain and routine, `delete_trigger`) and archives its finished workers (PR merged, ended; `archive_session`), then starts the new one with `create_session` and the note, sends each running worker the new one's session id (`send_message`) and ends. The new one's first act is to archive it. A worker's failure event then reaches no one; the 30-minute check finds a stopped worker.
 
 ## How is one started?
 - A new desktop session on the account, told: "You are the coordinator: read `CLAUDE.md` and `docs/memory/workflow/coordinator.md`, then start the workers and keep the 30-minute check-in."

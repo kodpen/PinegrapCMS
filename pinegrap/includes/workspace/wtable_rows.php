@@ -324,6 +324,35 @@ function ws_wtable_row($table_id, $row_id)
 }
 
 /**
+ * The distinct text values the rows of a table hold in one column, as
+ * stored: a status column's keys, read before its choices change so a new
+ * choice never takes a key a row still holds.
+ *
+ * @param int $table_id
+ * @param int $column_id
+ * @return string[]
+ */
+function ws_wtable_column_held_values($table_id, $column_id)
+{
+    if (!ws_wtables_ready() || ((int) $table_id <= 0) || ((int) $column_id <= 0)) {
+        return array();
+    }
+
+    $held = array();
+
+    foreach ((array) db_items("SELECT cells FROM ws_wtable_rows WHERE table_id = '" . (int) $table_id . "'") as $record) {
+        $cells = ws_wtable_cells_decode($record['cells'] ?? null);
+        $value = $cells[(string) (int) $column_id] ?? null;
+
+        if (is_string($value) && ($value !== '')) {
+            $held[$value] = true;
+        }
+    }
+
+    return array_map('strval', array_keys($held));
+}
+
+/**
  * The rows of a table in order, as read (ws_wtable_row_out()). The 5000-row
  * limit bounds the read.
  *

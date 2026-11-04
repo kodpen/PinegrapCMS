@@ -18,6 +18,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/commission_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
 foreach (array('PATH' => '/', 'OUTPUT_PATH' => '/', 'OUTPUT_SOFTWARE_DIRECTORY' => 'pinegrap', 'BASE_CURRENCY_SYMBOL' => '$', 'DATE_FORMAT' => 'day_month', 'TIME_FORMAT' => 'twenty_four_hours') as $commission_list_test_name => $commission_list_test_value) {
 	if (!defined($commission_list_test_name)) {
@@ -54,11 +55,11 @@ function test_commission_list_sort_ends_with_the_id()
 {
 	unset($_SESSION['software']['list_state']['view_commissions'], $_SESSION['software']['list_state']['view_recurring_commission_profiles']);
 
-	pg_assert_same('commissions.last_modified_timestamp desc, commissions.id desc', pg_commission_list_sort()['order_by']);
-	pg_assert_same('recurring_commission_profiles.last_modified_timestamp desc, recurring_commission_profiles.id desc', pg_commission_profile_list_sort()['order_by']);
+	pg_assert_same('commissions.last_modified_timestamp desc, commissions.id desc', pg_list_table_order_sql(pg_commission_list_source(array('role' => 0), array())));
+	pg_assert_same('recurring_commission_profiles.last_modified_timestamp desc, recurring_commission_profiles.id desc', pg_list_table_order_sql(pg_commission_profile_list_source(array('role' => 0), array())));
 
 	$_SESSION['software']['list_state']['view_commissions'] = array('sort' => 'amount', 'order' => 'asc');
-	pg_assert_same('commissions.amount asc, commissions.id desc', pg_commission_list_sort()['order_by']);
+	pg_assert_same('commissions.amount asc, commissions.id desc', pg_list_table_order_sql(pg_commission_list_source(array('role' => 0), array())));
 }
 
 function test_commission_list_search()
