@@ -73,6 +73,11 @@ $booking_pages[] = array(
                                 $el('li', '', lang('Step'), array(), array('text' => lang('Need to change something? Write under your booking.'))),
                             )),
                         )),
+                        $el('div', 'p-4 rounded-4 border border-primary-subtle mb-4', lang('Online Booking'), array(
+                            $heading('h2', lang('Want an exact time?'), 'h5 fw-semibold mb-2'),
+                            $para(lang('Book online: pick a free day and hour, and it is yours at once.'), 'small text-body-secondary mb-3'),
+                            $link(lang('Book Online'), '{{page:book_online}}', 'btn btn-sm btn-primary rounded-pill px-3'),
+                        )),
                         $el('div', 'p-4 rounded-4 border mb-4', lang('Booking Tips'), array(
                             $heading('h2', lang('Good to know'), 'h5 fw-semibold mb-3'),
                             $check_list(array(
@@ -80,6 +85,43 @@ $booking_pages[] = array(
                                 lang('Come with clean, dry hair for colour, unless we say otherwise.'),
                                 lang('Please let us know 24 hours ahead if you cannot come.'),
                             ), 'list-unstyled small mb-0'),
+                        )),
+                        $el('div', 'p-4 rounded-4 border', lang('Opening hours'), array(
+                            $heading('h2', lang('Opening hours'), 'h5 fw-semibold mb-3'),
+                            $hours(),
+                        )),
+                    ), '', '4'),
+                ), '4', '', 'g-lg-5'),
+            )),
+        )),
+    ), false),
+);
+
+// Online booking: the Booking widget offers the free times of the services
+// and staff set up under Bookings, and holds the one picked while the
+// visitor fills in their details. Beside the request form, which stays for
+// a visitor who would rather give a time of day.
+$booking_pages[] = array(
+    'key'              => 'book_online',
+    'name'             => lang('book-online'),
+    'folder'           => 'public',
+    'title'            => lang('Book Online'),
+    'meta_description' => lang('Book online: choose the treatment, a stylist or anyone free, then a free day and time.'),
+    'tree'             => $page(array(
+        $page_header(lang('Book Online'), lang('Choose the treatment, a stylist or anyone free, then a free day and time. We confirm by e-mail.')),
+        $el('section', 'py-5', lang('Content'), array(
+            $container(array(
+                $row(array(
+                    $col(array(
+                        $el('div', 'card border-0 shadow-sm rounded-4', lang('Booking Card'), array(
+                            $el('div', 'card-body p-4 p-lg-5', lang('Card Body'), array($widget('online_booking'))),
+                        )),
+                    ), '', '8'),
+                    $col(array(
+                        $el('div', 'p-4 rounded-4 bg-body-tertiary mb-4', lang('Booking Request'), array(
+                            $heading('h2', lang('Rather give a time of day?'), 'h5 fw-semibold mb-2'),
+                            $para(lang('Send us a request and we confirm the hour by e-mail.'), 'small text-body-secondary mb-3'),
+                            $link(lang('Send a Request'), '{{page:appointment}}', 'btn btn-sm btn-outline-primary rounded-pill px-3'),
                         )),
                         $el('div', 'p-4 rounded-4 border', lang('Opening hours'), array(
                             $heading('h2', lang('Opening hours'), 'h5 fw-semibold mb-3'),
@@ -529,6 +571,16 @@ $booking_widgets = array(
                 ), $mail_style('margin:0')),
             ), array_merge($mail_style('border-top:1px solid #f3d9e4;padding-top:16px'), $show_when('has_new_account'))),
         )),
+    ),
+
+    // The online booking: the editor's layout of the Booking widget. Its
+    // services and staff are the site's own (Bookings); with none set up
+    // the widget says so.
+    'online_booking' => array(
+        'page'   => 'book_online',
+        'slug'   => lang('online-booking'),
+        'config' => array('regionType' => 'booking'),
+        'tree'   => 'starter',
     ),
 
     // The comment of the reply e-mail, drawn for the comment the e-mail is

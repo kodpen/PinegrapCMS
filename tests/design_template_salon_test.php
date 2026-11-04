@@ -70,7 +70,7 @@ function _test_salon_page_keys()
 {
 	return array(
 		'home', 'services', 'team', 'lookbook', 'about',
-		'appointment', 'appointment_view', 'my_appointments', 'privacy',
+		'appointment', 'book_online', 'appointment_view', 'my_appointments', 'privacy',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post',
 		'my_account', 'search', 'staff', 'error', 'forgot_password',
 		'email_appointment_new', 'email_appointment_received', 'email_reply',
@@ -182,7 +182,7 @@ function test_salon_booking_pages()
 		$keys[$p['key']] = $p['folder'];
 	}
 	pg_assert_same(array(
-		'appointment' => 'public', 'appointment_view' => 'registration', 'my_appointments' => 'registration', 'privacy' => 'public',
+		'appointment' => 'public', 'book_online' => 'public', 'appointment_view' => 'registration', 'my_appointments' => 'registration', 'privacy' => 'public',
 		'email_appointment_new' => 'private', 'email_appointment_received' => 'private', 'email_reply' => 'private',
 	), $keys);
 
@@ -193,6 +193,22 @@ function test_salon_booking_pages()
 	foreach ($d['booking']['widgets'] as $wkey => $w) {
 		pg_assert_true($w['page'] === '' || isset($known[$w['page']]), "widget $wkey sits on a template page");
 	}
+}
+
+// The online booking page places the Booking widget with the editor's
+// layout, and it and the request form link to each other.
+function test_salon_online_booking_page()
+{
+	$d = _test_salon_load();
+	$w = $d['booking']['widgets']['online_booking'];
+	pg_assert_same('book_online', $w['page']);
+	pg_assert_same('booking', $w['config']['regionType']);
+	pg_assert_same('starter', $w['tree']);
+	$pages = array();
+	foreach ($d['booking']['pages'] as $p) $pages[$p['key']] = json_encode($p['tree']);
+	pg_assert_true(strpos($pages['book_online'], '"templateWidget":"online_booking"') !== false, 'the page places the widget');
+	pg_assert_true(strpos($pages['book_online'], '{{page:appointment}}') !== false, 'the booking page links the request form');
+	pg_assert_true(strpos($pages['appointment'], '{{page:book_online}}') !== false, 'the request form links the booking page');
 }
 
 // The appointment form: the form settings, the named fields, the date
