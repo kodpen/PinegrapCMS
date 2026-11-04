@@ -961,11 +961,15 @@
     Editor.panels.select = function (body) {
         var self = this;
 
+        // The file's name under the panel's title (renderPanel() below).
         if (this.board.pic && this.pictureOn()) {
-            body.appendChild(section(t('pictureTitle'), el('div', { class: 'pgie-btnrow' }, [
-                button('pgie-ibtn', t('lock'), 'lock', function () { self.lockPicture(true); }),
-                button('pgie-ibtn', t('pictureDelete'), 'trash', function () { self.deletePicture(); })
-            ])));
+            body.appendChild(el('div', { class: 'pgie-sec' }, [
+                el('div', { class: 'pgie-picname' }, [X.icon('image'), el('span', { text: this.nameEl.textContent || t('pictureTitle') })]),
+                el('div', { class: 'pgie-btnrow' }, [
+                    button('pgie-ibtn', t('lock'), 'lock', function () { self.lockPicture(true); }),
+                    button('pgie-ibtn', t('pictureDelete'), 'trash', function () { self.deletePicture(); })
+                ])
+            ]));
             return;
         }
 
@@ -975,6 +979,21 @@
         }
 
         picturePanel.call(this, body);
+    };
+
+    // The selected picture titles the panel as its row in the layers list
+    // does (Background), not as the list.
+    var renderPanel = Editor.prototype.renderPanel;
+
+    Editor.prototype.renderPanel = function () {
+        renderPanel.call(this);
+
+        var h = this.panel && !this.layersOpen && this.board.pic && this.pictureOn() && this.panel.querySelector('.pgie-ph h2');
+
+        if (h) {
+            h.textContent = t('boardBackground');
+            this.panel.setAttribute('aria-label', h.textContent);
+        }
     };
 
     // The Canvas panel on a photo: unlock the picture there too.
