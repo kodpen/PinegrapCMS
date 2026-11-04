@@ -180,6 +180,7 @@ if (!$_POST) {
                     ' . $output_hidden_role . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
                     <input type="hidden" name="contact_id" value="' . h($contact_id) . '" />
+                    ' . pg_user_form_layout('
                     <div class="card mb-5">
                         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
                             <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Role') . '</span>
@@ -230,26 +231,26 @@ if (!$_POST) {
                                         <input type="text" name="badge_label" placeholder="' . $output_badge_label_placeholder . '" id="badge_label" aria-label="' . h(lang('Badge Label')) . '" class="form-control form-control-sm" value="" size="20" maxlength="100" />
                                         ' . $output_badge_label_info . '
                                     </div>
-                                    <div class="form-field">
-                                        <div class="switch"><input type="checkbox" id="notify_user" name="notify_user" value="1" class=""/></div>
-                                        <label class="" for="notify_user">' . lang('Notify User: e-mail a link to set a password') . '</label>
-                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    ' . pg_user_form_rights_cards($permission_ui['rows']) . '
-
-                    ' . $permission_ui['panels'] . '
-
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
+                    ' . pg_user_form_rights_cards($permission_ui['rows']), '
+                    <div class="card mb-5">
+                        <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Password') . '</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-field">
+                                <div class="switch"><input type="checkbox" id="notify_user" name="notify_user" value="1"/></div>
+                                <label for="notify_user">' . lang('Notify User: e-mail a link to set a password') . '</label>
                             </div>
                         </div>
-                    </nav>
+                    </div>', '
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>') . '
+
+                    ' . $permission_ui['panels'] . '
                 </form>
             </div>
         </div>
