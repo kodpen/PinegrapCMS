@@ -1278,15 +1278,15 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             </div>
             <div class="col-12 sm:col-6 lg:col-4 my-3" id="catalog_number_of_featured_items_row" style="' . $catalog_number_of_featured_items_row_style . '">
                 <label for="catalog_number_of_featured_items" class="form-label">' . lang('Number of Featured Items') . '</label>
-                <input value="' . h($catalog_properties['number_of_featured_items'] ?? '') . '" type="text" name="catalog_number_of_featured_items" id="catalog_number_of_featured_items" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
+                <input value="' . h($catalog_properties['number_of_featured_items'] ?? '') . '" type="text" name="catalog_number_of_featured_items" id="catalog_number_of_featured_items" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false"  data-inputmask-placeholder="0" />
             </div>
             <div class="col-12 sm:col-6 lg:col-4 my-3" id="catalog_number_of_new_items_row" style="' . $catalog_number_of_new_items_row_style . '">
                 <label for="catalog_number_of_new_items" class="form-label">' . lang('Number of New Items') . '</label>
-                <input value="' . h($catalog_properties['number_of_new_items'] ?? '') . '" type="text" name="catalog_number_of_new_items" id="catalog_number_of_new_items" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
+                <input value="' . h($catalog_properties['number_of_new_items'] ?? '') . '" type="text" name="catalog_number_of_new_items" id="catalog_number_of_new_items" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false"  data-inputmask-placeholder="0" />
             </div>
             <div class="col-12 sm:col-6 lg:col-4 my-3" id="catalog_number_of_columns_row" style="' . $catalog_number_of_columns_row_style . '">
                 <label for="catalog_number_of_columns" class="form-label">' . lang('Number of Columns') . '</label>
-                <input value="' . h($catalog_number_of_columns) . '" type="text" name="catalog_number_of_columns" id="catalog_number_of_columns" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
+                <input value="' . h($catalog_number_of_columns) . '" type="text" name="catalog_number_of_columns" id="catalog_number_of_columns" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false"  data-inputmask-placeholder="0" />
             </div>
             <div class="col-12">
                 <div class="row">
@@ -1294,14 +1294,14 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                         <label for="catalog_image_width" class="form-label">' . lang('Image Width') . '</label>
                         <label class="form-control form-adorn form-adorn-end my-3">
                             <span class="form-adorn-text" aria-hidden="true">' . lang('pixels') . '</span>
-                            <input value="' . h($catalog_image_width) . '" type="text" name="catalog_image_width" id="catalog_image_width" maxlength="4" class="form-ghost text-end" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
+                            <input value="' . h($catalog_image_width) . '" type="text" name="catalog_image_width" id="catalog_image_width" maxlength="4" class="form-ghost text-end" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false"  data-inputmask-placeholder="0" />
                         </label>
                     </div>
                     <div class="col-12 sm:col-6 lg:col-4 my-3" id="catalog_image_height_row" style="' . $catalog_image_height_row_style . '">
                         <label for="catalog_image_height" class="form-label">' . lang('Image Height') . '</label>
                         <label class="form-control form-adorn form-adorn-end my-3">
                             <span class="form-adorn-text" aria-hidden="true">' . lang('pixels') . '</span>
-                            <input value="' . h($catalog_image_height) . '" type="text" name="catalog_image_height" id="catalog_image_height" maxlength="4" class="form-ghost text-end" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
+                            <input value="' . h($catalog_image_height) . '" type="text" name="catalog_image_height" id="catalog_image_height" maxlength="4" class="form-ghost text-end" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false"  data-inputmask-placeholder="0" />
                         </label>
                     </div>
                 </div>
@@ -2547,12 +2547,12 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                 <label for="form_view_directory_summary_days" class="form-label">' . lang('Date Range') . '</label>
                                 <label class="form-control form-adorn form-adorn-end">
                                     <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
-                                    <input value="' . $form_view_directory_summary_days . '" type="text" name="form_view_directory_summary_days" id="form_view_directory_summary_days" class="form-ghost" size="7" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
+                                    <input value="' . $form_view_directory_summary_days . '" type="text" name="form_view_directory_summary_days" id="form_view_directory_summary_days" class="form-ghost" size="7" maxlength="4" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false"  style="text-align: right;" />
                                 </label>
                             </div>
                             <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label for="form_view_directory_summary_maximum_number_of_results" class="form-label">' . lang('Maximum Number of Results') . '</label>
-                                <input value="' . $form_view_directory_summary_maximum_number_of_results . '" type="text" name="form_view_directory_summary_maximum_number_of_results" id="form_view_directory_summary_maximum_number_of_results" class="form-control" size="2" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
+                                <input value="' . $form_view_directory_summary_maximum_number_of_results . '" type="text" name="form_view_directory_summary_maximum_number_of_results" id="form_view_directory_summary_maximum_number_of_results" class="form-control" size="2" maxlength="3" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false"  style="text-align: right;" />
                             </div>
                         </div>
                     </div>
@@ -2661,7 +2661,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             </div>
             <div class="col-12 md:col-6 lg:col-4 my-3" id="calendar_view_number_of_upcoming_events_row" style="' . $calendar_view_number_of_upcoming_events_row_style . '">
                 <label for="calendar_view_number_of_upcoming_events" class="form-label">' . lang('Number of Events') . '</label>
-                <input value="' . h($calendar_view_number_of_upcoming_events_value) . '" name="calendar_view_number_of_upcoming_events" id="calendar_view_number_of_upcoming_events" type="text" maxlength="2" class="form-control" />
+                <input value="' . h($calendar_view_number_of_upcoming_events_value) . '" name="calendar_view_number_of_upcoming_events" id="calendar_view_number_of_upcoming_events" type="text" maxlength="2" class="form-control" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false" />
             </div>
             <div class="col-12 md:col-6 lg:col-4 my-3" id="calendar_view_calendar_event_view_page_id_row" style="' . $calendar_view_calendar_event_view_page_id_row_style . '">
                 <label for="calendar_view_calendar_event_view_page_id" class="form-label">' . lang('Calendar Event View') . '</label>
@@ -2777,13 +2777,13 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                         </div>
                         <div class="col-12 md:col-4 lg:col-3 my-3" id="photo_gallery_number_of_columns_row" style="' . $photo_gallery_number_of_columns_row_style . '">
                             <label for="photo_gallery_number_of_columns" class="form-label">' . lang('Number of Columns') . '</label>
-                            <input value="' . $photo_gallery_number_of_columns . '" type="text" name="photo_gallery_number_of_columns" id="photo_gallery_number_of_columns" class="form-control" maxlength="2" inputmode="numeric" data-inputmask-alias="decimal"/>
+                            <input value="' . $photo_gallery_number_of_columns . '" type="text" name="photo_gallery_number_of_columns" id="photo_gallery_number_of_columns" class="form-control" maxlength="2" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false"/>
                         </div>
                         <div class="col-12 md:col-8 lg:col-6 xl:col-4 my-3" id="photo_gallery_thumbnail_max_size_row" style="' . $photo_gallery_thumbnail_max_size_row_style . '">
                             <label for="photo_gallery_thumbnail_max_size" class="form-label">' . lang('Thumbnail Max Size') . '</label>
                             <label class="form-control form-adorn form-adorn-end">
                                 <span class="form-adorn-text" aria-hidden="true">' . lang('pixels') . '</span>
-                                <input value="' . $photo_gallery_thumbnail_max_size . '" type="text" name="photo_gallery_thumbnail_max_size" id="photo_gallery_thumbnail_max_size" class="form-ghost" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="100"  style="text-align: right;" />
+                                <input value="' . $photo_gallery_thumbnail_max_size . '" type="text" name="photo_gallery_thumbnail_max_size" id="photo_gallery_thumbnail_max_size" class="form-ghost" maxlength="4" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false" data-inputmask-placeholder="100"  style="text-align: right;" />
                             </label>
                         </div>
                         ' . $output_search_results_page_type_properties . '
