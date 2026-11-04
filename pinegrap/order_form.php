@@ -514,17 +514,11 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                 if ($product['selection_type'] == 'donation') {
                     $quantity = 1;
                     
-                    // If a quantity field was displayed to the user, and the quantity is valid,
-                    // then use that for the quantity.
-                    if (
-                        ($liveform->get_field_value('quantity') != '')
-                        && (preg_match('/^\d+$/', $liveform->get_field_value('quantity')) == 1)
-                    ) {
-                        $actual_quantity = $liveform->get_field_value('quantity');
-                        
-                    // Otherwise a quantity field was not displayed to the user, or the quantity is invalid,
-                    // so use default quantity.
-                    } else {
+                    // A posted whole number of at least one is the quantity; a missing,
+                    // invalid or zero quantity falls back to the default quantity.
+                    $actual_quantity = pg_order_form_posted_quantity($liveform->get_field_value('quantity'));
+
+                    if ($actual_quantity < 1) {
                         $actual_quantity = pg_product_default_quantity($product['default_quantity']);
                     }
 
@@ -532,8 +526,8 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
 
                 // else product is not a donation, so just prepare quantity
                 } else {
-                    // If the quantity is not valid, then output error.
-                    if (preg_match('/^\d+$/', $liveform->get_field_value('quantity')) == 0) {
+                    // If the quantity is not a whole number of at least one, then output error.
+                    if (pg_order_form_posted_quantity($liveform->get_field_value('quantity')) < 1) {
                         $liveform->mark_error('quantity', lang('Please enter a valid quantity.'));
                         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . encode_url_path(get_page_name($liveform->get_field_value('page_id'))));
                         exit();

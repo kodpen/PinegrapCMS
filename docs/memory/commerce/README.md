@@ -161,6 +161,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-discount-charged-today.md: Order discount vs recurring lines not charged today: the cap at today's subtotal (pg_order_charged_discount), which lines are charged, why the cap sits in apply_offers_to_cart()
 - order-documents-address.md: How the site's order documents (Order Summary widget, its e-mail, the recipients list, the legal documents) print the district and the country, and the starter's payment and arrival date labels
 - order-export-filter-joins.md: Order exports of view_orders.php select DISTINCT while a product name or shipping filter joins order_items or ship_tos, so no row is written twice (PR #5210)
+- order-form-posted-quantity.md: The order form's drop-down layout refuses quantity 0; a donation falls back to the default quantity
 - order-legal-documents.md: Legal documents (pre-information form, distance sales contract): settings, templates, order_documents, kept copy for customer and staff, receipt attachments, panel card
 - order-page-stored-figures.md: Order view (My Account) and receipt page/e-mail show a placed order's own orders.discount, tax and total (pg_order_page_figures), never the session cart's order_discount; what an unplaced order shows
 - order-payment-method-normalization.md: submit_order.php payment_method normalization to the four constants, the Pay With Iyzico ENUM addition (4.48) and the old Turkish layout cause.

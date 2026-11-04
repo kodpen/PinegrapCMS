@@ -86,6 +86,17 @@ function pg_product_default_quantity($default_quantity)
     $quantity = is_numeric($default_quantity) ? (int) $default_quantity : 0;
     return max(1, $quantity);
 }
+
+// The quantity the order form's drop-down layout posts (commas already
+// removed): a whole number of at least one, else 0 for refused. Zero passes a
+// plain digit check but would write a cart line of quantity 0.
+function pg_order_form_posted_quantity($raw)
+{
+    if (!is_string($raw) || preg_match('/^\d+$/', $raw) !== 1) {
+        return 0;
+    }
+    return max(0, (int) $raw);
+}
 function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add_name, $calendar_event_id = 0, $recurrence_number = 0)
 {
     // Check if product exists and is enabled and get product info.
