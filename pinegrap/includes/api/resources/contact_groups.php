@@ -641,6 +641,22 @@ function api_contact_group_member_changes($add, $remove, $members) {
 
 }
 
+// The opt_in value a members change writes (1 or 0), or null when it writes
+// none. The choice is the group's own e-mail, so a group without subscription
+// has none to record; and it is written only for the contacts in add, so a
+// call that only removes ignores it.
+function api_contact_group_opt_in_choice($params, $subscription, $add) {
+
+	if (!isset($params['opt_in']) || ((int)$subscription !== 1) || empty($add)) {
+
+		return null;
+
+	}
+
+	return $params['opt_in'] ? 1 : 0;
+
+}
+
 // Contacts to put in have to exist. Any contact may be put in, as on the screen
 // where a contact is added: an integration that has just made one through
 // POST /customers files it here next. Below the manager role only a contact
@@ -727,15 +743,7 @@ function api_contact_groups_members_update($params) {
 
 	$changes = api_contact_group_member_changes($add, $remove, $members);
 
-	// The choice is the group's own e-mail; a group without subscription has
-	// no such choice to record.
-	$opt_in = null;
-
-	if (isset($params['opt_in']) && ((int)$group['email_subscription'] === 1)) {
-
-		$opt_in = $params['opt_in'] ? 1 : 0;
-
-	}
+	$opt_in = api_contact_group_opt_in_choice($params, $group['email_subscription'], $add);
 
 	$opt_in_updated = ($opt_in === null) ? 0 : count($add);
 
