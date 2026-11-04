@@ -74,3 +74,28 @@ function test_featured_new_items_form_checks_and_layout()
 	pg_assert_contains('text-break', $source, 'long names break');
 	pg_assert_contains('$prefill = !$liveform->check_form_errors()', $source, 'after a save the stored values are shown');
 }
+
+function test_featured_new_items_summary_counts()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/ecommerce.php');
+
+	$items = array(
+		array('type' => 'product group', 'id' => 1, 'parent_product_group_id' => 0, 'enabled' => 1, 'featured' => 1, 'new_date' => '2026-01-01'),
+		array('type' => 'product group', 'id' => 2, 'parent_product_group_id' => 1, 'enabled' => 1, 'featured' => 1, 'new_date' => '0000-00-00'),
+		array('type' => 'product group', 'id' => 3, 'parent_product_group_id' => 1, 'enabled' => 0, 'featured' => 0, 'new_date' => '2026-11-01'),
+		array('type' => 'product', 'id' => 10, 'parent_product_group_id' => 2, 'enabled' => 1, 'featured' => 1, 'new_date' => '2026-10-01'),
+		array('type' => 'product', 'id' => 10, 'parent_product_group_id' => 3, 'enabled' => 1, 'featured' => 0, 'new_date' => '0000-00-00'),
+		array('type' => 'product', 'id' => 11, 'parent_product_group_id' => 2, 'enabled' => 0, 'featured' => 0, 'new_date' => ''),
+	);
+
+	pg_assert_same(
+		array('product_groups' => 2, 'products' => 2, 'featured' => 2, 'new' => 2, 'disabled' => 2),
+		pg_featured_new_summary_counts($items),
+		'the root group is skipped, a product in two groups is one product, featured and new count rows'
+	);
+	pg_assert_same(
+		array('product_groups' => 0, 'products' => 0, 'featured' => 0, 'new' => 0, 'disabled' => 0),
+		pg_featured_new_summary_counts(array()),
+		'no items, all zero'
+	);
+}
