@@ -37,26 +37,14 @@ if (!$_POST) {
         ),
     ]) . '
 <main id="content" class="container-fluid">
-            ' . get_date_picker_format() . '
-        <div class="row">
-            <div class="col-12">
-                
-                <form name="form" action="add_arrival_date.php" method="post" >
-                    ' . get_token_field() . '
-                    <input type="hidden" id="last_shipping_cutoff_number" name="last_shipping_cutoff_number" value="0" />
-                    ' . pg_arrival_date_form_cards(array()) . '
-                    ' . pg_fields_script() . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
-                </form>
-            </div>
-        </div>
-    
+    ' . get_date_picker_format() . '
+    <form name="form" action="add_arrival_date.php" method="post">
+        ' . get_token_field() . '
+        <input type="hidden" id="last_shipping_cutoff_number" name="last_shipping_cutoff_number" value="0" />
+        ' . pg_arrival_date_form_layout(pg_arrival_date_form_cards(array()), '
+                                        <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><span class="bi bi-plus-circle me-3" aria-hidden="true"></span><span class="pg-btn-label">' . lang('Create') . '</span></button>') . '
+        ' . pg_fields_script() . '
+    </form>
 </main>' .
         output_footer();
 
