@@ -113,6 +113,7 @@ if (!$_POST) {
     }
 
     $balance = (int) $till['balance'];
+    $kind_labels = array('cash' => lang('Cash'), 'bank' => lang('Bank'), 'pos' => lang('Card terminal'), 'credit_card' => lang('Credit card'));
 
     // The read-only accountant sees the till's details without a way to
     // change or delete it.
@@ -137,30 +138,55 @@ if (!$_POST) {
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
+        </div>
 
-            <div class="card my-7">
-                <div class="card-body d-flex flex-wrap align-items-baseline gap-5">
-                    <span class="text-uppercase fg-secondary">' . lang('Balance') . '</span>
-                    <span class="h4 mb-0 ' . (($balance < 0) ? 'fg-danger' : 'fg-success') . '">' . $money($balance) . '</span>
-                </div>
-            </div>
-
+        <!-- The form column; what is read sits beside it, as on the other ERP edit screens. -->
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
             ' . ($readonly ? '<fieldset disabled>' . erp_till_form_cards($liveform, !empty($movements)) . '</fieldset>' : '<form name="form" action="edit_erp_till.php" method="post">
-                ' . get_token_field() . '
-                ' . $liveform->field(array('type' => 'hidden', 'name' => 'id')) . '
-                ' . erp_till_form_cards($liveform, !empty($movements)) . '
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
-                            ' . (empty($movements)
-                                ? '<button type="submit" id="delete_button" name="submit_delete" value="Delete" class="btn my-1 btn-outline theme-danger" data-confirm-content="' . h(lang(array('string' => 'Delete the till {var:1}? This cannot be undone.', 'vars' => $till['name']))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Delete')) . '</span></button>'
-                                : '') . '
+                    ' . get_token_field() . '
+                    ' . $liveform->field(array('type' => 'hidden', 'name' => 'id')) . '
+                    ' . erp_till_form_cards($liveform, !empty($movements)) . '
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                        <div class="container">
+                            <div class="btn-group flex-wrap justify-content-center">
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
+                                ' . (empty($movements)
+                                    ? '<button type="submit" id="delete_button" name="submit_delete" value="Delete" class="btn my-1 btn-outline theme-danger" data-confirm-content="' . h(lang(array('string' => 'Delete the till {var:1}? This cannot be undone.', 'vars' => $till['name']))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Delete')) . '</span></button>'
+                                    : '') . '
+                            </div>
+                        </div>
+                    </nav>
+                </form>') . '
+        </div>
+
+        <!--
+            What is read, not filled. Sticky under the fixed header, and after
+            the form column in source order so a phone shows it below the form.
+        -->
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+            <div class="position-sticky" style="top:3.3rem;">
+                <div class="card my-7">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-6 sm:col-4 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Balance') . '</div>
+                                <div class="h4 mb-0 ' . (($balance < 0) ? 'fg-danger' : 'fg-success') . '">' . $money($balance) . '</div>
+                            </div>
+                            <div class="col-6 sm:col-4 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Type') . '</div>
+                                <div>' . h($kind_labels[(string) $till['kind']] ?? (string) $till['kind']) . '</div>
+                            </div>
+                            <div class="col-6 sm:col-4 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Movements') . '</div>
+                                <div>' . count($movements) . '</div>
+                            </div>
                         </div>
                     </div>
-                </nav>
-            </form>') . '
+                </div>
+            </div>
+        </div>
 
+        <div class="col-12 order-3">
             <div class="card my-7">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Cash Book') . '
