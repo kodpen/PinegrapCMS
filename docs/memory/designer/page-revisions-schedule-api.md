@@ -20,5 +20,6 @@ description: External API and MCP for page revisions and scheduled publishing: t
 
 ## What changed about design:write?
 - It no longer only proposes and adds drafts: it can schedule a page live and restore a published layout. The scope comment (scopes.php) and the operator's text in API settings (`api_settings.php`) say so. Tests: `tests/api_design_revisions_test.php`.
+- Since X12a (#6383) it also writes ads and ad regions directly, live at once (`/design/ads`, `/design/ad-regions`); the scope comment and the operator's text name that too.
 
 Related: docs/memory/designer/page-revisions.md, docs/memory/designer/page-schedule.md
