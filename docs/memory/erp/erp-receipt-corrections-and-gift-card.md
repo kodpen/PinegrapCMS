@@ -18,6 +18,6 @@ description: ERP receipt cancel, settlement removal/late allocation, FX reversal
 - Late settlement: `erp_settlement_allocate()` (same checks as at receipt time, `amount_base` at the receipt's rate).
 - FIFO is only a suggestion (`erp_settlement_suggest()`); the write happens on the user's save.
 - A foreign-currency invoice leaving `paid` calls `erp_fx_reverse_difference()`; `erp_fx_post_difference()` does not count a reversed original.
-- An invoice left with no settlement gets its `payment_date` reset (except internet sales).
+- An invoice that is no longer `paid` (or a cancelled/draft one left with no settlement) gets its `payment_date` reset, except internet sales, so the next closing receipt dates it again: a cancelled closing receipt left its date on the document, the API and the e-document (bug #6805, `erp_invoice_payment_date_next()`).
 
 Related: docs/memory/erp/erp-invoice-settlement.md
