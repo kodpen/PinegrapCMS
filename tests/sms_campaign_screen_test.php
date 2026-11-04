@@ -16,6 +16,8 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_campaigns.php');
+
 function test_sms_campaign_screen_uses_wide_layout()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_sms_campaign.php');
