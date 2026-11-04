@@ -82,12 +82,19 @@ function test_destructive_actions_forms_keep_ctrl_s_off()
 	}
 }
 
-// With child groups the Delete only explains; a submit there saved the form.
+// Without the Recycle Bin a group with child groups cannot be deleted: its
+// Delete is a disabled plain button with the reason beside it (a submit
+// there saved the form), not a native alert(). With the bin the subtree goes
+// there together, so the normal Delete asks with its own text.
 function test_destructive_actions_product_group_delete_does_not_save()
 {
-	$tags = destructive_actions_ask_test_tags('edit_product_group.php', "'Please delete all product groups in this product group before deleting this product group.'");
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_product_group.php');
+	$tags = destructive_actions_ask_test_tags('edit_product_group.php', 'aria-describedby="delete_product_group_hint"');
 
 	pg_assert_true($tags['button'] !== '', 'the explaining Delete is found');
 	pg_assert_true(strpos($tags['button'], 'type="button"') !== false, 'it is a plain button');
-	pg_assert_true(strpos($tags['button'], 'return false') !== false, 'its click stops there');
+	pg_assert_true(strpos($tags['button'], ' disabled') !== false, 'it is disabled');
+	pg_assert_true(strpos($source, 'alert(') === false, 'no native alert');
+	pg_assert_contains("(\$child_product_group_exists == true) && !pg_catalog_bin_ready()", $source, 'refused only without the bin');
+	pg_assert_contains("lang('This product group and the product groups in it will be moved to the Recycle Bin.", $source, 'the bin ask names the sub-groups');
 }

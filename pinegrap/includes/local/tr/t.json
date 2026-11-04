@@ -6053,6 +6053,7 @@
     "This product does not track its inventory.": "Bu ürün stok takibi yapmıyor.",
     "This product does not track stock. Send op=set with a quantity to start tracking it.": "Bu ürün stok takibi yapmıyor. Takibi başlatmak için bir miktarla op=set gönderin.",
     "This product does not track stock. Turn stock tracking on in the product first.": "Bu ürün stok takibi yapmıyor. Önce üründe stok takibini açın.",
+    "This product group and the product groups in it will be moved to the Recycle Bin. They can be restored from the Recycle Bin in the Catalog Manager.": "Bu ürün grubu ve içindeki ürün grupları Geri Dönüşüm Kutusu'na taşınacak. Katalog Yöneticisi'ndeki Geri Dönüşüm Kutusu'ndan geri yüklenebilirler.",
     "This product group could not be deleted because it is the root product group.": "Bu ürün grubu kök ürün grubu olduğu için silinemez.",
     "This product group has groups inside it in the Recycle Bin. Delete those from the Recycle Bin first.": "Bu ürün grubunun Geri Dönüşüm Kutusu'nda alt grupları var. Önce onları Geri Dönüşüm Kutusu'ndan silin.",
     "This product group has groups inside it. Move or delete those first.": "Bu ürün grubunun içinde başka gruplar var. Önce onları taşıyın ya da silin.",

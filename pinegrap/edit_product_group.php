@@ -450,13 +450,27 @@ if (!$_POST) {
     if ($group_binned) {
         $output_delete_button = '';
     } elseif ($parent_id != 0) {
-        // if there is a child product group in this product group, then disable delete button
-        if ($child_product_group_exists == true) {
-            $output_delete_button = '<button type="button" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " onclick="alert(\'' . lang('Please delete all product groups in this product group before deleting this product group.') . '\');return false;" ><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
-        // else there is not a child object in this product group, so allow delete
-        } else {
+        // With the Recycle Bin the group goes there with every group under
+        // it, the way a folder does, so its sub-groups do not stop the
+        // delete. Without the bin the permanent delete would leave them
+        // without a parent, so the button is disabled and says why.
+        if (($child_product_group_exists == true) && !pg_catalog_bin_ready()) {
             $output_delete_button = '
-            <button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-solid theme-danger " formnovalidate data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product group')))) : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('product group'))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+            <span class="d-inline-flex flex-column">
+                <button type="button" class="btn my-1 btn-solid theme-danger" disabled aria-describedby="delete_product_group_hint"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . h(lang('Delete')) . '</span></button>
+                <span class="form-text" id="delete_product_group_hint">' . h(lang('Please delete all product groups in this product group before deleting this product group.')) . '</span>
+            </span>';
+        } else {
+            if (pg_catalog_bin_ready()) {
+                $delete_confirm = ($child_product_group_exists == true)
+                    ? lang('This product group and the product groups in it will be moved to the Recycle Bin. They can be restored from the Recycle Bin in the Catalog Manager.')
+                    : lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product group'))));
+            } else {
+                $delete_confirm = lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('product group'))));
+            }
+
+            $output_delete_button = '
+            <button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-solid theme-danger " formnovalidate data-confirm-content="' . h($delete_confirm) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
         }
     } else {
         $output_delete_button = '';
