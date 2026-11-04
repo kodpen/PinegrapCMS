@@ -8,6 +8,7 @@ description: The flow draft card as a read-only mini flow window (D8b #3032, V7a
 - The graph: waiting new flow = snapshot graph; waiting patch = ops made again on the flow's draft now (`edit` access); applied = the flow's draft now (`view`), with `flow_id` and `can_try` (`ws_flow_share_manager()`). Asker, `ws_can_schedule()`, `ws_can_post_channel()` as `ws_flow_draft_open()`. Nothing written.
 - `ws_flow_card_graph($graph, $ops)` (pure): places scaled 128/208 across, 60/80 down, top-left at 16 px; `outbound` kinds (orange), `mark` from `ws_flow_patch_marks()` (dashed), `try` false for value boxes, `said`/`failed`, `threads`, `removed`.
 - The pane `.ws-fd-pane` looks like the canvas (#6414): surface `var(--pg-bg-1)` as `.pgc-stage` (light or dark with the panel), `.pgc-viewport`'s dots 10 px apart (16 px at 128/208), `background-attachment: local` so they scroll with the drawing.
+- `.ws-drafts` is one `minmax(0, 1fr)` column (#6668): with `auto`, a drawing wider than the card widened the card and the whole channel.
 - A picked box shows below: name, kind, marks; once opened "Open on the canvas" (`?flow=&box=`) and, for `can_try`, "Try this box" (`ws_flow_box_try`). CSS `.ws-fd-*` in backend.src.css.
 
 ## How is it drawn? (V7a)
