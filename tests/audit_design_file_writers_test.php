@@ -106,6 +106,9 @@ function test_audit_edit_theme_file_records_save_delete_and_deactivation()
 {
 	$file = 'edit_theme_file.php';
 	audit_design_file_writers_test_writes($file, 'DELETE FROM files', 'delete', 1);
+
+	// The save is shared with the All Themes list's quick edit.
+	$file = 'includes/forms/theme_file_form.php';
 	audit_design_file_writers_test_writes($file, 'UPDATE files', 'update', 3);
 	$source = audit_design_file_writers_test_source($file);
 	pg_assert_same(2, substr_count($source, "pg_audit_record('update', 'files', (int) \$old_activated_theme_id, "), $file . ': both deactivations record the old theme');
