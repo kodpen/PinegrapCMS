@@ -17,9 +17,11 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
-// only ever appended to further below, so it has to start out empty
-$output_rows = '';
+// Every referral source is printed: the list table driver sorts and searches
+// them in the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
 $user = validate_user();
 validate_ecommerce_access($user);
 
@@ -65,34 +67,31 @@ $query = "SELECT
         ORDER BY $order_by, referral_sources.name";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-while ($row = mysqli_fetch_array($result)) {
-    $id = $row['id'];
-    $name = $row['name'];
-    $code = $row['code'];
-    $username = $row['user'];
-    $timestamp = $row['timestamp'];
-    
-    $output_link_url = 'edit_referral_source.php?id=' . $id;
-    
-    if($username != ''){
-        $output_last_modifier_user = ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($username) ) ) );
-    }else{
-        $output_last_modifier_user = '';
-    }
-
-    $output_rows .=
-        '<tr>
-		    <td class="align-middle text-start action-buttons">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-            </td>
-            <td class="align-middle chart_label position-relative">' . h($name) . '</td>
-            <td class="align-middle position-relative">' . h($code) . '</td>
-            <td class="align-middle">' . (int) $row['sort_order'] . '</td>
-            <td class="align-middle" >' . get_relative_time(array('timestamp' => $timestamp)) . $output_last_modifier_user . ' </td>
-        </tr>';
+while ($row = mysqli_fetch_assoc($result)) {
+    $list_rows[] = array(
+        'id' => (int) $row['id'],
+        'cells' => array(
+            'name' => pg_list_cell('<a href="edit_referral_source.php?id=' . (int) $row['id'] . '" data-pg-open>' . h($row['name']) . '</a>'),
+            'code' => pg_list_cell(h($row['code'])),
+            'sort_order' => pg_list_cell((string) (int) $row['sort_order']),
+            'last_modified' => pg_list_table_when_cell($row['timestamp'], (string) $row['user']),
+        ),
+    );
 }
 
-print 
+$list = pg_list_table_printed(array(
+    'list' => 'view_referral_sources',
+    'columns' => array(
+        'name' => array('heading' => lang('Name')),
+        'code' => array('heading' => lang('Code')),
+        'sort_order' => array('heading' => lang('Sort Order'), 'kind' => 'number'),
+        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+    ),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+));
+
+print
     pg_page_shell([
         'title'=> lang('All Referral Sources'),
         'extra classes'=>'setting',
@@ -101,36 +100,18 @@ print
         'heading_description' => lang('All possible answers to the checkout question: "How did you hear about us?"'),
     ])  . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                ' . pg_screen_toolbar(array(
-                    'primary' => array('label' => lang('Create'), 'url' => 'add_referral_source.php', 'icon' => 'bi-plus-circle'),
-                    'search'  => pg_list_sort_menu('view_referral_sources.php', $sort_columns, $sort_levels, $sort_default),
-                )) . '
-                ' . $liveform->output_notices() . '
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative">
-                        <table class="chart table-hover table " style="width:100%;display:none">
-                            <thead>
-                                <tr>
-                                    <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                    <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                    <th>' . get_column_heading(lang('Code'), $sort_levels, '', '', 'code') . '</th>
-                                    <th>' . get_column_heading(lang('Sort Order'), $sort_levels, '', '', 'sort_order') . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ' . $output_rows . '
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+    <div class="row">
+        <div class="col-12">
+            ' . pg_screen_toolbar(array(
+                'primary' => array('label' => lang('Create'), 'url' => 'add_referral_source.php', 'icon' => 'bi-plus-circle'),
+                'search'  => array(pg_list_table_search_box('view_referral_sources'), pg_list_sort_menu('view_referral_sources.php', $sort_columns, $sort_levels, $sort_default)),
+            )) . '
+            ' . $liveform->output_notices() . '
+            ' . pg_list_table_html($list['source'], $list['page'], lang('All Referral Sources')) . '
         </div>
-    
-</main>' .
+    </div>
+</main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
     output_footer();
 
 $liveform->remove_form();
-?>
