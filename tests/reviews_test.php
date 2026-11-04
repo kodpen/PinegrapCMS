@@ -220,7 +220,7 @@ function test_reviews_reply_paths()
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_comment.php');
 
 	pg_assert_contains('pg_review_reply_time($seller_reply, $new_seller_reply, $seller_reply_at, time())', $edit);
-	pg_assert_contains('$sql_seller_reply', $edit);
+	pg_assert_contains("\$columns['seller_reply'] = \$new_seller_reply;", $edit);
 
 	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
 

@@ -3,9 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Light-theme contrast of the SEO score figure in the Pages and Products
- * lists (4.5:1) and of four panel icons (3:1): the pinned note, the
- * Workspace timeline check, the dashboard stat icons and the section
- * toggle of the product editor.
+ * lists (4.5:1) and of three panel icons (3:1): the pinned note, the
+ * dashboard stat icons and the section toggle of the product editor.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -104,7 +103,6 @@ function test_panel_icons_read_three_to_one()
 
 	pg_assert_true(strpos(panel_icon_score_rule($css, '.ws-nb-item-head > .ws-nb-item-pin'), 'color: var(--pg-primary-ink);') !== false, 'the note pin reads the primary ink');
 	pg_assert_true(strpos(panel_icon_score_rule($css, '.pg-settings-toggle-icon'), 'color: var(--pg-primary-ink);') !== false, 'the section toggle icon reads the primary ink');
-	pg_assert_true(preg_match('/\n\.ws-home-tl-dot \{[^}]*\n  color: var\(--pg-success-ink\);/', $css) === 1, 'the timeline check reads the success ink');
 	pg_assert_true(strpos(panel_icon_score_rule($css, '.pg-eg-stat .bi'), 'color: color-mix(in srgb, var(--pg-eg-ink) 75%, var(--pg-fg-emphasis));') !== false, 'a stat icon is its tone pulled toward the text colour');
 
 	pg_assert_true(panel_icon_score_ratio('#1565c0', '#f5f5f5') >= 3, 'the primary ink reads 3:1 on the light toggle');

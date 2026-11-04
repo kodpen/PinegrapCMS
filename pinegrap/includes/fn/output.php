@@ -7338,7 +7338,8 @@ function pg_js_bundles()
             'assets/js/pg_image_editor_redact.js', 'assets/js/pg_image_editor_area.js', 'assets/js/pg_image_editor_versions.js', 'assets/js/pg_image_editor_artboard.js',
             'assets/js/pg_image_editor_export.js', 'assets/js/pg_image_editor_vector.js', 'assets/js/pg_image_editor_svg.js',
             'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_scenes.js', 'assets/js/pg_image_editor_present.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_fonts.js',
-            'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_warp.js', 'assets/js/pg_image_editor_outline.js', 'assets/js/pg_image_editor_builder.js'),
+            'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_warp.js', 'assets/js/pg_image_editor_outline.js', 'assets/js/pg_image_editor_builder.js',
+            'assets/js/pg_image_editor_actions.js'),
         // The image editor's animation encoder, started as a worker (or on the
         // page) by pg_image_editor_render.js.
         'assets/js/pg_image_editor_encode.min.js'  => array('assets/js/pg_image_editor_encode.js'),

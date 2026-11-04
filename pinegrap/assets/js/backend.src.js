@@ -7374,10 +7374,16 @@ function toggle_calendar_event_all_day() {
         document.getElementById('show_end_time_container').style.display = 'none';
 
         // Turn both date and time fields into date fields that keep only
-        // the date of what they held.
+        // the date of what they held. The time is kept on the field, so
+        // switching all day off again brings it back.
         ['start_time', 'end_time'].forEach(function (id) {
             var field = document.getElementById(id);
-            var date = pgDateTimeField.get(field).slice(0, 10);
+            var value = pgDateTimeField.get(field);
+            var date = value.slice(0, 10);
+
+            if (/ \d{1,2}:\d{2}$/.test(value)) {
+                field.setAttribute('data-calendar-time', value.slice(11));
+            }
 
             pgFields.switchKind(field, 'date');
             pgDatePicker.set(field, date);
@@ -7396,9 +7402,21 @@ function toggle_calendar_event_all_day() {
         document.getElementById('show_start_time_container').style.display = '';
         document.getElementById('show_end_time_container').style.display = '';
 
-        // Date and time pickers on both fields; the dates they hold stay.
-        pgFields.switchKind(document.getElementById('start_time'), 'datetime');
-        pgFields.switchKind(document.getElementById('end_time'), 'datetime');
+        // Date and time pickers on both fields. A field that was a date field
+        // gets its date back with the time it had before all day was switched
+        // on (or the start or end of the day), so the store holds a full date
+        // and time and the box shows what is posted. A field that already is a
+        // date and time field (the call on page load) is left as it is.
+        [['start_time', '00:00'], ['end_time', '23:59']].forEach(function (pair) {
+            var field = document.getElementById(pair[0]);
+            var date = field.hasAttribute('data-pg-date') ? pgDatePicker.get(field) : '';
+
+            pgFields.switchKind(field, 'datetime');
+
+            if (date) {
+                pgDateTimeField.set(field, date + ' ' + (field.getAttribute('data-calendar-time') || pair[1]));
+            }
+        });
 
         // Update the size and maxlength of the fields to support both a date and time.
         $('#start_time').attr('size', 19);
