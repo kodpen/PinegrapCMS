@@ -19,6 +19,9 @@ module: comments
 - `view_comments.php` keeps them, adds an "In the Recycle Bin" badge after the Verified purchase badge and gives no Go To Comment link.
 - `edit_comment.php` shows no Go To Comment button, prints the page name through `pg_comment_page_label()` (takes off `pgbin_<own page_id>_`) with "(In the Recycle Bin)".
 
+## Where does Go To Comment lead elsewhere?
+- Both screens take the address from `pg_comment_site_path()` (`includes/fn/comments.php`, pure, tested in `tests/comment_links_test.php`): page, then `?r=<code>` (record), `/<address name>` (product, product group), `?id=<event id>` (calendar event) or nothing (page thread), then `pg_comment_view_query()`. Calendar event comments had no link before, though their mails had one; an unknown item type gets none.
+
 ## What symptom did this fix?
 - #3612 (PR #3695): comments on a binned page showed as dashboard work under 'pgbin_1380_rehber-2', the greeting counted them as approve-and-it-shows, and Go To Comment opened /pgbin_….
 
