@@ -15,7 +15,10 @@ module: list_table_edit
 ## Pages: which cells change?
 - Every column but SEO, impact and last modified: `list-table-quick-edit-pages.md`.
 
-## Which lists are not done yet?
-- Users, contacts, submitted forms, menus, short links, themes, containers, comments, styles, design files, and the commerce lists' columns outside their `pg_*_edit_columns()`.
+## Users: which cells change?
+- Username, e-mail, role, start page and a User's rights: `list-table-quick-edit-users.md`.
 
-Related: docs/memory/ui/list-table-quick-edit.md, docs/memory/ui/list-table-quick-edit-pages.md, docs/memory/ui/product-list-paging.md
+## Which lists are not done yet?
+- Contacts, submitted forms, menus, short links, themes, containers, comments, styles, design files, and the commerce lists' columns outside their `pg_*_edit_columns()`.
+
+Related: docs/memory/ui/list-table-quick-edit.md, docs/memory/ui/list-table-quick-edit-pages.md, docs/memory/ui/list-table-quick-edit-users.md, docs/memory/ui/product-list-paging.md
