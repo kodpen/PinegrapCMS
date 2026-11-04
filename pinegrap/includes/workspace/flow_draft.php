@@ -529,24 +529,12 @@ function ws_flow_card_graph($graph, $patch = null)
     $kinds = ws_flow_kinds();
     $outbound = array_flip(ws_flow_card_outbound_kinds());
     $marks = array();
-    $removed = array();
-    $added = array();
 
     foreach (($patch !== null) ? ws_flow_patch_marks($patch, $graph) : array() as $mark) {
         $marks[$mark['id']] = $mark['mark'];
     }
 
-    foreach ((array) $patch as $op) {
-        $what = (is_array($op) && is_scalar($op['op'] ?? null)) ? (string) $op['op'] : '';
-        $id = (is_array($op) && is_scalar($op['id'] ?? null)) ? (string) $op['id'] : '';
-
-        if (($what === 'add') && ($id !== '')) {
-            $added[$id] = true;
-        } elseif (($what === 'remove') && ($id !== '') && !isset($added[$id])) {
-            $removed[$id] = is_scalar($op['name'] ?? null) ? (string) $op['name'] : $id;
-        }
-    }
-
+    $removed = ws_flow_patch_removed($patch, $graph);
     $left = null;
     $top = null;
 
@@ -570,7 +558,6 @@ function ws_flow_card_graph($graph, $patch = null)
         $there[$node['id']] = true;
         $width = max($width, $x + WS_FLOW_CARD_BOX_W + WS_FLOW_CARD_PAD);
         $height = max($height, $y + WS_FLOW_CARD_BOX_H + WS_FLOW_CARD_PAD);
-        unset($removed[$node['id']]);
 
         $nodes[] = array(
             'id'       => (string) $node['id'],
@@ -601,7 +588,96 @@ function ws_flow_card_graph($graph, $patch = null)
         $height = max($height, (int) ceil(max($thread['y1'], $thread['y2']) + ($thread['cy'] - max($thread['y1'], $thread['y2'])) / 2) + WS_FLOW_CARD_PAD / 2);
     }
 
-    return array('nodes' => $nodes, 'edges' => $edges, 'threads' => $threads, 'removed' => array_values($removed), 'width' => $width, 'height' => $height);
+    return array('nodes' => $nodes, 'edges' => $edges, 'threads' => $threads, 'removed' => $removed, 'width' => $width, 'height' => $height);
+}
+
+/**
+ * The names of the boxes a patch removed that the graph no longer holds
+ * (pure): a box added and removed in the same patch is not listed; a box
+ * is named as the patch named it, else by its id.
+ *
+ * @param array|null $patch ws_flow_patch_apply() ops
+ * @param array      $graph ws_flow_graph_normalize(), the patch made
+ * @return string[]
+ */
+function ws_flow_patch_removed($patch, $graph)
+{
+    $removed = array();
+    $added = array();
+
+    foreach ((array) $patch as $op) {
+        $what = (is_array($op) && is_scalar($op['op'] ?? null)) ? (string) $op['op'] : '';
+        $id = (is_array($op) && is_scalar($op['id'] ?? null)) ? (string) $op['id'] : '';
+
+        if (($what === 'add') && ($id !== '')) {
+            $added[$id] = true;
+        } elseif (($what === 'remove') && ($id !== '') && !isset($added[$id])) {
+            $removed[$id] = is_scalar($op['name'] ?? null) ? (string) $op['name'] : $id;
+        }
+    }
+
+    foreach ((array) ($graph['nodes'] ?? array()) as $node) {
+        unset($removed[(string) ($node['id'] ?? '')]);
+    }
+
+    return array_values($removed);
+}
+
+/**
+ * A draft's graph as the read-only Flows canvas draws it on its card (pure
+ * but for the kinds' words and a row start box's columns): the graph at
+ * its real places (never ws_flow_card_graph()'s scaled ones), each box's
+ * name as the canvas gives it (ws_flow_box_names()), the boxes a patch
+ * added or changed (ws_flow_patch_marks()), the names of those it removed,
+ * and per box whether it can be tried, with its dry run's line left empty
+ * for ws_flow_card_tries() to fill (said, failed).
+ *
+ * @param array      $graph ws_flow_graph_normalize(), the patch made
+ * @param array|null $patch ws_flow_patch_apply() ops of a draft that changes a flow
+ * @return array graph, names, mark, removed, nodes (id, try, said, failed)
+ */
+function ws_flow_card_view($graph, $patch = null)
+{
+    $kinds = ws_flow_kinds();
+    $nodes = array();
+
+    foreach ($graph['nodes'] as $node) {
+        $kind = (string) $node['kind'];
+        $nodes[] = array(
+            'id'     => (string) $node['id'],
+            'try'    => isset($kinds[$kind]) && empty($kinds[$kind]['pure']),
+            'said'   => '',
+            'failed' => false,
+        );
+    }
+
+    return array(
+        'graph'   => $graph,
+        'names'   => (object) ws_flow_box_names($graph['nodes'], $kinds),
+        'mark'    => ($patch !== null) ? ws_flow_patch_marks($patch, $graph) : array(),
+        'removed' => ws_flow_patch_removed($patch, $graph),
+        'nodes'   => $nodes,
+    );
+}
+
+/**
+ * The dry run of each box of a card's view, keyed by box (pure): what
+ * ws_flow_card_tries() filled, the boxes that can be tried only.
+ *
+ * @param array[] $nodes ws_flow_card_view() nodes, tried
+ * @return array box id => {said, failed}
+ */
+function ws_flow_card_view_tries($nodes)
+{
+    $out = array();
+
+    foreach ($nodes as $node) {
+        if (!empty($node['try'])) {
+            $out[(string) $node['id']] = array('said' => (string) $node['said'], 'failed' => (bool) $node['failed']);
+        }
+    }
+
+    return $out;
 }
 
 /**
@@ -847,7 +923,7 @@ function ws_flow_card_try_line($tried)
  *
  * @param array      $viewer
  * @param array|null $flow
- * @param array      $card ws_flow_card_graph()
+ * @param array      $card ws_flow_card_graph() or ws_flow_card_view()
  * @return array the card
  */
 function ws_flow_card_tries($viewer, $flow, $card)
@@ -869,7 +945,7 @@ function ws_flow_card_tries($viewer, $flow, $card)
 }
 
 /**
- * The graph a flow draft's card draws, for the person it was proposed to.
+ * What a flow draft's card draws, for the person it was proposed to.
  * While it waits: the drafted flow, or the patch made again on the flow's
  * draft as it is now (edit access needed, as opening it asks), with the
  * rights ws_flow_draft_open() checks. Once opened: the flow's draft as it is
@@ -878,12 +954,13 @@ function ws_flow_card_tries($viewer, $flow, $card)
  *
  * @param array $viewer
  * @param int   $change_id the ws_ai_changes row of the draft
- * @return array ok, error, graph (ws_flow_card_graph() plus flow_id, can_try)
+ * @return array ok, error, graph (ws_flow_graph_normalize()), patch (ops or
+ *               null), tries (ws_flow_card_try_flow()), flow_id, can_try
  */
-function ws_flow_draft_card_graph_read($viewer, $change_id)
+function ws_flow_draft_card_source($viewer, $change_id)
 {
     $fail = function ($error) {
-        return array('ok' => false, 'error' => $error, 'graph' => null);
+        return array('ok' => false, 'error' => $error, 'graph' => null, 'patch' => null, 'tries' => null, 'flow_id' => 0, 'can_try' => false);
     };
 
     if (!function_exists('ws_changes_ready') || !ws_changes_ready() || !ws_flows_ready()) {
@@ -908,12 +985,9 @@ function ws_flow_draft_card_graph_read($viewer, $change_id)
         }
 
         $can_try = ws_flow_share_manager($viewer, $flow);
-        $card = ws_flow_card_graph(ws_flow_graph_of($flow), $patch);
 
-        return array('ok' => true, 'error' => '', 'graph' => ws_flow_card_tries($viewer, ws_flow_card_try_flow($viewer, 'opened', null, $flow, $can_try), $card) + array(
-            'flow_id' => (int) $flow['id'],
-            'can_try' => $can_try,
-        ));
+        return array('ok' => true, 'error' => '', 'graph' => ws_flow_graph_of($flow), 'patch' => $patch,
+            'tries' => ws_flow_card_try_flow($viewer, 'opened', null, $flow, $can_try), 'flow_id' => (int) $flow['id'], 'can_try' => $can_try);
     }
 
     if ($row['status'] !== 'pending') {
@@ -948,11 +1022,59 @@ function ws_flow_draft_card_graph_read($viewer, $change_id)
 
     // Not a flow of the person yet: no canvas to link to and no try button;
     // a new flow's boxes are tried in memory for their third line.
-    $tries = ws_flow_card_try_flow($viewer, ($patch === null) ? 'new' : 'patch', $graph, null, false, $name);
+    return array('ok' => true, 'error' => '', 'graph' => $graph, 'patch' => $patch,
+        'tries' => ws_flow_card_try_flow($viewer, ($patch === null) ? 'new' : 'patch', $graph, null, false, $name), 'flow_id' => 0, 'can_try' => false);
+}
 
-    return array('ok' => true, 'error' => '', 'graph' => ws_flow_card_tries($viewer, $tries, ws_flow_card_graph($graph, $patch)) + array(
-        'flow_id' => 0,
-        'can_try' => false,
+/**
+ * The graph a flow draft's card draws small (its thumbnail), with the
+ * rights of ws_flow_draft_card_source().
+ *
+ * @param array $viewer
+ * @param int   $change_id the ws_ai_changes row of the draft
+ * @return array ok, error, graph (ws_flow_card_graph() plus flow_id, can_try)
+ */
+function ws_flow_draft_card_graph_read($viewer, $change_id)
+{
+    $source = ws_flow_draft_card_source($viewer, $change_id);
+
+    if (!$source['ok']) {
+        return array('ok' => false, 'error' => $source['error'], 'graph' => null);
+    }
+
+    return array('ok' => true, 'error' => '', 'graph' => ws_flow_card_tries($viewer, $source['tries'], ws_flow_card_graph($source['graph'], $source['patch'])) + array(
+        'flow_id' => $source['flow_id'],
+        'can_try' => $source['can_try'],
+    ));
+}
+
+/**
+ * What the read-only Flows canvas of a flow draft's card draws
+ * (PGWsFlow.embed()), with the rights of ws_flow_draft_card_source(): the
+ * graph at its real places, the boxes' names, the boxes a patch marks and
+ * removed, each box's dry run (tries: box id => said, failed), the flow it
+ * opens as (0 while it waits) and whether its boxes may be tried. Nothing
+ * is written.
+ *
+ * @param array $viewer
+ * @param int   $change_id the ws_ai_changes row of the draft
+ * @return array ok, error, view (graph, names, mark, removed, tries, flow_id, can_try)
+ */
+function ws_flow_draft_card_view_read($viewer, $change_id)
+{
+    $source = ws_flow_draft_card_source($viewer, $change_id);
+
+    if (!$source['ok']) {
+        return array('ok' => false, 'error' => $source['error'], 'view' => null);
+    }
+
+    $view = ws_flow_card_tries($viewer, $source['tries'], ws_flow_card_view($source['graph'], $source['patch']));
+    $view['tries'] = ws_flow_card_view_tries($view['nodes']);
+    unset($view['nodes']);
+
+    return array('ok' => true, 'error' => '', 'view' => $view + array(
+        'flow_id' => $source['flow_id'],
+        'can_try' => $source['can_try'],
     ));
 }
 

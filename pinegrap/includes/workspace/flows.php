@@ -3583,3 +3583,175 @@ function ws_flow_js_config($viewer, $mode)
         'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'coord' => WS_FLOW_COORD_MAX, 'constants' => defined('WS_FLOW_CONSTANTS_MAX') ? WS_FLOW_CONSTANTS_MAX : 20),
     );
 }
+
+/**
+ * The lists a read-only Flows canvas reads for its boxes' lines, labels only
+ * (pure): what each list of ws_flow_js_config() steps holds, cut to what a
+ * box's meta line and a value's name need, never a form's options, a
+ * column's settings or a tool's description.
+ *
+ * @param array $lists metrics, targets, repeats, events, tables, mcp,
+ *                     changes, records, operators, as the full config has them
+ * @return array the same keys, labels only
+ */
+function ws_flow_embed_lists($lists)
+{
+    $labels = function ($map) {
+        $out = array();
+
+        foreach ((array) $map as $key => $item) {
+            $out[(string) $key] = array('label' => (string) (is_array($item) ? ($item['label'] ?? $key) : $item));
+        }
+
+        return (object) $out;
+    };
+    $fields = function ($map) use ($labels) {
+        $out = array();
+
+        foreach ((array) $map as $key => $item) {
+            $out[(string) $key] = array('label' => (string) ($item['label'] ?? $key), 'fields' => $labels($item['fields'] ?? array()));
+        }
+
+        return (object) $out;
+    };
+
+    $metrics = array();
+
+    foreach ((array) ($lists['metrics'] ?? array()) as $key => $metric) {
+        $metrics[] = array('key' => (string) ($metric['key'] ?? $key), 'label' => (string) ($metric['label'] ?? ''));
+    }
+
+    $targets = array();
+
+    foreach ((array) ($lists['targets'] ?? array()) as $target) {
+        $targets[] = array('id' => (int) $target['id'], 'name' => (string) $target['name']);
+    }
+
+    $tables = array();
+
+    foreach ((array) ($lists['tables'] ?? array()) as $table) {
+        $columns = array();
+
+        foreach ((array) ($table['columns'] ?? array()) as $column) {
+            $columns[] = array('id' => (int) $column['id'], 'name' => (string) $column['name'], 'type' => (string) ($column['type'] ?? 'text'));
+        }
+
+        $tables[] = array('id' => (int) $table['id'], 'name' => (string) $table['name'], 'edit' => !empty($table['edit']), 'columns' => $columns);
+    }
+
+    $mcp = array();
+
+    foreach ((array) ($lists['mcp'] ?? array()) as $server) {
+        $tools = array();
+
+        foreach ((array) ($server['tools'] ?? array()) as $tool) {
+            $tools[] = array('name' => (string) $tool['name']);
+        }
+
+        $mcp[] = array('id' => (int) $server['id'], 'alias' => (string) $server['alias'], 'tools' => $tools, 'asks' => array_values(array_map('strval', (array) ($server['asks'] ?? array()))));
+    }
+
+    $repeats = array();
+
+    foreach ((array) ($lists['repeats'] ?? array()) as $key => $label) {
+        $repeats[(string) $key] = (string) $label;
+    }
+
+    $operators = array();
+
+    foreach ((array) ($lists['operators'] ?? array()) as $key => $label) {
+        $operators[(string) $key] = (string) $label;
+    }
+
+    $events = null;
+
+    if (is_array($lists['events'] ?? null)) {
+        $events = array('list' => $labels($lists['events']['list'] ?? array()), 'forms' => array(), 'statuses' => array());
+    }
+
+    return array(
+        'metrics'   => $metrics,
+        'targets'   => $targets,
+        'repeats'   => (object) $repeats,
+        'events'    => $events,
+        'tables'    => $tables,
+        'mcp'       => $mcp,
+        'changes'   => $fields($lists['changes'] ?? array()),
+        'records'   => $fields($lists['records'] ?? array()),
+        'operators' => (object) $operators,
+    );
+}
+
+/**
+ * What a read-only Flows canvas outside the Flows screen (a flow draft's
+ * card, PGWsFlow.embed()) needs to draw a flow, for anyone who reads the
+ * Workspace, a home reader too: the part of ws_flow_js_config() the
+ * drawing reads, labels only (ws_flow_embed_lists()), each list still
+ * read with the person's own rights, without the gallery's templates or
+ * anything a box's form offers. The panel action ws_flow_embed_config
+ * gives it once per page.
+ *
+ * @param array $viewer
+ * @return array ready, kinds (kind => label), subjects, steps, outputs,
+ *               trigger_outputs, derived, decimal
+ */
+function ws_flow_embed_config($viewer)
+{
+    $kinds = array();
+    $outputs = array();
+    $trigger_outputs = array('kinds' => array(), 'events' => function_exists('ws_flow_event_outputs') ? ws_flow_event_outputs() : array());
+
+    foreach (ws_flow_kinds() as $kind => $info) {
+        $kinds[$kind] = (string) $info['label'];
+        $outputs[$kind] = $info['outputs'];
+
+        if (!empty($info['trigger'])) {
+            $trigger_outputs['kinds'][$kind] = function_exists('ws_flow_trigger_outputs') ? ws_flow_trigger_outputs($kind) : array();
+        }
+    }
+
+    $subjects = array();
+
+    foreach ((function_exists('ws_scheduled_record_types') ? ws_scheduled_record_types() : array()) as $type => $info) {
+        $subjects[] = array('key' => (string) $type, 'label' => (string) $info['label']);
+    }
+
+    $lists = array();
+
+    if (ws_flows_ready()) {
+        // The kinds of record and change the person may change, and the
+        // counts they may read; none for somebody who may not schedule.
+        $scheduled = function_exists('ws_scheduled_js_config') ? ws_scheduled_js_config($viewer, true) : null;
+        $member = ws_flow_js_member(ws_flow_builder_kind($viewer));
+
+        $lists = array(
+            'metrics'   => is_array($scheduled) ? $scheduled['metrics'] : array(),
+            'targets'   => function_exists('ws_scheduled_targets') ? ws_scheduled_targets($viewer) : array(),
+            'repeats'   => function_exists('ws_scheduled_repeats') ? ws_scheduled_repeats() : array(),
+            'operators' => function_exists('ws_scheduled_operators') ? ws_scheduled_operators() : array(),
+            'events'    => function_exists('ws_events_js_config') ? ws_events_js_config($viewer) : null,
+            'tables'    => function_exists('ws_flow_row_tables') ? ws_flow_row_tables($viewer) : array(),
+            'changes'   => is_array($scheduled) ? $scheduled['changes'] : array(),
+            'records'   => is_array($scheduled) ? $scheduled['records'] : array(),
+            'mcp'       => array(),
+        );
+
+        // The MCP servers the person may call, as the canvas lists them.
+        if (!$member['member'] && function_exists('ws_mcp_active_servers') && function_exists('ws_step_mcp_form_servers')) {
+            $lists['mcp'] = ws_step_mcp_form_servers(ws_mcp_active_servers(), function ($server) use ($viewer) {
+                return ($server['auth_kind'] !== 'oauth') || (bool) ws_mcp_oauth_account($server, (int) $viewer['id']);
+            });
+        }
+    }
+
+    return array(
+        'ready'    => ws_flows_ready(),
+        'kinds'    => $kinds,
+        'subjects' => $subjects,
+        'steps'    => ws_flow_embed_lists($lists),
+        'outputs'  => $outputs,
+        'trigger_outputs' => $trigger_outputs,
+        'derived'  => function_exists('ws_flow_derived_lists') ? ws_flow_derived_lists() : array(),
+        'decimal'  => (function_exists('ws_calc_decimal_comma') && ws_calc_decimal_comma()) ? ',' : '.',
+    );
+}
