@@ -160,7 +160,7 @@ echo
 
                 ' . pg_screen_toolbar(array(
                     'primary' => ($create_url !== '') ? array('label' => lang('Create'), 'url' => $create_url, 'icon' => 'bi-plus-circle') : '',
-                    'search'  => array(pg_list_table_search_box($list_name), pg_list_sort_menu('view_regions.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter))),
+                    'search'  => array(pg_list_table_search_box($list_name), pg_list_sort_menu('view_regions.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter), $list_name)),
                 )) . '
                 ' . pg_list_table_html($list['source'], $list['page'], $heading) . '
             </div>

@@ -211,4 +211,9 @@ function test_list_sort_menu_keeps_the_rest_of_the_address()
 	$plain = pg_list_sort_menu('view_products.php', $columns, $levels, $default);
 	pg_assert_contains('href="view_products.php?sort=price:desc,name:desc"', $plain, 'no extra address without one');
 	pg_assert_false(strpos($plain, 'type="hidden"') !== false, 'no hidden field without one');
+	pg_assert_contains('data-pg-list-sort-menu="view_products"', $plain, 'the list is named after the screen by default');
+
+	$named = pg_list_sort_menu('view_regions.php', $columns, $levels, $default, array('filter' => 'all_login_regions'), 'view_regions_all_login_regions');
+	pg_assert_contains('data-pg-list-sort-menu="view_regions_all_login_regions"', $named, 'a list named apart from its screen gets its menu');
+	pg_assert_contains('href="view_regions.php?sort=', $named, 'the links still go to the screen');
 }
