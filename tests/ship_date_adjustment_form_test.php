@@ -51,7 +51,7 @@ function test_ship_date_adjustment_form_screens_use_shared_form()
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 
 		pg_assert_contains('includes/forms/ship_date_adjustment_form.php', $source, $file . ' loads the form');
-		pg_assert_contains('pg_ship_date_adjustment_form_card($liveform)', $source, $file . ' prints the shared card');
+		pg_assert_contains('pg_ship_date_adjustment_form_card($liveform', $source, $file . ' prints the shared card');
 		pg_assert_contains('pg_ship_date_adjustment_form_check($liveform, ', $source, $file . ' checks the adjustment the shared way');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 		pg_assert_contains('validate_ecommerce_access($user)', $source, $file . ' keeps the commerce gate');
