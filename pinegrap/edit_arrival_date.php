@@ -118,7 +118,7 @@ if (!$_POST) {
         $errors = pg_arrival_date_form_errors($_POST);
 
         if ($errors) {
-            output_error(implode(' ', array_map('h', $errors)) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+            output_error(pg_arrival_date_form_error_text($errors) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
     }
 

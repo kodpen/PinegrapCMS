@@ -44,7 +44,9 @@ function test_recurring_commission_profile_edit_names()
 	$source = returns_commission_names_source('edit_recurring_commission_profile.php');
 	pg_assert_contains("'cancel'=>array('enable'=>'true','url'=>'view_recurring_commission_profiles.php')", $source);
 	pg_assert_false(strpos($source, 'aria-label="data edit buttons') !== false, 'literal landmark name');
-	pg_assert_contains("aria-label=\"' . h(lang('data edit buttons')) . '\"", $source);
+	// The bar and its landmark name come from the shared layout.
+	pg_assert_contains('pg_commission_edit_layout(', $source);
+	pg_assert_contains("aria-label=\"' . h(lang('data edit buttons')) . '\"", returns_commission_names_source('includes/fn/commission_list.php'));
 	pg_assert_contains('<span class="material-icons me-3" aria-hidden="true">save</span>', $source);
 }
 

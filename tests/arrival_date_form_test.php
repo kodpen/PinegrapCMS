@@ -133,6 +133,55 @@ function test_arrival_date_form_errors()
 	pg_assert_true(strpos($edit, 'pg_arrival_date_form_errors($_POST)') < strpos($edit, 'pg_arrival_date_form_save_cutoffs('), 'and are replaced only after the checks');
 }
 
+function test_arrival_date_form_sort_order_range()
+{
+	$valid = array(
+		'name' => 'Anneler Günü',
+		'start_date' => arrival_date_form_test_date(2, 11, 2026),
+		'end_date' => arrival_date_form_test_date(31, 12, 2026),
+		'arrival_date' => arrival_date_form_test_date(24, 12, 2026),
+	);
+
+	foreach (array('1000', '32767', '-32768', '-100') as $sort_order) {
+		pg_assert_same(array(), pg_arrival_date_form_errors(array('sort_order' => $sort_order) + $valid), $sort_order . ' fits the smallint column');
+	}
+
+	foreach (array('32768', '-32769') as $sort_order) {
+		pg_assert_same(array('sort_order'), array_keys(pg_arrival_date_form_errors(array('sort_order' => $sort_order) + $valid)), $sort_order . ' does not');
+	}
+
+	// The box holds every value the server takes, so a stored 1000 is not
+	// shown, and saved back, as 100.
+	$form = arrival_date_form_test_source('includes/forms/arrival_date_form.php');
+	pg_assert_contains('name="sort_order" id="sort_order" maxlength="6" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-min="-32768" data-inputmask-max="32767"', $form, 'the sort order box');
+}
+
+function test_arrival_date_form_required_dates()
+{
+	$form = arrival_date_form_test_source('includes/forms/arrival_date_form.php');
+
+	pg_assert_contains('id="start_date" class="form-control" maxlength="10" autocomplete="off" required data-pg-date', $form, 'the start date is required');
+	pg_assert_contains('id="end_date" class="form-control" maxlength="10" autocomplete="off" required data-pg-date', $form, 'the end date is required');
+	pg_assert_contains('id="arrival_date" class="form-control" maxlength="10" autocomplete="off"\' . $arrival_date_required . \' data-pg-date', $form, 'the arrival date follows the custom switch');
+	pg_assert_contains('arrival_date_field.required = !custom.checked;', $form, 'and the switch moves the attribute');
+	pg_assert_contains('arrival_date_marker.classList.toggle("d-none", custom.checked);', $form, 'and its marker');
+}
+
+function test_arrival_date_form_error_text()
+{
+	pg_assert_same(
+		'Please enter a valid date for Start Date. Please enter a valid Name.',
+		pg_arrival_date_form_error_text(array('start_date' => 'Please enter a valid date for Start Date', 'name' => 'Please enter a valid Name.')),
+		'every message ends in one full stop'
+	);
+	pg_assert_same('A &lt;b&gt;.', pg_arrival_date_form_error_text(array('x' => 'A <b>')), 'escaped');
+	pg_assert_same('', pg_arrival_date_form_error_text(array()), 'none');
+
+	foreach (array('add_arrival_date.php', 'edit_arrival_date.php') as $file) {
+		pg_assert_contains('output_error(pg_arrival_date_form_error_text($errors)', arrival_date_form_test_source($file), $file . ': the error screen');
+	}
+}
+
 function test_arrival_date_form_date_text()
 {
 	pg_assert_same('', pg_arrival_date_form_date_text('0000-00-00'), 'an unset date is empty, not 0/0/0000');
