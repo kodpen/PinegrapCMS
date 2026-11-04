@@ -14,7 +14,7 @@ description: Shipping plan (2026-10-08; phases 1-7 and the phase 8 postcode chec
 
 ## What are the phases?
 - Done: 1 #601, 2 #694, 3 #879, 4 #931, 5a #1964, 5b #2102 #2116, 6 #1877, 7a #2004, 7b #2715, 8 #3011, D1 #3600, D2 #3641, D3a #3654, D3b #3917, print card #3365.
-1. Carrier recognition, left (`commerce/order-view-tracking-link.md`; kolaygelsin done in this step's first PR): hepsijet, trendyolexpress, horoz, ceva, sendeo, each once its tracking URL is checked on its site (candidates there), then n11 `HLZ`/`CEVA`/`BL` aliases.
+1. Carrier recognition, left (`commerce/order-view-tracking-link.md`; kolaygelsin #6670): hepsijet, trendyolexpress, horoz, ceva, sendeo, each once its tracking URL is checked on its site (candidates there), then n11 `HLZ`/`CEVA`/`BL` aliases.
 
 ## What must the owner check by hand?
 - Live carrier tracking URLs, n11 province/district on a live order, the campaign e-mail via real SMTP, `^^tracking_url^^` on existing sites.
