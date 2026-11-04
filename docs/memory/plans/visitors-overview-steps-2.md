@@ -6,7 +6,7 @@ description: Steps V5-V11 of plans/visitors-overview.md, the sections: traffic, 
 ## How is a section step taken?
 - Sizes and claiming: `visitors-overview-steps.md`. A section step owns its `includes/visitors/<name>.php`, its block of `pg_visitors.src.css`, its test file and its memory topic, nothing else (`visitors-overview-workers.md`). Every section is tried in a browser at 1280 and 390 px, light and dark, for today, 7 days and a month; its PR says what was tried and what the screen shows with no data.
 
-- V5 (M) Headline and traffic section. After V1 and V2.
+- V5 (M) Headline and traffic section. Done (#6471).
   - `includes/visitors/traffic.php`: tiles visits, page views, pages a visit, people on the site now, each against the previous period; the line by the period's grain with the previous period dashed; the busiest content of an hour or a day in the tooltip (`pg_visitor_top_content_by_hour()`, `pg_visitor_top_content()`); the empty state names the rollup backfill while it is still running (`pg_visitor_backfill_state()`).
 
 - V6 (M) Conversions section. After V1 and V2.
