@@ -327,7 +327,7 @@
         section.setAttribute("aria-labelledby", "pg_dash_top_title");
         section.appendChild(el("h2", "pg-dash-side-title", S.top_title)).id = "pg_dash_top_title";
 
-        ["since", "actions", "tiles", "status"].forEach(function (part) {
+        ["brief", "since", "actions", "tiles", "status"].forEach(function (part) {
             if ((part === "status") && !document.getElementById("pg_dash_status")) {
                 return;
             }

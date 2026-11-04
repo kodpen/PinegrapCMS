@@ -118,7 +118,7 @@ function pg_dashboard_v2_preset_layout($preset, $shop)
         'v'       => 1,
         'preset'  => $preset,
         'cards'   => pg_dashboard_v2_preset_cards($preset),
-        'top'     => array('since' => 1, 'actions' => 1, 'tiles' => 1, 'status' => 1),
+        'top'     => array('since' => 1, 'actions' => 1, 'tiles' => 1, 'status' => 1, 'brief' => 1),
         'actions' => $greeting['actions'],
         'tiles'   => $greeting['tiles'],
         'goals'   => array(),
