@@ -298,6 +298,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-table-printed.md: Browser mode of the list table driver: a small list printed whole (pg_list_table_printed()), its sort kept by list_table_sort, the toolbar search box
 - list-table-quick-edit-contacts.md: Contacts list quick edit (includes/fn/contact_list_edit.php): which cells are fields in which view, the split phone and address columns, how a change is checked and written like edit_contact.php
 - list-table-quick-edit-containers.md: All Containers list quick edit (includes/fn/container_list_edit.php): the fields, the units, the container screen's own check and save, who may change them
+- list-table-quick-edit-menus.md: All Menus list quick edit (includes/fn/menu_list_edit.php): the fields, the classes as the chips post them, the menu screen's own check and save, who may change them
 - list-table-quick-edit-pages.md: Pages list quick edit (includes/fn/list_table_edit.php): which cells are fields for whom, where the choices come from, how name, folder, style, type, form fields and switches are written
 - list-table-quick-edit-short-links.md: Short links list quick edit (includes/fn/short_link_list_edit.php): fields per destination type, the split destination columns, the edit screen's own checks and save
 - list-table-quick-edit-users.md: Users list quick edit (includes/fn/user_list_edit.php): which cells are fields for whom and in which view, how a username, e-mail, role, start page or right is checked and written

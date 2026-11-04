@@ -121,6 +121,7 @@ description: Generated from the module field of the memory files: each includes/
 - `mail_queue_list`: [[mail-queue-paging]]
 - `mail_transport`: [[mail-transports]]
 - `mail_webhook`: [[mail-transport-webhooks]]
+- `menu_list_edit`: [[list-table-quick-edit-menus]]
 - `merchant_center`: [[merchant-center]], [[merchant-center-issues]]
 - `merchant_center_push`: [[merchant-center-push]]
 - `mfa`: [[two-step-sign-in-expiry]]
