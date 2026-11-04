@@ -1536,6 +1536,22 @@
   margin-top: 12px;
 }
 
+/* What the selection does: two buttons a row, the last one across. */
+.pgie-aacts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.pgie .pgie-aacts .pgie-abtn {
+  margin-top: 0;
+  justify-content: center;
+}
+
+.pgie .pgie-aacts .pgie-abtn:last-child {
+  grid-column: 1 / -1;
+}
+
 /* -- Versions (pg_image_editor_versions.js) -- */
 
 .pgie-vbtn {

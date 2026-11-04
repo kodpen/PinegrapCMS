@@ -239,3 +239,4 @@ function test_image_editor_area_adjust_inside()
 		@unlink($prefix);
 	}
 }
+

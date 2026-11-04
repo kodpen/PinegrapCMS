@@ -4865,5 +4865,17 @@ function pg_image_editor_strings_area()
         'areaPolygonNote' => lang('Click to add corners; double-click, or click the first corner, to close the shape.'),
         'areaWandNote'    => lang('The magic wand cannot read this picture.'),
         'areaLimit'       => lang('The selection has as many shapes as it can hold; invert or deselect it to go on.'),
+        'areaWith'        => lang('With the selection'),
+        'areaErase'       => lang('Erase'),
+        'areaKeep'        => lang('Keep only'),
+        'areaCopy'        => lang('Copy to a layer'),
+        'areaAdjust'      => lang('Adjust inside'),
+        'areaCopyNote'    => lang('This picture cannot be read back, so the selection cannot be copied.'),
+        'areaCutName'     => lang('Cut-out'),
+        'layer_erase'     => lang('Erased area'),
+        'layer_adjust'    => lang('Adjusted area'),
+        'eraseFill'       => lang('Fill with a colour'),
+        'eraseColour'     => lang('Fill colour'),
+        'eraseJpegNote'   => lang('A JPEG cannot be see-through: saving makes a PNG copy beside it. Choose a fill colour to keep the JPEG.'),
     );
 }
