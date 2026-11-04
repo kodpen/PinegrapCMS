@@ -65,8 +65,8 @@ function test_key_code_cell_says_why_it_does_not_work()
 	pg_assert_contains(pg_list_status_word(lang('Disabled')), $cells['code']['html'], 'a disabled code says Disabled');
 	pg_assert_contains('status_disabled fg-danger', $cells['code']['class'], 'the colour stays');
 
-	$src = list_status_words_source('includes/templates/view_key_codes.php');
-	pg_assert_contains("<?=\$key_code['cells']['code']['html']?>", $src, 'the list prints the cell the quick-edit answer repaints');
+	$src = list_status_words_source('view_key_codes.php');
+	pg_assert_contains("pg_commerce_list_open_link('edit_key_code.php?id=' . \$id, \$cells['code']['html'])", $src, 'the list prints the cell the quick-edit answer repaints');
 }
 
 function test_product_group_rows_name_a_disabled_product()
@@ -116,5 +116,5 @@ function test_list_status_word_shipping_methods()
 	$source = list_status_words_source('view_shipping_methods.php');
 	pg_assert_contains('pg_list_status_word(lang(\'Disabled\'))', $source, 'the list writes Disabled under the name');
 	pg_assert_contains('pg_list_status_word(lang(\'Inactive\'))', $source, 'and Inactive outside the dates');
-	pg_assert_contains('$has_service ?', $source, 'Service and Real-Time Rate are drawn only while a method has a service');
+	pg_assert_contains('pg_shipping_method_list_columns($has_service)', $source, 'Service and Real-Time Rate are drawn only while a method has a service');
 }

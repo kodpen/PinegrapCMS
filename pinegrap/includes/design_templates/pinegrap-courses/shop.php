@@ -82,6 +82,16 @@ $catalog = array(
         lang('A sample product of the template: change its name and price in the catalog, or remove it.'),
     ),
     'groups'  => $course_groups,
+    // The enrolment request's fee (its payment setting): a hidden product,
+    // in no group and not shipped.
+    'fees'    => array(
+        'enrolment_fee' => array(
+            'sku'         => 'COURSES-ENROLMENT-FEE',
+            'title'       => lang('Enrolment fee'),
+            'description' => lang('The fee paid with an enrolment request.'),
+            'price'       => array('USD' => 20, 'EUR' => 18, 'GBP' => 16, 'TRY' => 600),
+        ),
+    ),
 );
 
 // ── Pages ───────────────────────────────────────────────────────────────

@@ -19,7 +19,6 @@ description: Plan (owner 2026-11-02): store credit as customer-bound gift cards:
 - Credit is not a payment method: no driver, no charge, no refund to the PSP; a refund to credit is written as a refund in `order_returns.refund_*` with the card id as its reference.
 
 ## Which questions are decided? (#5039, #6306)
-1. `gift_cards.user_id` (indexed), `kind`, `reason`, `issued_by` and `expires_at` (0 = never); no second table.
 2. `credit_issued` and `credit_expiring` appended to the campaign actions; the notice 14 days ahead (a module constant).
 3. Owner (#6306): an order's points are taken back on cancellation and refund; a shortfall from a conversion reduces or expires the newest points card, never below zero; not retroactive (`workflow/decisions-made-product-25.md`).
 

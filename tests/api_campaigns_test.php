@@ -137,7 +137,7 @@ function test_api_campaigns_routes_reach_a_handler_under_the_campaigns_scope()
 		}
 	}
 
-	pg_assert_same(6, $found, 'list, get, recipients, update, delete and its POST alias');
+	pg_assert_same(9, $found, 'list, get, recipients, create, schedule, update, delete and its POST alias, the SMS list');
 }
 
 // The router takes the first route that matches.
@@ -193,4 +193,34 @@ function test_api_campaigns_scope_is_not_given_to_existing_keys()
 	$effective = api_effective_scopes(array('campaigns:write'), api_campaigns_test_owner(0));
 
 	pg_assert_true(in_array('campaigns:read', $effective, true), 'write implies read once ticked');
+}
+
+// A campaign made through the API goes through the create screen's recipient
+// pick and insert, is kept paused, and a rehearsal stops before the pick,
+// which may create a contact. The screen calls the same two functions.
+function test_api_campaigns_create_shares_the_screen_path()
+{
+	$source = function ($name) {
+		$text = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/campaigns.php');
+		$start = strpos($text, 'function ' . $name . '(');
+		return substr($text, $start, strpos($text, "\n}\n", $start) - $start);
+	};
+
+	$create = $source('api_campaigns_create');
+
+	pg_assert_contains('pg_email_campaign_field_errors(', $create, 'the screen\'s field checks');
+	pg_assert_contains("'status'              => 'paused'", $create, 'kept as a draft');
+	pg_assert_true(strpos($create, 'api_dry_run_stop(') < strpos($create, 'pg_email_campaign_pick_recipients('), 'rehearsal stops before the pick');
+	pg_assert_true(strpos($create, 'pg_email_campaign_pick_recipients(') < strpos($create, 'pg_email_campaign_insert('), 'picks, then writes');
+
+	$schedule = $source('api_campaigns_schedule');
+
+	pg_assert_contains("campaign_not_paused", $schedule, 'only a paused campaign');
+	pg_assert_true(strpos($schedule, 'api_dry_run_stop(') < strpos($schedule, 'api_exec('), 'rehearsal stops above the write');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_email_campaign.php');
+
+	pg_assert_contains('pg_email_campaign_pick_recipients(', $screen, 'the screen picks through the shared function');
+	pg_assert_contains('pg_email_campaign_insert(', $screen, 'the screen writes through the shared function');
+	pg_assert_same(0, substr_count($screen, 'INSERT INTO email_campaigns'), 'no insert of its own');
 }

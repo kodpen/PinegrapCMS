@@ -776,6 +776,10 @@ if ($order_submitted == false) {
     } else {
         $tax_exempt = 0;
     }
+
+    // An EU VAT id typed for a member state other than the site's is checked
+    // against VIES; the page comes back with the total that follows from it.
+    $tax_exempt = pg_vat_checkout_apply($liveform, $tax_exempt, $_SESSION['ecommerce']['order_id'] ?? 0);
     
     $sql_offline_payment_allowed = "";
     

@@ -119,7 +119,7 @@ function test_panel_screen_titles_tokenizer_reads_top_level_keys()
 function test_panel_screen_titles_every_shell_has_title_and_heading()
 {
 	// These build the properties in a variable or pick one of two arrays.
-	$variable_callers = array('view_not_found_log.php', 'view_accessibility.php', 'view_folders.php', 'visitor_search.php', 'visitor_vitals.php', 'visitor_ai.php');
+	$variable_callers = array('view_not_found_log.php', 'view_accessibility.php', 'view_folders.php');
 
 	$root = dirname(__DIR__) . '/pinegrap/';
 	$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));

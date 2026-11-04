@@ -58,6 +58,7 @@ function pg_shipping_method_form_new_values($time_format = null)
         'carrier_title' => '',
         'carrier_vkn' => '',
         'service' => null,
+        'stock_location_id' => 0,
         'realtime_rate' => false,
         'base_rate' => '',
         'variable_base_rate' => false,
@@ -139,6 +140,7 @@ function pg_shipping_method_form_row_values($row, $excluded_transit_dates)
         'carrier_title' => (string) ($row['carrier_title'] ?? ''),
         'carrier_vkn' => (string) ($row['carrier_vkn'] ?? ''),
         'service' => (string) $row['service'],
+        'stock_location_id' => (int) ($row['stock_location_id'] ?? 0),
         'realtime_rate' => (bool) $row['realtime_rate'],
         'base_rate' => pg_format_input_amount($row['base_rate'] / 100),
         'variable_base_rate' => ($row['variable_base_rate'] == 1),
@@ -567,7 +569,8 @@ function pg_shipping_method_form_columns($post)
 
     $columns['protected'] = $text('protected');
 
-    return $columns;
+    // A pickup method names its location and carries no rate.
+    return array_merge($columns, pg_stock_pickup_columns($post, pg_stock_locations()));
 }
 
 /**
@@ -622,6 +625,19 @@ function pg_shipping_method_form_cards($values, $zone_options)
     if ($values['service'] !== null) {
         $output_service_value = '
                                             <script>$("#service").val("' . escape_javascript($values['service']) . '")</script>';
+    }
+
+    // Pickup at a location, only on a site that keeps stock per location.
+    $output_pickup = '';
+    $pickup_locations = pg_stock_locations();
+
+    if ($pickup_locations) {
+        $output_pickup = '
+                                        <div class="col-12 md:col-6 my-3">
+                                            <label for="stock_location_id" class="form-label">' . lang('Pickup at a location') . '</label>
+                                            <select name="stock_location_id" id="stock_location_id" class="form-control">' . pg_stock_pickup_location_options($pickup_locations, (int) ($values['stock_location_id'] ?? 0)) . '</select>
+                                            <div class="form-text">' . lang('The customer collects the order at this location: no rate is charged, the order takes its units from there, and the checkout offers the method only while the location holds every item of the cart.') . '</div>
+                                        </div>';
     }
 
     $output_variable_base_rates = '';
@@ -750,7 +766,7 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                             <label for="service" class="form-label">' . lang('Service') . '</label>
                                             ' . render(array('template' => 'shipping_method_service.php')) . $output_service_value . '
                                             <div class="form-text">' . lang('Service for Real-Time Rate & Delivery') . '</div>
-                                        </div>
+                                        </div>' . $output_pickup . '
                                     </div>
                                 </div>
                             </div>

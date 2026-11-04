@@ -989,6 +989,38 @@ if (!$_POST) {
 } else {
     validate_token_field();
 
+    // Every order-by and filter field is checked before anything is written:
+    // the standard field columns are ENUMs, and a value outside them was
+    // saved as '' without a word.
+    $standard_fields = get_standard_fields_for_view();
+    $form_field_ids = db_values("SELECT id FROM form_fields WHERE page_id = '" . e($custom_form_page_id) . "'");
+
+    if (!is_array($form_field_ids)) {
+        $form_field_ids = array();
+    }
+
+    $field_error = '';
+
+    foreach (array(1, 2, 3) as $number) {
+        if (!pg_form_list_view_field_allowed($_POST['order_by_' . $number] ?? '', $standard_fields, $form_field_ids, $number == 1)) {
+            $field_error = lang('An order by field is not one this view can sort by. Please choose another field.');
+        }
+    }
+
+    for ($i = 1; $i <= (int) ($_POST['last_filter_number'] ?? 0); $i++) {
+        if ((($_POST['filter_' . $i . '_operator'] ?? '') != '')
+            && !pg_form_list_view_field_allowed($_POST['filter_' . $i . '_field'] ?? '', $standard_fields, $form_field_ids)) {
+            $field_error = lang('A filter field is not one this view can filter by. Please choose another field.');
+        }
+    }
+
+    if ($field_error != '') {
+        $form = new liveform('edit_form_list_view');
+        $form->mark_error('', $field_error);
+
+        go(PATH . SOFTWARE_DIRECTORY . '/edit_form_list_view.php?page_id=' . urlencode((string) $page['id']) . '&send_to=' . urlencode((string) ($_POST['send_to'] ?? '')));
+    }
+
     // if value of order by selection is numeric then a custom form field was selected (not a standard field)
     if (is_numeric($_POST['order_by_1']) == true) {
         $order_by_1_standard_field = '';

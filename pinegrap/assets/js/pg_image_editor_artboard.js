@@ -103,7 +103,7 @@
         }
 
         if (!this.doc.artboard && !selected) {
-            c = M.cropBox(this.doc);
+            c = M.pictureBox(this.doc);
             r = r ? { x: Math.min(r.x, c.x), y: Math.min(r.y, c.y), w: Math.max(r.x + r.w, c.x + c.w) - Math.min(r.x, c.x), h: Math.max(r.y + r.h, c.y + c.h) - Math.min(r.y, c.y) } : c;
         }
 
@@ -261,7 +261,9 @@
     // ---- a picture's canvas ----
 
     // What the canvas adds around the picture, in its fill, under the
-    // layers: the save box less the crop box (a checker for transparent).
+    // layers: the save box less the crop box (a checker for transparent),
+    // its hole in the crop shape, which cuts the picture only, as the save
+    // does.
     Editor.prototype.renderMat = function () {
         var b = this.board, show = this.ready && !!this.doc.source && !this.cropping() && !!M.saveLayout(this.doc);
 
@@ -285,13 +287,16 @@
             return;
         }
 
-        var vr = this.viewRect(), c = M.cropBox(this.doc), x0 = Math.max(vr.x, c.x), y0 = Math.max(vr.y, c.y);
+        var vr = this.viewRect(), c = M.pictureBox(this.doc), x0 = Math.max(vr.x, c.x), y0 = Math.max(vr.y, c.y);
         var x1 = Math.min(vr.x + vr.w, c.x + c.w), y1 = Math.min(vr.y + vr.h, c.y + c.h), fill = this.boardFill(), q = 10 / this.view.k;
         var d = 'M' + vr.x + ' ' + vr.y + 'h' + vr.w + 'v' + vr.h + 'h' + (-vr.w) + 'Z';
-        var pattern = b.mat.firstChild.firstChild;
+        var pattern = b.mat.firstChild.firstChild, shape = this.doc.geometry.cropShape || 'rect';
 
+        // A rounded or round hole is the whole crop box's shape: the canvas
+        // edge trims it as the save does, the even-odd rule leaves its part
+        // off the canvas outside the view.
         if ((x1 > x0) && (y1 > y0)) {
-            d += 'M' + x0 + ' ' + y0 + 'H' + x1 + 'V' + y1 + 'H' + x0 + 'Z';
+            d += (shape === 'rect') ? M.cropShapePath({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, 'rect') : M.cropShapePath(c, shape);
         }
 
         b.mat.setAttribute('viewBox', [vr.x, vr.y, vr.w, vr.h].join(' '));
@@ -315,7 +320,7 @@
         }
 
         vr = this.viewRect();
-        c = M.cropBox(this.doc);
+        c = M.pictureBox(this.doc);
         k = this.view.k;
         st.left = ((c.x - vr.x) * k) + 'px';
         st.top = ((c.y - vr.y) * k) + 'px';
@@ -548,6 +553,24 @@
                 n.setAttribute('aria-pressed', on ? 'true' : 'false');
             });
             custom.hidden = (s.preset !== 'custom');
+            check();
+        };
+        // A custom side must be a number of 16-8000 px: an empty or refused
+        // field (the browser reads '12,5' as '') is marked and Create waits,
+        // instead of the side silently becoming the 16 px minimum.
+        var sideOk = function (v) {
+            var n = (String(v).trim() === '') ? NaN : Number(v);
+
+            return isFinite(n) && (n >= 16) && (n <= 8000);
+        };
+        var check = function () {
+            var mine = (s.preset === 'custom'), okW = !mine || sideOk(w.value), okH = !mine || sideOk(h.value);
+
+            w.setAttribute('aria-invalid', okW ? 'false' : 'true');
+            h.setAttribute('aria-invalid', okH ? 'false' : 'true');
+            create.disabled = !(okW && okH);
+
+            return okW && okH;
         };
 
         M.BOARD_PRESETS.concat([['custom', 0, 0]]).forEach(function (p) {
@@ -584,11 +607,15 @@
             input.addEventListener('input', function () {
                 s.w = w.value;
                 s.h = h.value;
+                check();
             });
             input.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    self.closeNewImage(s);
+
+                    if (check()) {
+                        self.closeNewImage(s);
+                    }
                 }
             });
         });
@@ -671,6 +698,307 @@
 
         this.renderMat();
         this.renderBoard();
+    });
+
+    // ---- the picture as the bottom layer ----
+
+    var PIC_HANDLES = ['nw', 'ne', 'se', 'sw'];
+
+    // The picture is the Select tool's to move: unlocked, not while cropping.
+    Editor.prototype.pictureOn = function () {
+        return this.ready && (this.tool === 'select') && !this.cropping() && M.pictureFree(this.doc);
+    };
+
+    // The picture selected (true) or not; a layer selected drops it.
+    Editor.prototype.selectPicture = function (on) {
+        this.board.pic = !!on && M.pictureFree(this.doc);
+
+        if (this.board.pic) {
+            this.sel = [];
+        }
+
+        this.render();
+    };
+
+    // Unlocked or locked again, where it is: one undo step. Unlocking a
+    // photo without a canvas makes one on the picture.
+    Editor.prototype.lockPicture = function (locked) {
+        var next = M.lockPicture(this.doc, locked);
+
+        this.board.pic = !locked && (this.tool === 'select');
+
+        if (this.board.pic) {
+            this.sel = [];
+        }
+
+        this.change(function (doc) { doc.canvas = next.canvas; });
+    };
+
+    // The picture deleted: the canvas with its fill and the layers become
+    // an artboard (M.dropPicture()), one undo step.
+    Editor.prototype.deletePicture = function () {
+        this.board.pic = false;
+        this.replaceDoc(M.dropPicture(this.doc));
+        this.syncKind();
+    };
+
+    // The rail, the picture and the frame's fill follow the document's kind
+    // after a deletion of the picture and its undo or redo.
+    Editor.prototype.syncKind = function () {
+        var a = this.doc.artboard, want = a ? 'canvas' : this.board.profile;
+
+        if (this.img) {
+            this.img.style.display = a ? 'none' : '';
+        }
+
+        this.frame.style.background = (a && (a.background !== 'transparent')) ? a.background : '';
+        this.frame.classList.toggle('pgie-checker', !!a && (a.background === 'transparent'));
+
+        if (a || !M.pictureFree(this.doc)) {
+            this.board.pic = false;
+        }
+
+        if (!this.tools.mini && this.board.profile && (this.tools.profile !== want)) {
+            this.tools = M.resolveTools(want, this.opts.tools);
+
+            if (this.tools.list.indexOf(this.tool) < 0) {
+                this.tool = this.tools.list[0];
+            }
+
+            this.renderTools();
+            this.fit();
+        }
+    };
+
+    // A press with Select: a handle of the selected picture resizes it, a
+    // press on the picture where no layer lies selects and moves it.
+    var startDrag = Editor.prototype.startDrag;
+
+    Editor.prototype.startDrag = function (e) {
+        var b = this.board, h = e.target && e.target.getAttribute && e.target.getAttribute('data-h'), p, box, hit;
+
+        if (!this.pictureOn()) {
+            b.pic = false;
+            return startDrag.call(this, e);
+        }
+
+        p = this.toDoc(e.clientX, e.clientY);
+        box = M.pictureBox(this.doc);
+
+        if (b.pic && h && b.picEl && b.picEl.contains(e.target)) {
+            this.drag = { kind: 'picture', h: h, start: box, doc: M.clone(this.doc) };
+        } else {
+            hit = M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k);
+
+            if (hit || (p[0] < box.x) || (p[1] < box.y) || (p[0] > box.x + box.w) || (p[1] > box.y + box.h)) {
+                b.pic = false;
+                return startDrag.call(this, e);
+            }
+
+            if (!b.pic) {
+                this.selectPicture(true);
+            }
+
+            this.drag = { kind: 'picture', h: null, at: p, start: box, doc: M.clone(this.doc) };
+        }
+
+        e.preventDefault();
+
+        try {
+            this.stage.setPointerCapture(e.pointerId);
+        } catch (err) {
+            // The pointer is already gone.
+        }
+    };
+
+    // A move snaps to the canvas and the layers (Alt moves freely); a
+    // corner resizes, the ratio kept. One undo step a drag.
+    var moveDrag = Editor.prototype.moveDrag;
+
+    Editor.prototype.moveDrag = function (e) {
+        var d = this.drag, p, r, k = this.view.k;
+
+        if (!d || (d.kind !== 'picture')) {
+            return moveDrag.call(this, e);
+        }
+
+        p = this.toDoc(e.clientX, e.clientY);
+
+        if (d.h) {
+            r = M.resizeBox({ x: d.start.x, y: d.start.y, w: d.start.w, h: d.start.h }, d.h, p[0], p[1], true, 8 / k);
+        } else {
+            r = { x: d.start.x + p[0] - d.at[0], y: d.start.y + p[1] - d.at[1], w: d.start.w, h: d.start.h };
+            this.guides = null;
+
+            if (!e.altKey) {
+                var lines = this.snapLines(), s = M.snapBox(r, lines.x, lines.y, 6 / k);
+
+                r.x += s.dx;
+                r.y += s.dy;
+                this.guides = (s.gx.length || s.gy.length) ? s : null;
+            }
+        }
+
+        var next = M.placePicture(d.doc, r);
+
+        this.change(function (doc) {
+            doc.canvas = next.canvas;
+            doc.layers = next.layers;
+        }, 'drag', true);
+    };
+
+    Editor.pointers.select.down = Editor.prototype.startDrag;
+    Editor.pointers.select.move = Editor.prototype.moveDrag;
+
+    // Choosing a layer drops the picture from the selection.
+    var select = Editor.prototype.select;
+
+    Editor.prototype.select = function (ids) {
+        if (ids.length) {
+            this.board.pic = false;
+        }
+
+        select.call(this, ids);
+    };
+
+    // The selected picture's outline and corner handles over the stage.
+    Editor.views.push(function () {
+        var b = this.board, on = b.pic && this.pictureOn(), box, v, vr, k, d;
+
+        b.picEl = null;
+
+        if (!on) {
+            return;
+        }
+
+        box = M.pictureBox(this.doc);
+        v = this.view;
+        vr = this.viewRect();
+        k = v.k;
+        d = el('div', { class: 'pgie-selbox pgie-picsel' }, PIC_HANDLES.map(function (h) { return el('span', { class: 'pgie-sh', 'data-h': h }); }));
+        d.style.left = (v.x + (box.x - vr.x) * k) + 'px';
+        d.style.top = (v.y + (box.y - vr.y) * k) + 'px';
+        d.style.width = (box.w * k) + 'px';
+        d.style.height = (box.h * k) + 'px';
+        this.selEl.appendChild(d);
+        b.picEl = d;
+    });
+
+    // Delete removes the selected picture, the arrows nudge it.
+    Editor.keys.push(function (e, mod, k) {
+        var dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k], step = e.shiftKey ? 10 : 1, box, next;
+
+        if (!this.board.pic || !this.pictureOn() || mod) {
+            return false;
+        }
+
+        if ((k === 'Delete') || (k === 'Backspace')) {
+            this.deletePicture();
+            return true;
+        }
+
+        if (!dir) {
+            return false;
+        }
+
+        box = M.pictureBox(this.doc);
+        next = M.placePicture(this.doc, { x: box.x + dir[0] * step, y: box.y + dir[1] * step, w: box.w, h: box.h });
+        this.change(function (doc) {
+            doc.canvas = next.canvas;
+            doc.layers = next.layers;
+        }, 'nudge');
+
+        return true;
+    });
+
+    Editor.escapes.push(function () {
+        if (!this.board.pic) {
+            return false;
+        }
+
+        this.selectPicture(false);
+
+        return true;
+    });
+
+    // The picture's row at the foot of the layers list: Background, its
+    // lock; a press selects it when it is unlocked.
+    var layerList = Editor.prototype.layerList;
+
+    Editor.prototype.layerList = function (body) {
+        var self = this, free = M.pictureFree(this.doc), list, on = this.board.pic && free;
+
+        layerList.call(this, body);
+
+        if (!this.ready || !this.doc.source || this.doc.artboard || this.tools.mini) {
+            return;
+        }
+
+        list = body.querySelector('.pgie-layerlist');
+
+        if (!list) {
+            list = el('ul', { class: 'pgie-layerlist', 'aria-label': t('layers') });
+            body.appendChild(list);
+        }
+
+        list.appendChild(el('li', { class: 'pgie-lrow pgie-picrow' + (on ? ' on' : '') }, [
+            el('button', { type: 'button', class: 'pgie-lname', 'aria-pressed': on ? 'true' : 'false', 'aria-disabled': free ? null : 'true', onclick: function () {
+                if (!free) {
+                    return;
+                }
+
+                self.tool = 'select';
+                self.selectPicture(true);
+            } }, [X.icon('image'), el('span', { text: t('boardBackground') })]),
+            button('pgie-ibtn sm', free ? t('lock') : t('unlock'), free ? 'unlock' : 'lock', function () { self.lockPicture(free); })
+        ]));
+    };
+
+    // Select's panel: the selected picture's lock and delete; with nothing
+    // selected on a photo the list, the picture's row included.
+    var picturePanel = Editor.panels.select;
+
+    Editor.panels.select = function (body) {
+        var self = this;
+
+        if (this.board.pic && this.pictureOn()) {
+            body.appendChild(section(t('pictureTitle'), el('div', { class: 'pgie-btnrow' }, [
+                button('pgie-ibtn', t('lock'), 'lock', function () { self.lockPicture(true); }),
+                button('pgie-ibtn', t('pictureDelete'), 'trash', function () { self.deletePicture(); })
+            ])));
+            return;
+        }
+
+        if (this.doc.source && !this.doc.artboard && !this.sel.length) {
+            this.layerList(body);
+            return;
+        }
+
+        picturePanel.call(this, body);
+    };
+
+    // The Canvas panel on a photo: unlock the picture there too.
+    var boardPanel = Editor.panels.artboard;
+
+    Editor.panels.artboard = function (body) {
+        var self = this, box;
+
+        boardPanel.call(this, body);
+
+        if (this.doc.source && !this.doc.artboard && this.ready) {
+            box = el('input', { type: 'checkbox' });
+            box.checked = M.pictureFree(this.doc);
+            box.addEventListener('change', function () { self.lockPicture(!box.checked); });
+            body.appendChild(el('label', { class: 'pgie-check' }, [box, el('span', { text: t('pictureFree') })]));
+        }
+    };
+
+    Editor.inits.push(function () {
+        // pic: the picture selected; picEl: its outline; profile: the
+        // photo's tools, given back when a deletion is undone.
+        this.board.pic = false;
+        this.board.picEl = null;
+        this.board.profile = this.opts.blank ? null : this.tools.profile;
     });
 
     Editor.hints.artboard = 'hintArtboard';

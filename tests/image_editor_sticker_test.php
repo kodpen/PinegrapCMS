@@ -197,6 +197,12 @@ function test_image_editor_sticker_files_where()
 	pg_assert_same(null, pg_image_editor_sticker_where('', array(), array(7)), 'no folder, no query');
 	pg_assert_same(null, pg_image_editor_sticker_where('', array(7), array(7)), 'only the bin, no query');
 
+	// ERP documents (expense receipts, quote signatures) are personal data
+	// kept in read-only virtual folders: never a sticker's picture.
+	pg_assert_contains("erp_doc_type = ''", pg_image_editor_sticker_where('', null, array(7), true), 'ERP documents are left out');
+	pg_assert_contains("erp_doc_type = ''", pg_image_editor_sticker_where('', array(2), array(7), true), 'also for a role-3 user');
+	pg_assert_false(strpos(pg_image_editor_sticker_where('', null, array(7), false), 'erp_doc_type') !== false, 'no column before the ERP step, no condition');
+
 	if (function_exists('pg_list_like_pattern') && class_exists('db', false) && db::$con) {
 		pg_assert_contains('LIKE', pg_image_editor_sticker_where('logo', null, array()), 'a search adds LIKE');
 	}

@@ -58,7 +58,8 @@ if ($_POST) {
 
 	validate_token_field();
 
-	$action = isset($_POST['pairing_action']) ? (string)$_POST['pairing_action'] : '';
+	// A field sent as pairing_action[] reads as empty.
+	$action = (isset($_POST['pairing_action']) && is_scalar($_POST['pairing_action'])) ? (string)$_POST['pairing_action'] : '';
 
 	if (($action === 'cancel') && api_pairing_ready()) {
 
@@ -113,7 +114,8 @@ if ($refusal !== '') {
 			<p class="mb-2">' . h(lang('Open the team app, choose Scan QR code and point the camera at this code.')) . '</p>
 			<p class="small fg-secondary mb-5" id="pairing_left" data-expires="' . (int)$shown['expires'] . '" data-now="' . time() . '"
 				data-expired="' . h(lang('This code has run out. Show a new one.')) . '">'
-				. h(lang(array('string' => 'Works once, for {var:1} minutes.', 'vars' => (int)(api_pairing_lifetime() / 60)))) . '</p>
+				. h(lang(array('string' => 'Works once, for {var:1} minutes.', 'vars' => (int)(api_pairing_lifetime() / 60)))) . '
+				<span id="pairing_clock" class="ms-1 font-monospace" aria-live="off"></span></p>
 			<form method="post" action="device_pairing.php" class="d-flex flex-wrap justify-content-center gap-3">
 				' . get_token_field() . '
 				<button type="submit" name="pairing_action" value="show" class="btn btn-sm btn-solid theme-primary">
@@ -130,6 +132,7 @@ if ($refusal !== '') {
 		// Counts down on the browser\'s clock from the server\'s own reading, so
 		// a wrong clock on the computer does not shorten or lengthen it.
 		var line = document.getElementById("pairing_left");
+		var clock = document.getElementById("pairing_clock");
 		var left = parseInt(line.dataset.expires, 10) - parseInt(line.dataset.now, 10);
 		var started = Date.now();
 
@@ -142,7 +145,9 @@ if ($refusal !== '') {
 			}
 			var minutes = Math.floor(remaining / 60);
 			var seconds = remaining % 60;
-			line.textContent = minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+			// Only the clock changes: the sentence above it keeps saying the
+			// code works once.
+			clock.textContent = "(" + minutes + ":" + (seconds < 10 ? "0" : "") + seconds + ")";
 			window.setTimeout(tick, 1000);
 		};
 

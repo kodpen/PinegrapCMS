@@ -58,6 +58,7 @@ if (isset($_REQUEST['advanced_filters']) == true) {
 // The list's filters, its folder rule and its rows are shared with the list
 // table driver's rows action (includes/fn/submitted_form_list.php).
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_writes.php');
 
 $custom_forms = pg_submitted_form_list_custom_forms();
 pg_submitted_form_list_defaults($custom_forms, $_REQUEST);
@@ -328,50 +329,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
     $number_of_forms = 0;
 
     foreach ($forms as $form) {
-        // get uploaded files for this form, so they can be deleted
-        $query = "SELECT
-                    files.id,
-                    files.name
-                 FROM form_data
-                 LEFT JOIN files ON form_data.file_id = files.id
-                 WHERE (form_data.form_id = ?) AND (form_data.file_id > 0)";
-        $result = db_q($query, array((string) $form['id'])) or output_error('Query failed.');
-
-        $files = array();
-
-        while($row = mysqli_fetch_assoc($result)) {
-            $files[] = $row;
+        // The record with its files, signatures, views and comment thread.
+        if (pg_submitted_form_delete($form['id']) === false) {
+            output_error(lang('Query failed.'));
         }
-
-        // loop through all files so they can be deleted
-        foreach ($files as $file) {
-            // if file still exists, delete file
-            if ($file['id']) {
-                // delete file record
-                $query = "DELETE FROM files WHERE id = ?";
-                $result = db_q($query, array((string) $file['id'])) or output_error('Query failed.');
-
-                // delete file
-                @unlink(FILE_DIRECTORY_PATH . '/' . $file['name']);
-            }
-        }
-
-        // delete form
-        $query = "DELETE FROM forms WHERE id = ?";
-        $result = db_q($query, array((string) $form['id'])) or output_error('Query failed.');
-
-        // delete form data
-        $query = "DELETE FROM form_data WHERE (form_id = ?) AND (form_id != '0')";
-        $result = db_q($query, array((string) $form['id'])) or output_error('Query failed.');
-
-        // delete signature records for this submitted form
-        pg_signature_delete($form['id']);
-        
-        // delete views for this submitted form that the form view directory feature uses
-        pg_sfv_delete_views('submitted_form_id', $form['id']);
-
-        // delete the record's comments, their attachments, watchers and counters
-        pg_comment_delete_record_thread($form['id']);
 
         $custom_forms_for_log[$form['page_id']] = $form['form_name'];
 
@@ -484,6 +445,16 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
 
     // Delete Selected sits in the list's selection bar, which shows while
     // rows are selected, and posts the selection to delete_submitted_forms.php.
+    // The Unpaid filter (designed forms with a fee): a toggle kept in the
+    // session as 'payment', read by pg_submitted_form_list_filter() in the
+    // simple and the advanced view alike, so Export and Delete All follow it.
+    $output_unpaid_filter = '';
+
+    if (pg_form_payment_ready()) {
+        $unpaid_on = (pg_submitted_form_list_value($_SESSION['software']['forms']['view_submitted_forms'] ?? array(), 'payment') === 'unpaid');
+        $output_unpaid_filter = '<a class="btn btn-sm btn-outline theme-warning m-1' . ($unpaid_on ? ' active' : '') . '" role="button" aria-pressed="' . ($unpaid_on ? 'true' : 'false') . '" title="' . h(lang('Show only the forms whose fee is not paid yet')) . '" href="view_submitted_forms.php?payment=' . ($unpaid_on ? 'any' : 'unpaid') . '"><i class="bi bi-cash-coin me-1" aria-hidden="true"></i>' . lang('Unpaid') . '</a>';
+    }
+
     $output_bulk_buttons = '<button type="button" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . h(lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('submitted form(s)'))))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang('Delete Selected') . '</button>';
 
     // if the advanced filters are off
@@ -784,6 +755,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                     ' . $output_custom_form_selection . '
                                 </div>
                             </form>
+                            ' . $output_unpaid_filter . '
                             <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_submitted_forms.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                             ' . pg_period_nav('view_submitted_forms.php', ($_SESSION['software']['forms']['view_submitted_forms'] ?? array()), array(
                                 'day'   => array($decrease_day, $current_day, $increase_day),

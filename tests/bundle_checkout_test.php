@@ -62,7 +62,7 @@ function test_bundle_checkout_stock_stage_routes_a_bundle()
 	pg_assert_true($body !== '', 'pg_order_complete_line_stock() found');
 
 	$route = strpos($body, 'pg_bundle_sale_takes_components(');
-	$take = strpos($body, "pg_bundle_take_stock(\$line['order_item_id'], \$product_id, \$line['quantity'], 'checkout', \$stock_left);");
+	$take = strpos($body, "pg_bundle_take_stock(\$line['order_item_id'], \$product_id, \$line['quantity'], 'checkout', \$stock_left, \$location_id);");
 	$decrement = strpos($body, 'UPDATE products SET inventory_quantity');
 
 	pg_assert_true($route !== false, 'the line is routed');

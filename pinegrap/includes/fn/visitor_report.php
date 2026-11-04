@@ -67,7 +67,7 @@ function pg_visitor_report_filter_column($field, $from = null, $to = null)
 
 /**
  * The paid / organic channel of a visit by the daily summary's rule
- * (pg_visitor_channel_sql(): with no flag set nothing is paid). For a filter
+ * (pg_visitor_paid_organic_sql(): with no flag set nothing is paid). For a filter
  * the values are the option values 'pay_per_click', 'organic', 'neither';
  * for a grouping the English names the screen translates, '' for neither.
  *
@@ -76,7 +76,7 @@ function pg_visitor_report_filter_column($field, $from = null, $to = null)
  */
 function pg_visitor_report_channel_sql($filter)
 {
-    $channel = pg_visitor_channel_sql('visitors.');
+    $channel = pg_visitor_paid_organic_sql('visitors.');
 
     if ($filter) {
         return "CASE " . $channel . " WHEN '' THEN 'neither' ELSE " . $channel . " END";

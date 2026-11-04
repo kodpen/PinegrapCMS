@@ -1660,7 +1660,7 @@ function ws_groups_js_strings()
         'grp_new_inside'        => lang('New group inside'),
         'grp_edit'              => lang('Change the group'),
         'grp_name'              => lang('Name of the group'),
-        'grp_parent'            => lang('Inside'),
+        'grp_parent'            => lang('Parent group'),
         'grp_top'               => lang('At the top'),
         'grp_saved'             => lang('The group is saved.'),
         'grp_access'            => lang('Access on the group'),

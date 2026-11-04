@@ -69,6 +69,21 @@ if (!defined('PG_INIT_LOADED')) {
 		if(document.getElementById("inventory_quantity").value != "") {
 			opener.document.form.edit_inventory_quantity.value = document.getElementById("inventory_quantity").value;
 		}
+		// The location a quantity change goes to, on a site that keeps stock
+		// per location. The lists that open this window have no field for it,
+		// so it is added to their form here.
+		var location_select = document.getElementById("inventory_location");
+		if (location_select && (document.getElementById("inventory_quantity_process").value != "")) {
+			var opener_form = opener.document.form;
+			var location_field = opener_form.elements.namedItem("edit_inventory_location");
+			if (!location_field) {
+				location_field = opener.document.createElement("input");
+				location_field.type = "hidden";
+				location_field.name = "edit_inventory_location";
+				opener_form.appendChild(location_field);
+			}
+			location_field.value = location_select.value;
+		}
 		// The tax rate carries two fields: what to do, and the rate it needs when
 		// the answer is "set". Clearing needs no rate, so the value only travels
 		// with the method that uses it.
@@ -265,6 +280,16 @@ if (!defined('PG_INIT_LOADED')) {
                                 <button class="btn material-icons plus border border-start-0" type="button" aria-label="<?=h(lang('Increase'))?>">add</button>
 							</div>
 						</div>
+						<?php if ($stock_locations): ?>
+						<div class="row mt-3">
+							<label for="inventory_location" class="form-label"><?=h(lang('Location'))?></label>
+							<select id="inventory_location" class="form-control">
+								<?php foreach ($stock_locations as $stock_location): ?>
+								<option value="<?=(int) $stock_location['id']?>"><?=h($stock_location['name'])?></option>
+								<?php endforeach; ?>
+							</select>
+						</div>
+						<?php endif; ?>
 					</div>
 				</div>
 			</div>

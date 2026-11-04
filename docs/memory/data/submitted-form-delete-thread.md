@@ -18,10 +18,13 @@ attachment `files` unless a comment outside the thread shares the `file_id`
 
 ## Which paths delete a form record?
 
-`edit_submitted_form.php` (Delete button), `delete_submitted_forms.php` (bulk)
-and `view_submitted_forms.php` (list delete). A new delete path calls the
-same three helpers; `tests/submitted_form_delete_comments_test.php` checks the
-three files.
+`edit_submitted_form.php` (Delete button), `delete_submitted_forms.php` (bulk),
+`view_submitted_forms.php` (list delete) and the external API
+(`DELETE /forms/{id}/submissions/{submission_id}`) all call
+`pg_submitted_form_delete()` (`includes/fn/submitted_form_writes.php`), which
+also announces `form.submission.deleted`. The import undo
+(`pg_import_unwrite_record()`) keeps its own delete, without the files.
+`tests/submitted_form_delete_comments_test.php` checks the screens.
 
 ## Why?
 

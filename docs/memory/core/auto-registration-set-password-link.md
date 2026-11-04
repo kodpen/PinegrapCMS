@@ -16,7 +16,7 @@ description: Accounts a form auto-registers or an administrator creates (add use
 ## Who sees the link?
 - Only the form's sender: their plain-text copy (`pg_cf_new_account_plain_text(…, true)`), HTML copy and confirmation page.
 - The sender's copy is sent with `'secret' => true` while an account was opened, so a failed delivery keeps the link out of the activity log and the failure notice (`pg_mail_failure_body_shown()`).
-- `pg_cf_new_account_for_submitter()` is false while `pg_tr_suspend()` holds the request (the administrator's HTML copy; keep that wrapper in `custom_form.php`) and while `pg_cf_new_account_recipient(false)` marks a watcher's HTML copy. The administrator's plain text says only "A new account was created with this submission: <email>".
+- `pg_cf_new_account_for_submitter()` is false while `pg_tr_suspend()` holds the request (the administrator's HTML copy; keep that wrapper in `pg_cf_form_mails_send()`) and while `pg_cf_new_account_recipient(false)` marks a watcher's HTML copy. The administrator's plain text says only "A new account was created with this submission: <email>".
 - Helpers in `includes/fn/custom_form.php`: `pg_cf_new_account_email()`, `_link()`, `_plain_text()`, `_html()` (system layouts of the form item view and the confirmation screen), `_password_note()`.
 - Orders: the same; the customer's receipt copy is secret, the store gets its own copy without the link (`commerce/order-auto-registration-set-password-link.md`, #1220).
 

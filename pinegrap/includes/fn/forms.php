@@ -4134,6 +4134,48 @@ function get_standard_fields_for_view()
     }
     return $standard_fields;
 }
+
+// Whether a field picked on the form list view screen (an order-by or a
+// filter field) is one the view can store: '' (none), a value of
+// get_standard_fields_for_view(), 'random' where $allow_random (only the first
+// order-by column carries it), or the id of one of the form's own fields. The
+// standard field columns are ENUMs, so a value outside them was written as ''
+// and the setting was lost without a word.
+function pg_form_list_view_field_allowed($value, array $standard_fields, array $form_field_ids, $allow_random = false)
+{
+    if (!is_string($value) && !is_int($value)) {
+        return false;
+    }
+
+    $value = (string) $value;
+
+    if ($value === '') {
+        return true;
+    }
+
+    if (ctype_digit($value)) {
+        foreach ($form_field_ids as $form_field_id) {
+            if ((string) $form_field_id === $value) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    if ($value === 'random') {
+        return (bool) $allow_random;
+    }
+
+    foreach ($standard_fields as $standard_field) {
+        if (isset($standard_field['value']) && ($standard_field['value'] === $value)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 // This function is used by form list view to create sql for filters.
 function prepare_sql_operation($operator, $operand_1, $operand_2)
 {

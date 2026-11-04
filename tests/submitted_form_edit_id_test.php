@@ -25,5 +25,5 @@ function test_edit_submitted_form_uses_the_checked_id_only()
 	pg_assert_same(2, substr_count($source, "\$_REQUEST['id']"), 'only the one read takes $_REQUEST id');
 	pg_assert_same(false, strpos($source, "\$_POST['id']") !== false, 'no posted id read after the check');
 	pg_assert_same(false, strpos($source, "\$_GET['id']") !== false, 'no query-string id read after the check');
-	pg_assert_contains("\$query = \"DELETE FROM forms WHERE id = ?\";\n        \$result = db_q(\$query, array((string) \$id))", $source, 'the delete removes the checked record');
+	pg_assert_contains('$deleted_files = pg_submitted_form_delete($id);', $source, 'the delete removes the checked record');
 }

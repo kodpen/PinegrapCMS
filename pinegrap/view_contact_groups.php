@@ -21,6 +21,11 @@ $user = validate_user();
 validate_contacts_access($user);
 
 include_once('liveform.class.php');
+
+// The list's sort map (pg_contact_group_list_order_map()); functions.php
+// does not load this module.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/contact_list.php');
+
 $liveform = new liveform('view_contact_groups');
 
 // if user has access to manage contact groups, then prepare to output add contact group button

@@ -9,7 +9,7 @@ description: ^^email_preferences_url^^ and ^^confirm_subscription_url^^ in form 
 - Write them bare or alone in a `[[...||...]]` block: `[[Manage your e-mails: ^^email_preferences_url^^]]`. Not inside `{if ...}` and not in the same block as `^^reference_code^^`: the form item view fills them before those are read, so `{if ^^email_preferences_url^^ == ''}` loses its field.
 
 ## Who gets a link?
-- Only the e-mail to the person who sent the form: the submitter copy in `custom_form.php`, the resend in `pg_send_custom_form_notifications()` and the billing address copy of a product submit form (`submit_order.php`, never a confirmation link: no contact).
+- Only the e-mail to the person who sent the form: the submitter copy in `pg_cf_form_mails_send()` (`includes/fn/form_mails.php`), the resend in `pg_send_custom_form_notifications()` and the billing address copy of a product submit form (`submit_order.php`, never a confirmation link: no contact).
 - A watcher's copy, the administrator's e-mail (also drawn under `pg_tr_suspend()`) and the confirmation page get ''. A signed preferences link lets its holder change that address's subscriptions.
 - A message with a link is sent `'secret' => true` (`pg_cf_mail_links_in()`): its body stays out of the failure log and the delivery-failed notice.
 

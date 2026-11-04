@@ -158,8 +158,9 @@ function pg_search_expand($query, $groups, $max = PG_SEARCH_EXPAND_MAX)
  * or "terms => address | title". Terms are separated by commas and kept in
  * the rollup's form; the address is a path on this site, written without
  * the site's directory (a page name, "urunler/kahve", a record address), a
- * leading "/" dropped; a full address, "//", "..", a scheme or a backslash makes
- * the line no entry. Pure.
+ * leading "/" dropped; a full address, "//", "..", a scheme, a backslash or
+ * markup (<, >, ") makes the line no entry; pg_search_promoted_rejected()
+ * names those lines. Pure.
  *
  * @param mixed $text
  * @return array list of array('terms' => list, 'url' => path, 'title' => string)
@@ -192,7 +193,7 @@ function pg_search_promoted_parse($text)
         $title = isset($target[1]) ? trim(preg_replace('/\s+/u', ' ', $target[1])) : '';
 
         if (!$terms || ($url === '') || (mb_strlen($url, 'UTF-8') > 255)
-            || preg_match('#^[a-z][a-z0-9+.\-]*:|\\\\|(^|/)\.\.(/|$)|\s#i', $url)) {
+            || preg_match('#^[a-z][a-z0-9+.\-]*:|\\\\|(^|/)\.\.(/|$)|\s|[<>"]#i', $url)) {
             continue;
         }
 
@@ -208,6 +209,30 @@ function pg_search_promoted_parse($text)
     }
 
     return $entries;
+}
+
+/**
+ * The lines of the promoted-results box that make no entry: no "=>", no
+ * term, or an address that is not a path on this site. Blank lines are not
+ * counted. The save keeps the other lines and names these, so a line never
+ * disappears without a word. Pure.
+ *
+ * @param mixed $text
+ * @return array list of trimmed lines
+ */
+function pg_search_promoted_rejected($text)
+{
+    $rejected = array();
+
+    foreach (preg_split('/\R/u', is_string($text) ? $text : '') as $line) {
+        $line = trim($line);
+
+        if (($line !== '') && !pg_search_promoted_parse($line)) {
+            $rejected[] = $line;
+        }
+    }
+
+    return $rejected;
 }
 
 /**

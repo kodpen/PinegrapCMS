@@ -18,7 +18,6 @@ module: merchant_center
 - Then `pg_merchant_supplement_ensure()` (#4388) creates the push's supplemental API source (state `supplement`), linked into the feed source's `defaultRule`. Push body `pg_merchant_product_input()`, issues `pg_merchant_product_issues()`.
 - The country comes from the card (field `merchant_center_country`, apart from the structured-data `merchant_country`: one shared name overwrote the seller country, #3557; `tests/settings_seo_sharing_test.php` keeps each save to its field), offered first from `ORGANIZATION_COUNTRY` when it is a code, else from the base currency (`pg_merchant_default_country()`).
 
-## What is not verified, and what remains?
+## What is not verified?
 - Tests: `tests/merchant_center_test.php` (pure parts). The live run needs a Merchant Center account and the Merchant API enabled in the Google Cloud project of the site's OAuth client; checked on dev by the owner.
 - Issues and the System Status row: `merchant-center-issues.md`.
-- Remaining: `plans/reverse-oauth-leftovers.md` (Merchant Center row).

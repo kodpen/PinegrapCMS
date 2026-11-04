@@ -308,6 +308,7 @@ function get_help_url($properties = array())
         'add_zone'                         => 'commerce-cont#create-edit-zone',
         'edit_zone'                        => 'commerce-cont#create-edit-zone',
         'view_shipping_methods'            => 'commerce-cont#shipping-methods',
+        'view_stock_moves'                 => 'commerce-cont#stock-history',
         'add_shipping_method'              => 'commerce-cont#create-edit-shipping-method',
         'edit_shipping_method'             => 'commerce-cont#create-edit-shipping-method',
         'view_arrival_dates'               => 'commerce-cont#arrival-dates',
@@ -492,7 +493,7 @@ function get_help_url($properties = array())
         'view_audit_log' => 'security#audit-trail',
         'developer_lock' => 'security#developer-lock',
         'device_limit'   => 'security#devices',
-        'device_pairing' => 'security#devices',
+        'device_pairing' => 'api#device-sessions-signin',
         'mfa'            => 'security#two-step-verification',
     );
 
