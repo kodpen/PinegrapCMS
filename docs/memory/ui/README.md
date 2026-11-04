@@ -25,6 +25,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - Panel CSS sits in `@layer custom` and reads `--pg-*` tokens, never `--bs-*` variables; colour with alpha is `color-mix(in srgb, var(--pg-…) N%, transparent)`, not `rgba(var(--bs-…-rgb))`; a missing name goes into the token block of backend.src.css (`panel-css-tokens.md`).
 - A button's label span is `<span class="pg-btn-label">`, never `btn-text`; a flyout menu inside a menu is `.pg-submenu`, never `.submenu`: Bootstrap 6 owns `.btn-text`, `.submenu` and `.menu` (`bootstrap-6.md`).
 - Mark a chips, select2, date or time field with its `data-pg-*` hook and print `pg_fields_script()`; read and write it through `pgChips`/`pgCombobox`/`pgDatePicker`/`pgDateTimeField`, never call tagin, select2 or the jQuery UI pickers from a panel screen (`pg-field-wrappers.md`).
+- Never style every child of a `:has()` element (`X:has(…) > *`, `> :not(…)`, `X:has(…) *`): Chromium then restyles the whole document on each DOM insertion; put the `:has()` on the subject (`css-has-whole-document-restyle.md`, `tests/css_has_restyle_test.php`).
 <!-- key-rules:end -->
 
 ## Files
@@ -109,6 +110,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - container-shared-form.md: add_container.php and edit_container.php draw and check the container form through includes/forms/container_form.php; limits, unit conversion, required boxes, the list's figures
 - copy-buttons.md: Hand-written panel Copy buttons: label kept, icon swapped, polite status beside the button, clipboard API only in a secure context, execCommand decides; which screens follow it
 - country-shared-form.md: add_country.php and edit_country.php draw the country options card and read its posted values through includes/forms/country_form.php; what each screen keeps
+- css-has-whole-document-restyle.md: Chromium restyles the whole document on every DOM insertion while a rule styles every child of a :has() element; the settings card rewrite, the guard test, the Bootstrap 6 rule left
 - currency-exchange-rate-box.md: Exchange rate box on add/edit currency: five decimals like currencies.exchange_rate and the rate updater (#1341); Update Exchange Rates announces only the rates it wrote
 - currency-shared-form.md: The currency create and edit screens share includes/forms/currency_form.php: what it holds, what stays in the screens
 - current-and-pressed-state.md: The current link or menu item carries aria-current beside .active; a segmented toggle button carries aria-pressed beside its fill (.active or btn-solid)
