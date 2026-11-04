@@ -49,16 +49,29 @@ function test_contact_group_form_values_in_save_order()
 	}
 }
 
-function test_contact_group_form_required_only_on_create()
+function test_contact_group_form_name_required_on_both_screens()
 {
 	$add = (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_contact_group.php');
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_contact_group.php');
 	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/contact_group_form.php');
 
 	pg_assert_contains('pg_contact_group_form_card($liveform, true)', $add, 'create marks the name required');
-	pg_assert_contains('pg_contact_group_form_card($liveform)', $edit, 'edit leaves it as it was');
+	pg_assert_contains('pg_contact_group_form_card($liveform, true)', $edit, 'edit marks the name required too');
+	pg_assert_contains('name="submit_delete" value="Delete" formnovalidate', $edit, 'Delete submits with an emptied name');
 	pg_assert_contains("'class'=>'form-control') + \$required)", $form, 'required follows the class attribute');
 	pg_assert_contains('WHERE (name = ?) AND (id != ?)', $form, 'edit skips its own name');
+}
+
+// "Last refreshed" keeps get_relative_time()'s <time> markup; it was escaped
+// and shown as text.
+function test_contact_group_form_last_run_markup_not_escaped()
+{
+	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/contact_group_form.php');
+
+	pg_assert_contains('<span id="pg_audience_last_run">\' . $last_run . \'</span>', $form, 'last run printed as built');
+	pg_assert_contains("\$last_run = h(lang('A refresh is under way.'));", $form, 'plain text escaped');
+	pg_assert_contains("\$last_run = h(lang('Not refreshed yet.'));", $form, 'plain text escaped');
+	pg_assert_false(strpos($form, 'h($last_run)') !== false, 'the time markup is not escaped');
 }
 
 function test_contact_group_form_screens_use_shared_form()

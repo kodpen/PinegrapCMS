@@ -107,7 +107,7 @@ if (!$_POST) {
 
     // if there are no contacts in this contact group, allow delete
     if ($number_of_contacts == 0) {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact group')))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact group')))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
         
     // else there is at least one contact in this contact group, so disable delete button
     } else {
@@ -137,7 +137,7 @@ if (!$_POST) {
                 
                 <form name="form" action="edit_contact_group.php" method="post" >
                     ' . get_token_field() . '
-                    ' . pg_contact_group_form_card($liveform) . '
+                    ' . pg_contact_group_form_card($liveform, true) . '
                     ' . ($audience_ready ? pg_contact_group_rules_card($liveform, $group_rules, $may_edit_rules, $switch_review) : '') . '
 
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
