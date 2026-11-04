@@ -335,7 +335,8 @@ function pg_form_payment_mark_paid_query($order_id, $now)
  * Marks the record a paid order paid for, called by pg_order_complete() for
  * every order it completes and by pg_order_mark_paid() when staff record a
  * payment; an order no record points at, or one not yet paid, changes
- * nothing. A record marked by this call is announced as form.paid.
+ * nothing. A record marked by this call is announced as form.paid and sends
+ * the form's e-mails it held back at submit (pg_cf_form_mails_send_for_record()).
  *
  * @param  int      $order_id
  * @param  int|null $now
@@ -361,7 +362,7 @@ function pg_form_payment_mark_paid($order_id, $now = null)
 
     $row = db_item(
         "SELECT forms.id, forms.page_id, forms.reference_code, forms.contact_id, forms.order_id,
-            forms.paid_at, orders.order_number
+            forms.paid_at, forms.user_id, orders.order_number
         FROM forms
         LEFT JOIN orders ON orders.id = forms.order_id
         WHERE forms.order_id = '" . e((int) $order_id) . "'
@@ -370,6 +371,8 @@ function pg_form_payment_mark_paid($order_id, $now = null)
 
     if ($row) {
         pg_announce('form.paid', pg_form_paid_event_payload($row));
+
+        pg_cf_form_mails_send_for_record($row);
     }
 
     return true;

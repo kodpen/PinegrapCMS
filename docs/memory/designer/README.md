@@ -92,6 +92,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - common-region-to-shared-component.md: A common region made a shared component (R2): one _editable block opened to content editors, grants carried over, the <cregion> tag drawing the component, the old write paths refused
 - custom-form-email-and-confirmation-fallbacks.md: Custom form submit fallbacks (empty plain text body -> field list without hidden fields for the submitter; missing or binned next page -> message) and what the legacy page screen refuses (#1209).
 - custom-form-field-rules.md: Visitor rules of a designed form field (form_fields.rules, step 11.0.135, PR #3737): "Not before today" and "Required when", where they are written and checked, the staff exemption, Cafe and Clinic.
+- custom-form-mails.md: The e-mails of a submitted custom form in one function (pg_cf_form_mails_send()), held back while a fee is owed and sent when the record is marked paid (FL5b)
 - custom-form-model.md: custom_form widget model: controls are the fields (no field list), column sources, props._cf record, form_source page vs existing.
 - custom-form-options-and-rules.md: custom_form options live on the element, page_type is not the form marker (pg_form_page_sql), validation, confirmation, email body, CAPTCHA, migration, legacy field screens read-only.
 - custom-form-payment-staff.md: Paid state of a designed form's record for staff and integrations: the badge, the order link, Record an offline payment, the API fields, form.paid
