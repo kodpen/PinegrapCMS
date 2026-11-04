@@ -174,6 +174,33 @@ if (isset($_POST['pg_unlink_google']) || isset($_POST['pg_unlink_identity'])) {
 // The account page, open to every member, keeps asking for both. Turning it
 // on is not offered here: the key has to be confirmed on the person's own
 // device. Handled ahead of the save, like the two above.
+// Store credit: issue a card or void one from the Store Credit card
+// (pg_credit_staff_post()). Commerce rights as on the gift card screens; the
+// role check above already covers this user.
+if (isset($_POST['pg_credit_action'])) {
+
+    validate_token_field();
+
+    if (!pg_credit_staff_allowed($user)) {
+        output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
+    $credit_result = pg_credit_staff_post($id, $_POST, (int) $user['id']);
+
+    if ($credit_result['ok']) {
+        $liveform->add_notice(h($credit_result['message']));
+    } else {
+        $liveform->mark_error('_error', h($credit_result['message']));
+    }
+
+    $credit_send_to = ((isset($_POST['send_to'])) && is_string($_POST['send_to']) && ($_POST['send_to'] != '')) ? '&send_to=' . urlencode($_POST['send_to']) : '';
+
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY
+        . '/edit_user.php?id=' . $id . $credit_send_to . '#store_credit');
+
+    exit();
+}
+
 if (isset($_POST['pg_mfa_reset'])) {
 
     validate_token_field();
@@ -1174,6 +1201,7 @@ if (!$_POST) {
                 ' . $output_sign_in_unlock_form . '
                 ' . $output_reset_password_form . '
                 ' . $liveform->output_errors() . '
+                ' . $liveform->output_notices() . '
                 <form name="form" action="edit_user.php" method="post">
                     ' . get_token_field() . '
                     <button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>
@@ -1264,6 +1292,7 @@ if (!$_POST) {
                     </nav>
                 </form>
                 ' . $output_sessions_panel . '
+                ' . (pg_credit_staff_allowed($user) ? pg_credit_staff_panel_html($id, isset($_REQUEST['send_to']) && is_string($_REQUEST['send_to']) ? $_REQUEST['send_to'] : '', time()) : '') . '
             </div>
         </div>
     
