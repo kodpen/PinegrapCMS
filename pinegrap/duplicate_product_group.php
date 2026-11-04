@@ -51,6 +51,13 @@ if ($product_group['id'] != ($_GET['id'] ?? '')) {
     output_error(lang('Sorry, something went wrong, try again.'));
 }
 
+// A group in the Recycle Bin is not changed, copies included: its
+// sub-groups are all in the bin too, so a copy would come out live and
+// without them.
+if (pg_catalog_group_binned($id)) {
+    output_error(lang('This product group is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+}
+
 // If the form has not just been submitted, then output form.
 if (!$_POST) {
     echo
@@ -59,7 +66,8 @@ if (!$_POST) {
         'extra classes'=>'products',
         'icon'=>'store',
         'heading'=>lang('Duplicate Product Group'),
-        'heading_description' => lang('Please select any additional items that you want to duplicate.'),
+        // The shell escapes the description, so the name goes in as it is.
+        'heading_description' => lang(array('string' => 'Duplicate “{var:1}”. Please select any additional items that you want to duplicate.', 'vars' => array((string) $product_group['name']))),
         'cancel' => array('enable' => 'true', 'url' => 'edit_product_group.php?id=' . $id),
         'breadcrumb' => array(
             array('label' => lang('Product Groups'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php'),

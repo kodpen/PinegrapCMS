@@ -497,8 +497,10 @@ if (!$_POST) {
         ]) . '
 <main id="content" class="container-fluid">
     ' . pg_screen_toolbar(array(
+        // A group in the Recycle Bin is not copied (duplicate_product_group.php
+        // refuses it too).
         'secondary' => array(
-            '<a class="btn btn-sm btn-text theme-secondary" href="duplicate_product_group.php?id=' . h($_GET['id']) . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>',
+            $group_binned ? '' : '<a class="btn btn-sm btn-text theme-secondary" href="duplicate_product_group.php?id=' . h($_GET['id']) . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>',
             $output_workspace_button,
         ),
     )) . '
@@ -542,7 +544,7 @@ if (!$_POST) {
                                             ? '<a class="btn my-1 btn-solid theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin"><span class="bi bi-trash3 me-3"></span><span class="pg-btn-label">' . lang('Open the Recycle Bin') . '</span></a>'
                                             : '<button type="submit" id="submit_button" name="submit_button" value="Save" data-pg-save-shortcut class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>') . '
                                         ' . $output_delete_button,
-                        'bar_extra' => '
+                        'bar_extra' => $group_binned ? '' : '
                                     <span class="enable-on-selected">
                                         <button type="button" value="Modify Selected" title="' . lang('Modify Selected Products') . '" aria-label="' . h(lang('Modify Selected Products')) . '" data-bs-content="' . lang('All selected products will be modified. However, the changes you made on this page will be removed. If you have made any changes, save first.') . '" class="btn btn-sm my-1 btn-solid theme-primary p-3 disabled" onclick="convert_product_group_to_product_form(\'edit_products.php\')"><span class="material-icons" aria-hidden="true">living</span></button>
                                     </span>')) . '
