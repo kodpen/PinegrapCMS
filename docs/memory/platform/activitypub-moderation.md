@@ -13,7 +13,7 @@ module: activitypub_moderation
 - `pg_ap_block_normalize()`: an actor is its http(s) address without the fragment; a domain is a lowercase host with at least one dot, typed as a host, an address on it or a handle `@user@host` (port and path dropped). Anything else is '' and not saved.
 
 ## How are a remote actor's comments removed?
-- `pg_ap_forget_comments($actor_id)`: the `comments` rows with that `remote_actor`, their `notifications`, then `pg_comment_refresh_record_info()` per thread and `pg_page_cache_mark_dirty()` (the inbox is no signed-in POST). `pg_ap_forget_actor()` calls it when loaded, so `ap_inbox.php` loads `activitypub_moderation.php` (which loads the inbox module): a Delete of the actor, the remote erasure request, removes the same things as a block.
+- `pg_ap_forget_comments($actor_id)` → `pg_ap_remove_comments()` (also used for a deleted note): the `comments` rows with that `remote_actor`, their `notifications`, then `pg_comment_refresh_record_info()` per thread and `pg_page_cache_mark_dirty()` (the inbox is no signed-in POST). `pg_ap_forget_actor()` calls it when loaded, so `ap_inbox.php` loads `activitypub_moderation.php` (which loads the inbox module): a Delete of the actor, the remote erasure request, removes the same things as a block.
 
 ## Where can a block be made?
 - `edit_comment.php`: a comment with `remote_actor` shows "From the Fediverse" and, for Manager and above (`role < 3`; a block is site-wide while comment editing follows folder access), "Block Account" and "Block Server" (`submit_block` = actor / domain). Both confirm, then return to the comment list with a notice; the comment itself is gone with the rest.
