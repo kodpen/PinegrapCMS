@@ -325,7 +325,8 @@ function test_comments_widget_email_thread_values()
 	$values = pg_comments_email_thread_values(pg_comments_settings(comments_widget_email_test_page()));
 	pg_assert_same(array('__comments_title', '__comments_count', '__comments_label', '__comments_label_plural', '__comments_intro',
 		'__comments_closed_message', '__comments_show_all_url', '__comments_show_featured_url', '__login_url', '__comment_author_name',
-		'__reply_to_name', '__watcher_count_text', '__comments_item_name'), array_keys($values), 'the thirteen thread tokens');
+		'__reply_to_name', '__watcher_count_text', '__comments_item_name', '__comments_likes_count', '__comments_boosts_count',
+		'__comments_reactions_text'), array_keys($values), 'the sixteen thread tokens');
 	pg_assert_same('1 Comment', $values['__comments_title'], 'the title');
 	pg_assert_same('1', $values['__comments_count'], 'one comment');
 	pg_assert_same('Comment', $values['__comments_label'], 'the label');
@@ -333,7 +334,8 @@ function test_comments_widget_email_thread_values()
 	pg_assert_same('Be kind.', $values['__comments_intro'], 'the intro');
 	pg_assert_same("We're sorry. New comments are no longer being accepted.", $values['__comments_closed_message'], 'the default closed message');
 
-	foreach (array('__comments_show_all_url', '__comments_show_featured_url', '__login_url', '__comment_author_name', '__reply_to_name', '__watcher_count_text') as $key) {
+	foreach (array('__comments_show_all_url', '__comments_show_featured_url', '__login_url', '__comment_author_name', '__reply_to_name', '__watcher_count_text',
+		'__comments_likes_count', '__comments_boosts_count', '__comments_reactions_text') as $key) {
 		pg_assert_same('', $values[$key], $key . ' is empty');
 	}
 

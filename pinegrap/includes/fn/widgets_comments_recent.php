@@ -863,7 +863,7 @@ function pg_comments_mode_off_bindings($mode)
                 '__watcher_count_text', '__comment_anchor', '__comment_file_name', '__comment_file_url', '__comment_file_size',
                 '__comment_seller_reply_html', '__comment_seller_reply_date', '__comment_reply_url', '__comment_parent_id',
                 '__comment_parent_name', '__comment_parent_url', '__comment_quote', '__comment_depth', '__comment_reply_count',
-                '__comments_item_name'),
+                '__comments_item_name', '__comments_likes_count', '__comments_boosts_count', '__comments_reactions_text'),
             'flags' => array('comments_open', 'comments_closed', 'can_comment', 'must_sign_in', 'featured_view', 'has_featured', 'name_is_typed',
                 'name_is_chosen', 'name_is_fixed', 'rating_on', 'files_on', 'watching_on', 'is_replying', 'is_watching', 'not_watching',
                 'can_manage_watchers', 'is_email', 'comment_is_reply', 'comment_has_quote', 'comment_has_replies', 'comment_has_file',
