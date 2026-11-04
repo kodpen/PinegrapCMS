@@ -31,7 +31,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 ## Files
 
 - account-menu.md: Header account menu (pg_account_menu()): fixed card, phone sheet, why not hung from its button, ids other code needs, where the keyboard shortcuts went
-- ad-region-shared-form.md: The ad region create and edit screens share includes/forms/ad_region_form.php: what it holds, the defaults, what stays in the screens
+- ad-region-shared-form.md: The ad region create and edit screens share includes/forms/ad_region_form.php: the columns, the Summary, the save bar, the defaults, what stays in the screens
 - ad-shared-form.md: The ad create and edit screens share includes/forms/ad_form.php: what it holds, what stays in the screens
 - admin-screen-toolbar-rules.md: Button recipes, menu colour rule, shared toolbar CSS classes, card header pattern and narrow-screen behaviour for admin screen toolbars.
 - admin-screen-toolbar.md: Panel screen basics (frame, notices, fields, width, icons, help), the one-toolbar principle with view_folders.php as reference, slot order, classes and the pg_screen_toolbar() helper.

@@ -3,7 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The ad region form, shared by the create and the edit screens
- * (add_ad_region.php, edit_ad_region.php): the Options card, the name
+ * (add_ad_region.php, edit_ad_region.php): the form column with the
+ * Options card, the Summary column, the save bar, the name
  * check and the region behaviour values a save writes. The screens keep
  * what differs: the edit screen checks a user's access, shows the name
  * only to a designer, offers delete when no ad is assigned, and goes back
@@ -22,8 +23,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/tag_name_rule.php');
 
 /**
- * The Options card: name between <ad> tags, display type, transition
- * type and duration, autoplay with its interval and continuous play.
+ * The form column with the Options card: name between <ad> tags, display
+ * type, transition type and duration, autoplay with its interval and
+ * continuous play.
  *
  * @param liveform $liveform
  * @param string $name_field  Markup of the name (a field, or the stored name for a manager)
@@ -35,9 +37,8 @@ function pg_ad_region_form_card($liveform, $name_field, $defaults = false)
     $checked = $defaults ? array('checked' => 'checked') : array();
 
     return '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Options') . '
                                 </h2>
@@ -121,6 +122,187 @@ function pg_ad_region_form_card($liveform, $name_field, $defaults = false)
                                     </div>
                                 </div>
                             </div>
+                        </div>';
+}
+
+/**
+ * The values the Summary starts with, as the card draws them: the stored
+ * or posted ones, or a new region's defaults on its first draw.
+ *
+ * @param liveform $liveform
+ * @param bool $defaults  As for pg_ad_region_form_card()
+ * @return array  name, dynamic (bool), transition ('slide' or 'fade'),
+ *                autoplay (bool), interval (string, digits or '')
+ */
+function pg_ad_region_form_summary_values($liveform, $defaults = false)
+{
+    $display = (string) $liveform->get_field_value('display_type');
+    $transition = (string) $liveform->get_field_value('transition_type');
+    $interval = trim((string) $liveform->get_field_value('slideshow_interval'));
+
+    return array(
+        'name' => (string) $liveform->get_field_value('name'),
+        'dynamic' => !$defaults && ($display === 'dynamic'),
+        'transition' => (!$defaults && ($transition === 'fade')) ? 'fade' : 'slide',
+        'autoplay' => !$defaults && ((string) $liveform->get_field_value('slideshow') === '1'),
+        'interval' => ctype_digit($interval) ? $interval : '',
+    );
+}
+
+/**
+ * The Autoplay value of the Summary: Off, or On with its interval.
+ *
+ * @param bool $autoplay
+ * @param string $interval  Whole seconds, or '' when none was given
+ * @return string  Plain text
+ */
+function pg_ad_region_form_autoplay_text($autoplay, $interval)
+{
+    if (!$autoplay) {
+        return lang('Off');
+    }
+
+    return ($interval !== '') ? lang('On') . ' (' . (int) $interval . ' ' . lang('seconds') . ')' : lang('On');
+}
+
+/**
+ * The sticky status column: a Summary of the body tag a page style uses,
+ * the display type and, for a dynamic region, the transition and
+ * autoplay, all following the boxes as they change; then the screen's
+ * own rows (the ads and the last change on edit).
+ *
+ * @param liveform $liveform
+ * @param bool $defaults  As for pg_ad_region_form_card()
+ * @param string $status_rows  More rows (pg_ad_region_form_status_row()), HTML
+ * @return string  HTML
+ */
+function pg_ad_region_form_status($liveform, $defaults = false, $status_rows = '')
+{
+    $values = pg_ad_region_form_summary_values($liveform, $defaults);
+    $labels = array(
+        'static' => lang('Static'),
+        'dynamic' => lang('Dynamic'),
+        'slide' => lang('Slide'),
+        'fade' => lang('Fade'),
+        'off' => lang('Off'),
+        'on' => lang('On'),
+        'seconds' => lang('seconds'),
+    );
+    $dynamic_class = $values['dynamic'] ? '' : ' d-none';
+
+    return '
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Summary') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <dl class="mb-0" id="ad_region_summary" data-labels="' . h(json_encode($labels)) . '">
+                                            <div class="py-2 border-bottom">
+                                                <dt class="fw-normal">' . lang('Page Style Body Tag') . '</dt>
+                                                <dd class="mb-0 text-break"><code id="ad_region_summary_tag">' . h('<ad>' . $values['name'] . '</ad>') . '</code></dd>
+                                            </div>'
+        . pg_ad_region_form_status_row(lang('Display Type'), h($values['dynamic'] ? $labels['dynamic'] : $labels['static']), false, 'ad_region_summary_display')
+        . pg_ad_region_form_status_row(lang('Transition Type'), h($labels[$values['transition']]), false, 'ad_region_summary_transition', $dynamic_class)
+        . pg_ad_region_form_status_row(lang('Autoplay'), h(pg_ad_region_form_autoplay_text($values['autoplay'], $values['interval'])), $status_rows === '', 'ad_region_summary_autoplay', $dynamic_class)
+        . $status_rows . '
+                                        </dl>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <script>
+                            (function () {
+                                // The Summary follows the boxes as they change.
+                                var summary = document.getElementById("ad_region_summary");
+
+                                if (!summary) {
+                                    return;
+                                }
+
+                                var labels = JSON.parse(summary.getAttribute("data-labels"));
+
+                                function checked(id) {
+                                    var box = document.getElementById(id);
+                                    return !!(box && box.checked);
+                                }
+
+                                function update() {
+                                    var name = document.getElementById("name");
+                                    var interval = document.getElementById("slideshow_interval");
+                                    var seconds = interval ? interval.value.trim() : "";
+                                    var dynamic = checked("dynamic");
+                                    var autoplay = labels.off;
+
+                                    if (name && name.tagName === "INPUT") {
+                                        document.getElementById("ad_region_summary_tag").textContent = "<ad>" + name.value + "</ad>";
+                                    }
+
+                                    if (checked("slideshow")) {
+                                        autoplay = /^[0-9]+$/.test(seconds) ? labels.on + " (" + parseInt(seconds, 10) + " " + labels.seconds + ")" : labels.on;
+                                    }
+
+                                    document.getElementById("ad_region_summary_display").textContent = dynamic ? labels.dynamic : labels.static;
+                                    document.getElementById("ad_region_summary_transition").textContent = checked("fade") ? labels.fade : labels.slide;
+                                    document.getElementById("ad_region_summary_autoplay").textContent = autoplay;
+                                    document.getElementById("ad_region_summary_transition").parentNode.classList.toggle("d-none", !dynamic);
+                                    document.getElementById("ad_region_summary_autoplay").parentNode.classList.toggle("d-none", !dynamic);
+                                }
+
+                                document.addEventListener("input", function (event) {
+                                    if (event.target.id === "name" || event.target.id === "slideshow_interval") {
+                                        update();
+                                    }
+                                });
+                                document.addEventListener("change", function (event) {
+                                    if (event.target.name === "display_type" || event.target.name === "transition_type" || event.target.id === "slideshow") {
+                                        update();
+                                    }
+                                });
+                            })();
+                        </script>';
+}
+
+/**
+ * One Summary row of the status column: a label and its value.
+ *
+ * @param string $label  The label, plain text
+ * @param string $value  The value, already HTML
+ * @param bool   $last   False draws the line under the row
+ * @param string $id     The value's id, for a row the script updates
+ * @param string $class  More classes of the row (' d-none' while hidden)
+ * @return string  HTML
+ */
+function pg_ad_region_form_status_row($label, $value, $last = true, $id = '', $class = '')
+{
+    return '
+                                            <div class="d-flex justify-content-between gap-3 py-2' . ($last ? '' : ' border-bottom') . $class . '">
+                                                <dt class="fw-normal">' . h($label) . '</dt>
+                                                <dd class="mb-0 fw-bold text-end text-break"' . ($id !== '' ? ' id="' . h($id) . '"' : '') . '>' . $value . '</dd>
+                                            </div>';
+}
+
+/**
+ * The screen row: the form column, the status column and the sticky save
+ * bar with the given buttons.
+ *
+ * @param string $columns pg_ad_region_form_card() . pg_ad_region_form_status()
+ * @param string $buttons The buttons inside the bar's group
+ * @return string  HTML
+ */
+function pg_ad_region_form_layout($columns, $buttons)
+{
+    return '
+                    <div class="row">' . $columns . '
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">' . $buttons . '
+                                    </div>
+                                </div>
+                            </nav>
                         </div>
                     </div>';
 }
