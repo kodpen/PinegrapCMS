@@ -7,6 +7,7 @@ Visitor statistics, page and article views, search engine index flags.
 ## Key rules
 
 <!-- key-rules:start -->
+- Take a visitor figure from `includes/fn/visitor_figures.php` (totals, breakdown, traffic, content), never a raw count of `visitors` rows: it reads the daily summary where it covers and the raw rows only for the rest (`visitor-figures-module.md`).
 - Build reports from the summary tables (`visitor_stats_hourly`, `visitor_content_hourly`), never by counting raw `visitors` rows (`visitor-rollup-tables.md`).
 - Aggregate a busy counter at write time with one `INSERT ... ON DUPLICATE KEY UPDATE` on a sha1 bucket key; never put the query string in the key (`high-volume-counter-rules.md`).
 - Sum aggregated rows (`SUM(page_views)`, `SUM(hit_count)`); both visitor summary tables must count the same thing (`visitor-rollup-consistency.md`).
@@ -45,11 +46,14 @@ Visitor statistics, page and article views, search engine index flags.
 - sitemap-cache.md: sitemap.xml kept in data/cache/sitemap.txt under config.page_cache_generation with a one-hour lifetime (#2054): what redraws it, what waits for the lifetime, the lock, the wait with no copy, the purge
 - sitemap-listed-pages.md: Which pages sitemap.xml lists bare: the page types (pg_sitemap_page_types()), designed pages whose system widget stands in for an unlisted type, the home page exception, detail pages vs their records
 - translation-index-verdict.md: One rule for a translated page's robots meta, hreflang alternates and sitemap.xml under the "reviewed" policy; no kept answer means not offered; what drops or keeps the answer
+- visitor-channel-rule.md: The channel of a visit (paid, email, ai, organic, social, referral, direct), the search-engine table of init_tracking() and the ENUM step that appended today's engines
 - visitor-counter-dedup-key.md: Why http_referer is not part of the visitor dedup key in init_tracking(), how the visitor IP is resolved, and the defensive user_agent column probe (2026.2.5).
+- visitor-daily-summary.md: The daily visitor summary written for every day through yesterday: what a day holds, the day order of a run, where the raw rows take over (pg_visitor_rows_from), who reads it
+- visitor-figures-module.md: includes/fn/visitor_figures.php: the visitor figures of a window (totals, breakdown, traffic series, content), which days come from the daily summary and which from the raw rows
 - visitor-ip-early-removal.md: A visit's IP address set to 0 after config.visitor_ip_days (default 30, step 10.8) by the visitor cleanup, chunked with a cursor marker; dedup check safety, screens that show 0
 - visitor-item-links-and-chart-labels.md: How visitor report rows build item URLs, why chart and tooltip numbers differ, and why the home page is stored under many names.
 - visitor-monthly-partitions.md: The visitors table split into one partition per month (step 10.7, #499): how months are dropped, opened, converted, and what happens without partitioning
-- visitor-report-filters-and-form.md: Visitor report filter checks (unknown field, date, day count), paid/organic rule, the form after a save error, the report name, Visit Details landing page
+- visitor-report-filters-and-form.md: Visitor report filter checks (unknown field, date, day count), paid/organic rule, the form after a save error, the report name, the period presets, order columns, Visit Details landing page
 - visitor-report-site-time.md: Why the Visitor Report's year/month/day groups and Date filter go through pg_site_time_sql(): the fixed session offset, daylight saving shifts per row, the window, what is left
 - visitor-report-sql-pitfalls.md: How the visitor report page aggregates in SQL not PHP, ONLY_FULL_GROUP_BY traps in rollup queries, and why only the visitors table left MyISAM.
 - visitor-retention-and-cleanup.md: How the visitors table is kept small: retention days, daily summary, chunked deletion, monthly partitions, move to InnoDB, automatic rebuild, bots not recorded, rowless backups, stepwise restore
@@ -58,4 +62,12 @@ Visitor statistics, page and article views, search engine index flags.
 - visitor-rollup-tables.md: The hourly visitor summary tables (visitor_stats_hourly, visitor_content_hourly), bucket_key hashing, and how content items are identified (2026.3.4).
 - visitor-table-size-figures.md: Where the visitor card, the System Status line and the shrink/move before-after sizes get their record count and file size, and how each figure says its source
 - visitor-texts-list.md: Referring address and user agent of a visit kept once each in visitor_texts and named by number in visitors (step 10.6): writer, readers, prune, old rows, upgrade limits
+- visitors-alerts.md: The alerts section of the Visitors overview (includes/visitors/alerts.php): the six rules, their thresholds and minimums, the Google window, the quiet-day check, drawn only when something fell
+- visitors-content.md: The content section of visitors.php: most viewed pages, products, groups and form entries from the content rollup, landing pages with the home page folded, each with the earlier figure
+- visitors-conversions.md: The conversions section of the Visitors overview (includes/visitors/conversions.php): which tiles, the conversion rate, the funnel, the chart by grain, commerce off, the empty state
+- visitors-google.md: The Google search section of visitors.php: its window ending on the latest day with figures, tiles, top lists, the two opportunity rules, the unlinked card
+- visitors-pages.md: The pages section of visitors.php and the visitor_pages module: Google figures joined per page to visits, views, forms, orders and SEO score on pg_visitor_page_key()
+- visitors-places.md: The places and devices section of the Visitors overview (includes/visitors/places.php): country and city top lists, device and first/return split bars, where a place comes from
+- visitors-sources.md: The sources section of visitors.php: channel bar and list, the eight top lists with the earlier figure, the summary days line; what it reads and what it leaves out
+- visitors-traffic.md: The traffic section of visitors.php (includes/visitors/traffic.php): headline tiles, the line by the period's grain with the earlier period dashed, the busiest content in the tooltip, the empty states
 - web-vitals-ai-visibility-decisions.md: Decisions behind the page speed figures and the AI visibility view (owner 2026-11-02, #5040): privacy, where the beacon is off, derived data, table shapes, unverified bots, where the screens go

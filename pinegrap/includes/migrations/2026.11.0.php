@@ -149,6 +149,13 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_form_fee();                // 11.0.158
 	upgrade_2026_11_0_store_credit();            // 11.0.159
 	upgrade_2026_11_0_user_disabled();           // 11.0.160
+	upgrade_2026_11_0_booking_campaigns();       // 11.0.161
+	upgrade_2026_11_0_stock_locations();         // 11.0.162
+	upgrade_2026_11_0_activitypub();             // 11.0.163
+	upgrade_2026_11_0_form_list_view_address();  // 11.0.164
+	upgrade_2026_11_0_order_vat_id();            // 11.0.165
+	upgrade_2026_11_0_search_engines();          // 11.0.166
+	upgrade_2026_11_0_ap_reactions();            // 11.0.167
 
 }
 
@@ -4852,5 +4859,327 @@ function upgrade_2026_11_0_store_credit() {
 	install_add_index('gift_cards', 'idx_user', "INDEX idx_user (user_id)");
 
 	install_note('Gift cards: a card can belong to a customer as store credit, with where it came from, why it was issued and when it expires.');
+
+}
+
+// The booking e-mails (2026.11.0, 11.0.161; includes/fn/booking_messages.php).
+// Campaign profiles of four new actions mail a booking's customer when it is
+// confirmed, before it starts, when it is moved and when it is cancelled. A
+// campaign made from such a profile copies the action into
+// email_campaigns.action, so both lists are widened, as
+// upgrade_2026_11_0_subscription_price_notice() does: the list is read first
+// and only appended to, each value once, the null rule and the default kept.
+function upgrade_2026_11_0_booking_campaigns() {
+
+	$actions = array('booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled');
+
+	foreach (array('email_campaign_profiles', 'email_campaigns') as $table) {
+
+		$action = install_column_info($table, 'action');
+
+		if (!$action) {
+
+			continue;
+
+		}
+
+		preg_match_all("/'((?:[^']|'')*)'/", (string) $action['Type'], $matches);
+
+		$values = $matches[1];
+		$added = false;
+
+		foreach ($actions as $value) {
+
+			if (!in_array($value, $values, true)) {
+
+				$values[] = $value;
+				$added = true;
+
+			}
+
+		}
+
+		if (!$added) {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => $table . '.action booking_*')));
+
+			continue;
+
+		}
+
+		$definition = "ENUM('" . implode("','", $values) . "')"
+			. ((($action['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+			. (($action['Default'] !== null) ? " DEFAULT '" . e((string) $action['Default']) . "'" : '');
+
+		install_modify_column($table, 'action', $definition);
+
+	}
+
+	install_note('E-mail campaigns: automatic e-mails gain the booking confirmed, booking reminder, booking rescheduled and booking cancelled actions. Nothing is sent until such a profile is created.');
+
+}
+
+// Stock per location (2026.11.0, 11.0.162; includes/fn/stock_locations.php).
+// stock_locations are the places units are kept (warehouse, shop,
+// consignment); product_stock holds a product's quantity at one location,
+// one row per pair; stock_moves records every change made through the
+// writer (signed delta, quantity left at the location, reason, reference,
+// who). products.inventory_quantity stays and is kept as the sum of a
+// product's rows by the writer, so every reader of the total is unchanged.
+// shipping_methods.stock_location_id and orders.stock_location_id name the
+// location an order ships from (0 = the default). New tables and columns
+// only; no data moves: rows appear when the operator adds the first location.
+function upgrade_2026_11_0_stock_locations() {
+
+	install_create_table('stock_locations', "CREATE TABLE stock_locations (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name        VARCHAR(100) NOT NULL DEFAULT '',
+		address     TEXT NULL,
+		enabled     TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		is_default  TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		sort_order  SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('product_stock', "CREATE TABLE product_stock (
+		product_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		location_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		quantity     INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (product_id, location_id),
+		KEY idx_location (location_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('stock_moves', "CREATE TABLE stock_moves (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		product_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		location_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		delta           INT NOT NULL DEFAULT 0,
+		quantity_after  INT UNSIGNED NOT NULL DEFAULT 0,
+		reason          VARCHAR(32) NOT NULL DEFAULT '',
+		ref             VARCHAR(64) NOT NULL DEFAULT '',
+		note            VARCHAR(255) NOT NULL DEFAULT '',
+		user_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_product (product_id, created_at),
+		KEY idx_location (location_id, created_at),
+		KEY idx_created (created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('shipping_methods', 'stock_location_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('orders', 'stock_location_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Stock locations: the tables for stock kept per location and its history are in place; nothing changes until a location is added.');
+
+}
+
+// The site as a Fediverse actor (2026.11.0, 11.0.163; includes/fn/activitypub.php).
+// ap_followers holds one row per remote actor that follows the site, with
+// its inbox and shared inbox; ap_outbox the activities queued for delivery,
+// one row per inbox, retried with backoff by the general job; ap_blocks the
+// actors and domains whose requests are refused. A reply from the Fediverse
+// is a comment: comments.remote_actor and remote_id name its sender and its
+// note, so a repeated delivery or a Delete finds it; local comments keep ''.
+// The actor's settings and key pair are not config columns (the stock
+// config row has no room left, data/config-table-no-varchar.md) but two
+// config_text rows written by the code: ap_settings (JSON) and ap_keys (the
+// private key sealed with the site's key). Everything stays off until
+// ap_settings switches it on.
+function upgrade_2026_11_0_activitypub() {
+
+	install_create_table('ap_followers', "CREATE TABLE ap_followers (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		actor_id     VARCHAR(255) NOT NULL DEFAULT '',
+		inbox        VARCHAR(255) NOT NULL DEFAULT '',
+		shared_inbox VARCHAR(255) NOT NULL DEFAULT '',
+		name         VARCHAR(100) NOT NULL DEFAULT '',
+		avatar       VARCHAR(255) NOT NULL DEFAULT '',
+		followed_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_actor (actor_id(191))
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ap_outbox', "CREATE TABLE ap_outbox (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		activity_id VARCHAR(255) NOT NULL DEFAULT '',
+		inbox       VARCHAR(255) NOT NULL DEFAULT '',
+		body        MEDIUMTEXT NULL,
+		attempts    TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		next_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		state       ENUM('queued','sent','failed') NOT NULL DEFAULT 'queued',
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_due (state, next_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ap_blocks', "CREATE TABLE ap_blocks (
+		id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		kind       ENUM('actor','domain') NOT NULL DEFAULT 'actor',
+		value      VARCHAR(255) NOT NULL DEFAULT '',
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_block (kind, value(191))
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	// Instantly where the server can, so a site with many comments does not
+	// wait for a copy of the table; copied otherwise.
+	$remote = array(
+		'remote_actor' => "VARCHAR(255) NOT NULL DEFAULT ''",
+		'remote_id'    => "VARCHAR(255) NOT NULL DEFAULT ''",
+	);
+
+	if (!install_add_columns_instant('comments', $remote)) {
+
+		foreach ($remote as $column => $definition) {
+
+			install_add_column('comments', $column, $definition);
+
+		}
+
+	}
+
+	install_add_index('comments', 'idx_remote', "INDEX idx_remote (remote_id(191))");
+
+	install_note('Fediverse (ActivityPub): the site can be followed from Mastodon and other Fediverse services. It stays off until it is switched on.');
+
+}
+
+// The form list view sorts and filters by a submission's address name
+// (2026.11.0, 11.0.164; get_standard_fields_for_view() in includes/fn/forms.php),
+// but its order-by and filter field columns are ENUMs that never listed
+// 'address_name', so a view set to it was saved with ''. Each list is read
+// first and only appended to, the null rule and the default kept, so a value
+// another step added stays ('random' in order_by_1 included) and a second run
+// finds the value and changes nothing.
+function upgrade_2026_11_0_form_list_view_address() {
+
+	$columns = array(
+		array('form_list_view_pages', 'order_by_1_standard_field'),
+		array('form_list_view_pages', 'order_by_2_standard_field'),
+		array('form_list_view_pages', 'order_by_3_standard_field'),
+		array('form_list_view_filters', 'standard_field'),
+	);
+
+	foreach ($columns as $column) {
+
+		list($table, $name) = $column;
+
+		$info = install_column_info($table, $name);
+
+		if (!$info) {
+
+			continue;
+
+		}
+
+		preg_match_all("/'((?:[^']|'')*)'/", (string) $info['Type'], $matches);
+
+		$values = $matches[1];
+
+		if (in_array('address_name', $values, true)) {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => $table . '.' . $name . ' address_name')));
+
+			continue;
+
+		}
+
+		$values[] = 'address_name';
+
+		$definition = "ENUM('" . implode("','", $values) . "')"
+			. ((($info['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+			. (($info['Default'] !== null) ? " DEFAULT '" . e((string) $info['Default']) . "'" : '');
+
+		install_modify_column($table, $name, $definition);
+
+	}
+
+	install_note('Form list views: the order-by and filter fields can hold the address name. Existing views do not change.');
+
+}
+
+// EU VAT id on the order (2026.11.0, 11.0.165; includes/fn/vat_checkout.php).
+// vat_id is the VAT id VIES confirmed when the order took the reverse charge,
+// vat_checked_at the time of that check, vat_request_id the VIES consultation
+// number; all empty (0) on an order that was not checked. Written at checkout
+// only, never from the contact card. New columns only; no data moves.
+function upgrade_2026_11_0_order_vat_id() {
+
+	install_add_column('orders', 'vat_id', "VARCHAR(20) NOT NULL DEFAULT ''");
+	install_add_column('orders', 'vat_checked_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('orders', 'vat_request_id', "VARCHAR(32) NOT NULL DEFAULT ''");
+
+	install_note('Orders: an EU VAT id confirmed at checkout, the time of the check and its VIES consultation number are kept on the order. Existing orders are unchanged.');
+
+}
+
+// Today's search engines appended to visitors.referring_search_engine:
+// Yandex was counted as a referral and the rest as plain referring sites.
+// The type is read first and only missing names are appended, after the
+// last value, so the column keeps one byte per row and the table is not
+// rewritten; a value a later release added stays.
+function upgrade_2026_11_0_search_engines() {
+
+	$info = install_column_info('visitors', 'referring_search_engine');
+
+	if (!is_array($info)) {
+		return install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => 'visitors.referring_search_engine')));
+	}
+
+	$type = trim((string)$info['Type']);
+
+	if (preg_match('/^enum\(.*\)$/is', $type) !== 1) {
+		return install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'visitors.referring_search_engine')));
+	}
+
+	$add = array();
+
+	foreach (array('Yandex', 'DuckDuckGo', 'Ecosia', 'Brave Search', 'Qwant', 'Startpage', 'Baidu', 'Naver', 'Seznam') as $name) {
+
+		if (strpos($type, "'" . $name . "'") === false) {
+			$add[] = "'" . $name . "'";
+		}
+
+	}
+
+	if (count($add) === 0) {
+		return install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'visitors.referring_search_engine')));
+	}
+
+	// The column's own collation is kept: another one would rewrite the table.
+	$collation = (string)db_value("SELECT COLLATION_NAME FROM information_schema.COLUMNS
+		WHERE (TABLE_SCHEMA = DATABASE()) AND (TABLE_NAME = 'visitors') AND (COLUMN_NAME = 'referring_search_engine')");
+
+	$collate = (preg_match('/^[A-Za-z0-9_]+$/', $collation) === 1) ? " COLLATE " . $collation : '';
+
+	return install_modify_column('visitors', 'referring_search_engine', preg_replace('/\)$/', ',' . implode(',', $add) . ')', $type) . $collate . " NOT NULL DEFAULT ''");
+
+}
+
+// Fediverse likes and boosts (2026.11.0, 11.0.167; includes/fn/activitypub_inbox.php).
+// One row per remote actor, kind and object: reaction_key is the sha1 of the
+// three, so a repeated delivery is ignored by the unique key; an Undo deletes
+// by its activity id or the recomputed key, a Delete of the actor by actor.
+// object_id is the address of one of the site's own objects; the counts are
+// COUNT(*) per object and kind.
+function upgrade_2026_11_0_ap_reactions() {
+
+	install_create_table('ap_reactions', "CREATE TABLE ap_reactions (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		kind         ENUM('like','announce') NOT NULL DEFAULT 'like',
+		actor_id     VARCHAR(255) NOT NULL DEFAULT '',
+		object_id    VARCHAR(255) NOT NULL DEFAULT '',
+		activity_id  VARCHAR(255) NOT NULL DEFAULT '',
+		reaction_key CHAR(40) NOT NULL DEFAULT '',
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_reaction (reaction_key),
+		KEY idx_object (object_id(191), kind),
+		KEY idx_activity (activity_id(191)),
+		KEY idx_actor (actor_id(191))
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 }

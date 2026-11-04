@@ -477,16 +477,8 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
         <div class="container-fluid">
             <span class="navbar-text me-auto">' . lang('Send E-mail Campaign') . '</span>
             <ul class="navbar-nav ms-auto">
-                <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
-                    <button class="nav-link nav-link-sm position-relative pg-menu-caret d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
-                    <ul aria-labelledby="bd-theme" class="menu shadow pg-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-menu-min-width: 8rem;">
-                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i>' . lang('Light') . '</button></li>
-                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i>' . lang('Dark') . '</button></li>
-                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i>' . lang('Auto') . '</button></li>
-                    </ul>
-                </li>
                 <li class="nav-item">
-                    <button id="campaign_send_header_close" title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.close()" aria-label="' . h(lang('Close')) . '">
+                    <button id="campaign_send_header_close" title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="pgSendClose(false)" aria-label="' . h(lang('Close')) . '">
                         <span class="bi bi-x-lg"></span>
                     </button>
                 </li>
@@ -500,7 +492,7 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
             <div class="col-12">
                 <div class="card mb-7">
                     <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                        ' . lang('Informations') . '
+                        ' . lang('Information') . '
                     </div>
                     <div class="card-body">
                         <h1>' . h($subject_template) . '</h1>
@@ -512,7 +504,7 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
             </div>
             <div class="col-12" id="campaign_sending">
                 <h3 id="campaign_send_heading">' . lang('Sending Campaign Now') . '...</h3>
-                <p>' . lang('Sending the e-mail message to each specific subscriber now.') . '</p>
+                <p>' . lang('Sending the e-mail message to each subscriber now.') . '</p>
 
                 <div class="d-flex align-items-center gap-3">
                     <div class="progress flex-grow-1">
@@ -535,12 +527,13 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
         <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
             <div class="container">
                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
-                    <button id="campaign_send_stop" type="button" name="submit_save" onclick="window.close();" value="Stop &amp; Close" class="btn mb-1 mt-1  btn-solid theme-danger submit-primary" ><span class="material-icons me-3" aria-hidden="true">close</span>' . lang(array('string'=>'Stop & Close') ) . '</button>
-                    <button id="campaign_send_close" type="button" name="submit_save" value="Close" onclick="window.opener.location.reload(true); window.close();" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" hidden><span class="material-icons me-3" aria-hidden="true">close</span>' . lang(array('string'=>'Close') ) . '</button>
+                    <button id="campaign_send_stop" type="button" name="submit_save" onclick="pgSendClose(false)" value="Stop &amp; Close" class="btn mb-1 mt-1  btn-solid theme-danger submit-primary" ><span class="bi bi-x-lg me-3" aria-hidden="true"></span>' . lang(array('string'=>'Stop & Close') ) . '</button>
+                    <button id="campaign_send_close" type="button" name="submit_save" value="Close" onclick="pgSendClose(true)" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" hidden><span class="bi bi-x-lg me-3" aria-hidden="true"></span>' . lang(array('string'=>'Close') ) . '</button>
                 </div>
             </div>
         </nav>
     </main>
+    ' . send_email_campaign_close_script($id) . '
     <script>
     (function () {
         var url = ' . json_encode($send_json_url, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
@@ -671,6 +664,11 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
     if ($summary['complete']) {
         $query = "UPDATE email_campaigns SET status = 'complete' WHERE id = ?";
         $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+
+        // Announced once, by the run that finished it.
+        if (mysqli_affected_rows(db::$con) === 1) {
+            pg_announce('campaign.sent', pg_campaign_sent_event('email', $id, (string) db_value("SELECT type FROM email_campaigns WHERE id = '" . (int) $id . "'")));
+        }
     }
 
     $log_page = '';
@@ -723,16 +721,8 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
         <div class="container-fluid">
             <span class="navbar-text me-auto">' . lang('Send E-mail Campaign') . '</span>
             <ul class="navbar-nav ms-auto">
-                <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
-                    <button class="nav-link nav-link-sm position-relative pg-menu-caret d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
-                    <ul aria-labelledby="bd-theme" class="menu shadow pg-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-menu-min-width: 8rem;">
-                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i>' . lang('Light') . '</button></li>
-                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i>' . lang('Dark') . '</button></li>
-                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i>' . lang('Auto') . '</button></li>
-                    </ul>
-                </li>
                 <li class="nav-item">
-                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.opener.location.reload(true); window.close();" aria-label="' . h(lang('Close')) . '">
+                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="pgSendClose(true)" aria-label="' . h(lang('Close')) . '">
                         <span class="bi bi-x-lg"></span>
                     </button>
                 </li>
@@ -745,7 +735,7 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
             <div class="col-12">
                 <div class="card mb-7">
                     <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                        ' . lang('Informations') . '
+                        ' . lang('Information') . '
                     </div>
                     <div class="card-body">
                         <h1>' . h($subject_template) . '</h1>
@@ -763,11 +753,11 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
         <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
             <div class="container">
                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
-                    <button type="button" name="submit_save" value="Close" onclick="window.opener.location.reload(true); window.close();" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" ><span class="material-icons me-3" aria-hidden="true">close</span>' . lang(array('string'=>'Close') ) . '</button>
+                    <button type="button" name="submit_save" value="Close" onclick="pgSendClose(true)" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" ><span class="bi bi-x-lg me-3" aria-hidden="true"></span>' . lang(array('string'=>'Close') ) . '</button>
                 </div>
             </div>
         </nav>
-    </main>' . output_footer_secure();
+    </main>' . send_email_campaign_close_script($id) . output_footer_secure();
 }
 
 // Refusal inside the window's own frame (panel styles, theme, Close button),
@@ -792,12 +782,35 @@ function output_error_in_popup($error_message)
         <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
             <div class="container">
                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
-                    <button type="button" name="submit_save" value="Close" onclick="window.opener.location.reload(true); window.close();" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" ><span class="material-icons me-3" aria-hidden="true">close</span>' . lang(array('string'=>'Close') ) . '</button>
+                    <button type="button" name="submit_save" value="Close" onclick="pgSendClose(true)" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" ><span class="bi bi-x-lg me-3" aria-hidden="true"></span>' . lang(array('string'=>'Close') ) . '</button>
                 </div>
             </div>
         </nav>
-    </main>' . output_footer_secure();
+    </main>' . send_email_campaign_close_script(0) . output_footer_secure();
     exit();
+}
+
+// The window's Close and Stop & Close. Opened as a pop-up it reloads the
+// screen that opened it (on Close) and closes. Opened as a tab (middle-click,
+// a pop-up blocker) it has no opener and a script may not close it, so it
+// goes to the campaign, or to My Campaigns when there is none, instead of
+// throwing on window.opener or staying on a dead page.
+function send_email_campaign_close_script($id)
+{
+    $fallback = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . (((int) $id > 0) ? '/edit_email_campaign.php?id=' . (int) $id : '/view_email_campaigns.php');
+
+    return '<script>
+    function pgSendClose(reload) {
+        if (window.opener && !window.opener.closed) {
+            if (reload) {
+                try { window.opener.location.reload(); } catch (e) {}
+            }
+            window.close();
+            return;
+        }
+        window.location.href = ' . json_encode($fallback, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
+    }
+    </script>';
 }
 
 // Recipients that accepted the message: complete and, where the retry

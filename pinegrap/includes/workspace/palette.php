@@ -792,7 +792,7 @@ function ws_palette_search($viewer, $q, $options = array())
                 break;
 
             case 'decisions':
-                $items = ws_palette_message_items($viewer, ws_palette_message_rows($viewer, "kind = 'decision' AND body LIKE '%" . $like . "%'", $channel_id, $limit), 'decision', $query);
+                $items = ws_palette_message_items($viewer, ws_palette_message_rows($viewer, "kind = 'decision' AND " . ws_text_like_sql('body', $query), $channel_id, $limit), 'decision', $query);
                 break;
 
             case 'tasks':
@@ -804,7 +804,7 @@ function ws_palette_search($viewer, $q, $options = array())
                 break;
 
             case 'files':
-                $items = ws_palette_message_items($viewer, ws_palette_message_rows($viewer, "file_id > 0 AND (file_name LIKE '%" . $like . "%' OR body LIKE '%" . $like . "%'" . ws_voice_search_or($like) . ")", $channel_id, $limit), 'file', $query);
+                $items = ws_palette_message_items($viewer, ws_palette_message_rows($viewer, "file_id > 0 AND (" . ws_text_like_sql('file_name', $query) . ' OR ' . ws_text_like_sql('body', $query) . ws_voice_search_or($like) . ')', $channel_id, $limit), 'file', $query);
                 break;
 
             case 'records':

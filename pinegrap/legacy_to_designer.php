@@ -6,7 +6,10 @@
  * (includes/fn/legacy_to_designer.php). Each style with its pages, own and
  * by folder, its regions by type, what stays classic, what needs a look
  * first and whether the designer opens it. Reached from All Page Styles;
- * designers and administrators, as the conversion itself. Writes nothing.
+ * designers and administrators, as the conversion itself. The chosen styles'
+ * dry run (includes/fn/legacy_to_designer_plan.php) lists what a bulk move
+ * would write for each; Convert starts that move (legacy_to_designer_run.php),
+ * worked by this screen's short requests and the general job.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -15,11 +18,63 @@
  */
 
 include('init.php');
+
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_run.php');
+
+// The run's short requests (ajax=1) are read by the screen's script as JSON:
+// an ended session, a missing right or a stale token is answered in that
+// shape.
+if (($_SERVER['REQUEST_METHOD'] === 'POST') && (($_POST['ajax'] ?? '') === '1')) {
+    $ltd_json = function ($status, $body) {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        echo json_encode($body);
+        exit;
+    };
+    if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN) {
+        $ltd_json(401, array('ok' => false, 'text' => lang('Your session has expired. Reload the page and sign in again.')));
+    }
+    if (!defined('USER_ROLE') || ((int)USER_ROLE > 1)) {
+        $ltd_json(403, array('ok' => false, 'text' => lang('Access denied.')));
+    }
+    $ltd_token = (string)($_SESSION['software']['token'] ?? '');
+    $ltd_post = (isset($_POST['token']) && is_string($_POST['token'])) ? $_POST['token'] : '';
+    if ($ltd_token === '' || !hash_equals($ltd_token, $ltd_post) || ($_POST['step'] ?? '') !== 'run') {
+        $ltd_json(403, array('ok' => false, 'text' => lang('Your session expired. Reload the page and try again.')));
+    }
+    // Other panel tabs do not wait behind a step.
+    session_write_close();
+    if (function_exists('ignore_user_abort')) @ignore_user_abort(true);
+    $run = pg_ltd_run(8);
+    $ltd_json(200, array('ok' => true, 'status' => $run['status'], 'progress' => $run['progress'], 'counts' => $run['counts']));
+}
+
 $user = validate_user();
 validate_area_access($user, 'designer');
 
-require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer.php');
+// The dry run of the chosen styles writes nothing. Convert starts the run
+// of the styles a dry run listed, then the screen works it.
+$chosen = array();
+$plan = null;
+$run_error = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    validate_token_field();
+    foreach ((array)($_POST['styles'] ?? array()) as $id) {
+        if ((int)$id > 0) $chosen[(int)$id] = true;
+    }
+    if (!empty($_POST['convert'])) {
+        $run_error = pg_ltd_run_start(array_keys($chosen), $user);
+        if ($run_error === '') {
+            log_activity(lang(array('string' => 'the move of {var:1} styles to the visual designer was started', 'vars' => array(count($chosen)))), $_SESSION['sessionusername']);
+            header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/legacy_to_designer.php#ltd-run');
+            exit;
+        }
+    }
+    $plan = pg_ltd_plan(array_keys($chosen));
+}
 
+$running = pg_ltd_state_read();
 $report = pg_ltd_report();
 
 $state_badges = array(
@@ -125,7 +180,8 @@ foreach ($report as $s) {
 
     $output_action = '';
     if ($s['state'] !== 'blocked') {
-        $output_action = '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . h(lang('Open in the visual designer')) . '" href="edit_system_style.php?id=' . (int)$s['id'] . '&amp;classic=1"><i class="bi bi-magic"></i></a>';
+        $output_action .= '<input class="check m-1" type="checkbox" name="styles[]" value="' . (int)$s['id'] . '" form="ltd_dry_run" aria-label="' . h($s['name']) . '"' . (isset($chosen[$s['id']]) ? ' checked' : '') . '>';
+        $output_action .= '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . h(lang('Open in the visual designer')) . '" href="edit_system_style.php?id=' . (int)$s['id'] . '&amp;classic=1"><i class="bi bi-magic"></i></a>';
     }
 
     $output_rows .= '
@@ -162,7 +218,7 @@ $output_table = $report
                 <tr>
                     <th>' . lang('Action') . '</th>
                     <th>' . lang('Style') . '</th>
-                    <th>' . lang('State') . '</th>
+                    <th>' . lang('Status') . '</th>
                     <th>' . lang('Pages') . '</th>
                     <th>' . lang('Regions') . '</th>
                     <th>' . lang('Notes') . '</th>
@@ -172,6 +228,142 @@ $output_table = $report
         </table>'
     : '<p class="p-7 mb-0">' . h(lang('There is no classic style left: every style is a visual design.')) . '</p>';
 
+// What stays classic after every style is moved: refused styles, dynamic
+// regions, custom layouts and a card gateway no payment driver serves.
+$frozen_gateway = '';
+if (defined('ECOMMERCE') && ECOMMERCE && defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD
+    && defined('ECOMMERCE_PAYMENT_GATEWAY') && in_array((string)ECOMMERCE_PAYMENT_GATEWAY, pg_payment_legacy_gateways(), true)
+    && pg_payment_driver_for_gateway((string)ECOMMERCE_PAYMENT_GATEWAY) === '') {
+    $frozen_gateway = (string)ECOMMERCE_PAYMENT_GATEWAY;
+}
+$output_classic = '';
+foreach (pg_ltd_stays_classic($report, $frozen_gateway) as $item) {
+    $styles = $item['styles'] ? ' <span class="fg-secondary">(' . h(implode(', ', $item['styles'])) . ')</span>' : '';
+    switch ($item['code']) {
+        case 'blocked':
+            $text = lang(array('string' => '{var:1} styles the visual designer cannot open stay as they are.', 'vars' => array($item['count'])));
+            break;
+        case 'dynamic':
+            $text = lang(array('string' => '{var:1} dynamic regions stay PHP, edited from their node.', 'vars' => array($item['count'])));
+            break;
+        case 'custom_layout':
+            $text = lang(array('string' => '{var:1} pages keep a custom layout inside the system region.', 'vars' => array($item['count'])));
+            break;
+        default:
+            $text = lang(array('string' => 'Card payments stay on the {var:1} gateway code; a moved checkout page posts to it unchanged.', 'vars' => array($item['gateway'])));
+    }
+    $output_classic .= '<li>' . h($text) . $styles . '</li>';
+}
+if ($output_classic !== '') {
+    $output_classic = '
+    <div class="card my-7" id="ltd-stays-classic">
+        <div class="card-header"><h2 class="h5 mb-0">' . h(lang('What stays classic')) . '</h2>
+            <div class="small fg-secondary">' . h(lang('Kept and working after the move; nothing here is converted.')) . '</div></div>
+        <div class="card-body"><ul class="small mb-0 ps-12">' . $output_classic . '</ul></div>
+    </div>';
+}
+
+$output_plan = '';
+if ($plan !== null) {
+    $output_plan = $plan ? '' : '<p class="mb-0">' . h(lang('Choose the styles to move first.')) . '</p>';
+    foreach ($plan as $p) {
+        $output_plan .= pg_ltd_plan_html($p);
+    }
+    $output_convert = '';
+    if ($plan && $running === null) {
+        $hidden = '';
+        foreach ($plan as $p) {
+            if ($p['skip'] === '') $hidden .= '<input type="hidden" name="styles[]" value="' . (int)$p['id'] . '">';
+        }
+        if ($hidden !== '') {
+            $output_convert = '
+        <form method="post" action="legacy_to_designer.php" class="card-footer d-flex align-items-center gap-3">' . get_token_field() . $hidden . '
+            <button type="submit" name="convert" value="1" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-magic me-1"></i>' . h(lang('Move to the visual designer')) . '</button>
+            <span class="small fg-secondary">' . h(lang('Writes what is listed above. A page somebody holds is skipped; undo is a page\'s revision history and deleting a shared component.')) . '</span>
+        </form>';
+        }
+    }
+    $output_plan = '
+    <div class="card my-7" id="ltd-dry-run">
+        <div class="card-header"><h2 class="h5 mb-0">' . h(lang('Dry run')) . '</h2>
+            <div class="small fg-secondary">' . h(lang('What moving the chosen styles would write. Nothing has been changed.')) . '</div></div>
+        <div class="card-body">' . ($run_error !== '' ? '<div class="fg-danger mb-3">' . h($run_error) . '</div>' : '') . $output_plan . '</div>' . $output_convert . '
+    </div>';
+}
+
+// The run under way, worked by this screen's requests while it is open and
+// by the general job when it is not.
+$output_run = '';
+if ($running !== null) {
+    $progress = pg_ltd_state_progress($running);
+    $output_run = '
+    <div class="card my-7" id="ltd-run">
+        <div class="card-header"><h2 class="h5 mb-0">' . h(lang('Moving to the visual designer')) . '</h2></div>
+        <div class="card-body"><div id="ltd_progress" aria-live="polite">' . h(lang(array('string' => '{var:1} of {var:2} styles done', 'vars' => array($progress['done'], $progress['total'])))) . '</div>
+            <div class="small fg-secondary mt-1">' . h(lang('You can leave this screen: the general job carries the move on.')) . '</div></div>
+    </div>
+<script>
+(function () {
+    var token = ' . json_encode((string)($_SESSION['software']['token'] ?? '')) . ';
+    var texts = ' . json_encode(array('progress' => lang('{var:1} of {var:2} styles done'), 'error' => lang('The connection failed. Reload the page to carry on.'))) . ';
+    var box = document.getElementById("ltd_progress");
+    var step = function () {
+        var body = new URLSearchParams();
+        body.set("ajax", "1");
+        body.set("step", "run");
+        body.set("token", token);
+        fetch("legacy_to_designer.php", {method: "POST", body: body, credentials: "same-origin"}).then(function (r) { return r.json(); }).then(function (a) {
+            if (!a.ok) { box.textContent = a.text || texts.error; return; }
+            if (a.status === "running" || a.status === "busy") {
+                if (a.progress) { box.textContent = texts.progress.replace("{var:1}", a.progress.done).replace("{var:2}", a.progress.total); }
+                setTimeout(step, a.status === "busy" ? 3000 : 200);
+            } else {
+                window.location.href = "legacy_to_designer.php?ended=1#ltd-runs";
+            }
+        }, function () { box.textContent = texts.error; });
+    };
+    step();
+})();
+</script>';
+}
+
+// The kept reports of the last runs.
+$output_runs = '';
+foreach (pg_ltd_reports(5) as $r) {
+    $c = $r['counts'];
+    $lines = '';
+    foreach ($r['lines'] as $l) {
+        $tone = ($l['kind'] === 'failed') ? 'fg-danger' : (($l['kind'] === 'skipped') ? 'fg-warning' : '');
+        $style = isset($r['names'][(string)$l['style']]) ? $r['names'][(string)$l['style']] . ': ' : '';
+        $lines .= '<li' . ($tone !== '' ? ' class="' . $tone . '"' : '') . '>' . h($style . $l['text']) . '</li>';
+    }
+    if (!empty($r['more'])) $lines .= '<li class="fg-secondary">' . h(lang(array('string' => '{var:1} more lines', 'vars' => array(pg_format_number($r['more'], 0))))) . '</li>';
+    $output_runs .= '
+        <details class="mb-3"><summary>' . h(get_absolute_time(array('timestamp' => (int)($r['finished'] ?? $r['started']), 'format' => 'plain_text'))) . ' · '
+        . h(lang(array('string' => '{var:1} styles, {var:2} pages, {var:3} components, {var:4} widgets, {var:5} skipped, {var:6} failed',
+            'vars' => array($c['styles'], $c['pages'], $c['components'], $c['widgets'], $c['skipped'], $c['failed'])))) . ' · ' . h((string)$r['username']) . '</summary>
+            <ul class="small mb-0 mt-1 ps-12">' . $lines . '</ul></details>';
+}
+if ($output_runs !== '') {
+    $output_runs = '
+    <div class="card my-7" id="ltd-runs">
+        <div class="card-header"><h2 class="h5 mb-0">' . h(lang('Earlier moves')) . '</h2></div>
+        <div class="card-body">' . $output_runs . '</div>
+    </div>';
+}
+
+// Dry run is the toolbar's primary action; it submits this hidden form, which
+// carries the token and the ticked styles (their checkboxes name it in form=).
+// Neither is drawn while a move runs.
+$output_form = '';
+$toolbar_primary = '';
+$toolbar_grow = '';
+if ($report && $running === null) {
+    $toolbar_primary = '<button type="submit" form="ltd_dry_run" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-clipboard-check me-2" aria-hidden="true"></i>' . h(lang('Dry run')) . '</button>';
+    $toolbar_grow = '<span class="small fg-secondary">' . h(lang('Tick the styles to move, then see what would be written for each.')) . '</span>';
+    $output_form = '<form id="ltd_dry_run" method="post" action="legacy_to_designer.php#ltd-dry-run" hidden>' . get_token_field() . '</form>';
+}
+
 print
 pg_page_shell([
         'title' => lang('Move to the visual designer'),
@@ -179,15 +371,20 @@ pg_page_shell([
         'icon' => 'design',
         'heading' => lang('Move to the visual designer'),
         'heading_description' => lang('Every classic style with its pages and regions, and what each needs before it is opened in the visual designer. Nothing is changed here.'),
+        'breadcrumb' => array(array('label' => lang('All Page Styles'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_styles.php'), array('label' => lang('Move to the visual designer'))),
     ]) . '
 <main id="content" class="container-fluid">
     ' . pg_screen_toolbar(array(
+        'primary' => $toolbar_primary,
+        'grow' => $toolbar_grow,
         'secondary' => array('label' => lang('All Page Styles'), 'url' => 'view_styles.php', 'icon' => 'bi-arrow-left'),
     )) . '
     <div class="row g-7 my-7">' . $output_summary . '</div>
+    ' . $output_form . $output_run . $output_plan . '
     <div class="card my-7">
         <div class="card-body p-0 table-responsive">' . $output_table . '</div>
     </div>
+    ' . $output_classic . $output_runs . '
 </main>
 ' .
 output_footer();

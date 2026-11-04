@@ -55,9 +55,10 @@ if (isset($_REQUEST['advanced_filters']) == true) {
     $_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] = ($_REQUEST['advanced_filters'] == 'true');
 }
 
-// The list's filters, its folder rule and its rows are shared with the
-// action that pages it (includes/fn/submitted_form_list.php).
+// The list's filters, its folder rule and its rows are shared with the list
+// table driver's rows action (includes/fn/submitted_form_list.php).
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_writes.php');
 
 $custom_forms = pg_submitted_form_list_custom_forms();
 pg_submitted_form_list_defaults($custom_forms, $_REQUEST);
@@ -328,50 +329,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
     $number_of_forms = 0;
 
     foreach ($forms as $form) {
-        // get uploaded files for this form, so they can be deleted
-        $query = "SELECT
-                    files.id,
-                    files.name
-                 FROM form_data
-                 LEFT JOIN files ON form_data.file_id = files.id
-                 WHERE (form_data.form_id = ?) AND (form_data.file_id > 0)";
-        $result = db_q($query, array((string) $form['id'])) or output_error('Query failed.');
-
-        $files = array();
-
-        while($row = mysqli_fetch_assoc($result)) {
-            $files[] = $row;
+        // The record with its files, signatures, views and comment thread.
+        if (pg_submitted_form_delete($form['id']) === false) {
+            output_error(lang('Query failed.'));
         }
-
-        // loop through all files so they can be deleted
-        foreach ($files as $file) {
-            // if file still exists, delete file
-            if ($file['id']) {
-                // delete file record
-                $query = "DELETE FROM files WHERE id = ?";
-                $result = db_q($query, array((string) $file['id'])) or output_error('Query failed.');
-
-                // delete file
-                @unlink(FILE_DIRECTORY_PATH . '/' . $file['name']);
-            }
-        }
-
-        // delete form
-        $query = "DELETE FROM forms WHERE id = ?";
-        $result = db_q($query, array((string) $form['id'])) or output_error('Query failed.');
-
-        // delete form data
-        $query = "DELETE FROM form_data WHERE (form_id = ?) AND (form_id != '0')";
-        $result = db_q($query, array((string) $form['id'])) or output_error('Query failed.');
-
-        // delete signature records for this submitted form
-        pg_signature_delete($form['id']);
-        
-        // delete views for this submitted form that the form view directory feature uses
-        pg_sfv_delete_views('submitted_form_id', $form['id']);
-
-        // delete the record's comments, their attachments, watchers and counters
-        pg_comment_delete_record_thread($form['id']);
 
         $custom_forms_for_log[$form['page_id']] = $form['form_name'];
 
@@ -467,9 +428,34 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         $output_custom_form_options = '<option value="[All]"' . $selected . '>[' . lang('All') . '] (' . $total_number_of_forms . ')</option>' . $output_custom_form_options;
     }
 
-    // The rows come one page at a time from the submitted_form_list_rows
-    // action (includes/panel/lists.php), which reads the same filters from
-    // the session.
+    // The list table driver prints the first rows; the next ones come from
+    // its list_table_rows action (includes/panel/lists.php), which reads the
+    // same filters from the session.
+    $list_source = pg_submitted_form_list_source($user, array());
+
+    if ($list_source === null) {
+        output_error(lang('Access denied'));
+    }
+
+    $list_page = pg_list_table_page($list_source, array(), null);
+
+    if ($list_page === false) {
+        output_error(lang('Query failed.'));
+    }
+
+    // Delete Selected sits in the list's selection bar, which shows while
+    // rows are selected, and posts the selection to delete_submitted_forms.php.
+    // The Unpaid filter (designed forms with a fee): a toggle kept in the
+    // session as 'payment', read by pg_submitted_form_list_filter() in the
+    // simple and the advanced view alike, so Export and Delete All follow it.
+    $output_unpaid_filter = '';
+
+    if (pg_form_payment_ready()) {
+        $unpaid_on = (pg_submitted_form_list_value($_SESSION['software']['forms']['view_submitted_forms'] ?? array(), 'payment') === 'unpaid');
+        $output_unpaid_filter = '<a class="btn btn-sm btn-outline theme-warning m-1' . ($unpaid_on ? ' active' : '') . '" role="button" aria-pressed="' . ($unpaid_on ? 'true' : 'false') . '" title="' . h(lang('Show only the forms whose fee is not paid yet')) . '" href="view_submitted_forms.php?payment=' . ($unpaid_on ? 'any' : 'unpaid') . '"><i class="bi bi-cash-coin me-1" aria-hidden="true"></i>' . lang('Unpaid') . '</a>';
+    }
+
+    $output_bulk_buttons = '<button type="button" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . h(lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('submitted form(s)'))))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang('Delete Selected') . '</button>';
 
     // if the advanced filters are off
     if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == false) {
@@ -758,6 +744,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                 ' . $output_delete_forms_button . '
                             </form>
                             <div class="pg-toolbar-grow"></div>
+                            <label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
+                                <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                                <input type="search" class="form-ghost" data-pg-list-search="view_submitted_forms" placeholder="' . h(lang('Search')) . '" aria-label="' . h(lang('Search')) . '">
+                            </label>
                             ' . pg_list_sort_menu('view_submitted_forms.php', $sort_columns, $sort_levels, $sort_default) . '
                             <form id="advanced_filters_form" action="view_submitted_forms.php" method="get" class="search_form disable_shortcut">
                                 <input type="hidden" name="filter" value="' . h($filter) . '">
@@ -765,6 +755,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                     ' . $output_custom_form_selection . '
                                 </div>
                             </form>
+                            ' . $output_unpaid_filter . '
                             <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_submitted_forms.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                             ' . pg_period_nav('view_submitted_forms.php', ($_SESSION['software']['forms']['view_submitted_forms'] ?? array()), array(
                                 'day'   => array($decrease_day, $current_day, $increase_day),
@@ -774,44 +765,30 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                             ), $output_date_range_time) . '
                 </nav>
                 ' . $output_advanced_filters . '
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative">
-                        <form name="form" action="delete_submitted_forms.php" method="post" class="disable_shortcut"> 
-                            ' . get_token_field() . '
-                            <table class="chart table-hover table " style="width:100%;display:none" data-pg-list-action="submitted_form_list_rows" data-pg-list-params="{}">
-                                <thead>
-                                    <tr>
-                                        <th class="noVis">
-                                            <div class="form-field">
-                                                <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
-                                            </div>
-                                        </th>
-                                        <th class="noVis">' . lang('Action') . '</th> 
-                                        <th>' . get_column_heading(lang('Custom Form'), $sort_levels, '', '', 'custom_form') . '</th>
-                                        <th>' . get_column_heading(lang('Reference Code'), $sort_levels, '', '', 'reference_code') . '</th>
-                                        <th>' . get_column_heading(lang('Status'), $sort_levels, '', '', 'status') . '</th>
-                                        <th>' . get_column_heading(lang('Contact'), $sort_levels, '', '', 'contact') . '</th>
-                                        <th>' . get_column_heading(lang('User'), $sort_levels, '', '', 'user') . '</th>
-                                        <th>' . get_column_heading(lang('Submitted'), $sort_levels, '', '', 'submitted') . '</th>
-                                        <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                            <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                                <div class="container">
-                                    <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('submitted form(s)')))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
-                                    </div>
-                                </div>
-                            </nav>
-                        </form>
-                    </div>
-                </div>
+                <form name="form" action="delete_submitted_forms.php" method="post" class="disable_shortcut">
+                    ' . get_token_field() . '
+                    <input type="hidden" name="selection" />
+                    ' . pg_list_table_html($list_source, $list_page, lang('Submitted Forms'), $output_bulk_buttons) . '
+                </form>
             </div>
         </div>
+</main>
+<script>
+    // Delete Selected posts what the list has selected
+    // (delete_submitted_forms.php resolves it with the list\'s own query and
+    // the user\'s rights).
+    (function () {
+        var root = document.querySelector(\'.pg-list-table[data-pg-list-table="view_submitted_forms"]\');
 
-</main>' .
+        if (root) {
+            root.addEventListener(\'pg-list-table:selection\', function (event) {
+                document.form.selection.value = JSON.stringify(event.detail.payload);
+            });
+        }
+    }());
+</script>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
+' .
     output_footer();
     print $output;
     $liveform->unmark_errors();

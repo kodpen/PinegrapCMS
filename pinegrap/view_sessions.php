@@ -343,7 +343,7 @@ foreach ($push_subscriptions as $subscription) {
     $output_push_rows .=
         '<tr>'
         . $user_name_cell($subscription['user_id'], $subscription['user_username'], $subscription['user_role'])
-        . '<td class="align-middle" title="' . h(trim((string) $subscription['user_agent'])) . '">' . h(pg_user_agent_label($subscription['user_agent']))
+        . '<td class="align-middle"><span class="no-popover" data-bs-toggle="tooltip" tabindex="0" title="' . h(trim((string) $subscription['user_agent'])) . '">' . h(pg_user_agent_label($subscription['user_agent'])) . '</span>'
         . ($is_this_device ? ' <span class="badge theme-success fw-light">' . h(lang('This device')) . '</span>' : '')
         . '</td>'
         . '<td class="align-middle">'
@@ -353,7 +353,7 @@ foreach ($push_subscriptions as $subscription) {
                 ? '<span class="badge bg-subtle-success fg-emphasis-success fw-light">' . h(lang('Signed in')) . '</span>'
                 : '<span class="badge bg-subtle-secondary fg-secondary fw-light">' . h(lang('Signed out')) . '</span><div class="small fg-secondary">' . h(lang('This browser has no live sign-in, so it can only be told that something happened - never what.')) . '</div>'))
         . '</td>'
-        . '<td class="align-middle">' . get_absolute_time(array('timestamp' => (int) $subscription['created_timestamp'])) . '</td>'
+        . '<td class="align-middle text-nowrap">' . get_absolute_time(array('timestamp' => (int) $subscription['created_timestamp'])) . '</td>'
         . '<td class="align-middle">' . $status . '</td>'
         . '<td class="align-middle text-end">'
         . (!$may_act_on($subscription['user_id'], $subscription['user_role']) ? '' : '<div class="d-inline-flex gap-1">'
@@ -391,15 +391,15 @@ foreach ($sessions as $s) {
     $output_rows .=
         '<tr>'
         . $user_name_cell($s['user_id'], $s['user_username'], $s['user_role'])
-        . '<td class="align-middle" title="' . h(trim((string) $s['user_agent'])) . '">' . h(pg_user_agent_label($s['user_agent']))
+        . '<td class="align-middle"><span class="no-popover" data-bs-toggle="tooltip" tabindex="0" title="' . h(trim((string) $s['user_agent'])) . '">' . h(pg_user_agent_label($s['user_agent'])) . '</span>'
         . ($is_current ? ' <span class="badge theme-success fw-light">' . h(lang('This device')) . '</span>' : '')
         . ($is_pinned ? ' <span class="badge theme-secondary fw-light"><i class="bi bi-pin-angle-fill" aria-hidden="true"></i> ' . h(lang('Locked')) . '</span><div class="small fg-secondary">' . h(lang('Locked by the site owner: the device limit cannot evict it and the member cannot sign it out.')) . '</div>' : '')
         . '</td>'
         . '<td class="align-middle">' . pg_connected_account_label(isset($identity_providers[(int) $s['user_id']]) ? $identity_providers[(int) $s['user_id']] : array(), $s['user_password_algo']) . '</td>'
         . '<td class="align-middle">' . h((string) $s['ip_address']) . '</td>'
-        . '<td class="align-middle">' . get_absolute_time(array('timestamp' => (int) $s['created_at'])) . '</td>'
+        . '<td class="align-middle text-nowrap">' . get_absolute_time(array('timestamp' => (int) $s['created_at'])) . '</td>'
         . '<td class="align-middle">' . $last . '</td>'
-        . '<td class="align-middle">' . get_absolute_time(array('timestamp' => (int) $s['expires_at'])) . '</td>'
+        . '<td class="align-middle text-nowrap">' . get_absolute_time(array('timestamp' => (int) $s['expires_at'])) . '</td>'
         . '<td class="align-middle text-end">'
         . (!$may_act_on($s['user_id'], $s['user_role']) ? '' : '<div class="d-inline-flex gap-1">'
         . ($pin_column
@@ -407,7 +407,7 @@ foreach ($sessions as $s) {
                 // Not disabled: a disabled button takes no focus and no
                 // pointer, so its reason could not be reached. The reason is
                 // printed once above the table and named by every such button.
-                ? ('<button type="button" class="btn btn-sm btn-outline theme-secondary" style="opacity:.65;cursor:default" aria-disabled="true" aria-describedby="pg_pin_redundant_reason"><i class="bi bi-pin-angle-fill me-1" aria-hidden="true"></i>' . h(lang('Locked')) . '</button>')
+                ? ('<button type="button" class="btn btn-sm btn-outline theme-secondary pg-btn-inert" aria-disabled="true" aria-describedby="pg_pin_redundant_reason"><i class="bi bi-pin-angle me-1" aria-hidden="true"></i>' . h(lang('Lock')) . '</button>')
                 : ('<form method="post" action="view_sessions.php" style="margin:0">' . get_token_field()
                 . '<input type="hidden" name="pg_session_action" value="' . ($is_pinned ? 'unpin' : 'pin') . '"/>'
                 . '<input type="hidden" name="pg_selector" value="' . h((string) $s['selector']) . '"/>'

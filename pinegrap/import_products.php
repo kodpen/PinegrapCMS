@@ -76,7 +76,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12  my-3">
                                             <label for="file" class="form-label">' . lang('Select the file to upload') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto', 'accept'=>'.csv,.xlsx,.ods', 'required'=>'required')) . '
+                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'class'=>'form-control w-auto max-w-100', 'accept'=>'.csv,.xlsx,.ods', 'required'=>'required')) . '
                                             <div class="form-text">' . lang('A .csv, .xlsx or .ods file. The first row holds the column names.') . '</div>
                                             ' . pg_upload_limit_hint() . '
                                         </div>
@@ -94,7 +94,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_import_products" name="submit_import_products" value="Import Products" class="btn my-1  btn-solid theme-success " onclick="if(document.getElementById(\'update_existing_products\').checked == true){event.preventDefault(); if(!this.form.reportValidity()){return false;} var b=this; pgConfirm({title:\'' . lang('Warning') . '\', message:\'' . lang('WARNING: If an existing product has the same name as a product in the import file, then the existing product data will be replaced.') . '\', confirmText:\'' . lang('Import Products') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'warning\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'submit_import_products\',value:\'Import Products\'}));b.form.submit();}}); return false;}"><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Products') ) . '</span></button>
+                                <button type="submit" id="submit_import_products" name="submit_import_products" value="Import Products" class="btn my-1  btn-solid theme-success " onclick="if(document.getElementById(\'update_existing_products\').checked == true){event.preventDefault(); if(!this.form.reportValidity()){return false;} var b=this; pgConfirm({title:' . h(json_encode(lang('Warning'))) . ', message:' . h(json_encode(lang('If an existing product has the same name as a product in the import file, then the existing product data will be replaced.'))) . ', confirmText:' . h(json_encode(lang('Import Products'))) . ', cancelText:' . h(json_encode(lang('Cancel'))) . ', variant:\'warning\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'submit_import_products\',value:\'Import Products\'}));b.form.submit();}}); return false;}"><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Products') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -194,6 +194,18 @@ if (!$_POST) {
     $column_names = $headings_read['column_names'];
     // Headings the import does not know, named in the result.
     $unknown_headings = $headings_read['unknown_headings'];
+
+    // The stock:<location name> columns, by position, on a site that keeps
+    // stock per location. A stock heading that names no location stays in
+    // the unknown list; one that does is read below, never as a products
+    // column. With locations the old inventory_quantity column fills the
+    // default location, and only when the file has no stock column.
+    $stock_locations = (function_exists('pg_stock_has_locations') && pg_stock_has_locations()) ? pg_stock_locations() : array();
+    $stock_import = pg_stock_import_columns($columns, $stock_locations);
+    $stock_positions = $stock_import['positions'];
+    $unknown_headings = array_values(array_filter($unknown_headings, function ($heading) use ($stock_import) {
+        return !pg_stock_is_column_heading($heading) || in_array(trim((string) $heading), $stock_import['unknown'], true);
+    }));
 
     // Assume that columns do not exist until we find out otherwise.
     $address_name_column_exists = false;
@@ -300,11 +312,11 @@ if (!$_POST) {
 
     // A file with a tracking or a stock column sets the out-of-stock mark of
     // each product it writes, as the product screens do.
-    $stock_columns_in_file = in_array('inventory', $column_names, true) || ($inventory_quantity_position !== false);
+    $stock_columns_in_file = in_array('inventory', $column_names, true) || ($inventory_quantity_position !== false) || $stock_positions;
 
     // A file with a price, stock or enabled column queues every product it
     // updates for the marketplaces, at the end of the import.
-    $marketplace_columns_in_file = pg_products_import_marketplace_columns($column_names);
+    $marketplace_columns_in_file = pg_products_import_marketplace_columns($column_names) || $stock_positions;
     $marketplace_product_ids = array();
 
     $rows_not_amounts = array();
@@ -405,6 +417,43 @@ if (!$_POST) {
                 continue;
             }
 
+            // The stock columns by location, read like the quantity above:
+            // an empty cell leaves its location as it is.
+            $row_stock = array();
+            $row_stock_refusal = '';
+
+            foreach ($stock_positions as $stock_position => $stock_location_id) {
+                $stock_cell = trim(pg_products_import_row_value($row, $stock_position));
+                $row_stock[$stock_location_id] = null;
+
+                if ($stock_cell === '') {
+                    continue;
+                }
+
+                $row_stock[$stock_location_id] = pg_products_mass_quantity_value($stock_cell);
+
+                if ($row_stock[$stock_location_id] === null) {
+                    $row_stock_refusal = (pg_products_import_quantity_refusal($stock_cell) === 'not_whole') ? 'not_whole' : 'not_number';
+                    break;
+                }
+
+                if (pg_inventory_quantity_too_large($row_stock[$stock_location_id])) {
+                    $row_stock_refusal = 'too_large';
+                    break;
+                }
+            }
+
+            if ($row_stock_refusal === 'not_whole') {
+                $rows_quantity_not_whole[] = $row_label;
+                continue;
+            } elseif ($row_stock_refusal === 'not_number') {
+                $rows_not_numbers[] = $row_label;
+                continue;
+            } elseif ($row_stock_refusal === 'too_large') {
+                $rows_quantity_too_large[] = $row_label;
+                continue;
+            }
+
             $customs_row = pg_product_customs_import_row($row, $customs_positions);
 
             if ($customs_row === false) {
@@ -481,7 +530,8 @@ if (!$_POST) {
 
                             // The stock quantity as read above.
                             if ($column_name == 'inventory_quantity') {
-                                if ($row_quantity === null) {
+                                // Written by location after the row.
+                                if (($row_quantity === null) || $stock_locations) {
                                     continue;
                                 }
 
@@ -663,6 +713,10 @@ if (!$_POST) {
                         WHERE id = '" . (int) $product_id . "'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
+                    if ($stock_locations && ($stock_positions || ($row_quantity !== null))) {
+                        pg_stock_import_write($product_id, $row_stock, $row_quantity);
+                    }
+
                     if ($stock_columns_in_file) {
                         pg_products_import_stock_flag($product_id);
                     }
@@ -767,7 +821,8 @@ if (!$_POST) {
 
                             // The stock quantity as read above.
                             if ($column_name == 'inventory_quantity') {
-                                if ($row_quantity === null) {
+                                // Written by location after the row.
+                                if (($row_quantity === null) || $stock_locations) {
                                     continue;
                                 }
 
@@ -839,6 +894,10 @@ if (!$_POST) {
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 
                 $product_id = mysqli_insert_id(db::$con);
+
+                if ($stock_locations && ($stock_positions || ($row_quantity !== null))) {
+                    pg_stock_import_write($product_id, $row_stock, $row_quantity);
+                }
 
                 if ($stock_columns_in_file) {
                     pg_products_import_stock_flag($product_id);

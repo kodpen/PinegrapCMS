@@ -82,33 +82,7 @@ if (!$_POST) {
     }
     
     // create ad
-    $query =
-        "INSERT ads (
-            name,
-            content,
-            caption,
-            ad_region_id,
-            label,
-            sort_order,
-            created_user_id, 
-            created_timestamp,
-            last_modified_user_id, 
-            last_modified_timestamp)
-        VALUES (
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            UNIX_TIMESTAMP(),
-            ?,
-            UNIX_TIMESTAMP())";
-    $result = db_q($query, array_merge(pg_ad_form_values($liveform), array(
-        (string) $user['id'],
-        (string) $user['id'],
-    ))) or output_error('Query failed.');
+    pg_ad_save(0, pg_ad_form_values($liveform), $user['id']) or output_error('Query failed.');
     
     log_activity(lang(array('string'=>'ad ({var:1}) was created','vars'=>$liveform->get_field_value('name') )), $_SESSION['sessionusername']);
 

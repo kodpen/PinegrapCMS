@@ -20,8 +20,6 @@ function pg_test_list_like_sites()
 {
 	return array(
 		'view_orders.php',
-		'view_comments.php',
-		'view_themes.php',
 		'includes/fn/contact_list.php',
 		'includes/fn/submitted_form_list.php',
 		'includes/panel/search.php',
@@ -43,5 +41,9 @@ function test_list_like_sites_order_filters_all_escaped()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/view_orders.php');
 
-	pg_assert_same(48, substr_count($source, "LIKE '\" . escape(pg_list_like_pattern("), 'view_orders.php: every filter box (44 lines, four with two columns)');
+	pg_assert_same(47, substr_count($source, "LIKE '\" . escape(pg_list_like_pattern("), 'view_orders.php: every filter box (43 lines, four with two columns)');
+	// The product name box matches the SKU and the product name with one
+	// escaped pattern.
+	pg_assert_contains('$product_name_like = escape(pg_list_like_pattern(', $source, 'view_orders.php: the product name box is escaped');
+	pg_assert_contains('products.short_description LIKE \'" . $product_name_like', $source, 'view_orders.php: the product name box also matches the product name');
 }

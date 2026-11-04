@@ -134,30 +134,24 @@ function pg_ad_form_validate($liveform, $user, $id)
 
     // if there is not already an error for the name field, check to see if name is already in use by a different ad
     if ($liveform->check_field_error('name') == false) {
-        $query = "SELECT id FROM ads WHERE (name = ?)";
-        $values = array((string) $liveform->get_field_value('name'));
-
-        if ($id !== null) {
-            $query .= " AND (id != ?)";
-            $values[] = (string) $id;
+        $taken = pg_ad_name_in_use('ads', $liveform->get_field_value('name'), ($id === null) ? null : (int) $id);
+        if ($taken === null) {
+            output_error('Query failed.');
         }
-
-        $result = db_q($query, $values) or output_error('Query failed.');
-
-        if (mysqli_num_rows($result) > 0) {
+        if ($taken) {
             $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
         }
     }
-
     // the region may have been deleted while the form was open, or the id was made up
     if ($liveform->check_field_error('ad_region_id') == false) {
-        $result = db_q("SELECT id FROM ad_regions WHERE id = ?", array((string) $liveform->get_field_value('ad_region_id'))) or output_error('Query failed.');
-
-        if (mysqli_num_rows($result) == 0) {
+        $exists = pg_ad_region_exists($liveform->get_field_value('ad_region_id'));
+        if ($exists === null) {
+            output_error('Query failed.');
+        }
+        if (!$exists) {
             $liveform->mark_error('ad_region_id', lang('The selected Ad Region was not found, so please select a different Ad Region.'));
         }
     }
-
     $sort_order_error = pg_ad_form_sort_order_error($liveform->get_field_value('sort_order'));
 
     if ($sort_order_error !== '') {
@@ -191,9 +185,9 @@ function pg_ad_form_sort_order_error($value)
 }
 
 /**
- * The six ad values a save writes, in INSERT/UPDATE order: name, content,
- * caption, ad region, label, sort order. Content and caption store the
- * site path as the {path} placeholder.
+ * The six ad values a save writes (pg_ad_save()): name, content, caption,
+ * ad region, label, sort order. Content and caption store the site path as
+ * the {path} placeholder.
  *
  * @param liveform $liveform
  * @param string|null $path  The site path (PATH unless given)
@@ -202,11 +196,11 @@ function pg_ad_form_sort_order_error($value)
 function pg_ad_form_values($liveform, $path = null)
 {
     return array(
-        (string) $liveform->get_field_value('name'),
-        (string) prepare_rich_text_editor_content_for_input($liveform->get_field_value('content'), $path),
-        (string) prepare_rich_text_editor_content_for_input($liveform->get_field_value('caption'), $path),
-        (string) $liveform->get_field_value('ad_region_id'),
-        (string) $liveform->get_field_value('label'),
-        (string) $liveform->get_field_value('sort_order'),
+        'name' => (string) $liveform->get_field_value('name'),
+        'content' => (string) prepare_rich_text_editor_content_for_input($liveform->get_field_value('content'), $path),
+        'caption' => (string) prepare_rich_text_editor_content_for_input($liveform->get_field_value('caption'), $path),
+        'ad_region_id' => (string) $liveform->get_field_value('ad_region_id'),
+        'label' => (string) $liveform->get_field_value('label'),
+        'sort_order' => (string) $liveform->get_field_value('sort_order'),
     );
 }

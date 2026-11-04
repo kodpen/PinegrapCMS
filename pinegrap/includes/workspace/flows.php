@@ -1004,7 +1004,7 @@ function ws_flow_graph_check($graph)
             $config = $node['config'];
 
             if ($config['title'] === '') {
-                $problems[] = ws_flow_problem('bad_config', $id, null, lang(array('string' => 'The task box {var:1} needs a title.', 'vars' => $name)));
+                $problems[] = ws_flow_problem('bad_config', $id, null, lang(array('string' => 'The task box “{var:1}” needs a title.', 'vars' => $name)));
             }
 
             if (($config['assign'] !== '') && !empty($config['assignees'])) {
@@ -2862,6 +2862,8 @@ function ws_flow_js_strings()
         'fl_publish_owner'    => lang('Only the owner publishes this flow; your changes are kept in its draft.'),
         'fl_pause'            => lang('Pause'),
         'fl_paused'           => lang('The flow is paused. Publishing it again makes it live.'),
+        'fl_resume'           => lang('Resume'),
+        'fl_resumed'          => lang('The flow is live again on the version it was paused at.'),
         'fl_more'             => lang('More actions'),
         'fl_bin'              => lang('Delete the flow'),
         'fl_bin_ask'          => ws_js_template('Delete the flow {var:1}? Nobody can open or run it any more.', 1),

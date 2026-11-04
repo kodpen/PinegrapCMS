@@ -16,7 +16,7 @@ description: Constants defined in init.php (CONFIG_FILE_PATH, OUTPUT_PATH, ECOMM
 
 ## Who writes data/config.php?
 - The installer, screen and command line alike, builds the whole file with `pg_config_install_content($field_value, $key)` (`includes/fn/core.php`); a reinstall writes it the same way. `$field_value` returns a form field's value.
-- In place: `smtp_settings.php` (SMTP, DKIM, campaign job), the Private Label card (`includes/settings/appearance.save.php`: logo, footer links), `commerce.save.php` (ENCRYPTION_KEY reset). They save with `pg_write_config_file()` (temp file + rename, refuses empty text so a failed read never empties the file).
+- In place: `smtp_settings.php` (SMTP, DKIM, campaign job), the Private Label card (`includes/settings/appearance.save.php`: logo, footer links), `security.save.php` (ENCRYPTION_KEY reset). They save with `pg_write_config_file()` (temp file + rename, refuses empty text so a failed read never empties the file).
 - No screen edits DB_* after installation; `edit_config.php` is gone.
 
 ## How does a value go into the file?

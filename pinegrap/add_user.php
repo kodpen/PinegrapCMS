@@ -20,6 +20,7 @@ include('init.php');
 include_once('liveform.class.php');
 include_once('includes/user_permissions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/user_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php');
 $user = validate_user();
 validate_area_access($user, 'manager');
 
@@ -147,7 +148,7 @@ if (!$_POST) {
             'extra classes'=>'users',
             'icon'=>'account',
             'heading'=>lang('Create User'),
-            'heading_description' => lang('Create a new user account, assign privileges, and choose to email login info to User.'),
+            'heading_description' => lang('Create a user account, give it a role and rights, and optionally e-mail the person a link to set a password.'),
             'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')),
             'breadcrumb' => array(
                 array('label' => lang('Users'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')),
@@ -216,7 +217,7 @@ if (!$_POST) {
                                     </div>
                                     <div class="form-field">
                                         <div class="switch"><input type="checkbox" id="notify_user" name="notify_user" value="1" class=""/></div>
-                                        <label class="" for="notify_user">' . lang('Notify User: Send email with login info to User') . '</label>
+                                        <label class="" for="notify_user">' . lang('Notify User: e-mail a link to set a password') . '</label>
                                     </div>
                                 </div>
                             </div>
@@ -257,265 +258,39 @@ if (!$_POST) {
         output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
-    // if editor is not an administrator and the editor's role is less than or equal to the role that the editor is trying to set, then output error
-    if (($user['role'] != 0) && ($user['role'] >= $_POST['role'])) {
+    // A role at or above the editor's own is refused, except to an administrator.
+    if (!pg_user_role_writable($user['role'], $_POST['role'])) {
         log_activity(lang('access denied because user does not have access to create a user with the requested role'), $_SESSION['sessionusername']);
         output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
-    // If the username is blank, then output error.
-    if ($_POST['username'] == '') {
-        output_error(lang(array('string'=>'{var:1} is required','vars'=>lang('Username'))) . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
-    }
+    // A blank username, an invalid e-mail address, or one either account
+    // field already uses.
+    $problem = pg_user_write_problem($_POST['username'], $_POST['email']);
 
-    // validate e-mail address
-    if (validate_email_address($_POST['email']) == FALSE) {
-        output_error(lang(array('string'=>'{var:1} is invalid','vars'=>lang('The email address'))) . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
-    }
-
-    // determine if username is already in use
-    $result = db_q("SELECT user_id FROM user WHERE (user_username = ?) OR (user_email = ?)", array((string) ($_POST['username'] ?? ''), (string) ($_POST['username'] ?? ''))) or output_error('Query failed');
-    if (mysqli_num_rows($result) > 0)
-    {
-        output_error(lang('The username that you entered is already in use') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
-    }
-    // determine if e-mail address is already in use
-    $result = db_q("SELECT user_id FROM user WHERE (user_email = ?) OR (user_username = ?)", array((string) ($_POST['email'] ?? ''), (string) ($_POST['email'] ?? ''))) or output_error('Query failed');
-    if (mysqli_num_rows($result) > 0)
-    {
-        output_error(lang('The email address that you entered is already in use') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    if ($problem !== '') {
+        output_error(pg_user_write_problem_message($problem) . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
 
     // A checked private folder whose date is not one stops here, before
     // anything is written; a date already gone is named after the save.
     $past_expiry_folders = pg_user_form_check_expiry_dates($_POST);
 
-    $random_password = get_random_string(array(
-        'type' => 'lowercase_letters',
-        'length' => 10));
-    
-    $sql_set_page_type_columns = '';
-    $sql_set_page_type_values = '';
-        
-    // if forms are enabled, then set the sql to update the set page type columns that are associated with this feature
-    if (FORMS == true) {
-        $sql_set_page_type_columns .= 
-            " user_set_page_type_custom_form,
-            user_set_page_type_custom_form_confirmation,
-            user_set_page_type_form_list_view,
-            user_set_page_type_form_item_view,
-            user_set_page_type_form_view_directory,";
-        
-        $sql_set_page_type_values .= 
-            " '" . escape($_POST['set_page_type_custom_form'] ?? '') . "',
-            '" . escape($_POST['set_page_type_custom_form_confirmation'] ?? '') . "',
-            '" . escape($_POST['set_page_type_form_list_view'] ?? '') . "',
-            '" . escape($_POST['set_page_type_form_item_view'] ?? '') . "',
-            '" . escape($_POST['set_page_type_form_view_directory'] ?? '') . "',";
-    }
-    
-    // if calendars are enabled, then set the sql to update the set page type columns that are associated with this feature
-    if (CALENDARS == true) {
-        $sql_set_page_type_columns .= 
-            " user_set_page_type_calendar_view,
-            user_set_page_type_calendar_event_view,";
-        
-        $sql_set_page_type_values .= 
-            " '" . escape($_POST['set_page_type_calendar_view'] ?? '') . "',
-            '" . escape($_POST['set_page_type_calendar_event_view'] ?? '') . "',";
-    }
-    
-    // if ecommerce is enabled, then set the sql to update the set page type columns that are associated with this feature
-    if (ECOMMERCE == true) {
-        $sql_set_page_type_columns .= 
-            " user_set_page_type_catalog,
-            user_set_page_type_catalog_detail,
-            user_set_page_type_express_order,
-            user_set_page_type_order_form,
-            user_set_page_type_shopping_cart,
-            user_set_page_type_shipping_address_and_arrival,
-            user_set_page_type_shipping_method,
-            user_set_page_type_billing_information,
-            user_set_page_type_order_preview,
-            user_set_page_type_order_receipt,";
-        
-        $sql_set_page_type_values .= 
-            " '" . escape($_POST['set_page_type_catalog'] ?? '') . "',
-            '" . escape($_POST['set_page_type_catalog_detail'] ?? '') . "',
-            '" . escape($_POST['set_page_type_express_order'] ?? '') . "',
-            '" . escape($_POST['set_page_type_order_form'] ?? '') . "',
-            '" . escape($_POST['set_page_type_shopping_cart'] ?? '') . "',
-            '" . escape($_POST['set_page_type_shipping_address_and_arrival'] ?? '') . "',
-            '" . escape($_POST['set_page_type_shipping_method'] ?? '') . "',
-            '" . escape($_POST['set_page_type_billing_information'] ?? '') . "',
-            '" . escape($_POST['set_page_type_order_preview'] ?? '') . "',
-            '" . escape($_POST['set_page_type_order_receipt'] ?? '') . "',";
-    }
-    
-    // Modern password hash plus the algo stamp; see pg_password_insert_fragments().
-    $sql_password = pg_password_insert_fragments($random_password);
-
-    // The workspace rights, when their columns exist.
-    $sql_ws_columns = pg_user_permission_ws_sql('columns');
-    $sql_ws_values = pg_user_permission_ws_sql('values');
-
-    // The ERP's read-only right, when its column exists.
-    $sql_erp_readonly_column = pg_user_erp_readonly_sql('columns');
-    $sql_erp_readonly_value = pg_user_erp_readonly_sql('values');
-
-    // insert row into user table
-    $query =
-        "INSERT INTO user (
-            user_username,
-            user_email,
-            user_password,
-            {$sql_password['algo_column']}
-            user_role,
-            user_home,
-            user_badge,
-            user_badge_label,
-            user_reward_points,
-            user_manage_contacts,
-            user_manage_visitors,
-            user_create_pages,
-            user_delete_pages,
-            user_manage_forms,
-            user_manage_calendars,
-            user_manage_emails,
-            user_manage_ecommerce,
-            user_view_card_data,
-            manage_ecommerce_reports,
-            manage_erp,
-            manage_erp_cash,
-            manage_erp_settings,
-            $sql_erp_readonly_column
-            $sql_ws_columns
-            user_set_offline_payment,
-            user_publish_calendar_events,
-            user_set_page_type_email_a_friend,
-            user_set_page_type_folder_view,
-            user_set_page_type_photo_gallery,
-            $sql_set_page_type_columns
-            selected_appmenu_items_array,
-            user_contact,
-            user_timestamp,
-            user_user)
-        VALUES (
-            '" . escape($_POST['username'] ?? '') . "',
-            '" . escape($_POST['email'] ?? '') . "',
-            " . $sql_password['password'] . ",
-            {$sql_password['algo_value']}
-            '" . escape($_POST['role'] ?? '') . "',
-            '" . escape($_POST['home_page'] ?? '') . "',
-            '" . escape($_POST['badge'] ?? '') . "',
-            '" . escape($_POST['badge_label'] ?? '') . "',
-            '" . escape($_POST['reward_points'] ?? '') . "',
-            '" . escape($_POST['manage_contacts'] ?? '') . "',
-            '" . escape($_POST['manage_visitors'] ?? '') . "',
-            '" . escape($_POST['create_pages'] ?? '') . "',
-            '" . escape($_POST['delete_pages'] ?? '') . "',
-            '" . escape($_POST['manage_forms'] ?? '') . "',
-            '" . escape($_POST['manage_calendars'] ?? '') . "',
-            '" . escape($_POST['manage_emails'] ?? '') . "',
-            '" . escape($_POST['manage_ecommerce'] ?? '') . "',
-            '" . escape($_POST['view_card_data'] ?? '') . "',
-            '" . e($_POST['manage_ecommerce_reports'] ?? '') . "',
-            '" . e($_POST['manage_erp'] ?? '') . "',
-            '" . e($_POST['manage_erp_cash'] ?? '') . "',
-            '" . e($_POST['manage_erp_settings'] ?? '') . "',
-            $sql_erp_readonly_value
-            $sql_ws_values
-            '" . escape($_POST['set_offline_payment'] ?? '') . "',
-            '" . escape($_POST['publish_calendar_events'] ?? '') . "',
-            '" . escape($_POST['set_page_type_email_a_friend'] ?? '') . "',
-            '" . escape($_POST['set_page_type_folder_view'] ?? '') . "',
-            '" . escape($_POST['set_page_type_photo_gallery'] ?? '') . "',
-            $sql_set_page_type_values
-            'default',
-            " . pg_user_contact_sql($_POST['contact_id'] ?? '') . ",
-            UNIX_TIMESTAMP(),
-            '$user[id]')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    $user_id = mysqli_insert_id(db::$con);
-
-    // Offers that ask for a new customer read the creation date; user_timestamp
-    // is rewritten on every save and cannot answer that.
-    pg_user_created_stamp($user_id);
-
-    // A new account starts with the notification history already read. Read
-    // state is per person, so without this the first sign-in opens onto every
-    // announcement the site has ever made, none of it theirs to act on.
-    include_once(dirname(__FILE__) . '/includes/notifications.php');
-    pg_notification_seed_user($user_id);
-
-    // A new account's password is as old as the account. Written after the
-    // INSERT rather than inside it so the column list stays valid on a schema
-    // that predates the 2026.4.4 step.
-    if (pg_user_has_password_changed_at()) {
-        db("UPDATE user SET user_password_changed_at = UNIX_TIMESTAMP() WHERE user_id = '" . e($user_id) . "'");
-    }
-    
-    pg_user_form_save_access($user_id, $_POST['role'], $_POST, false);
+    $created = pg_user_create($_POST, $user['id']);
+    $user_id = $created['id'];
 
     // If the user checked to notify the user, then send email to user.
     if (($_POST['notify_user'] ?? '') == 1) {
-        $login = '';
-        
-        // if user's role is administrator, designer, or manager
-        // or user has edit rights
-        // or user has access to control panel
-        // then set link to /SOFTWARE_DIRECTORY/
-        if (
-            ($_POST['role'] < 3)
-            || (no_acl_check($user_id) == true)
-            || (($_POST['manage_calendars'] ?? '') == 'yes')
-            || (($_POST['manage_forms'] ?? '') == 'yes')
-            || (($_POST['manage_visitors'] ?? '') == 'yes')
-            || (($_POST['manage_contacts'] ?? '') == 'yes')
-            || (($_POST['manage_emails'] ?? '') == 'yes')
-            || (($_POST['manage_ecommerce'] ?? '') == 'yes')
-            || ($_POST['manage_ecommerce_reports'] ?? '')
-            || ($_POST['manage_erp'] ?? '')
-            || ($_POST['manage_workspace'] ?? '')
-            || (count(get_items_user_can_edit('ad_regions', $user_id)) > 0)
-        ) {
-            // The link leaves the request in an e-mail, so it is built from the
-            // configured host name rather than the Host header of this request.
-            $login = 
-                lang('Login') . ':' . "\n" .
-                URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/' . "\n";
-
-        // else if there was a send to page selected for this user        
-        } elseif ($_POST['home_page']) {
-            $login =
-                lang('Login') . ':' . "\n" .
-                URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path(get_page_name($_POST['home_page'])) . "\n";
-        }
-
-        // The e-mail never carries the password: the user sets their own
-        // through a single-use set password link (pg_set_password_link()).
-        // The link works for whoever reads it, so the e-mail is 'secret':
-        // a failed delivery keeps its body out of the activity log and the
-        // delivery-failed notice.
-        $set_password_url = pg_set_password_link_issue($user_id) ? pg_set_password_link($user_id) : '';
-
-        $sent = (bool) email(array(
-            'to' => $_POST['email'],
-            'from_name' => ORGANIZATION_NAME,
-            'from_email_address' => EMAIL_ADDRESS,
-            'subject' => lang('New Account'),
-            'body' => pg_new_user_email_body($_POST['email'], $set_password_url, $login),
-            'secret' => true));
-        
+        $mail = pg_user_new_account_mail($user_id, $_POST);
+        $sent = $mail['sent'];
+        $set_password_url = $mail['set_password_url'];
     }
 
     log_activity(lang(array('string'=>'user ({var:1}) was created','vars'=>$_POST['username'])), $_SESSION['sessionusername']);
 
-    pg_audit_record('create', 'user', (int) $user_id);
-
     // Output Confirmation
     $liveform_view_users = new liveform('view_users');
-    $liveform_view_users->add_notice(h(pg_new_user_notice((($_POST['notify_user'] ?? '') == 1), $sent ?? false, $set_password_url ?? '', $random_password)));
+    $liveform_view_users->add_notice(h(pg_new_user_notice((($_POST['notify_user'] ?? '') == 1), $sent ?? false, $set_password_url ?? '', $created['password'])));
 
     if ($past_expiry_folders) {
         $liveform_view_users->add_warning(pg_user_form_past_expiry_warning($past_expiry_folders));

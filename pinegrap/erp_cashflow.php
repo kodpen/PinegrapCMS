@@ -42,9 +42,13 @@ if (($_GET['view'] ?? '') === 'forecast') {
     $kinds = erp_cash_forecast_kinds();
     $bucket_keys = array_keys($forecast['buckets']);
 
+    // An empty bucket reads as a dash, as in the money in and out rows.
     $signed = function ($kurus) {
         $kurus = (int) $kurus;
-        $class = ($kurus > 0) ? 'fg-success' : (($kurus < 0) ? 'fg-danger' : 'fg-secondary');
+        if ($kurus === 0) {
+            return '<span class="fg-secondary">—</span>';
+        }
+        $class = ($kurus > 0) ? 'fg-success' : 'fg-danger';
 
         return '<span class="' . $class . '">' . h((($kurus > 0) ? '+' : '') . erp_money_out($kurus)) . '</span>';
     };

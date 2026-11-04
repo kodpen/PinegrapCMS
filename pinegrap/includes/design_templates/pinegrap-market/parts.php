@@ -162,32 +162,31 @@ $cities = array(
 
 // The makers whose shops the market carries. Each is a sample record of
 // the Sellers collection and a product group under "Shops" in the catalog;
-// 'category' and 'city' are keys of the lists above, 'rating' the average
-// of its reviews as the sample shows it, 'featured' a shop the home page
-// puts first. The names are fictional.
+// 'category' and 'city' are keys of the lists above, 'featured' a shop the
+// home page puts first. The names are fictional.
 $sellers = array(
     'clay'   => array('name' => lang('Tide and Clay Studio'), 'maker' => lang('Inês Duarte'), 'city' => 'lisbon',
-        'category' => 'home', 'rating' => '4.9', 'featured' => true,
+        'category' => 'home', 'featured' => true,
         'tagline'  => lang('Stoneware thrown by the sea.'),
         'story'    => lang('Inês throws every bowl and cup on one wheel in a studio by the river, and glazes them in the colours of the coast.')),
     'silver' => array('name' => lang('Little Silver Works'), 'maker' => lang('Hannah Webb'), 'city' => 'bristol',
-        'category' => 'jewellery', 'rating' => '4.8', 'featured' => true,
+        'category' => 'jewellery', 'featured' => true,
         'tagline'  => lang('Recycled silver, hammered by hand.'),
         'story'    => lang('Hannah melts down old silver and hammers it into rings and earrings light enough to wear every day.')),
     'ink'    => array('name' => lang('Inkwell Press'), 'maker' => lang('Mert Aydın'), 'city' => 'izmir',
-        'category' => 'art', 'rating' => '4.9', 'featured' => true,
+        'category' => 'art', 'featured' => true,
         'tagline'  => lang('Prints pulled one sheet at a time.'),
         'story'    => lang('Mert carves linocuts of harbours and markets and prints them by hand on cotton paper, in small numbered runs.')),
     'loom'   => array('name' => lang('North Loom'), 'maker' => lang('Kasia Nowak'), 'city' => 'krakow',
-        'category' => 'fashion', 'rating' => '4.7', 'featured' => false,
+        'category' => 'fashion', 'featured' => false,
         'tagline'  => lang('Woven on a wooden loom from undyed wool.'),
         'story'    => lang('Kasia weaves bags and scarves from the wool of mountain sheep, in the natural greys and creams of the fleece.')),
     'timber' => array('name' => lang('Timber and Twine'), 'maker' => lang('Lars Berg'), 'city' => 'oslo',
-        'category' => 'home', 'rating' => '4.8', 'featured' => false,
+        'category' => 'home', 'featured' => false,
         'tagline'  => lang('Boards and spoons from fallen trees.'),
         'story'    => lang('Lars carves serving boards and spoons from storm-fallen birch and oak, finished with oil and beeswax.')),
     'grove'  => array('name' => lang('Olive Grove Pantry'), 'maker' => lang('Lucía Ferrer'), 'city' => 'valencia',
-        'category' => 'pantry', 'rating' => '4.9', 'featured' => false,
+        'category' => 'pantry', 'featured' => false,
         'tagline'  => lang('From our family grove to your table.'),
         'story'    => lang('Lucía presses olives from her family\'s grove and fills each tin, jar and bottle in the same village.')),
 );
@@ -473,19 +472,6 @@ $maker_band = function () use ($el, $heading, $para, $link, $container, $row, $c
     ));
 };
 
-// Stars of a rating, drawn as icons (decorative: the words beside them say
-// the figure for a screen reader).
-$stars = function ($rating) use ($el, $icon, $span) {
-    $value = (float)$rating;
-    $children = array();
-    for ($i = 1; $i <= 5; $i++) {
-        $name = ($value >= $i) ? 'bi-star-fill' : (($value >= $i - 0.5) ? 'bi-star-half' : 'bi-star');
-        $children[] = $icon($name);
-    }
-    $children[] = $span(sprintf(lang('%s out of 5'), $rating), 'ms-1 small text-body-secondary', lang('Rating'));
-    return $el('span', 'd-inline-flex align-items-center gap-1 text-warning pmk-stars', lang('Stars'), $children);
-};
-
 // The address of the maker list filtered to one category, the way a
 // category's "See the makers" link opens it (the list reads ?category=).
 $makers_in = function ($category_key) use ($categories) {
@@ -532,31 +518,6 @@ $product_card = function ($seller_key, $n) use ($el, $heading, $para, $link, $im
             )),
         )),
     ), '4', '3', '', '6');
-};
-
-// A maker as a card: the cover of the shop, its name, city and category,
-// its line and rating. It opens the maker list of its category.
-$seller_card = function ($key) use ($el, $heading, $para, $link, $image, $span, $col, $icon, $sellers, $categories, $cities, $photo, $stars, $makers_in) {
-    $s = $sellers[$key];
-    return $col(array(
-        $el('article', 'card h-100 border-0 shadow-sm rounded-4 overflow-hidden position-relative pmk-lift', $s['name'], array(
-            $el('div', 'ratio ratio-16x9 bg-body-tertiary', lang('Cover'), array(
-                $image($photo('shop-' . $key, 800, 450), $s['name'], 'object-fit-cover'),
-            )),
-            $el('div', 'card-body p-4', lang('Card Body'), array(
-                $el('p', 'd-flex flex-wrap align-items-center gap-2 small text-body-secondary mb-2', lang('Place and Category'), array(
-                    $icon('bi-geo-alt'),
-                    $span($cities[$s['city']], '', lang('City')),
-                    $span($categories[$s['category']]['title'], 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Category')),
-                )),
-                $el('h3', 'h5 fw-bold mb-1 position-static', lang('Title'), array(
-                    $link($s['name'], $makers_in($s['category']), 'stretched-link link-body-emphasis text-decoration-none'),
-                )),
-                $para($s['tagline'], 'text-body-secondary mb-2'),
-                $stars($s['rating']),
-            )),
-        )),
-    ), '6', '4');
 };
 
 // What every order comes with, as a row of four.

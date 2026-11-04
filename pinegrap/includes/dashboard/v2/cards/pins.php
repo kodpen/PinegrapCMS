@@ -34,7 +34,7 @@ function pg_dashboard_v2_card_pins($user, $period, $compare)
         'stored' => $stored,
         'types'  => array_keys(pg_dashboard_v2_pin_types()),
         'most'   => PG_DASHBOARD_V2_MAX_PINS,
-        'locked' => pg_dashboard_v2_role_locked((int) $user['role']),
+        'locked' => pg_dashboard_v2_locked_for($user),
         'labels' => array(
             'none'    => lang('Nothing pinned yet. Pin the pages and screens you open often.'),
             'add'     => lang('Pin'),

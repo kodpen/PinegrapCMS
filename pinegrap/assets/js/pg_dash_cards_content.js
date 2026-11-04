@@ -250,6 +250,7 @@
             rows.forEach(function (row) {
                 var item = el("li", "pg-dash-event");
                 item.setAttribute("data-chip", row.chip || "other");
+                item.setAttribute("data-kind", row.kind || "");
                 var main = el(row.url ? "a" : "span", "pg-dash-event-main");
                 if (row.url) {
                     main.href = row.url;

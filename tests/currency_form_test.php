@@ -47,7 +47,8 @@ function test_currency_form_screens_use_shared_form()
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 
 		pg_assert_contains('includes/forms/currency_form.php', $source, $file . ' loads the form');
-		pg_assert_contains('pg_currency_form_card($liveform', $source, $file . ' prints the shared card');
+		pg_assert_contains('pg_currency_form_cards($liveform', $source, $file . ' prints the shared cards');
+		pg_assert_contains('pg_currency_form_layout(', $source, $file . ' uses the shared layout');
 		pg_assert_contains('pg_currency_form_code_in_use(', $source, $file . ' checks the code the shared way');
 		pg_assert_contains('pg_currency_form_exchange_rate(', $source, $file . ' saves the rate the shared way');
 		pg_assert_contains('pg_currency_form_exchange_rate_error(', $source, $file . ' refuses a rate that is not above zero');
@@ -91,7 +92,7 @@ function test_currency_form_base_cannot_be_removed()
 
 	pg_assert_contains('pg_currency_form_delete_error($stored_base)', $source, 'the delete branch checks the stored base');
 	pg_assert_contains('pg_currency_form_base_error($stored_base,', $source, 'the save checks the stored base');
-	pg_assert_contains('pg_currency_form_card($liveform, $stored_base == 1)', $source, 'the base currency gets a locked switch');
+	pg_assert_contains('pg_currency_form_cards($liveform, $stored_base == 1)', $source, 'the base currency gets a locked switch');
 	pg_assert_same(substr_count($source, '<form '), substr_count($source, '</form>'), 'the edit screen closes its form once');
 }
 
@@ -112,4 +113,26 @@ function test_currency_list_sort()
 	pg_assert_same('CCC,AAA,BBB', $codes(pg_currency_list_sort($rows, array(array('sort' => 'exchange_rate', 'order' => 'desc')))), 'a rate sorts by number, descending');
 	pg_assert_same('CCC,BBB,AAA', $codes(pg_currency_list_sort($rows, array(array('sort' => 'last_modified', 'order' => 'desc'), array('sort' => 'created', 'order' => 'asc')))), 'a tie falls to the next level');
 	pg_assert_same('AAA,BBB,CCC', $codes(pg_currency_list_sort($rows, array(array('sort' => 'unknown', 'order' => 'asc')))), 'an unknown code keeps the order');
+}
+
+function test_currency_form_wide_layout_columns_and_save_bar()
+{
+	$layout = pg_currency_form_layout('<div id="cards"></div>', '<button id="b"></button>');
+	pg_assert_contains('<div class="row"><div id="cards"></div>', $layout, 'the cards open the row');
+	pg_assert_contains('col-12 order-3 position-sticky', $layout, 'the save bar is sticky under both columns');
+	pg_assert_contains('<button id="b"></button>', $layout, 'the buttons go in the bar');
+
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/currency_form.php');
+	$form_column = strpos($src, 'col-12 lg:col-8 2xl:col-9 order-1');
+	$status_column = strpos($src, 'col-12 lg:col-4 2xl:col-3 order-2');
+	pg_assert_true($form_column !== false, 'the form column');
+	pg_assert_true(($status_column !== false) && ($status_column > $form_column), 'the status column follows the form column in the source');
+	pg_assert_contains('style="top:3.3rem;"', $src, 'the status box sticks below the top bar');
+}
+
+function test_currency_form_rate_sentence()
+{
+	pg_assert_same('1 TRY = 0,03 USD', pg_currency_form_rate_sentence('TRY', ' 0,03 ', 'usd'), 'base, rate as typed, code in capitals');
+	pg_assert_same('', pg_currency_form_rate_sentence('TRY', '', 'USD'), 'no line without a rate');
+	pg_assert_same('', pg_currency_form_rate_sentence('TRY', '0,03', ' '), 'no line without a code');
 }

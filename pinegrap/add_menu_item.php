@@ -61,6 +61,8 @@ if (!$_POST) {
     if (!$liveform->output_errors()) {
         $liveform->remove_form();
     }
+
+    $items_url = 'view_menu_items.php?id=' . (int) $menu_id . '&from=' . urlencode((string) ($_GET['from'] ?? '')) . '&send_to=' . urlencode((string) ($_GET['send_to'] ?? ''));
     
     $output = pg_page_shell([
         'title'=> lang('Create Menu Item'),
@@ -81,26 +83,19 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        <p>' . lang('Menu') . ': ' . h($menu_name) . '</p>
-                    </div>
-                </div>
                 <form name="form" action="add_menu_item.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="from" value="' . h(($_GET['from'] ?? '')) . '" />
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" id="menu_id" name="menu_id" value="' . $menu_id . '" />
-                    ' . pg_menu_item_form_card($liveform, $parent_id_options) . '
-                    
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                    ' . pg_menu_item_form_layout(
+                        pg_menu_item_form_cards($liveform, array(
+                            'parent_id_options' => $parent_id_options,
+                            'menu_name' => $menu_name,
+                            'menu_url' => h($items_url),
+                        )),
+                        '
+                                        <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>') . '
                 </form>
             </div>
         </div>

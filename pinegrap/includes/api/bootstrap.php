@@ -63,6 +63,8 @@ require_once($pg_api_directory . '/resources/folders.php');
 require_once($pg_api_directory . '/resources/menus.php');
 require_once($pg_api_directory . '/resources/comments.php');
 require_once($pg_api_directory . '/resources/short_links.php');
+require_once($pg_api_directory . '/resources/experiments.php');
+require_once($pg_api_directory . '/resources/bookings.php');
 require_once($pg_api_directory . '/resources/store.php');
 require_once($pg_api_directory . '/resources/store_regions.php');
 require_once($pg_api_directory . '/resources/store_currencies.php');
@@ -73,6 +75,7 @@ require_once($pg_api_directory . '/resources/visitors.php');
 require_once($pg_api_directory . '/resources/site_log.php');
 require_once($pg_api_directory . '/resources/audit_log.php');
 require_once($pg_api_directory . '/resources/campaigns.php');
+require_once($pg_api_directory . '/resources/campaign_profiles.php');
 require_once($pg_api_directory . '/resources/contact_groups.php');
 require_once($pg_api_directory . '/resources/key_codes.php');
 require_once($pg_api_directory . '/resources/product_attributes.php');
@@ -82,6 +85,7 @@ require_once($pg_api_directory . '/resources/offers_create.php');
 require_once($pg_api_directory . '/resources/calendars.php');
 require_once($pg_api_directory . '/resources/webhooks.php');
 require_once($pg_api_directory . '/resources/design.php');
+require_once($pg_api_directory . '/resources/design_ads.php');
 require_once($pg_api_directory . '/resources/account.php');
 
 // API settings, read straight from the config row.

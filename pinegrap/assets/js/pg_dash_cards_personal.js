@@ -139,6 +139,8 @@
         var target = field("target", L.target, el("input", "form-control form-control-sm"));
         target.type = "number";
         target.min = "1";
+        // The server drops a goal above this target (pg_dashboard_v2_goals_clean()).
+        target.max = "1000000000";
         target.step = "1";
         target.required = true;
         var span = field("span", L.span, select({month: L.month, week: L.week}));
@@ -156,10 +158,21 @@
             pgDash.reload(entry);
         });
 
+        // A name of spaces only passes "required" but the server drops the
+        // goal, so it is refused here with a message.
+        name.addEventListener("input", function () {
+            name.setCustomValidity("");
+        });
+
         form.addEventListener("submit", function (event) {
             event.preventDefault();
+            if (name.value.trim() === "") {
+                name.setCustomValidity(L.named || "");
+                name.reportValidity();
+                return;
+            }
             var goals = list.concat([{
-                name: name.value,
+                name: name.value.trim(),
                 metric: metric.value,
                 target: parseInt(target.value, 10) || 0,
                 span: span.value
@@ -234,19 +247,49 @@
 
     // ── Pinned ─────────────────────────────────────────────────────────────
 
-    // What the panel's search found, as pins: its screen shortcuts and the
-    // records of a type a pin may open.
-    function pinChoices(answer, types) {
+    // Folds text as the header search does (pgFoldTR in backend.js).
+    function fold(text) {
+        return (typeof window.pgFoldTR === "function") ? window.pgFoldTR(text) : String(text).toLowerCase();
+    }
+
+    // Whether a screen shortcut answers the query. The search sends the
+    // role's whole shortcut list unfiltered; the header search keeps those
+    // whose keys start with the query (or the query with them), and so does
+    // this, the label read as one more key and searched anywhere.
+    function pinActionMatches(query, action) {
+        var q = fold(query);
+        if (fold(action.label || "").indexOf(q) !== -1) {
+            return true;
+        }
+        return (action.keys || []).some(function (word) {
+            var k = fold(word);
+            return (k !== "") && ((k.indexOf(q) === 0) || (q.indexOf(k) === 0));
+        });
+    }
+
+    // Whether a pin is already stored, so it is not offered again.
+    function pinStored(stored, pin) {
+        return (stored || []).some(function (old) {
+            return old && (old.t === pin.t) && ((pin.t === "screen") ? (old.u === pin.u) : (String(old.id) === String(pin.id)));
+        });
+    }
+
+    // What the panel's search found, as pins: the screen shortcuts that match
+    // the query (three at most, so records keep their place) and the records
+    // of a type a pin may open, none of them already pinned.
+    function pinChoices(answer, types, query, stored) {
         var out = [];
         ((answer && answer.actions) || []).forEach(function (action) {
             var url = String(action.url || "").split("/").pop();
-            if (url) {
-                out.push({pin: {t: "screen", u: url, l: action.label, i: action.icon}, text: action.label, icon: action.icon || "bi-window"});
+            var pin = {t: "screen", u: url, l: action.label, i: action.icon};
+            if (url && (out.length < 3) && pinActionMatches(query, action) && !pinStored(stored, pin)) {
+                out.push({pin: pin, text: action.label, icon: action.icon || "bi-window"});
             }
         });
         ((answer && answer.results) || []).forEach(function (result) {
-            if (types.indexOf(result.type) !== -1) {
-                out.push({pin: {t: result.type, id: result.id, l: result.name}, text: result.name, note: result.sub || "", icon: ""});
+            var pin = {t: result.type, id: result.id, l: result.name};
+            if ((types.indexOf(result.type) !== -1) && !pinStored(stored, pin)) {
+                out.push({pin: pin, text: result.name, note: result.sub || "", icon: ""});
             }
         });
         return out;
@@ -322,7 +365,7 @@
                     dataType: "json"
                 }).done(function (answer) {
                     if (mine === asked) {
-                        show(pinChoices(answer, data.types || []));
+                        show(pinChoices(answer, data.types || [], query, data.stored));
                     }
                 }).fail(function () {
                     if (mine === asked) {
@@ -385,11 +428,18 @@
             if (stored.length < (data.most || 8)) {
                 var add = button("btn btn-outline theme-secondary btn-sm pg-dash-personal-add", " " + L.add);
                 add.insertBefore(icon("bi-plus-lg"), add.firstChild);
+                // Beside pins the button is the grid's last, dashed tile.
+                var slot = (data.pins || []).length ? el("li", "pg-dash-pin-adder") : null;
                 add.addEventListener("click", function () {
-                    add.remove();
+                    (slot || add).remove();
                     pinSearch(body, data, entry);
                 });
-                body.appendChild(add);
+                if (slot) {
+                    slot.appendChild(add);
+                    list.appendChild(slot);
+                } else {
+                    body.appendChild(add);
+                }
             } else {
                 body.appendChild(el("p", "pg-dash-personal-hint", L.full));
             }

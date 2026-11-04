@@ -2,15 +2,15 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The users list (view_users.php), shared by the screen and the panel action
- * that pages it (user_list_rows, includes/panel/lists.php).
+ * The users list (view_users.php) on the list table driver
+ * (includes/fn/list_table.php): its source (pg_user_list_source()) serves
+ * the screen, the driver's list_table_rows action and Delete Selected
+ * (delete_users.php) alike.
  *
- * The screen draws the heading, the toolbar and the table's columns from
- * pg_user_list_view(); the rows come one page at a time from the action,
- * which builds the same view, counts and reads that page with
- * pg_user_list_page() and writes each row with pg_user_list_row(). The
- * per-row reads (folder rights, calendars, contact groups, sign-in lock) so
- * run for the rows on screen only.
+ * The screen prints the first rows; the next ones come in batches as the
+ * list scrolls, each row written by pg_user_list_row(). The per-row reads
+ * (folder rights, calendars, contact groups, sign-in lock) so run for the
+ * rows loaded only.
  *
  * Loaded where it is needed (require_once), not by functions.php.
  *
@@ -168,8 +168,108 @@ function pg_user_list_filter_rule($filter)
 }
 
 /**
+ * The users list's columns for the list table driver, in the order the
+ * table shows them, each with the SQL it sorts by. The default view shows
+ * the role and the rights; every other view the e-mail and start page, and
+ * the right it is about as names (folders, calendars, forms, groups). The
+ * default view is listed by last change without showing it: its Last
+ * Modified column is hidden, so the sort keeps a column to name.
+ *
+ * @param string $filter pg_user_list_filter()'s answer
+ * @return array key => spec, as pg_list_table_columns() takes them
+ */
+function pg_user_list_columns($filter)
+{
+    $is_default = ($filter == 'default');
+    $is_site_staff_filter = in_array($filter, array('all_site_administrators', 'all_site_designers', 'all_site_managers'), true);
+
+    $columns = array(
+        'username' => array('heading' => lang('Username'), 'width' => '16rem', 'kind' => 'link', 'sort' => 'user.user_username'),
+    );
+
+    if ($is_default) {
+        $columns['role'] = array('heading' => lang('Role'), 'width' => '10rem', 'kind' => 'badge', 'sort' => 'user.user_role');
+        $columns['private_folder'] = array('heading' => lang('Private User'), 'kind' => 'check');
+        $columns['member_user'] = array('heading' => lang('Member User'), 'kind' => 'check', 'sort' => 'contacts.member_id');
+        $columns['manage_content'] = array('heading' => lang('Content Manager'), 'kind' => 'check');
+
+        if (defined('CALENDARS') && (CALENDARS === true)) {
+            $columns['manage_calendars'] = array('heading' => lang('Calendar Manager'), 'kind' => 'check');
+        }
+
+        if (defined('FORMS') && (FORMS === true)) {
+            $columns['manage_forms'] = array('heading' => lang('Forms Manager'), 'kind' => 'check');
+        }
+
+        $columns['view_visitors'] = array('heading' => lang('Visitor Manager'), 'kind' => 'check');
+        $columns['manage_contacts'] = array('heading' => lang('Contact Manager'), 'kind' => 'check');
+        $columns['manage_email'] = array('heading' => lang('Campaign Manager'), 'kind' => 'check');
+
+        if (defined('ECOMMERCE') && (ECOMMERCE === true)) {
+            $columns['manage_ecommerce'] = array('heading' => lang('Commerce Manager'), 'kind' => 'check');
+        }
+
+        // Site Manager and Site Designer follow the role, the way their
+        // check marks do.
+        $columns['site_manager'] = array('heading' => lang('Site Manager'), 'kind' => 'check', 'sort' => 'user.user_role');
+        $columns['site_designer'] = array('heading' => lang('Site Designer'), 'kind' => 'check', 'sort' => 'user.user_role');
+    } else {
+        $columns['email'] = array('heading' => lang('E-mail Address'), 'width' => '16rem', 'sort' => 'user.user_email');
+        $columns['start_page'] = array('heading' => lang('Start Page'), 'width' => '12rem', 'sort' => 'start_page.page_name');
+    }
+
+    switch ($filter) {
+        case 'my_private_users':
+            $columns['private_folder'] = array('heading' => lang('Private Folders'), 'width' => '9rem');
+            break;
+
+        case 'my_content_managers':
+            $columns['manage_content'] = array('heading' => lang('Folders'), 'width' => '9rem');
+            break;
+
+        case 'my_calendar_managers':
+            $columns['manage_calendars'] = array('heading' => lang('Calendars'), 'width' => '9rem');
+            break;
+
+        case 'my_submitted_forms_managers':
+            if (defined('FORMS') && (FORMS === true)) {
+                $columns['manage_forms'] = array('heading' => lang('Custom Forms'), 'width' => '9rem');
+            }
+            break;
+
+        case 'my_contact_managers':
+            $columns['manage_contacts'] = array('heading' => lang('Contact Groups'), 'width' => '9rem');
+            $columns['manage_email'] = array('heading' => lang('Send Campaigns'), 'kind' => 'check');
+            break;
+
+        case 'my_campaign_managers':
+            $columns['manage_contacts'] = array('heading' => lang('Contact Groups'), 'width' => '9rem');
+            $columns['manage_email'] = array('heading' => lang('Send Campaigns Only'), 'kind' => 'check');
+            break;
+    }
+
+    if (!$is_default && !$is_site_staff_filter) {
+        $columns['user_contact'] = array('heading' => lang('User\'s Contact'), 'width' => '12rem');
+    }
+
+    if (!$is_default) {
+        $columns['last_modified'] = array('heading' => lang('Last Modified'), 'width' => '12rem', 'kind' => 'date', 'sort' => 'user.user_timestamp');
+    }
+
+    $columns['last_online'] = array('heading' => lang('Last Online'), 'width' => '10rem', 'kind' => 'date', 'sort' => 'user.user_online_timestamp');
+
+    if ($is_default) {
+        $columns['last_modified'] = array('heading' => lang('Last Modified'), 'width' => '12rem', 'kind' => 'date', 'sort' => 'user.user_timestamp', 'hidden' => true);
+    }
+
+    $columns['actions'] = array('heading' => lang('Action'), 'width' => '5rem', 'kind' => 'actions');
+
+    return $columns;
+}
+
+/**
  * Everything the users list needs to know about one filter for one viewer:
- * heading, sort columns, the table's columns in order and the SQL pieces.
+ * heading, columns, sort and the SQL pieces.
  *
  * @param array  $user   the viewer (validate_user())
  * @param string $filter pg_user_list_filter()'s answer
@@ -177,144 +277,33 @@ function pg_user_list_filter_rule($filter)
  */
 function pg_user_list_view($user, $filter)
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
     $role = (int) $user['role'];
     $is_default = ($filter == 'default');
     $is_site_staff_filter = in_array($filter, array('all_site_administrators', 'all_site_designers', 'all_site_managers'), true);
     $shows_contact = !$is_default && !$is_site_staff_filter;
-    $filter_for_links = h('&filter=' . $filter);
 
-    // The columns this view sorts by, in the order the table shows them. The
-    // default view shows the role and privilege columns, every other view the
-    // e-mail, start page and last modified ones; pg_list_state() falls back
-    // to the default for any column the view does not show. The default view
-    // has no Last Modified column, but its rows are listed by it until
-    // another sort is picked, so it stays in that view's list (last, as it
-    // has no heading) for the sort menu to name it.
-    $sort_columns = array('username' => lang('Username'));
-
-    if ($is_default) {
-        $sort_columns['role'] = lang('Role');
-        $sort_columns['member_user'] = lang('Member User');
-        $sort_columns['site_manager'] = lang('Site Manager');
-        $sort_columns['site_designer'] = lang('Site Designer');
-        $sort_columns['last_online'] = lang('Last Online');
-        $sort_columns['last_modified'] = lang('Last Modified');
-    } else {
-        $sort_columns['email'] = lang('E-mail Address');
-        $sort_columns['start_page'] = lang('Start Page');
-        $sort_columns['last_modified'] = lang('Last Modified');
-        $sort_columns['last_online'] = lang('Last Online');
-    }
-
+    $columns = pg_user_list_columns($filter);
+    $sort_columns = pg_list_table_sort_columns(pg_list_table_columns($columns));
     $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
     // pg_list_state() reads a sort from the request only on the screen; the
-    // action's JSON body never fills $_REQUEST, so there it reads the kept one.
+    // rows action applies the one the browser sends (pg_list_table_apply_sort()).
     $list_state = pg_list_state('view_users', $sort_columns, $sort_default);
-    $sort_levels = $list_state['sorts'];
 
-    // What each sort code orders by. Only codes pg_list_state() let through
-    // reach pg_list_order_by(), and it writes nothing but these. Site Manager
-    // and Site Designer follow the role, the way their check marks do.
-    $sort_sql = array(
-        'username'      => 'user.user_username',
-        'email'         => 'user.user_email',
-        'role'          => 'user.user_role',
-        'member_user'   => 'contacts.member_id',
-        'site_manager'  => 'user.user_role',
-        'site_designer' => 'user.user_role',
-        'start_page'    => 'start_page.page_name',
-        'last_modified' => 'user.user_timestamp',
-        'last_online'   => 'user.user_online_timestamp',
-    );
-
-    $heading_link = function ($label, $code) use ($sort_levels, $filter_for_links) {
-        return get_column_heading($label, $sort_levels, '', $filter_for_links, $code);
-    };
-
-    // The table's columns after the check box and the action column, in
-    // order: code => heading markup. A row fills the same codes.
-    $columns = array('username' => '<th>' . $heading_link(lang('Username'), 'username') . '</th>');
-    $center = '<th style="text-align: center">';
-
-    if ($is_default) {
-        $columns['role'] = '<th>' . $heading_link(lang('Role'), 'role') . '</th>';
-        $columns['private_folder'] = $center . lang('Private User') . '</th>';
-        $columns['member_user'] = $center . $heading_link(lang('Member User'), 'member_user') . '</th>';
-        $columns['manage_content'] = $center . lang('Content Manager') . '</th>';
-
-        if (CALENDARS === true) {
-            $columns['manage_calendars'] = $center . lang('Calendar Manager') . '</th>';
-        }
-
-        if (FORMS === true) {
-            $columns['manage_forms'] = $center . lang('Forms Manager') . '</th>';
-        }
-
-        $columns['view_visitors'] = $center . lang('Visitor Manager') . '</th>';
-        $columns['manage_contacts'] = $center . lang('Contact Manager') . '</th>';
-        $columns['manage_email'] = $center . lang('Campaign Manager') . '</th>';
-
-        if (ECOMMERCE === true) {
-            $columns['manage_ecommerce'] = $center . lang('Commerce Manager') . '</th>';
-        }
-
-        $columns['manage_users'] = $center . $heading_link(lang('Site Manager'), 'site_manager') . '</th>';
-        $columns['edit_design'] = $center . $heading_link(lang('Site Designer'), 'site_designer') . '</th>';
-    } else {
-        $columns['email'] = '<th>' . $heading_link(lang('E-mail Address'), 'email') . '</th>';
-        $columns['start_page'] = '<th>' . $heading_link(lang('Start Page'), 'start_page') . '</th>';
-    }
-
+    // The forms view names the forms of the folders a user may edit; every
+    // form page is read once for the whole list.
     $all_custom_form_pages = array();
 
-    switch ($filter) {
-        case 'my_private_users':
-            $columns['private_folder'] = ('<th>' . lang('Private Folders') . '</th>');
-            break;
-
-        case 'my_content_managers':
-            $columns['manage_content'] = ('<th>' . lang('Folders') . '</th>');
-            break;
-
-        case 'my_calendar_managers':
-            $columns['manage_calendars'] = ('<th>' . lang('Calendars') . '</th>');
-            break;
-
-        case 'my_submitted_forms_managers':
-            if (FORMS === true) {
-                $columns['manage_forms'] = ('<th>' . lang('Custom Forms') . '</th>');
-                $all_custom_form_pages = db_items(
-                    "SELECT custom_form_pages.form_name, page.page_folder
-                    FROM page
-                    LEFT JOIN custom_form_pages ON custom_form_pages.page_id = page.page_id");
-            }
-            break;
-
-        case 'my_contact_managers':
-            $columns['manage_contacts'] = ('<th>' . lang('Contact Groups') . '</th>');
-            $columns['manage_email'] = ('<th class="text-center">' . lang('Send Campaigns') . '</th>');
-            break;
-
-        case 'my_campaign_managers':
-            $columns['manage_contacts'] = ('<th>' . lang('Contact Groups') . '</th>');
-            $columns['manage_email'] = ('<th class="text-center">' . lang('Send Campaigns Only') . '</th>');
-            break;
+    if (($filter == 'my_submitted_forms_managers') && defined('FORMS') && (FORMS === true)) {
+        $all_custom_form_pages = db_items(
+            "SELECT custom_form_pages.form_name, page.page_folder
+            FROM page
+            LEFT JOIN custom_form_pages ON custom_form_pages.page_id = page.page_id");
     }
 
-    if ($shows_contact) {
-        $columns['user_contact'] = '<th>' . lang('User\'s Contact') . '</th>';
-    }
-
-    if (!$is_default) {
-        $columns['last_modified'] = '<th>' . $heading_link(lang('Last Modified'), 'last_modified') . '</th>';
-    }
-
-    $columns['last_online'] = '<th>' . $heading_link(lang('Last Online'), 'last_online') . '</th>';
-
-    // Where the rows come from, and the condition of the filter.
-    $select_id = 'user.user_id';
-    $from = 'user';
+    // The condition of the filter.
     $conditions = array();
     $heading = $is_default ? lang('Roles and Permissions') : lang('All My Users');
     $subheading = $is_default ? lang('All users that I have access to, with their roles and permissions.') : lang('All users that I have access to.');
@@ -347,7 +336,9 @@ function pg_user_list_view($user, $filter)
             contacts.suffix as contact_suffix';
     }
 
-    $joins = ($is_site_staff_filter ? '' : ' LEFT JOIN contacts ON user.user_contact = contacts.id')
+    // The default view sorts by the member id, so it joins the contact too.
+    $from = 'user'
+        . ($is_site_staff_filter ? '' : ' LEFT JOIN contacts ON user.user_contact = contacts.id')
         . ' LEFT JOIN user AS user_2 ON user.user_user = user_2.user_id'
         . ($is_default ? '' : ' LEFT JOIN page AS start_page ON start_page.page_id = user.user_home');
 
@@ -369,9 +360,6 @@ function pg_user_list_view($user, $filter)
         }
     }
 
-    // Kept so the last administrator cannot be selected for deletion.
-    $number_of_administrators = ($role == 0) ? (int) db_value("SELECT COUNT(user_id) FROM user WHERE user_role = '0'") : 0;
-
     return array(
         'filter' => $filter,
         'filters' => pg_user_list_filters($role),
@@ -379,60 +367,47 @@ function pg_user_list_view($user, $filter)
         'subheading' => $subheading,
         'sort_columns' => $sort_columns,
         'sort_default' => $sort_default,
-        'sort_levels' => $sort_levels,
-        'order_by' => pg_list_order_by($sort_levels, $sort_sql) . ', user.user_id asc',
+        'sort_levels' => $list_state['sorts'],
         'columns' => $columns,
-        'select_id' => $select_id,
         'select' => $select,
         'from' => $from,
-        'joins' => $joins,
-        'where' => 'WHERE ' . implode(' AND ', $conditions),
+        'where' => implode(' AND ', $conditions),
         'search_columns' => $search_columns,
         'search_labels' => $search_labels,
         'all_custom_form_pages' => $all_custom_form_pages,
-        'number_of_administrators' => $number_of_administrators,
     );
 }
 
 /**
- * One page of the list: the counts without and with the search, and the
- * rows of the page window.
+ * The users list as the list table driver's source
+ * (includes/fn/list_table.php), for the screen, the rows action and Delete
+ * Selected alike. It is the screen's gate too: a manager or above
+ * (validate_area_access($user, 'manager')).
  *
- * @param array $view   pg_user_list_view()'s answer
- * @param array $terms  pg_list_search_terms()'s answer
- * @param array $window pg_list_page_window()'s answer
- * @return array|false array('total', 'filtered', 'rows') or false when a
- *                     query failed
+ * @param array $user   the signed-in user
+ * @param array $params the list's parameters: 'filter' (the view)
+ * @return array|null pg_list_table_source(), or null when the user may not
+ *                    open the list
  */
-function pg_user_list_page($view, $terms, $window)
+function pg_user_list_source($user, $params)
 {
-    $base = 'FROM ' . $view['from'] . ' ' . $view['joins'] . ' ' . $view['where'];
-    $search = pg_list_search_where($terms, $view['search_columns'], $view['search_labels']);
-    $search_sql = ($search['sql'] !== '') ? ' AND ' . $search['sql'] : '';
-
-    $result = db_q('SELECT COUNT(' . $view['select_id'] . ') ' . $base);
-
-    if (!$result) {
-        return false;
+    if (!isset($user['role']) || !is_numeric($user['role']) || ((int) $user['role'] > 2)) {
+        return null;
     }
 
-    $total = (int) mysqli_fetch_row($result)[0];
-    $filtered = $total;
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
-    if ($search_sql !== '') {
-        $result = db_q('SELECT COUNT(' . $view['select_id'] . ') ' . $base . $search_sql, $search['params']);
+    $filter = pg_user_list_filter((is_array($params) && isset($params['filter'])) ? $params['filter'] : 'default');
+    $view = pg_user_list_view($user, $filter);
 
-        if (!$result) {
-            return false;
-        }
-
-        $filtered = (int) mysqli_fetch_row($result)[0];
-    }
-
-    $result = db_q(
-        'SELECT
-            ' . $view['select_id'] . ' as id,
-            user.user_username as username,
+    return pg_list_table_source(array(
+        'list' => 'view_users',
+        'columns' => $view['columns'],
+        'from' => $view['from'],
+        'where' => $view['where'],
+        'id' => 'user.user_id',
+        'id_order' => 'asc',
+        'select' => 'user.user_username as username,
             user.user_email as email,
             user.user_role as role,
             user.user_password_algo as password_algo,
@@ -446,30 +421,100 @@ function pg_user_list_page($view, $terms, $window)
             user_2.user_username as user,
             user.user_online_timestamp as last_seen,
             user.user_timestamp as timestamp' . (pg_user_has_disabled_at() ? ',
-            user.user_disabled_at' : '') . $view['select'] . '
-        ' . $base . $search_sql . '
-        ORDER BY ' . $view['order_by'] . pg_list_limit_sql($window),
-        $search['params']);
+            user.user_disabled_at' : '') . $view['select'],
+        'search' => array('columns' => $view['search_columns'], 'labels' => $view['search_labels']),
+        'levels' => $view['sort_levels'],
+        // A whole-view selection leaves out the accounts made after it
+        // (accounts older than the column read 0, so they stay in).
+        'created' => pg_schema_has('user', 'user_created') ? 'user.user_created' : '',
+        'rows' => function ($records) use ($view) {
+            return pg_user_list_rows($view, $records);
+        },
+        'params_out' => array('filter' => $view['filter']),
+    ));
+}
 
-    if (!$result) {
+/**
+ * The users Delete Selected acts on: the selection the list table driver
+ * posted (JSON), read with the list's own query and rights. A selection of
+ * ids is read in the view the list showed, sent beside it; a condition
+ * carries its view itself.
+ *
+ * @param array $user        the signed-in user
+ * @param mixed $selection   the posted selection, JSON
+ *                           (pg_list_table_selection_parse())
+ * @param mixed $list_params the posted list parameters, JSON ('filter')
+ * @return array|false|null user ids (empty when nothing or nothing
+ *                          reachable was selected), false when the query
+ *                          failed, null when the selection holds more than
+ *                          10,000 users
+ */
+function pg_user_list_selected_ids($user, $selection, $list_params)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+    $selection = pg_list_table_selection_parse(is_string($selection) ? json_decode($selection, true) : null, time());
+
+    if ($selection === null) {
+        return array();
+    }
+
+    $params = ($selection['mode'] === 'condition') ? $selection['params'] : json_decode(is_string($list_params) ? $list_params : '', true);
+    $source = pg_user_list_source($user, is_array($params) ? $params : array());
+
+    if ($source === null) {
+        return array();
+    }
+
+    $selected = pg_list_table_selected_ids($source, $selection);
+
+    if ($selected === false) {
         return false;
     }
 
+    return $selected['more'] ? null : $selected['ids'];
+}
+
+/**
+ * The list's rows for a batch of users, with the sign-in providers of the
+ * batch read in one query.
+ *
+ * @param array $view    pg_user_list_view()
+ * @param array $records records of the list's read (pg_user_list_source())
+ * @return array rows as pg_list_table_page() hands them on
+ */
+function pg_user_list_rows($view, $records)
+{
+    $providers = pg_signin_identities_of(array_column($records, 'pg_lt_id'));
     $rows = array();
 
-    while ($row = mysqli_fetch_assoc($result)) {
-        $rows[] = $row;
+    foreach ($records as $record) {
+        $record['id'] = $record['pg_lt_id'];
+        $rows[] = pg_user_list_row($record, $view, $providers[(int) $record['id']] ?? null);
     }
 
-    // The sign-in providers of the accounts on this page, in one query.
-    $providers = pg_signin_identities_of(array_column($rows, 'id'));
-    $list_rows = array();
+    return $rows;
+}
 
-    foreach ($rows as $row) {
-        $list_rows[] = pg_user_list_row($row, $view, $providers[(int) $row['id']] ?? null);
-    }
+/**
+ * The cells that open a user's editor: the name, followed by a
+ * double-click or Enter on the row (data-pg-open), and the edit button.
+ * The editor returns to the list's view.
+ *
+ * @param int    $id
+ * @param string $username
+ * @param string $list_url the list's address with its view
+ * @return array array('username' => pg_list_cell(), 'actions' => pg_list_cell())
+ */
+function pg_user_list_edit_cells($id, $username, $list_url)
+{
+    $edit_url = h('edit_user.php?id=' . (int) $id . '&send_to=' . urlencode($list_url));
 
-    return array('total' => $total, 'filtered' => $filtered, 'rows' => $list_rows);
+    return array(
+        'username' => pg_list_cell('<a class="pg-link-body-emphasis text-decoration-none" data-pg-open href="' . $edit_url . '">' . h($username) . '</a>'),
+        'actions' => pg_list_cell('<a class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '" href="' . $edit_url . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>',
+            'align-middle text-nowrap action-buttons'),
+    );
 }
 
 /**
@@ -562,32 +607,14 @@ function pg_user_list_mark($yes)
 }
 
 /**
- * A row's selection checkbox, named after the user. The last administrator
- * cannot be deleted, so its box is drawn disabled.
- *
- * @param int    $id
- * @param string $username
- * @param bool   $selectable
- * @return array pg_list_cell()
- */
-function pg_user_list_select_cell($id, $username, $selectable)
-{
-    $name = ' aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => (string) $username))) . '"';
-
-    return pg_list_cell($selectable
-        ? ' <input class="check" type="checkbox" name="users[]" value="' . (int) $id . '"' . $name . ' />'
-        : '<input type="checkbox" name="users[]" value="' . (int) $id . '" class="check disabled" disabled="disabled"' . $name . ' />',
-        'select-all align-middle text-start');
-}
-
-/**
  * One row of the users list.
  *
- * @param array      $row       a row of pg_user_list_page()'s query
+ * @param array      $row       a record of the list's read
+ *                              (pg_user_list_source()), 'id' set
  * @param array      $view      pg_user_list_view()'s answer
  * @param array|null $providers the account's sign-in providers
  *                              (pg_signin_identities_of())
- * @return array array('class', 'cells') for pg_list_row_html() / pg_list_row_data()
+ * @return array array('id', 'class', 'cells' => key => pg_list_cell())
  */
 function pg_user_list_row($row, $view, $providers)
 {
@@ -602,8 +629,9 @@ function pg_user_list_row($row, $view, $providers)
         $manage[$right] = ($role < 3) || ($row['manage_' . $right] == 'yes');
     }
 
-    $cells = array();
-    $username_cell = h($row['username']);
+    $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php?filter=' . $filter;
+    $cells = pg_user_list_edit_cells($id, $row['username'], $list_url);
+    $username_cell = $cells['username']['html'];
 
     // Sign-in lockout, shown beside the name rather than in a column of its
     // own: it is empty on almost every row, and a column of blanks costs a
@@ -628,7 +656,7 @@ function pg_user_list_row($row, $view, $providers)
         $username_cell .= ' <span class="badge theme-secondary fw-light">' . lang('Disabled') . '</span>';
     }
 
-        // Google, Microsoft and Apple badges beside the name, next to the
+    // Google, Microsoft and Apple badges beside the name, next to the
     // sign-in lock, so the admin can see at a glance which accounts can sign
     // in with which provider, and which have no other way in.
     if ($providers !== null) {
@@ -650,14 +678,15 @@ function pg_user_list_row($row, $view, $providers)
         $cells['view_visitors'] = pg_user_list_mark($manage['visitors']);
         $cells['manage_contacts'] = pg_user_list_mark($manage['contacts']);
         $cells['manage_ecommerce'] = pg_user_list_mark($manage['ecommerce']);
-        $cells['manage_users'] = pg_user_list_mark($role < 3);
-        $cells['edit_design'] = pg_user_list_mark($role <= 1);
+        $cells['site_manager'] = pg_user_list_mark($role < 3);
+        $cells['site_designer'] = pg_user_list_mark($role <= 1);
     } else {
-        $last_modified_by = ($row['user'] != '') ? ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($row['user'])))) : ' ';
         $cells['email'] = pg_list_cell(h($row['email']));
         $cells['start_page'] = pg_list_cell(($row['user_home'] != 0) ? h($row['user_start_page']) : '');
-        $cells['last_modified'] = pg_list_cell(get_relative_time(array('timestamp' => $row['timestamp'])) . $last_modified_by);
     }
+
+    // Hidden in the default view until the user shows it.
+    $cells['last_modified'] = pg_list_cell(pg_list_when($row['timestamp'], $row['user'] ?? ''));
 
     if (isset($view['columns']['user_contact'])) {
         if (($row['contact_nickname'] ?? '') != '') {
@@ -768,19 +797,5 @@ function pg_user_list_row($row, $view, $providers)
 
     $cells['last_online'] = pg_list_cell(($row['last_seen'] >= 1) ? get_relative_time(array('timestamp' => $row['last_seen'])) . ' ' : '[' . lang('Never') . ']');
 
-    // The last administrator cannot be deleted, so it cannot be selected.
-    $selectable = ($role != 0) || ($view['number_of_administrators'] > 1);
-    $edit_url = 'edit_user.php?id=' . $id . '&send_to=' . h(escape_javascript(urlencode(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php?filter=' . $view['filter'])));
-
-    $row_cells = array(
-        pg_user_list_select_cell($id, $row['username'], $selectable),
-        pg_list_cell('<button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $edit_url . '\'"><i class="bi bi-pencil"></i></button>',
-            'align-middle text-start action-buttons'),
-    );
-
-    foreach (array_keys($view['columns']) as $code) {
-        $row_cells[] = $cells[$code] ?? pg_list_cell('&nbsp;');
-    }
-
-    return array('class' => $selectable ? '' : 'unselectable', 'cells' => $row_cells);
+    return array('id' => $id, 'class' => '', 'cells' => $cells);
 }

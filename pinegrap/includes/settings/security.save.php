@@ -83,94 +83,52 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $liveform->mark_error($email_field, $email_error);
     }
 
-    if ($liveform->check_form_errors()) {
-        return;
-    }
-
-    // The Encryption Key card: a new key in config.php, then the stored card
-    // numbers and the payment gateway secrets sealed again with it. Checked
-    // after every refusal above, so a refused save changes no key.
-    if (post_value('ecommerce_reset_encryption_key') == 1) {
-    
-        // if OpenSSL is disabled, then output error
-        if (extension_loaded('openssl') == FALSE) {
-            output_error(lang('The encryption key could not be reset, because the OpenSSL PHP extension is not enabled') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
-        
-        // get contents of config.php file in order to reset encryption key
-        $config_content = @file_get_contents(CONFIG_FILE_PATH);
-
-        // A file that could not be read must not be rewritten from nothing.
-        if (!is_string($config_content) || (trim($config_content) === '')) {
-            output_error(lang('Config file could not be opened.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
-        
-        $old_encryption_key = (defined('ENCRYPTION_KEY') == TRUE) ? ENCRYPTION_KEY : '';
-        $new_encryption_key = generate_encryption_key();
-        
-        // if there is not an old encryption key in the config.php file, then add new encryption key to config.php file
-        if (defined('ENCRYPTION_KEY') == FALSE) {
-            $config_content = pg_config_insert_line($config_content, pg_config_define_line('ENCRYPTION_KEY', $new_encryption_key) . ' // DO NOT MODIFY OR SHARE');
-            
-        // else there is an old encryption key in the config.php file, so update it
-        } else {
-            $config_content = str_replace($old_encryption_key, $new_encryption_key, $config_content);
-        }
-        
-        // Write the new content before any card number is re-encrypted; a key
-        // that is not on disk must not be used on the stored data.
-        if (!pg_write_config_file($config_content)) {
-            output_error(lang(array('string'=>'The encryption key could not be reset, because the config.php file ({var:1}) is not writable. Please configure the config.php file so it can be written to and then try again. For Unix, set the permissions for the file to 777. For Windows, give the anonymous web user rights to write to and delete the file.','vars'=>array(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/data/config.php') )) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
-        
-        // get all orders that have an unencrypted credit card number or encrypted credit card number
-        $query = 
-            "SELECT
-                id,
-                card_number
-            FROM orders
-            WHERE
-                (card_number != '')
-                AND (SUBSTRING(card_number, 1, 1) != '*')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        $orders = array();
-        
-        while ($row = mysqli_fetch_assoc($result)) {
-            $orders[] = $row;
-        }
-        
-        // loop through all orders in order to re-encrypt or encrypt credit card numbers
-        foreach ($orders as $order) {
-            // if the credit card number is already encrypted, then decrypt it with old key and encrypt it with new key
-            if (mb_strlen($order['card_number']) > 16) {
-                $order['card_number'] = decrypt_credit_card_number($order['card_number'], $old_encryption_key);
-                
-                // if the decryption was successful, then encrypt it with new key and store it
-                if (is_numeric($order['card_number']) == TRUE) {
-                    $query = "UPDATE orders SET card_number = ? WHERE id = ?";
-                    $result = db_q($query, array((string) encrypt_credit_card_number($order['card_number'], $new_encryption_key), (string) (int) $order['id'])) or output_error('Query failed.');
-                }
-                
-            // else the credit card number is not already encrypted, so encrypt it for the first time
-            } else {
-                $query = "UPDATE orders SET card_number = ? WHERE id = ?";
-                $result = db_q($query, array((string) encrypt_credit_card_number($order['card_number'], $new_encryption_key), (string) (int) $order['id'])) or output_error('Query failed.');
+    // The sign-in throttle's numbers are refused when blank or out of range
+    // instead of being clamped: an emptied "Failed Attempts" box read as 0
+    // was clamped to 1, which locks an account after one wrong password.
+    if (function_exists('waf_table_has_column') && waf_table_has_column('config', 'login_throttle')) {
+        foreach (array(
+            'login_throttle_attempts' => array(lang('Failed Attempts'), 1, 1000),
+            'login_throttle_minutes'  => array(lang('Counted Over'), 1, 1440),
+            'login_throttle_lockout'  => array(lang('Locked Out For'), 1, 43200),
+        ) as $throttle_field => $throttle_rule) {
+            if (array_key_exists($throttle_field, $_POST) && (pg_whole_number_in_range(post_value($throttle_field), $throttle_rule[1], $throttle_rule[2]) === null)) {
+                $liveform->mark_error($throttle_field, lang(array('string' => '{var:1} must be a whole number from {var:2} to {var:3}.', 'vars' => $throttle_rule)));
             }
         }
+    }
 
-        // The gateway secrets, sealed with the old key, follow the new one;
-        // one that does not open with the old key is left as it is.
-        $gateway_secret_stored = db_item("SELECT " . implode(', ', array_keys(pg_gateway_secret_fields())) . " FROM config LIMIT 1");
-        $gateway_secret_sql = array();
-        $gateway_secret_values = array();
-
-        foreach (pg_gateway_secret_fields() as $gateway_secret_column => $gateway_secret_width) {
-            $gateway_secret_sql[] = $gateway_secret_column . ' = ?';
-            $gateway_secret_values[] = (string) pg_gateway_secret_for_save('', (string) ($gateway_secret_stored[$gateway_secret_column] ?? ''), (string) $old_encryption_key, (string) $new_encryption_key, $gateway_secret_width);
+    // The membership expiration warning is sent from a page, some days
+    // before the end: switched on, it needs both, or the job sends nothing
+    // (no page) or warns members whose membership has already ended (a
+    // negative number of days).
+    if (post_value('membership_expiration_warning_email') == 1) {
+        if ((int) post_value('membership_expiration_warning_email_page_id') <= 0) {
+            $liveform->mark_error('membership_expiration_warning_email_page_id', lang('Choose the page the expiration warning e-mail is sent from.'));
         }
 
-        db_q("UPDATE config SET " . implode(', ', $gateway_secret_sql), $gateway_secret_values) or output_error('Query failed.');
+        if (pg_whole_number_in_range(post_value('membership_expiration_warning_email_days_before_expiration'), 1, 999) === null) {
+            $liveform->mark_error('membership_expiration_warning_email_days_before_expiration', lang('Send the expiration warning 1 to 999 days before the membership ends.'));
+        }
+    }
+
+    // A key reset loses what the re-seal registry cannot carry over (the
+    // card's second list): it waits for the box saying those will be set up
+    // again.
+    if ((post_value('ecommerce_reset_encryption_key') == 1)
+        && (post_value('ecommerce_reset_encryption_key_confirm') != 1)) {
+        $reset_split = pg_encryption_key_reset_split(
+            pg_encryption_key_reset_counts(pg_encryption_key_reset_source()),
+            pg_encryption_key_reset_carried_areas(pg_reseal_registry())
+        );
+
+        if ($reset_split['lost']) {
+            $liveform->mark_error('ecommerce_reset_encryption_key_confirm', lang('Tick the box saying the listed items will have to be set up again, or turn Reset Encryption Key off.'));
+        }
+    }
+
+    if ($liveform->check_form_errors()) {
+        return;
     }
 
     // ── Firewall settings ────────────────────────────────────────────────
@@ -457,4 +415,61 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         db_q($query, array((string) $oauth_google_secret_enc, (string) $oauth_google_secret_iv)) or output_error('Query failed.');
     } else {
         db("UPDATE config SET oauth_google_client_secret = '', oauth_google_secret_iv = ''");
+    }
+
+    // The Encryption Key card: a new key in config.php, then the values the
+    // re-seal registry lists sealed again with it. Last, after every write
+    // above: those that seal a value (Apple's application, the CAPTCHA keys,
+    // the Google client secret) seal it with the ENCRYPTION_KEY constant,
+    // which holds the old key in this request, and the re-seal then carries
+    // them to the new one with the rest.
+    if (post_value('ecommerce_reset_encryption_key') == 1) {
+    
+        // if OpenSSL is disabled, then output error
+        if (extension_loaded('openssl') == FALSE) {
+            output_error(lang('The encryption key could not be reset, because the OpenSSL PHP extension is not enabled') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+        
+        // get contents of config.php file in order to reset encryption key
+        $config_content = @file_get_contents(CONFIG_FILE_PATH);
+
+        // A file that could not be read must not be rewritten from nothing.
+        if (!is_string($config_content) || (trim($config_content) === '')) {
+            output_error(lang('Config file could not be opened.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+        
+        $old_encryption_key = (defined('ENCRYPTION_KEY') == TRUE) ? ENCRYPTION_KEY : '';
+        $new_encryption_key = generate_encryption_key();
+        
+        // if there is not an old encryption key in the config.php file, then add new encryption key to config.php file
+        if (defined('ENCRYPTION_KEY') == FALSE) {
+            $config_content = pg_config_insert_line($config_content, pg_config_define_line('ENCRYPTION_KEY', $new_encryption_key) . ' // DO NOT MODIFY OR SHARE');
+            
+        // else there is an old encryption key in the config.php file, so update it
+        } else {
+            $config_content = str_replace($old_encryption_key, $new_encryption_key, $config_content);
+        }
+        
+        // Write the new content before any card number is re-encrypted; a key
+        // that is not on disk must not be used on the stored data.
+        if (!pg_write_config_file($config_content)) {
+            output_error(lang(array('string'=>'The encryption key could not be reset, because the config.php file ({var:1}) is not writable. Please configure the config.php file so it can be written to and then try again. For Unix, set the permissions for the file to 777. For Windows, give the anonymous web user rights to write to and delete the file.','vars'=>array(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/data/config.php') )) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+        
+        // Every value sealed with the old key follows the new one
+        // (pg_reseal_registry()); one that does not open with the old key is
+        // left as it is.
+        $reseal_result = pg_reseal_run((string) $old_encryption_key, (string) $new_encryption_key);
+
+        // The counts go into the save's message; a value that opened but could
+        // not be sealed again is named in a warning, as it now reads empty.
+        $reseal_summary = pg_encryption_key_reset_summary($reseal_result['areas'], pg_encryption_key_reset_labels());
+
+        $liveform->add_notice($reseal_summary['done']
+            ? lang(array('string' => 'The encryption key has been reset. Sealed again with the new key: {var:1}.', 'vars' => implode(', ', $reseal_summary['done'])))
+            : lang('The encryption key has been reset.'));
+
+        if ($reseal_summary['failed']) {
+            $liveform->add_warning(lang(array('string' => 'These values could not be sealed again with the new key and will have to be entered again: {var:1}.', 'vars' => implode(', ', $reseal_summary['failed']))));
+        }
     }

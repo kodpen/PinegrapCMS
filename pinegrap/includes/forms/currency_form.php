@@ -3,7 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The currency form, shared by the create and the edit screens
- * (add_currency.php, edit_currency.php): the options card, the check of a
+ * (add_currency.php, edit_currency.php): the form and status columns with
+ * the save bar, the check of a
  * code another currency uses, the exchange rate a posted currency is saved
  * with and the base flag it takes from the others. The screens keep what
  * differs: the edit screen loads the record, offers delete and updates the
@@ -25,7 +26,12 @@ if (!defined('PG_CURRENCY_FORM_MAX_RATE')) {
 }
 
 /**
- * The Options card: name, code, symbol, exchange rate and the base switch.
+ * The form column (Options card: name, code, symbol; Exchange Rate card: the
+ * rate and the base switch) and the sticky status column (a Summary of the
+ * code, the symbol, the base flag and the rate as "1 BASE = rate CODE",
+ * following the fields as they are typed), in the edit screen layout of
+ * product_builder.php. Below lg the status column follows the form in
+ * source order.
  *
  * $locked_base is true on the edit screen of the stored base currency: its
  * switch is drawn on and disabled (a hidden field posts the 1), because a
@@ -36,7 +42,7 @@ if (!defined('PG_CURRENCY_FORM_MAX_RATE')) {
  * @param bool $locked_base
  * @return string
  */
-function pg_currency_form_card($liveform, $locked_base = false)
+function pg_currency_form_cards($liveform, $locked_base = false)
 {
     $is_base = $locked_base || ($liveform->get_field_value('base') == 1);
 
@@ -65,47 +71,85 @@ function pg_currency_form_card($liveform, $locked_base = false)
         $base_help = '';
     }
 
+    $code = strtoupper((string) $liveform->get_field_value('code'));
+    $summary_base = ($base_code !== '') ? $base_code : lang('Base');
+
     return '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Options') . '
                                 </h2>
-                                <div class="card-body">
+                                <div class="card-body pt-0">
                                     <div class="row">
                                         <div class="col-12 md:col-6 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Currency'))) . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                         </div>
-                                        <div class="col-12 md:col-3 my-3">
+                                        <div class="col-12 sm:col-6 md:col-3 my-3">
                                             <label for="code" class="form-label">' . lang('Code') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'code', 'id'=>'code', 'class'=>'form-control', 'maxlength'=>'3', 'required'=>'required', 'pattern'=>'[A-Za-z]{3}', 'style'=>'text-transform: uppercase;', 'aria-describedby'=>'code_help')) . '
                                             <div id="code_help" class="form-text">' . lang('Three-letter ISO 4217 code, e.g. USD or EUR.') . '</div>
                                         </div>
-                                        <div class="col-12 md:col-3 my-3">
+                                        <div class="col-12 sm:col-6 md:col-3 my-3">
                                             <label for="symbol" class="form-label">' . lang('Symbol') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'symbol', 'id'=>'symbol', 'class'=>'form-control', 'maxlength'=>'10')) . '
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Exchange Rate') . '
+                                </h2>
+                                <div class="card-body pt-0">
+                                    <div class="row">
                                         <div class="col-12 md:col-6 my-3">
                                             <label for="exchange_rate" class="form-label">' . lang('Exchange Rate') . '<span id="exchange_rate_marker" class="pg-required-marker fg-danger ms-1' . ($is_base ? ' d-none' : '') . '" aria-hidden="true">*</span></label>
                                             ' . $liveform->output_field($rate_attributes) . '
                                             <div id="exchange_rate_help" class="form-text">' . $rate_help . '</div>
                                         </div>
-
-                                        <div class="col-12 my-5">
+                                        <div class="col-12 md:col-6 my-3">
                                             <div class="form-field">
                                                 ' . $base_field . '
                                                 <label class="" for="base">' . lang('Base') . '</label>
                                             </div>
                                             ' . $base_help . '
                                         </div>
-
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Summary') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <dl class="mb-0">
+                                            <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
+                                                <dt class="fw-normal">' . lang('Code') . '</dt>
+                                                <dd class="mb-0 fw-bold text-end text-break" id="currency_summary_code">' . h($code) . '</dd>
+                                            </div>
+                                            <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
+                                                <dt class="fw-normal">' . lang('Symbol') . '</dt>
+                                                <dd class="mb-0 fw-bold text-end text-break" id="currency_summary_symbol">' . h((string) $liveform->get_field_value('symbol')) . '</dd>
+                                            </div>
+                                            <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
+                                                <dt class="fw-normal">' . lang('Base') . '</dt>
+                                                <dd class="mb-0 fw-bold text-end" id="currency_summary_base" data-yes="' . h(lang('Yes')) . '" data-no="' . h(lang('No')) . '">' . h($is_base ? lang('Yes') : lang('No')) . '</dd>
+                                            </div>
+                                            <div class="py-2">
+                                                <dt class="fw-normal">' . lang('Exchange Rate') . '</dt>
+                                                <dd class="mb-0 fw-bold text-break" id="currency_summary_rate" data-base="' . h($summary_base) . '">' . h(pg_currency_form_rate_sentence($summary_base, $is_base ? '1' : (string) $liveform->get_field_value('exchange_rate'), $is_base ? $summary_base : $code)) . '</dd>
+                                            </div>
+                                        </dl>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     <script>
                     (function () {
                         // The base currency is saved with rate 1, so its rate is not required.
@@ -113,16 +157,89 @@ function pg_currency_form_card($liveform, $locked_base = false)
                         var rate = document.getElementById("exchange_rate");
                         var marker = document.getElementById("exchange_rate_marker");
 
-                        if (!base || !rate || !marker || base.disabled) {
+                        var code = document.getElementById("code");
+                        var symbol = document.getElementById("symbol");
+                        var summaryRate = document.getElementById("currency_summary_rate");
+                        var summaryBase = document.getElementById("currency_summary_base");
+
+                        if (!base || !rate || !marker || !code || !summaryRate) {
+                            return;
+                        }
+
+                        // The Summary follows the fields as they are typed.
+                        function summary() {
+                            var baseCode = summaryRate.getAttribute("data-base");
+                            var typed = code.value.trim().toUpperCase();
+                            document.getElementById("currency_summary_code").textContent = typed;
+                            document.getElementById("currency_summary_symbol").textContent = symbol ? symbol.value : "";
+                            summaryBase.textContent = summaryBase.getAttribute(base.checked ? "data-yes" : "data-no");
+                            summaryRate.textContent = base.checked
+                                ? "1 " + baseCode + " = 1 " + baseCode
+                                : ((rate.value.trim() !== "" && typed !== "") ? "1 " + baseCode + " = " + rate.value.trim() + " " + typed : "");
+                        }
+
+                        code.addEventListener("input", summary);
+                        rate.addEventListener("input", summary);
+
+                        if (symbol) {
+                            symbol.addEventListener("input", summary);
+                        }
+
+                        if (base.disabled) {
                             return;
                         }
 
                         base.addEventListener("change", function () {
                             rate.required = !base.checked;
                             marker.classList.toggle("d-none", base.checked);
+                            summary();
                         });
                     })();
                     </script>';
+}
+
+/**
+ * The Summary's rate line: "1 BASE = rate CODE", or '' while the rate or the
+ * code is blank.
+ *
+ * @param string $base_code  The base currency code (or its label)
+ * @param string $rate       The rate as typed
+ * @param string $code       This currency's code
+ * @return string
+ */
+function pg_currency_form_rate_sentence($base_code, $rate, $code)
+{
+    $rate = trim((string) $rate);
+    $code = strtoupper(trim((string) $code));
+
+    if (($rate === '') || ($code === '')) {
+        return '';
+    }
+
+    return '1 ' . $base_code . ' = ' . $rate . ' ' . $code;
+}
+
+/**
+ * The screen row: the cards (pg_currency_form_cards()) and the sticky save
+ * bar with the given buttons.
+ *
+ * @param string $cards    pg_currency_form_cards()
+ * @param string $buttons  The buttons inside the bar's group
+ * @return string
+ */
+function pg_currency_form_layout($cards, $buttons)
+{
+    return '
+                    <div class="row">' . $cards . '
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">' . $buttons . '
+                                    </div>
+                                </div>
+                            </nav>
+                        </div>
+                    </div>';
 }
 
 /**

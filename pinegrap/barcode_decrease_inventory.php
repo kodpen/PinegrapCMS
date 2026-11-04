@@ -54,9 +54,11 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                                         <span class="form-adorn-text" aria-hidden="true">' . lang('Quantity') . ':</span>
                                         <input type="number" min="1" value="1"  placeholder="' . lang('Quantity') . '" class="form-ghost text-center md:text-start" id="scanner_quantity_input" aria-label="' . h(lang('Quantity')) . '" ></input>
                                     </label>
+                                    ' . pg_stock_scan_location_field() . '
                                     <div class="text-center">
                                         <button type="button" id="barcode_read_button" class="btn btn-sm btn-white border my-1">' . lang('Read') . '</button>
                                         <div id="barcode_status" class="visually-hidden" role="status" aria-live="polite"></div>
+                                        <div id="barcode_untracked" class="alert theme-warning d-none" role="alert"></div>
                                     </div>
                                 </div>
                             </div>
@@ -156,7 +158,8 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                                 action: "update_inventory_quantity",
                                 token: software_token,
                                 barcode: barcode,
-                                quantity: quantity
+                                quantity: quantity,
+                                location_id: $("#scanner_location_input").length ? $("#scanner_location_input").val() : 0
                             }),
                             type: "POST",
                             success: function(response) {
@@ -176,6 +179,16 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                                     $("#action_logs tbody").prepend(row);
                                     // Said to screen readers too: the table row is not announced.
                                     document.getElementById("barcode_status").textContent = "' . escape_javascript(lang('{var:1}: the inventory quantity is now {var:2}.')) . '".replace("{var:1}", function(){ return String(response.data.name); }).replace("{var:2}", function(){ return String(response.data.new_inventory_quantity); });
+                                    // A product with stock tracking off keeps the count for when
+                                    // tracking is turned on; the row and the status line say so.
+                                    if (String(response.data.inventory) !== "1") {
+                                        var untracked = "' . escape_javascript(lang('Stock tracking is off for this product; the count is used when tracking is turned on.')) . '";
+                                        $("<div class=\'small fg-warning\'>").text(untracked).appendTo(row.children().first());
+                                        document.getElementById("barcode_status").textContent += " " + untracked;
+                                        $("#barcode_untracked").text(untracked).removeClass("d-none");
+                                    } else {
+                                        $("#barcode_untracked").addClass("d-none").text("");
+                                    }
                                 }
                                 if(response.status == "error"){
                                     alert(response.message);
@@ -292,6 +305,17 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                 exit();
             }
 
+            // The stock location the scan counts at (the default when none is
+            // sent); a site without locations sends none.
+            $location_id = pg_stock_requested_location($request['location_id'] ?? 0);
+
+            if ($location_id === null) {
+                echo encode_json(array(
+                    'status' => 'error',
+                    'message' => lang('Choose a stock location.')));
+                exit();
+            }
+
             // Generated barcodes live in product_barcodes; a scan is resolved there
             // first and falls back to the product name, which older labels carry.
             // A code that is a barcode of one product and the name of another is
@@ -358,6 +382,24 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
             }
 
 
+            // With stock per location a tracked product's units change at
+            // the chosen location only; the total follows from its rows.
+            $scan = ((int) $inventory === 1) ? pg_stock_scan((int) $id, $location_id, -$quantity) : null;
+
+            if ($scan !== null) {
+                if (!$scan['ok']) {
+                    echo encode_json(array(
+                        'status' => 'error',
+                        'message' => ($scan['error'] === 'too_many')
+                            ? lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('New Inventory Quantity'))))
+                            : lang('The stock could not be changed. Try again.')));
+                    exit();
+                }
+
+                $inventory_quantity = $scan['total_before'];
+                $new_inventory_quantity = $scan['total'];
+            }
+
             $sql_out_of_stock = '';
             $sql_out_of_stock_timestamp = '';
             if($new_inventory_quantity == 0 && $inventory == 1){
@@ -370,13 +412,17 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
             $query =
                 "UPDATE products
                 SET
-                    inventory_quantity = ?,
+                    " . (($scan === null) ? "inventory_quantity = ?," : "") . "
                     $sql_out_of_stock
                     $sql_out_of_stock_timestamp
                     user = ?,
                     timestamp = UNIX_TIMESTAMP()
                 WHERE id = ?";
-            $result = db_q($query, array((string) $new_inventory_quantity, (string) $user['id'], (string) (int) $id)) or output_error('Query failed');
+            $values = array((string) $new_inventory_quantity, (string) $user['id'], (string) (int) $id);
+            if ($scan !== null) {
+                array_shift($values);
+            }
+            $result = db_q($query, $values) or output_error('Query failed');
             pg_audit_record('update', 'products', (int) $id, $audit_before);
 
             // A scan is a stock write like any other: inventory.changed (and
@@ -386,7 +432,8 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
             // announces nothing either, but still queues the marketplace so
             // a listing that drifted from the stock is pushed again.
             if ((int) $inventory_quantity !== (int) $new_inventory_quantity) {
-                pg_product_stock_changed((int) $id, (int) $inventory_quantity, (int) $new_inventory_quantity, 'barcode');
+                pg_product_stock_changed((int) $id, (int) $inventory_quantity, (int) $new_inventory_quantity, 'barcode',
+                    ($scan === null) ? null : $scan['location']);
             } else {
                 pg_marketplace_product_changed((int) $id);
             }
@@ -399,6 +446,7 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                 'inventory' => $inventory,
                 'inventory_quantity' => $inventory_quantity,
                 'new_inventory_quantity'=> $new_inventory_quantity,
+                'location' => ($scan === null) ? '' : $scan['location']['name'],
                 'quantity'=> '-' . $quantity,
                 // The scan time in the site's date order and clock.
                 'scanned_at' => get_absolute_time(array('timestamp' => time())),

@@ -94,16 +94,27 @@ if ($_POST) {
     // saved template, so a later upgrade of the file reaches that installation.
     $template = isset($_POST['reset']) ? '' : str_replace("\r\n", "\n", (string) ($_POST['template'] ?? ''));
 
+    // The stored value before this save: NULL means the built-in template.
+    $stored_template = db_value("SELECT " . $document['column'] . " FROM config LIMIT 1");
+
     if (trim($template) === '' || $template === str_replace("\r\n", "\n", $default_template)) {
         db("UPDATE config SET " . $document['column'] . " = NULL");
         $liveform->add_notice(isset($_POST['reset'])
             ? lang(array('string' => 'The built-in template is back in use for: {var:1}.', 'vars' => $document['label']))
             : lang(array('string' => 'The template has been saved: {var:1}.', 'vars' => $document['label'])));
-        log_activity(lang($document['log'] . ' was reset'), $_SESSION['sessionusername']);
+
+        // Only Reset to Default is logged as a reset. A Save that leaves the
+        // built-in template in use changed something only when it replaced a
+        // saved template.
+        if (isset($_POST['reset'])) {
+            log_activity($document['log_reset'], $_SESSION['sessionusername']);
+        } elseif ($stored_template !== null && $stored_template !== '') {
+            log_activity($document['log_changed'], $_SESSION['sessionusername']);
+        }
     } else {
         db("UPDATE config SET " . $document['column'] . " = '" . escape($template) . "'");
         $liveform->add_notice(lang(array('string' => 'The template has been saved: {var:1}.', 'vars' => $document['label'])));
-        log_activity(lang($document['log'] . ' was changed'), $_SESSION['sessionusername']);
+        log_activity($document['log_changed'], $_SESSION['sessionusername']);
     }
 
     go($doc_url);
@@ -299,8 +310,8 @@ foreach ($placeholders as $group => $names) {
 
     foreach ($names as $name => $description) {
         $output_placeholders .= '
-                                        <dt class="col-6 font-monospace fw-normal text-truncate">{{' . h($name) . '}}</dt>
-                                        <dd class="col-6 fg-secondary mb-1">' . h($description) . '</dd>';
+                                        <dt class="col-12 font-monospace fw-normal text-break">{{' . h($name) . '}}</dt>
+                                        <dd class="col-12 fg-secondary mb-3">' . h($description) . '</dd>';
     }
 
     $output_placeholders .= '
@@ -384,6 +395,25 @@ foreach ($documents as $key => $item) {
                             <li class="nav-item"><a class="nav-link py-1 px-3' . (($key === $doc) ? ' active" aria-current="page' : '') . '" href="' . h($self_url . (($key === 'invoice') ? '' : '?doc=' . $key)) . '">' . h($item['label']) . '</a></li>';
 }
 
+// The template's actions. On Document Templates the template is the whole
+// screen, so they form the screen toolbar under the heading and reach the
+// form through form="erp_template". On ERP Settings the template card is one
+// of several cards, each with its own Save, so they stay inside that card.
+$template_toolbar = $can_site_settings;
+$template_secondary = $template_toolbar ? 'btn btn-sm btn-text theme-secondary' : 'btn btn-sm btn-outline theme-secondary';
+$template_buttons = array(
+    'primary' => '<button type="submit" form="erp_template" name="submit" value="Save" class="btn btn-sm btn-solid theme-primary' . ($template_toolbar ? ' rounded-pill px-5' : '') . '"><i class="bi bi-check2 me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save') . '</span></button>',
+    'secondary' => array(
+        '<button type="submit" form="erp_template" class="' . $template_secondary . '" formaction="' . h($document['preview']) . '" formmethod="post" formtarget="_blank"><i class="bi bi-eye me-2" aria-hidden="true"></i>' . lang('Preview') . '</button>',
+        '<button type="button" class="' . $template_secondary . '" data-bs-toggle="collapse" data-bs-target="#placeholder_reference" aria-expanded="false" aria-controls="placeholder_reference"><i class="bi bi-braces me-2" aria-hidden="true"></i>' . lang('Placeholder Reference') . '</button>',
+        '<button type="submit" form="erp_template" name="reset" value="1" class="' . ($template_toolbar ? $template_secondary : 'btn btn-sm btn-outline theme-warning') . '" onclick="return confirm(' . h(json_encode(lang('The saved template will be replaced by the built-in one. Continue?'))) . ');"><i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i>' . lang('Reset to Default') . '</button>',
+    ),
+);
+
+$output_screen_toolbar = $template_toolbar ? pg_screen_toolbar($template_buttons) : '';
+$output_card_buttons = $template_toolbar ? '' : '
+                        <div class="d-flex flex-wrap gap-3 mb-5">' . $template_buttons['primary'] . implode('', $template_buttons['secondary']) . '</div>';
+
 echo pg_page_shell(array(
     'title'               => $can_site_settings ? lang('Document Templates') : lang('ERP Settings'),
     'extra classes'       => 'erp erp_settings',
@@ -395,6 +425,7 @@ echo pg_page_shell(array(
     'cancel'              => false,
 )) . '
 <main id="content" class="container-fluid">
+    ' . $output_screen_toolbar . '
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
@@ -405,7 +436,7 @@ echo pg_page_shell(array(
 ' . $output_late_fee . '
 ' . $output_efatura_threshold . '
 
-            <form name="form" action="erp_settings.php" method="post">
+            <form name="form" id="erp_template" action="erp_settings.php" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="doc" value="' . h($doc) . '">
                 <div class="card my-7">
@@ -414,13 +445,7 @@ echo pg_page_shell(array(
                         <ul class="nav nav-pills nav-sm mb-0">' . $output_document_pills . '
                         </ul>
                     </div>
-                    <div class="card-body">
-                        <nav id="button_bar" class="navigation mb-5" aria-label="' . lang('Button Bar') . '">
-                            <button type="submit" name="submit" value="Save" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check2 me-3"></i><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                            <button type="submit" class="btn btn-sm btn-outline theme-secondary" formaction="' . h($document['preview']) . '" formmethod="post" formtarget="_blank"><i class="bi bi-eye me-3"></i>' . lang('Preview') . '</button>
-                            <button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-toggle="collapse" data-bs-target="#placeholder_reference" aria-expanded="false" aria-controls="placeholder_reference"><i class="bi bi-braces me-3"></i>' . lang('Placeholder Reference') . '</button>
-                            <button type="submit" name="reset" value="1" class="btn btn-sm btn-outline theme-warning" onclick="return confirm(' . h(json_encode(lang('The saved template will be replaced by the built-in one. Continue?'))) . ');"><i class="bi bi-arrow-counterclockwise me-3"></i>' . lang('Reset to Default') . '</button>
-                        </nav>
+                    <div class="card-body">' . $output_card_buttons . '
 
                         <div class="collapse mb-5" id="placeholder_reference">
                             <div class="border rounded-4 p-5">

@@ -37,7 +37,7 @@ function user_screens_words_test_tr()
 function test_user_screens_create_contact_runs_after_the_save()
 {
 	$source = user_screens_words_test_source('edit_user.php');
-	$save = strpos($source, 'pg_user_form_save_access($_POST[\'id\']');
+	$save = strpos($source, 'pg_user_update($audit_user_id');
 	pg_assert_true($save !== false, 'the save branch found');
 
 	$first_read = strpos($source, '$_POST[\'submit_create_contact\']');
@@ -67,8 +67,8 @@ function test_user_screens_role_labels_match_their_conditions()
 	$tr = user_screens_words_test_tr();
 
 	// The column and its sort: a mark for role < 3, Manager and above.
-	pg_assert_contains("\$heading_link(lang('Site Manager'), 'site_manager')", $source);
-	pg_assert_contains("\$cells['manage_users'] = pg_user_list_mark(\$role < 3);", $source);
+	pg_assert_contains("\$columns['site_manager'] = array('heading' => lang('Site Manager'), 'kind' => 'check', 'sort' => 'user.user_role');", $source);
+	pg_assert_contains("\$cells['site_manager'] = pg_user_list_mark(\$role < 3);", $source);
 
 	// The filters: their condition and their label.
 	pg_assert_contains("'all_site_managers' => array('(user.user_role < 3)', lang('All Site Managers')", $source);
@@ -117,7 +117,7 @@ function test_user_screens_password_is_parola()
 		'Password',
 		'User Password Hint',
 		'You cannot reset your own password here.',
-		'Update this user\'s privileges, or email a new password.',
+		'Update this user\'s role and rights, or e-mail a link to set a new password.',
 		'The password is \'{var:1}\'. The user has not been notified.',
 		'Reset Password & Send Link',
 	) as $key) {

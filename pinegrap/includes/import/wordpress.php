@@ -236,6 +236,10 @@ function pg_import_wp_item($item, $site)
         'data'       => array(
             'post_type'  => $type,
             'status'     => $status,
+            // What the old site kept from its readers: a private or
+            // password-protected post is not made a record.
+            'wp_status'  => strtolower(trim((string) $wp->status)),
+            'protected'  => (trim((string) $wp->post_password) !== ''),
             'body'       => pg_import_wp_autop(pg_import_wp_shortcodes((string) $content->encoded)),
             'excerpt'    => trim((string) $excerpt->encoded),
             'time'       => $time,
@@ -543,25 +547,28 @@ function pg_import_wordpress_plan($item)
 /**
  * The mapping rows import.php asks for: the form posts become records of,
  * which of its fields takes each part of a post, and the folders pages and
- * files go to.
+ * files go to. A field row's field_types are the field types its part is
+ * written into (includes/import/write_record.php); only those are offered.
  *
  * @return array
  */
 function pg_import_wordpress_mapping()
 {
-    $field = function ($label) {
-        return array('label' => $label, 'type' => 'form_field', 'form' => 'form');
+    $field = function ($label, $types) {
+        return array('label' => $label, 'type' => 'form_field', 'form' => 'form', 'field_types' => $types);
     };
+    $text = array('text box', 'text area');
+    $terms = array('check box', 'pick list', 'radio button', 'text box', 'text area');
 
     return array(
         'form'        => array('label' => lang('Form the posts become records of'), 'type' => 'form', 'required' => true),
-        'title'       => $field(lang('Title')) + array('required' => true),
-        'body'        => $field(lang('Body')),
-        'excerpt'     => $field(lang('Summary')),
-        'date'        => $field(lang('Date')),
-        'picture'     => $field(lang('Featured image')),
-        'categories'  => $field(lang('Categories')),
-        'tags'        => $field(lang('Tags')),
+        'title'       => $field(lang('Title'), $text) + array('required' => true),
+        'body'        => $field(lang('Body'), $text),
+        'excerpt'     => $field(lang('Summary'), $text),
+        'date'        => $field(lang('Date'), array('date', 'date and time', 'text box')),
+        'picture'     => $field(lang('Featured image'), array('file upload')),
+        'categories'  => $field(lang('Categories'), $terms),
+        'tags'        => $field(lang('Tags'), $terms),
         'authors'     => array('label' => lang('Authors'), 'type' => 'select', 'choices' => array('users' => lang('As disabled panel users'))),
         'page_folder' => array('label' => lang('Folder for pages'), 'type' => 'folder'),
         'file_folder' => array('label' => lang('Folder for files'), 'type' => 'folder'),

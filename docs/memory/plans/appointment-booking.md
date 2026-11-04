@@ -16,12 +16,13 @@ description: Plan (owner 2026-11-02): appointments with real time slots: service
 - Global: times kept in UTC, shown in the site's zone with the zone named; week start and clock follow the site (`ui/list-period-navigator-and-clock.md`); no country-specific field.
 - No new calendar engine: busy times come from `ws_events` (filled by the sync) and from bookings; the site's event calendars are not touched.
 - Installed templates keep working; switching their booking pages to the widget is the last step and changes no installed site.
-- Deposits and fees come from `designer-form-logic.md` (the payment step), not from a second payment path.
+- Deposits and fees come from the designed forms' payment step (`designer/custom-form-payment-step.md`), not from a second payment path.
 
-## Which questions are decided? (#5032)
+## Which questions are decided? (#5032, #6302)
 1. Tables `booking_services`, `booking_staff`, `bookings` (unique key on staff and start, `hold_until`), shape in the issue; cancelled rows kept 400 days, erasure covers them.
 2. Owner: no account needed (name, e-mail, phone; a signed-in account is linked; auto-registration stays a template choice).
 3. `email_campaign_profiles.action` and `email_campaigns.action` widened by appending the four booking actions; SMS kinds beside the order kinds.
+4. Architect (#6302): no `ws_events` row; the Workspace calendar, Today and the sync read bookings through one reader (`workflow/decisions-made-product-25.md`).
 
 ## Where does it start?
 - BK1 alone, then BK2-BK5 together. Read the `workspace/` and `designer/` key rules, `workspace/workspace-calendar-read.md`, `platform/sms-outbox-queue.md`, `ui/site-datetime-loader.md`, `designer/system-widget-change-checklist.md`, `pinegrap-salon/booking.php`. Steps: `appointment-booking-steps.md`, `-steps-2.md`.

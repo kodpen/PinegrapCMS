@@ -88,6 +88,17 @@ function pg_panel_software_backup($request, $action)
     switch ($step) {
 
         case 'create_backup_folder':
+            // A typed name with no usable character ("!!!", "../..") is
+            // refused rather than replaced by the host-date name, which
+            // would write a backup under a name the person never gave.
+            if (($backup_folder_name === '') && (trim($backup_name) !== '')) {
+                echo encode_json(array(
+                    'status' => 'error',
+                    'message' => lang('The backup name is not valid.')
+                ));
+                exit();
+            }
+
             if ($backup_folder_name === '') {
                 $hostname_clean = defined('HOSTNAME') ? HOSTNAME : '';
                 $backup_name = ($hostname_clean ? $hostname_clean . '_' : '') . date('Y-m-d@H-i');

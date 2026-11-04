@@ -455,44 +455,44 @@ if (!$_POST) {
                 pg_hosted());
 
             $output_layout_buttons =
-                '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . h($edit_layout_url) . '" target="_top"><span class="material-icons me-1">code</span>' . lang('Edit Layout') . '</a>
-                <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="generate_layout.php?page_id=' . $page_id . '"><span class="material-icons me-1">plagiarism</span>' . lang('Generate Layout') . '</a>';
+                '<a class="btn btn-sm btn-text theme-secondary" href="' . h($edit_layout_url) . '" target="_top"><i class="bi bi-code-slash me-2" aria-hidden="true"></i>' . lang('Edit Layout') . '</a>
+                <a class="btn btn-sm btn-text theme-secondary" href="generate_layout.php?page_id=' . $page_id . '"><i class="bi bi-file-earmark-code me-2" aria-hidden="true"></i>' . lang('Generate Layout') . '</a>';
         }
 
         switch ($page_type) {
             case 'custom form':
-                $output_edit_custom_form = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Form') . '</a>';
+                $output_edit_custom_form = '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><i class="bi bi-ui-checks me-2" aria-hidden="true"></i>' . lang('Edit Custom Form') . '</a>';
                 break;
 
             case 'form list view':
-                $output_edit_form_list_view = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_form_list_view.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">list</span>' . lang('Edit Form List View') . '</a>';
+                $output_edit_form_list_view = '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_form_list_view.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><i class="bi bi-list-ul me-2" aria-hidden="true"></i>' . lang('Edit Form List View') . '</a>';
                 break;
 
             case 'form item view':
-                $output_edit_form_item_view = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_form_item_view.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">description</span>' . lang('Edit Form Item View') . '</a>';
+                $output_edit_form_item_view = '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_form_item_view.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><i class="bi bi-file-earmark-text me-2" aria-hidden="true"></i>' . lang('Edit Form Item View') . '</a>';
                 break;
 
             case 'express order':
                 if (($stored_properties['shipping_form'] ?? '')) {
-                    $output_edit_custom_shipping_form = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;form_type=shipping&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Shipping Form') . '</a>';
+                    $output_edit_custom_shipping_form = '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;form_type=shipping&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><i class="bi bi-ui-checks me-2" aria-hidden="true"></i>' . lang('Edit Custom Shipping Form') . '</a>';
                 }
 
                 if (($stored_properties['form'] ?? '') == '1') {
-                    $output_edit_custom_billing_form = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;form_type=billing&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Billing Form') . '</a>';
+                    $output_edit_custom_billing_form = '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;form_type=billing&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><i class="bi bi-ui-checks me-2" aria-hidden="true"></i>' . lang('Edit Custom Billing Form') . '</a>';
                 }
 
                 break;
 
             case 'shipping address and arrival':
                 if (($stored_properties['form'] ?? '') == '1') {
-                    $output_edit_custom_shipping_form = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Shipping Form') . '</a>';
+                    $output_edit_custom_shipping_form = '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><i class="bi bi-ui-checks me-2" aria-hidden="true"></i>' . lang('Edit Custom Shipping Form') . '</a>';
                 }
 
                 break;
 
             case 'billing information':
                 if (($stored_properties['form'] ?? '') == '1') {
-                    $output_edit_custom_billing_form = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Billing Form') . '</a>';
+                    $output_edit_custom_billing_form = '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><i class="bi bi-ui-checks me-2" aria-hidden="true"></i>' . lang('Edit Custom Billing Form') . '</a>';
                 }
 
                 break;
@@ -562,7 +562,7 @@ if (!$_POST) {
             '<div class="col-12 d-none" id="name_redirect_row" data-current-name="' . h($page_name) . '">
                 <div class="form-field">
                     <input type="hidden" name="name_redirect" value="0" />
-                    <input value="1" checked="checked" id="name_redirect" name="name_redirect" class="check" type="checkbox" />
+                    <div class="switch"><input value="1" checked="checked" id="name_redirect" name="name_redirect" type="checkbox" role="switch" /></div>
                     <label class="" for="name_redirect">' . lang('Send visitors of the old address here (301 redirect)') . ' <span class="fg-secondary">' . OUTPUT_PATH . h($page_name) . '</span></label>
                 </div>
             </div>';
@@ -772,7 +772,7 @@ if (!$_POST) {
         $delete_confirmation = (pg_recycle_ready() && !pg_recycle_is_inside($page_folder))
             ? lang('This page will be moved to the Recycle Bin.')
             : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('page'))));
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . $delete_confirmation . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
 
     // "Write with AI" beside the browser title and description
@@ -872,16 +872,16 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 md:col-6 my-3">
                                                     <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                                                    <select class="form-control" id="folder" name="folder">' . select_folder($form_values['folder']) . '</select>
+                                                    <select class="form-control" id="folder" name="folder">' . pg_page_select_folder($form_values['folder']) . '</select>
                                                     <div class="form-text">' . lang('Page Access Control, Design &amp; Common Content') . '</div>
                                                 </div>
                                             </div>
                                             <div class="row mt-7">
-                                                <div class="col-12 md:col-6 lg:col-auto my-3">
+                                                <div class="col-12 md:col-6 my-3">
                                                     <label for="style" class="form-label">' . lang('Desktop Page Style') . '</label>
                                                     ' . $output_style . '
                                                 </div>
-                                                <div class="col-12 md:col-6 lg:col-auto my-3">
+                                                <div class="col-12 md:col-6 my-3">
                                                     <label for="mobile_style_id" class="form-label">' . lang('Mobile Page Style') . '</label>
                                                     ' . $output_mobile_style . '
                                                 </div>
@@ -976,7 +976,7 @@ if (!$_POST) {
                                                                     <label for="comments_message" class="form-label">' . lang('Add Comment Message') . '</label>
                                                                     <input value="' . h($comments_message) . '" type="text" name="comments_message" id="comments_message" class="form-control" maxlength="255"/>
                                                                 </div>
-                                                                <div class="col-12 md:col-12 lg:offset-4 lg:col-8 my-3">
+                                                                <div class="col-12 my-3">
                                                                     <label for="comments_disallow_new_comment_message" class="form-label">' . lang('Do Not Allow New Comments Message') . '</label>
                                                                     <input value="' . h($comments_disallow_new_comment_message) . '" type="text" name="comments_disallow_new_comment_message" id="comments_disallow_new_comment_message" class="form-control" maxlength="255"/>
                                                                 </div>
@@ -1037,7 +1037,7 @@ if (!$_POST) {
                                                                             <div class="row">
                                                                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                                                                     <label for="comments_administrator_email_to_email_address" class="form-label">' . lang('To E-mail Address') . '</label>
-                                                                                    <input value="' . h($comments_administrator_email_to_email_address) . '" type="text" class="form-control text-end" id="comments_administrator_email_to_email_address" name="comments_administrator_email_to_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
+                                                                                    <input value="' . h($comments_administrator_email_to_email_address) . '" type="email" class="form-control' . ($liveform->check_field_error('comments_administrator_email_to_email_address') ? ' is-invalid' : '') . '" id="comments_administrator_email_to_email_address" name="comments_administrator_email_to_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                                                                                 </div>
                                                                                 <div class="col-12 md:col-6 lg:col-8 my-3">
                                                                                     <label for="comments_administrator_email_subject" class="form-label">' . lang('Subject') . '</label>
@@ -1104,7 +1104,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                         </div>
@@ -1149,6 +1149,8 @@ if (!$_POST) {
             page_search,
             page_search_keywords,
             page_folder,
+            page_style,
+            mobile_style_id,
             " . (pg_ai_fields_ready('page') ? "ai_fields," : "NULL AS ai_fields,") . "
             sitemap
         FROM page
@@ -1169,6 +1171,8 @@ if (!$_POST) {
     $current_page_search = $row['page_search'];
     $current_search_keywords = $row['page_search_keywords'];
     $current_page_folder = $row['page_folder'];
+    $current_page_style = $row['page_style'];
+    $current_mobile_style_id = $row['mobile_style_id'];
     $current_sitemap = $row['sitemap'];
     $current_ai_fields = $row['ai_fields'];
     
@@ -1323,7 +1327,7 @@ if (!$_POST) {
                 @unlink(FILE_DIRECTORY_PATH . '/' . $attachment['name']);
                 
                 // log that the file was deleted
-                log_activity(lang(array('string'=>'file attachment ({var:1}) for a comment was deleted because the page ({var:2}) was deleted','vars'=>array($attachment['name'],$_POST['name']))), $_SESSION['sessionusername']);
+                log_activity(lang(array('string'=>'file attachment ({var:1}) for a comment was deleted because the page ({var:2}) was deleted','vars'=>array($attachment['name'],$current_page_name))), $_SESSION['sessionusername']);
             }
         }
         
@@ -1388,7 +1392,7 @@ if (!$_POST) {
             unlink(LAYOUT_DIRECTORY_PATH . '/' . $page_id . '.php');
         }
         
-        log_activity(lang(array('string'=>'page ({var:1}) was deleted','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'page ({var:1}) was deleted','vars'=>$current_page_name)), $_SESSION['sessionusername']);
         
         // add notice
         $liveform_view_pages = new liveform('view_pages');
@@ -1473,6 +1477,16 @@ if (!$_POST) {
 
         $form_url = URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . (int) $_POST['id'] . '&send_to=' . urlencode((string) ($_POST['send_to'] ?? ''));
 
+        // A folder that is not there, or a move into the Workspace folder or
+        // the Recycle Bin, would leave the page where nobody sees it.
+        pg_page_form_refuse($liveform, pg_page_form_folder_errors($_POST['folder'] ?? '', (int) $current_page_folder), $form_url);
+
+        // A style deleted while the form was open, or one the pickers do not
+        // offer; the stored ones are kept as they are.
+        if ($user['role'] < 3) {
+            pg_page_form_refuse($liveform, pg_page_form_style_errors($_POST, (int) $current_page_style, (int) $current_mobile_style_id), $form_url);
+        }
+
         $clean_name = pg_page_form_clean_name($name, $_POST['type']);
         pg_page_form_refuse($liveform, array_filter(array('name' => $clean_name['error'])), $form_url);
         $name = $clean_name['name'];
@@ -1531,6 +1545,11 @@ if (!$_POST) {
             $pretty_urls_old = check_if_pretty_urls_are_enabled($_POST['id']);
         }
         
+        // Set when the save went on without a part it refused (the type
+        // change, a contact group or private folder): the message is shown
+        // on this screen, not left for its next visit.
+        $save_refused_part = false;
+
         if ($may_save_page_type) {
             // assume that we can update the page type until we find out otherwise
             $update_page_type = true;
@@ -1544,6 +1563,7 @@ if (!$_POST) {
 
                 if (mysqli_num_rows($result) > 0) {
                     $update_page_type = false;
+                    $save_refused_part = true;
                     $liveform->mark_error('', lang('The page type for this page could not be changed because there are submitted forms for this page.  All submitted forms for this page must be deleted before the page type for this page is allowed to be changed.'));
                 }
             }
@@ -1565,6 +1585,7 @@ if (!$_POST) {
                 $properties = $checked['properties'];
 
                 foreach ($checked['errors'] as $checked_error) {
+                    $save_refused_part = true;
                     $liveform->mark_error('', $checked_error);
                 }
 
@@ -1643,33 +1664,13 @@ if (!$_POST) {
         // if user role is Administrator, Designer, or Manager, then allow user to change desktop style and mobile style for page
         if ($user['role'] < 3) {
             $sql_style_fields =
-                "page_style = '" . escape($_POST['style'] ?? '') . "',
-                mobile_style_id = '" . escape($_POST['mobile_style_id'] ?? '') . "',";
+                "page_style = '" . (int) ($_POST['style'] ?? 0) . "',
+                mobile_style_id = '" . (int) ($_POST['mobile_style_id'] ?? 0) . "',";
         }
-        
+
         // if sitemap was enabled and the selected page type is a valid page type for the sitemap,
         // then include this page in the sitemap
-        if (
-            (($_POST['sitemap'] ?? 0) == 1)
-            &&
-            (
-                ($_POST['type'] == 'standard')
-                || ($_POST['type'] == 'folder view')
-                || ($_POST['type'] == 'photo gallery')
-                || ($_POST['type'] == 'custom form')
-                || ($_POST['type'] == 'form list view')
-                || ($_POST['type'] == 'form item view')
-                || ($_POST['type'] == 'form view directory')
-                || ($_POST['type'] == 'calendar view')
-                || ($_POST['type'] == 'calendar event view')
-                || ($_POST['type'] == 'catalog')
-                || ($_POST['type'] == 'catalog detail')
-                || ($_POST['type'] == 'express order')
-                || ($_POST['type'] == 'order form')
-                || ($_POST['type'] == 'shopping cart')
-                || ($_POST['type'] == 'search results')
-            )
-        ) {
+        if ((($_POST['sitemap'] ?? 0) == 1) && pg_page_form_sitemap_type($_POST['type'])) {
             $sitemap = 1;
             
         // else sitemap was disabled or the selected page type is not a valid page type for the sitemap,
@@ -1865,6 +1866,10 @@ if (!$_POST) {
         // else we don't need to forward the user to the form designer so forward the user to the page
         } else {
             $location = URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to);
+        }
+
+        if ($save_refused_part) {
+            $location = URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . (int) $_POST['id'] . '&send_to=' . urlencode($send_to);
         }
 
         // A site page shows no panel notice, so a save with something to

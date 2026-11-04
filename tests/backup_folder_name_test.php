@@ -30,6 +30,8 @@ function test_backup_folder_name_cases()
 		'..'                           => '',
 		'.'                            => '',
 		'отчет'                        => '',
+		'../../..'                     => '',
+		'!!!'                          => '',
 		'a.[b]'                        => 'a_b',
 		''                             => '',
 		'example.com_2026-10-30@12-13' => 'example_com_2026-10-30_12-13',
@@ -56,6 +58,18 @@ function test_backup_name_reserved()
 	}
 	foreach (array('b', 'yedek_03_11_2026', 'my_english_default', 'auto_backup') as $name) {
 		pg_assert_same(false, pg_backup_name_reserved($name), $name);
+	}
+}
+
+// Only the two install dumps take the delete confirmation that names the
+// lost language choice; other reserved names and archives do not.
+function test_backup_is_starter_dump()
+{
+	foreach (array('english_default', 'Turkish_Default', 'TURKISH_DEFAULT') as $name) {
+		pg_assert_same(true, pg_backup_is_starter_dump($name), $name);
+	}
+	foreach (array('english_default.zip', 'my_english_default', 'auto_backup_2026-11-45', 'pre_upgrade_2026_11_0_x', '', 'b') as $name) {
+		pg_assert_same(false, pg_backup_is_starter_dump($name), $name);
 	}
 }
 

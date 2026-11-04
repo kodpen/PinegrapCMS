@@ -264,7 +264,8 @@ pg_page_shell(
         'heading_description' => lang('View this computer\'s visit to the website.'),
         'cancel'=>array('enable'=>'true','url' => $pg_back_arrow_url),
         'breadcrumb' => array(
-            array('label' => lang('All Visitor Reports'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_reports.php'),
+            array('label' => lang('Overview'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitors.php'),
+            array('label' => lang('Saved visitor reports'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_reports.php'),
             $pg_previous_screen_item,
             array('label' => lang('Visit Details')),
         ),

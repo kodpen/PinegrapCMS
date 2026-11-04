@@ -41,6 +41,10 @@
         return (100 * Math.max(0, Math.min(end, ms)) / end) + '%';
     }
 
+    // fn(lane, l, end, selected) on the editor for each row: more marks
+    // on a layer's lane.
+    Editor.trackMarks = [];
+
     Editor.prototype.tracksShown = function () {
         return !(window.matchMedia && window.matchMedia(NO_TRACKS).matches) && (this.doc.layers.length > 0);
     };
@@ -89,7 +93,7 @@
             var r = ruler.getBoundingClientRect();
 
             if (r.width > 0) {
-                self.seek(Math.round((e.clientX - r.left) / r.width * end / 10) * 10);
+                self.seek(self.motionStart() + Math.round((e.clientX - r.left) / r.width * end / 10) * 10);
             }
         });
 
@@ -144,6 +148,9 @@
 
             lane.appendChild(bar);
         });
+
+        // Marks other parts add on the lane (the keyframes' diamonds).
+        Editor.trackMarks.forEach(function (mark) { mark.call(self, lane, l, end, on); });
 
         // A press beside the bars selects the layer.
         lane.addEventListener('pointerdown', function (e) {
@@ -257,16 +264,17 @@
         });
     };
 
-    // The playhead's line over the lanes, at rest at 0.
+    // The playhead's line over the lanes, at rest at 0; dimmed while the
+    // playhead is in another scene (motionNow() outside this one).
     Editor.prototype.updateTracks = function () {
-        var e = this.trackEls, now = (this.time === null) ? 0 : this.time;
+        var e = this.trackEls, now = this.motionNow(), end = this.motionEnd();
 
         if (!e) {
             return;
         }
 
-        e.playhead.style.setProperty('--pgie-trat', String(Math.max(0, Math.min(1, now / this.motionEnd()))));
-        e.playhead.classList.toggle('pgie-tridle', this.time === null);
+        e.playhead.style.setProperty('--pgie-trat', String(Math.max(0, Math.min(1, (now || 0) / end))));
+        e.playhead.classList.toggle('pgie-tridle', (now === null) || (now < 0) || (now > end));
     };
 
     Editor.inits.push(function () {

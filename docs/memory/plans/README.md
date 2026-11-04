@@ -27,16 +27,13 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - audiences.md: Plan (owner 2026-11-02): rule-driven contact groups whose members are computed from orders, visits, consent, membership and fields, usable wherever a group is today; steps AU1-AU6
 - bootstrap-6-components.md: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped for native Bootstrap 6 components, the conditions research found, what stays as it is
 - bootstrap-6-findings.md: Research of 2026-10-25 behind plans/bootstrap-6-panel.md: old browsers, conflict rates, work size, hot spots, the visual editor split, third-party coupling
-- bootstrap-6-panel-done.md: Finished steps of the Bootstrap 6 panel plan with their PRs and topic files; the open steps are in bootstrap-6-panel-steps.md
 - bootstrap-6-panel-steps.md: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status (each done step names its PR); claim as [plan:bootstrap-6-panel] B<n>
 - bootstrap-6-panel.md: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps.md): panel UI from Bootstrap 5.3.8 to 6.0.0-alpha.1 by pre-landing adapters on development, then one generated switch
-- bootstrap-6-redesign.md: Steps B10-B11 of plans/bootstrap-6-panel.md: token tuning and the redesign of legacy form screens and tables; both ready to start (owner, 2026-11-01)
+- bootstrap-6-redesign.md: Steps B10-B11 of plans/bootstrap-6-panel.md: token tuning and the redesign of legacy form screens and tables (owner, 2026-11-01)
 - bug-hunt-modules-endpoints-1.md: Module list of plans/bug-hunt.md, part 3: root endpoint groups account to offer by area word, one line each with its state
 - bug-hunt-modules-endpoints-1c.md: Module list of plans/bug-hunt.md, part 3c: root endpoint groups mail, manifest and marketplace, one line each with its state
 - bug-hunt-modules-endpoints-2.md: Module list of plans/bug-hunt.md, part 4: root endpoint groups optimize to zone by area word, one line each with its state; single endpoints in endpoints-2b
 - bug-hunt-modules-endpoints-2b.md: Module list of plans/bug-hunt.md, part 5: the single root endpoints (one file per area word), six to a line, each line with its state
-- bug-hunt-modules-endpoints-2c.md: Module list of plans/bug-hunt.md, part 4c: root endpoint groups sms, state and tax, one line each with its state; the software group's findings
-- bug-hunt-modules-endpoints-2d.md: Module list of plans/bug-hunt.md, part 4d: root endpoint groups ship and shipment, one line each with its state
 - bug-hunt-modules-fn-1.md: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y to cloudflare_tools, one line each with its state
 - bug-hunt-modules-fn-1a.md: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules collections to editor, one line each with its state
 - bug-hunt-modules-fn-1a2.md: Module list of plans/bug-hunt.md, part 1a2: includes/fn/ modules email_campaign_schedule to legal_documents, one line each with its state
@@ -48,28 +45,14 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bug-hunt.md: Plan: module-by-module bug hunt when no plan step is free; how a module is taken, hunted and closed; the module lists are in bug-hunt-modules-*.md
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, CI checks, and the parked explicit "who may write PHP" rule
-- content-importers-steps-2.md: Steps IM4-IM7 of plans/content-importers.md: the WooCommerce and Shopify readers, redirects and undo, close-out; claim as [plan:content-importers] IM<n>
-- content-importers-steps.md: Steps IM1-IM3 of plans/content-importers.md: the import framework and screen, the WordPress WXR reader, pages and media fetches; claim as [plan:content-importers] IM<n>
-- content-importers.md: Plan (owner 2026-11-02): importers for WordPress (WXR), WooCommerce and Shopify (CSV): records, pages, media, comments, customers, products, old addresses as redirects; steps IM1-IM7
-- design-template-appstudio.md: Plan for the Mobile App Developer template (pinegrap-appstudio): own apps and release notes as collections, support and project requests, beta sign-up; parts in a folder; steps 1-9
-- design-template-dealership.md: Plan for the Car Dealership template (pinegrap-dealership): vehicles as a collection with filters, test drive, trade-in and finance requests followed from the account; parts in a folder; steps 1-8
-- design-template-hotel.md: Plan for the Hotel template (pinegrap-hotel): rooms as a collection with rates, booking and event enquiries followed from the account, gift vouchers in the shop; parts in a folder; steps 1-9
-- design-template-launch.md: Plan for the Phone Launch Site template (pinegrap-launch): three models, specs and compare, the shop, trade-in and support requests; parts in a folder; steps 1-7
-- design-template-market.md: Plan for the Marketplace template (pinegrap-market): makers' shops as a Sellers collection beside the store's catalog, seller applications and order help; parts in a folder; steps 1-8
-- designer-form-logic-steps-2.md: Steps FL5-FL8 of plans/designer-form-logic.md: the payment step on the site, the staff side and API, template fees, close-out; claim as [plan:designer-form-logic] FL<n>
-- designer-form-logic-steps.md: Steps FL1-FL4 of plans/designer-form-logic.md: Shown when rules, form steps with progress, the browser draft, the fee setting and order writer; claim as [plan:designer-form-logic] FL<n>
-- designer-form-logic.md: Plan (owner 2026-11-02): designed forms get Shown-when rules, steps with progress, and a payment step that places a one-line order through the payment drivers; steps FL1-FL8
-- designer-prototype-links-code.md: What the code holds for plans/designer-prototype-links.md: where links sit, the two href places, page links by id, renames, the resolver's limits, editor state, rights and Publish
-- designer-prototype-links.md: Plan (2026-10-24; ready to start, owner 2026-11-01): a Figma/XD-like prototype view in the visual designer: pages as frames, menu items and links as hotspots, an arrow sets the page a click opens
-- erp-auto-invoice-earchive.md: Plan (approved 2026-10-19): auto invoice with its two filters and the e-Fatura threshold warning built (#697, #958, #1773); only the internet-sale UBL fields (step 3) left
+- erp-auto-invoice-earchive.md: Plan (approved 2026-10-19): web orders invoiced on their own once paid or shipped, with two filters, the e-Fatura threshold warning and the internet-sale UBL fields of an e-Arşiv invoice
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
-- erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), small fixes; where to start
+- erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442); where to start
 - external-api-coverage-2.md: External API plan, part 2: the users write step X13 (#5237) and why settings, firewall, sessions, backups and updates get no endpoint (#5238); claim as [plan:external-api-coverage] X13
 - external-api-coverage.md: External API (integration.php): find what the panel can do that the API cannot, then add the missing endpoints in steps (owner, 2026-11-01); claim as [plan:external-api-coverage] X<n>
 - feature-plans-2026-11.md: The eleven feature plans approved 2026-11-02: index and order, how one coordinator and its five workers hold a plan, the shared rules
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
-- graph-canvas-core.md: Plan (2026-10-24, answers #2445; 1-4 done): a box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
 - image-editor-animation-design.md: Design of plans/image-editor-animation.md: the motion fields of the document and a layer, the presets, M.motionAt(), the preview on the stage, the frame renderer and the still base the server draws
 - image-editor-animation-output.md: Outputs of plans/image-editor-animation.md: the encoder worker, GIF, APNG, WebP, MP4, WebM, PDF and SVG with their limits, the save into Files, re-editing an animation, scenes and the Present mode
 - image-editor-animation-steps.md: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion, tracks, GIF, saving, APNG, WebP, video, scenes, Present, PDF, keyframes, SVG; claim as [plan:image-editor-animation] AN<n>
@@ -78,17 +61,21 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - image-editor-design.md: Design of plans/image-editor.md: the parts and file names, the one call and its options, the modal's look, the document model with layers in rotated space
 - image-editor-server.md: Server side of plans/image-editor.md: what the browser and the server each do, the save pipeline through the image engine, replace, copy and new, the versions table proposal, security
 - image-editor-steps-2.md: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboard, optimisation, pen, SVG, Workspace, designer, access, close-out; claim as [plan:image-editor] E<n>
+- image-editor-steps-3.md: Steps E21-E25 of plans/image-editor.md (owner 2026-11-03): change a placed sticker, text to outlines, scissors, shape builder, warp; claim as [plan:image-editor] E<n>
+- image-editor-steps-4.md: Steps E26-E29 of plans/image-editor.md (owner 2026-11-03): free deformation, area selection, select subject and remove background with an own algorithm, access; claim as [plan:image-editor] E<n>
+- image-editor-steps-5.md: Steps E23b and E30 of plans/image-editor.md (owner 2026-11-03 and -04): one Vektör rail item for the vector tools, the photo's picture as its bottom layer; claim as [plan:image-editor] E<n>
 - image-editor-steps.md: Steps E1-E10 of plans/image-editor.md: core modal, crop, server save, adjust, layers, shapes, text, stickers, the switch that removes the old editor, redaction; claim as [plan:image-editor] E<n>
+- image-editor-video-steps.md: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, video layer, timeline, sound, effects, overlays, export, large files, reopening, phone, access; claim as [plan:image-editor-video] V<n>
+- image-editor-video.md: Plan (owner 2026-11-03): video editing inside the image editor: clips on the timeline, trim, split, effects, sound added or detached, layers over video, export with sound; held with image-editor.md
 - image-editor-visuals.md: The image editor prototype the owner approved on 2026-10-31: its screens and source in plans/image-editor/, what each screen shows and which step of plans/image-editor.md builds it
-- image-editor-workers.md: How coordinators' workers take the free steps of plans/image-editor.md and image-editor-animation.md: which run side by side, the files a step owns, what its PR shows, the holder's review
-- image-editor.md: Plan (owner 2026-10-31): Pinegrap's own image editor, a core modal with full screen on demand, replacing the bundled third-party one; held by one session; steps E1-E20
+- image-editor-workers.md: How workers take the free steps of plans/image-editor.md and its animation and video plans: which run side by side, the files a step owns, what its PR shows, the holder's review
+- image-editor.md: Plan (owner 2026-10-31): Pinegrap's own image editor, a core modal with full screen on demand, replacing the bundled third-party one; held by one session; steps E1-E29
 - kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md: release check, pin, checks before extraction, download failures and security events, beta builds, keys, P2's workflow
 - kodpen-vendor-api-client-design.md: Client contract of plans/kodpen-vendor-api-client.md: calls and headers, the licence check, card and key field, what is stored where, the switch line; updates in -design-update
 - kodpen-vendor-api-client-steps.md: Steps P1-P8 of plans/kodpen-vendor-api-client.md: changes, files, tests, memory, size, order; claim as [plan:kodpen-vendor-api-client] P<n>
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): 2026.11.0 asks api.kodpen.com/v1 for licences and signed updates behind one switch line, no api2 fallback; steps P1-P8 in -steps, contract in the -design files
-- legacy-to-designer.md: Plan (owner 2026-11-03, started): classic designs moved to the visual designer in bulk with a readiness report and a dry run, search over trees, Migration carrying designer content (LD1-LD5)
-- marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer; Trendyol 1, 2, 2b-i, 2b-ii, 3, 4a-4c, 5a, 5b (with rejection), 5c, 6, A, B, common label done; Hepsiburada open
-- mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what M1–M6 built, what M7 (native push) and M8 add, decisions, how its needs arrive
+- marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
+- mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - new-dashboard-build.md: New dashboard plan: the page branch in welcome.php, the files (page, script bundle, stylesheet), charts, refresh, light and dark, phone, keyboard, texts; how card steps stay out of each other's files
 - new-dashboard-cards-2.md: New dashboard plan, cards 17-30 (Security, Team, Ecommerce, System): id, default width and period, what each shows, where its data comes from, its gate
 - new-dashboard-cards.md: New dashboard plan, cards 1-16 (General, Content, Visitors): id, default width and period, what each shows, where its data comes from, its gate; what every card shares
@@ -105,18 +92,13 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - prototype-sharing-code.md: What the code holds for plans/prototype-sharing.md: drafts and their revisions, how a draft opens today, what Preview draws, token links, the password throttle, MCP routes, flow and note rights
 - prototype-sharing.md: Plan (2026-10-24; slices 1-4 done: #1867, #1579, #1595, #1578; 5 later): drafts play as a clickable prototype shared by a view-only link; flows with the team
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
-- reverse-oauth-leftovers.md: Remaining outside-account connections (calendar, notes, cloud picker, Meta, Merchant, GA4, Business Profile, social, AI), the connect.pinegrap.com broker and open decisions
-- search-and-audits-gaps-steps.md: Steps SG1-SG3 of plans/search-and-audits-gaps.md: the three jobs on for a new install, parts inside an index item, close-out; claim as [plan:search-and-audits-gaps] SG<n>
-- search-and-audits-gaps.md: Plan (owner 2026-11-03): what search-and-audits left open; the three jobs on for a new install, an index pass that resumes inside a page or record list; steps SG1-SG3
+- reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
 - security-findings-2026-10.md: 2026-10-19 security audit: fixed by that day's PRs and #713; items 2-8 decided by the owner 2026-10-28 (labels, CVV, escape_like, sign-in message, gateway secrets, ERP host, rich text)
-- shipping-carrier-labels.md: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
+- shipping-carrier-labels.md: Plan (approved 2026-10-19): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
 - shipping-management.md: Shipping plan (2026-10-08; phases 1-7 and the phase 8 postcode check done): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
 - small-features-2026-11-steps-2.md: Steps SF4-SF8 of plans/small-features-2026-11.md: product questions, pre-order, EU VAT checks, the panel offline page, Slack, Teams and Telegram channels; claim as [plan:small-features-2026-11] SF<n>
 - small-features-2026-11-steps.md: Steps SF1-SF3 of plans/small-features-2026-11.md: address autocomplete, the accessibility statement widget, site search rollup with synonyms; claim as [plan:small-features-2026-11] SF<n>
 - small-features-2026-11.md: Plan (owner 2026-11-02): eight small independent features: address autocomplete, accessibility statement, search tuning, product questions, pre-order, EU VAT, offline page, chat channels; SF1-SF8
-- stock-locations-steps-2.md: Steps SL4-SL7 of plans/stock-locations.md: transfers and stock history, pickup at a location, API and webhooks, close-out; claim as [plan:stock-locations] SL<n>
-- stock-locations-steps.md: Steps SL1-SL3 of plans/stock-locations.md: tables and the sum-keeping writer, product screens and import, order completion and scans by location; claim as [plan:stock-locations] SL<n>
-- stock-locations.md: Plan (owner 2026-11-02): stock kept per location (warehouse, shop, consignment) with the product's total unchanged for every reader; transfers, pickup at a location, API and webhooks; steps SL1-SL7
 - store-credit-steps-2.md: Steps SC5-SC7 of plans/store-credit.md: the staff and account screens with mails and expiry, API and webhooks, close-out; claim as [plan:store-credit] SC<n>
 - store-credit-steps.md: Steps SC1-SC4 of plans/store-credit.md: the customer-bound card model, credit at checkout through applied_gift_cards, points to credit, refunds to credit; claim as [plan:store-credit] SC<n>
 - store-credit.md: Plan (owner 2026-11-02): store credit as customer-bound gift cards: points to credit, refunds to credit, staff-issued credit, the balance applied at checkout; steps SC1-SC7
@@ -133,14 +115,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - table-driver-steps.md: Steps of the table driver plan: the driver core, its parts, the server-paged, quick edit and log lists (TD1-TD8)
 - table-driver.md: Plan (owner 2026-11-03): the panel's own list table driver replacing DataTables, and the move of every table.chart screen to it, screen by screen (TD1-TD14)
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
-- visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
-- visitors-overview-data.md: Data side of plans/visitors-overview.md: which table answers which figure, the daily summary against the raw rows, the channel rule and search engines, how a Google page meets a site page
-- visitors-overview-design.md: Contract of plans/visitors-overview.md: the files and who owns each, the period model, the section function, the menu, access and texts; the data side is in visitors-overview-data.md
-- visitors-overview-steps-2.md: Steps V5-V11 of plans/visitors-overview.md, the sections: traffic, conversions, sources, content, Google search, pages with Google, places; claim as [plan:visitors-overview] V<n>
-- visitors-overview-steps-3.md: Steps V12-V17 of plans/visitors-overview.md: alerts, saved reports tidy-up, API routes, status lines, close-out, the speed, AI and site search sections; claim as [plan:visitors-overview] V<n>
-- visitors-overview-steps.md: Steps V1-V4 of plans/visitors-overview.md, the foundations: shell and period, figures module, daily summary every day, channel and search engines; claim as [plan:visitors-overview] V<n>
-- visitors-overview-workers.md: How two coordinators' workers take plans/visitors-overview.md: the waves, which steps run side by side, what a section step owns and may edit, what its PR shows, who reviews
-- visitors-overview.md: Plan (owner 2026-11-01): the Visitors section as one overview screen on the rollups and a daily summary written every day, Search Console joined to the pages; steps V1-V17 in the -steps files
-- workspace-agent-handles.md: Plan (2026-10-21, steps 1 and 5 done, 4 waits for 2): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
-- workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1-3 (#1462, #1523, #1726) and question 6 done): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
+- visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions in visitor_stats_daily, added only when a real report needs one
+- workspace-agent-handles.md: Plan (2026-10-21): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
+- workspace-assistant-key-setup.md: Plan (2026-10-23): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
+- workspace-flow-card-canvas-steps.md: Steps K1-K5 of plans/workspace-flow-card-canvas.md: the embed, the server side, the card, Edit here removed, the other drawings; claim as [plan:workspace-flow-card-canvas] K<n>
+- workspace-flow-card-canvas.md: Plan (owner 2026-11-02, decided #4967): the flow draft card shows the real Flows canvas read-only; changes only by opening the flow; Edit here goes; steps K1-K5
 - workspace-menu-layout.md: Plan (owner decision 2026-10-30) for a tidier Workspace list in the main menu: search, places, one Channels section, discussions, Tools tiles; channel screen unchanged

@@ -337,7 +337,13 @@ function test_list_table_html_hidden_cells_texts_and_scroll_box()
 	$html = pg_list_table_html($source, array('rows' => array(array('id' => 1, 'cells' => array('name' => pg_list_cell('Bag'), 'notes' => pg_list_cell('x')))), 'next' => null, 'total' => 1), 'Items');
 
 	pg_assert_contains('<td role="cell" data-pg-col="notes" class="align-middle" hidden>x</td>', $html, 'a hidden column hides its cells');
-	pg_assert_contains('<div class="pg-list-table-bar" hidden>', $html);
+	pg_assert_contains('<div class="pg-list-table-bar is-empty">', $html, 'the bar always shows its tools');
+	pg_assert_contains('class="btn btn-sm btn-text theme-secondary pg-list-table-columns" data-bs-toggle="menu"', $html);
+	pg_assert_contains('<div class="menu pg-menu-end pg-list-table-columns-menu"></div>', $html);
+	pg_assert_contains('pg-list-table-details-switch" aria-pressed="false">', $html);
+	pg_assert_contains('<aside class="pg-list-table-details" aria-label="', $html);
+	pg_assert_contains('<div class="pg-list-table-body"><div class="pg-list-table-scroll"', $html, 'the rows and the details panel side by side');
+	pg_assert_contains(' data-pg-list-user="', $html);
 	pg_assert_contains('<div class="pg-list-table-scroll" tabindex="-1"><table', $html);
 	pg_assert_contains('<div class="pg-list-table-foot"></div></div>', $html);
 	pg_assert_contains('data-pg-list-texts="', $html);
@@ -350,4 +356,42 @@ function test_list_table_html_hidden_cells_texts_and_scroll_box()
 
 	pg_assert_contains('%n', $texts['selected']);
 	pg_assert_contains('%n', $texts['loaded']);
+}
+
+function test_list_table_html_puts_the_screens_actions_in_the_bar()
+{
+	$html = pg_list_table_html(pg_test_list_table_source(), array('rows' => array(), 'next' => null, 'total' => 0), 'Items', '<button type="button">Delete</button>');
+
+	pg_assert_contains('<span class="pg-list-table-actions"><button type="button">Delete</button></span>', $html);
+	pg_assert_contains('<span class="pg-list-table-actions"></span>', pg_list_table_html(pg_test_list_table_source(), array('rows' => array(), 'next' => null, 'total' => 0), 'Items'));
+}
+
+function test_list_table_edit_spec_needs_an_editable_column()
+{
+	$edit = array('url' => 'view_items.php', 'columns' => array('price' => array('type' => 'money', 'label' => 'Price')));
+
+	pg_assert_same($edit, pg_test_list_table_source(array(), array('edit' => $edit))['edit']);
+	pg_assert_same(null, pg_test_list_table_source()['edit'], 'no quick edit named');
+	pg_assert_same(null, pg_test_list_table_source(array(), array('edit' => array('url' => '', 'columns' => $edit['columns'])))['edit'], 'no address');
+	pg_assert_same(null, pg_test_list_table_source(array(), array('edit' => array('url' => 'view_items.php', 'columns' => array())))['edit'], 'no field');
+	pg_assert_same(null, pg_test_list_table_source(array(), array(
+		'columns' => array('name' => array('heading' => 'Name')),
+		'edit' => $edit,
+	))['edit'], 'no column of the list is editable');
+}
+
+function test_list_table_html_quick_edit_button_and_fields()
+{
+	$edit = array('url' => 'view_items.php', 'columns' => array('price' => array('type' => 'money', 'label' => 'Price')));
+	$page = array('rows' => array(), 'next' => null, 'total' => 0);
+	$html = pg_list_table_html(pg_test_list_table_source(array(), array('edit' => $edit)), $page, 'Items');
+
+	pg_assert_contains(' data-pg-edit-url="view_items.php"', $html);
+	pg_assert_contains(' data-pg-edit-columns="{&quot;price&quot;:{&quot;type&quot;:&quot;money&quot;,&quot;label&quot;:&quot;Price&quot;}}"', $html);
+	pg_assert_contains('class="btn btn-sm btn-text theme-secondary pg-list-table-quick" aria-pressed="false" aria-keyshortcuts="F2"', $html);
+
+	$plain = pg_list_table_html(pg_test_list_table_source(), $page, 'Items');
+
+	pg_assert_same(false, strpos($plain, 'data-pg-edit-url') !== false, 'no fields without quick edit');
+	pg_assert_same(false, strpos($plain, 'pg-list-table-quick') !== false, 'no button without quick edit');
 }

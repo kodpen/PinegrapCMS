@@ -14,14 +14,14 @@ description: Where each classic region type goes in the visual designer (common,
 | dynamic | stays PHP, edited from its node | `dynamic-region-in-designer.md` |
 | page (`pregion`) | `_editable` blocks in the page's own tree | `page-region-into-page-tree.md` |
 | menu, menu sequence, ad, tag cloud | widgets ("Make designable") | `region-node-to-widget.md` |
+- The bulk move of whole styles, its report and what stays classic: `legacy-to-designer-report.md`.
+- Site search and Find & Replace read the trees the converted content lives in: `tree-search.md`.
 - Every conversion is opt-in, run by a designer (role 0-1); nothing converts on its own.
 
 ## What did the owner answer on 2026-10-27?
 - A role-3 user granted a component but no folder edit right opens the component on its own in the designer (`shared-component-opened-alone.md`). Reason: their right is on the component, not on any page.
-- A converted common region's source is the shared component; the `cregion` row is kept unread, and it stays after the legacy designer retires (#3156, `workflow/decisions-made-product-3.md`). Reason: one source of truth, so a classic and a converted page never show two versions.
+- A converted common region's source is the shared component; the `cregion` row and its grants are kept unread for good: no data step clears them, a per-region cleanup only if the owner asks (#3156, `workflow/decisions-made-product-3.md`). Reason: one source of truth, so a classic and a converted page never show two versions.
 - Front-end inline editing of common and page regions ends for converted content. Reason: one editor for designed content, the one that keeps content rights (`_editable`, the merge gate).
 
 ## What is still open?
 - A site with no visual design cannot open a component on its own.
-- Find and replace does not search shared component trees or designer page trees; site search reads no designer page tree.
-- The unread `cregion` row of a converted common region was kept "until the legacy designer retires"; the retirement removed none, and whether the rows go is not decided (asked in #3156).

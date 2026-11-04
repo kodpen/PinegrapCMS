@@ -34,6 +34,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - affiliate-sign-up-widget.md: The Affiliate Sign Up Form widget (classic "affiliate sign up form" page type): handler and page row, controls by name, prefill, terms, confirmation, what is left out.
 - attrs-panel-undo.md: Undo steps of the designer's Attributes panel text fields (id, prop-bound attributes, custom attribute name and value) and when its style row is written
 - billing-information-widget.md: The Billing Information widget (third classic checkout step): handler and page row, prefill from order and contact, parts the page turns off, helpers shared with step 1.
+- booking-widget.md: The booking system widget (BK4a, #6224): parts by binding, data-pg-booking settings, booking_slots.php (month, day, hold), "anyone" picks the freest, one hold per session
 - bootstrap-direct-child-canvas.md: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule), the td display:flex ban, the selected-child lift.
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
 - catalog-item-checkout-options-tab.md: The product page starter's Checkout Options tab (catalog_item_view) is bound to the store's switched-on payment methods, with real fees, or not drawn (#4556); saved trees untouched
@@ -92,9 +93,13 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - common-region-to-shared-component.md: A common region made a shared component (R2): one _editable block opened to content editors, grants carried over, the <cregion> tag drawing the component, the old write paths refused
 - custom-form-email-and-confirmation-fallbacks.md: Custom form submit fallbacks (empty plain text body -> field list without hidden fields for the submitter; missing or binned next page -> message) and what the legacy page screen refuses (#1209).
 - custom-form-field-rules.md: Visitor rules of a designed form field (form_fields.rules, step 11.0.135, PR #3737): "Not before today" and "Required when", where they are written and checked, the staff exemption, Cafe and Clinic.
+- custom-form-logic.md: The designed forms' Shown-when rules, steps with progress and payment step as one feature: what binds all three, which questions were decided (#5035), where each part is described
+- custom-form-mails.md: The e-mails of a submitted custom form in one function (pg_cf_form_mails_send()), held back while a fee is owed and sent when the record is marked paid (FL5b)
 - custom-form-model.md: custom_form widget model: controls are the fields (no field list), column sources, props._cf record, form_source page vs existing.
 - custom-form-options-and-rules.md: custom_form options live on the element, page_type is not the form marker (pg_form_page_sql), validation, confirmation, email body, CAPTCHA, migration, legacy field screens read-only.
-- custom-form-payment.md: Fee of a designed form (plan designer-form-logic FL4-FL6): the setting's shape and store, pg_form_fee() rules, the fee order, forms.order_id and paid_at, the Payment rows
+- custom-form-payment-staff.md: Paid state of a designed form's record for staff and integrations: the badge, the order link, Record an offline payment, the API fields, form.paid
+- custom-form-payment-step.md: The payment step of a designed form on the site (FL5, #6368): choices, pg_payment_box(), submit, the fee order's completion, 3-D Secure return, the payment alone on retry
+- custom-form-payment.md: Fee of a designed form: the setting's shape and store, pg_form_fee() rules, the fee order, forms.order_id and paid_at
 - custom-form-render.md: custom_form visitor-facing behaviour: hide-from-visitor (office_use_only) and pg_cf_apply_field_bindings render rules (name/id, select options, required, defaults).
 - custom-form-rich-text.md: Rich-text text areas on designed forms: three-state _cf.wysiwyg, one editor per live page, aria-required, filtered prefill, rich seeding, open items.
 - custom-form-settings-shortcut.md: Designer custom_form: "Form settings" shortcut from any node inside the widget, new page form seeded with the site address, silent-form warning in the panel and after publish.
@@ -107,12 +112,15 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - data-binding-to-content.md: Bind data to content elements (span, h1-h6, p, a, img), never structural table tags; tooling, the text slot a binding fills inside markup, and the characters a bound field name keeps.
 - design-asset-records.md: The design's CSS/JS asset rows (style_custom_css / style_custom_js JSON): module scripts, the per-page `pages` list and its tab:/key: references, where they are resolved, the Bootstrap Icons sheet.
 - design-framework.md: A visual design's framework (style.style_framework, bootstrap5 or custom): the pg_design_frameworks() registry, written once at creation, what a custom design does without, the new-design question.
+- design-template-appstudio.md: Mobile App Developer template (pinegrap-appstudio): apps and release notes as collections, support and project requests followed from the account, beta sign-up, pma- look, tests.
 - design-template-bookshop-events.md: Bookshop template (1.3.0) events as records of a collection form, the Café way: New Event page, sample events dated from today, home and events lists from today on, no fixed dates
 - design-template-cafe.md: Cafe and Clinic templates: event weekdays, price hint, rating numbers, guests pattern, consent privacy link, subject dates, booking links that fill the form.
 - design-template-comment-labels.md: Which comments labels the design templates set (singular nouns; `reply` on the forum topic and every conversation page, tested) and why not the verb key `Reply` (#3453, #4584).
 - design-template-courses.md: Online Courses template (pinegrap-courses): courses as products granting a private folder, lessons as pages, membership library, enrolment and assignments, what is not built, pco- look, tests.
+- design-template-dealership.md: Car Dealership template (pinegrap-dealership): vehicles as a collection with filters, test drive, trade-in and finance requests followed from the account, pdl- look, tests.
 - design-template-events-words.md: Events template wording: "Events" is Etkinlikler (1.0.3, #4810), bilet, oturum dizisi, own keys for registration pages (1.0.1, #4825), ticket breadcrumb Biletler (1.0.4), heading order (1.0.2, #4824).
 - design-template-events.md: Events and Conferences template (pinegrap-events): its parts folder, events and registrations as form records, tickets as shop products, what is not built, the pev- look, tests.
+- design-template-form-fees.md: Fees and branches of the template forms (FL7): hidden fee products in the catalog, {{product:<key>}}, the Events optional fee, Cafe deposit, Courses enrolment fee, Cafe and Clinic shown_when
 - design-template-forum-blog.md: Forum template 1.3.0: the standard blog pages in the forum's look (blog, blog_post, blog_new, home_posts), the Blog Posts form and its samples, the post comments thread
 - design-template-forum-decisions.md: Owner decisions behind the forum template (2026-10-23): general features only, replies as comments, what is not built, and the general features it was built on, with their PRs
 - design-template-forum-layout.md: Forum template look: pf- User Styles, Figtree and JetBrains Mono, tint after card, count strips, vanishing bands, raised badge and byline links, reply cards, focus rings, light e-mail frames.
@@ -121,12 +129,15 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-forum-replies.md: Forum template on the Comments widget (1.1.0, board list 1.2.0): seven comments widgets, why explicit trees, pages that keep the block, e-mails, page settings, older sites, quirks, checks
 - design-template-forum.md: Community Forum & Docs template (pinegrap-forum): what it ships, its three forms, the live rules, archives and feeds, replies on the Comments widget and their names, Turkish words.
 - design-template-hello.md: Hello template 2.6.0: threads and the reply e-mail card on the Comments widget, product reviews, the Favourites page and its shop-only links, Google Reviews beside the testimonials
+- design-template-hotel.md: Hotel template (pinegrap-hotel): rooms as a collection with rates, booking requests and event enquiries followed from the account, gift vouchers in the shop, pht- look, tests.
+- design-template-launch.md: Phone Launch Site template (pinegrap-launch): the Orbit in three models, specs and compare from one data file, a buy page that stands without the shop, trade-in and support requests, plx- look, tests.
 - design-template-law.md: Law Firm template (pinegrap-law): practice areas, lawyers, results, fees, a consultation request with a conflict check followed from the account, careers, no shop, plw- look, tests.
 - design-template-magazine-a11y.md: Magazine accessibility: ink focus rings on links, buttons, fields and the shelf, headings that never repeat, e-mail frames light in the dark theme, the core items left open.
 - design-template-magazine-issues.md: Magazine issues: office pick list with the stored default Online only, ?issue= contents, index of live Editor's letters, value links, plain names, launching one.
 - design-template-magazine-layout.md: Magazine look and shapes: pm- User Styles, fonts and serif body, color-mix() paper, rust accent, sticky pull quote, drop cap resets, vanishing bands, preview placeholders.
 - design-template-magazine-publishing.md: Magazine template publishing: the shared live rule and leak closures, the desk lists, letter names (the contact's display name), author HTML and photos, the staff note's rules for renaming fields.
 - design-template-magazine.md: Long-Read Magazine template (pinegrap-magazine): what it ships, the contract shared with news, what it adds or drops, samples, no "haber", platform limits.
+- design-template-market.md: Marketplace template (pinegrap-market): makers as a Sellers collection beside the store's catalog, one cart, maker applications and order help followed from the account, pmk- look, tests.
 - design-template-news-layout.md: News template page shapes: the lead grid, most read in the article view, newsletter field order, one tip call, band padding, p titles in the drawer, whole tips, byline links.
 - design-template-news-publishing.md: News template publishing: who may submit, the three-row live rule, scheduling and search, where a draft could leak, search noise, structured data and feeds, author HTML, signed-in tips, e-mails.
 - design-template-news.md: News Portal template (pinegrap-news): what it ships, the Articles form contract, the look, ?r= addresses, sample dates, preview, platform limits.
@@ -136,6 +147,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-salon-words.md: Beauty Salon template wording (1.1.1, #4807): hizmet and randevu, own keys for the booking field, staff shortcut and statuses, e-posta page names; sample days and times fit the opening hours (#4944).
 - design-template-salon.md: Beauty Salon template (pinegrap-salon): its parts folder, the booking on the Clinic's request pattern, what is not built, the psl- look, tests.
 - design-template-shop-comments.md: Shop templates (store, boutique, bookshop 1.2.0, hello 2.6.0) on the Comments widget: post_comments, conversation_replies, the reply e-mail card before the System region, why explicit trees
+- design-template-social.md: Social Community template (pinegrap-social): member photo posts and profiles as collections, comments, tags, saved posts, reports and the live rule, psc- look, tests.
 - design-template-text-contrast.md: Text colours and names in the hello-pinegrap and pinegrap-playground templates: no faded text, no primary text on grey sections, one owner name, Parola wording.
 - design-template-threads.md: Café, Clinic, Playground and Salon 1.1.0 comment threads on the Comments widget, the comment e-mail cards before the System region, Google Reviews beside the sample testimonials
 - design-templates-catalog-and-look.md: A design template's own data and looks: catalog and contact groups made on opening, their placeholders, suggested look and palette, highlights, gallery drawing, dark sections, ratio classes.
@@ -270,7 +282,9 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing
 - layout-widget-offer.md: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
 - legacy-region-preview.md: The canvas preview of a classic page's system region drawn by its custom layout (designer/legacy_region_preview): who sees it, the markers, the background render, read only, when it is asked again
-- legacy-to-designer-report.md: The "Move to the visual designer" readiness report (LD1): what it lists per classic style, how the state is worked out, what it does not do
+- legacy-to-designer-bulk-run.md: The bulk move of classic styles to the visual designer (LD2): the decision, the dry run on the report screen, the server twins of the editor steps the run uses
+- legacy-to-designer-report.md: The "Move to the visual designer" readiness report (LD1, #6219): what it lists per classic style, its state, the "What stays classic" card (#6488), the rules the whole move keeps
+- legacy-to-designer-run.md: The run of the bulk move to the visual designer (LD2b, #6421): Convert under a dry run, the steps per style, cursor, lock, screen requests, job tick, kept reports, what a resume skips
 - link-button-inline-children.md: Spans and icons inside a link or button: two ways to hold them, why an inline edit keeps a link's markup, which drops a button accepts, where the label prints beside children.
 - link-target-in-attrs.md: A link's window and rel: props first, _attrs when the prop is empty (link and button link, server and canvas alike), the selection-time fold, starter trees and templates, page bodies drawn before
 - list-search-sort-price-forms.md: List widget search, sort and price forms (server box, catalog's bound form) and page links: accessible names, translated words, no router page name in hidden inputs or links (#4457, #4538).
@@ -298,6 +312,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - page-experiments-serving.md: Serving a page experiment variant: body swap, the bucket at render and in the router, one cache copy per variant, private headers, views into experiment_hourly
 - page-experiments-sheet.md: The Experiments sheet (page_experiments.php, PX4 #6184): set-up with a variant draft, start/pause/end, Publish the winner through the page save, the chips, the holds on a variant draft
 - page-html-rebuild.md: Rebuild Page HTML (pg_designer_rebuild_page_code()): every designer page drawn again from its stored tree; when it runs, what stays, session cursor; per-body once-assets
+- page-link-by-id.md: A link outside a widget kept by page id (__page_link, #6233): fallback href plus data-pg-page-link in the saved body, the current address put in by get_page_content(), '#' inside a widget
 - page-link-fixed-text.md: A value of a link to another page that is fixed text, the same in every record ({name, text} in _bindParams.href.params): spec, address, list rows, the panel's Fixed text row
 - page-link-list-rows.md: A page link (__page_link) drawn in a list row sends values of the row: row params, props._pgRowLinks, the pgpl placeholder, stage 2 fill, settle, the panel's row group (W15, #1734)
 - page-link-record-address.md: A record's address (form_item_view) sent by a link to another page is the whole address with the site's origin, so it can be pasted into a browser (#4878); the path when longer than 100 characters.
@@ -320,8 +335,11 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - product-questions-output.md: Product questions outside the widget: the asker's mail when answered, API kind and answer_of, the Question/Answer JSON-LD on the Product, the templates' questions widget
 - product-questions.md: Product questions on the comments system: kind question/answer and answer_of, the widget Shows choice and its own claim, the answer box, the unanswered filter
 - prototype-hotspots.md: The Prototype view's hotspot collector (assets/js/pg_proto_hotspots.js, window.PGProtoHotspots): which nodes are hotspots, shared frames, the map read's request, the marks, the layout
+- prototype-links-in-code.md: Where a design's links sit in the code, page-name hrefs and renames, the resolver, editor state, rights and Publish: what the Prototype view reads
 - prototype-map-read.md: The Prototype view's server read (api.php designer prototype_map, includes/fn/prototype_map.php): what it is asked, what it answers, how hidden pages stay hidden
 - prototype-places.md: Where the Prototype view keeps a moved frame or chip: frames shared on the design in the tab layout's proto (#6232), the rest per browser; the twin normalisers
+- prototype-thumbnails.md: The Prototype view's frame thumbnails: PGProtoHotspots.sketch() bands from a tree, sketchBoxes(), the 84-high strip above a frame's rows, how it is drawn
+- prototype-view-decisions.md: What was decided for the designer's Prototype view (owner 2026-10-24, #2446, 2026-11-01): where it lives, hrefs by name or page id, who draws, read-only sources, breakpoint, how an arrow saves
 - prototype-view.md: The designer's Prototype view (_sdProtoOpen()): toolbar toggle, frames and chips on the graph canvas core, row clicks, arrows drawn by hand, where positions are kept
 - record-media-field-share-image.md: A form's RSS media upload opens with the record; og:image comes from the form's share image field, then the media field, and skips an upload an anonymous visitor cannot open (#2191, #2174, #2891)
 - record-value-page-links.md: A form list or detail link opening another page with the record's values in its address (__page_link + _bindParams.href): shape, pre-pass, escaping, values, Publish, export, editor, code view
@@ -330,6 +348,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - region-node-to-widget.md: "Make designable" on a classic menu, menu sequence, ad or tag cloud region node: the widget kind and setting per type, where the widget goes, what stays the same.
 - responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, widget pass, variant swap, version stamp, e-mail strip (loading order: image-loading)
 - rich-text-profiles.md: pg_sanitize_rich_text() profiles: visitor (default, site output) drops class, layout styles and outside images and marks links ugc; staff keeps the shared allow-list; which callers pass staff.
+- search-index-item-parts.md: Parts inside a search index item (page render, events, classic records, a host's records): budget after each part, pause and resume, the part marker, what a tick that died keeps
 - search-index-panel-request.md: How update_search_index.php guards a panel request (POST with the form token, #5819) and closes the session before drawing pages (#5817)
 - search-index-resumable-pass.md: update_search_index.php as a resumable pass (stages, cursor file, skip rule, run budgets, panel window requests, sweep against the pass start) and the hourly delta run between full passes
 - search-index-run-failures.md: How update_search_index.php survives a bad page, event, record or file (isolated render, old row kept) and reports failures and an early stop in the Site Log
@@ -371,6 +390,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - tag-cloud-widget.md: Tag Cloud widget (tag_cloud_region): the classic <tcloud> region in the designer; which keywords, their order, size and weight, the search links, translation, what is left out.
 - text-inner-elements.md: Elements written inside a heading, paragraph, link or span text (span, strong, a, badge, icon) are picked by themselves on the canvas and in the overview, and edited through the text.
 - token-dictionary.md: System widget token namespaces (bare vs __ prefix), shared cart vocabulary, where token names may appear, old names kept as aliases, raw-HTML key escaping, row id uniquify, check_bindings.php.
+- tree-search.md: Site search (simple mode) and Find & Replace read designer page trees and shared component trees: which texts, how a replace writes a tree, what is left out
 - unread-segment-404.md: A path segment after the page name that no widget reads (/about/xyz) answers 404 into the 404 log; which widgets mark it read and where the check runs (#4826)
 - user-styles-card-edits.md: How the Styles panel's User Styles cards read and edit the User Styles text (assets/js/pg_user_styles.js): which rules are listed, edits in place, Create as one undo step
 - widget-accessible-names.md: Names and keyboard use in system widget output: CAPTCHA answer id and label, no empty liveform ids, product carousel link names, the login region's account toggle as a button.

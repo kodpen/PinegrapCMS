@@ -119,7 +119,11 @@ if (!$_POST) {
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $invoice_id . '" />
                 ' . erp_invoice_form_cards($liveform, array('keep_account_id' => (int) $invoice['account_id'], 'lines' => erp_invoice_form_lines($liveform, $stored_rows))) . '
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                ' . ((defined('USER_ERP_READONLY') && USER_ERP_READONLY)
+                    // The read-only accountant reads the draft; saving, issuing
+                    // and deleting it would only be refused after the press.
+                    ? ''
+                    : '<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             <button type="submit" name="erp_action" value="draft" data-pg-save-shortcut class="btn my-1 btn-outline theme-secondary"><i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save Draft') . '</span></button>
@@ -127,7 +131,7 @@ if (!$_POST) {
                             <button type="submit" name="erp_action" value="delete" class="btn my-1 btn-outline theme-warning" data-confirm-content="' . lang('Delete this draft? It has no number and nothing has been posted, so nothing is reversed.') . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Delete Draft') . '</span></button>
                         </div>
                     </div>
-                </nav>
+                </nav>') . '
             </form>
             ' . erp_account_quick_modal() . '
         </div>

@@ -14,7 +14,7 @@ description: Decisions behind the page speed figures and the AI visibility view 
 
 ## What binds the AI figures?
 - Only requests the firewall let through are counted; a verified AI user fetcher or AI search indexer under its catalogue name, an unverified AI user agent under the bot name `unverified`, a count only (decision 2 of #5040; `ai-fetch-counter.md`).
-- AI assistant visits come from the referrer host list `pg_visitor_ai_hosts()` until the Visitors overview's `ai` channel (plans/visitors-overview V4) replaces it.
+- AI assistant visits come from the referrer host list `pg_visitor_ai_hosts()`; the overview's `ai` channel (`visitor-channel-rule.md`) matches the same list.
 
 ## What holds for both?
 - `page_vitals_hourly` and `ai_fetch_daily` are derived data: a wrong bucket is truncated and rebuilt by the next hours, never fixed in place (`visitor-rollup-consistency.md`). Both keep 400 days, swept by the general job (decision 1 of #5040).

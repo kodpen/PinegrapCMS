@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-canvas-leave-focus
-description: Flow canvas: one keepalive save as the page is left (state.leaveSent) and the box's focus after C › Add the arrow (#4318, #4319, PR #4322)
+description: Flow canvas: an untouched blank canvas binned when left, one keepalive save as the page is left (state.leaveSent) and the box's focus after C › Add the arrow (#4318, #4319, PR #4322)
 ---
 
 ## Why did leaving the page send the save twice?
@@ -10,6 +10,9 @@ description: Flow canvas: one keepalive save as the page is left (state.leaveSen
 - A keepalive save rejected with no server answer (`error.field` undefined) stores the `state.changes` it carried in `state.leaveSent` and shows no error. `saveOnLeave()` (`beforeunload`, `visibilitychange`, `pagehide`) skips while `state.leaveSent === state.changes`; a new change sends again.
 - A page that stays after all (the promise rejected with no answer) keeps the changes dirty and saves them after `SAVE_DELAY` like any unsent change. If that keepalive did reach the server, the retry meets a 409 and "Load it again"; in practice a page that stays gets the keepalive's answer.
 - Any save, sent or answered, resets `leaveSent` to -1.
+
+## What happens to a blank canvas that is left untouched?
+- New flow › Blank canvas creates the row at once (`ws_flow_create`). `leaveFlow(next)` calls `dropUntouched(next)`: a flow the person manages, still a draft with no version, named exactly `fl_untitled` and with no box, arrow or note is binned (`ws_flow_bin`, silent) and taken out of the list. `next` is the flow opened instead (`open(id)`, `showGallery(into)`), never dropped. Before, every New flow tried and left added an empty Untitled row. Closing the browser tab still keeps it.
 
 ## Where does the focus go after C › Add the arrow?
 - `askConnect()` draws the arrow at once, but the box is redrawn while the `#ws-ask` dialog holds the page inert and its close gives the focus back to the removed box (#4319). The box is selected and focused once the dialog's `hidden` has come (and the answer), so Add and Cancel both end on the box.

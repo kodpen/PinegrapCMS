@@ -561,6 +561,11 @@ function submit_order($type) {
             } else {
                 $tax_exempt = 0;
             }
+
+            // An EU VAT id typed for a member state other than the site's is
+            // checked against VIES. When the answer changes the tax, the total
+            // check below sends the customer back to the new total.
+            $tax_exempt = pg_vat_checkout_apply($liveform, $tax_exempt, $_SESSION['ecommerce']['order_id'] ?? 0);
             
             // get old address verified value from the database
             $query = "SELECT billing_address_verified FROM orders WHERE id = ?";

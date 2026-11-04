@@ -9,7 +9,7 @@ description: The derived value box of a flow (kind value, T3, PR #2701): its all
 
 ## Which rules?
 - `ws_flow_derived_rules()` (rule => type): compare (number: 1 when it holds, else 0; `op` of `ws_flow_derived_operators()`, as a value condition compares: texts without case or Turkish i (`ws_fold()`), numbers by value, gt/gte/lt/lte only between numbers), join (text: a and b with a space, trimmed), add, subtract (number), round (number, `places`), date_format (text, `format` of `ws_flow_derived_formats()`), add_days (text, b a whole number, at most 3650).
-- Numbers are written by `ws_flow_derived_number()` (no trailing zeros, six places at most). Dates are read by `ws_flow_derived_date()`: `Y-m-d`, with `H:i(:s)`, or a Unix time in the site's time zone; words such as "next monday" are not dates (no `strtotime()`). Computed with `gmmktime()`/`gmdate()` on the wall-clock parts.
+- Numbers by `ws_flow_derived_number()` (no trailing zeros, six places at most). Dates by `ws_flow_derived_date()`: `Y-m-d`, with `H:i(:s)`, or a Unix time in the site's zone; no words (no `strtotime()`); `gmmktime()`/`gmdate()` on the wall-clock parts.
 - An input the rule cannot read gives an empty value, never an error.
 - Record field was dropped: it reads the database, so the box would not be pure.
 
@@ -18,17 +18,17 @@ description: The derived value box of a flow (kind value, T3, PR #2701): its all
 - Worked out each time a reader runs; no cache, no row.
 
 ## How long can a derived value be?
-- At most `WS_FLOW_DERIVED_VALUE_LENGTH` (4000) characters (#3367). `ws_flow_derived_value()` cuts both inputs and the join there; `ws_flow_derived_fill()` gives each placed value only the room left, then cuts the input there. `mb_substr()`: never mid-UTF-8.
-- Why: one input may cite a value many times (about 58-fold per join), so three chained joins exhausted `memory_limit` in `ws_tick` or a job: the box stayed `running`, the rest of the tick was skipped. Role-3 members build these boxes (#3345).
-- Why 4000: the longest text a message box keeps (`ws_flow_lines(..., 4000)`), so the common landing place gets it whole.
-- Landing (#3754): mail, digest, webhook, summary title cut to `ws_scheduled_text_limits()` (`ws_scheduled_fill_cut()`). Cells: the store refuses; MCP args: JSON.
+- At most `WS_FLOW_DERIVED_VALUE_LENGTH` (4000) characters (#3367): `ws_flow_derived_value()` cuts inputs and join, `ws_flow_derived_fill()` gives each placed value the room left (`mb_substr()`).
+- Why: an input may cite a value many times (about 58-fold per join); three chained joins exhausted `memory_limit` in `ws_tick`, the box stuck `running` (#3345). 4000 is the longest text a message box keeps.
+- Landing (#3754): mail, digest, webhook, summary title cut by `ws_scheduled_fill_cut()`.
 
 ## What does the check say?
 - `ws_flow_derived_problems()`: no `a`; no `b` for a rule of two inputs (`ws_flow_derived_two_inputs()`); add_days with a written b that is not a whole number. `ws_flow_derived_loops()`: a box reading itself through derived boxes (`bad_config`).
-- The box's own references are checked for the box and the field only, never "does not come before" nor skippable: it has no place among the arrows.
+- Its own references: box and field only, never "comes before" or skippable (no place among the arrows).
 - A box reading it is checked against what it reads, at any depth through derived boxes (`ws_flow_derived_sources()`): a box not before the reader is `bad_reference`, one that may be skipped `skippable_reference` (warning), both naming the derived box.
 
 ## And on the canvas?
 - `KINDS.value` (`bi-calculator`, dashed border like constants), palette entry. `derivedFields()`: rule, "Value it works from" and the second value as value fields (chips, threads), comparison, decimal places, date shape. `derivedRule()` reads `FL.derived` (`ws_flow_derived_lists()`).
-- `valueGroups()` of a derived box offers every other box, none marked skipped; `boxValues()` gives `value` of its rule's type; `openFields()` drops b for a one-input rule.
-- Tests: `tests/workspace_flow_values_test.php`, `test_workspace_flows_canvas_derived_box_reads_any_box`.
+- `valueGroups()` of a derived box resolves every other box (chips, threads), none skipped. "Add value" and a dropped thread offer only `derivedOffer()`'s (#6447): boxes before every reader (through derived boxes too), starts and pure boxes, never a derived box reading it; any while unread.
+- `boxValues()` gives `value` of its rule's type; `openFields()` drops b for a one-input rule. A value's chip wraps inside its field (`.wsf-values .wsf-chip`, #6447): a long one had its × beyond the side pane.
+- Tests: `tests/workspace_flow_values_test.php`, `test_workspace_flows_canvas_derived_box_reads_any_box`, `tests/workspace_flow_derived_offer_test.php`.

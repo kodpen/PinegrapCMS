@@ -557,7 +557,78 @@
         };
     }
 
+    // A month calendar drawn open in `el`, where only the days given can be
+    // picked (the booking widget's free days).
+    //   options.month          'YYYY-MM' it opens on
+    //   options.days           ['2026-11-04', …] the days that can be picked
+    //   options.locale, options.firstWeekday, options.dateMin, options.dateMax
+    //   options.onPick(iso)    a day was clicked
+    //   options.onMonth(month) another month is shown ('YYYY-MM')
+    // Returns { calendar, days(list), destroy() }; days() swaps the days that
+    // can be picked and keeps the month shown.
+    function month(el, options) {
+        var o = options || {}, target = document.createElement('div'), theme = themeOf(el), calendar = null;
+        el.appendChild(target);
+        var shownMonth = function (self) {
+            return self.context.selectedYear + '-' + pad(self.context.selectedMonth + 1);
+        };
+        var moved = function (self) {
+            if (o.onMonth) {
+                o.onMonth(shownMonth(self));
+            }
+        };
+        var calendarOptions = {
+            locale: o.locale || 'en',
+            firstWeekday: o.firstWeekday || 0,
+            selectionDatesMode: 'single',
+            enableDateToggle: false,
+            disableAllDates: true,
+            enableDates: o.days || [],
+            selectedTheme: (!theme || theme === 'auto') ? 'system' : theme,
+            themeAttrDetect: '[data-bs-theme]',
+            onClickDate: function (self) {
+                var dates = self.context.selectedDates || [];
+                if (dates.length && o.onPick) {
+                    o.onPick(dates[0]);
+                }
+            },
+            onClickArrow: moved,
+            onClickMonth: moved,
+            onClickYear: moved
+        };
+        if (settings().labels) {
+            calendarOptions.labels = settings().labels;
+        }
+        if (o.dateMin) {
+            calendarOptions.dateMin = o.dateMin;
+        }
+        if (o.dateMax) {
+            calendarOptions.dateMax = o.dateMax;
+        }
+        assign(calendarOptions, monthOf(o.month ? o.month + '-01' : ''));
+        calendar = new window.VanillaCalendarPro.Calendar(target, calendarOptions);
+        calendar.init();
+        return {
+            calendar: calendar,
+            days: function (list) {
+                calendar.set({
+                    enableDates: list || [],
+                    disableAllDates: true,
+                    selectedYear: calendar.context.selectedYear,
+                    selectedMonth: calendar.context.selectedMonth
+                });
+            },
+            destroy: function () {
+                calendar.destroy();
+                if (target.parentNode) {
+                    target.parentNode.removeChild(target);
+                }
+            }
+        };
+    }
+
     window.pgDateTime = {
+        month: month,
         order: dateOrder,
         parseDate: parseDate,
         formatDate: formatDate,

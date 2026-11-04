@@ -120,9 +120,10 @@ function pg_dashboard_v2_card_goals($user, $period, $compare)
         'labels'  => array(
             'none'   => lang('No goals yet. Set one and see how far you are.'),
             'add'    => lang('Add goal'),
-            'name'   => lang('Goal'),
+            'name'   => lang('Goal name'),
+            'named'  => lang('Please enter a name.'),
             'metric' => lang('What it counts'),
-            'target' => lang('Target'),
+            'target' => lang('Target value'),
             'span'   => lang('Period'),
             'week'   => lang('This week'),
             'month'  => lang('This month'),

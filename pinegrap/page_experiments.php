@@ -58,25 +58,43 @@ if (!pg_experiment_sheet_ready()) {
 }
 
 $live = pg_experiment_sheet_live_page($page_id);
+$is_post = ($_SERVER['REQUEST_METHOD'] === 'POST');
+$action = ($is_post && isset($_POST['action']) && is_string($_POST['action'])) ? $_POST['action'] : '';
 
-if (!$live) {
+// An experiment whose page left the site (Recycle Bin, deleted) can still be
+// paused, ended or deleted, so its variant draft is not held for ever; the
+// moves that need the live page (start, publishing a variant) refuse with
+// their own message.
+if (!$live && (!$is_post || ($action === '') || ($action === 'create'))) {
     $stop(lang('Experiments run on a page of a visual design that is on the site. Drafts and pages in the Recycle Bin have none.'));
 }
 
-if (check_edit_access($live['page_folder']) == false) {
+$page_row = $live ? $live : db_item("SELECT page_id, page_name, page_folder FROM page WHERE page_id = '" . (int) $page_id . "' LIMIT 1");
+
+if (is_array($page_row) && (check_edit_access($page_row['page_folder']) == false)) {
     log_activity(lang('access denied because user does not have access to modify folder'));
     output_error(lang('Access denied.'));
 }
 
-$crumb = $live['page_name'];
-$heading = h(lang(array('string' => 'Experiments: {var:1}', 'vars' => $live['page_name'])));
+$page_label = is_array($page_row) ? (string) $page_row['page_name'] : (string) $page_id;
+
+if ($live) {
+    $crumb = $live['page_name'];
+    $heading = h(lang(array('string' => 'Experiments: {var:1}', 'vars' => $live['page_name'])));
+}
 
 // ---- Actions ----------------------------------------------------------------
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($is_post) {
     validate_token_field();
 
-    $action = isset($_POST['action']) && is_string($_POST['action']) ? $_POST['action'] : '';
+    // The results screen (experiments.php) posts its buttons here and is
+    // shown again after the change.
+    $back = $self;
+
+    if ((($_POST['return'] ?? '') === 'results') && isset($_POST['experiment_id']) && is_scalar($_POST['experiment_id']) && ((int) $_POST['experiment_id'] > 0)) {
+        $back = 'experiments.php?id=' . (int) $_POST['experiment_id'];
+    }
 
     if ($action === 'create') {
         $liveform->add_fields_to_session();
@@ -96,23 +114,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $liveform = new liveform('page_experiments');
                 $liveform->add_notice(lang('The experiment is set up. Edit the variant draft, then start the experiment.'));
             } else {
-                $liveform->mark_error('name', $made['error']);
+                $liveform->mark_error((($made['field'] ?? '') !== '') ? $made['field'] : 'name', $made['error']);
             }
         }
 
-        go(PATH . SOFTWARE_DIRECTORY . '/' . $self);
+        go(PATH . SOFTWARE_DIRECTORY . '/' . $back);
     }
 
     $experiment = pg_experiment_sheet_get(isset($_POST['experiment_id']) && is_scalar($_POST['experiment_id']) ? (int) $_POST['experiment_id'] : 0);
 
-    if (!$experiment || ((int) $experiment['page_id'] !== (int) $live['page_id'])) {
+    if (!$experiment || ((int) $experiment['page_id'] !== (int) $page_id)) {
         $liveform->add_error(lang('The experiment was not found.'));
-        go(PATH . SOFTWARE_DIRECTORY . '/' . $self);
+        go(PATH . SOFTWARE_DIRECTORY . '/' . $back);
     }
 
     if (!in_array($action, pg_experiment_sheet_actions($experiment['status']), true)) {
         $liveform->add_error(lang('The experiment cannot make that change now.'));
-        go(PATH . SOFTWARE_DIRECTORY . '/' . $self);
+        go(PATH . SOFTWARE_DIRECTORY . '/' . $back);
     }
 
     if ($action === 'delete') {
@@ -130,19 +148,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($done['ok']) {
-        log_activity(lang(array('string' => 'experiment "{var:1}" on page {var:2}: {var:3}', 'vars' => array($experiment['name'], $live['page_name'], $action))));
+        log_activity(lang(array('string' => 'experiment "{var:1}" on page {var:2}: {var:3}', 'vars' => array($experiment['name'], $page_label, $action))));
         $liveform->add_notice($notice);
     } else {
         $liveform->add_error($done['error']);
     }
 
-    go(PATH . SOFTWARE_DIRECTORY . '/' . $self);
+    go(PATH . SOFTWARE_DIRECTORY . '/' . $back);
 }
 
 // ---- Experiments ------------------------------------------------------------
 
 $status_labels = array(
-    'draft' => lang('Set up'),
+    'draft' => lang('Being set up'),
     'running' => lang('Running'),
     'paused' => lang('Paused'),
     'ended' => lang('Ended'),
@@ -163,7 +181,7 @@ $action_buttons = array(
 );
 
 $action_labels = array(
-    'start' => lang('Start'),
+    'start' => lang('Start the experiment'),
     'pause' => lang('Pause'),
     'end' => lang('End without a winner'),
     'delete' => lang('Delete'),
@@ -210,10 +228,10 @@ foreach ($experiments as $experiment) {
         $rows .= '<tr>
             <td class="align-middle text-uppercase fw-bold">' . h($key) . '</td>
             <td class="align-middle">' . $name . $winner . '</td>
-            <td class="align-middle text-end">' . (int) $variant['weight'] . '%</td>
+            <td class="align-middle text-end">' . h(pg_experiment_percent((int) $variant['weight'], 0)) . '</td>
             <td class="align-middle text-end">' . $views . '</td>
             <td class="align-middle text-end">' . $goals . '</td>
-            <td class="align-middle text-end">' . ($views > 0 ? h(number_format(100 * $goals / $views, 1)) . '%' : '&ndash;') . '</td>
+            <td class="align-middle text-end">' . ($views > 0 ? h(pg_experiment_percent(100 * $goals / $views, 1)) : '&ndash;') . '</td>
             <td class="align-middle text-end">' . $publish . '</td>
         </tr>';
     }
@@ -242,18 +260,14 @@ foreach ($experiments as $experiment) {
         $dates[] = lang(array('string' => 'Ended {var:1}', 'vars' => get_relative_time(array('timestamp' => (int) $experiment['ended_at']))));
     }
 
-    $goal = isset($goal_labels[$experiment['goal_kind']]) ? $goal_labels[$experiment['goal_kind']] : '';
-
-    if ($experiment['goal_target'] !== '') {
-        $goal .= ' (' . $experiment['goal_target'] . ')';
-    }
+    $goal = pg_experiment_goal_text($experiment, $goal_labels);
 
     $theme = pg_experiment_chip_theme($status);
 
     $output_experiments .= '
             <div class="card my-7">
                 <div class="card-header d-flex flex-wrap align-items-center gap-3">
-                    <span class="fw-bold">' . h($experiment['name']) . '</span>
+                    <a class="fw-bold text-break min-w-0" href="' . h('experiments.php?id=' . (int) $experiment['id']) . '">' . h($experiment['name']) . '</a>
                     <span class="badge ' . ($theme !== '' ? 'theme-' . $theme : 'bg-1 fg-body border') . '">' . h($status_labels[$status]) . '</span>
                     <span class="small fg-secondary">' . h(lang(array('string' => 'Goal: {var:1}', 'vars' => $goal))) . '</span>
                     <span class="small fg-secondary">' . implode(' &middot; ', $dates) . '</span>
@@ -262,7 +276,7 @@ foreach ($experiments as $experiment) {
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-sm mb-0">
-                            <thead><tr><th>' . h(lang('Variant')) . '</th><th>' . h(lang('Page')) . '</th><th class="text-end">' . h(lang('Share')) . '</th><th class="text-end">' . h(lang('Views')) . '</th><th class="text-end">' . h(lang('Conversions')) . '</th><th class="text-end">' . h(lang('Rate')) . '</th><th></th></tr></thead>
+                            <thead><tr><th>' . h(lang('Variant')) . '</th><th>' . h(lang('Page')) . '</th><th class="text-end">' . h(lang('Share of visitors')) . '</th><th class="text-end">' . h(lang('Views')) . '</th><th class="text-end">' . h(lang('Conversions')) . '</th><th class="text-end">' . h(lang('Rate')) . '</th><th></th></tr></thead>
                             <tbody>' . $rows . '</tbody>
                         </table>
                     </div>
@@ -312,10 +326,10 @@ if (!$has_open) {
                                 <label for="goal_kind" class="form-label">' . h(lang('Counts as a conversion')) . '</label>
                                 ' . $liveform->output_field(array('type' => 'select', 'name' => 'goal_kind', 'id' => 'goal_kind', 'options' => $goal_options, 'class' => 'form-control')) . '
                             </div>
-                            <div class="col-12 md:col-6">
-                                <label for="goal_target" class="form-label">' . h(lang('Goal name or page id')) . '</label>
+                            <div class="col-12 md:col-6" id="goal_target_field">
+                                <label for="goal_target" class="form-label"><span data-goal-kind="click">' . h(lang('Goal name')) . '</span><span data-goal-kind="page">' . h(lang('Goal page id')) . '</span></label>
                                 ' . $liveform->output_field(array('type' => 'text', 'name' => 'goal_target', 'id' => 'goal_target', 'maxlength' => '64', 'class' => 'form-control', 'aria-describedby' => 'goal_target_help')) . '
-                                <div id="goal_target_help" class="form-text">' . h(lang('For a click: the goal name set on the button or link. For another page: that page\'s id. Empty for the others.')) . '</div>
+                                <div id="goal_target_help" class="form-text"><span data-goal-kind="click">' . h(lang('The goal name set on the button or link.')) . '</span><span data-goal-kind="page">' . h(lang('The id of a page on the site, as in the pages list.')) . '</span></div>
                             </div>
                             <div class="col-12 md:col-6">
                                 <label for="weight_b" class="form-label">' . h(lang('Share of visitors who see variant B (%)')) . '</label>
@@ -324,6 +338,34 @@ if (!$has_open) {
                         </div>
                         <button type="submit" class="btn btn-solid theme-primary mt-7"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . h(lang('Set up the experiment')) . '</button>
                     </form>
+                    <script>
+                        // The goal target only means something for a click
+                        // or a page goal; its label and help follow the kind.
+                        (function () {
+                            var kind = document.getElementById("goal_kind");
+                            var field = document.getElementById("goal_target_field");
+                            var input = document.getElementById("goal_target");
+
+                            if (!kind || !field || !input) {
+                                return;
+                            }
+
+                            var sync = function () {
+                                var value = kind.value;
+                                var used = (value === "click") || (value === "page");
+
+                                field.classList.toggle("d-none", !used);
+                                input.disabled = !used;
+
+                                field.querySelectorAll("[data-goal-kind]").forEach(function (el) {
+                                    el.classList.toggle("d-none", el.getAttribute("data-goal-kind") !== value);
+                                });
+                            };
+
+                            kind.addEventListener("change", sync);
+                            sync();
+                        })();
+                    </script>
                 </div>
             </div>';
 }
@@ -337,6 +379,7 @@ echo $shell() . '
             <nav id="button_bar" class="pg-toolbar my-3" aria-label="' . h(lang('Button Bar')) . '">
                 <a class="btn btn-sm btn-text theme-secondary" href="' . h(pg_page_edit_url_by_id($live['page_id'])) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit the live page')) . '</a>
                 <a class="btn btn-sm btn-text theme-secondary" href="' . h(OUTPUT_PATH . encode_url_path($live['page_name'])) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang('View the page')) . '</a>
+                <a class="btn btn-sm btn-text theme-secondary" href="experiments.php"><i class="bi bi-bar-chart-line me-1" aria-hidden="true"></i>' . h(lang('All experiments')) . '</a>
                 <div class="pg-toolbar-grow"></div>
             </nav>
             ' . $output_form . $output_experiments . '

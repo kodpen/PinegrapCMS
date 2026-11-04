@@ -230,25 +230,29 @@
     // download link.
     function attachmentNode(attachment, hasBody) {
         if (attachment.kind === 'image') {
+            // A real link around the preview, like a file attachment, so
+            // the keyboard and screen readers can open the full image; the
+            // alt text is the link's name.
+            var imageLink = document.createElement('a');
+            imageLink.href = attachment.url;
+            imageLink.target = '_blank';
+            imageLink.rel = 'noopener';
+            imageLink.className = 'd-block';
+
             var image = document.createElement('img');
             image.src = attachment.url;
             image.alt = attachment.name || '';
             image.style.maxWidth = '100%';
             image.style.borderRadius = '10px';
             image.style.display = 'block';
-            image.style.cursor = 'pointer';
 
             if (hasBody) {
-                image.style.marginTop = '6px';
+                imageLink.style.marginTop = '6px';
             }
 
-            (function (url) {
-                image.addEventListener('click', function () {
-                    window.open(url, '_blank');
-                });
-            })(attachment.url);
+            imageLink.appendChild(image);
 
-            return image;
+            return imageLink;
         }
 
         if (attachment.kind === 'audio') {
@@ -827,6 +831,13 @@
         var snippet = document.createElement('chat-page-snippet');
         snippet.setAttribute('api-url', config.ai.api);
         snippet.setAttribute('hide-branding', 'true');
+
+        // Panel language for the snippet's texts. Its colours follow the
+        // panel theme through the --search-snippet-* properties set on the
+        // element in chat.php, not the operating system's colour scheme.
+        if (config.ai.translations) {
+            snippet.setAttribute('translations', JSON.stringify(config.ai.translations));
+        }
         frame.appendChild(snippet);
         panel.appendChild(frame);
 
@@ -1772,6 +1783,22 @@
         textarea.focus();
     }
 
+    // Close and delete leave the conversation only when the server took
+    // the request; a refusal (expired token, access denied, not found)
+    // keeps the view open and shows the server's message, like send does.
+    function leaveOnSuccess(response) {
+        if (response.status !== 'success') {
+            window.alert(response.message || STR.request_failed);
+            return;
+        }
+
+        leaveConversationView();
+    }
+
+    function alertRequestFailed() {
+        window.alert(STR.request_failed);
+    }
+
     // Closing cannot be undone (the composer goes for good), so it asks
     // first, like deleting.
     function confirmClose() {
@@ -1782,9 +1809,7 @@
         }
 
         function reallyClose() {
-            api('chat_close', { conversation_id: state.conversation.id }, function () {
-                leaveConversationView();
-            });
+            api('chat_close', { conversation_id: state.conversation.id }, leaveOnSuccess, alertRequestFailed);
         }
 
         if (typeof window.pgConfirm === 'function') {
@@ -1811,9 +1836,7 @@
         }
 
         function reallyDelete() {
-            api('chat_delete', { conversation_id: state.conversation.id }, function () {
-                leaveConversationView();
-            });
+            api('chat_delete', { conversation_id: state.conversation.id }, leaveOnSuccess, alertRequestFailed);
         }
 
         if (typeof window.pgConfirm === 'function') {

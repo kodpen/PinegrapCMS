@@ -26,4 +26,7 @@ module: sms_campaigns
 ## What does Save do when the campaign was queued meanwhile?
 - `pg_sms_campaign_save()` takes `mysqli_affected_rows()` right after its UPDATE (`WHERE status IN ('draft', 'ready')`); with no changed row it reads the status and returns `-1` unless the campaign is still `draft`/`ready` (`pg_sms_campaign_update_landed()`), before the xref rows are touched. The screen sends the user back to the list with "…before your changes could be saved. They were not saved." Before #4707 the groups of a queued campaign were rewritten and the edit reported as scheduled.
 
+## What if a field is posted as a list?
+- It counts as not given (`core/request-parameter-arrays.md`): `edit_sms_campaign.php` passes `id`, `name`, `body`, `send` and `start_at` through `pg_request_single_values()`, `pg_sms_campaign_decide()` reads only scalar fields, a group choice that is a list is `ignored`, and Delete Selected skips a nested id. Before #6093 a list `start_at` stopped the save, a list name or text was saved as "Array", and `sms_campaigns[][]=x` deleted campaign 1.
+
 Related: docs/memory/platform/sms-campaigns.md, docs/memory/ui/contact-group-shared-form.md

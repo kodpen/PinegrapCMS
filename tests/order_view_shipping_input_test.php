@@ -77,3 +77,69 @@ function test_order_shipped_quantity_refused()
 		pg_assert_false(pg_order_shipped_quantity($value, 3)['ok'], (string) $value);
 	}
 }
+
+function test_order_update_request_valid_save_passes()
+{
+	$ship_tos = array('401' => array('id' => '401', 'order_id' => '470'));
+	$items = array('510' => array('id' => '510', 'recipient_id' => '401', 'quantity' => '2'));
+	$recipients = array(array(
+		'id' => '401',
+		'ship_date' => '2026-11-03',
+		'delivery_date' => '',
+		'tracking_numbers' => array('PGTEST470A'),
+		'items' => array(array('id' => '510', 'shipped_quantity' => '2')),
+	));
+
+	pg_assert_same('', pg_order_update_request_error($recipients, '470', $ship_tos, $items), 'valid save');
+}
+
+function test_order_update_request_refuses_before_any_write()
+{
+	$ship_tos = array(
+		'401' => array('id' => '401', 'order_id' => '470'),
+		'402' => array('id' => '402', 'order_id' => '470'),
+	);
+	$items = array(
+		'510' => array('id' => '510', 'recipient_id' => '401', 'quantity' => '2'),
+		'511' => array('id' => '511', 'recipient_id' => '402', 'quantity' => '1'),
+	);
+
+	// The bad quantity sits on the second address: the first address's
+	// numbers must not be written either.
+	$recipients = array(
+		array('id' => '401', 'tracking_numbers' => array('PGTEST470A'), 'items' => array(array('id' => '510', 'shipped_quantity' => '1'))),
+		array('id' => '402', 'items' => array(array('id' => '511', 'shipped_quantity' => '5'))),
+	);
+
+	pg_assert_true(pg_order_update_request_error($recipients, '470', $ship_tos, $items) !== '', 'quantity over the order');
+}
+
+function test_order_update_request_refusals()
+{
+	$ship_tos = array(
+		'401' => array('id' => '401', 'order_id' => '470'),
+		'900' => array('id' => '900', 'order_id' => '999'),
+	);
+	$items = array('510' => array('id' => '510', 'recipient_id' => '401', 'quantity' => '2'));
+
+	$cases = array(
+		'unknown recipient' => array(array('id' => '403')),
+		'other order' => array(array('id' => '900')),
+		'bad ship date' => array(array('id' => '401', 'ship_date' => '2026-02-30', 'delivery_date' => '')),
+		'array date' => array(array('id' => '401', 'ship_date' => array('x'), 'delivery_date' => '')),
+		'unknown item' => array(array('id' => '401', 'items' => array(array('id' => '777', 'shipped_quantity' => '1')))),
+		'negative quantity' => array(array('id' => '401', 'items' => array(array('id' => '510', 'shipped_quantity' => '-1')))),
+	);
+
+	foreach ($cases as $label => $recipients) {
+		pg_assert_true(pg_order_update_request_error($recipients, '470', $ship_tos, $items) !== '', $label);
+	}
+
+	// No shipped quantity, an empty one and a stored empty date pass.
+	pg_assert_same('', pg_order_update_request_error(array(array(
+		'id' => '401',
+		'ship_date' => '0000-00-00',
+		'delivery_date' => '',
+		'items' => array(array('id' => '510'), array('id' => '510', 'shipped_quantity' => '')),
+	)), '470', $ship_tos, $items), 'nothing to refuse');
+}

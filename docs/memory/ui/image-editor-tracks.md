@@ -25,4 +25,4 @@ module: image_editor
 
 ## Where are there no tracks?
 - Under 600 px wide or under 500 px high (a phone either way up): the panel's delay and duration sliders do it (`image-editor-motion.md`).
-- The rows scroll past 150 px. Keys on the timeline are AN11's; keyframes on the tracks AN9's.
+- The rows scroll past 150 px. Keys on the timeline are AN11's; keyframe diamonds come from `Editor.trackMarks` (`image-editor-keyframes.md`).

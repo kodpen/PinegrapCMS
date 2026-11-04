@@ -1,6 +1,6 @@
 ---
 name: workspace-text-fold
-description: Turkish-aware case-insensitive search of the workspace (ws_fold(), ws_text_position(), ws_text_contains() in commands.php): what folds, who calls it, why not mb_stripos(), and ws_scheduled_compare()
+description: Turkish-aware case-insensitive search of the workspace (ws_fold(), ws_text_position(), ws_text_contains(), SQL helpers in commands.php): what folds, who calls it, why not mb_stripos()
 ---
 
 ## Why not mb_stripos() or mb_strtolower()?
@@ -14,6 +14,7 @@ They use the language-neutral Unicode mapping: `İ` becomes `i` + U+0307 and `I`
 
 ## Who calls it?
 - Ctrl+K palette (`palette.php`): `ws_palette_snippet()` cuts its excerpt at `ws_text_position()`, the channel filter (name, topic) and the people filter (name, username).
+- SQL: `ws_text_like_sql($column, $query)` (the plain `LIKE`, plus the column with `İ`/`ı` as `i` against `ws_fold()` for a word with an i letter) in `ws_message_search()` and the palette's decision and file groups; `ws_search_like_sql()` (`pg_list_search_where()`'s three alternatives) in the Decision Timeline (`ws_timeline_where()`) and My Notes (`ws_notes_filter_sql()`). "YANIT" missed "yanıt", "plani" missed "Planı" before.
 - Channel board search (`channel_board.php`): message bodies, file names, pins, thread summaries.
 - Person and department pickers (`ws_ref_search()` in `refs.php`).
 - Tables file and note import (#3747): `wtable_import.php` keys for header deduplication, the status guess and choices, status label to key, the column match and the people map (`ws_wtable_import_people()` and the person lookup fold alike). Stored values and labels keep their spelling; the checkbox words keep their own list.
@@ -22,7 +23,7 @@ They use the language-neutral Unicode mapping: `İ` becomes `i` + U+0307 and `I`
 - Comparisons (#3500, part 2 of #3400): `ws_scheduled_compare()` in `scheduled.php` folds both sides for eq and neq (`ws_fold()`) and contains (`ws_text_contains()`): the Flows condition box, the derived "compare" value, scheduled record conditions. "AYDIN" is "Aydın", "İzmir" contains "izmir". Tests in tests/workspace_flow_site_numbers_test.php.
 
 ## What folds in the browser?
-- `foldText()` in `workspace.js` (shared as `window.PGWsKit.foldText`) lowers with `toLocaleLowerCase('tr')`, then folds `ı`, the U+0307 dot and ş, ğ, ü, ö, ç, â, î, û to plain letters. A search folds both the typed text and every compared text with it: the slash-command and value pickers, the @ picker (people, departments, Claude, Pinegrap AI, MCP aliases, apps), the # picker (record prefixes, the people of a note) and the saved-reply ; list (`match()` in `workspace_replies.js`, with a local copy until the kit is shared). Fixed for the pickers in #3619. The Flows screen (`workspace_flow.js`, `K.foldText`) folds the flow list search (`listMatches()`), the palette's box search (`paletteGroups()`) and the box people filter alike (#3978: "ONAYI" missed "Teklif onayı", "BİTİŞ" missed the End box).
+- `foldText()` in `workspace.js` (`window.PGWsKit.foldText`) lowers with `toLocaleLowerCase('tr')`, then folds `ı`, the U+0307 dot and ş, ğ, ü, ö, ç, â, î, û to plain letters, on both the typed and every compared text: slash-command and value pickers, the @ picker (people, departments, Claude, Pinegrap AI, MCP aliases, apps), the # picker (record prefixes, a note's people) and the saved-reply ; list (`match()` in `workspace_replies.js`). Pickers fixed in #3619. The Flows screen (`workspace_flow.js`, `K.foldText`) folds the flow list search (`listMatches()`), the palette's box search (`paletteGroups()`) and the box people filter (#3978).
 - Never `toLocaleLowerCase()` without a locale in a search: on a non-Turkish browser `İsmail` became `i̇smail`, so "@ism" found nobody; on a Turkish browser a typed `I` became `ı`, so "@AI" missed Pinegrap AI and ";iban" missed a shortcut stored as `ıban` (`ws_lower()`).
 - Workspace Settings › MCP tool filter: `data-ws-mcp-tool` is written with `ws_fold()` and the inline script folds both sides with `window.pgFoldTR` (backend.src.js).
 - Left as they are: the command-name match (`ws_lower()` rules keep ı and i apart) and `quickEditChanged()`'s keyword compare.
