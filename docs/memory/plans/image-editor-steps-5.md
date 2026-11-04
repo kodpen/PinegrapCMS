@@ -12,7 +12,7 @@ description: Steps E23b, E30-E32, E31b of plans/image-editor.md: Fotoğraf and V
 
 - E30 (M) The picture as the bottom layer (owner 2026-11-04). Done in #6470 (`ui/image-editor-picture-layer.md`).
 
-- E31 (M) Import from the top bar (owner 2026-11-04). `free`, beside E23b.
+- E31 (M) Import from the top bar (owner 2026-11-04). Done in #6653 (`ui/image-editor-import.md`).
   - An Import button in the top bar (not on the annotate bar): From this computer (a file picker; drop and paste stay) and From the site (the Files list of the Sticker part, searchable). A picture becomes a picture layer as the Image tool makes it; the Image item leaves the canvas rail (kept for a caller's list). An SVG becomes one `svg` layer, fitted, its ids made unique; Break apart in its panel makes a layer per element as an opened SVG gets (`svgLayers()`). Video files join the menu with V2.
   - Tests: unique ids and the fit (model); browser: a PNG, a JPEG and an SVG from the computer and from Files on a photo and a canvas, Break apart, undo, a copy saved; the phone.
 

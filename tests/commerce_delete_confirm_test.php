@@ -146,6 +146,20 @@ function test_commerce_delete_confirm_shipping_method()
 		'both');
 	pg_assert_same(array(1, 2), $both[0]['vars'], 'both counts in order');
 	pg_assert_same(array('', 's'), $both[0]['suffix'], 'each count picks its own ending');
+
+	$cutoff = 'WARNING: The shipping cut-off{suffix:1} for this shipping method on {var:1} arrival date{suffix:1} will be permanently deleted too.';
+	pg_assert_same(
+		array('WARNING: This {var:1} will be permanently deleted.', $cutoff),
+		commerce_delete_confirm_keys(pg_shipping_method_form_delete_confirm(0, 0, 1)),
+		'arrival date cut-offs are named in a second sentence');
+
+	$all = pg_shipping_method_form_delete_confirm(1, 2, 3);
+	pg_assert_same(2, count($all), 'cut-offs beside both');
+	pg_assert_same(array(3), $all[1]['vars'], 'the cut-off count');
+	pg_assert_same(array('s'), $all[1]['suffix'], 'plural cut-offs');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/shipping_method_form.php');
+	pg_assert_contains('SELECT COUNT(*) FROM shipping_cutoffs WHERE shipping_method_id = ?', $source, 'the cut-offs pg_shipping_method_delete() removes are counted');
 }
 
 function test_commerce_delete_confirm_zone()
@@ -250,7 +264,7 @@ function test_commerce_delete_confirm_turkish_values()
 		pg_country_form_delete_confirm(0, 0, 0, 0),
 		pg_shipping_method_form_delete_confirm(2, 0),
 		pg_shipping_method_form_delete_confirm(0, 2),
-		pg_shipping_method_form_delete_confirm(2, 2),
+		pg_shipping_method_form_delete_confirm(2, 2, 2),
 		pg_zone_form_delete_confirm(2, 0, 0, 0),
 		pg_zone_form_delete_confirm(0, 2, 0, 0),
 		pg_zone_form_delete_confirm(2, 2, 2, 2),
@@ -288,7 +302,7 @@ function test_commerce_delete_confirm_turkish_words_match_the_screens()
 		pg_state_form_delete_confirm(2),
 		pg_shipping_method_form_delete_confirm(2, 0),
 		pg_shipping_method_form_delete_confirm(0, 2),
-		pg_shipping_method_form_delete_confirm(2, 2),
+		pg_shipping_method_form_delete_confirm(2, 2, 2),
 		pg_zone_form_delete_confirm(2, 2, 2, 2),
 		pg_zone_form_delete_confirm(0, 2, 0, 2)
 	) as $sentence) {

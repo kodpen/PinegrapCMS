@@ -217,6 +217,9 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Bring to Front' => lang('Bring to Front'),
         'Send to Back' => lang('Send to Back'),
         'Delete' => lang('Delete'),
+        // The shipping cut-off rows of the arrival date form.
+        'Shipping Method' => lang('Shipping Method'),
+        'Cut-off Date & Time' => lang('Cut-off Date & Time'),
         'X (mm)' => lang('X (mm)'),
         'Y (mm)' => lang('Y (mm)'),
         'W (mm)' => lang('W (mm)'),
