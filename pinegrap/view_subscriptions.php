@@ -18,6 +18,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
 $user = validate_user();
 validate_ecommerce_access($user);
@@ -249,25 +250,49 @@ if ($subscription_id > 0) {
     $breadcrumb[] = array('label' => $title);
     $filter = pg_subscription_operator_filter($_GET);
     $rows = $ready ? pg_subscription_operator_rows($filter, $limit) : array();
-    $output_rows = '';
+    // Every subscription of the filter is printed: the list table driver
+    // sorts and searches them in the browser (browser mode). Pause, resume
+    // and cancel are moves with their own checks and mails on the
+    // subscription's page, so nothing changes in place here.
+    $list_rows = array();
 
     foreach ($rows as $row) {
         $id = (int) $row['id'];
         $status = (string) $row['status'];
         $next = in_array($status, array('active', 'past_due', 'paused'), true) ? (int) $row['next_charge_at'] : 0;
-
-        $output_rows .= '
-            <tr id="' . $id . '">
-                <td class="align-middle" data-order="' . $id . '"><a href="view_subscriptions.php?id=' . $id . '" aria-label="' . h(lang('Subscription') . ' #' . $id) . '">#' . $id . '</a></td>
-                <td class="align-middle">' . $output_customer($row) . '</td>
-                <td class="align-middle">' . h((string) $row['product_name']) . '</td>
-                <td class="align-middle text-nowrap" data-order="' . (int) $row['amount'] . '">' . $output_amount($row['amount'], $row['currency']) . '</td>
-                <td class="align-middle">' . h(pg_subscription_operator_period_label((string) $row['period'])) . '</td>
-                <td class="align-middle">' . $output_status($status) . '</td>
-                <td class="align-middle" data-order="' . $next . '">' . $output_date($next) . '</td>
-                <td class="align-middle">' . h((string) $row['card_last4']) . '</td>
-            </tr>';
+        $list_rows[] = array(
+            'id' => $id,
+            'cells' => array(
+                'subscription' => pg_list_cell('<a href="view_subscriptions.php?id=' . $id . '" data-pg-open aria-label="' . h(lang('Subscription') . ' #' . $id) . '">#' . $id . '</a>', 'align-middle', array('data-pg-sort-value' => $id)),
+                'customer' => pg_list_cell($output_customer($row)),
+                'product' => pg_list_cell(h((string) $row['product_name'])),
+                'amount' => pg_list_cell($output_amount($row['amount'], $row['currency']), 'align-middle text-nowrap', array('data-pg-sort-value' => (int) $row['amount'])),
+                'period' => pg_list_cell(h(pg_subscription_operator_period_label((string) $row['period']))),
+                'status' => pg_list_cell($output_status($status)),
+                'next_charge' => pg_list_cell($output_date($next), 'align-middle', array('data-pg-sort-value' => $next)),
+                'card' => pg_list_cell(h((string) $row['card_last4'])),
+            ),
+        );
     }
+
+    $columns = array(
+        'subscription' => array('heading' => lang('Subscription')),
+        'customer' => array('heading' => lang('Customer')),
+        'product' => array('heading' => lang('Product')),
+        'amount' => array('heading' => lang('Amount'), 'kind' => 'money'),
+        'period' => array('heading' => lang('Period')),
+        'status' => array('heading' => lang('Status'), 'kind' => 'badge'),
+        'next_charge' => array('heading' => lang('Next charge'), 'kind' => 'date'),
+        'card' => array('heading' => lang('Card')),
+    );
+    $sort_columns = array();
+
+    foreach ($columns as $key => $spec) {
+        $sort_columns[$key] = $spec['heading'];
+    }
+
+    $list_state = pg_list_state('view_subscriptions', $sort_columns, array('sort' => 'subscription', 'order' => 'desc'));
+    $list = pg_list_table_printed(array('list' => 'view_subscriptions', 'columns' => $columns, 'levels' => $list_state['sorts'], 'rows' => $list_rows));
 
     $status_options = array('' => lang('All statuses'));
 
@@ -289,6 +314,7 @@ if ($subscription_id > 0) {
     $output_content = '
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
                 <div class="pg-toolbar-grow"></div>
+                ' . pg_list_table_search_box('view_subscriptions') . '
                 <form action="view_subscriptions.php" method="get" class="d-flex flex-wrap align-items-center gap-1 row-gap-3" role="search">
                     <select name="status" class="form-control form-control-sm w-auto" aria-label="' . h(lang('Status')) . '">' . $output_status_options . '</select>
                     <span class="d-inline-flex flex-nowrap align-items-center gap-1 max-w-100">
@@ -302,27 +328,8 @@ if ($subscription_id > 0) {
                 </form>
             </nav>
             ' . $output_limit . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table" style="width:100%;display:none;">
-                        <thead>
-                            <tr>
-                                <th>' . h(lang('Subscription')) . '</th>
-                                <th>' . h(lang('Customer')) . '</th>
-                                <th>' . h(lang('Product')) . '</th>
-                                <th>' . h(lang('Amount')) . '</th>
-                                <th>' . h(lang('Period')) . '</th>
-                                <th>' . h(lang('Status')) . '</th>
-                                <th>' . h(lang('Next charge')) . '</th>
-                                <th>' . h(lang('Card')) . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ' . $output_rows . '
-                        </tbody>
-                    </table>
-                </div>
-            </div>';
+            ' . pg_list_table_html($list['source'], $list['page'], $title) . '
+';
 }
 
 echo
@@ -344,6 +351,6 @@ echo
             ' . $output_content . '
         </div>
     </div>
-</main>' . get_date_picker_format() . pg_fields_script() . output_footer();
+</main>' . (($subscription_id > 0) ? '' : pg_js_bundle_tags('assets/js/pg_list_table.min.js')) . get_date_picker_format() . pg_fields_script() . output_footer();
 
 $liveform->remove_form();

@@ -16,6 +16,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
 $user = validate_user();
 validate_ecommerce_access($user);
@@ -66,7 +67,7 @@ $ready = pg_cart_quotes_ready();
 $rows = $ready ? pg_cart_quote_panel_rows($contact_id, PG_CART_QUOTE_PANEL_LIMIT, $quote_id) : array();
 $now = time();
 $badges = array('open' => 'badge theme-success', 'ordered' => 'badge theme-primary', 'expired' => 'badge theme-secondary', 'cancelled' => 'badge theme-danger');
-$output_rows = '';
+$list_rows = array();
 
 // The list asks only for the ecommerce right; a contact name links only when
 // edit_contact.php admits the viewer (contacts right and contact group).
@@ -106,17 +107,40 @@ foreach ($rows as $row) {
         ? '<div class="small"><a href="view_order.php?id=' . (int) $row['order_id'] . '">' . h(lang('Open the order')) . '</a></div>'
         : '';
 
-    $output_rows .= '
-            <tr id="' . $id . '">
-                <td class="align-middle text-start col-reorder-none action-buttons">' . $actions . '</td>
-                <td class="align-middle" data-order="' . $id . '"><a href="view_cart_quotes.php?id=' . $id . '" aria-label="' . h(lang('Cart quote') . ' #' . $id) . '">#' . $id . '</a><div class="small fg-secondary">' . h((string) $row['token_hint']) . '…</div></td>
-                <td class="align-middle">' . $output_contact . '</td>
-                <td class="align-middle">' . h(lang(array('string' => '{var:1} product(s)', 'vars' => array($quantity)))) . (($names !== '') ? '<div class="small fg-secondary" style="white-space: normal; min-width: 12rem; max-width: 24rem">' . h($names) . '</div>' : '') . '</td>
-                <td class="align-middle"><span class="' . h($badges[$state] ?? 'badge theme-secondary') . '">' . h(pg_cart_quote_state_label($state)) . '</span>' . $output_order . '</td>
-                <td class="align-middle" data-order="' . (int) $row['valid_until'] . '">' . h(((int) $row['valid_until'] > 0) ? date('d.m.Y', (int) $row['valid_until']) : lang('No end')) . '</td>
-                <td class="align-middle" data-order="' . (int) $row['created_at'] . '">' . h(date('d.m.Y H:i', (int) $row['created_at'])) . '<div class="small fg-secondary">' . h((string) $row['creator']) . '</div></td>
-            </tr>';
+    // The quote's number opens it; Cancel and New link post the page's form.
+    $list_rows[] = array(
+        'id' => $id,
+        'cells' => array(
+            'quote' => pg_list_cell('<a href="view_cart_quotes.php?id=' . $id . '" data-pg-open aria-label="' . h(lang('Cart quote') . ' #' . $id) . '">#' . $id . '</a><div class="small fg-secondary">' . h((string) $row['token_hint']) . '…</div>', 'align-middle', array('data-pg-sort-value' => $id)),
+            'customer' => pg_list_cell($output_contact),
+            'items' => pg_list_cell(h(lang(array('string' => '{var:1} product(s)', 'vars' => array($quantity)))) . (($names !== '') ? '<div class="small fg-secondary text-wrap">' . h($names) . '</div>' : ''), 'align-middle', array('data-pg-sort-value' => $quantity)),
+            'status' => pg_list_cell('<span class="' . h($badges[$state] ?? 'badge theme-secondary') . '">' . h(pg_cart_quote_state_label($state)) . '</span>' . $output_order),
+            'valid_until' => pg_list_cell(h(((int) $row['valid_until'] > 0) ? date('d.m.Y', (int) $row['valid_until']) : lang('No end')), 'align-middle', array('data-pg-sort-value' => (int) $row['valid_until'])),
+            'created' => pg_list_cell(h(date('d.m.Y H:i', (int) $row['created_at'])) . '<div class="small fg-secondary">' . h((string) $row['creator']) . '</div>', 'align-middle', array('data-pg-sort-value' => (int) $row['created_at'])),
+            'actions' => pg_list_cell($actions, 'align-middle text-end'),
+        ),
+    );
 }
+
+// Every quote shown is printed: the list table driver sorts and searches
+// them in the browser (browser mode) and keeps a heading's sort.
+$columns = array(
+    'quote' => array('heading' => lang('Cart quote')),
+    'customer' => array('heading' => lang('Customer')),
+    'items' => array('heading' => lang('Items')),
+    'status' => array('heading' => lang('Status'), 'kind' => 'badge'),
+    'valid_until' => array('heading' => lang('Valid until'), 'kind' => 'date'),
+    'created' => array('heading' => lang('Created'), 'kind' => 'date'),
+    'actions' => array('heading' => lang('Action'), 'kind' => 'actions'),
+);
+$sort_columns = array();
+
+foreach ($columns as $key => $spec) {
+    $sort_columns[$key] = $spec['heading'];
+}
+
+$list_state = pg_list_state('view_cart_quotes', $sort_columns, array('sort' => 'created', 'order' => 'desc'));
+$list = pg_list_table_printed(array('list' => 'view_cart_quotes', 'columns' => $columns, 'levels' => $list_state['sorts'], 'rows' => $list_rows));
 
 $output_not_ready = $ready ? '' : '
                 <div class="alert theme-warning" role="status">' . h(lang('Cart quotes are not installed yet: the database has to be updated first.')) . '</div>';
@@ -156,33 +180,17 @@ echo
                 ' . ($ready ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-12" href="add_cart_quote.php' . (($contact_id > 0) ? '?contact_id=' . $contact_id : '') . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New cart quote')) . '</a>' : '') . '
                 ' . ($filter ? '<a class="btn btn-sm btn-text theme-secondary" href="view_cart_quotes.php"><i class="bi bi-list-ul me-1" aria-hidden="true"></i>' . h(lang('All cart quotes')) . '</a>' : '') . '
                 ' . $output_workspace_button . '
+                <div class="pg-toolbar-grow"></div>
+                ' . pg_list_table_search_box('view_cart_quotes') . '
             </nav>
             ' . $output_limit . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <form name="form" action="' . h($self) . '" method="post" class="disable_shortcut">
-                        ' . get_token_field() . '
-                        <table class="chart table-hover table" style="width:100%;display:none;">
-                            <thead>
-                                <tr>
-                                    <th class="noVis">' . h(lang('Action')) . '</th>
-                                    <th>' . h(lang('Cart quote')) . '</th>
-                                    <th>' . h(lang('Customer')) . '</th>
-                                    <th>' . h(lang('Items')) . '</th>
-                                    <th>' . h(lang('Status')) . '</th>
-                                    <th>' . h(lang('Valid until')) . '</th>
-                                    <th>' . h(lang('Created')) . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ' . $output_rows . '
-                            </tbody>
-                        </table>
-                    </form>
-                </div>
-            </div>
+            <form name="form" action="' . h($self) . '" method="post" class="disable_shortcut">
+                ' . get_token_field() . '
+                ' . pg_list_table_html($list['source'], $list['page'], lang('Cart quotes')) . '
+            </form>
         </div>
     </div>
-</main>' . output_footer();
+</main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . output_footer();
 
 $liveform->remove_form();
