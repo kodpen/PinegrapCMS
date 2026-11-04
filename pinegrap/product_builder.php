@@ -540,6 +540,29 @@ function pg_pb_decimal_from_input($value)
 }
 
 /**
+ * A weight or dimension typed on the product screen as its column stores
+ * it: pounds and inches, converted from kilograms and centimetres when the
+ * screen's metric switch is on (the legacy screen's factors). The columns
+ * are decimal(12,4), so the converted figure keeps four places: rounded to
+ * two, 0.11 kg was stored as 0.24 lb and read back as 0.1089 kg.
+ *
+ * @param mixed  $value
+ * @param string $field   'weight', 'length', 'width' or 'height'
+ * @param bool   $metric  The metric switch
+ * @return float
+ */
+function pg_pb_measure_from_input($value, $field, $metric)
+{
+    $number = pg_pb_decimal_from_input(is_scalar($value) ? $value : '');
+
+    if ($metric) {
+        $number = round($number * (($field === 'weight') ? 2.20462262185 : 0.39370078740158), 4);
+    }
+
+    return $number;
+}
+
+/**
  * A whole number typed into one of the product screen's count boxes
  * (payments, days, points, quantities), read strictly: digits, optionally
  * grouped by threes with the panel's thousands separator ("1.200" in
@@ -667,6 +690,32 @@ function pg_pb_number_fields_problem($post, $thousands = ',')
         if (isset($post[$field]) && is_scalar($post[$field]) && preg_match('/^\s*-/u', (string) $post[$field])
             && preg_match('/[1-9]/', (string) $post[$field])) {
             return lang(array('string' => '{var:1} cannot be negative.', 'vars' => array(lang($label))));
+        }
+    }
+
+    // Weight and dimensions: digits and separators only (their reader drops
+    // anything else, so "1e5" was stored as 15 and "abc" as 0), and no more
+    // than their decimal(12,4) columns hold once stored as pounds and inches
+    // (a larger figure was cut to the column's top).
+    $metric = !empty($post['convert_to_metric_system']);
+
+    foreach (array('weight' => 'Weight', 'length' => 'Length', 'width' => 'Width', 'height' => 'Height') as $field => $label) {
+        if (!array_key_exists($field, $post)) {
+            continue;
+        }
+
+        $value = is_scalar($post[$field]) ? trim(str_replace(array("\u{00A0}", "\u{202F}"), ' ', (string) $post[$field])) : false;
+
+        if ($value === '') {
+            continue;
+        }
+
+        if (($value === false) || !preg_match('/^-?\s*[0-9.,\s]*[0-9][0-9.,\s]*$/', $value)) {
+            return lang(array('string' => '{var:1} must be a number.', 'vars' => array(lang($label))));
+        }
+
+        if (pg_pb_measure_from_input($value, $field, $metric) > 99999999.9999) {
+            return lang(array('string' => '{var:1} is too large.', 'vars' => array(lang($label))));
         }
     }
 
@@ -901,24 +950,14 @@ function pg_pb_managed_product_columns()
  */
 function pg_pb_common_from_post()
 {
-    // Weight and dimensions are stored in pounds and inches. The operator may
-    // have typed metric, in which case convert on the way in — same factors the
-    // legacy screen uses. The columns are decimal(12,4), so the converted figure
-    // keeps four places: rounded to two, 0.11 kg was stored as 0.24 lb and read
-    // back as 0.1089 kg.
+    // Weight and dimensions are stored in pounds and inches; the operator may
+    // have typed metric (pg_pb_measure_from_input()).
     $metric = !empty($_POST['convert_to_metric_system']);
 
-    $weight = pg_pb_decimal_from_input(isset($_POST['weight']) ? $_POST['weight'] : 0);
-    $length = pg_pb_decimal_from_input(isset($_POST['length']) ? $_POST['length'] : 0);
-    $width  = pg_pb_decimal_from_input(isset($_POST['width'])  ? $_POST['width']  : 0);
-    $height = pg_pb_decimal_from_input(isset($_POST['height']) ? $_POST['height'] : 0);
-
-    if ($metric) {
-        $weight = round($weight * 2.20462262185, 4);
-        $length = round($length * 0.39370078740158, 4);
-        $width  = round($width  * 0.39370078740158, 4);
-        $height = round($height * 0.39370078740158, 4);
-    }
+    $weight = pg_pb_measure_from_input(isset($_POST['weight']) ? $_POST['weight'] : 0, 'weight', $metric);
+    $length = pg_pb_measure_from_input(isset($_POST['length']) ? $_POST['length'] : 0, 'length', $metric);
+    $width  = pg_pb_measure_from_input(isset($_POST['width'])  ? $_POST['width']  : 0, 'width', $metric);
+    $height = pg_pb_measure_from_input(isset($_POST['height']) ? $_POST['height'] : 0, 'height', $metric);
 
     $post = function ($key, $default = '') {
         return isset($_POST[$key]) ? $_POST[$key] : $default;
@@ -5016,28 +5055,28 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     '<div class="col-6 lg:col-3 my-1">
                                                         <label for="weight" class="form-label">' . lang('Weight') . '</label>
                                                         <div class="input-group">
-                                                            <input value="' . h($v('weight', '0')) . '" type="text" name="weight" id="weight" class="form-control" inputmode="decimal" style="text-align:right;" />
+                                                            <input value="' . h($v('weight', '0')) . '" type="text" name="weight" id="weight" class="form-control" inputmode="decimal" maxlength="20" style="text-align:right;" />
                                                             <label class="input-group-text unit" for="weight">' . lang('lbs') . '</label>
                                                         </div>
                                                     </div>
                                                     <div class="col-6 lg:col-3 my-1">
                                                         <label for="length" class="form-label">' . lang('Length') . '</label>
                                                         <div class="input-group">
-                                                            <input value="' . h($v('length', '0')) . '" type="text" name="length" id="length" class="form-control" inputmode="decimal" style="text-align:right;" />
+                                                            <input value="' . h($v('length', '0')) . '" type="text" name="length" id="length" class="form-control" inputmode="decimal" maxlength="20" style="text-align:right;" />
                                                             <label class="input-group-text unit" for="length">' . lang('in') . '</label>
                                                         </div>
                                                     </div>
                                                     <div class="col-6 lg:col-3 my-1">
                                                         <label for="width" class="form-label">' . lang('Width') . '</label>
                                                         <div class="input-group">
-                                                            <input value="' . h($v('width', '0')) . '" type="text" name="width" id="width" class="form-control" inputmode="decimal" style="text-align:right;" />
+                                                            <input value="' . h($v('width', '0')) . '" type="text" name="width" id="width" class="form-control" inputmode="decimal" maxlength="20" style="text-align:right;" />
                                                             <label class="input-group-text unit" for="width">' . lang('in') . '</label>
                                                         </div>
                                                     </div>
                                                     <div class="col-6 lg:col-3 my-1">
                                                         <label for="height" class="form-label">' . lang('Height') . '</label>
                                                         <div class="input-group">
-                                                            <input value="' . h($v('height', '0')) . '" type="text" name="height" id="height" class="form-control" inputmode="decimal" style="text-align:right;" />
+                                                            <input value="' . h($v('height', '0')) . '" type="text" name="height" id="height" class="form-control" inputmode="decimal" maxlength="20" style="text-align:right;" />
                                                             <label class="input-group-text unit" for="height">' . lang('in') . '</label>
                                                         </div>
                                                     </div>

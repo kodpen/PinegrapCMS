@@ -102,6 +102,24 @@ function test_product_builder_variant_set_clash()
 	pg_assert_same(array(), pg_pb_variant_set_clash(array(), $set, $siblings), 'nothing chosen');
 }
 
+function test_product_builder_weight_and_dimensions_read_as_numbers()
+{
+	pg_assert_same('', pg_pb_number_fields_problem(array('weight' => '0,125', 'length' => '12.5', 'width' => ' 1.234,5 ', 'height' => ''), '.'), 'decimals, grouping and an empty box');
+	pg_assert_same('', pg_pb_number_fields_problem(array('weight' => '99999999.9999'), '.'), 'the column top');
+	pg_assert_same('', pg_pb_number_fields_problem(array('weight' => '-0'), '.'), 'minus zero');
+
+	foreach (array('abc', '1e5', '12 kg', '5x', '.', ',') as $value) {
+		pg_assert_contains(lang('Length'), pg_pb_number_fields_problem(array('length' => $value), '.'), 'letters refused: ' . $value);
+	}
+
+	pg_assert_contains(lang('Weight'), pg_pb_number_fields_problem(array('weight' => '123456789012'), '.'), 'above the column');
+	pg_assert_contains(lang('Weight'), pg_pb_number_fields_problem(array('weight' => array('1')), '.'), 'an array');
+	// Kilograms are stored as pounds: 50,000,000 kg is above the column once converted.
+	pg_assert_same('', pg_pb_number_fields_problem(array('weight' => '50000000'), '.'), 'fits in pounds');
+	pg_assert_contains(lang('Weight'), pg_pb_number_fields_problem(array('weight' => '50000000', 'convert_to_metric_system' => '1'), '.'), 'too large once converted');
+	pg_assert_same('', pg_pb_number_fields_problem(array('height' => '99999999', 'convert_to_metric_system' => '1'), '.'), 'centimetres shrink to inches');
+}
+
 function test_product_builder_attributes_cleared_needs_the_mark()
 {
 	pg_assert_same(true, pg_pb_attributes_cleared(array('pg_pb_attributes_posted' => '1', 'variants_json' => '[]')), 'every option unticked');
