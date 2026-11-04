@@ -192,6 +192,20 @@
 
   /* ── Section: traffic ───────────────────────────────────────────────── */
 
+  .pg-visitors-traffic-tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .pg-visitors-traffic-line {
+    margin-top: 1.25rem;
+  }
+
+  @media (max-width: 575.98px) {
+    .pg-visitors-traffic-tiles {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
   /* ── Section: conversions ───────────────────────────────────────────── */
 
   .pg-visitors-conversions-detail {
