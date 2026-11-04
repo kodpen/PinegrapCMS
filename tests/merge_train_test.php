@@ -111,6 +111,39 @@ function test_merge_train_eligible()
 	pg_assert_false(merge_train_eligible(array('ready-for-review'), true, $now - 60, $now));
 }
 
+// Only a branch of this repository rides a train: a fork's branch, a deleted
+// fork's (no head repository) or a PR read without its repositories does not.
+function test_merge_train_same_repo()
+{
+	$repo = array('id' => 1001, 'full_name' => 'kodpen/PinegrapCMS');
+	$fork = array('id' => 2002, 'full_name' => 'someone/PinegrapCMS');
+
+	pg_assert_true(merge_train_same_repo(array('head' => array('repo' => $repo), 'base' => array('repo' => $repo))));
+	pg_assert_false(merge_train_same_repo(array('head' => array('repo' => $fork), 'base' => array('repo' => $repo))), 'a fork');
+	pg_assert_false(merge_train_same_repo(array('head' => array('repo' => null), 'base' => array('repo' => $repo))), 'a deleted fork');
+	pg_assert_false(merge_train_same_repo(array('head' => array('repo' => $repo), 'base' => array())), 'no base repository');
+	pg_assert_false(merge_train_same_repo(array()), 'no repositories');
+}
+
+// A fork's PR from a branch named merge-train/* is no train and holds no lock.
+function test_merge_train_open_trains_from_this_repository_only()
+{
+	$repo = array('id' => 1001);
+	$fork = array('id' => 2002);
+	$open = array(
+		array('number' => 10, 'head' => array('ref' => 'merge-train/20261104-1544', 'repo' => $repo), 'base' => array('repo' => $repo)),
+		array('number' => 11, 'head' => array('ref' => 'merge-train/20261104-1600', 'repo' => $fork), 'base' => array('repo' => $repo)),
+		array('number' => 12, 'head' => array('ref' => 'fix/dash-country-names', 'repo' => $repo), 'base' => array('repo' => $repo)),
+	);
+	$numbers = array();
+
+	foreach (merge_train_open_trains($open) as $train) {
+		$numbers[] = $train['number'];
+	}
+
+	pg_assert_same(array(10), $numbers);
+}
+
 function test_merge_train_numbers_in_title()
 {
 	pg_assert_same(array(1981, 1977, 1984), merge_train_numbers_in_title('Merge train 20261026-2027o: #1981 #1977 #1984'));
