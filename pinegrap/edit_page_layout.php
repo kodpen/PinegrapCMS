@@ -25,6 +25,7 @@ $user = validate_user();
 validate_area_access($user, 'designer');
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/design_file_form.php');
 
 $page_id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
 $page = ($page_id > 0)
@@ -70,15 +71,33 @@ if ($read_only) {
     $output_read_only = '<div class="alert theme-info">' . h(lang('Custom layouts are not available on this site.')) . ' ' . h(lang('The page draws the generated layout, shown here read only.')) . '</div>';
 }
 
-$output_toolbar = '';
+// The Save and Regenerate buttons sit in the shared sticky save bar; a
+// hosted site gets no buttons and no bar.
+$output_buttons = '';
 
 if (!$read_only) {
-    $output_toolbar = '
-    <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-        <button type="button" id="pg_layout_save" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" disabled><i class="bi bi-floppy me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span></button>
-        <button type="button" id="pg_layout_regenerate" class="btn btn-sm btn-text theme-secondary" disabled><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Regenerate layout')) . '</span></button>
-    </nav>';
+    $output_buttons = '
+                                        <button type="button" id="pg_layout_save" class="btn my-1 btn-solid theme-success" disabled><i class="bi bi-floppy me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span></button>
+                                        <button type="button" id="pg_layout_regenerate" class="btn my-1 btn-outline theme-secondary" disabled><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Regenerate layout')) . '</span></button>';
 }
+
+// The Summary of the status column: what the layout belongs to and whether
+// it can be changed here.
+$style_name = '';
+
+if ((int) $page['style_id'] > 0) {
+    $style_name = (string) db_value("SELECT style_name FROM style WHERE style_id = '" . (int) $page['style_id'] . "'");
+}
+
+$page_type_name = get_page_type_name($page['type']);
+
+$summary_rows = array(
+    lang('Page') => '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_page.php?id=' . (int) $page['id'] . '">' . h($page['name']) . '</a>',
+    lang('Page Type') => h(($page_type_name !== null) ? $page_type_name : $page['type']),
+    lang('Style') => ($style_name !== '') ? h($style_name) : '&mdash;',
+    lang('Layout File') => h('data/layouts/' . pg_layout_file_name((int) $page['id'])),
+    lang('Access') => $read_only ? h(lang('Read only')) : h(lang('Editable')),
+);
 
 $editor = array(
     'pageId' => (int) $page['id'],
@@ -107,15 +126,18 @@ print
             array('label' => lang('Edit Layout')),
         ),
     )) . '
-<main id="content" class="container-fluid">' . $output_toolbar . '
-    ' . $output_read_only . '
-    <div class="card my-7">
-        <div class="card-body">
-            <label class="form-label" for="pg_layout_code">' . h(lang('Layout (PHP)')) . '</label>
-            <textarea id="pg_layout_code" rows="25" cols="60" wrap="off"' . ($read_only ? ' readonly' : '') . '></textarea>
-            ' . pg_code_editor_attach(array('id' => 'pg_layout_code', 'code_type' => 'php', 'readonly' => $read_only, 'height' => '70vh')) . '
-        </div>
-    </div>
+<main id="content" class="container-fluid">
+    ' . $output_read_only . pg_design_file_form_layout('
+                            <div class="card my-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . h(lang('Layout')) . '
+                                </h2>
+                                <div class="card-body pt-0">
+                                    <label class="form-label" for="pg_layout_code">' . h(lang('Layout (PHP)')) . '</label>
+                                    <textarea id="pg_layout_code" rows="25" cols="60" wrap="off"' . ($read_only ? ' readonly' : '') . '></textarea>
+                                    ' . pg_code_editor_attach(array('id' => 'pg_layout_code', 'code_type' => 'php', 'readonly' => $read_only, 'height' => '70vh')) . '
+                                </div>
+                            </div>', pg_design_file_form_summary_card('', $summary_rows), $output_buttons) . '
 </main>
 <script>
 (function () {
