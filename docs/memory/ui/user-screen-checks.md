@@ -14,6 +14,7 @@ description: The checks of the user create, edit, import and bulk delete screens
 
 ## What does the notice say after "Notify User"?
 - `add_user.php` reads `email()`'s answer; `pg_new_user_notice($notified, $sent, $url, $password)` (`includes/fn/auth.php`) says when it failed and points to "Forgot password". A notified user's password is never shown; a user not notified gets it, as before.
+- A failed mail is a warning on the Users list, not a notice (`pg_new_user_notice_is_warning()`): the account has a password nobody knows until someone acts. Issue #6555.
 - `import_users.php` lists the users whose e-mail failed in a warning.
 
 ## What is "My Registered Users"?

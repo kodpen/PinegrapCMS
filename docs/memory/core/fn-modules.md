@@ -193,7 +193,7 @@ description: Generated from the module field of the memory files: each includes/
 - `tree_search`: [[tree-search]]
 - `update`: [[ca-store-choice]], [[migration-screen]]
 - `user_list`: [[user-list-folder-filters]], [[user-screens-names-and-dates]]
-- `user_write`: [[user-write]]
+- `user_write`: [[user-screen-input-errors]], [[user-write]]
 - `variant_set_copy`: [[product-group-copy]]
 - `vat_check`: [[eu-vat-check]]
 - `vat_checkout`: [[eu-vat-checkout]]

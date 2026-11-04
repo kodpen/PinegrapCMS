@@ -176,6 +176,227 @@ function pg_user_form_text_fits($value)
 }
 
 /**
+ * What stops the posted points, username or badge label from being stored
+ * as typed, as field => 'invalid' (points that are not a whole number from
+ * 0 to 4294967295) or 'too_long' (over the varchar(100) column). Pure.
+ *
+ * @param array $post
+ * @return array
+ */
+function pg_user_form_input_problems($post)
+{
+    $problems = array();
+
+    foreach (array('username', 'badge_label') as $field) {
+        if (isset($post[$field]) && !pg_user_form_text_fits(is_scalar($post[$field]) ? $post[$field] : '')) {
+            $problems[$field] = 'too_long';
+        }
+    }
+
+    if (pg_user_form_reward_points($post['reward_points'] ?? null) === null) {
+        $problems['reward_points'] = 'invalid';
+    }
+
+    return $problems;
+}
+
+/**
+ * The sentence for a problem of pg_user_form_input_problems(), escaped for
+ * the screen's error list.
+ *
+ * @param string $field
+ * @param string $problem
+ * @return string
+ */
+function pg_user_form_input_problem_message($field, $problem)
+{
+    $labels = array(
+        'username' => lang('Username'),
+        'badge_label' => lang('Badge Label'),
+        'reward_points' => lang('Reward Points'),
+    );
+
+    if ($problem === 'too_long') {
+        return h(lang(array('string' => '{var:1} is too long.', 'vars' => $labels[$field] ?? $field)));
+    }
+
+    return h(lang(array('string' => '{var:1} is invalid', 'vars' => $labels[$field] ?? $field))) . '.';
+}
+
+/**
+ * What stops a new account from being linked to a contact record, or '':
+ * contact_missing (no such record) or contact_taken (another account is
+ * linked to it). A contact holds one account: membership, the contact's user
+ * card and the user-contact lookups all read a single one. No contact given
+ * (blank, 0, not a number) is no problem: the account is created without
+ * one. Pure.
+ *
+ * @param mixed $contact_id
+ * @param bool $found  The contact record exists
+ * @param string|null $linked_username  The account linked to it, null for none
+ * @return string
+ */
+function pg_user_form_contact_problem($contact_id, $found, $linked_username)
+{
+    if (pg_user_contact_sql($contact_id) === 'NULL') {
+        return '';
+    }
+
+    if (!$found) {
+        return 'contact_missing';
+    }
+
+    return ($linked_username !== null) ? 'contact_taken' : '';
+}
+
+/**
+ * Whether the notice after creating an account is a warning: the user was to
+ * be notified and the mail failed, so the account has a password nobody
+ * knows until someone acts. Pure.
+ *
+ * @param bool $notified
+ * @param bool $sent
+ * @return bool
+ */
+function pg_new_user_notice_is_warning($notified, $sent)
+{
+    return $notified && !$sent;
+}
+
+/**
+ * The field values a form left in its liveform session (add_fields_to_session())
+ * as name => value; the message lists and flags are left out. Pure.
+ *
+ * @param array|null $session  $_SESSION['software']['liveforms'][<form>][0]
+ * @return array
+ */
+function pg_user_form_session_values($session)
+{
+    $values = array();
+
+    foreach ((array) $session as $field => $entry) {
+        if (is_array($entry) && array_key_exists('value', $entry)) {
+            $values[$field] = $entry['value'];
+        }
+    }
+
+    return $values;
+}
+
+/**
+ * The ids of the ticked "<prefix><id>" boxes of a posted form (folders,
+ * regions, menus, calendars, contact groups). Pure.
+ *
+ * @param array $post
+ * @param string $prefix
+ * @return int[]
+ */
+function pg_user_form_posted_ids($post, $prefix)
+{
+    $ids = array();
+    $length = strlen($prefix);
+
+    foreach ($post as $field => $value) {
+        $field = (string) $field;
+
+        if ((strncmp($field, $prefix, $length) === 0) && ctype_digit(substr($field, $length)) && ($value == 1)) {
+            $ids[] = (int) substr($field, $length);
+        }
+    }
+
+    return $ids;
+}
+
+/**
+ * Every page type box of a posted form as the page type checkboxes read
+ * them: '1' ticked, '0' unticked. A blank value would read as "never set",
+ * which the checkboxes draw ticked. Pure.
+ *
+ * @param array $post
+ * @return array  set_page_type_<type> => '1' or '0'
+ */
+function pg_user_form_page_type_values($post)
+{
+    $values = array();
+
+    foreach (array(
+        'email_a_friend', 'folder_view', 'photo_gallery',
+        'custom_form', 'custom_form_confirmation', 'form_list_view', 'form_item_view', 'form_view_directory',
+        'calendar_view', 'calendar_event_view',
+        'catalog', 'catalog_detail', 'express_order', 'order_form', 'shopping_cart',
+        'shipping_address_and_arrival', 'shipping_method', 'billing_information', 'order_preview', 'order_receipt') as $type) {
+        $values['set_page_type_' . $type] = ((($post['set_page_type_' . $type] ?? '') == 1) ? '1' : '0');
+    }
+
+    return $values;
+}
+
+/**
+ * A user row with the posted form laid over it, so a form sent back with an
+ * error draws what was typed and ticked: an unticked box reads as off, a
+ * page type as '0'. A role that was not posted (locked cards) or is no role
+ * keeps the stored one; columns that are not form fields stay. Pure.
+ *
+ * @param array $row  user_* columns, as the screen reads them
+ * @param array $post  The posted form
+ * @return array
+ */
+function pg_user_form_restore_row($row, $post)
+{
+    $text = function ($field) use ($post) {
+        return (isset($post[$field]) && is_scalar($post[$field])) ? (string) $post[$field] : '';
+    };
+
+    foreach (array(
+        'user_username' => 'username',
+        'user_email' => 'email',
+        'user_home' => 'home_page',
+        'user_password_hint' => 'password_hint',
+        'user_badge_label' => 'badge_label',
+        'user_reward_points' => 'reward_points') as $column => $field) {
+        if (array_key_exists($column, $row)) {
+            $row[$column] = $text($field);
+        }
+    }
+
+    foreach (array(
+        'user_badge' => 'badge',
+        'user_manage_contacts' => 'manage_contacts',
+        'user_manage_visitors' => 'manage_visitors',
+        'user_create_pages' => 'create_pages',
+        'user_delete_pages' => 'delete_pages',
+        'user_manage_forms' => 'manage_forms',
+        'user_manage_calendars' => 'manage_calendars',
+        'user_manage_emails' => 'manage_emails',
+        'user_manage_ecommerce' => 'manage_ecommerce',
+        'user_view_card_data' => 'view_card_data',
+        'manage_ecommerce_reports' => 'manage_ecommerce_reports',
+        'manage_erp' => 'manage_erp',
+        'manage_erp_cash' => 'manage_erp_cash',
+        'manage_erp_settings' => 'manage_erp_settings',
+        'user_set_offline_payment' => 'set_offline_payment',
+        'user_publish_calendar_events' => 'publish_calendar_events') as $column => $field) {
+        if (array_key_exists($column, $row)) {
+            $row[$column] = $text($field);
+        }
+    }
+
+    foreach (pg_user_form_page_type_values($post) as $field => $value) {
+        if (array_key_exists('user_' . $field, $row)) {
+            $row['user_' . $field] = $value;
+        }
+    }
+
+    $role = pg_user_form_role($post['role'] ?? null);
+
+    if (($role !== null) && array_key_exists('user_role', $row)) {
+        $row['user_role'] = (string) $role;
+    }
+
+    return $row;
+}
+
+/**
  * The private folders whose posted expiration date is a problem: 'invalid'
  * (a checked folder whose date is not a date, which would save no access)
  * and 'past' (a date already gone, so the access ends as it is given). Only

@@ -489,6 +489,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - user-list-folder-filters.md: Users list filters My Private Users and My Content Managers: one row per user, managers listed without folder rights, the fault the PR fixed
 - user-permission-rows.md: Permission rows in add_user/edit_user/import_users (includes/user_permissions.php): value rules, gate_field/gate_scope, drawer panels, top layer, multiselect pitfalls.
 - user-screen-checks.md: The checks of the user create, edit, import and bulk delete screens: role, private folder dates, notify mail, registered filter, default view, repeated headings
+- user-screen-input-errors.md: Create and Edit User send input errors back to the form through a liveform with what was posted; the contact a new account is linked to is checked; points and lengths are checked
 - user-screens-names-and-dates.md: User and session screens: session and password dates through get_absolute_time(), the users list checkbox, yes mark and name-menu names, badge label and folder expiry names
 - user-shared-form.md: The user create and edit screens share includes/forms/user_form.php (rights cards, folder rights, access save)
 - verified-shipping-address-shared-form.md: The verified shipping address create and edit screens share includes/forms/verified_shipping_address_form.php: what it holds, what stays in the screens

@@ -150,6 +150,59 @@ function pg_user_write_problem_message($problem)
 }
 
 /**
+ * Whether a new account may be linked to this contact record
+ * (pg_user_form_contact_problem()): the record is read and the account
+ * already linked to it looked up.
+ *
+ * @param mixed $contact_id
+ * @return array  'problem' => '', 'contact_missing' or 'contact_taken'; 'username' => the linked account's
+ */
+function pg_user_contact_link_problem($contact_id)
+{
+    if (pg_user_contact_sql($contact_id) === 'NULL') {
+        return array('problem' => '', 'username' => '');
+    }
+
+    $id = (string) (int) $contact_id;
+
+    $result = db_q("SELECT id FROM contacts WHERE id = ?", array($id)) or output_error('Query failed.');
+    $found = (mysqli_num_rows($result) > 0);
+
+    $linked = null;
+
+    if ($found) {
+        $result = db_q("SELECT user_username FROM user WHERE user_contact = ? LIMIT 1", array($id)) or output_error('Query failed.');
+        $row = mysqli_fetch_assoc($result);
+
+        if ($row) {
+            $linked = (string) $row['user_username'];
+        }
+    }
+
+    return array(
+        'problem' => pg_user_form_contact_problem($contact_id, $found, $linked),
+        'username' => (string) $linked);
+}
+
+/**
+ * The sentence for a problem of pg_user_contact_link_problem(), escaped for
+ * the screen.
+ *
+ * @param array $link  As pg_user_contact_link_problem() returns it
+ * @return string
+ */
+function pg_user_contact_link_message($link)
+{
+    if ($link['problem'] === 'contact_taken') {
+        return h(lang(array(
+            'string' => 'The contact record is already linked to the user {var:1}. The account will be created without a contact record.',
+            'vars' => $link['username'])));
+    }
+
+    return h(lang('The contact record was not found. The account will be created without a contact record.'));
+}
+
+/**
  * Whether no other enabled administrator than this account is left: such an
  * account keeps its role and is not deleted, or nobody could reach the
  * administrator-only screens.

@@ -22,6 +22,10 @@ include_once('includes/user_permissions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/user_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php');
 $liveform_view_users = new liveform('view_users');
+
+// Input errors come back to this screen with what was posted (see the save
+// below); the site's error page is only for access denial.
+$liveform = new liveform('edit_user');
 $user = validate_user();
 validate_area_access($user, 'manager');
 
@@ -286,10 +290,34 @@ if (!$_POST) {
         WHERE user_id = ?";
     $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
-    
+
+    // What a save sent back with an error left in the session, else nothing.
+    // Values another account's form left are dropped.
+    $restored = $liveform->check_form_errors()
+        ? pg_user_form_session_values($_SESSION['software']['liveforms']['edit_user'][0] ?? null)
+        : array();
+
+    if ($restored && ((int) ($restored['id'] ?? 0) !== (int) $row['user_id'])) {
+        $liveform->remove_form();
+        $restored = array();
+    }
+
+    // The heading names the account as stored; the form shows what was
+    // posted. The points stay compared with the stored value, so a save
+    // after the error changes them only when the field was changed.
+    $stored_username = $row['user_username'];
+    $stored_email = $row['user_email'];
+    $reward_points_original = $row['user_reward_points'];
+
+    if ($restored) {
+        $row = pg_user_form_restore_row($row, $restored);
+    }
+
     $id = $row['user_id'];
-    $username = $row['user_username'];
-    $email = $row['user_email'];
+    $username = $stored_username;
+    $email = $stored_email;
+    $form_username = $row['user_username'];
+    $form_email = $row['user_email'];
     $user_identities = pg_signin_identities((int) $id);
     $role = $row['user_role'];
     $home = $row['user_home'];
@@ -314,6 +342,14 @@ if (!$_POST) {
         ? (int) db_value("SELECT manage_erp_readonly FROM user WHERE user_id = '" . (int) $_GET['id'] . "' LIMIT 1")
         : 0;
     $ws_rights = pg_user_permission_ws_values((int) $_GET['id']);
+
+    if ($restored) {
+        $manage_erp_readonly = (($restored['manage_erp_readonly'] ?? '') == 1) ? 1 : 0;
+
+        foreach ($ws_rights as $ws_field => $ws_value) {
+            $ws_rights[$ws_field] = (($restored[$ws_field] ?? '') == 1) ? 1 : 0;
+        }
+    }
     $set_offline_payment = $row['user_set_offline_payment'];
     $publish_calendar_events = $row['user_publish_calendar_events'];
     $set_page_type_values['set_page_type_email_a_friend'] = $row['user_set_page_type_email_a_friend'];
@@ -422,6 +458,10 @@ if (!$_POST) {
 
     if (pg_user_has_disabled_at()) {
         $account_enabled = !pg_user_is_disabled($row);
+
+        if ($restored && isset($restored['account_enabled_drawn'])) {
+            $account_enabled = (($restored['account_enabled'] ?? '') === '1');
+        }
         $may_disable = pg_user_form_may_disable($id, USER_ID);
 
         $output_account_enabled_field =
@@ -485,6 +525,16 @@ if (!$_POST) {
     $shared_components_user_can_edit = get_items_user_can_edit('shared_components', $_GET['id']);
     $menus_user_can_edit          = get_items_user_can_edit('menus', $_GET['id']);
 
+    // A form sent back opens on the boxes that were ticked. A view date
+    // still reads the stored one.
+    if ($restored) {
+        $folders_that_user_has_edit_access_to = pg_user_form_posted_ids($restored, 'edit_');
+        $folders_that_user_has_view_access_to = pg_user_form_posted_ids($restored, 'view_');
+        $common_regions_user_can_edit = pg_user_form_posted_ids($restored, 'common_region_');
+        $shared_components_user_can_edit = pg_user_form_posted_ids($restored, 'shared_component_');
+        $menus_user_can_edit = pg_user_form_posted_ids($restored, 'menu_');
+    }
+
     $output_hidden_role = '';
 
     // A manager may only manage users, so the role cards are read-only and the
@@ -522,6 +572,10 @@ if (!$_POST) {
 
             $calendar_checked = db_value("SELECT user_id FROM users_calendars_xref
                 WHERE (user_id = '" . escape($_GET['id']) . "') AND (calendar_id = '" . escape($calendar['id']) . "')");
+
+            if ($restored) {
+                $calendar_checked = in_array((int) $calendar['id'], pg_user_form_posted_ids($restored, 'calendar_'), true) ? '1' : '';
+            }
 
             if ($calendar_checked != '') {
                 $calendar_count++;
@@ -561,7 +615,9 @@ if (!$_POST) {
     }
 
     if (ADS === true) {
-        $ad_regions_user_can_edit = get_items_user_can_edit('ad_regions', $_GET['id']);
+        $ad_regions_user_can_edit = $restored
+            ? pg_user_form_posted_ids($restored, 'ad_region_')
+            : get_items_user_can_edit('ad_regions', $_GET['id']);
         $permission_panels['ad_regions'] = get_checkboxes_for_items_user_can_edit('ad_regions', $ad_regions_user_can_edit);
     }
 
@@ -577,6 +633,10 @@ if (!$_POST) {
 
         $contact_group_checked = db_value("SELECT user_id FROM users_contact_groups_xref
             WHERE (user_id = '" . escape($_GET['id']) . "') AND (contact_group_id = '" . escape($contact_group['id']) . "')");
+
+        if ($restored) {
+            $contact_group_checked = in_array((int) $contact_group['id'], pg_user_form_posted_ids($restored, 'contact_group_'), true) ? '1' : '';
+        }
 
         if ($contact_group_checked != '') {
             $contact_group_count++;
@@ -1170,6 +1230,7 @@ if (!$_POST) {
                 ' . $output_sign_in_lock_notice . '
                 ' . $output_sign_in_unlock_form . '
                 ' . $output_reset_password_form . '
+                ' . $liveform->output_errors() . '
                 <form name="form" action="edit_user.php" method="post">
                     ' . get_token_field() . '
                     <button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>
@@ -1198,12 +1259,12 @@ if (!$_POST) {
                                     <div class="row g-5">
                                         <div class="col-12 lg:col-4">
                                             <label for="username" class="form-label">' . lang('Username') . '</label>
-                                            <input value="' . h($username) . '" type="text" name="username" placeholder="' . lang('Username') . '" id="username" maxlength="100" class="form-control" required />
+                                            <input value="' . h($form_username) . '" type="text" name="username" placeholder="' . lang('Username') . '" id="username" maxlength="100" class="form-control" required />
                                             <div class="form-text">' . lang('Used when signing in.') . '</div>
                                         </div>
                                         <div class="col-12 lg:col-4">
                                             <label class="form-label" for="email">' . lang('User Email') . '</label>
-                                            <input value="' . h($email) . '" type="email" class="form-control" id="email" name="email" maxlength="100" inputmode="email" data-inputmask-alias="email" required/>
+                                            <input value="' . h($form_email) . '" type="email" class="form-control" id="email" name="email" maxlength="100" inputmode="email" data-inputmask-alias="email" required/>
                                             <div class="form-text">' . lang('Password reset goes to this address.') . '</div>
                                         </div>
                                         <div class="col-12 lg:col-4">
@@ -1222,7 +1283,7 @@ if (!$_POST) {
                                         <div class="col-12 sm:col-6 lg:col-4">
                                             <label class="form-label" for="reward_points">' . lang('Reward Program, Reward Points') . '</label>
                                             <input value="' . h($reward_points) . '" type="number" min="0" max="4294967295" step="1" class="form-control" id="reward_points" name="reward_points"/>
-                                            <input type="hidden" name="reward_points_original" value="' . h($reward_points) . '"/>
+                                            <input type="hidden" name="reward_points_original" value="' . h($reward_points_original) . '"/>
                                         </div>
                                         <div class="col-12">
                                             <div class="form-field">
@@ -1265,6 +1326,9 @@ if (!$_POST) {
     
 </main>' .
     output_footer();
+
+    // The errors and values of a form sent back are drawn once.
+    $liveform->remove_form();
         
 } else {
     validate_token_field();
@@ -1343,8 +1407,25 @@ if (!$_POST) {
         // account already uses.
         $problem = pg_user_write_problem($_POST['username'], $_POST['email'], $audit_user_id);
 
+        // Points the column cannot hold and a username or badge label
+        // longer than it, which a lenient server would clamp or cut, go
+        // back too, with what was posted.
         if ($problem !== '') {
-            output_error(pg_user_write_problem_message($problem) . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+            $liveform->mark_error((strpos($problem, 'username') === 0) ? 'username' : 'email', h(pg_user_write_problem_message($problem)) . '.');
+        }
+
+        foreach (pg_user_form_input_problems($_POST) as $field => $input_problem) {
+            $liveform->mark_error($field, pg_user_form_input_problem_message($field, $input_problem));
+        }
+
+        if ($liveform->check_form_errors()) {
+            $liveform->add_fields_to_session();
+
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_user.php?'
+                . http_build_query(array(
+                    'id' => $audit_user_id,
+                    'send_to' => (string) ($_REQUEST['send_to'] ?? ''))));
+            exit();
         }
 
         // A checked private folder whose date is not one stops here, before
