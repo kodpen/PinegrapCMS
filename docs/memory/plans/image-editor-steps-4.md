@@ -10,7 +10,7 @@ description: Steps E26-E29 of plans/image-editor.md (owner 2026-11-03): free def
   - Pins on a path layer (or outlined text); dragging one bends the shape around the others (moving least squares, rigid). Kept as `puppet` {pins at rest and moved} and drawn on the flattened outline; Expand bakes it.
   - Tests: one pin moves the whole shape, two pins keep their distance at rest, a symmetric pull gives a symmetric shape.
 
-- E27 (M) Area selection. `free` (E21-E23 are done; order, owner).
+- E27 (M) Area selection, a mode of the Fotoğraf item (`image-editor-steps-5.md` E23b). `free` (E21-E23 are done; order, owner).
   - A Select area tool on the picture: rectangle, ellipse, lasso, polygon, magic wand (tolerance, contiguous); Shift adds, Alt subtracts; invert, feather, marching ants. Kept in the document as `selection` (shapes, wand seed points and tolerance), so it opens again.
   - What it does: Erase (see-through: a PNG, WebP or AVIF keeps it; a JPEG saves as a PNG copy unless a fill colour is chosen), Keep only (crop to it), Copy to a layer (a cut-out picture layer), Redact (E10 on its shape), Adjust inside (the Adjust panel scoped to it).
   - The server draws the mask: a step of `includes/image_engine.php` (GD and Imagick) from the selection, as the redaction masks are.
