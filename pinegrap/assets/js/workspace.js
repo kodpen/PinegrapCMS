@@ -7662,21 +7662,27 @@
             return card.node;
         },
 
-        // Public channels the person is not in yet, each with Join.
+        // Public channels the person is not in yet, each with Join: the
+        // channel's sign, its name, topic and member count, the button at
+        // the end; the badge counts them.
         homeJoin: function (data) {
             var self = this;
             var join = todayCard('join', t('home_join'), 'bi-door-open', 'S', 'general');
+            var list = el('ul', 'ws-today-join-list');
 
             data.join.forEach(function (channel) {
-                var row = el('div', 'ws-home-row ws-home-join');
-                row.appendChild(icon('bi-hash', 'fg-secondary'));
+                var row = el('li', 'ws-today-join-row');
+                var sign = el('span', 'ws-today-join-sign');
+                sign.appendChild(icon('bi-hash'));
+                row.appendChild(sign);
 
-                var text = el('span', 'ws-home-row-text');
-                text.appendChild(el('span', 'ws-home-row-title', channel.name));
-                text.appendChild(el('small', 'fg-secondary', (channel.topic ? channel.topic + ' · ' : '') + t('home_members', channel.members)));
+                var text = el('span', 'ws-today-join-text');
+                text.appendChild(el('span', 'ws-today-join-name', channel.name));
+                text.appendChild(el('small', 'ws-today-join-meta', (channel.topic ? channel.topic + ' · ' : '') + t('home_members', channel.members)));
                 row.appendChild(text);
 
-                var joinButton = button('btn btn-sm btn-outline theme-primary rounded-pill', t('join'));
+                var joinButton = button('pg-dash-btn ws-today-join-btn', t('join'));
+                joinButton.setAttribute('aria-label', t('join') + ': ' + channel.name);
                 joinButton.addEventListener('click', function () {
                     joinButton.disabled = true;
                     api('ws_channel_join', { channel_id: channel.id }).then(function () {
@@ -7687,15 +7693,18 @@
                     });
                 });
                 row.appendChild(joinButton);
-                join.body.appendChild(row);
+                list.appendChild(row);
             });
+
+            join.body.appendChild(list);
+            self.homeCount(join, data.join.length);
 
             return join.node;
         },
 
         // What this place is for: open for somebody who has not written
         // anything yet, folded for the others. The whole row of the grid,
-        // its heading in the card frame's look.
+        // its summary in the card head's look, one dashboard tile per part.
         homeAbout: function (data) {
             var about = el('details', 'card pg-dash-card pg-dash-cardbox ws-today-card ws-home-about');
             about.setAttribute('data-card', 'about');
@@ -7712,9 +7721,9 @@
             about.appendChild(summary);
 
             var aboutBody = el('div', 'pg-dash-card-body');
-            aboutBody.appendChild(el('p', 'mb-0', t('home_about_text')));
+            aboutBody.appendChild(el('p', 'ws-today-about-text', t('home_about_text')));
 
-            var tiles = el('div', 'row g-3');
+            var tiles = el('ul', 'pg-dash-tiles ws-today-about-tiles');
             var tileList = [
                 ['bi-hash', t('channels'), t('home_about_channels')],
                 ['bi-check2-square', t('nav_work'), t('home_about_tasks')],
@@ -7730,15 +7739,15 @@
             }
 
             tileList.forEach(function (tile) {
-                var col = el('div', 'sm:col-6');
-                var box = el('div', 'ws-home-tile');
-                var name = el('div', 'ws-home-tile-title');
-                name.appendChild(icon(tile[0], 'me-1'));
+                var item = el('li');
+                var box = el('div', 'pg-dash-tile ws-today-about-tile');
+                var name = el('span', 'ws-today-about-tile-title');
+                name.appendChild(icon(tile[0]));
                 name.appendChild(document.createTextNode(tile[1]));
                 box.appendChild(name);
-                box.appendChild(el('div', 'small fg-secondary', tile[2]));
-                col.appendChild(box);
-                tiles.appendChild(col);
+                box.appendChild(el('span', 'pg-dash-tile-note', tile[2]));
+                item.appendChild(box);
+                tiles.appendChild(item);
             });
 
             aboutBody.appendChild(tiles);
