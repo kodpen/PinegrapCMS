@@ -97,8 +97,8 @@ foreach (erp_cheque_rows(array('direction' => $direction, 'status' => $status, '
             <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['due_date'])) . '"><a class="pg-link-body-emphasis fw-semibold" href="erp_cheque.php?id=' . (int) $row['id'] . h('&send_to=' . urlencode(REQUEST_URL)) . '">' . h(prepare_form_data_for_output((string) $row['due_date'], 'date')) . '</a>'
                 . ($late ? ' <span class="badge theme-danger">' . lang('Overdue') . '</span>' : '') . '</td>
             <td>' . h($kinds[(string) $row['kind']] ?? '') . '<div class="small fg-secondary">' . ((string) $row['direction'] === 'received' ? lang('Received') : lang('Given out')) . '</div></td>
-            <td style="max-width:240px" class="text-break">' . h((string) $row['account_title']) . (((string) $row['drawer'] !== '') ? '<div class="small fg-secondary text-break">' . h((string) $row['drawer']) . '</div>' : '') . '</td>
-            <td class="small">' . h(trim((string) $row['bank_name'] . ' ' . (string) $row['serial_no'])) . '</td>
+            <td style="max-width:240px" class="text-break pg-cell-wrap">' . h((string) $row['account_title']) . (((string) $row['drawer'] !== '') ? '<div class="small fg-secondary text-break">' . h((string) $row['drawer']) . '</div>' : '') . '</td>
+            <td class="small text-break pg-cell-wrap">' . h(trim((string) $row['bank_name'] . ' ' . (string) $row['serial_no'])) . '</td>
             <td class="text-end text-nowrap" data-sort="' . (int) $row['amount_base'] . '">' . h(erp_money_out_currency((int) $row['amount'], (string) $row['currency'])) . '</td>
             <td><span class="badge theme-' . h($state[1]) . '">' . h($state[0]) . '</span></td>
         </tr>';
@@ -233,7 +233,7 @@ pg_page_shell([
             <div class="row g-5 my-1">
                 <div class="col-12 md:col-4"><div class="card h-100"><div class="card-body"><div class="small fg-secondary text-uppercase">' . lang('In the portfolio or at the bank') . '</div><div class="h4 mb-0">' . h(erp_money_out($totals['received'][1])) . '</div><div class="small fg-secondary">' . h(lang(array('string' => '{var:1} cheque(s) or note(s)', 'vars' => $totals['received'][0]))) . '</div></div></div></div>
                 <div class="col-12 md:col-4"><div class="card h-100"><div class="card-body"><div class="small fg-secondary text-uppercase">' . lang('Given and not yet paid') . '</div><div class="h4 mb-0">' . h(erp_money_out($totals['given'][1])) . '</div><div class="small fg-secondary">' . h(lang(array('string' => '{var:1} cheque(s) or note(s)', 'vars' => $totals['given'][0]))) . '</div></div></div></div>
-                <div class="col-12 md:col-4"><div class="card h-100"><div class="card-body"><div class="small fg-secondary text-uppercase">' . lang('Due within a week') . '</div><div class="h4 mb-0' . (($totals['due_week'] > 0) ? ' fg-danger' : '') . '">' . (int) $totals['due_week'] . '</div></div></div></div>
+                <div class="col-12 md:col-4"><div class="card h-100"><div class="card-body"><div class="small fg-secondary text-uppercase">' . lang('Due within a week') . '</div><div class="h4 mb-0' . (($totals['due_week'] > 0) ? ' fg-danger' : '') . '">' . (int) $totals['due_week'] . '</div>' . (($totals['overdue'] > 0) ? '<div class="small fg-danger">' . h(lang(array('string' => '{var:1} overdue', 'vars' => $totals['overdue']))) . '</div>' : '') . '</div></div></div>
             </div>
 
             <div class="card my-7">

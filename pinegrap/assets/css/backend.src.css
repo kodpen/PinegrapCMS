@@ -5153,6 +5153,12 @@ table.chart .text-truncate.overflow-hidden * {
   vertical-align: bottom;
 }
 
+/* A cell that wraps a long unbroken word (with .text-break) keeps this
+   width, so the table's auto layout cannot squeeze it to a sliver. */
+.pg-cell-wrap {
+  min-width: 8rem;
+}
+
 table.dataTable.dt-checkboxes-select tbody tr,
 table.dataTable thead th.dt-checkboxes-select-all,
 table.dataTable tbody td.dt-checkboxes-cell {

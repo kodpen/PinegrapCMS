@@ -97,10 +97,10 @@ $step_form = function ($step, $title, $button, $class, $fields, $note) use ($che
             <input type="hidden" name="id" value="' . $cheque_id . '" />
             <input type="hidden" name="step" value="' . $step . '" />
             <div class="card-body">
-                <div class="row g-3 align-items-end">
+                <div class="row g-3 align-items-start">
                 <div class="col-12 fw-semibold">' . $title . '</div>
                 ' . $fields . '
-                <div class="col-12 md:col-3"><button type="submit" class="btn btn-sm ' . $class . ' w-100">' . $button . '</button></div>
+                <div class="col-12 md:col-3"><div class="form-label small d-none md:d-block" aria-hidden="true">&nbsp;</div><button type="submit" class="btn btn-sm ' . $class . ' w-100">' . $button . '</button></div>
                 ' . (($note !== '') ? '<div class="col-12 form-text">' . $note . '</div>' : '') . '
                 </div>
             </div>
@@ -138,12 +138,12 @@ if (!$readonly) {
 $movements = '';
 foreach (array('open_cash_id', 'close_cash_id') as $column) {
     if ((int) $cheque[$column] > 0) {
-        $move = db_item("SELECT t.id, t.doc_date, t.doc_type, t.direction, t.amount, t.currency, t.description, c.name AS till_name
+        $move = db_item("SELECT t.id, t.cash_account_id, t.doc_date, t.doc_type, t.direction, t.amount, t.currency, t.description, c.name AS till_name
             FROM erp_cash_transactions t LEFT JOIN erp_cash_accounts c ON c.id = t.cash_account_id
             WHERE t.id = '" . (int) $cheque[$column] . "' LIMIT 1");
         if (is_array($move)) {
-            $link = in_array((string) $move['doc_type'], array('collection', 'payment'), true) ? 'erp_receipt.php?id=' . (int) $move['id'] : 'erp_cash.php';
-            $movements .= '<tr><td class="text-nowrap">' . h(prepare_form_data_for_output((string) $move['doc_date'], 'date')) . '</td><td><a class="pg-link-body-emphasis" href="' . h($link) . '">' . h((string) $move['description']) . '</a></td><td>' . h((string) $move['till_name']) . '</td>'
+            $link = in_array((string) $move['doc_type'], array('collection', 'payment'), true) ? 'erp_receipt.php?id=' . (int) $move['id'] : 'edit_erp_till.php?id=' . (int) $move['cash_account_id'];
+            $movements .= '<tr><td class="text-nowrap">' . h(prepare_form_data_for_output((string) $move['doc_date'], 'date')) . '</td><td class="text-break"><a class="pg-link-body-emphasis" href="' . h($link) . '">' . h((string) $move['description']) . '</a></td><td>' . h((string) $move['till_name']) . '</td>'
                 . '<td class="text-end text-nowrap ' . (((string) $move['direction'] === 'in') ? 'fg-success' : 'fg-danger') . '">' . (((string) $move['direction'] === 'in') ? '+' : '−') . h(erp_money_out_currency((int) $move['amount'], (string) $move['currency'])) . '</td></tr>';
         }
     }
@@ -202,7 +202,8 @@ pg_page_shell([
                     ' . $fact(lang('Amount'), erp_money_out_currency((int) $cheque['amount'], (string) $cheque['currency'])) . '
                     ' . $fact(lang('Due Date'), prepare_form_data_for_output((string) $cheque['due_date'], 'date', false)) . '
                     ' . $fact(lang('Date'), prepare_form_data_for_output((string) $cheque['doc_date'], 'date', false)) . '
-                    ' . $fact(lang('Bank'), trim((string) $cheque['bank_name'] . ' ' . (string) $cheque['branch'])) . '
+                    ' . $fact(lang('Bank'), (string) $cheque['bank_name']) . '
+                    ' . $fact(lang('Branch'), (string) $cheque['branch']) . '
                     ' . $fact(lang('Drawn by'), (string) $cheque['drawer']) . '
                     ' . $fact(lang('Kept in'), (string) $cheque['portfolio_name']) . '
                     ' . $fact(lang('Bank account'), (string) $cheque['bank_till_name']) . '
