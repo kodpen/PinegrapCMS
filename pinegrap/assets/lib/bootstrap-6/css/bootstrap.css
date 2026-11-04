@@ -4557,7 +4557,7 @@
   .form-field:has(> .check, > .radio, > .switch) > .switch {
     grid-column: 1;
   }
-  .form-field:has(> .check, > .radio, > .switch) > :not(.check, .radio, .switch) {
+  .form-field > :not(.check, .radio, .switch):is(:has(~ :is(.check, .radio, .switch)), :is(.check, .radio, .switch) ~ *) {
     grid-column: 2;
   }
   .form-field:has(> .check, > .radio, > .switch) > .form-label {
