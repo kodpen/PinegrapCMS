@@ -228,6 +228,9 @@ if (!$_POST) {
     <script>
     // Indexing switch dependencies — logic in assets/js/backend.src.js
     bindPageIndexingSwitches();
+
+    // Page type rows and the comments switch — logic in assets/js/backend.src.js
+    bindPageTypePicker();
     </script>
 </main>' .
         output_footer();

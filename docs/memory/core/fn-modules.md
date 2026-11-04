@@ -7,7 +7,7 @@ description: Generated from the module field of the memory files: each includes/
 
 ## Which memory file describes an `includes/fn/` module?
 - `a11y`: [[accessibility-report]], [[editor-a11y-measurements]]
-- `activitypub`: [[activitypub-actor]]
+- `activitypub`: [[activitypub-actor]], [[activitypub-decisions]]
 - `activitypub_comments`: [[activitypub-comments]], [[activitypub-reactions]]
 - `activitypub_inbox`: [[activitypub-inbox]]
 - `activitypub_moderation`: [[activitypub-moderation]]
@@ -182,6 +182,7 @@ description: Generated from the module field of the memory files: each includes/
 - `store_credit`: [[store-credit-checkout]], [[store-credit-model]]
 - `store_credit_points`: [[store-credit-points]], [[store-credit-points-take-back]]
 - `store_credit_refunds`: [[store-credit-refunds]]
+- `store_credit_staff`: [[store-credit-screens]]
 - `store_currencies`: [[api-store-currency-writes]]
 - `store_lookups`: [[api-store-lookups]]
 - `store_regions`: [[api-store-country-state-writes]]
