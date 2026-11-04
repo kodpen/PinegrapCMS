@@ -5,7 +5,7 @@ module: booking_messages
 ---
 
 ## Who calls what when a booking changes?
-- Every path that writes a booking calls `pg_booking_changed($id, $event)` once after the write (`includes/fn/booking_messages.php`): `created`, `confirmed`, `rescheduled`, `cancelled`. It announces `booking.<event>` (webhook catalogue lists the four; `ws_events_catalog()` not yet) with `pg_booking_event_payload()` (no token), then mails and texts the customer.
+- Every path that writes a booking calls `pg_booking_changed($id, $event)` once after the write (`includes/fn/booking_messages.php`): `created`, `confirmed`, `rescheduled`, `cancelled`. It announces `booking.<event>` (webhook catalogue and `ws_events_catalog()` list the four) with `pg_booking_event_payload()` (no token), then mails and texts the customer.
 - `pg_booking_confirm()` calls `pg_booking_created()`: `booking.created`, plus `booking.confirmed` and its mail when confirmed at once. A hold announces nothing.
 - `edit_booking.php` calls it when `pg_booking_status_event()` names `confirmed` or `cancelled`; so do the manage page and the API.
 

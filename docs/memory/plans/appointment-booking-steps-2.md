@@ -7,7 +7,7 @@ description: Steps BK6-BK10 of plans/appointment-booking.md: Workspace calendar 
 - Sizes, tests and memory rules as in `appointment-booking-steps.md`; BK6, BK7 and BK8 run at once after BK3 and BK4.
 
 - BK6 (S) Workspace calendar. Done in #6305 (decided in #6302, option B: read from `bookings`, no `ws_events` row; `workspace/workspace-bookings.md`). The agenda's status changes call `pg_booking_changed()`.
-- BK6b (S) The four `booking.*` events in `ws_events_catalog()` (record kind `booking`, its right, `workspace_flows_parity_table()`). After BK6.
+- BK6b (S) The four `booking.*` events in `ws_events_catalog()`. Done in #6629 (`workspace/workspace-booking-record.md`; record kind `booking`, no new right: the agenda's row rule).
 
 - BK7 (S) My bookings and the manage page. Done in #6607 (`commerce/booking-manage.md`).
   - The account widgets (`designer/account-widget-forms.md`) gain "My bookings" (upcoming and past, reschedule and cancel within the policy); `booking_manage.php` (root) opens from the mail's signed link for a visitor without an account: the same two actions and the `.ics` download; both call the slot engine again for a reschedule. Memory: `designer/booking-widget.md` grows.

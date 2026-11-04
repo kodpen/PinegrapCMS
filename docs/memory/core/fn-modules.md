@@ -28,7 +28,7 @@ description: Generated from the module field of the memory files: each includes/
 - `aws_sign`: [[aws-sigv4-signing]]
 - `background_render`: [[background-render]]
 - `backup`: [[backup-folder-download-zip]], [[backup-manager-names-and-list]], [[backup-object-storage]], [[fn-module-errors-mail-backup-consent]]
-- `booking_agenda`: [[booking-agenda]], [[workspace-bookings]]
+- `booking_agenda`: [[booking-agenda]], [[workspace-booking-record]], [[workspace-bookings]]
 - `booking_manage`: [[booking-manage]]
 - `booking_messages`: [[booking-messages]]
 - `booking_settings`: [[booking-settings]]
