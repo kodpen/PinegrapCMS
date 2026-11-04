@@ -1,0 +1,38 @@
+{
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "id": "https://blog.example/@news/r/42#create-1793869200",
+    "type": "Create",
+    "actor": "https://blog.example/@news",
+    "published": "2026-11-05T09:00:00Z",
+    "to": [
+        "https://www.w3.org/ns/activitystreams#Public"
+    ],
+    "cc": [
+        "https://blog.example/@news/followers"
+    ],
+    "object": {
+        "id": "https://blog.example/@news/r/42",
+        "type": "Article",
+        "attributedTo": "https://blog.example/@news",
+        "name": "First light",
+        "content": "<p>The telescope saw <a href=\"https://blog.example/stars\" rel=\"nofollow ugc noopener\">its first star</a>.</p><img src=\"https://blog.example/files/star.jpg\"><p><a href=\"https://blog.example/articles/first-light\">https://blog.example/articles/first-light</a></p>",
+        "mediaType": "text/html",
+        "url": "https://blog.example/articles/first-light",
+        "published": "2026-11-05T08:00:00Z",
+        "to": [
+            "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "cc": [
+            "https://blog.example/@news/followers"
+        ],
+        "updated": "2026-11-05T09:00:00Z",
+        "attachment": [
+            {
+                "type": "Image",
+                "mediaType": "image/jpeg",
+                "url": "https://blog.example/star.jpg",
+                "name": "First light"
+            }
+        ]
+    }
+}

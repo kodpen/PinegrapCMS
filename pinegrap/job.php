@@ -946,6 +946,20 @@ if (pg_mail_queue_ready()) {
 
 }
 
+// The Fediverse outbox (includes/fn/activitypub_outbox.php): what the site
+// publishes is compared with what its followers were sent, the difference
+// queued as Create, Update or Delete, and the deliveries that are due are
+// signed and posted, retried on the mail queue's ladder. Only on a site that
+// switched the feature on; a small budget, as the mail pass, because a
+// follower's server that does not answer costs its full timeout.
+if (pg_config_text('ap_settings') !== '') {
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub_outbox.php');
+
+    pg_ap_outbox_run(25);
+
+}
+
 // Queued text messages (pg_sms_queue_run() in includes/fn/sms.php). A request
 // only queues a message, since the provider's answer is not worth a visitor's
 // wait, so apart from the queue screen's Run now this pass is what sends
