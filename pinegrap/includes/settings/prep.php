@@ -1626,28 +1626,44 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $ecommerce_reset_encryption_key_disabled_message = ' (' . lang('OpenSSL is disabled') . ')';
     }
 
-    // What a reset leaves unreadable: every value sealed with the key except
-    // the card numbers and gateway secrets, counted per area for the list
-    // under the switch. The save asks for the confirmation box when the list
-    // is not empty.
+    // What a reset does to the values sealed with the key, counted per area
+    // under the switch: those the re-seal registry carries over are sealed
+    // again in the same save; the rest (signed-in devices, and any area the
+    // registry does not list) are lost, and the save asks for the
+    // confirmation box only when that list is not empty.
     $encryption_key_reset_losses = '';
-    $encryption_key_reset_counts = pg_encryption_key_reset_counts(pg_encryption_key_reset_source());
+    $encryption_key_reset_split = pg_encryption_key_reset_split(
+        pg_encryption_key_reset_counts(pg_encryption_key_reset_source()),
+        pg_encryption_key_reset_carried_areas(pg_reseal_registry())
+    );
+    $encryption_key_reset_labels = pg_encryption_key_reset_labels();
+    $encryption_key_reset_list = function (array $counts) use ($encryption_key_reset_labels) {
+        $items = '';
 
-    if ($encryption_key_reset_counts) {
-        $encryption_key_reset_labels = pg_encryption_key_reset_labels();
-        $encryption_key_reset_items = '';
-
-        foreach ($encryption_key_reset_counts as $area => $count) {
-            $encryption_key_reset_items .= '<li>' . h($encryption_key_reset_labels[$area]) . ': ' . (int) $count . '</li>';
+        foreach ($counts as $area => $count) {
+            $label = isset($encryption_key_reset_labels[$area]) ? $encryption_key_reset_labels[$area] : $area;
+            $items .= '<li>' . h($label) . ': ' . (int) $count . '</li>';
         }
 
-        $encryption_key_reset_losses = '
+        return '<ul class="form-text mb-2">' . $items . '</ul>';
+    };
+
+    if ($encryption_key_reset_split['resealed']) {
+        $encryption_key_reset_losses .= '
+                                                <div id="ecommerce_reset_encryption_key_resealed" class="mt-3">
+                                                    <div class="form-text">' . lang('These values are sealed again with the new key in the same save:') . '</div>
+                                                    ' . $encryption_key_reset_list($encryption_key_reset_split['resealed']) . '
+                                                </div>';
+    }
+
+    if ($encryption_key_reset_split['lost']) {
+        $encryption_key_reset_losses .= '
                                                 <div id="ecommerce_reset_encryption_key_losses" class="mt-3">
-                                                    <div class="form-text">' . lang('These values are sealed with the current key and become unreadable after a reset; they will have to be entered again:') . '</div>
-                                                    <ul class="form-text mb-2">' . $encryption_key_reset_items . '</ul>
+                                                    <div class="form-text">' . lang('These cannot be carried over to the new key and will have to be set up again after a reset:') . '</div>
+                                                    ' . $encryption_key_reset_list($encryption_key_reset_split['lost']) . '
                                                     <div class="form-field mb-0">
                                                         <input value="1"' . $ecommerce_reset_encryption_key_disabled . ' class="check" type="checkbox" id="ecommerce_reset_encryption_key_confirm" name="ecommerce_reset_encryption_key_confirm"/>
-                                                        <label class="fg-danger" for="ecommerce_reset_encryption_key_confirm">' . lang('I understand these will have to be entered again') . '</label>
+                                                        <label class="fg-danger" for="ecommerce_reset_encryption_key_confirm">' . lang('I understand these will have to be set up again') . '</label>
                                                     </div>
                                                 </div>';
     }

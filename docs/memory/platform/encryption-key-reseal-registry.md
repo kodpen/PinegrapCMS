@@ -16,7 +16,7 @@ module: reseal
 ## What do the counts mean?
 - `pg_reseal_value()` (pure apart from the cipher) answers `done` with the new value, `skipped` when the value does not open with the old key (it was unreadable already and stays as it is), `failed` when it opened but could not be sealed.
 - The write is `UPDATE … WHERE column = <value read> [AND key = …]`; a write that fails counts as `failed` and the row keeps its old value. The run never stops the save halfway: the new key is already on disk.
-- `pg_reseal_run()` returns `areas` => area => done/skipped/failed and `seconds`, the time measured for the plan's open question (the request budget on a site with thousands of two-step keys). The card does not show them yet (RK3).
+- `pg_reseal_run()` returns `areas` => area => done/skipped/failed and `seconds`, the time measured for the plan's open question (the request budget on a site with thousands of two-step keys). The save's notice shows the done counts and a warning the failed ones (`ui/settings-security-cards.md`); the card's lists are split by the registry's area names.
 - A missing table or column counts as nothing sealed.
 
 ## Why is a JSON value checked after opening?

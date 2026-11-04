@@ -112,12 +112,19 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
-    // A key reset leaves the values the card lists unreadable: it waits for
-    // the box saying they will be entered again.
+    // A key reset loses what the re-seal registry cannot carry over (the
+    // card's second list): it waits for the box saying those will be set up
+    // again.
     if ((post_value('ecommerce_reset_encryption_key') == 1)
-        && (post_value('ecommerce_reset_encryption_key_confirm') != 1)
-        && pg_encryption_key_reset_counts(pg_encryption_key_reset_source())) {
-        $liveform->mark_error('ecommerce_reset_encryption_key_confirm', lang('Tick the box saying the listed values will have to be entered again, or turn Reset Encryption Key off.'));
+        && (post_value('ecommerce_reset_encryption_key_confirm') != 1)) {
+        $reset_split = pg_encryption_key_reset_split(
+            pg_encryption_key_reset_counts(pg_encryption_key_reset_source()),
+            pg_encryption_key_reset_carried_areas(pg_reseal_registry())
+        );
+
+        if ($reset_split['lost']) {
+            $liveform->mark_error('ecommerce_reset_encryption_key_confirm', lang('Tick the box saying the listed items will have to be set up again, or turn Reset Encryption Key off.'));
+        }
     }
 
     if ($liveform->check_form_errors()) {
@@ -164,6 +171,18 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         // (pg_reseal_registry()); one that does not open with the old key is
         // left as it is.
         $reseal_result = pg_reseal_run((string) $old_encryption_key, (string) $new_encryption_key);
+
+        // The counts go into the save's message; a value that opened but could
+        // not be sealed again is named in a warning, as it now reads empty.
+        $reseal_summary = pg_encryption_key_reset_summary($reseal_result['areas'], pg_encryption_key_reset_labels());
+
+        $liveform->add_notice($reseal_summary['done']
+            ? lang(array('string' => 'The encryption key has been reset. Sealed again with the new key: {var:1}.', 'vars' => implode(', ', $reseal_summary['done'])))
+            : lang('The encryption key has been reset.'));
+
+        if ($reseal_summary['failed']) {
+            $liveform->add_warning(lang(array('string' => 'These values could not be sealed again with the new key and will have to be entered again: {var:1}.', 'vars' => implode(', ', $reseal_summary['failed']))));
+        }
     }
 
     // ── Firewall settings ────────────────────────────────────────────────
