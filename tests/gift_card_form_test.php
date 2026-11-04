@@ -265,3 +265,15 @@ function test_gift_card_form_boxes_hold_their_top()
 	pg_assert_same('9', pg_test_gift_card_form_maxlength($unlimited, 'quantity'), 'no limit: as many digits as the server reads');
 	pg_assert_same(123456789, pg_gift_card_form_quantity('123456789'), 'the server reads nine digits');
 }
+
+// Store credit (a card bound to a customer) is voided on the customer's
+// screen, never deleted from the gift card screen; an ordinary card is.
+function test_gift_card_form_delete_refusal()
+{
+	pg_assert_same('', pg_gift_card_form_delete_refusal(array('credit_user_id' => 0)), 'an ordinary gift card is deleted');
+	pg_assert_same('', pg_gift_card_form_delete_refusal(array()), 'before the store credit columns exist');
+	pg_assert_same(lang('Store credit is not deleted: void it on the customer\'s Store credit card.'),
+		pg_gift_card_form_delete_refusal(array('credit_user_id' => 12)), 'store credit is refused');
+	pg_assert_same(lang('Store credit is not deleted: void it on the customer\'s Store credit card.'),
+		pg_gift_card_form_delete_refusal(array('credit_user_id' => '12')), 'a numeric string from the row');
+}
