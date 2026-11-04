@@ -86,12 +86,14 @@ if ($_POST) {
 
     if (($_POST['erp_action'] ?? '') === 'notes') {
 
-        $notes = mb_substr(trim((string) ($_POST['notes'] ?? '')), 0, 5000);
+        // An internal note: the copy kept at issue is not drawn again, and
+        // the change is announced for the audit trail (includes/erp/invoice_manual.php).
+        $saved = erp_invoice_notes_save($invoice_id, $_POST['notes'] ?? '');
 
-        if (db("UPDATE erp_invoices SET notes = '" . escape($notes) . "', updated_at = '" . time() . "' WHERE id = '" . $invoice_id . "'") !== false) {
+        if ($saved['success']) {
             $liveform->add_notice(lang('The note has been saved.'));
         } else {
-            $liveform->mark_error('_error', lang('The note could not be saved.'));
+            $liveform->mark_error('_error', $saved['error']);
         }
 
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
@@ -1600,7 +1602,7 @@ pg_page_shell([
                                     'class' => 'form-control', 'rows' => '2', 'maxlength' => '5000',
                                     'readonly' => $erp_readonly ? 'readonly' : '',
                                     'aria-label' => lang('Notes'))) . '
-                                <div class="form-text">' . lang('Printed at the foot of the document. The only part of an issued invoice that may still be changed; the figures and the lines cannot.') . '</div>
+                                <div class="form-text">' . lang('An internal note, never printed on the issued document: the PDF, the download, the e-mail and the public link keep the copy made at issue. The figures and the lines cannot be changed.') . '</div>
                             </div>
                             ' . ($erp_readonly ? '' : '<div class="col-12 lg:col-3 my-3 d-flex align-items-start">
                                 <button type="submit" name="submit_notes" value="Save" class="btn btn-outline theme-secondary"><i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save the Note') . '</span></button>

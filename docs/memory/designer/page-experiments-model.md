@@ -4,6 +4,11 @@ description: Page experiments model: the three tables (11.0.153), statuses and m
 module: experiments
 ---
 
+## Which decisions bind experiments? (owner, 2026-11-02)
+- A variant is a draft page edited with the designer as it is (lock, revisions, Preview); no second designer or copy of the tree. A draft chosen as a variant cannot be published or binned while its experiment is open (`page-experiments-sheet.md`).
+- One address for every variant: title, meta tags, structured data and address are the live page's, a variant changes the body only; crawlers and staff get the live page (no cloaking).
+- Nothing is written per visitor beyond the bucket cookie; counts go into the hourly rollup (`visitors/experiment-goals.md`). Checkout and express-order totals are untouched; the order goal reads `pg_order_complete()`'s context only.
+
 ## Which tables hold an experiment?
 - `experiments` (page, name, status, goal, dates, winner; `idx_page (page_id, status)`), `experiment_variants` (variant A is the live page, `draft_page_id` 0; others are drafts; `variant_key` VARCHAR(8), `weight`; unique per experiment), `experiment_hourly` (sha1 of `day|hour|experiment|variant`, views and goals, one `INSERT … ON DUPLICATE KEY UPDATE` per event). Step `upgrade_2026_11_0_page_experiments()`, 11.0.153; shape decided in #5038.
 
@@ -22,4 +27,4 @@ module: experiments
 ## Which requests never join?
 - `pg_experiment_request_excluded()` (pure, first reason wins): `bot` (`pg_request_is_automated()`, the firewall's verdict), `staff` (signed in, role below 3), `designer` (get_page_content mode `edit`), `preview` (`pg_request_is_panel_preview()`), `prototype` (`PG_PROTOTYPE_ENTRY`). Facts from `pg_experiment_request_context($mode)`. They always get the live page.
 
-Related: docs/memory/plans/page-experiments.md, docs/memory/visitors/high-volume-counter-rules.md
+Related: docs/memory/designer/page-experiments-serving.md, docs/memory/designer/audience-conditions.md, docs/memory/visitors/high-volume-counter-rules.md
