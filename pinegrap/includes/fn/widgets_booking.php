@@ -380,12 +380,14 @@ function pg_booking_widget_rows($services)
 
     foreach ((array) $services as $service) {
         $price = (int) $service['price'];
+        // A currency symbol stored as an entity (&#8378;) becomes its
+        // character here: the renderer escapes every value.
         $rows[] = array(
             '__service_id'          => (string) (int) $service['id'],
             '__service_name'        => (string) $service['name'],
             '__service_description' => (string) $service['description'],
             '__service_length'      => lang('{var:1} min', (int) $service['length_minutes']),
-            '__service_price'       => (($price > 0) && function_exists('prepare_price_for_output')) ? strip_tags(prepare_price_for_output($price, false, 0, 'plain_text')) : '',
+            '__service_price'       => (($price > 0) && function_exists('prepare_price_for_output')) ? html_entity_decode(prepare_price_for_output($price, false, 0, 'plain_text'), ENT_QUOTES | ENT_HTML5, 'UTF-8') : '',
         );
     }
 
@@ -409,7 +411,7 @@ function pg_booking_widget_data()
     }
 
     $staff = (array) db_items(
-        "SELECT booking_staff.*, user.user_username, contacts.first_name, contacts.last_name
+        "SELECT booking_staff.*, contacts.first_name, contacts.last_name
         FROM booking_staff
         LEFT JOIN user ON user.user_id = booking_staff.user_id
         LEFT JOIN contacts ON contacts.id = user.user_contact
@@ -417,7 +419,9 @@ function pg_booking_widget_data()
         ORDER BY booking_staff.id");
 
     foreach ($staff as $index => $row) {
-        $staff[$index]['name'] = pg_user_display_name($row['first_name'], $row['last_name'], $row['user_username']);
+        // The contact's name only: a login name never reaches the public page.
+        $name = pg_contact_display_name($row['first_name'], $row['last_name']);
+        $staff[$index]['name'] = ($name !== '') ? $name : lang('Staff member');
     }
 
     $services = array();
