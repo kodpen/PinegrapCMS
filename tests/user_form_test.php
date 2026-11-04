@@ -215,3 +215,34 @@ function test_user_screens_send_errors_back_to_the_form()
 	pg_assert_contains('pg_user_form_contact_problem(', $add, 'the contact is checked before the account is created');
 	pg_assert_contains('$liveform_view_users->add_warning(', $add, 'an unsent new account mail is a warning');
 }
+
+function test_user_form_layout_columns_in_order()
+{
+	$html = pg_user_form_layout('<i>FORM</i>', '<i>STATUS</i>', '<b>BUTTONS</b>');
+
+	$form = strpos($html, '<div class="col-12 lg:col-8 2xl:col-9 order-1"><i>FORM</i>');
+	$status = strpos($html, '<div class="col-12 lg:col-4 2xl:col-3 order-2">');
+	$sticky = strpos($html, '<div class="position-sticky" style="top:3.3rem;"><i>STATUS</i>');
+	$bar = strpos($html, '<div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">');
+	$buttons = strpos($html, '<b>BUTTONS</b>');
+
+	pg_assert_true($form !== false, 'form column with its cards');
+	pg_assert_true($status !== false && $status > $form, 'status column after the form column');
+	pg_assert_true($sticky !== false && $sticky > $status, 'sticky box inside the status column');
+	pg_assert_true($bar !== false && $bar > $sticky, 'save bar last');
+	pg_assert_true($buttons !== false && $buttons > $bar, 'buttons in the save bar');
+
+	$plain = pg_user_form_layout('<i>FORM</i>', '<i>STATUS</i>', '');
+	pg_assert_true(strpos(pg_user_form_layout('F', 'S', 'B', false), 'top:3.3rem') === false, 'a tall status box is not pinned');
+	pg_assert_contains('<nav class="buttons navigation text-center mb-7"', $plain, 'shared save bar component');
+}
+
+function test_user_form_screens_use_the_layout()
+{
+	foreach (array('add_user.php', 'edit_user.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+
+		pg_assert_contains('pg_user_form_layout(', $source, $file . ': wide layout');
+		pg_assert_true(strpos($source, 'xl:col-8') === false, $file . ': no older two-column row');
+	}
+}

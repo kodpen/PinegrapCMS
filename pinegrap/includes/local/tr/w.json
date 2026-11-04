@@ -24,6 +24,7 @@
     "WARNING: The selected {var}(s) will be opted-in.": "UYARI: Seçilen {var} kayıtları abone yapılacak.",
     "WARNING: The selected {var}(s) will be opted-out.": "UYARI: Seçilen {var} kayıtlarının aboneliği kaldırılacak.",
     "WARNING: The selected {var}(s) will be permanently deleted.": "UYARI: Seçilen {var} kayıtları kalıcı olarak silinecek.",
+    "WARNING: The shipping cut-off{suffix:1} for this shipping method on {var:1} arrival date{suffix:1} will be permanently deleted too.": "UYARI: Bu nakliye yönteminin {var:1} varış tarihindeki son kargo saati de kalıcı olarak silinecek.",
     "WARNING: The {var:1} key code(s) of this offer will be permanently deleted.": "UYARI: Bu teklife bağlı {var:1} anahtar kod kalıcı olarak silinecek.",
     "WARNING: This campaign profile will be permanently deleted.": "UYARI: Bu kampanya profili kalıcı olarak silinecek.",
     "WARNING: This campaign profile will be permanently deleted. 1 campaign profile follows it and will send nothing until it is given another trigger.": "UYARI: Bu kampanya profili kalıcı olarak silinecek. 1 kampanya profili bunu izliyor ve kendisine başka bir tetikleyici verilene kadar hiçbir şey göndermeyecek.",
