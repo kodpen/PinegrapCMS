@@ -29,12 +29,12 @@ function test_contact_list_default_columns()
 {
 	$columns = pg_list_table_columns(pg_contact_list_columns('all_my_contacts', false));
 
-	pg_assert_same(array('picture', 'first_name', 'last_name', 'company', 'phone', 'email', 'user', 'opt_in', 'last_modified', 'actions'), array_keys($columns));
+	pg_assert_same(array('picture', 'first_name', 'last_name', 'company', 'business_phone', 'home_phone', 'mobile_phone', 'email', 'user', 'opt_in', 'last_modified', 'actions'), array_keys($columns));
 	pg_assert_same(false, $columns['picture']['hideable'], 'the picture with the editor link is never hidden');
 	pg_assert_same('contacts.email_address', $columns['email']['sort']);
 	pg_assert_same('contact_user.user_username', $columns['user']['sort']);
 	pg_assert_same('center', $columns['opt_in']['align']);
-	pg_assert_false($columns['phone']['sortable'], 'the phones do not sort');
+	pg_assert_same('contacts.mobile_phone', $columns['mobile_phone']['sort'], 'each phone has its own column and sorts');
 	pg_assert_false($columns['actions']['sortable']);
 }
 
@@ -50,7 +50,7 @@ function test_contact_list_address_view_columns()
 {
 	$columns = pg_list_table_columns(pg_contact_list_columns('my_contacts_by_home_address', false));
 
-	pg_assert_same(array('picture', 'first_name', 'last_name', 'company', 'address', 'city', 'state', 'zip_code', 'country', 'last_modified', 'actions'), array_keys($columns));
+	pg_assert_same(array('picture', 'first_name', 'last_name', 'company', 'address', 'address_2', 'city', 'state', 'zip_code', 'country', 'last_modified', 'actions'), array_keys($columns));
 	pg_assert_same('contacts.home_city', $columns['city']['sort']);
 	pg_assert_same('contacts.business_zip_code', pg_contact_list_columns('my_contacts_by_business_address', false)['zip_code']['sort']);
 }
@@ -59,14 +59,14 @@ function test_contact_list_duplicates_columns()
 {
 	$columns = pg_contact_list_columns('all_duplicate_contacts', false);
 
-	pg_assert_same(array('picture', 'email', 'first_name', 'last_name', 'company', 'address', 'phone', 'user', 'groups', 'last_modified', 'actions'), array_keys($columns), 'the duplicates view always shows the groups');
+	pg_assert_same(array('picture', 'email', 'first_name', 'last_name', 'company', 'address', 'business_phone', 'home_phone', 'mobile_phone', 'user', 'groups', 'last_modified', 'actions'), array_keys($columns), 'the duplicates view always shows the groups');
 }
 
 function test_contact_list_sort_columns_match_the_old_codes()
 {
 	$sorts = pg_list_table_sort_columns(pg_list_table_columns(pg_contact_list_columns('all_my_contacts', false)));
 
-	pg_assert_same(array('first_name', 'last_name', 'company', 'email', 'user', 'opt_in', 'last_modified'), array_keys($sorts), 'a kept sort still names its column');
+	pg_assert_same(array('first_name', 'last_name', 'company', 'business_phone', 'home_phone', 'mobile_phone', 'email', 'user', 'opt_in', 'last_modified'), array_keys($sorts), 'a kept sort still names its column');
 }
 
 function test_contact_list_is_a_driver_list()

@@ -33,11 +33,13 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - api-product-name-and-dimensions.md: External API product name (SKU) rule on create and update (trimmed, required, free: 409 name_taken) and the weight/length/width/height bounds that fit decimal(12,4) unsigned
 - back-in-stock-notices.md: Back-in-stock notices (includes/fn/stock_notify.php, stock_notify.php): who may ask, the request rules, the inventory.changed listener, claim then mail, queue vs inline, trim, export, delete hooks
 - back-in-stock-sms.md: Back-in-stock notice by SMS (PR #1864): kind stock (transactional, owner decision), the stock_back event, the optional number field, text instead of mail, the one-message promise
-- barcode-product-code-overlap.md: A barcode may not be another product's product code and a product code may not be another product's barcode; a scanned code that is both, on two products, is refused (#4715)
+- barcode-product-code-overlap.md: A barcode, typed or generated, may not be another product's code, nor a product code another product's barcode; a scanned code that is both is refused (#4715, #6664)
 - barcode-stock-scan-checks.md: Barcode stock increase/decrease and the product screen's barcode save: whole quantities only (pg_barcode_scan_quantity()), no product in the Recycle Bin or missing (#4447)
+- booking-deposit-payment.md: The booking widget's deposit payment (BK9b): hold kept, payment form posted to booking_slots.php, return and retry, paid on arrival, paid shown on the screens and the API
 - booking-deposits.md: Booking deposits (BK9a): booking_services.deposit and deposit_product_id, bookings.order_id and paid_at (11.0.169), the deposit order, marked paid from the order's completion, confirm or requested
 - booking-manage.md: A customer's own booking (BK7): booking_manage.php from the mail's signed link, cancel and move within the policy window, .ics download, the my_account widget's bookings section
 - booking-messages.md: Booking mails, SMS, .ics and reminders: booking.* events, four campaign profile actions (11.0.161), the .ics attachment, SMS kind booking, reminders by the general job without a column
+- bookings-decisions.md: Lasting rules of appointment bookings (plan closed in BK10): UTC times, no account needed, no new calendar engine, deposits via the form payment step, open retention work
 - bookings-model.md: Appointment bookings model and slot engine: the three tables (11.0.157), hours JSON, slot rules (DST, buffers, lead, horizon, holidays), hold/confirm on the unique key, manage token
 - card-brand-switches.md: How the checkout reads the accepted card brand switches (Visa, MasterCard, American Express, ...) and why American Express was never counted
 - card-data-manual-processing.md: Card data with no payment gateway (manual processing): the security code never stored, the number encrypted only, masked once the order is processed; refusal without openssl; hourly sweep
@@ -102,6 +104,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - form-fields-zero-id-query-trap.md: Product-form reads must pin form_type = 'product' (template rows have page_id and product_id 0); the deleted-product receipt bug and the empty-id rule.
 - gift-card-balance-edit.md: The gift card screen (edit_gift_card.php) writes the balance only when it was changed there, and only over the balance it opened with; why, and what a stale save sees
 - gift-card-email-variables.md: The product screen's Email Gift Card variable buttons (^^code^^, ^^amount^^ …): where the list lives, how it stays in step with the sender (#4449), what ^^amount^^ prints, the starter dumps' texts
+- gift-card-screens-store-credit.md: Gift card screens: store credit shown with its owner and kind, credit balance edits audited, code search without dashes, amount and quantity box sizes
 - givex-gift-card.md: How Givex gift card replies are read (pg_givex_parse_response), what an unreadable reply does at apply, at the submit check and at redemption, and how to test Givex without the real service.
 - guest-shipment-lookup.md: Guest parcel lookup (track_shipment.php, PR #2116): order number + billing e-mail, neutral not-found answer, shipping fields only, 10 lookups/hour per address in waf_rate, how operators place it
 - import-decimal-cells.md: Product, contact and user imports read weight, dimensions, commission rate limit and affiliate commission rate with either decimal separator, as the screens do
@@ -281,11 +284,12 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - stock-locations-screens.md: Stock per location on the panel: product screen boxes per location, the quick stock cells refused, the two bulk edits at one location, stock:<location> import and export columns
 - stock-quantity-column-bound.md: Panel stock writers refuse or skip a count past PG_INVENTORY_QUANTITY_MAX (the INT UNSIGNED top) instead of letting MySQL cut it (#4711)
 - store-credit-checkout.md: Store credit at checkout (PR #6234): open cards applied as applied_gift_cards rows before the totals, the "Use my store credit" box and per-order opt-out, the name on receipts
+- store-credit-mails.md: Store credit mails and expiry (11.0.171): credit_issued and credit_expiring actions, fields, the notice pass without a column, the job closing ended cards
 - store-credit-model.md: Store credit as a gift card bound to a customer (2026.11.0, 11.0.159): gift_cards user_id/kind/reason/issued_by/expires_at, pg_credit_* writer and readers, pick order, points value, void, audit line
 - store-credit-points-take-back.md: An order's reward points taken back on cancel, full refund and line refund (#6256, decision #6306): recomputed from the lines, balance first, the converted rest off the newest points cards
 - store-credit-points.md: Reward points to store credit (2026.11.0): two config_text settings, the My Account form, convert_reward_points.php, the guarded UPDATE then pg_credit_issue() kind points, the goal left as it was
 - store-credit-refunds.md: Refunds given as store credit (2026.11.0): the return refund's credit method, the cancelled order's refund dialog, the bonus setting, what is written, the mails
-- store-credit-screens.md: Store credit on the customer's screen (edit_user.php, 2026.11.0): the Store Credit card, who sees it, issue (amount, reason, last day), void with a reason, what is logged
+- store-credit-screens.md: Store credit screens (2026.11.0): the staff card on edit_user.php (issue, void, rights) and the customer's My Account section (built-in templates, designer widget section store_credit)
 - storefront-api-missing-fields.md: Public api.php storefront actions (get_cross_sell_items, get_product, get_installment_options) read missing or malformed request fields as empty and answer in JSON, never with a warning or a 500
 - storefront-pack-decisions.md: Lasting decisions of the storefront pack (reviews, wishlist, back in stock, bundles; 2026-10-19, finished with #2902) and where each part is documented
 - subscriptions-account.md: The customer's subscriptions in My Account (slice 5a): the my_account "subscriptions" section, pause/resume/cancel at period end/update card, ownership, events, the job ending cancelled rows

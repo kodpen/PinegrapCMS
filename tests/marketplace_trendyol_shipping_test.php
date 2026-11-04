@@ -225,11 +225,15 @@ function test_marketplace_trendyol_shipping_link_follows_the_order_screen()
 
 	// A carrier the method code names that the list does not know is not
 	// replaced by the default: that would report another company's page.
-	foreach (array('Sendeo', 'HepsiJET', 'Kolay Gelsin', 'Trendyol Express') as $unknown) {
+	foreach (array('Sendeo', 'HepsiJET', 'Horoz Lojistik', 'Trendyol Express') as $unknown) {
 
 		pg_assert_same(null, mp_sync_shipment_link(array($unnamed), $unknown, 'aras'), $unknown);
 
 	}
+
+	// A carrier the list learned later is linked to its own page.
+	pg_assert_same('https://www.kolaygelsin.com/tracking?q=9988776655',
+		mp_sync_shipment_link(array($unnamed), 'Kolay Gelsin', 'aras')['url']);
 }
 
 // The moment an account began shipping itself: set when it starts, kept while

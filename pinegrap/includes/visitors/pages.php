@@ -25,9 +25,14 @@ if (!defined('PG_VISITORS_SCREEN')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/visitor_pages.php');
 
 /**
- * How many pages the table shows.
+ * How many pages the table holds.
  */
 const PG_VISITORS_PAGES_TOP = 25;
+
+/**
+ * How many of them show before its "Show all" button.
+ */
+const PG_VISITORS_PAGES_ROWS = 10;
 
 /**
  * The column the table is sorted by: clicks (only when linked), visits or
@@ -132,7 +137,7 @@ function pg_visitors_pages_table(array $rows, $linked, $ecommerce, $base)
         if ($linked) {
             $cells[] = pg_visitors_pages_figure($row['impressions'], pg_format_number((int) $row['impressions'], 0));
             $cells[] = pg_visitors_pages_figure($row['clicks'], pg_format_number((int) $row['clicks'], 0));
-            $cells[] = pg_visitors_pages_figure($row['ctr'], pg_format_number((float) $row['ctr'] * 100, 1) . ' %');
+            $cells[] = pg_visitors_pages_figure($row['ctr'], pg_visitors_percent((float) $row['ctr'] * 100, 1));
             $cells[] = pg_visitors_pages_figure($row['position'], pg_format_number((float) $row['position'], 1));
         }
 
@@ -149,7 +154,7 @@ function pg_visitors_pages_table(array $rows, $linked, $ecommerce, $base)
         $body[] = $cells;
     }
 
-    return pg_visitors_table($headings, $body, array('caption' => lang('Pages and Google'), 'id' => 'pages_table'));
+    return pg_visitors_table($headings, $body, array('caption' => lang('Pages and Google'), 'id' => 'pages_table', 'limit' => PG_VISITORS_PAGES_ROWS));
 }
 
 /**

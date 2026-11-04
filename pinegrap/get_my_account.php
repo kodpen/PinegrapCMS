@@ -49,16 +49,11 @@ function get_my_account($properties) {
         $reward_points = 0;
     }
 
-    // Points to store credit: the offer, and the form's target, only when the
-    // shop gives points a value.
-    $reward_points_credit = pg_credit_points_offer((int) $reward_points);
-
-    if ($reward_points_credit['enabled']) {
-        $reward_points_credit['url'] = PATH . SOFTWARE_DIRECTORY . '/convert_reward_points.php';
-        $reward_points_credit['token_field'] = get_token_field();
-        $reward_points_credit['send_to'] = get_request_uri();
-        $reward_points_credit['value_info'] = pg_format_money($reward_points_credit['value'] / 100, BASE_CURRENCY_SYMBOL);
-    }
+    // Store credit: the balance, the cards and the orders that spent them,
+    // and the points conversion form (its target only when the shop gives
+    // points a value). reward_points_credit stays for layouts written before.
+    $store_credit = pg_credit_account_view(USER_ID, (string) get_page_type_url('view order'), time());
+    $reward_points_credit = $store_credit['convert'];
 
     $contact = db_item(
         "SELECT
@@ -407,6 +402,7 @@ function get_my_account($properties) {
         'start_page_url' => $start_page_url,
         'reward_points' => $reward_points,
         'reward_points_credit' => $reward_points_credit,
+        'store_credit' => $store_credit,
         'my_account_profile_url' => get_page_type_url('my account profile'),
         'first_name' => $first_name,
         'last_name' => $last_name,

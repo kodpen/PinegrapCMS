@@ -63,28 +63,15 @@ function pg_credit_staff_issue_input($amount_raw, $last_day_raw, $reason_raw, $n
 
     $out['amount'] = $amount;
 
-    $last_day = is_scalar($last_day_raw) ? trim((string) $last_day_raw) : '';
+    $expires = pg_credit_last_day_expires($last_day_raw, $now);
 
-    if ($last_day !== '') {
-        $date = DateTime::createFromFormat('!Y-m-d', $last_day);
+    if ($expires < 0) {
+        $out['error'] = 'date';
 
-        if (!$date || ($date->format('Y-m-d') !== $last_day)) {
-            $out['error'] = 'date';
-
-            return $out;
-        }
-
-        $date->modify('+1 day');
-        $expires = (int) $date->getTimestamp();
-
-        if ($expires <= (int) $now) {
-            $out['error'] = 'date';
-
-            return $out;
-        }
-
-        $out['expires'] = $expires;
+        return $out;
     }
+
+    $out['expires'] = $expires;
 
     $reason = is_scalar($reason_raw) ? trim((string) $reason_raw) : '';
 
@@ -97,6 +84,35 @@ function pg_credit_staff_issue_input($amount_raw, $last_day_raw, $reason_raw, $n
     $out['reason'] = mb_substr($reason, 0, PG_CREDIT_REASON_LENGTH);
 
     return $out;
+}
+
+/**
+ * The moment a card given a last day stops (pure): the start of the next
+ * day, so the card is valid through the day itself. Shared by the staff
+ * screen and POST /customers/{id}/credit.
+ *
+ * @param mixed $last_day_raw  Y-m-d, or empty for never
+ * @param int   $now
+ * @return int  unix time, 0 for never, -1 for an impossible or past day
+ */
+function pg_credit_last_day_expires($last_day_raw, $now)
+{
+    $last_day = is_scalar($last_day_raw) ? trim((string) $last_day_raw) : '';
+
+    if ($last_day === '') {
+        return 0;
+    }
+
+    $date = DateTime::createFromFormat('!Y-m-d', $last_day);
+
+    if (!$date || ($date->format('Y-m-d') !== $last_day)) {
+        return -1;
+    }
+
+    $date->modify('+1 day');
+    $expires = (int) $date->getTimestamp();
+
+    return ($expires <= (int) $now) ? -1 : $expires;
 }
 
 /**
@@ -129,11 +145,65 @@ function pg_credit_staff_issue_error($code)
  */
 function pg_credit_staff_card_state(array $card, $now)
 {
+    // The expiry pass closes an ended card by writing its balance to 0, so a
+    // card past its end reads expired whatever is left on it.
+    $expires = (int) ($card['expires_at'] ?? 0);
+
+    if (($expires > 0) && ($expires <= (int) $now)) {
+        return 'expired';
+    }
+
     if ((int) ($card['balance'] ?? 0) <= 0) {
         return 'used';
     }
 
     return pg_credit_card_open($card, (int) $now) ? 'open' : 'expired';
+}
+
+/**
+ * The Store Credit card of the gift card screen's status column (pure):
+ * whose credit a card bound to a customer is, where it came from, why and
+ * its last day. Without it the screen called such a card "created manually"
+ * and named no customer.
+ *
+ * @param array  $card   gift_cards row: kind, reason, expires_at
+ * @param string $owner  the customer as HTML, a link when the viewer may
+ *                       open the account
+ * @return string HTML
+ */
+function pg_credit_staff_gift_card_info_html(array $card, $owner)
+{
+    $expires = (int) ($card['expires_at'] ?? 0);
+    $reason = (string) ($card['reason'] ?? '');
+
+    $rows = array(
+        array(lang('Customer'), (string) $owner),
+        array(lang('Source'), h(pg_credit_staff_kind_label($card['kind'] ?? ''))),
+    );
+
+    if ($reason !== '') {
+        $rows[] = array(lang('Reason'), nl2br(h($reason)));
+    }
+
+    $rows[] = array(lang('Last day'), ($expires > 0) ? h(pg_credit_expiration_date($expires)) : h(lang('Never')));
+
+    $output_rows = '';
+
+    foreach ($rows as $row) {
+        $output_rows .= '
+                        <div class="row">
+                            <span class="col fg-secondary">' . h($row[0]) . ':</span>
+                            <span class="col text-end text-break">' . $row[1] . '</span>
+                        </div>';
+    }
+
+    return '<div class="card mb-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                        ' . h(lang('Store Credit')) . '
+                    </h2>
+                    <div class="card-body">' . $output_rows . '
+                    </div>
+                </div>';
 }
 
 /**
@@ -348,7 +418,7 @@ function pg_credit_staff_panel_html($user_id, $send_to, $now)
                                     <button type="submit" class="btn btn-solid theme-primary w-100">' . h(lang('Issue Credit')) . '</button>
                                 </div>
                             </div>
-                            <div class="form-text">' . h(lang('The customer spends store credit at checkout when signed in. Every issue and void is kept in the audit trail.')) . '</div>
+                            <div class="form-text">' . h(lang('The customer spends store credit at checkout when signed in. Every issue and void is kept in the audit trail.')) . ' ' . h(lang('The customer sees the reason on their account page.')) . '</div>
                         </form>
                     </div>
                 </div>';

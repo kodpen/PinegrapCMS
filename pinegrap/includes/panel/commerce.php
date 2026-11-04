@@ -1151,32 +1151,11 @@ function pg_panel_generate_product_barcode($request, $action)
     if (!$product_id)
         respond(array('status' => 'error', 'message' => lang('Product not found.')));
 
-    $attempts = 0;
-    do {
-        if ($barcode_type === 'EAN13') {
-            $digits = '';
-            for ($i = 0; $i < 12; $i++)
-                $digits .= rand(0, 9);
-            $sum = 0;
-            for ($i = 0; $i < 12; $i++)
-                $sum += ($i % 2 === 0 ? 1 : 3) * (int) $digits[$i];
-            $barcode = $digits . ((10 - ($sum % 10)) % 10);
-        } elseif ($barcode_type === 'UPC') {
-            $digits = '';
-            for ($i = 0; $i < 11; $i++)
-                $digits .= rand(0, 9);
-            $sum = 0;
-            for ($i = 0; $i < 11; $i++)
-                $sum += ($i % 2 === 0 ? 3 : 1) * (int) $digits[$i];
-            $barcode = $digits . ((10 - ($sum % 10)) % 10);
-        } else {
-            $barcode = str_pad($product_id, 5, '0', STR_PAD_LEFT) . str_pad(rand(0, 9999999), 7, '0', STR_PAD_LEFT);
-        }
-        $exists = db_value("SELECT COUNT(*) FROM product_barcodes WHERE barcode = '" . e($barcode) . "'");
-        $attempts++;
-    } while ($exists && $attempts < 20);
+    // The shared generator: a code free as a barcode and as another
+    // product's code.
+    $barcode = pg_generate_unique_barcode($barcode_type, $product_id);
 
-    if ($exists)
+    if ($barcode === '')
         respond(array('status' => 'error', 'message' => lang('Could not generate a unique barcode. Please try again.')));
 
     respond(array('status' => 'success', 'barcode' => $barcode, 'barcode_type' => $barcode_type));
@@ -1333,34 +1312,11 @@ function pg_panel_bulk_assign_barcodes($request, $action)
         if (!$pid)
             continue;
 
-        // Generate unique barcode
-        $barcode = '';
-        $attempts = 0;
-        do {
-            if ($barcode_type === 'EAN13') {
-                $digits = '';
-                for ($i = 0; $i < 12; $i++)
-                    $digits .= rand(0, 9);
-                $sum = 0;
-                for ($i = 0; $i < 12; $i++)
-                    $sum += ($i % 2 === 0 ? 1 : 3) * (int) $digits[$i];
-                $barcode = $digits . ((10 - ($sum % 10)) % 10);
-            } elseif ($barcode_type === 'UPC') {
-                $digits = '';
-                for ($i = 0; $i < 11; $i++)
-                    $digits .= rand(0, 9);
-                $sum = 0;
-                for ($i = 0; $i < 11; $i++)
-                    $sum += ($i % 2 === 0 ? 3 : 1) * (int) $digits[$i];
-                $barcode = $digits . ((10 - ($sum % 10)) % 10);
-            } else {
-                $barcode = str_pad($pid, 5, '0', STR_PAD_LEFT) . str_pad(rand(0, 9999999), 7, '0', STR_PAD_LEFT);
-            }
-            $exists = db_value("SELECT COUNT(*) FROM product_barcodes WHERE barcode = '" . e($barcode) . "'");
-            $attempts++;
-        } while ($exists && $attempts < 30);
+        // The shared generator: a code free as a barcode and as another
+        // product's code.
+        $barcode = pg_generate_unique_barcode($barcode_type, $pid);
 
-        if ($exists) {
+        if ($barcode === '') {
             $skipped++;
             continue;
         }

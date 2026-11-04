@@ -24,7 +24,7 @@ module: site_search_stats
 
 ## Where is the report?
 - The Site Search section of the Visitors overview, `visitors.php#site_search` (`includes/visitors/site_search.php`, V17 #6475), over the overview's period: `pg_site_search_figures($from, $to)` reads, `pg_site_search_report($figures, $may_tune)` draws (pure). Both SQL statements bind the first and the last day (`day >= ? AND day <= ?`). Nothing is drawn until `pg_site_search_stats_ready()`.
-- Tiles: searches, terms, no results, result clicks, clicks per search (`pg_site_search_click_rate()`, can pass 100%: several results of one search may be clicked; '-' with no search). Tables: top 100 terms by searches, top 100 terms that found nothing (`pg_site_search_terms_sql()`; rows summed, `GROUP BY term`).
+- Tiles: searches, terms, no results, result clicks, clicks per search (`pg_site_search_click_rate()`, can pass 100%: several results of one search may be clicked; '-' with no search). Tables: top 100 terms by searches, top 100 terms that found nothing (`pg_site_search_terms_sql()`; rows summed, `GROUP BY term`), 5 of each shown at first (`pg_visitors_table()` `limit`).
 - A manager (role < 3) gets a promote button per zero-result term: `settings_features.php?search_promote=<term>#pgset-search-tuning`, where the card adds a `term => ` line (`pg_search_promoted_add_line()`) for the operator to finish and save.
 - `visitor_search.php` only answers a 301: its `days` (7/30/90/365, default 30) become `p=7d|30d|90d`, a year a custom range ending today (`pg_site_search_overview_query()`).
 

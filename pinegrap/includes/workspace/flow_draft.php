@@ -2033,6 +2033,33 @@ function ws_flow_ai_problem_texts($graph)
 }
 
 /**
+ * Why Claude's answer in a channel is refused for the flow it drafts
+ * (ws_changes_input()): what stops the flow from being published, with the
+ * hints Pinegrap AI gets when its draft fails the same check
+ * (ws_flow_ai_problem_hints()), so Claude fixes the draft and sends the answer
+ * again, or leaves the flow out and says why. A flow no one can publish never
+ * reaches the channel as a draft. '' when it can be published.
+ *
+ * @param array         $graph     the draft, as ws_flow_draft_proposal_row() keeps it
+ * @param array[]|null  $catalogue ws_flow_ai_catalogue_hints(); null reads the site's
+ * @param string[]|null $problems  ws_flow_ai_problem_texts(); null checks the graph
+ * @return string
+ */
+function ws_flow_draft_answer_refusal($graph, $catalogue = null, $problems = null)
+{
+    $graph = ws_flow_graph_normalize($graph);
+    $problems = ($problems !== null) ? array_values((array) $problems) : ws_flow_ai_problem_texts($graph);
+
+    if (empty($problems)) {
+        return '';
+    }
+
+    $hints = ws_flow_ai_problem_hints($graph, ($catalogue !== null) ? $catalogue : ws_flow_ai_catalogue());
+
+    return lang(array('string' => 'This flow could not be published like this: {var:1} Fix it and send the answer again with all of it, or leave the flow out and say why.', 'vars' => implode(' ', array_merge($problems, $hints))));
+}
+
+/**
  * Pinegrap AI drafts a flow (propose_flow): a new one from boxes and arrows,
  * or changes to a flow the person who asked may change. It is checked as
  * POST /workspace/flows (or a draft save) would check it for them, and kept

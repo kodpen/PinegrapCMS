@@ -3,9 +3,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The arrival date form, shared by the create and the edit screens
- * (add_arrival_date.php, edit_arrival_date.php): the preview,
- * availability and options cards with the shipping cut-off table, the
- * column values a posted arrival date is saved with and the shipping
+ * (add_arrival_date.php, edit_arrival_date.php): the wide layout (a form
+ * column with the options, dates and shipping cut-off cards, a sticky
+ * status column with the availability switches and a Summary, a sticky
+ * save bar), the column values a posted arrival date is saved with and the shipping
  * cut-offs it keeps. The screens keep what differs: the edit screen loads
  * the record and its cut-offs, offers delete and updates the row; the
  * create screen inserts it.
@@ -77,15 +78,19 @@ function pg_arrival_date_form_date_text($stored)
 }
 
 /**
- * The preview, availability and options cards.
+ * The form column (the options, dates and shipping cut-off cards) and the
+ * sticky status column (the availability switches and a Summary that
+ * follows the fields).
  *
  * @param array $values  The stored row (raw), array() on create
  * @param string $cutoffs_js  Edit: the lines that fill the shipping_cutoffs
  *                            array, drawn as rows once the page has loaded;
  *                            null on create
+ * @param string $status_rows  More Summary rows (pg_arrival_date_form_status_row()),
+ *                             e.g. the last change on edit
  * @return string
  */
-function pg_arrival_date_form_cards($values, $cutoffs_js = null)
+function pg_arrival_date_form_cards($values, $cutoffs_js = null, $status_rows = '')
 {
     $v = array_merge(array(
         'name' => '', 'description' => '', 'code' => '', 'sort_order' => '', 'status' => 'enabled',
@@ -99,9 +104,12 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null)
 
     $status_enabled_checked = ($v['status'] == 'enabled') ? ' checked="checked"' : '';
     $default_selected_checked = ($v['default_selected'] == 1) ? ' checked="checked"' : '';
+    $date_placeholder = date(get_date_format_code() . '/Y');
 
     // A custom arrival date is entered by the customer and has no shipping
-    // cut-offs; otherwise there is no latest allowed date to enter.
+    // cut-offs; otherwise there is no latest allowed date to enter. The rows
+    // are shown and hidden by show_or_hide_custom() through style.display,
+    // so they carry an inline display, not d-none.
     if ($v['custom'] == 1) {
         $custom_checked = ' checked="checked"';
         $custom_maximum_arrival_date_row_style = '';
@@ -113,150 +121,217 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null)
     }
 
     $output_cutoffs_js = (string) $cutoffs_js . '
-                                                    var shipping_method_id_options = new Array();
-                                                    ' . pg_arrival_date_form_shipping_method_options_js();
+                                        var shipping_method_id_options = new Array();
+                                        ' . pg_arrival_date_form_shipping_method_options_js();
 
     // The stored cut-offs become rows once the page has loaded.
     if ($cutoffs_js !== null) {
         $output_cutoffs_js .= '
-                                                    window.onload = function() {
-                                                        for (var i = 0; i < shipping_cutoffs.length; i++) {
-                                                            create_shipping_cutoff(shipping_cutoffs[i]);
-                                                        }
-                                                    };';
+                                        window.onload = function() {
+                                            for (var i = 0; i < shipping_cutoffs.length; i++) {
+                                                create_shipping_cutoff(shipping_cutoffs[i]);
+                                            }
+                                        };';
     }
 
+    $customer_text = lang('Chosen by the customer');
+    $summary_arrival_date = ($v['custom'] == 1) ? $customer_text : $date('arrival_date');
+
+    $summary = pg_arrival_date_form_status_row(lang('Name'), '<span id="arrival_date_summary_name">' . h($v['name']) . '</span>', false)
+        . pg_arrival_date_form_status_row(lang('Arrival Date'), '<span id="arrival_date_summary_arrival_date">' . h($summary_arrival_date) . '</span>', false)
+        . pg_arrival_date_form_status_row(lang('Start Date'), '<span id="arrival_date_summary_start_date">' . h($date('start_date')) . '</span>', false)
+        . pg_arrival_date_form_status_row(lang('End Date'), '<span id="arrival_date_summary_end_date">' . h($date('end_date')) . '</span>', false)
+        . pg_arrival_date_form_status_row(lang('Shipping Cut-offs'), '<span id="arrival_date_summary_cutoffs">' . substr_count((string) $cutoffs_js, '["shipping_method_id"]') . '</span>', $status_rows === '')
+        . $status_rows;
+
     return '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Preview Options') . '
                                 </h2>
-                                <div class="card-body">
+                                <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 sm:col-6 lg:col-4 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Arrival Date'))) . '</label>
-                                            <input value="' . h($v['name']) . '" type="text" name="name"  id="name" maxlength="50" class="form-control" required />
+                                            <input value="' . h($v['name']) . '" type="text" name="name" id="name" maxlength="50" class="form-control" required />
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
-                                        <div class="col-12 sm:col-6 lg:col-4 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="code" class="form-label">' . lang('Arrival Date Code') . '</label>
-                                            <input value="' . h($v['code']) . '" type="text" name="code"  id="code" maxlength="50" class="form-control" />
-                                            <div class="form-text text-end">' . lang('Arrival Date Code for Order Reporting') . '</div>
+                                            <input value="' . h($v['code']) . '" type="text" name="code" id="code" maxlength="50" class="form-control" aria-describedby="code_help" />
+                                            <div id="code_help" class="form-text">' . lang('Arrival Date Code for Order Reporting') . '</div>
                                         </div>
-                                        <div class="col-12 sm:col-4  my-3">
+                                        <div class="col-12 md:col-8 my-3">
+                                            <label for="description" class="form-label">' . lang(array('string'=>'{var:1} Description','vars'=>lang('Arrival Date'))) . '</label>
+                                            <input value="' . h($v['description']) . '" type="text" name="description" id="description" maxlength="255" class="form-control" />
+                                        </div>
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="sort_order" class="form-label">' . lang('Sorting') . '</label>
                                             <div class="input-group number-controls">
                                                 <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
-                                                <input value="' . h($v['sort_order']) . '" class="form-control text-center border-start-0 border-end-0" type="text" name="sort_order" id="sort_order" maxlength="3" inputmode="numeric" data-inputmask-alias="integer"  data-inputmask-placeholder="0"/>
+                                                <input value="' . h($v['sort_order']) . '" class="form-control text-center border-start-0 border-end-0" type="text" name="sort_order" id="sort_order" maxlength="3" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-placeholder="0"/>
                                                 <button class="btn material-icons plus border border-start-0" type="button" aria-label="' . h(lang('Increase')) . '">add</button>
                                             </div>
                                         </div>
-                                        <div class="col-12  sm:col-8 lg:col-12 my-3">
-                                            <label for="description" class="form-label">' . lang(array('string'=>'{var:1} Description','vars'=>lang('Arrival Date'))) . '</label>
-                                            <input value="' . h($v['description']) . '" type="text" name="description" id="description" maxlength="255" class="form-control" />
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Arrival Date Availability') . '
+                                    ' . lang('Dates') . '
                                 </h2>
-                                <div class="card-body">
+                                <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 my-3">
-                                            <div class="form-field">
-                                                <div class="switch"><input class="" type="checkbox" id="status" name="status" value="1"' . $status_enabled_checked . ' /></div>
-                                                <label class="" for="status">' . lang('Enable this Arrival Date') . '</label>
-                                            </div>
+                                        <div class="col-12 md:col-6 my-3">
+                                            <label for="start_date" class="form-label">' . lang('Start Date') . '</label>
+                                            <input value="' . $date('start_date') . '" placeholder="' . $date_placeholder . '" type="text" name="start_date" id="start_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
                                         </div>
-                                        <div class="col-12 my-3">
-                                            <div class="form-field">
-                                                <div class="switch"><input class="" type="checkbox" id="default_selected" name="default_selected" value="1"' . $default_selected_checked . ' /></div>
-                                                <label class="" for="default_selected">' . lang('Selected by Default') . '</label>
-                                            </div>
+                                        <div class="col-12 md:col-6 my-3">
+                                            <label for="end_date" class="form-label">' . lang('End Date') . '</label>
+                                            <input value="' . $date('end_date') . '" placeholder="' . $date_placeholder . '" type="text" name="end_date" id="end_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
                                         </div>
-                                        <div class="col-12 lg:col-8 my-5">
-                                            <div class="row">
-                                                <div class="col-12 md:col">
-                                                    <label for="start_date" class="form-label">' . lang('Start Date') . '</label>
-                                                    <input value="' . $date('start_date') . '" placeholder="' . date(get_date_format_code() . '/Y') . '" type="text" name="start_date" id="start_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
-                                                </div>
-                                                <div class="col-12 md:col">
-                                                    <label for="end_date" class="form-label">' . lang('End Date') . '</label>
-                                                    <input value="' . $date('end_date') . '" type="text" name="end_date" id="end_date" class="form-control " maxlength="10" autocomplete="off" data-pg-date/>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Arrival Date Options') . '
-                                </h2>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 md:col-4">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="arrival_date" class="form-label">' . lang('Arrival Date') . '</label>
-                                            <input value="' . $date('arrival_date') . '" placeholder="' . date(get_date_format_code() . '/Y') . '" type="text" name="arrival_date" id="arrival_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
-                                        </div>
-                                        <div class="col-12 mt-7">
-                                            <h3 class="h5">' . lang('Or allow Customer to enter this Arrival Date during checkout') . '</h3>
+                                            <input value="' . $date('arrival_date') . '" placeholder="' . $date_placeholder . '" type="text" name="arrival_date" id="arrival_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
                                         </div>
                                         <div class="col-12 my-3">
                                             <div class="form-field">
-                                                <div class="switch"><input value="1"' . $custom_checked . ' id="custom" name="custom" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#custom_row" onclick="show_or_hide_custom()"/></div>
-                                                <label class="" for="custom">' . lang('Display Custom Field') . '</label>
+                                                <div class="switch"><input value="1"' . $custom_checked . ' id="custom" name="custom" type="checkbox" role="switch" aria-describedby="custom_help" onclick="show_or_hide_custom()"/></div>
+                                                <label for="custom">' . lang('Display Custom Field') . '</label>
                                             </div>
-                                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-3" id="custom_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                <div class="popover-body">
-                                                    <div class="row">
-                                                        <div class="col-12 my-1" id="custom_maximum_arrival_date_row"' . $custom_maximum_arrival_date_row_style . '>
-                                                            <label for="custom_maximum_arrival_date" class="form-label">' . lang('Latest Allowed Arrival Date') . '</label>
-                                                            <input value="' . $date('custom_maximum_arrival_date') . '" placeholder="' . date(get_date_format_code() . '/Y') . '" type="text" name="custom_maximum_arrival_date" id="custom_maximum_arrival_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
-                                                            <div class="form-text text-end">' . lang('leave blank for no restriction') . '</div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            <div id="custom_help" class="form-text">' . lang('Or allow Customer to enter this Arrival Date during checkout') . '</div>
                                         </div>
-                                        <div class="col-12 my-3" id="shipping_cutoff_heading_row"' . $shipping_cutoff_row_style . '>
-                                            <h3 class="h4 fw-bold fg-secondary">' . lang('Shipping Cut-offs') . '</h3>
-                                        </div>
-                                        <div id="shipping_cutoff_row"' . $shipping_cutoff_row_style . '>
-                                            <div>
-                                                <a href="javascript:void(0)" onclick="create_shipping_cutoff()" class="button btn btn-solid theme-primary">' . lang('Add Shipping Cut-off') . '</a>
-                                            </div>
-                                            <div class="table-responsive" >
-                                                <table id="shipping_cutoff_table" style="display: none;" class="chart_no_hover table">
-                                                    <thead>
-                                                        <tr>
-                                                            <th class="text-nowrap" style="min-width:200px">' . lang('Shipping Method') . '</th>
-                                                            <th class="text-nowrap" style="min-width:200px">' . lang('Cut-off Date & Time') . '</th>
-                                                            <th class="text-nowrap">&nbsp;</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody></tbody>
-                                                </table>
-                                                <script type="text/javascript">
-                                                    var last_shipping_cutoff_number = 0;
-                                                    var shipping_cutoffs = new Array();
-                                                    ' . $output_cutoffs_js . '
-                                                </script>
-                                            </div>
+                                        <div class="col-12 md:col-6 my-3" id="custom_maximum_arrival_date_row"' . $custom_maximum_arrival_date_row_style . '>
+                                            <label for="custom_maximum_arrival_date" class="form-label">' . lang('Latest Allowed Arrival Date') . '</label>
+                                            <input value="' . $date('custom_maximum_arrival_date') . '" placeholder="' . $date_placeholder . '" type="text" name="custom_maximum_arrival_date" id="custom_maximum_arrival_date" class="form-control" maxlength="10" autocomplete="off" aria-describedby="custom_maximum_arrival_date_help" data-pg-date/>
+                                            <div id="custom_maximum_arrival_date_help" class="form-text">' . lang('leave blank for no restriction') . '</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                            <div class="card mb-7" id="shipping_cutoff_heading_row"' . $shipping_cutoff_row_style . '>
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Shipping Cut-offs') . '
+                                </h2>
+                                <div class="card-body pt-0" id="shipping_cutoff_row"' . $shipping_cutoff_row_style . '>
+                                    <div class="table-responsive">
+                                        <table id="shipping_cutoff_table" style="display: none;" class="chart_no_hover table">
+                                            <thead>
+                                                <tr>
+                                                    <th class="text-nowrap" style="min-width:200px">' . lang('Shipping Method') . '</th>
+                                                    <th class="text-nowrap" style="min-width:200px">' . lang('Cut-off Date & Time') . '</th>
+                                                    <th class="text-nowrap">&nbsp;</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                        </table>
+                                    </div>
+                                    <button type="button" onclick="create_shipping_cutoff()" class="btn btn-solid theme-primary"><span class="material-icons me-3" aria-hidden="true">add</span><span class="pg-btn-label">' . lang('Add Shipping Cut-off') . '</span></button>
+                                    <script type="text/javascript">
+                                        var last_shipping_cutoff_number = 0;
+                                        var shipping_cutoffs = new Array();
+                                        ' . $output_cutoffs_js . '
+                                    </script>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Availability') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <div class="form-field my-3">
+                                            <div class="switch"><input type="checkbox" role="switch" id="status" name="status" value="1"' . $status_enabled_checked . ' /></div>
+                                            <label for="status">' . lang('Enable this Arrival Date') . '</label>
+                                        </div>
+                                        <div class="form-field my-3">
+                                            <div class="switch"><input type="checkbox" role="switch" id="default_selected" name="default_selected" value="1"' . $default_selected_checked . ' /></div>
+                                            <label for="default_selected">' . lang('Selected by Default') . '</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Summary') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <dl class="mb-0">' . $summary . '
+                                        </dl>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <script>
+                            // The Summary follows the fields as they change; jQuery
+                            // hears a pick of the date picker, the cut-off count
+                            // follows the rows of the table.
+                            (function () {
+                                var customer_text = ' . json_encode($customer_text) . ';
+                                var custom = document.getElementById("custom");
+                                function follow(id, summary_id, read) {
+                                    var field = document.getElementById(id);
+                                    var summary = document.getElementById(summary_id);
+                                    var update = function () { summary.textContent = read(field); };
+                                    field.addEventListener("input", update);
+                                    jQuery(field).on("change", update);
+                                    return update;
+                                }
+                                var value = function (field) { return field.value; };
+                                follow("name", "arrival_date_summary_name", value);
+                                follow("start_date", "arrival_date_summary_start_date", value);
+                                follow("end_date", "arrival_date_summary_end_date", value);
+                                var arrival_date = follow("arrival_date", "arrival_date_summary_arrival_date", function (field) {
+                                    return custom.checked ? customer_text : field.value;
+                                });
+                                custom.addEventListener("change", arrival_date);
+                                var rows = document.getElementById("shipping_cutoff_table").tBodies[0];
+                                new MutationObserver(function () {
+                                    document.getElementById("arrival_date_summary_cutoffs").textContent = String(rows.rows.length);
+                                }).observe(rows, {childList: true});
+                            })();
+                        </script>';
+}
+
+/**
+ * One Summary row of the status column: a label and its value.
+ *
+ * @param string $label  The label, plain text
+ * @param string $value  The value, already HTML
+ * @param bool   $last   False draws the line under the row
+ * @return string
+ */
+function pg_arrival_date_form_status_row($label, $value, $last = true)
+{
+    return '
+                                            <div class="d-flex justify-content-between gap-3 py-2' . ($last ? '' : ' border-bottom') . '">
+                                                <dt class="fw-normal">' . h($label) . '</dt>
+                                                <dd class="mb-0 fw-bold text-end text-break">' . $value . '</dd>
+                                            </div>';
+}
+
+/**
+ * The screen row: the columns (pg_arrival_date_form_cards()) and the
+ * sticky save bar with the given buttons.
+ *
+ * @param string $cards    pg_arrival_date_form_cards()
+ * @param string $buttons  The buttons inside the bar's group
+ * @return string
+ */
+function pg_arrival_date_form_layout($cards, $buttons)
+{
+    return '
+                    <div class="row">' . $cards . '
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">' . $buttons . '
+                                    </div>
+                                </div>
+                            </nav>
                         </div>
                     </div>';
 }

@@ -30,7 +30,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `office_edit`: clean (sheet/docx patching read; `locked` is xsd:boolean, no "off")
 
-- `ops_alerts`: clean; lead: webhook_failing mails raw webhook URLs
+- `ops_alerts`: clean; lead: webhook_failing mails raw webhook URLs — not a fault in the alert (masked since #5057); the same full URL went into the activity log on give-up, fixed in #6691
 
 - `order_completion`: done (#4884, #4962: DST end dates; #5073: two payment callbacks both lowered `ship_tos.shipping_cost`); line forms, from_payment clean
 

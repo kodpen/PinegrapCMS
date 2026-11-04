@@ -18,7 +18,7 @@ module: audiences
 - A log line only when something was added or removed.
 
 ## What is Refresh now?
-- Panel action `audience_refresh` (`includes/panel/audiences.php`, `contact_group_id`): any role with the contacts right and access to that group (`validate_contacts_access()`, `validate_contact_group_access()`, answered in JSON), token checked. One request recomputes for 5 seconds and answers `done`, `added`, `removed`, `members`; the screen asks again until `done`, as the search index window does. 409 when the group is not filled by rules. The screen side is AU3.
+- Panel action `audience_refresh` (`includes/panel/audiences.php`, `contact_group_id`): any role with the contacts right and access to that group (`validate_contacts_access()`, `validate_contact_group_access()`, answered in JSON), token checked. One request recomputes for 5 seconds and answers `done`, `added`, `removed`, `members`; the screen asks again until `done`, as the search index window does. 409 when the group is not filled by rules. The screen side is `ui/contact-group-rules.md`.
 
 ## Tests?
 - `tests/audiences_recompute_test.php`: the diff on fixed sets, the chunked statements, the page query, the budget stop (`pg_audience_next_step()`), the due order, nothing before the upgrade, the job hook and the action row. `tests/audiences_unreached_rows_test.php`: other rows left alone, the per-page kind check, `pg_audience_switch_review()`.

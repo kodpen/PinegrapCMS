@@ -2016,6 +2016,7 @@ function pg_css_bundles()
         'assets/css/pg_image_editor.min.css' => 'assets/css/pg_image_editor.src.css',
         'assets/css/pg_dash.min.css' => 'assets/css/pg_dash.src.css',
         'assets/css/pg_visitors.min.css' => 'assets/css/pg_visitors.src.css',
+        'assets/css/ws_today.min.css' => 'assets/css/ws_today.src.css',
     );
 }
 
@@ -3726,7 +3727,9 @@ function output_menu($properties = false)
         $menu_items[6]['context'] = true;
         // VISITORS > Overview, then its sections as anchors. Site Search, Page
         // Speed and AI Visibility are listed only once their figures are ready;
-        // their old screens answer a redirect to the anchor.
+        // their old screens answer a redirect to the anchor. The anchors are
+        // jump points inside the overview, not screens: smaller, without an
+        // icon tile, under the Overview entry (.pg-menu-anchor).
         $menu_items[6]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitors.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-speedometer bi-me-2\'>' . lang('Overview') . '</a>';
         $visitor_ready = array(
             'site_search' => pg_site_search_stats_ready(),
@@ -3735,7 +3738,7 @@ function output_menu($properties = false)
         );
         foreach (pg_visitors_sections() as $visitor_section => $visitor_section_label) {
             if (pg_visitors_section_exists($visitor_section) && (!isset($visitor_ready[$visitor_section]) || $visitor_ready[$visitor_section])) {
-                $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitors.php#' . $visitor_section . '\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-dot bi-me-2\'>' . h($visitor_section_label) . '</a>';
+                $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitors.php#' . pg_visitors_anchor($visitor_section) . '\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate pg-menu-anchor\'>' . h($visitor_section_label) . '</a>';
             }
         }
 

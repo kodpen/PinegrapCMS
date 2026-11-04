@@ -4,7 +4,7 @@ description: Beauty Salon template (pinegrap-salon): its parts folder, the booki
 ---
 
 ## What does it ship?
-- 39 pages: home, services (prices, durations, packages), team, lookbook, about; booking (`appointment`, `appointment_view`, `my_appointments`, `privacy`); contact, inbox, conversation, newsletter, blog, blog post, help-center search, error; sign-in and My Account pages; `staff_directory`; `staff`, `blog_new` (four sample posts), `staff_entry` in `private`; 8 e-mail pages.
+- 40 pages: home, services (prices, durations, packages), team, lookbook, about; booking (`appointment`, `book_online`, `appointment_view`, `my_appointments`, `privacy`); contact, inbox, conversation, newsletter, blog, blog post, help-center search, error; sign-in and My Account pages; `staff_directory`; `staff`, `blog_new` (four sample posts), `staff_entry` in `private`; 8 e-mail pages.
 - Shared: account_bar, notice, header, footer, staff_bar, booking_band, email_header/footer. Order 55, icon `bi-flower2`, look `elegant`, palette `burgundy`, no gallery drawing of its own (the generic one). Contact group `newsletter` (Salon Newsletter). Built in #4470, #4508, #4524, #4570 and #4583; 1.1.0 (#4871) moved the threads to the Comments widget and added Google Reviews beside the testimonials.
 
 ## Why is it a main file plus a folder?
@@ -19,8 +19,8 @@ description: Beauty Salon template (pinegrap-salon): its parts folder, the booki
 ## Which Turkish words does it use?
 - [[design-template-salon-words]].
 
-## What is deliberately not built?
-- Live slot holding (an hour taken off the form once booked) and stylist calendars: both are new product behaviour, likely schema; the request-and-confirm flow needs neither. Calendar event reservations need the shop and one event per slot, so they are not used.
+## Where do free times come from?
+- Since 1.2.0 the `book_online` page books a free time at once with the booking widget, beside the request form ([[booking-templates]]). Calendar event reservations need the shop and one event per slot, so they are not used.
 
 ## Why psl- and not ps-?
 - Bootstrap owns `ps-*` (padding-start utilities, `ps-3` is used in the parts). The template's own classes are `psl-brand`, `psl-eyebrow`, `psl-hero`, `psl-lift`, with their rules and two fonts (Cormorant Garamond, Jost) in `assets`.

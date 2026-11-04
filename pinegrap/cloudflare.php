@@ -315,7 +315,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // The edge check (includes/fn/image_vary_check.php, the test the general
     // job runs too): sets the confirmation (bit 8 of
     // config.image_derivative_formats) only when each browser got its own
-    // copy, and takes it back when the edge gave one copy to both.
+    // copy out of the edge's cache, and takes it back when the edge gave one
+    // copy to both or was not seen keeping either.
     if (($action === 'image_vary_check') && pg_image_delivery_ready()) {
         $same_address = pg_image_delivery()['same_address'];
 
@@ -338,6 +339,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
                         $liveform->mark_error('error', lang(array('string' => 'Cloudflare gave the same copy of {var:1} to a browser that reads WebP and to one that does not: the cache rule is missing or not in effect yet. Visitors get WebP through Cloudflare, but the edge keeps no copy of pictures until a check passes.', 'vars' => $vary_file)));
                     }
+                    break;
+
+                case 'not_cached':
+                    $liveform->mark_error('error', lang(array('string' => 'Cloudflare sent {var:1} in the right format each time, but the repeated requests were not answered from its cache, so it was not seen keeping a copy per format. Pictures go out through Cloudflare marked private until a check sees the cache rule at work.', 'vars' => $vary_file)));
                     break;
 
                 case 'no_webp':
@@ -787,7 +792,7 @@ if (pg_image_delivery_ready()) {
         <i class="bi bi-images"></i> ' . lang('WebP at the picture\'s own address') . '
       </div>
       <div class="card-body">
-        <p class="small">' . lang('A browser that reads WebP and one that does not are sent different files at the same address. Cloudflare keeps one copy per address unless a cache rule tells it to keep a copy per format; until a check here passes, visitors get the original through Cloudflare.') . '</p>
+        <p class="small">' . lang('A browser that reads WebP and one that does not are sent different files at the same address. Cloudflare keeps one copy per address unless a cache rule tells it to keep a copy per format; until a check here sees it do so, pictures go out through Cloudflare marked private, so it keeps no copy of them.') . '</p>
         <dl class="row small">
           <dt class="md:col-4">' . lang('Cache rule') . '</dt>
           <dd class="md:col-8">' . $image_vary_state . '</dd>

@@ -41,9 +41,15 @@ $verified_shipping_address = db_item(
         verified_shipping_addresses.city,
         verified_shipping_addresses.state_id,
         verified_shipping_addresses.zip_code,
-        states.name as state_name
+        verified_shipping_addresses.created_timestamp,
+        verified_shipping_addresses.last_modified_timestamp,
+        states.name as state_name,
+        created_user.user_username AS created_username,
+        last_modified_user.user_username AS last_modified_username
     FROM verified_shipping_addresses
     LEFT JOIN states ON verified_shipping_addresses.state_id = states.id
+    LEFT JOIN user AS created_user ON created_user.user_id = verified_shipping_addresses.created_user_id
+    LEFT JOIN user AS last_modified_user ON last_modified_user.user_id = verified_shipping_addresses.last_modified_user_id
     WHERE verified_shipping_addresses.id = '" . $id . "'");
 
 $verified_shipping_address['name'] = pg_verified_shipping_address_form_name($verified_shipping_address['company'], $verified_shipping_address['address_1']);
@@ -59,6 +65,10 @@ if (!$_POST) {
         $liveform->assign_field_value('state_id', $verified_shipping_address['state_id']);
         $liveform->assign_field_value('zip_code', $verified_shipping_address['zip_code']);
     }
+
+    // When and by whom the address was created and last changed.
+    $status_rows = pg_verified_shipping_address_form_status_row(lang('Created'), get_relative_time(array('timestamp' => (int) $verified_shipping_address['created_timestamp'])) . ((string) $verified_shipping_address['created_username'] !== '' ? ' ' . h($verified_shipping_address['created_username']) : ''), false)
+        . pg_verified_shipping_address_form_status_row(lang('Last Modified'), get_relative_time(array('timestamp' => (int) $verified_shipping_address['last_modified_timestamp'])) . ((string) $verified_shipping_address['last_modified_username'] !== '' ? ' ' . h($verified_shipping_address['last_modified_username']) : ''));
 
     print
         pg_page_shell([
@@ -79,15 +89,11 @@ if (!$_POST) {
                     <form action="edit_verified_shipping_address.php" method="post">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $id . '">
-                        ' . pg_verified_shipping_address_form_card($liveform) . '
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class="btn-group flex-wrap justify-content-center">
-                                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('verified shipping address')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
-                                </div>
-                            </div>
-                        </nav>
+                        ' . pg_verified_shipping_address_form_layout(
+                            pg_verified_shipping_address_form_card($liveform, $status_rows),
+                            '
+                                        <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('verified shipping address')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>') . '
                     </form>
                 </div>
             </div>

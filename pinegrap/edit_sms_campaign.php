@@ -148,11 +148,11 @@ $statuses = pg_sms_campaign_statuses();
 // The text card.
 if ($readonly) {
     $output_message =
-        '<div class="col-12 md:col-6 my-3"><div class="form-label">' . lang('Name') . '</div><p>' . h($campaign['name']) . '</p></div>
+        '<div class="col-12 md:col-8 my-3"><div class="form-label">' . lang('Name') . '</div><p>' . h($campaign['name']) . '</p></div>
         <div class="col-12 my-3"><div class="form-label">' . lang('Text') . '</div><p style="white-space: pre-wrap">' . h($campaign['body']) . '</p></div>';
 } else {
     $output_message =
-        '<div class="col-12 md:col-6 my-3">
+        '<div class="col-12 md:col-8 my-3">
             <label class="form-label" for="name">' . lang('Name') . '</label>
             <input type="text" class="form-control" id="name" name="name" maxlength="100" value="' . h($campaign['name']) . '">
             <div class="form-text">' . lang('Only shown in the panel.') . '</div>
@@ -231,23 +231,23 @@ if ($output_group_rows === '') {
 // The delivery card.
 if ($readonly) {
     $output_delivery =
-        '<div class="col-12 md:col-6 my-3"><div class="form-label">' . lang('Status') . '</div><p>' . h($statuses[$campaign['status']] ?? $campaign['status']) . '</p></div>';
+        pg_sms_campaign_status_row(lang('Status'), h($statuses[$campaign['status']] ?? $campaign['status']));
 
     if ((int) $campaign['start_at'] > 0) {
         $output_delivery .=
-            '<div class="col-12 md:col-6 my-3"><div class="form-label">' . lang('Send Time') . '</div><p>' . get_relative_time(array('timestamp' => (int) $campaign['start_at'])) . '</p></div>';
+            pg_sms_campaign_status_row(lang('Send Time'), get_relative_time(array('timestamp' => (int) $campaign['start_at'])));
     }
 
     if ((int) ($campaign['queued_at'] ?? 0) > 0) {
         $output_delivery .=
-            '<div class="col-12 md:col-6 my-3"><div class="form-label">' . lang('Queued for sending') . '</div><p>' . get_relative_time(array('timestamp' => (int) $campaign['queued_at'])) . '</p></div>';
+            pg_sms_campaign_status_row(lang('Queued for sending'), get_relative_time(array('timestamp' => (int) $campaign['queued_at'])));
     }
 
     if ($campaign['status'] === 'queued') {
         $outbox = pg_sms_campaign_outbox_counts($campaign['id']);
 
         $output_delivery .=
-            '<div class="col-12 md:col-6 my-3"><div class="form-label">' . lang('Result') . '</div><p>'
+            '<div class="col-12 my-3"><div class="form-label">' . lang('Result') . '</div><p class="mb-0">'
             . lang(array('string' => '{var:1} queued, {var:2} refused', 'vars' => array(pg_format_number($campaign['queued_count'], 0), pg_format_number($campaign['refused_count'], 0))))
             . ($outbox ? '<br>' . lang(array('string' => 'In the SMS queue: {var:1} sent, {var:2} waiting, {var:3} failed', 'vars' => array(
                 pg_format_number($outbox['sent'] ?? 0, 0),
@@ -267,10 +267,11 @@ if ($readonly) {
     }
 
     $output_delivery =
-        '<div class="col-12 md:col-6 my-3">
+        ($id ? pg_sms_campaign_status_row(lang('Status'), h($statuses[$campaign['status']] ?? $campaign['status'])) : '') . '
+        <div class="col-12 my-3">
             <fieldset><legend class="form-label fs-md">' . lang('When') . '</legend>' . $output_send_options . '</fieldset>
         </div>
-        <div class="col-12 md:col-6 lg:col-4 my-3">
+        <div class="col-12 my-3">
             <label class="form-label" for="start_at">' . lang('Date & Time') . '</label>
             <input value="' . h($start_text) . '" type="text" maxlength="19" class="form-control" id="start_at" name="start_at" data-pg-datetime />
             <div class="form-text">' . lang('Used with Send at this Date & Time.') . '</div>
@@ -288,14 +289,8 @@ $output_buttons = '';
 
 if (!$readonly) {
     $output_buttons =
-        '<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-            <div class="container">
-                <div class="btn-group flex-wrap justify-content-center">
-                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="bi bi-check-circle me-3" aria-hidden="true"></span>' . lang('Save') . '</button>
-                    ' . (($campaign['status'] === 'ready') ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(lang('This campaign will be cancelled. A cancelled campaign cannot be scheduled again.')) . '"><span class="bi bi-x-circle me-3" aria-hidden="true"></span>' . lang('Cancel Campaign') . '</button>' : '') . '
-                </div>
-            </div>
-        </nav>';
+                    '<button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="bi bi-check-circle me-3" aria-hidden="true"></span>' . lang('Save') . '</button>
+                    ' . (($campaign['status'] === 'ready') ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(lang('This campaign will be cancelled. A cancelled campaign cannot be scheduled again.')) . '"><span class="bi bi-x-circle me-3" aria-hidden="true"></span>' . lang('Cancel Campaign') . '</button>' : '');
 }
 
 $heading = $id ? lang('Edit SMS Campaign') : lang('Create SMS Campaign');
@@ -320,12 +315,12 @@ pg_page_shell(
         <div class="col-12">
             ' . $output_errors . '
             ' . ($readonly ? '' : '<form name="form" action="edit_sms_campaign.php' . ($id ? '?id=' . $id : '') . '" method="post">' . get_token_field()) . '
-                <div class="row">
-                    ' . pg_email_campaign_card(lang('SMS Message'), $output_message) . '
-                    ' . pg_email_campaign_card(lang('SMS Message To My Contact Groups'), '<div class="col-12 my-3">' . $output_groups . '</div>') . '
-                    ' . pg_email_campaign_card(lang('SMS Message Delivery'), $output_delivery) . '
-                </div>
-                ' . $output_buttons . '
+                ' . pg_email_campaign_layout(
+                    pg_email_campaign_card(lang('SMS Message'), $output_message)
+                    . pg_email_campaign_card(lang('SMS Message To My Contact Groups'), '<div class="col-12 my-3">' . $output_groups . '</div>'),
+                    pg_email_campaign_card(lang('SMS Message Delivery'), $output_delivery),
+                    $output_buttons
+                ) . '
             ' . ($readonly ? '' : '</form>') . '
         </div>
     </div>

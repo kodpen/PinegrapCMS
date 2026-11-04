@@ -15,6 +15,7 @@ module: store_credit
 - `pg_credit_pick($cards, $amount, $now)` (pure): soonest expiry first, never-expiring last, ties by id; a card with balance 0 (spent or voided) or `expires_at <= now` is never picked; the last card gives only what is left. The checkout does not use it: it applies every open card and lets the redemption take what is needed (`store-credit-checkout.md`).
 - `pg_credit_points_value($points, $points_per_unit, $smallest)` (pure): `round($points * 100 / rate)`, 0 for no rate or under the smallest; SC3 passes the settings.
 - `pg_credit_reduce($card_id, $amount, $note)`: takes up to the amount off a bound card `WHERE balance = <read>`, a note line, audit `update` (`revoke` at 0); returns what it took. Used by the points take-back (`store-credit-points.md`).
+- The job closes ended cards: `store-credit-mails.md`.
 - `pg_credit_void($card_id, $reason)`: balance to 0 `WHERE balance = <read>` (an order spending meanwhile makes it fail), a note line "Store credit voided on <date>: <reason>"; only cards with a `user_id`.
 
 ## Who may spend a bound card by its code?
@@ -24,4 +25,4 @@ module: store_credit
 - `pg_audit('create' | 'revoke', 'store_credit', id, …)` with user_id, kind, amount, balance, reason, issued_by, expires_at (and `void_reason` on revoke); label is the code with all but the last 4 digits as `*`. The audit screen names the type "Store credit" and links `edit_gift_card.php`.
 
 ## What about personal data?
-- The privacy export takes cards by `user_id` as well (code cut to its end as before). Erasure does not touch `user_id`: the row holds no personal data beyond the id; whether erasing a customer should void their credit is open (SC6 or a decision question).
+- The privacy export takes cards by `user_id` as well (code cut to its end as before). Erasure voids the cards and clears `user_id` (`api/api-customer-credit.md`).

@@ -141,15 +141,59 @@
                 svg.setAttribute("role", "img");
                 svg.setAttribute("aria-label", data.map_label);
                 var shades = data.shades || {};
+                var paths = {};
                 map.shapes.forEach(function (shape) {
                     var path = document.createElementNS(SVG, "path");
                     path.setAttribute("d", shape.d);
                     if (shades[shape.id]) {
                         path.setAttribute("data-step", String(shades[shape.id]));
                     }
+                    paths[shape.id] = path;
                     svg.appendChild(path);
                 });
+
+                // Every region names itself in the figure box under the
+                // pointer and the keyboard (the map is one tab stop, the
+                // arrows step through the places, Enter opens one); a region
+                // that sold is a link to its orders, out of the tab order,
+                // since its row below is the same link.
+                var places = (data.places || []).filter(function (place) {
+                    return paths[place.id];
+                });
+                places.forEach(function (place) {
+                    if (place.url) {
+                        var link = document.createElementNS(SVG, "a");
+                        link.setAttribute("href", place.url);
+                        link.setAttribute("tabindex", "-1");
+                        svg.insertBefore(link, paths[place.id]);
+                        link.appendChild(paths[place.id]);
+                    }
+                });
+                var ring = document.createElementNS(SVG, "path");
+                ring.setAttribute("class", "pg-dash-map-ring");
+                svg.appendChild(ring);
                 figure.appendChild(svg);
+
+                pgDash.chartTips(svg, places.map(function (place) {
+                    return place.text;
+                }), {
+                    parts: places.map(function (place) {
+                        return paths[place.id];
+                    }),
+                    start: 0,
+                    mark: function (i) {
+                        if (i < 0) {
+                            ring.removeAttribute("d");
+                        } else {
+                            ring.setAttribute("d", paths[places[i].id].getAttribute("d"));
+                        }
+                    },
+                    open: function (i) {
+                        if (places[i].url) {
+                            window.location.href = places[i].url;
+                        }
+                    }
+                });
 
                 var legend = el("figcaption", "pg-dash-map-legend");
                 legend.appendChild(el("span", "", (data.legend || [])[0]));

@@ -125,7 +125,8 @@ function test_image_editor_present_pdf()
 		ob_start();
 		imagejpeg($im, null, 80);
 		$jpegs[] = ob_get_clean();
-		imagedestroy($im);
+		// No imagedestroy(): PHP 8.5 deprecates it and the image is freed
+		// with its last reference when $im is reassigned.
 	}
 
 	$r = image_editor_present_node(

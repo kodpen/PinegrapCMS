@@ -532,7 +532,8 @@ function pg_booking_agenda_rows($start, $end, $staff_id, $statuses)
 
     $result = db_q(
         "SELECT bookings.id, bookings.service_id, bookings.staff_id, bookings.name, bookings.email, bookings.phone,
-            bookings.start_at, bookings.end_at, bookings.status, bookings.hold_until, bookings.source,
+            bookings.start_at, bookings.end_at, bookings.status, bookings.hold_until, bookings.source,"
+            . (pg_booking_deposit_ready() ? ' bookings.order_id, bookings.paid_at,' : '') . "
             booking_services.name AS service_name
         FROM bookings
         LEFT JOIN booking_services ON booking_services.id = bookings.service_id
@@ -694,7 +695,7 @@ function pg_booking_agenda_list_row(array $row, array $staff)
 
     return array('class' => 'pointer', 'cells' => array(
         pg_list_cell('<a href="edit_booking.php?id=' . $id . '">' . h(pg_booking_agenda_time($row['start_at'], true)) . '</a>', 'align-middle text-nowrap'),
-        pg_list_cell(pg_booking_agenda_badge($row['status']), 'align-middle'),
+        pg_list_cell(pg_booking_agenda_badge($row['status']) . pg_booking_deposit_badge($row), 'align-middle'),
         pg_list_cell(h($row['name']), 'align-middle'),
         pg_list_cell($contact, 'align-middle small'),
         pg_list_cell(h((string) $row['service_name']), 'align-middle'),
@@ -768,7 +769,7 @@ function pg_booking_agenda_list_page(array $filters, array $terms, array $window
 
     $result = db_q(
         "SELECT bookings.id, bookings.staff_id, bookings.name, bookings.email, bookings.phone, bookings.start_at,
-            bookings.status, booking_services.name AS service_name" . $from . $where . "
+            bookings.status," . (pg_booking_deposit_ready() ? ' bookings.order_id, bookings.paid_at,' : '') . " booking_services.name AS service_name" . $from . $where . "
         ORDER BY bookings.start_at, bookings.id" . pg_list_limit_sql($window),
         $params);
 

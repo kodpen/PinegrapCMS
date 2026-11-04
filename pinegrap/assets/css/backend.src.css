@@ -2810,6 +2810,31 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
   background: color-mix(in srgb, var(--pg-menu-tone) 55%, transparent);
 }
 
+/* A jump point inside the screen of the entry above it (the Visitors
+   overview's sections): smaller and quieter than an entry, its text lined
+   up with the entry's label, on a thin line that runs down from the entry's
+   icon tile. No tile of its own, so it never reads as a screen. */
+#menu .menu-body .pg-menu-panel-body > a.pg-menu-anchor {
+  --bs-link-opacity: 0.72;
+  position: relative;
+  margin-bottom: 0;
+  padding: 0.2rem 0.625rem 0.2rem calc(0.625rem + 1.625rem + 0.5rem);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  border-radius: var(--pg-radius);
+}
+#menu .menu-body .pg-menu-panel-body > a.pg-menu-anchor::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(0.625rem + 0.8125rem - 0.5px);
+  border-inline-start: 1px solid currentColor;
+  opacity: 0.25;
+}
+#menu .menu-body .pg-menu-panel-body > a.pg-menu-anchor:is(:hover, :focus-visible) {
+  --bs-link-opacity: 1;
+}
+
 /* An entry that opens a second-level panel (System tools): its arrow sits
    in its right padding, as on the rows. */
 #menu .menu-body .pg-menu-panel-body > a.pg-menu-parent {
@@ -17634,8 +17659,12 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-claude-state.ws-claude-cancelled {
   color: var(--pg-danger-fg-emphasis);
 }
+/* One column no wider than the list: a card is never wider than its text
+   column, so a flow drawing wider than the card scrolls in its own pane
+   instead of widening the card and the whole channel with it. */
 .ws-drafts {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: .4rem;
   max-width: 34rem;
   margin-top: .45rem;
@@ -17711,9 +17740,6 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   outline: 2px solid rgb(var(--ws-accent-rgb));
   outline-offset: 2px;
 }
-.ws-fd-box.is-still {
-  cursor: inherit;
-}
 .ws-fd-window.is-loading .ws-fd-stage {
   opacity: .6;
   cursor: progress;
@@ -17779,9 +17805,6 @@ html[data-bs-theme="dark"] .ws-fd-tone-number-2 { --ws-fd-tone: #4d8fe8; }
 html[data-bs-theme="dark"] .ws-fd-tone-text-0 { --ws-fd-tone: #e9b44c; }
 html[data-bs-theme="dark"] .ws-fd-tone-text-1 { --ws-fd-tone: #f5cf7d; }
 html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
-.ws-fd-box {
-  cursor: pointer;
-}
 .ws-fd-box rect {
   fill: var(--pg-bg-body);
   stroke: var(--pg-border-color);
@@ -17795,14 +17818,6 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   stroke: var(--pg-info);
   stroke-dasharray: 5 3;
   fill: var(--pg-info-bg-subtle);
-}
-.ws-fd-box.is-picked rect,
-.ws-fd-box:focus-visible rect {
-  stroke: rgb(var(--ws-accent-rgb));
-  stroke-width: 2.5;
-}
-.ws-fd-box:focus {
-  outline: none;
 }
 .ws-fd-name {
   fill: var(--pg-fg-body);

@@ -166,6 +166,24 @@ function test_email_campaign_profile_values_problem()
 		pg_assert_true(pg_email_campaign_profile_values_problem($change + $valid, true) !== '', $label);
 	}
 
+	$columns = array(
+		'enabled' => 'evet',
+		'action' => 'Order Completed',
+		'format' => 'HTML',
+		'from_email_address' => 'not-an-email',
+		'bcc_email_address' => 'abc',
+		'schedule_unit' => 'gün',
+		'purpose' => 'Ticari',
+	);
+
+	foreach ($columns as $column => $bad) {
+		pg_assert_same(
+			lang(array('string' => 'The "{var:1}" column has an invalid value.', 'vars' => $column)),
+			pg_email_campaign_profile_values_problem(array($column => $bad) + $valid, true),
+			$column . ': names the column as a column'
+		);
+	}
+
 	pg_assert_true(pg_email_campaign_profile_values_problem(array('action' => 'order_completed', 'action_item_id' => '0') + $valid, false) !== '', 'commerce action without access');
 	pg_assert_same('', pg_email_campaign_profile_values_problem(array('action' => 'calendar_event_reserved', 'schedule_period' => 'before', 'schedule_base' => 'calendar_event_start_time') + $valid, false), 'calendar before start time');
 	pg_assert_same('', pg_email_campaign_profile_values_problem(array('format' => 'html', 'page_id' => '12') + $valid, false), 'html with page');

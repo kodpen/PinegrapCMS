@@ -151,3 +151,29 @@ function test_barcode_stock_screens_warn_on_an_untracked_product()
 		pg_assert_contains("'inventory' => \$inventory,", $source, $file . ': answer carries the flag');
 	}
 }
+
+// A generated or API-given barcode is taken when another product's code is
+// the same, not only when another barcode is: a scan resolves the barcode
+// first and would move the wrong product's stock.
+function test_barcode_taken_checks_other_products_codes()
+{
+	$taken = barcode_stock_checks_test_body('includes/fn/ecommerce.php', 'pg_barcode_taken');
+
+	pg_assert_contains('FROM product_barcodes', $taken, 'barcodes');
+	pg_assert_contains('pg_product_name_holder($barcode, $product_id, false)', $taken, 'other products\' codes, its own left out');
+
+	pg_assert_contains('pg_barcode_taken($barcode, $product_id)', barcode_stock_checks_test_body('includes/fn/ecommerce.php', 'pg_generate_unique_barcode'), 'shared generator');
+	pg_assert_contains('pg_barcode_taken($barcode, $product_id)', barcode_stock_checks_test_body('includes/fn/ecommerce.php', 'pg_assign_product_barcode'), 'a typed code on create');
+
+	foreach (array('pg_panel_generate_product_barcode', 'pg_panel_bulk_assign_barcodes') as $name) {
+		$body = barcode_stock_checks_test_body('includes/panel/commerce.php', $name);
+
+		pg_assert_contains('pg_generate_unique_barcode(', $body, $name . ': the shared generator');
+		pg_assert_false(strpos($body, 'rand(') !== false, $name . ': no generator of its own');
+	}
+
+	$api = barcode_stock_checks_test_body('includes/api/resources/products.php', 'api_products_barcode');
+
+	pg_assert_contains('pg_product_name_holder($barcode, $product_id, false)', $api, 'API: other products\' codes');
+	pg_assert_contains('pg_barcode_code_taken_text($barcode, $holder)', $api, 'API: the refusal names the product');
+}

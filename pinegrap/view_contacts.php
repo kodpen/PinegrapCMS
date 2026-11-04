@@ -18,6 +18,26 @@
 
 include('init.php');
 
+// A cell of the list changed in place (pg_list_edit_request() in
+// includes/fn/output.php). Answered in JSON before the request is kept in
+// the session below; the checks and the rights are the contact screen's
+// (pg_contact_quick_update()). The fields depend on the view.
+if (pg_list_edit_requested()) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/contact_list.php');
+
+    $quick_filter = pg_contact_list_filter_name((isset($_GET['filter']) && is_string($_GET['filter'])) ? $_GET['filter'] : '');
+
+    $edit = pg_list_edit_request(pg_contact_quick_edit_columns($quick_filter), function ($user) use ($quick_filter) {
+        // The list's own gate; the duplicates view is not a User's.
+        return (validate_contacts_access($user, true) == true)
+            && (((int) $user['role'] < 3) || ($quick_filter !== 'all_duplicate_contacts'));
+    });
+
+    $saved = pg_contact_quick_update($edit['user'], $edit['id'], $edit['field'], $edit['value'], $quick_filter);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
 $user = validate_user();
 validate_contacts_access($user);
 

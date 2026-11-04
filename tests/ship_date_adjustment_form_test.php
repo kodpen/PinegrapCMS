@@ -51,7 +51,7 @@ function test_ship_date_adjustment_form_screens_use_shared_form()
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 
 		pg_assert_contains('includes/forms/ship_date_adjustment_form.php', $source, $file . ' loads the form');
-		pg_assert_contains('pg_ship_date_adjustment_form_card($liveform)', $source, $file . ' prints the shared card');
+		pg_assert_contains('pg_ship_date_adjustment_form_card($liveform', $source, $file . ' prints the shared card');
 		pg_assert_contains('pg_ship_date_adjustment_form_check($liveform, ', $source, $file . ' checks the adjustment the shared way');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 		pg_assert_contains('validate_ecommerce_access($user)', $source, $file . ' keeps the commerce gate');
@@ -76,4 +76,19 @@ function test_ship_date_adjustment_form_days_and_type()
 
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/ship_date_adjustment_form.php');
 	pg_assert_contains('SELECT COUNT(*) FROM shipping_methods WHERE id = ?', $source, 'the method has to exist');
+}
+
+function test_ship_date_adjustment_form_wide_layout()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/ship_date_adjustment_form.php');
+
+	pg_assert_contains('col-12 lg:col-8 2xl:col-9 order-1', $source, 'the form column');
+	pg_assert_contains('col-12 lg:col-4 2xl:col-3 order-2', $source, 'the status column');
+	pg_assert_contains('<div class="position-sticky" style="top:3.3rem;">', $source, 'the status box sticks below the top bar');
+	pg_assert_contains('col-12 order-3 position-sticky', $source, 'the sticky save bar');
+
+	foreach (array('add_ship_date_adjustment.php', 'edit_ship_date_adjustment.php') as $file) {
+		$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('pg_ship_date_adjustment_form_layout(', $screen, $file . ' prints the shared layout');
+	}
 }

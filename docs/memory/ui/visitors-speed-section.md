@@ -14,8 +14,8 @@ module: visitor_insights
 
 ## What does it show?
 - Tiles: the site p75 of LCP, INP, CLS (`pg_vitals_site()`), coloured by `pg_vitals_tone()` (Google's thresholds via `pg_vitals_bucket()`), the note "N% good of M measured"; measured views.
-- Slowest pages: 25 from `pg_vitals_pages()`, names and links through `pg_visitor_label_content_rows()`, a deleted page as "Deleted page", the good LCP share.
-- Trend: `pg_vitals_trend()` by day, newest first in the table; the LCP p75 as an inline SVG line (`pg_visitor_spark_svg()`, no chart library, `aria-hidden`) with the good limit dashed.
+- Trend (`pg_visitor_speed_trend()`): the days of `pg_vitals_trend()` (a day without beacons left out) as `pg_visitors_chart()`: the LCP p75 in s over Google's good limit dashed, each day's INP, CLS and measured views in the tooltip; nothing under two days. It was an inline SVG line over a table of every day.
+- Slowest pages: 25 from `pg_vitals_pages()`, 5 shown at first, names and links through `pg_visitor_label_content_rows()`, a deleted page as "Deleted page", figures in their tone (`pg_visitor_insight_figure_cell()`), the good LCP share.
 - Text form: `pg_vitals_display()` (LCP in s from 1 s, INP in ms, CLS score with two places).
 - No beacons in the window: one line saying staff, Preview and the designer are not measured.
 

@@ -794,6 +794,7 @@ function bs6_current_path($path = null)
 function bs6_site_functions()
 {
 	return array(
+		'includes/fn/booking_deposit_pay.php' => array('pg_booking_pay_html'),
 		'includes/fn/custom_form.php' => array('pg_cf_validation_script'),
 		'includes/fn/custom_form_steps.php' => array('_pg_cf_steps_progress_html', '_pg_cf_steps_nav_html', 'pg_cf_steps_script'),
 		'includes/fn/design_themes.php' => array('pg_design_looks'),
@@ -1189,6 +1190,7 @@ function bs6_scope_kind($path)
 	$site_fn = array(
 		'consent.php', 'language_redirect.php', 'layout_convert.php', 'maintenance_mode.php', 'meta_tags.php',
 		'reviews.php', 'visitor_texts.php', 'site_datetime.php', 'subscriptions_account.php', 'booking_manage.php',
+		'store_credit_account.php',
 	);
 	if (strpos($path, 'includes/fn/') === 0 && (in_array($base, $site_fn, true) || preg_match('/^widgets(_[a-z0-9_]+)?\.php$/', $base))) {
 		return 'site';

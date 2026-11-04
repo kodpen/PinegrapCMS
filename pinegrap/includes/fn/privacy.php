@@ -869,6 +869,12 @@ function pg_privacy_erase_tables()
             'message'                 => '',
             'recipient_email_address' => '',
         )),
+        // The person's store credit is voided and no longer names their
+        // account (_pg_privacy_erase_apply_store_credit()); the cards stay
+        // with the orders that spent them.
+        'store_credit' => array('table' => 'gift_cards', 'find' => $user, 'action' => 'anonymise', 'fields' => array(
+            'user_id' => 0,
+        )),
         'erp_accounts' => array('find' => array('id' => 'account_ids'), 'action' => 'anonymise', 'fields' => array(
             'title'            => '{name}',
             'tax_number'       => '',
@@ -1043,6 +1049,7 @@ function pg_privacy_erase_labels()
         'order_returns'                => lang('Returns'),
         'shipment_labels'              => lang('Shipping labels'),
         'gift_cards'                   => lang('Gift cards'),
+        'store_credit'                 => lang('Store credit'),
         'erp_accounts'                 => lang('Current accounts'),
         'erp_invoices'                 => lang('Invoices'),
         'erp_quotes'                   => lang('Quotes'),
@@ -1848,6 +1855,22 @@ function _pg_privacy_erase_apply_gift_cards($where, array $fields, array $scope,
             _pg_privacy_erase_write('gift_cards', $part_where, $part_fields, $name);
         }
     }
+}
+
+/**
+ * The person's store credit: every card with a balance is voided first, with
+ * a note line and an audit line (pg_credit_void()), so nothing is left to
+ * spend, then the cards stop naming the account.
+ */
+function _pg_privacy_erase_apply_store_credit($where, array $fields, array $scope, $name)
+{
+    if (function_exists('pg_credit_void')) {
+        foreach (db_values("SELECT id FROM gift_cards WHERE (balance > 0) AND " . $where) as $card_id) {
+            pg_credit_void((int) $card_id, lang('Personal data erased'));
+        }
+    }
+
+    _pg_privacy_erase_write('gift_cards', $where, $fields, $name);
 }
 
 /**

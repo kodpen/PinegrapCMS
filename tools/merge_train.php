@@ -13,13 +13,15 @@
  *             instead. Creates merge-train/<yyyymmdd-hhmm> from
  *             origin/development and turns rerere on.
  *         php tools/merge_train.php --list
- *             The PRs that may ride a train (CI green on their head, and the
- *             ready label or no push for an hour), with their product lines,
- *             in train order: the docs-only PRs that land alone, the train,
- *             and the PRs left for a later train.
+ *             The PRs that may ride a train (a branch of this repository, CI
+ *             green on its head, and the ready label or no push for an
+ *             hour), with their product lines, in train order: the docs-only
+ *             PRs that land alone, the train, and the PRs left for a later
+ *             train. A PR from a fork is never listed.
  *         php tools/merge_train.php --build [<n> ...] [--no-push]
  *             On the current merge-train/* branch: fetches refs/pull/<n>/head
- *             of each PR (the --list train when none is named), merges it
+ *             of each PR (the --list train when none is named; a PR from a
+ *             fork is left out even when named), merges it
  *             with --no-ff --no-commit, settles the mechanical conflicts
  *             (language files, the generated memory indexes and module
  *             list, .min.js bundles, .min.css stylesheets), writes the
@@ -131,6 +133,19 @@ function merge_train_eligible(array $labels, $green, $pushed_at, $now)
 	}
 
 	return in_array('ready', $labels, true) || (($now - $pushed_at) >= MERGE_TRAIN_QUIET_SECONDS);
+}
+
+// Whether a PR's branch lives in this repository, as the pulls endpoint
+// describes the PR. Checks and labels say nothing about who wrote a change,
+// so a PR from a fork, or from a deleted fork (no head repository), never
+// rides a train or counts as one: work from outside the repository reaches
+// development only after the owner has reviewed it.
+function merge_train_same_repo(array $pr)
+{
+	$head = isset($pr['head']['repo']['id']) ? (int) $pr['head']['repo']['id'] : 0;
+	$base = isset($pr['base']['repo']['id']) ? (int) $pr['base']['repo']['id'] : 0;
+
+	return ($head > 0) && ($head === $base);
 }
 
 // The PR numbers a train PR's title names ("Merge train <time>: #a #b").
@@ -467,13 +482,14 @@ function merge_train_require_train_branch()
 	return $branch;
 }
 
-// The open PRs to development whose head is a merge train.
+// The open PRs to development whose head is a merge-train/* branch of this
+// repository.
 function merge_train_open_trains(array $open)
 {
 	$trains = array();
 
 	foreach ($open as $pr) {
-		if (strpos($pr['head']['ref'], 'merge-train/') === 0) {
+		if ((strpos($pr['head']['ref'], 'merge-train/') === 0) && merge_train_same_repo($pr)) {
 			$trains[] = $pr;
 		}
 	}
@@ -505,7 +521,7 @@ function merge_train_candidates()
 	$now = time();
 
 	foreach ($open as $pr) {
-		if (!empty($pr['draft']) || (strpos($pr['head']['ref'], 'merge-train/') === 0) || in_array((int) $pr['number'], $in_trains, true)) {
+		if (!empty($pr['draft']) || !merge_train_same_repo($pr) || (strpos($pr['head']['ref'], 'merge-train/') === 0) || in_array((int) $pr['number'], $in_trains, true)) {
 			continue;
 		}
 
@@ -756,6 +772,11 @@ function merge_train_build(array $numbers, array $options)
 
 		if (($pr['state'] !== 'open') || !empty($pr['draft'])) {
 			fwrite(STDOUT, "#$number is not open and ready; left out.\n");
+			continue;
+		}
+
+		if (!merge_train_same_repo($pr)) {
+			fwrite(STDOUT, "#$number comes from a fork; left out: the owner reviews it.\n");
 			continue;
 		}
 

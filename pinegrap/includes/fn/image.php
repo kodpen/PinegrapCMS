@@ -849,6 +849,31 @@ function pg_img_dimension($value)
 
 
 /**
+ * The onerror code of a designer image: it swaps the image to the address
+ * in its data-pg-fallback attribute (the no-image placeholder) and
+ * removes that attribute first, so a placeholder that fails as well is not
+ * tried again. The code carries no address and never writes "onerror=":
+ * crawlers request a path-like handler value as a relative URL, and an
+ * "onerror=" in a URL is a cross-site scripting signature for the firewall
+ * (waf.php, xss-handler).
+ *
+ * @param bool $responsive true when a srcset or <picture> <source>s may
+ *                         outrank src: they are removed before the swap
+ * @return string JavaScript, not yet escaped for the attribute
+ */
+function pg_img_fallback_handler($responsive)
+{
+    $code = "var f=this.getAttribute('data-pg-fallback');if(!f)return;this.removeAttribute('data-pg-fallback');";
+
+    if ($responsive) {
+        $code .= "var p=this.parentNode;if(p&&p.nodeName==='PICTURE'){var s;while((s=p.querySelector('source')))p.removeChild(s);}this.removeAttribute('srcset');";
+    }
+
+    return $code . 'this.src=f';
+}
+
+
+/**
  * Whether an image's classes give it a CSS width that fills its box:
  * Bootstrap's w-100 and the card image classes (width: 100%). img-fluid is
  * only a max-width, and the image's own size still decides below it.
