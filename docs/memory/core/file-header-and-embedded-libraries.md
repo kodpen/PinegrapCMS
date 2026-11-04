@@ -20,6 +20,7 @@ description: The Pinegrap file header every new PHP/JS file must carry, which fi
  */
 ```
 - Copy it when creating a file; spell it `Pinegrap`, not `PineGrap`.
+- The visual editor's and the image editor's files (the list in `license-editors.txt` at the root; any new `pg_image_editor*.js` part too) end the header with `@copyright   2026 Erdal Güral. All rights reserved.` and `@license     Proprietary, see license-editors.txt` instead of the last two lines above.
 - Never touch the headers of third-party libraries: `includes/phpmailer`, `stripe`, `iyzipay-php`, `phpexcel`, `boxpacker`, `dompdf`, `qrcode`; at the root `pclzip.lib.php`, `excel_reader2.php` and `mysqldump.php`.
 
 ## What PHP base must an embedded library respect?

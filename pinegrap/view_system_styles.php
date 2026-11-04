@@ -8,7 +8,8 @@
  * view_styles.php.
  *
  * @author      Erdal Güral (Kodpen)
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 include('init.php');

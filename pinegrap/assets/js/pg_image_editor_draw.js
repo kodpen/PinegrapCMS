@@ -10,8 +10,8 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2017–2026 Kodpen
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 (function (X) {

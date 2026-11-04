@@ -13,6 +13,11 @@
  *  - Keyboard shortcuts
  *
  * Dependencies: Bootstrap 5.3.8 (loaded in iframe), jQuery (already in backend)
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 const StyleDesigner = (function () {
     'use strict';
