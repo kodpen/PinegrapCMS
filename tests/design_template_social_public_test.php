@@ -60,7 +60,7 @@ function test_social_public_links_and_lists()
 	$known = array_flip(_test_social_page_keys());
 	preg_match_all('/\{\{(?:page|tab):([a-z0-9_]+)\}\}/', $json, $m);
 	foreach (array_unique($m[1]) as $key) pg_assert_true(isset($known[$key]), "page link {{page:$key}} names a template page");
-	foreach (array('home_posts', 'home_news') as $w) pg_assert_contains('"templateWidget":"' . $w . '"', $json, "home places $w");
+	foreach (array('home_featured_posts', 'home_latest_posts', 'home_news', 'newsletter_band') as $w) pg_assert_contains('"templateWidget":"' . $w . '"', $json, "home places $w");
 	pg_assert_contains('"templateShared":"join_band"', $json, 'the join band');
 }
 
