@@ -32,7 +32,7 @@ function test_list_names_wrap_folder_name()
 function test_list_names_wrap_folder_cells()
 {
 	$cells = array(
-		'includes/fn/page_list.php' => 'pg_list_cell(pg_folder_list_name($page[\'folder_name\'], $page[\'folder_access_control_type\']), \'align-middle text-start text-wrap \' . $page[\'folder_access_control_type\'])',
+		'includes/fn/page_list.php' => 'pg_list_cell(pg_folder_list_name($page[\'folder_name\'], $page[\'folder_access_control_type\']), \'align-middle text-start text-wrap \' . $page[\'folder_access_control_type\'], $quick(\'folder\', pg_page_quick_edit_value(\'folder\', $page)))',
 		'view_design_files.php' => '\'folder\' => pg_list_cell(pg_folder_list_name($file[\'folder_name\']), \'align-middle text-wrap\')',
 		'view_themes.php' => '\'folder\' => pg_list_cell(pg_folder_list_name($file[\'folder_name\']) . \'<span class="badge fw-light fg-reset d-inline">(\' . $output_access_control . \')</span>\', \'align-middle text-wrap \' . $folder_access_control_type)',
 	);
