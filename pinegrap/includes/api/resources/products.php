@@ -1139,6 +1139,16 @@ function api_products_barcode($params, $product_id = 0) {
 
 	}
 
+	// Nor another product's code: a scan resolves a barcode before a product
+	// code, so it would move this product's stock instead of that one's.
+	$holder = pg_product_name_holder($barcode, $product_id, false);
+
+	if ($holder) {
+
+		api_fail_validation(pg_barcode_code_taken_text($barcode, $holder), 'barcode');
+
+	}
+
 	return $barcode;
 
 }
