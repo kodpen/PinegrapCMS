@@ -82,16 +82,44 @@ function test_image_vary_verdict()
 {
 	$webp = array('status' => 200, 'type' => 'image/webp', 'proxied' => true);
 	$jpeg = array('status' => 200, 'type' => 'image/jpeg; charset=binary', 'proxied' => true);
+	$webp_hit = $webp + array('hit' => true);
+	$jpeg_hit = $jpeg + array('hit' => true);
 
-	pg_assert_same('ok', pg_image_vary_verdict(array($webp, $jpeg, $webp)), 'a copy per format');
-	pg_assert_same('shared', pg_image_vary_verdict(array($webp, $webp, $webp)), 'WebP given to everyone');
-	pg_assert_same('shared', pg_image_vary_verdict(array($webp, $jpeg, $jpeg)), 'the original given to everyone');
-	pg_assert_same('no_webp', pg_image_vary_verdict(array($jpeg, $jpeg, $jpeg)), 'no WebP made');
+	pg_assert_same('ok', pg_image_vary_verdict(array($webp, $jpeg, $webp_hit, $jpeg_hit)), 'both copies came back from the edge');
+	pg_assert_same('shared', pg_image_vary_verdict(array($webp, $webp_hit, $webp_hit, $webp_hit)), 'WebP given to everyone');
+	pg_assert_same('shared', pg_image_vary_verdict(array($webp, $jpeg, $jpeg_hit, $jpeg_hit)), 'the original given to everyone');
+	pg_assert_same('shared', pg_image_vary_verdict(array($webp, $jpeg, $webp_hit, $webp_hit)), 'the WebP copy given to the last reader');
+	pg_assert_same('no_webp', pg_image_vary_verdict(array($jpeg, $jpeg, $jpeg, $jpeg)), 'no WebP made');
+
+	// The right type every time is no proof by itself: four answers that all
+	// reached the server (a site whose own requests skip the edge's cache) say
+	// nothing about what the edge gives a visitor.
+	pg_assert_same('not_cached', pg_image_vary_verdict(array($webp, $jpeg, $webp, $jpeg)), 'no answer from the cache');
+	pg_assert_same('not_cached', pg_image_vary_verdict(array($webp, $jpeg, $webp_hit, $jpeg)), 'only the WebP copy kept');
+	pg_assert_same('not_cached', pg_image_vary_verdict(array($webp, $jpeg, $webp, $jpeg_hit)), 'only the original kept');
+
 	pg_assert_same('not_proxied', pg_image_vary_verdict(array(
-		array('status' => 200, 'type' => 'image/webp'), array('status' => 200, 'type' => 'image/jpeg'), array('status' => 200, 'type' => 'image/webp'))), 'not through a CDN');
-	pg_assert_same('unreachable', pg_image_vary_verdict(array($webp, array('status' => 403, 'type' => 'text/html', 'proxied' => true), $webp)), 'a refusal');
-	pg_assert_same('unreachable', pg_image_vary_verdict(array($webp, array('status' => 200, 'type' => 'text/html', 'proxied' => true), $webp)), 'a page, not a picture');
-	pg_assert_same('unreachable', pg_image_vary_verdict(array($webp)), 'too few');
+		array('status' => 200, 'type' => 'image/webp'), array('status' => 200, 'type' => 'image/jpeg'),
+		array('status' => 200, 'type' => 'image/webp'), array('status' => 200, 'type' => 'image/jpeg'))), 'not through a CDN');
+	pg_assert_same('unreachable', pg_image_vary_verdict(array($webp, array('status' => 403, 'type' => 'text/html', 'proxied' => true), $webp_hit, $jpeg_hit)), 'a refusal');
+	pg_assert_same('unreachable', pg_image_vary_verdict(array($webp, array('status' => 200, 'type' => 'text/html', 'proxied' => true), $webp_hit, $jpeg_hit)), 'a page, not a picture');
+	pg_assert_same('unreachable', pg_image_vary_verdict(array($webp, $jpeg, $webp_hit)), 'too few');
+}
+
+// Whether an answer came out of a cache rather than from the server.
+function test_image_vary_answer_hit()
+{
+	pg_assert_true(pg_image_vary_answer_hit("HTTP/2 200\r\ncf-cache-status: HIT\r\nage: 0\r\n"), 'Cloudflare hit');
+	pg_assert_true(pg_image_vary_answer_hit("HTTP/2 200\r\ncf-cache-status: REVALIDATED\r\n"), 'Cloudflare revalidated');
+	pg_assert_true(pg_image_vary_answer_hit("HTTP/1.1 200 OK\r\nX-Cache: Hit from cloudfront\r\n"), 'CloudFront');
+	pg_assert_true(pg_image_vary_answer_hit("HTTP/1.1 200 OK\r\nX-Cache: MISS, HIT\r\n"), 'Fastly, a hit on one layer');
+	pg_assert_true(pg_image_vary_answer_hit("HTTP/1.1 200 OK\r\nAge: 12\r\n"), 'an Age from any cache');
+	pg_assert_false(pg_image_vary_answer_hit("HTTP/2 200\r\ncf-cache-status: MISS\r\n"), 'Cloudflare miss');
+	pg_assert_false(pg_image_vary_answer_hit("HTTP/2 200\r\ncf-cache-status: DYNAMIC\r\n"), 'not cached at all');
+	pg_assert_false(pg_image_vary_answer_hit("HTTP/1.1 200 OK\r\nX-Cache: MISS\r\nVia: 1.1 varnish\r\n"), 'a proxy that missed');
+	pg_assert_false(pg_image_vary_answer_hit("HTTP/1.1 200 OK\r\nAge: soon\r\n"), 'an Age that is no number');
+	pg_assert_false(pg_image_vary_answer_hit("HTTP/1.1 200 OK\r\nAge: 3\r\n\r\nHTTP/1.1 200 OK\r\ncf-cache-status: MISS\r\n"), 'only the last answer counts');
+	pg_assert_false(pg_image_vary_answer_hit(''), 'nothing');
 }
 
 // The private address asked with WebP, then without: a second WebP means the
@@ -129,6 +157,8 @@ function test_image_vary_outcome()
 	pg_assert_same(array('cdn' => 'clear', 'mode' => 'original'), pg_image_vary_outcome('shared', 'kept', true), 'taken back, private kept');
 	pg_assert_same(array('cdn' => '', 'mode' => ''), pg_image_vary_outcome('shared', 'unreachable', false), 'the private test failed: unchanged');
 	pg_assert_same(array('cdn' => '', 'mode' => 'private'), pg_image_vary_outcome('not_proxied', '', false), 'nothing in between');
+	pg_assert_same(array('cdn' => 'clear', 'mode' => ''), pg_image_vary_outcome('not_cached', '', true), 'a confirmation the edge did not prove is taken back');
+	pg_assert_same(array('cdn' => '', 'mode' => ''), pg_image_vary_outcome('not_cached', '', false), 'unproven: no confirmation, the last mode stays');
 	pg_assert_same(array('cdn' => '', 'mode' => ''), pg_image_vary_outcome('unreachable', '', false), 'unreachable: unchanged');
 	pg_assert_same(array('cdn' => '', 'mode' => ''), pg_image_vary_outcome('no_webp', '', true), 'no WebP: unchanged');
 	pg_assert_same(array('cdn' => '', 'mode' => ''), pg_image_vary_outcome('no_sample', '', false), 'no picture: unchanged');
@@ -140,8 +170,14 @@ function test_image_vary_test_due()
 	$now = 1800000000;
 
 	pg_assert_false(pg_image_vary_test_due(null, 3, $now), 'switch off');
-	pg_assert_false(pg_image_vary_test_due(null, 13, $now), 'confirmed');
 	pg_assert_true(pg_image_vary_test_due(null, 5, $now), 'never tested');
+
+	// A confirmation is tested too, so one ticked by hand or by an earlier
+	// test is taken back once the edge stops keeping a copy per format.
+	pg_assert_true(pg_image_vary_test_due(null, 13, $now), 'confirmed, never tested');
+	pg_assert_true(pg_image_vary_test_due(array('time' => $now - 60, 'bits' => 5, 'verdict' => 'shared'), 13, $now), 'ticked by hand');
+	pg_assert_false(pg_image_vary_test_due(array('time' => $now - 3600, 'bits' => 13, 'verdict' => 'ok'), 13, $now), 'confirmed an hour ago');
+	pg_assert_true(pg_image_vary_test_due(array('time' => $now - 86401, 'bits' => 13, 'verdict' => 'ok'), 13, $now), 'confirmed a day ago');
 	pg_assert_true(pg_image_vary_test_due(array('time' => $now - 60, 'bits' => 13, 'verdict' => 'ok'), 5, $now), 'bit 8 taken back');
 	pg_assert_true(pg_image_vary_test_due(array('time' => $now - 60, 'bits' => 1, 'verdict' => 'shared'), 5, $now), 'switched on');
 	pg_assert_false(pg_image_vary_test_due(array('time' => $now - 3600, 'bits' => 5, 'verdict' => 'shared'), 5, $now), 'tested an hour ago');

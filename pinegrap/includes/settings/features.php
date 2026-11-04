@@ -271,9 +271,11 @@ $pg_settings_cards[] = '
             }
 
             // A JPEG or PNG answered with its WebP copy at its own address
-            // (bit 4, includes/image_negotiation.php), and the operator's word
+            // (bit 4, includes/image_negotiation.php), and the confirmation
             // that the CDN in front keeps a copy per format (bit 8): until it
-            // is given, a request that came through a CDN gets the original.
+            // is given, a request that came through a CDN is answered private.
+            // The daily self-test (includes/fn/image_vary_check.php) sets it,
+            // and takes back one the edge is not seen honouring.
             $image_same_address = $image_settings['delivery']['same_address'];
 
             $image_same_address_note = empty($image_formats_written['webp'])
@@ -292,7 +294,7 @@ $pg_settings_cards[] = '
                                 <div class="form-field">
                                     <div class="switch"><input value="1"' . ($image_same_address['cdn'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="image_same_address_cdn" name="image_same_address_cdn"/></div>
                                     <label class="" for="image_same_address_cdn">' . lang('The CDN keeps a copy per format') . '</label>
-                                    <div class="form-text">' . lang('A CDN that ignores the Accept header would give its first copy to everyone, so requests through a CDN get the original until this is on. Switch it on only once the CDN caches pictures separately for each Accept value (on Cloudflare, a Cache Rule).') . '</div>
+                                    <div class="form-text">' . lang('Until this is on, requests through a CDN get WebP marked private, so the CDN keeps no copy of pictures. A daily check turns it on once it sees the CDN keep a copy per Accept value (on Cloudflare, a Cache Rule), and turns it off again, even when ticked here, once it finds the CDN handing one copy to everyone or keeping none.') . '</div>
                                 </div>
                             </div>';
 
