@@ -137,3 +137,27 @@ function test_workspace_today_calendar_rows()
 		pg_assert_contains($rule, $css, $rule . ' is styled');
 	}
 }
+
+// Every helper the feature files get (featureHelpers()) is defined in the
+// screen's script: building the list threw "homeCard is not defined" when a
+// channel opened, once the old home card was gone and the list still named it.
+function test_workspace_today_feature_helpers_defined()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$start = strpos($source, "\n    function featureHelpers() {");
+	pg_assert_true($start !== false, 'the helpers');
+	$block = (string) substr($source, (int) $start, (int) strpos($source, "\n    }\n", (int) $start) - (int) $start);
+	preg_match_all('~(\w+): (\w+)[,\s]~', $block, $pairs, PREG_SET_ORDER);
+	pg_assert_true(count($pairs) > 15, 'read');
+
+	foreach ($pairs as $pair) {
+		$name = $pair[2];
+
+		if ($name === 'function') {
+			continue;
+		}
+
+		$defined = preg_match('~(function ' . $name . '\(|var ' . $name . '\b|, ' . $name . ' = )~', $source) === 1;
+		pg_assert_true($defined, $pair[1] . ': ' . $name . ' is defined');
+	}
+}
