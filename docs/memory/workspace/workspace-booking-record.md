@@ -4,7 +4,7 @@ description: Booking as a Workspace record kind (tag <#booking:N>, the agenda's 
 module: booking_agenda
 ---
 
-## How is a booking a Workspace record?
+## How is a booking a Workspace record (#6629)?
 - Kind `booking` in `ws_record_kinds()` (prefixes `randevu`, `rezervasyon`, `booking`, `appointment`): every member may tag one (right '', there is no booking permission column), but `ws_refs_resolve()` opens it only through the agenda's rule, `pg_booking_agenda_user_scope()` + `pg_booking_agenda_scope_allows()` (pure): roles 0-2 every booking, a role-3 staff member their own `booking_staff` row's, anyone else none. As `edit_booking.php` and the API (`pg_booking_agenda_scope_sql()`).
 - Chip: "service · customer", the start (`pg_booking_agenda_time()`), the status label, `edit_booking.php?id=N`. `ws_ref_search()` matches name, e-mail, phone, service or the id, never a hold. Neither reads anything before `pg_booking_ready()`.
 - Tag-only: no `ws_change_types()` kind, so no drawer, bulk or audit line; a booking moves on the agenda, where `pg_booking_changed()` mails the customer. No customer kind.
