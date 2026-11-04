@@ -41226,7 +41226,8 @@ const StyleDesigner = (function () {
     // may book). Mirrors _render_system_widget_booking() in widgets_booking.php.
     var SW_BOOKING_TOKEN_GROUPS = [
         { label: _sdT('Booking'), tokens: [
-            ['__service_total',       _sdT('Number of services offered')]
+            ['__service_total',       _sdT('Number of services offered')],
+            ['__privacy_url',         _sdT('Address of the privacy notice page')]
         ]},
         { label: _sdT('Service (loop_area)'), tokens: [
             ['__service_id',          _sdT('Service number')],
@@ -41914,6 +41915,9 @@ const StyleDesigner = (function () {
             out.push(['booking_calendar',     _sdT('Month calendar of the free days (filled on the page)')]);
             out.push(['booking_times',        _sdT('Free times of the chosen day (filled on the page)')]);
             out.push(['booking_summary',      _sdT('The held time (filled on the page)')]);
+            out.push(['booking_form',         _sdT('Details form (fields named name, email, phone, notes, consent)')]);
+            out.push(['booking_step_done',    _sdT('Step: the booking is made')]);
+            out.push(['booking_done',         _sdT('Closing words (filled on the page)')]);
             out.push(['booking_status',       _sdT('Status line read out to screen readers')]);
         } else if (type === 'catalog_listing') {
             out.push(['group_tree',        _sdT('Category Tree (nested list)')]);
@@ -43400,6 +43404,7 @@ const StyleDesigner = (function () {
         booking: [
             ['has_services',            _sdT('A service can be booked online')],
             ['no_services',             _sdT('No service can be booked online yet')],
+            ['has_privacy_page',        _sdT('The site has a privacy notice page')],
             ['service_has_price',       _sdT('Row: the service has a price')],
             ['service_has_description', _sdT('Row: the service has a description')]
         ],
@@ -64384,6 +64389,17 @@ const StyleDesigner = (function () {
                     }
                     return createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: label, _bindings: { section: part } }, kids);
                 };
+                var bkId = 'bk_' + Math.random().toString(36).slice(2, 7);
+                var bkField = function (name, label, type, auto, required, col) {
+                    var attrs = [{ name: 'type', value: type }, { name: 'name', value: name }, { name: 'autocomplete', value: auto },
+                        { name: 'maxlength', value: name === 'phone' ? '40' : (name === 'email' ? '191' : '100') }];
+                    if (required) attrs.push({ name: 'required', value: 'required' });
+                    return createNode('semantic', { tag: 'div', cssClass: col, customName: label }, [
+                        createNode('semantic', { tag: 'label', cssClass: 'form-label', text: label, customName: _sdT('Label'),
+                            _attrs: [{ name: 'for', value: bkId + '_' + name }] }),
+                        createNode('semantic', { tag: 'input', cssClass: 'form-control', id: bkId + '_' + name, customName: label, _attrs: attrs })
+                    ]);
+                };
                 var bkFill = function (part, label, cls) {
                     return createNode('semantic', { tag: 'div', cssClass: cls, customName: label, _bindings: { section: part } });
                 };
@@ -64425,8 +64441,42 @@ const StyleDesigner = (function () {
                             ])
                         ], true),
                         bkStep('booking_step_details', _sdT('Details step'), _sdT('Your appointment'), [
-                            createNode('semantic', { tag: 'p', cssClass: 'alert alert-info', customName: _sdT('Held time'), _bindings: { section: 'booking_summary' } })
+                            createNode('semantic', { tag: 'p', cssClass: 'alert alert-info', customName: _sdT('Held time'), _bindings: { section: 'booking_summary' } }),
+                            createNode('semantic', { tag: 'form', cssClass: 'row g-3', customName: _sdT('Details form'), _bindings: { section: 'booking_form' } }, [
+                                bkField('name', _sdT('Name'), 'text', 'name', true, 'col-12 col-md-6'),
+                                bkField('email', _sdT('E-mail'), 'email', 'email', true, 'col-12 col-md-6'),
+                                bkField('phone', _sdT('Phone'), 'tel', 'tel', false, 'col-12 col-md-6'),
+                                createNode('semantic', { tag: 'div', cssClass: 'col-12', customName: _sdT('Notes') }, [
+                                    createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdT('Notes'), customName: _sdT('Label'),
+                                        _attrs: [{ name: 'for', value: bkId + '_notes' }] }),
+                                    createNode('semantic', { tag: 'textarea', cssClass: 'form-control', id: bkId + '_notes', customName: _sdT('Notes'),
+                                        _attrs: [{ name: 'name', value: 'notes' }, { name: 'rows', value: '3' }, { name: 'maxlength', value: '1000' }] })
+                                ]),
+                                createNode('semantic', { tag: 'div', cssClass: 'col-12', customName: _sdT('Consent') }, [
+                                    createNode('semantic', { tag: 'div', cssClass: 'form-check', customName: _sdT('Consent box') }, [
+                                        createNode('semantic', { tag: 'input', cssClass: 'form-check-input', id: bkId + '_consent', customName: _sdT('Consent box'),
+                                            _attrs: [{ name: 'type', value: 'checkbox' }, { name: 'name', value: 'consent' }, { name: 'value', value: '1' }, { name: 'required', value: 'required' }] }),
+                                        createNode('semantic', { tag: 'label', cssClass: 'form-check-label', customName: _sdT('Label'),
+                                            _attrs: [{ name: 'for', value: bkId + '_consent' }] }, [
+                                            createNode('semantic', { tag: 'span', cssClass: '', text: _sdT('I agree that my details are kept to arrange this appointment.'), customName: _sdT('Consent text') }),
+                                            createNode('semantic', { tag: 'span', cssClass: '', customName: _sdT('Privacy notice link'), _bindings: { eo_visible_if: 'has_privacy_page' } }, [
+                                                createNode('semantic', { tag: 'span', cssClass: '', text: ' ', customName: _sdT('Space') }),
+                                                createNode('semantic', { tag: 'a', cssClass: '', text: _sdT('Privacy notice'), href: '#', target: '_blank', customName: _sdT('Privacy notice'),
+                                                    _attrs: [{ name: 'rel', value: 'noopener' }], _bindings: { href: '__privacy_url' } })
+                                            ])
+                                        ])
+                                    ])
+                                ]),
+                                createNode('semantic', { tag: 'div', cssClass: 'col-12', customName: _sdT('Book button') }, [
+                                    createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary', text: _sdT('Book the appointment'), customName: _sdT('Book button'),
+                                        _attrs: [{ name: 'type', value: 'submit' }] })
+                                ])
+                            ])
                         ], true),
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Done step'), _bindings: { section: 'booking_step_done' } }, [
+                            createNode('semantic', { tag: 'h2', cssClass: 'h5 mb-3', text: _sdT('Thank you'), customName: _sdT('Heading') }),
+                            createNode('semantic', { tag: 'p', cssClass: 'alert alert-success mb-0', customName: _sdT('Closing words'), _bindings: { section: 'booking_done' } })
+                        ]),
                         createNode('semantic', { tag: 'p', cssClass: 'small text-body-secondary mb-0', customName: _sdT('Status'), _bindings: { section: 'booking_status' } })
                     ]),
                     createNode('semantic', { tag: 'p', cssClass: 'text-body-secondary', text: _sdT('No service can be booked online yet.'), customName: _sdT('No services'),
