@@ -140,3 +140,78 @@ function test_import_users_checks_points_and_lengths()
 	pg_assert_contains('pg_user_form_text_fits($_POST[\'badge_label\'] ?? \'\')', $source, 'the badge label length is checked');
 	pg_assert_false(strpos($source, "escape(\$_POST['reward_points']") !== false, 'the raw points are not written');
 }
+
+function test_user_form_field_problems()
+{
+	pg_assert_same(array(), pg_user_form_field_problems(array('reward_points' => '12', 'username' => 'ann', 'badge_label' => '')), 'valid fields');
+	pg_assert_same(array(), pg_user_form_field_problems(array()), 'nothing sent');
+	pg_assert_same(array('reward_points' => 'invalid'), pg_user_form_field_problems(array('reward_points' => '-5')), 'negative points');
+	pg_assert_same(array('reward_points' => 'invalid'), pg_user_form_field_problems(array('reward_points' => '12,50')), 'decimal points');
+	pg_assert_same(array('reward_points' => 'invalid'), pg_user_form_field_problems(array('reward_points' => '99999999999')), 'points above the column');
+	pg_assert_same(
+		array('username' => 'too_long', 'badge_label' => 'too_long'),
+		pg_user_form_field_problems(array('username' => str_repeat('a', 101), 'badge_label' => str_repeat('b', 101))),
+		'texts longer than their column');
+}
+
+function test_user_form_contact_problem()
+{
+	pg_assert_same('', pg_user_form_contact_problem('', array('found' => false, 'username' => null)), 'no contact sent');
+	pg_assert_same('', pg_user_form_contact_problem('abc', array('found' => false, 'username' => null)), 'not an id');
+	pg_assert_same('', pg_user_form_contact_problem('269', array('found' => true, 'username' => null)), 'a free contact');
+	pg_assert_same('contact_missing', pg_user_form_contact_problem('269', array('found' => false, 'username' => null)), 'a missing contact');
+	pg_assert_same('contact_taken', pg_user_form_contact_problem('269', array('found' => true, 'username' => 'ann')), 'a contact of another user');
+	pg_assert_same('contact_taken', pg_user_form_contact_problem(269, array('found' => true, 'username' => '0')), 'a username that reads as zero');
+}
+
+function test_user_form_refill()
+{
+	$html = '<input type="hidden" name="id" value="5" />'
+		. '<input type="text" name="username" value="old" class="form-control" required />'
+		. '<input type="email" name="email" id="email"/>'
+		. '<input type="number" name="reward_points"/>'
+		. '<input type="checkbox" name="create_pages" value="1" checked="checked" />'
+		. '<input type="checkbox" name="badge" value="1" />'
+		. '<input type="radio" name="role" value="2" checked="checked" />'
+		. '<input type="radio" name="role" value="3" />'
+		. '<input type="radio" name="role" value="0" disabled="disabled" checked="checked" />'
+		. '<select name="home_page"><option value="0" selected="selected">None</option><option value="7">Home</option></select>';
+
+	$out = pg_user_form_refill($html, array(
+		'id' => '9',
+		'username' => 'a"b',
+		'email' => 'x@example.com',
+		'reward_points' => '-5',
+		'badge' => '1',
+		'role' => '3',
+		'home_page' => '7',
+	));
+
+	pg_assert_contains('<input type="hidden" name="id" value="5" />', $out, 'a hidden field keeps its value');
+	pg_assert_contains('name="username" value="a&quot;b" class="form-control" required />', $out, 'a text field takes the sent value, escaped');
+	pg_assert_contains('<input type="email" name="email" id="email" value="x@example.com" />', $out, 'a field without a value gets one');
+	pg_assert_contains('<input type="number" name="reward_points" value="-5" />', $out, 'the refused number is shown');
+	pg_assert_contains('<input type="checkbox" name="create_pages" value="1" />', $out, 'an unsent checkbox is unchecked');
+	pg_assert_contains('<input type="checkbox" name="badge" value="1" checked="checked" />', $out, 'a sent checkbox is checked');
+	pg_assert_contains('<input type="radio" name="role" value="2" />', $out, 'the drawn role is cleared');
+	pg_assert_contains('<input type="radio" name="role" value="3" checked="checked" />', $out, 'the sent role is checked');
+	pg_assert_contains('value="0" disabled="disabled" checked="checked" />', $out, 'a disabled input keeps its state');
+	pg_assert_contains('<option value="0">None</option><option value="7" selected="selected">Home</option>', $out, 'the sent option is selected');
+	pg_assert_same('<input type="text" name="x" value="$1 \\1" />', pg_user_form_refill('<input type="text" name="x" value="" />', array('x' => '$1 \\1')), 'replacement references are taken literally');
+}
+
+function test_user_screens_send_errors_back_to_the_form()
+{
+	foreach (array('add_user', 'edit_user') as $screen) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $screen . '.php');
+
+		pg_assert_contains('pg_user_form_field_problems($_POST)', $source, $screen . ' checks points and lengths');
+		pg_assert_contains('$liveform->output_errors()', $source, $screen . ' prints its errors');
+		pg_assert_contains('$liveform->remove_form()', $source, $screen . ' clears its form once drawn');
+		pg_assert_false(strpos($source, 'output_error(pg_user_write_problem_message(') !== false, $screen . ' does not leave the panel for a refused save');
+	}
+
+	$add = (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_user.php');
+	pg_assert_contains('pg_user_form_contact_problem(', $add, 'the contact is checked before the account is created');
+	pg_assert_contains('$liveform_view_users->add_warning(', $add, 'an unsent new account mail is a warning');
+}
