@@ -230,11 +230,12 @@ function erp_cheque_rows($filters = array())
 /**
  * What is still open: in the portfolio or at the bank, and given out.
  *
- * @return array ['received' => [count, amount], 'given' => [count, amount], 'due_week' => count]
+ * @return array ['received' => [count, amount], 'given' => [count, amount],
+ *                'due_week' => count due from today to a week on, 'overdue' => count past due]
  */
 function erp_cheque_totals()
 {
-    $out = array('received' => array(0, 0), 'given' => array(0, 0), 'due_week' => 0);
+    $out = array('received' => array(0, 0), 'given' => array(0, 0), 'due_week' => 0, 'overdue' => 0);
 
     if (!erp_cheques_ready()) {
         return $out;
@@ -245,8 +246,12 @@ function erp_cheque_totals()
         $out[(string) $row['direction']] = array((int) $row['count'], (int) $row['amount']);
     }
 
+    // The coming week only, as the invoice list's "Due this week": a cheque
+    // past its date is counted apart, not as one about to fall due.
     $out['due_week'] = (int) db_value("SELECT COUNT(*) FROM erp_cheques
-        WHERE status IN ('portfolio', 'deposited', 'given') AND due_date <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)");
+        WHERE status IN ('portfolio', 'deposited', 'given') AND due_date >= CURDATE() AND due_date <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)");
+    $out['overdue'] = (int) db_value("SELECT COUNT(*) FROM erp_cheques
+        WHERE status IN ('portfolio', 'deposited', 'given') AND due_date < CURDATE()");
 
     return $out;
 }

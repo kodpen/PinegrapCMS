@@ -16,6 +16,12 @@ description: ERP cheques and promissory notes (4.101): the steps, money only thr
 - No. Its collection (`open_cash_id`) and the bounce payment (`close_cash_id`) cancel each other out; allocating the first again re-closed the reopened invoice. `erp_cheque_allocation_refusal($cheque)` gives the reason; `erp_settlement_allocate()` refuses with it before writing, and `erp_receipt.php` shows it instead of the allocation form, with Unallocated 0.
 - A cheque bounced before #4429's fix keeps its allocations: `erp_cheque_bounced_allocations()` lists them, the cheque screen names the invoices and links to the receipt, whose Remove opens them. Nothing repairs those rows on its own.
 
+## Which bank till may a step use?
+- `erp_cheque_bank_till_refusal()` in `erp_cheque_step()`, so screen and API refuse alike: the till must exist, be active, not be the cheque's portfolio, and keep the portfolio's currency (deposit included, or the cheque could never be collected). The bank already stored on the cheque may be inactive, so a cheque at a bank taken off later is still collected. Before, the screen let a stale form deposit into a missing till and collect into an inactive one (`allow_inactive_till` on the transfer covers both tills).
+
+## What does the list's "Due within a week" card count?
+- Open cheques due from today to a week on; past-due open ones are counted apart (`erp_cheque_totals()['overdue']`, shown in red under the number), like the invoice list's "Due this week". Before, it had no lower bound and counted cheques overdue for years.
+
 ## Which date may a step carry? (#4436, PR #4517)
 - Not before the cheque's own `doc_date`, and a real day (`checkdate()`; 2026-02-30 passed before PR #5622): `erp_cheque_step_date_refusal()` in `erp_cheque_step()`, so screen and API refuse alike; the date box starts at today or `doc_date`, with `min`. A back-dated collect left the portfolio below zero.
 
