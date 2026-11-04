@@ -90,7 +90,7 @@ function test_rich_text_profiles_staff_still_filters()
 // submitted form editor filters the stored value before it loads.
 function test_rich_text_profiles_staff_callers()
 {
-	foreach (array('edit_field.php', 'view_fields.php', 'includes/api/resources/calendars.php') as $file) {
+	foreach (array('edit_field.php', 'includes/fn/field_list.php', 'includes/api/resources/calendars.php') as $file) {
 		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 		pg_assert_contains(", 'staff')", $source, $file);
 	}
