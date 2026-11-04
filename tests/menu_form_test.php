@@ -27,7 +27,7 @@ function test_menu_form_screens_use_shared_form()
 		pg_assert_contains('pg_menu_form_cards($liveform', $source, $file . ' prints the shared cards');
 		pg_assert_contains('pg_menu_form_layout(', $source, $file . ' uses the shared layout');
 		pg_assert_contains('pg_menu_form_validate_name($liveform, ', $source, $file . ' checks the name the shared way');
-		pg_assert_contains('pg_menu_form_values($liveform)', $source, $file . ' saves the shared values');
+		pg_assert_contains(($file === 'add_menu.php') ? 'pg_menu_form_values($liveform)' : 'pg_menu_form_save($liveform, ', $source, $file . ' saves the shared values');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 		pg_assert_false(strpos($source, 'Menu Options') !== false, $file . ' keeps no copy of the card');
 	}
