@@ -1,6 +1,6 @@
 ---
 name: list-table-quick-edit-themes
-description: All Themes list quick edit (includes/fn/theme_list_edit.php): the fields, the theme screen's check and save shared through includes/forms/theme_file_form.php, the activation answer that redraws the replaced theme
+description: All Themes list quick edit (includes/fn/theme_list_edit.php): the fields, the shared theme check and save, the answer that redraws the replaced theme
 module: theme_list_edit
 ---
 
