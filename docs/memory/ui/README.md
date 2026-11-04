@@ -245,6 +245,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-export.md: The image editor's export panel (E13, E13b): format, quality, edge, progressive JPEG, PNG colours, camera details, sRGB, the estimate action, another format as a copy, the optimise profile
 - image-editor-fonts.md: The image editor's Google Fonts choice in the Text tool and the one font catalogue it shares with the visual designer
 - image-editor-glyph.md: The image editor's Bootstrap Icons and emoji in the Sticker tool: the glyph layer, where the icon font and map come from, the emoji set and its recent row
+- image-editor-import.md: Import in the image editor's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas
 - image-editor-keyframes.md: The Animate tool's keyframes (AN9): anim.keys and M.keyAt() composed in M.motionAt(), the Path tab, dragging a layer at the playhead, diamonds on the tracks, the path on the stage
 - image-editor-keys.md: The image editor's keys: shortcuts, Escape on keydown, Enter and Space to focused buttons, arrows to sliders (ownsKey), focus kept after a panel redraw, panning
 - image-editor-layers.md: The image editor's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
@@ -287,7 +288,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-row-names.md: Orders, products, submitted forms, pages and files lists: row box names, SEO links, No Image, folder access by icon and word, names and descriptions that wrap instead of a cut
 - list-stale-filter.md: All Ads, Verified Shipping Addresses and Submitted Forms reset a remembered filter whose ad region, state or custom form is gone to '[All]' (pg_list_filter_known())
 - list-status-words.md: A word beside a list row's green or red state (pg_list_status_word()): product groups, key codes, arrival dates, gift cards, ERP expenses
-- list-table-campaign-system-lists.md: E-mail and SMS campaigns, visitor reports, the 404 log, backups, Cloudflare DNS records and the database tables on the list table driver (TD12a); the gift card redemption history as a plain ledger
+- list-table-campaign-system-lists.md: E-mail campaigns and campaign profiles, SMS campaigns, visitor reports, the 404 log, backups, DNS records and database tables on the list table driver; gift card redemptions a plain ledger
 - list-table-commerce-lists.md: Orders, gift cards, key codes, shipping methods (TD8a) and the ERP account prices, minimum stock and stock lists (TD8b) on the list table driver: printed whole, quick edit, bulk actions as ids
 - list-table-driver-browser.md: List table driver in the browser (assets/js/pg_list_table.js): selection, Ctrl+A and Select all, undo, rows on scroll, search, columns menu, details panel, phone cards, thumbnails, layout
 - list-table-driver-lists.md: Which screens are on the list table driver (pages, users, contacts, submitted forms, products, commissions, mail queue, logs, printed lists): sources, columns, bulk actions
@@ -469,6 +470,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - settings-system-tools.md: The System tools screen (system_tools.php): the screens beside Site Settings as cards, the dialog's one row to it, the palette rows; gates from pg_settings_tool_groups()
 - settings-window-turkish-texts.md: Site Settings window wording in Turkish (#5029, PR #5079): mid-sentence relative time, Turkish starter dollar name, translated language names, the category-switch question, settled terms
 - ship-date-adjustment-shared-form.md: The ship date adjustment create and edit screens share includes/forms/ship_date_adjustment_form.php: what it holds, what stays in the screens
+- shipping-method-service-picker.md: The Service field of the shipping method form offers only carriers that are set up, keeps a stored service the picker does not offer, and is left out with no carrier
 - shipping-method-shared-form.md: The shipping method create and edit screens share includes/forms/shipping_method_form.php
 - short-link-shared-form.md: The short link create and edit screens share includes/forms/short_link_form.php: what it holds, what stays in the screens
 - single-email-address-boxes.md: Panel boxes that hold one e-mail address refuse a broken one before the save writes anything, through pg_email_field_errors()
