@@ -157,6 +157,8 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_search_engines();          // 11.0.166
 	upgrade_2026_11_0_ap_reactions();            // 11.0.167
 	upgrade_2026_11_0_return_updated_at();       // 11.0.168
+	upgrade_2026_11_0_booking_deposit();         // 11.0.169
+	upgrade_2026_11_0_contact_group_joined_campaigns(); // 11.0.170
 
 }
 
@@ -5201,5 +5203,69 @@ function upgrade_2026_11_0_return_updated_at() {
 		WHERE updated_at = 0");
 
 	install_note('Returns: the time of a return\'s last change is kept, so the external API lists the returns changed since a given moment.');
+
+}
+
+// Booking deposits (2026.11.0, 11.0.169; includes/fn/booking_deposits.php),
+// in the shape of the form fee (11.0.158). booking_services.deposit is the
+// amount asked in advance in minor units (0 = none), deposit_product_id the
+// product the deposit order's one line names; a service asks for a deposit
+// only with both. bookings.order_id points at the deposit order (the order
+// carries nothing) and bookings.paid_at is the moment that order was paid,
+// written once (0 = unpaid). Every existing service and booking keeps 0.
+function upgrade_2026_11_0_booking_deposit() {
+
+	install_add_column('booking_services', 'deposit', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('booking_services', 'deposit_product_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('bookings', 'order_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('bookings', 'paid_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('bookings', 'idx_order_id', "INDEX idx_order_id (order_id)");
+
+	install_note('Bookings: a service can ask for a deposit, charged as a one-line order of a product; every existing service asks for none.');
+
+}
+
+// Campaign-profile action "joined a group" (2026.11.0, 11.0.170;
+// pg_contact_group_joined_heard() in includes/fn/mail.php): a profile of
+// action contact_group_joined names the group in action_item_id and sends
+// one mail to each contact put into it. Both action columns take the value,
+// because create_auto_email_campaigns() copies the profile's action into the
+// campaign row and an unlisted value is stored as ''. As in
+// upgrade_2026_11_0_booking_campaigns(): the list is read first and only
+// widened at its end, the null rule and the default kept as they are.
+function upgrade_2026_11_0_contact_group_joined_campaigns() {
+
+	foreach (array('email_campaign_profiles', 'email_campaigns') as $table) {
+
+		$action = install_column_info($table, 'action');
+
+		if (!$action) {
+
+			continue;
+
+		}
+
+		preg_match_all("/'((?:[^']|'')*)'/", (string) $action['Type'], $matches);
+
+		if (in_array('contact_group_joined', $matches[1], true)) {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => $table . '.action contact_group_joined')));
+
+			continue;
+
+		}
+
+		$values = $matches[1];
+		$values[] = 'contact_group_joined';
+
+		$definition = "ENUM('" . implode("','", $values) . "')"
+			. ((($action['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+			. (($action['Default'] !== null) ? " DEFAULT '" . e((string) $action['Default']) . "'" : '');
+
+		install_modify_column($table, 'action', $definition);
+
+	}
+
+	install_note('E-mail campaigns: automatic e-mails gain the joined a contact group action, one e-mail to each contact put into the chosen group. Nothing is sent until such a profile is created.');
 
 }

@@ -25,6 +25,7 @@ include_once('liveform.class.php');
 // The list's sort map (pg_contact_group_list_order_map()); functions.php
 // does not load this module.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/contact_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
 $liveform = new liveform('view_contact_groups');
 
@@ -104,8 +105,6 @@ while ($row = mysqli_fetch_assoc($result)) {
     }
 }
 
-$output_rows = '';
-
 // Members per group, one query for the whole list.
 $member_counts = array();
 
@@ -113,67 +112,65 @@ foreach ((array) db_items("SELECT contact_group_id, COUNT(*) AS members FROM con
     $member_counts[(int) $count_row['contact_group_id']] = (int) $count_row['members'];
 }
 
-// if there is at least one result to display
-if ($contact_groups) {
+// Every group the user may see is printed: the list table driver sorts and
+// searches them in the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
 
-    foreach ($contact_groups as $contact_group) {
-        if ($contact_group['email_subscription']) {
-            $email_subscription = '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . lang('Yes') . '</span>';
-
-            if ($contact_group['email_subscription_type'] == 'open') {
-                $email_subscription_type = '<span class="badge fw-light theme-primary">' . lang('Open') . '</span>';
-            } else {
-                $email_subscription_type = '<span class="badge fw-light theme-warning">' . lang('Closed') . '</span>';
-            }
-
-            $description = $contact_group['description'];
-
+foreach ($contact_groups as $contact_group) {
+    if ($contact_group['email_subscription']) {
+        if ($contact_group['email_subscription_type'] == 'open') {
+            $email_subscription_type = '<span class="badge fw-light theme-primary">' . lang('Open') . '</span>';
         } else {
-            $email_subscription = '';
-            $email_subscription_type = '';
-            $description = '';
+            $email_subscription_type = '<span class="badge fw-light theme-warning">' . lang('Closed') . '</span>';
         }
 
+        $description = $contact_group['description'];
 
-        $created_username = '';
-            
-        if ($contact_group['created_username']) {
-            $created_username = lang(array('string'=>'by {var:1}','vars'=>array( h($contact_group['created_username']) ) ) );
-        }
-        
-        $last_modified_username = '';
-        
-        if ($contact_group['last_modified_username']) {
-            $last_modified_username = lang(array('string'=>'by {var:1}','vars'=>array( h($contact_group['last_modified_username']) ) ) );
-        }
-
-        $output_link_url = 'edit_contact_group.php?id=' . $contact_group['id'];
-
-        if ($contact_group['kind'] === 'dynamic') {
-            $output_kind = '<span class="badge fw-light theme-info">' . h(lang('By rule')) . '</span>';
-        } else {
-            $output_kind = '<span class="badge fw-light theme-secondary">' . h(lang('By hand')) . '</span>';
-        }
-
-        $output_members = pg_format_number($member_counts[(int) $contact_group['id']] ?? 0, 0);
-
-        $output_rows .=
-            '<tr class="unselectable">
-			    <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
-                </td>
-                <td class="align-middle chart_label">' . h($contact_group['name']) . '</td>
-                <td class="align-middle">' . $output_kind . '</td>
-                <td class="align-middle text-end">' . $output_members . '</td>
-                <td class="align-middle text-center">' . $email_subscription . '</td>
-                <td class="align-middle">' . $email_subscription_type . '</td>
-                <td class="align-middle">' . h($description) . '</td>
-                <td class="align-middle">' . get_relative_time(array('timestamp' => $contact_group['created_timestamp'])) . ' ' . $created_username . '</td>
-                <td class="align-middle">' . get_relative_time(array('timestamp' => $contact_group['last_modified_timestamp'])) . ' ' . $last_modified_username . '</td>
-            </tr>';
+    } else {
+        $email_subscription_type = '';
+        $description = '';
     }
+
+    if ($contact_group['kind'] === 'dynamic') {
+        $output_kind = '<span class="badge fw-light theme-info">' . h(lang('By rule')) . '</span>';
+    } else {
+        $output_kind = '<span class="badge fw-light theme-secondary">' . h(lang('By hand')) . '</span>';
+    }
+
+    $members = $member_counts[(int) $contact_group['id']] ?? 0;
+
+    $list_rows[] = array(
+        'id' => (int) $contact_group['id'],
+        'cells' => array(
+            'name' => pg_list_cell('<a href="edit_contact_group.php?id=' . (int) $contact_group['id'] . '" data-pg-open>' . h($contact_group['name']) . '</a>'),
+            'kind' => pg_list_cell($output_kind),
+            'members' => pg_list_cell(pg_format_number($members, 0), 'align-middle', array('data-pg-sort-value' => $members)),
+            'subscription' => pg_list_table_check_cell(!empty($contact_group['email_subscription'])),
+            'type' => pg_list_cell($email_subscription_type),
+            'description' => pg_list_cell(h($description)),
+            'created' => pg_list_table_when_cell($contact_group['created_timestamp'], (string) $contact_group['created_username']),
+            'last_modified' => pg_list_table_when_cell($contact_group['last_modified_timestamp'], (string) $contact_group['last_modified_username']),
+        ),
+    );
 }
+
+// Membership and Members have no sort code the session could keep, so
+// their headings do not sort.
+$list = pg_list_table_printed(array(
+    'list' => 'view_contact_groups',
+    'columns' => array(
+        'name' => array('heading' => lang('Name')),
+        'kind' => array('heading' => lang('Membership'), 'kind' => 'badge', 'sortable' => false),
+        'members' => array('heading' => lang('Members'), 'kind' => 'number', 'sortable' => false),
+        'subscription' => array('heading' => lang('Subscription'), 'kind' => 'check'),
+        'type' => array('heading' => lang('Type'), 'kind' => 'badge'),
+        'description' => array('heading' => lang('Description')),
+        'created' => array('heading' => lang('Created'), 'kind' => 'date'),
+        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+    ),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+));
 
 print
     pg_page_shell(
@@ -183,46 +180,23 @@ print
             'icon'=>'contact', 
             'heading'=>lang('All Contact Groups'),
             'heading_description' => lang('All contact groups used to collect and organize contacts and subscribers'),
-                    
         )
     ) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                ' . $liveform->output_errors() . '
-                ' . $liveform->get_warnings() . '
-                ' . $liveform->output_notices() . '
-                   
-                ' . pg_screen_toolbar(array(
-                    'primary' => $output_add_contact_group_button,
-                    'search'  => pg_list_sort_menu('view_contact_groups.php', $sort_columns, $sort_levels, $sort_default),
-                )) . '
-                <div class="card my-7">
-                    <table class="chart table-hover table " style="width:100%;display:none">
-                        <thead>
-                            <tr>
-                                <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                <th>' . lang('Membership') . '</th>
-                                <th class="text-end">' . lang('Members') . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Subscription'), $sort_levels, '', '', 'subscription') . '</th>
-                                <th>' . get_column_heading(lang('Type'), $sort_levels, '', '', 'type') . '</th>
-                                <th>' . get_column_heading(lang('Description'), $sort_levels, '', '', 'description') . '</th>
-                                <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>' . $output_rows . '</tbody>
-                    </table>
-                </div>
-            </div>
+    <div class="row">
+        <div class="col-12">
+            ' . $liveform->output_errors() . '
+            ' . $liveform->get_warnings() . '
+            ' . $liveform->output_notices() . '
+            ' . pg_screen_toolbar(array(
+                'primary' => $output_add_contact_group_button,
+                'search'  => array(pg_list_table_search_box('view_contact_groups'), pg_list_sort_menu('view_contact_groups.php', $sort_columns, $sort_levels, $sort_default)),
+            )) . '
+            ' . pg_list_table_html($list['source'], $list['page'], lang('All Contact Groups')) . '
         </div>
-    
-</main>' .
+    </div>
+</main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
     output_footer();
 
-
-
-
 $liveform->remove_form();
-?>

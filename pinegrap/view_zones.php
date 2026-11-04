@@ -17,9 +17,11 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
-// only ever appended to further below, so it has to start out empty
-$output_rows = '';
+// Every zone is printed: the list table driver sorts and searches them in
+// the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
 $user = validate_user();
 validate_ecommerce_access($user);
 
@@ -66,39 +68,35 @@ $query = "SELECT
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
-while ($row = mysqli_fetch_array($result)) {
-    $id = $row['id'];
-    $name = h($row['name']);
-    $base_rate = $row['base_rate'] / 100;
-    $primary_weight_rate = $row['primary_weight_rate'] / 100;
-    $secondary_weight_rate = $row['secondary_weight_rate'] / 100;
-    $item_rate = $row['item_rate'] / 100;
-    $timestamp = $row['timestamp'];
-
-    $output_link_url ='edit_zone.php?id=' . $id;
-
-        
-    $last_modified_username = '';
-        
-    if ($row['user']) {
-        $last_modified_username = lang(array('string'=>'by {var:1}','vars'=>array( h($row['user']) ) ) );
-    }
-    $output_rows .=
-        '<tr>
-            <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
-            </td>
-            <td class="align-middle chart_label">' . $name . '</td>
-            <td class="align-middle text-end">' . prepare_amount($base_rate) . '</td>
-            <td class="align-middle text-end">' . prepare_amount($primary_weight_rate) . '</td>
-            <td class="align-middle text-end">' . prepare_amount($secondary_weight_rate) . '</td>
-            <td class="align-middle text-end">' . prepare_amount($item_rate) . '</td>
-            <td>' . get_relative_time(array('timestamp' => $timestamp)) . ' ' . $last_modified_username . '</td>
-        </tr>';
+while ($row = mysqli_fetch_assoc($result)) {
+    $list_rows[] = array(
+        'id' => (int) $row['id'],
+        'cells' => array(
+            'name' => pg_list_cell('<a href="edit_zone.php?id=' . (int) $row['id'] . '" data-pg-open>' . h($row['name']) . '</a>'),
+            'base_rate' => pg_list_cell(prepare_amount($row['base_rate'] / 100), 'align-middle', array('data-pg-sort-value' => (int) $row['base_rate'])),
+            'primary_weight_rate' => pg_list_cell(prepare_amount($row['primary_weight_rate'] / 100), 'align-middle', array('data-pg-sort-value' => (int) $row['primary_weight_rate'])),
+            'secondary_weight_rate' => pg_list_cell(prepare_amount($row['secondary_weight_rate'] / 100), 'align-middle', array('data-pg-sort-value' => (int) $row['secondary_weight_rate'])),
+            'item_rate' => pg_list_cell(prepare_amount($row['item_rate'] / 100), 'align-middle', array('data-pg-sort-value' => (int) $row['item_rate'])),
+            'last_modified' => pg_list_table_when_cell($row['timestamp'], (string) $row['user']),
+        ),
+    );
 }
 
-print 
+$list = pg_list_table_printed(array(
+    'list' => 'view_zones',
+    'columns' => array(
+        'name' => array('heading' => lang('Name')),
+        'base_rate' => array('heading' => lang('Base Rate'), 'kind' => 'money'),
+        'primary_weight_rate' => array('heading' => lang('Primary W. Rate'), 'kind' => 'money'),
+        'secondary_weight_rate' => array('heading' => lang('Secondary W. Rate'), 'kind' => 'money'),
+        'item_rate' => array('heading' => lang('Item Rate'), 'kind' => 'money'),
+        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+    ),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+));
+
+print
 pg_page_shell([
         'title'=> lang('All Shipping Zones'),
         'extra classes'=>'products',
@@ -111,29 +109,11 @@ pg_page_shell([
         <div class="col-12">
             ' . pg_screen_toolbar(array(
                 'primary' => array('label' => lang('Create'), 'url' => 'add_zone.php', 'icon' => 'bi-plus-circle'),
-                'search'  => pg_list_sort_menu('view_zones.php', $sort_columns, $sort_levels, $sort_default),
+                'search'  => array(pg_list_table_search_box('view_zones'), pg_list_sort_menu('view_zones.php', $sort_columns, $sort_levels, $sort_default)),
             )) . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table " style="width:100%;display:none">
-                        <thead>
-                            <tr>
-                                <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                <th style="text-align: right">' . get_column_heading(lang('Base Rate'), $sort_levels, '', '', 'base_rate') . '</th>
-                                <th style="text-align: right">' . get_column_heading(lang('Primary W. Rate'), $sort_levels, '', '', 'primary_weight_rate') . '</th>
-                                <th style="text-align: right">' . get_column_heading(lang('Secondary W. Rate'), $sort_levels, '', '', 'secondary_weight_rate') . '</th>
-                                <th style="text-align: right">' . get_column_heading(lang('Item Rate'), $sort_levels, '', '', 'item_rate') . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>' . $output_rows . '</tbody>
-                    </table>
-                </div>
-            </div>
+            ' . pg_list_table_html($list['source'], $list['page'], lang('All Shipping Zones')) . '
         </div>
     </div>
 </main>
-' .
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();
-?>

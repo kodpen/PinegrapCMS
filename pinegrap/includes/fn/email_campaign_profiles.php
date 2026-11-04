@@ -215,6 +215,17 @@ function pg_email_campaign_profile_owner_access_problem($values, $user_id, $role
             }
 
             break;
+
+        case 'contact_group_joined':
+            if ((int) db_value("SELECT COUNT(*) FROM contact_groups WHERE id = '" . $item_id . "'") < 1) {
+                return lang('The contact group does not exist.');
+            }
+
+            if (($role >= 3) && ((int) db_value("SELECT COUNT(*) FROM users_contact_groups_xref WHERE user_id = '" . $user_id . "' AND contact_group_id = '" . $item_id . "'") < 1)) {
+                return lang('Sorry, you do not have access to that contact group.');
+            }
+
+            break;
     }
 
     if (($values['format'] ?? '') === 'html') {

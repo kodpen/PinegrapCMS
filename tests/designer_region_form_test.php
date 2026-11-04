@@ -36,15 +36,15 @@ function test_designer_region_form_labels_point_at_their_fields()
 
 	pg_assert_same(1, substr_count($form, 'for="name"'), 'only the name label points at the name');
 	pg_assert_contains('<label for="code"', $form, 'the code snippet label points at the textarea');
-	pg_assert_contains('<label for="type"', $edit, 'the region type label points at the select');
+	pg_assert_contains('<label for="type"', $form, 'the region type label points at the select');
 	pg_assert_false(strpos($edit, 'for="name"') !== false, 'the edit screen keeps no label of its own on the name');
 }
 
 function test_designer_region_form_screens_use_shared_form()
 {
 	$screens = array(
-		'add_designer_region.php' => 'pg_designer_region_form_card($name, $content, \'\', $name_error)',
-		'edit_designer_region.php' => 'pg_designer_region_form_card($form_name, $form_content, ',
+		'add_designer_region.php' => 'pg_designer_region_form_cards($name, $content, array(\'name_error\' => $name_error))',
+		'edit_designer_region.php' => 'pg_designer_region_form_cards($form_name, $form_content, array(',
 	);
 
 	foreach ($screens as $file => $card) {
@@ -60,6 +60,33 @@ function test_designer_region_form_screens_use_shared_form()
 
 	pg_assert_contains('INSERT INTO cregion', (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_designer_region.php'), 'create keeps its INSERT');
 	pg_assert_contains('UPDATE cregion', (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_designer_region.php'), 'edit keeps its UPDATE');
+}
+
+function test_designer_region_form_wide_layout()
+{
+	$create = pg_designer_region_form_cards('header', '<p>Hi</p>');
+	$edit = pg_designer_region_form_cards('footer', '', array('type' => 'common', 'name_error' => 'Taken', 'status' => '<div id="extra"></div>'));
+
+	pg_assert_contains('col-12 lg:col-8 2xl:col-9 order-1', $create, 'form column');
+	pg_assert_contains('col-12 lg:col-4 2xl:col-3 order-2', $create, 'status column');
+	pg_assert_contains('class="position-sticky" style="top:3.3rem;"', $create, 'the status box sticks below the top bar');
+	pg_assert_true(strpos($create, 'order-1') < strpos($create, 'order-2'), 'the status column follows the form in source order');
+	pg_assert_contains('&lt;cregion&gt;header&lt;/cregion&gt;', $create, 'the Summary shows the body tag');
+	pg_assert_contains('>Designer Region</dd>', $create, 'a new region is a designer region');
+	pg_assert_false(strpos($create, 'id="type"') !== false, 'create offers no type');
+	pg_assert_contains('selected="selected">Common Region</option>', $edit, 'edit keeps the posted type');
+	pg_assert_contains('>Common Region</dd>', $edit, 'the Summary names the posted type');
+	pg_assert_contains('<div id="extra"></div>', $edit, 'the screen adds its rows');
+	pg_assert_contains('id="name_error"', $edit, 'a refused name is marked');
+
+	$bar = pg_common_region_form_layout($create, '<button></button>');
+	pg_assert_contains('col-12 order-3 position-sticky', $bar, 'sticky save bar');
+
+	foreach (array('add_designer_region.php', 'edit_designer_region.php') as $file) {
+		pg_assert_contains('pg_common_region_form_layout(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ' draws the columns and the save bar');
+	}
+
+	pg_assert_contains("pg_common_region_form_status_row(lang('Last Modified')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_designer_region.php'), 'edit shows the last change');
 }
 
 function test_designer_region_edit_screens_keep_the_stored_type()

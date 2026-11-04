@@ -73,3 +73,42 @@ function test_design_file_form_screens_use_the_cards()
 	pg_assert_contains('pg_design_file_form_description_card($file_description)', $edit, 'edit description card');
 	pg_assert_contains('name="delete" value="Delete"', $edit, 'delete stays in the edit screen');
 }
+
+function test_design_file_form_layout_columns()
+{
+	$html = pg_design_file_form_layout('<i id="f"></i>', '<i id="s"></i>', '<b id="b"></b>');
+
+	$form = strpos($html, 'class="col-12 lg:col-8 2xl:col-9 order-1"');
+	$status = strpos($html, 'class="col-12 lg:col-4 2xl:col-3 order-2"');
+	$bar = strpos($html, 'class="col-12 order-3 position-sticky"');
+
+	pg_assert_true($form !== false && $status !== false && $bar !== false, 'form column, status column and save bar');
+	pg_assert_true($form < strpos($html, 'id="f"') && strpos($html, 'id="f"') < $status, 'form cards in the form column');
+	pg_assert_true($status < strpos($html, 'id="s"') && strpos($html, 'id="s"') < $bar, 'status cards in the status column, written after the form column');
+	pg_assert_contains('class="position-sticky" style="top:3.3rem;"', $html, 'the status box sticks below the top bar');
+	pg_assert_true(strpos($html, 'id="b"') > $bar, 'buttons in the save bar');
+}
+
+function test_design_file_form_summary_card()
+{
+	$html = pg_design_file_form_summary_card('<img id="t">', array('File Size' => '2 KB', 'Access' => '<span>Public</span>'));
+
+	pg_assert_contains(lang('Summary'), $html, 'card title');
+	pg_assert_true(strpos($html, 'id="t"') < strpos($html, '<dl'), 'top markup above the rows');
+	pg_assert_contains('<dd class="mb-0 fw-bold text-end text-break"><span>Public</span></dd>', $html, 'value printed as HTML');
+	pg_assert_true(substr_count($html, 'border-bottom') === 1, 'a line under every row but the last');
+}
+
+function test_design_file_form_screens_use_the_layout()
+{
+	$add = file_get_contents(PG_FUNCTIONS_DIR . '/add_design_file.php');
+	$edit = file_get_contents(PG_FUNCTIONS_DIR . '/edit_design_file.php');
+
+	foreach (array('add_design_file.php' => $add, 'edit_design_file.php' => $edit) as $screen => $source) {
+		pg_assert_contains('pg_design_file_form_layout(', $source, $screen . ' draws the wide layout');
+		pg_assert_false(strpos($source, 'style="bottom:.5rem;"') !== false, $screen . ' keeps no save bar of its own');
+	}
+
+	pg_assert_contains('pg_design_file_form_summary_card($output_thumbnail, $summary_rows)', $edit, 'edit Summary with the thumbnail');
+	pg_assert_contains("\$summary_rows[lang('Access')]", $edit, 'edit Summary names the access');
+}

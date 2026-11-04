@@ -258,6 +258,7 @@ function ws_flow_event_outputs()
         'customer.created'       => array($value('email', 'text', lang('E-mail'))),
         'customer.updated'       => array($value('email', 'text', lang('E-mail'))),
         'form.submitted'         => array(),
+        'contact_group.joined'   => array($value('contact_id', 'number', lang('Contact')), $value('group_id', 'number', lang('Contact group')), $value('group_name', 'text', lang('The name of the contact group'))),
         'workspace.task.completed'      => array_merge($task, array($value('priority', 'text', lang('Priority')), $channel, $actor)),
         'workspace.task.status_changed' => array_merge($task, array($value('previous_status', 'text', lang('Previous status')), $value('priority', 'text', lang('Priority')), $channel, $actor)),
         'workspace.task.overdue'        => array_merge($task, array($channel, $value('due_date', 'text', lang('Due date')))),

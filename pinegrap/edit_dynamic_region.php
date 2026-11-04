@@ -34,13 +34,16 @@ include_once('liveform.class.php');
 $liveform = new liveform('edit_dynamic_region');
 
 if (!isset($_POST['name'])) {
-    $query = "SELECT dregion_name, dregion_code "
+    $query = "SELECT dregion_name, dregion_code, dregion_timestamp, user.user_username "
             ."FROM dregion "
+            ."LEFT JOIN user ON dregion.dregion_user = user.user_id "
             ."WHERE dregion_id = ?";
     $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed');
     $row = mysqli_fetch_array($result);
     $dregion_name = $row['dregion_name'];
     $dregion_code = $row['dregion_code'];
+    $dregion_timestamp = (int) $row['dregion_timestamp'];
+    $dregion_username = (string) $row['user_username'];
 
     // The stored values, or the posted ones after a refused name.
     $form_name = $dregion_name;
@@ -50,6 +53,10 @@ if (!isset($_POST['name'])) {
     if ($liveform->field_in_session('name')) {
         list($form_name, $form_code) = pg_dynamic_region_form_values(array('name' => $liveform->get_field_value('name'), 'code' => $liveform->get_field_value('code')));
     }
+
+    // Summary row of the status column: when and by whom it was last saved
+    // (a dash for a row that never recorded a save time).
+    $output_status = pg_common_region_form_status_row(lang('Last Modified'), ($dregion_timestamp > 0 ? get_relative_time(array('timestamp' => $dregion_timestamp)) . ($dregion_username !== '' ? ' ' . h($dregion_username) : '') : '&mdash;'));
 
     print 
     pg_page_shell([
@@ -65,24 +72,18 @@ if (!isset($_POST['name'])) {
         ),
     ]) . '
 <main id="content" class="container-fluid">
-    ' . pg_screen_toolbar(array(
-        'grow' => '<span class="small fg-secondary">' . lang('Page Style Body Tag') . ': <code>' . h('<dregion>' . $dregion_name . '</dregion>') . '</code></span>',
-    )) . '
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 <form action="edit_dynamic_region.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
-                    ' . pg_dynamic_region_form_card($form_name, $form_code, $name_error) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
+                    ' . pg_common_region_form_layout(
+                        pg_dynamic_region_form_cards($form_name, $form_code, array('name_error' => $name_error, 'status' => $output_status)),
+                        '
                                 <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('dynamic region')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('dynamic region')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>'
+                    ) . '
                 </form>
             </div>
         </div>

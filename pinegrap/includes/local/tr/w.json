@@ -842,6 +842,8 @@
     "When a booking is made": "Bir randevu alındığında",
     "When a booking is moved to another time": "Bir randevu başka bir zamana alındığında",
     "When a contact is changed": "Kişi değiştirildiğinde",
+    "When a contact joins a contact group": "Bir kişi bir kişi grubuna katıldığında",
+    "When a contact joins the contact group {var:1}": "Bir kişi {var:1} kişi grubuna katıldığında",
     "When a customer stops ordering": "Bir müşteri sipariş vermeyi bıraktığında",
     "When a customer's invoices pass the threshold, a short reminder listing them goes to the e-mail address on their account, from the store address, with a second one a month later. Off for a single account on its card.": "Bir müşterinin faturaları eşiği geçince, bunları listeleyen kısa bir hatırlatma mağaza adresinden carinin e-posta adresine gider; bir ay sonra ikincisi. Tek bir cari için kartından kapatılır.",
     "When a fix is on its way, the status says which update brings it.": "Bir düzeltme yoldaysa, durum hangi güncellemeyle geleceğini söyler.",

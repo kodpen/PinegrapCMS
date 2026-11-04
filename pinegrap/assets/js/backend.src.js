@@ -5857,6 +5857,7 @@ function change_email_campaign_profile_action() {
     $('#custom_form_page_id_row').removeClass('show');
     $('#email_campaign_profile_id_row').removeClass('show');
     $('#product_id_row').removeClass('show');
+    $('#contact_group_id_row').removeClass('show');
     $('#schedule_period').removeClass('show');
     $('#schedule_base').removeClass('show');
     $('#standard_schedule_period_and_base').removeClass('show');
@@ -5871,7 +5872,8 @@ function change_email_campaign_profile_action() {
         calendar_event_reserved: 'calendar_event_id',
         custom_form_submitted: 'custom_form_page_id',
         email_campaign_sent: 'email_campaign_profile_id',
-        product_ordered: 'product_id'
+        product_ordered: 'product_id',
+        contact_group_joined: 'contact_group_id'
     };
 
     $.each(item_fields, function (item_action, field_id) {
@@ -5902,6 +5904,11 @@ function change_email_campaign_profile_action() {
 
         case 'product_ordered':
             $('#product_id_row').addClass('show');
+            $('#standard_schedule_period_and_base').addClass('show');
+            break;
+
+        case 'contact_group_joined':
+            $('#contact_group_id_row').addClass('show');
             $('#standard_schedule_period_and_base').addClass('show');
             break;
 
