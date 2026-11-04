@@ -1,12 +1,12 @@
 ---
 name: theme-screens
-description: Edit Theme, the themes list and Private Label Branding on cards: labelled fields, theme tools in the toolbar, named list marks, the private label switch
+description: Create and Edit Theme, the themes list and Private Label Branding on cards: labelled fields, theme tools in the toolbar, named list marks, the private label switch
 ---
 
-## How is Edit Theme drawn?
-- `edit_theme_file.php`: four `md:col-6` cards (Theme File Name, the shared File Access Control card for Folder, Theme File Description, Activate Theme to Make it Live) instead of a `table.field` that no panel CSS styled, with `<h2>` headings in its cells.
-- Every field has a `<label for>`: `name`, `folder` (from `pg_design_file_form_access_card()`, `design-file-shared-form.md`), `description`; the two activation checkboxes are `.form-field` switch rows. Before, Name, Folder and Description had no id and a `<td>` caption, so a screen reader named none, and Folder was an unstyled native select.
-- Posted names, the POST branch, the export and the missing-file note are unchanged.
+## How are Create Theme and Edit Theme drawn?
+- Both use the product_builder layout through `pg_design_file_form_layout()` (`design-file-shared-form.md`, #6746). Edit: Main Informations (Name, Description) in the form column; in the status column a Summary (Type System/Custom, File Size when the file is on the disk, Access; the missing-file note on top instead of above the toolbar), the Activate Theme to Make it Live switches and the shared File Access Control card; Save, Cancel, Delete in the bar. Create: Options (theme type, upload) and Description in the form column, File Access Control in the status column, Create in the bar (`#create_button`, relabelled by the type script).
+- Every field has a `<label for>`: `name`, `folder` (from `pg_design_file_form_access_card()`), `description`; the two activation checkboxes are `.form-field` switch rows. Name, Description and the switches stay liveform fields, so a refused Save refills them.
+- Posted names, the POST branches, the export and the missing-file check are unchanged.
 
 ## Where are the theme tools?
 - Edit Theme / Edit CSS, Export (system theme) and Download File (custom theme) sit in the screen's `#button_bar` under the file name. The sticky save bar keeps Save, Cancel, Delete: with five actions it stacked into a ~242 px sticky column on a phone.
