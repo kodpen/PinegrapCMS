@@ -17,10 +17,44 @@
  */
 
 include('init.php');
+
+include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table_edit.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/theme_file_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/theme_list_edit.php');
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php), answered in JSON before the screen is drawn.
+// The rights are the theme screen's (validate_area_access() 'designer').
+if (pg_list_edit_requested()) {
+    // select_folder() reads the signed-in user; a request without one is
+    // refused by pg_list_edit_request() as an expired session.
+    $choices = array('folders' => array(), 'classes' => array());
+
+    if (defined('USER_LOGGED_IN') && USER_LOGGED_IN) {
+        $user = validate_user();
+        $choices = pg_theme_quick_folder_choices();
+    }
+
+    $quick_edit = pg_theme_quick_edit_columns($choices['folders'], $choices['classes']);
+
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
+        return (int) $user['role'] <= 1;
+    });
+
+    $saved = pg_theme_quick_update($edit['id'], $edit['field'], $edit['value'], $edit['user'], $quick_edit);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
 
 $user = validate_user();
 validate_area_access($user, 'designer');
+
+// The folders the theme screen's picker offers (select_folder()); a
+// Designer or an Administrator sees every one.
+$choices = pg_theme_quick_folder_choices();
+$quick_edit = pg_theme_quick_edit_columns($choices['folders'], $choices['classes']);
 
 $liveform = new liveform('view_themes');
 
@@ -52,67 +86,23 @@ $order_by = pg_list_order_by($sort_levels, array(
     'last_modified'     => 'timestamp',
 ));
 
-// get all stylesheet files
-$query =
-    "SELECT
-        files.id,
-        files.name,
-        files.description,
-        files.folder,
-        files.activated_desktop_theme,
-        files.activated_mobile_theme,
-        files.timestamp,
-        user.user_username,
-        folder.folder_name
-    FROM files
-    LEFT JOIN user ON user.user_id = files.user
-    LEFT JOIN folder ON folder.folder_id = files.folder
-    WHERE
-        (type = 'css')
-        AND (design = '1')
-        AND (theme = '1')
-    ORDER BY $order_by";
-
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-$files = array();
-while ($row = mysqli_fetch_assoc($result)) {
-    $files[] = $row;
-}
-
 // Every theme is printed: the list table driver sorts and searches them in
 // the browser (browser mode) and keeps a heading's sort in the session.
 $list_rows = array();
 
-foreach ($files as $file) {
+foreach ((array) db_items(pg_theme_list_sql() . " ORDER BY " . $order_by) as $theme) {
     // The folder's access control, shown beside its name.
-    $folder_access_control_type = get_access_control_type($file['folder']);
-    $output_access_control = get_access_control_type_name($folder_access_control_type);
+    $theme['access_control_type'] = get_access_control_type($theme['folder']);
 
-    $list_rows[] = array(
-        'id' => $file['id'],
-        'cells' => array(
-            'name' => pg_list_cell('<a href="edit_theme_file.php?id=' . (int) $file['id'] . '" data-pg-open>' . h($file['name']) . '</a>'),
-            'description' => pg_list_cell(nl2br(h($file['description']))),
-            'folder' => pg_list_cell(pg_folder_list_name($file['folder_name']) . '<span class="badge fw-light fg-reset d-inline">(' . $output_access_control . ')</span>', 'align-middle text-wrap ' . $folder_access_control_type),
-            'activated_desktop' => pg_list_table_check_cell($file['activated_desktop_theme'] == 1),
-            'activated_mobile' => pg_list_table_check_cell($file['activated_mobile_theme'] == 1),
-            'last_modified' => pg_list_table_when_cell($file['timestamp'], $file['user_username'] ?? ''),
-        ),
-    );
+    $list_rows[] = array('id' => $theme['id'], 'cells' => pg_theme_list_cells($theme, $quick_edit));
 }
 
 $list = pg_list_table_printed(array(
     'list' => 'view_themes',
-    'columns' => array(
-        'name' => array('heading' => lang('File Name')),
-        'description' => array('heading' => lang('Description')),
-        'folder' => array('heading' => lang('Folder')),
-        'activated_desktop' => array('heading' => lang('Activated for Desktop'), 'kind' => 'check'),
-        'activated_mobile' => array('heading' => lang('Activated for Mobile'), 'kind' => 'check'),
-        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
-    ),
+    'columns' => pg_theme_list_columns(true),
     'levels' => $sort_levels,
     'rows' => $list_rows,
+    'edit' => array('url' => 'view_themes.php', 'columns' => $quick_edit),
 ));
 
 print

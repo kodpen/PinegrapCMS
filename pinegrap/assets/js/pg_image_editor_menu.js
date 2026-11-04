@@ -73,6 +73,7 @@
         lockPicture: ['lock', function () { this.lockPicture(true); }],
         removePicture: ['delete', function () { this.deletePicture(); }, true],
         erase: ['areaErase', function () { this.areaErase(); }, true],
+        cutToLayer: ['areaCut', function () { this.areaCut(); }],
         keep: ['areaKeep', function () { this.areaKeep(); }],
         copy: ['areaCopy', function () { this.areaCopy(); }],
         adjust: ['areaAdjust', function () { this.areaAdjust(); }],
@@ -211,6 +212,10 @@
 
         var menu = this.menuNode(items, ctx, t('ctxMenu'));
 
+        if (!menu.querySelector('button')) {
+            return;
+        }
+
         this.ctx = { menu: menu, sub: null, opener: null, ret: ret || this.stage, at: ctx };
         this.root.appendChild(menu);
         this.placeMenu(menu, x, y);
@@ -267,6 +272,13 @@
     Editor.prototype.menuNode = function (items, ctx, label) {
         var self = this, menu = el('div', { class: 'pgie-menu pgie-ctx', role: 'menu', 'aria-label': label });
         var strings = X.config().strings || {};
+
+        // A name without a command here (a later command of the selection
+        // bar) is left out, and so is a separator it leaves at an end or
+        // beside another.
+        items = items.filter(function (it) { return it.sep || COMMANDS[it.name]; }).filter(function (it, i, list) {
+            return !it.sep || ((i > 0) && (i < list.length - 1) && !list[i + 1].sep);
+        });
 
         items.forEach(function (it) {
             if (it.sep) {

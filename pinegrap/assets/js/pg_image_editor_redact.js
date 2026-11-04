@@ -217,6 +217,7 @@
 
     Editor.layerTypes.redact = {
         node: redactNode,
+        hit: function (l, p) { return M.areaHit(l, p); },
         name: function (l) { return t('layer_redact') + ' · ' + t(MODE_LABELS[l.mode] || 'redactPixel'); },
         panel: function (body, layers) { this.redactStyle(body, layers); }
     };

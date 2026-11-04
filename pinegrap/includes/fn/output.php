@@ -1787,7 +1787,8 @@ function pg_list_edit_request($columns, $allowed)
  * list should draw: the cell's 'html', 'class', 'title' and 'sort' (its
  * data-sort, for a table the browser sorts), each only when it changes, and
  * 'cells' for the other cells of the row that change with it, keyed by their
- * data-pg-cell name. A refusal carries 'ok' => false and a 'message'.
+ * data-pg-cell name, and 'rows' (row id => such cells) for other rows the
+ * change also redrew. A refusal carries 'ok' => false and a 'message'.
  *
  * @param array $data
  * @param int   $status

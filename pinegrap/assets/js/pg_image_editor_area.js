@@ -402,7 +402,7 @@
         return el('label', { class: 'pgie-check' }, [input, el('span', { text: label })]);
     }
 
-    // ---- what the selection does to pixels (E27b) ----
+    // ---- what the selection does to pixels ----
     // Erase and Adjust inside are layers of the selection's outline, as a
     // redaction of it is: they move, stretch, hide and undo as layers. They
     // paint nothing into the overlay; a save sends a mask of each and the
@@ -516,8 +516,14 @@
         }
     };
 
+    // A press takes an area layer only inside its outline (M.areaHit()).
+    function hitArea(l, p) {
+        return M.areaHit(l, p);
+    }
+
     Editor.layerTypes.erase = {
         node: maskNode,
+        hit: hitArea,
         name: function () { return t('layer_erase'); },
         panel: function (body, layers) {
             if (layers.length === 1) {
@@ -528,6 +534,7 @@
 
     Editor.layerTypes.adjust = {
         node: maskNode,
+        hit: hitArea,
         name: function () { return t('layer_adjust'); },
         panel: function (body, layers) {
             if ((layers.length === 1) && this.doc.source) {
@@ -638,14 +645,15 @@
         this.areaShow(id);
     };
 
-    // Copy to a layer: the picture inside the selection, with its colour
-    // step, as a picture layer in place (a PNG the save keeps as a file).
-    // Redacted and erased areas stay out of the copy.
-    Editor.prototype.areaCopy = function () {
-        var self = this, rings = this.areaRings(), geo = M.areaLayer(rings), img = this.img, src = this.doc.source;
+    // The picture inside the selection, with its colour step, as a picture
+    // layer in place (a PNG the save keeps as a file); redacted and erased
+    // areas stay out of it. Null without an area or when the picture cannot
+    // be read back (the panel then says so).
+    Editor.prototype.areaCutout = function () {
+        var rings = this.areaRings(), geo = M.areaLayer(rings), img = this.img, src = this.doc.source;
 
         if (!geo || !img || !src) {
-            return;
+            return null;
         }
 
         var m = M.placedMatrix(this.doc), unit = Math.sqrt(Math.abs(m[0] * m[3] - m[1] * m[2])) || 1;
@@ -694,13 +702,47 @@
         if (!url) {
             this.areaCopyFailed = true;
             this.render();
-            return;
+            return null;
         }
 
         this.areaCopyFailed = false;
-        this.addLayers([{ type: 'image', src: url, fileName: t('areaCutName') + '.png', x: geo.x, y: geo.y, w: geo.w, h: geo.h, rot: 0, opacity: 1 }], 0);
+
+        return { type: 'image', src: url, fileName: t('areaCutName') + '.png', x: geo.x, y: geo.y, w: geo.w, h: geo.h, rot: 0, opacity: 1 };
+    };
+
+    // Copy to a layer: the cut-out on top, the picture as it was.
+    Editor.prototype.areaCopy = function () {
+        var piece = this.areaCutout();
+
+        if (!piece) {
+            return;
+        }
+
+        this.addLayers([piece], 0);
         this.areaShow(this.sel[0]);
-        self.history.key = null;
+        this.history.key = null;
+    };
+
+    // Cut to a layer: the cut-out on top and the same outline erased from
+    // the picture under it, in one undo step, so the piece moves on its own
+    // and leaves a see-through hole. Undo, or deleting the erased area,
+    // brings the uncut picture back; the saved versions keep it too.
+    Editor.prototype.areaCut = function () {
+        var rings = this.areaRings(), piece = this.areaCutout(), id = null;
+
+        if (!piece) {
+            return;
+        }
+
+        this.change(function (doc) {
+            pushArea(doc, 'erase', null, rings);
+            piece.id = M.newId(doc);
+            doc.layers.push(piece);
+            id = piece.id;
+            delete doc.selection;
+        });
+        this.history.key = null;
+        this.areaShow(id);
     };
 
     // One mask per visible Erase or Adjust inside layer, drawn at the output
@@ -834,6 +876,7 @@
         act(t('areaErase'), function () { self.areaErase(); });
         act(t('areaKeep'), function () { self.areaKeep(); });
         act(t('areaCopy'), function () { self.areaCopy(); });
+        act(t('areaCut'), function () { self.areaCut(); });
         act(t('areaAdjust'), function () { self.areaAdjust(); });
         act(t('areaRedact'), function () { self.areaRedact(); }, !this.newRedaction);
         body.appendChild(section(t('areaWith'), acts));
