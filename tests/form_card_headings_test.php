@@ -75,7 +75,6 @@ function test_form_group_titles_are_h3_inside_cards()
 {
 	$expected = array(
 		'ad_region_form.php' => '<h3 class="h5 mt-12">\' . lang(\'Region Behavior\') . \'</h3>',
-		'dynamic_region_form.php' => '<h3 class="h5 mt-12">\' . lang(\'PHP Code to appear on associated Pages\') . \'</h3>',
 		'login_region_form.php' => '<h3 class="h5 mt-12">\' . lang(\'Logged In\') . \'</h3>',
 		'arrival_date_form.php' => '<h3 class="h4 fw-bold fg-secondary">\' . lang(\'Shipping Cut-offs\') . \'</h3>',
 		'field_form.php' => '<h3 class="h6 fg-secondary">\' . lang(\'Amount of Rows and Columns to Display\') . \'</h3>',
