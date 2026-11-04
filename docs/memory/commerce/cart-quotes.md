@@ -20,7 +20,7 @@ module: cart_quotes
 
 ## Where does staff work with them?
 - `view_cart_quotes.php` (Orders menu after Returns; `?contact_id=` one contact's, `?id=` one quote with its Workspace button): newest 200, state badge, hint; an open quote gets Cancel (`pg_cart_quote_cancel()`) or New link (`pg_cart_quote_new_link()`, the old one stops). The link is shown once.
-- `add_cart_quote.php`: customer box and 10 product boxes (`data-pg-combobox` with its own `?request=contacts|products` search, donations not offered), quantities, Valid until (default 30 days, `pg_cart_quote_until()`: end of that day, empty = no end). Laid out on the product_builder pattern (B11): Customer and Products and quantities cards in the form column; Validity (Valid until) and a Summary (customer, products, total quantity, last day) that follows the boxes in the sticky status column; Cancel and Save in the sticky save bar.
+- `add_cart_quote.php`: customer box, 10 product boxes with quantities, Valid until (default 30 days, `pg_cart_quote_until()`: end of that day, empty = no end); layout and searches: `ui/cart-quote-screen-layout.md`.
 - Workspace: the customer card's "Open cart quotes" (`ws_customer_cart_quote_rows()`: open, unexpired, line counts, no amount) links to the contact's list; its "New cart quote" opens `add_cart_quote.php?contact_id=` (#3197, `workspace/workspace-customer-card.md`). Tag `cart_quote` (`#sepet`, #3256): `workspace/workspace-cart-quote-tag.md`.
 
 ## API, events, what is left?
