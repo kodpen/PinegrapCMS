@@ -3304,8 +3304,19 @@ if (!$_POST) {
         // Record the refund.
         $new_refunded_total = (int)($order_row['refunded_amount'] ?? 0) + $refund_cents;
         db("UPDATE orders SET refunded_amount = '" . e($new_refunded_total) . "', " . pg_order_touch_sql() . " WHERE id = '" . e($order_id) . "'");
-        db("INSERT INTO order_refunds (order_id, amount_cents, refund_type, transaction_id, created_at)
-            VALUES ('" . e($order_id) . "', '" . e($refund_cents) . "', 'refund', '" . e($refund_result['refund_reference']) . "', NOW())");
+
+        // A refund by lines takes those lines' reward points back. The points
+        // taken are noted on the refund row, which a later cancellation (a
+        // full refund) reads so it does not take them a second time; without
+        // the notes column nothing could be noted, so nothing is taken here.
+        $refund_points_marker = '';
+        if (is_array($refund_by_lines) && pg_schema_has('order_refunds', 'notes')) {
+            $refund_points = pg_credit_points_lines_refunded($order_id, pg_credit_points_erp_quantities($order_id, $refund_source, (array) $refund_by_lines['quantities']));
+            $refund_points_marker = pg_credit_points_marker($refund_points['total']);
+        }
+
+        db("INSERT INTO order_refunds (order_id, amount_cents, refund_type, transaction_id" . (($refund_points_marker !== '') ? ', notes' : '') . ", created_at)
+            VALUES ('" . e($order_id) . "', '" . e($refund_cents) . "', 'refund', '" . e($refund_result['refund_reference']) . "'" . (($refund_points_marker !== '') ? ", '" . e($refund_points_marker) . "'" : '') . ", NOW())");
 
         db_value("SELECT RELEASE_LOCK('" . e($refund_lock) . "')");
 

@@ -20,5 +20,5 @@ module: store_credit_points
 - `pg_order_complete_rewards()` now adds the order's points in place (`user_reward_points + ?`): it used to write the balance it had read, so a conversion at the same moment could be overwritten and the points spent twice.
 - The user screen (`edit_user.php`) posts the balance it was opened with (`reward_points_original`); `pg_credit_points_staff_sql()` writes the field only when staff changed it, so saving a record opened before a conversion or an order no longer puts the moved points back.
 
-## What is still open?
-- Points from an order later cancelled or refunded can be converted before the order is undone (offline payment credits points at submit; cancellation never takes points back). Decision question #6306; the PR waits on it.
+## Are an order's points taken back when it is cancelled or refunded?
+- Yes: `store-credit-points-take-back.md`.

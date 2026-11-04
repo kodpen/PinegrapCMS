@@ -345,3 +345,344 @@ function pg_credit_points_staff_sql($posted, $original)
 
     return "user_reward_points = " . number_format($points, 0, '.', '') . ",";
 }
+
+/**
+ * The reward points of an order's lines, recomputed with the function the
+ * order's completion granted them with (pg_order_line_reward_points()), at
+ * the products' points of today. With $quantities (order item id =>
+ * quantity) only those lines count, each with at most its own quantity.
+ * Pure.
+ *
+ * @param array      $lines       order_item_id, reward_points, quantity
+ * @param array|null $quantities  null for every line with its own quantity
+ * @param bool       $program_on  ECOMMERCE_REWARD_PROGRAM
+ * @return int
+ */
+function pg_credit_points_of_lines(array $lines, $quantities, $program_on)
+{
+    $points = 0;
+
+    foreach ($lines as $line) {
+        $quantity = (int) $line['quantity'];
+
+        if (is_array($quantities)) {
+            $id = (int) $line['order_item_id'];
+            $quantity = isset($quantities[$id]) ? min($quantity, max(0, (int) $quantities[$id])) : 0;
+        }
+
+        if ($quantity > 0) {
+            $points += pg_order_line_reward_points(array('reward_points' => $line['reward_points'], 'quantity' => $quantity), $program_on);
+        }
+    }
+
+    return max(0, $points);
+}
+
+/**
+ * The note an order screen refund by lines leaves on its order_refunds row
+ * when it took reward points back, so the cancellation that may follow does
+ * not take them a second time. Pure.
+ *
+ * @param int $points
+ * @return string  '' for none
+ */
+function pg_credit_points_marker($points)
+{
+    return ((int) $points > 0) ? 'Reward points taken back: ' . (int) $points : '';
+}
+
+/**
+ * The reward points the markers in these order_refunds notes took back. Pure.
+ *
+ * @param array $notes
+ * @return int
+ */
+function pg_credit_points_marked(array $notes)
+{
+    $points = 0;
+
+    foreach ($notes as $note) {
+        if (preg_match_all('/Reward points taken back: (\d+)/', (string) $note, $found)) {
+            foreach ($found[1] as $number) {
+                $points += (int) $number;
+            }
+        }
+    }
+
+    return $points;
+}
+
+/**
+ * How a take-back of $points is covered: first from the points balance,
+ * never below zero; the points the customer no longer has were converted, so
+ * their worth at today's rate comes off the store credit, rounded up to the
+ * minor unit (a conversion rounds down, so the customer never keeps more
+ * than the points were worth). With no rate nothing can be valued. Pure.
+ *
+ * @param int       $balance  user.user_reward_points
+ * @param int       $points   the points to take back
+ * @param int|float $rate     points per unit of money, 0 = off
+ * @return array  points (off the balance), short (points not there), value
+ *                (minor units off the credit)
+ */
+function pg_credit_points_take_back_plan($balance, $points, $rate)
+{
+    $points = max(0, (int) $points);
+    $from_balance = min(max(0, (int) $balance), $points);
+    $short = $points - $from_balance;
+    $rate = (float) $rate;
+    $value = (($short > 0) && ($rate > 0)) ? (int) ceil(($short * 100 / $rate) - 1e-9) : 0;
+
+    return array('points' => $from_balance, 'short' => $short, 'value' => $value);
+}
+
+/**
+ * Which of a customer's open points cards give $value, newest first: the
+ * newest card is reduced or closed, then the one before it. Pure.
+ *
+ * @param array $cards  id, balance
+ * @param int   $value  minor units
+ * @return array  card id => minor units to take off
+ */
+function pg_credit_points_card_cuts(array $cards, $value)
+{
+    $value = (int) $value;
+    $cuts = array();
+
+    usort($cards, function ($a, $b) {
+        return (int) $b['id'] - (int) $a['id'];
+    });
+
+    foreach ($cards as $card) {
+        if ($value <= 0) {
+            break;
+        }
+
+        $cut = min($value, (int) $card['balance']);
+
+        if ($cut > 0) {
+            $cuts[(int) $card['id']] = $cut;
+            $value -= $cut;
+        }
+    }
+
+    return $cuts;
+}
+
+/**
+ * An order's lines with their products' reward points (the lines saved for
+ * later left out, as the completion reads them).
+ *
+ * @param int $order_id
+ * @return array  order_item_id, product_id, reward_points, quantity
+ */
+function pg_credit_points_order_lines($order_id)
+{
+    $rows = db_items(
+        "SELECT order_items.id AS order_item_id, order_items.product_id, order_items.quantity, COALESCE(products.reward_points, 0) AS reward_points
+        FROM order_items
+        LEFT JOIN products ON products.id = order_items.product_id
+        WHERE order_items.order_id = '" . (int) $order_id . "'" . pg_order_item_active_sql() . "
+        ORDER BY order_items.id ASC");
+
+    return is_array($rows) ? $rows : array();
+}
+
+/**
+ * The quantities of an order's lines its refunded returns gave back (a
+ * return closed after its refund included), and the points the order
+ * screen's refunds by lines already took back.
+ *
+ * @param int $order_id
+ * @return array  returned (order item id => quantity), marked (points)
+ */
+function pg_credit_points_order_refunded($order_id)
+{
+    $order_id = (int) $order_id;
+    $returned = array();
+
+    if (pg_returns_ready()) {
+        $rows = db_items(
+            "SELECT order_return_items.order_item_id, SUM(order_return_items.quantity) AS quantity
+            FROM order_return_items
+            JOIN order_returns ON order_returns.id = order_return_items.return_id
+            WHERE order_returns.order_id = '" . $order_id . "' AND order_returns.refunded_at > 0
+            GROUP BY order_return_items.order_item_id");
+
+        foreach ((array) $rows as $row) {
+            $returned[(int) $row['order_item_id']] = (int) $row['quantity'];
+        }
+    }
+
+    $notes = pg_schema_has('order_refunds', 'notes')
+        ? db_values("SELECT notes FROM order_refunds WHERE order_id = '" . $order_id . "' AND notes LIKE 'Reward points taken back:%'")
+        : array();
+
+    return array('returned' => $returned, 'marked' => pg_credit_points_marked(is_array($notes) ? $notes : array()));
+}
+
+/**
+ * Take an order's reward points back from its customer: off the points
+ * balance (one guarded UPDATE, never below zero), and for the points no
+ * longer there because they were converted, their worth off the newest
+ * points cards through pg_credit_reduce(), each with a note naming the
+ * order. One activity line says what was taken.
+ *
+ * @param int    $user_id
+ * @param int    $points
+ * @param string $order_number  as the log names it (pg_order_log_number())
+ * @return array  points (off the balance), value (minor units off the credit),
+ *                total (the points taken back, $points once written)
+ */
+function pg_credit_points_take_back($user_id, $points, $order_number)
+{
+    $user_id = (int) $user_id;
+    $points = (int) $points;
+    $taken = array('points' => 0, 'value' => 0, 'total' => 0);
+
+    if (($user_id <= 0) || ($points <= 0)) {
+        return $taken;
+    }
+
+    $settings = pg_credit_points_settings();
+    $plan = null;
+
+    // The balance may move between the read and the write (a conversion, an
+    // order); the guarded UPDATE then misses and the plan is made again.
+    for ($attempt = 0; $attempt < 3; $attempt++) {
+        $balance = db_value("SELECT user_reward_points FROM user WHERE user_id = " . $user_id);
+
+        if ($balance === null || $balance === false) {
+            return $taken;
+        }
+
+        $plan = pg_credit_points_take_back_plan((int) $balance, $points, $settings['rate']);
+
+        if ($plan['points'] === 0) {
+            break;
+        }
+
+        $written = db_q(
+            "UPDATE user SET user_reward_points = user_reward_points - ? WHERE user_id = ? AND user_reward_points >= ?",
+            array($plan['points'], $user_id, $plan['points']));
+
+        if ($written && (mysqli_affected_rows(db::$con) === 1)) {
+            break;
+        }
+
+        $plan = null;
+    }
+
+    if ($plan === null) {
+        return $taken;
+    }
+
+    $taken['points'] = $plan['points'];
+    $taken['total'] = $points;
+
+    if (($plan['value'] > 0) && pg_credit_ready()) {
+        $cards = db_items(
+            "SELECT id, balance FROM gift_cards
+            WHERE " . pg_credit_open_sql($user_id, time()) . " AND kind = 'points'
+            ORDER BY id DESC");
+
+        $note = lang(array(
+            'string' => '{var:1} taken off on {var:2}: the reward points of order #{var:3} were taken back after they had been converted.',
+            'vars'   => array(pg_order_log_money($plan['value']), date('Y-m-d'), $order_number)));
+
+        foreach (pg_credit_points_card_cuts(is_array($cards) ? $cards : array(), $plan['value']) as $card_id => $cut) {
+            $taken['value'] += pg_credit_reduce($card_id, $cut, $note);
+        }
+    }
+
+    if (($taken['points'] > 0) || ($plan['short'] > 0)) {
+        log_activity(pg_log_lang(array(
+            'string' => 'Reward points of order #{var:1} taken back: {var:2} points off the balance, {var:3} off the store credit.',
+            'vars'   => array($order_number, $taken['points'], pg_order_log_money($taken['value'])))));
+    }
+
+    return $taken;
+}
+
+/**
+ * A cancellation takes back the reward points the order gave, less the
+ * lines its refunded returns and the order screen's refunds by lines took
+ * back already. A cart (never completed) and a guest order gave none.
+ *
+ * @param array $order  id, user_id, status (before the cancellation),
+ *                      order_number
+ * @return array  pg_credit_points_take_back()'s
+ */
+function pg_credit_points_order_cancelled(array $order)
+{
+    if ((ECOMMERCE_REWARD_PROGRAM != true) || ((int) ($order['user_id'] ?? 0) <= 0) || ((string) ($order['status'] ?? '') === 'incomplete')) {
+        return array('points' => 0, 'value' => 0, 'total' => 0);
+    }
+
+    $lines = pg_credit_points_order_lines($order['id']);
+    $refunded = pg_credit_points_order_refunded($order['id']);
+    $points = pg_credit_points_of_lines($lines, null, true)
+        - pg_credit_points_of_lines($lines, $refunded['returned'], true)
+        - $refunded['marked'];
+
+    return pg_credit_points_take_back($order['user_id'], max(0, $points), pg_order_log_number($order));
+}
+
+/**
+ * A refund of some of an order's lines (a return, the order screen's refund
+ * by lines) takes back those lines' reward points. A cancelled order's
+ * points went back with the cancellation.
+ *
+ * @param int   $order_id
+ * @param array $quantities  order item id => quantity refunded
+ * @return array  pg_credit_points_take_back()'s
+ */
+function pg_credit_points_lines_refunded($order_id, array $quantities)
+{
+    $none = array('points' => 0, 'value' => 0, 'total' => 0);
+
+    if (ECOMMERCE_REWARD_PROGRAM != true) {
+        return $none;
+    }
+
+    $order = db_item("SELECT id, user_id, status, order_number FROM orders WHERE id = '" . (int) $order_id . "'");
+
+    if (!is_array($order) || ((int) $order['user_id'] <= 0) || in_array((string) $order['status'], array('incomplete', 'cancelled'), true)) {
+        return $none;
+    }
+
+    $points = pg_credit_points_of_lines(pg_credit_points_order_lines($order['id']), $quantities, true);
+
+    return pg_credit_points_take_back($order['user_id'], $points, pg_order_log_number($order));
+}
+
+/**
+ * The order lines and quantities an order screen refund by lines chose: the
+ * ERP refund lines (erp_order_refund_lines()) mapped back to the order's
+ * lines as a return maps them (pg_return_erp_line_map()). Empty when they do
+ * not line up.
+ *
+ * @param int   $order_id
+ * @param array $source      erp_order_refund_lines()
+ * @param array $quantities  refund line id => quantity (erp_order_refund_amount())
+ * @return array  order item id => quantity
+ */
+function pg_credit_points_erp_quantities($order_id, $source, array $quantities)
+{
+    $items = array();
+
+    foreach (pg_credit_points_order_lines($order_id) as $line) {
+        $items[(int) $line['order_item_id']] = (int) $line['product_id'];
+    }
+
+    $map = pg_return_erp_line_map($items, $source);
+    $chosen = array();
+
+    foreach ((array) $map as $item_id => $line_id) {
+        if (isset($quantities[$line_id]) && ((int) $quantities[$line_id] > 0)) {
+            $chosen[(int) $item_id] = (int) $quantities[$line_id];
+        }
+    }
+
+    return $chosen;
+}

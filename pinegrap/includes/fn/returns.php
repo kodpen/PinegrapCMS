@@ -4062,6 +4062,16 @@ function pg_return_refund($return_id, $options, $user_id = 0)
             WHERE (id = '" . (int) $return['id'] . "') AND (refunded_at > 0)");
     }
 
+    // The returned lines' reward points go back with the refund, once: only
+    // the request that moved the return to refunded gets here.
+    $returned_quantities = array();
+
+    foreach ((array) $return['items'] as $item) {
+        $returned_quantities[(int) $item['order_item_id']] = ($returned_quantities[(int) $item['order_item_id']] ?? 0) + (int) $item['quantity'];
+    }
+
+    pg_credit_points_lines_refunded($return['order_id'], $returned_quantities);
+
     $release();
 
     $after = pg_return_audit_fields($moved['return']);
