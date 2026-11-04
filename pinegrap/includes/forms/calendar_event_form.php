@@ -256,6 +256,14 @@ function pg_calendar_event_form_validate($liveform, $calendar_event_id = '0')
 
     $liveform->validate_required_field('name', lang('Name is required.'));
 
+    // The column lengths: a longer text was stored cut without an error.
+    pg_calendar_form_check_lengths($liveform, array(
+        'name' => array(lang('Name'), 100),
+        'location' => array(lang('Location'), 100),
+        'short_description' => array(lang('Short Description'), 255),
+        'reserve_button_label' => array(lang('Reserve Button Label'), 50),
+    ));
+
     // An all day event is entered as two dates; a time is added for storage.
     if ($liveform->get_field_value('all_day') == 1) {
         $liveform->validate_required_field('start_time', lang('Start Date is required.'));
@@ -312,6 +320,15 @@ function pg_calendar_event_form_validate($liveform, $calendar_event_id = '0')
         $liveform->validate_required_field('total_recurrence_number', lang('Repeat number is required when you enable Repeat.'));
         $liveform->validate_required_field('recurrence_type', lang('Repeat type is required when you enable Repeat.'));
 
+        // Only the types the calendar expands: another value was stored as ''
+        // and drew the event again and again on its start day.
+        if (
+            ($liveform->check_field_error('recurrence_type') == false)
+            && !in_array((string) $liveform->get_field_value('recurrence_type'), array('day', 'week', 'month', 'year'), true)
+        ) {
+            $liveform->mark_error('recurrence_type', lang('Repeat type is required when you enable Repeat.'));
+        }
+
         // A whole number: '2.5' passed is_numeric() and was stored as 3.
         if (
             ($liveform->check_field_error('total_recurrence_number') == false)
@@ -335,6 +352,13 @@ function pg_calendar_event_form_validate($liveform, $calendar_event_id = '0')
 
         if ($liveform->get_field_value('recurrence_type') == 'month') {
             $liveform->validate_required_field('recurrence_month_type', lang('Repeat month type is required.'));
+
+            if (
+                ($liveform->check_field_error('recurrence_month_type') == false)
+                && !in_array((string) $liveform->get_field_value('recurrence_month_type'), array('day_of_the_month', 'day_of_the_week'), true)
+            ) {
+                $liveform->mark_error('recurrence_month_type', lang('Repeat month type is required.'));
+            }
         }
     }
 
