@@ -4,7 +4,7 @@ description: add_auto_dialog.php and edit_auto_dialog.php share the template and
 ---
 
 ## What is shared?
-- The markup: `includes/templates/edit_auto_dialog.php`, switched by `$screen` (`create` / `edit`).
+- The markup: `includes/templates/edit_auto_dialog.php`, switched by `$screen` (`create` / `edit`), in the wide edit-screen layout (`edit-screen-wide-layout.md`, B11): a Dialog Options card (name, URL, page) and a Display card (width, height, delay, frequency) in the form column; the sticky status column holds, on edit, the Enabled switch, then a Summary of page, size, delay and frequency (following the boxes as typed; blank reads All pages / Auto / Immediately / Once) and, on edit, Last Modified (a dash with no stored time); the sticky save bar.
 - The save: `includes/forms/auto_dialog_form.php` (gate `PG_FUNCTIONS_DIR`), loaded with `require_once` after `validate_area_access($user, 'manager')`.
 - `pg_auto_dialog_form_validate($liveform, $id)` (`null` on create, the gated `$id` on edit): name and URL required; name, URL and page no longer than their columns (100, 255, 100); width, height, delay and frequency blank or a whole number up to `pg_auto_dialog_form_number_limits()`; then, only when a name was given, the name not used by another auto dialog (`db_q()`).
 - `pg_auto_dialog_form_whole_number($raw, $max)`: `''` blank, the digits, or `null` (refused). Groups of three with `.` or `,` are thousands ("2.400" is 2400); a sign or a decimal part is refused.
@@ -13,7 +13,7 @@ description: add_auto_dialog.php and edit_auto_dialog.php share the template and
 
 ## What stays in the screens?
 - Create: the INSERT, the log, the preview link in the notice, the redirect.
-- Edit: the id gate and not-found guard (`panel_id_gate_test.php` reads it), the record load and prefill, the preview URL, delete, the UPDATE, the log, the redirects. The id comes from `$_REQUEST` (the template has no hidden id field); the POST branch uses the gated `$id`.
+- Edit: the id gate and not-found guard (`panel_id_gate_test.php` reads it), the record load (joined to `user` for the last change, columns prefixed `auto_dialogs.`) and prefill, the preview URL, delete, the UPDATE, the log, the redirects. The id comes from `$_REQUEST` (the template has no hidden id field); the POST branch uses the gated `$id`.
 
 ## Why are the numbers checked on the server?
 - The columns are INT UNSIGNED and the session `sql_mode` is not strict: before #5701 '-24' hours became 0 (one-time), '1.5' became 2, 99999999999 seconds 4294967295. The fields had a decimal mask (minus and decimals allowed); they now use the integer mask with `allowminus` false.
@@ -23,4 +23,4 @@ description: add_auto_dialog.php and edit_auto_dialog.php share the template and
 - The `task_alt` icon is `aria-hidden` with a `visually-hidden` Yes; a disabled dialog gets a hidden No (#5705), so a screen reader and the DataTables search read Yes/No, not `task_alt`.
 
 ## Which test covers it?
-- `tests/auto_dialog_form_test.php`: the page clean-up, the value order with a stub liveform, both screens on the helpers with no copy of the checks, the whole-number reading and limits, the masks and the Enabled cell.
+- `tests/auto_dialog_form_test.php`: the column order and sticky offsets, the Summary rows, the last-change load, the page clean-up, the value order with a stub liveform, both screens on the helpers with no copy of the checks, the whole-number reading and limits, the masks and the Enabled cell.
