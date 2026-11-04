@@ -9384,6 +9384,14 @@ function pg_shipping_carriers()
             'url'      => 'https://gonderitakip.ptt.gov.tr/Track/summary?id={code}',
             'patterns' => array()),
 
+        // The tracking page fills its search box from ?q=; the lookup itself
+        // runs behind a captcha, so the customer presses the button once.
+        'kolaygelsin' => array(
+            'name'     => 'Kolay Gelsin',
+            'aliases'  => array('kolay gelsin', 'kolaygelsin kargo', 'kolay gelsin kargo', 'tr-kolaygelsin'),
+            'url'      => 'https://www.kolaygelsin.com/tracking?q={code}',
+            'patterns' => array()),
+
         'ups' => array(
             'name'     => 'UPS',
             'aliases'  => array('ups kargo', 'upskargo'),
