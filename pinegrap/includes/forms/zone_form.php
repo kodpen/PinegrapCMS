@@ -20,6 +20,12 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// The largest rate in minor units: the rate columns are INT UNSIGNED and a
+// larger amount would be clamped by MySQL without an error.
+if (!defined('PG_ZONE_FORM_RATE_MAX')) {
+    define('PG_ZONE_FORM_RATE_MAX', 4294967295);
+}
+
 /**
  * A posted rate in minor units: the amount as typed (group separators and
  * spaces allowed) times 100, rounded. Anything that is not a number is 0.
@@ -79,7 +85,8 @@ function pg_zone_form_name_error($name)
 /**
  * The messages for the rate boxes that hold no amount of 0 or more: rate
  * field => message. The rate columns are unsigned and the save clamped a
- * negative rate to 0 without a word; a blank box is 0.
+ * negative rate to 0 without a word, and MySQL clamps a rate above
+ * PG_ZONE_FORM_RATE_MAX the same way; a blank box is 0.
  *
  * @param array $values pg_zone_form_post_values()
  * @return array
@@ -93,6 +100,8 @@ function pg_zone_form_rate_errors($values)
 
         if (($value !== '') && (preg_match('/^[0-9]+([.,][0-9]+)*$/', $value) !== 1)) {
             $errors[$rate] = lang(array('string' => '{var:1} takes an amount, such as {var:2}.', 'vars' => array($label, pg_format_number(12.5, 2))));
+        } elseif (($value !== '') && (pg_zone_form_rate($value) > PG_ZONE_FORM_RATE_MAX)) {
+            $errors[$rate] = lang(array('string' => '{var:1} can be at most {var:2}.', 'vars' => array($label, pg_format_number(PG_ZONE_FORM_RATE_MAX / 100, 2))));
         }
     }
 
@@ -261,7 +270,7 @@ function pg_zone_form_cards($values, $country_options, $state_options, $errors =
                                             <label for="' . $rate . '" class="form-label">' . $label . '</label>
                                             <label class="form-control form-adorn form-adorn-end' . (($rate_error !== '') ? ' is-invalid' : '') . '">
                                                 <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
-                                                <input value="' . h($values[$rate]) . '" type="text" name="' . $rate . '" id="' . $rate . '" class="form-ghost" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . ' data-inputmask-allowMinus="false" style="text-align: right;"' . (($rate_error !== '') ? ' aria-invalid="true" aria-describedby="' . $rate . '-error"' : '') . ' />
+                                                <input value="' . h($values[$rate]) . '" type="text" name="' . $rate . '" id="' . $rate . '" class="form-ghost text-end" inputmode="decimal"' . pg_money_mask_html() . ' data-inputmask-allowMinus="false" data-inputmask-max="' . h(PG_ZONE_FORM_RATE_MAX / 100) . '"' . (($rate_error !== '') ? ' aria-invalid="true" aria-describedby="' . $rate . '-error"' : '') . ' />
                                             </label>' . (($rate_error !== '') ? '
                                             <div id="' . $rate . '-error" class="invalid-feedback d-block">' . h($rate_error) . '</div>' : '') . '
                                         </div>';
@@ -314,25 +323,25 @@ function pg_zone_form_cards($values, $country_options, $state_options, $errors =
                                 </div>
                             </div>
                             <div class="row">
-                                <div class="col-12 xl:col-6 mb-7">
+                                <div class="col-12 mb-7">
                                     <div class="card h-100">
                                         <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Shipping Zone Countries') . '
                                         </h2>
                                         <div class="card-body pt-0">
                                             <label for="allowed_countries" class="form-label mt-3">' . lang('Allowed Countries') . '</label>
-                                            <select style="width:100%" data-pg-combobox class="form-control" data-placeholder="' . lang('Click to select country(s)') . '" id="allowed_countries" name="allowed_countries[]" multiple="multiple">' . $country_options . '</select>
+                                            <select data-pg-combobox class="form-control w-100" data-placeholder="' . lang('Click to select country(s)') . '" id="allowed_countries" name="allowed_countries[]" multiple="multiple">' . $country_options . '</select>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-12 xl:col-6 mb-7">
+                                <div class="col-12 mb-7">
                                     <div class="card h-100">
                                         <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Shipping Zone States or Provinces') . '
                                         </h2>
                                         <div class="card-body pt-0">
                                             <label for="allowed_states" class="form-label mt-3">' . lang('Allowed States') . '</label>
-                                            <select style="width:100%" data-pg-combobox class="form-control" data-placeholder="' . lang('Click to select state(s)') . '" id="allowed_states" name="allowed_states[]" multiple="multiple">' . $state_options . '</select>
+                                            <select data-pg-combobox class="form-control w-100" data-placeholder="' . lang('Click to select state(s)') . '" id="allowed_states" name="allowed_states[]" multiple="multiple">' . $state_options . '</select>
                                         </div>
                                     </div>
                                 </div>

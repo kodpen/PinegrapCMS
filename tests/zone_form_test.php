@@ -136,6 +136,14 @@ function test_zone_form_rate_errors()
 	pg_assert_same(array('secondary_weight_rate', 'item_rate'), array_keys($errors), 'a negative rate and text are named, an amount and a blank box are not');
 	pg_assert_contains(lang('Secondary Weight Rate'), $errors['secondary_weight_rate'], 'the message names its field');
 	pg_assert_same(array(), pg_zone_form_rate_errors(array('base_rate' => '1.234,56', 'item_rate' => '0')), 'group separators and zero pass');
+	pg_assert_same(array(), pg_zone_form_rate_errors(array('base_rate' => '42949672.95')), 'the largest amount the column holds passes');
+	$errors = pg_zone_form_rate_errors(array('base_rate' => '42949672.96', 'item_rate' => '99999999999'));
+	pg_assert_same(array('base_rate', 'item_rate'), array_keys($errors), 'an amount the column cannot hold is refused');
+	pg_assert_contains(lang('Base Rate'), $errors['base_rate'], 'the cap message names its field');
+
+	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/zone_form.php');
+	pg_assert_same(false, strpos($form, 'maxlength="12"'), 'the rate boxes do not cut a grouped amount');
+	pg_assert_contains('data-inputmask-max=', $form, 'the rate mask has an upper bound');
 
 	foreach (array('add_zone.php', 'edit_zone.php') as $file) {
 		pg_assert_contains('pg_zone_form_rate_errors($values)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ': a wrong rate is refused before the save');
