@@ -13,4 +13,4 @@ description: Today's "Channels you could join" and "What is the Workspace?" card
 - The text, then `ul.pg-dash-tiles.ws-today-about-tiles`, one `.pg-dash-tile` per part (channels, tasks, decisions; Claude and Pinegrap AI when on): title with icon, the line as `.pg-dash-tile-note`; as many tiles to a line as fit (13rem minimum).
 
 ## Where are the styles?
-- ws_today.src.css sections "Channels you could join" and "What is the Workspace?" hold everything these cards need, the summary's chevron and marker included, so the old `.ws-home-about`, `.ws-home-tile*` and `.ws-home-join` rules of backend.src.css are no longer used by them (W6 of `plans/workspace-today-dashboard.md` removes them). The class `ws-home-about` stays on the card (tests/workspace_today_test.php).
+- ws_today.src.css sections "Channels you could join" and "What is the Workspace?" hold everything these cards need, the summary's chevron and marker included, and backend.src.css has no `.ws-home-*` rule left (`workspace-today-design.md`). The class `ws-home-about` stays on the card (tests/workspace_today_test.php).

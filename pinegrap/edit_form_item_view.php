@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/form_item_view_form.php');
 $user = validate_user();
 validate_area_access($user, 'user');
 
@@ -32,7 +33,9 @@ $page = db_item(
         page_folder AS folder_id,
         page_style AS style_id,
         mobile_style_id AS mobile_style_id,
-        page_type
+        page_type,
+        page_timestamp AS timestamp,
+        page_user AS user_id
     FROM page
     WHERE page_id = '" . e($_REQUEST['page_id'] ?? '') . "'");
 
@@ -64,12 +67,6 @@ $row = mysqli_fetch_assoc($result) ?: array();
 
 $custom_form_folder_id = $row['page_folder'] ?? '';
 $custom_form_name = $row['form_name'] ?? '';
-
-if ((isset($custom_form_name) == true) && ($custom_form_name != '')) {
-    $output_custom_form_information = lang('Displays submitted forms from') . ': ' . h($custom_form_name);
-} else {
-    $output_custom_form_information = lang('Displays submitted forms from') . ': ' . lang('None');
-}
 
 // validate user's access to custom form
 if (check_edit_access($custom_form_folder_id) == false) {
@@ -154,39 +151,11 @@ if (!$_POST) {
     // Every entry is a button that types its token in at the layout's cursor.
     $variables_help = pg_cf_variables_help($custom_form_page_id);
 
-    $output_variable_items = function ($items) {
-        $output = '';
-        foreach ($items as $item) {
-            $detail = h($item['label']) . (($item['type_label'] !== '') ? ' · ' . h($item['type_label']) : '');
-            $output .= '<li class="list-group-item py-1 px-3 d-flex align-items-center gap-3">'
-                . '<button type="button" class="btn btn-link btn-sm p-0 text-start text-decoration-none flex-grow-1 flex-column align-items-start text-wrap text-break" data-pg-insert="' . h($item['token']) . '">'
-                . '<code>' . h($item['token']) . '</code><span class="d-block small fg-secondary">' . $detail . '</span></button>';
-            if ($item['example'] !== '') {
-                $output .= '<button type="button" class="btn btn-sm btn-outline theme-secondary no-popover" data-bs-toggle="tooltip" data-pg-insert="' . h($item['example']) . '" title="' . h($item['example']) . '"><i class="bi bi-braces" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Insert with format')) . '</span></button>';
-            }
-            $output .= '</li>';
-        }
-        return $output;
-    };
-
-    $output_available_standard_fields = $output_variable_items($variables_help['standard']);
-    $output_available_custom_fields = $output_variable_items($variables_help['fields']);
-    $output_available_mail_links = $output_variable_items($variables_help['mail']);
-
-    if ($output_available_custom_fields === '') {
-        $output_available_custom_fields = '<li class="list-group-item py-1 px-3 small fg-secondary">' . h(lang('This form has no fields yet.')) . '</li>';
-    }
-
-    $output_available_formats = '';
-    foreach (array(
-        'conditional' => lang('Only when there is a value'),
-        'date' => lang('Date format'),
-        'checkbox' => lang('Check box as text'),
-    ) as $format => $format_label) {
-        $output_available_formats .= '<li class="list-group-item py-1 px-3">'
-            . '<button type="button" class="btn btn-link btn-sm p-0 text-start text-decoration-none w-100 flex-column align-items-start text-wrap text-break" data-pg-insert="' . h($variables_help['syntax'][$format]) . '">'
-            . '<code>' . h($variables_help['syntax'][$format]) . '</code><span class="d-block small fg-secondary">' . h($format_label) . '</span></button></li>';
-    }
+    // The Summary's last change: the page's timestamp and the user who made it.
+    $change_user = (string) db_value("SELECT user_username FROM user WHERE user_id = '" . (int) $page['user_id'] . "'");
+    $changed = ((int) $page['timestamp'] > 0)
+        ? get_relative_time(array('timestamp' => (int) $page['timestamp'])) . (($change_user !== '') ? ' ' . h($change_user) : '')
+        : '';
 
     // These two are only ever produced by the form list view screen this block
     // was copied from; there is no filter UI here, so they stay empty. Declared
@@ -220,12 +189,6 @@ if (!$_POST) {
             <div class="row">
             <div class="col-12">
                 ' . $form->get_messages() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        <p>' . $output_custom_form_information . '</p>
-                    </div>
-                </div>
                 <dialog class="dialog dialog-xl" id="hints" aria-labelledby="hints_title">
                             <div class="dialog-header">
                                 <h5 class="dialog-title" id="hints_title">' . lang('Hints') . '</h5>
@@ -255,61 +218,18 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="page_id" value="' . h($_GET['page_id']) . '" />
-                    <div class="row">
-                        <div class="col-12 md:col">
-                            <div class="row">
-                                <div class="col-12">
-                                    <div class="card my-7">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                        ' . lang('Field Options') . '
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-12 lg:col-8 2xl:col-9 order-1 my-3">
-                                                    <div class="form-text text-start">' . lang(array('string'=>'Display layout of submitted form data fields within View{var:1}','vars'=>$collection_field_marker)) . '</div>
-                                                    <textarea id="layout" name="layout" aria-label="' . h(lang('Layout')) . '">' . h($layout) . '</textarea>
-                                                    ' . pg_code_editor_attach(array('id' => 'layout', 'code_type' => 'mixed')) . '
-                                                </div>
-                                                <div class="col-12 lg:col-4 2xl:col-3 order-2 my-3" id="pg_fiv_variables">
-                                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 row-gap-1">
-                                                        <button type="button" class="btn btn-sm btn-text theme-secondary px-1 fw-bold fg-primary" data-bs-toggle="collapse" data-bs-target="#pg_fiv_variables_list" aria-expanded="true" aria-controls="pg_fiv_variables_list"><i class="bi bi-chevron-down me-1" aria-hidden="true"></i>' . lang('Available variables') . '</button>
-                                                        <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#hints"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('Hints') . '</button>
-                                                    </div>
-                                                    <div class="collapse show" id="pg_fiv_variables_list">
-                                                        <p class="form-text mt-1 mb-3">' . lang('Click a variable to insert it at the cursor in the layout.') . '</p>
-                                                        <p class="mb-0 forms-color">' . lang('Form Fields') . '</p>
-                                                        <ul class="list-group overflow-auto pe-1 mb-5" style="min-height:100px;height:220px;max-height:600px;resize:vertical;">
-                                                            ' . $output_available_custom_fields . '
-                                                        </ul>
-                                                        <p class="mb-0 fg-primary">' . lang('System Fields') . '</p>
-                                                        <ul class="list-group overflow-auto pe-1 mb-5" style="min-height:100px;height:220px;max-height:600px;resize:vertical;">
-                                                            ' . $output_available_standard_fields . '
-                                                        </ul>
-                                                        <p class="mb-0">' . lang('E-mail links') . '</p>
-                                                        <p class="form-text mt-0 mb-1">' . lang('Filled in only in the e-mail to the person who sent the form; empty on the page and in other copies.') . '</p>
-                                                        <ul class="list-group mb-5">
-                                                            ' . $output_available_mail_links . '
-                                                        </ul>
-                                                        <p class="mb-0">' . lang('Formats') . '</p>
-                                                        <ul class="list-group">
-                                                            ' . $output_available_formats . '
-                                                        </ul>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                    ' . pg_form_item_view_form_layout(
+                        pg_form_item_view_form_card($layout, $collection_field_marker, pg_code_editor_attach(array('id' => 'layout', 'code_type' => 'mixed')))
+                        . pg_form_item_view_form_status(
+                            pg_form_item_view_form_summary(array(
+                                'page_name' => $page['name'],
+                                'form_name' => $custom_form_name,
+                                'collection' => $collection,
+                                'changed' => $changed,
+                            )),
+                            pg_form_item_view_form_variables($variables_help)),
+                        '
+                                        <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>') . '
                 </form>
             </div>
         </div>

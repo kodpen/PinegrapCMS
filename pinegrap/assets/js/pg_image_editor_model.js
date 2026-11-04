@@ -4111,6 +4111,50 @@
 
     var ACCESS = { KEY_TOOLS: KEY_TOOLS, toolForKey: toolForKey, toolKey: toolKey, trapFocus: trapFocus, twistAngle: twistAngle, keyMap: keyMap };
 
+    // -- The selection's commands (pg_image_editor_actions.js) --
+
+    // The commands the bar over a small screen's stage offers for what is
+    // selected, in order, as [{ name, off }]. s.layers and s.free: the
+    // selected layers (with a tool that selects layers) and how many of them
+    // are unlocked; s.picture: the picture selected; s.area: an area
+    // selected with Select area; s.sheet: a closed panel sheet that Options
+    // opens; s.can: which of the area's commands the editor has. Options
+    // comes first; the rest keep the panel's order. Short enough for a
+    // phone's width: what does not fit (arrange, align) is in the panel.
+    function actionList(s) {
+        var can = s.can || {}, out = [];
+        var add = function (name, off) { out.push({ name: name, off: !!off }); };
+
+        if (!s.layers && !s.picture && !s.area) {
+            return out;
+        }
+
+        if (s.sheet) {
+            add('options');
+        }
+
+        if (s.layers) {
+            add('duplicate');
+            add('remove', !s.free);
+        } else if (s.picture) {
+            add('lockPicture');
+            add('removePicture');
+        } else {
+            ['erase', 'keep', 'copy', 'adjust'].forEach(function (name) {
+                if (can[name]) {
+                    add(name);
+                }
+            });
+            add('redact', !can.redact);
+            add('invert');
+            add('deselect');
+        }
+
+        return out;
+    }
+
+    var ACTIONS = { actionList: actionList };
+
     // -- Google Fonts choice of the Text tool (pg_image_editor_fonts.js) --
 
     // The catalogue's families (window.PgGoogleFonts) whose name holds the
@@ -7126,9 +7170,17 @@
         return (l.area || []).map(function (r) { return r.map(function (p) { return apply(m, p[0] * l.w, p[1] * l.h); }); });
     }
 
+    // What lies in frame { x, y, w, h } outside the selection's rings: the
+    // part Keep only erases.
+    function areaRest(rings, frame) {
+        var all = [[frame.x, frame.y], [frame.x + frame.w, frame.y], [frame.x + frame.w, frame.y + frame.h], [frame.x, frame.y + frame.h]];
+
+        return (rings && rings.length) ? clipRings(nestRings([all]), rings, 'difference') : nestRings([all]);
+    }
+
     var SELECTION = {
         AREA_MAX_OPS: AREA_MAX_OPS, areaDragged: areaDragged, areaRect: areaRect, areaEllipse: areaEllipse, areaLasso: areaLasso, wandMask: wandMask,
-        maskRings: maskRings, mapRings: mapRings, selectionRings: selectionRings, areaLayer: areaLayer, areaPoints: areaPoints
+        maskRings: maskRings, mapRings: mapRings, selectionRings: selectionRings, areaLayer: areaLayer, areaPoints: areaPoints, areaRest: areaRest
     };
 
     var api = {
@@ -7147,7 +7199,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

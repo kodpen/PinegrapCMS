@@ -5,8 +5,9 @@
  * Tests for the Workspace Today page's task card and the day states of the
  * plan grid: the tasks due today are never pushed out by overdue ones, a
  * row tells how many more there are, the priority badge stays outside the
- * shortened title, the two-column grid fits a phone; a day off with work on
- * it is told as a day off, never as a percentage.
+ * shortened title, the old Overview rules are gone and the tiles fit a
+ * phone; a day off with work on it is told as a day off, never as a
+ * percentage.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -69,11 +70,19 @@ function test_workspace_today_card_tells_the_rest_and_keeps_the_badge_apart()
 	pg_assert_contains('ws-today-task-head', $match[1], 'title and badge share a line');
 }
 
-function test_workspace_today_two_column_grid_fits_a_phone()
+function test_workspace_today_old_overview_rules_gone()
 {
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 
-	pg_assert_true(preg_match('/\.ws-home-grid-2 \{\s*grid-template-columns: repeat\(auto-fit, minmax\(min\(22rem, 100%\), 1fr\)\);/', $css) === 1, 'one column never wider than the page');
+	pg_assert_false(strpos($css, '.ws-home-') !== false, 'no old Overview rule left in the panel stylesheet');
+	pg_assert_true(preg_match('/\n\.ws-home \{[^}]*overflow-y: auto;/', $css) === 1, 'the scroll area keeps its rule');
+}
+
+function test_workspace_today_about_tiles_fit_a_phone()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/ws_today.src.css');
+
+	pg_assert_contains('minmax(min(100%, 13rem), 1fr)', $css, 'one tile column never wider than the page');
 }
 
 function test_workspace_plan_day_state()

@@ -52,7 +52,7 @@ function test_content_lists_check_marks_named()
 
 	// Printed lists on the list table driver draw their marks with
 	// pg_list_table_check_cell(), which names them.
-	pg_assert_same(3, substr_count(content_lists_source('view_comments.php'), 'pg_list_table_check_cell('), 'view_comments.php: check cells');
+	pg_assert_same(1, substr_count(content_lists_source('includes/fn/comment_list_edit.php'), 'pg_list_table_check_cell('), 'comment_list_edit.php: check cells');
 	pg_assert_same(1, substr_count(content_lists_source('view_design_files.php'), 'pg_list_table_check_cell('), 'view_design_files.php: check cells');
 	pg_assert_same(4, substr_count(content_lists_source('includes/fn/region_list.php'), 'pg_list_table_check_cell('), 'region_list.php: check cells');
 }
@@ -91,7 +91,7 @@ function test_content_lists_file_download_and_thumbnail()
 
 function test_content_lists_comment_link_title_and_calendar_usernames()
 {
-	$comments = content_lists_source('view_comments.php');
+	$comments = content_lists_source('includes/fn/comment_list_edit.php');
 	pg_assert_false(strpos($comments, '<i class="bi bi-link" title=') !== false, 'title on the icon');
 	pg_assert_same(1, substr_count($comments, '" title="\' . h(lang(\'Go To Comment\')) . \'" aria-label="\' . h(lang(\'Go To Comment\')) . \'"><i class="bi bi-link" aria-hidden="true"></i></a>'));
 

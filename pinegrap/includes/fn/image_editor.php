@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'fonts', 'glyph', 'warp', 'outline', 'builder');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'fonts', 'glyph', 'warp', 'outline', 'builder', 'actions');
 }
 
 /**
@@ -998,6 +998,19 @@ function pg_image_editor_save($request, $user)
         $edit['redact'] = $redactions;
     }
 
+    // The selection's areas (Erase, Adjust inside), before the redaction.
+    $masks = pg_image_editor_take_masks(isset($request['masks']) ? $request['masks'] : null, $edit, FILE_DIRECTORY_PATH . '/' . $name . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.m');
+
+    if ($masks === false) {
+        @unlink($overlay);
+        pg_image_editor_drop_redactions($redactions);
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    if ($masks) {
+        $edit['masks'] = $masks;
+    }
+
     $source = $file['path'];
     $layer = '';
     $base = null;
@@ -1012,7 +1025,7 @@ function pg_image_editor_save($request, $user)
 
             if (!$base) {
                 @unlink($overlay);
-                pg_image_editor_drop_redactions($redactions);
+                pg_image_editor_drop_redactions(array_merge($redactions, $masks));
                 return pg_image_editor_refusal(($base_id > 0) ? lang('Invalid request.') : lang('Sorry, the file could not be saved.'));
             }
         } elseif ($base_id > 0) {
@@ -1020,7 +1033,7 @@ function pg_image_editor_save($request, $user)
 
             if (!$base || ((string) $base['doc_json'] !== '')) {
                 @unlink($overlay);
-                pg_image_editor_drop_redactions($redactions);
+                pg_image_editor_drop_redactions(array_merge($redactions, $masks));
                 return pg_image_editor_refusal(lang('Invalid request.'));
             }
         }
@@ -1030,7 +1043,7 @@ function pg_image_editor_save($request, $user)
         }
     } elseif ($base_id > 0) {
         @unlink($overlay);
-        pg_image_editor_drop_redactions($redactions);
+        pg_image_editor_drop_redactions(array_merge($redactions, $masks));
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
@@ -1049,7 +1062,7 @@ function pg_image_editor_save($request, $user)
         if (!$size || ($size[0] > $width + 0.5) || ($size[1] > $height + 0.5) || (abs($size[0] - $size[1] * $width / $height) > 1.5)) {
             @unlink($layer);
             @unlink($overlay);
-            pg_image_editor_drop_redactions($redactions);
+            pg_image_editor_drop_redactions(array_merge($redactions, $masks));
             return pg_image_editor_refusal(lang('Invalid request.'));
         }
 
@@ -1059,7 +1072,7 @@ function pg_image_editor_save($request, $user)
 
     } elseif (!empty($edit['color']) && !class_exists('Imagick')) {
         @unlink($overlay);
-        pg_image_editor_drop_redactions($redactions);
+        pg_image_editor_drop_redactions(array_merge($redactions, $masks));
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
@@ -1078,7 +1091,7 @@ function pg_image_editor_save($request, $user)
         @unlink($layer);
     }
 
-    pg_image_editor_drop_redactions($redactions);
+    pg_image_editor_drop_redactions(array_merge($redactions, $masks));
 
     if (($report['status'] !== 'success') || !is_string($report['data'])) {
         return pg_image_editor_refusal(pg_image_editor_report_message($report, $name));
@@ -1754,7 +1767,108 @@ function pg_image_editor_take_redactions($regions, $edit, $prefix)
     return $list;
 }
 
-// The mask files of pg_image_editor_take_redactions(), removed.
+/**
+ * The colour step of an Adjust inside area: its adjustments and filter
+ * checked as the document's are, summed and kept in range. Pure.
+ *
+ * @return array|null|false pg_image_edit_color()'s answer (null for no
+ *                          change); false when a value is refused
+ */
+function pg_image_editor_mask_color($adjust, $filter)
+{
+    $ranges = pg_image_edit_adjust_ranges();
+    $filters = pg_image_edit_filters();
+
+    if (!is_array($adjust) || !is_string($filter) || !isset($filters[$filter])) {
+        return false;
+    }
+
+    foreach ($adjust as $key => $value) {
+        if (!isset($ranges[$key]) || (pg_image_edit_number($value, $ranges[$key][0], $ranges[$key][1]) === null)) {
+            return false;
+        }
+    }
+
+    $values = array();
+
+    foreach ($ranges as $key => $range) {
+        $sum = (isset($adjust[$key]) ? $adjust[$key] : 0) + (isset($filters[$filter][$key]) ? $filters[$filter][$key] : 0);
+        $values[$key] = max($range[0], min($range[1], (int) round($sum)));
+    }
+
+    return pg_image_edit_color($values);
+}
+
+/**
+ * The selection's areas of a save (Erase and Adjust inside layers, E27b),
+ * checked and their masks written next to $prefix: each { op, x, y, mask }
+ * with the mask a PNG data: URL whose opaque pixels are the area, its box
+ * at x, y inside the output; an erase takes fill ('#rrggbb' or null), a
+ * colour area adjust and filter as the document's.
+ *
+ * @param mixed  $areas  the request's masks list
+ * @param array  $edit   the recipe of pg_image_edit_validate()
+ * @param string $prefix path the mask files start with
+ * @return array|false the engine's masks list (op, x, y, w, h, mask, fill,
+ *                     color), an empty one for none; false when refused
+ *                     (masks already written are removed)
+ */
+function pg_image_editor_take_masks($areas, $edit, $prefix)
+{
+    if (($areas === null) || ($areas === array())) {
+        return array();
+    }
+
+    if (!is_array($areas) || (count($areas) > 50)) {
+        return false;
+    }
+
+    $list = array();
+
+    foreach (array_values($areas) as $i => $area) {
+        $op = (is_array($area) && isset($area['op'])) ? $area['op'] : null;
+        $x = isset($area['x']) ? pg_image_edit_number($area['x'], 0, $edit['out_w'] - 1) : null;
+        $y = isset($area['y']) ? pg_image_edit_number($area['y'], 0, $edit['out_h'] - 1) : null;
+        $fill = null;
+        $color = null;
+        $ok = (($op === 'erase') || ($op === 'color')) && ($x !== null) && ($y !== null) && ($x == floor($x)) && ($y == floor($y))
+            && is_string(isset($area['mask']) ? $area['mask'] : null) && (strncmp($area['mask'], 'data:image/png;', 15) === 0);
+
+        if ($ok && ($op === 'erase') && isset($area['fill'])) {
+            $ok = is_string($area['fill']) && preg_match('/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i', $area['fill'], $m);
+            $fill = $ok ? array(hexdec($m[1]), hexdec($m[2]), hexdec($m[3])) : null;
+        }
+
+        if ($ok && ($op === 'color')) {
+            $color = pg_image_editor_mask_color(isset($area['adjust']) ? $area['adjust'] : array(), isset($area['filter']) ? $area['filter'] : 'none');
+            $ok = ($color !== false);
+
+            // An area without a change has nothing to draw.
+            if ($ok && !$color) {
+                continue;
+            }
+        }
+
+        $path = $prefix . '.' . $i . '.mask.tmp';
+        $size = $ok ? pg_image_editor_take_picture($area['mask'], $path) : false;
+
+        if (!$size || ($x + $size[0] > $edit['out_w']) || ($y + $size[1] > $edit['out_h'])) {
+            if ($size) {
+                @unlink($path);
+            }
+
+            pg_image_editor_drop_redactions($list);
+            return false;
+        }
+
+        $list[] = array('op' => $op, 'x' => (int) $x, 'y' => (int) $y, 'w' => (int) $size[0], 'h' => (int) $size[1], 'mask' => $path, 'fill' => $fill, 'color' => $color);
+    }
+
+    return $list;
+}
+
+// The mask files of pg_image_editor_take_redactions() and
+// pg_image_editor_take_masks(), removed.
 function pg_image_editor_drop_redactions($list)
 {
     foreach ((array) $list as $region) {
@@ -4578,6 +4692,19 @@ function pg_image_editor_render($path, $request)
         $edit['redact'] = $redactions;
     }
 
+    // The selection's areas, as for a save; dropped with the redactions.
+    $masks = pg_image_editor_take_masks(isset($request['masks']) ? $request['masks'] : null, $edit, $stem . '.m');
+
+    if ($masks === false) {
+        @unlink($overlay);
+        pg_image_editor_drop_redactions($redactions);
+        return $refused;
+    }
+
+    if ($masks) {
+        $edit['masks'] = $masks;
+    }
+
     // Without Imagick the browser sends the colour step done, as for a save.
     if (!empty($request['colour']) && !empty($edit['color'])) {
         $layer = $stem . '.colour.tmp';
@@ -4588,7 +4715,7 @@ function pg_image_editor_render($path, $request)
         if (!$taken || ($taken[0] > $width + 0.5) || ($taken[1] > $height + 0.5) || (abs($taken[0] - $taken[1] * $width / $height) > 1.5)) {
             @unlink($layer);
             @unlink($overlay);
-            pg_image_editor_drop_redactions($redactions);
+            pg_image_editor_drop_redactions(array_merge($redactions, $masks));
             return $refused;
         }
 
@@ -4598,7 +4725,7 @@ function pg_image_editor_render($path, $request)
 
     } elseif (!empty($edit['color']) && !class_exists('Imagick')) {
         @unlink($overlay);
-        pg_image_editor_drop_redactions($redactions);
+        pg_image_editor_drop_redactions(array_merge($redactions, $masks));
         return $refused;
     }
 
@@ -4606,7 +4733,7 @@ function pg_image_editor_render($path, $request)
 
     @unlink($overlay);
     @unlink($layer);
-    pg_image_editor_drop_redactions($redactions);
+    pg_image_editor_drop_redactions(array_merge($redactions, $masks));
 
     if (($report['status'] !== 'success') || !is_string($report['data'])) {
         return array('error' => pg_image_editor_report_message($report, basename($path)), 'data' => '', 'extension' => '', 'redacted' => false);
@@ -4765,6 +4892,22 @@ function pg_image_editor_strings_builder()
     );
 }
 
+// -- Selection bar (pg_image_editor_actions.js) --
+
+/**
+ * The selection bar's own labels; its commands use the labels of the parts
+ * that own them (Duplicate, Delete, Invert…).
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_actions()
+{
+    return array(
+        'actBar'     => lang('Selection actions'),
+        'actOptions' => lang('Options'),
+    );
+}
+
 // -- Area selection (pg_image_editor_area.js) --
 
 /**
@@ -4796,5 +4939,17 @@ function pg_image_editor_strings_area()
         'areaPolygonNote' => lang('Click to add corners; double-click, or click the first corner, to close the shape.'),
         'areaWandNote'    => lang('The magic wand cannot read this picture.'),
         'areaLimit'       => lang('The selection has as many shapes as it can hold; invert or deselect it to go on.'),
+        'areaWith'        => lang('With the selection'),
+        'areaErase'       => lang('Erase'),
+        'areaKeep'        => lang('Keep only'),
+        'areaCopy'        => lang('Copy to a layer'),
+        'areaAdjust'      => lang('Adjust inside'),
+        'areaCopyNote'    => lang('This picture cannot be read back, so the selection cannot be copied.'),
+        'areaCutName'     => lang('Cut-out'),
+        'layer_erase'     => lang('Erased area'),
+        'layer_adjust'    => lang('Adjusted area'),
+        'eraseFill'       => lang('Fill with a colour'),
+        'eraseColour'     => lang('Fill colour'),
+        'eraseJpegNote'   => lang('A JPEG cannot be see-through: saving makes a PNG copy beside it. Choose a fill colour to keep the JPEG.'),
     );
 }
