@@ -1226,6 +1226,8 @@
     "Revenue": "Ciro",
     "Revenue per day, last 7 days, today last": "Günlük ciro, son 7 gün, bugün en sonda",
     "Revenue, daily sales, best sellers": "Ciro, günlük satış, çok satanlar",
+    "Reverse charge: VAT id {var:1} confirmed by VIES on {var:2}.": "Tersine vergilendirme (reverse charge): KDV numarası {var:1}, VIES tarafından {var:2} tarihinde doğrulandı.",
+    "Reverse charge: VAT id {var:1} confirmed by VIES.": "Tersine vergilendirme (reverse charge): KDV numarası {var:1}, VIES tarafından doğrulandı.",
     "Reverse the direction": "Yönü ters çevir",
     "Review": "Değerlendirme",
     "Review (loop_area)": "Yorum (loop_area)",
