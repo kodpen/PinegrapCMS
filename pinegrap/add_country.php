@@ -51,24 +51,15 @@ if (!$_POST || $errors) {
             'breadcrumb' => array(array('label' => lang('All Countries'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_countries.php'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Country'))))),
         ]) . '
 <main id="content" class="container-fluid">
-                    <div class="row">
-                <div class="col-12">
-                    
                     <form name="form" action="add_country.php" method="post">
                         ' . get_token_field() . '
-                        ' . pg_country_form_card($values, $errors) . '
-                        <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />          
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class=" btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                                </div>
-                            </div>
-                        </nav>
+                        <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />
+                        ' . pg_country_form_layout(
+                            pg_country_form_card($values, $errors),
+                            '
+                                        <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>'
+                        ) . '
                     </form>
-                </div>
-            </div>
-        
 </main>' .
         output_footer();
 
