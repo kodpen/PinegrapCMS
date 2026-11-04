@@ -3224,6 +3224,7 @@
     "An item does not take a field called {var:1}.": "Kalem {var:1} adında bir alan kabul etmiyor.",
     "An item is not part of this delivery.": "Ürünlerden biri bu teslimata ait değil.",
     "An item of the checklist": "Kontrol listesinin bir maddesi",
+    "An item with a Featured Order appears among the featured items; one with a New on Date appears among the new items from that date on. Disabled items are shown in red.": "Öne Çıkan Sıralaması olan öğe öne çıkan öğeler arasında görünür; Yeni Tarihi olan öğe o tarihten itibaren yeni öğeler arasında görünür. Devre dışı öğeler kırmızı gösterilir.",
     "An itemised invoice; court fees and notary costs shown apart": "Ayrıntılı fatura; harçlar ve noter masrafları ayrı gösterilir",
     "An occasion, a cot, a quiet floor, a dinner table for the first evening.": "Özel bir gün, bebek yatağı, sessiz bir kat, ilk akşam için bir akşam yemeği masası.",
     "An offer cannot end before it starts.": "Teklif başlamadan bitemez.",

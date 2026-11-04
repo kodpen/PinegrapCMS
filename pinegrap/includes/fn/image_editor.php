@@ -1550,15 +1550,22 @@ function pg_image_editor_strings_sticker()
  *
  * @param array      $rows    files rows (id, name, type, folder, image_width, image_height)
  * @param array|null $folders the folder ids a role-3 user may reach; null for every folder
- * @return array [{ id, name, url, width, height }]
+ * @param bool       $svg     SVG files too (Import in the top bar), marked svg
+ * @return array [{ id, name, url, width, height, svg? }]
  */
-function pg_image_editor_sticker_rows($rows, $folders)
+function pg_image_editor_sticker_rows($rows, $folders, $svg = false)
 {
     $types = array('jpg', 'jpeg', 'png', 'gif', 'webp');
     $list = array();
 
+    if ($svg) {
+        $types[] = 'svg';
+    }
+
     foreach ($rows as $row) {
-        if (!in_array(strtolower((string) $row['type']), $types, true)) {
+        $type = strtolower((string) $row['type']);
+
+        if (!in_array($type, $types, true)) {
             continue;
         }
 
@@ -1572,6 +1579,10 @@ function pg_image_editor_sticker_rows($rows, $folders)
             'url'    => PATH . encode_url_path((string) $row['name']),
             'width'  => (int) $row['image_width'],
             'height' => (int) $row['image_height']);
+
+        if ($svg) {
+            $list[count($list) - 1]['svg'] = ($type === 'svg');
+        }
     }
 
     return $list;
@@ -1590,15 +1601,16 @@ function pg_image_editor_sticker_rows($rows, $folders)
  * @param array|null $folders   the folder ids a role-3 user may reach; null for every folder
  * @param array      $bin       the Recycle Bin's folder ids
  * @param bool|null  $erp_ready whether files.erp_doc_type exists; null asks the schema
+ * @param bool       $svg       SVG files too (Import in the top bar)
  * @return string|null the clause, or null when the user may reach no folder
  */
-function pg_image_editor_sticker_where($search, $folders, $bin, $erp_ready = null)
+function pg_image_editor_sticker_where($search, $folders, $bin, $erp_ready = null, $svg = false)
 {
     if ($erp_ready === null) {
         $erp_ready = function_exists('waf_table_has_column') && waf_table_has_column('files', 'erp_doc_type');
     }
 
-    $where = "(type IN ('jpg', 'jpeg', 'png', 'gif', 'webp')) AND (name != '')" . ($erp_ready ? " AND (erp_doc_type = '')" : '');
+    $where = "(type IN ('jpg', 'jpeg', 'png', 'gif', 'webp'" . ($svg ? ", 'svg'" : '') . ")) AND (name != '')" . ($erp_ready ? " AND (erp_doc_type = '')" : '');
     $ids = function ($list) {
         return implode(', ', array_map(function ($id) { return "'" . (int) $id . "'"; }, $list));
     };
@@ -1624,11 +1636,11 @@ function pg_image_editor_sticker_where($search, $folders, $bin, $erp_ready = nul
 
 /**
  * Action sticker_files: the newest pictures in Files, or those whose name
- * holds the search, for the sticker panel's "Picture from Files". Read only;
- * a role-3 user sees the folders they may edit, as the File Manager shows
- * them.
+ * holds the search, for the sticker panel's "Picture from Files" and, with
+ * svg, SVG files too for Import in the top bar. Read only; a role-3 user
+ * sees the folders they may edit, as the File Manager shows them.
  *
- *   { search?: string } -> { status, files: [{ id, name, url, width, height }] }
+ *   { search?: string, svg?: bool } -> { status, files: [{ id, name, url, width, height, svg? }] }
  *
  * @return array array(payload, HTTP status)
  */
@@ -1636,7 +1648,8 @@ function pg_image_editor_action_sticker_files($request, $user)
 {
     $search = (isset($request['search']) && is_string($request['search'])) ? trim(mb_substr($request['search'], 0, 100)) : '';
     $folders = ((int) $user['role'] === 3) ? get_folders_that_user_has_access_to($user['id']) : null;
-    $where = pg_image_editor_sticker_where($search, $folders, pg_recycle_bin_folder_ids());
+    $svg = !empty($request['svg']);
+    $where = pg_image_editor_sticker_where($search, $folders, pg_recycle_bin_folder_ids(), null, $svg);
     $rows = ($where === null) ? array() : db_items(
         "SELECT id, name, type, folder, image_width, image_height
         FROM files
@@ -1646,7 +1659,7 @@ function pg_image_editor_action_sticker_files($request, $user)
 
     return array(array(
         'status' => 'success',
-        'files'  => pg_image_editor_sticker_rows(is_array($rows) ? $rows : array(), $folders)), 200);
+        'files'  => pg_image_editor_sticker_rows(is_array($rows) ? $rows : array(), $folders, $svg)), 200);
 }
 
 // -- Redact (pg_image_editor_redact.js) --
@@ -2565,6 +2578,10 @@ function pg_image_editor_strings_artboard()
         'pictureFree'       => lang('Move and resize the picture on the canvas'),
         'pictureDelete'     => lang('Delete the picture'),
         'pictureTitle'      => lang('Picture'),
+        'import'            => lang('Import'),
+        'importComputer'    => lang('From this computer'),
+        'importSite'        => lang('From the site'),
+        'importError'       => lang('This file cannot be imported.'),
     );
 }
 
@@ -3267,6 +3284,7 @@ function pg_image_editor_strings_svg()
         'svgKind_g'         => lang('Group'),
         'svgKind_image'     => lang('Picture'),
         'svgKind_kept'      => lang('Kept element'),
+        'svgBreakApart'     => lang('Break apart'),
     );
 }
 
@@ -3343,6 +3361,46 @@ function pg_image_editor_svg_open($file_id, $user)
         'versions' => 0,
         'doc'      => null,
         'base'     => 0), 200);
+}
+
+/**
+ * Action svg_import: an SVG for Import in the top bar, through
+ * pg_svg_sanitize(), from the user's computer (svg, its text) or from Files
+ * (file_id, with the gates of pg_image_editor_svg_file()). Writes nothing.
+ *
+ *   { svg?: string, file_id?: int } -> { status, svg, name }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_svg_import($request, $user)
+{
+    $name = '';
+
+    if (!empty($request['file_id'])) {
+        $file = pg_image_editor_svg_file((int) $request['file_id'], $user);
+
+        if ($file === null) {
+            return pg_image_editor_refusal(lang('Sorry, we could not find the file.'));
+        }
+
+        if ($file['refusal']) {
+            return $file['refusal'];
+        }
+
+        $bytes = is_file($file['path']) ? (int) @filesize($file['path']) : 0;
+        $text = (($bytes > 0) && ($bytes <= pg_svg_sanitize_max_bytes())) ? (string) @file_get_contents($file['path']) : '';
+        $name = (string) $file['row']['name'];
+    } else {
+        $text = (isset($request['svg']) && is_string($request['svg'])) ? $request['svg'] : '';
+    }
+
+    $svg = ($text === '') ? '' : pg_svg_sanitize($text);
+
+    if ($svg === '') {
+        return pg_image_editor_refusal(lang('This SVG file cannot be imported.'));
+    }
+
+    return array(array('status' => 'success', 'svg' => $svg, 'name' => $name), 200);
 }
 
 /**

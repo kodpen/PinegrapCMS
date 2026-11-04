@@ -170,19 +170,7 @@ if (!$_POST) {
         }
         
         // update menu
-        $query =
-            "UPDATE menus
-            SET
-                name = ?,
-                effect = ?,
-                first_level_popup_position = ?,
-                second_level_popup_position = ?,
-                class = ?,
-                active_item_class = ?,
-                last_modified_user_id = ?,
-                last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = ?";
-        $result = db_q($query, array_merge(pg_menu_form_values($liveform), array((string) $user['id'], (string) ($_POST['id'] ?? '')))) or output_error('Query failed.');
+        pg_menu_form_save($liveform, (int) ($_POST['id'] ?? 0), (int) $user['id']) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'menu ({var:1}) was modified','vars'=>$liveform->get_field_value('name'))), $_SESSION['sessionusername']);
         $liveform->remove_form();

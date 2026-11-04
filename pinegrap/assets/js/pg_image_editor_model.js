@@ -151,7 +151,7 @@
 
     var PROFILES = {
         photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'area', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'builder', 'motion'],
-        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'image', 'vector', 'scissors', 'warp', 'builder', 'frame', 'motion'],
+        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'vector', 'scissors', 'warp', 'builder', 'frame', 'motion'],
         annotate: ['arrow', 'rect', 'text', 'pen', 'redact'],
         optimise: ['export']
     };
@@ -3058,9 +3058,102 @@
             + (defs || '') + fill + bodies.join('') + '</svg>';
     }
 
+    // -- SVG import (Import in the top bar, pg_image_editor_svg.js) --
+
+    // New ids for an imported SVG's ids, none of them already in the
+    // document (taken): each id gets the prefix i<n>- with the smallest n
+    // that clashes with nothing, so a file imported twice keeps apart.
+    function svgIdMap(ids, taken) {
+        var seen = {}, list = [], map = {}, n = 1;
+
+        (ids || []).forEach(function (id) {
+            id = String(id);
+
+            if (id && !seen[id]) {
+                seen[id] = true;
+                list.push(id);
+            }
+        });
+
+        var used = {};
+
+        (taken || []).forEach(function (id) { used[String(id)] = true; });
+
+        var clash = function (k) {
+            return list.some(function (id) { return used['i' + k + '-' + id]; });
+        };
+
+        while (clash(n)) {
+            n++;
+        }
+
+        list.forEach(function (id) { map[id] = 'i' + n + '-' + id; });
+
+        return map;
+    }
+
+    // An attribute value with its references renamed: a whole "#id" (href)
+    // and every url(#id) (fill, clip-path, filter, a style attribute).
+    function svgRenameValue(value, map) {
+        var s = String(value === undefined || value === null ? '' : value), whole = /^\s*#([^\s]+)\s*$/.exec(s);
+
+        if (whole && Object.prototype.hasOwnProperty.call(map, whole[1])) {
+            return '#' + map[whole[1]];
+        }
+
+        return s.replace(/url\(\s*(['"]?)#([^'")\s]+)\1\s*\)/g, function (all, q, id) {
+            return Object.prototype.hasOwnProperty.call(map, id) ? 'url(' + q + '#' + map[id] + q + ')' : all;
+        });
+    }
+
+    // A style sheet with its references renamed: #id in the selectors (the
+    // sanitizer's scope among them) and url(#id) in the declarations; a
+    // colour such as #fff inside a rule is left alone.
+    function svgRenameCss(text, map) {
+        var s = String(text || ''), out = '', depth = 0, from = 0, i;
+        var selectors = function (part) {
+            return part.replace(/#(-?[_a-zA-Z][-_a-zA-Z0-9]*)/g, function (all, id) {
+                return Object.prototype.hasOwnProperty.call(map, id) ? '#' + map[id] : all;
+            });
+        };
+
+        for (i = 0; i <= s.length; i++) {
+            var c = s.charAt(i);
+
+            if ((i === s.length) || (c === '{') || (c === '}')) {
+                var part = s.slice(from, i);
+
+                out += (depth > 0) ? svgRenameValue(part, map) : selectors(part);
+                out += c;
+                depth += (c === '{') ? 1 : ((c === '}') ? -1 : 0);
+                depth = Math.max(0, depth);
+                from = i + 1;
+            }
+        }
+
+        return out;
+    }
+
+    // An imported picture's box: w x h scaled to share of the visible rect
+    // vr and centred in it; a picture is never made larger than its size,
+    // a drawing (grow) is.
+    function svgFit(w, h, vr, share, grow) {
+        w = Math.max(1, Number(w) || 1);
+        h = Math.max(1, Number(h) || 1);
+
+        var k = Math.min(share * vr.w / w, share * vr.h / h);
+
+        if (!grow) {
+            k = Math.min(1, k);
+        }
+
+        return { x: vr.x + (vr.w - w * k) / 2, y: vr.y + (vr.h - h * k) / 2, w: w * k, h: h * k };
+    }
+
     var SVG = {
         svgLength: svgLength, svgNumbers: svgNumbers, svgRoot: svgRoot, svgTransform: svgTransform, svgOwnBox: svgOwnBox,
-        svgPlace: svgPlace, svgMatrix: svgMatrix, svgMatrixText: svgMatrixText, svgEscape: svgEscape, svgFile: svgFile
+        svgPlace: svgPlace, svgMatrix: svgMatrix, svgMatrixText: svgMatrixText, svgEscape: svgEscape, svgFile: svgFile,
+        svgIdMap: svgIdMap, svgRenameValue: svgRenameValue, svgRenameCss: svgRenameCss, svgFit: svgFit
     };
 
     // ---- motion (pg_image_editor_motion.js) ----

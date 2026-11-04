@@ -1,10 +1,10 @@
 ---
 name: panel-top-bar-phone
-description: Panel top bar (#header) on a phone: below 768px the mascot alone (no wordmark, version pill or page heading), below 390px no logo, why, the test that keeps it
+description: Panel top bar (#header) on a phone: below 768px the mascot alone (no wordmark or page heading), below 390px no logo, why, the test that keeps it
 ---
 
 ## What does the top bar show below 768px?
-- The menu button, the square mascot (the logo link `li.pg-brand-item`, its padding 4px) and the right hand cluster (search, quick note, settings, notifications, account menu, site link). The wordmark (`.pinegrap-logo-word`), the version pill and `.pg-navhead` (page title and description) are `display: none` in one `@media (max-width: 767.98px)` block beside the `.pinegrap-logo` rules in `assets/css/backend.src.css`.
+- The menu button, the square mascot (the logo link `li.pg-brand-item`, its padding 4px) and the right hand cluster (search, quick note, settings, notifications, account menu, site link). The wordmark (`.pinegrap-logo-word`) and `.pg-navhead` (page title and description) are `display: none` in one `@media (max-width: 767.98px)` block beside the `.pinegrap-logo` rules in `assets/css/backend.src.css`.
 - Below 390px a second block hides `li.pg-brand-item` too: the controls need 348px and the mascot 40 more, so a narrower bar would push the site link off it. The bar still overflows below 348px, as before the logo came back.
 - From 768px up the full logo shows and nothing hides it.
 

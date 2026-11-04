@@ -217,6 +217,9 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Bring to Front' => lang('Bring to Front'),
         'Send to Back' => lang('Send to Back'),
         'Delete' => lang('Delete'),
+        // The shipping cut-off rows of the arrival date form.
+        'Shipping Method' => lang('Shipping Method'),
+        'Cut-off Date & Time' => lang('Cut-off Date & Time'),
         'X (mm)' => lang('X (mm)'),
         'Y (mm)' => lang('Y (mm)'),
         'W (mm)' => lang('W (mm)'),
@@ -2408,12 +2411,12 @@ function output_header($properties = false)
 
     if (!defined('PRIVATE_LABEL') or PRIVATE_LABEL == false) {
         $output_software_metanames = '<link rel="manifest" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/manifest.php">';
-        // Brand lockup: the mascot and the wordmark (pg_logo_markup()) plus
-        // the version pill; below md only the mascot shows. Sizes live in
-        // backend.src.css (.pinegrap-logo).
-        $output_logo = '<span class="pinegrap-logo-lockup position-relative">'
+        // Brand lockup: the mascot and the wordmark (pg_logo_markup()); below
+        // md only the mascot shows. Nothing is drawn over the logo: the
+        // version is in the page title. Sizes live in backend.src.css
+        // (.pinegrap-logo).
+        $output_logo = '<span class="pinegrap-logo-lockup">'
             . pg_logo_markup()
-            . ((get_short_version() !== '') ? '<span class="pinegrap-version ms-1 border rounded-pill px-1 d-none md:d-inline-block">' . get_short_version() . '</span>' : '')
             . '</span>';
     } else {
         $output_logo = '<li class="nav-item"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/welcome.php"' . $output_parent_target . ' type="button" class="nav-link p-0 me-1 position-relative overflow-hidden" style="width:39.97px;;height:39.99px;border-radius:2px;"><img src="' . h(LOGO_URL) . '" style="object-fit: scale-down;height: inherit;width: inherit;transform: rotate3d(0, 1, 0, 180deg);" border="0" alt="logo" title="" /></a></li>';
