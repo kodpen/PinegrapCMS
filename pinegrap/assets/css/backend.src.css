@@ -17694,14 +17694,17 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 }
 /* An open card: the Flows canvas read-only (PGWsFlow.embed()) in a 20 rem
    pane, 40 rem when Larger, the full width of the card; on a phone a larger
-   pane stays inside the screen. The canvas takes pinch and drag itself. */
+   pane stays inside the screen. The canvas draws its own frame and takes
+   pinch and drag itself. */
 .ws-fd-stage.is-open {
   position: relative;
   width: 100%;
   height: 20rem;
-  overflow: hidden;
-  border: 1px solid var(--pg-border-color-translucent);
-  border-radius: var(--ws-radius);
+}
+/* The canvas fills the pane, on a phone too (the Flows screen's stage is
+   60vh there). */
+.ws-fd-stage .pgc-stage {
+  height: 100%;
 }
 .ws-fd-stage.is-open.is-large {
   height: 40rem;
