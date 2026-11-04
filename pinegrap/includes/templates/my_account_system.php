@@ -56,20 +56,6 @@ if (!defined('PG_INIT_LOADED')) {
 				<td><?=h(pg_format_number($reward_points, 0))?></td>
 			</tr>
 			<?php endif ?>
-			<?php if (!empty($reward_points_credit['enabled']) && $reward_points_credit['points'] >= $reward_points_credit['minimum']): ?>
-			<tr>
-				<td><?=h(lang('Store credit'))?>:&nbsp;</td>
-				<td>
-					<form action="<?=h($reward_points_credit['url'])?>" method="post">
-						<?=$reward_points_credit['token_field']?>
-						<input type="hidden" name="send_to" value="<?=h($reward_points_credit['send_to'])?>">
-						<input type="number" name="points" aria-label="<?=h(lang('Points to convert'))?>" min="<?=(int) $reward_points_credit['minimum']?>" max="<?=(int) $reward_points_credit['points']?>" step="1" value="<?=(int) $reward_points_credit['points']?>" size="8" required>
-						<input type="submit" value="<?=h(lang('Convert to store credit'))?>" class="software_input_submit_tiny_secondary">
-					</form>
-					<?=h(lang(array('string' => 'All your points are worth {var:1}.', 'vars' => array(html_entity_decode($reward_points_credit['value_info'], ENT_QUOTES, 'UTF-8')))))?>
-				</td>
-			</tr>
-			<?php endif ?>
 		</table>
 	</div>
 	<div class="email_preferences mobile_width" style="margin-bottom: 1em; display: inline-block; vertical-align: top; width: 46%">
@@ -237,6 +223,55 @@ if (!defined('PG_INIT_LOADED')) {
 				</table>
 			</div>
 		</div>
+		<?php endif ?>
+	</div>
+</div>
+<?php endif ?>
+<?php if (!empty($store_credit['shown'])): ?>
+<div class="store_credit">
+	<div class="heading" style="border: none; padding-bottom: .5em"><?=h(lang('Store credit'))?></div>
+	<div class="data" style="margin-bottom: 2em">
+		<p><?=h(lang('Balance'))?>: <strong><?=h($store_credit['balance_info'])?></strong></p>
+		<?php if (!empty($store_credit['convert']['shown'])): ?>
+		<form action="<?=h($store_credit['convert']['url'])?>" method="post">
+			<?=$store_credit['convert']['token_field']?>
+			<input type="hidden" name="send_to" value="<?=h($store_credit['convert']['send_to'])?>">
+			<input type="number" name="points" aria-label="<?=h(lang('Points to convert'))?>" min="<?=(int) $store_credit['convert']['minimum']?>" max="<?=(int) $store_credit['convert']['points']?>" step="1" value="<?=(int) $store_credit['convert']['points']?>" size="8" required>
+			<input type="submit" value="<?=h(lang('Convert to store credit'))?>" class="software_input_submit_tiny_secondary">
+		</form>
+		<p><?=h(lang(array('string' => 'All your points are worth {var:1}.', 'vars' => array(html_entity_decode($store_credit['convert']['value_info'], ENT_QUOTES, 'UTF-8')))))?></p>
+		<?php endif ?>
+		<?php if ($store_credit['cards']): ?>
+		<table style="width: 100%">
+			<tr>
+				<th style="text-align: left"><?=h(lang('Source'))?></th>
+				<th style="text-align: right"><?=h(lang('Amount'))?></th>
+				<th style="text-align: right"><?=h(lang('Balance'))?></th>
+				<th style="text-align: left"><?=h(lang('Last day'))?></th>
+				<th style="text-align: left"><?=h(lang('Status'))?></th>
+				<th style="text-align: left"><?=h(lang('Used for'))?></th>
+			</tr>
+			<?php foreach($store_credit['cards'] as $key => $card): ?>
+			<tr class="row_<?=($key + 1) % 2?>">
+				<td style="vertical-align: top">
+					<?=h($card['kind_label'])?>
+					<?php if ($card['reason'] !== ''): ?>
+					<br><span style="font-size: .85em"><?=h($card['reason'])?></span>
+					<?php endif ?>
+				</td>
+				<td style="vertical-align: top; text-align: right"><?=h($card['amount_info'])?></td>
+				<td style="vertical-align: top; text-align: right"><?=h($card['balance_info'])?></td>
+				<td style="vertical-align: top"><?=($card['last_day_info'] !== '') ? h($card['last_day_info']) : h(lang('Never'))?></td>
+				<td style="vertical-align: top"><?=h($card['state_label'])?></td>
+				<td style="vertical-align: top">
+					<?php foreach($card['uses'] as $use): ?>
+					<?php if ($use['view_url']): ?><a href="<?=h($use['view_url'])?>"><?=h($use['order_number'])?></a><?php else: ?><?=h($use['order_number'])?><?php endif ?>
+					(<?=h($use['date_info'])?>): <?=h($use['amount_info'])?><br>
+					<?php endforeach ?>
+				</td>
+			</tr>
+			<?php endforeach ?>
+		</table>
 		<?php endif ?>
 	</div>
 </div>

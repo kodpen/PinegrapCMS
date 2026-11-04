@@ -400,6 +400,7 @@
     "Used by the search on your own site, not by search engines.": "Kendi sitenizdeki arama tarafından kullanılır, arama motorları tarafından değil.",
     "Used by this folder": "Bu klasörün tasarımı",
     "Used car": "İkinci el araç",
+    "Used for": "Kullanıldığı yer",
     "Used for a product with no HS code of its own. With neither, a parcel that needs customs gets no label.": "Kendi HS kodu olmayan ürünler için kullanılır. İkisi de yoksa gümrük gerektiren kargoya etiket oluşturulmaz.",
     "Used for a product with no country of origin of its own.": "Kendi menşe ülkesi olmayan ürünler için kullanılır.",
     "Used for the invoice lines that have no Paraşüt product card of their own: shipping, charges, free-text lines and rounding. Each Pinegrap product gets its own card. Without this ID an invoice with such a line is refused. Create a generic product/service in Paraşüt and enter its ID here.": "Paraşüt'te kendi ürün kartı olmayan fatura kalemleri için kullanılır: kargo, ek ücretler, serbest metinli kalemler ve yuvarlama farkı. Her Pinegrap ürünü Paraşüt'te kendi kartını alır. Bu ID girilmezse böyle bir kalem içeren fatura reddedilir. Paraşüt'te genel bir ürün/hizmet kaydı oluşturun ve ID'sini buraya girin.",

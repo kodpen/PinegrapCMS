@@ -41971,6 +41971,7 @@ const StyleDesigner = (function () {
             out.push(['order_history',        _sdT('Order history (shop sites; hidden when there are no orders)')]);
             out.push(['subscriptions',        _sdT('Subscriptions (shop sites; hidden when there are none)')]);
             out.push(['bookings',             _sdT('My bookings (hidden when there are none)')]);
+            out.push(['store_credit',         _sdT('Store credit and points conversion (shop sites; hidden when there is none)')]);
         } else if (type === 'change_password' || type === 'set_password') {
             out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
         } else if (type === 'calendar_event_view') {
@@ -43286,7 +43287,8 @@ const StyleDesigner = (function () {
             ['has_orders', _sdT('The member has orders')],
             ['no_orders',  _sdT('The member has no orders')],
             ['is_staff',   _sdT('The visitor may open the staff page')],
-            ['has_bookings', _sdT('The member has bookings')]
+            ['has_bookings', _sdT('The member has bookings')],
+            ['has_store_credit', _sdT('The member has store credit or points to convert')]
         ],
         form_list_view: [
             ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
@@ -62017,6 +62019,10 @@ const StyleDesigner = (function () {
                             _bindings: { eo_visible_if: 'has_bookings' } }),
                         createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('My Bookings'),
                             _bindings: { section: 'bookings' } }),
+                        createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Store credit'), cssClass: 'mb-3',
+                            _bindings: { eo_visible_if: 'has_store_credit' } }),
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Store credit'),
+                            _bindings: { section: 'store_credit' } }),
                         loopArea
                     ])
                 ]);

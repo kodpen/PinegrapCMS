@@ -348,7 +348,7 @@ function pg_credit_staff_panel_html($user_id, $send_to, $now)
                                     <button type="submit" class="btn btn-solid theme-primary w-100">' . h(lang('Issue Credit')) . '</button>
                                 </div>
                             </div>
-                            <div class="form-text">' . h(lang('The customer spends store credit at checkout when signed in. Every issue and void is kept in the audit trail.')) . '</div>
+                            <div class="form-text">' . h(lang('The customer spends store credit at checkout when signed in. Every issue and void is kept in the audit trail.')) . ' ' . h(lang('The customer sees the reason on their account page.')) . '</div>
                         </form>
                     </div>
                 </div>';
