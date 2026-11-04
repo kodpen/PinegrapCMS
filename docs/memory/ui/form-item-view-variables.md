@@ -18,7 +18,7 @@ description: Variables a form item view layout (and form e-mail subject/body) ca
 - Before this an unticked box had no `form_data` row and the custom field lookup read a missing key; both renderers now fall back to `''`.
 
 ## Where does the edit screen's list come from?
-- `edit_form_item_view.php` shows the layout editor (`PgCodeEditor`, id `layout`) beside a collapsible "Available variables" column: form fields, system fields and three format samples. Clicking an entry calls `pgCodeEditors.layout.insertAtCursor()`; without the editor it types into the textarea, and as a last resort copies to the clipboard. Date and check box fields get a second button that inserts the token with its format.
+- `edit_form_item_view.php` shows the layout editor (`PgCodeEditor`, id `layout`) with a collapsible "Available variables" card in the status column (`form-item-view-layout.md`): form fields, system fields and three format samples. Clicking an entry calls `pgCodeEditors.layout.insertAtCursor()`; without the editor it types into the textarea, and as a last resort copies to the clipboard. Date and check box fields get a second button that inserts the token with its format.
 - The data is `pg_cf_variables_help($page_id)` (DB read + type labels) over the pure `pg_cf_variables_help_build($fields, $standard_fields, $yes, $no)`: entries `token`, `label` (falls back to the name), `type`, `example`, plus `syntax` samples (`conditional`, `date`, `checkbox`) taken from the form's first fitting fields.
 - The Hints dialog on the same screen describes every format, the check box pair included.
 
