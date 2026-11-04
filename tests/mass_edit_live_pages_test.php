@@ -67,6 +67,6 @@ function test_mass_edit_touches_changed_pages()
 {
 	$source = _test_mass_edit_live_pages_source();
 
-	pg_assert_same(2, substr_count($source, 'pg_page_bulk_touch('), 'Find & Replace and the grid save');
+	pg_assert_same(2, substr_count($source, 'pg_page_bulk_touch($'), 'Find & Replace and the grid save');
 	pg_assert_same(2, substr_count($source, 'log_activity('), 'one site log line for each');
 }
