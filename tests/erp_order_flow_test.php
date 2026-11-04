@@ -126,3 +126,29 @@ function test_erp_order_flow_cancel_confirm()
 	pg_assert_true(strpos(erp_order_flow_cancel_confirm('PGF1', false, 'Acme'), 'taken back at Acme first') !== false, 'at the provider');
 	pg_assert_true(strpos(erp_order_flow_cancel_confirm('PGF1', true, 'Acme'), 'here too?') !== false, 'cancelled on the provider screen');
 }
+
+// The read-only accountant keeps the links that read and loses every button
+// and link that writes.
+function test_erp_order_flow_readonly_step()
+{
+	$step = erp_order_flow_readonly_step(array(
+		'state' => 'ready',
+		'action' => 'invoice',
+		'disabled_action' => 'waybill',
+		'goto' => array('label' => 'Record the refund', 'url' => 'add_erp_receipt.php?direction=payment', 'icon' => 'bi-cash'),
+		'print' => array('label' => 'Print', 'url' => 'get_erp_invoice_pdf.php?id=3'),
+		'links' => array(
+			array('label' => 'View', 'url' => 'edit_erp_invoice.php?id=3'),
+			array('label' => 'PDF', 'url' => 'get_erp_invoice_pdf.php?id=3', 'blank' => true),
+			array('label' => 'Write it on the form', 'url' => 'add_erp_waybill.php?invoice_id=3'),
+			array('label' => 'Issue the return invoice', 'url' => 'add_erp_return.php?invoice_id=3'),
+		),
+	));
+
+	pg_assert_same('', $step['action'], 'no step action');
+	pg_assert_same('', $step['disabled_action'], 'no greyed action either');
+	pg_assert_same(false, isset($step['goto']), 'no goto button');
+	pg_assert_same('ready', $step['state'], 'the state stays');
+	pg_assert_same('get_erp_invoice_pdf.php?id=3', $step['print']['url'], 'print stays');
+	pg_assert_same(array('edit_erp_invoice.php?id=3', 'get_erp_invoice_pdf.php?id=3'), array_column($step['links'], 'url'), 'only the reading links');
+}
