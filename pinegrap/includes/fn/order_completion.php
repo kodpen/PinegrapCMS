@@ -1950,6 +1950,19 @@ function pg_order_gift_card_count($quantity)
 }
 
 /**
+ * Whether a gift card line may hold this quantity: no more units than
+ * pg_order_gift_card_count() issues cards for, so a line is never charged for
+ * cards it does not issue. Pure.
+ *
+ * @param int $quantity the line's quantity
+ * @return bool
+ */
+function pg_gift_card_line_quantity_allowed($quantity)
+{
+    return pg_order_gift_card_count($quantity) === (int) $quantity;
+}
+
+/**
  * The day a gift card ends: the validity days counted from its delivery
  * date, or from today when it is sent at once ('0000-00-00'); '' when the
  * store sets no validity days. Pure.
