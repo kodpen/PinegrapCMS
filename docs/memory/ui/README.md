@@ -72,7 +72,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - calendar-event-duplicate.md: A duplicated calendar event starts unpublished, named "… (copy)", with its calendars, cancelled repeats and locations copied; the location check asks on its first save
 - calendar-event-edit-screen.md: Edit calendar event screen (edit_calendar_event.php): which recurring instance it edits (recurrence_number) and how a missing or array value is read
 - calendar-event-exception-endpoint.md: update_calendar_event_exception.php (Remove / Unremove a repeating event's instance): parameter check, instance range, no second row
-- calendar-event-form-checks.md: Calendar event form: whole-number fields and their server check, the location check's time window, the all day label suffix ids, the reservations switch re-running the repeat toggle
+- calendar-event-form-checks.md: Calendar event form checks: whole numbers, repeat types, text lengths, the all day switch keeping times, the location check time window, the time suffix ids, the reservations row
 - calendar-event-location-shared-form.md: The calendar event location create and edit screens share includes/forms/calendar_event_location_form.php: what it holds, what stays in the screens
 - calendar-event-shared-form.md: add_calendar_event.php and edit_calendar_event.php draw and check the event form through includes/forms/calendar_event_form.php; what differs between the two calls
 - calendar-location-availability.md: How check_calendar_event_location_availability() finds a room already booked, including recurring, overnight and multi-day events
