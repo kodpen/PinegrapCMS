@@ -906,10 +906,12 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
     // A cart quote whose link filled this cart is now ordered.
     pg_cart_quote_order_completed($order_id);
 
-    // A designed form's record whose fee this order charged is now paid; an
-    // offline payment (no paid_at yet) leaves it unpaid.
+    // A designed form's record whose fee this order charged, or a booking
+    // whose deposit it charged, is now paid; an offline payment (no paid_at
+    // yet) leaves it unpaid.
     if ((int) ($values['paid_at'] ?? 0) > 0) {
         pg_form_payment_mark_paid($order_id);
+        pg_booking_deposit_mark_paid($order_id);
     }
 
     // Keep the checkout documents with the order as the customer saw them,

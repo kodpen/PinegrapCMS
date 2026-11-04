@@ -7,6 +7,7 @@ module: bookings
 ## What are the tables?
 - Step `upgrade_2026_11_0_bookings()` (11.0.157), shape decided in #5032: `booking_services` (length, `buffer_before`/`buffer_after` in minutes, `price` minor units, `capacity` 1), `booking_staff` (one row per panel user, `service_ids`/`hours`/`exceptions` JSON text), `bookings` (times unix UTC, `status` ENUM held/requested/confirmed/cancelled/no_show/done, `hold_until`, `manage_token` = sha256 of the link token). `slot_at` = copy of `start_at`, NULL on a cancelled row; UNIQUE `idx_staff_slot (staff_id, slot_at)` (NULLs never collide, so a cancelled booking frees its slot and keeps its real time; #6135). A cancel writes `status = 'cancelled', slot_at = NULL` in one UPDATE; a reschedule moves `start_at`, `end_at`, `slot_at` in one UPDATE (1062 there is "just taken" too). `idx_start (start_at)` serves the agenda.
 - Readers call `pg_booking_ready()` first: files land before the upgrade.
+- Deposits (11.0.169): `booking_services.deposit`/`deposit_product_id`, `bookings.order_id`/`paid_at`; a paid deposit confirms the booking ([[booking-deposits]]).
 
 ## How are hours stored?
 - `hours`: `{"1":[["09:00","13:00"],["14:00","18:00"]],…}`, ISO weekday 1 (Mon) to 7, wall-clock times of the site zone, `"24:00"` ends the day. `exceptions`: `{"2026-12-24":[["09:00","12:00"]],"2026-12-25":[]}`; an empty list is a day off. `pg_booking_hours_clean()` / `pg_booking_exceptions_clean()` drop bad ranges and merge overlapping or touching ones.
