@@ -6,7 +6,7 @@ description: Steps E23b, E30-E32, E31b of plans/image-editor.md: Fotoğraf and V
 ## Which steps are there?
 - Owner decisions in `workflow/decisions-made-product-24.md` and `-27.md`. Sizes, files and review as in `image-editor-workers.md`.
 
-- E23b (M) Rail groups Fotoğraf and Vektör (owner 2026-11-03 and -04). `free`.
+- E23b (M) Rail groups Fotoğraf and Vektör (owner 2026-11-03 and -04). Done in #6819 (`ui/image-editor-rail.md`).
   - Two rail items, each with a mode switch at the top of its panel: Fotoğraf (Crop, Adjust, Redact, Frame; E27 and E28 join it) and Vektör (pen, scissors, shape builder, warp; E26 joins it). The item is highlighted in each mode; a mode keeps its hint, letter and pointer handling; Fotoğraf opens the mode used last, Crop the first time. Photo rail: Select, Fotoğraf, Canvas, Draw, Text, Sticker, Vektör, Animate, Layers at the foot; a group with one mode on a profile is that mode's item. Labels at 1280×800; the phone's bar the same.
   - Tests: the profiles list one item per group; a mode switch keeps the selection; the last mode reopens. Browser: the rail at 1280×800 with labels, the phone's bar.
 

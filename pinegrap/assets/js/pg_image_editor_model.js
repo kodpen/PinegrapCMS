@@ -186,6 +186,71 @@
         return { profile: profile, list: list, mini: mini };
     }
 
+    // Rail items that hold several tools, each a mode of the item's switch
+    // at the top of its panel, in the switch's order.
+    var RAIL_GROUPS = {
+        photo: ['crop', 'adjust', 'redact', 'area', 'frame'],
+        vectors: ['vector', 'scissors', 'builder', 'warp']
+    };
+
+    // The group a tool belongs to, or ''.
+    function railGroup(tool) {
+        var keys = Object.keys(RAIL_GROUPS);
+
+        for (var i = 0; i < keys.length; i++) {
+            if (RAIL_GROUPS[keys[i]].indexOf(tool) >= 0) {
+                return keys[i];
+            }
+        }
+
+        return '';
+    }
+
+    // The rail's items for a call's tools, each { id, modes }: a group
+    // stands where the first of its tools stands in the list and opens the
+    // ones the list has; a group with one of them is that tool's own item.
+    function railItems(list) {
+        var items = [], seen = {};
+
+        (list || []).forEach(function (tool) {
+            var g = railGroup(tool), modes;
+
+            if (!g) {
+                items.push({ id: tool, modes: [tool] });
+                return;
+            }
+
+            if (seen[g]) {
+                return;
+            }
+
+            seen[g] = true;
+            modes = RAIL_GROUPS[g].filter(function (m) { return list.indexOf(m) >= 0; });
+            items.push({ id: (modes.length > 1) ? g : modes[0], modes: modes });
+        });
+
+        return items;
+    }
+
+    // The rail item whose modes hold tool, or null.
+    function railItemOf(items, tool) {
+        for (var i = 0; i < (items || []).length; i++) {
+            if (items[i].modes.indexOf(tool) >= 0) {
+                return items[i];
+            }
+        }
+
+        return null;
+    }
+
+    // The tool a press on item opens: its mode used last (last: item id to
+    // tool), else its first.
+    function railOpen(item, last) {
+        var m = last && last[item.id];
+
+        return (m && (item.modes.indexOf(m) >= 0)) ? m : item.modes[0];
+    }
+
     // ---- document ----
 
     var SIZE_MIN = 16, SIZE_MAX = 8000;
@@ -7187,6 +7252,7 @@
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
         PROFILES: PROFILES, TOOLS: TOOLS, resolveTools: resolveTools,
+        RAIL_GROUPS: RAIL_GROUPS, railGroup: railGroup, railItems: railItems, railItemOf: railItemOf, railOpen: railOpen,
         clone: clone, sameDocument: sameDocument, newDocument: newDocument, docSize: docSize, History: History,
         RATIOS: RATIOS, givenRatio: givenRatio, cropRatios: cropRatios, cropBox: cropBox, pictureMatrix: pictureMatrix, fitRatio: fitRatio, resizeCrop: resizeCrop,
         moveCrop: moveCrop, mapLayer: mapLayer, reorient: reorient, turnDocument: turnDocument, flipDocument: flipDocument,
