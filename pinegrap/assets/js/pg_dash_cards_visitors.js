@@ -2,8 +2,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The new dashboard's Visitors cards (assets/js/pg_dash.js draws the
- * frames): Visitor summaries, Online engagement, Google Search and Google
- * Analytics. The data is what
+ * frames): Visitor summaries, Visitor map, Online engagement, Google Search
+ * and Google Analytics. The data is what
  * includes/dashboard/v2/cards/<id>.php returns.
  *
  * @author      Erdal Güral (Kodpen)
@@ -43,6 +43,82 @@
         chart.appendChild(caption);
         body.appendChild(chart);
 
+        body.appendChild(pgDash.rows(data.rows_title, data.rows));
+        more(body, data.url, config);
+    };
+
+    // The home country's provinces with a bubble per place sized by its
+    // visits (area follows the figure), placed at the middle of the
+    // province's outline. Every bubble's figure is also in the rows and on
+    // hover and focus, so the size never carries it alone.
+    var SVG = "http://www.w3.org/2000/svg";
+
+    function bubbleMap(figure, map, data) {
+        var svg = document.createElementNS(SVG, "svg");
+        svg.setAttribute("viewBox", map.viewBox);
+        svg.setAttribute("role", "img");
+        svg.setAttribute("aria-label", data.map_label);
+        var paths = {};
+        map.shapes.forEach(function (shape) {
+            var path = document.createElementNS(SVG, "path");
+            path.setAttribute("d", shape.d);
+            svg.appendChild(path);
+            paths[shape.id] = path;
+        });
+        figure.appendChild(svg);
+
+        var box = map.viewBox.split(/[\s,]+/).map(Number);
+        var width = box[2] || 100;
+        var smallest = width * 0.012;
+        var largest = width * 0.045;
+        var circles = [];
+        var tips = [];
+        (data.bubbles || []).forEach(function (bubble) {
+            var path = paths[bubble.code];
+            if (!path) {
+                return;
+            }
+            var b = path.getBBox();
+            var circle = document.createElementNS(SVG, "circle");
+            circle.setAttribute("class", "pg-dash-map-bubble");
+            circle.setAttribute("cx", String(b.x + b.width / 2));
+            circle.setAttribute("cy", String(b.y + b.height / 2));
+            circle.setAttribute("r", String(smallest + Math.sqrt(bubble.share || 0) * (largest - smallest)));
+            svg.appendChild(circle);
+            circles.push(circle);
+            tips.push(bubble.tip);
+        });
+        pgDash.chartTips(svg, tips, {
+            parts: circles,
+            mark: function (i) {
+                circles.forEach(function (circle, n) {
+                    circle.toggleAttribute("data-active", n === i);
+                });
+            }
+        });
+    }
+
+    pgDash.renderers.visitmap = function (body, data, card, config) {
+        var el = pgDash.el;
+
+        var head = el("div", "pg-dash-shop-head");
+        head.appendChild(el("p", "pg-dash-shop-figure", data.figure));
+        head.appendChild(el("p", "pg-dash-shop-sub", data.sub));
+        body.appendChild(head);
+
+        if (data.map_url && pgDash.mapShapes) {
+            var figure = el("figure", "pg-dash-chart pg-dash-map");
+            body.appendChild(figure);
+            pgDash.mapShapes(data.map_url).then(function (map) {
+                bubbleMap(figure, map, data);
+            }).catch(function () {
+                figure.remove();
+            });
+        }
+
+        if (data.none) {
+            body.appendChild(el("p", "pg-dash-card-note", data.none));
+        }
         body.appendChild(pgDash.rows(data.rows_title, data.rows));
         more(body, data.url, config);
     };
