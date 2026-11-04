@@ -5,7 +5,7 @@ module: visitor_periods
 ---
 
 ## What is the screen?
-- `visitors.php` (root): `validate_user()`, `validate_visitors_access()`, the period from `$_GET`, the toolbar (Saved reports; the dates and the compared dates in the grow slot; the period bar in the search slot), then `pg_visitors_render_sections()`. With no section file the screen says the sections are on their way. Opened by the Visitors menu entry (V1, #6361).
+- `visitors.php` (root): `validate_user()`, `validate_visitors_access()`, the period from `$_GET`, the toolbar (Saved reports; the dates and the compared dates in the grow slot; the period bar in the search slot), then `pg_visitors_render_sections()`, every section file present (alerts to places, #6361-#6516). Opened by the Visitors menu entry. What a section may read and edit: `ui/visitors-section-rules.md`.
 - Its stylesheet `assets/css/pg_visitors.src.css` (`pg_css_bundles()`, linked through `pg_visitors_style_url()` in the head) and script `assets/js/pg_visitors.src.js` (`pg_js_bundles()`); Chart.js is loaded only when a section printed a `data-pg-chart` canvas.
 
 ## How is the period read?
@@ -21,7 +21,7 @@ module: visitor_periods
 - Each section edits only its labelled block in `pg_visitors.src.css` and runs `php tools/build_css.php`.
 
 ## What do the menu and search show?
-- Menu item 6 opens `visitors.php`: Overview, then each section whose file exists as `visitors.php#<name>`; Site Search, Page Speed and AI Visibility link their old screens (same ready checks) until their section file is there; then Saved reports, Create a visitor report, the order and shipping block, Search Console settings, external analytics. `visitors.php` is in the active-menu switch.
+- Menu item 6 opens `visitors.php`: Overview, then each section whose file exists as `visitors.php#<name>`; Site Search, Page Speed and AI Visibility only when `pg_site_search_stats_ready()`, `pg_vitals_ready()`, `pg_ai_visibility_ready()` (their old screens answer a 301 to the anchor); then Saved reports, Create a visitor report, the order and shipping block, Search Console settings, external analytics. `visitors.php` is in the active-menu switch.
 - Panel search: "Visitors" → `visitors.php`. Help: `get_help_url.php` `visitors` → `visitors#overview`.
 
 ## What pins it?

@@ -3723,19 +3723,17 @@ function output_menu($properties = false)
         $menu_items[6]['title'] = 'Visitors';
         $menu_items[6]['context'] = true;
         // VISITORS > Overview, then its sections as anchors. Site Search, Page
-        // Speed and AI Visibility stay links to their own screens, under the
-        // same ready checks, until their sections are there.
+        // Speed and AI Visibility are listed only once their figures are ready;
+        // their old screens answer a redirect to the anchor.
         $menu_items[6]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitors.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-speedometer bi-me-2\'>' . lang('Overview') . '</a>';
-        $visitor_screens = array(
-            'site_search' => array('visitor_search.php', 'bi-search', pg_site_search_stats_ready()),
-            'speed'       => array('visitor_vitals.php', 'bi-speedometer2', pg_vitals_ready()),
-            'ai'          => array('visitor_ai.php', 'bi-robot', pg_ai_visibility_ready()),
+        $visitor_ready = array(
+            'site_search' => pg_site_search_stats_ready(),
+            'speed'       => pg_vitals_ready(),
+            'ai'          => pg_ai_visibility_ready(),
         );
         foreach (pg_visitors_sections() as $visitor_section => $visitor_section_label) {
-            if (pg_visitors_section_exists($visitor_section) && (!isset($visitor_screens[$visitor_section]) || $visitor_screens[$visitor_section][2])) {
+            if (pg_visitors_section_exists($visitor_section) && (!isset($visitor_ready[$visitor_section]) || $visitor_ready[$visitor_section])) {
                 $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitors.php#' . $visitor_section . '\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-dot bi-me-2\'>' . h($visitor_section_label) . '</a>';
-            } elseif (isset($visitor_screens[$visitor_section]) && $visitor_screens[$visitor_section][2]) {
-                $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $visitor_screens[$visitor_section][0] . '\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ' . $visitor_screens[$visitor_section][1] . ' bi-me-2\'>' . h($visitor_section_label) . '</a>';
             }
         }
 

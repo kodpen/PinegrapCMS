@@ -7,6 +7,7 @@ Visitor statistics, page and article views, search engine index flags.
 ## Key rules
 
 <!-- key-rules:start -->
+- Take a visitor figure from `includes/fn/visitor_figures.php` (totals, breakdown, traffic, content), never a raw count of `visitors` rows: it reads the daily summary where it covers and the raw rows only for the rest (`visitor-figures-module.md`).
 - Build reports from the summary tables (`visitor_stats_hourly`, `visitor_content_hourly`), never by counting raw `visitors` rows (`visitor-rollup-tables.md`).
 - Aggregate a busy counter at write time with one `INSERT ... ON DUPLICATE KEY UPDATE` on a sha1 bucket key; never put the query string in the key (`high-volume-counter-rules.md`).
 - Sum aggregated rows (`SUM(page_views)`, `SUM(hit_count)`); both visitor summary tables must count the same thing (`visitor-rollup-consistency.md`).
