@@ -22119,6 +22119,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
    height in both states, so the rows never jump. */
 .pg-list-table-bar {
   display: flex;
+  flex: 0 0 auto;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
