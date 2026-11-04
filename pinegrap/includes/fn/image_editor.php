@@ -2463,6 +2463,10 @@ function pg_image_editor_strings_artboard()
         'pictureFree'       => lang('Move and resize the picture on the canvas'),
         'pictureDelete'     => lang('Delete the picture'),
         'pictureTitle'      => lang('Picture'),
+        'import'            => lang('Import'),
+        'importComputer'    => lang('From this computer'),
+        'importSite'        => lang('From the site'),
+        'importError'       => lang('This file cannot be imported.'),
     );
 }
 
@@ -3165,6 +3169,7 @@ function pg_image_editor_strings_svg()
         'svgKind_g'         => lang('Group'),
         'svgKind_image'     => lang('Picture'),
         'svgKind_kept'      => lang('Kept element'),
+        'svgBreakApart'     => lang('Break apart'),
     );
 }
 
