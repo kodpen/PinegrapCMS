@@ -7,6 +7,7 @@ description: Flow event contact_group.joined: one ws_events_in row per contact a
 - `pg_announce_contact_group_members()` (includes/fn/events.php), the seam every door and the recompute pass through: after the `contact_group.members_changed` announce it calls `pg_event_record('contact_group.joined', …)` once per added contact (`pg_contact_group_joined_events()`, pure). A hand edit, a form, a product sale, the API and a rule pass behave alike; the first pass after a switch to dynamic fires for every matching contact.
 - A pass of thousands keeps thousands of rows; the existing event run (`ws_events_process()`) drains them in its batches. Nothing new is scheduled.
 - Owner decision #6599/#6625 (`workflow/decisions-made-product-27.md`): once per contact, never one run per change.
+- Added in #6651.
 
 ## What does it carry?
 - Payload `id` (the contact, as every contact event names it), `contact_id`, `group_id`, `group_name`. `ws_events_record_of()` maps it to `contact`; `ws_events_watched()` leaves it out (no line in a watching channel).
