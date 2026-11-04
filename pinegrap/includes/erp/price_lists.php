@@ -214,7 +214,7 @@ function erp_account_discount_save($account_id, $text)
     $rate = erp_account_discount_rate_parse($text);
 
     if ($rate === null) {
-        return array('success' => false, 'error' => lang('A price cannot be negative, and a discount runs from 0 to 100.'));
+        return array('success' => false, 'error' => lang(array('string' => 'Enter a discount from 0 to 100, such as {var:1}.', 'vars' => array(pg_format_number(12.5, 1)))));
     }
 
     db("UPDATE erp_accounts SET discount_rate = '" . escape(number_format($rate, 3, '.', '')) . "' WHERE id = '" . (int) $account_id . "'");
@@ -275,7 +275,8 @@ function erp_account_price_edit_columns()
 {
     return array(
         'price'    => array('type' => 'money', 'label' => lang('Account price'), 'empty' => true),
-        'discount' => array('type' => 'money', 'label' => lang('Discount %'), 'empty' => true),
+        // A percentage, not an amount: refused as "takes a number".
+        'discount' => array('type' => 'decimal', 'label' => lang('Discount %'), 'empty' => true),
     );
 }
 
