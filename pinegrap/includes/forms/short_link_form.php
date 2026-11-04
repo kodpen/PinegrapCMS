@@ -28,7 +28,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function pg_short_link_form_destination_options()
 {
     return array(
-        '-' . lang(array('string'=>'Select {var:1}','vars'=>lang('destination type'))) . '-' => '',
+        '-' . lang(array('string'=>'Select {var:1}','vars'=>lang('Destination Type'))) . '-' => '',
         lang('Page') => 'page',
         lang('Product Group') => 'product_group',
         lang('Product') => 'product',
