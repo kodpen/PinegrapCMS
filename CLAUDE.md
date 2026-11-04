@@ -128,11 +128,13 @@ decision questions.
    claim); finished work is still marked ready. A PR waiting on a decision
    (Working mode 10) goes back to draft until it comes, so only work the
    merging session can take holds a place; each coordinator's workers hold
-   at most 6 of the 20.
+   at most 6 of the 20, its extra bug hunters aside.
    `gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '[.[]|select(.draft|not)|select(.head.ref|startswith("merge-train")|not)]|length'`
 9. **Coordinators.** One coordinator per account starts its cloud workers within
-   the account's quota, 4 to 10 workers each (`coordinator-limits.md`); it writes
-   no code and merges nothing. It tells the owner when the merging session
+   the account's quota, 4 to 10 workers each (`coordinator-limits.md`), plus
+   2 to 3 bug hunters outside that count while the merge line keeps half of
+   them waiting, archived once it is clear (`coordinator-idle-bug-hunt.md`);
+   it writes no code and merges nothing. It tells the owner when the merging session
    seems stopped (`coordinator.md`). The test coordinator on the owner's
    local account starts no workers: it tests and opens `bug` issues, which
    the other coordinators give to workers as free work (`test-coordinator.md`).
