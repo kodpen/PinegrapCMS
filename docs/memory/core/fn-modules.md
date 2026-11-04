@@ -136,6 +136,7 @@ description: Generated from the module field of the memory files: each includes/
 - `prototype_map`: [[prototype-map-read]]
 - `record_revisions`: [[collection-history]], [[collection-revisions]]
 - `request_scheme`: [[proxy-https-trust]], [[secure-mode-proxy-offer]]
+- `reseal`: [[encryption-key-reseal-registry]]
 - `returns`: [[api-returns]], [[bootstrap-6-runtime-markup]]
 - `reviews`: [[product-review-photos]], [[product-reviews-verified]]
 - `search_audits`: [[search-and-audits-screen]]
