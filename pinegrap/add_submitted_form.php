@@ -218,64 +218,29 @@ if (!$_POST) {
         'grow'      => '<span class="fw-semibold text-break">' . h($form_name) . '</span>',
     )) . '
                 ' . $form_markup['wysiwyg_javascript'] . '
-            <div class="row">
-                <div class="col-12">
-                    ' . $liveform->output_errors() . '
-                    ' . $liveform->get_warnings() . '
-                    ' . $liveform->output_notices() . '
-                    <div class="row mb-3  flex-wrap">
-                        <form' . $form_markup['enctype'] . ' name="form" action="add_submitted_form.php?page_id=' . h(urlencode($page_id)) . '" method="post">
-                            ' . get_token_field() . '
-                            <input type="hidden" name="page_id" value="' . h($page_id) . '" />
-                            <div class="row">
-                                <div class="col-12">
-                                    <div class="card my-7 ">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                            ' . lang('Form Properties') . '
+        ' . $liveform->output_errors() . '
+        ' . $liveform->get_warnings() . '
+        ' . $liveform->output_notices() . '
+                    <form' . $form_markup['enctype'] . ' name="form" action="add_submitted_form.php?page_id=' . h(urlencode($page_id)) . '" method="post">
+                        ' . get_token_field() . '
+                        <input type="hidden" name="page_id" value="' . h($page_id) . '" />
+                        ' . pg_submitted_form_layout(
+                            pg_submitted_form_data_card($form_markup['fields']),
+                            pg_submitted_form_status_card(lang('Summary'), '
+                                        <dl class="mb-0">'
+                                . pg_submitted_form_status_row(lang('Custom Form'), h($form_name)) . '
+                                        </dl>')
+                            . pg_submitted_form_status_card(lang('Notifications'), '
+                                        <div class="form-field">
+                                            <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'send_notifications', 'id'=>'send_notifications', 'value'=>'1', 'class'=>'no-bs', 'aria-describedby'=>'send_notifications_help')) . '</div>
+                                            <label for="send_notifications">' . lang('Send notification e-mails') . '</label>
                                         </div>
-                                        <div class="card-body text-center md:text-start">
-                                            <div class="row">
-                                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                    <div class="form-text">' . lang('Custom Form') . '</div>
-                                                    <div class="h5">' . h($form_name) . '</div>
-                                                </div>
-                                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                    <div class="form-text">' . lang('Notifications') . '</div>
-                                                    <div class="form-field">
-                                                        <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'send_notifications', 'id'=>'send_notifications', 'value'=>'1', 'class'=>'no-bs')) . '</div>
-                                                        <label class="" for="send_notifications">' . lang('Send notification e-mails') . '</label>
-                                                    </div>
-                                                    <div class="form-text">' . lang('Off by default. When on, the same e-mails that a visitor submission would send are sent.') . '</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="card my-7">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                            ' . lang('Form Data') . '
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                ' . $form_markup['fields'] . '
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                                <div class="container">
-                                    <div class=" btn-group flex-wrap justify-content-center">
+                                        <div id="send_notifications_help" class="form-text">' . lang('Off by default. When on, the same e-mails that a visitor submission would send are sent.') . '</div>'),
+                            '
                                         <button type="submit" name="save_for_later_button" value="Save for Later" class="btn my-1  btn-solid theme-secondary "><span class="material-icons me-3">save_as</span><span class="pg-btn-label" >' . lang(array('string'=>'Save for Later') ) . '</span></button>
-                                        <button type="submit" name="complete_button" value="Complete" class="btn my-1  btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save and Complete') ) . '</span></button>
-                                    </div>
-                                </div>
-                            </nav>
-                        </form>
-                    </div>
-                </div>
-            </div>
+                                        <button type="submit" name="complete_button" value="Complete" class="btn my-1  btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save and Complete') ) . '</span></button>'
+                        ) . '
+                    </form>
         
     ' . pg_ai_write_assets() . '
 </main>' . output_footer();
