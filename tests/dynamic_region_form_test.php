@@ -74,5 +74,7 @@ function test_dynamic_region_form_wide_layout_columns()
 
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_dynamic_region.php');
 	pg_assert_contains("lang('Last Modified')", $edit, 'the edit screen shows the last change');
-	pg_assert_false(strpos($edit, "'grow'") !== false, 'the body tag left the toolbar for the Summary');
+	// Its only toolbar item was the body tag, so the screen has no toolbar.
+	pg_assert_false(strpos($edit, 'pg_screen_toolbar(') !== false, 'the body tag left the toolbar for the Summary');
+	pg_assert_false(strpos($edit, '<nav id="button_bar"') !== false, 'no bar written by hand');
 }
