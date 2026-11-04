@@ -8,7 +8,7 @@ module: store_credit_points
 - Settings › Ecommerce › reward program card: "Points per unit of store credit" and "Smallest conversion" (an amount). Stored as `config_text` rows, not `config` columns (the row's room, `data/config-table-no-varchar.md`): `credit_points_per_unit` as a plain number with a dot (`pg_credit_points_parse_rate()`, read like `pg_parse_amount()`, at most 4 decimals, capped at 1,000,000; '' = off) and `credit_points_smallest` in minor units (`pg_credit_points_parse_smallest()`, `round()`). No rate, or the reward program off, means nothing changes on the site.
 
 ## How does a customer convert?
-- My Account (built-in `includes/templates/my_account.php` and `my_account_system.php`, from `get_my_account.php`'s `reward_points_credit`): a number box (all their points by default, at least `pg_credit_points_minimum()`), "Convert to store credit" and what all their points are worth. Drawn only when the points reach the minimum. The designer my_account widget shows no points yet, so it has no form either.
+- My Account's store credit section (built-in templates and the designer my_account widget, `store-credit-screens.md`): a number box (all their points by default, at least `pg_credit_points_minimum()`), "Convert to store credit" and what all their points are worth. Drawn only when the points reach the minimum (`pg_credit_account_convert()`).
 - The form posts to `convert_reward_points.php` (POST, token, `send_to` through `pg_safe_redirect_path()`); the customer is `pg_credit_checkout_user()`, so a guest and a ghost session are refused. The answer is a notice or an error on the `my_account` liveform.
 
 ## What does a conversion write?

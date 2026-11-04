@@ -1414,6 +1414,7 @@
     "Expense": "Gider",
     "Expense #{var:1}": "Gider #{var:1}",
     "Expense #{var:1} recorded. The next one:": "#{var:1} numaralı gider kaydedildi. Sıradaki:",
+    "Expense #{var:1} recorded; enter the next one below.": "#{var:1} numaralı gider kaydedildi; sıradakini aşağıya girin.",
     "Expense cancelled": "Gider iptal edildi",
     "Expense categories": "Gider kategorileri",
     "Expense category": "Gider kategorisi",

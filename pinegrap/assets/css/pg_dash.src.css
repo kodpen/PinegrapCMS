@@ -1485,6 +1485,25 @@
     text-overflow: ellipsis;
   }
 
+  /* A linked row: the name is the link and covers the whole row. */
+  .pg-dash-row:has(> a.pg-dash-row-text) {
+    position: relative;
+  }
+
+  a.pg-dash-row-text {
+    text-decoration: none;
+  }
+
+  a.pg-dash-row-text::after {
+    position: absolute;
+    inset: 0;
+    content: "";
+  }
+
+  a.pg-dash-row-text:hover {
+    text-decoration: underline;
+  }
+
   .pg-dash-row-note {
     grid-column: 3;
     grid-row: 1;
@@ -3981,6 +4000,19 @@
     stroke-width: 1;
   }
 
+  .pg-dash-map a path {
+    cursor: pointer;
+  }
+
+  /* The region under the pointer or the keyboard, outlined on top. */
+  .pg-dash-map .pg-dash-map-ring {
+    fill: none;
+    stroke: var(--pgd-fg);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+    pointer-events: none;
+  }
+
   .pg-dash-map [data-step="1"] { fill: color-mix(in srgb, var(--pg-dash-cat) 25%, var(--pg-card-bg)); }
   .pg-dash-map [data-step="2"] { fill: color-mix(in srgb, var(--pg-dash-cat) 45%, var(--pg-card-bg)); }
   .pg-dash-map [data-step="3"] { fill: color-mix(in srgb, var(--pg-dash-cat) 70%, var(--pg-card-bg)); }
@@ -4318,6 +4350,7 @@
     position: fixed;
     z-index: 1080;
     max-width: 16rem;
+    white-space: pre-line;
     padding: .3125rem .625rem;
     border-radius: .5rem;
     background: #0f172a;

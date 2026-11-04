@@ -33,7 +33,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - api-product-name-and-dimensions.md: External API product name (SKU) rule on create and update (trimmed, required, free: 409 name_taken) and the weight/length/width/height bounds that fit decimal(12,4) unsigned
 - back-in-stock-notices.md: Back-in-stock notices (includes/fn/stock_notify.php, stock_notify.php): who may ask, the request rules, the inventory.changed listener, claim then mail, queue vs inline, trim, export, delete hooks
 - back-in-stock-sms.md: Back-in-stock notice by SMS (PR #1864): kind stock (transactional, owner decision), the stock_back event, the optional number field, text instead of mail, the one-message promise
-- barcode-product-code-overlap.md: A barcode may not be another product's product code and a product code may not be another product's barcode; a scanned code that is both, on two products, is refused (#4715)
+- barcode-product-code-overlap.md: A barcode, typed or generated, may not be another product's code, nor a product code another product's barcode; a scanned code that is both is refused (#4715, #6664)
 - barcode-stock-scan-checks.md: Barcode stock increase/decrease and the product screen's barcode save: whole quantities only (pg_barcode_scan_quantity()), no product in the Recycle Bin or missing (#4447)
 - booking-deposits.md: Booking deposits (BK9a): booking_services.deposit and deposit_product_id, bookings.order_id and paid_at (11.0.169), the deposit order, marked paid from the order's completion, confirm or requested
 - booking-manage.md: A customer's own booking (BK7): booking_manage.php from the mail's signed link, cancel and move within the policy window, .ics download, the my_account widget's bookings section
@@ -286,7 +286,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - store-credit-points-take-back.md: An order's reward points taken back on cancel, full refund and line refund (#6256, decision #6306): recomputed from the lines, balance first, the converted rest off the newest points cards
 - store-credit-points.md: Reward points to store credit (2026.11.0): two config_text settings, the My Account form, convert_reward_points.php, the guarded UPDATE then pg_credit_issue() kind points, the goal left as it was
 - store-credit-refunds.md: Refunds given as store credit (2026.11.0): the return refund's credit method, the cancelled order's refund dialog, the bonus setting, what is written, the mails
-- store-credit-screens.md: Store credit on the customer's screen (edit_user.php, 2026.11.0): the Store Credit card, who sees it, issue (amount, reason, last day), void with a reason, what is logged
+- store-credit-screens.md: Store credit screens (2026.11.0): the staff card on edit_user.php (issue, void, rights) and the customer's My Account section (built-in templates, designer widget section store_credit)
 - storefront-api-missing-fields.md: Public api.php storefront actions (get_cross_sell_items, get_product, get_installment_options) read missing or malformed request fields as empty and answer in JSON, never with a warning or a 500
 - storefront-pack-decisions.md: Lasting decisions of the storefront pack (reviews, wishlist, back in stock, bundles; 2026-10-19, finished with #2902) and where each part is documented
 - subscriptions-account.md: The customer's subscriptions in My Account (slice 5a): the my_account "subscriptions" section, pause/resume/cancel at period end/update card, ownership, events, the job ending cancelled rows

@@ -9818,12 +9818,31 @@ function pg_generate_unique_barcode($type = '', $product_id = 0)
             $barcode = str_pad($product_id, 5, '0', STR_PAD_LEFT) . str_pad(rand(0, 9999999), 7, '0', STR_PAD_LEFT);
         }
 
-        $exists = db_value("SELECT COUNT(*) FROM product_barcodes WHERE barcode = '" . e($barcode) . "'");
+        $exists = pg_barcode_taken($barcode, $product_id);
         $attempts++;
 
     } while ($exists && ($attempts < 30));
 
     return $exists ? '' : $barcode;
+}
+/**
+ * Whether a barcode may not be given to a product: another barcode row has
+ * it, or it is another product's code. A scan resolves a barcode before a
+ * product code, so such a barcode would move this product's stock when the
+ * other product's label is scanned. The product's own code stays a valid
+ * barcode for it.
+ *
+ * @param string $barcode
+ * @param int    $product_id the product the barcode is for, 0 for none yet
+ * @return bool
+ */
+function pg_barcode_taken($barcode, $product_id = 0)
+{
+    if (db_value("SELECT COUNT(*) FROM product_barcodes WHERE barcode = '" . e($barcode) . "'")) {
+        return true;
+    }
+
+    return (bool) pg_product_name_holder($barcode, $product_id, false);
 }
 /**
  * Attach a barcode to a product.
@@ -9860,7 +9879,7 @@ function pg_assign_product_barcode($product_id, $barcode = '', $type = '')
         // A code the operator typed is refused rather than replaced if it is
         // taken: silently generating a different one would leave them holding a
         // label that scans as another product.
-        if (db_value("SELECT COUNT(*) FROM product_barcodes WHERE barcode = '" . e($barcode) . "'")) {
+        if (pg_barcode_taken($barcode, $product_id)) {
             return '';
         }
     } else {

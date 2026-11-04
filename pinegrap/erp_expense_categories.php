@@ -14,7 +14,9 @@
 
 include('init.php');
 $user = validate_user();
-if (!validate_erp_access($user)) {
+// The read-only accountant is told on arrival, not after filling the form in.
+if (!validate_erp_access($user)
+    || (defined('USER_ERP_READONLY') && USER_ERP_READONLY && !validate_erp_access($user, 'write'))) {
     exit();
 }
 
@@ -72,6 +74,13 @@ if ($_POST) {
     $saved = erp_expense_categories_save($rows, $new);
 
     if (!$saved['success']) {
+        // Nothing was written: the form comes back with what was typed and
+        // the refused row's name marked.
+        $_SESSION['erp_expense_categories_sent'] = array(
+            'rows' => $rows,
+            'new' => $new,
+            'id' => (int) ($saved['id'] ?? 0),
+        );
         $liveform->mark_error('_error', h($saved['error']));
         go($self);
     }
@@ -96,17 +105,38 @@ if ($ready) {
     }
 }
 
+// A refused save brings back what was typed, once.
+$sent = (isset($_SESSION['erp_expense_categories_sent']) && is_array($_SESSION['erp_expense_categories_sent']))
+    ? $_SESSION['erp_expense_categories_sent'] : array();
+unset($_SESSION['erp_expense_categories_sent']);
+$sent_rows = (array) ($sent['rows'] ?? array());
+$sent_new = (array) ($sent['new'] ?? array());
+$refused_id = (int) ($sent['id'] ?? 0);
+
 $output_rows = '';
 
 foreach ($ready ? erp_expense_categories() : array() as $category) {
     $category_id = (int) $category['id'];
     $field = 'categories[' . $category_id . ']';
 
+    if (isset($sent_rows[$category_id]) && is_array($sent_rows[$category_id])) {
+        $typed = $sent_rows[$category_id];
+        $category['name'] = (string) ($typed['name'] ?? '');
+        $category['code'] = (string) ($typed['code'] ?? '');
+        $category['sort_order'] = (int) ($typed['sort_order'] ?? 0);
+        $category['is_active'] = !empty($typed['is_active']) ? 1 : 0;
+        if (array_key_exists('tax_deductible', $typed)) {
+            $category['tax_deductible'] = !empty($typed['tax_deductible']) ? 1 : 0;
+        }
+    }
+
+    $name_invalid = ($category_id === $refused_id);
+
     $output_rows .= '
         <tr' . (((int) $category['is_active'] !== 1) ? ' class="opacity-75"' : '') . '>
             <td style="width:6rem"><input type="number" class="form-control form-control-sm text-end" name="' . h($field) . '[sort_order]" value="' . (int) $category['sort_order'] . '" step="1" min="-2147483648" max="2147483647" aria-label="' . h(lang('Sort Order')) . '" /></td>
-            <td style="min-width:12rem"><input type="text" class="form-control form-control-sm" name="' . h($field) . '[name]" value="' . h((string) $category['name']) . '" maxlength="100" required aria-label="' . h(lang('Name')) . '" /></td>
-            <td style="width:10rem"><input type="text" class="form-control form-control-sm font-monospace" name="' . h($field) . '[code]" value="' . h((string) $category['code']) . '" maxlength="32" placeholder="770" aria-label="' . h(lang('Account code')) . '" /></td>
+            <td style="min-width:12rem"><input type="text" class="form-control form-control-sm' . ($name_invalid ? ' is-invalid' : '') . '" name="' . h($field) . '[name]" value="' . h((string) $category['name']) . '" maxlength="100" required aria-label="' . h(lang('Name')) . '"' . ($name_invalid ? ' aria-invalid="true" autofocus' : '') . ' /></td>
+            <td style="min-width:8rem"><input type="text" class="form-control form-control-sm font-monospace" name="' . h($field) . '[code]" value="' . h((string) $category['code']) . '" maxlength="32" placeholder="770" aria-label="' . h(lang('Account code')) . '" /></td>
             <td class="text-end fg-secondary" style="width:6rem">' . (int) ($counts[$category_id] ?? 0) . '</td>
             ' . ($with_deductible ? '<td style="width:11rem">
                 <div class="form-field mb-0">
@@ -161,12 +191,12 @@ pg_page_shell([
                             <tbody>' . $output_rows . '
                                 <tr class="pg-table-light">
                                     <td class="fg-secondary small">' . lang('New') . '</td>
-                                    <td><input type="text" class="form-control form-control-sm" name="new_name" maxlength="100" placeholder="' . h(lang('A new category')) . '" aria-label="' . h(lang('A new category')) . '" /></td>
-                                    <td><input type="text" class="form-control form-control-sm font-monospace" name="new_code" maxlength="32" aria-label="' . h(lang('Account code')) . '" /></td>
+                                    <td><input type="text" class="form-control form-control-sm" name="new_name" value="' . h((string) ($sent_new['name'] ?? '')) . '" maxlength="100" placeholder="' . h(lang('A new category')) . '" aria-label="' . h(lang('A new category')) . '" /></td>
+                                    <td style="min-width:8rem"><input type="text" class="form-control form-control-sm font-monospace" name="new_code" value="' . h((string) ($sent_new['code'] ?? '')) . '" maxlength="32" aria-label="' . h(lang('Account code')) . '" /></td>
                                     <td></td>
                                     ' . ($with_deductible ? '<td>
                                         <div class="form-field mb-0">
-                                            <div class="switch"><input class="" type="checkbox" id="new_tax_deductible" name="new_tax_deductible" value="1" checked /></div>
+                                            <div class="switch"><input class="" type="checkbox" id="new_tax_deductible" name="new_tax_deductible" value="1"' . ((!array_key_exists('tax_deductible', $sent_new) || !empty($sent_new['tax_deductible'])) ? ' checked' : '') . ' /></div>
                                             <label class="small" for="new_tax_deductible">' . lang('Tax taken back') . '</label>
                                         </div>
                                     </td>' : '') . '
