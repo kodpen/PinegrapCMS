@@ -10043,8 +10043,9 @@ function pg_poll_while_visible(poll, ms) {
     }
 
     /**
-     * pgToast({message, variant, delay})
+     * pgToast({message, variant, delay, link})
      * variant: success | danger | warning | info (default: info)
+     * link: optional {url, label} drawn after the text
      * delay: ms (default: 4000), success and info only: a danger or warning
      * toast stays until its Close button is used, so a keyboard or
      * magnifier user can still reach it, and the same one is not stacked.
@@ -10071,6 +10072,12 @@ function pg_poll_while_visible(poll, ms) {
             pgUI.hostLayer(container);
         }
         placeToastContainer(container);
+        // An optional link after the text ({url, label}): a site path or http(s) only.
+        var linkHtml = '';
+        if (opts.link && opts.link.url && opts.link.label && /^(https?:\/\/|\/(?!\/))/i.test(String(opts.link.url))) {
+            linkHtml = ' <a class="fw-semibold text-decoration-underline ms-1" style="color: inherit" href="' +
+                escapeHtml(String(opts.link.url)) + '">' + escapeHtml(String(opts.link.label)) + '</a>';
+        }
         var key = variant + '\n' + message;
         if (sticky) {
             for (var i = 0; i < container.children.length; i++) {
@@ -10091,6 +10098,7 @@ function pg_poll_while_visible(poll, ms) {
                 '<div class="toast-body flex-grow-1">' +
                     '<i class="bi ' + iconMap[variant] + ' me-3" aria-hidden="true"></i>' +
                     escapeHtml(message) +
+                    linkHtml +
                 '</div>' +
                 '<button type="button" class="btn-close ms-2 me-3 my-auto flex-shrink-0" data-bs-dismiss="toast" aria-label="' + escapeHtml(lang('Close')) + '"></button>' +
             '</div>';

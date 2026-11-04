@@ -26,7 +26,7 @@ description: Writing an external API endpoint: one route row, one presenter, lis
 - A 409 is named by the endpoint that produces it (`name_taken`, `already_recycled`, `invoice_not_draft`) and described in that route's description, not in the catalogue.
 
 ## Which formats?
-- Money: integer minor units (`api_money()`); a decimal sent to a `money` parameter is refused, not rounded. A day: `Y-m-d`. A moment: ISO-8601 UTC (`api_time()`, null for 0).
+- Money: integer minor units (`api_money()`); a decimal, exponent (`1999e-2`) or JSON float sent to a `money` parameter is refused (`api_money_is_whole()`), not rounded. A day: `Y-m-d`. A moment: ISO-8601 UTC (`api_time()`, null for 0).
 
 ## How is a partial update written?
 - Build the full `$data` from the current row first, then lay the sent fields over it (`erp_api_accounts_update()` with `erp_api_account_save_data()`): "only the fields sent change" is every update's contract.

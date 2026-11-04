@@ -612,6 +612,29 @@ function api_value_is_single($param, $raw) {
 
 }
 
+// Whether a money value is a whole number of minor units: a JSON integer or a
+// string of digits with an optional minus sign. is_numeric() alone also takes
+// the exponent form, and (int)"1999e-2" is 19, so a price of 19.99 written
+// that way would be stored as 0.19. A JSON float is refused for the same
+// reason a decimal string is: the field counts kurus, not lira.
+function api_money_is_whole($raw) {
+
+	if (is_int($raw)) {
+
+		return true;
+
+	}
+
+	if (!is_string($raw)) {
+
+		return false;
+
+	}
+
+	return (bool)preg_match('/^-?\d+$/', trim($raw));
+
+}
+
 function api_validate_value($param, $raw) {
 
 	$name = $param['name'];
@@ -641,7 +664,7 @@ function api_validate_value($param, $raw) {
 			// Minor units only. A decimal here means the caller is thinking in
 			// lira while the field counts kurus, and quietly rounding it would
 			// change a price by a hundredfold in the wrong direction.
-			if (!is_numeric($raw) || strpos((string)$raw, '.') !== false || strpos((string)$raw, ',') !== false) {
+			if (!api_money_is_whole($raw)) {
 
 				api_fail_validation(lang(array(
 					'string' => '{var:1} must be a whole number of minor units, with no decimal separator.',

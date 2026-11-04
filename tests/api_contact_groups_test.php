@@ -156,6 +156,18 @@ function test_api_contact_groups_members_change_counts_only_what_changes()
 	pg_assert_same(array(), $changes['remove'], 'removing a non-member is not an error and changes nothing');
 }
 
+// opt_in is written only for the contacts in add; a call that only removes
+// ignores it, so no query is built over an empty id list.
+function test_api_contact_groups_opt_in_is_recorded_only_with_contacts_to_add()
+{
+	pg_assert_same(1, api_contact_group_opt_in_choice(array('opt_in' => true), 1, array(5)), 'opt in');
+	pg_assert_same(0, api_contact_group_opt_in_choice(array('opt_in' => false), 1, array(5)), 'opt out');
+	pg_assert_same(null, api_contact_group_opt_in_choice(array(), 1, array(5)), 'not sent');
+	pg_assert_same(null, api_contact_group_opt_in_choice(array('opt_in' => true), 0, array(5)), 'group without subscription');
+	pg_assert_same(null, api_contact_group_opt_in_choice(array('opt_in' => true), 1, array()), 'remove only');
+	pg_assert_same(null, api_contact_group_opt_in_choice(array('opt_in' => false), 1, array()), 'remove only, opt out');
+}
+
 function test_api_contact_groups_routes_reach_a_handler_under_the_contact_groups_scope()
 {
 	$found = 0;

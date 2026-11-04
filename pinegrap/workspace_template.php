@@ -227,8 +227,7 @@ pg_page_shell([
 <main id="content" class="container-fluid p-0">
 <div class="ws-shell">
 <div class="ws-shell-main">
-    ' . $liveform->output_errors() . '
-    ' . $liveform->output_notices() . '
+    ' . ws_screen_messages($liveform) . '
     ' . (($draft_from !== '') ? '<div class="alert theme-info small">' . h(lang(array('string' => 'A draft made from #{var:1}: its open tasks, the notes shared in it, its summary and its pinned message. Nothing is kept until it is saved.', 'vars' => $draft_from))) . '</div>' : '') . '
     <form method="post" action="' . h($self_url) . '" id="ws-template-form" class="row g-7">
         ' . get_token_field() . '

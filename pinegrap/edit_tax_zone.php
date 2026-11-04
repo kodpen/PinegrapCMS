@@ -65,7 +65,7 @@ if (!$_POST || $errors) {
         FROM tax_zones
         LEFT JOIN user ON user.user_id = tax_zones.user
         WHERE tax_zones.id = '" . $id . "'");
-    $status_rows = pg_tax_zone_form_status_row(lang('Last Modified'), get_relative_time(array('timestamp' => (int) ($last_change['timestamp'] ?? 0))) . ((string) ($last_change['user_username'] ?? '') !== '' ? ' ' . h($last_change['user_username']) : ''));
+    $status_rows = pg_tax_zone_form_status_row(lang('Last Modified'), pg_list_when((int) ($last_change['timestamp'] ?? 0), (string) ($last_change['user_username'] ?? '')));
 
     $output =
         pg_page_shell([
@@ -88,8 +88,8 @@ if (!$_POST || $errors) {
                         ' . pg_tax_zone_form_layout(
                             pg_tax_zone_form_cards($values, $choices['countries'], $choices['states'], $errors, $status_rows),
                             '
-                                        <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                                        <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" formnovalidate data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('tax zone')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>') . '
+                                        <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" formnovalidate data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('tax zone')))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Delete') . '</span></button>') . '
                     </form>
                 </div>
             </div>

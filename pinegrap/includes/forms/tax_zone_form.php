@@ -206,7 +206,7 @@ function pg_tax_zone_form_cards($values, $country_options, $state_options, $erro
                                             <div id="name-error" class="invalid-feedback d-block">' . h($name_error) . '</div>' : '';
 
     $summary = pg_tax_zone_form_status_row(lang('Name'), '<span id="tax_zone_summary_name">' . h($name) . '</span>', false)
-        . pg_tax_zone_form_status_row(lang('Tax Rate'), '<span id="tax_zone_summary_rate">' . h($tax_rate_text) . '</span>%', false)
+        . pg_tax_zone_form_status_row(lang('Tax Rate'), '<span id="tax_zone_summary_rate" data-template="' . h(lang('{var:1}%')) . '" data-decimal="' . h(pg_number_separators()['decimal']) . '">' . h(pg_tax_zone_form_rate_label($tax_rate_text)) . '</span>', false)
         . pg_tax_zone_form_status_row(lang('Countries'), '<span id="tax_zone_summary_countries">' . substr_count($country_options, ' selected="selected"') . '</span>', false)
         . pg_tax_zone_form_status_row(lang('States'), '<span id="tax_zone_summary_states">' . substr_count($state_options, ' selected="selected"') . '</span>', $status_rows === '')
         . $status_rows;
@@ -236,7 +236,7 @@ function pg_tax_zone_form_cards($values, $country_options, $state_options, $erro
                                 </h2>
                                 <div class="card-body pt-0">
                                     <label for="allowed_countries" class="form-label">' . lang('Allowed Countries') . '</label>
-                                    <select style="width:100%" data-pg-combobox class="form-control" data-placeholder="' . lang('Click to select country(s)') . '" id="allowed_countries" name="allowed_countries[]" multiple="multiple">' . $country_options . '</select>
+                                    <select data-pg-combobox class="form-control w-100" data-placeholder="' . lang('Click to select country(s)') . '" id="allowed_countries" name="allowed_countries[]" multiple="multiple">' . $country_options . '</select>
                                 </div>
                             </div>
                             <div class="card mb-7">
@@ -245,7 +245,7 @@ function pg_tax_zone_form_cards($values, $country_options, $state_options, $erro
                                 </h2>
                                 <div class="card-body pt-0">
                                     <label for="allowed_states" class="form-label">' . lang('Allowed States') . '</label>
-                                    <select style="width:100%" data-pg-combobox class="form-control" data-placeholder="' . lang('Click to select state(s)') . '" id="allowed_states" name="allowed_states[]" multiple="multiple">' . $state_options . '</select>' . pg_fields_script() . '
+                                    <select data-pg-combobox class="form-control w-100" data-placeholder="' . lang('Click to select state(s)') . '" id="allowed_states" name="allowed_states[]" multiple="multiple">' . $state_options . '</select>' . pg_fields_script() . '
                                 </div>
                             </div>
                         </div>
@@ -275,13 +275,42 @@ function pg_tax_zone_form_cards($values, $country_options, $state_options, $erro
                                     jQuery(field).on("change", update);
                                 }
                                 var value = function (field) { return field.value; };
+                                // The rate as the tax zone list writes it: the panel
+                                // decimal separator and the sign where the language puts it;
+                                // an empty box leaves the row empty.
+                                var rate = function (field) {
+                                    var summary = document.getElementById("tax_zone_summary_rate");
+                                    if (field.value === "") return "";
+                                    return summary.getAttribute("data-template").replace("{var:1}", field.value.replace(".", summary.getAttribute("data-decimal")));
+                                };
                                 var count = function (field) { return String(field.selectedOptions.length); };
                                 follow("name", "tax_zone_summary_name", value);
-                                follow("tax_rate", "tax_zone_summary_rate", value);
+                                follow("tax_rate", "tax_zone_summary_rate", rate);
                                 follow("allowed_countries", "tax_zone_summary_countries", count);
                                 follow("allowed_states", "tax_zone_summary_states", count);
                             })();
                         </script>';
+}
+
+/**
+ * The tax rate for the Summary, written the way the tax zone list writes it:
+ * the decimals the rate has, the panel's separators and the sign on the side
+ * the language puts it (TR "%8,25"). An empty rate is ''.
+ *
+ * @param string $tax_rate_text format_tax_rate() output, or ''
+ * @return string plain text
+ */
+function pg_tax_zone_form_rate_label($tax_rate_text)
+{
+    $tax_rate_text = (string) $tax_rate_text;
+
+    if ($tax_rate_text === '') {
+        return '';
+    }
+
+    $decimals = (strpos($tax_rate_text, '.') === false) ? 0 : strlen($tax_rate_text) - strpos($tax_rate_text, '.') - 1;
+
+    return lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number($tax_rate_text, $decimals))));
 }
 
 /**

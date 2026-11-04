@@ -359,10 +359,10 @@ if (!$_POST) {
     if ($txt_record) {
         $dkim_txt_preview = '
             <div class="col-12">
-                <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card mb-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('DKIM TXT Record') . '
-                    </div>
+                    </h2>
                     <div class="card-body">
                         <div class="row">
                             ' . $dkim_settings . '
@@ -378,10 +378,10 @@ if (!$_POST) {
     } else {
         $dkim_txt_preview = '
             <div class="col-12">
-                <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card mb-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('DKIM TXT Record') . '
-                    </div>
+                    </h2>
                     <div class="card-body">
                         <div class="row">
                             ' . $dkim_settings . '
@@ -412,11 +412,14 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <!-- Return in a box presses the first submit button: this one saves, not Send Test or Generate DKIM Key -->
                     <button type="submit" name="submit_save" value="Save" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>
+                    <!-- Edit screen layout of product_builder.php: the form column, the status column (Sending domain), the sticky save bar. -->
+                    <div class="row">
+                    <div class="col-12 lg:col-8 2xl:col-9 order-1">
                     <div class="row">
                         <!-- Sending service -->
                         <div class="col-12">
-                            <div class="card my-7" id="mail_transport_card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Sending service') . '</div>
+                            <div class="card mb-7" id="mail_transport_card">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Sending service') . '</h2>
                                 <div class="card-body">' . pg_mail_transport_settings_fields() . '
                                     <div class="mt-5">
                                         <button type="submit" name="send_system_email" value="Send System Test Email" class="btn my-1 btn-solid theme-warning">
@@ -428,9 +431,9 @@ if (!$_POST) {
                             </div>
                         </div>
                         <!-- System SMTP -->
-                        <div class="col-12 md:col-6">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('System') . '</div>
+                        <div class="col-12 xl:col-6">
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('System') . '</h2>
                                 <div class="card-body">
                                     <div class="my-3">
                                         ' . $system_connection_field . '
@@ -459,11 +462,11 @@ if (!$_POST) {
                             </div>
                         </div>
                         <!-- Campaign SMTP -->
-                        <div class="col-12 md:col-6">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                        <div class="col-12 xl:col-6">
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Campaign') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="form-field my-3">
                                         <div class="switch">' . $liveform->output_field([
@@ -508,20 +511,26 @@ if (!$_POST) {
                         </div>
                         <!-- DKIM TXT Record Preview -->
                         ' . $dkim_txt_preview . '
-                        <!-- Sending domain: SPF, DKIM, DMARC and the bounce rates -->
-                        ' . pg_mail_domain_health_card(pg_mail_domain_health()) . '
                     </div>
-
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;">
-                        <div class="container">
-                            <div class="btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success">
-                                    <span class="material-icons me-3" aria-hidden="true">save</span>
-                                    <span class="pg-btn-label">' . lang(['string'=>'Save']) . '</span>
-                                </button>
+                    </div>
+                    <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                        <!-- Sending domain: SPF, DKIM, DMARC and the bounce rates, read only.
+                             Not pinned: with the TXT records to publish it is taller than the window. -->
+                        ' . pg_mail_domain_health_card(pg_mail_domain_health(), false) . '
+                    </div>
+                    <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                        <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                            <div class="container">
+                                <div class="btn-group flex-wrap justify-content-center">
+                                    <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success">
+                                        <span class="material-icons me-3" aria-hidden="true">save</span>
+                                        <span class="pg-btn-label">' . lang(['string'=>'Save']) . '</span>
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    </nav>
+                        </nav>
+                    </div>
+                    </div>
                 </form>
                 ' . $connect_forms . '
             </div>
