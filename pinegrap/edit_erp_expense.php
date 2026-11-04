@@ -228,7 +228,7 @@ $date = function ($value) {
 $method_words = array(
     'cash' => lang('Cash'),
     'transfer' => lang('Bank transfer'),
-    'card' => lang('Credit card'),
+    'card' => lang('Card'),
     'cheque' => lang('Cheque'),
     'other' => lang('Other'),
 );

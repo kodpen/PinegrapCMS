@@ -641,6 +641,16 @@ if (!$_POST) {
         go($back);
     }
 
+    // A repeat's end date that is not a date is refused before anything is
+    // saved: read as empty, it made the repeat run with no end.
+    $repeat_asked = ($id === 0) && ((string) $liveform->get_field_value('repeat') !== '');
+    $repeat_end = $repeat_asked ? $date_in('repeat_end') : '';
+
+    if ($repeat_end === false) {
+        $liveform->mark_error('repeat_end', lang('Please enter a valid date.'));
+        go($back);
+    }
+
     // The currency and the rate of its day, as a receipt reads them.
     $currency = $base;
     $exchange_rate = 1.0;
@@ -720,15 +730,14 @@ if (!$_POST) {
     // does not cost the operator the expense; the view says why.
     $repeat_warning = '';
 
-    if (($id === 0) && ((string) $liveform->get_field_value('repeat') !== '') && erp_expense_recurring_ready()) {
-        $repeat_end = $date_in('repeat_end');
-        $repeat = erp_expense_recurrence_create($saved_id, array(
+    if ($repeat_asked && erp_expense_recurring_ready()) {
+        $repeat =erp_expense_recurrence_create($saved_id, array(
             'every_months' => (int) $liveform->get_field_value('repeat_every'),
             'due_days' => (int) $liveform->get_field_value('repeat_due_days'),
             'pay' => $pay && ((string) $liveform->get_field_value('repeat_pay') !== ''),
             'cash_account_id' => (int) $liveform->get_field_value('cash_account_id'),
             'payment_method' => (string) $liveform->get_field_value('payment_method'),
-            'end_date' => is_string($repeat_end) ? $repeat_end : '',
+            'end_date' => (string) $repeat_end,
         ), (int) $user['id']);
 
         if (!$repeat['success']) {
@@ -754,7 +763,7 @@ if (!$_POST) {
 
     if ($another && ($file_warning === '') && ($repeat_warning === '')) {
         $liveform_next = new liveform('add_erp_expense');
-        $liveform_next->add_notice(h(lang(array('string' => 'Expense #{var:1} recorded. The next one:', 'vars' => $saved_id))) . ' <a class="alert-link" href="edit_erp_expense.php?id=' . $saved_id . '">' . lang('Open the expense') . '</a>');
+        $liveform_next->add_notice(h(lang(array('string' => 'Expense #{var:1} recorded; enter the next one below.', 'vars' => $saved_id))) . ' <a class="alert-link" href="edit_erp_expense.php?id=' . $saved_id . '">' . lang('Open the expense') . '</a>');
         go(PATH . SOFTWARE_DIRECTORY . '/add_erp_expense.php');
     }
 
