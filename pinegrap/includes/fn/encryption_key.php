@@ -8,13 +8,14 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
-// A module of functions.php: what a reset of ENCRYPTION_KEY leaves unreadable.
+// A module of functions.php: what a reset of ENCRYPTION_KEY carries over.
 //
-// Reset Encryption Key (Settings > Accounts and sign-in) seals the card
-// numbers and the payment gateway secrets again with the new key; every other
-// value sealed with encrypt_string_with_iv() or pg_connect_seal() stays under
-// the old key and no longer opens. The card lists those values per area and
-// the save asks for a confirmation before it resets the key.
+// Reset Encryption Key (Settings > Accounts and sign-in) seals again, in the
+// same save, every value pg_reseal_registry() lists. The card counts the
+// sealed values per area and splits them into those the registry carries over
+// and those it does not; HMACs keyed with the key (signed-in devices) cannot
+// be carried over at all. The save asks for a confirmation only when the
+// second list is not empty.
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
@@ -48,7 +49,7 @@ function pg_encryption_key_reset_feed_tokens($json)
  * The sealed values per area, from the raw counts the database gave.
  *
  * Pure: $source holds the row counts (connect_accounts, connect_apps,
- * marketplace_accounts, edoc_providers, mfa_keys) and the config row's
+ * marketplace_accounts, edoc_providers, mfa_keys, devices) and the config row's
  * sealed columns (config). Areas with nothing sealed are left out; the
  * order is the order the card lists them in.
  *
@@ -76,6 +77,7 @@ function pg_encryption_key_reset_counts(array $source)
         'product_feeds' => pg_encryption_key_reset_feed_tokens(isset($config['product_feeds']) && is_string($config['product_feeds']) ? $config['product_feeds'] : ''),
         'google'        => $filled('oauth_google_client_secret'),
         'mfa'           => $rows('mfa_keys'),
+        'devices'       => $rows('devices'),
     );
 
     return array_filter($counts, function ($count) {
@@ -99,7 +101,92 @@ function pg_encryption_key_reset_labels()
         'product_feeds' => lang('Product feed tokens'),
         'google'        => lang('Google sign-in client secret'),
         'mfa'           => lang('Two-step verification keys'),
+        'devices'       => lang('Signed-in devices'),
+        'cards'         => lang('Card numbers kept with orders'),
+        'gateway'       => lang('Payment gateway secrets'),
+        'subscriptions' => lang('Subscription card references'),
     );
+}
+
+/**
+ * The areas the re-seal registry carries over to a new key.
+ *
+ * @param array $registry pg_reseal_registry()
+ * @return array area names
+ */
+function pg_encryption_key_reset_carried_areas(array $registry)
+{
+    $areas = array();
+
+    foreach ($registry as $entry) {
+        if (is_array($entry) && isset($entry['area']) && is_string($entry['area']) && !in_array($entry['area'], $areas, true)) {
+            $areas[] = $entry['area'];
+        }
+    }
+
+    return $areas;
+}
+
+/**
+ * The card's two lists: the counted areas a reset seals again and those it
+ * cannot carry over.
+ *
+ * Pure. An area is carried over when the re-seal registry has an entry under
+ * the same area name; signed-in devices hold HMACs keyed with the key and are
+ * never carried over. Both lists keep the order of $counts.
+ *
+ * @param array $counts  pg_encryption_key_reset_counts()
+ * @param array $carried pg_encryption_key_reset_carried_areas()
+ * @return array 'resealed' => area => count, 'lost' => area => count
+ */
+function pg_encryption_key_reset_split(array $counts, array $carried)
+{
+    $split = array('resealed' => array(), 'lost' => array());
+
+    foreach ($counts as $area => $count) {
+        $list = (($area !== 'devices') && in_array((string) $area, $carried, true)) ? 'resealed' : 'lost';
+        $split[$list][$area] = $count;
+    }
+
+    return $split;
+}
+
+/**
+ * The lines of the save's message after a reset, from pg_reseal_run()'s
+ * counts.
+ *
+ * Pure. One line per area that sealed something again or failed, with the
+ * number done and, when any, the number that could not be sealed; values
+ * that did not open with the old key (skipped) were unreadable already and
+ * are not mentioned. An area without a label shows its name.
+ *
+ * @param array $areas  pg_reseal_run()['areas']: area => done/skipped/failed
+ * @param array $labels pg_encryption_key_reset_labels()
+ * @return array 'done' => lines, 'failed' => lines
+ */
+function pg_encryption_key_reset_summary(array $areas, array $labels)
+{
+    $summary = array('done' => array(), 'failed' => array());
+
+    foreach ($areas as $area => $count) {
+        if (!is_array($count)) {
+            continue;
+        }
+
+        $label = isset($labels[$area]) ? (string) $labels[$area] : (string) $area;
+        $done = isset($count['done']) ? (int) $count['done'] : 0;
+        $failed = isset($count['failed']) ? (int) $count['failed'] : 0;
+
+        if ($done > 0) {
+            $summary['done'][] = $label . ': ' . $done;
+        }
+
+        if ($failed > 0) {
+            $summary['failed'][] = $label . ': ' . $failed;
+        }
+    }
+
+    return $summary;
 }
 
 /**
@@ -127,6 +214,12 @@ function pg_encryption_key_reset_source()
 
     if (pg_schema_has('user_mfa', 'totp_secret')) {
         $source['mfa_keys'] = (int) db_value("SELECT COUNT(*) FROM user_mfa WHERE enabled_at > 0 AND totp_secret <> ''");
+    }
+
+    // Devices whose refresh token still runs; their tokens are HMACs keyed
+    // with the key and stop working after a reset.
+    if (pg_schema_has('api_devices', 'refresh_expires')) {
+        $source['devices'] = (int) db_value("SELECT COUNT(*) FROM api_devices WHERE refresh_expires > " . (int) time());
     }
 
     $columns = array();
