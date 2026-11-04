@@ -92,7 +92,7 @@ function pg_common_region_form_cards($name = '', $content = '', $form = array())
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<cregion>') . '</div>
                                                 <input value="' . h($name) . '" name="name" id="name" type="text" class="form-control' . pg_region_form_name_error_attributes($form['name_error']) . '" maxlength="100" required="required" />
-                                                <div class="input-group-text">' . h('</cregion>') . '</div>
+                                                <div class="input-group-text pg-tag-close">' . h('</cregion>') . '</div>
                                             </div>' . pg_region_form_name_error($form['name_error']) . '
                                         </div>' . $output_type . '
                                     </div>

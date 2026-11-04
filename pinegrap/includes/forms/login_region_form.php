@@ -44,7 +44,7 @@ function pg_login_region_form_card($liveform, $defaults = false)
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<login>') . '</div>
                                                 ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
-                                                <div class="input-group-text">' . h('</login>') . '</div>
+                                                <div class="input-group-text pg-tag-close">' . h('</login>') . '</div>
                                             </div>
                                         </div>
                                         <h3 class="h5 mt-12">' . lang('Not Logged In') . '</h3>
