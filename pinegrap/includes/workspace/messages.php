@@ -1818,7 +1818,7 @@ function ws_message_search($viewer, $query, $channel_id = 0)
     // A voice message is found by its transcript too.
     $like = e(escape_like($query));
     $rows = (array) db_items("SELECT * FROM ws_messages
-        WHERE deleted_at = 0 AND (body LIKE '%" . $like . "%'" . ws_voice_search_or($like) . ")"
+        WHERE deleted_at = 0 AND (" . ws_text_like_sql('body', $query) . ws_voice_search_or($like) . ")"
         . ws_channel_search_sql(ws_channel_search_ids($channel_id)) . "
         ORDER BY id DESC
         LIMIT 200");

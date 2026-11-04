@@ -172,6 +172,22 @@ function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown 
         return 'line_' . $field . '_' . $index;
     };
 
+    // A refused line field is marked with mark_error(), which keeps only the
+    // error in the session. output_field() would then take the session's
+    // missing value and draw the box empty, and the next save would write it
+    // as 0, so the posted value is kept beside the error.
+    $kept = array(
+        'product_name' => $line['product_name'] ?? '', 'description' => $line['description'] ?? '',
+        'quantity' => $line['quantity'] ?? '', 'unit_code' => $line['unit_code'] ?? '',
+        'unit_price' => $line['unit_price'] ?? '', 'offer_discount_rate' => $line['offer_discount_rate'] ?? '',
+        'discount_rate' => $line['discount_rate'] ?? '', 'tax_rate' => $line['tax_rate'] ?? '',
+        'tax2_rate' => $line['tax2_rate'] ?? '');
+    foreach ($kept as $field => $value) {
+        if ($liveform->field_in_session($name($field)) && ($liveform->get_field_value($name($field)) === null)) {
+            $liveform->assign_field_value($name($field), (string) $value);
+        }
+    }
+
     $unit_codes = erp_invoice_form_unit_codes();
     $unit_options = array();
     foreach ($unit_codes as $code => $label) {
@@ -404,7 +420,7 @@ function erp_invoice_form_cards($liveform, $options = array())
          data-text-disabled="' . h(lang('not on sale')) . '"
          data-text-campaign="' . h(lang('Campaign')) . '"
          data-text-sku="' . h(lang('SKU')) . '"
-         data-text-zone-rate="' . h(lang('Rate of the buyer\'s tax zone (the store\'s when the account has no address); the product has no rate of its own.')) . '"
+         data-text-zone-rate="' . h(lang('Rate of the account\'s tax zone (the store\'s when the account has no address); the product has no rate of its own.')) . '"
          data-text-not-found="' . h(lang('No product carries that barcode or SKU.')) . '"
          data-text-over-stock="' . h(lang('More than is in stock ({var:1}).')) . '"
          data-text-last-cost="' . h(lang('Last purchase: {var:1}')) . '"

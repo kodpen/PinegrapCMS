@@ -3257,6 +3257,48 @@ function pg_settings_select_folder($folder_id, $access_control_type = '')
     return $output;
 }
 
+/**
+ * Whether a page picker leaves a folder out: the Workspace's folder and what
+ * is below it. A page is never filed under the Workspace; the Recycle Bin is
+ * left to select_folder() as before.
+ *
+ * @param int   $folder_id
+ * @param array $rows      folder_id => array('folder_parent' => …)
+ * @param int   $workspace the Workspace's folder, 0 when there is none
+ * @return bool
+ */
+function pg_page_folder_left_out($folder_id, $rows, $workspace)
+{
+    return ((int) $folder_id > 0) && pg_folder_in_bin_chain($rows, (int) $folder_id, (int) $workspace);
+}
+
+/**
+ * The options of a page folder picker (Add Page, Edit Page, the Pages
+ * list's move picker): select_folder() without the Workspace's folder and
+ * what is below it. A page already filed there keeps its folder, added
+ * selected and marked, so the stored value is shown and not rewritten.
+ *
+ * @param int $folder_id the stored choice, 0 for none
+ * @return string
+ */
+function pg_page_select_folder($folder_id = 0)
+{
+    $folder_id = (int) $folder_id;
+    $workspace = (int) pg_workspace_folder_id();
+    $output = select_folder($folder_id, 0, $workspace);
+
+    if (($folder_id > 0) && ($workspace > 0)) {
+        $tree = pg_folder_access_tree();
+
+        if (pg_page_folder_left_out($folder_id, $tree['rows'], $workspace)) {
+            $name = (string) db_value("SELECT folder_name FROM folder WHERE folder_id = '" . $folder_id . "'");
+            $output .= '<option value="' . $folder_id . '" selected>' . h($name) . ' ' . lang('(no longer offered)') . '</option>';
+        }
+    }
+
+    return $output;
+}
+
 // You can pass the access control type in order to limit the folders to those with that type of access control.
 // $left_out_parents holds the names of the parents above this level that the
 // access type filter did not print; the next printed folder carries them.
@@ -6169,11 +6211,20 @@ function initialize_developer_security()
 
 /**
  * Encrypt a string with AES-256-CBC and return [encrypted_base64, iv_base64].
+ *
+ * @param string      $plaintext
+ * @param string|null $key the key to seal with; null is ENCRYPTION_KEY (a
+ *                         key reset seals with the new key while the constant
+ *                         still holds the old one)
+ * @return array
  */
-function encrypt_string_with_iv($plaintext)
+function encrypt_string_with_iv($plaintext, $key = null)
 {
+    if ($key === null) {
+        $key = ENCRYPTION_KEY;
+    }
     $crypto_method = 'aes-256-cbc';
-    $crypto_key = substr(hash('sha256', ENCRYPTION_KEY, true), 0, 32);
+    $crypto_key = substr(hash('sha256', (string) $key, true), 0, 32);
     $ivlen = openssl_cipher_iv_length($crypto_method);
     $iv = function_exists('random_bytes') ? random_bytes($ivlen) : openssl_random_pseudo_bytes($ivlen);
     $encrypted_raw = openssl_encrypt($plaintext, $crypto_method, $crypto_key, OPENSSL_RAW_DATA, $iv);

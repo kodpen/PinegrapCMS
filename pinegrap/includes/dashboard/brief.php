@@ -8,7 +8,9 @@
  * worth doing, the workspace strip under them and the next meeting under the
  * clock. welcome.php draws it with the page, and api.php's get_dashboard_brief
  * answers it again when the reader asks for another line, so both go through
- * pg_dashboard_brief().
+ * pg_dashboard_brief(). The new dashboard draws the same line, strip and next
+ * meeting under its greeting (includes/dashboard/v2/page_greeting.php), with
+ * the tips worded for that dashboard.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -29,31 +31,22 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *
  * @param array $user               the row validate_user() returned
  * @param array $changelog_sections pg_changelog_sections(), for the version check
+ * @param array $view               where it is drawn, empty for the old
+ *                                  dashboard: dashboard ('v2' for the new one),
+ *                                  hour (the reader's own hour, 0-23, which the
+ *                                  mark follows) and edit (the reader may
+ *                                  arrange their new dashboard)
  * @return array icon (a Bootstrap icon class), greeting (escaped), line
  *               (markup), strip (markup, may be empty), next (markup under
  *               the clock, may be empty), ws (the workspace signals or null)
  */
-function pg_dashboard_brief($user, $changelog_sections)
+function pg_dashboard_brief($user, $changelog_sections, $view = array())
 {
     // pg_dashboard_days_back() and pg_dashboard_list_url(), shared with the
     // cards.
     require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets.php');
 
-    // Which part of the day it is. The old split called 19:00 night, which is when
-    // most people are still working; evening now runs to 23:00 and only the small
-    // hours are night.
-    $time = (int) date('H');
-    if ($time < 5) {
-        $greeting_part = 'late';
-    } elseif ($time < 12) {
-        $greeting_part = 'morning';
-    } elseif ($time < 18) {
-        $greeting_part = 'afternoon';
-    } elseif ($time < 23) {
-        $greeting_part = 'evening';
-    } else {
-        $greeting_part = 'late';
-    }
+    $greeting_part = pg_dashboard_brief_part(isset($view['hour']) ? (int) $view['hour'] : (int) date('H'));
 
     $greeting_icons = array(
         'late'      => 'bi-moon-stars',
@@ -1136,24 +1129,7 @@ function pg_dashboard_brief($user, $changelog_sections)
     // rest of the time a small thing about the software or nothing more than a
     // civil word. A suggestion you can also just not get is a suggestion; one that
     // arrives every time is an instruction.
-    $greeting_tips = array_map('h', array(
-        lang('Search opens on Ctrl+K from anywhere, if you would rather not reach for the mouse.'),
-        lang('Did you know the widgets can be dragged by the grip at the right of their headers?'),
-        lang('If you prefer the light theme, choose Light under Appearance in My Menu at the top right.'),
-    ));
-
-    // The widget theme settings are on the Dashboard card of Site Settings >
-    // Appearance, drawn for designers and administrators only, so only those
-    // are told to look.
-    if ($user['role'] < 2) {
-        $greeting_tips[] = h(lang('You will find the widget theme settings in Site Settings, under Appearance.'));
-    }
-
-    // Only for someone in the workspace team: a tip about a screen that will turn
-    // the reader away is not a tip.
-    if ($sig['ws'] !== null) {
-        $greeting_tips[] = h(lang('A message in a channel can become a task from its right-click menu.'));
-    }
+    $greeting_tips = pg_dashboard_brief_tips((int) $user['role'], $sig['ws'] !== null, $view);
 
     // What the software gained lately, as opposed to how to work it.
     //
@@ -1191,13 +1167,21 @@ function pg_dashboard_brief($user, $changelog_sections)
     };
 
     // Each line is offered only to a reader its screen admits, under the gate the
-    // screen itself uses. The line with no link has no gate, so the pool is never
-    // empty.
-    $greeting_features = array(
+    // screen itself uses. A reader every line is closed to gets a closing word
+    // instead (below).
+    $greeting_features = array();
+
+    if (($view['dashboard'] ?? '') !== 'v2') {
         // No offer on this one: the widget it is about is further down this very
         // screen, and pointing somebody somewhere they already are is not help.
-        h(lang('You can start a deep database check from the system status widget whenever you like.')),
-    );
+        // The new dashboard's System Status card has no deep check, so it is not
+        // said there.
+        $greeting_features[] = h(lang('You can start a deep database check from the system status widget whenever you like.'));
+    } elseif (!empty($view['edit'])) {
+        // No offer either: Edit dashboard is a button on this very screen, and a
+        // locked layout has none.
+        $greeting_features[] = h(lang('The dashboard takes new cards from a gallery these days; Edit dashboard opens it.'));
+    }
 
     // validate_ecommerce_access(), as add_product.php, add_offer.php and
     // view_product_groups.php ask, and nothing while Ecommerce is switched off.
@@ -1380,6 +1364,11 @@ function pg_dashboard_brief($user, $changelog_sections)
         } elseif ($greeting_kind === 'tip') {
             $greeting_tail_pool = $greeting_tips;
         } else {
+            $greeting_tail_pool = $greeting_closers;
+        }
+
+        // A kind with nothing for this reader falls back to a civil word.
+        if (empty($greeting_tail_pool)) {
             $greeting_tail_pool = $greeting_closers;
         }
 
@@ -1902,6 +1891,68 @@ function pg_dashboard_brief($user, $changelog_sections)
         'next'     => ($sig['ws'] !== null) ? pg_dashboard_brief_next($sig['ws']['events_next'], time()) : '',
         'ws'       => $sig['ws'],
     );
+}
+
+/**
+ * Which part of the day an hour falls in, for the mark and the greeting. The
+ * old split called 19:00 night, which is when most people are still working;
+ * evening runs to 23:00 and only the small hours are night, the hours
+ * ws_home_greeting() greets by. Pure.
+ *
+ * @param int $hour 0-23
+ * @return string late, morning, afternoon or evening
+ */
+function pg_dashboard_brief_part($hour)
+{
+    $hour = (int) $hour;
+
+    if (($hour < 5) || ($hour >= 23)) {
+        return 'late';
+    }
+
+    if ($hour < 12) {
+        return 'morning';
+    }
+
+    return ($hour < 18) ? 'afternoon' : 'evening';
+}
+
+/**
+ * The tips the second half can be, escaped: how to work the panel, each
+ * offered only where it is true. The old dashboard's widgets move by their
+ * grip and take their theme from Site Settings > Appearance (a card drawn for
+ * designers and administrators only); the new dashboard is arranged and
+ * styled by each person in Edit dashboard, which a locked layout does not
+ * offer. A tip about the workspace goes only to someone in its team. Pure.
+ *
+ * @param int   $role      the reader's role
+ * @param bool  $workspace the reader is in the workspace team
+ * @param array $view      pg_dashboard_brief()'s view
+ * @return array escaped sentences
+ */
+function pg_dashboard_brief_tips($role, $workspace, $view)
+{
+    $tips = array(
+        lang('Search opens on Ctrl+K from anywhere, if you would rather not reach for the mouse.'),
+        lang('If you prefer the light theme, choose Light under Appearance in My Menu at the top right.'),
+    );
+
+    if (($view['dashboard'] ?? '') !== 'v2') {
+        $tips[] = lang('Did you know the widgets can be dragged by the grip at the right of their headers?');
+
+        if ((int) $role < 2) {
+            $tips[] = lang('You will find the widget theme settings in Site Settings, under Appearance.');
+        }
+    } elseif (!empty($view['edit'])) {
+        $tips[] = lang('In Edit dashboard the cards move by their grip, or with the arrow keys once the grip has focus.');
+        $tips[] = lang('Card style, backdrop and density are yours to choose: Edit dashboard, then Look.');
+    }
+
+    if ($workspace) {
+        $tips[] = lang('A message in a channel can become a task from its right-click menu.');
+    }
+
+    return array_map('h', $tips);
 }
 
 /**

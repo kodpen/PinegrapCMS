@@ -30,7 +30,7 @@ function test_edit_file_save_and_return_and_delete_follow_send_to()
 
 	pg_assert_same(false, strpos($source, 'view_files.php'), 'nothing goes to the retired Files list');
 	pg_assert_same(2, substr_count($source, "\$location = pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files');"), 'Save & Return and Delete go to send_to, else the File Manager\'s Files view');
-	pg_assert_same(2, substr_count($source, "header('Location: ' . URL_SCHEME . HOSTNAME . \$location);"), 'both redirect to that location');
+	pg_assert_same(3, substr_count($source, "header('Location: ' . URL_SCHEME . HOSTNAME . \$location);"), 'Save & Return, Delete to the bin and Delete for good redirect to that location');
 	pg_assert_same(2, substr_count($source, "\$notice_form = pg_redirect_notice_form(\$location);"), 'their notices are left on the screen the redirect opens');
 }
 

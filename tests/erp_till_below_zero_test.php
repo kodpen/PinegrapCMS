@@ -133,3 +133,19 @@ function test_erp_till_below_zero_api_gives_the_same_refusal()
 		pg_assert_false(strpos((string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), 'allow_below_zero') !== false, $file . ' never skips the check');
 	}
 }
+
+// A bank, POS or card till below zero is not switched to a cash till; a
+// cash till keeps its kind whatever its balance.
+function test_erp_till_below_zero_kind_change_to_cash()
+{
+	$refused = lang('A till below zero cannot be made a cash till.');
+
+	pg_assert_same($refused, erp_till_kind_refusal('bank', 'cash', -4250), 'a bank till below zero cannot become a drawer');
+	pg_assert_same('', erp_till_kind_refusal('bank', 'cash', 0), 'an empty bank till may become a drawer');
+	pg_assert_same('', erp_till_kind_refusal('pos', 'cash', 8750), 'a till in credit may become a drawer');
+	pg_assert_same('', erp_till_kind_refusal('cash', 'cash', -4250), 'a drawer already below zero keeps its kind');
+	pg_assert_same('', erp_till_kind_refusal('cash', 'bank', -4250), 'any till may become a bank till');
+
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_erp_till.php');
+	pg_assert_contains("\$liveform->mark_error('kind', \$refusal)", $edit, 'the edit screen refuses the kind on its field');
+}

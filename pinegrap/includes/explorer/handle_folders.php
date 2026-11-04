@@ -65,7 +65,11 @@ function pg_explorer_folder_settings_order_archive($folder, $request)
         return array((int) $folder['folder_order'], ($folder['folder_archived'] == '1') ? '1' : '');
     }
 
-    return array((int) (isset($request['order']) ? $request['order'] : 0), pg_explorer_folder_archived_value($request));
+    // The drawer's range (-9999 to 9999): a value past the INT column was
+    // cut by the database without a word.
+    $order = max(-9999, min(9999, (int) (isset($request['order']) ? $request['order'] : 0)));
+
+    return array($order, pg_explorer_folder_archived_value($request));
 }
 
 // Asked for when the upload window opens rather than baked into the

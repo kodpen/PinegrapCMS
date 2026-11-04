@@ -85,7 +85,7 @@ function test_dashboard_v2_panel_script_texts_and_bundle()
 		pg_assert_true(isset($strings[$key]), 'panel text ' . $key);
 	}
 
-	foreach (array('since', 'actions', 'tiles', 'status') as $part) {
+	foreach (array('since', 'actions', 'tiles', 'status', 'brief') as $part) {
 		pg_assert_true(isset($strings['top_' . $part]), 'top text ' . $part);
 	}
 

@@ -407,11 +407,10 @@
     }
 
     // Whether a step is about the list of channels, which is the main
-    // menu's Workspace panel (assets/js/workspace_side.js), its tools in the
-    // panel's head among it.
+    // menu's Workspace panel (assets/js/workspace_side.js).
     function inMenuList(selectors) {
         return [].concat(selectors || []).some(function (selector) {
-            return (String(selector).indexOf('#ws-menu-side') !== -1) || (String(selector).indexOf('.ws-side-head-tools') !== -1);
+            return String(selector).indexOf('#ws-menu-side') !== -1;
         });
     }
 
@@ -553,15 +552,15 @@
         steps: steps,
 
         // The screen draws itself over the network: the tour waits for the
-        // list of channels in the menu to answer on this screen (its tour
-        // button is drawn then), or for the screen itself where there is no
-        // menu.
+        // list of channels in the menu to be drawn with this screen's own
+        // answers (app.sideHooks()), or for the screen itself where there is
+        // no menu.
         ready: function () {
             if (!document.getElementById('ws-menu-side')) {
                 return !!document.querySelector('#ws-root .ws-center');
             }
 
-            return !!document.querySelector('#ws-menu-side [data-ws-tour], .ws-side-head-tools [data-ws-tour]');
+            return !!(window.PGWsSide && window.PGWsSide.attached() && document.querySelector('#ws-root .ws-center'));
         },
 
         // A rail widened, or the menu's drawer opened, for the list goes

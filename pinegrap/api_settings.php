@@ -247,6 +247,28 @@ if ($_POST) {
 
 		}
 
+		// An allow list entry that is no address or range, or a rate limit
+		// that is no whole number from 1 to 6000, is refused by name rather
+		// than stored: the first would refuse every call made with the key.
+		$bad_ip = $existing ? api_app_ip_allowlist_bad(isset($_POST['ip_allowlist']) ? $_POST['ip_allowlist'] : '') : '';
+		$rate = $existing ? api_app_rate_limit_in(isset($_POST['rate_limit_per_min']) ? $_POST['rate_limit_per_min'] : '') : null;
+
+		if (($bad_ip !== '') || ($rate === false)) {
+
+			if ($bad_ip !== '') {
+				$liveform->add_error(lang(array('string' => 'Not an IP address or range: {var:1}', 'vars' => h($bad_ip))));
+			}
+
+			if ($rate === false) {
+				$liveform->add_error(lang('The rate limit is a whole number of requests a minute, from 1 to 6000.'));
+			}
+
+			header('Location: ' . $screen_url);
+
+			exit();
+
+		}
+
 		if ($existing) {
 
 			$audit_before = pg_audit_fetch('api_apps', $app_id);
@@ -254,12 +276,6 @@ if ($_POST) {
 			$status = (isset($_POST['status']) && in_array($_POST['status'], array('active', 'disabled'), true))
 				? $_POST['status']
 				: 'disabled';
-
-			$rate = isset($_POST['rate_limit_per_min']) ? (int)$_POST['rate_limit_per_min'] : 120;
-
-			if ($rate < 1) { $rate = 1; }
-
-			if ($rate > 6000) { $rate = 6000; }
 
 			$expires = 0;
 
@@ -278,7 +294,7 @@ if ($_POST) {
 					ip_allowlist = '" . escape(isset($_POST['ip_allowlist']) ? $_POST['ip_allowlist'] : '') . "',
 					status = '" . escape($status) . "',
 					expires_at = '" . $expires . "',
-					rate_limit_per_min = '" . $rate . "',
+					" . (($rate === null) ? '' : "rate_limit_per_min = '" . (int)$rate . "',") . "
 					updated_timestamp = UNIX_TIMESTAMP()
 				WHERE id = '" . $app_id . "'");
 
@@ -671,7 +687,7 @@ function api_settings_group_text($key, $group = array()) {
 		'store'     => array(lang('Store settings'), lang('Writing the shipping methods, shipping zones and tax zones checkout charges by - reading them is under Orders'), 'bi-geo-alt'),
 		'customers' => array(lang('Customers'),  lang('The people who buy (address book records); writing includes deleting one'), 'bi-person-lines-fill'),
 		'pages'     => array(lang('Pages'),      lang('Page details, comment settings, folders, menus and short links'), 'bi-file-earmark'),
-		'design'    => array(lang('Page design'), lang('The layout of the Visual Page Editor\'s pages; writing means proposing a change a designer applies, adding a page as a draft, setting when a page goes on the site and comes off it, putting back a published revision, or sharing the drafts as a prototype by a link'), 'bi-palette'),
+		'design'    => array(lang('Page design'), lang('The layout of the Visual Page Editor\'s pages and the site\'s ads; writing means proposing a change a designer applies, adding a page as a draft, setting when a page goes on the site and comes off it, putting back a published revision, sharing the drafts as a prototype by a link, or adding, changing and removing ads and ad regions, which go live at once'), 'bi-palette'),
 		'comments'  => array(lang('Comments'),   lang('What visitors wrote under pages, records, products and events; writing means publishing, holding, featuring or removing one'), 'bi-chat-left-text'),
 		'offers'    => array(lang('Offers'),     lang('Reading campaign rules; writing means switching one on or off, moving its dates or removing it, not creating it'), 'bi-file-earmark-text'),
 		'key_codes' => array(lang('Key Codes'),  lang('The codes shoppers type instead of an offer\'s own code; writing makes codes for an existing offer, changes or removes one'), 'bi-key'),

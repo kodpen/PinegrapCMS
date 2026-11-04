@@ -77,7 +77,8 @@ function test_erp_invoice_screen_draws_no_pdf_for_a_purchase()
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_erp_invoice.php');
 
 	pg_assert_contains("\$has_own_pdf = erp_archive_keeps_rendering((string) \$invoice['direction']);", $screen, 'the screen asks the archive');
-	pg_assert_true((bool) preg_match('/\(\$has_own_pdf \? \'\s*<a [^>]*get_erp_invoice_pdf\.php\?id=\' \. \$invoice_id \. \'"[^\n]*\n[^\n]*get_erp_invoice_pdf\.php\?id=\' \. \$invoice_id \. \'&amp;download=1/', $screen), 'PDF and Download are drawn only then');
+	pg_assert_true((bool) preg_match('/\'primary\' => \$has_own_pdf\s*\?\s*\'<a [^>]*get_erp_invoice_pdf\.php\?id=\' \. \$invoice_id \. \'"/', $screen), 'PDF is drawn only then');
+	pg_assert_true((bool) preg_match('/if \(\$has_own_pdf\) \{\s*\$toolbar_more\[\] = \'<a [^>]*get_erp_invoice_pdf\.php\?id=\' \. \$invoice_id \. \'&amp;download=1/', $screen), 'Download is drawn only then');
 
 	$drawer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/drawer.php');
 

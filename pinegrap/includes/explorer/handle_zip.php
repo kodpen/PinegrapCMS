@@ -269,6 +269,7 @@ function pg_explorer_handle_zip_extract($type, $request, $user)
 
     $extracted = 0;
     $blocked = array();
+    $renamed = array();
 
     for ($index = 0; $index < $zip->numFiles; $index++) {
 
@@ -324,6 +325,12 @@ function pg_explorer_handle_zip_extract($type, $request, $user)
 
         pg_audit_record('create', 'files', (int) mysqli_insert_id(db::$con));
 
+        // A file name is its address, so a name that had to change (taken,
+        // or letters an address cannot carry) is told to the screen.
+        if ($new_name !== $entry_name) {
+            $renamed[] = $entry_name . ' → ' . $new_name;
+        }
+
         $extracted++;
     }
 
@@ -347,6 +354,7 @@ function pg_explorer_handle_zip_extract($type, $request, $user)
         'request' => $type,
         'extracted' => $extracted,
         'blocked' => array_slice($blocked, 0, 20),
+        'renamed' => array_slice($renamed, 0, 20),
         'created' => ($extracted > 0) ? array(array('kind' => 'folder', 'id' => $extract_folder_id)) : array(),
         'message' => ($extracted > 0) ? $message : lang('There was nothing in this archive that can be stored on a web site.')));
 }

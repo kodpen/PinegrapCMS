@@ -150,15 +150,15 @@
     // ---- tools ----
 
     var PROFILES = {
-        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'motion'],
-        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'image', 'vector', 'frame', 'motion'],
+        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'builder', 'motion'],
+        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'image', 'vector', 'scissors', 'warp', 'builder', 'frame', 'motion'],
         annotate: ['arrow', 'rect', 'text', 'pen', 'redact'],
         optimise: ['export']
     };
 
     // Tools a caller may name: the rail's and the marking tools of the mini
     // bar (one draw kind each).
-    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'artboard', 'image', 'export', 'motion',
+    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'builder', 'artboard', 'image', 'export', 'motion',
         'arrow', 'line', 'rect', 'ellipse', 'pen'];
 
     // The tools of one call: the caller's list (known names, first mention
@@ -563,6 +563,22 @@
 
         if (d.geometry.output && ((before.rot % 180) !== (after.rot % 180))) {
             d.geometry.output = { w: d.geometry.output.h, h: d.geometry.output.w };
+        }
+
+        // A picture placed on its canvas turns alone around its middle: the
+        // canvas and the layers stay, the redaction areas go with it.
+        if (doc.canvas && doc.canvas.picture) {
+            var p0 = pictureBox(doc), c1 = cropBox(d), k = d.canvas.picture.k || 1, a0 = placeMatrix(doc);
+
+            d.canvas.picture.x = p0.x + p0.w / 2 - (c1.x + c1.w / 2) * k;
+            d.canvas.picture.y = p0.y + p0.h / 2 - (c1.y + c1.h / 2) * k;
+
+            var mv = mul(placeMatrix(d), mul(map, inv(a0)));
+
+            d.layers = d.layers.map(function (l) { return (l.type === 'redact') ? mapLayer(l, function (x, y) { return apply(mv, x, y); }) : l; });
+            keepCanvas(doc, d);
+
+            return d;
         }
 
         d.layers = d.layers.map(function (l) { return mapLayer(l, fn); });
@@ -1266,6 +1282,10 @@
     function shapePath(l) {
         var w = l.w, h = l.h, r = clamp(Number(l.radius) || 0, 0, maxRadius(l)), d = '';
 
+        if (warpOn(l)) {
+            return warpShape(l);
+        }
+
         if (l.type === 'path') {
             return pathShape(l);
         }
@@ -1292,12 +1312,16 @@
     function outline(l) {
         var w = l.w, h = l.h, out = [], i, n = 48;
 
+        if (warpOn(l)) {
+            return warpOutline(l);
+        }
+
         if (LINE_KINDS.indexOf(l.type) >= 0) {
             return [[[0, h / 2], [w, h / 2]]];
         }
 
         if (l.type === 'path') {
-            return [curvePoints(pathKnots(l), !!l.closed, 16)];
+            return [curvePoints(pathKnots(l), !!l.closed, 16)].concat(subKnots(l).map(function (sub) { return curvePoints(sub.knots, sub.closed, 16); }));
         }
 
         if (l.type === 'pen') {
@@ -1347,7 +1371,8 @@
     function hitShape(l, p, slack) {
         var q = [l.mirror ? l.w - p[0] : p[0], p[1]], reach = (l.stroke || 1) / 2 + slack, lines = outline(l), i, j;
 
-        if ((l.fill === 'solid' || l.fill === 'soft') && isClosed(l) && inside(q, lines[0])) {
+        // A path with more contours (outlined letters) is inside any of them.
+        if ((l.fill === 'solid' || l.fill === 'soft') && isClosed(l) && (l.subs ? lines : [lines[0]]).some(function (line) { return inside(q, line); })) {
             return true;
         }
 
@@ -1900,6 +1925,12 @@
             next.filter = next.filter || 'none';
             next.frame = (next.frame === undefined) ? null : next.frame;
 
+            // Scenes only with the open one among them (sceneList()).
+            if (!Array.isArray(next.scenes) || (next.scenes.length < 2) || (sceneIndex(next) < 0)) {
+                delete next.scenes;
+                delete next.scene;
+            }
+
             return next;
         },
 
@@ -2028,7 +2059,7 @@
     // the rotated space's units; null when the canvas is the crop box. What
     // the picture does not cover takes the background.
     function canvasBox(doc) {
-        var c = cropBox(doc), m = doc.canvas;
+        var c = pictureBox(doc), m = doc.canvas;
 
         return m ? { x: c.x - m.l, y: c.y - m.t, w: c.w + m.l + m.r, h: c.h + m.t + m.b } : c;
     }
@@ -2080,14 +2111,44 @@
             return null;
         }
 
-        var b = saveBox(doc), c = cropBox(doc), out = outputSize(doc), sx = out.w / c.w, sy = out.h / c.h;
+        var b = saveBox(doc), c = cropBox(doc), p = pictureBox(doc), out = outputSize(doc), sx = out.w / c.w, sy = out.h / c.h;
         var fill = doc.canvas ? doc.canvas.background : doc.frame.color;
-
-        return {
+        var r = {
             w: Math.round(clamp(b.w * sx, 1, SIZE_MAX)), h: Math.round(clamp(b.h * sy, 1, SIZE_MAX)),
-            x: Math.round((c.x - b.x) * sx), y: Math.round((c.y - b.y) * sy),
+            x: Math.round((p.x - b.x) * sx), y: Math.round((p.y - b.y) * sy),
             fill: /^#[0-9a-f]{6}$/i.test(fill || '') ? fill : 'transparent'
         };
+
+        // A picture resized on its canvas is laid at that size (pw, ph).
+        if (picturePlace(doc).k !== 1) {
+            r.pw = Math.round(clamp(p.w * sx, 1, SIZE_MAX));
+            r.ph = Math.round(clamp(p.h * sy, 1, SIZE_MAX));
+        }
+
+        return r;
+    }
+
+    // The crop shape over box as an SVG path: the box, the box with rounded
+    // corners (12 % of the shorter side, as the save cuts them) or the
+    // ellipse in it. On a canvas that reaches past the picture the shape
+    // cuts the picture only: the stage's mat leaves this hole.
+    function cropShapePath(box, shape) {
+        var x = box.x, y = box.y, w = box.w, h = box.h, rx = w / 2, ry = h / 2, r;
+
+        if (shape === 'circle') {
+            return 'M' + x + ' ' + (y + ry) + 'a' + rx + ' ' + ry + ' 0 1 0 ' + w + ' 0a' + rx + ' ' + ry + ' 0 1 0 ' + (-w) + ' 0Z';
+        }
+
+        if (shape === 'rounded') {
+            r = Math.min(w, h) * 0.12;
+
+            return 'M' + (x + r) + ' ' + y + 'H' + (x + w - r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x + w) + ' ' + (y + r)
+                + 'V' + (y + h - r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x + w - r) + ' ' + (y + h)
+                + 'H' + (x + r) + 'A' + r + ' ' + r + ' 0 0 1 ' + x + ' ' + (y + h - r)
+                + 'V' + (y + r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x + r) + ' ' + y + 'Z';
+        }
+
+        return 'M' + x + ' ' + y + 'H' + (x + w) + 'V' + (y + h) + 'H' + x + 'Z';
     }
 
     // The size a save writes.
@@ -2100,15 +2161,149 @@
     // doc with its picture's canvas moved to r (in the canvas box's units,
     // as boardDrag() gives it): whole units on each side, at least SIZE_MIN
     // and at most SIZE_MAX across. The layers stay: they lie in the rotated
-    // space, not on the canvas. A canvas back on the crop box with a white
-    // background is none.
+    // space, not on the canvas. A canvas back on the picture with a white
+    // background and no place of the picture is none.
     function applyCanvas(doc, r) {
-        var d = clone(doc), c = cropBox(doc), b = canvasBox(doc);
+        var d = clone(doc), b = canvasBox(doc);
         var x = b.x + Math.round(r.x), y = b.y + Math.round(r.y), w = boardSide(r.w), h = boardSide(r.h);
-        var m = { l: c.x - x, t: c.y - y, r: x + w - c.x - c.w, b: y + h - c.y - c.h, background: doc.canvas ? doc.canvas.background : '#ffffff' };
+
+        d.canvas = canvasAround(doc, { x: x, y: y, w: w, h: h });
+
+        return d;
+    }
+
+    // doc.canvas holding the canvas box b around the picture's place.
+    function canvasAround(doc, b) {
+        var c = pictureBox(doc), m = { l: c.x - b.x, t: c.y - b.y, r: b.x + b.w - c.x - c.w, b: b.y + b.h - c.y - c.h, background: doc.canvas ? doc.canvas.background : '#ffffff' };
 
         ['l', 't', 'r', 'b'].forEach(function (k) { m[k] = Math.round(m[k] * 1000) / 1000; });
-        d.canvas = (!m.l && !m.t && !m.r && !m.b && (m.background === '#ffffff')) ? null : m;
+
+        if (doc.canvas && doc.canvas.picture) {
+            m.picture = clone(doc.canvas.picture);
+        }
+
+        return (!m.l && !m.t && !m.r && !m.b && (m.background === '#ffffff') && !m.picture) ? null : m;
+    }
+
+    // -- the picture as the bottom layer --
+
+    // doc.canvas.picture = { x, y, k, locked }: the picture on its canvas,
+    // the crop box scaled by k and moved by x, y in the rotated space's
+    // units (the layers'); without it the picture lies on its crop box.
+    // Unlocked (locked false) it is moved, resized and deleted like a layer.
+    function picturePlace(doc) {
+        var p = doc.canvas && doc.canvas.picture;
+
+        return p ? { x: Number(p.x) || 0, y: Number(p.y) || 0, k: Number(p.k) || 1, locked: p.locked !== false } : { x: 0, y: 0, k: 1, locked: true };
+    }
+
+    // From the crop box's space to the canvas: the picture's place.
+    function placeMatrix(doc) {
+        var p = picturePlace(doc);
+
+        return mul(translate(p.x, p.y), scale(p.k));
+    }
+
+    // The picture's box on its canvas, in the layers' units.
+    function pictureBox(doc) {
+        var c = cropBox(doc), p = picturePlace(doc);
+
+        return { x: c.x * p.k + p.x, y: c.y * p.k + p.y, w: c.w * p.k, h: c.h * p.k };
+    }
+
+    // From the picture's pixels to the canvas.
+    function placedMatrix(doc) {
+        return mul(placeMatrix(doc), pictureMatrix(doc));
+    }
+
+    // Whether the picture is unlocked: a photo whose canvas lets it move.
+    function pictureFree(doc) {
+        return !!doc.source && !doc.artboard && !picturePlace(doc).locked;
+    }
+
+    // The canvas of before kept around the picture of doc, in place: after a
+    // crop, a turn or a move of a placed picture the canvas stays.
+    function keepCanvas(before, doc) {
+        if (!doc.canvas || !doc.canvas.picture || doc.artboard || !before.source || sameDocument(pictureBox(before), pictureBox(doc))) {
+            return doc;
+        }
+
+        doc.canvas = canvasAround(doc, canvasBox(before));
+
+        return doc;
+    }
+
+    // doc with its picture unlocked (a canvas made on the picture when it
+    // had none) or locked again where it is.
+    function lockPicture(doc, locked) {
+        var d = clone(doc);
+
+        d.canvas = d.canvas || { l: 0, t: 0, r: 0, b: 0, background: '#ffffff' };
+        d.canvas.picture = d.canvas.picture || { x: 0, y: 0, k: 1 };
+        d.canvas.picture.locked = !!locked;
+
+        return d;
+    }
+
+    // doc with its picture placed on box r (the layers' units, its width
+    // sets the scale, the ratio kept): the canvas and the layers stay, the
+    // redaction areas, which belong to the picture's pixels, go with it.
+    function placePicture(doc, r) {
+        var d = clone(doc), c = cropBox(doc), p0 = picturePlace(doc), b = canvasBox(doc);
+        var k = clamp(r.w / c.w, 1 / c.w, SIZE_MAX / c.w), w = c.w * k, h = c.h * k;
+
+        // Some of it stays on the canvas, as the save's extend step asks.
+        var x = clamp(r.x, b.x + 1 - w, b.x + b.w - 1), y = clamp(r.y, b.y + 1 - h, b.y + b.h - 1);
+        var place = { x: Math.round((x - c.x * k) * 1000) / 1000, y: Math.round((y - c.y * k) * 1000) / 1000, k: Math.round(k * 1e6) / 1e6, locked: p0.locked };
+
+        d.canvas = d.canvas || { l: 0, t: 0, r: 0, b: 0, background: '#ffffff' };
+        d.canvas.picture = place;
+
+        var mv = mul(placeMatrix(d), inv(placeMatrix(doc))), s = place.k / p0.k;
+
+        d.layers = d.layers.map(function (l) {
+            if (l.type !== 'redact') {
+                return l;
+            }
+
+            var n = mapLayer(l, function (x, y) { return apply(mv, x, y); }), cx = n.x + n.w / 2, cy = n.y + n.h / 2;
+
+            n.w *= s;
+            n.h *= s;
+            n.x = cx - n.w / 2;
+            n.y = cy - n.h / 2;
+
+            if (n.size) {
+                n.size *= s;
+            }
+
+            return n;
+        });
+
+        return keepCanvas(doc, d);
+    }
+
+    // doc without its picture: the canvas with its fill and the layers
+    // become an artboard of the canvas's size (in the layers' units), the
+    // layers moved onto it; the picture's own (redaction areas,
+    // adjustments, an outward frame) go with the picture.
+    function dropPicture(doc) {
+        var d = clone(doc), b = canvasBox(doc), dx = b.x, dy = b.y, bg = doc.canvas ? doc.canvas.background : '#ffffff';
+
+        d.artboard = { width: boardSide(b.w), height: boardSide(b.h), background: (typeof bg === 'string') ? bg : '#ffffff' };
+        d.source = null;
+        d.canvas = null;
+        d.geometry = { rot: 0, flipX: false, flipY: false, straighten: 0, crop: null, cropShape: 'rect', output: null };
+        d.adjust = {};
+        d.filter = 'none';
+
+        if (d.frame) {
+            delete d.frame.outside;
+        }
+
+        d.layers = d.layers.filter(function (l) { return l.type !== 'redact'; }).map(function (l) {
+            return mapLayer(l, function (x, y) { return [x - dx, y - dy]; });
+        });
 
         return d;
     }
@@ -2117,7 +2312,9 @@
         BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
         boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard,
         canvasBox: canvasBox, FRAME_OUT: FRAME_OUT, frameOutward: frameOutward, framePads: framePads, saveBox: saveBox,
-        saveLayout: saveLayout, saveSize: saveSize, applyCanvas: applyCanvas
+        saveLayout: saveLayout, cropShapePath: cropShapePath, saveSize: saveSize, applyCanvas: applyCanvas,
+        picturePlace: picturePlace, placeMatrix: placeMatrix, pictureBox: pictureBox, placedMatrix: placedMatrix, pictureFree: pictureFree,
+        keepCanvas: keepCanvas, lockPicture: lockPicture, placePicture: placePicture, dropPicture: dropPicture
     };
 
     // -- export (pg_image_editor_export.js) --
@@ -2334,18 +2531,45 @@
 
     // A path's box and knots after its knots (in its box's frame) changed:
     // the box fits the curve again, its angle and mirror kept.
-    function refitPath(l, knots) {
-        var b = knotBounds(knots, l.closed), w = Math.max(1, b.w), h = Math.max(1, b.h);
-        var x0 = b.x + b.w / 2 - w / 2, y0 = b.y + b.h / 2 - h / 2, c = drawnPoint(l, x0 + w / 2, y0 + h / 2);
+    // subs: the path's other contours ({ knots, closed }, knots in its
+    // box's frame), else the layer's own; the box fits them all and they
+    // come back as parts of it too.
+    function refitPath(l, knots, subs) {
+        var more = subs || subKnots(l), b = knotBounds(knots, l.closed);
 
-        return {
-            x: c[0] - w / 2, y: c[1] - h / 2, w: w, h: h,
-            knots: moveKnots(knots, function (px, py) { return [frac(px - x0, w), frac(py - y0, h)]; })
-        };
+        more.forEach(function (sub) {
+            var o = knotBounds(sub.knots, sub.closed), x1 = Math.max(b.x + b.w, o.x + o.w), y1 = Math.max(b.y + b.h, o.y + o.h);
+
+            b.x = Math.min(b.x, o.x);
+            b.y = Math.min(b.y, o.y);
+            b.w = x1 - b.x;
+            b.h = y1 - b.y;
+        });
+
+        var w = Math.max(1, b.w), h = Math.max(1, b.h), x0 = b.x + b.w / 2 - w / 2, y0 = b.y + b.h / 2 - h / 2, c = drawnPoint(l, x0 + w / 2, y0 + h / 2);
+        var part = function (px, py) { return [frac(px - x0, w), frac(py - y0, h)]; };
+        var out = { x: c[0] - w / 2, y: c[1] - h / 2, w: w, h: h, knots: moveKnots(knots, part) };
+
+        if (more.length) {
+            out.subs = more.map(function (sub) { return { knots: moveKnots(sub.knots, part), closed: !!sub.closed }; });
+        }
+
+        return out;
+    }
+
+    // A path's other contours (outlined letters, their holes) in its box's
+    // frame, as pathKnots() gives the first.
+    function subKnots(l) {
+        return (l.subs || []).map(function (sub) {
+            return { knots: moveKnots(sub.knots || [], function (u, v) { return [u * l.w, v * l.h]; }), closed: !!sub.closed };
+        });
     }
 
     function pathShape(l) {
-        return { d: knotsD(pathKnots(l), !!l.closed), head: null, closed: !!l.closed };
+        return {
+            d: knotsD(pathKnots(l), !!l.closed) + subKnots(l).map(function (sub) { return knotsD(sub.knots, sub.closed); }).join(''),
+            head: null, closed: !!l.closed
+        };
     }
 
     // Knot i made smooth (handles along its neighbours' direction, a sixth
@@ -2476,10 +2700,192 @@
         return { closed: true, knots: pts.map(function (p) { return knot(p[0], p[1]); }) };
     }
 
+    // -- scissors --
+
+    // A cut this close to a knot (in t) falls on the knot.
+    var CUT_EPS = 1e-4;
+
+    // The nearest point of the curve to p as nearestOnPath(), its t refined
+    // between the sampled steps around it: the place a click cuts.
+    function nearestCut(knots, closed, p) {
+        var best = nearestOnPath(knots, closed, p), segs = segments(knots, closed), s = segs[best.seg];
+
+        if (!s) {
+            return best;
+        }
+
+        var dist = function (t) { var q = cubicAt(s[0], s[1], t); return Math.hypot(q[0] - p[0], q[1] - p[1]); };
+        var lo = Math.max(0, best.t - 1 / 32), hi = Math.min(1, best.t + 1 / 32);
+
+        for (var i = 0; i < 48; i++) {
+            var a = lo + (hi - lo) / 3, b = hi - (hi - lo) / 3;
+
+            if (dist(a) < dist(b)) {
+                hi = b;
+            } else {
+                lo = a;
+            }
+        }
+
+        var t = (lo + hi) / 2, d = dist(t);
+
+        return (d <= best.d) ? { seg: best.seg, t: t, d: d } : best;
+    }
+
+    // Where the line from a to b crosses the curve: [{ seg, t }] in the
+    // curve's order, a crossing on a knot counted once.
+    function lineCuts(knots, closed, a, b) {
+        var dx = b[0] - a[0], dy = b[1] - a[1], N = 64, out = [], n = knots.length;
+        var side = function (q) { return dx * (q[1] - a[1]) - dy * (q[0] - a[0]); };
+
+        if (Math.hypot(dx, dy) < 1e-9) {
+            return out;
+        }
+
+        segments(knots, closed).forEach(function (s, seg) {
+            var at = function (t) { return cubicAt(s[0], s[1], t); }, p = at(0);
+
+            for (var i = 0; i < N; i++) {
+                var q = at((i + 1) / N), fp = side(p), fq = side(q);
+
+                // A sign change (or a sample on the line) between the two
+                // samples, half-open so a shared sample counts once.
+                if (((fp <= 0) && (fq > 0)) || ((fp >= 0) && (fq < 0))) {
+                    var lo = i / N, hi = (i + 1) / N, flo = fp, t = (fp === 0) ? lo : -1;
+
+                    for (var j = 0; (t < 0) && (j < 40); j++) {
+                        var mid = (lo + hi) / 2, fm = side(at(mid));
+
+                        if (fm === 0) {
+                            t = mid;
+                        } else if ((fm < 0) === (flo < 0)) {
+                            lo = mid;
+                            flo = fm;
+                        } else {
+                            hi = mid;
+                        }
+                    }
+
+                    t = (t < 0) ? (lo + hi) / 2 : t;
+
+                    var c = at(t);
+                    var u = ((c[0] - a[0]) * dx + (c[1] - a[1]) * dy) / (dx * dx + dy * dy);
+
+                    if ((u >= -1e-9) && (u <= 1 + 1e-9)) {
+                        if (t > 1 - CUT_EPS) {
+                            // On the next knot: as the next segment's start.
+                            out.push((seg + 1 < n) || !closed ? { seg: seg + 1, t: 0 } : { seg: 0, t: 0 });
+                        } else {
+                            out.push({ seg: seg, t: (t < CUT_EPS) ? 0 : t });
+                        }
+                    }
+                }
+
+                p = q;
+            }
+        });
+
+        out.sort(function (x, y) { return (x.seg - y.seg) || (x.t - y.t); });
+
+        return out.filter(function (c, i) {
+            var o = out[i - 1];
+
+            return !o || (o.seg !== c.seg) || (c.t - o.t > CUT_EPS);
+        });
+    }
+
+    // The knots cut at cuts ([{ seg, t }]): open pieces [{ knots, closed }]
+    // in the curve's order, each cut end a corner without the handle past
+    // it. A closed path opens at its first cut; a cut on an end of an open
+    // path does nothing. Null when nothing is cut.
+    function cutKnots(knots, closed, cuts) {
+        var n = knots.length, ks = knots.slice(), marks = knots.map(function () { return false; }), bySeg = {};
+
+        if (n < 2) {
+            return null;
+        }
+
+        (cuts || []).forEach(function (c) {
+            var seg = Number(c.seg), t = Number(c.t);
+
+            if (!(seg >= 0) || (seg >= (closed ? n : n - 1)) || !(t >= 0) || !(t <= 1)) {
+                return;
+            }
+
+            if (t < CUT_EPS) {
+                marks[seg] = true;
+            } else if (t > 1 - CUT_EPS) {
+                marks[(seg + 1) % n] = true;
+            } else {
+                (bySeg[seg] = bySeg[seg] || []).push(t);
+            }
+        });
+
+        // Later segments first, the larger t first in a segment: the knots
+        // before stay where they are, and the rest of a split segment runs
+        // from 0 to the last split's t.
+        Object.keys(bySeg).map(Number).sort(function (x, y) { return y - x; }).forEach(function (seg) {
+            var ts = bySeg[seg].sort(function (x, y) { return y - x; }), span = 1;
+
+            ts.forEach(function (t) {
+                if (span - t < CUT_EPS * span) {
+                    return;
+                }
+
+                ks = splitAt(ks, closed, seg, t / span);
+                marks.splice(seg + 1, 0, true);
+                span = t;
+            });
+        });
+
+        var at = [];
+
+        marks.forEach(function (m, i) {
+            if (m && (closed || ((i > 0) && (i < ks.length - 1)))) {
+                at.push(i);
+            }
+        });
+
+        if (!at.length) {
+            return null;
+        }
+
+        var seq = ks, bounds;
+
+        if (closed) {
+            var first = at[0];
+
+            seq = ks.slice(first).concat(ks.slice(0, first), [ks[first]]);
+            bounds = at.map(function (i) { return i - first; }).concat([seq.length - 1]);
+        } else {
+            bounds = [0].concat(at, [ks.length - 1]);
+        }
+
+        var pieces = [];
+
+        for (var i = 0; i < bounds.length - 1; i++) {
+            var part = seq.slice(bounds[i], bounds[i + 1] + 1).map(function (q) {
+                return { x: q.x, y: q.y, ix: q.ix, iy: q.iy, ox: q.ox, oy: q.oy, s: !!q.s };
+            });
+            var a = part[0], b = part[part.length - 1];
+
+            a.ix = a.x;
+            a.iy = a.y;
+            a.s = false;
+            b.ox = b.x;
+            b.oy = b.y;
+            b.s = false;
+            pieces.push({ knots: part, closed: false });
+        }
+
+        return pieces;
+    }
+
     var VECTOR = {
         segments: segments, cubicAt: cubicAt, knotsD: knotsD, curvePoints: curvePoints, knotBounds: knotBounds, pathLayer: pathLayer,
-        pathKnots: pathKnots, refitPath: refitPath, pathShape: pathShape, smoothKnot: smoothKnot, cornerKnot: cornerKnot,
-        moveKnot: moveKnot, moveHandle: moveHandle, nearestOnPath: nearestOnPath, splitAt: splitAt, shapeKnots: shapeKnots
+        pathKnots: pathKnots, subKnots: subKnots, refitPath: refitPath, pathShape: pathShape, smoothKnot: smoothKnot, cornerKnot: cornerKnot,
+        moveKnot: moveKnot, moveHandle: moveHandle, nearestOnPath: nearestOnPath, splitAt: splitAt, shapeKnots: shapeKnots,
+        nearestCut: nearestCut, lineCuts: lineCuts, cutKnots: cutKnots
     };
 
     // -- SVG open and save (pg_image_editor_svg.js) --
@@ -2870,6 +3276,13 @@
             st = motionCompose(st, motionEnter(l, a.out.kind, 1 - easeAt(a.out.ease, p), MOTION_BACK[a.out.dir] || 'down', p < 1));
         }
 
+        // The layer's own keyframes on top of its presets (KEYS below).
+        var k = keyAt(l, t);
+
+        if (k) {
+            st = motionCompose(st, Object.assign(motionRest(), { opacity: k.opacity, x: k.x, y: k.y, scale: k.scale, rot: k.rot }));
+        }
+
         return st;
     }
 
@@ -2908,7 +3321,7 @@
         return ((doc && doc.layers) || []).some(function (l) {
             var a = l.anim;
 
-            return !!(a && ((a['in'] && a['in'].kind) || (a.loop && a.loop.kind) || (a.out && a.out.kind)));
+            return !!(a && ((a['in'] && a['in'].kind) || (a.loop && a.loop.kind) || (a.out && a.out.kind) || keyList(l).length));
         });
     }
 
@@ -2917,6 +3330,165 @@
         MOTION_MIN: MOTION_MIN, MOTION_MAX: MOTION_MAX, easeAt: easeAt, newMotion: newMotion, motionSpans: motionSpans, motionAt: motionAt,
         docMotion: docMotion, baseAt: baseAt, hasMotion: hasMotion
     };
+
+    // -- keyframes (pg_image_editor_keyframes.js) --
+    //
+    // A layer's anim.keys: [{ t, x, y, scale, rot, opacity, ease }] in time
+    // order; x and y move the layer (document units), scale and opacity
+    // multiply, rot adds degrees, as M.motionAt()'s state does. Between two
+    // keys the later key's ease runs; before the first and after the last
+    // the state holds. Times are ms, rounded to KEY_STEP.
+
+    var KEY_STEP = 10, KEY_NEAR = 5, KEY_SCALE = [0.05, 10];
+
+    function keyRest(t) {
+        return { t: t, x: 0, y: 0, scale: 1, rot: 0, opacity: 1, ease: 'in-out' };
+    }
+
+    function keyNumber(v, fallback) {
+        var n = Number(v);
+
+        return isFinite(n) ? n : fallback;
+    }
+
+    // The layer's keys, cleaned: objects only, numbers, limits, defaults,
+    // in time order.
+    function keyList(l) {
+        var list = (l && l.anim && Array.isArray(l.anim.keys)) ? l.anim.keys : [];
+
+        return list.filter(function (k) { return k && (typeof k === 'object'); }).map(function (k) {
+            return {
+                t: Math.max(0, Math.round(keyNumber(k.t, 0))),
+                x: keyNumber(k.x, 0),
+                y: keyNumber(k.y, 0),
+                scale: clamp(keyNumber(k.scale, 1), KEY_SCALE[0], KEY_SCALE[1]),
+                rot: keyNumber(k.rot, 0),
+                opacity: clamp(keyNumber(k.opacity, 1), 0, 1),
+                ease: (MOTION_EASES.indexOf(k.ease) >= 0) ? k.ease : 'in-out'
+            };
+        }).sort(function (a, b) { return a.t - b.t; });
+    }
+
+    // The keyed state at t, or null for a layer without keys.
+    function keyAt(l, t) {
+        var keys = keyList(l), i, a, b, e;
+
+        if (!keys.length || (t === null) || (t === undefined)) {
+            return null;
+        }
+
+        if (t <= keys[0].t) {
+            return keys[0];
+        }
+
+        for (i = 1; i < keys.length; i++) {
+            if (t < keys[i].t) {
+                a = keys[i - 1];
+                b = keys[i];
+                e = easeAt(b.ease, (t - a.t) / (b.t - a.t));
+
+                return {
+                    t: t,
+                    x: a.x + (b.x - a.x) * e,
+                    y: a.y + (b.y - a.y) * e,
+                    scale: Math.max(KEY_SCALE[0], a.scale + (b.scale - a.scale) * e),
+                    rot: a.rot + (b.rot - a.rot) * e,
+                    opacity: clamp(a.opacity + (b.opacity - a.opacity) * e, 0, 1),
+                    ease: b.ease
+                };
+            }
+        }
+
+        return keys[keys.length - 1];
+    }
+
+    // The index of the key within KEY_NEAR ms of t, or -1.
+    function keyIndex(keys, t) {
+        for (var i = 0; i < keys.length; i++) {
+            if (Math.abs(keys[i].t - t) <= KEY_NEAR) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    function keyTime(t, end) {
+        return clamp(Math.round(keyNumber(t, 0) / KEY_STEP) * KEY_STEP, 0, Math.max(0, end));
+    }
+
+    function keyClean(k) {
+        return { t: k.t, x: k.x, y: k.y, scale: k.scale, rot: k.rot, opacity: k.opacity, ease: k.ease };
+    }
+
+    // The keys with patch at t (on a timeline of end ms): the key there
+    // changed, or a new one from the state the layer has there. The first
+    // key away from 0 brings a key at rest at 0, so the layer moves from
+    // where it was put.
+    function keySet(l, t, patch, end) {
+        var keys = keyList(l), i, k;
+
+        t = keyTime(t, end);
+        i = keyIndex(keys, t);
+
+        if (!keys.length && (t > 0)) {
+            keys.push(keyRest(0));
+        }
+
+        if (i >= 0) {
+            keys[i] = keyClean(Object.assign({}, keys[i], patch, { t: keys[i].t }));
+        } else {
+            k = keyAt({ anim: { keys: keys } }, t);
+            keys.push(keyClean(Object.assign(k ? Object.assign({}, k) : keyRest(t), { ease: 'in-out' }, patch, { t: t })));
+        }
+
+        return keyList({ anim: { keys: keys } });
+    }
+
+    // The key at from moved to to; one already there gives way.
+    function keyMove(keys, from, to, end) {
+        var i = keyIndex(keys, from), moved;
+
+        if (i < 0) {
+            return keys.slice();
+        }
+
+        to = keyTime(to, end);
+        moved = Object.assign({}, keys[i], { t: to });
+
+        return keyList({ anim: { keys: keys.filter(function (k, n) { return (n !== i) && (Math.abs(k.t - to) > KEY_NEAR); }).concat([moved]) } });
+    }
+
+    function keyDrop(keys, t) {
+        var i = keyIndex(keys, t);
+
+        return keys.filter(function (k, n) { return n !== i; });
+    }
+
+    // The path the layer's centre takes: a dot [x, y, t] at each key and a
+    // line sampled at n steps from the first key to the last; null without
+    // keys.
+    function keyPath(l, n) {
+        var keys = keyList(l), cx = (Number(l.x) || 0) + (Number(l.w) || 0) / 2, cy = (Number(l.y) || 0) + (Number(l.h) || 0) / 2;
+        var line = [], from, span, i, k;
+
+        if (!keys.length) {
+            return null;
+        }
+
+        n = Math.max(1, Math.round(n || 60));
+        from = keys[0].t;
+        span = keys[keys.length - 1].t - from;
+
+        for (i = 0; i <= n; i++) {
+            k = keyAt(l, from + span * i / n);
+            line.push([cx + k.x, cy + k.y]);
+        }
+
+        return { line: line, dots: keys.map(function (q) { return [cx + q.x, cy + q.y, q.t]; }) };
+    }
+
+    var KEYS = { KEY_STEP: KEY_STEP, keyList: keyList, keyAt: keyAt, keyIndex: keyIndex, keySet: keySet, keyMove: keyMove, keyDrop: keyDrop, keyPath: keyPath };
 
     // -- tracks (pg_image_editor_tracks.js) --
     //
@@ -3053,22 +3625,45 @@
     var ANIM_FORMATS = {
         gif: { mime: 'image/gif', ext: 'gif', edges: [240, 320, 480, 640, 800], edge: 480, maxMs: 15000, rates: [10, 15, 20, 25], rate: 15, dither: true },
         apng: { mime: 'image/png', ext: 'png', edges: [240, 320, 480, 640, 800, 1080], edge: 480, maxMs: 15000, rates: [10, 15, 20, 25], rate: 15, needs: 'deflate' },
-        webp: { mime: 'image/webp', ext: 'webp', edges: [240, 320, 480, 640, 800, 1080], edge: 480, maxMs: 15000, rates: [10, 15, 20, 25], rate: 15, needs: 'webp' }
+        webp: { mime: 'image/webp', ext: 'webp', edges: [240, 320, 480, 640, 800, 1080], edge: 480, maxMs: 15000, rates: [10, 15, 20, 25], rate: 15, needs: 'webp' },
+        // Video: even sides; codecs are tried in order by WebCodecs (the
+        // baseline H.264 profile first: no reordered frames for the muxer),
+        // recorder the MediaRecorder types where WebCodecs has none.
+        mp4: {
+            mime: 'video/mp4', ext: 'mp4', video: true, even: true, edges: [480, 640, 720, 960, 1280, 1920], edge: 1280, maxMs: 60000, rates: [24, 30], rate: 30, needs: 'mp4',
+            codecs: ['avc1.42E028', 'avc1.4D0028', 'avc1.640028'], recorder: ['video/mp4;codecs=avc1.42E028', 'video/mp4']
+        },
+        webm: {
+            mime: 'video/webm', ext: 'webm', video: true, even: true, edges: [480, 640, 720, 960, 1280, 1920], edge: 1280, maxMs: 60000, rates: [24, 30], rate: 30, needs: 'webm',
+            codecs: ['vp09.00.40.08'], recorder: ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+        }
     };
 
-    // The formats a browser with caps ({ deflate, webp }) can make.
+    // Every edge some format offers.
+    var ANIM_EDGES = Object.keys(ANIM_FORMATS).reduce(function (all, k) {
+        return all.concat(ANIM_FORMATS[k].edges.filter(function (e) { return all.indexOf(e) < 0; }));
+    }, []);
+
+    // The formats a browser with caps ({ deflate, webp, mp4, webm }) can make.
     function animFormats(caps) {
         return Object.keys(ANIM_FORMATS).filter(function (k) { return !ANIM_FORMATS[k].needs || !!(caps && caps[ANIM_FORMATS[k].needs]); });
     }
 
     // The settings on switching to format: the edge and the rate kept
-    // inside its limits.
+    // inside its limits; an edge another format lists becomes the largest
+    // of this one's under it (the picture's own edge is kept).
     function animSwitch(set, format) {
-        var f = ANIM_FORMATS[format] || ANIM_FORMATS.gif, top = f.edges[f.edges.length - 1];
+        var f = ANIM_FORMATS[format] || ANIM_FORMATS.gif, edge = Math.min(Number(set.edge) || f.edge, f.edges[f.edges.length - 1]);
+
+        if ((f.edges.indexOf(edge) < 0) && (ANIM_EDGES.indexOf(edge) >= 0)) {
+            var under = f.edges.filter(function (e) { return e <= edge; });
+
+            edge = under.length ? under[under.length - 1] : f.edges[0];
+        }
 
         return Object.assign({}, set, {
             format: ANIM_FORMATS[format] ? format : 'gif',
-            edge: Math.min(Number(set.edge) || f.edge, top),
+            edge: edge,
             fps: (f.rates.indexOf(set.fps) >= 0) ? set.fps : f.rate
         });
     }
@@ -3095,11 +3690,19 @@
     }
 
     // The frame size for out (the save's size) at a longest edge, never
-    // larger than out; whole pixels, at least 1.
-    function animSize(out, edge) {
+    // larger than out; whole pixels, at least 1; even sides (a video's
+    // chroma is halved) rounded down, at least 2.
+    function animSize(out, edge, even) {
         var long = Math.max(out.w, out.h), k = Math.min(1, Math.max(1, Number(edge) || long) / long);
+        var w = Math.max(1, Math.round(out.w * k)), h = Math.max(1, Math.round(out.h * k));
 
-        return { w: Math.max(1, Math.round(out.w * k)), h: Math.max(1, Math.round(out.h * k)) };
+        return even ? { w: Math.max(2, w - (w & 1)), h: Math.max(2, h - (h & 1)) } : { w: w, h: h };
+    }
+
+    // A video's bit rate for frames of size at fps: a tenth of a bit per
+    // pixel, at least 250 kbit/s.
+    function animBitrate(size, fps) {
+        return Math.max(250000, Math.round(size.w * size.h * fps / 10));
     }
 
     // The edges the dialog offers for out: those under its longest edge,
@@ -3150,8 +3753,112 @@
 
     var RENDER = {
         ANIM_FORMATS: ANIM_FORMATS, animFormats: animFormats, animSwitch: animSwitch, animLoops: animLoops, animDefaults: animDefaults, animSize: animSize, animEdges: animEdges,
-        animFrames: animFrames, animSamples: animSamples, animEstimate: animEstimate, animName: animName
+        animBitrate: animBitrate, animFrames: animFrames, animSamples: animSamples, animEstimate: animEstimate, animName: animName
     };
+
+    // -- saving an animation into Files (pg_image_editor_render.js) --
+
+    // Whether a file of bytes fits the server's limit (0: none known).
+    function animFits(bytes, limit) {
+        return !(Number(limit) > 0) || (Number(bytes) || 0) <= Number(limit);
+    }
+
+    // A smaller longest edge or frame rate whose file fits limit, from the
+    // estimate at set: the size scales with the frame's area and the frame
+    // count. The largest such file (the least lost), with a tenth spare;
+    // null when the settings fit or nothing offered does.
+    function animSmaller(out, set, bytes, limit) {
+        var f = ANIM_FORMATS[set.format] || ANIM_FORMATS.gif, now = animSize(out, set.edge), best = null;
+
+        if (animFits(bytes, limit)) {
+            return null;
+        }
+
+        animEdges(out, set.format).forEach(function (edge) {
+            var size = animSize(out, edge), area = (size.w * size.h) / (now.w * now.h);
+
+            f.rates.forEach(function (fps) {
+                var est = Math.round(bytes * area * fps / set.fps);
+
+                if ((size.w <= now.w) && (fps <= set.fps) && ((size.w < now.w) || (fps < set.fps)) && (est * 1.1 <= limit)
+                    && (!best || (est > best.bytes) || ((est === best.bytes) && (edge > best.edge)))) {
+                    best = { edge: edge, fps: fps, bytes: est };
+                }
+            });
+        });
+
+        return best;
+    }
+
+    // What a save into Files does: replace the animation the editor opened
+    // when it is of the same format and may be written over, else a new
+    // file.
+    function animSaveMode(made, format) {
+        return (made && made.replace && (made.format === (ANIM_FORMATS[format] || ANIM_FORMATS.gif).ext)) ? 'replace' : 'new';
+    }
+
+    var ANIMSAVE = { animFits: animFits, animSmaller: animSmaller, animSaveMode: animSaveMode };
+
+    // -- motion in a saved SVG (pg_image_editor_svg.js) --
+
+    // Samples over one play: enough for an ease to read as a curve.
+    var SVG_MOTION_STEPS = 50;
+
+    // The motion of an SVG file's layers, as numbers the server writes its
+    // own @keyframes from (pg_image_editor_svg_motion_css()): for each of
+    // layers (in the file's order) that moves, its index n (its group's
+    // class pgm-n), the centre it turns about and frames [percent, opacity,
+    // x, y, scale, rot]. A wipe, a drawn stroke or typed letters show as the
+    // share revealed, faded: a style sheet cannot cut them. null when
+    // nothing moves.
+    function svgMotion(doc, layers) {
+        var m = docMotion(doc), out = [];
+
+        (layers || []).forEach(function (l, n) {
+            if (!hasMotion({ layers: [l] }) || (l.type === 'redact')) {
+                return;
+            }
+
+            var frames = [], len = Array.from(String(l.text || '')).length;
+
+            for (var i = 0; i <= SVG_MOTION_STEPS; i++) {
+                var t = Math.min(m.duration - 1, m.duration * i / SVG_MOTION_STEPS), st = motionAt(l, t, m.duration);
+                var shown = (st.clip ? clamp(Number(st.clip.f) || 0, 0, 1) : 1) * clamp(st.draw, 0, 1) * ((st.chars !== null) && len ? clamp(st.chars / len, 0, 1) : 1);
+
+                frames.push([Math.round(10000 * i / SVG_MOTION_STEPS) / 100].concat([clamp(st.opacity, 0, 1) * shown, st.x, st.y, st.scale, st.rot].map(function (v) {
+                    return Math.round(v * 1000) / 1000;
+                })));
+            }
+
+            // A frame equal to both neighbours adds nothing.
+            frames = frames.filter(function (f, i) {
+                var a = frames[i - 1], b = frames[i + 1];
+
+                return !a || !b || (f.slice(1).join() !== a.slice(1).join()) || (f.slice(1).join() !== b.slice(1).join());
+            });
+
+            out.push({ n: n, cx: Math.round(((Number(l.x) || 0) + (Number(l.w) || 0) / 2) * 1000) / 1000, cy: Math.round(((Number(l.y) || 0) + (Number(l.h) || 0) / 2) * 1000) / 1000, frames: frames });
+        });
+
+        return out.length ? { duration: m.duration, loop: m.loop, layers: out } : null;
+    }
+
+    // Whether a top-level element of a saved SVG is the group a save put
+    // around one moving layer: a g whose only class is pgm-n, with no other
+    // attribute than that and a transform, holding one element. It opens as
+    // that element (svgMotionOpen()), so a text stays a text.
+    function svgMotionGroup(name, cls, attrs, children) {
+        return (name === 'g') && /^\s*pgm-\d+\s*$/.test(String(cls || '')) && (children === 1)
+            && (attrs || []).every(function (a) { return (a === 'class') || (a === 'transform'); });
+    }
+
+    // A class list without the pgm-n names a save gives its groups, so a
+    // stale one never matches a later save's rules.
+    function svgMotionClass(cls) {
+        return String(cls || '').split(/\s+/).filter(function (c) { return c && !/^pgm-\d+$/.test(c); }).join(' ');
+    }
+
+    var SVGMOTION = { svgMotion: svgMotion, svgMotionGroup: svgMotionGroup, svgMotionClass: svgMotionClass };
 
     // -- access (pg_image_editor_access.js) --
 
@@ -3407,7 +4114,2427 @@
         return Math.max(1, Math.min(Number(l.w) || 0, Number(l.h) || 0));
     }
 
-    var GLYPH = { EMOJI: EMOJI, iconSearch: iconSearch, emojiRecent: emojiRecent, glyphText: glyphText, glyphSize: glyphSize };
+    // A placed sticker or glyph with another one in its place: pick is a
+    // built-in sticker { type: 'sticker', kind, label, fill, ink, w, h } (its
+    // label already translated) or a glyph { type: 'glyph', set: 'bi'|'emoji',
+    // code }; oldText is the old sticker kind's own label text (translated).
+    // Turn, opacity, motion and every other field stay. What the person
+    // changed on the old one stays too: a label other than its kind's text, a
+    // colour or ink other than its kind's (an icon's other than #212529);
+    // else the pick brings its own. The pick keeps its own proportions,
+    // fitted inside the old box about its centre; a swap between the same
+    // proportions keeps the box. The old type's own fields go (a sticker's
+    // kind, label and ink, a glyph's set and code); the colour stays on an
+    // emoji, so an emoji turned back into an icon gets it again. null when
+    // the layer or the pick is not one of these.
+    function swapGlyph(l, pick, oldText) {
+        if (!l || ((l.type !== 'sticker') && (l.type !== 'glyph')) || !pick) {
+            return null;
+        }
+
+        var toSticker = (pick.type === 'sticker');
+
+        if (toSticker ? !pick.kind : ((pick.type !== 'glyph') || !glyphText({ set: pick.set, code: pick.code }))) {
+            return null;
+        }
+
+        var next = clone(l), was = l.type, def = null, i;
+
+        for (i = 0; (was === 'sticker') && (i < STICKER.STICKERS.length); i++) {
+            if (STICKER.STICKERS[i].kind === l.kind) {
+                def = STICKER.STICKERS[i];
+            }
+        }
+
+        // The old colour when the person chose it, else null.
+        var own = function (value, given) {
+            return (value && (String(value).toLowerCase() !== String(given || '').toLowerCase())) ? value : null;
+        };
+        var color = (was === 'sticker') ? own(l.color, def && def.fill) : ((l.set === 'bi') ? own(l.color, '#212529') : null);
+
+        ['kind', 'label', 'ink', 'set', 'code'].forEach(function (k) { delete next[k]; });
+
+        if (toSticker) {
+            next.type = 'sticker';
+            next.kind = pick.kind;
+            next.label = ((was === 'sticker') && (String(l.label || '') !== String(oldText || ''))) ? String(l.label || '') : String(pick.label || '');
+            next.color = color || pick.fill || '#000000';
+            next.ink = ((was === 'sticker') && own(l.ink, def && def.ink)) || pick.ink || '#ffffff';
+        } else {
+            next.type = 'glyph';
+            next.set = pick.set;
+            next.code = pick.code;
+
+            if (was === 'sticker') {
+                next.color = color || '#212529';
+            } else if ((pick.set === 'bi') && !next.color) {
+                next.color = '#212529';
+            }
+        }
+
+        // The pick's own proportions inside the old box, same centre.
+        var ratio = (toSticker && (pick.w > 0) && (pick.h > 0)) ? pick.w / pick.h : 1;
+        var w = Number(l.w) || 0, h = Number(l.h) || 0;
+
+        if ((w > 0) && (h > 0) && (Math.abs(w / h - ratio) > 1e-6)) {
+            var nw = (w / h > ratio) ? h * ratio : w, nh = nw / ratio;
+
+            next.x = l.x + (w - nw) / 2;
+            next.y = l.y + (h - nh) / 2;
+            next.w = nw;
+            next.h = nh;
+        }
+
+        return next;
+    }
+
+    var GLYPH = { EMOJI: EMOJI, iconSearch: iconSearch, emojiRecent: emojiRecent, glyphText: glyphText, glyphSize: glyphSize, swapGlyph: swapGlyph };
+
+    // ---- warp ----
+
+    // A path or a drawn shape bent as a whole, kept as l.warp and drawn by
+    // mapping its flattened outline: a preset ({ style, bend, h, v }: bend,
+    // horizontal and vertical distortion, each -1 to 1) or an envelope mesh
+    // ({ style: 'mesh', cols, rows, pts }: cols x rows points, row by row,
+    // as parts of the box; the curve runs through them). The mapping works in
+    // the box's frame before the mirror, so turns and flips carry it.
+
+    var WARP_STYLES = ['arc', 'arch', 'bulge', 'flag', 'wave', 'fish', 'rise', 'squeeze', 'twist'];
+    var MESH_MIN = 3;
+    var MESH_MAX = 6;
+
+    // A curve's flattening step in pixels and the most points one segment gets.
+    var WARP_STEP = 3;
+    var WARP_MAX = 64;
+
+    // Whether a layer can be warped: a path, or a drawn shape that is not a
+    // line or an arrow (their heads do not bend).
+    function warpable(l) {
+        if (!l) {
+            return false;
+        }
+
+        if (l.type === 'path') {
+            return !!(l.knots && (l.knots.length > 1));
+        }
+
+        return (DRAW_KINDS.indexOf(l.type) >= 0) && (LINE_KINDS.indexOf(l.type) < 0);
+    }
+
+    function meshValid(wp) {
+        var c = Number(wp.cols), r = Number(wp.rows);
+
+        return (c >= MESH_MIN) && (c <= MESH_MAX) && (r >= MESH_MIN) && (r <= MESH_MAX)
+            && Array.isArray(wp.pts) && (wp.pts.length === c * r);
+    }
+
+    // Whether the layer's drawing goes through its warp.
+    function warpOn(l) {
+        var wp = l && l.warp;
+
+        if (!wp || !warpable(l)) {
+            return false;
+        }
+
+        return (wp.style === 'mesh') ? meshValid(wp) : (WARP_STYLES.indexOf(wp.style) >= 0);
+    }
+
+    // The even mesh that changes nothing.
+    function meshGrid(cols, rows) {
+        var c = clamp(Math.round(cols) || MESH_MIN, MESH_MIN, MESH_MAX), r = clamp(Math.round(rows) || MESH_MIN, MESH_MIN, MESH_MAX), pts = [], i, j;
+
+        for (j = 0; j < r; j++) {
+            for (i = 0; i < c; i++) {
+                pts.push([frac(i, c - 1), frac(j, r - 1)]);
+            }
+        }
+
+        return { style: 'mesh', cols: c, rows: r, pts: pts };
+    }
+
+    // One Catmull-Rom step between p1 and p2: an even row stays straight.
+    function catmull(p0, p1, p2, p3, t) {
+        var t2 = t * t, t3 = t2 * t;
+
+        return [0, 1].map(function (k) {
+            return 0.5 * (2 * p1[k] + (p2[k] - p0[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (3 * p1[k] - p0[k] - 3 * p2[k] + p3[k]) * t3);
+        });
+    }
+
+    // A mesh point; one past an edge is mirrored through the edge point.
+    function meshPoint(wp, i, j) {
+        var c = wp.cols, r = wp.rows;
+        var ext = function (a, b) { return [2 * a[0] - b[0], 2 * a[1] - b[1]]; };
+
+        if (i < 0) { return ext(meshPoint(wp, 0, j), meshPoint(wp, 1, j)); }
+        if (i >= c) { return ext(meshPoint(wp, c - 1, j), meshPoint(wp, c - 2, j)); }
+        if (j < 0) { return ext(meshPoint(wp, i, 0), meshPoint(wp, i, 1)); }
+        if (j >= r) { return ext(meshPoint(wp, i, r - 1), meshPoint(wp, i, r - 2)); }
+
+        return wp.pts[j * c + i];
+    }
+
+    // Where the mesh takes the box's point u, v (parts of the box).
+    function meshAt(wp, u, v) {
+        var s = clamp(u, 0, 1) * (wp.cols - 1), q = clamp(v, 0, 1) * (wp.rows - 1);
+        var i = Math.min(Math.floor(s), wp.cols - 2), j = Math.min(Math.floor(q), wp.rows - 2), rows = [], n;
+
+        for (n = j - 1; n <= j + 2; n++) {
+            rows.push(catmull(meshPoint(wp, i - 1, n), meshPoint(wp, i, n), meshPoint(wp, i + 1, n), meshPoint(wp, i + 2, n), s - i));
+        }
+
+        return catmull(rows[0], rows[1], rows[2], rows[3], q - j);
+    }
+
+    // The mesh with cols x rows points, each where the old mesh took it.
+    function meshResize(wp, cols, rows) {
+        var grid = meshGrid(cols, rows), old = (wp && (wp.style === 'mesh') && meshValid(wp)) ? wp : null;
+
+        if (old) {
+            grid.pts = grid.pts.map(function (p) {
+                var q = meshAt(old, p[0], p[1]);
+
+                return [frac(q[0], 1), frac(q[1], 1)];
+            });
+        }
+
+        return grid;
+    }
+
+    // Where the warp takes the point u, v of a w x h box, in the box's
+    // pixels. The presets bend around the box's middle.
+    function warpPoint(wp, w, h, u, v) {
+        if (wp.style === 'mesh') {
+            var m = meshAt(wp, u, v);
+
+            return [m[0] * w, m[1] * h];
+        }
+
+        var b = clamp(Number(wp.bend) || 0, -1, 1), X = u - 0.5, Y = v - 0.5;
+        var x = X * w * (1 + clamp(Number(wp.v) || 0, -1, 1) * Y), y = Y * h * (1 + clamp(Number(wp.h) || 0, -1, 1) * X);
+        var dome = 1 - 4 * X * X, a, r, phi, R;
+
+        if (wp.style === 'arc') {
+            a = b * Math.PI;
+
+            if (Math.abs(a) > 1e-9) {
+                // The middle line becomes an arc of angle a; the box's top
+                // lies outside it, its bottom inside.
+                R = w / a;
+                phi = x / R;
+                r = R - y;
+                x = r * Math.sin(phi);
+                y = R - r * Math.cos(phi);
+            }
+        } else if (wp.style === 'arch') {
+            y -= b * h / 2 * dome;
+        } else if (wp.style === 'bulge') {
+            y *= 1 + b * dome;
+        } else if (wp.style === 'flag') {
+            y -= b * h / 4 * Math.sin(2 * Math.PI * X);
+        } else if (wp.style === 'wave') {
+            y -= b * h / 4 * Math.sin(2 * Math.PI * (X + Y));
+        } else if (wp.style === 'fish') {
+            y *= 1 - b / 2 * Math.sin(2 * Math.PI * X);
+        } else if (wp.style === 'rise') {
+            y -= b * h / 2 * Math.sin(Math.PI * X);
+        } else if (wp.style === 'squeeze') {
+            x *= 1 - b / 2 * (1 - 4 * Y * Y);
+        } else if (wp.style === 'twist') {
+            // Turns most in the middle, not at all at the corners.
+            a = b * Math.PI * (1 - Math.min(1, Math.hypot(2 * X, 2 * Y) / Math.SQRT2));
+            r = x;
+            x = r * Math.cos(a) - y * Math.sin(a);
+            y = r * Math.sin(a) + y * Math.cos(a);
+        }
+
+        return [x + w / 2, y + h / 2];
+    }
+
+    // Knots as a point list in short steps, straight segments included
+    // (a warp bends them).
+    function flattenKnots(knots, closed) {
+        var pts = knots.length ? [[knots[0].x, knots[0].y]] : [];
+
+        segments(knots, closed).forEach(function (s) {
+            var a = s[0], b = s[1];
+            var len = Math.hypot(a.ox - a.x, a.oy - a.y) + Math.hypot(b.ix - a.ox, b.iy - a.oy) + Math.hypot(b.x - b.ix, b.y - b.iy);
+            var n = clamp(Math.ceil(len / WARP_STEP), 2, WARP_MAX), k;
+
+            for (k = 1; k <= n; k++) {
+                pts.push(cubicAt(a, b, k / n));
+            }
+        });
+
+        return pts;
+    }
+
+    // The layer's contours before the warp, as knots in its box's frame: a
+    // path's own (and the other contours of outlined letters), a shape's as
+    // convert to path gives them.
+    function warpSource(l) {
+        var bare = Object.assign({}, l), out;
+
+        delete bare.warp;
+
+        if (l.type !== 'path') {
+            return [shapeKnots(bare)];
+        }
+
+        out = [{ knots: pathKnots(bare), closed: !!l.closed }];
+
+        (Array.isArray(l.subs) ? l.subs : []).forEach(function (sub) {
+            out.push({ knots: moveKnots(sub.knots || [], function (u, v) { return [u * l.w, v * l.h]; }), closed: !!sub.closed });
+        });
+
+        return out;
+    }
+
+    // The warped contours: [{ pts, closed }] in the box's frame; a closed
+    // one does not repeat its first point.
+    function warpContours(l) {
+        var w = l.w, h = l.h;
+
+        return warpSource(l).map(function (c) {
+            var pts = flattenKnots(c.knots, c.closed && (c.knots.length > 2)), closed = c.closed && (c.knots.length > 2);
+
+            if (closed && (pts.length > 1)) {
+                pts.pop();
+            }
+
+            return {
+                closed: closed,
+                pts: pts.map(function (p) { return warpPoint(l.warp, w, h, w ? p[0] / w : 0, h ? p[1] / h : 0); })
+            };
+        });
+    }
+
+    // The warped drawing as shapePath() answers it.
+    function warpShape(l) {
+        var cs = warpContours(l);
+
+        return {
+            d: cs.map(function (c) {
+                return c.pts.map(function (p, i) { return (i ? 'L' : 'M') + rnd(p[0]) + ' ' + rnd(p[1]); }).join('') + (c.closed ? 'Z' : '');
+            }).join(''),
+            head: null,
+            closed: cs.length ? cs[0].closed : false
+        };
+    }
+
+    // The warped outline as outline() answers it: a closed list ends on its
+    // first point.
+    function warpOutline(l) {
+        return warpContours(l).map(function (c) {
+            return c.closed ? c.pts.concat([c.pts[0]]) : c.pts;
+        });
+    }
+
+    // Expand: the drawn outline baked into a path of corner points, its box
+    // fitted to it, angle and mirror kept. The fields to set; the caller
+    // drops the warp and a shape's own fields.
+    function warpExpand(l) {
+        var cs = warpContours(l).filter(function (c) { return c.pts.length > 1; }), all = [];
+
+        cs.forEach(function (c) { all = all.concat(c.pts); });
+
+        if (!all.length) {
+            return null;
+        }
+
+        var xs = all.map(function (p) { return p[0]; }), ys = all.map(function (p) { return p[1]; });
+        var x0 = Math.min.apply(null, xs), y0 = Math.min.apply(null, ys), bw = Math.max.apply(null, xs) - x0, bh = Math.max.apply(null, ys) - y0;
+        var w = Math.max(1, bw), h = Math.max(1, bh), left = x0 + bw / 2 - w / 2, top = y0 + bh / 2 - h / 2, c = drawnPoint(l, left + w / 2, top + h / 2);
+        var part = function (pts) {
+            return pts.map(function (p) { return knot(frac(p[0] - left, w), frac(p[1] - top, h)); });
+        };
+        var out = { type: 'path', x: c[0] - w / 2, y: c[1] - h / 2, w: w, h: h, knots: part(cs[0].pts), closed: cs[0].closed };
+
+        if (cs.length > 1) {
+            out.subs = cs.slice(1).map(function (o) { return { knots: part(o.pts), closed: o.closed }; });
+        }
+
+        return out;
+    }
+
+    var WARP = {
+        WARP_STYLES: WARP_STYLES, MESH_MIN: MESH_MIN, MESH_MAX: MESH_MAX, warpable: warpable, warpOn: warpOn, meshGrid: meshGrid,
+        meshAt: meshAt, meshResize: meshResize, warpPoint: warpPoint, flattenKnots: flattenKnots, warpContours: warpContours,
+        warpShape: warpShape, warpOutline: warpOutline, warpExpand: warpExpand
+    };
+
+    // -- scenes (pg_image_editor_scenes.js) --
+
+    // A canvas may hold scenes played one after another: doc.scenes lists
+    // them as { id, name, transition } and doc.scene names the open one,
+    // whose layers, background and duration are the document's own
+    // (doc.layers, doc.artboard.background, doc.motion.duration), so the
+    // tools need no change. A closed scene keeps them in its entry: layers,
+    // background, duration. A document without doc.scenes is one scene.
+    var SCENE_MAX = 50;
+    var SCENE_LAYERS_MAX = 500;
+    var SCENE_TRANSITIONS = ['none', 'fade', 'slide', 'zoom', 'wipe'];
+    var SCENE_TRANSITION_MIN = 100, SCENE_TRANSITION_MAX = 2000, SCENE_TRANSITION_MS = 600;
+    var SCENE_DEFAULT = 3000;
+
+    function sceneCount(doc) {
+        return (doc && Array.isArray(doc.scenes)) ? doc.scenes.length : 0;
+    }
+
+    // The open scene's place in doc.scenes; -1 without scenes.
+    function sceneIndex(doc) {
+        var list = (doc && Array.isArray(doc.scenes)) ? doc.scenes : [];
+
+        for (var i = 0; i < list.length; i++) {
+            if (list[i] && (list[i].id === doc.scene)) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    // A transition to the next scene with its defaults: a kind from
+    // SCENE_TRANSITIONS and its time in ms, in steps of 100.
+    function sceneTransition(tr) {
+        tr = (tr && (typeof tr === 'object')) ? tr : {};
+
+        return {
+            kind: (SCENE_TRANSITIONS.indexOf(tr.kind) >= 0) ? tr.kind : 'none',
+            ms: clamp(Math.round((Number(tr.ms) || SCENE_TRANSITION_MS) / 100) * 100, SCENE_TRANSITION_MIN, SCENE_TRANSITION_MAX)
+        };
+    }
+
+    function sceneDuration(ms) {
+        return clamp(Math.round(Number(ms) || SCENE_DEFAULT), MOTION_MIN, MOTION_MAX);
+    }
+
+    // The scenes as they play, the open one filled from the document:
+    // [{ id, name, layers, background, duration, transition, open }]. One
+    // entry for a document without scenes. The layers are the document's
+    // own arrays, not copies.
+    function sceneList(doc) {
+        var bg = (doc.artboard && (typeof doc.artboard.background === 'string')) ? doc.artboard.background : '#ffffff';
+        var live = { layers: doc.layers || [], background: bg, duration: docMotion(doc).duration };
+
+        if (!sceneCount(doc)) {
+            return [{ id: '', name: '', layers: live.layers, background: bg, duration: live.duration, transition: sceneTransition(null), open: true }];
+        }
+
+        return doc.scenes.map(function (s) {
+            var open = (s.id === doc.scene);
+
+            return {
+                id: s.id,
+                name: (typeof s.name === 'string') ? s.name : '',
+                layers: open ? live.layers : (Array.isArray(s.layers) ? s.layers : []),
+                background: open ? bg : ((typeof s.background === 'string') ? s.background : '#ffffff'),
+                duration: open ? live.duration : sceneDuration(s.duration),
+                transition: sceneTransition(s.transition),
+                open: open
+            };
+        });
+    }
+
+    // A scene id not yet in the document.
+    function sceneNewId(doc) {
+        var n = sceneCount(doc) + 1;
+
+        while ((doc.scenes || []).some(function (s) { return s.id === 's' + n; })) {
+            n++;
+        }
+
+        return 's' + n;
+    }
+
+    // The document's own content as its first scene (changes doc).
+    function sceneStart(doc) {
+        if (!sceneCount(doc)) {
+            doc.scenes = [{ id: 's1', name: '', transition: sceneTransition(null) }];
+            doc.scene = 's1';
+            doc.motion = docMotion(doc);
+        }
+
+        return doc;
+    }
+
+    // Opens the scene id: the open one's layers, background and duration go
+    // into its entry, the other's come out of it (changes doc).
+    function sceneOpen(doc, id) {
+        var from = sceneIndex(doc), to = -1;
+
+        (doc.scenes || []).forEach(function (s, i) {
+            if (s.id === id) {
+                to = i;
+            }
+        });
+
+        if ((to < 0) || (to === from)) {
+            return doc;
+        }
+
+        var motion = docMotion(doc), board = doc.artboard || {}, next = doc.scenes[to];
+
+        if (from >= 0) {
+            Object.assign(doc.scenes[from], {
+                layers: doc.layers || [],
+                background: (typeof board.background === 'string') ? board.background : '#ffffff',
+                duration: motion.duration
+            });
+        }
+
+        doc.layers = Array.isArray(next.layers) ? next.layers : [];
+
+        if (doc.artboard) {
+            doc.artboard.background = (typeof next.background === 'string') ? next.background : '#ffffff';
+        }
+
+        doc.motion = Object.assign({}, doc.motion || motion, { duration: sceneDuration(next.duration) });
+        delete next.layers;
+        delete next.background;
+        delete next.duration;
+        doc.scene = id;
+
+        return doc;
+    }
+
+    // A new scene after the open one, opened: empty, or a copy of the open
+    // one (copy true) with its duration and transition (changes doc).
+    function sceneAdd(doc, copy) {
+        sceneStart(doc);
+
+        if (sceneCount(doc) >= SCENE_MAX) {
+            return doc;
+        }
+
+        var at = sceneIndex(doc), open = doc.scenes[at], id = sceneNewId(doc), board = doc.artboard || {};
+
+        doc.scenes.splice(at + 1, 0, {
+            id: id,
+            name: '',
+            transition: copy ? sceneTransition(open.transition) : sceneTransition(null),
+            layers: copy ? clone(doc.layers || []) : [],
+            background: (typeof board.background === 'string') ? board.background : '#ffffff',
+            duration: copy ? docMotion(doc).duration : SCENE_DEFAULT
+        });
+
+        return sceneOpen(doc, id);
+    }
+
+    // Deletes the scene id, opening its neighbour when it was open; with one
+    // scene left the document has none (changes doc).
+    function sceneDelete(doc, id) {
+        var at = -1;
+
+        (doc.scenes || []).forEach(function (s, i) {
+            if (s.id === id) {
+                at = i;
+            }
+        });
+
+        if ((at < 0) || (sceneCount(doc) < 2)) {
+            return doc;
+        }
+
+        if (doc.scene === id) {
+            sceneOpen(doc, doc.scenes[(at + 1 < doc.scenes.length) ? at + 1 : at - 1].id);
+        }
+
+        doc.scenes.splice(at, 1);
+
+        if (doc.scenes.length === 1) {
+            delete doc.scenes;
+            delete doc.scene;
+        }
+
+        return doc;
+    }
+
+    // Moves the scene id by delta places, within the list (changes doc).
+    function sceneMove(doc, id, delta) {
+        var list = doc.scenes || [], at = -1;
+
+        list.forEach(function (s, i) {
+            if (s.id === id) {
+                at = i;
+            }
+        });
+
+        var to = clamp(at + delta, 0, list.length - 1);
+
+        if ((at >= 0) && (to !== at)) {
+            list.splice(to, 0, list.splice(at, 1)[0]);
+        }
+
+        return doc;
+    }
+
+    // Sets a scene's duration or its transition to the next ({ kind, ms }
+    // merged) (changes doc). The open scene's duration is the document's.
+    function sceneSet(doc, id, patch) {
+        var s = (doc.scenes || []).filter(function (e) { return e.id === id; })[0];
+
+        if (patch.duration !== undefined) {
+            if (!s || (s.id === doc.scene)) {
+                doc.motion = Object.assign(docMotion(doc), { duration: sceneDuration(patch.duration) });
+            } else {
+                s.duration = sceneDuration(patch.duration);
+            }
+        }
+
+        if (s && patch.transition) {
+            s.transition = sceneTransition(Object.assign({}, sceneTransition(s.transition), patch.transition));
+        }
+
+        return doc;
+    }
+
+    // The whole length: every scene back to back.
+    function sceneTotal(doc) {
+        return sceneList(doc).reduce(function (sum, s) { return sum + s.duration; }, 0);
+    }
+
+    // Where scene i starts on the whole timeline (ms): the scenes before it
+    // back to back; 0 for the first scene or a document without scenes.
+    function sceneStartAt(doc, i) {
+        return sceneList(doc).slice(0, Math.max(0, i)).reduce(function (sum, s) { return sum + s.duration; }, 0);
+    }
+
+    // The place a dragged card lands at: mids are the middles of the other
+    // cards (in order, without the dragged one), x the pointer's; answers
+    // how many of them stay before it.
+    function sceneSlot(mids, x) {
+        var n = 0;
+
+        (mids || []).forEach(function (m) {
+            if (x > m) {
+                n++;
+            }
+        });
+
+        return n;
+    }
+
+    // The moment t of the whole animation: the scene playing (index) at its
+    // own time (local) and, while the previous scene's transition runs over
+    // the start of this one, that scene (from, shown at its end), the kind
+    // and its progress p (0-1, eased). A transition is never longer than the
+    // scene it leads into.
+    function sceneAt(doc, t) {
+        var list = sceneList(doc), start = 0, i;
+
+        t = Math.max(0, Number(t) || 0);
+
+        for (i = 0; i < list.length - 1; i++) {
+            if (t < start + list[i].duration) {
+                break;
+            }
+
+            start += list[i].duration;
+        }
+
+        var local = Math.min(t - start, list[i].duration), at = { index: i, local: local, from: null, kind: 'none', p: 1 };
+        var tr = (i > 0) ? list[i - 1].transition : null, ms = tr ? Math.min(tr.ms, list[i].duration) : 0;
+
+        if (tr && (tr.kind !== 'none') && (local < ms)) {
+            at.from = i - 1;
+            at.kind = tr.kind;
+            at.p = easeAt('in-out', local / ms);
+        }
+
+        return at;
+    }
+
+    // Scene i as a document of its own for drawing a frame: its layers,
+    // background and duration in place of the open scene's.
+    function sceneView(doc, i) {
+        var s = sceneList(doc)[i], view = Object.assign({}, doc, { layers: s.layers, motion: Object.assign(docMotion(doc), { duration: s.duration }) });
+
+        if (doc.artboard) {
+            view.artboard = Object.assign({}, doc.artboard, { background: s.background });
+        }
+
+        delete view.scenes;
+        delete view.scene;
+
+        return view;
+    }
+
+    // How the two scenes are drawn at a transition's progress p on a w x h
+    // frame: each { alpha, x, y, scale } (scale about the centre), the new
+    // one with clip, the part of the frame it shows (a wipe), or null.
+    function sceneTransitionAt(kind, p, w, h) {
+        var from = { alpha: 1, x: 0, y: 0, scale: 1 }, to = { alpha: 1, x: 0, y: 0, scale: 1, clip: null };
+
+        p = clamp(p, 0, 1);
+
+        switch (kind) {
+            case 'fade':
+                to.alpha = p;
+                break;
+            case 'slide':
+                from.x = -w * p;
+                to.x = w * (1 - p);
+                break;
+            case 'zoom':
+                to.scale = 0.6 + 0.4 * p;
+                to.alpha = p;
+                from.scale = 1 + 0.15 * p;
+                break;
+            case 'wipe':
+                to.clip = { x: 0, y: 0, w: w * p, h: h };
+                break;
+            default:
+                from = null;
+        }
+
+        return { from: from, to: to };
+    }
+
+    var SCENES = {
+        SCENE_MAX: SCENE_MAX, SCENE_LAYERS_MAX: SCENE_LAYERS_MAX, SCENE_TRANSITIONS: SCENE_TRANSITIONS, SCENE_TRANSITION_MIN: SCENE_TRANSITION_MIN,
+        SCENE_TRANSITION_MAX: SCENE_TRANSITION_MAX, sceneCount: sceneCount, sceneIndex: sceneIndex, sceneTransition: sceneTransition, sceneList: sceneList,
+        sceneStart: sceneStart, sceneOpen: sceneOpen, sceneAdd: sceneAdd, sceneDelete: sceneDelete, sceneMove: sceneMove, sceneSet: sceneSet,
+        sceneTotal: sceneTotal, sceneStartAt: sceneStartAt, sceneSlot: sceneSlot, sceneAt: sceneAt, sceneView: sceneView, sceneTransitionAt: sceneTransitionAt
+    };
+
+    // -- outlines (pg_image_editor_outline.js) --
+
+    // A font file read for its outlines (TrueType glyf or CFF), its
+    // character map (formats 4 and 12), advances and pair kerning (GPOS
+    // pair adjustments of the kern feature, else the kern table). Throws on
+    // what it cannot read: WOFF, WOFF2, a collection, a CID-keyed CFF.
+    function fontRead(buf) {
+        var b = (buf instanceof Uint8Array) ? buf : new Uint8Array(buf), v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+        var tag = function (o) { return String.fromCharCode(b[o], b[o + 1], b[o + 2], b[o + 3]); };
+        var t = {}, n, i, f;
+
+        if (['\u0000\u0001\u0000\u0000', 'OTTO', 'true'].indexOf(tag(0)) < 0) {
+            throw new Error('font');
+        }
+
+        n = v.getUint16(4);
+
+        for (i = 0; i < n; i++) {
+            t[tag(12 + 16 * i)] = v.getUint32(12 + 16 * i + 8);
+        }
+
+        if (!t.head || !t.maxp || !t.hhea || !t.hmtx || !t.cmap || !(t['CFF '] || (t.glyf && t.loca))) {
+            throw new Error('font');
+        }
+
+        f = {
+            v: v, t: t, upm: v.getUint16(t.head + 18) || 1000, longLoca: v.getInt16(t.head + 50) === 1, count: v.getUint16(t.maxp + 4),
+            metrics: v.getUint16(t.hhea + 34), ascent: v.getInt16(t.hhea + 4), descent: v.getInt16(t.hhea + 6)
+        };
+        f.cmap = fontCmap(v, t.cmap);
+        f.cff = t['CFF '] ? fontCff(v, t['CFF ']) : null;
+        f.pairs = t.GPOS ? fontGposPairs(v, t.GPOS) : [];
+        f.kern = (!f.pairs.length && t.kern) ? fontKernTable(v, t.kern) : {};
+
+        return f;
+    }
+
+    // The character map's lookup: the best Unicode subtable, format 12
+    // before format 4.
+    function fontCmap(v, at) {
+        var n = v.getUint16(at + 2), best = null, i, o, pid, eid, fmt, rank;
+
+        for (i = 0; i < n; i++) {
+            pid = v.getUint16(at + 4 + 8 * i);
+            eid = v.getUint16(at + 6 + 8 * i);
+            o = at + v.getUint32(at + 8 + 8 * i);
+            fmt = v.getUint16(o);
+            rank = ((pid === 0) || ((pid === 3) && ((eid === 1) || (eid === 10)))) ? ((fmt === 12) ? 2 : ((fmt === 4) ? 1 : 0)) : 0;
+
+            if (rank && (!best || (rank > best.rank))) {
+                best = { o: o, rank: rank };
+            }
+        }
+
+        if (!best) {
+            throw new Error('font');
+        }
+
+        o = best.o;
+
+        if (best.rank === 2) {
+            return function (cp) {
+                for (var g = 0, count = v.getUint32(o + 12), p; g < count; g++) {
+                    p = o + 16 + 12 * g;
+
+                    if ((cp >= v.getUint32(p)) && (cp <= v.getUint32(p + 4))) {
+                        return v.getUint32(p + 8) + cp - v.getUint32(p);
+                    }
+                }
+
+                return 0;
+            };
+        }
+
+        return function (cp) {
+            var seg = v.getUint16(o + 6), ends = o + 14, starts = ends + seg + 2, deltas = starts + seg, ranges = deltas + seg, s, start, ro, g;
+
+            for (s = 0; (s < seg) && (cp <= 0xffff); s += 2) {
+                if (cp <= v.getUint16(ends + s)) {
+                    start = v.getUint16(starts + s);
+
+                    if (cp < start) {
+                        return 0;
+                    }
+
+                    ro = v.getUint16(ranges + s);
+
+                    if (!ro) {
+                        return (cp + v.getInt16(deltas + s)) & 0xffff;
+                    }
+
+                    g = v.getUint16(ranges + s + ro + 2 * (cp - start));
+
+                    return g ? ((g + v.getInt16(deltas + s)) & 0xffff) : 0;
+                }
+            }
+
+            return 0;
+        };
+    }
+
+    // The kern table's horizontal format 0 pairs as { 'left,right': value }.
+    function fontKernTable(v, at) {
+        var out = {}, n = (v.getUint16(at) === 0) ? v.getUint16(at + 2) : 0, o = at + 4, i, p, count;
+
+        for (i = 0; i < n; i++) {
+            if (((v.getUint16(o + 4) >> 8) === 0) && (v.getUint16(o + 4) & 1)) {
+                for (p = 0, count = v.getUint16(o + 6); p < count; p++) {
+                    out[v.getUint16(o + 14 + 6 * p) + ',' + v.getUint16(o + 16 + 6 * p)] = v.getInt16(o + 18 + 6 * p);
+                }
+            }
+
+            o += v.getUint16(o + 2);
+        }
+
+        return out;
+    }
+
+    // The pair adjustment subtables (lookup type 2, or 9 holding one) that
+    // the kern feature uses, in lookup order.
+    function fontGposPairs(v, at) {
+        var feats = at + v.getUint16(at + 6), looks = at + v.getUint16(at + 8), used = [], out = [], i, j, fo, l, type, sub, so;
+
+        for (i = 0; i < v.getUint16(feats); i++) {
+            if (String.fromCharCode(v.getUint8(feats + 2 + 6 * i), v.getUint8(feats + 3 + 6 * i), v.getUint8(feats + 4 + 6 * i), v.getUint8(feats + 5 + 6 * i)) === 'kern') {
+                fo = feats + v.getUint16(feats + 6 + 6 * i);
+
+                for (j = 0; j < v.getUint16(fo + 2); j++) {
+                    if (used.indexOf(v.getUint16(fo + 4 + 2 * j)) < 0) {
+                        used.push(v.getUint16(fo + 4 + 2 * j));
+                    }
+                }
+            }
+        }
+
+        used.sort(function (a, c) { return a - c; }).forEach(function (index) {
+            l = looks + v.getUint16(looks + 2 + 2 * index);
+            type = v.getUint16(l);
+
+            for (sub = 0; sub < v.getUint16(l + 4); sub++) {
+                so = l + v.getUint16(l + 6 + 2 * sub);
+
+                if ((type === 9) && (v.getUint16(so + 2) === 2)) {
+                    out.push(so + v.getUint32(so + 4));
+                } else if (type === 2) {
+                    out.push(so);
+                }
+            }
+        });
+
+        return out;
+    }
+
+    // A glyph's index in a coverage table, or -1.
+    function fontCoverage(v, at, g) {
+        var n = v.getUint16(at + 2), i, o;
+
+        for (i = 0; i < n; i++) {
+            if (v.getUint16(at) === 1) {
+                if (v.getUint16(at + 4 + 2 * i) === g) {
+                    return i;
+                }
+            } else {
+                o = at + 4 + 6 * i;
+
+                if ((g >= v.getUint16(o)) && (g <= v.getUint16(o + 2))) {
+                    return v.getUint16(o + 4) + g - v.getUint16(o);
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    // A glyph's class in a class definition table (0 when not listed).
+    function fontClass(v, at, g) {
+        var i, o;
+
+        if (v.getUint16(at) === 1) {
+            i = g - v.getUint16(at + 2);
+
+            return ((i >= 0) && (i < v.getUint16(at + 4))) ? v.getUint16(at + 6 + 2 * i) : 0;
+        }
+
+        for (i = 0; i < v.getUint16(at + 2); i++) {
+            o = at + 4 + 6 * i;
+
+            if ((g >= v.getUint16(o)) && (g <= v.getUint16(o + 2))) {
+                return v.getUint16(o + 4);
+            }
+        }
+
+        return 0;
+    }
+
+    function bitCount(n) {
+        for (var c = 0; n; n >>= 1) {
+            c += n & 1;
+        }
+
+        return c;
+    }
+
+    // The advance change between glyphs a and b in font units: the first
+    // pair subtable that holds the pair, else the kern table.
+    function fontKerning(f, a, c) {
+        var v = f.v, i, s, cov, vf1, size, adv, o, k, n;
+
+        for (i = 0; i < f.pairs.length; i++) {
+            s = f.pairs[i];
+            cov = fontCoverage(v, s + v.getUint16(s + 2), a);
+
+            if (cov < 0) {
+                continue;
+            }
+
+            vf1 = v.getUint16(s + 4);
+            size = 2 * (bitCount(vf1) + bitCount(v.getUint16(s + 6)));
+            adv = (vf1 & 4) ? 2 * bitCount(vf1 & 3) : -1;
+
+            if (v.getUint16(s) === 1) {
+                o = s + v.getUint16(s + 10 + 2 * cov);
+
+                for (k = 0, n = v.getUint16(o); k < n; k++) {
+                    if (v.getUint16(o + 2 + k * (2 + size)) === c) {
+                        return (adv < 0) ? 0 : v.getInt16(o + 4 + k * (2 + size) + adv);
+                    }
+                }
+            } else if (v.getUint16(s) === 2) {
+                k = fontClass(v, s + v.getUint16(s + 10), c);
+
+                if (k < v.getUint16(s + 14)) {
+                    o = s + 16 + (fontClass(v, s + v.getUint16(s + 8), a) * v.getUint16(s + 14) + k) * size;
+
+                    return (adv < 0) ? 0 : v.getInt16(o + adv);
+                }
+            }
+        }
+
+        return f.kern[a + ',' + c] || 0;
+    }
+
+    function fontAdvance(f, g) {
+        return f.v.getUint16(f.t.hmtx + 4 * Math.min(g, f.metrics - 1));
+    }
+
+    function fontGlyph(f, cp) {
+        var g = f.cmap(cp);
+
+        return (g > 0) && (g < f.count) ? g : 0;
+    }
+
+    // Contours as cubic knots in font units (y up): move, line, curve and
+    // close, each closed contour ending on its first point.
+    function knotPen() {
+        var list = [], cur = null;
+        var close = function () {
+            if (cur && (cur.length > 1)) {
+                var a = cur[0], z = cur[cur.length - 1];
+
+                if ((Math.abs(a.x - z.x) < 1e-9) && (Math.abs(a.y - z.y) < 1e-9)) {
+                    a.ix = z.ix;
+                    a.iy = z.iy;
+                    cur.pop();
+                }
+
+                if (cur.length > 1) {
+                    list.push(cur);
+                }
+            }
+
+            cur = null;
+        };
+
+        return {
+            move: function (x, y) { close(); cur = [knot(x, y)]; },
+            line: function (x, y) { cur.push(knot(x, y)); },
+            curve: function (x1, y1, x2, y2, x, y) {
+                var z = cur[cur.length - 1];
+
+                z.ox = x1;
+                z.oy = y1;
+                cur.push({ x: x, y: y, ix: x2, iy: y2, ox: x, oy: y, s: false });
+            },
+            done: function () { close(); return list; }
+        };
+    }
+
+    // A TrueType glyph's points per contour ({ x, y, on }), components
+    // placed by their offsets and matrices.
+    function ttPoints(f, g, depth) {
+        var v = f.v, loca = f.t.loca, at = f.longLoca ? v.getUint32(loca + 4 * g) : 2 * v.getUint16(loca + 2 * g);
+        var end = f.longLoca ? v.getUint32(loca + 4 * g + 4) : 2 * v.getUint16(loca + 2 * g + 2), o = f.t.glyf + at, nc, out = [];
+
+        if ((end <= at) || (depth > 8)) {
+            return out;
+        }
+
+        nc = v.getInt16(o);
+
+        if (nc < 0) {
+            var flags = 0x20, p = o + 10, comp, dx, dy, a, bb, c, d;
+
+            while (flags & 0x20) {
+                flags = v.getUint16(p);
+                comp = v.getUint16(p + 2);
+                p += 4;
+                dx = (flags & 1) ? v.getInt16(p) : v.getInt8(p);
+                dy = (flags & 1) ? v.getInt16(p + 2) : v.getInt8(p + 1);
+                p += (flags & 1) ? 4 : 2;
+                a = d = 1;
+                bb = c = 0;
+
+                if (flags & 8) {
+                    a = d = v.getInt16(p) / 16384;
+                    p += 2;
+                } else if (flags & 0x40) {
+                    a = v.getInt16(p) / 16384;
+                    d = v.getInt16(p + 2) / 16384;
+                    p += 4;
+                } else if (flags & 0x80) {
+                    a = v.getInt16(p) / 16384;
+                    bb = v.getInt16(p + 2) / 16384;
+                    c = v.getInt16(p + 4) / 16384;
+                    d = v.getInt16(p + 6) / 16384;
+                    p += 8;
+                }
+
+                // Point-matched placement (no x, y values) is read as no shift.
+                if (!(flags & 2)) {
+                    dx = dy = 0;
+                }
+
+                ttPoints(f, comp, depth + 1).forEach(function (contour) {
+                    out.push(contour.map(function (q) { return { x: a * q.x + c * q.y + dx, y: bb * q.x + d * q.y + dy, on: q.on }; }));
+                });
+            }
+
+            return out;
+        }
+
+        var ends = [], i, total, flag = [], fl, rep, x = 0, y = 0, pts = [], q = o + 10;
+
+        for (i = 0; i < nc; i++) {
+            ends.push(v.getUint16(q));
+            q += 2;
+        }
+
+        total = nc ? ends[nc - 1] + 1 : 0;
+        q += 2 + v.getUint16(q);
+
+        while (flag.length < total) {
+            fl = v.getUint8(q++);
+            flag.push(fl);
+
+            if (fl & 8) {
+                for (rep = v.getUint8(q++); rep > 0; rep--) {
+                    flag.push(fl);
+                }
+            }
+        }
+
+        for (i = 0; i < total; i++) {
+            if (flag[i] & 2) {
+                x += (flag[i] & 16) ? v.getUint8(q) : -v.getUint8(q);
+                q += 1;
+            } else if (!(flag[i] & 16)) {
+                x += v.getInt16(q);
+                q += 2;
+            }
+
+            pts.push({ x: x, on: !!(flag[i] & 1) });
+        }
+
+        for (i = 0; i < total; i++) {
+            if (flag[i] & 4) {
+                y += (flag[i] & 32) ? v.getUint8(q) : -v.getUint8(q);
+                q += 1;
+            } else if (!(flag[i] & 32)) {
+                y += v.getInt16(q);
+                q += 2;
+            }
+
+            pts[i].y = y;
+        }
+
+        for (i = 0, q = 0; i < nc; i++) {
+            out.push(pts.slice(q, ends[i] + 1));
+            q = ends[i] + 1;
+        }
+
+        return out;
+    }
+
+    // Quadratic contours as cubic knots: two curve points in a row have an
+    // on-curve point between them.
+    function ttContours(f, g) {
+        var pen = knotPen();
+
+        ttPoints(f, g, 0).forEach(function (pts) {
+            var n = pts.length, s = -1, i, at, p, q, e, mid = function (a, c) { return { x: (a.x + c.x) / 2, y: (a.y + c.y) / 2, on: true }; };
+
+            if (n < 2) {
+                return;
+            }
+
+            for (i = 0; (i < n) && (s < 0); i++) {
+                s = pts[i].on ? i : -1;
+            }
+
+            var ring = (s < 0) ? [mid(pts[0], pts[1])].concat(pts.slice(1), pts.slice(0, 1)) : pts.slice(s).concat(pts.slice(0, s));
+
+            ring.push(ring[0]);
+            at = ring[0];
+            pen.move(at.x, at.y);
+
+            for (i = 1; i < ring.length; i++) {
+                p = ring[i];
+
+                if (p.on) {
+                    pen.line(p.x, p.y);
+                    at = p;
+                    continue;
+                }
+
+                q = ring[i + 1] || ring[0];
+                e = q.on ? q : mid(p, q);
+
+                if (q.on) {
+                    i++;
+                }
+
+                pen.curve(at.x + 2 / 3 * (p.x - at.x), at.y + 2 / 3 * (p.y - at.y), e.x + 2 / 3 * (p.x - e.x), e.y + 2 / 3 * (p.y - e.y), e.x, e.y);
+                at = e;
+            }
+        });
+
+        return pen.done();
+    }
+
+    // A CFF INDEX: its items as [start, end] offsets and where it ends.
+    function cffIndex(v, at) {
+        var n = v.getUint16(at), size, base, items = [], i, off = function (k) {
+            for (var r = 0, j = 0; j < size; j++) {
+                r = r * 256 + v.getUint8(at + 3 + k * size + j);
+            }
+
+            return r;
+        };
+
+        if (!n) {
+            return { items: items, end: at + 2 };
+        }
+
+        size = v.getUint8(at + 2);
+        base = at + 2 + (n + 1) * size;
+
+        for (i = 0; i < n; i++) {
+            items.push([base + off(i), base + off(i + 1)]);
+        }
+
+        return { items: items, end: base + off(n) };
+    }
+
+    // A CFF DICT as { operator: [operands] } (12 x as 1200 + x).
+    function cffDict(v, at, end) {
+        var out = {}, ops = [], b, n;
+
+        while (at < end) {
+            b = v.getUint8(at++);
+
+            if (b <= 21) {
+                out[(b === 12) ? 1200 + v.getUint8(at++) : b] = ops;
+                ops = [];
+            } else if (b === 28) {
+                ops.push(v.getInt16(at));
+                at += 2;
+            } else if (b === 29) {
+                ops.push(v.getInt32(at));
+                at += 4;
+            } else if (b === 30) {
+                // A real number: read past its nibbles.
+                do {
+                    n = v.getUint8(at++);
+                } while (((n & 15) !== 15) && ((n >> 4) !== 15));
+                ops.push(0);
+            } else if (b >= 32 && b <= 246) {
+                ops.push(b - 139);
+            } else if (b >= 247 && b <= 250) {
+                ops.push((b - 247) * 256 + v.getUint8(at++) + 108);
+            } else if (b >= 251 && b <= 254) {
+                ops.push(-(b - 251) * 256 - v.getUint8(at++) - 108);
+            }
+        }
+
+        return out;
+    }
+
+    function cffBias(n) {
+        return (n < 1240) ? 107 : ((n < 33900) ? 1131 : 32768);
+    }
+
+    function fontCff(v, at) {
+        var names = cffIndex(v, at + v.getUint8(at + 2)), tops = cffIndex(v, names.end), strings = cffIndex(v, tops.end);
+        var top = tops.items.length ? cffDict(v, tops.items[0][0], tops.items[0][1]) : {}, priv = top[18] || [0, 0], pd, subrs;
+
+        if (top[1230] || !top[17]) {
+            throw new Error('font');
+        }
+
+        pd = cffDict(v, at + priv[1], at + priv[1] + priv[0]);
+        subrs = pd[19] ? cffIndex(v, at + priv[1] + pd[19][0]).items : [];
+
+        return { glyphs: cffIndex(v, at + top[17][0]).items, gsubrs: cffIndex(v, strings.end).items, subrs: subrs };
+    }
+
+    // A Type 2 charstring run into knots; hints are skipped.
+    function cffContours(f, g) {
+        var v = f.v, c = f.cff, pen = knotPen(), s = [], stems = 0, width = false, x = 0, y = 0, open = false, done = false;
+        var shift = function (odd) {
+            if (!width) {
+                width = true;
+
+                if (odd) {
+                    s.shift();
+                }
+            }
+        };
+        var moveTo = function (dx, dy) {
+            x += dx;
+            y += dy;
+            pen.move(x, y);
+            open = true;
+        };
+        var lineTo = function (dx, dy) {
+            x += dx;
+            y += dy;
+            pen.line(x, y);
+        };
+        var curveTo = function (a, b, cc, d, e, h) {
+            var x1 = x + a, y1 = y + b, x2 = x1 + cc, y2 = y1 + d;
+
+            x = x2 + e;
+            y = y2 + h;
+            pen.curve(x1, y1, x2, y2, x, y);
+        };
+        var run = function (range, depth) {
+            var p = range[0], b, i, op, horiz, five, last, list, bias, dx, dy, y0, x0;
+
+            if (depth > 10) {
+                return;
+            }
+
+            while ((p < range[1]) && !done) {
+                b = v.getUint8(p++);
+
+                if ((b >= 32) || (b === 28)) {
+                    if (b === 28) {
+                        s.push(v.getInt16(p));
+                        p += 2;
+                    } else if (b <= 246) {
+                        s.push(b - 139);
+                    } else if (b <= 250) {
+                        s.push((b - 247) * 256 + v.getUint8(p++) + 108);
+                    } else if (b <= 254) {
+                        s.push(-(b - 251) * 256 - v.getUint8(p++) - 108);
+                    } else {
+                        s.push(v.getInt32(p) / 65536);
+                        p += 4;
+                    }
+                    continue;
+                }
+
+                op = (b === 12) ? 1200 + v.getUint8(p++) : b;
+
+                switch (op) {
+                case 1: case 3: case 18: case 23:
+                    shift(s.length % 2);
+                    stems += s.length >> 1;
+                    break;
+                case 19: case 20:
+                    shift(s.length % 2);
+                    stems += s.length >> 1;
+                    p += (stems + 7) >> 3;
+                    break;
+                case 21:
+                    shift(s.length > 2);
+                    moveTo(s[s.length - 2], s[s.length - 1]);
+                    break;
+                case 22:
+                    shift(s.length > 1);
+                    moveTo(s[s.length - 1], 0);
+                    break;
+                case 4:
+                    shift(s.length > 1);
+                    moveTo(0, s[s.length - 1]);
+                    break;
+                case 5:
+                    for (i = 0; i + 1 < s.length; i += 2) {
+                        lineTo(s[i], s[i + 1]);
+                    }
+                    break;
+                case 6: case 7:
+                    for (i = 0, horiz = (op === 6); i < s.length; i++, horiz = !horiz) {
+                        lineTo(horiz ? s[i] : 0, horiz ? 0 : s[i]);
+                    }
+                    break;
+                case 8: case 24:
+                    for (i = 0; i + 6 <= s.length - ((op === 24) ? 2 : 0); i += 6) {
+                        curveTo(s[i], s[i + 1], s[i + 2], s[i + 3], s[i + 4], s[i + 5]);
+                    }
+
+                    if (op === 24) {
+                        lineTo(s[i], s[i + 1]);
+                    }
+                    break;
+                case 25:
+                    for (i = 0; i + 2 <= s.length - 6; i += 2) {
+                        lineTo(s[i], s[i + 1]);
+                    }
+                    curveTo(s[i], s[i + 1], s[i + 2], s[i + 3], s[i + 4], s[i + 5]);
+                    break;
+                case 26: case 27:
+                    i = 0;
+                    dy = 0;
+
+                    if (s.length % 2) {
+                        dy = s[0];
+                        i = 1;
+                    }
+
+                    for (; i + 3 < s.length; i += 4, dy = 0) {
+                        if (op === 27) {
+                            curveTo(s[i], dy, s[i + 1], s[i + 2], s[i + 3], 0);
+                        } else {
+                            curveTo(dy, s[i], s[i + 1], s[i + 2], 0, s[i + 3]);
+                        }
+                    }
+                    break;
+                case 30: case 31:
+                    for (i = 0, horiz = (op === 31); i + 3 < s.length; horiz = !horiz) {
+                        five = (s.length - i === 5);
+                        last = five ? s[i + 4] : 0;
+
+                        if (horiz) {
+                            curveTo(s[i], 0, s[i + 1], s[i + 2], last, s[i + 3]);
+                        } else {
+                            curveTo(0, s[i], s[i + 1], s[i + 2], s[i + 3], last);
+                        }
+
+                        i += five ? 5 : 4;
+                    }
+                    break;
+                case 10: case 29:
+                    list = (op === 10) ? c.subrs : c.gsubrs;
+                    bias = s.pop() + cffBias(list.length);
+
+                    if (list[bias]) {
+                        run(list[bias], depth + 1);
+                    }
+                    continue;
+                case 11:
+                    return;
+                case 14:
+                    shift(s.length % 2);
+                    done = true;
+                    break;
+                case 1235:
+                    curveTo(s[0], s[1], s[2], s[3], s[4], s[5]);
+                    curveTo(s[6], s[7], s[8], s[9], s[10], s[11]);
+                    break;
+                case 1234:
+                    y0 = y;
+                    curveTo(s[0], 0, s[1], s[2], s[3], 0);
+                    curveTo(s[4], 0, s[5], y0 - y, s[6], 0);
+                    break;
+                case 1236:
+                    y0 = y;
+                    curveTo(s[0], s[1], s[2], s[3], s[4], 0);
+                    curveTo(s[5], 0, s[6], s[7], s[8], y0 - y - s[7]);
+                    break;
+                case 1237:
+                    x0 = x;
+                    y0 = y;
+                    dx = s[0] + s[2] + s[4] + s[6] + s[8];
+                    dy = s[1] + s[3] + s[5] + s[7] + s[9];
+                    curveTo(s[0], s[1], s[2], s[3], s[4], s[5]);
+
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        curveTo(s[6], s[7], s[8], s[9], s[10], y0 - (y + s[7] + s[9]));
+                    } else {
+                        curveTo(s[6], s[7], s[8], s[9], x0 - (x + s[6] + s[8]), s[10]);
+                    }
+                    break;
+                }
+
+                s = [];
+            }
+        };
+
+        if (c.glyphs[g]) {
+            run(c.glyphs[g], 0);
+        }
+
+        return open ? pen.done() : [];
+    }
+
+    // A glyph's contours as knots in font units (y up).
+    function fontContours(f, g) {
+        return f.cff ? cffContours(f, g) : ttContours(f, g);
+    }
+
+    // Letters drawn by shaping their neighbours (Arabic, Syriac, Thaana,
+    // N'Ko, the Indic scripts, Tibetan, Myanmar, Khmer, Mongolian): their
+    // outlines need a shaper this reader does not have.
+    function outlineNeedsShaping(text) {
+        return /[؀-߿ऀ-෿ༀ-࿿က-႟ក-᢯ꡀ-꡿ﭐ-﷿ﹰ-﻿]/.test(String(text || ''));
+    }
+
+    // A text layer's letters as contours of knots in its box's frame (px,
+    // 0, 0 its corner, y down) from font f, on the text tool's layout lay
+    // (textLayout()): each line's baseline, its spaced characters' x as
+    // laid out, else the font's advances and pair kerning from the aligned
+    // side. missing lists the characters the font does not have.
+    function outlineText(f, l, lay) {
+        var k = lay.size / f.upm, contours = [], missing = [], inner = lay.w - 2 * lay.pad;
+
+        lay.lines.forEach(function (line) {
+            var chars = Array.from(line.text || ''), gids = chars.map(function (ch) { return fontGlyph(f, ch.codePointAt(0)); });
+            var xs = [], at = 0, free;
+
+            gids.forEach(function (g, i) {
+                xs.push(at);
+                at += fontAdvance(f, g) * k + ((i + 1 < gids.length) ? fontKerning(f, g, gids[i + 1]) * k : 0);
+            });
+            free = inner - at;
+
+            gids.forEach(function (g, i) {
+                var x0 = line.chars ? line.x + line.chars[i][1] : lay.pad + ((l.align === 'center') ? free / 2 : ((l.align === 'right') ? free : 0)) + xs[i];
+
+                if (!g && /\S/.test(chars[i])) {
+                    missing.push(chars[i]);
+                    return;
+                }
+
+                fontContours(f, g).forEach(function (ks) {
+                    contours.push(moveKnots(ks, function (px, py) { return [x0 + px * k, line.base - py * k]; }));
+                });
+            });
+        });
+
+        return { contours: contours, missing: missing };
+    }
+
+    // The fields of the path layer that takes a text's place: its box
+    // fitted to the letters (the text's angle kept), the first contour as
+    // its knots and the rest as subs; closed and filled in the text's
+    // colour; the outline as a stroke under the fill (ink), the shadow as
+    // the text's in px.
+    function outlineLayer(l, contours) {
+        var fx = textEffects(l), stub = { x: l.x, y: l.y, w: l.w, h: l.h, rot: l.rot || 0, closed: true };
+        var fit = refitPath(stub, contours[0], contours.slice(1).map(function (ks) { return { knots: ks, closed: true }; }));
+        var out = {
+            type: 'path', x: fit.x, y: fit.y, w: fit.w, h: fit.h, rot: l.rot || 0, opacity: (l.opacity === undefined) ? 1 : l.opacity,
+            knots: fit.knots, subs: fit.subs || [], closed: true, fill: 'solid', color: l.color || '#000000', stroke: 0, dash: 'solid'
+        };
+
+        if (fx.outline) {
+            out.stroke = fx.outline.width * 2;
+            out.ink = fx.outline.color;
+        }
+
+        if (fx.shadow && !l.bg) {
+            out.shadow = fx.shadow;
+        }
+
+        return out;
+    }
+
+    var OUTLINE = {
+        fontRead: fontRead, fontGlyph: fontGlyph, fontAdvance: fontAdvance, fontKerning: fontKerning, fontContours: fontContours,
+        outlineNeedsShaping: outlineNeedsShaping, outlineText: outlineText, outlineLayer: outlineLayer
+    };
+
+    // -- shape builder (pg_image_editor_builder.js) --
+
+    // Closed shapes and paths combined as areas: their outlines are
+    // flattened to polygons (FLAT_TOL px from the curve), the polygons
+    // clipped with the Martinez-Rueda sweep, and the rings that come out
+    // fitted to curves again (FIT_TOL px). A result's holes wind against
+    // its outer rings, so the nonzero and even-odd rules fill it alike.
+
+    var FLAT_TOL = 0.25, FIT_TOL = 0.5, GRID = 1024;
+
+    // The polygon of one cubic segment from a to b (its end point onward),
+    // split until each piece lies within tol of its chord.
+    function flattenSegment(a, b, tol, out) {
+        var walk = function (p0, p1, p2, p3, depth) {
+            var dx = p3[0] - p0[0], dy = p3[1] - p0[1], len = Math.hypot(dx, dy) || 1e-9;
+            var d1 = Math.abs((p1[0] - p3[0]) * dy - (p1[1] - p3[1]) * dx) / len, d2 = Math.abs((p2[0] - p3[0]) * dy - (p2[1] - p3[1]) * dx) / len;
+
+            if ((depth > 16) || (d1 + d2 <= tol)) {
+                out.push(p3);
+                return;
+            }
+
+            var m = function (u, v) { return [(u[0] + v[0]) / 2, (u[1] + v[1]) / 2]; };
+            var q0 = m(p0, p1), q1 = m(p1, p2), q2 = m(p2, p3), r0 = m(q0, q1), r1 = m(q1, q2), s = m(r0, r1);
+
+            walk(p0, q0, r0, s, depth + 1);
+            walk(s, r1, q2, p3, depth + 1);
+        };
+
+        walk([a.x, a.y], [a.ox, a.oy], [b.ix, b.iy], [b.x, b.y], 0);
+    }
+
+    // A closed contour's polygon (knots in any frame), on the GRID, its
+    // repeated points dropped.
+    function flattenRing(knots, tol) {
+        var pts = knots.length ? [[knots[0].x, knots[0].y]] : [], out = [];
+
+        segments(knots, true).forEach(function (s) { flattenSegment(s[0], s[1], tol || FLAT_TOL, pts); });
+        pts.forEach(function (p) {
+            var q = [Math.round(p[0] * GRID) / GRID, Math.round(p[1] * GRID) / GRID], last = out[out.length - 1];
+
+            if (!last || (last[0] !== q[0]) || (last[1] !== q[1])) {
+                out.push(q);
+            }
+        });
+
+        if ((out.length > 1) && (out[0][0] === out[out.length - 1][0]) && (out[0][1] === out[out.length - 1][1])) {
+            out.pop();
+        }
+
+        return out;
+    }
+
+    // A closed shape's or path's contours as polygons in the rotated space,
+    // or null for a layer that is not a closed area.
+    function layerRings(l) {
+        if (!l || !isClosed(l) || (l.type === 'pen')) {
+            return null;
+        }
+
+        var kc = (l.type === 'path') ? [{ knots: pathKnots(l), closed: true }].concat(subKnots(l)) : [shapeKnots(l)];
+        var rings = kc.filter(function (c) { return c.closed && (c.knots.length > 2); }).map(function (c) {
+            return flattenRing(moveKnots(c.knots, function (u, v) { return drawnPoint(l, u, v); }), FLAT_TOL);
+        }).filter(function (r) { return r.length > 2; });
+
+        return rings.length ? rings : null;
+    }
+
+    function ringArea(r) {
+        var a = 0, i, j;
+
+        for (i = 0, j = r.length - 1; i < r.length; j = i++) {
+            a += (r[j][0] - r[i][0]) * (r[j][1] + r[i][1]);
+        }
+
+        return a / 2;
+    }
+
+    // The area of rings wound as clipRings() gives them.
+    function ringsArea(rings) {
+        return rings.reduce(function (s, r) { return s + ringArea(r); }, 0);
+    }
+
+    // ---- the Martinez-Rueda sweep ----
+
+    var EV_NORMAL = 0, EV_NONE = 1, EV_SAME = 2, EV_DIFF = 3, evId = 0;
+
+    function sweepEvent(p, left, other, subject) {
+        return { p: p, left: left, other: other, subject: subject, type: EV_NORMAL, inOut: false, otherInOut: false, inResult: false, id: ++evId, ring: 0 };
+    }
+
+    function samePoint(a, b) {
+        return (a[0] === b[0]) && (a[1] === b[1]);
+    }
+
+    function signedArea(p0, p1, p2) {
+        return (p0[0] - p2[0]) * (p1[1] - p2[1]) - (p1[0] - p2[0]) * (p0[1] - p2[1]);
+    }
+
+    function evBelow(e, p) {
+        return e.left ? (signedArea(e.p, e.other.p, p) > 0) : (signedArea(e.other.p, e.p, p) > 0);
+    }
+
+    function evVertical(e) {
+        return e.p[0] === e.other.p[0];
+    }
+
+    // The queue's order: left to right, bottom to top, a right end before a
+    // left one, the lower segment first.
+    function compareEvents(a, b) {
+        var p = a.p, q = b.p;
+
+        if (p[0] !== q[0]) {
+            return (p[0] > q[0]) ? 1 : -1;
+        }
+
+        if (p[1] !== q[1]) {
+            return (p[1] > q[1]) ? 1 : -1;
+        }
+
+        if (a.left !== b.left) {
+            return a.left ? 1 : -1;
+        }
+
+        if (signedArea(p, a.other.p, b.other.p) !== 0) {
+            return evBelow(a, b.other.p) ? -1 : 1;
+        }
+
+        if (a.subject !== b.subject) {
+            return (!a.subject && b.subject) ? 1 : -1;
+        }
+
+        return (a.id > b.id) ? 1 : -1;
+    }
+
+    // The sweep line's order of two left events: the lower segment first.
+    function compareSegments(a, b) {
+        if (a === b) {
+            return 0;
+        }
+
+        if ((signedArea(a.p, a.other.p, b.p) !== 0) || (signedArea(a.p, a.other.p, b.other.p) !== 0)) {
+            if (samePoint(a.p, b.p)) {
+                return evBelow(a, b.other.p) ? -1 : 1;
+            }
+
+            if (a.p[0] === b.p[0]) {
+                return (a.p[1] < b.p[1]) ? -1 : 1;
+            }
+
+            if (compareEvents(a, b) === 1) {
+                return evBelow(b, a.p) ? 1 : -1;
+            }
+
+            return evBelow(a, b.p) ? -1 : 1;
+        }
+
+        if (a.subject !== b.subject) {
+            return a.subject ? -1 : 1;
+        }
+
+        if (samePoint(a.p, b.p) && samePoint(a.other.p, b.other.p)) {
+            return (a.id > b.id) ? 1 : -1;
+        }
+
+        return (compareEvents(a, b) === 1) ? 1 : -1;
+    }
+
+    // A binary heap of events, the first by compareEvents() on top.
+    function eventQueue() {
+        var h = [];
+
+        return {
+            size: function () { return h.length; },
+            push: function (e) {
+                var i = h.push(e) - 1, up;
+
+                while (i > 0 && compareEvents(h[i], h[up = (i - 1) >> 1]) < 0) {
+                    h[i] = h[up];
+                    h[up] = e;
+                    i = up;
+                }
+            },
+            pop: function () {
+                var top = h[0], last = h.pop(), i = 0, n = h.length, l, r, m;
+
+                if (n) {
+                    h[0] = last;
+
+                    for (;;) {
+                        l = 2 * i + 1;
+                        r = l + 1;
+                        m = i;
+
+                        if ((l < n) && (compareEvents(h[l], h[m]) < 0)) { m = l; }
+                        if ((r < n) && (compareEvents(h[r], h[m]) < 0)) { m = r; }
+                        if (m === i) { break; }
+
+                        h[i] = h[m];
+                        h[m] = last;
+                        i = m;
+                    }
+                }
+
+                return top;
+            }
+        };
+    }
+
+    // Points closer than WELD px are one point: the same corner reached by
+    // two cuts in other runs differs in its last digits.
+    var WELD = 1e-5;
+
+    // b's points moved onto a's within WELD.
+    function weldRings(a, b) {
+        var cells = {}, cell = function (v) { return Math.floor(v / WELD); };
+
+        a.forEach(function (r) {
+            r.forEach(function (p) { cells[cell(p[0]) + ',' + cell(p[1])] = p; });
+        });
+
+        return b.map(function (r) {
+            return r.map(function (p) {
+                for (var dx = -1; dx <= 1; dx++) {
+                    for (var dy = -1; dy <= 1; dy++) {
+                        var q = cells[(cell(p[0]) + dx) + ',' + (cell(p[1]) + dy)];
+
+                        if (q && (Math.abs(q[0] - p[0]) <= WELD) && (Math.abs(q[1] - p[1]) <= WELD)) {
+                            return q;
+                        }
+                    }
+                }
+
+                return p;
+            });
+        });
+    }
+
+    // A crossing on a fine binary grid, so the same crossing found again
+    // from other pieces of the same edges is the same point.
+    function onGrid(p) {
+        return [Math.round(p[0] * 1048576) / 1048576, Math.round(p[1] * 1048576) / 1048576];
+    }
+
+    // Where segments a1-a2 and b1-b2 meet: no point, one, or the two ends
+    // of their overlap. A point near an end is that end.
+    function segmentCross(a1, a2, b1, b2) {
+        var va = [a2[0] - a1[0], a2[1] - a1[1]], vb = [b2[0] - b1[0], b2[1] - b1[1]], e = [b1[0] - a1[0], b1[1] - a1[1]];
+        var kross = va[0] * vb[1] - va[1] * vb[0], la = va[0] * va[0] + va[1] * va[1], lb = vb[0] * vb[0] + vb[1] * vb[1], s, t, at;
+        var snap = function (p) {
+            var ends = [a1, a2, b1, b2], i;
+
+            for (i = 0; i < 4; i++) {
+                if (Math.abs(p[0] - ends[i][0]) < WELD && Math.abs(p[1] - ends[i][1]) < WELD) {
+                    return ends[i];
+                }
+            }
+
+            return p;
+        };
+
+        if (kross * kross > 1e-10 * la * lb) {
+            s = (e[0] * vb[1] - e[1] * vb[0]) / kross;
+            t = (e[0] * va[1] - e[1] * va[0]) / kross;
+
+            if ((s < 0) || (s > 1) || (t < 0) || (t > 1)) {
+                return [];
+            }
+
+            return [snap((s === 0) ? a1 : ((s === 1) ? a2 : ((t === 0) ? b1 : ((t === 1) ? b2 : onGrid([a1[0] + s * va[0], a1[1] + s * va[1]])))))];
+        }
+
+        kross = e[0] * va[1] - e[1] * va[0];
+
+        if (kross * kross > 1e-10 * la * (e[0] * e[0] + e[1] * e[1])) {
+            return [];
+        }
+
+        s = (va[0] * e[0] + va[1] * e[1]) / la;
+        t = s + (va[0] * vb[0] + va[1] * vb[1]) / la;
+        at = function (v) { return snap((v <= 0) ? a1 : ((v >= 1) ? a2 : onGrid([a1[0] + v * va[0], a1[1] + v * va[1]]))); };
+
+        if ((Math.min(s, t) > 1) || (Math.max(s, t) < 0)) {
+            return [];
+        }
+
+        if ((Math.min(s, t) === 1) || (Math.max(s, t) === 0)) {
+            return [at(Math.min(s, t))];
+        }
+
+        return [at(Math.min(s, t)), at(Math.max(s, t))];
+    }
+
+    // Splits the segment of left event e at p: two segments, four events.
+    function divideSegment(e, p, queue) {
+        var r = sweepEvent(p, false, e, e.subject), l = sweepEvent(p, true, e.other, e.subject);
+
+        r.ring = l.ring = e.ring;
+
+        if (compareEvents(l, e.other) > 0) {
+            e.other.left = true;
+            l.left = false;
+        }
+
+        e.other.other = l;
+        e.other = r;
+        queue.push(l);
+        queue.push(r);
+    }
+
+    // Splits two neighbours on the sweep line where they cross; 2 when
+    // they share their left part (their types are set).
+    function crossEvents(a, b, queue) {
+        var x = segmentCross(a.p, a.other.p, b.p, b.other.p), ev = [], leftSame = false, rightSame = false;
+
+        if (!x.length || ((x.length === 1) && (samePoint(a.p, b.p) || samePoint(a.other.p, b.other.p)))) {
+            return 0;
+        }
+
+        if ((x.length === 2) && (a.subject === b.subject)) {
+            return 0;
+        }
+
+        if (x.length === 1) {
+            if (!samePoint(a.p, x[0]) && !samePoint(a.other.p, x[0])) {
+                divideSegment(a, x[0], queue);
+            }
+
+            if (!samePoint(b.p, x[0]) && !samePoint(b.other.p, x[0])) {
+                divideSegment(b, x[0], queue);
+            }
+
+            return 1;
+        }
+
+        if (samePoint(a.p, b.p)) {
+            leftSame = true;
+        } else {
+            ev.push.apply(ev, (compareEvents(a, b) === 1) ? [b, a] : [a, b]);
+        }
+
+        if (samePoint(a.other.p, b.other.p)) {
+            rightSame = true;
+        } else {
+            ev.push.apply(ev, (compareEvents(a.other, b.other) === 1) ? [b.other, a.other] : [a.other, b.other]);
+        }
+
+        if (leftSame) {
+            b.type = EV_NONE;
+            a.type = (b.inOut === a.inOut) ? EV_SAME : EV_DIFF;
+
+            if (!rightSame) {
+                divideSegment(ev[1].other, ev[0].p, queue);
+            }
+
+            return 2;
+        }
+
+        if (rightSame) {
+            divideSegment(ev[0], ev[1].p, queue);
+            return 3;
+        }
+
+        if (ev[0] !== ev[3].other) {
+            divideSegment(ev[0], ev[1].p, queue);
+            divideSegment(ev[1], ev[2].p, queue);
+            return 3;
+        }
+
+        divideSegment(ev[0], ev[1].p, queue);
+        divideSegment(ev[3].other, ev[2].p, queue);
+
+        return 3;
+    }
+
+    function evInResult(e, op) {
+        if (e.type === EV_NONE) {
+            return false;
+        }
+
+        if (e.type === EV_SAME) {
+            return (op === 'intersect') || (op === 'union');
+        }
+
+        if (e.type === EV_DIFF) {
+            return op === 'difference';
+        }
+
+        if (op === 'intersect') {
+            return !e.otherInOut;
+        }
+
+        if (op === 'union') {
+            return e.otherInOut;
+        }
+
+        return (op === 'difference') ? (e.subject ? e.otherInOut : !e.otherInOut) : true;
+    }
+
+    // Whether the sweep enters or leaves each polygon along e, from the
+    // segment below it.
+    function evFields(e, prev, op) {
+        if (!prev) {
+            e.inOut = false;
+            e.otherInOut = true;
+        } else if (e.subject === prev.subject) {
+            e.inOut = !prev.inOut;
+            e.otherInOut = prev.otherInOut;
+        } else {
+            e.inOut = !prev.otherInOut;
+            e.otherInOut = evVertical(prev) ? !prev.inOut : prev.inOut;
+        }
+
+        e.inResult = evInResult(e, op);
+    }
+
+    function ringsBox(rings) {
+        var b = [Infinity, Infinity, -Infinity, -Infinity];
+
+        rings.forEach(function (r) {
+            r.forEach(function (p) {
+                b = [Math.min(b[0], p[0]), Math.min(b[1], p[1]), Math.max(b[2], p[0]), Math.max(b[3], p[1])];
+            });
+        });
+
+        return b;
+    }
+
+    // The rings (polygons in one frame, even-odd) of a and b combined: op is
+    // union, intersect, difference (a without b) or xor. The result's rings
+    // are simple, outer ones of positive ringArea(), holes negative.
+    function clipRings(a, b, op) {
+        var ba = ringsBox(a), bb = ringsBox(b), queue = eventQueue(), line = [], done = [], e, i, prev, next;
+
+        b = weldRings(a, b);
+
+        if (!a.length || !b.length || (ba[0] > bb[2]) || (bb[0] > ba[2]) || (ba[1] > bb[3]) || (bb[1] > ba[3])) {
+            return nestRings((op === 'intersect') ? [] : ((op === 'difference') ? a : a.concat(b)));
+        }
+
+        [a, b].forEach(function (rings, which) {
+            rings.forEach(function (r, ri) {
+                r.forEach(function (p, pi) {
+                    var q = r[(pi + 1) % r.length], e1, e2;
+
+                    if (samePoint(p, q)) {
+                        return;
+                    }
+
+                    e1 = sweepEvent(p, false, null, !which);
+                    e2 = sweepEvent(q, false, e1, !which);
+                    e1.other = e2;
+                    e1.ring = e2.ring = which * 1e6 + ri + 1;
+                    (compareEvents(e1, e2) > 0 ? e2 : e1).left = true;
+                    queue.push(e1);
+                    queue.push(e2);
+                });
+            });
+        });
+
+        var find = function (ev) {
+            var lo = 0, hi = line.length;
+
+            while (lo < hi) {
+                var mid = (lo + hi) >> 1;
+
+                if (compareSegments(line[mid], ev) < 0) {
+                    lo = mid + 1;
+                } else {
+                    hi = mid;
+                }
+            }
+
+            return lo;
+        };
+
+        while (queue.size()) {
+            e = queue.pop();
+            done.push(e);
+
+            if (e.left) {
+                i = find(e);
+                line.splice(i, 0, e);
+                prev = line[i - 1] || null;
+                next = line[i + 1] || null;
+                evFields(e, prev, op);
+
+                if (next && (crossEvents(e, next, queue) === 2)) {
+                    evFields(e, prev, op);
+                    evFields(next, e, op);
+                }
+
+                if (prev && (crossEvents(prev, e, queue) === 2)) {
+                    evFields(prev, line[line.indexOf(prev) - 1] || null, op);
+                    evFields(e, prev, op);
+                }
+            } else {
+                e = e.other;
+                i = line.indexOf(e);
+
+                if (i >= 0) {
+                    prev = line[i - 1];
+                    next = line[i + 1];
+                    line.splice(i, 1);
+
+                    if (prev && next) {
+                        crossEvents(prev, next, queue);
+                    }
+                }
+            }
+        }
+
+        return nestRings(joinEdges(done.filter(function (ev) { return ev.left && ev.inResult; })));
+    }
+
+    // The result's edges (left events) joined into rings, split where a
+    // ring meets itself.
+    function joinEdges(edges) {
+        var at = {}, used = [], rings = [], key = function (p) { return p[0] + ',' + p[1]; };
+
+        edges.forEach(function (ev, n) {
+            [ev.p, ev.other.p].forEach(function (p) { (at[key(p)] = at[key(p)] || []).push(n); });
+        });
+
+        edges.forEach(function (ev, n) {
+            if (used[n]) {
+                return;
+            }
+
+            var ring = [ev.p], from = ev.p, to = ev.other.p, cur = n, guard = edges.length + 1;
+
+            used[n] = true;
+
+            while (!samePoint(to, ring[0]) && guard--) {
+                var din = Math.atan2(to[1] - from[1], to[0] - from[0]), best = -1, bestTurn = Infinity;
+
+                at[key(to)].forEach(function (m) {
+                    if (used[m] || (m === cur)) {
+                        return;
+                    }
+
+                    var o = samePoint(edges[m].p, to) ? edges[m].other.p : edges[m].p, turn = Math.atan2(o[1] - to[1], o[0] - to[0]) - din;
+
+                    while (turn <= -Math.PI) { turn += 2 * Math.PI; }
+                    while (turn > Math.PI) { turn -= 2 * Math.PI; }
+
+                    if (turn < bestTurn) {
+                        bestTurn = turn;
+                        best = m;
+                    }
+                });
+
+                if (best < 0) {
+                    break;
+                }
+
+                used[best] = true;
+                ring.push(to);
+                from = to;
+                to = samePoint(edges[best].p, to) ? edges[best].other.p : edges[best].p;
+                cur = best;
+            }
+
+            splitRing(ring).forEach(function (r) { rings.push(r); });
+        });
+
+        return rings;
+    }
+
+    // A ring that passes a point twice (rings touching there) as simple
+    // rings, one per loop.
+    function splitRing(ring) {
+        var out = [], seen = {}, stack = [], i;
+
+        for (i = 0; i < ring.length; i++) {
+            var key = ring[i][0] + ',' + ring[i][1];
+
+            if (seen.hasOwnProperty(key)) {
+                var loop = stack.splice(seen[key]);
+
+                loop.forEach(function (p) { delete seen[p[0] + ',' + p[1]]; });
+
+                if (loop.length > 2) {
+                    out.push(loop);
+                }
+            }
+
+            seen[key] = stack.length;
+            stack.push(ring[i]);
+        }
+
+        if (stack.length > 2) {
+            out.push(stack);
+        }
+
+        return out;
+    }
+
+    // Rings wound by depth: one inside an even number of others winds
+    // positive (an outer ring), the rest negative (holes). Slivers under
+    // half a pixel go.
+    function nestRings(rings) {
+        rings = rings.filter(function (r) { return (r.length > 2) && (Math.abs(ringArea(r)) >= 0.5); });
+
+        return rings.map(function (r) {
+            var p = [(r[0][0] + r[1][0]) / 2, (r[0][1] + r[1][1]) / 2], depth = 0, a = ringArea(r);
+
+            rings.forEach(function (o) {
+                if ((o !== r) && inside(p, o)) {
+                    depth++;
+                }
+            });
+
+            return ((a > 0) === !(depth % 2)) ? r : r.slice().reverse();
+        });
+    }
+
+    // Rings split into islands: each outer ring with the holes straight
+    // inside it.
+    function ringIslands(rings) {
+        var outers = rings.filter(function (r) { return ringArea(r) > 0; }), out = outers.map(function (r) { return [r]; });
+
+        rings.forEach(function (h) {
+            if (ringArea(h) > 0) {
+                return;
+            }
+
+            var best = -1, bestArea = Infinity, p = [(h[0][0] + h[1][0]) / 2, (h[0][1] + h[1][1]) / 2];
+
+            outers.forEach(function (o, i) {
+                if (inside(p, o) && (ringArea(o) < bestArea)) {
+                    best = i;
+                    bestArea = ringArea(o);
+                }
+            });
+
+            if (best >= 0) {
+                out[best].push(h);
+            }
+        });
+
+        return out;
+    }
+
+    // Whether p lies in the area of rings (even-odd).
+    function insideRings(p, rings) {
+        return rings.reduce(function (n, r) { return n + (inside(p, r) ? 1 : 0); }, 0) % 2 === 1;
+    }
+
+    // ---- the operations ----
+
+    // items [{ id, rings }] bottom to top combined by op: unite, minusFront
+    // (the bottom one without the rest), intersect, exclude, divide. Gives
+    // [{ id, rings }]: the layer whose style each result takes (the top
+    // one; the bottom one for minusFront; for divide each piece's top
+    // cover) and its rings; [] when nothing is left.
+    function pathfinder(op, items) {
+        var top = items[items.length - 1], fold = function (kind, list) {
+            return list.slice(1).reduce(function (acc, it) { return clipRings(acc, it.rings, kind); }, nestRings(list[0].rings));
+        };
+        var rings;
+
+        if (items.length < 2) {
+            return [];
+        }
+
+        if (op === 'divide') {
+            return builderRegions(items).map(function (r) { return { id: r.id, rings: r.rings }; });
+        }
+
+        if (op === 'minusFront') {
+            rings = clipRings(nestRings(items[0].rings), fold('union', items.slice(1)), 'difference');
+            return rings.length ? [{ id: items[0].id, rings: rings }] : [];
+        }
+
+        rings = fold({ unite: 'union', intersect: 'intersect', exclude: 'xor' }[op] || 'union', items);
+
+        return rings.length ? [{ id: top.id, rings: rings }] : [];
+    }
+
+    // The pieces the items' outlines cut each other into: [{ rings,
+    // members (ids covering it, bottom to top), id (the top member) }], one
+    // per island. Each piece is the overlap of its members less the other
+    // items, cut from the items' own outlines (pieces cut from pieces share
+    // edges, which the sweep takes less exactly).
+    function builderRegions(items) {
+        var out = [], own = items.map(function (it) { return nestRings(it.rings); });
+        var visit = function (last, members, area) {
+            var rest = area;
+
+            items.forEach(function (it, j) {
+                if (rest.length && (members.indexOf(j) < 0)) {
+                    rest = clipRings(rest, own[j], 'difference');
+                }
+            });
+
+            ringIslands(rest).forEach(function (rings) {
+                var ids = members.map(function (j) { return items[j].id; });
+
+                out.push({ rings: rings, members: ids, id: ids[ids.length - 1] });
+            });
+
+            for (var j = last + 1; j < items.length; j++) {
+                var both = clipRings(area, own[j], 'intersect');
+
+                if (both.length) {
+                    visit(j, members.concat([j]), both);
+                }
+            }
+        };
+
+        own.forEach(function (rings, i) { visit(i, [i], rings); });
+
+        return out;
+    }
+
+    // The index of the region under p, or -1.
+    function regionAt(regions, p) {
+        for (var i = 0; i < regions.length; i++) {
+            if (insideRings(p, regions[i].rings)) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    // A shape builder drag over regions: the regions touched (indexes)
+    // merged into one piece in the style of the first, or dropped with
+    // remove. Gives the ids of the layers it changes (every member of a
+    // touched region) and their pieces [{ id, rings }]: the merged one, and
+    // the untouched regions that one of them covers, each in the style of
+    // its top member among them.
+    function builderMerge(regions, touched, remove) {
+        var hit = {}, ids = [], pieces = [], merged = [];
+
+        if (!touched.length) {
+            return { ids: [], pieces: [] };
+        }
+
+        touched.forEach(function (i) {
+            hit[i] = true;
+            regions[i].members.forEach(function (id) {
+                if (ids.indexOf(id) < 0) {
+                    ids.push(id);
+                }
+            });
+        });
+
+        if (!remove) {
+            merged = touched.reduce(function (acc, i) { return acc.length ? clipRings(acc, regions[i].rings, 'union') : nestRings(regions[i].rings); }, []);
+        }
+
+        regions.forEach(function (r, i) {
+            var own = r.members.filter(function (id) { return ids.indexOf(id) >= 0; });
+
+            if (!hit[i] && own.length) {
+                pieces.push({ id: own[own.length - 1], rings: r.rings });
+            }
+        });
+
+        if (merged.length) {
+            pieces.unshift({ id: regions[touched[0]].id, rings: merged });
+        }
+
+        return { ids: ids, pieces: pieces };
+    }
+
+    // ---- back to curves ----
+
+    // A closed polygon's knots: straight runs between corners (turns over
+    // CORNER radians) stay lines, curved runs are fitted with cubic
+    // segments (within FIT_TOL); only the corners are sharp knots.
+    var CORNER = 0.6;
+
+    function ringKnots(ring) {
+        var n = ring.length, starts = [], beziers = [], sharp = {}, dir = function (a, b) { return Math.atan2(b[1] - a[1], b[0] - a[0]); }, i, k;
+
+        for (i = 0; i < n; i++) {
+            var turn = dir(ring[i], ring[(i + 1) % n]) - dir(ring[(i + n - 1) % n], ring[i]);
+
+            while (turn <= -Math.PI) { turn += 2 * Math.PI; }
+            while (turn > Math.PI) { turn -= 2 * Math.PI; }
+
+            if (Math.abs(turn) > CORNER) {
+                starts.push(i);
+            }
+        }
+
+        var round = !starts.length;
+
+        for (k = 0; k < (round ? 1 : starts.length); k++) {
+            var from = round ? 0 : starts[k], to = round ? 0 : starts[(k + 1) % starts.length], run = [ring[from]];
+
+            for (i = (from + 1) % n; ; i = (i + 1) % n) {
+                run.push(ring[i]);
+
+                if (i === to) {
+                    break;
+                }
+            }
+
+            sharp[beziers.length] = !round;
+
+            if (straightRun(run)) {
+                beziers.push([run[0], run[0], run[run.length - 1], run[run.length - 1]]);
+            } else if (round) {
+                fitCubic(run, 0, run.length - 1, unit(ring[1], ring[n - 1]), unit(ring[n - 1], ring[1]), beziers);
+            } else {
+                fitCubic(run, 0, run.length - 1, unit(run[1], run[0]), unit(run[run.length - 2], run[run.length - 1]), beziers);
+            }
+        }
+
+        return beziers.map(function (bz, j) {
+            var before = beziers[(j + beziers.length - 1) % beziers.length];
+
+            return { x: bz[0][0], y: bz[0][1], ix: before[2][0], iy: before[2][1], ox: bz[1][0], oy: bz[1][1], s: !sharp[j] };
+        });
+    }
+
+    function straightRun(run) {
+        var a = run[0], b = run[run.length - 1];
+
+        return run.every(function (p) { return segmentDistance(p, a, b) <= FLAT_TOL; });
+    }
+
+    function unit(a, b) {
+        var dx = a[0] - b[0], dy = a[1] - b[1], d = Math.hypot(dx, dy) || 1;
+
+        return [dx / d, dy / d];
+    }
+
+    // Schneider's least-squares fit of cubic segments to pts[first..last]
+    // with the end tangents t1 (out of the first point) and t2 (into the
+    // last, pointing back); pushes [p0, c1, c2, p3] onto out.
+    function fitCubic(pts, first, last, t1, t2, out) {
+        var count = last - first + 1, u, bz, err, i, it;
+
+        if (count === 2) {
+            var d = Math.hypot(pts[last][0] - pts[first][0], pts[last][1] - pts[first][1]) / 3;
+
+            out.push([pts[first], [pts[first][0] + t1[0] * d, pts[first][1] + t1[1] * d], [pts[last][0] + t2[0] * d, pts[last][1] + t2[1] * d], pts[last]]);
+            return;
+        }
+
+        u = [0];
+
+        for (i = first + 1; i <= last; i++) {
+            u.push(u[u.length - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+        }
+
+        u = u.map(function (v) { return v / (u[u.length - 1] || 1); });
+
+        for (it = 0; it < 6; it++) {
+            bz = fitBezier(pts, first, last, u, t1, t2);
+            err = fitError(pts, first, last, bz, u);
+
+            if (err.max <= FIT_TOL) {
+                out.push(bz);
+                return;
+            }
+
+            if (err.max > FIT_TOL * 16) {
+                break;
+            }
+
+            u = u.map(function (v, j) { return newtonRoot(bz, pts[first + j], v); });
+        }
+
+        var split = Math.min(Math.max(err.at, first + 1), last - 1), tc = unit(pts[split - 1], pts[split + 1]);
+
+        fitCubic(pts, first, split, t1, tc, out);
+        fitCubic(pts, split, last, [-tc[0], -tc[1]], t2, out);
+    }
+
+    function bezierAt(bz, t) {
+        var m = 1 - t;
+
+        return [m * m * m * bz[0][0] + 3 * m * m * t * bz[1][0] + 3 * m * t * t * bz[2][0] + t * t * t * bz[3][0],
+            m * m * m * bz[0][1] + 3 * m * m * t * bz[1][1] + 3 * m * t * t * bz[2][1] + t * t * t * bz[3][1]];
+    }
+
+    function fitBezier(pts, first, last, u, t1, t2) {
+        var p0 = pts[first], p3 = pts[last], c = [[0, 0], [0, 0]], x = [0, 0], i;
+
+        for (i = 0; i < u.length; i++) {
+            var t = u[i], m = 1 - t, b1 = 3 * t * m * m, b2 = 3 * t * t * m, a1 = [t1[0] * b1, t1[1] * b1], a2 = [t2[0] * b2, t2[1] * b2];
+            var b0 = m * m * m + b1, b3 = b2 + t * t * t, q = pts[first + i];
+            var tmp = [q[0] - (p0[0] * b0 + p3[0] * b3), q[1] - (p0[1] * b0 + p3[1] * b3)];
+
+            c[0][0] += a1[0] * a1[0] + a1[1] * a1[1];
+            c[0][1] += a1[0] * a2[0] + a1[1] * a2[1];
+            c[1][1] += a2[0] * a2[0] + a2[1] * a2[1];
+            x[0] += a1[0] * tmp[0] + a1[1] * tmp[1];
+            x[1] += a2[0] * tmp[0] + a2[1] * tmp[1];
+        }
+
+        c[1][0] = c[0][1];
+
+        var det = c[0][0] * c[1][1] - c[1][0] * c[0][1], seg = Math.hypot(p3[0] - p0[0], p3[1] - p0[1]);
+        var al = det ? (x[0] * c[1][1] - x[1] * c[0][1]) / det : 0, ar = det ? (c[0][0] * x[1] - c[1][0] * x[0]) / det : 0;
+
+        if ((al < seg * 1e-6) || (ar < seg * 1e-6)) {
+            al = ar = seg / 3;
+        }
+
+        return [p0, [p0[0] + t1[0] * al, p0[1] + t1[1] * al], [p3[0] + t2[0] * ar, p3[1] + t2[1] * ar], p3];
+    }
+
+    function fitError(pts, first, last, bz, u) {
+        var max = 0, at = Math.floor((first + last) / 2), i;
+
+        for (i = first + 1; i < last; i++) {
+            var p = bezierAt(bz, u[i - first]), d = Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]);
+
+            if (d > max) {
+                max = d;
+                at = i;
+            }
+        }
+
+        return { max: max, at: at };
+    }
+
+    // One Newton step of t towards the point of the curve nearest p.
+    function newtonRoot(bz, p, t) {
+        var q = bezierAt(bz, t), m = 1 - t, d1 = [], d2 = [], j;
+
+        for (j = 0; j < 2; j++) {
+            d1[j] = 3 * (m * m * (bz[1][j] - bz[0][j]) + 2 * m * t * (bz[2][j] - bz[1][j]) + t * t * (bz[3][j] - bz[2][j]));
+            d2[j] = 6 * (m * (bz[2][j] - 2 * bz[1][j] + bz[0][j]) + t * (bz[3][j] - 2 * bz[2][j] + bz[1][j]));
+        }
+
+        var num = (q[0] - p[0]) * d1[0] + (q[1] - p[1]) * d1[1], den = d1[0] * d1[0] + d1[1] * d1[1] + (q[0] - p[0]) * d2[0] + (q[1] - p[1]) * d2[1];
+
+        return den ? Math.min(1, Math.max(0, t - num / den)) : t;
+    }
+
+    // A path layer's box, knots and subs (rot 0) for rings in the rotated
+    // space, the largest outer ring first.
+    function ringsPath(rings) {
+        var order = rings.slice().sort(function (a, b) { return ringArea(b) - ringArea(a); });
+        var contours = order.map(function (r) { return { knots: ringKnots(r), closed: true }; });
+        var fit = refitPath({ x: 0, y: 0, w: 1, h: 1, rot: 0, closed: true }, contours[0].knots, contours.slice(1));
+
+        return { x: fit.x, y: fit.y, w: fit.w, h: fit.h, rot: 0, closed: true, knots: fit.knots, subs: fit.subs || [] };
+    }
+
+    var BUILDER = {
+        flattenRing: flattenRing, layerRings: layerRings, ringArea: ringArea, ringsArea: ringsArea, clipRings: clipRings,
+        ringIslands: ringIslands, insideRings: insideRings, pathfinder: pathfinder, builderRegions: builderRegions, regionAt: regionAt,
+        builderMerge: builderMerge, ringKnots: ringKnots, ringsPath: ringsPath
+    };
 
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
@@ -3425,7 +6552,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, TRACKS, RENDER, ACCESS, GFONTS, GLYPH].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, SCENES, OUTLINE, BUILDER].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

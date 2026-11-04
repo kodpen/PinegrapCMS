@@ -2,9 +2,10 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The submitted forms list (view_submitted_forms.php), shared by the screen,
- * its export and delete-all paths and the panel action that pages it
- * (submitted_form_list_rows, includes/panel/lists.php).
+ * The submitted forms list (view_submitted_forms.php) on the list table
+ * driver (includes/fn/list_table.php), shared by the screen, its export and
+ * delete-all paths, the driver's list_table_rows action and Delete Selected
+ * (delete_submitted_forms.php, pg_submitted_form_list_selected_ids()).
  *
  * The filters live in the session (the screen copies its request into it):
  * the date range, the custom form or, with the advanced filters on, the
@@ -14,7 +15,7 @@
  * sees every form, anybody else the forms whose custom form sits in a folder
  * they may edit (check_edit_access()). The screen used to read every
  * matching form and test that rule row by row; it is now part of the query,
- * so a page of rows can be read with LIMIT.
+ * so the rows can be read in batches.
  *
  * Loaded where it is needed (require_once), not by functions.php.
  *
@@ -295,8 +296,9 @@ function pg_submitted_form_list_value($state, $key)
  * values in the order the placeholders take them.
  *
  * @param array $user the viewer (validate_user())
- * @return array array('from', 'where', 'params', 'order_by', 'sort_columns',
- *               'sort_default', 'sort_levels', 'date_type_column')
+ * @return array array('from', 'where', 'tables', 'condition', 'params',
+ *               'order_by', 'sort_columns', 'sort_default', 'sort_levels',
+ *               'date_type_column')
  */
 function pg_submitted_form_list_filter($user)
 {
@@ -405,6 +407,12 @@ function pg_submitted_form_list_filter($user)
         }
     }
 
+    $payment_condition = pg_submitted_form_list_payment_condition($state, pg_form_payment_ready());
+
+    if ($payment_condition !== '') {
+        $conditions[] = $payment_condition;
+    }
+
     $access = pg_submitted_form_list_access($user);
 
     if ($access['sql'] !== '') {
@@ -458,15 +466,21 @@ function pg_submitted_form_list_filter($user)
         'last_modified'      => 'forms.last_modified_timestamp',
     )) . ', forms.id asc';
 
-    return array(
-        'from' => 'FROM forms
+    $tables = 'forms
             LEFT JOIN page ON forms.page_id = page.page_id
             LEFT JOIN custom_form_pages ON forms.page_id = custom_form_pages.page_id
             LEFT JOIN contacts ON forms.contact_id = contacts.id
             LEFT JOIN user AS submitted_user ON forms.user_id = submitted_user.user_id
             LEFT JOIN user AS last_modified_user ON forms.last_modified_user_id = last_modified_user.user_id
-            LEFT JOIN user AS form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id',
+            LEFT JOIN user AS form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id';
+
+    // 'tables' and 'condition' are the same pieces without their keywords,
+    // as the list table driver takes them (pg_submitted_form_list_source()).
+    return array(
+        'from' => 'FROM ' . $tables,
         'where' => 'WHERE ' . implode(' AND ', $conditions),
+        'tables' => $tables,
+        'condition' => implode(' AND ', $conditions),
         'params' => $params,
         'order_by' => $order_by,
         'sort_columns' => $sort_columns,
@@ -516,46 +530,72 @@ function pg_submitted_form_list_search()
 }
 
 /**
- * One page of the list: the counts without and with the search, and the
- * rows of the page window.
+ * The submitted forms list's columns for the list table driver, in the
+ * order the table shows them, each with the SQL it sorts by (the sort codes
+ * the screen kept before, so a kept sort still applies). The custom form's
+ * name comes first: it is the link to the form. The contact sorts by last
+ * name, then first name.
  *
- * @param array $user   the viewer (validate_user())
- * @param array $filter pg_submitted_form_list_filter()'s answer
- * @param array $terms  pg_list_search_terms()'s answer
- * @param array $window pg_list_page_window()'s answer
- * @return array|false array('total', 'filtered', 'rows') or false when a
- *                     query failed
+ * @param bool $payment whether the forms table has the fee columns
+ *                      (pg_form_payment_ready()): adds the Payment column
+ * @return array key => spec, as pg_list_table_columns() takes them
  */
-function pg_submitted_form_list_page($user, $filter, $terms, $window)
+function pg_submitted_form_list_columns($payment = false)
 {
-    $base = $filter['from'] . ' ' . $filter['where'];
-    $search_columns = pg_submitted_form_list_search();
-    $search = pg_list_search_where($terms, $search_columns['columns'], $search_columns['labels']);
-    $search_sql = ($search['sql'] !== '') ? ' AND ' . $search['sql'] : '';
-    $params = array_merge($filter['params'], $search['params']);
+    $columns = array(
+        'custom_form' => array('heading' => lang('Custom Form'), 'width' => '16rem', 'kind' => 'link', 'sort' => 'custom_form_pages.form_name'),
+        'reference_code' => array('heading' => lang('Reference Code'), 'width' => '10rem', 'sort' => 'forms.reference_code'),
+        'status' => array('heading' => lang('Status'), 'width' => '8rem', 'kind' => 'badge', 'sort' => 'forms.complete'),
+        'contact' => array('heading' => lang('Contact'), 'width' => '12rem', 'sort' => "CONCAT(contacts.last_name, ' ', contacts.first_name)"),
+        'user' => array('heading' => lang('User'), 'width' => '10rem', 'sort' => 'submitted_user.user_username'),
+        'submitted' => array('heading' => lang('Submitted'), 'width' => '12rem', 'kind' => 'date', 'sort' => 'forms.submitted_timestamp'),
+        'last_modified' => array('heading' => lang('Last Modified'), 'width' => '12rem', 'kind' => 'date', 'sort' => 'forms.last_modified_timestamp'),
+        'actions' => array('heading' => lang('Action'), 'width' => '5rem', 'kind' => 'actions'),
+    );
 
-    $result = db_q('SELECT COUNT(*) ' . $base, $filter['params']);
-
-    if (!$result) {
-        return false;
+    if (!$payment) {
+        return $columns;
     }
 
-    $total = (int) mysqli_fetch_row($result)[0];
-    $filtered = $total;
+    // The fee of a designed form (includes/fn/form_payments.php), right
+    // after Status. Not sorted: the kept sort codes stay the screen's own.
+    return pg_submitted_form_list_insert_after($columns, 'status', 'payment', array('heading' => lang('Payment'), 'width' => '7rem', 'kind' => 'badge'));
+}
 
-    if ($search_sql !== '') {
-        $result = db_q('SELECT COUNT(*) ' . $base . $search_sql, $params);
-
-        if (!$result) {
-            return false;
-        }
-
-        $filtered = (int) mysqli_fetch_row($result)[0];
+/**
+ * The submitted forms list as the list table driver's source
+ * (includes/fn/list_table.php), for the screen, the rows action and Delete
+ * Selected (delete_submitted_forms.php) alike. It is the screen's gate too
+ * (validate_forms_access(): a manager or above, or a user who manages
+ * forms). The filters are the ones the screen kept in the session.
+ *
+ * @param array $user   the signed-in user
+ * @param array $params the list's parameters (none)
+ * @return array|null pg_list_table_source(), or null when the user may not
+ *                    open the list
+ */
+function pg_submitted_form_list_source($user, $params)
+{
+    if (!is_array($user) || !isset($user['role']) || !is_numeric($user['role'])
+        || (((int) $user['role'] > 2) && (($user['manage_forms'] ?? false) != true))) {
+        return null;
     }
 
-    $result = db_q(
-        "SELECT
-            forms.id,
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+    pg_submitted_form_list_defaults(pg_submitted_form_list_custom_forms());
+    $filter = pg_submitted_form_list_filter($user);
+    $payment = pg_form_payment_ready();
+
+    return pg_list_table_source(array(
+        'list' => 'view_submitted_forms',
+        'columns' => pg_submitted_form_list_columns($payment),
+        'from' => $filter['tables'],
+        'where' => $filter['condition'],
+        'params' => $filter['params'],
+        'id' => 'forms.id',
+        'id_order' => 'asc',
+        'select' => "forms.id,
             forms.complete,
             custom_form_pages.form_name,
             forms.reference_code,
@@ -564,33 +604,84 @@ function pg_submitted_form_list_page($user, $filter, $terms, $window)
             submitted_user.user_username as submitted_username,
             forms.submitted_timestamp,
             last_modified_user.user_username as last_modified_username,
-            forms.last_modified_timestamp
-        " . $base . $search_sql . "
-        ORDER BY " . $filter['order_by'] . pg_list_limit_sql($window),
-        $params);
+            forms.last_modified_timestamp" . ($payment ? ',
+            forms.order_id,
+            forms.paid_at' : ''),
+        'search' => pg_submitted_form_list_search(),
+        'levels' => $filter['sort_levels'],
+        // A whole-list selection leaves out the forms submitted after it.
+        'created' => 'forms.submitted_timestamp',
+        'rows' => function ($records) use ($user) {
+            return pg_submitted_form_list_rows($user, $records);
+        },
+    ));
+}
 
-    if (!$result) {
+/**
+ * The forms Delete Selected acts on: the selection the list table driver
+ * posted (JSON), read with the list's own query and rights.
+ *
+ * @param array $user      the signed-in user
+ * @param mixed $selection the posted selection, JSON
+ *                         (pg_list_table_selection_parse())
+ * @return array|false|null form ids (empty when nothing or nothing
+ *                          reachable was selected), false when the query
+ *                          failed, null when the selection holds more than
+ *                          10,000 forms
+ */
+function pg_submitted_form_list_selected_ids($user, $selection)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+    $selection = pg_list_table_selection_parse(is_string($selection) ? json_decode($selection, true) : null, time());
+
+    if ($selection === null) {
+        return array();
+    }
+
+    $source = pg_submitted_form_list_source($user, array());
+
+    if ($source === null) {
+        return array();
+    }
+
+    $selected = pg_list_table_selected_ids($source, $selection);
+
+    if ($selected === false) {
         return false;
     }
 
+    return $selected['more'] ? null : $selected['ids'];
+}
+
+/**
+ * The list's rows for a batch of forms.
+ *
+ * @param array $user    the viewer (validate_user())
+ * @param array $records records of the list's read (pg_submitted_form_list_source())
+ * @return array rows as pg_list_table_page() hands them on
+ */
+function pg_submitted_form_list_rows($user, $records)
+{
     $contacts_access = (validate_contacts_access($user, true) == true);
     $rows = array();
 
     // edit_contact.php also wants a role-3 viewer's contact in one of their
     // contact groups, so each row asks for its own contact.
-    while ($row = mysqli_fetch_assoc($result)) {
-        $rows[] = pg_submitted_form_list_row($row, $contacts_access && pg_can_open_contact($user, $row['contact_id'], $contacts_access));
+    foreach ($records as $record) {
+        $rows[] = pg_submitted_form_list_row($record, $contacts_access && pg_can_open_contact($user, $record['contact_id'], $contacts_access));
     }
 
-    return array('total' => $total, 'filtered' => $filtered, 'rows' => $rows);
+    return $rows;
 }
 
 /**
  * One row of the submitted forms list.
  *
- * @param array $row             a row of pg_submitted_form_list_page()'s query
+ * @param array $row             a record of the list's read
+ *                               (pg_submitted_form_list_source())
  * @param bool  $contacts_access whether the viewer may open this row's contact
- * @return array array('class', 'cells') for pg_list_row_html() / pg_list_row_data()
+ * @return array array('id', 'class', 'cells' => key => pg_list_cell())
  */
 function pg_submitted_form_list_row($row, $contacts_access)
 {
@@ -615,17 +706,97 @@ function pg_submitted_form_list_row($row, $contacts_access)
     $submitted_by = ($row['submitted_username'] != '') ? $row['submitted_username'] : '[' . lang('Unknown') . ']';
     $modified_by = ($row['last_modified_username'] != '') ? $row['last_modified_username'] : '[' . lang('Unknown') . ']';
 
-    return array('class' => '', 'cells' => array(
-        pg_list_cell('<input class="check" type="checkbox" name="forms[]" value="' . $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array(trim($row['form_name'] . ' ' . $row['reference_code']))))) . '" />', 'select-all align-middle text-start'),
-        pg_list_cell('<button type="button" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_submitted_form.php?id=' . $id . '\'"><i class="bi bi-pencil"></i></button>', 'align-middle text-start action-buttons'),
-        pg_list_cell(h($row['form_name']), 'chart_label'),
-        pg_list_cell(h($row['reference_code'])),
-        pg_list_cell($status),
-        pg_list_cell($contact),
-        pg_list_cell(h($row['submitted_username'] ?? '')),
-        pg_list_cell(get_relative_time(array('timestamp' => $row['submitted_timestamp'])) . ' ' . h($submitted_by)),
-        pg_list_cell(get_relative_time(array('timestamp' => $row['last_modified_timestamp'])) . ' ' . h($modified_by)),
-    ));
+    $edit_url = 'edit_submitted_form.php?id=' . $id;
+    $name = trim($row['form_name'] . ' ' . $row['reference_code']);
+
+    // The form's name opens it: a double-click or Enter on the row follows
+    // it (data-pg-open).
+    $cells = array(
+        'custom_form' => pg_list_cell('<a class="pg-link-body-emphasis text-decoration-none" data-pg-open href="' . h($edit_url) . '">' . h(((string) $row['form_name'] !== '') ? $row['form_name'] : '[' . lang('No Name') . ']') . '</a>', 'chart_label'),
+        'reference_code' => pg_list_cell(h($row['reference_code'])),
+        'status' => pg_list_cell($status),
+        'contact' => pg_list_cell($contact),
+        'user' => pg_list_cell(h($row['submitted_username'] ?? '')),
+        'submitted' => pg_list_cell(get_relative_time(array('timestamp' => $row['submitted_timestamp'])) . ' ' . h($submitted_by)),
+        'last_modified' => pg_list_cell(get_relative_time(array('timestamp' => $row['last_modified_timestamp'])) . ' ' . h($modified_by)),
+    );
+
+    // A record read with the fee columns (pg_form_payment_ready()) has the
+    // Payment cell, after Status as in pg_submitted_form_list_columns().
+    if (array_key_exists('order_id', $row)) {
+        $cells = pg_submitted_form_list_insert_after($cells, 'status', 'payment', pg_list_cell(pg_submitted_form_list_payment_badge($row)));
+    }
+
+    $cells['actions'] = pg_list_cell('<a class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . h(lang('Edit')) . '" aria-label="' . h(lang(array('string' => 'Edit {var:1}', 'vars' => $name))) . '" href="' . h($edit_url) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>', 'align-middle text-nowrap action-buttons');
+
+    return array('id' => $id, 'class' => '', 'cells' => $cells);
+}
+
+/**
+ * An array with one entry put right after a key (at the end when the key is
+ * not there). Pure.
+ *
+ * @param array  $items
+ * @param string $after the key to follow
+ * @param string $key
+ * @param mixed  $value
+ * @return array
+ */
+function pg_submitted_form_list_insert_after($items, $after, $key, $value)
+{
+    $out = array();
+
+    foreach ($items as $item_key => $item) {
+        $out[$item_key] = $item;
+
+        if ($item_key === $after) {
+            $out[$key] = $value;
+        }
+    }
+
+    $out[$key] = $value;
+
+    return $out;
+}
+
+/**
+ * The Payment badge of a record: nothing without a fee order, else Paid or
+ * Unpaid (pg_form_payment_state()). Pure.
+ *
+ * @param array $row a record with order_id and paid_at
+ * @return string HTML
+ */
+function pg_submitted_form_list_payment_badge($row)
+{
+    $state = pg_form_payment_state($row);
+
+    if ($state === 'paid') {
+        return '<span class="badge theme-success">' . h(lang('Paid')) . '</span>';
+    }
+
+    if ($state === 'unpaid') {
+        return '<span class="badge theme-warning fg-black">' . h(lang('Unpaid')) . '</span>';
+    }
+
+    return '';
+}
+
+/**
+ * The Unpaid filter's condition: the records whose fee order is not yet
+ * paid, in the simple and the advanced view alike; '' when the filter is off
+ * or the forms table has no fee columns. Pure.
+ *
+ * @param array $state the list's session filters
+ * @param bool  $ready pg_form_payment_ready()
+ * @return string SQL without bound values
+ */
+function pg_submitted_form_list_payment_condition($state, $ready)
+{
+    if (!$ready || (pg_submitted_form_list_value($state, 'payment') !== 'unpaid')) {
+        return '';
+    }
+
+    return pg_form_payment_unpaid_where('forms');
 }
 
 /**

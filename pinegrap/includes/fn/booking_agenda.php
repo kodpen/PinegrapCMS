@@ -298,16 +298,59 @@ function pg_booking_agenda_check($fields, $services, $staff)
         $errors['name'] = lang('Enter the customer\'s name.');
     }
 
-    $email = trim((string) ($fields['email'] ?? ''));
-    $phone = trim((string) ($fields['phone'] ?? ''));
+    $contact_error = pg_booking_agenda_contact_error($fields['email'] ?? '', $fields['phone'] ?? '');
 
-    if (($email !== '') && (filter_var($email, FILTER_VALIDATE_EMAIL) === false)) {
-        $errors['email'] = lang('Enter a valid e-mail address.');
-    } elseif (($email === '') && ($phone === '')) {
-        $errors['email'] = lang('Enter an e-mail address or a phone number.');
+    if ($contact_error !== '') {
+        $errors['email'] = $contact_error;
     }
 
     return $errors;
+}
+
+/**
+ * The error of a booking's contact fields, '' when they are fine: a typed
+ * e-mail address must be valid, and an address or a phone must be there,
+ * or no confirmation, reminder or cancellation can reach the customer.
+ * Shared by a new booking and a change to one.
+ *
+ * @param string $email
+ * @param string $phone
+ * @return string the message for the e-mail field, or ''
+ */
+function pg_booking_agenda_contact_error($email, $phone)
+{
+    $email = trim((string) $email);
+    $phone = trim((string) $phone);
+
+    if (($email !== '') && (filter_var($email, FILTER_VALIDATE_EMAIL) === false)) {
+        return lang('Enter a valid e-mail address.');
+    }
+
+    if (($email === '') && ($phone === '')) {
+        return lang('Enter an e-mail address or a phone number.');
+    }
+
+    return '';
+}
+
+/**
+ * The label of where a booking was made (bookings.source): the site's
+ * booking widget, the panel's agenda or the external API; an unknown value
+ * shows as stored.
+ *
+ * @param string $source
+ * @return string
+ */
+function pg_booking_agenda_source_label($source)
+{
+    $source = (string) $source;
+    $labels = array(
+        'site'  => lang('Online booking'),
+        'panel' => lang('Panel'),
+        'api'   => lang('API'),
+    );
+
+    return $labels[$source] ?? $source;
 }
 
 /**
@@ -779,6 +822,32 @@ function pg_booking_agenda_link($state, $changes = array())
     });
 
     return 'view_bookings.php' . ($query ? '?' . http_build_query($query) : '');
+}
+
+/**
+ * Writes a booking's status, customer details and notes as one UPDATE that
+ * names the status it moves from, so a booking changed meanwhile (by another
+ * screen or the API) is not overwritten. A cancel frees the slot in the same
+ * UPDATE (slot_at NULL). A hold becoming a request or a confirmed booking
+ * goes through pg_booking_confirm() instead, which stores the manage token.
+ *
+ * @param array  $booking  the bookings row read before
+ * @param string $status   the status it moves to (or keeps)
+ * @param array  $customer pg_booking_customer()'s answer
+ * @param int    $now
+ * @return bool false when the query failed or the row was changed meanwhile
+ */
+function pg_booking_agenda_status_write($booking, $status, $customer, $now)
+{
+    $cancel = ($status === 'cancelled') && ((string) $booking['status'] !== 'cancelled');
+
+    $result = db_q(
+        "UPDATE bookings
+        SET status = ?, name = ?, email = ?, phone = ?, notes = ?, updated_at = ?" . ($cancel ? ", slot_at = NULL, hold_until = 0" : "") . "
+        WHERE id = ? AND status = ?",
+        array((string) $status, $customer['name'], $customer['email'], $customer['phone'], $customer['notes'], (int) $now, (int) $booking['id'], (string) $booking['status']));
+
+    return $result && (mysqli_affected_rows(db::$con) === 1);
 }
 
 /**

@@ -82,6 +82,28 @@ function test_api_order_present_with_the_state_columns()
 	pg_assert_same('manual_required', $order['refund_status'], 'refund_status as stored');
 }
 
+function test_api_order_present_the_eu_vat_id()
+{
+	$row = api_order_present_test_row();
+	$row['vat_id'] = 'DE123456789';
+	$row['vat_checked_at'] = '1793023380';
+	$row['vat_request_id'] = 'WAPIAAAAW1234567';
+
+	$order = api_order_present($row);
+
+	pg_assert_same('DE123456789', $order['vat_id'], 'the id as stored');
+	pg_assert_same(gmdate('Y-m-d\TH:i:s\Z', 1793023380), $order['vat_checked_at'], 'the check time as an ISO moment');
+	pg_assert_same('WAPIAAAAW1234567', $order['vat_request_id'], 'the consultation number');
+
+	$row['vat_id'] = '';
+	$row['vat_checked_at'] = '0';
+	$row['vat_request_id'] = '';
+	$order = api_order_present($row);
+
+	pg_assert_same('', $order['vat_id'], 'empty when no id was confirmed');
+	pg_assert_same(null, $order['vat_checked_at'], 'null when never checked');
+}
+
 function test_api_order_present_an_order_never_cancelled()
 {
 	$row = api_order_present_test_row();
@@ -103,7 +125,7 @@ function test_api_order_present_without_the_state_columns()
 {
 	$order = api_order_present(api_order_present_test_row());
 
-	foreach (array('type', 'cancelled_at', 'cancellation_reason', 'refund_status') as $field) {
+	foreach (array('type', 'cancelled_at', 'cancellation_reason', 'refund_status', 'vat_id', 'vat_checked_at', 'vat_request_id') as $field) {
 		pg_assert_true(array_key_exists($field, $order), $field . ' is always in the answer');
 		pg_assert_same(null, $order[$field], $field . ' is null on a site without its column');
 	}
@@ -111,9 +133,9 @@ function test_api_order_present_without_the_state_columns()
 
 function test_api_order_select_reads_only_the_columns_the_site_has()
 {
-	$all = api_order_select(array('type', 'cancelled_at', 'cancellation_reason', 'refund_status'));
+	$all = api_order_select(api_order_state_columns());
 
-	foreach (array('type', 'cancelled_at', 'cancellation_reason', 'refund_status') as $column) {
+	foreach (array('type', 'cancelled_at', 'cancellation_reason', 'refund_status', 'vat_id', 'vat_checked_at', 'vat_request_id') as $column) {
 		pg_assert_true(strpos($all, 'orders.' . $column . ',') !== false, $column . ' is selected when the site has it');
 	}
 
@@ -126,7 +148,7 @@ function test_api_order_select_reads_only_the_columns_the_site_has()
 	$some = api_order_select(array('type', 'no_such_column'));
 
 	pg_assert_true(strpos($some, 'orders.type,') !== false, 'a present column is selected');
-	pg_assert_true(strpos($some, 'no_such_column') === false, 'only the four known columns can be selected');
+	pg_assert_true(strpos($some, 'no_such_column') === false, 'only the known columns can be selected');
 }
 
 function test_api_order_schema_declares_the_state_nullable()

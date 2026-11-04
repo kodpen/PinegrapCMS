@@ -13,6 +13,7 @@ module: search_audits
 
 ## How do the switch and Run now work?
 - The switch writes `config.job_dispatch` through `pg_search_audits_switch_list()` (pure: catalogue order, only dispatchable names, like `maintenance.save.php`). JSON requests (`action=card|switch`) check session, role and token themselves and refuse in JSON (`pg_search_audits_json_gate()`).
+- A starter-site install switches the index, structure and accessibility jobs on (`platform/starter-site-defaults.md`).
 - Run now repeats short requests until the pass is done (at most 500). One run per card (`driving` in the script); its card requests post `driving=1`, so the card is drawn running (badge, button off, progress) between requests while `running` in the answer is the lock alone (#5818). The note at the end adds the pages the whole run could not render; an accessibility request that could not render a page writes the nightly job's Site Log line too (#5816). SEO, structure, accessibility: `search_audits_run.php`, anonymous render like `audit_run.php`, the job's lock taken (a second run answers 409 busy), `SEO_ANALYZE_BUTTON_BUDGET`, `pg_search_audits_tick()`. The first request of a Run now starts a new full pass when nothing is queued (the score and structure passes otherwise take only edited records). A finished pass calls `pg_cron_ran()`. Index: the screen POSTs `continue=1` with the form token to `update_search_index.php` and reads the card again until the cursor file is gone.
 
 ## Where is it linked?

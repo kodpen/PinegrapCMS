@@ -19,6 +19,12 @@ module: list_table
 - `pg_list_table_selected_ids()` reads the ids with the list's own WHERE (rights) and `pg_list_table_selection_where()`: ids `IN`, or the search less `NOT IN` exceptions and `created <= as_of`.
 
 ## Which lists are on it?
-- None yet: `pg_list_table_definitions()` is empty until the Pages list moves (`plans/table-driver-steps.md`, TD2).
+- Pages, users, contacts, products, commissions and the mail queue: `ui/list-table-driver-lists.md`.
+- Quick edit of a list: `ui/list-table-quick-edit.md`.
+- A small list printed whole (browser mode): `ui/list-table-printed.md`.
 
-Related: docs/memory/ui/list-table-driver-browser.md, docs/memory/ui/server-paged-lists.md
+## How does a screen hand its bulk actions over?
+- `pg_list_table_html()`'s fourth argument is the screen's bulk buttons, printed in the bar's `.pg-list-table-actions` (shown only while rows are selected).
+- The screen keeps a hidden `selection` field filled from `pg-list-table:selection` (`JSON.stringify(detail.payload)`) and posts it with the list's parameters (`list_params`), since an `{ids}` payload carries none; the bulk endpoint builds the source again from those parameters (the user's rights included) and calls `pg_list_table_selected_ids()`. More than 10,000 rows (`more`) is refused, not cut.
+
+Related: docs/memory/ui/list-table-driver-browser.md, docs/memory/ui/list-table-driver-lists.md, docs/memory/ui/server-paged-lists.md

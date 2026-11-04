@@ -138,6 +138,11 @@ if (!$_POST) {
         $sort_order_options[lang(array('string'=>'Below {var:1}','vars'=>h($row['name'])))] = $row['id'];
     }
     
+    $items_url = 'view_menu_items.php?id=' . (int) $menu_id . '&from=' . urlencode((string) ($_GET['from'] ?? '')) . '&send_to=' . urlencode((string) ($_GET['send_to'] ?? ''));
+
+    // Delete removes the items under this one too, so the Summary counts them.
+    $child_count = (int) db_value("SELECT COUNT(*) FROM menu_items WHERE parent_id = '" . (int) $id . "'");
+
     print pg_page_shell([
         'title'=> lang('Edit Menu Item'),
         'extra classes'=>'design',
@@ -157,21 +162,21 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        <p>' . lang('Menu') . ': ' . h($menu_name) . '</p>
-                    </div>
-                </div>
                 <form name="form" action="edit_menu_item.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="from" value="' . h(($_GET['from'] ?? '')) . '" />
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                     <input type="hidden" id="menu_id" name="menu_id" value="' . h($menu_id) . '" />
-                    ' . pg_menu_item_form_card($liveform, $parent_id_options, '
-                                        <div class="col-12"></div>
-                                        <div class="col-12 md:col-6 lg:col-4 my-3">
+                    ' . pg_menu_item_form_layout(
+                        pg_menu_item_form_cards($liveform, array(
+                            'parent_id_options' => $parent_id_options,
+                            'keep_page_id' => $stored_link_page_id,
+                            'menu_name' => $menu_name,
+                            'menu_url' => h($items_url),
+                            'status' => pg_menu_item_form_children_status($child_count),
+                            'extra' => '
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="sort_order" class="form-label">' . lang('Position') . '</label>
                                             ' . $liveform->output_field(array('type'=>'select', 'id'=>'sort_order', 'name'=>'sort_order', 'class'=>'form-control', 'options'=>$sort_order_options, 'aria-describedby'=>'sort_order_hint')) . '
                                             <div class="form-text d-none" id="sort_order_hint">' . lang('On a new parent the item goes last on its level.') . '</div>
@@ -189,16 +194,11 @@ if (!$_POST) {
                                                 $("#parent_id").on("change", syncPosition);
                                                 syncPosition();
                                             })();
-                                        </script>', $stored_link_page_id) . '
-                    
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('menu item and all menu items underneath it')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                                        </script>',
+                        )),
+                        '
+                                        <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('menu item and all menu items underneath it')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>') . '
                 </form>
             </div>
         </div>

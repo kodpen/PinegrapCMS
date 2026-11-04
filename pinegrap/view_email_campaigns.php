@@ -217,7 +217,6 @@ if ($email_campaigns) {
                 <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="email_campaigns[]" value="' . $email_campaign['id'] . '" aria-label="' . h(lang(array('string'=>'Select {var:1}','vars'=>array($email_campaign['subject'])))) . '" /></td>
 			    <td class="align-middle text-start">
                     <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                 </td>
                 <td class="align-middle">' . $output_to . '</td>
                 <td class="align-middle">' . h($email_campaign['email_campaign_profile_name']) . '</td>
@@ -292,7 +291,7 @@ pg_page_shell(
                         <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                             <div class="container">
                                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                    <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('campaigns')))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                    <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('campaigns')))) . '"><span class="bi bi-trash me-3" aria-hidden="true"></span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                 </div>
                             </div>
                         </nav>

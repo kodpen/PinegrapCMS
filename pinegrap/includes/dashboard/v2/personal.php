@@ -319,9 +319,39 @@ function pg_dashboard_v2_goal_progress($value, $target, $gone)
 }
 
 /**
+ * The layout a personal part is written into. The person's own layout when
+ * it holds a cards list; else the one the page draws for them (their role's
+ * default, pg_dashboard_v2_row_for()), with the default's goals, pins and
+ * notes replaced by the person's own; else the fallback (the first preset).
+ * Pure.
+ *
+ * @param string $own       the person's stored layout JSON
+ * @param string $effective the layout JSON the page draws
+ * @param array  $fallback  the layout used when neither has cards
+ * @return array
+ */
+function pg_dashboard_v2_personal_base($own, $effective, $fallback)
+{
+    $mine = json_decode((string) $own, true);
+
+    if (is_array($mine) && isset($mine['cards']) && is_array($mine['cards'])) {
+        return $mine;
+    }
+
+    $drawn = json_decode((string) $effective, true);
+    $base = (is_array($drawn) && isset($drawn['cards']) && is_array($drawn['cards'])) ? $drawn : $fallback;
+
+    foreach (array('goals' => array(), 'pins' => array(), 'notes' => '') as $part => $empty) {
+        $base[$part] = (is_array($mine) && isset($mine[$part])) ? $mine[$part] : $empty;
+    }
+
+    return $base;
+}
+
+/**
  * Write one personal part into the person's stored layout. With nothing
- * stored yet the layout starts as the page draws it (the first preset), so
- * saving a note never empties the grid.
+ * stored yet the layout starts as the page draws it (the role default, else
+ * the first preset), so saving a note never changes or empties the grid.
  *
  * @param array  $user
  * @param string $part  goals, pins or notes
@@ -347,11 +377,16 @@ function pg_dashboard_v2_personal_save($user, $part, $value)
     }
 
     $row = pg_dashboard_v2_row($user['id']);
-    $layout = json_decode((string) ($row['layout'] ?? ''), true);
+    $own = (string) ($row['layout'] ?? '');
+    $mine = json_decode($own, true);
+    $effective = '';
 
-    if (!is_array($layout) || !isset($layout['cards']) || !is_array($layout['cards'])) {
-        $layout = pg_dashboard_v2_preset_layout('', defined('ECOMMERCE') && (ECOMMERCE === true));
+    if (!is_array($mine) || !isset($mine['cards']) || !is_array($mine['cards'])) {
+        $drawn = pg_dashboard_v2_row_for($user);
+        $effective = (string) ($drawn['layout'] ?? '');
     }
+
+    $layout = pg_dashboard_v2_personal_base($own, $effective, pg_dashboard_v2_preset_layout('', defined('ECOMMERCE') && (ECOMMERCE === true)));
 
     $layout[$part] = $clean;
     $json = json_encode($layout, JSON_UNESCAPED_UNICODE);

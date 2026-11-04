@@ -24,4 +24,4 @@ module: image_editor
 - Format (those this browser can make, `ui/image-editor-encode.md`), longest edge (240-800, 1080 for APNG and WebP, never past the picture's, `M.animEdges()`), frame rate 10-25, repeat (forever, once, three times, the document's own), dithering (GIF only), the estimate (header plus an average sample frame encoded whole times the frames, so it errs high), Download.
 - A device with `navigator.deviceMemory` 4 or less starts at 240. An animation longer than the format's 15 s is refused with a note, not cut.
 - Working: the file name, a bar, the steps (picture from the server, frames n / count, encoding), Cancel (stops the worker; nothing is written). At the end the browser downloads the file and a toast says so.
-- Not here yet: Save to Files and the upload limit (AN4), video (AN6).
+- Save to Files and the upload limit: `image-editor-animation-save.md`; MP4 and WebM: `image-editor-video-export.md`.

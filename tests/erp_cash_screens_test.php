@@ -91,3 +91,36 @@ function test_erp_cash_screen_wording()
 	pg_assert_true(strpos(erp_cash_screens_test_source('erp_receipt.php'), "lang('The receipt has been cancelled.')") !== false, 'no "0 invoice(s) reopened"');
 	pg_assert_true(strpos(erp_cash_screens_test_source('edit_erp_till.php'), "erp_money_input((int) \$till['opening_balance'])") !== false, 'the opening balance box holds a plain figure');
 }
+
+// The till form refuses an opening figure that is not a number (erp_kurus()
+// would save it as 0) and an IBAN that fails the ISO 13616 check, and
+// stores the IBAN upper case without spaces.
+function test_erp_cash_screens_till_form_checks_opening_and_iban()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/erp/till_form.php');
+
+	$opening = lang('Enter the opening balance as a number.');
+	pg_assert_same('', erp_till_opening_refusal(''), 'an empty opening figure is 0');
+	pg_assert_same('', erp_till_opening_refusal('-1.234,56'), 'a negative figure with marks passes');
+	pg_assert_same('', erp_till_opening_refusal(' 1 234.56 '), 'spaces as thousands marks pass');
+	pg_assert_same($opening, erp_till_opening_refusal('abc'), 'letters are refused');
+	pg_assert_same($opening, erp_till_opening_refusal('1O0,00'), 'a letter O typed for a zero is refused');
+	pg_assert_same($opening, erp_till_opening_refusal(','), 'a mark without digits is refused');
+
+	pg_assert_same('TR330006100519786457841326', erp_till_iban_normalise('tr33 0006 1005 1978 6457 8413 26'), 'stored upper case without spaces');
+
+	$iban = lang('This IBAN is not valid. Check it for a typing mistake.');
+	pg_assert_same('', erp_till_iban_refusal(''), 'a till without an IBAN passes');
+	pg_assert_same('', erp_till_iban_refusal('tr33 0006 1005 1978 6457 8413 26'), 'a valid Turkish IBAN passes as typed');
+	pg_assert_same('', erp_till_iban_refusal('GB82 WEST 1234 5698 7654 32'), 'a valid IBAN with letters passes');
+	pg_assert_same('', erp_till_iban_refusal('MT84 MALT 0110 0001 2345 MTLC AST0 01S'), 'a 31-character IBAN passes');
+	pg_assert_same($iban, erp_till_iban_refusal('TR33 0006 1005 1978 6457 8413 27'), 'a wrong check digit is refused');
+	pg_assert_same($iban, erp_till_iban_refusal('12345'), 'a number that is not an IBAN is refused');
+
+	foreach (array('add_erp_till.php', 'edit_erp_till.php') as $file) {
+		$source = erp_cash_screens_test_source($file);
+		pg_assert_contains("mark_error('opening_balance', \$refusal)", $source, $file . ': the opening figure is checked');
+		pg_assert_contains("mark_error('iban', \$refusal)", $source, $file . ': the IBAN is checked');
+		pg_assert_contains('erp_till_iban_normalise(', $source, $file . ': the IBAN is stored normalised');
+	}
+}

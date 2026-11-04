@@ -1,0 +1,15 @@
+{
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "id": "https://mastodon.example/users/alice/statuses/113000000000000002/activity",
+    "type": "Announce",
+    "actor": "https://mastodon.example/users/alice",
+    "published": "2026-11-03T10:10:00Z",
+    "to": [
+        "https://www.w3.org/ns/activitystreams#Public"
+    ],
+    "cc": [
+        "https://blog.example/@news",
+        "https://mastodon.example/users/alice/followers"
+    ],
+    "object": "https://blog.example/news/first-post"
+}

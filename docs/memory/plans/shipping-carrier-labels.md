@@ -1,6 +1,6 @@
 ---
 name: shipping-carrier-labels
-description: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
+description: Plan (approved 2026-10-19): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
 ---
 
 ## Why?
@@ -16,25 +16,9 @@ description: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for 
 - Marketplace orders: Trendyol common label (`createCommonLabel`, ZPL for TEX/Aras) is the marketplace connector's job.
 
 ## What remains?
-1. Done #2378: driver interface, settings card, connection test (`commerce/carrier-label-drivers.md`).
-2. Geliver driver (#3073). Done: PR #3096 (`commerce/carrier-label-geliver.md`), webhook #3245 (`carrier-webhook.md`).
-3. Panel actions single + bulk; `shipment_labels` and `data/shipping_labels/`, retention 30/90 days (#3108, `workflow/decisions-made-schema-3.md`) (M).
-   - 3a. Done #3117 (`commerce/shipment-labels.md`): table, files, Create Label, reprint, sweep, erasure, order delete.
-   - 3b. Done #3137 (`commerce/shipment-label-bulk.md`): bulk create, one merged PDF, Cancel Label, return labels; bulk .zpl #3315.
-4. Done #3157: status polling job, write-back through the single path (`commerce/shipment-tracking.md`).
-5. Direct drivers (M each): Aras done #3259 (`commerce/carrier-label-aras.md`); Yurtiçi waits for docs.
-   - 5c. API: done #3220 (`commerce/shipment-label-api.md`).
-6. Aggregators, done: Basit Kargo #3163 (`commerce/carrier-label-basitkargo.md`), Kargonomi #3286 (`commerce/carrier-label-kargonomi.md`), Kargonomi webhook #3633, Basit Kargo webhook (by hand) #3645; MNG ApiZone (M) waits for docs.
-7. International (#3124), done: Shippo #3192 (`commerce/carrier-label-shippo.md`), Sendcloud #3226 (`commerce/carrier-label-sendcloud.md`); 7b Shippo webhook #3407; 7c Sendcloud return labels #3409; Sendcloud webhook #3431.
-   - 7d Customs, decided #3408 (`workflow/decisions-made-product-7.md`): C1 #3429 (`commerce/product-customs-fields.md`); C2 #3449 Shippo (`commerce/carrier-label-customs.md`); C3 #3474 Sendcloud (`commerce/carrier-label-sendcloud-customs.md`); C4 #3975 products API.
-8. Done: return label on the returns screen (#3178): 8a #3194 (`commerce/shipment-label-returns.md`), 8b #3239 (classic), 8c #3268 (widget).
-9. Pickup requests, decided #3415 (`workflow/decisions-made-product-7.md`): orders list and label card action, `pickup_ref`/`pickup_at` on the label; Shippo and Sendcloud first (M).
-   - P1 done #3475 (`commerce/shipment-label-pickup.md`): columns, Shippo, list and card.
-   - P2 done #3496: Sendcloud; others have no pickup endpoint. P3 done #3937 (API fields).
-
-## Open questions?
-- #3073: Geliver first; the owner confirms its prices; no aggregator-specific fields in the shipment row.
-- Formats (#3123): PDF, ZPL, SVG; no converter.
+- Done: 1 #2378, 2 #3096 #3245, 3a #3117, 3b #3137 #3315, 4 #3157, 5 Aras #3259, 5c #3220, 6 Basit Kargo #3163 #3645, Kargonomi #3286 #3633, 7 Shippo #3192 #3407, Sendcloud #3226 #3409 #3431, 7d C1 #3429, C2 #3449, C3 #3474, C4 #3975, 8a #3194, 8b #3239, 8c #3268, 9 P1 #3475, P2 #3496, P3 #3937.
+5. Direct drivers (M each): Yurtiçi waits for docs.
+6. Aggregators: MNG ApiZone (M) waits for docs.
 
 ## Where to start?
 - Yurtiçi waits for docs. Live checks need the owner's keys.

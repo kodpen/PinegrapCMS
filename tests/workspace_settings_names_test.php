@@ -30,7 +30,7 @@ function test_workspace_settings_names_person_rows()
 		pg_assert_true(strpos($source, "'vars' => array(lang('" . $label . "'), \$person['name'])") !== false, $label . ': row field does not name its person');
 	}
 
-	pg_assert_true(strpos($source, "function ws_settings_days_html(\$name, \$mask, \$id_prefix, \$label = '')") !== false, 'working days group takes no label');
+	pg_assert_true(strpos($source, "function ws_settings_days_html(\$name, \$mask, \$id_prefix, \$label = ''") !== false, 'working days group takes no label');
 	pg_assert_true(strpos($source, "'vars' => array(lang('Working days'), \$person['name'])") !== false, 'working days group does not name its person');
 }
 

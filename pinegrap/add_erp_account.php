@@ -16,7 +16,9 @@
 
 include('init.php');
 $user = validate_user();
-if (!validate_erp_access($user)) {
+// A form that only creates: the read-only accountant is told on arrival,
+// not after filling it in.
+if (!validate_erp_access($user, 'write')) {
     exit();
 }
 

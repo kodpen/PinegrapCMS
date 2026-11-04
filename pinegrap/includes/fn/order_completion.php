@@ -906,8 +906,11 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
     // A cart quote whose link filled this cart is now ordered.
     pg_cart_quote_order_completed($order_id);
 
-    // A designed form's record whose fee this order charged is now paid.
-    pg_form_payment_mark_paid($order_id);
+    // A designed form's record whose fee this order charged is now paid; an
+    // offline payment (no paid_at yet) leaves it unpaid.
+    if ((int) ($values['paid_at'] ?? 0) > 0) {
+        pg_form_payment_mark_paid($order_id);
+    }
 
     // Keep the checkout documents with the order as the customer saw them,
     // now that the order has its number. Only reads the order; its totals are
@@ -1084,13 +1087,18 @@ function pg_order_complete_lines($order_id, array $lines, array $order)
     // the first one left, not from the stock read before the loop.
     $stock_left = array();
 
+    // The location the order takes its units from, stored on the order (0
+    // and nothing written when the site keeps no stock per location).
+    $stock_location_id = pg_stock_order_location_save($order_id);
+    $stock_ref = (string) ($order['order_number'] ?? $order_id);
+
     foreach ($lines as $product) {
         $quantity = $product['quantity'];
         $contact_group_id = $product['contact_group_id'];
 
         // Stock and a calendar event's spots.
-        pg_order_complete_line_stock($product, $stock_left, $actor);
-        pg_order_complete_line_reservation($product, $contact_id);
+        pg_order_complete_line_stock($product, $stock_left, $actor, $stock_location_id, $stock_ref);
+        pg_order_complete_line_reservation($product, $contact_id, array('order_id' => $order_id, 'order_number' => $order['order_number'] ?? 0));
 
         // if contact group has not already been added to array, add it to array
         if (in_array($contact_group_id, $contact_groups) == false) {
@@ -1648,11 +1656,20 @@ function pg_order_folder_access_extends($rights, $expiration_date)
  * @param array  $line       an order line joined to its product: order_item_id,
  *                           product_id, product_name, short_description,
  *                           quantity, inventory, inventory_quantity
+ * With stock per location the units come off the order's location only
+ * (pg_stock_sale_take()); the total and the out-of-stock flag follow from
+ * the rows.
+ *
+ * @param array  $line       an order line joined to its product: order_item_id,
+ *                           product_id, product_name, short_description,
+ *                           quantity, inventory, inventory_quantity
  * @param array  $stock_left product id => stock left, carried between lines
  * @param string $actor      user name on the out-of-stock notification
+ * @param int    $location_id the order's location, 0 without locations
+ * @param string $ref        the order number, kept on the stock move
  * @return void
  */
-function pg_order_complete_line_stock(array $line, array &$stock_left, $actor)
+function pg_order_complete_line_stock(array $line, array &$stock_left, $actor, $location_id = 0, $ref = '')
 {
     $product_id = $line['product_id'];
 
@@ -1660,7 +1677,7 @@ function pg_order_complete_line_stock(array $line, array &$stock_left, $actor)
     // sold with (includes/fn/bundles.php); its own cached stock follows from
     // the refresh the components' announcements run.
     if (pg_bundle_sale_takes_components($product_id, $line['order_item_id'] ?? 0, pg_bundle_ids_among(array($product_id)))) {
-        pg_bundle_take_stock($line['order_item_id'], $product_id, $line['quantity'], 'checkout', $stock_left);
+        pg_bundle_take_stock($line['order_item_id'], $product_id, $line['quantity'], 'checkout', $stock_left, $location_id);
         return;
     }
 
@@ -1683,8 +1700,15 @@ function pg_order_complete_line_stock(array $line, array &$stock_left, $actor)
         return;
     }
 
-    db_q("UPDATE products SET inventory_quantity = (inventory_quantity - ?) WHERE id = ?",
-        array((string) $line['quantity'], (string) $product_id)) or output_error('Query failed.');
+    $sale = pg_stock_sale_take($product_id, $line['quantity'], $location_id, 'checkout', $ref);
+
+    if ($sale === null) {
+        db_q("UPDATE products SET inventory_quantity = (inventory_quantity - ?) WHERE id = ?",
+            array((string) $line['quantity'], (string) $product_id)) or output_error('Query failed.');
+    } elseif ($sale['taken'] === 0) {
+        // The location has none left: nothing is taken from another one.
+        return;
+    }
 
     // Out of stock from the stock left after this line, not from the stock
     // read before: the column is unsigned and the session sql_mode is not
@@ -1717,22 +1741,26 @@ function pg_order_complete_line_stock(array $line, array &$stock_left, $actor)
         $product_id,
         (int) $inventory_quantity,
         null,
-        'checkout');
+        'checkout',
+        ($sale === null) ? null : $sale['location']);
 }
 
 /**
  * For an order line that reserves a calendar event (calendars on,
  * reservations still on for the event): takes the quantity off the event's
  * remaining spots while the event still limits them (a first reservation
- * starts the count from the initial spots), and creates the event's
- * reserved auto e-mail campaigns for the contact.
+ * starts the count from the initial spots), creates the event's reserved
+ * auto e-mail campaigns for the contact and announces
+ * calendar_event.reserved.
  *
  * @param array $line       calendar_event_id, recurrence_number, reservations,
- *                          limit_reservations, number_of_initial_spots, quantity
+ *                          limit_reservations, number_of_initial_spots,
+ *                          quantity, order_item_id
  * @param int   $contact_id
+ * @param array $order      order_id, order_number
  * @return void
  */
-function pg_order_complete_line_reservation(array $line, $contact_id)
+function pg_order_complete_line_reservation(array $line, $contact_id, array $order = array())
 {
     $calendar_event_id = $line['calendar_event_id'];
     $recurrence_number = $line['recurrence_number'];
@@ -1780,6 +1808,32 @@ function pg_order_complete_line_reservation(array $line, $contact_id)
         'action_item_id' => $calendar_event_id,
         'calendar_event_recurrence_number' => $recurrence_number,
         'contact_id' => $contact_id));
+
+    pg_announce('calendar_event.reserved', pg_order_reservation_event($line, $contact_id, $order));
+}
+
+/**
+ * What calendar_event.reserved carries for an order line that reserved an
+ * event: the event's id as id, the repeat, the spots taken and the order.
+ * Pure.
+ *
+ * @param array $line       calendar_event_id, recurrence_number, quantity,
+ *                          order_item_id
+ * @param int   $contact_id
+ * @param array $order      order_id, order_number
+ * @return array
+ */
+function pg_order_reservation_event(array $line, $contact_id, array $order)
+{
+    return array(
+        'id'                => (int) $line['calendar_event_id'],
+        'recurrence_number' => (int) ($line['recurrence_number'] ?? 0),
+        'quantity'          => (int) ($line['quantity'] ?? 0),
+        'order_item_id'     => (int) ($line['order_item_id'] ?? 0),
+        'order_id'          => (int) ($order['order_id'] ?? 0),
+        'order_number'      => (int) ($order['order_number'] ?? 0),
+        'contact_id'        => ((int) $contact_id > 0) ? (int) $contact_id : null,
+    );
 }
 
 /**
@@ -2100,8 +2154,9 @@ function pg_order_complete_line_gift_cards(array $line, $order_id, $created_user
             $body = preg_replace('/<\/body>/i', $footer, $body);
         }
 
-        // Wrap long lines (RFC 821).
-        $body = wordwrap($body, 900, "\n", 1);
+        // No hard wrap: email() sends through PHPMailer, which encodes a line
+        // over 998 characters as quoted-printable; a cut wrap split words,
+        // URLs, multibyte characters and inline scripts.
 
         // Replace variables in body (e.g. ^^code^^).
         $body = replace_variables(array(
@@ -3992,4 +4047,34 @@ function pg_order_complete_commission($order_id, $affiliate_code, $affiliate_rat
                 UNIX_TIMESTAMP())",
             array((string) $affiliate_code, (string) $order_id, (string) $product['order_item_id'], (string) $product_commission, (string) pg_order_recurring_commission_start($product['recurring_payment_period'], $product['recurring_start_date'], time()), (string) mb_strtolower($product['recurring_payment_period']), (string) $product['recurring_number_of_payments'], (string) $product['product_name'], (string) $product['short_description'], (string) $user_id, (string) $user_id)) or output_error('Query failed.');
     }
+}
+
+/**
+ * Why a Next Order Number typed on the Commerce settings screen is refused,
+ * or '' when it may be stored: a whole number above every order number
+ * already given, so the counter never hands out a number twice
+ * (orders.order_number has no unique index; invoices and e-documents take
+ * it). The column is a BIGINT UNSIGNED; at most 18 digits keep the value
+ * inside PHP's integer.
+ *
+ * @param string $posted
+ * @param int $last_order_number MAX(orders.order_number), 0 without orders
+ * @return string
+ */
+function pg_next_order_number_refusal($posted, $last_order_number)
+{
+    $posted = trim((string) $posted);
+    $last = max(0, (int) $last_order_number);
+
+    if (
+        ($posted === '')
+        || !ctype_digit($posted)
+        || (strlen(ltrim($posted, '0')) > 18)
+        || ((int) $posted < 1)
+        || ((int) $posted <= $last)
+    ) {
+        return lang(array('string' => 'Enter a whole number greater than the last order number ({var:1}).', 'vars' => array($last)));
+    }
+
+    return '';
 }

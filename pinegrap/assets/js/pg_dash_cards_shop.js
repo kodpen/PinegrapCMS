@@ -125,6 +125,9 @@
         return mapFiles[url];
     }
 
+    // The Visitor map card (pg_dash_cards_visitors.js) draws the same files.
+    pgDash.mapShapes = mapShapes;
+
     pgDash.renderers.salesmap = function (body, data, card, config) {
         var el = pgDash.el;
         body.appendChild(headline(data));

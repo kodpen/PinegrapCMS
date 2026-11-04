@@ -52,15 +52,19 @@ function pg_audience_ready()
 }
 
 /**
- * The contact columns the "Contact field" condition may read.
+ * The contact columns the "Contact field" condition may read, named as the
+ * contact form names them: contacts.title is the job title, member_id
+ * carries the site's own member ID label.
  *
  * @return array column => label
  */
 function pg_audience_contact_fields()
 {
+    $member_id_label = (defined('MEMBER_ID_LABEL') && is_string(MEMBER_ID_LABEL)) ? trim(MEMBER_ID_LABEL) : '';
+
     return array(
         'company' => lang('Company'),
-        'title' => lang('Title'),
+        'title' => lang('Job Title'),
         'department' => lang('Department'),
         'business_state' => lang('Business State'),
         'home_state' => lang('Home State'),
@@ -68,7 +72,7 @@ function pg_audience_contact_fields()
         'home_zip_code' => lang('Home Zip Code'),
         'salutation' => lang('Salutation'),
         'website' => lang('Website'),
-        'member_id' => lang('Member ID'),
+        'member_id' => ($member_id_label !== '') ? $member_id_label : lang('Member ID'),
     );
 }
 
@@ -1009,6 +1013,196 @@ function pg_audience_write_queries($group_id, array $diff)
 }
 
 /**
+ * The review shown when a group is switched to dynamic: the recompute never
+ * touches its hand, form and product rows, so the user chooses at the
+ * switch whether to keep them (the default), remove them, or turn them into
+ * rule rows that the next recompute drops when the rule does not select
+ * the contact. Pure: the count query, the counts by source from its rows,
+ * and the statements of the two actions.
+ *
+ * @param int   $group_id
+ * @param array $rows the count query's rows (array('source', 'n'))
+ * @return array array('count' => query, 'counts' => array('hand', 'form',
+ *               'product' => int), 'total' => int, 'remove' => query[],
+ *               'to_rule' => query[]); each query array('sql', 'params')
+ */
+function pg_audience_switch_review($group_id, array $rows = array())
+{
+    $params = array((int) $group_id);
+    $counts = array('hand' => 0, 'form' => 0, 'product' => 0);
+
+    foreach ($rows as $row) {
+        $source = isset($row['source']) ? (string) $row['source'] : '';
+
+        if (isset($counts[$source])) {
+            $counts[$source] += max(0, (int) (isset($row['n']) ? $row['n'] : 0));
+        }
+    }
+
+    return array(
+        'count' => array(
+            'sql' => "SELECT source, COUNT(*) AS n FROM contacts_contact_groups_xref WHERE contact_group_id = ? AND source <> 'rule' GROUP BY source",
+            'params' => $params,
+        ),
+        'counts' => $counts,
+        'total' => array_sum($counts),
+        'remove' => array(
+            array('sql' => "DELETE FROM contacts_contact_groups_xref WHERE contact_group_id = ? AND source <> 'rule'", 'params' => $params),
+        ),
+        // The xref has no unique key: a contact that already has a rule row
+        // loses its other row first, so the update leaves one row each.
+        'to_rule' => array(
+            array(
+                'sql' => 'DELETE other FROM contacts_contact_groups_xref AS other'
+                    . ' INNER JOIN contacts_contact_groups_xref AS by_rule'
+                    . " ON by_rule.contact_group_id = other.contact_group_id AND by_rule.contact_id = other.contact_id AND by_rule.source = 'rule'"
+                    . " WHERE other.contact_group_id = ? AND other.source <> 'rule'",
+                'params' => $params,
+            ),
+            array('sql' => "UPDATE contacts_contact_groups_xref SET source = 'rule' WHERE contact_group_id = ? AND source <> 'rule'", 'params' => $params),
+        ),
+    );
+}
+
+/**
+ * The choice posted with a switch to rules for the group's hand, form and
+ * product rows: 'remove', 'to_rule' (keys of pg_audience_switch_review()),
+ * else 'keep', which touches nothing. Pure.
+ *
+ * @param array $post
+ * @return string
+ */
+function pg_audience_switch_action(array $post)
+{
+    $value = isset($post['switch_rows']) ? $post['switch_rows'] : '';
+
+    return (is_string($value) && in_array($value, array('remove', 'to_rule'), true)) ? $value : 'keep';
+}
+
+/**
+ * The count line of the switch review, sources with no rows left out:
+ * "1,240 by hand, 30 from forms, 12 from products"; '' with no rows.
+ *
+ * @param array $counts pg_audience_switch_review() counts
+ * @return string
+ */
+function pg_audience_switch_review_text(array $counts)
+{
+    $texts = array(
+        'hand' => '{var:1} by hand',
+        'form' => '{var:1} from forms',
+        'product' => '{var:1} from products',
+    );
+    $parts = array();
+
+    foreach ($texts as $source => $text) {
+        $count = isset($counts[$source]) ? (int) $counts[$source] : 0;
+
+        if ($count > 0) {
+            $parts[] = lang(array('string' => $text, 'vars' => array(pg_format_number($count, 0))));
+        }
+    }
+
+    return implode(', ', $parts);
+}
+
+/**
+ * The switch review of a group with its counts read: the group's rows that
+ * are not rule-made, by source.
+ *
+ * @param int $group_id
+ * @return array|null pg_audience_switch_review(); null on a failed query
+ */
+function pg_audience_switch_counts($group_id)
+{
+    $review = pg_audience_switch_review($group_id);
+    $result = db_q($review['count']['sql'], $review['count']['params']);
+
+    if (!$result) {
+        return null;
+    }
+
+    $rows = array();
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $rows[] = $row;
+    }
+
+    return pg_audience_switch_review($group_id, $rows);
+}
+
+/**
+ * Runs the chosen action of the switch review once the switch is saved.
+ * 'remove' announces the contacts that leave the group (those with no rule
+ * row beside the removed one); 'to_rule' changes no membership, so it
+ * announces nothing; the next recompute takes the turned rows as its own.
+ *
+ * @param int    $group_id
+ * @param string $action pg_audience_switch_action()
+ * @return bool false on a failed query
+ */
+function pg_audience_switch_apply($group_id, $action)
+{
+    if (!in_array($action, array('remove', 'to_rule'), true)) {
+        return true;
+    }
+
+    $group_id = (int) $group_id;
+    $leavers = array();
+
+    if ($action === 'remove') {
+        $result = db_q(
+            "SELECT DISTINCT other.contact_id FROM contacts_contact_groups_xref AS other"
+            . " LEFT JOIN contacts_contact_groups_xref AS by_rule"
+            . " ON by_rule.contact_group_id = other.contact_group_id AND by_rule.contact_id = other.contact_id AND by_rule.source = 'rule'"
+            . " WHERE other.contact_group_id = ? AND other.source <> 'rule' AND by_rule.contact_id IS NULL",
+            array($group_id)
+        );
+
+        if (!$result) {
+            return false;
+        }
+
+        while ($row = mysqli_fetch_row($result)) {
+            $leavers[] = (int) $row[0];
+        }
+    }
+
+    $review = pg_audience_switch_review($group_id);
+
+    foreach ($review[$action] as $query) {
+        if (!db_q($query['sql'], $query['params'])) {
+            return false;
+        }
+    }
+
+    if ($leavers) {
+        pg_announce_contact_group_members($group_id, array(), $leavers);
+    }
+
+    return true;
+}
+
+/**
+ * Whether the group is still dynamic: read again before each page's write,
+ * since a pass can run for its whole budget while the group is switched
+ * back to static.
+ *
+ * @param int $group_id
+ * @return bool|null null on a failed query
+ */
+function pg_audience_still_dynamic($group_id)
+{
+    $result = db_q("SELECT id FROM contact_groups WHERE id = ? AND kind = 'dynamic'", array((int) $group_id));
+
+    if (!$result) {
+        return null;
+    }
+
+    return (bool) mysqli_fetch_assoc($result);
+}
+
+/**
  * Writes one page's change into the xref.
  *
  * @param int   $group_id
@@ -1054,7 +1248,7 @@ function pg_audience_next_step($last, $elapsed, $budget)
  * @param int $group_id
  * @param int $budget seconds
  * @return array|null array('done' => bool, 'added' => int, 'removed' => int,
- *               'cursor' => int); null when the group is not a dynamic one
+ *               'cursor' => int); null when the group is not (or stops being) a dynamic one
  *               or a query failed
  */
 function pg_audience_recompute($group_id, $budget)
@@ -1096,8 +1290,17 @@ function pg_audience_recompute($group_id, $budget)
         }
 
         $diff = pg_audience_diff($selected, $by_rule, $by_other);
+        $dynamic = pg_audience_still_dynamic($group_id);
 
-        if (!pg_audience_write($group_id, $diff)) {
+        if ($dynamic === false) {
+            // Switched back to static mid-pass: end without writing or
+            // announcing, and leave no cursor or state for a later switch.
+            db_q('UPDATE contact_groups SET compute_cursor = 0 WHERE id = ?', array($group_id));
+            pg_audience_state_write($group_id, null);
+            return null;
+        }
+
+        if (($dynamic === null) || !pg_audience_write($group_id, $diff)) {
             return null;
         }
 
@@ -1200,4 +1403,264 @@ function pg_audience_job_run($budget = PG_AUDIENCE_TICK_SECONDS)
     }
 
     return $totals;
+}
+
+// The rule editor (AU3): edit_contact_group.php draws the rules from this
+// catalogue, posts them as JSON and asks for a count while they change.
+
+/**
+ * What the rule editor draws from: every condition with its family, value
+ * kind, operators and labels, the families, contact fields, consents and
+ * subscription states, and the condition cap of a level.
+ *
+ * @return array
+ */
+function pg_audience_editor_data()
+{
+    $operators = pg_audience_operators();
+    $conditions = array();
+
+    foreach (pg_audience_conditions() as $key => $entry) {
+        $ops = array();
+
+        foreach ($entry['ops'] as $op) {
+            $ops[] = array('op' => $op, 'label' => $operators[$op]);
+        }
+
+        $conditions[] = array(
+            'key' => $key,
+            'label' => $entry['label'],
+            'family' => $entry['family'],
+            'value' => $entry['value'],
+            'window' => !empty($entry['window']),
+            'ops' => $ops,
+        );
+    }
+
+    $options = function (array $list) {
+        $out = array();
+
+        foreach ($list as $id => $label) {
+            $out[] = array('id' => (string) $id, 'text' => (string) $label);
+        }
+
+        return $out;
+    };
+
+    $statuses = array();
+
+    foreach (pg_audience_subscription_statuses() as $status) {
+        $statuses[] = array('id' => $status, 'text' => function_exists('pg_subscription_customer_status_label') ? pg_subscription_customer_status_label($status) : $status);
+    }
+
+    return array(
+        'conditions' => $conditions,
+        'families' => array(
+            'contact' => lang('Contact'),
+            'consent' => lang('Consent'),
+            'membership' => lang('Membership'),
+            'orders' => lang('Orders'),
+            'returns' => lang('Returns'),
+            'subscriptions' => lang('Subscriptions'),
+            'forms' => lang('Forms'),
+            'visits' => lang('Visits'),
+            'groups' => lang('Contact Groups'),
+        ),
+        'fields' => $options(pg_audience_contact_fields()),
+        'consents' => $options(pg_audience_consents()),
+        'statuses' => $statuses,
+        'max' => PG_AUDIENCE_MAX_CONDITIONS,
+    );
+}
+
+/**
+ * The record ids a rule set names, by picker kind, each once in the order
+ * met (nested sets included): a form answer names its form field.
+ *
+ * @param mixed $rules
+ * @return array kind => int[]
+ */
+function pg_audience_rules_refs($rules)
+{
+    $refs = array('product' => array(), 'product_group' => array(), 'contact_group' => array(), 'form' => array(), 'form_field' => array());
+    $catalogue = pg_audience_conditions();
+    $walk = function (array $level) use (&$walk, &$refs, $catalogue) {
+        foreach ($level['conditions'] as $condition) {
+            if (isset($condition['conditions'])) {
+                $walk($condition);
+                continue;
+            }
+
+            $kind = $catalogue[$condition['key']]['value'];
+            $id = ($kind === 'form_field') ? $condition['field'] : ($condition['value'] ?? null);
+
+            if (isset($refs[$kind]) && !in_array($id, $refs[$kind], true)) {
+                $refs[$kind][] = $id;
+            }
+        }
+    };
+
+    $walk(pg_audience_rules_clean($rules));
+
+    return $refs;
+}
+
+/**
+ * The kind and rules a save of the contact group form writes: 'dynamic'
+ * only when the switch is on; the rules are cleaned and kept either way, so
+ * a group switched back to static keeps them for a later switch. 'count' is
+ * the number of conditions left at the top level.
+ *
+ * @param array $post
+ * @return array array('kind', 'rules' => JSON text, 'count')
+ */
+function pg_audience_editor_posted(array $post)
+{
+    $kind = (isset($post['kind']) && ($post['kind'] === 'dynamic')) ? 'dynamic' : 'static';
+    $rules = pg_audience_rules_clean(isset($post['rules']) && is_string($post['rules']) ? $post['rules'] : array());
+
+    return array(
+        'kind' => $kind,
+        'rules' => json_encode($rules, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'count' => count($rules['conditions']),
+    );
+}
+
+/**
+ * Whether two stored rule sets select differently, compared in their
+ * cleaned shape (key order and dropped keys do not count).
+ *
+ * @param mixed $old
+ * @param mixed $new
+ * @return bool
+ */
+function pg_audience_rules_changed($old, $new)
+{
+    return pg_audience_rules_clean((string) $old) !== pg_audience_rules_clean((string) $new);
+}
+
+/**
+ * The count line of the editor: exact under 100, rounded above ("about
+ * 1,240 contacts"), '' when there is no count.
+ *
+ * @param int|null $count
+ * @return string
+ */
+function pg_audience_count_text($count)
+{
+    if ($count === null) {
+        return '';
+    }
+
+    $count = max(0, (int) $count);
+
+    if ($count === 0) {
+        return lang('No contacts');
+    }
+
+    if ($count === 1) {
+        return lang('1 contact');
+    }
+
+    if ($count < 100) {
+        return lang(array('string' => '{var:1} contacts', 'vars' => array(pg_format_number($count, 0))));
+    }
+
+    $step = ($count < 10000) ? 10 : (($count < 100000) ? 100 : 1000);
+
+    return lang(array('string' => 'about {var:1} contacts', 'vars' => array(pg_format_number(round($count / $step) * $step, 0))));
+}
+
+/**
+ * The names of the records a rule set names, for the editor's pickers to
+ * show a stored choice: kind => array(id => text).
+ *
+ * @param mixed $rules
+ * @return array
+ */
+function pg_audience_ref_labels($rules)
+{
+    $labels = array();
+
+    foreach (pg_audience_rules_refs($rules) as $kind => $ids) {
+        $labels[$kind] = array();
+
+        if (!$ids) {
+            continue;
+        }
+
+        $marks = implode(', ', array_fill(0, count($ids), '?'));
+
+        foreach (pg_audience_picker_rows($kind, 'id IN (' . $marks . ')', $ids, count($ids)) as $row) {
+            $labels[$kind][(string) $row['id']] = $row['text'];
+        }
+    }
+
+    return $labels;
+}
+
+/**
+ * The editor's picker search: up to 20 records of one kind whose name
+ * contains the text, as {id, text}.
+ *
+ * @param string $kind product, product_group, contact_group, form or form_field
+ * @param string $q
+ * @return array
+ */
+function pg_audience_picker_search($kind, $q)
+{
+    $q = pg_audience_text($q);
+
+    if ($q === '') {
+        return array();
+    }
+
+    return pg_audience_picker_rows($kind, 'name LIKE ?', array(pg_list_like_pattern($q)), 20);
+}
+
+/**
+ * Rows {id, text} of one picker kind matching a condition on the kind's
+ * `id` and `name` columns (both given by a derived table, so the condition
+ * reads the same for every kind).
+ *
+ * @param string $kind
+ * @param string $where  on id and name, with ? placeholders
+ * @param array  $params
+ * @param int    $limit
+ * @return array
+ */
+function pg_audience_picker_rows($kind, $where, array $params, $limit)
+{
+    switch ($kind) {
+        case 'product':
+            $from = "SELECT id, TRIM(CONCAT(short_description, ' (', name, ')')) AS name FROM products";
+            break;
+        case 'product_group':
+            $from = "SELECT id, TRIM(CONCAT(name, IF(short_description <> '', CONCAT(' - ', short_description), ''))) AS name FROM product_groups";
+            break;
+        case 'contact_group':
+            $from = 'SELECT id, name FROM contact_groups';
+            break;
+        case 'form':
+            $from = "SELECT custom_form_pages.page_id AS id, IF(custom_form_pages.form_name <> '', custom_form_pages.form_name, page.page_name) AS name"
+                . ' FROM custom_form_pages INNER JOIN page ON page.page_id = custom_form_pages.page_id';
+            break;
+        case 'form_field':
+            $from = "SELECT form_fields.id, CONCAT(IF(custom_form_pages.form_name <> '', custom_form_pages.form_name, page.page_name), ': ', IF(form_fields.label <> '', form_fields.label, form_fields.name)) AS name"
+                . ' FROM form_fields INNER JOIN custom_form_pages ON custom_form_pages.page_id = form_fields.page_id'
+                . ' INNER JOIN page ON page.page_id = form_fields.page_id'
+                . " WHERE form_fields.type NOT IN ('information', 'file upload')";
+            break;
+        default:
+            return array();
+    }
+
+    $result = db_q('SELECT id, name FROM (' . $from . ') AS pick WHERE ' . $where . ' ORDER BY name LIMIT ' . (int) $limit, $params);
+    $rows = array();
+
+    while ($result && ($row = mysqli_fetch_assoc($result))) {
+        $rows[] = array('id' => (int) $row['id'], 'text' => (string) $row['name']);
+    }
+
+    return $rows;
 }

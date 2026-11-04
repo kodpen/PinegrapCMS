@@ -4,13 +4,11 @@
  *
  * The commission lists: all commissions (view_commissions.php) and the
  * recurring commission profiles (view_recurring_commission_profiles.php),
- * shared by the screens and the panel actions that page them
- * (commission_list_rows, commission_profile_list_rows,
- * includes/panel/lists.php).
- *
- * Both screens used to read 100 rows for a page of their own and let
- * DataTables search those, so the search box found nothing on the other
- * pages. The rows, the counts and the search now come from the server.
+ * drawn by the list table driver (includes/fn/list_table.php). Their
+ * sources (pg_commission_list_source(), pg_commission_profile_list_source())
+ * serve the screens and the driver's list_table_rows action alike: the
+ * screen prints the first rows, the next ones come in batches as the list
+ * scrolls, searched and sorted on the server.
  *
  * Loaded where it is needed (require_once), not by functions.php.
  *
@@ -115,45 +113,76 @@ function pg_commission_list_periods()
 }
 
 /**
- * The commissions list's sort columns, kept sort and ORDER BY.
+ * Whether a user may open the commission lists: the screens' own gate
+ * (validate_ecommerce_access()), a role above User or the commerce right.
  *
- * @return array array('sort_columns', 'sort_default', 'sort_levels', 'order_by')
+ * @param mixed $user the session user
+ * @return bool
  */
-function pg_commission_list_sort()
+function pg_commission_list_allowed($user)
 {
-    $sort_columns = array(
-        'affiliate_name' => lang('Affiliate Name'),
-        'affiliate_code' => lang('Affiliate Code'),
-        'reference_code' => lang('Reference Code'),
-        'status'         => lang('Status'),
-        'amount'         => lang('Amount'),
-        'frequency'      => lang('Frequency'),
-        'order_number'   => lang('Order'),
-        'product'        => lang('Product'),
-        'created'        => lang('Created'),
-        'last_modified'  => lang('Last Modified'),
+    if (!is_array($user) || !isset($user['role']) || !is_numeric($user['role'])) {
+        return false;
+    }
+
+    return ((int) $user['role'] < 3) || !empty($user['manage_ecommerce']);
+}
+
+/**
+ * The commissions list's columns for the list table driver
+ * (pg_list_table_columns()): the affiliate's name leads as the editor link,
+ * the edit button closes the row. Each sort is the SQL the column orders
+ * by; a status or a frequency orders by the label shown.
+ *
+ * @return array key => spec
+ */
+function pg_commission_list_columns()
+{
+    return array(
+        'affiliate_name' => array('heading' => lang('Affiliate Name'), 'width' => '14rem', 'kind' => 'link', 'sort' => 'contacts.affiliate_name'),
+        'affiliate_code' => array('heading' => lang('Affiliate Code'), 'width' => '10rem', 'sort' => 'commissions.affiliate_code'),
+        'reference_code' => array('heading' => lang('Reference Code'), 'width' => '10rem', 'sort' => 'commissions.reference_code'),
+        'status' => array('heading' => lang('Status'), 'width' => '10rem', 'kind' => 'badge', 'sort' => pg_list_label_order('commissions.status', pg_commission_list_statuses())),
+        'amount' => array('heading' => lang('Amount'), 'width' => '8rem', 'kind' => 'money', 'sort' => 'commissions.amount'),
+        'frequency' => array('heading' => lang('Frequency'), 'width' => '9rem', 'sort' => pg_list_label_order("IFNULL(recurring_commission_profiles.period, '')", pg_commission_list_periods())),
+        'order_number' => array('heading' => lang('Order'), 'width' => '8rem', 'sort' => 'orders.order_number'),
+        'product' => array('heading' => lang('Product'), 'width' => '14rem', 'sort' => 'recurring_commission_profiles.product_name'),
+        'created' => array('heading' => lang('Created'), 'width' => '11rem', 'kind' => 'date', 'sort' => 'commissions.created_timestamp'),
+        'last_modified' => array('heading' => lang('Last Modified'), 'width' => '11rem', 'kind' => 'date', 'sort' => 'commissions.last_modified_timestamp'),
+        'actions' => array('heading' => lang('Action'), 'width' => '5rem', 'kind' => 'actions'),
     );
+}
+
+/**
+ * A commission list's sort menu and kept sort (pg_list_state()), read from
+ * its driver columns.
+ *
+ * @param string $list    the list's pg_list_state() key
+ * @param array  $columns the list's column specs
+ * @return array array('sort_columns', 'sort_default', 'sort_levels')
+ */
+function pg_commission_list_sort_state($list, array $columns)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+    $sort_columns = pg_list_table_sort_columns(pg_list_table_columns($columns));
     $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
     // pg_list_state() reads a sort from the request only on the screen; the
-    // action's JSON body never fills $_REQUEST.
-    $sort_levels = pg_list_state('view_commissions', $sort_columns, $sort_default)['sorts'];
+    // rows action's JSON body never fills $_REQUEST.
+    $sort_levels = pg_list_state($list, $sort_columns, $sort_default)['sorts'];
 
-    // What each sort code orders by; the id last keeps the pages apart.
-    $order_by = pg_list_order_by($sort_levels, array(
-        'affiliate_name' => 'contacts.affiliate_name',
-        'affiliate_code' => 'commissions.affiliate_code',
-        'reference_code' => 'commissions.reference_code',
-        'status'         => pg_list_label_order('commissions.status', pg_commission_list_statuses()),
-        'amount'         => 'commissions.amount',
-        'frequency'      => pg_list_label_order("IFNULL(recurring_commission_profiles.period, '')", pg_commission_list_periods()),
-        'order_number'   => 'orders.order_number',
-        'product'        => 'recurring_commission_profiles.product_name',
-        'created'        => 'commissions.created_timestamp',
-        'last_modified'  => 'commissions.last_modified_timestamp',
-    )) . ', commissions.id desc';
+    return array('sort_columns' => $sort_columns, 'sort_default' => $sort_default, 'sort_levels' => $sort_levels);
+}
 
-    return array('sort_columns' => $sort_columns, 'sort_default' => $sort_default, 'sort_levels' => $sort_levels, 'order_by' => $order_by);
+/**
+ * The commissions list's sort menu and kept sort.
+ *
+ * @return array array('sort_columns', 'sort_default', 'sort_levels')
+ */
+function pg_commission_list_sort()
+{
+    return pg_commission_list_sort_state('view_commissions', pg_commission_list_columns());
 }
 
 /**
@@ -182,13 +211,13 @@ function pg_commission_list_search_columns()
 }
 
 /**
- * The FROM of the commissions list; each join finds one row at most.
+ * The joins of the commissions list; each finds one row at most.
  *
  * @return string
  */
 function pg_commission_list_from()
 {
-    return 'FROM commissions
+    return 'commissions
         LEFT JOIN contacts ON commissions.affiliate_code = contacts.affiliate_code
         LEFT JOIN orders ON commissions.order_id = orders.id
         LEFT JOIN recurring_commission_profiles ON commissions.recurring_commission_profile_id = recurring_commission_profiles.id
@@ -282,10 +311,30 @@ function pg_commission_edit_summary($record)
 }
 
 /**
+ * The cells that open a commission's or profile's editor: the affiliate's
+ * name, followed by a double-click or Enter on the row (data-pg-open), and
+ * the edit button.
+ *
+ * @param string $url  the editor's address
+ * @param mixed  $name the affiliate's name
+ * @return array array('affiliate_name' => pg_list_cell(), 'actions' => pg_list_cell())
+ */
+function pg_commission_list_edit_cells($url, $name)
+{
+    $url = h($url);
+    $name = (string) $name;
+
+    return array(
+        'affiliate_name' => pg_list_cell('<a class="pg-link-body-emphasis text-decoration-none" data-pg-open href="' . $url . '">' . (($name !== '') ? h($name) : '&mdash;') . '</a>', 'align-middle chart_label'),
+        'actions' => pg_list_cell('<a class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '" href="' . $url . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>', 'align-middle text-nowrap action-buttons'),
+    );
+}
+
+/**
  * One row of the commissions list.
  *
  * @param array $commission
- * @return array array('class', 'cells')
+ * @return array array('id', 'class', 'cells' => column key => pg_list_cell())
  */
 function pg_commission_list_row($commission)
 {
@@ -299,89 +348,92 @@ function pg_commission_list_row($commission)
     $product = (string) $commission['product_name']
         . (((string) $commission['product_short_description'] !== '') ? ' - ' . $commission['product_short_description'] : '');
 
-    return array('class' => '', 'cells' => array(
-        pg_list_cell('<button type="button" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_commission.php?id=' . (int) $commission['id'] . '\'"><i class="bi bi-pencil"></i></button>', 'align-middle text-start col-reorder-none'),
-        pg_list_cell(h($commission['affiliate_name']), 'align-middle chart_label'),
-        pg_list_cell(h($commission['affiliate_code'])),
-        pg_list_cell(h($commission['reference_code'])),
-        pg_list_cell('<span class="badge ' . ($badges[$status] ?? 'theme-secondary fg-white fw-light') . '">' . h(lang(ucwords($status))) . '</span>' . pg_commission_list_cancelled_badge($commission['order_status'] ?? null)),
-        pg_list_cell(pg_format_money($commission['amount'] / 100, BASE_CURRENCY_SYMBOL), 'align-middle text-end'),
-        pg_list_cell(h(pg_commission_list_periods()[(string) $commission['period']] ?? lang(ucwords((string) $commission['period'])))),
-        pg_list_cell(h($commission['order_number'])),
-        pg_list_cell(h($product)),
-        pg_list_cell(pg_commission_list_when($commission['created_timestamp'], (string) $commission['created_username'])),
-        pg_list_cell(pg_commission_list_when($commission['last_modified_timestamp'], (string) $commission['last_modified_username'])),
+    return array('id' => (int) $commission['id'], 'class' => '', 'cells' => pg_commission_list_edit_cells('edit_commission.php?id=' . (int) $commission['id'], $commission['affiliate_name']) + array(
+        'affiliate_code' => pg_list_cell(h($commission['affiliate_code'])),
+        'reference_code' => pg_list_cell(h($commission['reference_code'])),
+        'status' => pg_list_cell('<span class="badge ' . ($badges[$status] ?? 'theme-secondary fg-white fw-light') . '">' . h(lang(ucwords($status))) . '</span>' . pg_commission_list_cancelled_badge($commission['order_status'] ?? null)),
+        'amount' => pg_list_cell(pg_format_money($commission['amount'] / 100, BASE_CURRENCY_SYMBOL), 'align-middle text-end'),
+        'frequency' => pg_list_cell(h(pg_commission_list_periods()[(string) $commission['period']] ?? lang(ucwords((string) $commission['period'])))),
+        'order_number' => pg_list_cell(h($commission['order_number'])),
+        'product' => pg_list_cell(h($product)),
+        'created' => pg_list_cell(pg_commission_list_when($commission['created_timestamp'], (string) $commission['created_username'])),
+        'last_modified' => pg_list_cell(pg_commission_list_when($commission['last_modified_timestamp'], (string) $commission['last_modified_username'])),
     ));
 }
 
 /**
- * One page of the commissions list within the date range.
+ * The commissions list's source for the list table driver: the commissions
+ * of the date range the screen keeps in the session.
  *
- * @param array $range  pg_commission_list_range()'s answer
- * @param array $terms  pg_list_search_terms()'s answer
- * @param array $window pg_list_page_window()'s answer
- * @return array|false array('total', 'filtered', 'rows') or false when a
- *                     query failed
+ * @param array $user   the session user
+ * @param array $params the list parameters the browser sends back (none)
+ * @return array|null pg_list_table_source(), or null when the user may not
+ *                    open the list
  */
-function pg_commission_list_page($range, $terms, $window)
+function pg_commission_list_source($user, $params)
 {
-    $where = ' WHERE (commissions.created_timestamp >= ?) AND (commissions.created_timestamp <= ?)';
-    $params = array((string) (int) $range['start'], (string) (int) $range['stop']);
-    $columns = pg_commission_list_search_columns();
+    if (!pg_commission_list_allowed($user)) {
+        return null;
+    }
 
-    return pg_commission_list_query(
-        pg_commission_list_from() . $where,
-        $params,
-        pg_list_search_where($terms, $columns['columns'], $columns['labels']),
-        'commissions.id, commissions.affiliate_code, commissions.reference_code, commissions.status, commissions.amount,
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+    $range = pg_commission_list_range();
+
+    return pg_list_table_source(array(
+        'list' => 'view_commissions',
+        'columns' => pg_commission_list_columns(),
+        'from' => pg_commission_list_from(),
+        'where' => '(commissions.created_timestamp >= ?) AND (commissions.created_timestamp <= ?)',
+        'params' => array((string) (int) $range['start'], (string) (int) $range['stop']),
+        'id' => 'commissions.id',
+        'id_order' => 'desc',
+        'select' => 'commissions.id, commissions.affiliate_code, commissions.reference_code, commissions.status, commissions.amount,
             commissions.created_timestamp, commissions.last_modified_timestamp, contacts.affiliate_name, orders.order_number, orders.status AS order_status,
             recurring_commission_profiles.period, recurring_commission_profiles.product_name,
             recurring_commission_profiles.product_short_description,
             created_user.user_username AS created_username, last_modified_user.user_username AS last_modified_username',
-        pg_commission_list_sort()['order_by'],
-        $window,
-        'pg_commission_list_row');
+        'search' => pg_commission_list_search_columns(),
+        'levels' => pg_commission_list_sort()['sort_levels'],
+        'created' => 'commissions.created_timestamp',
+        'rows' => function ($records) {
+            return array_map('pg_commission_list_row', $records);
+        },
+    ));
 }
 
 /**
- * The recurring commission profiles list's sort columns, kept sort and
- * ORDER BY.
+ * The recurring commission profiles list's columns for the list table
+ * driver (pg_list_table_columns()).
  *
- * @return array array('sort_columns', 'sort_default', 'sort_levels', 'order_by')
+ * @return array key => spec
+ */
+function pg_commission_profile_list_columns()
+{
+    return array(
+        'affiliate_name' => array('heading' => lang('Affiliate Name'), 'width' => '14rem', 'kind' => 'link', 'sort' => 'contacts.affiliate_name'),
+        'affiliate_code' => array('heading' => lang('Affiliate Code'), 'width' => '10rem', 'sort' => 'recurring_commission_profiles.affiliate_code'),
+        'enabled' => array('heading' => lang('Enabled'), 'width' => '6rem', 'kind' => 'check', 'sort' => 'recurring_commission_profiles.enabled'),
+        'amount' => array('heading' => lang('Amount'), 'width' => '8rem', 'kind' => 'money', 'sort' => 'recurring_commission_profiles.amount'),
+        'start_date' => array('heading' => lang('Start Date'), 'width' => '9rem', 'kind' => 'date', 'sort' => 'recurring_commission_profiles.start_date'),
+        'frequency' => array('heading' => lang('Frequency'), 'width' => '9rem', 'sort' => pg_list_label_order("IFNULL(recurring_commission_profiles.period, '')", pg_commission_list_periods())),
+        'commissions' => array('heading' => lang('Commissions'), 'width' => '8rem', 'kind' => 'badge', 'sort' => 'recurring_commission_profiles.number_of_commissions'),
+        'order_number' => array('heading' => lang('Order'), 'width' => '8rem', 'sort' => 'orders.order_number'),
+        'product' => array('heading' => lang('Product'), 'width' => '14rem', 'sort' => 'recurring_commission_profiles.product_name'),
+        'created' => array('heading' => lang('Created'), 'width' => '11rem', 'kind' => 'date', 'sort' => 'recurring_commission_profiles.created_timestamp'),
+        'last_modified' => array('heading' => lang('Last Modified'), 'width' => '11rem', 'kind' => 'date', 'sort' => 'recurring_commission_profiles.last_modified_timestamp'),
+        'actions' => array('heading' => lang('Action'), 'width' => '5rem', 'kind' => 'actions'),
+    );
+}
+
+/**
+ * The recurring commission profiles list's sort menu and kept sort.
+ *
+ * @return array array('sort_columns', 'sort_default', 'sort_levels')
  */
 function pg_commission_profile_list_sort()
 {
-    $sort_columns = array(
-        'affiliate_name' => lang('Affiliate Name'),
-        'affiliate_code' => lang('Affiliate Code'),
-        'enabled'        => lang('Enabled'),
-        'amount'         => lang('Amount'),
-        'start_date'     => lang('Start Date'),
-        'frequency'      => lang('Frequency'),
-        'commissions'    => lang('Commissions'),
-        'order_number'   => lang('Order'),
-        'product'        => lang('Product'),
-        'created'        => lang('Created'),
-        'last_modified'  => lang('Last Modified'),
-    );
-    $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
-    $sort_levels = pg_list_state('view_recurring_commission_profiles', $sort_columns, $sort_default)['sorts'];
-
-    $order_by = pg_list_order_by($sort_levels, array(
-        'affiliate_name' => 'contacts.affiliate_name',
-        'affiliate_code' => 'recurring_commission_profiles.affiliate_code',
-        'enabled'        => 'recurring_commission_profiles.enabled',
-        'amount'         => 'recurring_commission_profiles.amount',
-        'start_date'     => 'recurring_commission_profiles.start_date',
-        'frequency'      => pg_list_label_order("IFNULL(recurring_commission_profiles.period, '')", pg_commission_list_periods()),
-        'commissions'    => 'recurring_commission_profiles.number_of_commissions',
-        'order_number'   => 'orders.order_number',
-        'product'        => 'recurring_commission_profiles.product_name',
-        'created'        => 'recurring_commission_profiles.created_timestamp',
-        'last_modified'  => 'recurring_commission_profiles.last_modified_timestamp',
-    )) . ', recurring_commission_profiles.id desc';
-
-    return array('sort_columns' => $sort_columns, 'sort_default' => $sort_default, 'sort_levels' => $sort_levels, 'order_by' => $order_by);
+    return pg_commission_list_sort_state('view_recurring_commission_profiles', pg_commission_profile_list_columns());
 }
 
 /**
@@ -411,7 +463,7 @@ function pg_commission_profile_list_search_columns()
  * One row of the recurring commission profiles list.
  *
  * @param array $profile
- * @return array array('class', 'cells')
+ * @return array array('id', 'class', 'cells' => column key => pg_list_cell())
  */
 function pg_commission_profile_list_row($profile)
 {
@@ -419,104 +471,60 @@ function pg_commission_profile_list_row($profile)
         . (((string) $profile['product_short_description'] !== '') ? ' - ' . $profile['product_short_description'] : '');
     $commissions = ((int) $profile['number_of_commissions'] === 0) ? lang('Unlimited') : pg_format_number($profile['number_of_commissions'], 0);
 
-    return array('class' => '', 'cells' => array(
-        pg_list_cell('<button type="button" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_recurring_commission_profile.php?id=' . (int) $profile['id'] . '\'"><i class="bi bi-pencil"></i></button>', 'align-middle text-start col-reorder-none'),
-        pg_list_cell(h($profile['affiliate_name']), 'align-middle chart_label'),
-        pg_list_cell(h($profile['affiliate_code'])),
-        pg_list_cell(($profile['enabled'] == 1) ? '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . h(lang('Yes')) . '</span>' : '', 'align-middle text-center'),
-        pg_list_cell('<span class="badge theme-primary fw-light">' . pg_format_money($profile['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span>', 'align-middle text-end'),
-        pg_list_cell(prepare_form_data_for_output($profile['start_date'], 'date')),
-        pg_list_cell(h(pg_commission_list_periods()[(string) $profile['period']] ?? lang(ucwords((string) $profile['period'])))),
-        pg_list_cell('<span class="badge theme-success fw-light">' . h($commissions) . '</span>'),
-        pg_list_cell(h($profile['order_number']) . pg_commission_list_cancelled_badge($profile['order_status'] ?? null)),
-        pg_list_cell(h($product)),
-        pg_list_cell(pg_commission_list_when($profile['created_timestamp'], (string) $profile['created_username'])),
-        pg_list_cell(pg_commission_list_when($profile['last_modified_timestamp'], (string) $profile['last_modified_username'])),
+    return array('id' => (int) $profile['id'], 'class' => '', 'cells' => pg_commission_list_edit_cells('edit_recurring_commission_profile.php?id=' . (int) $profile['id'], $profile['affiliate_name']) + array(
+        'affiliate_code' => pg_list_cell(h($profile['affiliate_code'])),
+        'enabled' => pg_list_cell(($profile['enabled'] == 1) ? '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . h(lang('Yes')) . '</span>' : '', 'align-middle text-center'),
+        'amount' => pg_list_cell('<span class="badge theme-primary fw-light">' . pg_format_money($profile['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span>', 'align-middle text-end'),
+        'start_date' => pg_list_cell(prepare_form_data_for_output($profile['start_date'], 'date')),
+        'frequency' => pg_list_cell(h(pg_commission_list_periods()[(string) $profile['period']] ?? lang(ucwords((string) $profile['period'])))),
+        'commissions' => pg_list_cell('<span class="badge theme-success fw-light">' . h($commissions) . '</span>'),
+        'order_number' => pg_list_cell(h($profile['order_number']) . pg_commission_list_cancelled_badge($profile['order_status'] ?? null)),
+        'product' => pg_list_cell(h($product)),
+        'created' => pg_list_cell(pg_commission_list_when($profile['created_timestamp'], (string) $profile['created_username'])),
+        'last_modified' => pg_list_cell(pg_commission_list_when($profile['last_modified_timestamp'], (string) $profile['last_modified_username'])),
     ));
 }
 
 /**
- * One page of the recurring commission profiles list.
+ * The recurring commission profiles list's source for the list table
+ * driver.
  *
- * @param array $terms  pg_list_search_terms()'s answer
- * @param array $window pg_list_page_window()'s answer
- * @return array|false array('total', 'filtered', 'rows') or false when a
- *                     query failed
+ * @param array $user   the session user
+ * @param array $params the list parameters the browser sends back (none)
+ * @return array|null pg_list_table_source(), or null when the user may not
+ *                    open the list
  */
-function pg_commission_profile_list_page($terms, $window)
+function pg_commission_profile_list_source($user, $params)
 {
-    $columns = pg_commission_profile_list_search_columns();
+    if (!pg_commission_list_allowed($user)) {
+        return null;
+    }
 
-    return pg_commission_list_query(
-        'FROM recurring_commission_profiles
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+    return pg_list_table_source(array(
+        'list' => 'view_recurring_commission_profiles',
+        'columns' => pg_commission_profile_list_columns(),
+        'from' => 'recurring_commission_profiles
             LEFT JOIN contacts ON recurring_commission_profiles.affiliate_code = contacts.affiliate_code
             LEFT JOIN orders ON recurring_commission_profiles.order_id = orders.id
             LEFT JOIN user AS created_user ON recurring_commission_profiles.created_user_id = created_user.user_id
-            LEFT JOIN user AS last_modified_user ON recurring_commission_profiles.last_modified_user_id = last_modified_user.user_id
-            WHERE 1 = 1',
-        array(),
-        pg_list_search_where($terms, $columns['columns'], $columns['labels']),
-        'recurring_commission_profiles.id, recurring_commission_profiles.affiliate_code, recurring_commission_profiles.enabled,
+            LEFT JOIN user AS last_modified_user ON recurring_commission_profiles.last_modified_user_id = last_modified_user.user_id',
+        'id' => 'recurring_commission_profiles.id',
+        'id_order' => 'desc',
+        'select' => 'recurring_commission_profiles.id, recurring_commission_profiles.affiliate_code, recurring_commission_profiles.enabled,
             recurring_commission_profiles.amount, recurring_commission_profiles.start_date, recurring_commission_profiles.period,
             recurring_commission_profiles.number_of_commissions, recurring_commission_profiles.product_name,
             recurring_commission_profiles.product_short_description, recurring_commission_profiles.created_timestamp,
             recurring_commission_profiles.last_modified_timestamp, contacts.affiliate_name, orders.order_number, orders.status AS order_status,
             created_user.user_username AS created_username, last_modified_user.user_username AS last_modified_username',
-        pg_commission_profile_list_sort()['order_by'],
-        $window,
-        'pg_commission_profile_list_row');
-}
-
-/**
- * The counts and one page of either list.
- *
- * @param string   $base     FROM … WHERE …, the list's own condition
- * @param array    $params   values for $base's placeholders
- * @param array    $search   pg_list_search_where()'s answer
- * @param string   $select   the SELECT list
- * @param string   $order_by
- * @param array    $window   pg_list_page_window()'s answer
- * @param callable $row      builds a list row from a result row
- * @return array|false array('total', 'filtered', 'rows') or false when a
- *                     query failed
- */
-function pg_commission_list_query($base, $params, $search, $select, $order_by, $window, $row)
-{
-    $search_sql = ($search['sql'] !== '') ? ' AND ' . $search['sql'] : '';
-    $search_params = array_merge($params, $search['params']);
-
-    $result = db_q('SELECT COUNT(*) ' . $base, $params);
-
-    if (!$result) {
-        return false;
-    }
-
-    $total = (int) mysqli_fetch_row($result)[0];
-    $filtered = $total;
-
-    if ($search_sql !== '') {
-        $result = db_q('SELECT COUNT(*) ' . $base . $search_sql, $search_params);
-
-        if (!$result) {
-            return false;
-        }
-
-        $filtered = (int) mysqli_fetch_row($result)[0];
-    }
-
-    $result = db_q('SELECT ' . $select . ' ' . $base . $search_sql . ' ORDER BY ' . $order_by . pg_list_limit_sql($window), $search_params);
-
-    if (!$result) {
-        return false;
-    }
-
-    $rows = array();
-
-    while ($record = mysqli_fetch_assoc($result)) {
-        $rows[] = call_user_func($row, $record);
-    }
-
-    return array('total' => $total, 'filtered' => $filtered, 'rows' => $rows);
+        'search' => pg_commission_profile_list_search_columns(),
+        'levels' => pg_commission_profile_list_sort()['sort_levels'],
+        'created' => 'recurring_commission_profiles.created_timestamp',
+        'rows' => function ($records) {
+            return array_map('pg_commission_profile_list_row', $records);
+        },
+    ));
 }
 
 /**

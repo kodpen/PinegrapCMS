@@ -25,7 +25,6 @@ function test_bulk_popup_texts_modify_popups_show_their_instruction()
 {
 	$popups = array(
 		'edit_files.php' => array("<main id=\"content\" class=\"container-fluid\">\n        <p class=\"mt-1 mb-3\">' . lang('You may update the selected Files via the form below. You may leave an option unselected if you do not want to modify a property.') . '</p>", "<span class=\"navbar-text me-auto\">' . lang('Modify Files') . '</span>"),
-		'edit_pages.php' => array("<main id=\"content\" class=\"container-fluid\">\n        <p class=\"mt-1 mb-3\">' . lang('You may update various properties below for the selected pages. You may leave a pick list unselected if you do not want to modify a property.') . '</p>", "<span class=\"navbar-text me-auto\">' . lang('Modify Pages') . '</span>"),
 		'includes/templates/edit_products.php' => array("<main id=\"content\" class=\"container-fluid\">\n    <p class=\"mt-1 mb-3\"><?=lang(array('string'=>'You may update the selected Products via the form below.' ))?></p>", "<span class=\"navbar-text me-auto\">\n\t\t\t<?=lang(array('string'=>'Modify Products' ))?>"),
 	);
 
@@ -36,6 +35,19 @@ function test_bulk_popup_texts_modify_popups_show_their_instruction()
 		pg_assert_contains($pins[1], $source, $file . ' header no longer hides the instruction in a popover');
 		pg_assert_false(strpos($source, 'data-bs-content="') !== false, $file . ' keeps a hover-only copy');
 	}
+}
+
+// The Pages list's Modify Selected is a dialog of the list, no popup
+// window: it shows its instruction and posts with the list's form.
+function test_bulk_popup_texts_modify_pages_is_a_dialog()
+{
+	$dialog = bulk_popup_texts_source('includes/fn/page_bulk.php');
+	$list = bulk_popup_texts_source('view_pages.php');
+
+	pg_assert_contains("<p class=\"small fg-secondary\">' . lang('You may update various properties below for the selected pages. You may leave a pick list unselected if you do not want to modify a property.') . '</p>", $dialog, 'the dialog shows its instruction');
+	pg_assert_contains("pg_page_bulk_edit_dialog(\$user, 'view_pages_form')", $list, 'the list prints the dialog');
+	pg_assert_false(strpos($list, 'window.open(') !== false, 'no popup window');
+	pg_assert_false(strpos(bulk_popup_texts_source('edit_pages.php'), 'opener.document') !== false, 'edit_pages.php only takes the post');
 }
 
 function test_bulk_popup_texts_variant_sets_bar_acts_on_the_selection()

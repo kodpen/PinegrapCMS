@@ -189,6 +189,10 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Retry Backup' => lang('Retry Backup'),
         'Backing up' => lang('Backing up'),
         'Backup Builder Starting...' => lang('Backup Builder Starting...'),
+        'Backup Manager' => lang('Backup Manager'),
+        'Replace' => lang('Replace'),
+        'The backup was not taken.' => lang('The backup was not taken.'),
+        "The server's answer to the backup step could not be read ({var}). The server's PHP error log may say why." => lang("The server's answer to the backup step could not be read ({var}). The server's PHP error log may say why."),
         'Label Designer' => lang('Label Designer'),
         'Library not loaded.' => lang('Library not loaded.'),
         'Drag fields to canvas' => lang('Drag fields to canvas'),
@@ -289,14 +293,13 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery_datatables_checkbox.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/lazy.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/multiselect-checkbox/jquery-multiselect-checkbox.min.js"></script>
-    <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/json2/json.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/jquery.inputmask.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/bindings/inputmask.binding.js"></script>
     <script>window.pgCodeEditorConfig = ' . pg_code_editor_json(pg_code_editor_urls()) . ';</script>
     <link rel="stylesheet" type="text/css" href="' . h(CONTROL_PANEL_STYLESHEET_URL) . '" />
     ' . $assistant_snippet . '
     ' . pg_js_bundle_tags('assets/js/backend.min.js', false) . '
-    <style>' . CUSTOM_CSS . '</style>';
+    <style>' . pg_style_tag_css(CUSTOM_CSS) . '</style>';
 
 
 }
@@ -1440,7 +1443,11 @@ function pg_list_sort_menu($url, $columns, $levels, $default, $query = array())
         : '<li><hr class="menu-divider"></li>'
             . '<li><a class="menu-item pg-link-body-emphasis" href="' . h($link(array($default))) . '"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i>' . h(lang('Reset the sort order')) . '</a></li>';
 
-    return '<div class="pg-menu-wrap">'
+    // A list on the table driver whose name is the screen's (view_products)
+    // takes this menu over (assets/js/pg_list_table.js): it sorts without a
+    // reload there, so the menu follows the headings.
+    return '<div class="pg-menu-wrap" data-pg-list-sort-menu="' . h(basename((string) $url, '.php')) . '"'
+        . ' data-pg-sort-default="' . h(pg_list_sort_value(array($default))) . '">'
         . '<button type="button" class="btn btn-sm btn-text theme-secondary pg-menu-caret" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-auto-close="outside" aria-expanded="false">'
         . '<i class="bi bi-sort-down me-1" aria-hidden="true"></i>' . h(lang('Sort by'))
         . (($count > 1) ? ' <span class="badge rounded-pill theme-secondary">' . $count . '</span>' : '')
@@ -1590,6 +1597,7 @@ function pg_list_edit_cell_attributes($columns, $field, $id, $value)
  *            field; a pasted value often brings a line break)
  *   integer  an int, or '' when the column allows empty
  *   money    the digits and separators as typed, spaces taken out
+ *   decimal  the same, for a figure that is not an amount (a weight)
  *   select   the value of one of the options, as a string
  *
  * @param array $column the column's definition
@@ -1650,6 +1658,19 @@ function pg_list_edit_parse($column, $raw)
 
             if (preg_match('/^[0-9]+([.,][0-9]+)*$/', $value) !== 1) {
                 return $fail(lang(array('string' => '{var:1} takes an amount, such as {var:2}.', 'vars' => array($label, pg_format_number(12.5, 2)))));
+            }
+
+            return $pass($value);
+
+        case 'decimal':
+            $value = preg_replace('/[\s\x{00A0}]+/u', '', $value);
+
+            if (($value === '') && !empty($column['empty'])) {
+                return $pass('');
+            }
+
+            if (preg_match('/^[0-9]+([.,][0-9]+)*$/', $value) !== 1) {
+                return $fail(lang(array('string' => '{var:1} takes a number, such as {var:2}.', 'vars' => array($label, pg_format_number(1.5, 1)))));
             }
 
             return $pass($value);
@@ -1992,6 +2013,7 @@ function pg_css_bundles()
         'assets/css/backend.min.css' => 'assets/css/backend.src.css',
         'assets/css/pg_image_editor.min.css' => 'assets/css/pg_image_editor.src.css',
         'assets/css/pg_dash.min.css' => 'assets/css/pg_dash.src.css',
+        'assets/css/pg_visitors.min.css' => 'assets/css/pg_visitors.src.css',
     );
 }
 
@@ -2548,7 +2570,7 @@ function output_header($properties = false)
                     <button type="button" class="pg-searchbar-field no-popover" data-bs-toggle="dialog" data-bs-target="#SearchBox" aria-label="' . lang('Search') . '">
                         <span class="bi bi-search pg-searchbar-icon" aria-hidden="true"></span>
                         <span class="pg-searchbar-text">' . lang('Search...') . '</span>
-                        <span class="pg-searchbar-kbd" aria-hidden="true">Ctrl+K</span>
+                        <span class="pg-searchbar-kbd" aria-hidden="true"><span data-pg-mod>Ctrl</span>+K</span>
                     </button>
                 </div>';
     }
@@ -2628,8 +2650,9 @@ function output_header($properties = false)
                 ' . $output_help_button . '
                 ' . $output_settings_button . '
                 <ul class="navbar-nav">
-                    <li class="nav-item pg-menu-wrap no-arrow no-popover" title="' . lang('Notifications') . ' (Ctrl+Q | ⌘+Q)">
+                    <li class="nav-item pg-menu-wrap no-arrow no-popover" title="' . lang('Notifications') . ' (Ctrl+Q)">
                         <button type="button" id="notification_toggle" class="nav-link nav-link-sm no-popover pg-menu-caret" data-bs-toggle="menu" data-bs-display="static" data-bs-target="#notifications" data-bs-auto-close="outside" aria-expanded="false">
+                            <span class="visually-hidden">' . h(lang('Notifications')) . '</span>
                             <span class="has-notification-icon bi bi-bell"></span>
                         </button>
                         <div id="notifications" class="menu shadow p-0 bg-body backdrop mt-nav-link-sm border-dropdown-menu position-fixed end-0 top-0" tabindex="-1" aria-labelledby="notification_toggle" aria-hidden="true">
@@ -2678,7 +2701,7 @@ function output_header($properties = false)
             </nav>
         </div>
         ' . $output_software_sidebar . $output_settings_modal . '
-        <dialog class="dialog dialog-lg dialog-scrollable pg-dialog-centered shadow" id="SearchBox" aria-labelledby="SearchBoxLabel">
+        <dialog class="dialog dialog-lg dialog-scrollable pg-dialog-centered shadow" id="SearchBox" aria-label="' . h(lang('Search')) . '">
               <div class="dialog-header border-0 px-5 py-3 gap-3 ">
                 <span class="bi bi-search fs-lg fg-secondary flex-shrink-0"></span>
                 <form class="search_form disable_shortcut d-flex align-items-center flex-grow-1 position-relative" role="search">
@@ -2686,7 +2709,7 @@ function output_header($properties = false)
                     <input type="text" id="query" class="query form-control border-0 shadow-none no-popover fs-lg px-1" name="query" placeholder="' . lang('Search...') . '" value="" autocomplete="off">
                     <button type="button" class="clear btn btn-sm btn-link fg-secondary no-popover d-none position-absolute end-0 bi bi-x-lg" title="' . lang('Reset') . '"></button>
                 </form>
-                <span class="fg-secondary small flex-shrink-0 d-none md:d-inline opacity-50 user-select-none">Ctrl+K</span>
+                <span class="fg-secondary small flex-shrink-0 d-none md:d-inline opacity-50 user-select-none" aria-hidden="true"><span data-pg-mod>Ctrl</span>+K</span>
                 <button type="button" class="btn-close ms-1 flex-shrink-0" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
               </div>
               <div class="dialog-body px-5 py-5" style="min-height:200px;max-height:65vh;overflow-y:auto;">
@@ -2964,7 +2987,8 @@ function pg_account_menu($user, $options = array())
             ? 'https://forms.office.com/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAAN__hpULwNUN05TSEo4UENETFJFMzhXQTVHTlhFVDVIOS4u'
             : 'https://forms.office.com/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAAN__hpULwNUMDE3UktZR01OQkg4V0JBNTc4U1RXWFExOC4u';
 
-        $help .= str_replace('<a ', '<a id="feedback_link" onclick="window.open(this.href, \'PinegrapFeedback\', \'resizable=yes,status=yes,location=no,toolbar=no,menubar=no,fullscreen=no,scrollbars=yes,dependent=no\'); return false;" ', $row($feedback_url, 'bi-chat-square-heart', lang('Feedback'), '', true));
+        // A new tab like the other outside rows, not a popup window.
+        $help .= str_replace('<a ', '<a id="feedback_link" ', $row($feedback_url, 'bi-chat-square-heart', lang('Feedback'), $new_tab, true));
     } else {
         // A private label brings its own links in place of the software's.
         for ($i = 1; $i <= 5; $i++) {
@@ -3127,7 +3151,9 @@ function pg_menu_mode_button($state)
  * Not a row of the account menu any more: nobody found them there. The ?
  * key opens the dialog from anywhere outside a text field, and so does the
  * chip the search box offers for "shortcut" (backend.src.js). A <kbd> marked
- * data-pg-mod reads Ctrl and turns into the command key on an Apple device.
+ * data-pg-mod reads Ctrl and turns into the command key on an Apple device;
+ * a row whose third item is false keeps Ctrl there too (Ctrl+Q: Command+Q
+ * quits the browser on a Mac before the page sees it).
  *
  * @return string
  */
@@ -3137,7 +3163,7 @@ function pg_shortcuts_dialog()
         lang('While on the Panel') => array(
             array(array('Ctrl', 'K'), lang('Show/Hide Search Box')),
             array(array('Ctrl', 'S'), lang('Submit Form/Save')),
-            array(array('Ctrl', 'Q'), lang('Toggle Notifications')),
+            array(array('Ctrl', 'Q'), lang('Toggle Notifications'), false),
             array(array('Ctrl', 'D'), lang('Change menu view')),
             array(array('F1'), lang('Help for this screen')),
             array(array('?'), lang('Keyboard Shortcuts'))),
@@ -3158,7 +3184,7 @@ function pg_shortcuts_dialog()
             $keys = '';
 
             foreach ($shortcut[0] as $key) {
-                $keys .= '<kbd' . (($key === 'Ctrl') ? ' data-pg-mod' : '') . '>' . h($key) . '</kbd>';
+                $keys .= '<kbd' . ((($key === 'Ctrl') && (($shortcut[2] ?? true) !== false)) ? ' data-pg-mod' : '') . '>' . h($key) . '</kbd>';
             }
 
             $body .= '
@@ -3613,6 +3639,11 @@ function output_menu($properties = false)
         if ($user['role'] < 3) {
             $menu_items[2]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/search_audits.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-activity bi-me-2\'>' . lang('Search and audits') . '</a>';
+            // PAGES > Import from another platform (import.php, managers and
+            // up), once the upgrade that adds its tables has run.
+            if (pg_schema_has('imports')) {
+                $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/import.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-arrow-in-down bi-me-2\'>' . lang('Import from another platform') . '</a>';
+            }
         }
         // PAGES > Short Links (short links sit outside the folder-based rights, so the screens are gated at manager level and users do not get the entries)
         if ($user['role'] < 3) {
@@ -3686,12 +3717,29 @@ function output_menu($properties = false)
     if (($user['role'] < 3) || ($user['manage_visitors'] == true)) {
         // VISITORS
         $menu_items[6]['id'] = 6;
-        $menu_items[6]['href'] = 'view_visitor_reports.php';
+        $menu_items[6]['href'] = 'visitors.php';
         $menu_items[6]['menu_icon'] = 'statistics';
         $menu_items[6]['color_class'] = 'statistics-color';
         $menu_items[6]['title'] = 'Visitors';
         $menu_items[6]['context'] = true;
-        $menu_items[6]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_reports.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-clipboard2-data bi-me-2\'>' . lang('Visitors') . '</a>';
+        // VISITORS > Overview, then its sections as anchors. Site Search, Page
+        // Speed and AI Visibility are listed only once their figures are ready;
+        // their old screens answer a redirect to the anchor.
+        $menu_items[6]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitors.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-speedometer bi-me-2\'>' . lang('Overview') . '</a>';
+        $visitor_ready = array(
+            'site_search' => pg_site_search_stats_ready(),
+            'speed'       => pg_vitals_ready(),
+            'ai'          => pg_ai_visibility_ready(),
+        );
+        foreach (pg_visitors_sections() as $visitor_section => $visitor_section_label) {
+            if (pg_visitors_section_exists($visitor_section) && (!isset($visitor_ready[$visitor_section]) || $visitor_ready[$visitor_section])) {
+                $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitors.php#' . $visitor_section . '\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-dot bi-me-2\'>' . h($visitor_section_label) . '</a>';
+            }
+        }
+
+        // VISITORS > Saved reports
+        $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
+        $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_reports.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-clipboard2-data bi-me-2\'>' . lang('Saved reports') . '</a>';
         $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Visitor Report'))) . '</a>';
         if (ECOMMERCE === true and USER_MANAGE_ECOMMERCE_REPORTS) {
             // ECOMMERCE > Order Reports
@@ -3705,32 +3753,17 @@ function output_menu($properties = false)
             $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart bi-me-2\'>' . lang('Shipping Report') . '</a>';
         }
 
-        // VISITORS > Site Search (visitor_search.php), once the table is there.
-        if (pg_site_search_stats_ready()) {
-            $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-12\' />';
-            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitor_search.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-search bi-me-2\'>' . lang('Site Search') . '</a>';
-        }
 
-        // VISITORS > Page Speed and AI Visibility, once their tables are there.
-        if (pg_vitals_ready() || pg_ai_visibility_ready()) {
-            $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-        }
-        if (pg_vitals_ready()) {
-            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitor_vitals.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-speedometer2 bi-me-2\'>' . lang('Page Speed') . '</a>';
-        }
-        if (pg_ai_visibility_ready()) {
-            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitor_ai.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-robot bi-me-2\'>' . lang('AI Visibility') . '</a>';
-        }
-
-        // VISITORS > Google Search Console
+        // VISITORS > Search Console settings
         $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-        $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/search_console.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-google bi-me-2\'>' . lang('Google Search Console') . '</a>';
+        $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/search_console.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-google bi-me-2\'>' . lang('Search Console settings') . '</a>';
 
         // VISITORS > Analystics
         // if an external web stats link is supplied in the settings, then prepare link to web stats
-        if ((defined('STATS_URL') == true) && (STATS_URL != '')) {
+        // Only a web address is linked, escaped: the setting is free text.
+        if ((defined('STATS_URL') == true) && preg_match('#^https?://#i', (string) STATS_URL)) {
             $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[6]['data-bs-content'] .= '<a href=\'' . STATS_URL . '\' target=\'_blank\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-arrow-up-right bi-me-2\'>' . lang('Website Analytics') . '</a>';
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . h(STATS_URL) . '\' target=\'_blank\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-arrow-up-right bi-me-2\'>' . lang('Website Analytics') . '</a>';
         }
     }
 
@@ -3849,10 +3882,11 @@ function output_menu($properties = false)
             $menu_items[11]['color_class'] = 'ecommerce-color';
             $menu_items[11]['title'] = 'Products';
             $menu_items[11]['context'] = true;
-            $menu_items[11]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php\'' . $output_parent_target . ' data-pg-menu-label=\'' . h(lang('Products')) . '\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-seam bi-me-2\'>' . lang('All Products') . '</a>';
+            // One All Products entry, on the full list: the bare address
+            // reopens the filter last used (Out of Stock, say) under that name.
+            $menu_items[11]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=all_products\'' . $output_parent_target . ' data-pg-menu-label=\'' . h(lang('Products')) . '\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-seam bi-me-2\'>' . lang('All Products') . '</a>';
             $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_product.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Product'))) . '</a>';
             $menu_items[11]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=all_products\'' . $output_parent_target . ' data-pg-menu-label=\'' . h(lang('Products')) . '\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-seam bi-me-2\'>' . lang('All Products') . '</a>';
             $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=out_of_stock_products\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart-x bi-me-2\'>' . lang('All Out of Stock Products') . '</a>';
 
             // ECOMMERCE > Barcode
@@ -4324,6 +4358,7 @@ function output_menu($properties = false)
         case 'edit_form_item_view.php':
         case 'update_search_index.php':
         case 'search_audits.php':
+        case 'import.php':
         case 'toolbar.php':
         case 'generate_layout.php':
         case 'view_short_links.php':
@@ -4357,6 +4392,7 @@ function output_menu($properties = false)
         case 'import_submitted_forms.php':
             $active_menu = 5;
             break;
+        case 'visitors.php':
         case 'view_visitor_reports.php':
         case 'view_visitor_report.php':
         case 'view_visitor.php':
@@ -4584,6 +4620,7 @@ function output_menu($properties = false)
         case 'edit_javascript.php':
         case 'import_design.php':
         case 'import_zip.php':
+        case 'legacy_to_designer.php':
         case 'migration.php':
         case 'find_and_replace.php':
         case 'mass_edit.php':
@@ -4744,6 +4781,13 @@ function output_menu($properties = false)
                 $output_menu_panels .= pg_menu_panel($menu_panel_id, 'menu_item_' . $options['id'], lang($options['title']), $menu_panel_entries, pg_menu_tone(isset($options['color_class']) ? $options['color_class'] : ''));
                 $menu_panels_drawn[(int) $options['id']] = true;
             }
+        }
+
+        // A row without a panel is the page itself when active (the
+        // Dashboard); a panel row's current entry is marked by
+        // markMenuCurrent() (backend.src.js).
+        if (($active_menu_class !== '') && ($menu_panel_id === '')) {
+            $output_menu_row_panel .= ' aria-current="page"';
         }
 
         // no-popover: the row keeps the browser's own title hint, which names
@@ -5120,6 +5164,11 @@ function pg_menu_tone($color_class)
 function pg_menu_panel($panel_id, $row_id, $title, $entries, $tone = '')
 {
     $tone = preg_match('/^[a-z]+$/', (string) $tone) ? ' data-pg-menu-tone="' . $tone . '"' : '';
+
+    // The entries wrap onto a second line in the panel instead of ending in
+    // an ellipsis (backend.src.css): the text-truncate utility output_menu()
+    // gives them would win over the panel's rule from its later layer.
+    $entries = str_replace(' text-truncate ', ' ', (string) $entries);
 
     return '<div id="' . $panel_id . '" class="pg-menu-panel" data-pg-menu-row="' . $row_id . '"' . $tone . ' role="group" aria-labelledby="' . $panel_id . '_title">'
         . '<div class="pg-menu-panel-head">'
@@ -5735,20 +5784,22 @@ function license_check($properties = false)
                     <div class="fg-danger small">' . lang('Expired') . ': ' . h(pg_license_expiry_text($expiration_dt)) . '</div>
                 </div>';
             } else {
-                // technical error — show diagnostic for managers+
+                // A technical error shows its diagnostic to managers and up.
+                // A key the server answered for (no_match, suspended, seats
+                // full...) has its own notice and no diagnostic.
                 $bar_diag_html = '';
-                if (isset($user['role']) && (int) $user['role'] <= 2 && ($diag['errno'] || $diag['response'] || $diag['error'])) {
+                if (isset($user['role']) && (int) $user['role'] <= 2 && (pg_license_error_notice($error_code) === '') && ($diag['errno'] || $diag['response'] || $diag['error'])) {
                     $diag_lines = array();
                     if ($diag['errno'])
                         $diag_lines[] = 'cURL errno: ' . (int) $diag['errno'];
                     if ($diag['error'])
                         $diag_lines[] = 'cURL error: ' . h($diag['error']);
                     if ($diag['response'])
-                        $diag_lines[] = 'Response: ' . h($diag['response']);
+                        $diag_lines[] = h(lang('Response')) . ': ' . h($diag['response']);
                     $bar_diag_html = '
-                    <details class="px-3 pb-1" style="font-size:.65rem">
-                        <summary class="fg-secondary" style="cursor:pointer">Diagnostic</summary>
-                        <pre class="text-start fg-danger bg-2 rounded-4 p-1 mt-1 mb-0" style="white-space:pre-wrap;word-break:break-all;font-size:.65rem">' . implode("\n", $diag_lines) . '</pre>
+                    <details class="pg-lic-diag px-3 pb-1">
+                        <summary class="fg-secondary">' . h(lang('Diagnostic')) . '</summary>
+                        <pre class="text-start fg-danger bg-2 rounded-4 p-1 mt-1 mb-0">' . implode("\n", $diag_lines) . '</pre>
                     </details>';
                 }
                 $bar_body = '
@@ -7228,7 +7279,7 @@ function pg_js_bundles()
         'assets/js/pg_link_resolve.min.js'         => array('assets/js/pg_link_resolve.js'),
         // The list table driver (window.PGListTable, includes/fn/list_table.php),
         // printed by the screens whose list it draws.
-        'assets/js/pg_list_table.min.js'           => array('assets/js/pg_list_table.js'),
+        'assets/js/pg_list_table.min.js'           => array('assets/js/pg_list_table.js', 'assets/js/pg_list_table_edit.js'),
         // The Prototype view's hotspot collector (window.PGProtoHotspots).
         'assets/js/pg_proto_hotspots.min.js'       => array('assets/js/pg_proto_hotspots.js'),
         'assets/js/workspace_flow.min.js'          => array('assets/js/workspace_flow.js'),
@@ -7246,8 +7297,8 @@ function pg_js_bundles()
             'assets/js/pg_image_editor_draw.js', 'assets/js/pg_image_editor_text.js', 'assets/js/pg_image_editor_sticker.js',
             'assets/js/pg_image_editor_redact.js', 'assets/js/pg_image_editor_versions.js', 'assets/js/pg_image_editor_artboard.js',
             'assets/js/pg_image_editor_export.js', 'assets/js/pg_image_editor_vector.js', 'assets/js/pg_image_editor_svg.js',
-            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_fonts.js',
-            'assets/js/pg_image_editor_glyph.js'),
+            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_scenes.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_fonts.js',
+            'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_warp.js', 'assets/js/pg_image_editor_outline.js', 'assets/js/pg_image_editor_builder.js'),
         // The image editor's animation encoder, started as a worker (or on the
         // page) by pg_image_editor_render.js.
         'assets/js/pg_image_editor_encode.min.js'  => array('assets/js/pg_image_editor_encode.js'),
@@ -7269,7 +7320,9 @@ function pg_js_bundles()
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
         // card frame first, then each card group's renderers.
-        'assets/js/pg_dash.min.js'                => array('assets/js/pg_dash.js', 'assets/js/pg_dash_cards_visitors.js', 'assets/js/pg_dash_cards_content.js', 'assets/js/pg_dash_cards_security.js', 'assets/js/pg_dash_cards_team.js', 'assets/js/pg_dash_cards_work.js', 'assets/js/pg_dash_edit.js', 'assets/js/pg_dash_panel.js', 'assets/js/pg_dash_cards_personal.js', 'assets/js/pg_dash_cards_shop.js', 'assets/js/pg_dash_cards_assistant.js'),
+        'assets/js/pg_dash.min.js'                => array('assets/js/pg_dash.js', 'assets/js/pg_dash_cards_visitors.js', 'assets/js/pg_dash_cards_content.js', 'assets/js/pg_dash_cards_security.js', 'assets/js/pg_dash_cards_team.js', 'assets/js/pg_dash_cards_work.js', 'assets/js/pg_dash_edit.js', 'assets/js/pg_dash_panel.js', 'assets/js/pg_dash_cards_personal.js', 'assets/js/pg_dash_cards_shop.js', 'assets/js/pg_dash_cards_assistant.js', 'assets/js/pg_dash_brief.js'),
+        // The Visitors overview (visitors.php): its period bar and charts.
+        'assets/js/pg_visitors.min.js'            => array('assets/js/pg_visitors.src.js'),
     );
 }
 

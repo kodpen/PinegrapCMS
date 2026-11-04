@@ -37,6 +37,8 @@ if (!validate_erp_access($user)) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/commerce_list.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_stock_minimums');
 
@@ -60,32 +62,43 @@ $can_order = !$readonly && function_exists('erp_purchase_orders_ready') && erp_p
 // The minimum changes in place, saved as soon as it is typed.
 $quick_edit = (!$readonly && $ready) ? erp_stock_minimum_edit_columns() : array();
 
-$output_rows = '';
+// The rows are printed: the list table driver sorts and searches them in the
+// browser (browser mode). The stock and the minimum are drawn by the
+// function that draws them again in the answer to an edit; the cells are
+// keyed the way the answer names them.
+$list_rows = array();
 
 foreach ($rows as $row) {
     $product_id = (int) $row['product_id'];
     $minimum = (int) $row['min_quantity'];
     $enabled = ((string) $row['enabled'] === '1');
+    $label = erp_stock_product_label($row);
+    $sku = trim((string) $row['product_sku']);
     $cells = erp_stock_minimum_cells($row);
 
-    $output_rows .= '
-        <tr' . ($enabled ? '' : ' class="opacity-75"') . '>
-            ' . ($can_order ? '<td class="align-middle" style="width:2.5rem"><input type="checkbox" class="check" form="erp_order_form" name="products[]" value="' . $product_id . '" aria-label="' . h(lang(array('string' => 'Order {var:1}', 'vars' => erp_stock_product_label($row)))) . '" data-erp-order-pick /></td>' : '') . '
-            <td class="align-middle text-wrap text-break" style="max-width:14rem">' . h(erp_stock_product_label($row))
-                . (((trim((string) $row['product_sku']) !== '') && (trim((string) $row['product_sku']) !== trim(erp_stock_product_label($row)))) ? '<div class="small fg-secondary font-monospace">' . h((string) $row['product_sku']) . '</div>' : '')
-                . ($enabled ? '' : '<span class="badge theme-secondary">' . lang('Not on sale') . '</span>') . '</td>
-            <td class="' . $cells['stock']['class'] . '" data-sort="' . $cells['stock']['sort'] . '" data-pg-cell="stock">' . $cells['stock']['html'] . '</td>
-            <td class="' . $cells['min_quantity']['class'] . '" style="width:9rem" data-sort="' . $cells['min_quantity']['sort'] . '"' . pg_list_edit_cell($quick_edit, 'min_quantity', $product_id, ($minimum > 0) ? $minimum : '') . '>' . $cells['min_quantity']['html'] . '</td>
-            <td class="align-middle text-end" style="width:7rem">
-                <a class="btn btn-sm btn-outline theme-secondary" href="erp_stock.php?product_id=' . $product_id . '#erp_stock_moves" title="' . h(lang('Stock movements')) . '"><i class="bi bi-list-ul" aria-hidden="true"></i></a>
-            </td>
-        </tr>';
+    $list_rows[] = array(
+        'id' => $product_id,
+        'class' => $enabled ? '' : 'opacity-75',
+        'cells' => array(
+            'product' => pg_list_cell(pg_commerce_list_open_link('erp_stock.php?product_id=' . $product_id . '#erp_stock_moves', h($label))
+                . ((($sku !== '') && ($sku !== trim($label))) ? '<div class="small fg-secondary font-monospace">' . h($sku) . '</div>' : '')
+                . ($enabled ? '' : '<span class="badge theme-secondary">' . lang('Not on sale') . '</span>'), 'align-middle text-wrap text-break', array('data-pg-sort-value' => $label)),
+            'stock' => pg_list_cell($cells['stock']['html'], $cells['stock']['class'], array('data-pg-sort-value' => (string) $cells['stock']['sort'])),
+            'min_quantity' => pg_list_cell($cells['min_quantity']['html'], $cells['min_quantity']['class'], pg_list_edit_cell_attributes($quick_edit, 'min_quantity', $product_id, ($minimum > 0) ? $minimum : '') + array('data-pg-sort-value' => (string) $cells['min_quantity']['sort'])),
+        ),
+    );
 }
 
-if ($output_rows === '') {
-    $output_rows = '<tr data-pg-sort-fixed><td colspan="' . ($can_order ? 5 : 4) . '" class="text-center fg-secondary py-7">'
-        . (($show === 'low') ? lang('No product on sale is at or below its minimum.') : lang('No product that tracks stock matches.')) . '</td></tr>';
-}
+$list = pg_list_table_printed(array(
+    'list' => 'erp_stock_minimums',
+    'columns' => pg_commerce_list_specs(array(
+        'product' => array('heading' => lang('Product'), 'kind' => 'link'),
+        'stock' => array('heading' => lang('Stock'), 'kind' => 'number'),
+        'min_quantity' => array('heading' => lang('Minimum'), 'kind' => 'number', 'width' => '9rem'),
+    ), array('product' => 1, 'stock' => 1, 'min_quantity' => 1), $quick_edit),
+    'rows' => $list_rows,
+    'edit' => array('url' => 'erp_stock_minimums.php', 'columns' => $quick_edit),
+));
 
 $output_show_filter = pg_filter_select('show', array(
     'all' => lang('All'),
@@ -114,9 +127,7 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . ($can_order ? '<form method="get" action="add_erp_purchase_order.php" id="erp_order_form" class="d-inline">
-                    <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5" disabled data-erp-order-submit><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang('Purchase order for the ticked') . '</button>
-                </form>' : '') . '
+                ' . ($can_order ? '<form method="get" action="add_erp_purchase_order.php" id="erp_order_form" class="d-none"></form>' : '') . '
                 <div class="pg-toolbar-grow"></div>
                 <form method="get" action="erp_stock_minimums.php" class="pg-toolbar-search disable_shortcut" role="search">
                     ' . (($show !== 'all') ? '<input type="hidden" name="show" value="' . h($show) . '" />' : '') . '
@@ -129,61 +140,37 @@ pg_page_shell([
             </nav>
 
             <div class="card my-7">
-                <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover align-middle mb-0" data-pg-sort' . pg_list_edit_table('erp_stock_minimums.php', $quick_edit) . '>
-                        <thead>
-                            <tr>
-                                ' . ($can_order ? '<th data-pg-sort="none"><input type="checkbox" class="check" aria-label="' . h(lang('Tick all')) . '" data-erp-order-all /></th>' : '') . '
-                                <th>' . lang('Product') . '</th>
-                                <th class="text-end">' . lang('Stock') . '</th>
-                                <th class="text-end">' . lang('Minimum') . '</th>
-                                <th data-pg-sort="none"></th>
-                            </tr>
-                        </thead>
-                        <tbody>' . $output_rows . '</tbody>
-                    </table>
-                </div>
-                <div class="form-text px-5 pb-5">' . h(lang(array('string' => 'Products that track stock, at most {var:1} at a time; search to narrow the list. Empty is no minimum. The stock is the store\'s own count, the one orders take from.', 'vars' => 500)))
-                    . ($quick_edit ? ' ' . h(lang('Click a minimum to change it; it is saved as soon as you press Enter or leave the box.')) : '') . '</div>
+                ' . ($list_rows ? pg_list_table_html($list['source'], $list['page'], lang('Minimum stock'), $can_order ? '<button type="submit" form="erp_order_form" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang('Purchase order for the selected') . '</button>' : '')
+                    : '<p class="text-center fg-secondary py-7 mb-0">' . (($show === 'low') ? lang('No product on sale is at or below its minimum.') : lang('No product that tracks stock matches.')) . '</p>') . '
+                <div class="form-text px-5 pb-5">' . h(lang(array('string' => 'Products that track stock, at most {var:1} at a time; search to narrow the list. Empty is no minimum. The stock is the store\'s own count, the one orders take from.', 'vars' => 500))). '</div>
             </div>
         </div>
     </div>
 </main>
 <script>
-// The order button wakes once a product is ticked.
+// The purchase order button sits in the selection bar of the list; the selected
+// products go to the new order as products[] (the list is printed whole, so
+// its selection is always a list of ids).
 (function () {
-    var submit = document.querySelector("[data-erp-order-submit]");
-    var all = document.querySelector("[data-erp-order-all]");
-    if (!submit) {
+    var root = document.querySelector(".pg-list-table[data-pg-list-table=\"erp_stock_minimums\"]");
+    var form = document.getElementById("erp_order_form");
+    if (!root || !form) {
         return;
     }
-    var picks = function () {
-        return document.querySelectorAll("[data-erp-order-pick]");
-    };
-    var sync = function () {
-        var ticked = 0;
-        picks().forEach(function (box) {
-            ticked += box.checked ? 1 : 0;
+    root.addEventListener("pg-list-table:selection", function (event) {
+        var ids = (event.detail.payload && event.detail.payload.ids) || [];
+        form.textContent = "";
+        ids.forEach(function (id) {
+            var input = document.createElement("input");
+            input.type = "hidden";
+            input.name = "products[]";
+            input.value = id;
+            form.appendChild(input);
         });
-        submit.disabled = (ticked === 0);
-        if (all) {
-            all.checked = (ticked > 0) && (ticked === picks().length);
-        }
-    };
-    document.addEventListener("change", function (event) {
-        if (event.target === all) {
-            picks().forEach(function (box) {
-                box.checked = all.checked;
-            });
-        }
-        if ((event.target === all) || event.target.hasAttribute("data-erp-order-pick")) {
-            sync();
-        }
     });
-    sync();
 })();
 </script>
-' .
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();
 
 $liveform->remove_form();

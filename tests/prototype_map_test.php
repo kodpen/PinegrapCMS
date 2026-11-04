@@ -127,3 +127,21 @@ function test_prototype_map_is_a_designer_read()
 	pg_assert_contains("case 'prototype_map':", $panel, 'the sub action');
 	pg_assert_contains("respond(pg_proto_map(\$request, \$user));", $panel, 'answered by pg_proto_map()');
 }
+
+// Page ids of links kept by page id: whole numbers above 0, each once.
+function test_prototype_map_request_page_ids()
+{
+	pg_assert_same(array(7, 3, 12), pg_proto_map_request(array('page_ids' => array(7, '3', 7, 0, -2, '04', 'x', 1.5, '12', array(9))))['page_ids']);
+	pg_assert_same(array(), pg_proto_map_request(array('page_ids' => '7'))['page_ids'], 'a non-list is no list');
+	pg_assert_same(array(1, 2), pg_proto_map_ids(array(1, 2, 3), 2), 'at most the limit');
+}
+
+// An id whose page the visible maps left out is answered by its id alone;
+// an id of no page is no hidden one.
+function test_prototype_map_hidden_ids()
+{
+	$maps = array('pages' => array('about' => array('id' => 7, 'folder' => 1)));
+
+	pg_assert_same(array(9), pg_proto_map_hidden_ids(array(7, 9, 10), array(7 => 'about', 9 => 'secret'), $maps));
+	pg_assert_same(array(), pg_proto_map_hidden_ids(array(), array(), $maps));
+}

@@ -258,11 +258,51 @@
         return text || str(props.ariaLabel) || str(attrOf(props, 'aria-label')) || str(props.alt);
     }
 
-    // The links of one node itself (its children not included).
+    // The page a link kept by page id opens (_bindParams.href.page_id of a
+    // '__page_link' href): the id as digits, 'tab:<key>' for a tab not
+    // saved yet, '' for none (the typed href is then what it opens).
+    function boundPage(props) {
+        var spec = (isObject(props._bindParams) && isObject(props._bindParams.href)) ? props._bindParams.href : {};
+        var id = spec.page_id;
+
+        if (typeof id === 'number' && isFinite(id) && id > 0 && Math.floor(id) === id) {
+            return String(id);
+        }
+
+        id = str(id);
+
+        return (/^[1-9][0-9]{0,9}$/.test(id) || /^tab:./.test(id)) ? id : '';
+    }
+
+    // Whether a link outside a widget may be kept by page id ('__page_link',
+    // the Bind Data panel's page choice): a link of its own the site draws
+    // as <a> (a content link, a btn drawn as <a>, a semantic a), whatever its
+    // href holds or is bound to now; never a Bootstrap toggle.
+    function pageLinkable(node) {
+        if (!isObject(node)) {
+            return false;
+        }
+
+        var type = str(node.type);
+        var props = propsOf(node);
+
+        if (String(attrOf(props, 'data-bs-toggle') || '').trim() !== '') {
+            return false;
+        }
+
+        return (type === 'content' && props.contentType === 'link')
+            || (type === 'component' && props.componentType === 'btn' && (str(props.btnElement) || 'a') === 'a')
+            || (type === 'semantic' && str(props.tag).toLowerCase() === 'a');
+    }
+
+    // The links of one node itself (its children not included). A link kept
+    // by page id ('__page_link') carries `bound` (boundPage()) and
+    // `pageLink`; its href is the typed one, the fallback.
     function nodeLinks(node) {
         var type = str(node && node.type);
         var props = propsOf(node);
         var bindings = isObject(props._bindings) ? props._bindings : {};
+        var pageLink = (bindings.href === '__page_link');
         var out = [];
         var base = { nodeId: String(node && node._id !== undefined ? node._id : '') };
 
@@ -271,13 +311,20 @@
                 return;
             }
 
-            out.push({ nodeId: base.nodeId, source: source, href: href, label: label, index: index, target: target });
+            var spot = { nodeId: base.nodeId, source: source, href: href, label: label, index: index, target: target };
+
+            if (pageLink && source !== 'text') {
+                spot.bound = boundPage(props);
+                spot.pageLink = true;
+            }
+
+            out.push(spot);
         }
 
         var toggle = String(attrOf(props, 'data-bs-toggle') || '').trim();
         var target = str(props.target) || str(attrOf(props, 'target'));
 
-        if (!bindings.href) {
+        if (!bindings.href || pageLink) {
             if (type === 'content' && props.contentType === 'link') {
                 // The renderer prints '#' for an empty address.
                 var fromAttrs = (str(props.href) === '') && (str(attrOf(props, 'href')) !== '');
@@ -500,13 +547,15 @@
     function design(pages, shared) {
         shared = isObject(shared) ? shared : {};
 
-        var out = { pages: [], shared: [], request: { hrefs: [], menus: [], regions: [] } };
+        var out = { pages: [], shared: [], request: { hrefs: [], menus: [], regions: [], page_ids: [] } };
         var byId = {};
         var reach = {};
 
         function take(found) {
             found.hotspots.forEach(function (spot) {
-                if (spot.href !== undefined && String(spot.href).length <= LIMITS.length) {
+                if (/^[1-9][0-9]*$/.test(str(spot.bound))) {
+                    addOnce(out.request.page_ids, parseInt(spot.bound, 10));
+                } else if (spot.href !== undefined && String(spot.href).length <= LIMITS.length) {
                     addOnce(out.request.hrefs, String(spot.href));
                 }
             });
@@ -562,6 +611,7 @@
         out.request.hrefs = out.request.hrefs.slice(0, LIMITS.hrefs);
         out.request.menus = out.request.menus.slice(0, LIMITS.menus);
         out.request.regions = out.request.regions.slice(0, LIMITS.regions);
+        out.request.page_ids = out.request.page_ids.slice(0, LIMITS.hrefs);
 
         return out;
     }
@@ -581,6 +631,19 @@
         }
 
         return null;
+    }
+
+    function nameById(maps, id) {
+        var pages = (maps && isObject(maps.pages)) ? maps.pages : {};
+        var names = Object.keys(pages);
+
+        for (var i = 0; i < names.length; i++) {
+            if ((parseInt(pages[names[i]].id, 10) || 0) === id) {
+                return names[i];
+            }
+        }
+
+        return '';
     }
 
     function inList(list, value) {
@@ -649,6 +712,54 @@
         return out;
     }
 
+    // The mark of a link kept by page id (spot.bound): the tab of that page
+    // or key, else the page by its current name in the map read
+    // (markHref() of its address, so a binned or draft page is marked as
+    // one), hidden when the read lists the id in `hidden_ids`, else broken.
+    // `href` is the current address; a hidden or broken one keeps the typed
+    // href, which the site prints.
+    function markBound(spot, read, tabs, resolver) {
+        var bound = str(spot.bound);
+        var env = (read && read.env) || {};
+        var list = Array.isArray(tabs) ? tabs : [];
+        var key = /^tab:/.test(bound) ? bound.substr(4) : null;
+        var id = (key === null) ? (parseInt(bound, 10) || 0) : 0;
+        var out = { href: str(spot.href), mark: 'broken', draft: false, type: 'unknown', 'class': 'unknown', pageId: id, tab: '' };
+
+        for (var i = 0; i < list.length; i++) {
+            var tabId = parseInt(list[i].page_id, 10) || 0;
+
+            if ((key !== null && String(list[i].key) === key) || (id && tabId === id)) {
+                var at = hrefTo({ kind: 'page', name: list[i].page_name }, env);
+
+                out.href = (at === null) ? out.href : at;
+                out.mark = 'tab';
+                out.type = 'page';
+                out['class'] = 'page';
+                out.tab = String(list[i].key);
+                out.pageId = tabId;
+
+                return out;
+            }
+        }
+
+        var name = id ? nameById((read && read.maps) || {}, id) : '';
+
+        if (name !== '') {
+            var marked = markHref(hrefTo({ kind: 'page', name: name }, env), read, [], resolver);
+
+            marked.pageId = id;
+
+            return marked;
+        }
+
+        if (id && inList(read && read.hidden_ids, id)) {
+            out.mark = 'hidden';
+        }
+
+        return out;
+    }
+
     // The design of design() with every hotspot marked; a menu or region
     // hotspot gets its links (`links`, each marked; null when the read
     // knows no menu or region by that name). Answers a copy.
@@ -678,6 +789,10 @@
                 var region = has(regions, spot.name) ? regions[spot.name] : null;
 
                 copy.links = (region && region.kind) ? (region.hrefs || []).map(function (href) { return markHref(href, read, tabs, resolver); }) : null;
+            } else if (str(spot.bound) !== '') {
+                var bound = markBound(spot, read, tabs, resolver);
+
+                ['href', 'mark', 'draft', 'type', 'class', 'pageId', 'tab'].forEach(function (key) { copy[key] = bound[key]; });
             } else {
                 var marked = markHref(spot.href, read, tabs, resolver);
 
@@ -725,6 +840,7 @@
                 mark: str(link.mark) || 'broken',
                 draft: !!link.draft,
                 tab: str(link.tab),
+                bound: str(link.bound),
                 from: from
             });
         }
@@ -787,6 +903,7 @@
                     id: (group[0] === 'page') ? 'p:' + frame.key : 's:' + frame.id,
                     kind: group[0],
                     key: (group[0] === 'page') ? frame.key : '',
+                    pageId: (group[0] === 'page') ? (parseInt(frame.pageId, 10) || 0) : 0,
                     sharedId: (group[0] === 'shared') ? frame.id : 0,
                     name: frame.name,
                     pages: (group[0] === 'shared') ? frame.pages : 0,
@@ -883,6 +1000,19 @@
         return null;
     }
 
+    // The page an arrow ending on `target` keeps its link by: a tab frame's
+    // page id, 'tab:<key>' for a tab not saved yet (made an id on Save);
+    // null for anything else (a chip keeps the link by its href).
+    function boundTo(target) {
+        if (!isObject(target) || target.kind !== 'page') {
+            return null;
+        }
+
+        var id = parseInt(target.pageId, 10) || 0;
+
+        return (id > 0) ? id : ((str(target.key) === '') ? null : 'tab:' + str(target.key));
+    }
+
     // What an arrow from a link row may end on, as the keyboard menu lists
     // it: every item of a layout (tab frames, then chips) that gives an
     // href, each { id, href }, an href once (the first item giving it).
@@ -925,9 +1055,12 @@
 
     // What an arrow from `row` to `href` writes into the row's node, as
     // { key, value } of its props (a copy, the node is not changed), or
-    // null when the node no longer holds the href the map showed (or the
-    // row is not drawable).
-    function hrefPatch(node, row, href) {
+    // null when the node no longer holds the link the map showed (or the
+    // row is not drawable). With the arrow's `target` a link of its own
+    // (not one in text) ending on a tab is kept by page id: `bind` names
+    // the page (boundTo()); one kept by page id that ends on a chip gets
+    // `bind: false`, back to its href. applyPatch() writes it.
+    function hrefPatch(node, row, href, target) {
         if (!drawable(row) || !isObject(node)) {
             return null;
         }
@@ -938,10 +1071,67 @@
             return spot.source === row.source && (spot.index === index);
         })[0];
 
-        if (!now || now.href !== str(row.href)) {
+        if (!now || (str(row.bound) !== '' ? str(now.bound) !== str(row.bound) : (str(now.bound) !== '' || now.href !== str(row.href)))) {
             return null;
         }
 
+        var patch = hrefPatchValue(node, props, row, index, href);
+
+        if (patch && row.source !== 'text' && target !== undefined) {
+            var bind = boundTo(target);
+
+            if (bind !== null) {
+                patch.bind = { page_id: bind };
+            } else if (now.pageLink) {
+                patch.bind = false;
+            }
+        }
+
+        return patch;
+    }
+
+    // The props of a node with a patch of hrefPatch() written (changes
+    // `props`): the prop, then the page binding. A link kept by page id
+    // keeps its other values (params, written by a widget's Bind Data).
+    function applyPatch(props, patch) {
+        if (!isObject(props) || !isObject(patch)) {
+            return props;
+        }
+
+        props[patch.key] = patch.value;
+
+        if (patch.bind === undefined) {
+            return props;
+        }
+
+        var bindings = {};
+        var params = {};
+        var old = (isObject(props._bindParams) && isObject(props._bindParams.href)) ? props._bindParams.href : {};
+
+        Object.keys(isObject(props._bindings) ? props._bindings : {}).forEach(function (k) { if (k !== 'href') bindings[k] = props._bindings[k]; });
+        Object.keys(isObject(props._bindParams) ? props._bindParams : {}).forEach(function (k) { if (k !== 'href') params[k] = props._bindParams[k]; });
+
+        if (patch.bind) {
+            bindings.href = '__page_link';
+            params.href = { page_id: patch.bind.page_id, params: Array.isArray(old.params) ? old.params : [] };
+        }
+
+        if (Object.keys(bindings).length) {
+            props._bindings = bindings;
+        } else {
+            delete props._bindings;
+        }
+
+        if (Object.keys(params).length) {
+            props._bindParams = params;
+        } else {
+            delete props._bindParams;
+        }
+
+        return props;
+    }
+
+    function hrefPatchValue(node, props, row, index, href) {
         if (row.source === 'attrs') {
             return {
                 key: '_attrs',
@@ -1032,6 +1222,7 @@
         LIMITS: LIMITS,
         htmlLinks: htmlLinks,
         nodeLinks: nodeLinks,
+        pageLinkable: pageLinkable,
         collect: collect,
         design: design,
         markHref: markHref,
@@ -1040,6 +1231,9 @@
         hrefTo: hrefTo,
         setHtmlHref: setHtmlHref,
         hrefPatch: hrefPatch,
+        applyPatch: applyPatch,
+        boundTo: boundTo,
+        markBound: markBound,
         drawTargets: drawTargets
     };
 })();

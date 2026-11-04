@@ -19,6 +19,23 @@
 include('init.php');
 require_once(dirname(__FILE__) . '/seo.php');
 
+// A switch of the list changed in place (pg_list_edit_request() in
+// includes/fn/output.php). Answered in JSON, before anything below draws the
+// screen; the write is Modify Selected's own (pg_page_quick_update()).
+if (pg_list_edit_requested()) {
+    require_once(dirname(__FILE__) . '/includes/fn/page_list.php');
+
+    $edit = pg_list_edit_request(pg_page_quick_edit_columns(), function ($user) {
+        // The list's own gate (pg_page_list_source()); each write checks
+        // the page's folder.
+        return ((int) $user['role'] < 3) || (((int) $user['role'] == 3) && no_acl_check($user['id']));
+    });
+
+    $saved = pg_page_quick_update($edit['user'], $edit['id'], $edit['field'], $edit['value']);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
 $liveform = new liveform('view_pages');
 $user = validate_user();
 validate_area_access($user, 'user');
@@ -80,14 +97,19 @@ if (isset($_GET['recalculate_seo']) && (USER_ROLE < 3)) {
 require_once(dirname(__FILE__) . '/includes/fn/page_list.php');
 
 // The view: its condition, columns and sort (includes/fn/page_list.php). The
-// rows come one page at a time from the page_list_rows action
-// (includes/panel/lists.php).
+// list table driver prints the first rows; the next ones come from its
+// list_table_rows action (includes/panel/lists.php) as the list scrolls.
 $view = pg_page_list_view($user, $_GET['filter'] ?? '');
 $filter = $view['filter'];
 $sort_columns = $view['sort_columns'];
 $sort_levels = $view['sort_levels'];
 $sort_default = $view['sort_default'];
 $output_filter_for_links = h('&filter=' . $filter);
+$list_source = pg_page_list_source($user, array('filter' => $filter));
+
+if ($list_source === null) {
+    output_error(lang('Access denied'));
+}
 
 $filters_in_array = array();
 
@@ -95,11 +117,11 @@ foreach (pg_page_list_filters() as $filter_name => $filter_view) {
     $filters_in_array[$filter_name] = $filter_view['label'];
 }
 
-// The toggle between the desktop and the mobile styles in the style heading.
+// The toggle between the desktop and the mobile styles the style column shows.
 if ($view['device_type'] === 'mobile') {
-    $output_device_type_toggle = '<a class="btn btn-sm btn-solid theme-secondary p-1" href="update_device_type.php?device_type=desktop&amp;send_to=' . h(urlencode(get_request_uri())) . get_token_query_string_field() . '" title="' . lang('Show desktop Page Styles') . '" aria-label="' . lang('Show desktop Page Styles') . '"><span class="material-icons" aria-hidden="true">computer</span></a>';
+    $output_device_type_toggle = '<a class="btn btn-sm btn-text theme-secondary" href="update_device_type.php?device_type=desktop&amp;send_to=' . h(urlencode(get_request_uri())) . get_token_query_string_field() . '" title="' . lang('Show desktop Page Styles') . '" aria-label="' . lang('Show desktop Page Styles') . '"><span class="material-icons" aria-hidden="true">computer</span></a>';
 } else {
-    $output_device_type_toggle = '<a class="btn btn-sm btn-solid theme-secondary p-1" href="update_device_type.php?device_type=mobile&amp;send_to=' . h(urlencode(get_request_uri())) . get_token_query_string_field() . '" title="' . lang('Show mobile Page Styles') . '" aria-label="' . lang('Show mobile Page Styles') . '"><span class="material-icons" aria-hidden="true">phone_iphone</span></a>';
+    $output_device_type_toggle = '<a class="btn btn-sm btn-text theme-secondary" href="update_device_type.php?device_type=mobile&amp;send_to=' . h(urlencode(get_request_uri())) . get_token_query_string_field() . '" title="' . lang('Show mobile Page Styles') . '" aria-label="' . lang('Show mobile Page Styles') . '"><span class="material-icons" aria-hidden="true">phone_iphone</span></a>';
 }
 
 
@@ -150,6 +172,11 @@ $output_button_bar = pg_screen_toolbar(array(
     'primary'   => $view_pages_primary,
     'secondary' => $view_pages_tools_menu,
     'search'    => array(
+        '<label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
+            <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+            <input type="search" class="form-ghost" data-pg-list-search="view_pages" placeholder="' . h(lang('Search')) . '" aria-label="' . h(lang('Search')) . '">
+        </label>',
+        $output_device_type_toggle,
         pg_list_sort_menu('view_pages.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter)),
         pg_filter_select('filter', $filters_in_array, $filter, array('label' => lang('Content that viewed'), 'icon' => 'eye', 'id' => 'filter_select')),
     ),
@@ -157,22 +184,6 @@ $output_button_bar = pg_screen_toolbar(array(
 
 $heading = $view['heading'];
 $subheading = $view['description'];
-
-// The custom form view's two columns, in the order the rows have them.
-$output_form_name_heading = '';
-$output_form_enabled_heading = '';
-
-if ($view['custom_form']) {
-    $output_form_name_heading = '<th>' . get_column_heading(lang('Form Name'), $sort_levels, '', $output_filter_for_links, 'form_name') . '</th>';
-    $output_form_enabled_heading = '<th>' . get_column_heading(lang('Form Enabled'), $sort_levels, '', $output_filter_for_links, 'form_enabled') . '</th>';
-}
-
-// While another theme is previewed the style column is not sorted.
-if ($view['previewing_other_theme']) {
-    $output_style_column_heading = $view['style_heading'];
-} else {
-    $output_style_column_heading = get_column_heading($view['style_heading'], $sort_levels, '', $output_filter_for_links, 'style');
-}
 
 // Refresh stale SEO scores of this view before the list is fetched, the
 // last changed first since those are the likeliest to be on the first
@@ -310,7 +321,11 @@ if ($seo_summary && (($seo_summary['in_sitemap'] > 0) || ($seo_summary['in_searc
         </div>';
 }
 
-$output_delete_selected_button = '';
+// The bulk actions sit in the list's selection bar, which shows while rows
+// are selected. Both post the selection to edit_pages.php; Modify Selected
+// first asks for the changes in its dialog, whose Save submits the form.
+require_once(dirname(__FILE__) . '/includes/fn/page_bulk.php');
+$output_bulk_buttons = '<button type="button" class="no-submit btn btn-sm btn-solid theme-primary" data-pg-page-bulk-open><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Modify Selected') . '</button>';
 
 // if the user is at least a manager or has access to delete pages, then output the delete selected button
 if (($user['role'] < '3') || ($user['delete_pages'] == TRUE)) {
@@ -319,7 +334,14 @@ if (($user['role'] < '3') || ($user['delete_pages'] == TRUE)) {
     $delete_confirmation = pg_recycle_ready()
         ? lang('The selected pages will be moved to the Recycle Bin. Those already in it will be deleted permanently.')
         : lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('pages'))));
-    $output_delete_selected_button = '<button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
+    $output_bulk_buttons .= '<button type="button" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . h($delete_confirmation) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang('Delete Selected') . '</button>';
+}
+
+// The first rows are printed with the page; the driver loads the rest.
+$list_page = pg_list_table_page($list_source, array(), null);
+
+if ($list_page === false) {
+    output_error('Query failed.');
 }
 
 echo
@@ -327,10 +349,9 @@ pg_page_shell(
     array(
         'title'=> lang('Pages'),
         'extra classes'=>'page',
-        'icon'=>'page', 
+        'icon'=>'page',
         'heading'=>($heading ?? lang('Pages')),
         'heading_description' => ($subheading ?? lang('Create, edit and publish site pages')),
-        
     )
 ) . '
 <main id="content" class="container-fluid">
@@ -343,58 +364,49 @@ pg_page_shell(
             <div class="row">
                 ' . $output_seo_summary . '
             </div>
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <form name="form"  action="edit_pages.php" method="post">
-                        ' . get_token_field() . '
-                        <input type="hidden" name="action" />
-                        <input type="hidden" name="move_to_folder" />
-                        <input type="hidden" name="edit_page_style" />
-                        <input type="hidden" name="edit_mobile_style_id" />
-                        <input type="hidden" name="edit_site_search" />
-                        <input type="hidden" name="edit_sitemap" />
-                        <input type="hidden" name="send_to" value="' . h(get_request_uri()) . '" />
-                        <table class="chart table-hover table " style="width:100%;display:none" data-pg-list-action="page_list_rows" data-pg-list-params="' . h(encode_json(array('filter' => $filter))) . '">
-                            <thead>
-                                <tr>
-                                    <th class="noVis">
-                                        <div class="form-field">
-                                            <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
-                                        </div>
-                                    </th>
-                                    <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                    <th>' . get_column_heading(lang('Name'), $sort_levels, '', $output_filter_for_links, 'name') . '</th>
-                                    ' . $output_form_name_heading . '
-                                    ' . $output_form_enabled_heading . '
-                                    <th>' . get_column_heading(lang('Folder'), $sort_levels, '', $output_filter_for_links, 'folder') . '</th>
-                                    <th>' . $output_style_column_heading . '' . $output_device_type_toggle . '</th>
-                                    <th>' . get_column_heading(lang('Page Type'), $sort_levels, '', $output_filter_for_links, 'page_type') . '</th>
-                                    <th  style="text-align: center;">' . get_column_heading(lang('Searchable'), $sort_levels, '', $output_filter_for_links, 'searchable') . '</th>
-                                    <th style="text-align: center;">' . get_column_heading(lang('Comments'), $sort_levels, '', $output_filter_for_links, 'comments') . '</th>
-                                    <th style="text-align: center;">' . get_column_heading(lang('Site Map'), $sort_levels, '', $output_filter_for_links, 'sitemap') . '</th>
-                                    <th style="text-align: center;">' . get_column_heading(lang('SEO'), $sort_levels, '', $output_filter_for_links, 'seo') . '</th>
-                                    <th style="text-align: center;" title="' . h(lang('How much a weak score costs, weighed against how many people see the page')) . '">' . get_column_heading(lang('Impact'), $sort_levels, '', $output_filter_for_links, 'impact') . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $output_filter_for_links, 'last_modified') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-
-                        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">                                   
-                                    <button type="button" value="Modify Selected" class=" btn mb-1 mt-1 btn-solid theme-primary disabled" onclick="window.open(\'edit_pages.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'edit\',\'product\')"><span class="material-icons me-3">edit</span>' . lang(array('string'=>'Modify Selected') ) . '</button>
-                                    ' . $output_delete_selected_button . '
-                                </div>
-                            </div>
-                        </nav>
-                    </form>
-                </div>
-            </div>
+            <form name="form" id="view_pages_form" action="edit_pages.php" method="post">
+                ' . get_token_field() . '
+                <input type="hidden" name="action" />
+                <input type="hidden" name="selection" />
+                <input type="hidden" name="list_params" value="' . h(encode_json(array('filter' => $filter))) . '" />
+                <input type="hidden" name="send_to" value="' . h(get_request_uri()) . '" />
+                ' . pg_list_table_html($list_source, $list_page, lang('Pages'), $output_bulk_buttons) . '
+            </form>
         </div>
     </div>
     ' . pg_seo_render_detail_offcanvas() . '
+    ' . pg_page_bulk_edit_dialog($user, 'view_pages_form') . '
 </main>
+<script>
+    // The bulk actions post what the list has selected (edit_pages.php
+    // resolves it with the list\'s own query and the user\'s rights).
+    (function () {
+        var root = document.querySelector(\'.pg-list-table[data-pg-list-table="view_pages"]\');
+        var form = document.getElementById(\'view_pages_form\');
+        var dialog = document.getElementById(\'page_bulk_edit_dialog\');
+
+        if (root) {
+            root.addEventListener(\'pg-list-table:selection\', function (event) {
+                form.elements.selection.value = JSON.stringify(event.detail.payload);
+            });
+        }
+
+        // Modify Selected: the dialog opens with every pick list empty, so
+        // a choice left from an earlier opening is never posted.
+        document.addEventListener(\'click\', function (event) {
+            if (event.target.closest(\'[data-pg-page-bulk-open]\')) {
+                dialog.querySelectorAll(\'select\').forEach(function (select) {
+                    select.value = \'\';
+                });
+                pgUI.dialog.show(dialog);
+            } else if (event.target.closest(\'[data-pg-page-bulk-save]\')) {
+                form.elements.action.value = \'edit\';
+                form.submit();
+            }
+        });
+    }());
+</script>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 ' . ($user['role'] < 2 ? pg_designer_target_modal() : '') . '
 ' .
 output_footer();

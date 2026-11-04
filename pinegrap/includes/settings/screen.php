@@ -95,14 +95,16 @@ if (!$_POST) {
     //
     // Same list the hub and the Settings menu draw from. It is the primary
     // control of the bar because moving between categories is what an
-    // operator does most on these screens.
+    // operator does most on these screens. The links (and Previous/Next below)
+    // carry data-pg-settings-page: without it the panel-wide handler turns a
+    // link to a settings screen into "open the dialog" over this page.
     $pg_settings_switcher = '';
 
     foreach (pg_settings_categories() as $pg_settings_other_key => $pg_settings_other) {
 
         $pg_settings_switcher .=
             '<li><a class="menu-item' . (($pg_settings_other_key === $pg_settings_key) ? ' active" aria-current="page' : '') . '"'
-            . ' href="' . h(pg_settings_url($pg_settings_other_key)) . '">'
+            . ' href="' . h(pg_settings_url($pg_settings_other_key)) . '" data-pg-settings-page>'
             . '<i class="bi ' . h($pg_settings_other['icon']) . ' me-3" aria-hidden="true"></i>'
             . h($pg_settings_other['label']) . '</a></li>';
     }
@@ -129,7 +131,7 @@ if (!$_POST) {
         $pg_settings_step_links .=
             '<a class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="tooltip"'
             . ' title="' . h($pg_settings_step_category['label']) . '"'
-            . ' href="' . h(pg_settings_url($pg_settings_step[0])) . '">'
+            . ' href="' . h(pg_settings_url($pg_settings_step[0])) . '" data-pg-settings-page>'
             . '<i class="bi ' . $pg_settings_step[1] . '" aria-hidden="true"></i></a>';
     }
 
@@ -169,6 +171,39 @@ if (!$_POST) {
             return '<' . $match[1] . ' autocomplete="pg-no-autofill"' . $match[2] . '>';
         },
         $pg_settings_body);
+
+    // ── a refused save ───────────────────────────────────────────────────
+    //
+    // The cards above are drawn from the database. After a save a module
+    // refused, what was typed is put back over them and the refused fields
+    // are marked, as the dialog does; otherwise every other edit was gone
+    // and the refused field showed the stored value again, unmarked.
+    $pg_settings_typed = isset($_SESSION['software']['pg_settings_typed'][$pg_settings_key]) ? $_SESSION['software']['pg_settings_typed'][$pg_settings_key] : null;
+    unset($_SESSION['software']['pg_settings_typed'][$pg_settings_key]);
+
+    $pg_settings_state = isset($_SESSION['software']['liveforms'][$liveform->form][$liveform->index]) ? $_SESSION['software']['liveforms'][$liveform->form][$liveform->index] : array();
+    $pg_settings_marked = array();
+
+    // Plain sentences, as the dialog is given them: the mark prints text.
+    foreach (pg_settings_marked_fields($pg_settings_state) as $pg_settings_name => $pg_settings_sentence) {
+        $pg_settings_marked[$pg_settings_name] = trim(html_entity_decode(strip_tags($pg_settings_sentence), ENT_QUOTES, 'UTF-8'));
+    }
+
+    $pg_settings_restore = '';
+
+    if (is_array($pg_settings_typed) || $pg_settings_marked) {
+        // Run at DOM ready after the category scripts, so the parts of a
+        // card that a box or a list opens follow the restored values.
+        $pg_settings_restore = '
+    <script>
+        $(function () {
+            pgSettingsRestore(document.getElementById("pg_settings_sections").closest("form"), ' . json_encode(array(
+                'values' => is_array($pg_settings_typed) ? (object) pg_settings_typed_restorable($pg_settings_typed, $pg_settings_body) : null,
+                'fields' => (object) $pg_settings_marked,
+            ), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_PARTIAL_OUTPUT_ON_ERROR) . ');
+        });
+    </script>';
+    }
 
     $output =
     pg_page_shell(array(
@@ -237,10 +272,10 @@ if (!$_POST) {
 
                 <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />
 
-                <nav class="buttons navigation text-center position-sticky " style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class=" btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_save" value="Save" class="btn btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                            <button type="submit" id="create_button" name="submit_save" value="Save" class="btn btn-solid theme-success"><i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -253,7 +288,7 @@ if (!$_POST) {
             initSettingsFilter();
         });
     </script>
-    ' . implode('', $pg_settings_scripts) . '
+    ' . implode('', $pg_settings_scripts) . $pg_settings_restore . '
 </main>' .
     output_footer();
 
@@ -305,6 +340,10 @@ if (!$_POST) {
         pg_system_status_forget();
 
         $liveform->add_notice(lang('The Site Settings have been saved.'));
+
+    } else {
+        // What was typed, for the redrawn screen to put back.
+        $_SESSION['software']['pg_settings_typed'][$pg_settings_key] = pg_settings_typed_values($_POST);
     }
 
     // The General screen can change the scheme in the same request, so the

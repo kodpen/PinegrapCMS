@@ -48,6 +48,12 @@ define('WAF_MAX_VALUE_BYTES', 8192);
 define('WAF_MAX_VALUES', 250);
 define('WAF_MIN_VALUE_BYTES', 3);
 
+// Deliveries a single address may make to the ActivityPub inbox in a
+// minute; see waf_handle_rate_ap_inbox().
+if (!defined('WAF_AP_INBOX_RATE_LIMIT')) {
+    define('WAF_AP_INBOX_RATE_LIMIT', 300);
+}
+
 // Firewall log aggregation bucket, in seconds. Identical events inside one
 // bucket become a single row with a hit counter rather than N rows. Five
 // minutes keeps enough resolution to read an attack's shape while collapsing
@@ -4368,7 +4374,9 @@ function waf_address_has_staff_sign_in($ip)
  * with the endpoint's secret; a carrier label service's servers post parcel
  * statuses to carrier_webhook.php with a secret key in the address, and a
  * mail sending service's servers post bounce and complaint reports to
- * mail_webhook.php the same way. The
+ * mail_webhook.php the same way. Fediverse servers post signed activities
+ * to ap_inbox.php from wherever they run, under their own software's name,
+ * counted on the inbox's own allowance (waf_handle_rate_ap_inbox()). The
  * ShipWorks client posts to shipworks.php with a password the sign-in
  * throttle counts, one call per order it downloads or ships, from a
  * warehouse's address; a guest room's page posts to workspace_guest.php
@@ -4405,7 +4413,7 @@ function waf_is_api_request()
     static $answer = null;
 
     if ($answer === null) {
-        $names = array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'workspace_guest.php', 'payment_callback.php', 'carrier_webhook.php', 'mail_webhook.php');
+        $names = array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'workspace_guest.php', 'payment_callback.php', 'carrier_webhook.php', 'mail_webhook.php', 'ap_inbox.php');
 
         // ShipWorks is spared the counters sized for a sign-in screen only
         // while the sign-in throttle counts its password; with the throttle
@@ -4834,6 +4842,11 @@ function waf_run($stage = 'init')
             if ($stage === 'init' && empty($done['rate_api'])) {
                 $done['rate_api'] = true;
                 waf_handle_rate_api($ip, $blocking);
+            }
+
+            if ($stage === 'init' && empty($done['rate_ap_inbox'])) {
+                $done['rate_ap_inbox'] = true;
+                waf_handle_rate_ap_inbox($ip, $blocking);
             }
 
             // The ceiling on open requests belongs with the sensitive limit:
@@ -5374,7 +5387,7 @@ function waf_country_staff_signed_in()
  */
 function waf_country_api_scripts()
 {
-    return array('integration.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'payment_callback.php', 'carrier_webhook.php', 'mail_webhook.php');
+    return array('integration.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'payment_callback.php', 'carrier_webhook.php', 'mail_webhook.php', 'ap_inbox.php');
 }
 
 function waf_country_request_exempt()
@@ -5669,6 +5682,41 @@ function waf_handle_rate_api($ip, $blocking)
     }
 
     waf_log_event($blocking ? 'rate' : 'would-rate', 'rate-api', 'rate', 7, waf_script_name(), $limit . '/min');
+    waf_register_offence($ip, 5, $blocking, true);
+
+    if ($blocking) {
+        waf_deny(429, waf_reference());
+    }
+}
+
+/**
+ * The allowance for the ActivityPub inbox (ap_inbox.php).
+ *
+ * A Fediverse server delivers from a few addresses: one post of a followed
+ * account, its boosts and its replies reach the inbox one request each, and
+ * a busy server sends them in bursts. The inbox is a credential endpoint
+ * (waf_is_api_request()), so the sensitive allowance and the bot policy are
+ * not its own; this bucket is, sized for those bursts. Each request costs a
+ * signature check and, for an unknown key, a fetch, which is what the limit
+ * bounds.
+ */
+function waf_handle_rate_ap_inbox($ip, $blocking)
+{
+    if (!waf_request_names_script(array('ap_inbox.php'))) {
+        return;
+    }
+
+    if (!waf_ip_is_counted($ip)) {
+        return;
+    }
+
+    $limit = WAF_AP_INBOX_RATE_LIMIT;
+
+    if (!waf_rate_exceeded(waf_ip_subject($ip), 'ap_inbox', $limit, 60)) {
+        return;
+    }
+
+    waf_log_event($blocking ? 'rate' : 'would-rate', 'rate-ap-inbox', 'rate', 7, waf_script_name(), $limit . '/min');
     waf_register_offence($ip, 5, $blocking, true);
 
     if ($blocking) {

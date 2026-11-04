@@ -33,11 +33,16 @@ function pg_import_write_file($item, $import)
     $data = (array) ($item['data'] ?? array());
     $caption = trim(preg_replace('/\s+/u', ' ', strip_tags((string) ($data['caption'] ?? ''))));
 
-    $stored = pg_import_media_fetch($import, pg_import_related_ids($import), (string) ($data['url'] ?? ''), array('description' => $caption));
+    $related = pg_import_related_ids($import);
+    $stored = pg_import_media_fetch($import, $related, (string) ($data['url'] ?? ''), array('description' => $caption));
 
     if (!$stored['ok']) {
         return array('result' => 'failed', 'id' => 0, 'reason' => $stored['reason']);
     }
+
+    // A post written before its featured image's attachment gets it now.
+    require_once(PG_FUNCTIONS_DIR . '/includes/import/write_record.php');
+    pg_import_record_attach_picture($import, $related, (string) ($item['source_key'] ?? ''), $stored['id']);
 
     return array('result' => 'made', 'id' => $stored['id'], 'reason' => '');
 }

@@ -75,17 +75,6 @@ function test_user_screens_landmarks_translated()
 	pg_assert_true(strpos(user_screens_names_test_source('view_users.php'), "aria-label=\"' . h(lang('Button Bar')) . '\"") !== false, 'the toolbar name is translated');
 }
 
-function test_user_screens_list_checkbox_named()
-{
-	$cell = pg_user_list_select_cell(5, 'bob<', true);
-	pg_assert_contains('aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => 'bob<'))) . '"', $cell['html'], 'the row checkbox names the user');
-	pg_assert_contains('name="users[]" value="5"', $cell['html'], 'the posted value');
-
-	$locked = pg_user_list_select_cell(6, 'admin', false);
-	pg_assert_contains('disabled', $locked['html'], 'the last administrator cannot be selected');
-	pg_assert_contains('aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => 'admin'))) . '"', $locked['html'], 'the disabled checkbox is named too');
-}
-
 function test_user_screens_names_menu_named()
 {
 	$cell = pg_user_list_names_cell(array('Docs'), 'folder', lang('Folders'));

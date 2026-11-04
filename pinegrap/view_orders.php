@@ -17,6 +17,8 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/commerce_list.php');
 
 // A status changed in place on the list (pg_list_edit_request() in
 // includes/fn/output.php). Answered in JSON before anything below runs: the
@@ -32,8 +34,6 @@ if (pg_list_edit_requested()) {
     pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
 }
 
-// only ever appended to further below, so it has to start out empty
-$output_rows = '';
 $output = '';
 $where = '';
 
@@ -321,7 +321,14 @@ if (($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] ?? ''
     if (($_SESSION['software']['ecommerce']['view_orders']['tracking_code'] ?? '')) {$where .= " AND (orders.tracking_code LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['tracking_code'] ?? ''))) . "')";}
     if (($_SESSION['software']['ecommerce']['view_orders']['http_referer'] ?? '')) {$where .= " AND (orders.http_referer LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['http_referer'] ?? ''))) . "')";}
     if (($_SESSION['software']['ecommerce']['view_orders']['ip_address'] ?? '')) {$where .= " AND (INET_NTOA(orders.ip_address) LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['ip_address'] ?? ''))) . "')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? '')) {$where .= " AND (order_items.product_name LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? ''))) . "')";}
+    // order_items.product_name is the SKU (products.name); the name people
+    // know is products.short_description, so the filter matches either. A
+    // subquery, not a join: the order items exports read order_items
+    // directly, without $join_order_items.
+    if (($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? '')) {
+        $product_name_like = escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? '')));
+        $where .= " AND ((order_items.product_name LIKE '" . $product_name_like . "') OR (order_items.product_id IN (SELECT products.id FROM products WHERE products.short_description LIKE '" . $product_name_like . "')))";
+    }
 
     // If payment method has not been set yet, then set it to any by default.
     if (isset($_SESSION['software']['ecommerce']['view_orders']['payment_method']) == false) {
@@ -479,9 +486,9 @@ if (pg_shipment_labels_ready() && (pg_shipment_label_drivers() || pg_shipment_la
         ? lang('A shipment is opened and its label bought at the carrier label service for every address of the selected orders that has no label yet, 20 at a time. Continue?')
         : lang('A Trendyol common label is fetched for every qualifying package of the selected orders that has no label yet, 20 at a time. Continue?');
     $output_shipment_label_buttons =
-        '<button type="submit" formaction="shipment_label.php" name="label_request" value="bulk_create" title="' . h(lang('Create Labels')) . '" class="btn mb-1 mt-1 btn-solid theme-secondary disabled" data-confirm-content="' . h($shipment_label_confirm) . '"><i class="bi bi-upc-scan me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Create Labels') . '</span></button>
-        <button type="submit" formaction="shipment_label.php" formtarget="_blank" name="label_request" value="bulk_print" title="' . h(lang('Print Labels')) . '" class="btn mb-1 mt-1 btn-solid theme-secondary disabled"><i class="bi bi-printer me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Print Labels') . '</span></button>
-        <button type="submit" formaction="shipment_label.php" name="label_request" value="bulk_zpl" title="' . h(lang('Download ZPL Labels')) . '" class="btn mb-1 mt-1 btn-solid theme-secondary disabled"><i class="bi bi-download me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Download ZPL Labels') . '</span></button>';
+        '<button type="submit" formaction="shipment_label.php" name="label_request" value="bulk_create" title="' . h(lang('Create Labels')) . '" class="btn btn-sm btn-solid theme-secondary" data-confirm-content="' . h($shipment_label_confirm) . '"><i class="bi bi-upc-scan me-1" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Create Labels') . '</span></button>
+        <button type="submit" formaction="shipment_label.php" formtarget="_blank" name="label_request" value="bulk_print" title="' . h(lang('Print Labels')) . '" class="btn btn-sm btn-solid theme-secondary"><i class="bi bi-printer me-1" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Print Labels') . '</span></button>
+        <button type="submit" formaction="shipment_label.php" name="label_request" value="bulk_zpl" title="' . h(lang('Download ZPL Labels')) . '" class="btn btn-sm btn-solid theme-secondary"><i class="bi bi-download me-1" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Download ZPL Labels') . '</span></button>';
 }
 
 // A carrier pickup for the active labels of the selected orders: a dialog
@@ -490,7 +497,7 @@ $output_shipment_pickup_dialog = '';
 
 if ($output_shipment_label_buttons !== '' && pg_shipment_label_pickup_drivers()) {
     $output_shipment_label_buttons .= '
-        <button type="button" class="no-submit btn mb-1 mt-1 btn-solid theme-secondary disabled" data-bs-toggle="dialog" data-bs-target="#shipment_pickup_dialog" title="' . h(lang('Request Pickup')) . '"><i class="bi bi-truck me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Request Pickup') . '</span></button>';
+        <button type="button" class="no-submit btn btn-sm btn-solid theme-secondary" data-bs-toggle="dialog" data-bs-target="#shipment_pickup_dialog" title="' . h(lang('Request Pickup')) . '"><i class="bi bi-truck me-1" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Request Pickup') . '</span></button>';
     $output_shipment_pickup_dialog = pg_shipment_label_pickup_dialog('shipment_pickup_dialog', '', 'bulk_pickup');
 }
 $output_xlsl_setup_modal = '';
@@ -526,7 +533,7 @@ if(defined('ENABLE_PARASUT') && ENABLE_PARASUT != 0){
                     <button type="button" name="submit_data" value="Export Orders For Parasut" class="btn btn-solid theme-success" data-wait-text="' . h(lang('Preparing the export file. Please wait.')) . '" data-error-text="' . h(lang('The export file could not be created. Please try again.')) . '"><i class="bi bi-check-lg me-3" aria-hidden="true"></i>' . lang(array('string'=>'Confirm') ) . '</button>
                 </div>
     </dialog>';
-    $output_generate_xlsl_button = '<button type="button" class="no-submit btn mb-1 mt-1 btn-solid theme-success disabled" data-bs-toggle="dialog" data-bs-target="#xlsl_setup_modal" title="' . h(lang('Export for Parasut Selected')) . '"><i class="bi bi-file-earmark-spreadsheet me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Export for Parasut Selected') ) . '</span></button>';
+    $output_generate_xlsl_button = '<button type="button" class="no-submit btn btn-sm btn-solid theme-success" data-bs-toggle="dialog" data-bs-target="#xlsl_setup_modal" title="' . h(lang('Export for Parasut Selected')) . '"><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Export for Parasut Selected') ) . '</span></button>';
 }
 
 // The product and shipping filters join order_items and ship_tos, one row
@@ -2275,7 +2282,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 } else {
     $statuses = array();
 
-    $statuses[] = array('label' => '[' . lang('Any') . ']', 'value' => 'any');
+    $statuses[] = array('label' => lang('All statuses'), 'value' => 'any');
     $statuses[] = array('label' => lang('Incomplete'), 'value' => 'incomplete');
     $statuses[] = array('label' => lang('Complete'), 'value' => 'complete');
     $statuses[] = array('label' => lang('Exported'), 'value' => 'exported');
@@ -2302,7 +2309,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     // Marketplace is offered only where there is one to look at. On a shop with
     // no marketplace account it is a filter that can only ever return nothing.
     $types = array();
-    $types[] = array('label' => '[' . lang('Any') . ']', 'value' => 'any');
+    $types[] = array('label' => lang('All types'), 'value' => 'any');
     $types[] = array('label' => lang('Online'), 'value' => 'online');
 
     if (pg_schema_has('marketplace_accounts')
@@ -2354,6 +2361,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         'first_name'    => lang('First Name'),
         'last_name'     => lang('Last Name'),
         'status'        => lang('Status'),
+        'type'          => lang('Type'),
         'order_number'  => lang('Order Number'),
         'total'         => lang('Total'),
         'user'          => lang('User'),
@@ -2378,6 +2386,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         'first_name'     => 'orders.billing_first_name',
         'last_name'      => 'orders.billing_last_name',
         'status'         => 'orders.status',
+        'type'           => 'orders.type',
         'order_number'   => 'orders.order_number',
         'total'          => 'orders.total',
         'user'           => 'user.user_username',
@@ -2414,10 +2423,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
   
     
-    if (AFFILIATE_PROGRAM == true) {
-        $output_affiliate_heading = '<th>' . get_column_heading(lang('Affiliate Code'), $sort_levels, '', '', 'affiliate_code') . '</th>';
-    }
-
 
     /* get results for just this screen*/
     $query = "SELECT
@@ -2464,6 +2469,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     // (includes/fn/order_list.php), one query for the whole page.
     $cart_totals = pg_order_list_cart_totals($order_rows);
 
+    // Every order of the filter is printed: the list table driver sorts and
+    // searches them in the browser (browser mode).
+    $list_rows = array();
+
     $filter_totals = 0;
     foreach ($order_rows as $row) {
         $id = $row['id'];
@@ -2497,14 +2506,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         
         $output_link_url = 'view_order.php?id=' . $id . '&send_to=' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY)) . '/view_orders.php';
 
-        if (AFFILIATE_PROGRAM == true) {
-            $output_affiliate_code = '<td class="align-middle">' . h($affiliate_code) . '</td>';
-        } else {
-            $output_affiliate_code = '';
-        }
-        
         // set checkmark image for columns to use
-        $output_checkmark = '<span class="material-icons">task_alt</span>';
+        $output_checkmark = '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . h(lang('Yes')) . '</span>';
 
         $output_card_data_check_mark = '';
         
@@ -2557,8 +2560,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         // edit. Only a complete or exported order's status changes here.
         $output_status = pg_order_list_status_html($row, $paid_at_column_exists);
         $output_status_edit = isset($quick_edit['status']['options'][$status])
-            ? pg_list_edit_cell($quick_edit, 'status', $id, $status)
-            : '';
+            ? pg_list_edit_cell_attributes($quick_edit, 'status', $id, $status)
+            : array();
         
 
 
@@ -2586,36 +2589,41 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 '<button type="button" class="btn-data-control m-1 btn btn-outline theme-danger border-2 pg-admin-cancel-btn no-submit" data-order-id="' . $id . '" data-order-number="' . h($order_number) . '" title="' . lang('Cancel Order') . '"><i class="bi bi-x-octagon"></i></button>';
         }
 
-        // An incomplete order has no number yet: the row box is named by the
-        // billing name, else by the id.
+        // An incomplete order has no number yet: the row's link is named by
+        // the billing name, else by the id.
         $output_row_name = (trim((string) $order_number) !== '') ? $order_number : trim($billing_first_name . ' ' . $billing_last_name);
 
         if ($output_row_name === '') {
             $output_row_name = '#' . $id;
         }
 
-        $output_rows .=
-            '<tr id="' . $id . '">
-                <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="orders[]" value="' . $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($output_row_name)))) . '" /></td>
-                <td class="align-middle text-start col-reorder-none action-buttons">
-                    <button type="button" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                    ' . $output_cancel_button . '
-                    ' . $output_shipping_tracking_cell . '
-                </td>
-                <td class="align-middle">' . h($billing_first_name) . '</td>
-                <td class="align-middle">' . h($billing_last_name) . '</td>
-                <td class="align-middle"' . $output_status_edit . '>' . $output_status . '</td>
-                <td class="align-middle">' . $output_order_type . '</td>
-                <td class="align-middle">' . $order_number . '</td>
-                <td class="align-middle text-end">' . pg_order_list_amount_html($status, $row['total'], $cart_totals[(int) $id] ?? null) . '</td>
-                <td class="align-middle">' . h($username) . '</td>
-                <td class="align-middle">' . h($tracking_code) . '</td>
-                <td class="align-middle">' . h($member_id) . '</td>
-                ' . $output_affiliate_code . '
-                <td class="align-middle text-center">' . $output_card_data_check_mark . '</td>
-                <td class="align-middle">' . $order_date . '</td>
-            </tr>';
+        $list_rows[] = array(
+            'id' => (int) $id,
+            'cells' => array(
+                'order_number' => pg_list_cell(pg_commerce_list_open_link('view_order.php?id=' . (int) $id . '&send_to=' . urlencode(PATH . SOFTWARE_DIRECTORY . '/view_orders.php'), h($output_row_name)), 'align-middle', array('data-pg-sort-value' => (string) $order_number)),
+                'first_name' => pg_list_cell(h($billing_first_name)),
+                'last_name' => pg_list_cell(h($billing_last_name)),
+                'status' => pg_list_cell($output_status, 'align-middle', $output_status_edit + array('data-pg-sort-value' => (string) $status)),
+                'type' => pg_list_cell(h($output_order_type)),
+                'total' => pg_list_cell(pg_order_list_amount_html($status, $row['total'], $cart_totals[(int) $id] ?? null), 'align-middle', array('data-pg-sort-value' => (string) (int) $row['total'])),
+                'user' => pg_list_cell(h($username)),
+                'tracking_code' => pg_list_cell(h($tracking_code)),
+                'member_id' => pg_list_cell(h($member_id)),
+                'affiliate_code' => pg_list_cell(h($affiliate_code)),
+                'card_data' => pg_list_cell($output_card_data_check_mark),
+                'order_date' => pg_list_cell($order_date, 'align-middle', array('data-pg-sort-value' => (string) (int) $row['order_date'])),
+                'actions' => pg_list_cell($output_cancel_button . $output_shipping_tracking_cell, 'align-middle text-nowrap'),
+            ),
+        );
     }
+
+    $list = pg_list_table_printed(array(
+        'list' => 'view_orders',
+        'columns' => pg_commerce_list_specs(pg_order_list_columns(AFFILIATE_PROGRAM == true, MEMBER_ID_LABEL), $sort_columns, $quick_edit),
+        'levels' => $sort_levels,
+        'rows' => $list_rows,
+        'edit' => array('url' => 'view_orders.php', 'columns' => $quick_edit),
+    ));
 
     $filter_totals = prepare_amount($filter_totals);
 
@@ -2755,7 +2763,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $output_advanced_filters =
             '<div class="advanced_filters advanced-filter-bar  position-fixed-md"  id="advanced_filters" >
                 <div class="p-3 border justify-content-between d-flex flex-wrap header">
-                    <p class="m-0"><span class="material-icons pe-1">filter_list</span>' . lang('Filters') . '</p>
+                    <p class="m-0"><i class="bi bi-funnel me-1" aria-hidden="true"></i>' . lang('Filters') . '</p>
                     <a class="btn btn-close " title="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '" ></a>
                 </div>
                 <form class="advanced-filter-body p-3 pt-0 disable_shortcut" id="search_advanced" action="view_orders.php" method="get">
@@ -2979,7 +2987,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                         </fieldset>
                         ' . get_date_picker_format() . pg_fields_script() . '
                         <div class="col-12 text-center position-sticky my-3" style="bottom:.5rem;">
-                            <button type="submit" name="submit_data" value="Update" class="btn btn-solid theme-primary my-1"><i class="material-icons me-3">sync</i>' . lang('Update') . '</button>
+                            <button type="submit" name="submit_data" value="Update" class="btn btn-solid theme-primary my-1"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Update') . '</button>
                         </div>
                                 
                     </div>
@@ -3276,54 +3284,21 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 </nav>
                 ' . $output_advanced_filters . '
                 ' . $output_order_stats . '
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative">
-                        <form name="form"  action="edit_orders.php" method="post" class="view_orders disable_shortcut"> 
-                            ' . get_token_field() . ' 
-                            <input type="hidden" name="action">
-                            <table class="chart table-hover table " style="width:100%;display:none"' . pg_list_edit_table('view_orders.php', $quick_edit) . '>
-                                <thead>
-                                    <tr>
-                                        <th class="noVis">
-                                            <div class="form-field">
-                                                <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
-                                            </div>
-                                        </th>
-                                        <th class="noVis">' . lang('Action') . '</th> 
-                                        <th>' . get_column_heading(lang('First Name'), $sort_levels, '', '', 'first_name') . '</th>
-                                        <th>' . get_column_heading(lang('Last Name'), $sort_levels, '', '', 'last_name') . '</th>
-                                        <th>' . get_column_heading(lang('Status'), $sort_levels, '', '', 'status') . '</th>
-                                        <th>' . lang('Type') . '</th>
-                                        <th>' . get_column_heading(lang('Order Number'), $sort_levels, '', '', 'order_number') . '</th>
-                                        <th class="text-end">' . get_column_heading(lang('Total'), $sort_levels, '', '', 'total') . '</th>
-                                        <th>' . get_column_heading(lang('User'), $sort_levels, '', '', 'user') . '</th>
-                                        <th>' . get_column_heading(lang('Tracking Code'), $sort_levels, '', '', 'tracking_code') . '</th>
-                                        <th>' . get_column_heading(MEMBER_ID_LABEL, $sort_levels, '', '', 'member_id') . '</th>
-                                        ' . $output_affiliate_heading . '
-                                        <th>' . lang('Card Data') . '</th>
-                                        <th>' . get_column_heading(lang('Order Date'), $sort_levels, '', '', 'order_date') . '</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ' . $output_rows . '
-                                </tbody>
-                            </table>
-                            <nav class="buttons navigation pg-bar-icons text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                                <div class="container">
-                                    <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
+                <form name="form" action="edit_orders.php" method="post" class="view_orders disable_shortcut">
+                    ' . get_token_field() . '
+                    <input type="hidden" name="action">
+                    <span id="pg_orders_selected" hidden></span>
+                    ' . pg_list_table_html($list['source'], $list['page'], lang('View Orders'), '
                                         ' . $output_generate_xlsl_button . '
-                                        <button type="button" value="Remove Card Data for Selected" class="btn mb-1 mt-1 btn-solid theme-primary disabled" title="' . h(lang('Remove Card Data for Selected')) . '" data-confirm-content="' . lang(array('string'=>'WARNING: {var:1} will be permanently removed from the selected order(s).','vars'=>array(lang('Card Data')))) . '"><i class="bi bi-credit-card-2-front me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Remove Card Data for Selected') ) . '</span></button>
-                                        <button type="button" value="Mark Shipped Selected" class="btn mb-1 mt-1 btn-solid theme-success disabled" title="' . h(lang('Mark Shipped Selected')) . '" data-confirm-content="' . h(lang('The selected order(s) will be marked shipped today and their customers sent the shipping e-mail. Orders that already have a tracking number are skipped.')) . '"><i class="bi bi-truck me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Mark Shipped Selected') . '</span></button>
+                                        <button type="button" value="Remove Card Data for Selected" class="btn btn-sm btn-solid theme-primary" title="' . h(lang('Remove Card Data for Selected')) . '" data-confirm-content="' . lang(array('string'=>'WARNING: {var:1} will be permanently removed from the selected order(s).','vars'=>array(lang('Card Data')))) . '"><i class="bi bi-credit-card-2-front me-1" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Remove Card Data for Selected') ) . '</span></button>
+                                        <button type="button" value="Mark Shipped Selected" class="btn btn-sm btn-solid theme-success" title="' . h(lang('Mark Shipped Selected')) . '" data-confirm-content="' . h(lang('The selected order(s) will be marked shipped today and their customers sent the shipping e-mail. Orders that already have a tracking number are skipped.')) . '"><i class="bi bi-truck me-1" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Mark Shipped Selected') . '</span></button>
                                         ' . $output_shipment_label_buttons . '
-                                        <button type="button" value="Cancel Selected" class="btn mb-1 mt-1 btn-solid theme-warning disabled" title="' . h(lang('Cancel Selected')) . '" data-confirm-content="' . h(lang('WARNING: The selected order(s) will be cancelled; orders never completed are skipped. Customers may be sent a cancellation e-mail and payments cancelled or refunded, which cannot be undone. A cancelled order can be restored from its order screen.')) . '"><i class="bi bi-x-octagon me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Cancel Selected') . '</span></button>
-                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-solid theme-danger disabled" title="' . h(lang('Delete Selected')) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('orders')))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete Selected') ) . '</span></button>
-                                    </div>
-                                </div>
-                            </nav>
-                            ' . $output_xlsl_setup_modal . '
-                            ' . $output_shipment_pickup_dialog . '
-                        </form>
-
+                                        <button type="button" value="Cancel Selected" class="btn btn-sm btn-solid theme-warning" title="' . h(lang('Cancel Selected')) . '" data-confirm-content="' . h(lang('WARNING: The selected order(s) will be cancelled; orders never completed are skipped. Customers may be sent a cancellation e-mail and payments cancelled or refunded, which cannot be undone. A cancelled order can be restored from its order screen.')) . '"><i class="bi bi-x-octagon me-1" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Cancel Selected') . '</span></button>
+                                        <button type="button" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" title="' . h(lang('Delete Selected')) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('orders')))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete Selected') ) . '</span></button>
+                    ') . '
+                    ' . $output_xlsl_setup_modal . '
+                    ' . $output_shipment_pickup_dialog . '
+                </form>
                         <!-- Per-row cancel POST target. Deliberately a sibling of the
                              page form above, never a child: nested forms are dropped by
                              the HTML parser and the button would silently submit the
@@ -3336,19 +3311,39 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                             <input type="hidden" name="admin_context" value="view_orders">
                             <input type="hidden" name="send_to" value="' . h(PATH . SOFTWARE_DIRECTORY . '/view_orders.php') . '">
                         </form>
-                    </div>
-                </div>
             </div>
         </div>
         <script>
-        // Per-row "İptal" button — confirm via pgConfirm(), then post the shared
+        // The bulk actions (edit_orders.php, shipment_label.php) read the
+        // selected orders as orders[]: the list is printed whole, so its
+        // selection is always a list of ids.
+        (function () {
+            var root = document.querySelector(".pg-list-table[data-pg-list-table=\"view_orders\"]");
+            var holder = document.getElementById("pg_orders_selected");
+
+            if (!root || !holder) { return; }
+
+            root.addEventListener("pg-list-table:selection", function (event) {
+                var ids = (event.detail.payload && event.detail.payload.ids) || [];
+
+                holder.textContent = "";
+                ids.forEach(function (id) {
+                    var input = document.createElement("input");
+                    input.type = "hidden";
+                    input.name = "orders[]";
+                    input.value = id;
+                    holder.appendChild(input);
+                });
+            });
+        })();
+
+        // Per-row cancel button — confirm via pgConfirm(), then post the shared
         // #pg-admin-cancel-form (which lives OUTSIDE the page form; see the
         // comment where the button markup is built).
         //
         // The listener is delegated from document rather than bound per button:
-        // this table is a DataTable, so rows are detached / re-attached on
-        // pagination, sorting and search. Delegation keeps the buttons working
-        // on every page without re-binding after each draw.
+        // the list table driver moves rows when it sorts and searches, so
+        // delegation keeps the button of every row working.
         //
         // The buttons carry class "no-submit" so the global click handler in
         // backend.src.js leaves them alone.
@@ -3397,12 +3392,19 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         (function () {
             if (typeof Chart === "undefined") { return; }
             var data = ' . json_encode($orders_chart_data) . ';
-            var styles = getComputedStyle(document.documentElement);
-            var color = function (name, fallback) { return (styles.getPropertyValue(name) || "").trim() || fallback; };
+            // A panel token can read back as light-dark() text a canvas
+            // cannot parse, so every colour is resolved through a probe.
+            var probe = document.createElement("span");
+            document.body.appendChild(probe);
+            var color = function (name, fallback) {
+                probe.style.color = "";
+                probe.style.color = "var(" + name + ", " + fallback + ")";
+                return getComputedStyle(probe).color || fallback;
+            };
             var locale = document.documentElement.lang || undefined;
             var money = function (value) { return data.currency + Number(value).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
             var count = function (value) { return Number(value).toLocaleString(locale); };
-            var primary = color("--bs-primary", "#0d6efd");
+            var primary = color("--pg-primary", "#0d6efd");
             var spark = function (id, type, values, format) {
                 var canvas = document.getElementById(id);
                 if (!canvas) { return; }
@@ -3422,13 +3424,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             spark("pg_orders_spark_total", "line", data.totals, money);
             spark("pg_orders_spark_count", "bar", data.counts, count);
 
-            var palette = [primary, color("--bs-success", "#198754"), color("--bs-warning", "#ffc107"), color("--bs-info", "#0dcaf0"), color("--bs-danger", "#dc3545"), color("--bs-secondary", "#6c757d")];
-            // A custom property reads back as light-dark() text a canvas
-            // cannot parse, so the panel ink is resolved through a probe.
-            var probe = document.createElement("span");
-            probe.style.color = "var(--pg-fg-2)";
-            document.body.appendChild(probe);
-            var ink = getComputedStyle(probe).color;
+            var palette = [primary, color("--pg-success", "#198754"), color("--pg-warning", "#ffc107"), color("--pg-info", "#0dcaf0"), color("--pg-danger", "#dc3545"), color("--pg-secondary", "#6c757d")];
+            var ink = color("--pg-fg-2", "#6c757d");
+            var surface = color("--pg-bg-body", "#fff");
             probe.remove();
             var top = document.getElementById("pg_orders_top");
             if (top && data.top.length) {
@@ -3449,7 +3447,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 new Chart(payments, {
                     type: "doughnut",
                     data: { labels: data.payments.map(function (row) { return row.label; }),
-                            datasets: [{ data: data.payments.map(function (row) { return row.count; }), backgroundColor: palette, borderColor: color("--bs-body-bg", "#fff"), borderWidth: 2 }] },
+                            datasets: [{ data: data.payments.map(function (row) { return row.count; }), backgroundColor: palette, borderColor: surface, borderWidth: 2 }] },
                     options: {
                         maintainAspectRatio: false,
                         cutout: "62%",
@@ -3469,7 +3467,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         })();
         </script>
     
-</main>' .
+</main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
     output_footer();
 
     print $output;

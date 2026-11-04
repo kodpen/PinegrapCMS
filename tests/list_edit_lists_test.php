@@ -35,6 +35,9 @@ function test_list_edit_account_price_columns_take_a_figure_or_nothing()
 		pg_assert_false(pg_list_edit_parse($columns[$field], '-5')['ok'], $field . ': no minus sign');
 		pg_assert_false(pg_list_edit_parse($columns[$field], '%5')['ok'], $field . ': no symbol');
 	}
+
+	// A percentage is refused as a number, not as an amount.
+	pg_assert_same('decimal', $columns['discount']['type'], 'the discount is a figure, not an amount');
 }
 
 function test_list_edit_shipping_rate_columns_take_a_figure_or_nothing()

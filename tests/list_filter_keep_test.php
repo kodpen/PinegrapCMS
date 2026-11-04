@@ -45,7 +45,11 @@ function test_list_filter_keep_cheque_filters_keep_the_search()
 	pg_assert_same(array('status', 'search'), list_filter_keep_test_names('erp_cheques.php', 'direction'), 'Direction filter keeps the status and the search');
 }
 
-function test_list_filter_keep_invoice_due_date_keeps_the_edocument_view()
+// The Overdue links open the list on direction=sales, an account card on
+// account_id: changing the due-date view kept only the e-Document view and
+// showed every direction and account. The aging bucket is left out: a kept
+// bucket forces the view back to "Open", so "All" could never be picked.
+function test_list_filter_keep_invoice_due_date_keeps_the_view()
 {
-	pg_assert_same(array('edoc'), list_filter_keep_test_names('erp_invoices.php', 'filter'), 'Due date filter keeps the e-Document view');
+	pg_assert_same(array('edoc', 'direction', 'account_id', 'as_of'), list_filter_keep_test_names('erp_invoices.php', 'filter'), 'Due date filter keeps the e-Document view, the direction, the account and the as-of date');
 }

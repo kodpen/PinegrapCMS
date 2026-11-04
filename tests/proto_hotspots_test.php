@@ -91,8 +91,8 @@ function proto_hotspots_test_tree()
 }
 
 // Which nodes are hotspots, from where their href is read, in document
-// order; toggles, a <button>, a bound href and region kinds without links
-// are not; shared components, menus and regions are listed once.
+// order; toggles, a <button> and region kinds without links are not (a
+// link kept by page id with no page is its typed href); shared components, menus and regions are listed once.
 function test_proto_hotspots_collect_a_tree()
 {
 	$result = proto_hotspots_test_node('out = H.collect(' . proto_hotspots_test_js(proto_hotspots_test_tree()) . ');');
@@ -116,6 +116,7 @@ function test_proto_hotspots_collect_a_tree()
 		array('n7', 'btn', 'mailto:a@example.com', 'Buy', 0),
 		array('n9', 'text', '/terms', 'terms', 0),
 		array('n9', 'text', '/draft-page', 'draft', 2),
+		array('n10', 'href', '/x', 'Bound', 0),
 		array('n11', 'href', '#', 'Empty', 0),
 		array('n13', 'menu', 'Top'),
 		array('n14', 'region', 'Footer'),
@@ -191,7 +192,7 @@ function test_proto_hotspots_design_frames_and_request()
 	pg_assert_same(array(2, 1, 1), array_column($result['shared'], 'pages'), 'the tabs placing each');
 	pg_assert_same(array(true, true, false), array_column($result['shared'], 'loaded'), 'one not fetched yet');
 	pg_assert_same('/', $result['shared'][0]['hotspots'][0]['href'], 'a shared component holds its own links');
-	pg_assert_same(array('/about', '/shop', '/blog', 'mailto:a@example.com', '/terms', '/draft-page', '#', '/x?a=1&b=2', '/'), $result['request']['hrefs'], 'each href once');
+	pg_assert_same(array('/about', '/shop', '/blog', 'mailto:a@example.com', '/terms', '/draft-page', '/x', '#', '/x?a=1&b=2', '/'), $result['request']['hrefs'], 'each href once');
 	pg_assert_same(array('Top'), $result['request']['menus'], 'the menus asked');
 	pg_assert_same(array('Footer'), $result['request']['regions'], 'the regions asked');
 }
@@ -483,7 +484,8 @@ function test_proto_hotspots_view_draws_arrows()
 	pg_assert_contains('canConnect: function (from, to, port) { return _sdProtoArrowHref(from, to, port) !== null; }', $source, 'the core asks the view where an arrow may end');
 	pg_assert_contains('connected: function (from, to, port) { _sdProtoConnect(from, to, port); }', $source, 'a drawn arrow writes the link');
 	pg_assert_contains("if (e.target.closest && e.target.closest('#sd-proto')) return;", $source, 'the document shortcuts leave the view alone');
-	pg_assert_contains('var patch = node ? H.hrefPatch(node, row, href) : null;', $source, 'the node gets the collector\'s patch');
+	pg_assert_contains('var patch = node ? H.hrefPatch(node, row, href, to) : null;', $source, 'the node gets the collector\'s patch');
+	pg_assert_contains('H.applyPatch(node.props, patch);', $source, 'the patch is written with its page binding');
 	pg_assert_contains('if (row && menuKey) return _sdProtoMenuOpen(row);', $source, 'L on a row opens its target menu');
 	pg_assert_contains('_sdProtoConnect(item, target, row.port);', $source, 'a menu choice goes the drawn arrow\'s way');
 }
@@ -619,4 +621,139 @@ function test_proto_hotspots_layout_makes_room_for_the_thumbnail()
 	pg_assert_same(array(44 + 84 + 30 + 10, 44 + 30 + 10), $out['h'], 'its height grows by it');
 	pg_assert_same(44 + 84 + 15, $out['port'], 'its row ports sit below the strip');
 	pg_assert_same(44 + 15, $out['plain'], 'a frame without bands is unchanged');
+}
+
+// A link kept by page id ('__page_link', #6233): collected with the page it
+// opens, asked for by id, marked by the page's current name.
+function proto_hotspots_test_bound($id, $href = '/old')
+{
+	return array('_id' => 'b' . $id, 'type' => 'content', 'props' => array('contentType' => 'link', 'text' => 'Go', 'href' => $href,
+		'_bindings' => array('href' => '__page_link'), '_bindParams' => array('href' => array('page_id' => $id, 'params' => array()))), 'children' => array());
+}
+
+function test_proto_hotspots_bound_links_collected_and_asked_by_id()
+{
+	$tree = array('_id' => 'root', 'type' => 'root', 'props' => array(), 'children' => array(
+		proto_hotspots_test_bound(7), proto_hotspots_test_bound('7'), proto_hotspots_test_bound('tab:k2', '/new'), proto_hotspots_test_bound('x', '/typed'),
+	));
+	$result = proto_hotspots_test_node('out = H.design([{ key: "k1", page_id: 1, page_name: "home", tree: ' . proto_hotspots_test_js($tree) . ' }], {});');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('7', '7', 'tab:k2', ''), array_column($result['pages'][0]['hotspots'], 'bound'), 'the page each opens');
+	pg_assert_same(array(true, true, true, true), array_column($result['pages'][0]['hotspots'], 'pageLink'));
+	pg_assert_same(array(7), $result['request']['page_ids'], 'a saved page asked for by id, once');
+	pg_assert_same(array('/new', '/typed'), $result['request']['hrefs'], 'the rest by their typed href');
+}
+
+function test_proto_hotspots_bound_links_marked()
+{
+	$read = array(
+		'env' => array('host' => 'example.com', 'path' => '/', 'software_directory' => 'pinegrap'),
+		'maps' => array('pages' => array('about-us' => array('id' => 7, 'type' => 'standard', 'layout_type' => 'system', 'folder' => 1), 'gone' => array('id' => 8, 'type' => 'standard', 'layout_type' => 'system', 'folder' => 99)), 'files' => array(), 'short_links' => array(), 'products' => array(), 'product_groups' => array(), 'home_page_id' => 0),
+		'form_names' => new stdClass(),
+		'hidden' => array(),
+		'hidden_ids' => array(9),
+		'draft_folder' => 0,
+		'bin_folders' => array(99),
+	);
+	$tabs = array(array('key' => 'k1', 'page_id' => 3, 'page_name' => 'Contact'), array('key' => 'k2', 'page_id' => 0, 'page_name' => 'fresh'));
+	$code = 'var read = ' . proto_hotspots_test_js($read) . ', tabs = ' . proto_hotspots_test_js($tabs) . ';'
+		. 'out = ["7", "3", "tab:k2", "8", "9", "10", "tab:zz"].map(function (b) { var m = H.markBound({ bound: b, href: "/old" }, read, tabs, R); return [m.mark, m.href, m.pageId, m.tab]; });';
+	$result = proto_hotspots_test_node($code);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('page', '/about-us', 7, ''),
+		array('tab', '/Contact', 3, 'k1'),
+		array('tab', '/fresh', 0, 'k2'),
+		array('broken', '/gone', 8, ''),
+		array('hidden', '/old', 9, ''),
+		array('broken', '/old', 10, ''),
+		array('broken', '/old', 0, ''),
+	), $result, 'current name, tab, binned, hidden, missing');
+}
+
+function test_proto_hotspots_arrow_keeps_a_link_by_page_id()
+{
+	$code = 'var node = ' . proto_hotspots_test_js(array('_id' => 'n', 'type' => 'content', 'props' => array('contentType' => 'link', 'text' => 'Go', 'href' => '/old', '_bindings' => array('text' => 'x')), 'children' => array())) . ';'
+		. 'var row = { source: "href", index: 0, href: "/old", bound: "" };'
+		. 'var tab = { kind: "page", key: "k1", pageId: 3 }, fresh = { kind: "page", key: "k2", pageId: 0 }, chip = { kind: "chip", mark: "external", href: "https://x.org/" };'
+		. 'var p1 = H.hrefPatch(node, row, "/Contact", tab); H.applyPatch(node.props, p1);'
+		. 'var after = JSON.parse(JSON.stringify(node.props));'
+		. 'node.props._bindParams.href.params = [{ name: "a", text: "b" }];'
+		. 'var stale = H.hrefPatch(node, row, "/x", tab);'
+		. 'var p2 = H.hrefPatch(node, { source: "href", index: 0, href: "/Contact", bound: "3" }, "/fresh", fresh); H.applyPatch(node.props, p2);'
+		. 'var kept = JSON.parse(JSON.stringify(node.props._bindParams));'
+		. 'var p3 = H.hrefPatch(node, { source: "href", index: 0, href: "/fresh", bound: "tab:k2" }, "https://x.org/", chip); H.applyPatch(node.props, p3);'
+		. 'out = { p1: p1, after: after, stale: stale, kept: kept, p3: p3, last: node.props, boundTo: [H.boundTo(tab), H.boundTo(fresh), H.boundTo(chip), H.boundTo(null)] };';
+	$out = proto_hotspots_test_node($code);
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('key' => 'href', 'value' => '/Contact', 'bind' => array('page_id' => 3)), $out['p1'], 'a tab arrow keeps the page by id');
+	pg_assert_same(array('text' => 'x', 'href' => '__page_link'), $out['after']['_bindings'], 'other bindings stay');
+	pg_assert_same(array('href' => array('page_id' => 3, 'params' => array())), $out['after']['_bindParams']);
+	pg_assert_same('/Contact', $out['after']['href'], 'the address is the fallback');
+	pg_assert_same(null, $out['stale'], 'a row read before the binding no longer matches');
+	pg_assert_same(array('href' => array('page_id' => 'tab:k2', 'params' => array(array('name' => 'a', 'text' => 'b')))), $out['kept'], 'an unsaved tab by key; params kept');
+	pg_assert_same(false, $out['p3']['bind'], 'a chip arrow ends the page binding');
+	pg_assert_same(array('text' => 'x'), $out['last']['_bindings']);
+	pg_assert_same(false, isset($out['last']['_bindParams']), 'no empty spec left');
+	pg_assert_same('https://x.org/', $out['last']['href']);
+	pg_assert_same(array(3, 'tab:k2', null, null), $out['boundTo']);
+}
+
+// The Link panel's note of a link kept by page id, and its way back to a
+// typed address.
+function test_proto_hotspots_panel_page_link_notice()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+
+	pg_assert_contains("if (tok === '__page_link' && !_sdSystemWidgetCfgOf(node)) return _sdPageLinkNotice(node);", $source, 'outside a widget the note names the page');
+	pg_assert_contains("window.PGProtoHotspots.applyPatch(selectedNode.props, { key: 'href', value: selectedNode.props.href || '', bind: false });", $source, 'the button drops the binding, the address stays');
+}
+
+// Which nodes Bind Data offers a page for outside a widget: a link of its
+// own drawn as <a> (content link, btn drawn as <a>, semantic a), whatever
+// its href is bound to now; never a toggle, a <button>, a text or a picture.
+function test_proto_hotspots_page_linkable()
+{
+	$nodes = array(
+		array('type' => 'content', 'props' => array('contentType' => 'link', 'href' => '/a')),
+		array('type' => 'content', 'props' => array('contentType' => 'link', 'href' => '', '_bindings' => array('href' => '__record__url'))),
+		array('type' => 'component', 'props' => array('componentType' => 'btn', 'href' => '/b')),
+		array('type' => 'component', 'props' => array('componentType' => 'btn', 'btnElement' => 'button')),
+		array('type' => 'semantic', 'props' => array('tag' => 'A', 'href' => '/c')),
+		array('type' => 'semantic', 'props' => array('tag' => 'a')),
+		array('type' => 'content', 'props' => array('contentType' => 'link', 'href' => '#m', '_attrs' => array(array('name' => 'data-bs-toggle', 'value' => 'modal')))),
+		array('type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => '<a href="/d">d</a>')),
+		array('type' => 'content', 'props' => array('contentType' => 'image', 'src' => '/x.png')),
+		null,
+	);
+	$out = proto_hotspots_test_node('out = ' . proto_hotspots_test_js($nodes) . '.map(function (n) { return H.pageLinkable(n); });');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, true, true, false, true, true, false, false, false, false), $out);
+}
+
+// Bind Data outside a widget offers a page for a link that may hold one,
+// with the page select under it, and starts no value rows there.
+function test_proto_hotspots_bind_data_offers_a_page_outside_widgets()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+
+	pg_assert_contains("var linkable = !!(window.PGProtoHotspots && window.PGProtoHotspots.pageLinkable(node));", $source, 'the panel asks the collector which links may be kept by id');
+	pg_assert_contains("var extra = (withPage && current === SW_PAGE_LINK_TOKEN) ? _sdPageLinkPageRow(node) : '';", $source, 'the page select sits under the chosen option');
+	pg_assert_contains("params: inWidget ? [{ name: '', token: '' }] : []", $source, 'outside a widget no value row is started');
 }

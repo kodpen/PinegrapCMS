@@ -195,18 +195,18 @@ function test_contact_list_row_default_view()
 	$row = pg_contact_list_row($contact, array('role' => 2), 'default', 'G1', '');
 
 	pg_assert_same('15', $row['id']);
-	pg_assert_same(12, count($row['cells']), 'check box, action, picture, 3 names, phone, e-mail, user, opt-in, groups, modified');
-	pg_assert_contains('value="15"', $row['cells'][0]['html']);
-	pg_assert_contains('edit_contact.php?id=15', $row['cells'][1]['html']);
-	pg_assert_same('&lt;b&gt;Ali&lt;/b&gt;', $row['cells'][3]['html']);
-	pg_assert_contains(lang('Mobile') . ': 2', $row['cells'][6]['html']);
-	pg_assert_contains('mailto:a@x', $row['cells'][7]['html']);
-	pg_assert_contains('edit_user.php?id=3', $row['cells'][8]['html'], 'a manager may open a user account');
-	pg_assert_contains('task_alt', $row['cells'][9]['html']);
-	pg_assert_same('G1', $row['cells'][10]['html']);
+	pg_assert_same(array('picture', 'first_name', 'last_name', 'company', 'actions', 'email', 'phone', 'user', 'opt_in', 'groups', 'last_modified'), array_keys($row['cells']), 'picture, 3 names, edit, e-mail, phone, user, opt-in, groups, modified');
+	pg_assert_contains('edit_contact.php?id=15', $row['cells']['picture']['html']);
+	pg_assert_contains('edit_contact.php?id=15', $row['cells']['actions']['html']);
+	pg_assert_same('&lt;b&gt;Ali&lt;/b&gt;', $row['cells']['first_name']['html']);
+	pg_assert_contains(lang('Mobile') . ': 2', $row['cells']['phone']['html']);
+	pg_assert_contains('mailto:a@x', $row['cells']['email']['html']);
+	pg_assert_contains('edit_user.php?id=3', $row['cells']['user']['html'], 'a manager may open a user account');
+	pg_assert_contains('task_alt', $row['cells']['opt_in']['html']);
+	pg_assert_same('G1', $row['cells']['groups']['html']);
 
 	$row = pg_contact_list_row($contact, array('role' => 3), 'default', '', '');
-	pg_assert_same('ali', $row['cells'][8]['html'], 'a user may not');
+	pg_assert_same('ali', $row['cells']['user']['html'], 'a user may not');
 }
 
 function test_contact_list_row_address_and_duplicates_views()
@@ -221,18 +221,19 @@ function test_contact_list_row_address_and_duplicates_views()
 	);
 
 	$row = pg_contact_list_row($contact, array('role' => 0), 'my_contacts_by_home_address', '', '');
-	pg_assert_same(13, count($row['cells']), 'check box, action, picture, 3 names, 5 address columns, groups, modified');
-	pg_assert_same('L1,<br />L2', $row['cells'][6]['html']);
-	pg_assert_contains('data-src="http://x/a.png"', $row['cells'][2]['html'], 'a picture by address, loaded lazily');
+	pg_assert_false(isset($row['cells']['email']), 'the address views show no e-mail');
+	pg_assert_same('L1,<br />L2', $row['cells']['address']['html']);
+	pg_assert_same('Ci', $row['cells']['city']['html']);
+	pg_assert_contains('data-src="http://x/a.png"', $row['cells']['picture']['html'], 'a picture by address, loaded lazily');
 
 	$row = pg_contact_list_row($contact, array('role' => 0), 'all_duplicate_contacts', 'G', '');
-	pg_assert_same(12, count($row['cells']), 'check box, action, picture, e-mail, 3 names, address, phone, user, groups, modified');
-	pg_assert_contains('mailto:a@x', $row['cells'][3]['html']);
-	pg_assert_same(h(lang('Business') . ': B1 BC'), $row['cells'][7]['html']);
+	pg_assert_contains('mailto:a@x', $row['cells']['email']['html']);
+	pg_assert_same(h(lang('Business') . ': B1 BC'), $row['cells']['address']['html']);
+	pg_assert_same('G', $row['cells']['groups']['html']);
 
 	$contact['file_id'] = '5';
 	$row = pg_contact_list_row($contact, array('role' => 0), 'default', '', 'pic.png');
-	pg_assert_contains('data-src="/pic.png"', $row['cells'][2]['html'], 'a picture from the file manager');
+	pg_assert_contains('data-src="/pic.png"', $row['cells']['picture']['html'], 'a picture from the file manager');
 }
 
 function test_contact_list_merge_needs_a_role_above_user()
@@ -347,4 +348,33 @@ function test_contact_list_screen_wiring()
 	pg_assert_contains('csv_cell($value)', $source, 'the export guards formula cells');
 	pg_assert_true(strpos($source, '$show_hide_contact_group_select = ($filter == \'all_duplicate_contacts\')') < strpos($source, '$output_contact_group_selection = \''), 'the duplicates view hides the group picker before its markup is built');
 	pg_assert_true(strpos($source, "db_q(\$query, \$list_filter['params']) or output_error('Query failed.');\n\n    pg_csv_download_start('contacts.csv')") !== false, 'the export queries before the download starts');
+}
+
+function test_contact_list_organized_count_counts_changed_contacts_once()
+{
+	pg_assert_same(0, pg_contact_list_organized_count(array()), 'nothing moved counts nothing');
+	pg_assert_same(2, pg_contact_list_organized_count(array(
+		4 => array('added' => array(219, 220)),
+		5 => array('removed' => array(219)),
+	)), 'a contact moved in two groups counts once');
+	pg_assert_same(1, pg_contact_list_organized_count(array(
+		4 => array('added' => array('7'), 'removed' => array(7)),
+		6 => array(),
+	)), 'ids are compared as whole numbers; an empty group entry adds nothing');
+}
+
+function test_contact_list_organize_dialog_in_page()
+{
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_contacts.php');
+	$module = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/contact_list.php');
+	$popup = (string) file_get_contents(PG_FUNCTIONS_DIR . '/organize_contacts.php');
+	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_contacts.php');
+
+	pg_assert_false(strpos($screen, "window.open(\\'organize_contacts.php") !== false, 'Organize Selected opens no popup window');
+	pg_assert_contains('data-bs-target="#organize_contacts_dialog"', $screen, 'Organize Selected opens the dialog');
+	pg_assert_contains('pgUI.dialog.hide(dialog).then(', $screen, 'the list form is posted once the dialog has closed');
+	pg_assert_contains('WHERE " . pg_audience_hand_sql() . "', $module, 'groups filled by rules are not offered');
+	pg_assert_contains("go(PATH . SOFTWARE_DIRECTORY . '/view_contacts.php');", $popup, 'the old popup address leads back to the list');
+	pg_assert_contains('$number_of_contacts = pg_contact_list_organized_count($moved);', $save, 'only contacts whose groups changed are counted');
+	pg_assert_contains("lang('No contact group was selected.')", $save, 'an organize with no group says so');
 }

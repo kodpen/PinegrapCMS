@@ -1,6 +1,6 @@
 ---
 name: product-bulk-duplicate-code
-description: The product code of a bulk copy (duplicate_products.php): last letter swapped for the typed text, cut by characters, then made unique; why the old "[1]" cut wrote duplicate codes
+description: The bulk copy (duplicate_products.php): product code and description rules, why the old "[1]" cut wrote duplicate codes, binned products left out, attribute option field, export redirect
 module: ecommerce
 ---
 
@@ -14,3 +14,9 @@ module: ecommerce
 
 ## Tests?
 - `tests/product_duplicate_bulk_name_test.php` (#5257), `tests/product_duplicate_bulk_description_test.php`. Not run against a database.
+
+## Which products does the bulk copy list and copy?
+- Only live ones: the list and every view count add `products.recycled = '0'` (before the bin upgrade nothing), and the POST skips a binned id (`pg_catalog_product_binned()`) with "{var:1} product(s) were not duplicated because they are in the Recycle Bin." Before, a binned product was listed and its copy was a live product.
+- An empty selection goes back with "Please select at least one product."; the notice on the Products screen counts the copies ("{var:1} product(s) were duplicated.").
+- The attribute option field lists the site's own `product_attribute_options`, one optgroup per attribute, and is left out when there are none. It replaced a hard-coded "Assortment" select of one old site's ids, which matched nothing elsewhere.
+- `?submit_data=Export Products` here redirects to the Products screen's export (`export_products_f.php`); the screen's private CSV copy was deleted.

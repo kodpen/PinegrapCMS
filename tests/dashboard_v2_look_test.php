@@ -34,3 +34,84 @@ function test_dashboard_v2_activity_pills_stay_in_cards()
 	$greeting = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/page_greeting.php');
 	pg_assert_false(strpos($greeting, 'pg-dash-cardbox') !== false, 'the greeting is no grid card');
 }
+
+// A rule filling every path with none would hide the area under the line,
+// whose gradient comes from its fill attribute.
+function test_dashboard_v2_line_area_keeps_its_fill()
+{
+	$css = pg_test_dashboard_v2_look_css();
+
+	pg_assert_contains('.pg-dash-line path:not(.pg-dash-line-area)', $css);
+	pg_assert_false((bool) preg_match('/^\s*\.pg-dash-line path\s*\{/m', $css), 'no rule for every path');
+}
+
+// Two charts on one page with the same gradient id would share one.
+function test_dashboard_v2_line_gradient_ids_are_unique()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_dash.js');
+
+	pg_assert_contains('"pg_dash_line_" + (++lineCount)', $js);
+	pg_assert_contains('fill: "url(#" + id + "_area)"', $js);
+	pg_assert_contains('stroke: "url(#" + id + "_stroke)"', $js);
+}
+
+// A var() naming a property nothing defines falls back to nothing: the
+// figure box drew white on white and the operations desk's lanes lost their
+// corners. Every variable the stylesheet reads is defined by the panel,
+// Bootstrap, the stylesheet itself or the dashboard's scripts.
+function test_dashboard_v2_stylesheet_variables_are_defined()
+{
+	$css = pg_test_dashboard_v2_look_css();
+	preg_match_all('/var\((--[a-z0-9-]+)/', $css, $used);
+
+	$defined = '';
+	foreach (array('/assets/css/backend.src.css', '/assets/lib/bootstrap-6/css/bootstrap.css', '/assets/css/pg_dash.src.css') as $file) {
+		$defined .= (string) file_get_contents(PG_FUNCTIONS_DIR . $file);
+	}
+	preg_match_all('/(--[a-z0-9-]+)\s*:/', $defined, $names);
+	$names = array_flip($names[1]);
+
+	foreach (glob(PG_FUNCTIONS_DIR . '/assets/js/pg_dash*.js') as $file) {
+		if (substr($file, -7) !== '.min.js') {
+			preg_match_all('/setProperty\("(--[a-z0-9-]+)"/', (string) file_get_contents($file), $set);
+			$names += array_flip($set[1]);
+		}
+	}
+
+	$missing = array_values(array_unique(array_filter($used[1], function ($name) use ($names) {
+		return !isset($names[$name]);
+	})));
+
+	pg_assert_same(array(), $missing, 'variables read but never defined');
+}
+
+// The figure box is appended to <body>, outside .pg-dash, so the palette's
+// tokens do not reach it: it names its colours for both themes.
+function test_dashboard_v2_chart_tip_names_its_colours()
+{
+	$css = pg_test_dashboard_v2_look_css();
+
+	pg_assert_true((bool) preg_match('/^\s*\.pg-dash-tip \{[^}]*background: #[0-9a-f]{6};[^}]*color: #[0-9a-f]{6};/m', $css), 'light page');
+	pg_assert_true((bool) preg_match('/html\[data-bs-theme="dark"\] \.pg-dash-tip \{[^}]*background: #[0-9a-f]{6};[^}]*color: #[0-9a-f]{6};/', $css), 'dark page');
+	pg_assert_false((bool) preg_match('/\.pg-dash-tip \{[^}]*var\(--pgd-/', $css), 'no palette token in the figure box');
+}
+
+// A 2560 px screen gave three cards of 760 px, and five columns stretched the
+// greeting and the wide cards across it. The parts stop at 118rem, centred,
+// and the columns follow the dashboard's own width (the rail may be open);
+// the window decides only where container queries are missing.
+function test_dashboard_v2_grid_follows_the_dashboard_width()
+{
+	$css = pg_test_dashboard_v2_look_css();
+
+	pg_assert_contains("  .pg-dash {\n    container: pgdash / inline-size;\n  }", $css, 'the dashboard is the query container');
+	pg_assert_contains("  .pg-dash > * {\n    max-width: 118rem;\n    margin-inline: auto;\n  }", $css, 'its parts stop at 118rem, centred');
+	foreach (array(2 => '38rem', 3 => '58rem', 4 => '94rem') as $columns => $width) {
+		pg_assert_true((bool) preg_match('/@container pgdash \(min-width: ' . preg_quote($width, '/') . '\) \{\s*\.pg-dash-grid \{\s*grid-template-columns: repeat\(' . $columns . ', /', $css), $columns . ' columns from ' . $width);
+	}
+	pg_assert_true((bool) preg_match('/@container pgdash \(min-width: 38rem\) \{[^@]*\[data-width="M"\] \{\s*grid-column: span 2;/', $css), 'M spans two only beside a second column');
+
+	$fallback = '/  @supports not \(container-type: inline-size\) \{.*?\n  \}\n/s';
+	pg_assert_same(1, preg_match($fallback, $css), 'one fallback for browsers without container queries');
+	pg_assert_false((bool) preg_match('/@media \([^)]*width[^)]*\) \{\s*\.pg-dash-(grid|tiles|top)\b/', preg_replace($fallback, '', $css)), 'no window-width rule for the grid, tiles or top outside it');
+}

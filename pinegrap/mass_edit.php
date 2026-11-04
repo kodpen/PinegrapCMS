@@ -23,6 +23,8 @@ validate_area_access($user, 'designer');
 
 // The page name rules of the page screens.
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/page_form.php');
+// pg_page_bulk_touch(): a changed page gets its Last Modified time and user.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_bulk.php');
 
 $liveform = new liveform('mass_edit');
 
@@ -30,6 +32,9 @@ $liveform = new liveform('mass_edit');
 // listed nor changed here: a rename would park them under a name the
 // restore brings back.
 $live_pages_where = ' WHERE 1 = 1' . pg_pages_bin_sql(pg_recycle_bin_folder_ids(), false);
+
+// The edit grid draws this many pages per screen (?screen=N).
+define('MASS_EDIT_PAGES_PER_SCREEN', 50);
 
 function checkifchecked($checkedstatus){
     if($checkedstatus == 1){
@@ -62,10 +67,10 @@ if (!$_POST) {
             <div class="col position-relative mb-12">
                 <label for="page_options" class="form-label">' . lang(array('string'=>'Select one or more {var:1}','vars'=>lang('Page Area') )) . '</label>
                 <select class="form-control" data-pg-combobox id="page_options" name="page_options[]" multiple="multiple">
-                    <optgroup value="" label="' . lang('Main Informations') . '">
+                    <optgroup label="' . h(lang('Main Information')) . '">
                         <option value="page_name">' . lang('Page Name') . '</option>
                     </optgroup>
-                    <optgroup value="" label="' . lang('SEO') . '">
+                    <optgroup label="' . h(lang('SEO')) . '">
                         <option value="page_title">' . lang('Web Browser Title') . '</option>
                         <option value="page_meta_description">' . lang('Web Browser Description') . '</option>
                         <option value="site_search">' . lang('Include in Site Search') . '</option>
@@ -73,21 +78,18 @@ if (!$_POST) {
                     </optgroup>
                 </select>
             </div>
-            <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data select buttons">
+            <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data select buttons')) . '">
                 <div class="container">
                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                        <button type="button" id="get_form" value="Get Form" class=" btn mb-1 mt-1 btn-solid theme-primary disabled"><span class="material-icons me-3">save</span>' . lang(array('string'=>'Get Edit Form') ) . '</button>
+                        <button type="button" id="get_form" value="Get Form" class=" btn mb-1 mt-1 btn-solid theme-primary" disabled><i class="bi bi-ui-checks me-3" aria-hidden="true"></i>' . lang(array('string'=>'Get Edit Form') ) . '</button>
                     </div>
                 </div>
             </nav>
         </div>
         <script>
             $("select#page_options").on("change", function (evt) {
-                if($(this).val() == ""){
-                    $("button#get_form").addClass("disabled");
-                }else{
-                    $("button#get_form").removeClass("disabled");
-                }
+                var chosen = $(this).val();
+                $("button#get_form").prop("disabled", !chosen || (chosen.length == 0));
             });
             $("#get_form").on("click", function(){
                 // Built from the path so a #fragment (the skip link) does not swallow the query.
@@ -115,11 +117,6 @@ if (!$_POST) {
                 case 'page_meta_description':
                 case 'site_search':
                 case 'page_search_keywords':
-                    // get all pages
-                    $query = "SELECT * FROM page" . $live_pages_where . " ORDER BY page_name asc";
-                    $count_result = db("SELECT COUNT(*) FROM page" . $live_pages_where);
-                    
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     $output_page_editing = true;
                     break;
             }
@@ -153,11 +150,49 @@ if (!$_POST) {
 
         //starts of page editing
         if($output_page_editing != false){
+            // One screen of pages at a time: each card carries a chips field
+            // and two counters, and drawing every page of a large site froze
+            // the browser tab for minutes. The save reads only posted fields.
+            $count_result = (int) db("SELECT COUNT(*) FROM page" . $live_pages_where);
+            $screen = pg_list_page_clamp(pg_list_page_number($_GET['screen'] ?? 1), $count_result, MASS_EDIT_PAGES_PER_SCREEN);
+            $number_of_screens = max(1, (int) ceil($count_result / MASS_EDIT_PAGES_PER_SCREEN));
+
+            $query =
+                "SELECT page_id, page_name, page_title, page_meta_description, page_search, page_search_keywords
+                FROM page" . $live_pages_where . "
+                ORDER BY page_name ASC
+                LIMIT " . (($screen - 1) * MASS_EDIT_PAGES_PER_SCREEN) . ", " . MASS_EDIT_PAGES_PER_SCREEN;
+            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+            $output_screen_pager = '';
+
+            if ($number_of_screens > 1) {
+                $screen_link = function ($target, $label, $icon) use ($screen, $number_of_screens) {
+                    $inner = ($icon === 'bi-chevron-left')
+                        ? '<i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>' . h($label)
+                        : h($label) . '<i class="bi ' . $icon . ' ms-1" aria-hidden="true"></i>';
+
+                    if (($target < 1) || ($target > $number_of_screens)) {
+                        return '<span class="btn btn-sm btn-text theme-secondary disabled" aria-disabled="true">' . $inner . '</span>';
+                    }
+
+                    return '<a class="btn btn-sm btn-text theme-secondary" href="mass_edit.php?screen=' . $target . '">' . $inner . '</a>';
+                };
+
+                $output_screen_pager = '
+                    <nav class="col-12 d-flex align-items-center justify-content-center gap-3 my-5" aria-label="' . h(lang('Pagination')) . '">
+                        ' . $screen_link($screen - 1, lang('Previous page'), 'bi-chevron-left') . '
+                        <span class="small fg-secondary">' . lang(array('string' => 'Page {var:1} of {var:2}', 'vars' => array($screen, $number_of_screens))) . '</span>
+                        ' . $screen_link($screen + 1, lang('Next page'), 'bi-chevron-right') . '
+                    </nav>';
+            }
+
             $outputs = '
                 <div class="row">
                     <div class="col-12">
-                        <h5>' . lang(array('string'=>'{var:1} Page{suffix:1}','vars'=>$count_result)) . '</h5>
-                    </div>';
+                        <h5>' . lang(array('string'=>'{var:1} Page{suffix:1}','vars'=>$count_result,'suffix'=>(($count_result == 1) ? '' : 's'))) . '</h5>
+                    </div>
+                    ' . $output_screen_pager;
             while ($row = mysqli_fetch_assoc($result)) {
                 //row for page
                 $outputs .= '
@@ -228,7 +263,8 @@ if (!$_POST) {
                     </div>';
             }
 
-            $outputs .= '
+            $outputs .= $output_screen_pager . '
+                    <input type="hidden" name="screen" value="' . $screen . '">
                 </div>';
         }
         //ends of page editing
@@ -299,22 +335,11 @@ if (!$_POST) {
             </div>
         </div>';
 
-    $output_clear_button = '';
+    // While fields are chosen, the toolbar offers to choose again.
+    $toolbar_slots = array();
     if(isset($_SESSION['software']['mass_edit']['tags']) && ($_SESSION['software']['mass_edit']['tags'] ?? '') != ''){
-        $output_clear_button = '
-        <li class="nav-item me-1 mb-1">
-            <a href="?tags=clear" class="btn btn-sm"><i class="bi bi-trash me-3"></i>' . lang('Clear') . '</a>
-        </li>';
+        $toolbar_slots['secondary'] = array('label' => lang('Clear'), 'url' => 'mass_edit.php?tags=clear', 'icon' => 'bi-x-circle');
     }
-
-    $output_button_bar = '
-    <nav class="navbar navbar-expand px-5 py-3 flex-column md:flex-row">
-        <ul class="navbar-nav flex-column md:flex-row">
-            ' . $output_clear_button . '
-        </ul>
-    </nav>';
-
-
 
         print
         pg_page_shell([
@@ -324,53 +349,31 @@ if (!$_POST) {
         'heading'=>lang('Mass Edit'),
         'heading_description' => lang('It is a special page for mass editing of Web Site Contents. Not recommended if you dont know what you are doing.'),
     ]) . '
-        <main class="container" id="content" style="min-height:60vh">
+        <main class="container-fluid" id="content" style="min-height:60vh">
             <div class="row">
                 <div class="col-12">
                     ' . $liveform->output_errors() . '
                     ' . $liveform->get_warnings() . '
                     ' . $liveform->output_notices() . '
-                    <div class="row mb-3  flex-wrap">
-                        <div class="col-12 text-center md:text-start">
-                            
-                            ' . $output_button_bar . '
-                        </div>
-                    </div>
+                    ' . pg_screen_toolbar($toolbar_slots) . '
                     ' . $output_find_replace . '
-                    <div class="card border-0 shadow-none">
-                        <div class="card-body position-relative">
-                        <form name="form" action="' . h($_SERVER['PHP_SELF']) . '" method="post" class="disable_shortcut">
+                        <form name="form" action="' . h($_SERVER['PHP_SELF']) . '" method="post" class="disable_shortcut position-relative">
                             ' . get_token_field() . '
                             ' . $outputs . '
                             <input type="hidden" name="max_input_vars_test" value="true">
                         </form>
-                    </div>
                 </div>
             </div>
         </main>
         <script>
-            var CURRENT_URL = window.location.href;
-            //Remove Parameter from url
-            function removeParam(key, sourceURL) {
-                var rtn = sourceURL.split("?")[0],
-                    param,
-                    params_arr = [],
-                    queryString = (sourceURL.indexOf("?") !== -1) ? sourceURL.split("?")[1] : "";
-                if (queryString !== "") {
-                    params_arr = queryString.split("&");
-                    for (var i = params_arr.length - 1; i >= 0; i -= 1) {
-                        param = params_arr[i].split("=")[0];
-                        if (param === key) {
-                            params_arr.splice(i, 1);
-                        }
-                    }
-                    rtn = rtn + "?" + params_arr.join("&");
+            // The chosen fields went to the session; the address keeps only
+            // the screen, replaced so Back leaves the screen in one step.
+            if (window.history.replaceState && window.URL) {
+                var current_url = new URL(window.location.href);
+                if (current_url.searchParams.has("tags")) {
+                    current_url.searchParams.delete("tags");
+                    history.replaceState(history.state, "", current_url.pathname + current_url.search + current_url.hash);
                 }
-                return rtn;
-            }
-            tags_removed_url = removeParam("tags", CURRENT_URL);
-            if (window.history.replaceState) {
-                history.pushState({}, null, String(tags_removed_url).replace( "?", "" ));
             }
 
         // Only the fields that were changed are posted, so a site with many
@@ -504,6 +507,7 @@ if (!$_POST) {
                         }
                     }
                     if ($audit_before !== null) {
+                        pg_page_bulk_touch($row['page_id'], $user['id']);
                         pg_audit_record('update', 'page', $row['page_id'], $audit_before);
                     }
                 }
@@ -518,7 +522,9 @@ if (!$_POST) {
                     foreach ($count_by_field as $field => $cnt) {
                         $parts[] = $cnt . ' ' . (isset($field_labels[$field]) ? $field_labels[$field] : $field);
                     }
-                    $liveform->add_notice(lang('Find & Replace applied') . ': ' . implode(', ', $parts));
+                    $applied = lang('Find & Replace applied') . ': ' . implode(', ', $parts);
+                    $liveform->add_notice($applied);
+                    log_activity(lang('Mass Edit') . ': ' . $applied, $_SESSION['sessionusername']);
                 }
                 if ($fr_name_skipped > 0) {
                     $liveform->add_notice($fr_name_skipped . ' ' . lang('page name(s) skipped: name already in use.'));
@@ -702,6 +708,7 @@ if (!$_POST) {
         }
 
         if ($audit_before !== null) {
+            pg_page_bulk_touch($page_id, $user['id']);
             pg_audit_record('update', 'page', $page_id, $audit_before);
         }
 
@@ -716,9 +723,12 @@ if (!$_POST) {
     }
 
 
+    // The count lines, noticed one by one and logged as one line.
+    $changed = array();
+
     //if page name changed, notice it.
     if ($count_page_name_changes > 0) {
-        $liveform->add_notice(lang(array('string' => '{var:1} Page(s) name updated.', 'vars' => array($count_page_name_changes))));
+        $changed[] = lang(array('string' => '{var:1} Page(s) name updated.', 'vars' => array($count_page_name_changes)));
     }
     if (!empty($page_name_refused)) {
         $liveform->add_notice(lang('Some page names could not be updated because the name is blank, or a catalog or catalog detail page name holds a forward slash') . ': ' . implode(', ', $page_name_refused));
@@ -733,22 +743,30 @@ if (!$_POST) {
 
     //if page title changed, notice it.
     if($count_page_title_changes > 0){
-        $liveform->add_notice( lang(array('string'=>'{var:1} Page(s) title updated.','vars'=>array($count_page_title_changes) )) );
+        $changed[] = lang(array('string'=>'{var:1} Page(s) title updated.','vars'=>array($count_page_title_changes) ));
     }
 
-    //if page meta description changed, notice it.    
+    //if page meta description changed, notice it.
     if($count_page_meta_description_changes > 0){
-        $liveform->add_notice( lang(array('string'=>'{var:1} Page(s) meta description updated.','vars'=>array($count_page_meta_description_changes) )) );
+        $changed[] = lang(array('string'=>'{var:1} Page(s) meta description updated.','vars'=>array($count_page_meta_description_changes) ));
     }
 
-    //if page search changed, notice it.    
+    //if page search changed, notice it.
     if($count_page_search_changes > 0){
-        $liveform->add_notice( lang(array('string'=>'{var:1} Page(s) search status updated.','vars'=>array($count_page_search_changes) )) );
+        $changed[] = lang(array('string'=>'{var:1} Page(s) search status updated.','vars'=>array($count_page_search_changes) ));
     }
 
-    //if page search keywords changed, notice it.    
+    //if page search keywords changed, notice it.
     if($count_page_search_keywords_changes > 0){
-        $liveform->add_notice( lang(array('string'=>'{var:1} Page(s) search keywords updated.','vars'=>array($count_page_search_keywords_changes) )) );
+        $changed[] = lang(array('string'=>'{var:1} Page(s) search keywords updated.','vars'=>array($count_page_search_keywords_changes) ));
+    }
+
+    foreach ($changed as $line) {
+        $liveform->add_notice($line);
+    }
+
+    if ($changed) {
+        log_activity(lang('Mass Edit') . ': ' . implode(' ', $changed), $_SESSION['sessionusername']);
     }
 
     //if there is no change, output notice for it.
@@ -756,6 +774,7 @@ if (!$_POST) {
         $liveform->add_notice( lang('No change detected.') );
     }
 
-    //redirect user to page.
-    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/mass_edit.php');
+    // Back to the screen of the grid that was saved.
+    $screen = pg_list_page_number($_POST['screen'] ?? 1);
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/mass_edit.php' . (($screen > 1) ? '?screen=' . $screen : ''));
 }

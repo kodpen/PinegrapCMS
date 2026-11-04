@@ -128,7 +128,8 @@ function db_q_campaigns_visitor_report_test_calls($path)
 function db_q_campaigns_visitor_report_test_files()
 {
 	return array(
-		'add_email_campaign.php' => 13,
+		'add_email_campaign.php' => 3,
+		'includes/fn/email_campaign_create.php' => 6,
 		'edit_email_campaign.php' => 7,
 		'send_email_campaign.php' => 8,
 		'email_campaign_job.php' => 5,
@@ -191,6 +192,12 @@ function test_db_q_campaigns_visitor_report_values_fit_placeholders()
 	foreach (array_keys(db_q_campaigns_visitor_report_test_files()) as $path) {
 		foreach (db_q_campaigns_visitor_report_test_calls($path) as $call) {
 			if ($call['call'] !== 'db_q') {
+				continue;
+			}
+
+			// A query built by the recipient rule has its one placeholder
+			// pinned by email_campaign_recipients_test.php.
+			if (preg_match('/pg_email_campaign_(recipient|group_count)_query\(/', $call['sql'])) {
 				continue;
 			}
 
