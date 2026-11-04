@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-27
-description: Decisions list, product part 27 (2026-11-04 midday on): the image editor's Fotoğraf and Vektör rail groups, an Import button, SVG as one layer, a context menu; a contact group filled by rules starts flows and campaign profiles once per contact who joined
+description: Decisions list, product part 27 (2026-11-04 midday on): the image editor's Fotoğraf and Vektör rail groups, Import, SVG as one layer, a context menu; group triggers once per joined contact
 ---
 
 ## Where are the rules and the earlier parts?

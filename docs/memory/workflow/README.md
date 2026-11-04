@@ -55,7 +55,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-24.md: Decisions list, product part 24 (2026-11-01 on): Visitors overview, daily summary, channel rule, Search Console on pages, social likes and follows, image editor's new tools and video
 - decisions-made-product-25.md: Decisions list, product part 25 (2026-11-03 evening on): bookings on the Workspace calendar, reward points of a cancelled order, hand rows of a group filled by rules; the key reset warning
 - decisions-made-product-26.md: Decisions list, product part 26 (2026-11-04 on): the starter dumps stay deletable in the Backup Manager, with a confirmation that names the consequence
-- decisions-made-product-27.md: Decisions list, product part 27 (2026-11-04 midday on): the image editor's Fotoğraf and Vektör rail groups, an Import button, SVG as one layer, a context menu
+- decisions-made-product-27.md: Decisions list, product part 27 (2026-11-04 midday on): the image editor's Fotoğraf and Vektör rail groups, Import, SVG as one layer, a context menu; group triggers once per joined contact
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
@@ -64,7 +64,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
-- decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): the search engines appended to the visitors referring-engine ENUM; the ActivityPub reactions table
+- decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): the search engines appended to the visitors referring-engine ENUM; the ActivityPub reactions table; the joined-a-group campaign-profile action
 - decisions-made-schema-2.md: Decisions list, schema part 2, approved on 2026-10-28: e-mail tables, workflow tables, MCP preamble, secret widths, prompt version, discussion follow; rules in part 1, 2026-10-29 on in part 3
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
