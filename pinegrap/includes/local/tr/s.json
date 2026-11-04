@@ -942,6 +942,7 @@
     "Select an element and click the <span class=\"bi bi-chat\"></span> icon, or press <kbd>N</kbd>.": "Bir elemanı seçip <span class=\"bi bi-chat\"></span> ikonuna tıklayın veya <kbd>N</kbd> tuşuna basın.",
     "Select an element on the canvas to change only that.": "Yalnız onu değiştirmek için tuvalde bir öğe seçin.",
     "Select an element to edit its properties": "Özelliklerini düzenlemek için bir öğe seçin",
+    "Select area": "Alan seç",
     "Select at least one type of item in Scope.": "Kapsam'da en az bir öğe türü seçin.",
     "Select at most 500 at a time.": "Bir seferde en fazla 500 tane seçin.",
     "Select country to see shipping options.": "Kargo seçeneklerini görmek için ülke seçin.",
