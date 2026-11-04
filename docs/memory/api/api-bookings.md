@@ -14,7 +14,7 @@ description: Bookings API (BK8): list, get, free slots, staff-made create, statu
 - Every write leaves the agenda's audit line (`pg_booking_agenda_audit()`). `api_booking_move_event()` (pure) names the event: a request confirmed or a non-hold cancelled calls `pg_booking_changed()`; done and no-show announce nothing. The four `booking.*` events were already in `api_webhook_events()` (BK5).
 
 ## What does a Booking carry?
-- `api_booking_present()` (pure): ids, service and staff names (null when gone), user_id (null without an account), name, e-mail, phone, notes (null when empty), ISO UTC times, status, source, hold_until (only on a hold). Never `manage_token` or `slot_at`.
+- `api_booking_present()` (pure): ids, service and staff names (null when gone), user_id (null without an account), name, e-mail, phone, notes (null when empty), ISO UTC times, status, source, hold_until (only on a hold), order_id, order_number and paid_at of a deposit (null without; `pg_booking_deposit_rows()` reads the number). Never `manage_token` or `slot_at`.
 
 ## Who may delegate it?
 - `bookings:read` / `:write` in `api_scope_groups()`; ceiling in `api_owner_scopes()`: roles 0-2, and a role-3 user with an enabled `booking_staff` row (`pg_booking_agenda_user_scope()`). Every handler narrows rows with `pg_booking_agenda_scope_sql()`: another staff member's booking is 404, their staff id on slots or create is 404 / 422.
