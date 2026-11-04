@@ -38,7 +38,7 @@ function test_modify_selected_value_names_tax_rate()
 	$php = modify_selected_value_names_source();
 
 	pg_assert_contains('<label for="tax_rate_value" class="form-label"><?=h(lang(\'New Tax Rate\'))?></label>', $php);
-	pg_assert_contains("'aria-describedby' => 'tax_rate_value_hint',", $php);
+	pg_assert_contains('aria-describedby="tax_rate_value_hint"', $php);
 	pg_assert_contains('<div class="form-text" id="tax_rate_value_hint">', $php);
 }
 

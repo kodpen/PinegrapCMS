@@ -137,7 +137,7 @@ description: Generated from the module field of the memory files: each includes/
 - `privacy_export`: [[personal-data-export]]
 - `privacy_retention`: [[privacy-log-retention]]
 - `product_customs`: [[carrier-label-customs]], [[product-customs-fields]]
-- `product_list`: [[product-list-paging]]
+- `product_list`: [[product-list-paging]], [[product-modify-dialog]]
 - `product_questions`: [[product-questions]], [[product-questions-output]]
 - `prototype`: [[designer-prototype-viewer]]
 - `prototype_links`: [[designer-prototype-share-links]]
