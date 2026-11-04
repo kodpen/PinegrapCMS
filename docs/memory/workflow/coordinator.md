@@ -7,18 +7,18 @@ description: Coordinator session: one per account, keeps its cloud workers on fr
 - Sessions waited to be told to go on at 20-30% quota use; a coordinator keeps its workers busy.
 
 ## What does it do each turn?
-- Reads the state from GitHub, not its memory: open PRs and drafts, the queue count (Working mode 8); free steps and issues only when a slot is free, by `php tools/free_work.php` (`coordinator-context.md`).
-- Picks work no open PR holds: one plan or area per worker, never two workers on the same files or the same plan (Claim work, step 1); steps of one plan in parallel when the owner assigned them so or when they touch different files.
-- Starts each worker as a cloud session with a short brief: the plan step or task, the memory folder, and "follow CLAUDE.md". The worker claims with its own draft PR and works as every session does, its plan's next steps included (Working mode 2 and 6).
-- Keeps 4 to 10 workers busy, as many as `coordinator-quota.md` sets.
+- Reads the state from GitHub, not memory: open PRs and drafts, the queue count (Working mode 8); free steps and issues only when a slot is free, by `php tools/free_work.php` (`coordinator-context.md`).
+- Picks work no open PR holds: one plan or area per worker, never two workers on the same files or the same plan (Claim work, step 1); steps of one plan in parallel when the owner assigned them so or they touch different files.
+- Starts each worker as a cloud session with a short brief: the plan step or task, the memory folder, "follow CLAUDE.md". The worker claims with its own draft PR and works as every session does, its plan's next steps included (Working mode 2 and 6).
+- Keeps 4 to 10 workers busy (`coordinator-quota.md`), plus 2 to 3 bug hunters outside it while the merge line keeps half waiting (`coordinator-idle-bug-hunt.md`).
 - No free plan step: issues, bug hunt, a new design template (`coordinator-no-plans.md`).
 - Keeps a to-do list of its workers' PRs (`coordinator-todo-list.md`).
 - Chooses the work itself, never asking the owner or the architect: which free step, the order, how many workers, which steps run in parallel. Only a decision question goes to an `architect` issue; the architect brings the answer to the PR (`architect.md`).
-- Writes no product code, opens no PR, merges nothing, does not review: the merging session does.
+- Writes no product code, opens no PR, merges and reviews nothing: the merging session does.
 
 ## What are its limits?
 - It reaches only its own account.
-- `create_session` works on any turn (a check-in, an event, another session's message): it starts workers and hands over without waiting for the owner.
+- `create_session` works on any turn (a check-in, an event, a message): it starts workers and hands over without waiting for the owner.
 - A worker counts once its draft PR is on GitHub.
 
 ## What does a check-in look at?
@@ -35,4 +35,4 @@ description: Coordinator session: one per account, keeps its cloud workers on fr
 ## How is one started?
 - A new desktop session on the account, told: "You are the coordinator: read `CLAUDE.md` and `docs/memory/workflow/coordinator.md`, then start the workers and keep the 30-minute check-in."
 
-Related: docs/memory/workflow/working-mode.md, docs/memory/workflow/merge-train.md, docs/memory/workflow/merge-review.md
+Related: docs/memory/workflow/working-mode.md, docs/memory/workflow/merge-train.md
