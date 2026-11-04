@@ -156,6 +156,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_order_vat_id();            // 11.0.165
 	upgrade_2026_11_0_search_engines();          // 11.0.166
 	upgrade_2026_11_0_ap_reactions();            // 11.0.167
+	upgrade_2026_11_0_return_updated_at();       // 11.0.168
 
 }
 
@@ -5181,5 +5182,24 @@ function upgrade_2026_11_0_ap_reactions() {
 		KEY idx_activity (activity_id(191)),
 		KEY idx_actor (actor_id(191))
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+}
+
+// The last change of a return (2026.11.0, 11.0.168; pg_return_touch_sql() in
+// includes/fn/returns.php). The status stamps do not cover every change: a
+// refused refund resets refunded_at, a return label changes carrier_code
+// without one. GET /returns?modified_since= pages on (updated_at, id). The
+// fill reads the latest status stamp of rows still at 0, so a second run
+// changes nothing.
+function upgrade_2026_11_0_return_updated_at() {
+
+	install_add_column('order_returns', 'updated_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('order_returns', 'idx_updated', "INDEX idx_updated (updated_at, id)");
+
+	db("UPDATE order_returns
+		SET updated_at = GREATEST(requested_at, decided_at, shipped_at, received_at, refunded_at, closed_at)
+		WHERE updated_at = 0");
+
+	install_note('Returns: the time of a return\'s last change is kept, so the external API lists the returns changed since a given moment.');
 
 }
