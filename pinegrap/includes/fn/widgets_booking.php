@@ -394,6 +394,74 @@ function pg_booking_widget_rows($services)
     return $rows;
 }
 
+/**
+ * The visitor's details from the widget's form, cleaned and checked: name
+ * and e-mail are needed, the phone may hold digits, spaces, + ( ) . - only,
+ * the notes keep their line ends. A consent value is checked only when the
+ * form sent one (the page has the box): then it must be true. Each value is
+ * cut to its column.
+ *
+ * @param array $input name, email, phone, notes, consent
+ * @return array values (name, email, phone, notes), errors (field => sentence)
+ */
+function pg_booking_widget_details_clean($input)
+{
+    $input = is_array($input) ? $input : array();
+    $text = function ($key) use ($input) {
+        return (isset($input[$key]) && is_scalar($input[$key])) ? (string) $input[$key] : '';
+    };
+    $cut = function ($value, $width) {
+        return mb_substr($value, 0, $width, 'UTF-8');
+    };
+
+    $name = $cut(trim((string) preg_replace('/\s+/u', ' ', strip_tags($text('name')))), 100);
+    $email = trim($text('email'));
+    $phone = trim((string) preg_replace('/\s+/u', ' ', $text('phone')));
+    $notes = str_replace(array("\r\n", "\r"), "\n", $text('notes'));
+    $notes = $cut(trim((string) preg_replace('/[\x00-\x09\x0B-\x1F\x7F]/u', '', strip_tags($notes))), 1000);
+    $errors = array();
+
+    if ($name === '') {
+        $errors['name'] = lang('Please enter your name.');
+    }
+
+    if (($email === '') || (strlen($email) > 191) || (filter_var($email, FILTER_VALIDATE_EMAIL) === false)) {
+        $errors['email'] = lang('Please enter a valid e-mail address.');
+    }
+
+    if (($phone !== '') && ((strlen($phone) > 40) || (preg_match('/^\+?[0-9 ().\-]+$/', $phone) !== 1) || (preg_match_all('/[0-9]/', $phone) < 5))) {
+        $errors['phone'] = lang('Please enter a valid phone number.');
+    }
+
+    if (array_key_exists('consent', $input) && ($input['consent'] !== true)) {
+        $errors['consent'] = lang('Please agree to how your details are kept.');
+    }
+
+    return array(
+        'values' => array('name' => $name, 'email' => $email, 'phone' => $phone, 'notes' => $notes),
+        'errors' => $errors,
+    );
+}
+
+/**
+ * The words that end a booking: the site's own from Settings › Bookings, else
+ * the widget's for a confirmed booking or a request that waits for staff.
+ *
+ * @param string $status confirmed or requested
+ * @param array  $texts  as pg_booking_texts()
+ * @return string
+ */
+function pg_booking_widget_done_text($status, $texts)
+{
+    if (isset($texts['done']) && ((string) $texts['done'] !== '')) {
+        return (string) $texts['done'];
+    }
+
+    return ($status === 'confirmed')
+        ? lang('Your appointment is booked. We have sent the details to your e-mail address.')
+        : lang('Thank you. We have your request and will confirm it by e-mail.');
+}
+
 /* ---------------------------------------------------------------------------
    Reading
    --------------------------------------------------------------------------- */
