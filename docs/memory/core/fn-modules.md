@@ -56,6 +56,7 @@ description: Generated from the module field of the memory files: each includes/
 - `email_campaign_recipients`: [[email-campaign-recipients-by-purpose]]
 - `email_campaign_schedule`: [[email-campaign-schedule-label]]
 - `email_campaign_send`: [[email-campaign-send]]
+- `encryption_key`: [[settings-security-cards]]
 - `errors`: [[fn-module-errors-mail-backup-consent]]
 - `events`: [[workspace-flows-event-depth]]
 - `experiments`: [[experiment-goals]], [[page-experiments-model]], [[page-experiments-serving]]
