@@ -23,3 +23,6 @@ description: products/product_groups access and price units, the no-separate-var
 - No per-row queries in the list endpoint: it returns up to 250 rows. Image/attribute/group reads go through batch helpers such as `api_product_extras()` and `api_product_group_extras()` (`WHERE id IN (...)`); the presenter reads from the prepared array.
 
 Related: docs/memory/commerce/variant-price-rules.md, docs/memory/commerce/product-tax-rate.md
+
+## What does Edit Product > Duplicate do with a variant set member?
+- `duplicate_product.php` copies through `duplicate_product()`, then, when the source is in a variant set (`pg_pb_variant_group_id()` non-zero), deletes the copy's links to every `display_type = 'select'` group. The attribute options and the browsable group links stay; the set screen adds the copy back. Symptom before (#6524): the set got two members with one combination, the picker could not tell them apart. `duplicate_product()` itself keeps every link (Duplicate Product Group relinks, `product-group-copy.md`).
