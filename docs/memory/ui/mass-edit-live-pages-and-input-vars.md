@@ -23,4 +23,20 @@ those pages in silence (#4350). Now:
 - `max_input_vars_test` is the form's last field; a post without it stops
   with an error before any write, as `add_product_group.php` does.
 
+## How many pages does the edit grid draw?
+
+One screen of 50 (`MASS_EDIT_PAGES_PER_SCREEN`, `?screen=N` read by
+`pg_list_page_number()` and held by `pg_list_page_clamp()`), with the
+columns the grid uses. The form posts `screen` and the save comes back to
+it. Before, all live pages were drawn at once (683 cards, 3 MB of HTML, a
+chips field and two counters each) and the tab froze for minutes.
+
+## Does a Mass Edit save show as a page change?
+
+Yes. A changed page gets `pg_page_bulk_touch()` (`page_timestamp`,
+`page_user`) once, before its audit row, in the grid save and in Find &
+Replace, and each submit writes one site log line ("Mass Edit: …" with the
+count lines). Before, the Pages list's Last Modified column and its default
+sort did not show these edits and the site log had no line.
+
 Tests: `tests/mass_edit_live_pages_test.php`.

@@ -115,3 +115,71 @@ function test_page_bulk_tag_cloud_follows_search_flip()
 	pg_assert_same('', pg_page_bulk_decide(page_bulk_test_page(), array('search' => '1'), 3)['tag_cloud'], 'no flip');
 	pg_assert_same('', pg_page_bulk_decide(page_bulk_test_page(), array('search' => 'x'), 3)['tag_cloud'], 'not a value');
 }
+
+// The Modify Selected summary counts what was decided, not what was posted:
+// a site map turned on for a noindex page or a type outside the site map, or
+// a folder the page is already in, is no change.
+function test_page_bulk_tally_counts_only_what_was_decided()
+{
+	$set = array('folder' => '5', 'sitemap' => '1');
+	$tally = array();
+
+	foreach (array(
+		page_bulk_test_page(array('sitemap' => '0', 'noindex' => '1')),
+		page_bulk_test_page(array('sitemap' => '0', 'page_type' => 'login')),
+	) as $page) {
+		$tally = pg_page_bulk_tally($tally, $page, $set, pg_page_bulk_decide($page, $set, 2));
+	}
+
+	pg_assert_same(0, $tally['pages'], 'nothing was written');
+	pg_assert_same(0, $tally['folder']);
+	pg_assert_same(0, $tally['sitemap_on']);
+	pg_assert_same(1, $tally['sitemap_noindex'], 'the noindex page is named');
+	pg_assert_same(1, $tally['sitemap_type'], 'the login page is named');
+}
+
+function test_page_bulk_tally_counts_each_change_by_direction()
+{
+	$tally = array();
+	$set = array('folder' => '8', 'search' => '0', 'sitemap' => '1', 'style' => '7');
+
+	foreach (array(
+		page_bulk_test_page(array('sitemap' => '0')),
+		page_bulk_test_page(array('page_folder' => '8', 'page_search' => '0', 'is_visual' => '1')),
+	) as $page) {
+		$tally = pg_page_bulk_tally($tally, $page, $set, pg_page_bulk_decide($page, $set, 2));
+	}
+
+	pg_assert_same(1, $tally['pages'], 'the second page is already in folder 8, out of search and in the site map');
+	pg_assert_same(1, $tally['folder']);
+	pg_assert_same(1, $tally['search_off']);
+	pg_assert_same(0, $tally['search_on']);
+	pg_assert_same(1, $tally['sitemap_on']);
+	pg_assert_same(1, $tally['style_desktop']);
+	pg_assert_same(0, $tally['style_mobile']);
+	pg_assert_same(1, $tally['style_skipped']);
+	pg_assert_same(0, $tally['sitemap_noindex'] + $tally['sitemap_type'], 'a page already in the site map is no refusal');
+}
+
+// A move target must be a folder that exists, outside the Recycle Bin and
+// outside the Workspace (the page folder picker leaves both out).
+function test_page_bulk_folder_target()
+{
+	$rows = array(
+		1 => array('folder_id' => 1, 'folder_parent' => 0),
+		2 => array('folder_id' => 2, 'folder_parent' => 1),
+		3 => array('folder_id' => 3, 'folder_parent' => 2),
+		4 => array('folder_id' => 4, 'folder_parent' => 1),
+		5 => array('folder_id' => 5, 'folder_parent' => 4),
+		6 => array('folder_id' => 6, 'folder_parent' => 1),
+	);
+
+	pg_assert_true(pg_page_bulk_folder_ok(6, $rows, 2, 4), 'an ordinary folder');
+	pg_assert_true(pg_page_bulk_folder_ok('6', $rows, 0, 0), 'no Workspace, no bin');
+	pg_assert_false(pg_page_bulk_folder_ok(999999, $rows, 2, 4), 'no such folder');
+	pg_assert_false(pg_page_bulk_folder_ok(0, $rows, 2, 4), 'nothing chosen');
+	pg_assert_false(pg_page_bulk_folder_ok(4, $rows, 2, 4), 'the Recycle Bin');
+	pg_assert_false(pg_page_bulk_folder_ok(5, $rows, 2, 4), 'a folder in the bin');
+	pg_assert_false(pg_page_bulk_folder_ok(2, $rows, 2, 4), 'the Workspace');
+	pg_assert_false(pg_page_bulk_folder_ok(3, $rows, 2, 4), 'a folder below the Workspace');
+}
