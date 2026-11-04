@@ -24,6 +24,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
 - coordinator-context.md: Keeping a coordinator's context small (2026-11-04): what its first turn and each check-in read, tools/free_work.php for free work, what it never reads whole
+- coordinator-idle-bug-hunt.md: While the merge line keeps half of a coordinator's workers waiting, it starts 2 to 3 extra bug-hunt workers outside its worker count; once the line is clear, each is archived when it finishes
 - coordinator-limits.md: Coordinator rules: model and effort, the quota guard before a worker starts, 4 to 10 workers by the 5-hour quota, a new worker for a decided draft PR, no hand-over at depth 7
 - coordinator-no-plans.md: What a coordinator gives its workers when no plan step is free: open issues first, then a module-by-module bug hunt, then a new design template
 - coordinator-quota.md: Coordinator worker count by the 5-hour quota (owner, 2026-11-02): 8 at a window's start, 4 to 10, retuned each hour against 20% a hour, read from the sessions' cost
@@ -57,7 +58,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-26.md: Decisions list, product part 26 (2026-11-04 on): the starter dumps stay deletable in the Backup Manager, with a confirmation that names the consequence
 - decisions-made-product-27.md: Decisions list, product part 27 (2026-11-04 midday on): image editor rail groups, Import, SVG layer, context menu; group-join triggers; no Delete for a store credit card on the gift card screen
 - decisions-made-product-28.md: Decisions list, product part 28 (2026-11-04 afternoon on): a changed expense updates its active repeat; a duplicated campaign profile starts disabled; the new logo; the image editor's selection bar
-- decisions-made-product-29.md: Decisions list, product part 29 (2026-11-04 evening on): the external API does not delete a store credit card
+- decisions-made-product-29.md: Decisions list, product part 29 (2026-11-04 evening on): the external API does not delete a store credit card; a gift card line takes at most 100 units
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14

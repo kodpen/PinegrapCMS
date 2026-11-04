@@ -7170,9 +7170,17 @@
         return (l.area || []).map(function (r) { return r.map(function (p) { return apply(m, p[0] * l.w, p[1] * l.h); }); });
     }
 
+    // What lies in frame { x, y, w, h } outside the selection's rings: the
+    // part Keep only erases.
+    function areaRest(rings, frame) {
+        var all = [[frame.x, frame.y], [frame.x + frame.w, frame.y], [frame.x + frame.w, frame.y + frame.h], [frame.x, frame.y + frame.h]];
+
+        return (rings && rings.length) ? clipRings(nestRings([all]), rings, 'difference') : nestRings([all]);
+    }
+
     var SELECTION = {
         AREA_MAX_OPS: AREA_MAX_OPS, areaDragged: areaDragged, areaRect: areaRect, areaEllipse: areaEllipse, areaLasso: areaLasso, wandMask: wandMask,
-        maskRings: maskRings, mapRings: mapRings, selectionRings: selectionRings, areaLayer: areaLayer, areaPoints: areaPoints
+        maskRings: maskRings, mapRings: mapRings, selectionRings: selectionRings, areaLayer: areaLayer, areaPoints: areaPoints, areaRest: areaRest
     };
 
     var api = {

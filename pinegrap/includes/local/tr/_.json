@@ -1124,6 +1124,7 @@
     "{var:1} must be a list.": "{var:1} bir liste olmalıdır.",
     "{var:1} must be a number greater than zero.": "{var:1} sıfırdan büyük bir sayı olmalıdır.",
     "{var:1} must be a number.": "{var:1} bir sayı olmalıdır.",
+    "{var:1} must be a single value, not a list or an object.": "{var:1} liste ya da nesne değil, tek bir değer olmalıdır.",
     "{var:1} must be a time of day as HH:MM.": "{var:1}, SS:DD biçiminde bir saat olmalıdır.",
     "{var:1} must be a whole number from 0 to 999.": "{var:1} 0 ile 999 arasında bir tam sayı olmalıdır.",
     "{var:1} must be a whole number from {var:2} to {var:3}.": "{var:1}, {var:2} ile {var:3} arasında bir tam sayı olmalıdır.",

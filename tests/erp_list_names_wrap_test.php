@@ -38,7 +38,7 @@ function erp_list_names_wrap_pins()
 			'<td style="max-width:220px" class="text-wrap text-break align-middle">\' . h($till[\'iban\']) . \'</td>',
 		),
 		'erp_cheques.php' => array(
-			'<td style="max-width:240px" class="text-break">\' . h((string) $row[\'account_title\']) . (((string) $row[\'drawer\'] !== \'\') ? \'<div class="small fg-secondary text-break">',
+			'<td style="max-width:240px" class="text-break pg-cell-wrap">\' . h((string) $row[\'account_title\']) . (((string) $row[\'drawer\'] !== \'\') ? \'<div class="small fg-secondary text-break">',
 		),
 		'erp_dashboard.php' => array(
 			'<td class="text-break" style="max-width:200px">\' . h($till[\'name\']) . \'</td>',
