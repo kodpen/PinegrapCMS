@@ -15,7 +15,7 @@ description: Steps V5-V11 of plans/visitors-overview.md, the sections: traffic, 
 - V7 (M) Sources section. After V1, V2 and V4. Done (#6476).
   - `includes/visitors/sources.php`: the channel split as one stacked bar and a list with shares and changes; referring hosts, search engines with their terms, UTM source, medium and campaign, tracking and affiliate codes as top lists from `pg_visitor_breakdown()`, each with the previous period's figure; a line saying which days came from the summary.
 
-- V8 (M) Content section. After V1 and V2. In progress.
+- V8 (M) Content section. After V1 and V2. Done (#6486).
   - `includes/visitors/content.php`: most viewed pages, products, groups and forms (`visitor_content_hourly`, labels and links as widget 5), landing pages with their visits, forms and orders (`landing_page_name` breakdown, the home page folded); each with the previous period's figure.
 
 - V9 (M) Google search section. After V1. Done (#6472).
