@@ -194,6 +194,6 @@ function test_site_search_report_screen()
 	pg_assert_contains("'#site_search', true, 301);", $screen, 'the old screen sends its links to the overview section');
 
 	$menu = site_search_stats_test_source('includes/fn/output.php');
-	pg_assert_contains("'site_search' => array('visitor_search.php', 'bi-search', pg_site_search_stats_ready())", $menu, 'the ready check of the menu anchor');
+	pg_assert_contains("'site_search' => pg_site_search_stats_ready(),", $menu, 'the ready check of the menu anchor');
 	pg_assert_contains("case 'visitor_search.php':", $menu);
 }
