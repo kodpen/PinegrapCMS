@@ -241,6 +241,23 @@ function pg_page_bulk_folder_ok($folder_id, $rows, $workspace, $bin)
 }
 
 /**
+ * Marks a page changed now by a user: the Last Modified column of the Pages
+ * list and its default sort read page_timestamp and page_user. For the
+ * screens that write a page's columns one by one (mass_edit.php), called
+ * once per changed page.
+ *
+ * @param int $page_id
+ * @param int $user_id
+ * @return bool false when the write failed
+ */
+function pg_page_bulk_touch($page_id, $user_id)
+{
+    return db_q(
+        "UPDATE page SET page_timestamp = UNIX_TIMESTAMP(), page_user = ? WHERE page_id = ?",
+        array((int) $user_id, (int) $page_id)) !== false;
+}
+
+/**
  * The page row pg_page_bulk_decide() reads, with the search keywords the
  * tag cloud update needs. False when there is no such page.
  *

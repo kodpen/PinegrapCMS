@@ -223,7 +223,9 @@ if (!$_POST) {
                         output_error(lang('Pages cannot be moved to the folder that you selected.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
                     }
 
-                    $move_to_folder_name = (string) db_value("SELECT folder_name FROM folder WHERE folder_id = '" . $move_to_folder . "'");
+                    $result = db_q("SELECT folder_name FROM folder WHERE folder_id = ?", array($move_to_folder)) or output_error('Query failed.');
+                    $row = mysqli_fetch_assoc($result);
+                    $move_to_folder_name = $row ? (string) $row['folder_name'] : '';
                 }
 
                 // While a theme other than the activated one is previewed, the styles are set for the preview.
@@ -297,7 +299,10 @@ if (!$_POST) {
                         return $previewing ? '[' . lang('Activated') . ']' : lang('Default') . ' (' . lang('inherit') . ')';
                     }
 
-                    return (string) db_value("SELECT style_name FROM style WHERE style_id = '" . (int) $style_id . "'");
+                    $result = db_q("SELECT style_name FROM style WHERE style_id = ?", array((int) $style_id)) or output_error('Query failed.');
+                    $row = mysqli_fetch_assoc($result);
+
+                    return $row ? (string) $row['style_name'] : '';
                 };
 
                 if ($tally['style_desktop'] > 0) {
@@ -368,7 +373,8 @@ if (!$_POST) {
                     $message = lang('No change detected.');
                 }
 
-                $liveform->add_notice(h(trim($message . ' ' . implode(' ', $left_alone))));
+                $message = trim($message . ' ' . implode(' ', $left_alone));
+                $liveform->add_notice(h($message));
 
                 break;
 

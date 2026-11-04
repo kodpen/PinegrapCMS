@@ -23,6 +23,8 @@ validate_area_access($user, 'designer');
 
 // The page name rules of the page screens.
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/page_form.php');
+// pg_page_bulk_touch(): a changed page gets its Last Modified time and user.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_bulk.php');
 
 $liveform = new liveform('mass_edit');
 
@@ -504,6 +506,7 @@ if (!$_POST) {
                         }
                     }
                     if ($audit_before !== null) {
+                        pg_page_bulk_touch($row['page_id'], $user['id']);
                         pg_audit_record('update', 'page', $row['page_id'], $audit_before);
                     }
                 }
@@ -518,7 +521,9 @@ if (!$_POST) {
                     foreach ($count_by_field as $field => $cnt) {
                         $parts[] = $cnt . ' ' . (isset($field_labels[$field]) ? $field_labels[$field] : $field);
                     }
-                    $liveform->add_notice(lang('Find & Replace applied') . ': ' . implode(', ', $parts));
+                    $applied = lang('Find & Replace applied') . ': ' . implode(', ', $parts);
+                    $liveform->add_notice($applied);
+                    log_activity(lang('Mass Edit') . ': ' . $applied, $_SESSION['sessionusername']);
                 }
                 if ($fr_name_skipped > 0) {
                     $liveform->add_notice($fr_name_skipped . ' ' . lang('page name(s) skipped: name already in use.'));
@@ -702,6 +707,7 @@ if (!$_POST) {
         }
 
         if ($audit_before !== null) {
+            pg_page_bulk_touch($page_id, $user['id']);
             pg_audit_record('update', 'page', $page_id, $audit_before);
         }
 
@@ -716,9 +722,12 @@ if (!$_POST) {
     }
 
 
+    // The count lines, noticed one by one and logged as one line.
+    $changed = array();
+
     //if page name changed, notice it.
     if ($count_page_name_changes > 0) {
-        $liveform->add_notice(lang(array('string' => '{var:1} Page(s) name updated.', 'vars' => array($count_page_name_changes))));
+        $changed[] = lang(array('string' => '{var:1} Page(s) name updated.', 'vars' => array($count_page_name_changes)));
     }
     if (!empty($page_name_refused)) {
         $liveform->add_notice(lang('Some page names could not be updated because the name is blank, or a catalog or catalog detail page name holds a forward slash') . ': ' . implode(', ', $page_name_refused));
@@ -733,22 +742,30 @@ if (!$_POST) {
 
     //if page title changed, notice it.
     if($count_page_title_changes > 0){
-        $liveform->add_notice( lang(array('string'=>'{var:1} Page(s) title updated.','vars'=>array($count_page_title_changes) )) );
+        $changed[] = lang(array('string'=>'{var:1} Page(s) title updated.','vars'=>array($count_page_title_changes) ));
     }
 
-    //if page meta description changed, notice it.    
+    //if page meta description changed, notice it.
     if($count_page_meta_description_changes > 0){
-        $liveform->add_notice( lang(array('string'=>'{var:1} Page(s) meta description updated.','vars'=>array($count_page_meta_description_changes) )) );
+        $changed[] = lang(array('string'=>'{var:1} Page(s) meta description updated.','vars'=>array($count_page_meta_description_changes) ));
     }
 
-    //if page search changed, notice it.    
+    //if page search changed, notice it.
     if($count_page_search_changes > 0){
-        $liveform->add_notice( lang(array('string'=>'{var:1} Page(s) search status updated.','vars'=>array($count_page_search_changes) )) );
+        $changed[] = lang(array('string'=>'{var:1} Page(s) search status updated.','vars'=>array($count_page_search_changes) ));
     }
 
-    //if page search keywords changed, notice it.    
+    //if page search keywords changed, notice it.
     if($count_page_search_keywords_changes > 0){
-        $liveform->add_notice( lang(array('string'=>'{var:1} Page(s) search keywords updated.','vars'=>array($count_page_search_keywords_changes) )) );
+        $changed[] = lang(array('string'=>'{var:1} Page(s) search keywords updated.','vars'=>array($count_page_search_keywords_changes) ));
+    }
+
+    foreach ($changed as $line) {
+        $liveform->add_notice($line);
+    }
+
+    if ($changed) {
+        log_activity(lang('Mass Edit') . ': ' . implode(' ', $changed), $_SESSION['sessionusername']);
     }
 
     //if there is no change, output notice for it.
