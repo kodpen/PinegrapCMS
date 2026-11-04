@@ -206,6 +206,13 @@ function test_email_campaign_profile_text_problems()
 	}
 }
 
+function test_email_campaign_profile_values_problem_names_the_column()
+{
+	$problem = pg_email_campaign_profile_values_problem(array('name' => 'Welcome', 'enabled' => 'yes'), false);
+
+	pg_assert_same(lang(array('string' => 'The value of "{var:1}" is not valid.', 'vars' => 'enabled')), $problem, 'the column is quoted, not read as a word of the sentence');
+}
+
 function test_email_campaign_profile_form_checks_text_lengths()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/email_campaign_profile_form.php');

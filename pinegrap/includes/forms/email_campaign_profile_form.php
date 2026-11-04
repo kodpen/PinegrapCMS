@@ -359,14 +359,14 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
     }
 
     if (!in_array($value('enabled'), array('0', '1'), true)) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'enabled'));
+        return lang(array('string' => 'The value of "{var:1}" is not valid.', 'vars' => 'enabled'));
     }
 
     $action = $value('action');
     $actions = array_merge(array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent'), pg_email_campaign_profile_commerce_actions(), pg_email_campaign_profile_booking_actions(), pg_email_campaign_profile_group_actions(), pg_email_campaign_profile_credit_actions());
 
     if (!in_array($action, $actions, true)) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'action'));
+        return lang(array('string' => 'The value of "{var:1}" is not valid.', 'vars' => 'action'));
     }
 
     if (!$commerce && (in_array($action, pg_email_campaign_profile_commerce_actions(), true) || in_array($action, pg_email_campaign_profile_credit_actions(), true))) {
@@ -377,11 +377,11 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
         (pg_email_campaign_profile_action_item_field($action) !== '')
         && !preg_match('/^[1-9]\d{0,9}$/', $value('action_item_id'))
     ) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'action_item_id'));
+        return lang(array('string' => 'The value of "{var:1}" is not valid.', 'vars' => 'action_item_id'));
     }
 
     if (!in_array($value('format'), array('plain_text', 'html'), true)) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'format'));
+        return lang(array('string' => 'The value of "{var:1}" is not valid.', 'vars' => 'format'));
     }
 
     if (($value('format') === 'html') && !preg_match('/^[1-9]\d{0,9}$/', $value('page_id'))) {
@@ -389,17 +389,17 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
     }
 
     if (!validate_email_address($value('from_email_address'))) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'from_email_address'));
+        return lang(array('string' => 'The value of "{var:1}" is not valid.', 'vars' => 'from_email_address'));
     }
 
     foreach (array('reply_email_address', 'bcc_email_address') as $column) {
         if (($value($column) !== '') && !validate_email_address($value($column))) {
-            return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => $column));
+            return lang(array('string' => 'The value of "{var:1}" is not valid.', 'vars' => $column));
         }
     }
 
     if (($value('schedule_time') !== '') && !validate_time($value('schedule_time'))) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'schedule_time'));
+        return lang(array('string' => 'The value of "{var:1}" is not valid.', 'vars' => 'schedule_time'));
     }
 
     if (!pg_email_campaign_profile_schedule_length_valid($value('schedule_length'))) {
@@ -407,18 +407,18 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
     }
 
     if (!in_array($value('schedule_unit'), array('days', 'hours'), true)) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'schedule_unit'));
+        return lang(array('string' => 'The value of "{var:1}" is not valid.', 'vars' => 'schedule_unit'));
     }
 
     // Only a calendar event reservation takes its period and base from the
     // row (pg_email_campaign_profile_action_values()).
     if ($action === 'calendar_event_reserved') {
         if (!in_array($value('schedule_period'), array('before', 'after'), true)) {
-            return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'schedule_period'));
+            return lang(array('string' => 'The value of "{var:1}" is not valid.', 'vars' => 'schedule_period'));
         }
 
         if (!in_array($value('schedule_base'), array('action', 'calendar_event_start_time'), true)) {
-            return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'schedule_base'));
+            return lang(array('string' => 'The value of "{var:1}" is not valid.', 'vars' => 'schedule_base'));
         }
 
         if (($value('schedule_period') === 'before') && ($value('schedule_base') === 'action')) {
@@ -427,7 +427,7 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
     }
 
     if (!in_array($value('purpose'), array('commercial', 'transactional'), true)) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'purpose'));
+        return lang(array('string' => 'The value of "{var:1}" is not valid.', 'vars' => 'purpose'));
     }
 
     return '';

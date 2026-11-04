@@ -4992,6 +4992,7 @@
     "The value becomes an element inside the words, styled on its own; the words stay one translatable sentence.": "Değer, sözcüklerin içinde kendi biçimi olan bir öğe olur; sözcükler tek bir çevrilebilir cümle olarak kalır.",
     "The value could not be read.": "Değer okunamadı.",
     "The value has nothing at {var:1}.": "Değerde {var:1} konumunda bir şey yok.",
+    "The value of \"{var:1}\" is not valid.": "\"{var:1}\" değeri geçerli değil.",
     "The value of the record the page opens (a product, an event, a form record); empty when the page opens none.": "Sayfanın açtığı kaydın değeri (bir ürün, bir etkinlik, bir form kaydı); sayfa kayıt açmıyorsa boş kalır.",
     "The value the box reads is not a list.": "Kutunun okuduğu değer bir liste değil.",
     "The value without its sign": "Değerin işaretsiz hâli",
