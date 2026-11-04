@@ -36,6 +36,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub_outbox.php');
 
 // The largest delivery the inbox reads; a Mastodon activity is a few KB.
 if (!defined('PG_AP_INBOX_MAX_BODY')) {
@@ -410,31 +411,6 @@ function pg_ap_forget_actor($actor_id)
     if (function_exists('pg_ap_reply_actor_deleted')) {
         pg_ap_reply_actor_deleted($actor_id);
     }
-}
-
-/**
- * Queues an activity for one inbox in ap_outbox; the general job delivers
- * it. An activity already waiting for the same inbox is not queued twice.
- *
- * @param array  $activity
- * @param string $inbox
- * @return bool
- */
-function pg_ap_queue($activity, $inbox)
-{
-    $id = pg_ap_id($activity);
-    $waiting = db_q("SELECT id FROM ap_outbox WHERE activity_id = ? AND inbox = ? AND state = 'queued' LIMIT 1", array($id, $inbox));
-
-    if ($waiting && mysqli_num_rows($waiting)) {
-        return true;
-    }
-
-    $now = time();
-
-    return (bool) db_q(
-        "INSERT INTO ap_outbox (activity_id, inbox, body, attempts, next_at, state, created_at) VALUES (?, ?, ?, 0, ?, 'queued', ?)",
-        array($id, $inbox, json_encode($activity, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), $now, $now)
-    );
 }
 
 /**

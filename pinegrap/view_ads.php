@@ -17,6 +17,24 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/region_list.php');
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php), answered in JSON before the screen is drawn and
+// checked as the ad's screen checks it; a user role changes only the ads of
+// its own ad regions and moves them only into those.
+if (pg_list_edit_requested()) {
+    $edit_regions = (defined('USER_LOGGED_IN') && USER_LOGGED_IN) ? pg_ad_list_regions(validate_user()) : array();
+    $edit = pg_list_edit_request(pg_ad_edit_columns($edit_regions), function ($user) use ($edit_regions) {
+        return ($user['role'] < 3) || (count($edit_regions) > 0);
+    });
+
+    $saved = pg_ad_quick_update($edit['id'], $edit['field'], $edit['value'], $edit['user'], $edit_regions);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
 $user = validate_user();
 
 // if user has a user role and if they do not have access to edit any ad regions, output error
@@ -38,9 +56,6 @@ if (isset($_REQUEST['ad_region_id']) && is_string($_REQUEST['ad_region_id'])) {
 if (isset($_SESSION['software']['ads']['view_ads']['ad_region_id']) == false) {
     $_SESSION['software']['ads']['view_ads']['ad_region_id'] = '[All]';
 }
-
-// The page asked for, a whole number of 1 or more (pg_list_page_number()).
-$screen = pg_list_page_number($_REQUEST['screen'] ?? '');
 
 $sql_join = '';
 $where = '';
@@ -94,186 +109,49 @@ foreach ($ad_regions as $ad_region) {
     $output_ad_region_options .= '<option value="' . $ad_region['id'] . '"' . $selected . '>' . h($ad_region['name']) . ' (' . pg_format_number($number_of_ads, 0) . ')</option>';
 }
 
-// if the user clicked on the clear button, then clear the search
-if (isset($_GET['clear']) == true) {
-    $_SESSION['software']['ads']['view_ads']['query'] = '';
+// The sort codes are the list's column keys, kept in the session by
+// pg_list_state() and by a heading click (list_table_sort).
+$quick_edit = pg_ad_edit_columns(pg_ad_list_regions($user));
+$columns = pg_ad_list_columns($quick_edit);
+$sort_columns = array();
+
+foreach ($columns as $key => $spec) {
+    $sort_columns[$key] = $spec['heading'];
 }
-
-
-// The columns this list sorts by, in the order the table shows them.
-// pg_list_state() keeps the choice in the session as a code, so it survives
-// a language change, and falls back to the default for anything else.
-$sort_columns = array(
-    'name'          => lang('Name'),
-    'ad_region'     => lang('Ad Region'),
-    'display_type'  => lang('Display Type'),
-    'created'       => lang('Created'),
-    'last_modified' => lang('Last Modified'),
-);
 
 $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
 $list_state = pg_list_state('view_ads', $sort_columns, $sort_default);
 $sort_levels = $list_state['sorts'];
 
-// What each sort code orders by. Only codes pg_list_state() let through
-// reach pg_list_order_by(), and it writes nothing but these.
-$order_by = pg_list_order_by($sort_levels, array(
-    'name'          => 'ads.name',
-    'ad_region'     => 'ad_regions.name',
-    'display_type'  => 'ad_regions.display_type',
-    'created'       => 'ads.created_timestamp',
-    'last_modified' => 'ads.last_modified_timestamp',
-));
+$conditions = array();
 
-$all_ads = 0;
-
-$sql_join = '';
-$where = '';
-
-// if user is a user role, then prepare sql join and where
+// A user role sees the ads of its own ad regions.
 if ($user['role'] == 3) {
-    $sql_join = 
-        'LEFT JOIN ad_regions ON ads.ad_region_id = ad_regions.id
-        LEFT JOIN users_ad_regions_xref ON ad_regions.id = users_ad_regions_xref.ad_region_id';
-    
-    $where = "WHERE users_ad_regions_xref.user_id = '" . escape($user['id']) . "'";
+    $conditions[] = "ads.ad_region_id IN (SELECT ad_region_id FROM users_ad_regions_xref WHERE user_id = '" . (int) $user['id'] . "')";
 }
 
-// get the total number of ads
-$query = 
-    "SELECT
-        COUNT(*)
-    FROM ads
-    $sql_join
-    $where";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-$row = mysqli_fetch_row($result);
-$all_ads = $row[0];
+$all_ads = (int) db_value("SELECT COUNT(*) FROM ads" . ($conditions ? " WHERE " . implode(' AND ', $conditions) : ''));
 
-$sql_join = '';
-$where = "";
-
-// if user is a user role, then prepare sql join and where
-if ($user['role'] == 3) {
-    $sql_join = 'LEFT JOIN users_ad_regions_xref ON ad_regions.id = users_ad_regions_xref.ad_region_id';
-    
-    // if this is the first where clause, then add where first
-    if ($where == '') {
-        $where .= "WHERE ";
-        
-    // else this is not the first where clause, so add and
-    } else {
-        $where .= "AND ";
-    }
-    
-    $where .= "users_ad_regions_xref.user_id = '" . escape($user['id']) . "'";
-}
-
-// if user has not choosen [All] filter for ad region pick list, then prepare where clause
 if (($_SESSION['software']['ads']['view_ads']['ad_region_id'] ?? '') != '[All]') {
-    // if this is the first where clause, then add where first
-    if ($where == '') {
-        $where .= "WHERE ";
-        
-    // else this is not the first where clause, so add and
-    } else {
-        $where .= "AND ";
-    }
-    
-    $where .= "(ads.ad_region_id = '" . escape(($_SESSION['software']['ads']['view_ads']['ad_region_id'] ?? '')) . "') ";
+    $conditions[] = "ads.ad_region_id = '" . e((string) $_SESSION['software']['ads']['view_ads']['ad_region_id']) . "'";
 }
 
-// get all ads
-$query =
-    "SELECT
-        ads.id,
-        ads.name as ad_name,
-        ad_regions.name as ad_region_name,
-        ad_regions.display_type as ad_region_display_type,
-        ads.label as label,
-        ads.sort_order as sort_order,
-        created_user.user_username as created_username,
-        ads.created_timestamp,
-        last_modified_user.user_username as last_modified_username,
-        ads.last_modified_timestamp
-    FROM ads
-    LEFT JOIN user AS created_user ON ads.created_user_id = created_user.user_id
-    LEFT JOIN user AS last_modified_user ON ads.last_modified_user_id = last_modified_user.user_id
-    LEFT JOIN ad_regions ON ads.ad_region_id = ad_regions.id
-    $sql_join
-    $where
-    ORDER BY $order_by";
+// Every ad of the region picked is printed: the list table driver sorts and
+// searches them in the browser (browser mode).
+$list_rows = array();
 
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-$ads = array();
-
-while ($row = mysqli_fetch_assoc($result)) {
-    $ads[] = $row;
+foreach ((db_items(pg_ad_list_select() . ($conditions ? " WHERE " . implode(' AND ', $conditions) : '') . " ORDER BY ads.name") ?: array()) as $ad) {
+    $list_rows[] = array('id' => $ad['id'], 'cells' => pg_ad_list_cells($ad, $quick_edit));
 }
 
-$output_rows = '';
-
-// if there is at least one result to display
-if ($ads) {
-   
-    foreach ($ads as $ad) {
-
-
-
-
-        $created_username = '';
-        
-        if (isset($ad['created_username']) && ($ad['created_username'] != '')) {
-            $created_username = ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($ad['created_username']) ) ) );
-        }
-        
-        $last_modified_username = '';
-        
-        if (isset($ad['last_modified_username']) && ($ad['last_modified_username'] != '')) {
-            $last_modified_username = ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($ad['last_modified_username']) ) ) );
-        }
-
-        // an ad whose region is gone (or has no valid type) shows no type
-        if ($ad['ad_region_display_type'] == 'static') {
-            $output_ad_region_display_type = lang('Static');
-        } elseif ($ad['ad_region_display_type'] == 'dynamic') {
-            $output_ad_region_display_type = lang('Dynamic');
-        } else {
-            $output_ad_region_display_type = '';
-        }
-        
-        $output_label = '';
-        $output_sort_order = '';
-        
-        // if the ad region display type is dynamic, then prepare to output label and sort order
-        if ($ad['ad_region_display_type'] == 'dynamic') {
-            $output_label = h($ad['label']);
-            
-            // if the sort order is not equal to 0, then set value
-            if ($ad['sort_order'] != 0) {
-                $output_sort_order = pg_format_number($ad['sort_order'], 0);
-            }
-        }
-        
-        $output_link_url = 'edit_ad.php?id=' . $ad['id'];
-
-        $output_rows .=
-            '<tr>
-                <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                </td>
-                <td class="chart_label">' . h($ad['ad_name']) . '</td>
-                <td class="chart_label">' . h($ad['ad_region_name']) . '</td>
-                <td class="align-middle text-center">' . $output_ad_region_display_type . '</td>
-                <td class="align-middle text-center">' . $output_label . '</td>
-                <td class="align-middle text-center">' . $output_sort_order . '</td>
-                <td class="align-middle">' . get_relative_time(array('timestamp' => $ad['created_timestamp'])) . $created_username . '</td>
-                <td class="align-middle">' . get_relative_time(array('timestamp' => $ad['last_modified_timestamp'])) . $last_modified_username . '</td>
-            </tr>';
-    }
-}
+$list = pg_list_table_printed(array(
+    'list' => 'view_ads',
+    'columns' => $columns,
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+    'edit' => array('url' => 'view_ads.php', 'columns' => $quick_edit),
+));
 
 print
     pg_page_shell([
@@ -293,6 +171,7 @@ print
                 ' . pg_screen_toolbar(array(
                     'primary' => array('label' => lang('Create'), 'url' => 'add_ad.php', 'icon' => 'bi-plus-circle'),
                     'search'  => array(
+                        pg_list_table_search_box('view_ads'),
                         pg_list_sort_menu('view_ads.php', $sort_columns, $sort_levels, $sort_default),
                         // The ad region filter: its options carry counts, so the
                         // form is drawn here rather than by pg_filter_select().
@@ -305,29 +184,12 @@ print
                         </form>',
                     ),
                 )) . '
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative">
-                        <table class="chart table-hover table" style="width:100%;display:none">
-                            <thead>
-                                <tr>
-                                    <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                    <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                    <th>' . get_column_heading(lang('Ad Region'), $sort_levels, '', '', 'ad_region') . '</th>
-                                    <th class="text-center">' . get_column_heading(lang('Display Type'), $sort_levels, '', '', 'display_type') . '</th>
-                                    <th class="text-center">' . lang('Label') . '</th>
-                                    <th class="text-center">' . lang('Sort Order') . '</th>
-                                    <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>' . $output_rows . '</tbody>
-                        </table>
-                    </div>
-                </div>
+                ' . pg_list_table_html($list['source'], $list['page'], lang('All My Ads')) . '
             </div>
         </div>
-    
-</main>' .
+</main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
+' .
     output_footer();
 
 $liveform->remove_form();

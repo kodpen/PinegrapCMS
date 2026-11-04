@@ -21,7 +21,7 @@ function last_modified_by_files()
 {
 	return array(
 		'view_countries.php' => "pg_list_when(\$timestamp, \$username)",
-		'view_fields.php' => "pg_list_when(\$timestamp, \$username)",
+		'includes/fn/field_list.php' => "pg_list_table_when_cell(\$row['timestamp'], (string) (\$row['username'] ?? ''))",
 	);
 }
 
