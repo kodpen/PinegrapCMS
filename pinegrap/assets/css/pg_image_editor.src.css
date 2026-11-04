@@ -1471,6 +1471,22 @@
   color: var(--pgie-ink);
 }
 
+.pgie-arow {
+  display: flex;
+  gap: 8px;
+}
+
+.pgie .pgie-arow .pgie-btn {
+  flex: 1 1 0;
+  justify-content: center;
+}
+
+.pgie .pgie-arow .pgie-btn:disabled,
+.pgie .pgie-abtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .pgie .pgie-abtn {
   width: 100%;
   margin-top: 12px;

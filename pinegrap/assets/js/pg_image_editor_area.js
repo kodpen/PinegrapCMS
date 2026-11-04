@@ -440,11 +440,11 @@
             body.appendChild(el('p', { class: 'pgie-note pgie-warn', text: t('areaLimit') }));
         }
 
-        var invert = button('pgie-ibtn', t('areaInvert'), null, function () { self.areaInvert(); }, true);
-        var clear = button('pgie-ibtn', t('areaClear'), null, function () { self.areaClear(); }, true);
+        var invert = button('pgie-btn', t('areaInvert'), null, function () { self.areaInvert(); }, true);
+        var clear = button('pgie-btn', t('areaClear'), null, function () { self.areaClear(); }, true);
 
         clear.disabled = !sel;
-        body.appendChild(el('div', { class: 'pgie-btnrow' }, [invert, clear]));
+        body.appendChild(el('div', { class: 'pgie-arow' }, [invert, clear]));
 
         var redact = button('pgie-btn pgie-abtn', t('areaRedact'), null, function () { self.areaRedact(); }, true);
 
