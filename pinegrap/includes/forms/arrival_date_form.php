@@ -210,11 +210,11 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null, $status_rows = 
                                     </div>
                                 </div>
                             </div>
-                            <div class="card mb-7" id="shipping_cutoff_row"' . $shipping_cutoff_row_style . '>
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold" id="shipping_cutoff_heading_row">
+                            <div class="card mb-7" id="shipping_cutoff_heading_row"' . $shipping_cutoff_row_style . '>
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Shipping Cut-offs') . '
                                 </h2>
-                                <div class="card-body pt-0">
+                                <div class="card-body pt-0" id="shipping_cutoff_row"' . $shipping_cutoff_row_style . '>
                                     <div class="table-responsive">
                                         <table id="shipping_cutoff_table" style="display: none;" class="chart_no_hover table">
                                             <thead>
