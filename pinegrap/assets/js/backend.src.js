@@ -424,7 +424,18 @@ $(document).ready(function () {
             }
         };
 
-        fetch(url, { method: 'POST', body: new FormData(form), credentials: 'same-origin' }).then(function (response) {
+        // A refused export (no complete order selected, a wrong tax rate)
+        // answers with a redirect to the list, whose liveform message says
+        // why. Followed here, that page would be drawn unseen and use up the
+        // message, so the redirect is not followed: the list reloads and
+        // prints it.
+        fetch(url, { method: 'POST', body: new FormData(form), credentials: 'same-origin', redirect: 'manual' }).then(function (response) {
+            if (response.type === 'opaqueredirect') {
+                $overlay.remove();
+                $('body').css('overflow', '');
+                window.location.reload();
+                return;
+            }
             var type = response.headers.get('Content-Type') || '';
             if (!response.ok || type.indexOf('application/zip') === -1) {
                 fail();
@@ -512,6 +523,12 @@ $(document).ready(function () {
                 // The Paraşüt export answers with a zip; it is fetched and
                 // saved, then the page reloads to show the marks and notice.
                 if (value == 'Export Orders For Parasut') {
+                    // The dialog's fields go out as FormData, never through a
+                    // form submit, so the browser checks them only here.
+                    var taxRate = document.getElementById('tax_rate_for_parasut');
+                    if (taxRate && !taxRate.reportValidity()) {
+                        return false;
+                    }
                     pgUI.dialog.hide('#xlsl_setup_modal');
                     pgParasutOrderExport(document.form, el);
                     return true;
