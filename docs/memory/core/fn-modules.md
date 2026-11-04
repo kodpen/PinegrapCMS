@@ -173,7 +173,7 @@ description: Generated from the module field of the memory files: each includes/
 - `site_search_stats`: [[site-search-rollup]]
 - `site_search_tuning`: [[search-synonyms-promoted]]
 - `site_time_sql`: [[visitor-report-site-time]]
-- `sms_campaigns`: [[sms-campaign-limit-and-labels]], [[sms-campaigns]]
+- `sms_campaigns`: [[sms-campaign-limit-and-labels]], [[sms-campaign-screen-layout]], [[sms-campaigns]]
 - `sms_codes`: [[sms-codes]]
 - `speculation`: [[speculation-prefetch]], [[speculation-prefetch-left-out]]
 - `stock_location_screens`: [[stock-locations-screens]]
