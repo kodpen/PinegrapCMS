@@ -181,47 +181,33 @@ pg_page_shell([
                         <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_waybill_pdf.php?id=' . $waybill_id . '&amp;download=1"><i class="bi bi-download me-1"></i>' . lang('Download') . '</a>
                         ' . $output_workspace_button . '
                     </nav>
+        </div>
 
-            <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                    ' . lang('Delivery Note') . '
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-12 sm:col-6 lg:col-3 my-3">
-                            <div class="form-label fg-secondary">' . lang('Account') . '</div>
-                            <div><a href="edit_erp_account.php?id=' . (int) $waybill['account_id'] . '">' . h($waybill['account_title']) . '</a></div>
+        <!--
+            What left and how, then the actions. The facts of the note sit
+            beside it rather than above it, so a wide screen is not one
+            column of full-width cards.
+        -->
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+            <div class="row">
+                <div class="col-12 xl:col-6">
+                    <div class="card my-7">
+                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            ' . lang('Delivered to') . '
                         </div>
-                        <div class="col-6 sm:col-3 lg:col-2 my-3">
-                            <div class="form-label fg-secondary">' . lang('Date') . '</div>
-                            <div>' . h(prepare_form_data_for_output($waybill['issue_date'], 'date')) . '</div>
-                        </div>
-                        <div class="col-6 sm:col-3 lg:col-2 my-3">
-                            <div class="form-label fg-secondary">' . lang('Shipment Date') . '</div>
-                            <div>' . h(prepare_form_data_for_output($waybill['ship_date'], 'date')) . (($ship_time !== '') ? ' <span class="fg-secondary">' . h($ship_time) . '</span>' : '') . '</div>
-                        </div>
-                        <div class="col-6 sm:col-4 lg:col-2 my-3">
-                            <div class="form-label fg-secondary">' . lang('Status') . '</div>
-                            <div>' . $output_state . '</div>
-                        </div>
-                        <div class="col-6 sm:col-4 lg:col-1 my-3">
-                            <div class="form-label fg-secondary">' . lang('Order') . '</div>
-                            <div>' . $output_order . '</div>
-                        </div>
-                        <div class="col-6 sm:col-4 lg:col-2 my-3">
-                            <div class="form-label fg-secondary">' . lang('Invoice') . '</div>
-                            <div>' . $output_invoice . '</div>
-                        </div>
-                    </div>
-                    <div class="row border-top mt-3 pt-3">
-                        <div class="col-12 lg:col-6 my-3">
-                            <div class="form-label fg-secondary">' . lang('Delivered to') . '</div>
+                        <div class="card-body">
                             <div class="fw-bold">' . h($waybill['ship_to_title']) . '</div>
                             <div>' . h($waybill['ship_to_address']) . '</div>
                             <div>' . h($ship_to_line) . '</div>
                         </div>
-                        <div class="col-12 lg:col-6 my-3">
-                            <div class="form-label fg-secondary">' . lang('Transport') . '</div>
+                    </div>
+                </div>
+                <div class="col-12 xl:col-6">
+                    <div class="card my-7">
+                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            ' . lang('Transport') . '
+                        </div>
+                        <div class="card-body">
                             <div>' . ((trim((string) $waybill['carrier_title']) !== '') ? h($waybill['carrier_title']) . ((trim((string) $waybill['carrier_vkn']) !== '') ? ' <span class="fg-secondary">' . h($waybill['carrier_vkn']) . '</span>' : '') : $empty) . '</div>
                             <div>' . ((trim((string) $waybill['plate']) !== '') ? '<span class="fg-secondary">' . lang('Plate') . ':</span> ' . h($waybill['plate']) : '') . ((trim((string) $waybill['driver_name']) !== '') ? ' <span class="fg-secondary ms-3">' . lang('Driver') . ':</span> ' . h($waybill['driver_name']) . ((trim((string) $waybill['driver_tckn']) !== '') ? ' <span class="fg-secondary">' . h($waybill['driver_tckn']) . '</span>' : '') : '') . '</div>
                         </div>
@@ -275,6 +261,49 @@ pg_page_shell([
                 </nav>
             </form>'
                 : '') . '
+        </div>
+
+        <!--
+            What is read: who, when, where it stands. Sticky under the fixed
+            header, and after the form column in source order so a narrow
+            screen puts it below the note rather than in front of it.
+        -->
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+            <div class="position-sticky" style="top:3.3rem;">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                        ' . lang('Delivery Note') . '
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-12 sm:col-6 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Status') . '</div>
+                                <div>' . $output_state . '</div>
+                            </div>
+                            <div class="col-12 sm:col-6 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Account') . '</div>
+                                <div><a href="edit_erp_account.php?id=' . (int) $waybill['account_id'] . '">' . h($waybill['account_title']) . '</a></div>
+                            </div>
+                            <div class="col-6 sm:col-3 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Date') . '</div>
+                                <div>' . h(prepare_form_data_for_output($waybill['issue_date'], 'date')) . '</div>
+                            </div>
+                            <div class="col-6 sm:col-3 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Shipment Date') . '</div>
+                                <div>' . h(prepare_form_data_for_output($waybill['ship_date'], 'date')) . (($ship_time !== '') ? ' <span class="fg-secondary">' . h($ship_time) . '</span>' : '') . '</div>
+                            </div>
+                            <div class="col-6 sm:col-3 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Order') . '</div>
+                                <div>' . $output_order . '</div>
+                            </div>
+                            <div class="col-6 sm:col-3 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Invoice') . '</div>
+                                <div>' . $output_invoice . '</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </main>
