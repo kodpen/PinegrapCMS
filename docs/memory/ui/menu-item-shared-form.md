@@ -20,6 +20,9 @@ description: The menu item create and edit screens share includes/forms/menu_ite
 - Both screens call it (when no page is chosen) with `mark_error('link_url', …)` before `check_form_errors()`; `api_menu_link_url_or_fail()` (`includes/api/resources/menus.php`) loads this file and fails with the same message, so the rule cannot drift. Only new saves are checked; stored rows are not rewritten.
 - No other schemes (sms:, skype:): adding one is a product question.
 
+## Which parent and target does a save accept?
+- `pg_menu_item_parent_allowed($menu_id, $item_id, $parent, $lookup)`: 0, or an item of the same menu outside the item's subtree (walks up, max 1000 steps). A posted child as parent stored a cycle that hid the subtree. `pg_menu_item_form_link_target()` keeps only `New Window`, else `Same Window`. Classes over 255 characters are refused.
+
 ## What stays in the screens?
 - Create: the menu lookup and role-3 check, the INSERT, redirects.
 - Edit: the not-found guard, the record load and position prefill, the Position options, delete (recursive), the UPDATE and the reorder of the level.
