@@ -100,8 +100,8 @@ function test_region_name_taken_screens_refuse_and_redraw()
 	$screens = array(
 		'add_common_region.php' => array('pg_cregion_name_taken($name)', 'pg_common_region_form_cards($name, $content, array(\'name_error\' => $name_error))'),
 		'edit_common_region.php' => array('pg_cregion_name_taken($name, $id)', "'name_error' => \$name_error,"),
-		'add_designer_region.php' => array('pg_cregion_name_taken($name)', 'pg_designer_region_form_card($name, $content, \'\', $name_error)'),
-		'edit_designer_region.php' => array('pg_cregion_name_taken($name, $id)', 'pg_designer_region_form_card($form_name, $form_content, '),
+		'add_designer_region.php' => array('pg_cregion_name_taken($name)', 'pg_designer_region_form_cards($name, $content, array(\'name_error\' => $name_error))'),
+		'edit_designer_region.php' => array('pg_cregion_name_taken($name, $id)', "'name_error' => \$name_error,"),
 		'add_dynamic_region.php' => array('pg_dregion_name_taken($name)', 'pg_dynamic_region_form_cards($name, $code, array(\'name_error\' => $name_error))'),
 		'edit_dynamic_region.php' => array('pg_dregion_name_taken($name, $id)', "'name_error' => \$name_error, 'status'"),
 	);
