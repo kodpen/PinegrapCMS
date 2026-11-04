@@ -139,9 +139,9 @@ function api_scope_groups() {
 		'contact_groups' => array('label' => 'Contact Groups', 'read' => 'contact_groups:read', 'write' => 'contact_groups:write'),
 
 		// The panel's accounts: role, rights, last online and second factor,
-		// never a password or a key. Read only for now; opening and closing
-		// accounts is a right of its own.
-		'users'     => array('label' => 'Users',      'read' => 'users:read',     'write' => ''),
+		// never a password or a key. Opening, changing and closing accounts
+		// is a right of its own, held by an administrator only.
+		'users'     => array('label' => 'Users',      'read' => 'users:read',     'write' => 'users:write'),
 
 		// Who did what on the site, from which address. Read only.
 		'site_log'  => array('label' => 'Site Log',   'read' => 'site_log:read',  'write' => ''),
@@ -439,6 +439,17 @@ function api_owner_scopes($owner) {
 		// so handing it to a machine sits with the same roles. A designer
 		// reaches the accounts below it, as on the screen.
 		$scopes[] = 'users:read';
+
+	}
+
+	// Opening and closing accounts for an HR or single sign-on system. A
+	// designer may make managers and users on the screen, but a leaked key
+	// that makes accounts is a door nothing on the site closes in time, so
+	// only an administrator hands it out; the handlers still write only the
+	// roles below the owner's.
+	if ($role === 0) {
+
+		$scopes[] = 'users:write';
 
 	}
 

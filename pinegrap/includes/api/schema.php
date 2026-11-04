@@ -3461,6 +3461,85 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'users.create',
+			'method'  => 'POST',
+			'path'    => '/users',
+			'scope'   => 'users:write',
+			'handler' => 'api_users_create',
+			'dry_run' => true,
+			'returns' => 'User',
+			'status'  => 201,
+			'summary' => 'Create a panel user',
+			'description' => 'Opens an account as the Create User screen does, for an HR or single sign-on system. Only an application whose owner is an administrator holds users:write, and it creates designers, managers and users, never an administrator. username and email are required. No password is taken: the account is mailed the single-use link with which it sets its own (the New Account e-mail). Left out, the role is user and the rights are those the screen starts with (create and delete pages, publish calendar events). Folder and item access (private folders, menus, regions, contact groups, calendars, ad regions) stays the panel\'s to give. 409 username_taken or email_taken when another account signs in with that name or address. Sends user.created. Send an Idempotency-Key so a retried call does not open two accounts.',
+			'params'  => array(
+				array('name' => 'username',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Signs in, as the e-mail address does: neither may be another account\'s username or address (409 username_taken).'),
+				array('name' => 'email',         'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'A valid address no other account uses as its address or username (409 email_taken).'),
+				array('name' => 'role',          'in' => 'body', 'type' => 'enum', 'values' => array('administrator', 'designer', 'manager', 'user'), 'description' => 'Strictly below the owner\'s role: designer, manager or user. administrator is refused with 422.'),
+				array('name' => 'start_page_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The page opened after signing in; null or 0 for none.'),
+				array('name' => 'badge',         'in' => 'body', 'type' => 'bool', 'description' => 'Show a badge next to the username.'),
+				array('name' => 'badge_label',   'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The badge text; empty for the site\'s default.'),
+				array('name' => 'reward_points', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 4294967295),
+				array('name' => 'permissions',   'in' => 'body', 'type' => 'object', 'description' => 'For the user role only (the other roles hold every right by their role; 422 otherwise): the rights as GET /users names them, each true or false, and page_types, the list of page types the account may give a page (replacing the stored list). A right or page type of a module switched off on this site is refused with 422. Rights left out keep their value.'),
+				array('name' => 'customer_id',   'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The customer record (GET /customers) the account is linked to; left out, none.')
+			)
+		),
+
+		array(
+			'id'      => 'users.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/users/{id}',
+			'scope'   => 'users:write',
+			'handler' => 'api_users_update',
+			'dry_run' => true,
+			'returns' => 'User',
+			'summary' => 'Change a panel user',
+			'description' => 'Only the fields you send are changed, with the Edit User screen\'s rules. An administrator\'s account and the owner\'s own are refused with 403; a role is given only below the owner\'s. disabled switches the account off (it can no longer sign in and its remembered devices are signed out) or back on. No password, password hint, second factor or folder access is written here. 409 username_taken or email_taken as on create. Sends user.updated.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'username',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Signs in, as the e-mail address does: neither may be another account\'s username or address (409 username_taken).'),
+				array('name' => 'email',         'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'A valid address no other account uses as its address or username (409 email_taken).'),
+				array('name' => 'role',          'in' => 'body', 'type' => 'enum', 'values' => array('administrator', 'designer', 'manager', 'user'), 'description' => 'Strictly below the owner\'s role: designer, manager or user. administrator is refused with 422.'),
+				array('name' => 'start_page_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The page opened after signing in; null or 0 for none.'),
+				array('name' => 'badge',         'in' => 'body', 'type' => 'bool', 'description' => 'Show a badge next to the username.'),
+				array('name' => 'badge_label',   'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The badge text; empty for the site\'s default.'),
+				array('name' => 'reward_points', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 4294967295),
+				array('name' => 'permissions',   'in' => 'body', 'type' => 'object', 'description' => 'For the user role only (the other roles hold every right by their role; 422 otherwise): the rights as GET /users names them, each true or false, and page_types, the list of page types the account may give a page (replacing the stored list). A right or page type of a module switched off on this site is refused with 422. Rights left out keep their value.'),
+				array('name' => 'disabled',      'in' => 'body', 'type' => 'bool', 'description' => 'true switches the account off, false back on: the screen\'s Account enabled switch.')
+			)
+		),
+
+		array(
+			'id'      => 'users.delete',
+			'method'  => 'DELETE',
+			'path'    => '/users/{id}',
+			'scope'   => 'users:write',
+			'handler' => 'api_users_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a panel user',
+			'description' => 'Closes an account as the users screen does: its sign-in tokens, second factor, passkeys, linked identities, favourites, access records and address book go with it. It cannot be undone; switch the account off with disabled to keep it. An administrator\'s account and the owner\'s own are refused with 403. The customer record the account was linked to stays. Sends user.deleted. POST /users/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'users.delete_post',
+			'method'  => 'POST',
+			'path'    => '/users/{id}/delete',
+			'scope'   => 'users:write',
+			'handler' => 'api_users_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a panel user, addressed as a POST',
+			'description' => 'The same deletion as DELETE /users/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Operations --------------------------------------------------- */
 
 		array(

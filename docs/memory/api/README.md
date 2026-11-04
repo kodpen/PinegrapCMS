@@ -71,6 +71,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-reviews-and-wishlist.md: Reviews and favourites in the external API: verified and store_reply on Comment, GET /products/{id}/reviews, rating on Product, GET /customers/{id}/wishlist, product.review.created
 - api-sales-report-periods.md: GET /reports/sales: periods are site days and months by site.timezone's rules across clock changes; only periods with orders come back, at most 400; more is refused with 422 instead of being cut
 - api-seo-not-found.md: GET /seo/not-found (seo.not_found, scope seo:read): the 404 log over the external API and MCP, its sorts and keyset cursor, the fields, and how a client turns a row into a redirect
+- api-settings-no-endpoint.md: Why settings, firewall, sessions, backups and updates have no external API endpoint (#5238), and the two doors that stay open
 - api-sms-campaigns.md: GET /campaigns/sms (campaigns:read) as My SMS Campaigns lists them, the user-role rule, the queue figures read in one batch, and the campaign.sent event for e-mail and SMS campaigns
 - api-store-arrival-dates.md: /store/arrival-dates over the external API: shape, partial update, shipping cut-offs sent or kept, the plain-text description, refusals
 - api-store-country-state-writes.md: Country and state writes (store:write): the write path shared with the four screens (includes/fn/store_regions.php), the screens' checks, partial updates, code_taken, what a delete takes
@@ -83,6 +84,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-text-field-limits.md: External API text limits must fit their varchar column (the non-strict session cuts in silence): product and group limits, and the test against the setup SQL
 - api-user-role-rows.md: Which rows an external API owner with the user role (3) reaches: contact groups, customers, campaigns, calendars, forms and submissions, 404 outside, the tests that guard it
 - api-users-read.md: External API GET /users and /users/{id} (users:read, roles 0-1): the users screen row rule, the User object, columns never read, two-step state
+- api-users-write.md: External API POST /users, POST /users/{id}, DELETE and POST /users/{id}/delete (users:write, administrator owners only): the bounds in the handler, the fields, what is never written, events
 - api-visitor-reports.md: The visitor report routes under visitors:read (traffic, top-content, visitors, search, pages, ai-visibility, vitals): what each reads, the window, linked false, how pages meet Google addresses
 - api-webhook-events.md: Announcing webhook events: pg_announce() from any screen, contact helpers, the event catalogue, no events from bulk imports, Workspace channel events, queue, signature and retries
 - api-webhook-queue.md: Outgoing webhook queue (includes/api/outbound/webhooks.php): which subscriptions get an event, held rows for a failing subscription, the retry ladder, retry and the atomic claim of a row

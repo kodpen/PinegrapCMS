@@ -190,14 +190,17 @@ function test_api_users_scope_sits_at_the_designer_ceiling()
 	$groups = api_scope_groups();
 
 	pg_assert_same('users:read', $groups['users']['read']);
-	pg_assert_same('', $groups['users']['write'], 'the writes are a later step');
+	pg_assert_same('users:write', $groups['users']['write']);
 	pg_assert_true(in_array('users:read', api_scopes_all(), true));
 
 	foreach (array(0 => true, 1 => true, 2 => false, 3 => false) as $role => $holds) {
 		$owner = array('id' => 9, 'role' => $role, 'manage_ecommerce' => true, 'manage_contacts' => true, 'manage_forms' => true);
 
 		pg_assert_same($holds, in_array('users:read', api_owner_scopes($owner), true), 'role ' . $role);
+		pg_assert_same($role === 0, in_array('users:write', api_owner_scopes($owner), true), 'users:write for role ' . $role);
 	}
+
+	pg_assert_false(in_array('users:write', api_assistant_scopes(api_scope_groups(), api_assistant_scopes_left_out()), true), 'an assistant key never writes accounts');
 }
 
 function test_api_users_routes_reach_a_handler_under_the_users_scope()
@@ -212,7 +215,22 @@ function test_api_users_routes_reach_a_handler_under_the_users_scope()
 		$found[] = $route['id'];
 
 		pg_assert_true(function_exists($route['handler']), $route['id'] . ': ' . $route['handler'] . '() exists');
-		pg_assert_same('GET', $route['method'], $route['id'] . ' only reads');
+
+		if ($route['method'] !== 'GET') {
+			pg_assert_same('users:write', $route['scope'], $route['id'] . ' scope');
+			pg_assert_true(!empty($route['dry_run']), $route['id'] . ' rehearses');
+
+			foreach ($route['params'] as $param) {
+				pg_assert_false((bool) preg_match('/password|secret|token|hint/', $param['name']), $route['id'] . ' takes no ' . $param['name']);
+
+				if (isset($param['max_length'])) {
+					pg_assert_true($param['max_length'] <= 100, $route['id'] . ' ' . $param['name'] . ' fits its varchar(100) column');
+				}
+			}
+
+			continue;
+		}
+
 		pg_assert_same('users:read', $route['scope'], $route['id'] . ' scope');
 
 		if ($route['id'] === 'users.list') {
@@ -232,5 +250,103 @@ function test_api_users_routes_reach_a_handler_under_the_users_scope()
 		}
 	}
 
-	pg_assert_same(array('users.list', 'users.get'), $found);
+	pg_assert_same(array('users.list', 'users.get', 'users.create', 'users.update', 'users.delete', 'users.delete_post'), $found);
+}
+
+// The role a write gives is strictly below the owner's: an administrator's
+// application writes designers, managers and users, never an administrator.
+function test_api_users_write_role_ceiling()
+{
+	pg_assert_same(null, api_user_write_role('administrator', 0), 'role=administrator on create');
+	pg_assert_same(1, api_user_write_role('designer', 0));
+	pg_assert_same(2, api_user_write_role('manager', 0));
+	pg_assert_same(3, api_user_write_role('user', 0));
+	pg_assert_same(null, api_user_write_role('designer', 1), 'a designer never writes a designer');
+	pg_assert_same(null, api_user_write_role('owner', 0), 'an unknown role');
+
+	$applied = api_user_fields_apply(api_user_fields_new(), array('role' => 'administrator'), 0, array(), array());
+	pg_assert_same('role', $applied['field'] ?? '', 'the create refuses an administrator');
+}
+
+// Never an administrator's row, never the owner's own.
+function test_api_users_write_rows()
+{
+	$owner = array('id' => 1, 'role' => 0);
+
+	pg_assert_false(api_user_row_writable(array('user_id' => 1, 'user_role' => 0), $owner), 'the own row');
+	pg_assert_false(api_user_row_writable(array('user_id' => 5, 'user_role' => 0), $owner), 'another administrator');
+	pg_assert_true(api_user_row_writable(array('user_id' => 6, 'user_role' => 1), $owner), 'a designer');
+	pg_assert_true(api_user_row_writable(array('user_id' => 7, 'user_role' => '3'), $owner), 'a user');
+	pg_assert_false(api_user_row_writable(array('user_id' => 6, 'user_role' => 1), array('id' => 2, 'role' => 1)), 'a designer owner and another designer');
+}
+
+// Only what the screen offers the written role on this site.
+function test_api_users_write_permission_subset()
+{
+	$none = api_user_permissions_offered(array());
+	pg_assert_same(array('manage_contacts', 'manage_emails', 'manage_visitors', 'create_pages', 'delete_pages'), $none, 'every module off');
+
+	$all = api_user_permissions_offered(array('forms' => true, 'calendars' => true, 'ecommerce' => true, 'offline_payment' => true, 'erp' => true, 'erp_readonly' => true, 'workspace' => true));
+	pg_assert_same(array(), array_values(array_diff(array_keys(api_user_permission_columns()), $all)), 'every right with every module on');
+
+	$fields = api_user_fields_new();
+
+	$ok = api_user_fields_apply($fields, array('permissions' => array('manage_contacts' => true, 'create_pages' => false, 'page_types' => array('folder_view'))), 0, $none, array('email_a_friend', 'folder_view', 'photo_gallery'));
+	pg_assert_same('yes', $ok['fields']['manage_contacts'], 'an inherited right is stored as yes');
+	pg_assert_same('0', $ok['fields']['create_pages'], 'a TINYINT right as 0');
+	pg_assert_same('1', $ok['fields']['set_page_type_folder_view']);
+	pg_assert_same('0', $ok['fields']['set_page_type_email_a_friend'], 'the page type list is replaced');
+
+	$off = api_user_fields_apply($fields, array('permissions' => array('manage_ecommerce' => true)), 0, $none, array());
+	pg_assert_same('permissions', $off['field'] ?? '', 'a right of a module switched off');
+
+	$type = api_user_fields_apply($fields, array('permissions' => array('page_types' => array('catalog'))), 0, $none, array('folder_view'));
+	pg_assert_same('permissions', $type['field'] ?? '', 'a page type of a module switched off');
+
+	$text = api_user_fields_apply($fields, array('permissions' => array('manage_contacts' => 'yes')), 0, $none, array());
+	pg_assert_same('permissions', $text['field'] ?? '', 'a right that is not true or false');
+
+	$manager = api_user_fields_apply($fields, array('role' => 'manager', 'permissions' => array('manage_contacts' => true)), 0, $none, array());
+	pg_assert_same('permissions', $manager['field'] ?? '', 'a role above user takes no rights');
+}
+
+// An update writes every field it was not sent back as stored.
+function test_api_users_write_fields_from_row()
+{
+	$row = api_users_test_row(array('user_password_hint' => 'old', 'user_badge' => '1', 'user_badge_label' => 'Staff', 'user_reward_points' => '12', 'user_home' => '4'));
+	$fields = api_user_fields_from_row($row);
+
+	pg_assert_same('old', $fields['password_hint'], 'the hint is written back, never answered');
+	pg_assert_same('4', $fields['home_page']);
+	pg_assert_same('yes', $fields['manage_contacts']);
+	pg_assert_same('1', $fields['set_page_type_catalog']);
+
+	$applied = api_user_fields_apply($fields, array('email' => ' new@example.com ', 'start_page_id' => ''), 0, array(), array());
+	pg_assert_same('new@example.com', $applied['fields']['email']);
+	pg_assert_same('0', $applied['fields']['home_page'], 'null clears the start page');
+	pg_assert_same('Staff', $applied['fields']['badge_label'], 'a field not sent is kept');
+}
+
+// Every handler stops for a dry run after its checks and before the first
+// write, and announces through pg_announce().
+function test_api_users_write_dry_run_and_events()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/users.php');
+
+	foreach (array('api_users_create' => 'pg_user_create(', 'api_users_update' => 'pg_user_update(', 'api_users_delete' => 'pg_user_delete(') as $handler => $write) {
+		$start = strpos($source, 'function ' . $handler . '(');
+		$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+
+		$stop = strpos($body, 'api_dry_run_stop(');
+		pg_assert_true(($stop !== false) && ($stop < strpos($body, $write)), $handler . ' stops for a dry run before ' . $write);
+		pg_assert_true(strpos($body, 'api_user_writer_or_fail()') < $stop, $handler . ' checks the owner first');
+		pg_assert_contains("pg_announce('user.", $body, $handler . ' announces');
+	}
+
+	foreach (array('user.created', 'user.updated', 'user.deleted') as $event) {
+		pg_assert_contains("'" . $event . "'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php'), $event . ' is in the catalogue');
+	}
+
+	$payload = api_user_event_payload(9, array('username' => 'ada', 'email' => 'a@example.com', 'role' => 3, 'password_hint' => 'x'));
+	pg_assert_same(array('id', 'username', 'email', 'role'), array_keys($payload), 'no secret in the payload');
 }

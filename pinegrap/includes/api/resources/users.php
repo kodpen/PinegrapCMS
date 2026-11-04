@@ -482,3 +482,551 @@ function api_users_get($params) {
 	api_ok(api_user_present($row, isset($two_step[$id]) ? $two_step[$id] : null));
 
 }
+
+/* ----- Writes ------------------------------------------------------------- */
+
+// Opening, changing and closing accounts, through the user screens' own write
+// functions (includes/fn/user_write.php). Only an application whose owner is
+// an administrator holds users:write, and even then it writes only the
+// accounts below its owner: never an administrator, never its owner's own
+// row, and no route takes a password. A new account is mailed its single-use
+// set password link; a reset stays in the panel.
+
+// The rights the user screens offer a role-3 account on this site, by the
+// modules switched on; a test passes the modules itself. The roles above
+// hold every right by their role and are offered none.
+function api_user_permissions_offered($modules = null) {
+
+	if ($modules === null) {
+
+		$modules = array(
+			'forms'           => (FORMS == true),
+			'calendars'       => (CALENDARS == true),
+			'ecommerce'       => (ECOMMERCE == true),
+			'offline_payment' => (ECOMMERCE_OFFLINE_PAYMENT == true),
+			'erp'             => (defined('ERP_ENABLED') && ERP_ENABLED && pg_user_has_erp_columns()),
+			'erp_readonly'    => (defined('ERP_ENABLED') && ERP_ENABLED && pg_user_has_erp_readonly_column()),
+			'workspace'       => pg_user_permission_ws_available()
+		);
+
+	}
+
+	$on = function ($key) use ($modules) {
+
+		return !empty($modules[$key]);
+
+	};
+
+	$offered = array('manage_contacts', 'manage_emails', 'manage_visitors', 'create_pages', 'delete_pages');
+
+	if ($on('forms')) {
+
+		$offered[] = 'manage_forms';
+
+	}
+
+	if ($on('calendars')) {
+
+		$offered[] = 'manage_calendars';
+		$offered[] = 'publish_calendar_events';
+
+	}
+
+	if ($on('ecommerce')) {
+
+		$offered[] = 'manage_ecommerce';
+		$offered[] = 'view_card_data';
+		$offered[] = 'manage_ecommerce_reports';
+
+		if ($on('offline_payment')) {
+
+			$offered[] = 'set_offline_payment';
+
+		}
+
+	}
+
+	if ($on('erp')) {
+
+		$offered[] = 'manage_erp';
+		$offered[] = 'manage_erp_cash';
+		$offered[] = 'manage_erp_settings';
+
+		if ($on('erp_readonly')) {
+
+			$offered[] = 'manage_erp_readonly';
+
+		}
+
+	}
+
+	if ($on('workspace')) {
+
+		$offered[] = 'manage_workspace';
+		$offered[] = 'manage_workspace_assign';
+		$offered[] = 'manage_workspace_board';
+		$offered[] = 'manage_workspace_settings';
+
+	}
+
+	return $offered;
+
+}
+
+// The role a write may give, as user.user_role holds it, or null: strictly
+// below the owner's own, so an administrator's application writes designers,
+// managers and users and nobody writes an administrator.
+function api_user_write_role($code, $owner_role) {
+
+	$role = array_search((string)$code, api_user_roles(), true);
+
+	if (($role === false) || ((int)$role <= (int)$owner_role)) {
+
+		return null;
+
+	}
+
+	return (int)$role;
+
+}
+
+// An account's stored values as the fields of the write functions, so an
+// update that sends one field writes every other back as it was. The rights
+// and page types are copied as stored ('yes'/'no', 1/0).
+function api_user_fields_from_row($row) {
+
+	$fields = array(
+		'username'      => (string)$row['user_username'],
+		'email'         => (string)$row['user_email'],
+		'role'          => (int)$row['user_role'],
+		'home_page'     => (string)(int)$row['user_home'],
+		'badge'         => (string)$row['user_badge'],
+		'badge_label'   => (string)$row['user_badge_label'],
+		'reward_points' => (string)(int)$row['user_reward_points'],
+		'password_hint' => isset($row['user_password_hint']) ? (string)$row['user_password_hint'] : ''
+	);
+
+	foreach (api_user_permission_columns() as $field => $column) {
+
+		if (isset($row[$column[0]])) {
+
+			$fields[$field] = (string)$row[$column[0]];
+
+		}
+
+	}
+
+	foreach (api_user_page_types() as $type) {
+
+		$fields['set_page_type_' . $type] = isset($row['user_set_page_type_' . $type]) ? (string)$row['user_set_page_type_' . $type] : '';
+
+	}
+
+	return $fields;
+
+}
+
+// The fields of a new account before anything is sent: what the create screen
+// starts with ticked.
+function api_user_fields_new() {
+
+	return array(
+		'role'                    => 3,
+		'create_pages'            => '1',
+		'delete_pages'            => '1',
+		'publish_calendar_events' => 'yes'
+	);
+
+}
+
+// Lays the sent values over $fields. Answers array('fields' => ...) or
+// array('error' => message, 'field' => name). $offered is what
+// api_user_permissions_offered() lists, $page_types the page types of the
+// site; $owner_role bounds the role.
+function api_user_fields_apply($fields, $params, $owner_role, $offered, $page_types) {
+
+	foreach (array('username', 'email', 'badge_label') as $name) {
+
+		if (isset($params[$name])) {
+
+			$fields[$name] = trim((string)$params[$name]);
+
+		}
+
+	}
+
+	if (isset($params['role'])) {
+
+		$role = api_user_write_role($params['role'], $owner_role);
+
+		if ($role === null) {
+
+			return array('error' => lang('An application cannot give an account this role.'), 'field' => 'role');
+
+		}
+
+		$fields['role'] = $role;
+
+	}
+
+	if (array_key_exists('start_page_id', $params)) {
+
+		$fields['home_page'] = (string)(int)$params['start_page_id'];
+
+	}
+
+	if (isset($params['badge'])) {
+
+		$fields['badge'] = $params['badge'] ? '1' : '0';
+
+	}
+
+	if (isset($params['reward_points'])) {
+
+		$fields['reward_points'] = (string)(int)$params['reward_points'];
+
+	}
+
+	if (isset($params['permissions'])) {
+
+		if ((int)$fields['role'] !== 3) {
+
+			return array('error' => lang('Only an account with the user role takes permissions; the other roles hold every right by their role.'), 'field' => 'permissions');
+
+		}
+
+		$columns = api_user_permission_columns();
+
+		foreach ($params['permissions'] as $key => $value) {
+
+			if ($key === 'page_types') {
+
+				if (!is_array($value) || (!empty($value) && array_values($value) !== $value)) {
+
+					return array('error' => lang('permissions.page_types must be a list.'), 'field' => 'permissions');
+
+				}
+
+				foreach ($value as $type) {
+
+					if (!is_string($type) || !in_array($type, $page_types, true)) {
+
+						return array('error' => lang(array('string' => 'The page type {var:1} is not offered on this site.', 'vars' => is_scalar($type) ? (string)$type : '')), 'field' => 'permissions');
+
+					}
+
+				}
+
+				foreach ($page_types as $type) {
+
+					$fields['set_page_type_' . $type] = in_array($type, $value, true) ? '1' : '0';
+
+				}
+
+				continue;
+
+			}
+
+			if (!in_array((string)$key, $offered, true) || !isset($columns[$key])) {
+
+				return array('error' => lang(array('string' => 'The right {var:1} is not offered on this site.', 'vars' => (string)$key)), 'field' => 'permissions');
+
+			}
+
+			if (!is_bool($value)) {
+
+				return array('error' => lang(array('string' => 'permissions.{var:1} must be true or false.', 'vars' => (string)$key)), 'field' => 'permissions');
+
+			}
+
+			if ($columns[$key][1] === 'enum') {
+
+				$fields[$key] = $value ? 'yes' : 'no';
+
+			} else {
+
+				$fields[$key] = $value ? '1' : '0';
+
+			}
+
+		}
+
+	}
+
+	return array('fields' => $fields);
+
+}
+
+// The owner of the calling application when it may write accounts at all:
+// the scope ceiling already keeps users:write at role 0, and the handler
+// checks it again rather than trust the ceiling alone.
+function api_user_writer_or_fail() {
+
+	$owner = api_current_app()['owner'];
+
+	if ((int)$owner['role'] !== 0) {
+
+		api_fail(403, 'forbidden', lang('Only an application whose owner is an administrator writes accounts.'));
+
+	}
+
+	return $owner;
+
+}
+
+// Whether an application may change or delete this account: never an
+// administrator's, never its owner's own, and only an account below the
+// owner's role.
+function api_user_row_writable($row, $owner) {
+
+	$role = (int)$row['user_role'];
+
+	return ($role !== 0) && ((int)$row['user_id'] !== (int)$owner['id']) && ($role > (int)$owner['role']);
+
+}
+
+// The account an update or a delete names, loaded with the columns the write
+// functions need; 404 when there is none, 403 for an administrator or the
+// owner's own account.
+function api_user_writable_row_or_fail($id, $owner) {
+
+	$optional = api_user_optional_columns();
+
+	$columns = array('user_id', 'user_username', 'user_email', 'user_role', 'user_home', 'user_badge', 'user_badge_label', 'user_reward_points', 'user_password_hint');
+
+	foreach (api_user_permission_columns() as $column) {
+
+		if (($column[2] === '') || !empty($optional[$column[2]])) {
+
+			$columns[] = $column[0];
+
+		}
+
+	}
+
+	foreach (api_user_page_types() as $type) {
+
+		$columns[] = 'user_set_page_type_' . $type;
+
+	}
+
+	$row = api_row("SELECT " . implode(', ', $columns) . " FROM user WHERE user_id = '" . (int)$id . "' LIMIT 1");
+
+	if ($row === null) {
+
+		api_fail_not_found(lang('User'));
+
+	}
+
+	if (!api_user_row_writable($row, $owner)) {
+
+		api_fail(403, 'forbidden', lang('An application does not change or delete an administrator or its owner\'s own account.'));
+
+	}
+
+	return $row;
+
+}
+
+// The checks every write makes on the fields it will save: a username, a
+// valid e-mail address, both free (409 username_taken, email_taken), a start
+// page that is a page.
+function api_user_fields_check_or_fail($fields, $id) {
+
+	$problem = pg_user_write_problem($fields['username'] ?? '', $fields['email'] ?? '', $id);
+
+	if (($problem === 'username_taken') || ($problem === 'email_taken')) {
+
+		api_fail(409, $problem, pg_user_write_problem_message($problem) . '.');
+
+	}
+
+	if ($problem !== '') {
+
+		api_fail_validation(pg_user_write_problem_message($problem) . '.', ($problem === 'username_required') ? 'username' : 'email');
+
+	}
+
+	$page = (int)($fields['home_page'] ?? 0);
+
+	if (($page > 0) && (api_row("SELECT page_id FROM page WHERE page_id = '" . $page . "' LIMIT 1") === null)) {
+
+		api_fail_validation(lang('The start page does not exist.'), 'start_page_id');
+
+	}
+
+}
+
+// The answer of a write: the account as GET /users/{id} shows it.
+function api_user_answer($id, $status = 200) {
+
+	$row = api_row(api_users_select_sql(api_user_optional_columns()) . " WHERE user.user_id = '" . (int)$id . "' LIMIT 1");
+
+	$two_step = api_users_two_step(array($row));
+
+	api_ok(api_user_present($row, isset($two_step[(int)$id]) ? $two_step[(int)$id] : null), $status);
+
+}
+
+// What user.created, user.updated and user.deleted carry: never a hash, a
+// second-factor secret or a token.
+function api_user_event_payload($id, $fields) {
+
+	return array(
+		'id'       => (int)$id,
+		'username' => (string)($fields['username'] ?? ''),
+		'email'    => (string)($fields['email'] ?? ''),
+		'role'     => api_user_role_code($fields['role'] ?? 3)
+	);
+
+}
+
+function api_users_create($params) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php');
+
+	$app = api_current_app();
+
+	$owner = api_user_writer_or_fail();
+
+	$applied = api_user_fields_apply(api_user_fields_new(), $params, $owner['role'], api_user_permissions_offered(), pg_user_write_site_page_types());
+
+	if (isset($applied['error'])) {
+
+		api_fail_validation($applied['error'], $applied['field']);
+
+	}
+
+	$fields = $applied['fields'];
+
+	api_user_fields_check_or_fail($fields, 0);
+
+	if (isset($params['customer_id'])) {
+
+		if (api_row("SELECT id FROM contacts WHERE id = '" . (int)$params['customer_id'] . "' LIMIT 1") === null) {
+
+			api_fail_validation(lang('The customer does not exist.'), 'customer_id');
+
+		}
+
+		$fields['contact_id'] = (string)(int)$params['customer_id'];
+
+	}
+
+	api_dry_run_stop('created', 'user', array('username' => $fields['username'], 'role' => api_user_role_code($fields['role'])));
+
+	$created = pg_user_create($fields, (int)$owner['id']);
+
+	$id = (int)$created['id'];
+
+	// The account learns of itself by the set password link; no password
+	// leaves the site.
+	pg_user_new_account_mail($id, $fields);
+
+	log_activity(lang(array(
+		'string' => 'User ({var:1}) was created through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array($fields['username'], $app['name'], $app['api_key'])
+	)), $owner['username']);
+
+	pg_announce('user.created', api_user_event_payload($id, $fields));
+
+	api_user_answer($id, 201);
+
+}
+
+function api_users_update($params) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php');
+
+	$app = api_current_app();
+
+	$owner = api_user_writer_or_fail();
+
+	$id = (int)$params['id'];
+
+	$row = api_user_writable_row_or_fail($id, $owner);
+
+	$sent = $params;
+
+	unset($sent['id']);
+
+	if (empty($sent)) {
+
+		api_fail_validation(lang('No writable field was sent.'));
+
+	}
+
+	$applied = api_user_fields_apply(api_user_fields_from_row($row), $params, $owner['role'], api_user_permissions_offered(), pg_user_write_site_page_types());
+
+	if (isset($applied['error'])) {
+
+		api_fail_validation($applied['error'], $applied['field']);
+
+	}
+
+	$fields = $applied['fields'];
+
+	api_user_fields_check_or_fail($fields, $id);
+
+	// The "Account enabled" switch of the edit screen, with its own guard
+	// (pg_user_form_may_disable()).
+	if (isset($params['disabled'])) {
+
+		if (!pg_user_has_disabled_at()) {
+
+			api_fail(503, 'service_unavailable', lang('The database has not been upgraded yet. Run the software update first.'));
+
+		}
+
+		$fields['account_enabled_drawn'] = '1';
+
+		$fields['account_enabled'] = $params['disabled'] ? '' : '1';
+
+	}
+
+	api_dry_run_stop('updated', 'user', array('id' => $id));
+
+	// Folder and item access is not part of the API and stays as it is.
+	pg_user_update($id, $fields, array('id' => (int)$owner['id'], 'role' => (int)$owner['role']), false);
+
+	log_activity(lang(array(
+		'string' => 'User ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array($fields['username'], $app['name'], $app['api_key'])
+	)), $owner['username']);
+
+	pg_announce('user.updated', api_user_event_payload($id, $fields));
+
+	api_user_answer($id);
+
+}
+
+function api_users_delete($params) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php');
+
+	$app = api_current_app();
+
+	$owner = api_user_writer_or_fail();
+
+	$id = (int)$params['id'];
+
+	$row = api_user_writable_row_or_fail($id, $owner);
+
+	api_dry_run_stop('deleted', 'user', array('id' => $id));
+
+	pg_user_delete($id);
+
+	log_activity(lang(array(
+		'string' => 'User ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array((string)$row['user_username'], $app['name'], $app['api_key'])
+	)), $owner['username']);
+
+	pg_announce('user.deleted', api_user_event_payload($id, array(
+		'username' => $row['user_username'],
+		'email'    => $row['user_email'],
+		'role'     => $row['user_role']
+	)));
+
+	api_ok(array('id' => $id, 'deleted' => true));
+
+}

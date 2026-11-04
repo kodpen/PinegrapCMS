@@ -1,11 +1,11 @@
 ---
 name: user-write
-description: Creating, saving and deleting a panel account goes through includes/fn/user_write.php, shared by add_user.php, edit_user.php, delete_users.php and the coming /users API writes
+description: Creating, saving and deleting a panel account goes through includes/fn/user_write.php, shared by add_user.php, edit_user.php, delete_users.php and the /users API writes
 module: user_write
 ---
 
 ## Where is a panel account written?
-- `includes/fn/user_write.php` (loaded with `require_once`, not by `functions.php`): `pg_user_create($fields, $editor_id)`, `pg_user_update($user_id, $fields, $editor)`, `pg_user_delete($user_id)`, `pg_user_new_account_mail($user_id, $fields)`. `add_user.php`, `edit_user.php` (save and delete) and `delete_users.php` call them; none of the three holds an `INSERT`, `UPDATE` or `DELETE` of the `user` row any more (PR #6484, step X13a of `plans/external-api-coverage-2.md`).
+- `includes/fn/user_write.php` (loaded with `require_once`, not by `functions.php`): `pg_user_create($fields, $editor_id)`, `pg_user_update($user_id, $fields, $editor, $save_access = true)` (the API passes false: it writes no access records), `pg_user_delete($user_id)`, `pg_user_new_account_mail($user_id, $fields)`. `add_user.php`, `edit_user.php` (save and delete) and `delete_users.php` call them; none of the three holds an `INSERT`, `UPDATE` or `DELETE` of the `user` row any more (PR #6484); the API routes on it: `api/api-users-write.md`.
 - `$fields` is shaped as the user form posts it (`username`, `email`, `role`, `manage_contacts = 'yes'`, `view_card_data = '1'`, `set_page_type_<type>`, `edit_<folder>`, `menu_<id>`...); the module never reads `$_POST`. `pg_user_permission_ws_sql()` and `pg_user_erp_readonly_sql()` take the fields as a second argument for that reason (`$_POST` when left out, for `import_users.php`).
 
 ## Which checks stay with the caller?

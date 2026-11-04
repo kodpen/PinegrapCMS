@@ -12,7 +12,7 @@ description: External API (integration.php): find what the panel can do that the
 - X2 Returns read and moves: PR #5925 (`api/api-returns.md`).
 - X2b `modified_since` on `GET /returns` through `order_returns.updated_at` (decided in #5927).
 - X3 subscriptions read, commission/affiliate writes: PR #5741 (`api/api-commission-writes.md`, `api/api-subscriptions-list.md`).
-- X4 Users read: `GET /users`, `/users/{id}` (role, permission columns, last sign-in, MFA; no secrets). New `users:read`, designer ceiling. Writes: X13 (`external-api-coverage-2.md`). PR #5898 (`api/api-users-read.md`).
+- X4 Users read: `GET /users`, `/users/{id}` (role, permission columns, last sign-in, MFA; no secrets). New `users:read`, designer ceiling. Writes: X13 (`api/api-users-write.md`). PR #5898 (`api/api-users-read.md`).
 - X5a countries and states, X5b currencies and rate refresh, `store:write`: PRs #6005, #6051 (`api/api-store-country-state-writes.md`, `api/api-store-currency-writes.md`).
 - X6 `POST /orders` as `add_order.php`, Idempotency-Key, dry run, `orders:write`, event `order.created`, cut in two:
   - X6a `local_sale_complete()` into `includes/fn/local_order.php` off the session cart: PR #6107 (`erp/erp-counter-sale-completion.md`).
@@ -35,7 +35,7 @@ description: External API (integration.php): find what the panel can do that the
   - X12b auto dialogs, common regions; a converted common region refuses delete as its screen does (#5516).
 
 ## What is not a step?
-- Redirects: short links with `redirect_code` and `*` patterns, covered. Saved reports and the back-in-stock list wait for a client. Settings, firewall, sessions, backups, updates: no endpoint (#5238, `external-api-coverage-2.md`).
+- Redirects: short links with `redirect_code` and `*` patterns, covered. Saved reports and the back-in-stock list wait for a client. Settings, firewall, sessions, backups, updates: no endpoint (#5238, `api/api-settings-no-endpoint.md`).
 - #5085 (bell `group`, `fold`) is free work outside the steps.
 
 ## What is settled?
