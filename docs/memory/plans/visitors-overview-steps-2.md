@@ -9,7 +9,7 @@ description: Steps V5-V11 of plans/visitors-overview.md, the sections: traffic, 
 - V5 (M) Headline and traffic section. After V1 and V2.
   - `includes/visitors/traffic.php`: tiles visits, page views, pages a visit, people on the site now, each against the previous period; the line by the period's grain with the previous period dashed; the busiest content of an hour or a day in the tooltip (`pg_visitor_top_content_by_hour()`, `pg_visitor_top_content()`); the empty state names the rollup backfill while it is still running (`pg_visitor_backfill_state()`).
 
-- V6 (M) Conversions section. After V1 and V2.
+- V6 (M) Conversions section. After V1 and V2. Done (#6469).
   - `includes/visitors/conversions.php`: forms submitted, orders created, checked out and completed, revenue, conversion rate (completed over visits), each with its change; the funnel as bars; the figures by day from `pg_visitor_totals()` per day. Order tiles only with `ECOMMERCE`; with commerce off the section is forms alone.
 
 - V7 (M) Sources section. After V1, V2 and V4.
