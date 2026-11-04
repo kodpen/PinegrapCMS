@@ -49,7 +49,7 @@ function test_stock_api_level_present()
 
 	$all = api_inventory_level_present($product, array(7 => 10, 3 => 4), array(7, 3, 5), 7, 0);
 	pg_assert_same(12, $all['product_id']);
-	pg_assert_same('SKU-12', $all['sku']);
+	pg_assert_same('SKU-12', $all['name']);
 	pg_assert_same(14, $all['quantity']);
 	pg_assert_same(false, $all['out_of_stock']);
 	pg_assert_same(array(

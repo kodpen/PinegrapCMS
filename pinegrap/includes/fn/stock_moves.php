@@ -277,10 +277,12 @@ function pg_stock_transfer_ref($product_id, $from_id, $to_id, $now)
  * @param int    $to_id
  * @param int    $quantity
  * @param string $note
+ * @param array  $options user_id for both moves (the API's application
+ *                        owner; default USER_ID)
  * @return array ok, error (pg_stock_transfer_check()'s, pg_stock_change()'s,
  *               'no_locations'), ref, from (the writer's answer), to
  */
-function pg_stock_transfer($product_id, $from_id, $to_id, $quantity, $note = '')
+function pg_stock_transfer($product_id, $from_id, $to_id, $quantity, $note = '', array $options = array())
 {
     $refuse = function ($error) {
         return array('ok' => false, 'error' => $error, 'ref' => '', 'from' => null, 'to' => null);
@@ -297,7 +299,7 @@ function pg_stock_transfer($product_id, $from_id, $to_id, $quantity, $note = '')
     }
 
     $ref = pg_stock_transfer_ref($product_id, $check['from'], $check['to'], time());
-    $options = array('transaction' => false, 'note' => (string) $note);
+    $options = array('transaction' => false, 'note' => (string) $note) + $options;
 
     db("START TRANSACTION");
 
