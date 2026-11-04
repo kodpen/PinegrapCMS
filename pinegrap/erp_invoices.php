@@ -389,7 +389,7 @@ foreach ($invoices as $invoice) {
             <td class="align-middle text-nowrap chart_label" data-order="' . h($is_draft ? ('~' . $id) : $invoice['full_number']) . '">' . $output_number . '</td>
             <td class="align-middle text-nowrap" data-order="' . h($invoice['issue_date']) . '">' . h(prepare_form_data_for_output($invoice['issue_date'], 'date')) . '</td>
             <td class="align-middle text-nowrap" data-order="' . h($effective_due) . '">' . $output_due . '</td>
-            <td style="max-width:240px" class="text-nowrap text-truncate align-middle">' . h($account_title) . '</td>
+            <td class="text-nowrap align-middle" title="' . h($account_title) . '"><span class="d-inline-block text-truncate pg-cell-truncate">' . h($account_title) . '</span></td>
             <td class="align-middle">' . h($direction_labels[$invoice['direction']] ?? $invoice['direction']) . '</td>
             <td class="align-middle ' . ($status_classes[$status] ?? '') . '">' . h($status_labels[$status] ?? $status) . '</td>
             ' . $output_edoc_cell . '
