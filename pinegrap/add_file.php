@@ -343,24 +343,21 @@ if (!$_POST) {
     </script>
             <div class="row">
             <div class="col-12">
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        <p class="mb-0">' . lang(array('string'=>'Maximum File{suffix:1}','suffix'=>array($max_file_uploads_suffix) )) . ': ' . $max_file_uploads . '</p>
-                        ' . $output_upload_limits . '
-                    </div>
-                </div>
                 <div id="pg_upload_error" class="alert theme-danger" role="alert" hidden></div>
                 <form enctype="multipart/form-data" action="add_file.php" method="post" id="dropzone" class="dropzone" style="border: none;background: unset;padding: unset;">
                     ' . get_token_field() . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
-                    <div class="row">
-                        <div class="col-12">
+                    ' . pg_design_file_form_layout(
+                        '
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Files To Upload') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
+                                    <div class="mb-4">
+                                        <p class="mb-0">' . lang(array('string'=>'Maximum File{suffix:1}','suffix'=>array($max_file_uploads_suffix) )) . ': ' . $max_file_uploads . '</p>
+                                        ' . $output_upload_limits . '
+                                    </div>
                                     <div class="dropzone_previews ">
                                         <div class="dz-message needsclick" data-dz-message>
                                             <div class="dz-message ">' . lang('Drop files here or click to browse') . '</div>
@@ -376,22 +373,11 @@ if (!$_POST) {
                                     </div>
                                     <button type="button" id="pg_upload_choose" class="btn btn-sm btn-outline theme-primary mt-4" hidden><span class="material-icons me-3" aria-hidden="true">upload_file</span><span class="pg-btn-label">' . lang('Select File(s)') . '</span></button>' . $output_cloud . '
                                 </div>
-                            </div>
-                        </div>
-                        <div class="col-12 md:col-6">' .
-                            pg_design_file_form_access_card(select_folder($folder_id, 0), array('design' => ($user['role'] <= 1), 'design_checked' => false)) . '
-                        </div>
-                        <div class="col-12 md:col-6">' .
-                            pg_design_file_form_description_card() . '
-                        </div>
-                    </div>         
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit" name="submit" value="Upload" class="btn my-1  btn-solid theme-success " ><span class="material-icons me-3">file_upload</span><span class="pg-btn-label">' . lang(array('string'=>'Upload') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                            </div>' . pg_design_file_form_description_card(),
+                        pg_design_file_form_access_card(select_folder($folder_id, 0), array('design' => ($user['role'] <= 1), 'design_checked' => false)),
+                        '
+                                        <button type="submit" id="submit" name="submit" value="Upload" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">file_upload</span><span class="pg-btn-label">' . lang(array('string'=>'Upload') ) . '</span></button>'
+                    ) . '
                 </form>' . $output_cloud_forms . '
             </div>
         </div>

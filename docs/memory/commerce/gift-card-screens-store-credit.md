@@ -13,7 +13,7 @@ description: Gift card screens: store credit shown with its owner and kind, cred
 - After the balance is written (both the guarded and the old-form path), `pg_audit('update', 'store_credit', id, before, after, pg_credit_audit_label(code))` with `pg_credit_audit_fields()`; plain gift cards write no audit line. Every other credit change was already audited.
 
 ## Is Delete on a store credit card allowed?
-- No (owner, #6688, `workflow/decisions-made-product-27.md`): a card with `user_id` > 0 has no Delete button, a note points at Void on the customer's screen, and a posted `submit_delete` is refused (PR #6770). The API's `DELETE /gift-cards/{id}` refuses it too (#6783, `-product-28.md`).
+- No (owner, #6688, `workflow/decisions-made-product-27.md`): a card with `user_id` > 0 has no Delete button, a note points at Void on the customer's screen, and a posted `submit_delete` is refused (PR #6770). The API's `DELETE /gift-cards/{id}` refuses it too (#6783, `-product-29.md`).
 
 ## How does the list search find a code typed without dashes?
 - The driver searches `row.textContent`; the code cell prints the dashed code, so the stored code (`4059436642850475`) sits beside it in `<span hidden>`. Hidden text stays out of quick edit field names: `rowNameText()` in `pg_list_table_edit.js` skips `hidden` and `aria-hidden` nodes and puts a space around block children (the notes field used to be named "Notes: 6579-…-5163Expired").
