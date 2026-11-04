@@ -21,6 +21,7 @@ $user = validate_user();
 include_once('liveform.class.php');
 $liveform = new liveform('edit_javascript');
 validate_area_access($user, 'designer');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/design_file_form.php');
 
 // Stop early when the screen is opened without an existing record (stale
 // link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
@@ -59,6 +60,29 @@ if (!$_POST) {
         $output_file_missing = '<div class="alert theme-warning">' . lang('The file is recorded here but is not on the disk.') . '</div>';
     }
     
+    // Summary rows of the status column: what the file is and where it
+    // sits; the size is the file on the disk, none when it is missing.
+    $file_info = db_item(
+        "SELECT folder.folder_name, files.timestamp, user.user_username
+        FROM files
+        LEFT JOIN folder ON files.folder = folder.folder_id
+        LEFT JOIN user ON files.user = user.user_id
+        WHERE files.id = '" . $id . "'");
+    $summary_rows = array(
+        lang('File Name') => h($file_name),
+        lang('Folder') => h((string) ($file_info['folder_name'] ?? '')),
+    );
+
+    if ($output_file_missing === '') {
+        $summary_rows[lang('File Size')] = h(convert_bytes_to_string((int) filesize(FILE_DIRECTORY_PATH . '/' . $file_name)));
+    }
+
+    $summary_rows[lang('Access')] = '<span class="' . h(get_access_control_type($file['folder'])) . '">' . h(get_access_control_type_name(get_access_control_type($file['folder']))) . '</span>';
+
+    if ((int) ($file_info['timestamp'] ?? 0) > 0) {
+        $summary_rows[lang('Last Modified')] = get_relative_time(array('timestamp' => (int) $file_info['timestamp'])) . ((string) ($file_info['user_username'] ?? '') !== '' ? ' ' . h($file_info['user_username']) : '');
+    }
+
     // output the page
     print
     pg_page_shell( array(
@@ -74,8 +98,6 @@ if (!$_POST) {
     ) ) . '
 <main id="content" class="container-fluid">
     ' . pg_screen_toolbar(array('grow' => '<span class="fw-semibold text-break">' . h($file_name) . '</span>')) . '
-            <div class="row">
-            <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . $output_file_missing . '
                 <form name="form" action="edit_javascript.php" method="post">
@@ -83,39 +105,23 @@ if (!$_POST) {
                     <input type="hidden" name="id" value="' . h($_REQUEST['id']) . '">
                     <input type="hidden" name="name" value="' . h($file_name) . '">
                     <input type="hidden" name="send_to" value="' . h($_REQUEST['send_to'] ?? '') . '">
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 my-3">
-                                            <label class="form-label" for="code">' . lang('JS File') . '</label>
-                                            <div id="edit_custom">
-                                                <textarea name="code" id="code" rows="25" cols="60" wrap="off">' . h($code) . '</textarea>
-                                                ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'javascript')) . '
-                                            </div>
-                                        </div>
-                                    </div>
+                    ' . pg_design_file_form_layout('
+                        <div class="card my-7">
+                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                ' . lang('Code') . '
+                            </h2>
+                            <div class="card-body pt-0">
+                                <label class="form-label" for="code">' . lang('JS File') . '</label>
+                                <div id="edit_custom">
+                                    <textarea name="code" id="code" rows="25" cols="60" wrap="off">' . h($code) . '</textarea>
+                                    ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'javascript')) . '
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-solid theme-primary"><span class="material-icons me-3">arrow_backsave</span><span class="pg-btn-label">' . lang(array('string'=>'Save & Return') ) . '</span></button>
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-solid theme-secondary"><span class="material-icons me-3">control_point_duplicate</span><span class="pg-btn-label">' . lang(array('string'=>'Duplicate') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                        </div>', pg_design_file_form_summary_card('', $summary_rows), '
+                                        <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1 btn-solid theme-primary"><span class="material-icons me-3" aria-hidden="true">arrow_backsave</span><span class="pg-btn-label">' . lang(array('string'=>'Save & Return') ) . '</span></button>
+                                        <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-solid theme-secondary"><span class="material-icons me-3" aria-hidden="true">control_point_duplicate</span><span class="pg-btn-label">' . lang(array('string'=>'Duplicate') ) . '</span></button>') . '
                 </form>
-            </div>
-        </div>
-    
 </main>' . output_footer();
 
     // Clears this screen's own form (edit_javascript): remove_form() takes no
