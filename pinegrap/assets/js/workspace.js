@@ -11452,20 +11452,17 @@
             }
         },
 
-        // onPick, when given, is told the box picked (the mini window of
-        // Add › Scheduled flow shows its form); without it the picture is
-        // still (a flow draft's card at rest, flowWindow()).
+        // A still picture of a flow: a flow draft's card at rest
+        // (flowWindow()), Add › Scheduled flow where the canvas cannot load.
         // Drawn to the visual spec in px (ws_flow_card_graph()): boxes
         // 128 × 60 with the kind's icon and name, the kind and the box's dry
         // run as its third line; control arrows 2 px with a filled head;
         // data threads 1 px in their type's tone, placed by the server.
-        flowWindowDraw: function (wrap, graph, onPick) {
+        flowWindowDraw: function (wrap, graph) {
             var NS = 'http://www.w3.org/2000/svg';
             var W = 128;
             var H = 60;
             var byId = {};
-            var groups = {};
-            var picked = null;
 
             if (!graph || !graph.nodes.length) {
                 return;
@@ -11534,28 +11531,8 @@
                 }
             });
 
-            function show(node, group) {
-                if (picked) {
-                    picked.classList.remove('is-picked');
-                }
-
-                picked = group;
-                group.classList.add('is-picked');
-                onPick(node);
-            }
-
             graph.nodes.forEach(function (node) {
-                // An untitled box is named by its kind: the kind is not said
-                // twice.
-                var named = (node.name !== node.label) ? node.name + ', ' + node.label : node.name;
-                var group = make('g', onPick ? {
-                    'class': 'ws-fd-box' + (node.outbound ? ' is-outbound' : '') + (node.mark ? ' is-' + node.mark : ''),
-                    tabindex: 0,
-                    role: 'button',
-                    'aria-label': named + (node.outbound ? ', ' + t('fd_outbound') : '')
-                        + (node.mark ? ', ' + t(node.mark === 'added' ? 'fd_added' : 'fd_changed') : '')
-                        + (node.said ? ', ' + node.said : '')
-                } : { 'class': 'ws-fd-box is-still' + (node.outbound ? ' is-outbound' : '') + (node.mark ? ' is-' + node.mark : '') });
+                var group = make('g', { 'class': 'ws-fd-box' + (node.outbound ? ' is-outbound' : '') + (node.mark ? ' is-' + node.mark : '') });
                 var cut = function (text, most) {
                     return text.length > most ? text.slice(0, most - 1) + '…' : text;
                 };
@@ -11582,20 +11559,6 @@
 
                 if (node.outbound) {
                     group.appendChild(make('path', { 'class': 'ws-fd-out', d: 'M' + (node.x + W - 18) + ' ' + (node.y + 18) + ' l10 -10 m-6 0 h6 v6' }));
-                }
-
-                groups[node.id] = group;
-
-                if (onPick) {
-                    group.addEventListener('click', function () {
-                        show(node, group);
-                    });
-                    group.addEventListener('keydown', function (event) {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            show(node, group);
-                        }
-                    });
                 }
 
                 drawing.appendChild(group);
@@ -12301,8 +12264,21 @@
             var body = clear(node.querySelector('.drawer-body'));
             var footer = clear(node.querySelector('.drawer-footer'));
             var drawing = el('div', 'ws-fd-window mb-5');
+            var stage = null;
             var saved = { flow_id: 0, draft_rev: 0 };
             var busy = false;
+
+            // The canvas lives while the drawer is open: closing it ends
+            // the drawing (one canvas drawing at a time, flowCardOpen()).
+            if (!node.wsSketchBound) {
+                node.wsSketchBound = true;
+                pgUI.drawer.on(node, 'hidden', function () {
+                    if (self.flowSketch) {
+                        self.flowSketch.destroy();
+                        self.flowSketch = null;
+                    }
+                });
+            }
 
             footer.classList.remove('d-none');
             body.appendChild(el('p', 'small fg-secondary', t('sf_help', self.channel.name)));
@@ -12396,15 +12372,53 @@
                 repeat.addEventListener('change', shown);
                 shown();
 
-                // A box picked in the drawing brings its settings forward.
-                function draw(graph) {
-                    clear(drawing);
-                    self.flowWindowDraw(drawing, graph, function (picked) {
-                        var target = (picked.id === 'post') ? message : date;
+                // The sketch on the Flows canvas itself, read-only
+                // (PGWsFlow.embed()), drawn anew with each answer; a box
+                // picked brings its settings forward. Where the canvas cannot
+                // be loaded, or the Flows screen holds it, the card's still
+                // picture stands in.
+                function draw(answer) {
+                    self.flowEmbedKit().then(function (config) {
+                        if (!drawing.isConnected) {
+                            return;
+                        }
 
-                        target.focus();
-                        target.scrollIntoView({ block: 'nearest' });
+                        clear(drawing);
+                        drawing.className = 'ws-fd-window mb-5';
+                        stage = el('div', 'ws-fd-stage is-open');
+                        drawing.appendChild(stage);
+                        self.flowSketch = window.PGWsFlow.embed(stage, {
+                            graph: answer.view.graph,
+                            tries: answer.view.tries,
+                            config: config,
+                            people: (BOOT && BOOT.people) || [],
+                            onSelect: function (picked) {
+                                if (!picked) {
+                                    return;
+                                }
+
+                                var target = (picked.id === 'post') ? message : date;
+
+                                target.focus();
+                                target.scrollIntoView({ block: 'nearest' });
+                            }
+                        });
+
+                        if (!self.flowSketch) {
+                            still(answer);
+                        }
+                    }).catch(function () {
+                        still(answer);
                     });
+                }
+
+                function still(answer) {
+                    if (!drawing.isConnected) {
+                        return;
+                    }
+
+                    clear(drawing);
+                    self.flowWindowDraw(drawing, answer.graph);
                 }
 
                 function filled() {
@@ -12425,7 +12439,7 @@
                     };
                 }
 
-                draw(data.graph);
+                draw(data);
 
                 // Each box's dry run follows the form: the sketch is asked
                 // again with what it holds once typing stops. A late answer
@@ -12438,7 +12452,7 @@
 
                     api('ws_flow_scheduled_new', Object.assign(filled(), { sketch: 1 })).then(function (again) {
                         if (mine === asked) {
-                            draw(again.graph);
+                            draw(again);
                         }
                     }).catch(function () {
                         // The drawing as it was stays; Publish says what is wrong.

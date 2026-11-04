@@ -59,7 +59,7 @@ function test_workspace_flow_window_names_a_box_once()
 {
 	$screen = workspace_editor_windows_test_source('workspace.js');
 
-	pg_assert_contains("var named = (node.name !== node.label) ? node.name + ', ' + node.label : node.name;", $screen);
+	pg_assert_contains("((node.name !== node.label) ? node.name + ' · ' + node.label : node.name)", $screen, 'the box\'s title names it once');
 	pg_assert_contains("((node.name !== node.label) ? node.label : '')", $screen, 'the kind line only when the name is not the kind');
 }
 
