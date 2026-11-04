@@ -23,6 +23,6 @@ description: Steps E21-E25 of plans/image-editor.md (owner 2026-11-03): change a
   - Pathfinder buttons for two or more selected shapes or paths: unite, subtract front, intersect, exclude, divide. A Shape builder tool: drag across overlapping regions to merge them, Alt-drag to remove one.
   - Own path booleans: curves flattened (0.25 px), polygon clipping (Martinez-Rueda), refitted to curves (`M.refitPath()`), holes as even-odd subpaths. Tests: the five operations on squares and circles, holes, touching edges.
 
-- E25 (M) Warp. After E23, beside E24.
+- E25 (M) Warp. After E23, beside E24. Done (#6408).
   - On a path, a shape or outlined text: presets arc, arch, bulge, flag, wave, fish, rise, squeeze, twist with bend and distortion, and a free envelope mesh (3×3 up to 6×6 handles). Kept as `warp` in the document and drawn by mapping the flattened outline; Expand bakes it into the path. A live text is offered E22's conversion first.
   - Tests: each preset maps corner and middle points as expected; Expand equals the drawn outline.

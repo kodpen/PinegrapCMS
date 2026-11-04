@@ -816,6 +816,7 @@ function pg_list_table_html(array $source, array $page, $label, $actions = '')
     $output = '<div class="pg-list-table" data-pg-list-table="' . h($source['list']) . '"'
         . ' data-pg-list-mode="' . ($source['all'] ? 'browser' : 'server') . '"'
         . (!empty($source['printed']) ? ' data-pg-list-printed="1"' : '')
+        . (!empty($source['ids_field']) ? ' data-pg-list-ids-field="' . h($source['ids_field']) . '"' : '')
         . ' data-pg-list-columns="' . h((string) json_encode(pg_list_table_client_columns($columns), $json)) . '"'
         . ' data-pg-list-params="' . h((string) json_encode((object) $source['params_out'], $json)) . '"'
         . ' data-pg-list-sort="' . h(pg_list_sort_value($source['levels'])) . '"'
@@ -871,6 +872,10 @@ function pg_list_table_html(array $source, array $page, $label, $actions = '')
         . '<button type="button" class="btn btn-sm btn-text theme-secondary pg-list-table-details-close" aria-label="' . h(lang('Close')) . '" title="' . h(lang('Close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>'
         . '<div class="pg-list-table-details-body"></div></aside></div>';
     $output .= '<div class="visually-hidden" aria-live="polite" data-pg-list-live></div>';
+
+    if (!empty($source['ids_field'])) {
+        $output .= '<span class="pg-list-table-ids" hidden></span>';
+    }
 
     return $output . '</div>';
 }
@@ -1039,7 +1044,11 @@ function pg_list_table_selected_ids(array $source, array $selection, $limit = 10
  */
 function pg_list_table_printed_lists()
 {
-    return array('view_menus', 'view_short_links');
+    return array(
+        'view_menus', 'view_short_links',
+        'view_orders', 'view_gift_cards', 'view_key_codes', 'view_shipping_methods',
+        'view_styles', 'view_themes', 'view_design_files', 'view_containers', 'view_comments',
+    );
 }
 
 /**
@@ -1058,7 +1067,11 @@ function pg_list_table_printed_lists()
  *                    'sort'), 'levels' (the sort, e.g. pg_list_state()'s
  *                    'sorts'), 'rows' (list of array('id', 'class', 'cells'
  *                    => key => pg_list_cell())), 'edit' (quick edit, as
- *                    pg_list_table_source() takes it)
+ *                    pg_list_table_source() takes it), 'ids_field' (the
+ *                    name of the form field the selected ids are posted in,
+ *                    e.g. 'styles[]', for a screen whose bulk endpoint reads
+ *                    a list of ids: the driver keeps one hidden field per
+ *                    selected row inside the list)
  * @return array array('source' => pg_list_table_source(), 'page' => the
  *               page pg_list_table_html() prints)
  */
@@ -1082,6 +1095,7 @@ function pg_list_table_printed(array $spec)
 
     $source['levels'] = pg_list_table_levels(isset($spec['levels']) && is_array($spec['levels']) ? $spec['levels'] : array(), $source['columns']);
     $source['printed'] = in_array($source['list'], pg_list_table_printed_lists(), true);
+    $source['ids_field'] = (isset($spec['ids_field']) && is_string($spec['ids_field']) && preg_match('/^[a-z][a-z0-9_]*(\[\])?$/', $spec['ids_field'])) ? $spec['ids_field'] : '';
     $rows = array_values(isset($spec['rows']) && is_array($spec['rows']) ? $spec['rows'] : array());
 
     return array(
@@ -1148,4 +1162,30 @@ function pg_list_table_search_box($list)
         . '<span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>'
         . '<input type="search" class="form-ghost" data-pg-list-search="' . h($list) . '" placeholder="' . h(lang('Search')) . '" aria-label="' . h(lang('Search')) . '">'
         . '</label>';
+}
+
+/**
+ * A date cell of a printed list: the relative time and who made the change,
+ * sorted by the time itself.
+ *
+ * @param mixed  $timestamp Unix seconds
+ * @param string $username  '' when not known
+ * @return array pg_list_cell()
+ */
+function pg_list_table_when_cell($timestamp, $username = '')
+{
+    return pg_list_cell(pg_list_when($timestamp, (string) $username), 'align-middle', array('data-pg-sort-value' => (int) $timestamp));
+}
+
+/**
+ * A yes/no cell of a printed list: a check mark that says Yes, or nothing;
+ * sorted by 1 or 0.
+ *
+ * @param mixed $on
+ * @return array pg_list_cell()
+ */
+function pg_list_table_check_cell($on)
+{
+    return pg_list_cell($on ? '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>' : '',
+        'align-middle', array('data-pg-sort-value' => $on ? 1 : 0));
 }

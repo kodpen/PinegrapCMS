@@ -22,6 +22,7 @@ description: Steps of the table driver plan: the driver core, its parts, the ser
    Cut in two: TD7a done (#6337) the quick edit mode in the driver (`pg_list_table_edit.js`, `ui/list-table-quick-edit.md`), no screen on it yet; TD7b done (#6373): the products list (`view_products.php`, `product_list.php`) moves with its bulk actions and its quick edit columns (source `edit`, cells with `pg_list_edit_cell_attributes()`, column keys matching the edit fields).
 
 8. TD8 (M) After TD7. Orders, gift cards, key codes and shipping methods move; then the ERP lists with editable cells: account prices, stock minimums, price lists, stock levels.
+   Cut in two: TD8a done (#6425) the four commerce lists, printed whole (`ui/list-table-commerce-lists.md`); TD8b the ERP lists.
 
 ## What runs side by side?
 - TD3, TD4, TD5 and TD6 touch different screens and can run together after TD2; TD7 waits for TD3. The printed lists and the close-out are in `table-driver-steps-2.md`.

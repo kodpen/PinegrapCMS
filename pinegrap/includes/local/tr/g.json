@@ -264,6 +264,7 @@
     "Goal": "Hedef",
     "Goal name": "Hedef adı",
     "Goal name or page id": "Hedef adı veya sayfa kimliği",
+    "Goal page id": "Hedef sayfa kimliği",
     "Goal: {var:1}": "Hedef: {var:1}",
     "Goals and scope": "Hedefler ve kapsam",
     "Goals you set yourself, progress ring by ring": "Kendi koyduğun hedefler, halka halka ilerleme",

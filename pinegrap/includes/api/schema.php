@@ -247,7 +247,8 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'id',       'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'op',       'in' => 'body', 'type' => 'enum', 'values' => array('set', 'adjust'), 'required' => true),
-				array('name' => 'quantity', 'in' => 'body', 'type' => 'int', 'min' => -1000000, 'max' => 1000000, 'required' => true, 'description' => 'The new quantity for set, the signed change for adjust.')
+				array('name' => 'quantity', 'in' => 'body', 'type' => 'int', 'min' => -1000000, 'max' => 1000000, 'required' => true, 'description' => 'The new quantity for set, the signed change for adjust.'),
+				array('name' => 'location', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'On a site that keeps stock per location: the location whose units change (left out or 0: the default location). An adjust stops at 0 there and takes nothing from another location; the product\'s quantity is the sum of its locations. A site without locations refuses any other value with 422 location.')
 			)
 		),
 
@@ -262,7 +263,7 @@ function api_schema() {
 			'summary' => 'Set or adjust stock for many products',
 			'description' => 'Up to 200 items in one call, because marketplaces synchronise stock in batches rather than one product at a time. Each item is reported on separately: one bad product id does not throw the rest away, and an adjust against a product that does not track stock is reported as not_tracked rather than switching tracking on. A bundle is reported as bundle: its stock follows the products in it.',
 			'params'  => array(
-				array('name' => 'items', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'integer', 'sku' => 'string', 'barcode' => 'string', 'op' => 'string', 'quantity' => 'integer'), 'max_items' => 200, 'required' => true, 'description' => 'Objects of {id, op, quantity}. sku is accepted as an alias for id; barcode looks the product up by its EAN/UPC. quantity is a whole number from -1000000 to 1000000, as for one product; an item outside that is reported as invalid and the others are applied.')
+				array('name' => 'items', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'integer', 'sku' => 'string', 'barcode' => 'string', 'op' => 'string', 'quantity' => 'integer', 'location' => 'integer'), 'max_items' => 200, 'required' => true, 'description' => 'Objects of {id, op, quantity}. sku is accepted as an alias for id; barcode looks the product up by its EAN/UPC. quantity is a whole number from -1000000 to 1000000, as for one product; an item outside that is reported as invalid and the others are applied. location names the stock location as for one product; an unknown one is reported as invalid.')
 			)
 		),
 
@@ -2858,6 +2859,113 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'calendars.locations',
+			'method'  => 'GET',
+			'path'    => '/calendars/locations',
+			'scope'   => 'calendars:read',
+			'handler' => 'api_calendar_locations_list',
+			'returns' => array('list' => 'CalendarLocation'),
+			'summary' => 'The event locations',
+			'description' => 'The rooms, buildings and other places events are held in, shared by every calendar, with how many events book each one. One page; a site has a handful. The location screens open to roles 0 to 2 only: an owner with the user role is refused (403 forbidden).',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'calendars.location_get',
+			'method'  => 'GET',
+			'path'    => '/calendars/locations/{id}',
+			'scope'   => 'calendars:read',
+			'handler' => 'api_calendar_locations_get',
+			'returns' => 'CalendarLocation',
+			'summary' => 'One event location',
+			'description' => 'Refused to an owner with the user role (403 forbidden).',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.location_create',
+			'method'  => 'POST',
+			'path'    => '/calendars/locations',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_locations_create',
+			'dry_run' => true,
+			'returns' => 'CalendarLocation',
+			'status'  => 201,
+			'summary' => 'Add an event location',
+			'description' => 'A new location, as on the location screen. Names are unique: 409 name_taken when another location has it. An event books it on the event\'s own screen. Refused to an owner with the user role (403 forbidden).',
+			'params'  => array(
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.location_update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/calendars/locations/{id}',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_locations_update',
+			'dry_run' => true,
+			'returns' => 'CalendarLocation',
+			'summary' => 'Rename an event location',
+			'description' => 'Names are unique: 409 name_taken when another location has it. Refused to an owner with the user role (403 forbidden). PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',   'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 100)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.location_delete',
+			'method'  => 'DELETE',
+			'path'    => '/calendars/locations/{id}',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_locations_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove an event location',
+			'description' => 'With its bookings, as on the location screen: the events that booked it stay, without that location. A dry run answers how many events book it (event_count). Refused to an owner with the user role (403 forbidden).',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.location_delete_post',
+			'method'  => 'POST',
+			'path'    => '/calendars/locations/{id}/delete',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_locations_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove an event location, addressed as a POST',
+			'description' => 'The same removal as DELETE /calendars/locations/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.event_reservations',
+			'method'  => 'GET',
+			'path'    => '/calendars/events/{id}/reservations',
+			'scope'   => 'calendars:read',
+			'handler' => 'api_calendar_event_reservations',
+			'returns' => array('list' => 'CalendarReservation'),
+			'summary' => 'The reservations of an event',
+			'description' => 'The order lines of placed orders that reserve the event, oldest first, cursor paged; carts not yet ordered are left out. A cancelled order\'s line is listed with its order_status. recurrence_number is the repeat a line reserves (0: the event as a whole, or a repeating event whose repeats share their spots). customer (name, e-mail, contact) is null for an owner who may not open orders. An event on none of the calendars the owner may open is answered 404. The calendar_event.reserved webhook announces each new one.',
+			'params'  => array(
+				array('name' => 'id',                'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'recurrence_number', 'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only the reservations of this repeat.'),
+				array('name' => 'limit',             'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',            'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'include_count',     'in' => 'query', 'type' => 'bool')
+			)
+		),
+
 		/* ----- Webhooks ----------------------------------------------------- */
 
 		array(
@@ -3944,7 +4052,7 @@ function api_schema() {
 			'handler' => 'api_experiments_list',
 			'returns' => array('list' => 'Experiment'),
 			'summary' => 'Page experiments',
-			'description' => 'The A/B experiments of the designed pages, newest first, cursor paged, each with its variants and their figures. status: draft (set up, not started), running, paused or ended. Variant a is the live page (control true, draft_page_id null); the others are draft pages shown under the live page\'s address. views and goals are summed from the hourly rollup: a goal counts once a day per visitor and experiment. rate is goals over views (0-1), lift the change against the control relative to its rate, p_value the two-sided p of a two-proportion z-test against the control and significant whether it is below 0.05; verdict is ahead, behind, more (not beyond chance yet: needed_views more views each would tell at these rates), even or none (no views). Nothing about a visitor is kept. 503 service_unavailable until the database update that adds experiments has run.',
+			'description' => 'The A/B experiments of the designed pages, newest first, cursor paged, each with its variants and their figures. status: draft (set up, not started), running, paused or ended. Variant a is the live page (control true, draft_page_id null); the others are draft pages shown under the live page\'s address. views and goals are summed from the hourly rollup: a goal counts once a day per visitor and experiment. rate is goals over views (0-1), lift the change against the control relative to its rate, p_value the two-sided p of a two-proportion z-test against the control and significant whether it is below 0.05; verdict is ahead, behind, more (not beyond chance yet: needed_views more views each would tell at these rates; needed_views null while one version has no views or nobody converted yet), even or none (no views on any version). Nothing about a visitor is kept. 503 service_unavailable until the database update that adds experiments has run.',
 			'params'  => array(
 				array('name' => 'status',  'in' => 'query', 'type' => 'enum', 'values' => array('draft', 'running', 'paused', 'ended')),
 				array('name' => 'page_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'The live page\'s experiments only.'),
@@ -5150,6 +5258,7 @@ function api_error_catalogue() {
 
 		'validation_failed'        => array(422, 'A parameter is missing, the wrong type or out of range. The field is named in the answer.'),
 		'period_locked'            => array(422, 'The date falls in a period whose books are locked: nothing dated there can be issued, cancelled or paid. Date it after the lock, or have the lock moved in the panel.'),
+		'location'                 => array(422, 'location is not one of the site\'s stock locations, or the site keeps no stock per location. Leave it out to use the default.'),
 		'credit_limit'             => array(422, 'The sale would take the customer past the credit limit the store enforces. Take a payment first, or raise the limit on the account.'),
 
 		'rate_limited'             => array(429, 'Too many calls. Retry-After says how long to wait.'),

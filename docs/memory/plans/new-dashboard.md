@@ -31,4 +31,4 @@ description: Plan (owner 2026-11-01): a new dashboard from the owner's design, t
 4. Role default and lock: the default reaches people who never saved a layout; while locked, everyone in the role sees the default and cannot edit, their own layouts kept for when the lock lifts.
 
 ## Where does it start?
-- N1; its screens are 21 and 22.
+- N10d and the V steps left (`new-dashboard-steps.md`).

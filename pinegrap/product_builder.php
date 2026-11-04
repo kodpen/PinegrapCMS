@@ -3300,6 +3300,58 @@ function pg_pb_form_values($set = NULL)
 }
 
 /**
+ * The quantity box of the inventory switch. On a site with stock locations
+ * the edit screen shows one box per enabled location and the total read
+ * only: the total is the sum of the rows (includes/fn/stock_locations.php)
+ * and is never posted. Each box carries the quantity it opened with, so the
+ * save applies the difference and units sold meanwhile stay sold. A new
+ * product, a variant row and a bundle keep the one box: a new product's
+ * count lands at the default location on its first stock change.
+ *
+ * @param string     $mode       'create' or 'edit'
+ * @param int        $product_id
+ * @param string|int $total      products.inventory_quantity
+ * @return string
+ */
+function pg_pb_render_stock_quantity($mode, $product_id, $total)
+{
+    $locations = pg_stock_screen_locations();
+    $is_bundle = $product_id && pg_bundle_ids_among(array((int) $product_id));
+
+    if (!$locations || ($mode !== 'edit') || $is_bundle) {
+        return '<div class="col-12 sm:col-6 lg:col-4">
+                <label for="inventory_quantity" class="form-label">' . lang('Inventory Quantity') . '</label>
+                <input type="number" min="0" name="inventory_quantity" id="inventory_quantity" class="form-control" value="' . h($total) . '" />
+                ' . (($mode === 'edit') ? '<input type="hidden" name="inventory_quantity_was" value="' . h($total) . '" />' : '') . '
+                <div class="form-text pg-pb-group-only d-none">' . lang('Starting stock for every variant; each row can differ.') . '</div>
+                ' . ($locations ? '<div class="form-text">' . lang('The starting stock goes to the default location.') . '</div>' : '') . '
+            </div>';
+    }
+
+    $quantities = pg_stock_screen_quantities(pg_stock_locations(), pg_stock_rows($product_id), (int) $total);
+    $output = '';
+
+    foreach ($locations as $location) {
+        $id = (int) $location['id'];
+        $quantity = isset($quantities[$id]) ? $quantities[$id] : 0;
+
+        $output .= '<div class="col-12 sm:col-6 lg:col-4">
+                <label for="stock_location_' . $id . '" class="form-label">' . h($location['name']) . '</label>
+                <input type="number" min="0" step="1" name="stock_location[' . $id . ']" id="stock_location_' . $id . '" class="form-control" value="' . $quantity . '" />
+                <input type="hidden" name="stock_location_was[' . $id . ']" value="' . $quantity . '" />
+            </div>';
+    }
+
+    return '<div class="col-12"><div class="form-label mb-0">' . lang('Stock by location') . '</div></div>'
+        . $output . '
+        <div class="col-12 sm:col-6 lg:col-4">
+            <label for="inventory_quantity_total" class="form-label">' . lang('Total') . '</label>
+            <input type="number" id="inventory_quantity_total" class="form-control" value="' . h((int) $total) . '" readonly />
+        </div>';
+}
+
+
+/**
  * The pre-order switch beside the back order one, with the date the stock
  * is expected (includes/fn/preorder.php); '' before the upgrade adds the
  * columns. An ended pre-order is drawn off: saving it again would be
@@ -5532,12 +5584,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                 'name'  => 'inventory',
                                                 'label' => lang('Inventory Tracking'),
                                                 'panel' =>
-                                                    '<div class="col-12 sm:col-6 lg:col-4">
-                                                        <label for="inventory_quantity" class="form-label">' . lang('Inventory Quantity') . '</label>
-                                                        <input type="number" min="0" name="inventory_quantity" id="inventory_quantity" class="form-control" value="' . h($v('inventory_quantity', '')) . '" />
-                                                        ' . (($pg_mode === 'edit') ? '<input type="hidden" name="inventory_quantity_was" value="' . h($v('inventory_quantity', '')) . '" />' : '') . '
-                                                        <div class="form-text pg-pb-group-only d-none">' . lang('Starting stock for every variant; each row can differ.') . '</div>
-                                                    </div>
+                                                    pg_pb_render_stock_quantity($pg_mode, $pg_product_id, $v('inventory_quantity', '')) . '
                                                     <div class="col-12 mt-5">
                                                         <label for="out_of_stock_message" class="form-label">' . lang('Out of Stock Message') . '</label>
                                                         <textarea id="out_of_stock_message" name="out_of_stock_message">' . h($v('out_of_stock_message')) . '</textarea>
@@ -6555,7 +6602,15 @@ function pg_pb_update_product($product_id)
     $stock_guarded    = FALSE;
     $stock_kept       = NULL;
 
-    if ($stock_was && !($bundle_posted && $product['bundle'])) {
+    // On a site with stock locations the screen posts one quantity per
+    // location and no total (pg_pb_render_stock_quantity()): the stored total
+    // stays in the row and the differences go through the writer below.
+    $stock_by_location = isset($_POST['stock_location']) && is_array($_POST['stock_location'])
+        && pg_stock_screen_locations() && !($bundle_posted && $product['bundle']);
+
+    if ($stock_by_location) {
+        $stock_action = 'keep';
+    } elseif ($stock_was && !($bundle_posted && $product['bundle'])) {
         $stock_action = pg_pb_stock_save_action(
             $product['inventory_quantity'],
             $stock_was_posted,
@@ -6637,6 +6692,28 @@ function pg_pb_update_product($product_id)
             }
 
             pg_pb_update_row('products', $flag, 'id', $product_id);
+        }
+    }
+
+    // The quantities by location, once tracking is written: each change is
+    // the difference to the figure the screen opened with, so the total moves
+    // by what the operator changed and a sale meanwhile stays sold. A refused
+    // change (a sale took the units) keeps the stored count, as above.
+    if ($stock_by_location && ($product['inventory'] === '1')) {
+        $stock_posted = pg_stock_posted_changes(
+            pg_stock_locations(),
+            $_POST['stock_location'],
+            isset($_POST['stock_location_was']) ? $_POST['stock_location_was'] : array());
+        $stock_applied = pg_stock_apply_changes($product_id, $stock_posted['changes'], 'panel');
+
+        if ($stock_applied['total'] !== null) {
+            $product['inventory_quantity'] = (string) $stock_applied['total'];
+            pg_stock_refresh_out_of_stock($product_id);
+        }
+
+        if (!$stock_applied['ok']) {
+            $stock_kept = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . (int) $product_id . "'");
+            $product['inventory_quantity'] = (string) $stock_kept;
         }
     }
 
@@ -7177,6 +7254,16 @@ function pg_pb_validate_product_post($user, $product_id = 0)
             output_error(h($variant_problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
     }
+
+    // A quantity by location that is not a whole count of zero or more is
+    // refused before anything is written, as the prices above.
+    if (isset($_POST['stock_location']) && is_array($_POST['stock_location'])) {
+        $stock_check = pg_stock_posted_changes(pg_stock_screen_locations(), $_POST['stock_location'], array());
+
+        if (!$stock_check['ok']) {
+            output_error(lang('Enter an inventory quantity.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
+    }
 }
 
 
@@ -7555,6 +7642,11 @@ function pg_pb_quick_update($product_id, $field, $value)
 
             if ((string) $current['inventory'] !== '1') {
                 return array('ok' => false, 'code' => 'not_tracked', 'message' => lang('This product does not track stock. Turn stock tracking on in the product first.'));
+            }
+
+            // Kept per location: one figure here would not say where.
+            if (pg_stock_screen_locations()) {
+                return array('ok' => false, 'code' => 'locations', 'message' => lang('Stock is kept per location: change it on the product screen.'));
             }
 
             $change['inventory'] = '1';

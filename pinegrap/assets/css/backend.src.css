@@ -8686,7 +8686,18 @@ button.no-popover:focus-visible {
      the file manager's app shell does exactly that. It scrolls instead. */
   max-height: calc(100vh - 10rem);
   overflow-y: auto;
+
+  /* The wrapper is only as wide as its icon button, and an absolute box
+     shrinks to its containing block, so without a width the menu falls back
+     to its 10rem minimum and long items scroll sideways inside it. It takes
+     its longest item's width instead, up to the window; past that the items
+     wrap. */
+  width: max-content;
+  max-width: min(24rem, calc(100vw - 2rem));
+  overflow-x: hidden;
 }
+.pg-toolbar .menu .menu-item,
+#button_bar .menu .menu-item { white-space: normal; }
 .pg-toolbar .menu.pg-menu-end,
 #button_bar .menu.pg-menu-end { left: auto; right: 0; }
 

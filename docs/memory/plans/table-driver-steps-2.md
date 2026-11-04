@@ -4,7 +4,7 @@ description: Steps of the table driver plan, part 2: the browser mode, the print
 ---
 
 ## Which steps, in one line each?
-1. TD9 (M) After TD3. Cut in two: TD9a (#6379) the browser mode in the core with `view_menus.php` and `view_short_links.php`; TD9b the other lists of this line (a list joins `pg_list_table_printed_lists()`). Browser mode (every row printed, client sort and search) and the first printed lists: `view_styles.php`, `view_themes.php`, `view_design_files.php`, `view_regions.php`, `view_menus.php`, `view_menu_items.php`, `view_containers.php`, `view_ads.php`, `view_fields.php`, `view_comments.php`, `view_short_links.php`.
+1. TD9 (M) After TD3. Cut in two: TD9a (#6379) the browser mode in the core with `view_menus.php` and `view_short_links.php`; TD9b (#6416) styles, themes, design files, containers, comments; TD9c next: regions, ads, fields (a list joins `pg_list_table_printed_lists()`). `view_menu_items.php` is a drag-ordered tree whose order is its meaning: it stays a plain table, off DataTables, in TD9c. Browser mode (every row printed, client sort and search) and the first printed lists: `view_styles.php`, `view_themes.php`, `view_design_files.php`, `view_regions.php`, `view_menus.php`, `view_menu_items.php`, `view_containers.php`, `view_ads.php`, `view_fields.php`, `view_comments.php`, `view_short_links.php`.
 
 2. TD10 (M) After TD9. Commerce lists: `view_cart_quotes.php`, `view_returns.php`, `view_subscriptions.php`, `view_orders_for_contact.php`, `view_product_attributes.php`, `duplicate_products.php`, `view_arrival_dates.php`, `view_ship_date_adjustments.php`, `view_verified_shipping_addresses.php`, `view_shipping_report.php`, `view_order_reports.php`.
 

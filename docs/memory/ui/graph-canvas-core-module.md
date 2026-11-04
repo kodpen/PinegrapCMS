@@ -5,9 +5,13 @@ module: graph_canvas
 ---
 
 ## What is it?
-- `assets/js/pg_graph_canvas.js`, bundle `pg_graph_canvas.min.js`, printed before its user (the flows screen: `ws_screen_assets()`). Built in steps by `plans/graph-canvas-core.md`.
+- `assets/js/pg_graph_canvas.js`, bundle `pg_graph_canvas.min.js`, printed before its user (the flows screen: `ws_screen_assets()`).
 - It owns what a box-and-arrow canvas needs whatever its boxes mean: geometry helpers, undo history, `viewport(host)`, and `create(adapter)` (pointer, pinch, Space, zoom keys, `destroy()`).
 - Sizes per box, named ports, other targets, stable arrow ids, partial redraw, thumbnails (slice 4): `ui/graph-canvas-core-sizes-ports.md`.
+
+## Why a core with adapters?
+- Owner, 2026-10-24 (#2445): the Flows canvas serves other features too, so the generic part is one core named `pg_graph_canvas` / `pgc-` and each user brings an adapter; the second user is the designer's Prototype view (`designer/prototype-view.md`).
+- What means something to one user stays in its adapter: Flows keeps `KINDS`, `RUN_STATES`, `STEP_STATES`, forms, toolbar, publish, runs, graph JSON and its boxes in workspace_flow.js, with the literals `tests/workspace_flows_canvas_test.php` reads.
 
 ## Where are its texts?
 - `pg_graph_canvas_js_strings()` (`includes/fn/graph_canvas.php`), keys `pgc_*`, merged into the Workspace config next to `ws_flow_js_strings()`. The core reads them through `adapter.text(key, ...)`; an adapter may name its own (Flows gives its box role `fl_box` through `boxRole()`).
