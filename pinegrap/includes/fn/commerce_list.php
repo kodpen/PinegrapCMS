@@ -175,3 +175,123 @@ function pg_shipping_method_list_columns($has_service)
 
     return $specs;
 }
+
+/**
+ * The product attribute columns that change in place: the name and the
+ * label. The options are a list of their own and change on the attribute's
+ * screen.
+ *
+ * @return array field => definition (pg_list_edit_parse())
+ */
+function pg_product_attribute_edit_columns()
+{
+    return array(
+        'name' => array('type' => 'text', 'label' => lang('Name'), 'max' => 100, 'required' => true),
+        'label' => array('type' => 'text', 'label' => lang('Label'), 'max' => 255),
+    );
+}
+
+/**
+ * The product attributes list's columns.
+ *
+ * @return array key => spec
+ */
+function pg_product_attribute_list_columns()
+{
+    return array(
+        'name' => array('heading' => lang('Name'), 'editable' => 'text'),
+        'label' => array('heading' => lang('Label'), 'editable' => 'text'),
+        'options' => array('heading' => lang('Options')),
+        'created' => array('heading' => lang('Created'), 'kind' => 'date'),
+        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+    );
+}
+
+/**
+ * The product attributes read for the list, each with its option labels in
+ * their order: every one, or the one asked for.
+ *
+ * @param int $id 0 for all
+ * @return array
+ */
+function pg_product_attribute_list_rows($id = 0)
+{
+    $rows = db_items(
+        "SELECT
+            product_attributes.id, product_attributes.name, product_attributes.label,
+            product_attributes.created_timestamp, product_attributes.last_modified_timestamp,
+            created_user.user_username AS created_username,
+            last_modified_user.user_username AS last_modified_username
+        FROM product_attributes
+        LEFT JOIN user AS created_user ON product_attributes.created_user_id = created_user.user_id
+        LEFT JOIN user AS last_modified_user ON product_attributes.last_modified_user_id = last_modified_user.user_id
+        " . ($id ? "WHERE product_attributes.id = '" . (int) $id . "'" : "") . "
+        ORDER BY product_attributes.name") ?: array();
+    $options = array();
+
+    foreach ((db_items("SELECT product_attribute_id, label, no_value FROM product_attribute_options" . ($id ? " WHERE product_attribute_id = '" . (int) $id . "'" : "") . " ORDER BY sort_order") ?: array()) as $option) {
+        $options[(int) $option['product_attribute_id']][] = (string) $option['label'] . ($option['no_value'] ? lang(' [\'No Thanks\' Option]') : '');
+    }
+
+    foreach ($rows as $index => $row) {
+        $rows[$index]['options'] = $options[(int) $row['id']] ?? array();
+    }
+
+    return $rows;
+}
+
+/**
+ * A product attribute row's cells. An attribute without a label says so.
+ *
+ * @param array $row        pg_product_attribute_list_rows()
+ * @param array $quick_edit field => definition, empty for none
+ * @return array key => pg_list_cell()
+ */
+function pg_product_attribute_list_cells(array $row, array $quick_edit)
+{
+    $id = (int) $row['id'];
+
+    return array(
+        'name' => pg_list_cell(pg_commerce_list_open_link('edit_product_attribute.php?id=' . $id, h($row['name'])), 'align-middle', pg_list_edit_cell_attributes($quick_edit, 'name', $id, $row['name'])),
+        'label' => pg_list_cell(((string) $row['label'] !== '') ? h($row['label']) : '<span class="fg-danger">[' . h(lang('No Label')) . ']</span>', 'align-middle', pg_list_edit_cell_attributes($quick_edit, 'label', $id, $row['label'])),
+        'options' => pg_list_cell(h(implode(', ', $row['options'])), 'align-middle', array('data-pg-sort-value' => count($row['options']) . ' ' . implode(', ', $row['options']))),
+        'created' => pg_list_table_when_cell($row['created_timestamp'], (string) ($row['created_username'] ?? '')),
+        'last_modified' => pg_list_table_when_cell($row['last_modified_timestamp'], (string) ($row['last_modified_username'] ?? '')),
+    );
+}
+
+/**
+ * Writes a product attribute's name or label changed on the list: a name is
+ * not used by another attribute, as on the attribute's screen.
+ *
+ * @param int    $id
+ * @param string $field
+ * @param mixed  $value pg_list_edit_parse()'s value
+ * @param int    $user_id
+ * @return array the answer pg_list_edit_reply() sends
+ */
+function pg_product_attribute_quick_update($id, $field, $value, $user_id)
+{
+    $quick_edit = pg_product_attribute_edit_columns();
+    $rows = pg_product_attribute_list_rows((int) $id);
+
+    if (!$rows || !isset($quick_edit[$field])) {
+        return array('ok' => false, 'code' => 'invalid', 'message' => lang('Record not found.'));
+    }
+
+    $value = (string) $value;
+
+    if (($field === 'name') && ((int) db_value("SELECT COUNT(*) FROM product_attributes WHERE name = '" . e($value) . "' AND id != '" . (int) $id . "'") > 0)) {
+        return array('ok' => false, 'code' => 'invalid', 'message' => lang('Sorry, the name that you entered is already in use, so please enter a different name.'));
+    }
+
+    db_q("UPDATE product_attributes SET `" . (($field === 'name') ? 'name' : 'label') . "` = ?, last_modified_user_id = ?, last_modified_timestamp = UNIX_TIMESTAMP() WHERE id = ?",
+        array($value, (string) (int) $user_id, (string) (int) $id)) or output_error('Query failed.');
+
+    log_activity(lang(array('string' => '{var:1} ({var:2}) was modified', 'vars' => array(lang('product attribute'), ($field === 'name') ? $value : $rows[0]['name']))), $_SESSION['sessionusername'] ?? '');
+
+    $cells = pg_product_attribute_list_cells(pg_product_attribute_list_rows((int) $id)[0], $quick_edit);
+
+    return array('ok' => true, 'value' => $value, 'html' => $cells[$field]['html'], 'class' => $cells[$field]['class'],
+        'cells' => array('last_modified' => array('html' => $cells['last_modified']['html'], 'class' => $cells['last_modified']['class'])));
+}
