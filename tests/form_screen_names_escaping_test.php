@@ -46,7 +46,9 @@ function test_form_screen_custom_form_select_names_escaped()
 
 function test_form_screen_view_information_names_escaped()
 {
-	foreach (array('edit_form_list_view.php', 'edit_form_item_view.php') as $file) {
+	// The form item view prints the name in its Summary
+	// (tests/form_item_view_form_test.php).
+	foreach (array('edit_form_list_view.php') as $file) {
 		$source = pg_test_form_screen_source($file);
 
 		pg_assert_same(0, preg_match('/\': \' \. \$custom_form_name;/', $source), $file . ': form name printed raw');

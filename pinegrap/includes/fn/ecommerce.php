@@ -37,6 +37,46 @@ function pg_featured_sort_order_value($value)
     return (int) $value;
 }
 
+// The Summary of Edit Featured & New Items, from the rows the screen lists
+// (get_items_that_can_be_featured_and_new()): the product groups and the
+// distinct products under them, the rows featured and the rows with a New on
+// Date as stored, and the disabled ones. The root product group has no boxes
+// and is not counted; a product in two groups is one product but two rows.
+function pg_featured_new_summary_counts($items)
+{
+    $counts = array('product_groups' => 0, 'products' => 0, 'featured' => 0, 'new' => 0, 'disabled' => 0);
+    $products = array();
+
+    foreach ((array) $items as $item) {
+        if (!is_array($item) || (int) ($item['parent_product_group_id'] ?? 0) === 0) {
+            continue;
+        }
+
+        if (($item['type'] ?? '') === 'product group') {
+            $counts['product_groups']++;
+        } else {
+            $products[(int) ($item['id'] ?? 0)] = true;
+        }
+
+        if ((int) ($item['featured'] ?? 0) === 1) {
+            $counts['featured']++;
+        }
+
+        $new_date = (string) ($item['new_date'] ?? '');
+        if ($new_date !== '' && $new_date !== '0000-00-00') {
+            $counts['new']++;
+        }
+
+        if ((int) ($item['enabled'] ?? 0) !== 1) {
+            $counts['disabled']++;
+        }
+    }
+
+    $counts['products'] = count($products);
+
+    return $counts;
+}
+
 // The quantity a product enters the cart with when the visitor gives none
 // (a checked or auto-selected product, a quick add, a donation without a
 // quantity box): products.default_quantity, at least 1. The column is NULL on

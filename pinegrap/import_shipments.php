@@ -74,41 +74,55 @@ print
         )
     ) . '
 <main id="content" class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            ' . (($output_error !== '') ? '<div class="alert theme-danger my-5">' . h($output_error) . '</div>' : '') . '
-            ' . (($output_result !== '') ? '<div class="card my-7"><div class="card-body">' . $output_result . '</div></div>' : '') . '
-            <form name="form" action="import_shipments.php" method="post" enctype="multipart/form-data">
-                ' . get_token_field() . '
-                <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+    ' . (($output_error !== '') ? '<div class="alert theme-danger my-5">' . h($output_error) . '</div>' : '') . '
+    <form name="form" action="import_shipments.php" method="post" enctype="multipart/form-data">
+        ' . get_token_field() . '
+        <div class="row">
+            <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                ' . (($output_result !== '') ? '<div class="card mb-7"><div class="card-body">' . $output_result . '</div></div>' : '') . '
+                <div class="card mb-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . h(lang('Import CSV')) . '
-                    </div>
-                    <div class="card-body">
-                        <p class="fg-secondary">' . h(lang('One row per parcel with the columns order_number, number and carrier. The carrier may be left empty; the header row is optional. Numbers are added to the ones the order already has. Orders that ship to more than one address are skipped.')) . '</p>
-                        <pre class="bg-1 p-3 rounded-4 small">order_number,number,carrier
-10045,1234567890,Yurtiçi Kargo
-10046,1Z999AA10123456784,</pre>
-                        <div class="my-5">
+                    </h2>
+                    <div class="card-body pt-0">
+                        <div class="my-3">
                             <label for="file" class="form-label">' . h(lang('CSV File')) . '</label>
-                            <input name="file" id="file" type="file" accept=".csv,text/csv,text/plain" class="form-control w-auto" style="max-width:100%;min-width:0" required>
+                            <input name="file" id="file" type="file" accept=".csv,text/csv,text/plain" class="form-control" required>
                             ' . pg_upload_limit_hint($shipping_import_max_bytes) . '
                         </div>
                         <div class="form-field my-5">
-                            <div class="switch"><input type="checkbox" name="notify" id="notify" value="1" class=""' . ($notify_checked ? ' checked' : '') . '></div>
-                            <label class="" for="notify">' . h(lang('Send customers the shipping e-mail')) . '</label>
+                            <div class="switch"><input type="checkbox" name="notify" id="notify" value="1"' . ($notify_checked ? ' checked' : '') . '></div>
+                            <label for="notify">' . h(lang('Send customers the shipping e-mail')) . '</label>
                         </div>
                     </div>
                 </div>
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+            </div>
+            <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                <div class="position-sticky" style="top:3.3rem;">
+                    <div class="card mb-7">
+                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            ' . h(lang('File Format')) . '
+                        </h2>
+                        <div class="card-body pt-0">
+                            <p class="fg-secondary small">' . h(lang('One row per parcel with the columns order_number, number and carrier. The carrier may be left empty; the header row is optional. Numbers are added to the ones the order already has. Orders that ship to more than one address are skipped.')) . '</p>
+                            <pre class="bg-1 p-3 rounded-4 small mb-0">order_number,number,carrier
+10045,1234567890,Yurtiçi Kargo
+10046,1Z999AA10123456784,</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             <button type="submit" name="submit_import" value="Import" class="btn my-1 btn-solid theme-success"><i class="bi bi-upload me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Import Tracking Numbers')) . '</span></button>
                         </div>
                     </div>
                 </nav>
-            </form>
+            </div>
         </div>
-    </div>
+    </form>
 </main>' .
     output_footer();

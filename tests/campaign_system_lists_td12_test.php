@@ -24,6 +24,7 @@ function campaign_system_lists_td12_files()
 	return array(
 		'view_email_campaigns' => 'view_email_campaigns.php',
 		'view_email_campaign_history' => 'view_email_campaign_history.php',
+		'view_email_campaign_profiles' => 'view_email_campaign_profiles.php',
 		'view_sms_campaigns' => 'view_sms_campaigns.php',
 		'view_visitor_reports' => 'view_visitor_reports.php',
 		'view_not_found_log' => 'view_not_found_log.php',

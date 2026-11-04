@@ -1088,6 +1088,14 @@ function erp_expense_save($data, $user_id = 0, $id = 0)
         return $fail(lang('The expense was not saved.') . ' ' . $error);
     }
 
+    // A correction is meant for the coming ones too: the active repeat of
+    // this expense takes the new figures (erp_expense_recurrence_follow()).
+    if (($existing !== null) && !erp_expense_recurrence_follow($id)) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail(lang('The expense was not saved.') . ' ' . $error);
+    }
+
     if ($pay) {
         $expense = db_item("SELECT * FROM erp_expenses WHERE id = '" . $id . "' LIMIT 1 FOR UPDATE");
 

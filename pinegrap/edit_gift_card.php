@@ -236,6 +236,18 @@ if (!$_POST) {
         $output_order_info_rows = $gift_card['order_id'] ? $output_credit_info . $output_order_info_rows : $output_credit_info;
     }
 
+    // Store credit has no Delete: it is voided on the customer's screen.
+    $delete_refusal = pg_gift_card_form_delete_refusal($gift_card);
+
+    if ($delete_refusal === '') {
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('gift card')))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>';
+    } else {
+        $void_link = (((string) $gift_card['credit_username'] !== '') && pg_can_open_user($user, $gift_card['credit_user_role']))
+            ? ' <a href="edit_user.php?id=' . $credit_user_id . '&amp;send_to=' . h(urlencode($request_uri)) . '#store_credit">' . lang('Open the customer\'s store credit') . '</a>'
+            : '';
+        $output_delete_button = '<span class="small fg-secondary align-self-center ms-5 my-1">' . h($delete_refusal) . $void_link . '</span>';
+    }
+
     $output_redemption_history = '';
 
     $redemptions = db_items(
@@ -347,7 +359,7 @@ if (!$_POST) {
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                            <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('gift card')))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>
+                            ' . $output_delete_button . '
                         </div>
                     </div>
                 </nav>
@@ -368,6 +380,12 @@ if (!$_POST) {
     
     // If the user selected to delete this gift card, then delete it.
     if ($liveform->get_field_value('submit_delete') == 'Delete') {
+        // Store credit is voided on the customer's screen, never deleted.
+        if (($refusal = pg_gift_card_form_delete_refusal($gift_card)) !== '') {
+            $liveform->mark_error('', $refusal);
+            go($_SERVER['PHP_SELF'] . '?id=' . (int) $gift_card['id']);
+        }
+
         db("DELETE FROM gift_cards WHERE id = '" . e($liveform->get_field_value('id')) . "'");
         
         log_activity(lang(array('string'=>'gift card ({var:1}) was deleted','vars'=>output_gift_card_code($gift_card['code']))), $_SESSION['sessionusername']);

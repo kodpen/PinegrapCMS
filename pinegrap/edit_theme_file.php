@@ -121,7 +121,9 @@ if (!$_POST) {
         $row = mysqli_fetch_row($result);
         
         // if this is a system theme then output the edit theme button
-        if ($row[0] > 0) {
+        $system_theme = ($row[0] > 0);
+
+        if ($system_theme) {
             $output_edit_theme_button = '<button type="button" class="btn btn-sm btn-text theme-secondary" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_theme_file')) . '\'"><i class="bi bi-palette me-2" aria-hidden="true"></i>' . lang('Edit Theme') . '</button>';
             $output_export_button = '<button type="button" class="btn btn-sm btn-text theme-secondary" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_file.php?id=' . urlencode($_GET['id']) . '&export=true')) . '\'"><i class="bi bi-box-arrow-up me-2" aria-hidden="true"></i>' . lang('Export') . '</button>';
             $output_download_file_button = '';
@@ -139,6 +141,16 @@ if (!$_POST) {
             $output_file_missing = '<div class="alert theme-warning">' . lang('The file is recorded here but is not on the disk.') . '</div>';
         }
 
+        // Summary rows of the status column: the kind of theme, its size on
+        // the disk and who may open it (the folder's access control).
+        $summary_rows = array(lang('Type') => h($system_theme ? lang('System') : lang('Custom')));
+
+        if ($output_file_missing === '') {
+            $summary_rows[lang('File Size')] = h(convert_bytes_to_string(filesize(FILE_DIRECTORY_PATH . '/' . $file_name)));
+        }
+
+        $summary_rows[lang('Access')] = '<span class="' . h(get_access_control_type($file_folder)) . '">' . h(get_access_control_type_name(get_access_control_type($file_folder))) . '</span>';
+
         print
             pg_page_shell([
                 'title'=> lang('Edit Theme'),
@@ -155,7 +167,7 @@ if (!$_POST) {
                             <div class="row">
                     <div class="col-12">
                         ' . $liveform->output_errors() . '
-                        ' . $liveform->output_notices() . $output_file_missing . '
+                        ' . $liveform->output_notices() . '
                 ' . pg_screen_toolbar(array(
                     'secondary' => array($output_edit_theme_button, $output_export_button, $output_download_file_button),
                     'grow' => '<p class="fg-secondary small mb-0">' . lang('Page Style Head Tag') . ': ' . h('<stylesheet></stylesheet>') . '</p>',
@@ -164,36 +176,26 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>(isset($_GET['id']) ? $_GET['id'] : ''))) . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'from', 'value'=>$from)) . '
-                    <div class="row">
-                        <div class="col-12 md:col-6">
+                    ' . pg_design_file_form_layout(
+                        '
                             <div class="card my-7">
                                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Theme File Name') . '
+                                    ' . lang('Main Informations') . '
                                 </div>
                                 <div class="card-body">
-                                    <div class="col-12 my-3">
-                                        <label for="name" class="form-label">' . lang('Name') . '</label>
-                                        ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'value'=>$file_name, 'maxlength'=>'100', 'class'=>'form-control', 'required'=>'required')) . '
+                                    <div class="row">
+                                        <div class="col-12 md:col-6 my-3">
+                                            <label for="name" class="form-label">' . lang('Name') . '</label>
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'value'=>$file_name, 'maxlength'=>'100', 'class'=>'form-control', 'required'=>'required')) . '
+                                        </div>
+                                        <div class="col-12 my-3">
+                                            <label for="description" class="form-label">' . lang('Description') . '</label>
+                                            ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'description', 'id'=>'description', 'value'=>$description, 'rows'=>'3', 'class'=>'form-control')) . '
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                        <div class="col-12 md:col-6">' . pg_design_file_form_access_card(select_folder($file_folder)) . '
-                        </div>
-                        <div class="col-12 md:col-6">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Theme File Description') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="col-12 my-3">
-                                        <label for="description" class="form-label">' . lang('Description') . '</label>
-                                        ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'description', 'id'=>'description', 'value'=>$description, 'rows'=>'3', 'class'=>'form-control')) . '
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 md:col-6">
+                            </div>',
+                        pg_design_file_form_summary_card($output_file_missing, $summary_rows) . '
                             <div class="card my-7">
                                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Activate Theme to Make it Live') . '
@@ -208,18 +210,12 @@ if (!$_POST) {
                                         <label for="activated_mobile_theme">' . lang('Activate for Mobile') . '</label>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class="btn-group flex-wrap justify-content-center">
-                                <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                                <button type="button" class="btn my-1 btn-outline theme-secondary" onclick="window.location=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_themes.php\'">' . lang('Cancel') . '</button>
-                                <button type="submit" name="delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('theme')))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                            </div>' . pg_design_file_form_access_card(select_folder($file_folder)),
+                        '
+                                        <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                        <button type="button" class="btn my-1 btn-outline theme-secondary" onclick="window.location=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_themes.php\'">' . lang('Cancel') . '</button>
+                                        <button type="submit" name="delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('theme')))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>'
+                    ) . '
                 </form>
                     </div>
                 </div>

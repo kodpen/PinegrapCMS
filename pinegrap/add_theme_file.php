@@ -25,6 +25,7 @@ pg_upload_refuse_discarded_body();
 include_once('liveform.class.php');
 $user = validate_user();
 validate_area_access($user, 'designer');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/design_file_form.php');
 
 $liveform = new liveform('add_theme_file');
 
@@ -56,8 +57,8 @@ if (!$_POST) {
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$folder_id)) . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'id'=>'file_upload_field', 'name'=>'file_upload_field')) . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'overwrite')) . '
-                    <div class="row">
-                        <div class="col-12">
+                    ' . pg_design_file_form_layout(
+                        '
                             <div class="card my-7">
                                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Options') . '
@@ -137,24 +138,9 @@ if (!$_POST) {
                                             </div>
                                         </div>
                                     </div>         
-                                </div>         
-                            </div>         
-                        </div>            
-                        <div class="col-12 md:col-6">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Theme File Access Control') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="col-12 my-3">
-                                        <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                                        <select class="form-control" id="folder" name="folder">' . select_folder($folder_id, 0) . '</select>
-                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-12 md:col-6">
-                            <div class="card my-7 ">
+                            <div class="card my-7">
                                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Description') . '
                                 </div>
@@ -164,16 +150,11 @@ if (!$_POST) {
                                         ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'description', 'id'=>'description', 'rows'=>'3', 'class'=>'form-control')) . '
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                            </div>',
+                        pg_design_file_form_access_card(select_folder($folder_id, 0)),
+                        '
+                                        <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>'
+                    ) . '
                 </form>
                 <script>
                 

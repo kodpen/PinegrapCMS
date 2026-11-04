@@ -1,11 +1,11 @@
 ---
 name: list-table-quick-edit-values
-description: Which values of each driver list change in quick edit (products, pages), which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
+description: Which values of each driver list change in quick edit (products, pages, containers …), which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
 module: list_table_edit
 ---
 
 ## What is the rule?
-- Owner (2026-11-04, `workflow/decisions-made-product-22.md`): every value the record's own edit screen can change is editable in quick edit, with that screen's checks and rights, on its `pg_list_edit_request()` endpoint. Computed values stay text: views, created/modified times, SEO score and impact, counts. The symptom it fixed: after the move only the columns that had a `pg_list_edit` field before were fields.
+- Owner (2026-11-04, `workflow/decisions-made-product-22.md`): every value the record's own edit screen can change is editable in quick edit, with that screen's checks and rights, on its `pg_list_edit_request()` endpoint. Computed values stay text: views, created/modified times, SEO score and impact, counts. Fixed: after the move only columns with an earlier `pg_list_edit` field were fields.
 
 ## Products: which cells change?
 - `pg_pb_quick_edit_more_fields()` (product_builder.php), merged into `pg_pb_quick_edit_columns()`: the code (the ID column, field `name`, unique like the product screen: `pg_product_name_holder()`), taxable, product form title, selection type, default quantity (inside the product's min/max), shippable, weight (`decimal`, stored lb, four places), PWP, SWP, container, preparation, free shipping, extra shipping (minor units), Dim (`12 x 3 x 4`, x/×/*, the screen's checks per size, `pg_pb_quick_dimensions_change()`), the labelled custom fields, recurring, start (not with ClearCommerce), number of payments, payment period, allow to schedule, membership days, the two BCC addresses (validated). Shipping fields only while the store ships.
@@ -22,12 +22,12 @@ module: list_table_edit
 ## Contacts: which cells change?
 - Names, company, phones, e-mail, opt-in and the address views' address parts: `list-table-quick-edit-contacts.md`. The groups stay text (several choices).
 
-## Short links: which cells change?
-- Name, destination type, page, destination, tracking code and how it answers: `list-table-quick-edit-short-links.md`.
+## Short links, containers, menus: which cells change?
+- Short links: name, destination type, page, destination, tracking code, how it answers (`list-table-quick-edit-short-links.md`). Containers: name, enabled, sizes, weight, cost (`list-table-quick-edit-containers.md`). Menus: name, effect, the two pop-up positions, the two classes lists (`list-table-quick-edit-menus.md`).
 
 ## Which lists are not done yet?
 - Products: zones and order receipt message (above).
 - Contacts: the contact groups (multi-select).
-- Submitted forms, menus, themes, containers, comments, styles, design files, and the commerce lists' columns outside their `pg_*_edit_columns()`.
+- Submitted forms, themes, comments, styles, design files, and the commerce lists' columns outside their `pg_*_edit_columns()`.
 
-Related: docs/memory/ui/list-table-quick-edit.md, docs/memory/ui/list-table-quick-edit-pages.md, docs/memory/ui/list-table-quick-edit-users.md, docs/memory/ui/list-table-quick-edit-contacts.md, docs/memory/ui/list-table-quick-edit-short-links.md, docs/memory/ui/product-list-paging.md
+Related: docs/memory/ui/list-table-quick-edit.md, docs/memory/ui/list-table-quick-edit-pages.md, docs/memory/ui/list-table-quick-edit-users.md, docs/memory/ui/list-table-quick-edit-contacts.md, docs/memory/ui/list-table-quick-edit-short-links.md, docs/memory/ui/list-table-quick-edit-containers.md, docs/memory/ui/product-list-paging.md

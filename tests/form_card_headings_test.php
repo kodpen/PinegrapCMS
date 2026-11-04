@@ -52,7 +52,7 @@ function test_form_has_no_low_heading_elements_but_dialog_titles()
 function test_form_card_titles_are_h2_with_the_same_look()
 {
 	$files = array(
-		'ad_form.php' => 2,
+		'ad_form.php' => 4,
 		'arrival_date_form.php' => 5,
 		'calendar_event_form.php' => 5,
 		'contact_form.php' => 8,
