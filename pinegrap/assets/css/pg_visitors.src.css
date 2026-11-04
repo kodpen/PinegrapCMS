@@ -298,6 +298,32 @@
 
   /* ── Section: content ───────────────────────────────────────────────── */
 
+  .pg-visitors-content-lists {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+    gap: 1.25rem 1.5rem;
+  }
+
+  .pg-visitors-content-list {
+    min-width: 0;
+  }
+
+  .pg-visitors-content-landing {
+    grid-column: 1 / -1;
+  }
+
+  .pg-visitors-content-list-title {
+    margin: 0 0 .5rem;
+    font-size: .875rem;
+    font-weight: 600;
+    color: var(--pg-fg-emphasis);
+  }
+
+  .pg-visitors-content-list .pg-visitors-empty {
+    padding: .75rem 0;
+    text-align: start;
+  }
+
   /* ── Section: site_search ───────────────────────────────────────────── */
 
   /* ── Section: google ────────────────────────────────────────────────── */

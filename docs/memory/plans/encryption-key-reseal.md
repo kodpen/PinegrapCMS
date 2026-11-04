@@ -13,9 +13,9 @@ description: Plan: Reset Encryption Key re-seals every value sealed with the key
 - HMACs keyed with the key cannot be re-sealed and are re-issued by nature: device tokens and pairings (`api/api-device-refresh-rotation.md`, `api/api-device-pairing.md`), form-issued tokens, e-mail preference links, idempotency fingerprints. The card's warning keeps naming them: connected devices pair again.
 
 ## Steps
-- RK1 (S) The registry and the key-parameter helpers. `pg_reseal_registry()` in a new `includes/fn/reseal.php`: one entry per table and column (or service row) with its sealing kind (`iv`, `connect`, `gateway`) and the WHERE that picks sealed rows; `encrypt_string_with_iv()` / `decode_ssl_keys()` and `pg_connect_seal()` / `pg_connect_open()` take a `$key` parameter that defaults to the constant; `pg_reseal_run($old, $new)` opens each value with the old key, seals it with the new one and counts rows done, skipped (not opening with the old key: left as it is, it was unreadable already) and failed, in the same request after `pg_write_config_file()`, where the constant still holds the old key. The card numbers and the gateway secrets become the first entries. Tests: a round trip per kind with explicit keys; a value that does not open is skipped and counted. Memory: `platform/encryption-key-reseal.md`.
+- RK1 (S) The registry and the key-parameter helpers. Done (#6487): `pg_reseal_registry()`, `pg_reseal_run()`, the `$key` parameters; `platform/encryption-key-reseal-registry.md`.
 
-- RK2 (M) The module entries. Each module above adds its entries (connect rows by provider, connectors, e-document, Paraşüt, backup, product feeds, MFA, subscriptions); a JSON value with sealed fields names the fields. Tests: each entry's selector and fields against a fixture row. Memory: each module file gains a "re-sealed on a key reset" line.
+- RK2 (M) The module entries. Each module above adds its entries (connect rows by provider, connectors, e-document, Paraşüt, backup, product feeds, MFA, subscriptions); a JSON value with sealed fields names the fields. Tests: each entry's selector and fields against a fixture row. Memory: each module file gains a "re-sealed on a key reset" line. The Google secret block later in `security.save.php` seals with the constant (old key): in a reset it must not undo its entry.
 
 - RK3 (S) The card. The warn-and-confirm list becomes "will be re-sealed", the confirmation box stays only for the HMAC-keyed items, the success message gives the counts; counts per area: `pg_encryption_key_reset_counts()` (#6392). Memory: `ui/settings-security-cards.md`.
 
@@ -23,4 +23,4 @@ description: Plan: Reset Encryption Key re-seals every value sealed with the key
 - Whether a site with thousands of two-step keys needs the general job (`release/migration-long-steps.md` pattern) instead of the save request: RK1 measures with its counts and asks only if a real site exceeds the request budget.
 
 ## Where does it start?
-- After the `bug` work item of #6392 lands. RK1 alone, then RK2 and RK3 together. Read `core/README.md` key rules, `core/security-helpers-and-secret-storage.md`, `commerce/payment-gateway-secrets.md`, `ui/settings-security-cards.md`.
+- RK1 is done; RK2 and RK3 run together. Read `platform/encryption-key-reseal-registry.md` first. Read `core/README.md` key rules, `core/security-helpers-and-secret-storage.md`, `commerce/payment-gateway-secrets.md`, `ui/settings-security-cards.md`.

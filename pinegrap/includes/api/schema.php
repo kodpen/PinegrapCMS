@@ -268,6 +268,57 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'inventory.locations',
+			'method'  => 'GET',
+			'path'    => '/inventory/locations',
+			'scope'   => 'products:read',
+			'handler' => 'api_inventory_locations_list',
+			'returns' => array('list' => 'StockLocation'),
+			'summary' => 'Stock locations',
+			'description' => 'The warehouses and shops the site keeps stock in, in one page: the default first, then in their order. A location is never deleted, only turned off (enabled false): its units still count in a product\'s quantity, and it takes no transfer in. Empty on a site that keeps one stock per product. The id is what location means on the other stock endpoints.',
+			'params'  => array(
+				array('name' => 'enabled', 'in' => 'query', 'type' => 'bool', 'description' => 'Only the locations that are on, or only those that are off.')
+			)
+		),
+
+		array(
+			'id'      => 'inventory.list',
+			'method'  => 'GET',
+			'path'    => '/inventory',
+			'scope'   => 'products:read',
+			'handler' => 'api_inventory_list',
+			'returns' => array('list' => 'StockLevel'),
+			'summary' => 'Stock levels per location',
+			'description' => 'The products that track stock, by id, cursor paged, with quantity (the total, the figure GET /products shows and marketplaces receive) and locations: the units at each location, 0 where the product holds none. A product that has not been changed since the first location was added holds its whole quantity at the default location. On a site without locations, locations is empty.',
+			'params'  => array(
+				array('name' => 'location',      'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only this location\'s units in locations (0 or left out: every location). An id that is not a location is refused with 422 location.'),
+				array('name' => 'product_id',    'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only this product.'),
+				array('name' => 'in_stock',      'in' => 'query', 'type' => 'bool', 'description' => 'With location: only the products that hold units there (true) or none (false). Without it: by the total.'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'inventory.transfer',
+			'method'  => 'POST',
+			'path'    => '/inventory/transfer',
+			'scope'   => 'inventory:write',
+			'handler' => 'api_inventory_transfer',
+			'dry_run' => true,
+			'returns' => 'StockTransfer',
+			'summary' => 'Move stock between locations',
+			'description' => 'Moves units of one product from one location to another, as the Transfer dialog of the stock history does: both locations change or neither does, and the product\'s quantity stays the same, so no inventory.changed is announced and no marketplace is told. Both moves carry the same ref in the stock history. Refusals: 422 location when from or to is not a location, 422 validation_failed when they are the same; 409 location_disabled when the location the units go to is turned off, 409 not_enough when from holds fewer units than quantity (nothing is taken from another location), 409 not_tracked when the product does not track stock, 409 bundle for a bundle, 409 no_locations on a site without locations, 409 refused when the location the units go to cannot hold that many. Send an Idempotency-Key so a retried transfer is not made twice.',
+			'params'  => array(
+				array('name' => 'product_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'from',       'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The location the units leave (GET /inventory/locations).'),
+				array('name' => 'to',         'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The location the units go to; it has to be on.'),
+				array('name' => 'quantity',   'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 1000000, 'required' => true, 'description' => 'Whole units, 1 or more.'),
+				array('name' => 'note',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Shown beside both moves in the stock history.')
+			)
+		),
+
+		array(
 			'id'      => 'products.prices',
 			'method'  => 'POST',
 			'path'    => '/products/prices',
@@ -2139,6 +2190,22 @@ function api_schema() {
 		),
 
 		/* ----- Campaign profiles -------------------------------------------- */
+
+		array(
+			'id'      => 'campaigns.sms.list',
+			'method'  => 'GET',
+			'path'    => '/campaigns/sms',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaigns_sms_list',
+			'returns' => array('list' => 'SmsCampaign'),
+			'summary' => 'SMS campaigns',
+			'description' => 'The texts sent to the mobile numbers of chosen contact groups, as My SMS Campaigns lists them, newest first, cursor paged. status: draft (kept, never sent), ready (waiting for send_at), queued (handed to the SMS queue at queued_at) or cancelled. queued counts the messages the queue took and refused the numbers the SMS checks turned away (no consent, refused by IYS, no sender identity, SMS not set up); outbox says what the queue still holds of a queued campaign: sent, waiting and failed (null before it is queued; sent rows leave the queue after 7 days, failed ones after 30). contact_group_ids are the groups it goes to, excluded_contact_group_ids the groups whose members are left out. campaign.sent is announced when a campaign is queued. An account with the e-mail right but the user role sees only the campaigns it created. 503 service_unavailable until the database update has created the table.',
+			'params'  => array(
+				array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('draft', 'ready', 'queued', 'cancelled')),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
 
 		array(
 			'id'      => 'campaigns.profiles.list',

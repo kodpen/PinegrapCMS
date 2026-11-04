@@ -124,8 +124,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         return;
     }
 
-    // The Encryption Key card: a new key in config.php, then the stored card
-    // numbers and the payment gateway secrets sealed again with it. Checked
+    // The Encryption Key card: a new key in config.php, then the values the
+    // re-seal registry lists sealed again with it. Checked
     // after every refusal above, so a refused save changes no key.
     if (post_value('ecommerce_reset_encryption_key') == 1) {
     
@@ -160,54 +160,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             output_error(lang(array('string'=>'The encryption key could not be reset, because the config.php file ({var:1}) is not writable. Please configure the config.php file so it can be written to and then try again. For Unix, set the permissions for the file to 777. For Windows, give the anonymous web user rights to write to and delete the file.','vars'=>array(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/data/config.php') )) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
         
-        // get all orders that have an unencrypted credit card number or encrypted credit card number
-        $query = 
-            "SELECT
-                id,
-                card_number
-            FROM orders
-            WHERE
-                (card_number != '')
-                AND (SUBSTRING(card_number, 1, 1) != '*')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        $orders = array();
-        
-        while ($row = mysqli_fetch_assoc($result)) {
-            $orders[] = $row;
-        }
-        
-        // loop through all orders in order to re-encrypt or encrypt credit card numbers
-        foreach ($orders as $order) {
-            // if the credit card number is already encrypted, then decrypt it with old key and encrypt it with new key
-            if (mb_strlen($order['card_number']) > 16) {
-                $order['card_number'] = decrypt_credit_card_number($order['card_number'], $old_encryption_key);
-                
-                // if the decryption was successful, then encrypt it with new key and store it
-                if (is_numeric($order['card_number']) == TRUE) {
-                    $query = "UPDATE orders SET card_number = ? WHERE id = ?";
-                    $result = db_q($query, array((string) encrypt_credit_card_number($order['card_number'], $new_encryption_key), (string) (int) $order['id'])) or output_error('Query failed.');
-                }
-                
-            // else the credit card number is not already encrypted, so encrypt it for the first time
-            } else {
-                $query = "UPDATE orders SET card_number = ? WHERE id = ?";
-                $result = db_q($query, array((string) encrypt_credit_card_number($order['card_number'], $new_encryption_key), (string) (int) $order['id'])) or output_error('Query failed.');
-            }
-        }
-
-        // The gateway secrets, sealed with the old key, follow the new one;
-        // one that does not open with the old key is left as it is.
-        $gateway_secret_stored = db_item("SELECT " . implode(', ', array_keys(pg_gateway_secret_fields())) . " FROM config LIMIT 1");
-        $gateway_secret_sql = array();
-        $gateway_secret_values = array();
-
-        foreach (pg_gateway_secret_fields() as $gateway_secret_column => $gateway_secret_width) {
-            $gateway_secret_sql[] = $gateway_secret_column . ' = ?';
-            $gateway_secret_values[] = (string) pg_gateway_secret_for_save('', (string) ($gateway_secret_stored[$gateway_secret_column] ?? ''), (string) $old_encryption_key, (string) $new_encryption_key, $gateway_secret_width);
-        }
-
-        db_q("UPDATE config SET " . implode(', ', $gateway_secret_sql), $gateway_secret_values) or output_error('Query failed.');
+        // Every value sealed with the old key follows the new one
+        // (pg_reseal_registry()); one that does not open with the old key is
+        // left as it is.
+        $reseal_result = pg_reseal_run((string) $old_encryption_key, (string) $new_encryption_key);
     }
 
     // ── Firewall settings ────────────────────────────────────────────────

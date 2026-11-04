@@ -767,7 +767,7 @@
         var st = M.baseAt(base, this.motionNow(), end), vr = this.viewRect(), k = this.view.k;
         var cx = vr.x + vr.w / 2, cy = vr.y + vr.h / 2;
         var move = M.mul(M.mul(M.translate(cx + st.x * vr.w, cy + st.y * vr.h), M.scale(st.scale)), M.translate(-cx, -cy));
-        var m = M.mul(M.mul(M.scale(k), M.translate(-vr.x, -vr.y)), M.mul(move, M.pictureMatrix(this.doc)));
+        var m = M.mul(M.mul(M.scale(k), M.translate(-vr.x, -vr.y)), M.mul(move, M.placedMatrix(this.doc)));
 
         this.img.style.transform = 'matrix(' + m.map(function (n) { return Math.round(n * 1e6) / 1e6; }).join(', ') + ')';
     };

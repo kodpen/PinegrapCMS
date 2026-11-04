@@ -192,7 +192,7 @@ function get_order_preview($properties) {
                 $arrival_date_id = $row['arrival_date_id'];
                 $shipping_method_id = $row['shipping_method_id'];
                 $shipping_method_name = $row['shipping_method_name'];
-                $shipping_method_description = $row['shipping_method_description'];
+                $shipping_method_description = pg_stock_pickup_describe($row['shipping_method_id'], $row['shipping_method_description'], true);
                 $shipping_cost = $row['shipping_cost'] / 100;
                 $original_shipping_cost = $row['original_shipping_cost'] / 100;
                 $ship_to_offer_id = $row['offer_id'];
@@ -2055,6 +2055,11 @@ function get_order_preview($properties) {
             LEFT JOIN arrival_dates ON ship_tos.arrival_date_id = arrival_dates.id
             WHERE ship_tos.order_id = '" . e($order_id) . "'
             ORDER BY ship_tos.id");
+
+        // The pickup place follows the method's description.
+        foreach ($ship_tos as $pickup_key => $pickup_ship_to) {
+            $ship_tos[$pickup_key]['shipping_method_description'] = pg_stock_pickup_describe($pickup_ship_to['shipping_method_id'], $pickup_ship_to['shipping_method_description']);
+        }
 
         $recipients = array_merge($recipients, $ship_tos);
 

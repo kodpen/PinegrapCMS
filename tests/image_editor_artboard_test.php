@@ -209,7 +209,7 @@ function test_image_editor_artboard_crop_shape_path()
 function test_image_editor_artboard_extend_check()
 {
 	pg_assert_same(null, pg_image_edit_extend(null, 100, 80), 'none asked');
-	pg_assert_same(array('w' => 120, 'h' => 70, 'x' => 10, 'y' => -10, 'fill' => array(255, 0, 16)),
+	pg_assert_same(array('w' => 120, 'h' => 70, 'x' => 10, 'y' => -10, 'pw' => 100, 'ph' => 80, 'fill' => array(255, 0, 16)),
 		pg_image_edit_extend(array('w' => 120, 'h' => 70, 'x' => 10, 'y' => -10, 'fill' => '#ff0010'), 100, 80), 'a canvas with its fill');
 	pg_assert_same(null, pg_image_edit_extend(array('w' => 120, 'h' => 70, 'x' => 0, 'y' => 0, 'fill' => 'transparent'), 100, 80)['fill'], 'transparent');
 

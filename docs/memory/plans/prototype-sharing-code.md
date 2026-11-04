@@ -14,7 +14,7 @@ description: What the code holds for plans/prototype-sharing.md: drafts and thei
 - No preview token; not in the sitemap or robots.txt.
 
 ## How do links name pages?
-- An href is a page-name path; a rename rewrites no tree, a draft gets no 301 (plans/designer-prototype-links-code.md). `tab:<key>` is only in widget page settings and `__page_link` `_bindParams` (`pg_sw_page_link_spec()`, designer/designer-page-pickers.md): a plain link finds an open tab by page name, an unsaved tab's typed name too.
+- An href is a page-name path; a rename rewrites no tree, a draft gets no 301 (designer/prototype-links-in-code.md). `tab:<key>` is only in widget page settings and `__page_link` `_bindParams` (`pg_sw_page_link_spec()`, designer/designer-page-pickers.md): a plain link finds an open tab by page name, an unsaved tab's typed name too.
 
 ## Which token links exist?
 - Short links once or timed (`pg_short_link_durations()`): a once link has a token (hash, hint; add_short_link.php); `router_short_link_gate()` spends it on the first human GET, not on bots or HEAD, counts uses, sends no-store, noindex, no-referrer. A once link to a draft still meets the private gate.

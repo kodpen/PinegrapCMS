@@ -4006,6 +4006,20 @@
   .pg-dash-map-step[data-step="3"] { background: color-mix(in srgb, var(--pg-dash-cat) 70%, var(--pg-card-bg)); }
   .pg-dash-map-step[data-step="4"] { background: var(--pg-dash-cat); }
 
+  /* Visitor map (pg_dash_cards_visitors.js): a bubble per place over the
+     plain provinces; the hovered or focused one is outlined. */
+  .pg-dash-map .pg-dash-map-bubble {
+    fill: color-mix(in srgb, var(--pg-dash-cat) 55%, transparent);
+    stroke: var(--pg-dash-cat);
+    stroke-width: 1;
+  }
+
+  .pg-dash-map .pg-dash-map-bubble[data-active] {
+    fill: var(--pg-dash-cat);
+    stroke: var(--pg-fg-emphasis);
+    stroke-width: 2;
+  }
+
   /* Operations Desk: three lanes beside each other, under each other on a
      narrow card. */
   .pg-dash-ops {
@@ -4062,6 +4076,7 @@
   @media (forced-colors: active) {
     .pg-dash-map path { fill: Canvas; stroke: CanvasText; }
     .pg-dash-map [data-step], .pg-dash-map-step { forced-color-adjust: none; }
+    .pg-dash-map .pg-dash-map-bubble { fill: Highlight; stroke: CanvasText; }
     .pg-dash-spark path { stroke: CanvasText; }
   }
 
