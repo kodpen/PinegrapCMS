@@ -5432,12 +5432,19 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             column, so answering it means reading every catalog page and walking
             the group tree for each.
         */
-        ? '<nav class="navigation mb-5" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-link pg-link-secondary" href="duplicate_product.php?id=' . h($pg_product_id) . get_token_query_string_field() . '"><i class="bi bi-copy me-1"></i>' . lang('Duplicate') . '</a>
-                ' . (($v('product_form') or $v('pg_pb_has_form_fields'))
-                    ? '<a class="btn btn-sm btn-link pg-link-secondary" href="view_fields.php?product_id=' . h($pg_product_id) . '"><i class="bi bi-ui-checks me-1"></i>' . lang('Product Form') . '</a>'
-                    : '') . '
-            </nav>'
+        // The screen's one toolbar. A product in the Recycle Bin is not
+        // duplicated (duplicate_product.php refuses it): the copy would be a
+        // live product made from one the operator threw away.
+        ? pg_screen_toolbar(array(
+            'secondary' => array(
+                ($pg_recycled
+                    ? ''
+                    : '<a class="btn btn-sm btn-text theme-secondary" href="duplicate_product.php?id=' . h($pg_product_id) . get_token_query_string_field() . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>'),
+                (($v('product_form') or $v('pg_pb_has_form_fields'))
+                    ? '<a class="btn btn-sm btn-text theme-secondary" href="view_fields.php?product_id=' . h($pg_product_id) . '"><i class="bi bi-ui-checks me-1" aria-hidden="true"></i>' . lang('Product Form') . '</a>'
+                    : ''),
+            ),
+        ))
         : '') . '
 
     <div class="row">
