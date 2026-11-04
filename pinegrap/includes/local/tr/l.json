@@ -571,6 +571,7 @@
     "Line {var:1} needs a description.": "{var:1}. satır için açıklama gerekli.",
     "Line {var:1} needs a quantity greater than zero.": "{var:1}. satır için sıfırdan büyük bir miktar gerekli.",
     "Line {var:1}: VAT withholding needs VAT on the line.": "{var:1}. satır: KDV tevkifatı için satırda KDV olmalı.",
+    "Line {var:1}: enter the unit price as a number.": "Satır {var:1}: birim fiyatı sayı olarak girin.",
     "Line {var:1}: the VAT rate must be between 0 and 100.": "{var:1}. satır: KDV oranı 0 ile 100 arasında olmalı.",
     "Line {var:1}: the amount is too large.": "{var:1}. satır: tutar çok büyük.",
     "Line {var:1}: the campaign discount must be between 0 and 100.": "{var:1}. satır: kampanya iskontosu 0 ile 100 arasında olmalı.",
