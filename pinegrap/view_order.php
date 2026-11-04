@@ -3545,15 +3545,25 @@ if (!$_POST) {
                 }
 
                 $recipient['items'] = db_items(
-                    "SELECT id
+                    "SELECT id, quantity
                     FROM order_items
                     WHERE ship_to_id = '" . e($recipient['id']) . "'");
 
                 // Loop through order items in order to prepare shipped quantity.
                 foreach ($recipient['items'] as $item_key => $item) {
 
-                    $item['shipped_quantity'] =
-                        $liveform->get('order_item_id_' . $item['id'] . '_shipped_quantity');
+                    $item_field = 'order_item_id_' . $item['id'] . '_shipped_quantity';
+
+                    // Refused here, on its own box, before anything is saved.
+                    if (!pg_order_shipped_quantity($liveform->get($item_field), $item['quantity'])['ok']) {
+                        $liveform->mark_error($item_field, lang(array('string' => 'The shipped quantity must be a whole number from 0 to {var:1}.', 'vars' => array((int) $item['quantity']))));
+                        go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . (int) $order['id'] . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
+                    }
+
+                    $item = array(
+                        'id' => $item['id'],
+                        'shipped_quantity' => $liveform->get($item_field),
+                    );
 
                     $recipient['items'][$item_key] = $item;
                 }
