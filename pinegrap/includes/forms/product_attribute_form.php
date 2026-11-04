@@ -105,19 +105,68 @@ function pg_product_attribute_form_duplicate_label($options)
 
     foreach ($options as $option) {
         $label = (string) $option['label'];
-        // mb_strtolower() turns the Turkish dotted capital into i plus a
-        // combining dot, so it is mapped to a plain i first.
-        $key = str_replace('İ', 'i', $label);
-        $key = function_exists('mb_strtolower') ? mb_strtolower($key, 'UTF-8') : strtolower($key);
+        $keys = pg_product_attribute_form_label_keys($label);
 
-        if (isset($seen[$key])) {
-            return $label;
+        foreach ($keys as $key) {
+            if (isset($seen[$key])) {
+                return $label;
+            }
         }
 
-        $seen[$key] = true;
+        foreach ($keys as $key) {
+            $seen[$key] = true;
+        }
     }
 
     return '';
+}
+
+/**
+ * Whether a new option label reads as one an attribute already has
+ * (pg_product_attribute_form_label_keys()).
+ *
+ * @param string $label     The new label
+ * @param array  $existing  The attribute's labels
+ * @return bool
+ */
+function pg_product_attribute_form_label_taken($label, $existing)
+{
+    $seen = array();
+
+    foreach ($existing as $other) {
+        foreach (pg_product_attribute_form_label_keys((string) $other) as $key) {
+            $seen[$key] = true;
+        }
+    }
+
+    foreach (pg_product_attribute_form_label_keys((string) $label) as $key) {
+        if (isset($seen[$key])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * A label lowercased the two ways its capitals can be meant: English (I is
+ * i) and Turkish (I is ı), so "KIRMIZI" meets "Kırmızı" and "IVORY" meets
+ * "ivory", while "Kirmizi" and "Kırmızı" stay two words. mb_strtolower()
+ * turns the dotted capital İ into i plus a combining dot, so it is mapped
+ * to a plain i first.
+ *
+ * @param string $label
+ * @return array  One or two keys
+ */
+function pg_product_attribute_form_label_keys($label)
+{
+    $lower = function ($text) {
+        return function_exists('mb_strtolower') ? mb_strtolower($text, 'UTF-8') : strtolower($text);
+    };
+
+    $label = str_replace('İ', 'i', (string) $label);
+
+    return array_values(array_unique(array($lower($label), $lower(str_replace('I', 'ı', $label)))));
 }
 
 /**
