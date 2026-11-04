@@ -7611,35 +7611,44 @@
             body.appendChild(page);
         },
 
-        // The latest decisions, unfiltered, a link to the Decision Timeline.
+        // The latest decisions, unfiltered, as the dashboard's Activity line:
+        // a dot per decision (Claude's in the accent), the decision's words,
+        // the channel under them as the way to the message, the day at the
+        // end; a link to the Decision Timeline. The words may hold links, so
+        // the row itself is no button: the channel line is, and a press
+        // anywhere else on the row opens the message too.
         homeDecisions: function (data) {
             var self = this;
-            var decisions = todayCard('decisions', t('home_decisions'), 'bi-clock-history', 'S', 'general', CFG.urls.timeline, t('nav_timeline'));
+            var card = todayCard('decisions', t('home_decisions'), 'bi-clock-history', 'S', 'general', CFG.urls.timeline, t('nav_timeline'));
+            var items = data.decisions || [];
 
-            if (!data.decisions.length) {
-                decisions.body.appendChild(el('div', 'ws-home-empty', t('home_decisions_empty')));
+            if (!items.length) {
+                card.body.appendChild(el('p', 'pg-dash-card-empty', t('home_decisions_empty')));
+
+                return card.node;
             }
 
-            var line = el('div', 'ws-home-tl');
+            var line = el('ol', 'pg-dash-timeline ws-today-decisions');
 
-            data.decisions.forEach(function (item) {
-                var row = button('ws-home-tl-item' + (item.claude ? ' ws-tl-by-claude' : ''));
-                var dot = el('span', 'ws-home-tl-dot');
-                dot.appendChild(icon(item.claude ? 'bi-stars' : 'bi-patch-check'));
-                row.appendChild(dot);
+            items.forEach(function (item) {
+                var row = el('li', 'pg-dash-event ws-today-decision');
+                row.setAttribute('data-kind', item.claude ? 'claude' : 'decision');
 
-                var text = el('span', 'ws-home-row-text');
-                var meta = el('small', 'ws-home-row-meta');
-                meta.appendChild(icon(item.channel.private ? 'bi-lock' : 'bi-hash'));
-                meta.appendChild(document.createTextNode(item.channel.name + ' · ' + item.day_label + ' ' + item.time));
-                text.appendChild(meta);
+                var main = el('div', 'pg-dash-event-main');
+                var words = el('div', 'pg-dash-event-text ws-today-decision-text ws-msg-body');
+                setHtml(words, item.html);
+                main.appendChild(words);
 
-                var quote = el('span', 'ws-home-row-quote ws-msg-body');
-                setHtml(quote, item.html);
-                text.appendChild(quote);
-                row.appendChild(text);
+                var open = button('pg-dash-event-note ws-today-decision-open');
+                open.appendChild(icon(item.channel.private ? 'bi-lock' : 'bi-hash'));
+                open.appendChild(el('span', 'ws-today-decision-channel', item.channel.name));
+                open.addEventListener('click', function () { self.open(item.channel.id, item.id); });
+                main.appendChild(open);
+                row.appendChild(main);
+
+                row.appendChild(el('span', 'pg-dash-event-when', item.day_label + ' ' + item.time));
                 row.addEventListener('click', function (event) {
-                    if (event.target.closest('a')) {
+                    if (event.target.closest('a, button')) {
                         return;
                     }
 
@@ -7648,9 +7657,9 @@
                 line.appendChild(row);
             });
 
-            decisions.body.appendChild(line);
+            card.body.appendChild(line);
 
-            return decisions.node;
+            return card.node;
         },
 
         // Public channels the person is not in yet, each with Join.
@@ -7948,21 +7957,30 @@
         },
 
         // What happened in the person's channels: the ones with messages
-        // they have not read, the latest first, each with its count and its
-        // last message.
+        // they have not read, the latest first, each with the channel's sign
+        // in its colour, its count ("3 new", in the accent with a mention),
+        // the last message and its time. The badge counts the channels, in
+        // the accent when one of them mentions the person.
         homeDigest: function (data) {
             var self = this;
             var card = todayCard('digest', t('home_digest'), 'bi-chat-square-text', 'M', 'general');
             var items = data.digest || [];
 
+            self.homeCount(card, items.length, items.some(function (item) { return item.mentions > 0; }));
+
             if (!items.length) {
-                card.body.appendChild(el('div', 'ws-home-empty', t('home_digest_empty')));
+                card.body.appendChild(el('p', 'pg-dash-card-empty', t('home_digest_empty')));
+
+                return card.node;
             }
+
+            var list = el('ul', 'ws-today-digest');
 
             items.forEach(function (item) {
                 var channel = (BOOT.channels || []).filter(function (one) { return one.id === item.id; })[0] || item;
-                var row = button('ws-home-row ws-home-digest');
-                var tile = el('span', 'ws-home-digest-icon');
+                var entry = el('li', 'ws-today-digest-item');
+                var row = button('ws-today-digest-row');
+                var tile = el('span', 'ws-today-digest-icon');
 
                 tile.setAttribute('aria-hidden', 'true');
                 tile.appendChild(channelIcon(channel));
@@ -7973,28 +7991,31 @@
 
                 row.appendChild(tile);
 
-                var text = el('span', 'ws-home-row-text');
-                var name = el('span', 'ws-home-row-title');
-                name.appendChild(document.createTextNode(item.name));
-                name.appendChild(el('span', 'ws-home-new' + (item.mentions ? ' ws-home-new-mention' : ''), t('home_digest_new', item.unread > 99 ? '99+' : item.unread)));
-                text.appendChild(name);
+                var text = el('span', 'ws-today-digest-text');
+                var head = el('span', 'ws-today-digest-head');
+                head.appendChild(el('span', 'ws-today-digest-name', item.name));
+                head.appendChild(el('span', 'ws-today-new' + (item.mentions ? ' ws-today-new-mention' : ''), t('home_digest_new', item.unread > 99 ? '99+' : item.unread)));
+                text.appendChild(head);
 
                 if (item.text || item.sender) {
-                    var last = el('span', 'ws-home-row-quote');
+                    var last = el('span', 'ws-today-digest-last');
 
                     if (item.sender) {
                         last.appendChild(el('b', '', item.sender + ': '));
                     }
 
-                    last.appendChild(document.createTextNode(item.text));
+                    last.appendChild(document.createTextNode(item.text || ''));
                     text.appendChild(last);
                 }
 
                 row.appendChild(text);
-                row.appendChild(el('small', 'ws-home-digest-time', item.time));
+                row.appendChild(el('span', 'ws-today-digest-time', item.time));
                 row.addEventListener('click', function () { self.open(item.id, 0); });
-                card.body.appendChild(row);
+                entry.appendChild(row);
+                list.appendChild(entry);
             });
+
+            card.body.appendChild(list);
 
             return card.node;
         },
