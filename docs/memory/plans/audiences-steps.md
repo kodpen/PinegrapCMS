@@ -23,8 +23,10 @@ description: Steps AU1-AU6 of plans/audiences.md: rule model and SQL builder, re
 - AU4c (S) Switch review screen. Done in #6418 (`ui/contact-group-rules.md`, `core/audiences-doors.md`).
   - Decided in #6319: when a group is switched to dynamic, show the count of its hand, form and product rows ("1,240 by hand, 30 from forms, 12 from products") from `pg_audience_switch_review()` and offer remove them or turn them into `rule` rows; default touches nothing. Run the chosen action's statements after the switch is saved. Memory: `core/audiences-doors.md`, `ui/contact-group-rules.md`.
 
-- AU5 (S) Audience token. After AU2 and PX6.
-  - `{audience:group:<id>}` of `page-experiments.md` resolves a dynamic group through the xref as any group (nothing new to compute at request time); a "joined a group" campaign-profile trigger and the Flows event start name dynamic groups in their pick lists with their kind. Memory: `designer/audience-conditions.md` grows.
+- AU5 (S) Audience token. Done in #PRNUM (`designer/audience-conditions.md`): `__audience_group_<id>` reads a dynamic group's rule rows as any xref row; the designer's group list carries the kind and labels a dynamic group.
+
+- AU5b (S) Group triggers. Waits for decision issue #ISSUENUM.
+  - Neither exists yet: campaign profiles have no "joined a group" trigger (`email_campaign_profiles.action` is an ENUM, a new value is a schema step) and Flows do not start on `contact_group.members_changed` (not in `pg_event_workspace_events()` nor `ws_events_catalog()`; the payload's added/removed lists are no `{{trigger.*}}` value). The decision says whether to add them, and per change or per contact.
 
 - AU6 (S) Close-out. After AU1-AU5.
   - PR body names `[NEW] Added contact groups filled by rules: orders, visits, consent, membership and fields decide who is in`; decisions to `core/`; the two plan files and the line in `feature-plans-2026-11.md` deleted; `php tools/memory_index.php`.

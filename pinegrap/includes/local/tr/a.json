@@ -3987,6 +3987,7 @@
     "Audience: country (two-letter code)": "Kitle: ülke (iki harfli kod)",
     "Audience: device": "Kitle: cihaz",
     "Audience: in contact group {var:1}": "Kitle: {var:1} kişi grubunda",
+    "Audience: in contact group {var:1} (filled by rules)": "Kitle: {var:1} kişi grubunda (kurallarla dolan)",
     "Audience: returning visitor": "Kitle: geri dönen ziyaretçi",
     "Audience: version shown in experiment {var:1}": "Kitle: {var:1} deneyinde gösterilen sürüm",
     "Audio Control": "Ses Denetimi",
