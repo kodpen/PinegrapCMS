@@ -132,7 +132,8 @@ if (!$_POST) {
         $liveform->add_fields_to_session();
         
         $liveform->validate_required_field('name', lang('Name is required.'));
-        
+        pg_calendar_form_check_lengths($liveform, array('name' => array(lang('Name'), 100)));
+
         // if there is an error, forward user back to edit calendar event location screen
         if ($liveform->check_form_errors() == true) {
             header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_calendar_event_location.php?id=' . $_POST['id']);

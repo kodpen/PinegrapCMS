@@ -2083,3 +2083,44 @@ function get_calendar_event_options($properties)
     }
     return $calendar_event_options;
 }
+
+/**
+ * Whether a posted text is longer than its column holds. MySQL in non-strict
+ * mode cuts a longer value without an error, so the save screens refuse it
+ * instead of storing a shortened name. A non-text value counts as too long.
+ *
+ * @param mixed $value
+ * @param int   $max  characters the column holds
+ * @return bool
+ */
+function pg_calendar_text_too_long($value, $max)
+{
+    if ($value === null) {
+        return false;
+    }
+
+    if (!is_scalar($value)) {
+        return true;
+    }
+
+    return mb_strlen((string) $value, 'UTF-8') > (int) $max;
+}
+
+/**
+ * Marks an error on every listed field of a calendar form whose text is
+ * longer than its column; a field that already has an error is skipped.
+ *
+ * @param liveform $liveform
+ * @param array    $limits  field name => array(label, max characters)
+ */
+function pg_calendar_form_check_lengths($liveform, $limits)
+{
+    foreach ($limits as $field => $limit) {
+        if (
+            ($liveform->check_field_error($field) == false)
+            && pg_calendar_text_too_long($liveform->get_field_value($field), $limit[1])
+        ) {
+            $liveform->mark_error($field, lang(array('string' => '{var:1} can be at most {var:2} characters long.', 'vars' => array($limit[0], (string) $limit[1]))));
+        }
+    }
+}
