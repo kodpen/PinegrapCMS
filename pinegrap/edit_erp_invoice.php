@@ -333,7 +333,13 @@ if ($_POST) {
             log_activity(lang(array('string' => 'erp invoice ({var:1}) was set to repeat', 'vars' => $invoice['full_number'])), $_SESSION['sessionusername']);
             $liveform->add_notice(lang('The invoice will repeat.'));
         } else {
-            $liveform->mark_error('_error', h($started['error']));
+            // The form comes back as it was sent, with the refused box
+            // marked: drawn from its defaults, a second press after fixing
+            // only the end date started a monthly series nobody chose.
+            foreach (array('recur_every', 'recur_first', 'recur_end', 'recur_mode') as $recur_field) {
+                $liveform->assign_field_value($recur_field, trim((string) ($_POST[$recur_field] ?? '')));
+            }
+            $liveform->mark_error((string) ($started['field'] ?? '_error'), h($started['error']));
         }
 
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query . '#erp-recurring');
@@ -1406,13 +1412,25 @@ if (function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_read
     } elseif ($recur_refusal !== '') {
         $recur_body = '<p class="fg-secondary mb-0">' . h($recur_refusal) . '</p>';
     } elseif (!$recur_readonly) {
+        // After a refusal the boxes hold what was sent (the recur_start
+        // handler keeps it), and the refused one is marked.
+        $recur_kept = function ($field, $default) use ($liveform) {
+            $value = $liveform->get_field_value($field);
+            return ($value === null) ? $default : (string) $value;
+        };
+        $recur_invalid = function ($field, $class) use ($liveform) {
+            return 'class="' . h($liveform->create_error_class($field, $class)) . '"'
+                . ($liveform->check_field_error($field) ? ' aria-invalid="true"' : '');
+        };
+        $recur_every_value = $recur_kept('recur_every', '');
+        $recur_mode_value = $recur_kept('recur_mode', '');
         $period_options = '';
         foreach (erp_expense_recurring_periods() as $months => $label) {
-            $period_options .= '<option value="' . (int) $months . '">' . h($label) . '</option>';
+            $period_options .= '<option value="' . (int) $months . '"' . (((string) (int) $months === $recur_every_value) ? ' selected' : '') . '>' . h($label) . '</option>';
         }
         $mode_options = '';
         foreach (erp_invoice_recurring_modes() as $mode => $label) {
-            $mode_options .= '<option value="' . h($mode) . '">' . h($label) . '</option>';
+            $mode_options .= '<option value="' . h($mode) . '"' . (((string) $mode === $recur_mode_value) ? ' selected' : '') . '>' . h($label) . '</option>';
         }
         $recur_body = '
                     <form method="post" action="' . $self_action . '" class="row g-3 align-items-end">
@@ -1421,19 +1439,19 @@ if (function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_read
                         <input type="hidden" name="erp_action" value="recur_start" />
                         <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_every">' . lang('Repeats') . '</label>
-                            <select class="form-control form-control-sm" id="recur_every" name="recur_every">' . $period_options . '</select>
+                            <select ' . $recur_invalid('recur_every', 'form-control form-control-sm') . ' id="recur_every" name="recur_every">' . $period_options . '</select>
                         </div>
                         <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_first">' . lang('Next invoice on') . '</label>
-                            <input type="date" data-pg-date class="form-control form-control-sm" id="recur_first" name="recur_first" value="' . h(erp_invoice_recurring_first_default((string) $invoice['issue_date'], date('Y-m-d'))) . '" min="' . h(date('Y-m-d', strtotime('+1 day'))) . '" required />
+                            <input type="date" data-pg-date ' . $recur_invalid('recur_first', 'form-control form-control-sm') . ' id="recur_first" name="recur_first" value="' . h($recur_kept('recur_first', erp_invoice_recurring_first_default((string) $invoice['issue_date'], date('Y-m-d')))) . '" min="' . h(date('Y-m-d', strtotime('+1 day'))) . '" required />
                         </div>
                         <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_end">' . lang('Until (optional)') . '</label>
-                            <input type="date" data-pg-date class="form-control form-control-sm" id="recur_end" name="recur_end" min="' . h(date('Y-m-d', strtotime('+1 day'))) . '" />
+                            <input type="date" data-pg-date ' . $recur_invalid('recur_end', 'form-control form-control-sm') . ' id="recur_end" name="recur_end" value="' . h($recur_kept('recur_end', '')) . '" min="' . h(date('Y-m-d', strtotime('+1 day'))) . '" />
                         </div>
                         <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_mode">' . lang('Each invoice is') . '</label>
-                            <select class="form-control form-control-sm" id="recur_mode" name="recur_mode">' . $mode_options . '</select>
+                            <select ' . $recur_invalid('recur_mode', 'form-control form-control-sm') . ' id="recur_mode" name="recur_mode">' . $mode_options . '</select>
                         </div>
                         <div class="col-12">
                             <div class="form-text mb-3">' . lang('The same account, lines and prices, dated on the day. Issued straight away, each takes the next number, and the e-document and e-mail settings apply to it.') . '</div>
