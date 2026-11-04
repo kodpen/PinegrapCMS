@@ -65,7 +65,7 @@ function pg_contact_list_filters($role)
         'my_contacts_by_user' => lang('My Contacts by User'),
         'my_contacts_by_business_address' => lang('My Contacts by Business Address'),
         'my_contacts_by_home_address' => lang('My Contacts by Home Address'),
-        'suppressed' => lang('Suppressed'),
+        'suppressed' => lang('Suppressed Addresses'),
     );
 
     if ($role < 3) {
@@ -127,6 +127,54 @@ function pg_contact_list_groups($user)
     }
 
     return $groups;
+}
+
+/**
+ * The contact groups the Organize Selected dialog offers: the ones the user
+ * may edit and that are filled by hand. A group filled by rules is left
+ * out, as on the import screen and the contact card: edit_contacts.php
+ * refuses to change it anyway (core/audiences-doors.md).
+ *
+ * @param array $user the viewer (validate_user())
+ * @return array list of array('id', 'name', 'contacts')
+ */
+function pg_contact_list_organize_groups($user)
+{
+    $groups = array();
+
+    foreach (db_items("SELECT id, name FROM contact_groups WHERE " . pg_audience_hand_sql() . " ORDER BY name") as $row) {
+        if (validate_contact_group_access($user, $row['id']) == true) {
+            $row['contacts'] = get_number_of_contacts($row['id']);
+            $groups[] = $row;
+        }
+    }
+
+    return $groups;
+}
+
+/**
+ * How many contacts a bulk organize really changed: the distinct contact
+ * ids added to or removed from any group. A contact that was already in a
+ * group it was added to, or not in one it was taken from, is not counted.
+ *
+ * @param array $moved group id => array('added' => int[], 'removed' => int[])
+ * @return int
+ */
+function pg_contact_list_organized_count(array $moved)
+{
+    $ids = array();
+
+    foreach ($moved as $contacts) {
+        foreach (array('added', 'removed') as $side) {
+            if (isset($contacts[$side]) && is_array($contacts[$side])) {
+                foreach ($contacts[$side] as $contact_id) {
+                    $ids[(int) $contact_id] = true;
+                }
+            }
+        }
+    }
+
+    return count($ids);
 }
 
 /**
@@ -357,7 +405,7 @@ function pg_contact_list_view($filter)
         case 'suppressed':
             // Before the bounce record exists nobody is suppressed.
             $view['condition'] = pg_mail_bounces_ready() ? pg_mail_bounce_suppressed_sql('contacts.email_address') : '(1 = 0)';
-            $view['heading'] = lang('Suppressed');
+            $view['heading'] = lang('Suppressed Addresses');
             $view['subheading'] = lang('All my contacts whose e-mail address bounced, complained or was blocked, so no e-mail is sent to them.');
             break;
 
