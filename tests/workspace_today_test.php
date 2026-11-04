@@ -120,3 +120,20 @@ function test_workspace_today_waiting_and_due_cards_in_the_dashboard_rows()
 		pg_assert_contains($rule, $css, $rule . ' is styled');
 	}
 }
+
+function test_workspace_today_calendar_rows()
+{
+	$calendar = workspace_today_test_method('homeCalendar');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/ws_today.src.css');
+
+	pg_assert_contains("el('ul', 'pg-dash-items ws-today-events')", $calendar, 'the events are the dashboard\'s list');
+	pg_assert_contains("'pg-dash-item ws-today-event' + (item.now ? ' is-now' : '') + (item.past ? ' is-past' : '')", $calendar, 'a row marks the one going on now and the ones over');
+	pg_assert_contains("el('p', 'pg-dash-item-none', t('home_calendar_empty'))", $calendar, 'an empty day says so in the dashboard\'s words');
+	pg_assert_contains('this.homeCount(card, items.length);', $calendar, 'the badge counts the events');
+	pg_assert_contains("'pg-dash-btn pg-dash-item-action ws-today-event-join'", $calendar, 'the call to join is a dashboard button');
+	pg_assert_false(strpos($calendar, 'ws-home-') !== false, 'no old overview class is drawn');
+
+	foreach (array('.ws-today-event-time', '.ws-today-event.is-now', '.ws-today-event.is-past', '.ws-today-event-join') as $rule) {
+		pg_assert_contains($rule, $css, $rule . ' is styled');
+	}
+}
