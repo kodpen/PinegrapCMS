@@ -448,6 +448,15 @@ function api_offer_payload($params, $base, $today) {
 
 		$end = array_key_exists('end_date', $params) ? trim((string)$params['end_date']) : (string)$offer['end_date'];
 
+		// An open period starts today at the latest, so a start taken from
+		// such a base never lies after $today: the base was built from the
+		// clock, which may already be past the $today this call was given.
+		if (!array_key_exists('start_date', $params) && ($offer['period'] !== 'range') && ($start > $today)) {
+
+			$start = $today;
+
+		}
+
 		if ($start === '') {
 
 			$start = $today;

@@ -83,6 +83,18 @@ function test_experiment_verdict_kind()
 	pg_assert_same('more', pg_experiment_verdict_kind(pg_experiment_significance(100, 10, 100, 12)), 'not enough yet');
 	pg_assert_same('none', pg_experiment_verdict_kind(pg_experiment_significance(0, 0, 0, 0)), 'no visits');
 	pg_assert_same('even', pg_experiment_verdict_kind(pg_experiment_significance(500, 50, 500, 50)), 'no difference');
+	pg_assert_same('more', pg_experiment_verdict_kind(pg_experiment_significance(4, 0, 2, 0)), 'views but no conversions yet');
+	pg_assert_same('more', pg_experiment_verdict_kind(pg_experiment_significance(0, 0, 8, 3)), 'one version without views');
+	pg_assert_same('more', pg_experiment_verdict_kind(pg_experiment_significance(8, 3, 0, 0)), 'the variant without views');
+}
+
+// The sentence tells no views, no conversions and one side without views
+// apart.
+function test_experiment_verdict_sentence_early()
+{
+	pg_assert_same('No visits counted yet.', pg_experiment_verdict_sentence(pg_experiment_significance(0, 0, 0, 0), 'b'), 'no visits');
+	pg_assert_same('No conversions counted yet.', pg_experiment_verdict_sentence(pg_experiment_significance(4, 0, 2, 0), 'b'), 'no conversions');
+	pg_assert_same('Not enough visits yet.', pg_experiment_verdict_sentence(pg_experiment_significance(0, 0, 8, 3), 'b'), 'one side empty');
 }
 
 // Daily rates from hourly rows: summed per day and variant, every day of the
@@ -143,4 +155,18 @@ function test_experiment_chart_svg()
 	pg_assert_true(strpos($svg, 'aria-hidden="true"') !== false, 'the table carries the figures');
 	pg_assert_true(strpos($svg, 'points="0,80 600,0"') !== false, 'scaled to the top of 20: ' . $svg);
 	pg_assert_same('', pg_experiment_chart_svg(array('days' => array('d1'), 'rates' => array(1 => array(null))), array()), 'no rates, no chart');
+
+	$zero = pg_experiment_chart_svg(array('days' => array('d1', 'd2'), 'rates' => array(1 => array(0.0, 0.0))), array(1 => 'var(--pg-primary)'));
+	pg_assert_true(strpos($zero, 'points="0,160 600,160"') !== false, 'a 0 % series draws at the bottom: ' . $zero);
+
+	$one = pg_experiment_chart_svg(array('days' => array('d1'), 'rates' => array(1 => array(10.0))), array(1 => 'var(--pg-primary)'));
+	pg_assert_same(false, strpos($one, '<circle'), 'a lone point is no circle');
+	pg_assert_true(strpos($one, 'stroke-linecap="round"') !== false, 'a lone point keeps its round shape');
+}
+
+// Percentages go through the language's figure and sign format.
+function test_experiment_percent()
+{
+	pg_assert_same('37.5%', pg_experiment_percent(37.5), 'one decimal');
+	pg_assert_same('70%', pg_experiment_percent(70, 0), 'whole');
 }

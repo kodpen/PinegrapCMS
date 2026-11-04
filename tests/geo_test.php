@@ -210,3 +210,20 @@ function test_geo_refresh_lock()
 	rmdir($dir . '/refresh.lock');
 	rmdir($dir);
 }
+
+// A city header is stored as valid UTF-8 without control characters, at most
+// 50 characters long.
+function test_geo_clean_city()
+{
+	pg_assert_same('İstanbul', pg_geo_clean_city("  İstanbul \t"), 'trimmed');
+	pg_assert_same('New York', pg_geo_clean_city("New\x01  York"), 'controls and spaces folded');
+	pg_assert_same('', pg_geo_clean_city("Istanb\xfful"), 'invalid UTF-8');
+	pg_assert_same('', pg_geo_clean_city(''), 'empty');
+	pg_assert_same(str_repeat('ş', 50), pg_geo_clean_city(str_repeat('ş', 60)), 'cut to 50 characters');
+}
+
+// No city without a trusted edge in front of the request.
+function test_geo_city_needs_trusted_edge()
+{
+	pg_assert_same('', pg_geo_city(), 'no edge, no city');
+}

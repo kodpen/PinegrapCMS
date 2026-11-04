@@ -503,13 +503,28 @@ if ($translations_form_action === 'glossary_save') {
     $note = isset($_POST['note']) ? trim((string) $_POST['note']) : '';
     $for_all = !empty($_POST['all_languages']);
 
+    // A refused save hands what was typed back to the screen, which opens
+    // the glossary dialog again with it.
+    $glossary_refused = function () use ($liveform, $id, $term, $translation, $keep, $case_sensitive, $note, $for_all) {
+        $liveform->assign_field_value('glossary_form', '1');
+        $liveform->assign_field_value('id', (string) $id);
+        $liveform->assign_field_value('term', $term);
+        $liveform->assign_field_value('translation', $translation);
+        $liveform->assign_field_value('keep', (string) $keep);
+        $liveform->assign_field_value('case_sensitive', (string) $case_sensitive);
+        $liveform->assign_field_value('all_languages', $for_all ? '1' : '0');
+        $liveform->assign_field_value('note', $note);
+    };
+
     if ($term === '') {
         $liveform->mark_error('term', lang('Please enter the term.'));
+        $glossary_refused();
         go($back . '#pg_tr_glossary');
     }
 
     if (!$keep && ($translation === '')) {
         $liveform->mark_error('translation', lang('Enter the translation to use, or mark the term as one to keep as written.'));
+        $glossary_refused();
         go($back . '#pg_tr_glossary');
     }
 
@@ -532,6 +547,7 @@ if ($translations_form_action === 'glossary_save') {
 
     if ($same !== null) {
         $liveform->mark_error('term', h(lang(array('string' => 'The term "{var:1}" is already in the glossary. Edit that term instead.', 'vars' => array($same['term'])))));
+        $glossary_refused();
         go($back . '#pg_tr_glossary');
     }
 

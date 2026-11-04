@@ -435,6 +435,10 @@ function pg_local_order_complete($user, $order_id, $customer, $input)
     $stock_left = array();
     $bundle_ids = pg_bundle_ids_among(array_column($lines, 'product_id'));
 
+    // A till has no shipping method: the sale is stored on the default
+    // location when the site keeps stock per location.
+    pg_stock_order_location_save($order_id);
+
     foreach ($lines as $line) {
         $product_id = (int) $line['product_id'];
 
@@ -460,7 +464,14 @@ function pg_local_order_complete($user, $order_id, $customer, $input)
         }
 
         if ($tracked && ($stock_before > 0)) {
-            db("UPDATE products SET inventory_quantity = (inventory_quantity - '" . (int) $line['quantity'] . "') WHERE id = '" . $product_id . "'");
+            // With stock per location a till sells from the default location.
+            $sale = pg_stock_sale_take($product_id, $line['quantity'], 0, 'local_sale', (string) $order_number);
+
+            if ($sale === null) {
+                db("UPDATE products SET inventory_quantity = (inventory_quantity - '" . (int) $line['quantity'] . "') WHERE id = '" . $product_id . "'");
+            } elseif ($sale['taken'] === 0) {
+                continue;
+            }
 
             // The flag comes from the stock left, as in the checkout: one
             // line's quantity against the stock read before the loop missed
@@ -479,7 +490,8 @@ function pg_local_order_complete($user, $order_id, $customer, $input)
                     'product_id' => $product_id));
             }
 
-            $stock_left[$product_id] = pg_product_stock_changed($product_id, $stock_before, null, 'local_sale');
+            $stock_left[$product_id] = pg_product_stock_changed($product_id, $stock_before, null, 'local_sale',
+                ($sale === null) ? null : $sale['location']);
         }
     }
 

@@ -106,14 +106,11 @@ if (!$_POST) {
         $row = mysqli_fetch_assoc($result);
         $calendar_event_location_name = $row['name'];
         
-        // delete calendar event location
-        $query = "DELETE FROM calendar_event_locations WHERE id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-        
-        // delete the records that assign this location to calendar events
-        $query = "DELETE FROM calendar_events_calendar_event_locations_xref WHERE calendar_event_location_id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-        
+        // delete calendar event location and the rows that book it for events
+        if (!pg_calendar_location_delete($id)) {
+            output_error('Query failed.');
+        }
+
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('event location'), $calendar_event_location_name) )), $_SESSION['sessionusername']);
         $liveform_view_calendar_event_locations = new liveform('view_calendar_event_locations');
         $liveform_view_calendar_event_locations->add_notice(lang(array('string'=>'{var:1} was deleted successfully','vars'=>lang('Event Location') )));
@@ -144,16 +141,10 @@ if (!$_POST) {
         }
         
         // update calendar event location
-        $query =
-            "UPDATE calendar_event_locations
-            SET
-                name = ?,
-                last_modified_user_id = ?,
-                last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = ?";
-        $result = db_q($query, array((string) ($liveform->get_field_value('name')), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        if (pg_calendar_location_save($id, (string) $liveform->get_field_value('name'), (int) $user['id']) <= 0) {
+            output_error('Query failed.');
+        }
 
-      
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('event location'), $liveform->get_field_value('name')) )), $_SESSION['sessionusername']);
 
 

@@ -149,6 +149,7 @@ function pg_dashboard_v2_gallery_strings()
         'top_actions'  => lang('Shortcuts'),
         'top_tiles'    => lang('Tiles'),
         'top_status'   => lang('System Status'),
+        'top_brief'    => lang("Today's brief"),
         'look_title'   => lang('Look'),
         'look_style'   => lang('Card style'),
         'look_back'    => lang('Panel backdrop'),

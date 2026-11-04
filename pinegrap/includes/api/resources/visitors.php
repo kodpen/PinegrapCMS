@@ -183,14 +183,9 @@ function api_reports_top_content($params) {
 // What a visit can be counted by, and the visitors column (or expression) it is.
 function api_visitors_dimensions() {
 
-	// Paid is a tracking code carrying the pay-per-click flag set in the SEO
-	// settings. With no flag set nothing is counted as paid: an empty pattern
-	// would match every visit.
-	$flag = defined('PAY_PER_CLICK_FLAG') ? trim((string)PAY_PER_CLICK_FLAG) : '';
-
-	$channel = "CASE"
-		. (($flag !== '') ? " WHEN (tracking_code LIKE '%" . escape(escape_like($flag)) . "%') THEN 'pay_per_click'" : '')
-		. " WHEN (referring_search_engine <> '') THEN 'organic' ELSE 'neither' END";
+	// The channel is the rule the daily summary keeps (pg_visitor_channel_sql()):
+	// paid, email, ai, organic, social, referral or direct.
+	$channel = pg_visitor_channel_sql();
 
 	return array(
 		'referrer_host'     => 'referring_host_name',
@@ -222,7 +217,7 @@ function api_visitors_summary_dimensions() {
 		'referrer_host'     => 'referring_host_name',
 		'search_engine'     => 'referring_search_engine',
 		'search_terms'      => 'referring_search_terms',
-		'channel'           => 'pay_per_click_organic',
+		'channel'           => 'channel',
 		'landing_page'      => 'landing_page_name',
 		'tracking_code'     => 'tracking_code',
 		'utm_source'        => 'utm_source',
@@ -290,11 +285,6 @@ function api_reports_visitors($params) {
 	foreach ($figures['rows'] as $row) {
 
 		$value = (string)$row['value'];
-
-		// A visit neither paid nor organic is counted as such by name.
-		if (($by === 'channel') && ($value === '')) {
-			$value = 'neither';
-		}
 
 		$out[] = array_merge(
 			// An empty value is a visit that had none: no referrer is a direct

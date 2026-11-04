@@ -4,7 +4,7 @@ description: Graph canvas core slice 4 for the Prototype view: size per box, low
 ---
 
 ## Why was it added?
-- The designer's Prototype view (plans/designer-prototype-links.md) is the core's second user: pages are tall frames with a row per link (hotspot), and arrows go from a hotspot to a page or an end chip. Every addition is optional; Flows passes none of them and draws as before (unit tests and the harness, 30 of 30 with and without `--min`).
+- The designer's Prototype view (designer/prototype-view.md) is the core's second user: pages are tall frames with a row per link (hotspot), and arrows go from a hotspot to a page or an end chip. Every addition is optional; Flows passes none of them and draws as before (unit tests and the harness, 30 of 30 with and without `--min`).
 
 ## Which adapter fields are new?
 - `size(item)` → `{ w, h }` (else 208 x 80): `box()` sets the width and height, `fit()`, `reveal()` and the arrows read it. `viewport(host)` takes `size` too.

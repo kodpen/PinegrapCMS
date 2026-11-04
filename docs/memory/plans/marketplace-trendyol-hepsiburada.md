@@ -1,6 +1,6 @@
 ---
 name: marketplace-trendyol-hepsiburada
-description: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer; Trendyol 1, 2, 2b-i, 2b-ii, 3, 4a-4c, 5a, 5b (with rejection), 5c, 6, A, B, common label done; Hepsiburada open
+description: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 ---
 
 ## Why?
@@ -15,7 +15,7 @@ description: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n1
 - Payout/settlement reconciliation stays out (ERP roadmap B4).
 
 ## What is done?
-- Trendyol 1 driver and categories (#880), 2 listing create (#906), 2b-i approval status (#1539), 2b-ii listing update and commission (#1761), 3 stock/price queue (#932), 4a order import (#1452), 4b webhook receiver (#1453), 4c own-carrier shipping (#1493), 5a invoice link (#1747), Invoiced status push (#3624), 5b returns list and approval (#1772), 5b rest return rejection (#1837), 5c buyer questions and answers (#1784), 6 API endpoint and order events (#1667), A hardening (#1675), B schema 11.0.37 (#1687), common label (#3123: card #3257; order screen, bulk, reprint #3281; bulk buttons without a carrier service, `marketplace_carried` refusal #3568, #3594).
+- Done: Trendyol 1 #880, 2 #906, 2b-i #1539, 2b-ii #1761, 3 #932, 4a #1452, 4b #1453, 4c #1493, 5a #1747 #3624, 5b #1772 #1837, 5c #1784, 6 #1667, A #1675, B #1687, common label #3257 #3281 #3594.
 
 ## What is open? (any session; claim one step at a time)
 - Each step adds what it verified to the `trendyol-*.md` files, and reads `trendyol-api-facts.md` for the call rules first.

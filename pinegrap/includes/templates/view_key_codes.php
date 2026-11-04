@@ -31,78 +31,9 @@ if (!defined('PG_INIT_LOADED')) {
                     '<form class="disable_shortcut" method="get"><button type="submit" name="submit_data" value="Export Key Codes" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang('Export') . '</button></form>',
                     '<a href="delete_key_codes.php" class="btn btn-sm btn-outline theme-warning"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang('Delete All Key Codes') . '</a>',
                 ),
-                'search'    => pg_list_sort_menu('view_key_codes.php', $sort_columns, $sort_levels, $sort_default),
+                'search'    => array(pg_list_table_search_box('view_key_codes'), pg_list_sort_menu('view_key_codes.php', $sort_columns, $sort_levels, $sort_default)),
             ))?>
-            <div class="card my-7">
-                <div class="card-header chart-buttons justify-content-end d-flex flex-wrap"></div>
-                <div class="card-body p-0 position-relative disable_shortcut">
-					<table class="chart table-hover table " style="width:100%;display:none"<?=pg_list_edit_table('view_key_codes.php', $quick_edit)?>>
-                        <thead>
-                            <tr>
-                                <th class="noVis"><?=lang('Action')?></th>
-								<th><?=get_column_heading(lang('Key Code'), $sort_levels, '', '', 'code')?></th>
-								<th><?=get_column_heading(lang('Offer Code'), $sort_levels, '', '', 'offer_code')?></th>
-								<th><?=get_column_heading(lang('Offer Message'), $sort_levels, '', '', 'offer_message')?></th>
-								<th class="text-center"><?=get_column_heading(lang('Enabled'), $sort_levels, '', '', 'enabled')?></th>
-								<th><?=get_column_heading(lang('Expiration Date'), $sort_levels, '', '', 'expiration_date')?></th>
-								<th><?=get_column_heading(lang('Notes'), $sort_levels, '', '', 'notes')?></th>
-								<th class="text-center"><?=get_column_heading(lang('Single-Use'), $sort_levels, '', '', 'single_use')?></th>
-								<th><?=get_column_heading(lang('Report'), $sort_levels, '', '', 'report')?></th>
-								<th><?=get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified')?></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-							<?php foreach($key_codes as $key_code): ?>
-								<tr>
-									<td class="align-middle text-start">
-                					    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="<?=lang(array('string'=>'Edit'))?>" onclick="window.location.href='edit_key_code.php?id=<?=$key_code['id']?>'"><i class="bi bi-pencil"></i></button>
-                					</td>
-									<td class="<?=$key_code['cells']['code']['class']?>" data-pg-cell="code"><?=$key_code['cells']['code']['html']?></td>
-									<td class="align-middle">
-										<?php if ($key_code['offer_id']): ?>
-										<a class="btn btn-link pg-link-secondary py-0 mb-3 badge" href="edit_offer.php?id=<?=$key_code['offer_id']?>" title="<?=lang('Edit Offer')?>">
-										<?=h($key_code['offer_code'])?>
-										</a>
-										<?php else: ?>
-										<?=h($key_code['offer_code'])?>
-										<?php endif ?>
-									</td>
-									<td class="align-middle">
-										<?=h($key_code['offer_description'])?>
-									</td>
-									<td class="<?=$key_code['cells']['enabled']['class']?>"<?=pg_list_edit_cell($quick_edit, 'enabled', $key_code['id'], !empty($key_code['enabled']) ? '1' : '0')?>><?=$key_code['cells']['enabled']['html']?></td>
-									<td class="align-middle">
-										<?php if ($key_code['expiration_date'] != '0000-00-00'): ?>
-										<?=get_absolute_time(array(
-											'timestamp' => strtotime($key_code['expiration_date']),
-										
-											'type' => 'date'))?>
-										<?php endif ?>
-									</td>
-									<td class="align-middle">
-										<?=nl2br(h($key_code['notes']))?>
-									</td>
-									<td class="align-middle text-center">
-										<?php if ($key_code['single_use']): ?>
-											<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden"><?=lang('Yes')?></span>
-										<?php endif ?>
-									</td>
-									<td class="align-middle">
-										<span class="badge fw-light theme-secondary">
-											<?php if ($key_code['report'] == 'key_code'): ?>
-											<?=lang('Key Code')?>
-											<?php else: ?>
-												<?=lang('Offer Code')?>
-											<?php endif ?>
-										</span>
-									</td>
-									<td class="<?=$key_code['cells']['last_modified']['class']?>" data-pg-cell="last_modified"><?=$key_code['cells']['last_modified']['html']?></td>
-								</tr>
-							<?php endforeach ?>
-						</tbody>
-                    </table>
-                </div>
-            </div>
+            <?=pg_list_table_html($list['source'], $list['page'], lang('All Key Codes'))?>
         </div>
     </div>
 </main>

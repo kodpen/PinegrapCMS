@@ -208,4 +208,9 @@ function test_dashboard_v2_greeting_settings_from_layout()
 	pg_assert_same(0, $settings['top']['since']);
 	pg_assert_same(0, $settings['top']['tiles']);
 	pg_assert_same(1, $settings['top']['actions']);
+	pg_assert_same(1, $settings['top']['brief'], 'the brief is on until switched off');
+
+	$settings = pg_dashboard_v2_greeting_settings('{"top":{"brief":0}}', false);
+	pg_assert_same(0, $settings['top']['brief'], 'brief switched off');
+	pg_assert_same(1, $settings['top']['since']);
 }

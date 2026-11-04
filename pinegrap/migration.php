@@ -352,17 +352,32 @@ if (!$_POST) {
         }
     }
 
-    // A visual design and its pages come with the designs, not as classic
-    // rows.
+    // A visual design and its pages never come as classic rows: their
+    // classic columns hold no content. They come with the designs, or are
+    // counted for a notice when the designs are not carried. With the
+    // designs carried, a folder holding only design pages is left out too,
+    // because the design install creates its own folders.
+    $left_out_styles = 0;
+    $left_out_pages = 0;
     if (isset($styles)) {
-        $styles = array_values(array_filter($styles, function ($style) use ($carry_designs) {
-            return !pg_migration_style_carried_by_design($style, $carry_designs);
+        $kept = array_values(array_filter($styles, function ($style) {
+            return !pg_migration_style_carried_by_design($style);
         }));
+        $left_out_styles = count($styles) - count($kept);
+        $styles = $kept;
     }
     if (isset($pages)) {
-        $pages = array_values(array_filter($pages, function ($page) use ($carry_designs) {
-            return !pg_migration_page_carried_by_design($page, $carry_designs);
+        if ($carry_designs && isset($folders)) {
+            $design_only_folders = pg_migration_design_only_folder_ids($folders, $pages);
+            $folders = array_values(array_filter($folders, function ($folder) use ($design_only_folders) {
+                return !(is_array($folder) && isset($folder['id']) && isset($design_only_folders[$folder['id']]));
+            }));
+        }
+        $kept = array_values(array_filter($pages, function ($page) {
+            return !pg_migration_page_carried_by_design($page);
         }));
+        $left_out_pages = count($pages) - count($kept);
+        $pages = $kept;
     }
 
     // If there is an error, forward user back to previous screen.
@@ -726,8 +741,8 @@ if (!$_POST) {
                 VALUES (
                     '" . escape($page['name']) . "',
                     '" . escape($folder_ids[$page['folder_id']]) . "',
-                    '" . escape($style_ids[$page['style_id']]) . "',
-                    '" . escape($style_ids[$page['mobile_style_id']]) . "',
+                    '" . (int)($style_ids[$page['style_id']] ?? 0) . "',
+                    '" . (int)($style_ids[$page['mobile_style_id']] ?? 0) . "',
                     'no',
                     '" . escape($page['title']) . "',
                     '" . escape($page['search']) . "',
@@ -811,7 +826,8 @@ if (!$_POST) {
             // If this page's type has page type properties, then add them to database.
             if (
                 (check_for_page_type_properties($page['type']) == true)
-                && (is_array($page['page_type_properties']) == true)
+                && isset($page['page_type_properties'])
+                && is_array($page['page_type_properties'])
             ) {
                 $page_type_properties = $page['page_type_properties'];
 
@@ -887,11 +903,15 @@ if (!$_POST) {
         }
     }
 
+    if (!$carry_designs && ($left_out_styles > 0 || $left_out_pages > 0)) {
+        $liveform->add_notice(h(lang(array('string' => '{var:1} visual design styles and {var:2} visual design pages were not copied. Tick Visual Designs to carry them.', 'vars' => array(number_format($left_out_styles), number_format($left_out_pages))))));
+    }
+
     if ($message_detail !== '') {
         log_activity(lang(array('string'=>'migration was completed ({var:1})','vars'=>$message_detail)), USER_USERNAME);
 
         $liveform->add_notice(lang(array('string'=>'The items that you requested have been migrated ({var:1}).','vars'=>h($message_detail))));
-    } elseif (!($carry_designs && $designs)) {
+    } elseif (!($carry_designs && $designs) && ($left_out_styles + $left_out_pages) === 0) {
         $liveform->add_notice(lang('No items to migrate were found on the source site.'));
     }
 

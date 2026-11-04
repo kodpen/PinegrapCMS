@@ -2351,13 +2351,13 @@ function pg_seo_page_toolbar($page_id, $style_id = 0, $user = null, $options = a
         'score' => array('value' => ($scored ? $score : NULL), 'hex' => $hex, 'band' => $band));
 }
 
-// Thin progress bar with the score at its side, drawn under the record name
-// in list screens. Expects seo_score, seo_flags, seo_analysis_current keys.
+// Thin progress bar with the score at its side, drawn in the SEO column of
+// list screens (pg_list_table_seo_cell()). Expects seo_score, seo_flags, seo_analysis_current keys.
 function pg_seo_render_bar($row)
 {
     if (!pg_seo_row_scored($row)) {
         return
-            '<div class="d-flex align-items-center gap-3 mt-1" style="max-width:170px" title="' . h(lang('SEO score has not been calculated yet.')) . '">
+            '<div class="pg-seo-bar" title="' . h(lang('SEO score has not been calculated yet.')) . '">
                 <div class="progress flex-grow-1" style="height:3px"><div class="progress-bar bg-secondary opacity-25" style="width:100%"></div></div>
                 <small class="fg-secondary fw-semibold">&mdash;</small>
             </div>';
@@ -2384,7 +2384,7 @@ function pg_seo_render_bar($row)
     $text_class = ($color['class'] !== '') ? ' fg-' . $color['class'] : '';
 
     return
-        '<div class="d-flex align-items-center gap-3 mt-1" style="max-width:170px" title="' . h($title) . '">
+        '<div class="pg-seo-bar" title="' . h($title) . '">
             <div class="progress flex-grow-1" style="height:3px"><div class="progress-bar' . $bar_class . '" style="' . h($bar_style) . '"></div></div>
             <small class="fw-semibold' . $text_class . '"' . $text_style . '>' . $score . '</small>
         </div>';

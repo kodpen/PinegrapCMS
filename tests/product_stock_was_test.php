@@ -64,7 +64,7 @@ function test_stock_was_form_without_the_field_writes_as_before()
 
 function test_stock_was_hidden_field_is_drawn_in_edit_mode()
 {
-	$body = pg_stock_was_function_body('pg_pb_render_product_screen');
+	$body = pg_stock_was_function_body('pg_pb_render_stock_quantity');
 
 	pg_assert_true(strpos($body, 'name="inventory_quantity_was"') !== FALSE, 'the screen draws inventory_quantity_was');
 }

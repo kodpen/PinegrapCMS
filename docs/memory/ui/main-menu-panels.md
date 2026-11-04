@@ -8,7 +8,7 @@ description: Main menu rows that open their entries in a panel inside the menu: 
 - A row with no entries, or one that is its own screen, stays a plain link (Dashboard).
 - An entry can open a panel of its own (Site Settings, `main-menu-settings-row.md`); the back arrow and Escape go up one level (`backMenuPanel()`).
 - The pinned My Notes row opens the Workspace list (`'panel_of' => 23`, `pg_menu_row_panel_id()`; #4889), not a panel of its own; `workspace.js` `drawMenuRow()` hooks a row pinned at runtime to it. Back returns the focus to the opening row (`data-pg-menu-opener`).
-- The row keeps its `href`: middle click, Ctrl/Cmd click or "open in new tab" opens its screen; the right button gets the browser's menu.
+- The row keeps its `href`: a middle or Ctrl/Cmd click or a new tab opens its screen.
 
 ## Where do the entries and their permissions come from?
 - The panel body is the row's `data-bs-content` string, built in `output_menu()` under each entry's own gate (role, `USER_MANAGE_*`, ERP, workspace rights, module switches), drawn as it is. A new entry goes into that string under the gate of its screen (`main-menu-entry-gates.md`).
@@ -16,7 +16,7 @@ description: Main menu rows that open their entries in a panel inside the menu: 
 
 ## What happens on the collapsed rail?
 - A row that opens a panel has a small arrow on the rail too. No room for a panel, so the click widens the rail over the content to `--pg-rail-w-expanded` (`.pg-menu-peek` on `.software-container`); the grid column stays the rail's, nothing under it moves. The back arrow, Escape, a click outside the sidebar or focus leaving it put the rail back. Changing the menu state settles it (`settleMenuPanel()`).
-- Focus going into a frame (rich text editor) puts it back too: `focusout` without `relatedTarget` and `window` `blur` look for the frame as the active element on the next turn.
+- Focus going into a frame (rich text editor) puts it back too (`focusout` without `relatedTarget`, `window` `blur`).
 - In the phone drawer the panel opens in the drawer; the first Escape goes back wherever the focus is, the next closes the drawer.
 
 ## Does the panel stay open across pages?
@@ -27,8 +27,9 @@ description: Main menu rows that open their entries in a panel inside the menu: 
 - `MENU_PANEL_KEY` is assigned above the init calls; below them it was undefined at load.
 
 ## What else had to change with it?
-- Their handler cancels the click, so the leaving bar never starts; the drawer's close-on-link handler ignores them.
+- Their handler cancels the click (no leaving bar); the drawer's close-on-link handler ignores them.
 - Rows carry `no-popover`, so `pgBindTitlePopovers()` leaves them the browser's title hint.
-- The panel CSS outweighs `#menu .menu-body .bi { font-size: 1.3rem }` (entries carry `bi`). The head is a tinted bar with a smaller title, so long names keep to one line.
+- The panel CSS outweighs `#menu .menu-body .bi { font-size: 1.3rem }` (entries carry `bi`). The head is a tinted bar with a smaller title.
+- A long entry wraps beside its icon (flex row), no ellipsis: `pg_menu_panel()` drops the entries' `text-truncate`, whose utilities layer beats the panel CSS.
 
 Related: docs/memory/ui/main-menu-states.md, docs/memory/ui/loading-curtain.md, docs/memory/ui/main-menu-categories.md

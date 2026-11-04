@@ -193,6 +193,12 @@
         return String(Math.round(v * 10) / 10).replace('.', sep);
     }
 
+    // A percentage in the panel language's form (71% in English, %71 in
+    // Turkish): the label 'percent' is lang('{var:1}%').
+    function pct(v) {
+        return String(t('percent')).replace('{var:1}', String(v));
+    }
+
     // The crop shape as a border radius on screen: rounded corners take 12 %
     // of the shorter side, a circle is the ellipse in the box.
     function shapeRadius(shape, box, k) {
@@ -391,15 +397,18 @@
 
         this.nameEl = el('div', { class: 'pgie-fname', text: name || t('dialog') });
         this.saveBox = el('div', { class: 'pgie-savebox' });
+        this.closeBtn = mini
+            ? button('pgie-btn', t('cancel'), null, function () { self.requestClose(); }, true)
+            : button('pgie-ibtn', t('close'), 'close', function () { self.requestClose(); });
 
         var top = el('header', { class: 'pgie-top' }, [
-            mini ? null : button('pgie-ibtn', t('close'), 'close', function () { self.requestClose(); }),
+            mini ? null : this.closeBtn,
             el('div', { class: 'pgie-file' }, [this.nameEl, this.meta]),
             mini ? null : el('div', { class: 'pgie-sepv' }),
             mini ? null : this.undoBtn,
             mini ? null : this.redoBtn,
             el('div', { class: 'pgie-grow' }),
-            mini ? button('pgie-btn', t('cancel'), null, function () { self.requestClose(); }, true) : null
+            mini ? this.closeBtn : null
         ].concat(Editor.topItems.map(function (item) { return mini ? null : item.call(self); }), [
             this.saveBox,
             this.fullBtn
@@ -585,9 +594,26 @@
         this.loadImage(this.opts.src || r.file.url);
     };
 
+    // A file that could not be opened: the message stays on the stage and
+    // only Close (Cancel in the mini bar) is left working; every tool, the
+    // panel and Save are switched off, as there is nothing to edit or save.
     Editor.prototype.fail = function (message) {
+        var keep = this.closeBtn;
+
         this.notice.textContent = message;
         this.notice.classList.add('pgie-error');
+        this.failed = true;
+        this.root.classList.add('pgie-failed');
+
+        Array.prototype.forEach.call(this.root.querySelectorAll('button, input, select, textarea'), function (c) {
+            if (c !== keep) {
+                c.disabled = true;
+            }
+        });
+
+        if (keep) {
+            keep.focus({ preventScroll: true });
+        }
     };
 
     Editor.prototype.loadImage = function (src) {
@@ -739,16 +765,27 @@
         this.frame.style.transform = 'translate(' + v.x + 'px, ' + v.y + 'px)';
         this.frame.style.width = (vr.w * k) + 'px';
         this.frame.style.height = (vr.h * k) + 'px';
-        this.frame.style.borderRadius = this.cropping() ? '' : shapeRadius(this.doc.geometry.cropShape, vr, k);
-        this.layersSvg.setAttribute('viewBox', [vr.x, vr.y, vr.w, vr.h].join(' '));
+        // The crop shape is the picture's: the whole frame only while the
+        // canvas is the picture's own; a canvas that reaches past it keeps
+        // its corners and the mat cuts the picture (the artboard part).
+        this.frame.style.borderRadius = (this.cropping() || M.saveLayout(this.doc)) ? '' : shapeRadius(this.doc.geometry.cropShape, vr, k);
+        // While cropping the frame shows the picture's own space: the layers
+        // of a picture placed on its canvas are carried into it.
+        var lr = vr, place = this.cropping() ? M.picturePlace(this.doc) : null;
+
+        if (place) {
+            lr = { x: vr.x * place.k + place.x, y: vr.y * place.k + place.y, w: vr.w * place.k, h: vr.h * place.k };
+        }
+
+        this.layersSvg.setAttribute('viewBox', [lr.x, lr.y, lr.w, lr.h].join(' '));
 
         if (this.img) {
-            var m = M.mul(M.mul(M.scale(k), M.translate(-vr.x, -vr.y)), M.pictureMatrix(this.doc));
+            var m = M.mul(M.mul(M.scale(k), M.translate(-vr.x, -vr.y)), this.cropping() ? M.pictureMatrix(this.doc) : M.placedMatrix(this.doc));
 
             this.img.style.transform = 'matrix(' + m.map(function (n) { return Math.round(n * 1e6) / 1e6; }).join(', ') + ')';
         }
 
-        this.zoomLabel.textContent = Math.round(k * 100) + ' %';
+        this.zoomLabel.textContent = pct(Math.round(k * 100));
 
         var self = this;
 
@@ -1132,8 +1169,12 @@
     // viewOnly redraws the stage and the undo buttons but not the panel, so
     // a slider being dragged keeps its place.
     Editor.prototype.change = function (mutate, key, viewOnly) {
-        this.history.push(M.clone(this.doc), key);
+        var before = M.clone(this.doc);
+
+        this.history.push(before, key);
         mutate(this.doc);
+        // A crop of a picture placed on its canvas keeps the canvas.
+        M.keepCanvas(before, this.doc);
         // A change that brings the opening document back (a filter put
         // back, a slider back at 0) leaves nothing to save.
         this.settleDirty();
@@ -1174,6 +1215,12 @@
         }
 
         this.doc = snapshot;
+
+        // An undone or redone deletion of the picture changes the kind.
+        if (this.syncKind) {
+            this.syncKind();
+        }
+
         this.settleDirty();
         this.layersDirty = true;
         this.keepSelection();
@@ -1232,6 +1279,11 @@
                 this.onEscape();
             }
 
+            return;
+        }
+
+        // A file that could not be opened answers only Escape (above).
+        if (this.failed) {
             return;
         }
 
@@ -1726,7 +1778,7 @@
         // For the tool files: the editor and the helpers they build with.
         parts: {
             Editor: Editor, M: M, SVGNS: SVGNS, icons: ICONS, config: config, find: find, t: t, el: el, icon: icon,
-            section: section, tile: tile, decimal: decimal, shapeRadius: shapeRadius, button: button, colors: COLORS, swatches: swatches
+            section: section, tile: tile, decimal: decimal, pct: pct, shapeRadius: shapeRadius, button: button, colors: COLORS, swatches: swatches
         }
     };
 }());

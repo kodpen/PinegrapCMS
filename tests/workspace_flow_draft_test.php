@@ -199,6 +199,8 @@ function test_ws_flow_ai_catalogue_hints()
 	pg_assert_contains('approvers (list of integer: user ids from the list of people, the ones who answer; the person who asked when the request says I or me)', $text, 'who answers the question');
 	pg_assert_contains('retry (integer: how many times a failed box tries again; left out for none)', $text, 'what retry is');
 	pg_assert_contains('retry_after (text: the minutes it waits before it tries again; needed with retry)', $text, 'and its minutes');
+	pg_assert_contains('rule (join|compare|add|subtract|round|date_format|add_days)', $text, 'a value box\'s rules');
+	pg_assert_contains('b (text: the second value; compare, join, add, subtract, add_days need it (join writes a, a space, then b)', $text, 'and when it needs b');
 }
 
 // A box sent with a retry but no minutes to wait drops both, as a box added
@@ -983,4 +985,24 @@ function test_ws_flow_card_threads_with_a_fallback()
 	pg_assert_same(array(array('call', 'near', 'text', 'task_id', 'number')), array_map(function ($thread) {
 		return array($thread['from'], $thread['to'], $thread['key'], $thread['value'], $thread['type']);
 	}, $card['threads']));
+}
+
+// The card's pane looks like the Flows canvas in either theme: the canvas's
+// surface token and its grid of dots, moving with the drawing. It was the
+// page's own background with no grid, darker than the canvas in dark mode.
+function test_ws_flow_card_pane_looks_like_the_canvas()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	$block = function ($selector) use ($css) {
+		return preg_match('/\n' . preg_quote($selector, '/') . ' \{([^}]*)\}/', $css, $match) ? $match[1] : '';
+	};
+	$pane = $block('.ws-fd-pane');
+	$stage = $block('.pgc-stage');
+	$viewport = $block('.pgc-viewport');
+
+	pg_assert_true(preg_match('/background(?:-color)?: (var\(--pg-bg-1\));/', $stage) === 1, 'the canvas stands on --pg-bg-1');
+	pg_assert_contains('background-color: var(--pg-bg-1);', $pane, 'so does the pane');
+	pg_assert_true(preg_match('/background-image: (radial-gradient\([^;]*\));/', $viewport, $dots) === 1, 'the canvas draws its dots');
+	pg_assert_contains('background-image: ' . ($dots[1] ?? '?') . ';', $pane, 'the pane the same dots');
+	pg_assert_contains('background-attachment: local;', $pane, 'moving with the drawing');
 }

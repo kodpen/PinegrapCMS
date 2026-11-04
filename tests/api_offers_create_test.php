@@ -84,6 +84,20 @@ function test_api_offer_payload_dates()
 	list($payload) = api_offers_create_test_payload(array('code' => 'A', 'end_date' => '2026-12-31'));
 	pg_assert_same('2026-11-03', $payload['offer']['start_date'], 'no start is today');
 
+	// The base is built from the clock; one already past the given today
+	// (after midnight, or in another time zone) still starts on that today.
+	$base = _pg_offer_new_state();
+	$base['offer']['start_date'] = '2026-11-04';
+	list($payload) = api_offers_create_test_payload(array('code' => 'A', 'end_date' => '2026-12-31'), $base);
+	pg_assert_same('2026-11-03', $payload['offer']['start_date'], 'an open base never starts after today');
+	$base['offer']['start_date'] = '2026-10-01';
+	list($payload) = api_offers_create_test_payload(array('code' => 'A', 'end_date' => '2026-12-31'), $base);
+	pg_assert_same('2026-10-01', $payload['offer']['start_date'], 'an open base that started earlier keeps its start');
+	$base['offer']['period'] = 'range';
+	$base['offer']['start_date'] = '2026-11-20';
+	list($payload) = api_offers_create_test_payload(array('code' => 'A', 'end_date' => '2026-12-31'), $base);
+	pg_assert_same('2026-11-20', $payload['offer']['start_date'], 'a ranged base keeps a later start');
+
 	list(, $error, $field) = api_offers_create_test_payload(array('code' => 'A', 'start_date' => '2026-02-30'));
 	pg_assert_same('start_date', $field);
 	list(, $error, $field) = api_offers_create_test_payload(array('code' => 'A', 'start_date' => '2026-12-02', 'end_date' => '2026-12-01'));
