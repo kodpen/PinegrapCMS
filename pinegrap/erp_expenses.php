@@ -187,8 +187,8 @@ foreach ($expenses as $expense) {
             <td class="align-middle text-nowrap" data-sort="' . h(str_replace('-', '', (string) $expense['expense_date']) . sprintf('%07d', $id % 10000000)) . '">
                 <a class="pg-link-body-emphasis" href="edit_erp_expense.php?id=' . $id . $output_send_to . '">' . h(prepare_form_data_for_output((string) $expense['expense_date'], 'date', false)) . '</a>
             </td>
-            <td class="align-middle">' . h((string) $expense['category_name']) . '</td>
-            <td class="align-middle' . $struck . '">
+            <td class="align-middle text-break" style="min-width:8rem;max-width:14rem">' . h((string) $expense['category_name']) . '</td>
+            <td class="align-middle text-break' . $struck . '" style="min-width:8rem;max-width:18rem">
                 <a class="pg-link-body-emphasis text-decoration-none" href="edit_erp_expense.php?id=' . $id . $output_send_to . '">' . h(((string) $expense['supplier'] !== '') ? (string) $expense['supplier'] : ('#' . $id)) . '</a>'
                 . (((string) $expense['document_no'] !== '') ? '<div class="small fg-secondary font-monospace">' . h((string) $expense['document_no']) . '</div>' : '') . '
             </td>
@@ -252,14 +252,26 @@ if ($ready && erp_expense_recurring_ready()) {
 }
 
 // The period picker: the last eighteen months, this year and last year, or
-// two dates.
-$output_periods = '';
+// two dates. A month or year from the address outside those (an old
+// bookmark or back link) is offered too, so a Filter keeps it.
+$period_months = array();
 for ($i = 0; $i < 18; $i++) {
-    $month = date('Y-m', strtotime(date('Y-m-01') . ' -' . $i . ' month'));
+    $period_months[] = date('Y-m', strtotime(date('Y-m-01') . ' -' . $i . ' month'));
+}
+$period_years = array((int) date('Y'), (int) date('Y') - 1);
+
+if (preg_match('/^\d{4}-\d{2}$/', $period_choice) && !in_array($period_choice, $period_months, true)) {
+    $period_months[] = $period_choice;
+} elseif (preg_match('/^year-(\d{4})$/', $period_choice, $parts) && !in_array((int) $parts[1], $period_years, true)) {
+    $period_years[] = (int) $parts[1];
+}
+
+$output_periods = '';
+foreach ($period_months as $month) {
     $output_periods .= '<option value="' . h($month) . '"' . (($period_choice === $month) ? ' selected' : '') . '>'
         . h(get_month_name_from_number(substr($month, 5, 2)) . ' ' . substr($month, 0, 4)) . '</option>';
 }
-foreach (array((int) date('Y'), (int) date('Y') - 1) as $year) {
+foreach ($period_years as $year) {
     $output_periods .= '<option value="year-' . $year . '"' . (($period_choice === 'year-' . $year) ? ' selected' : '') . '>' . h(lang(array('string' => 'Year {var:1}', 'vars' => $year))) . '</option>';
 }
 $output_periods .= '<option value="all"' . (($period_choice === 'all') ? ' selected' : '') . '>' . lang('All dates') . '</option>';
