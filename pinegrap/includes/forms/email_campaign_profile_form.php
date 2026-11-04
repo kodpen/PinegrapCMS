@@ -417,6 +417,49 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
 }
 
 /**
+ * The problems with a profile's text columns, field name => message: the
+ * subject and the from name the form requires, and every text column within
+ * its column length (name, from name and the addresses varchar(100), subject
+ * varchar(255)), counted in characters as the utf8mb4 columns count them. A
+ * longer value would be cut on the save without a word. Used by the form
+ * (pg_email_campaign_profile_form_validate()) and by the import beside
+ * pg_email_campaign_profile_values_problem().
+ *
+ * @param array $values  Column name => value; a missing column reads as ''
+ * @return array  Field name => message, empty when the text columns can be saved
+ */
+function pg_email_campaign_profile_text_problems($values)
+{
+    $problems = array();
+    $value = function ($name) use ($values) {
+        return (isset($values[$name]) && is_scalar($values[$name])) ? trim((string) $values[$name]) : '';
+    };
+
+    foreach (array('subject' => lang('Subject'), 'from_name' => lang('From Name')) as $field => $label) {
+        if ($value($field) === '') {
+            $problems[$field] = lang(array('string' => '{var:1} is required', 'vars' => $label));
+        }
+    }
+
+    $limits = array(
+        'name' => array(lang('Name'), 100),
+        'subject' => array(lang('Subject'), 255),
+        'from_name' => array(lang('From Name'), 100),
+        'from_email_address' => array(lang('From E-mail Address'), 100),
+        'reply_email_address' => array(lang('Reply to E-mail Address'), 100),
+        'bcc_email_address' => array(lang('BCC E-mail Address'), 100),
+    );
+
+    foreach ($limits as $field => $limit) {
+        if (!isset($problems[$field]) && (mb_strlen($value($field)) > $limit[1])) {
+            $problems[$field] = lang(array('string' => '{var:1} can be at most {var:2} characters long.', 'vars' => array($limit[0], $limit[1])));
+        }
+    }
+
+    return $problems;
+}
+
+/**
  * The access problem with a profile's trigger item and body page, checked
  * as the form checks them: the calendar event, the custom form (edit
  * access), the followed profile (a basic user's own only) and the HTML
@@ -1295,6 +1338,20 @@ function pg_email_campaign_profile_form_validate($liveform, $profile_id = 0)
     }
 
     $liveform->validate_required_field('schedule_unit', lang(array('string'=>'{var:1} is required','vars'=>lang('Day(s)/Hour(s)'))));
+
+    // The text columns within their column length, so no value is cut on the
+    // save; a field that already has an error keeps that one.
+    $text_values = array();
+
+    foreach (array('name', 'subject', 'from_name', 'from_email_address', 'reply_email_address', 'bcc_email_address') as $field) {
+        $text_values[$field] = $liveform->get_field_value($field);
+    }
+
+    foreach (pg_email_campaign_profile_text_problems($text_values) as $field => $message) {
+        if ($liveform->check_field_error($field) == false) {
+            $liveform->mark_error($field, $message);
+        }
+    }
 
     // If calendar event reserved action was selected, then validate fields for that.
     if ($liveform->get_field_value('action') == 'calendar_event_reserved') {
