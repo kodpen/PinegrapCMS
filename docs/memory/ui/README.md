@@ -492,6 +492,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - user-permission-rows.md: Permission rows in add_user/edit_user/import_users (includes/user_permissions.php): value rules, gate_field/gate_scope, drawer panels, top layer, multiselect pitfalls.
 - user-screen-checks.md: The checks of the user create, edit, import and bulk delete screens: role, private folder dates, notify mail, registered filter, default view, repeated headings
 - user-screens-names-and-dates.md: User and session screens: session and password dates through get_absolute_time(), the users list checkbox, yes mark and name-menu names, badge label and folder expiry names
+- user-screens-refused-save.md: Create User / Edit User: a refused save goes back to the form with the error and what was sent (liveform add_user / edit_user, pg_user_form_refill()), the field limits and the contact link check
 - user-shared-form.md: The user create and edit screens share includes/forms/user_form.php (rights cards, folder rights, access save)
 - verified-shipping-address-shared-form.md: The verified shipping address create and edit screens share includes/forms/verified_shipping_address_form.php: what it holds, what stays in the screens
 - visitors-ai-section.md: AI Visibility section of the Visitors overview (ai.php, #6475): bots and firewall, fetches by day, pages per bot, assistant visits, unfetched pages, old-screen redirect

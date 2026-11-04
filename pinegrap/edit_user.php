@@ -22,6 +22,7 @@ include_once('includes/user_permissions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/user_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php');
 $liveform_view_users = new liveform('view_users');
+$liveform = new liveform('edit_user');
 $user = validate_user();
 validate_area_access($user, 'manager');
 
@@ -1133,7 +1134,7 @@ if (!$_POST) {
         $output_workspace_button = ws_record_button($user, 'user_account', (int) $_GET['id'], (string) $username, 'btn btn-sm btn-outline theme-secondary rounded-pill px-5');
     }
 
-    print
+    $output_page_shell =
     pg_page_shell(
         array(
             'title'=> lang('Edit User') . ' : ' . h($username),
@@ -1147,7 +1148,9 @@ if (!$_POST) {
                 array('label' => $username),
             ),
         )
-    )  . '
+    );
+
+    $output_main = '
 <main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
@@ -1170,6 +1173,7 @@ if (!$_POST) {
                 ' . $output_sign_in_lock_notice . '
                 ' . $output_sign_in_unlock_form . '
                 ' . $output_reset_password_form . '
+                ' . $liveform->output_errors() . '
                 <form name="form" action="edit_user.php" method="post">
                     ' . get_token_field() . '
                     <button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>
@@ -1263,8 +1267,19 @@ if (!$_POST) {
             </div>
         </div>
     
-</main>' .
-    output_footer();
+</main>';
+
+    // A refused save comes back here with what was sent, for this account
+    // only: another account's screen draws its own values.
+    $sent_values = pg_user_form_sent_values('edit_user');
+
+    if ($sent_values && ((string) ($sent_values['id'] ?? '') === (string) $_GET['id'])) {
+        $output_main = pg_user_form_refill($output_main, $sent_values);
+    }
+
+    print $output_page_shell . $output_main . output_footer();
+
+    $liveform->remove_form();
         
 } else {
     validate_token_field();
@@ -1339,12 +1354,30 @@ if (!$_POST) {
         $_POST['username'] = trim($_POST['username'] ?? '');
         $_POST['email'] = trim($_POST['email'] ?? '');
 
-        // A blank username, an invalid e-mail address, or one another
-        // account already uses.
-        $problem = pg_user_write_problem($_POST['username'], $_POST['email'], $audit_user_id);
+        // Points out of range and texts longer than their column, a blank
+        // username, an invalid e-mail address, or one another account
+        // already uses: the form opens again with the error and what was
+        // sent.
+        foreach (pg_user_form_field_problems($_POST) as $field => $field_problem) {
+            $liveform->mark_error($field, pg_user_form_field_problem_message($field, $field_problem));
+        }
 
-        if ($problem !== '') {
-            output_error(pg_user_write_problem_message($problem) . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        if (!$liveform->check_form_errors()) {
+            $problem = pg_user_write_problem($_POST['username'], $_POST['email'], $audit_user_id);
+
+            if ($problem !== '') {
+                $liveform->mark_error(($problem === 'email_invalid' || $problem === 'email_taken') ? 'email' : 'username',
+                    h(pg_user_write_problem_message($problem)) . '.');
+            }
+        }
+
+        if ($liveform->check_form_errors()) {
+            $liveform->add_fields_to_session();
+
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_user.php?' . http_build_query(array_filter(array(
+                'id' => (string) $audit_user_id,
+                'send_to' => (string) ($_REQUEST['send_to'] ?? '')), 'strlen')));
+            exit();
         }
 
         // A checked private folder whose date is not one stops here, before
