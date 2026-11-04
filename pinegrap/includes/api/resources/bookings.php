@@ -46,6 +46,10 @@ function api_booking_present($row, $services, $staff) {
 
 	};
 
+	// The deposit order and its payment (pg_booking_deposit_rows() reads
+	// the number); null before the deposit columns.
+	$deposit = pg_booking_deposit_view($row);
+
 	return array(
 		'id'           => (int)$row['id'],
 		'service_id'   => $service_id,
@@ -62,6 +66,9 @@ function api_booking_present($row, $services, $staff) {
 		'status'       => (string)$row['status'],
 		'source'       => (string)$row['source'],
 		'hold_until'   => ((string)$row['status'] === 'held') ? api_time($row['hold_until']) : null,
+		'order_id'     => ($deposit['order_id'] > 0) ? $deposit['order_id'] : null,
+		'order_number' => ($deposit['order_number'] !== '') ? $deposit['order_number'] : null,
+		'paid_at'      => ($deposit['paid_at'] > 0) ? api_time($deposit['paid_at']) : null,
 		'created_at'   => api_time($row['created_at']),
 		'updated_at'   => api_time($row['updated_at']),
 	);
@@ -87,6 +94,9 @@ function api_booking_schema() {
 		'status'       => 'string',
 		'source'       => 'string',
 		'hold_until'   => 'string?',
+		'order_id'     => 'integer?',
+		'order_number' => 'string?',
+		'paid_at'      => 'string?',
 		'created_at'   => 'string?',
 		'updated_at'   => 'string?',
 	);
@@ -242,6 +252,7 @@ function api_booking_load_or_fail($id, $scope) {
 function api_booking_answer($id, $scope, $status_code = 200) {
 
 	$row = api_booking_load_or_fail($id, $scope);
+	$row = pg_booking_deposit_rows(array($row))[0];
 
 	api_ok(api_booking_present($row, pg_booking_agenda_services(), pg_booking_agenda_staff()), $status_code);
 
@@ -364,7 +375,7 @@ function api_bookings_list($params) {
 
 	$out = array();
 
-	foreach ($rows as $row) {
+	foreach (pg_booking_deposit_rows($rows) as $row) {
 
 		$out[] = api_booking_present($row, $services, $staff);
 

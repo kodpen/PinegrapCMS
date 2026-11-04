@@ -5,7 +5,12 @@
  * visitor picks a service, a staff member or "anyone", a free day on the
  * month calendar of pg_datetime.js, then a time, which booking_slots.php
  * holds for them while they give their details; the confirm request books
- * it, or sends them back to the times when it was taken or the hold ran out. The widget's parts are found by the attributes their
+ * it, or sends them back to the times when it was taken or the hold ran out.
+ * A service with a deposit answers the details with its payment, drawn in
+ * the details step in place of the form; paying posts that form to
+ * booking_slots.php, which ends on this page again with the
+ * #pg-booking-payment fragment, and the widget asks how the payment went.
+ * The widget's parts are found by the attributes their
  * bindings gave them (data-pg-booking-part, data-pg-booking-action), never
  * by a class, so a designer may style and move them freely.
  *
@@ -90,6 +95,7 @@
             return;
         }
         if (path.pop() === 'step_details') {
+            this.unpay();
             this.post({ action: 'release' });
         }
         this.say('');
@@ -311,6 +317,7 @@
             path.pop();
         }
         this.state.held = null;
+        this.unpay();
         this.show('step_when');
         this.loadMonth(this.state.month, true);
         this.pickDay(this.state.day, message);
@@ -327,7 +334,7 @@
             }
             return;
         }
-        var body = { action: 'confirm' };
+        var body = { action: 'confirm', page: window.location.pathname + window.location.search };
         FIELDS.forEach(function (name) {
             var el = self.field(name);
             if (el) {
@@ -349,6 +356,11 @@
         this.post(body).then(function (answer) {
             finish();
             answer = answer || {};
+            if (answer.ok && answer.status === 'pay') {
+                self.mark({});
+                self.pay((answer.pay && answer.pay.html) || '');
+                return;
+            }
             if (answer.ok) {
                 self.mark({});
                 var done = self.part('done');
@@ -389,6 +401,92 @@
         });
     };
 
+    // The deposit's payment in the details step, in place of the form. Its
+    // scripts (the card service's and the site's card box) are loaded in
+    // order; innerHTML alone would not run them.
+    Widget.prototype.pay = function (html) {
+        var form = this.part('form'), step = this.part('step_details');
+        if (!step) {
+            return;
+        }
+        this.unpay();
+        var box = document.createElement('div');
+        box.setAttribute('data-pg-booking-paybox', '');
+        box.innerHTML = html;
+        if (form) {
+            form.hidden = true;
+            form.parentNode.insertBefore(box, form.nextSibling);
+        } else {
+            step.appendChild(box);
+        }
+        var scripts = Array.prototype.slice.call(box.querySelectorAll('script'));
+        var hosted = function () {
+            if (window.pgPaymentHosted) {
+                window.pgPaymentHosted.setUp();
+            }
+        };
+        scripts.forEach(function (old, index) {
+            var script = document.createElement('script');
+            if (old.src) {
+                script.src = old.src;
+                script.async = false;
+            } else {
+                script.text = old.text;
+            }
+            if (index === scripts.length - 1) {
+                script.addEventListener('load', hosted);
+            }
+            old.parentNode.replaceChild(script, old);
+        });
+        if (!scripts.length) {
+            hosted();
+        }
+        this.say('');
+        var first = box.querySelector('input:not([type="hidden"]), button');
+        if (first) {
+            first.focus();
+        }
+    };
+
+    Widget.prototype.unpay = function () {
+        var box = this.root.querySelector('[data-pg-booking-paybox]'), form = this.part('form');
+        if (box) {
+            box.parentNode.removeChild(box);
+        }
+        if (form) {
+            form.hidden = false;
+        }
+    };
+
+    // Back on the page after paying: the payment still open (refused, or
+    // paid elsewhere and not yet confirmed), the booking made, or the time lost.
+    Widget.prototype.resume = function () {
+        var self = this;
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+        this.post({ action: 'payment' }).then(function (answer) {
+            answer = answer || {};
+            if (answer.state === 'open') {
+                self.state.path = ['step_service', 'step_details'];
+                self.show('step_details');
+                self.pay((answer.pay && answer.pay.html) || '');
+            } else if (answer.state === 'done') {
+                var done = self.part('done');
+                if (done) {
+                    done.textContent = answer.message || '';
+                }
+                self.state.path = ['step_done'];
+                self.show('step_done');
+                self.say(answer.message || '');
+            } else if (answer.state === 'expired') {
+                self.say(answer.message || self.w.taken);
+            }
+        }, function () {
+            self.say(self.w.failed);
+        });
+    };
+
     Widget.prototype.start = function () {
         var self = this, status = this.part('status');
         if (status) {
@@ -396,6 +494,10 @@
             status.setAttribute('aria-live', 'polite');
         }
         this.show('step_service');
+        if (window.location.hash === '#pg-booking-payment' && !document.querySelector('[data-pg-booking-resumed]')) {
+            this.root.setAttribute('data-pg-booking-resumed', '');
+            this.resume();
+        }
         this.root.addEventListener('submit', function (event) {
             var form = self.part('form');
             if (form && event.target === form) {
