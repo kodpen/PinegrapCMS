@@ -359,8 +359,10 @@ if (count($products) > 0) {
         $output_grand_total = pg_format_number($totals['total'], 0);
     }
 
+    // A plain report table, not a list: its columns are the period's days,
+    // its headings open the orders of a day and its foot is the Grand Total.
     $output_report =
-        '<table class="chart shipping_report table-hover table " style="width:100%;display:none">
+        '<div class="table-responsive"><table class="shipping_report table table-hover mb-0">
             <thead>
                 <tr>
                     <th>' . lang('Product') . '</th>
@@ -380,8 +382,7 @@ if (count($products) > 0) {
                     <td style="font-weight: bold; text-align: center">' . $output_grand_total . '</td>
                 </tr>
             </tfoot>
-
-        </table>';
+        </table></div>';
 
 // Otherwise there is not any data for any products, so output notice.
 } else {
