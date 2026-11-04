@@ -26,7 +26,7 @@ description: Plan: the Workspace Today page (?view=home) drawn as new-dashboard 
 
 - W4 — What happened in the channels, Latest decisions. Files: workspace.js (`homeDigest`, `homeDecisions`), ws_today.src.css "Digest", "Decisions". After W1; parallel with W2, W3, W5.
 
-- W5 — Channels you could join, What is the Workspace?. Files: workspace.js (`homeJoin`, `homeAbout`), ws_today.src.css "Join", "About". After W1; parallel with W2–W4.
+- W5 (done, #6743) — Channels you could join, What is the Workspace?. Files: workspace.js (`homeJoin`, `homeAbout`), ws_today.src.css "Join", "About". After W1; parallel with W2–W4.
 
 - W6 — close-out: unused `.ws-home-*` rules out of backend.src.css, 360 px check, screenshots, memory final, plan deleted. After W2–W5.
 
