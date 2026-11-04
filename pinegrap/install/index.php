@@ -9013,6 +9013,7 @@ function get_tables() {
 		'ap_blocks',
 		'ap_followers',
 		'ap_outbox',
+		'ap_reactions',
 		'booking_services',
 		'booking_staff',
 		'bookings',
