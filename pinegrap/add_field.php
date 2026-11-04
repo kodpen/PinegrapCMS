@@ -209,32 +209,23 @@ if (!$_POST) {
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
             <div class="col-12">
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        <p class="p-0 m-0">' . pg_upper_words($form_type_name) . ': ' . h($form_name) . '</p>
-                    </div>
-                </div>
                 <form name="form" action="add_field.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '">
                     <input type="hidden" id="' . $form_type_identifier_id . '" name="' . $form_type_identifier_id . '" value="' . h($_REQUEST[$form_type_identifier_id]) . '">
                     <input type="hidden" name="form_type" value="' . $form_type . '">
-                    ' . pg_field_form_cards($liveform, $field, array(
-                        'form_type' => $form_type,
-                        'quiz' => $quiz,
-                        'position' => $position,
-                        'form_id' => $_REQUEST[$form_type_identifier_id],
-                        'page_type' => $page_type,
-                        'upload_folder_row' => ($form_type == 'custom'),
-                    )) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                    ' . pg_field_form_layout(
+                        pg_field_form_cards($liveform, $field, array(
+                            'form_type' => $form_type,
+                            'quiz' => $quiz,
+                            'position' => $position,
+                            'form_id' => $_REQUEST[$form_type_identifier_id],
+                            'page_type' => $page_type,
+                            'form_label' => pg_upper_words($form_type_name) . ': ' . h($form_name),
+                            'upload_folder_row' => ($form_type == 'custom'),
+                        )),
+                        '
+                                        <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>') . '
                 </form>
             </div>
         </div>
