@@ -75,3 +75,60 @@ function test_product_group_form_edit_save_scoped_to_listed_members()
 	pg_assert_contains("pg_product_group_form_member_rows(isset(\$_POST['listed_product_ids']) ? \$_POST['listed_product_ids'] : null, ", $source, 'the save splits the rows by the list');
 	pg_assert_true(strpos($source, '"DELETE FROM products_groups_xref WHERE product_group = ?"' . "\n") === false, 'no group-wide delete');
 }
+
+// The top group's display type is not saved, so its choice is disabled.
+function test_product_group_form_root_display_type_disabled()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/product_group_form.php');
+
+	pg_assert_contains("<fieldset' . (\$form['is_root'] ? ' disabled aria-describedby=\"display_type_root_note\"' : '') . '>", $source, 'the fieldset is disabled for the top group');
+	pg_assert_contains("'is_root' => false", $source, 'other groups keep the choice');
+	pg_assert_contains("'is_root' => (\$parent_id == 0),", (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_product_group.php'), 'the edit screen passes the flag');
+}
+
+// Create, Save and Delete say so on the screen they return to: the notice
+// goes to view_product_groups, which the Catalog Manager shows as a toast.
+function test_product_group_form_saves_leave_a_notice()
+{
+	pg_assert_contains("new liveform('view_product_groups')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_folders.php'), 'the Catalog Manager reads the notice');
+	pg_assert_contains("\$notice_liveform = new liveform('view_product_groups');", (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_product_group.php'), 'create');
+
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_product_group.php');
+	pg_assert_contains('$notice_form = pg_redirect_notice_form($location);', $edit, 'edit: to the screen it returns to');
+	pg_assert_contains("lang('The product group has been saved.')", $edit, 'edit: saved');
+	pg_assert_contains("lang('The product group has been deleted.')", $edit, 'edit: deleted');
+	pg_assert_same('view_product_groups', pg_redirect_notice_form('/pinegrap/view_product_groups.php'), 'the form name of the Catalog Manager address');
+}
+
+function test_product_group_form_sort_order()
+{
+	pg_assert_same(0, pg_product_group_form_sort_order(''), 'an empty box is 0');
+	pg_assert_same(0, pg_product_group_form_sort_order(null), 'no box is 0');
+	pg_assert_same(7, pg_product_group_form_sort_order('7'), 'a whole number');
+	pg_assert_same(65535, pg_product_group_form_sort_order(' 65535 '), 'the column maximum');
+	pg_assert_same(false, pg_product_group_form_sort_order('-12'), 'a negative number');
+	pg_assert_same(false, pg_product_group_form_sort_order('12,5'), 'a decimal');
+	pg_assert_same(false, pg_product_group_form_sort_order('65536'), 'past the column');
+	pg_assert_same(false, pg_product_group_form_sort_order(array('1')), 'a list');
+}
+
+function test_product_group_form_post_problems()
+{
+	pg_assert_same(array(), pg_product_group_form_post_problems(array('name' => 'Yaz', 'short_description' => 'Kısa')), 'a valid form');
+	pg_assert_same(array('name' => 'required'), pg_product_group_form_post_problems(array('name' => '   ')), 'a name of spaces');
+	pg_assert_same(array('name' => 'required'), pg_product_group_form_post_problems(array()), 'no name');
+	pg_assert_same(array('name' => 'too_long'), pg_product_group_form_post_problems(array('name' => str_repeat('ş', 101))), 'a name past 100 characters');
+	pg_assert_same(array(), pg_product_group_form_post_problems(array('name' => str_repeat('ş', 100))), '100 characters fit');
+	pg_assert_same(array('short_description' => 'too_long'), pg_product_group_form_post_problems(array('name' => 'Yaz', 'short_description' => str_repeat('a', 108))), 'a short description past 100 characters');
+
+	$post = array(
+		'name' => 'Yaz',
+		'products' => array('250', '251'),
+		'sort_order_product_250' => '7',
+		'sort_order_product_251' => '-12',
+		'sort_order_product_252' => 'x',
+		'sort_order_product_group_9' => '1.5',
+		'sort_order_product_group_10' => '',
+	);
+	pg_assert_same(array('sort_order_product_251' => 'sort_order', 'sort_order_product_group_9' => 'sort_order'), pg_product_group_form_post_problems($post), 'ticked products and child groups only');
+}

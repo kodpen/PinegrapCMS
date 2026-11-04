@@ -1050,6 +1050,7 @@
     "Duplicate the selected element": "Seçili elemanı çoğalt",
     "Duplicate the selection": "Seçimi çoğalt",
     "Duplicate with Find & Replace": "Bul ve Değiştirerek Çoğalt",
+    "Duplicate “{var:1}”. Please select any additional items that you want to duplicate.": "“{var:1}” çoğaltılıyor. Lütfen çoğaltmak istediğiniz ek öğeleri seçin.",
     "Duplicated as {var:1}.": "{var:1} olarak çoğaltıldı.",
     "Duplicating": "Çoğaltılıyor",
     "Duration": "Süre",

@@ -214,7 +214,7 @@ if (!$_POST) {
                 <td class="chart_label  align-middle ' . $status_class . '">' . h($item['name']) . (($item['enabled'] == 1) ? '' : pg_list_status_word(lang('Disabled'))) . '</td>
                 <td class="align-middle ' . $status_class . '">' . h($item['short_description']) . '</td>
                 <td class="align-middle text-end">' . $price . '</td>
-                <td class="align-middle "><input class="form-control text-end" type="text" name="sort_order_' . $item['type'] . '_' . $item['id'] . '" size="5" value="' . $item['sort_order'] . '" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" aria-label="' . h(lang('Sort Order') . ': ' . $item['name']) . '" style="text-align: right;width:60px;" /></td>
+                <td class="align-middle "><input class="form-control text-end" type="text" name="sort_order_' . $item['type'] . '_' . $item['id'] . '" size="5" value="' . $item['sort_order'] . '" maxlength="5" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-min="0" data-inputmask-max="65535" data-inputmask-placeholder="0" aria-label="' . h(lang('Sort Order') . ': ' . $item['name']) . '" style="text-align: right;width:60px;" /></td>
                 <td></td>
             </tr>';
     }
@@ -307,7 +307,7 @@ if (!$_POST) {
                 // new attributes array that we can use to sort the attributes.
                 foreach ($attributes_without_sort_order as $attribute) {
                     // If there is a sort order for this attribute, then set it.
-                    if ($sort_orders[$attribute['id']]) {
+                    if (isset($sort_orders[$attribute['id']])) {
                         $sort_order = $sort_orders[$attribute['id']]['sort_order'];
 
                     } else {
@@ -370,7 +370,7 @@ if (!$_POST) {
                     $attribute = array('sort_order' => $sort_order) + $attribute;
 
                     $attribute['options'] = array_values($options);
-                    $attribute['default_option_id'] = $sort_orders[$attribute['id']]['default_option_id'];
+                    $attribute['default_option_id'] = isset($sort_orders[$attribute['id']]) ? $sort_orders[$attribute['id']]['default_option_id'] : 0;
 
                     $attributes[] = $attribute;
                 }
@@ -450,13 +450,27 @@ if (!$_POST) {
     if ($group_binned) {
         $output_delete_button = '';
     } elseif ($parent_id != 0) {
-        // if there is a child product group in this product group, then disable delete button
-        if ($child_product_group_exists == true) {
-            $output_delete_button = '<button type="button" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " onclick="alert(\'' . lang('Please delete all product groups in this product group before deleting this product group.') . '\');return false;" ><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
-        // else there is not a child object in this product group, so allow delete
-        } else {
+        // With the Recycle Bin the group goes there with every group under
+        // it, the way a folder does, so its sub-groups do not stop the
+        // delete. Without the bin the permanent delete would leave them
+        // without a parent, so the button is disabled and says why.
+        if (($child_product_group_exists == true) && !pg_catalog_bin_ready()) {
             $output_delete_button = '
-            <button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-solid theme-danger " formnovalidate data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product group')))) : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('product group'))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+            <span class="d-inline-flex flex-column">
+                <button type="button" class="btn my-1 btn-solid theme-danger" disabled aria-describedby="delete_product_group_hint"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . h(lang('Delete')) . '</span></button>
+                <span class="form-text" id="delete_product_group_hint">' . h(lang('Please delete all product groups in this product group before deleting this product group.')) . '</span>
+            </span>';
+        } else {
+            if (pg_catalog_bin_ready()) {
+                $delete_confirm = ($child_product_group_exists == true)
+                    ? lang('This product group and the product groups in it will be moved to the Recycle Bin. They can be restored from the Recycle Bin in the Catalog Manager.')
+                    : lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product group'))));
+            } else {
+                $delete_confirm = lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('product group'))));
+            }
+
+            $output_delete_button = '
+            <button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-solid theme-danger " formnovalidate data-confirm-content="' . h($delete_confirm) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
         }
     } else {
         $output_delete_button = '';
@@ -483,8 +497,10 @@ if (!$_POST) {
         ]) . '
 <main id="content" class="container-fluid">
     ' . pg_screen_toolbar(array(
+        // A group in the Recycle Bin is not copied (duplicate_product_group.php
+        // refuses it too).
         'secondary' => array(
-            '<a class="btn btn-sm btn-text theme-secondary" href="duplicate_product_group.php?id=' . h($_GET['id']) . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>',
+            $group_binned ? '' : '<a class="btn btn-sm btn-text theme-secondary" href="duplicate_product_group.php?id=' . h($_GET['id']) . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>',
             $output_workspace_button,
         ),
     )) . '
@@ -508,6 +524,7 @@ if (!$_POST) {
                         'row_class' => 'edit_product_group_container',
                         'form' => pg_product_group_form_cards($liveform, $group_values, array(
                             'attributes' => $output_attributes,
+                            'is_root' => ($parent_id == 0),
                             'seo_badge' => '<span class="float-end" data-pg-seo-badge="product_group:' . (int) $_GET['id'] . '">' . pg_seo_render_badge($seo_row) . '</span>',
                             'seo_checklist' => '<div class="col-12">
                                             ' . pg_seo_render_checklist($seo_row, 'product_group', (int) $_GET['id']) . '
@@ -528,7 +545,7 @@ if (!$_POST) {
                                             ? '<a class="btn my-1 btn-solid theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin"><span class="bi bi-trash3 me-3"></span><span class="pg-btn-label">' . lang('Open the Recycle Bin') . '</span></a>'
                                             : '<button type="submit" id="submit_button" name="submit_button" value="Save" data-pg-save-shortcut class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>') . '
                                         ' . $output_delete_button,
-                        'bar_extra' => '
+                        'bar_extra' => $group_binned ? '' : '
                                     <span class="enable-on-selected">
                                         <button type="button" value="Modify Selected" title="' . lang('Modify Selected Products') . '" aria-label="' . h(lang('Modify Selected Products')) . '" data-bs-content="' . lang('All selected products will be modified. However, the changes you made on this page will be removed. If you have made any changes, save first.') . '" class="btn btn-sm my-1 btn-solid theme-primary p-3 disabled" onclick="convert_product_group_to_product_form(\'edit_products.php\')"><span class="material-icons" aria-hidden="true">living</span></button>
                                     </span>')) . '
@@ -614,6 +631,9 @@ if (!$_POST) {
     // pictures back. Emptying the bin is what runs the permanent delete.
     $binning_group = ((($_POST['submit_button'] ?? '') == 'Delete') && ($parent_id != '0') && pg_catalog_bin_ready());
 
+    // What the screen the save returns to says.
+    $product_group_notice = '';
+
     // Delete product group images references (we do this for both delete and update).
     if ($binning_group == false) {
         db("DELETE FROM product_groups_images_xref WHERE product_group = '" . escape($_POST['id'] ?? '') . "'");
@@ -627,6 +647,7 @@ if (!$_POST) {
 
         if ($binned_name !== false) {
             log_activity(lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => $binned_name)), $_SESSION['sessionusername']);
+            $product_group_notice = lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => $binned_name));
         }
 
     // if product group was selected for delete
@@ -678,6 +699,7 @@ if (!$_POST) {
             db("DELETE FROM product_groups_attributes_xref WHERE product_group_id = '" . e($_POST['id'] ?? '') . "'");
             
             log_activity(lang(array('string' => '{var:1} ({var:2}) was deleted', 'vars' => array(lang('product group'), $_POST['name']))), $_SESSION['sessionusername']);
+            $product_group_notice = lang('The product group has been deleted.');
 
         // else, output an error stating that the product group cannot be deleted because it is the root product group
         } else {
@@ -689,14 +711,16 @@ if (!$_POST) {
         }
     // else product group was not selected for delete
     } else {
-        // if the name is blank, then mark error and forward user back to previous screen
-        if ($_POST['name'] == '') {
-            $liveform->mark_error('name', lang('Name is required.'));
+        // A blank name, an over-long name or short description or a sort order
+        // that is no whole number sends the user back to the form.
+        if (pg_product_group_form_mark_problems($liveform, pg_product_group_form_post_problems($_POST), lang('Name is required.'))) {
             
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_product_group.php?id=' . $_POST['id']);
             exit();
         }
         
+        $_POST['name'] = trim((string) $_POST['name']);
+
         // If parent_id is blank, require it when selectable groups exist
         if (!$_POST['parent_id']) {
             $available_parent_options = get_product_group_options(0, 0, $_POST['id'], 0, array(), FALSE, 'text', false, true, false);
@@ -874,7 +898,7 @@ if (!$_POST) {
                     "UPDATE product_groups SET 
                         sort_order = ? 
                     WHERE id = ?";
-                $result2 = db_q($query, array((string) $_POST['sort_order_product_group_' . $row['id']], (string) $row['id'])) or output_error('Query failed');
+                $result2 = db_q($query, array((string) (int) pg_product_group_form_sort_order($_POST['sort_order_product_group_' . $row['id']]), (string) $row['id'])) or output_error('Query failed');
             }
         }
         
@@ -932,15 +956,22 @@ if (!$_POST) {
         }
         
         log_activity(lang(array('string' => '{var:1} ({var:2}) was modified', 'vars' => array(lang('product group'), $_POST['name']))), $_SESSION['sessionusername']);
+        $product_group_notice = lang('The product group has been saved.');
     }
-    
-    // if there is a send to set, then forward user to send to
-    if ($_POST['send_to'] != '') {
-        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
-        
-    // else there is not a send to set, so forward user to view product groups screen.
-    } else {
-        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/view_product_groups.php');
+
+    // Back to send_to when one is given, else to the Catalog Manager.
+    $location = ((is_scalar($_POST['send_to'] ?? null) && ((string) $_POST['send_to'] !== ''))
+        ? pg_safe_redirect_path((string) $_POST['send_to'])
+        : PATH . SOFTWARE_DIRECTORY . '/view_product_groups.php');
+
+    // The notice goes to the screen the redirect opens.
+    $notice_form = pg_redirect_notice_form($location);
+
+    if (($notice_form !== '') && ($product_group_notice !== '')) {
+        $notice_liveform = new liveform($notice_form);
+        $notice_liveform->add_notice($product_group_notice);
     }
+
+    header('Location: ' . URL_SCHEME . HOSTNAME . $location);
 }
 ?>
