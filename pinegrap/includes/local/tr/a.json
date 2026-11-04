@@ -1435,6 +1435,7 @@
     "A step of a chain": "Zincirin bir adımı",
     "A stone hammam, a sauna and massages with olive oil from the hotel's own trees.": "Taş bir hamam, sauna ve otelin kendi ağaçlarının zeytinyağıyla masajlar.",
     "A stone hammam, a sauna and two treatment rooms with massages based on olive oil.": "Taş bir hamam, bir sauna ve zeytinyağlı masajların yapıldığı iki bakım odası.",
+    "A store credit card is not deleted. Void it on the customer's screen or with POST /customers/{id}/credit/{card_id}/void.": "Mağaza kredisi kartı silinmez. Müşteri ekranında ya da POST /customers/{id}/credit/{card_id}/void ile geçersiz kılın.",
     "A stored shipping cut-off falls outside start_date and end_date: send shipping_cutoffs with the new dates.": "Kayıtlı bir kargo kesim zamanı start_date ile end_date aralığının dışında kalıyor: yeni tarihlerle birlikte shipping_cutoffs da gönderin.",
     "A story from the Journal.": "Günce'den bir hikâye.",
     "A story from the magazine.": "Dergiden bir yazı.",
