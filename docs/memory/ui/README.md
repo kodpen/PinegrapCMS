@@ -484,7 +484,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - submitted-form-shared-form.md: The submitted form create and edit screens share includes/forms/submitted_form_form.php
 - suggestion-lists.md: Search-as-you-type lists the screens build themselves (ERP account contact, product bundle, Create Order, ERP lines): keyboard, focus after a pick, how an empty or failed answer is said
 - system-status-gauge-layers.md: System Status gauge (widget 2) as five stacked SVGs: paint order, which layer animates, will-change, the off-screen pause and its redraw guard, reduced motion
-- tax-zone-shared-form.md: The tax zone screens share includes/forms/tax_zone_form.php: cards, options, links; a blank name is refused and redrawn; states under the country's shown name (PR #4883)
+- tax-zone-shared-form.md: The tax zone screens share includes/forms/tax_zone_form.php: wide layout with a Summary, options, links; a blank name is refused and redrawn; states under the country's shown name
 - theme-screens-names-and-returns.md: Theme screens: no ".." in stored names, the design-file gate, the new name said, upload errors on the form, Edit CSS's way back, System refused on the server
 - theme-screens.md: Edit Theme, the themes list and Private Label Branding on cards: labelled fields, theme tools in the toolbar, named list marks, the private label switch
 - time-zone-list-labels.md: How the time zone pick lists label and order their zones (offsets computed from the time zone database, renamed places, values unchanged)
