@@ -22,9 +22,12 @@ module: list_table_edit
 ## Contacts: which cells change?
 - Names, company, phones, e-mail, opt-in and the address views' address parts: `list-table-quick-edit-contacts.md`. The groups stay text (several choices).
 
+## Short links: which cells change?
+- Name, destination type, page, destination, tracking code and how it answers: `list-table-quick-edit-short-links.md`.
+
 ## Which lists are not done yet?
 - Products: zones and order receipt message (above).
 - Contacts: the contact groups (multi-select).
-- Submitted forms, menus, short links, themes, containers, comments, styles, design files, and the commerce lists' columns outside their `pg_*_edit_columns()`.
+- Submitted forms, menus, themes, containers, comments, styles, design files, and the commerce lists' columns outside their `pg_*_edit_columns()`.
 
-Related: docs/memory/ui/list-table-quick-edit.md, docs/memory/ui/list-table-quick-edit-pages.md, docs/memory/ui/list-table-quick-edit-users.md, docs/memory/ui/list-table-quick-edit-contacts.md, docs/memory/ui/product-list-paging.md
+Related: docs/memory/ui/list-table-quick-edit.md, docs/memory/ui/list-table-quick-edit-pages.md, docs/memory/ui/list-table-quick-edit-users.md, docs/memory/ui/list-table-quick-edit-contacts.md, docs/memory/ui/list-table-quick-edit-short-links.md, docs/memory/ui/product-list-paging.md
