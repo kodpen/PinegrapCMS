@@ -237,6 +237,9 @@ $liveform->remove_form();
     
     log_activity( lang(array('string'=>'product group ({var:1}) was created','vars'=>array($_POST['name']) )) , $_SESSION['sessionusername']);
 
-    // forward user to view product groups page
+    // Back to the Catalog Manager, which shows the notice as a toast.
+    $notice_liveform = new liveform('view_product_groups');
+    $notice_liveform->add_notice(lang(array('string' => 'The product group, {var:1}, was added.', 'vars' => $_POST['name'])));
+
     header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_product_groups.php');
 }

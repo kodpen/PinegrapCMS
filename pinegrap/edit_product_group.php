@@ -631,6 +631,9 @@ if (!$_POST) {
     // pictures back. Emptying the bin is what runs the permanent delete.
     $binning_group = ((($_POST['submit_button'] ?? '') == 'Delete') && ($parent_id != '0') && pg_catalog_bin_ready());
 
+    // What the screen the save returns to says.
+    $product_group_notice = '';
+
     // Delete product group images references (we do this for both delete and update).
     if ($binning_group == false) {
         db("DELETE FROM product_groups_images_xref WHERE product_group = '" . escape($_POST['id'] ?? '') . "'");
@@ -644,6 +647,7 @@ if (!$_POST) {
 
         if ($binned_name !== false) {
             log_activity(lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => $binned_name)), $_SESSION['sessionusername']);
+            $product_group_notice = lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => $binned_name));
         }
 
     // if product group was selected for delete
@@ -695,6 +699,7 @@ if (!$_POST) {
             db("DELETE FROM product_groups_attributes_xref WHERE product_group_id = '" . e($_POST['id'] ?? '') . "'");
             
             log_activity(lang(array('string' => '{var:1} ({var:2}) was deleted', 'vars' => array(lang('product group'), $_POST['name']))), $_SESSION['sessionusername']);
+            $product_group_notice = lang('The product group has been deleted.');
 
         // else, output an error stating that the product group cannot be deleted because it is the root product group
         } else {
@@ -951,15 +956,22 @@ if (!$_POST) {
         }
         
         log_activity(lang(array('string' => '{var:1} ({var:2}) was modified', 'vars' => array(lang('product group'), $_POST['name']))), $_SESSION['sessionusername']);
+        $product_group_notice = lang('The product group has been saved.');
     }
-    
-    // if there is a send to set, then forward user to send to
-    if ($_POST['send_to'] != '') {
-        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
-        
-    // else there is not a send to set, so forward user to view product groups screen.
-    } else {
-        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/view_product_groups.php');
+
+    // Back to send_to when one is given, else to the Catalog Manager.
+    $location = ((is_scalar($_POST['send_to'] ?? null) && ((string) $_POST['send_to'] !== ''))
+        ? pg_safe_redirect_path((string) $_POST['send_to'])
+        : PATH . SOFTWARE_DIRECTORY . '/view_product_groups.php');
+
+    // The notice goes to the screen the redirect opens.
+    $notice_form = pg_redirect_notice_form($location);
+
+    if (($notice_form !== '') && ($product_group_notice !== '')) {
+        $notice_liveform = new liveform($notice_form);
+        $notice_liveform->add_notice($product_group_notice);
     }
+
+    header('Location: ' . URL_SCHEME . HOSTNAME . $location);
 }
 ?>

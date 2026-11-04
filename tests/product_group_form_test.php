@@ -86,6 +86,20 @@ function test_product_group_form_root_display_type_disabled()
 	pg_assert_contains("'is_root' => (\$parent_id == 0),", (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_product_group.php'), 'the edit screen passes the flag');
 }
 
+// Create, Save and Delete say so on the screen they return to: the notice
+// goes to view_product_groups, which the Catalog Manager shows as a toast.
+function test_product_group_form_saves_leave_a_notice()
+{
+	pg_assert_contains("new liveform('view_product_groups')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_folders.php'), 'the Catalog Manager reads the notice');
+	pg_assert_contains("\$notice_liveform = new liveform('view_product_groups');", (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_product_group.php'), 'create');
+
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_product_group.php');
+	pg_assert_contains('$notice_form = pg_redirect_notice_form($location);', $edit, 'edit: to the screen it returns to');
+	pg_assert_contains("lang('The product group has been saved.')", $edit, 'edit: saved');
+	pg_assert_contains("lang('The product group has been deleted.')", $edit, 'edit: deleted');
+	pg_assert_same('view_product_groups', pg_redirect_notice_form('/pinegrap/view_product_groups.php'), 'the form name of the Catalog Manager address');
+}
+
 function test_product_group_form_sort_order()
 {
 	pg_assert_same(0, pg_product_group_form_sort_order(''), 'an empty box is 0');
