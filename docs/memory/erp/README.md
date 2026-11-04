@@ -31,7 +31,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-account-csv-import-export.md: ERP account CSV import wizard (steps, matching, batches, defaults) and export profiles incl. Parasut XLSX templates and erp_export_log.
 - erp-account-prices.md: ERP account prices (4.94) in the line editor and, with erp_storefront_account_prices (10.59), in the store: the two layers, the campaign rule (erp_storefront_price), where the shop applies them.
 - erp-account-save-partial-writes.md: Which columns erp_account_save() writes only when given and which it always writes, the full-row rule for every partial update (API PATCH, account sync), the CSV optional-column rule.
-- erp-account-vat-check.md: The ERP account card's tax number checked against VIES on save: when it runs, what each answer does, the open refuse-or-warn choice
+- erp-account-vat-check.md: The ERP account card's tax number checked against VIES on save: when it runs, what each answer does, why an unknown id only warns
 - erp-accountant-pack.md: ERP accountant pack (4.78): the shared xlsx writer, where the ZIP is kept, the link token, the monthly job, and what a new record type must add to the pack.
 - erp-accounting-rules.md: ERP accounting rules (4.103): withholding in the VAT difference, the exemption code of zero-rated lines, the expense category VAT default, and the accountant questions file.
 - erp-aging-and-due-date.md: Single source for ERP due dates and aging (includes/erp/aging.php): point-in-time open amounts, buckets, filters, and payment_days default due dates.
