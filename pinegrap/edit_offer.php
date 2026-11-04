@@ -167,6 +167,7 @@ $editor = array(
         'enterDates'             => lang('Please enter a start date and an end date.'),
         'dateOrder'              => lang('The end date must not be before the start date.'),
         'requestFailed'          => lang('Sorry, we could not accept your request.'),
+        'saveFirstCodes'         => lang('Save the offer first to generate codes.'),
         'keyCodesDeleteTitle'    => lang('Delete Key Codes'),
         'keyCodesDeleteConfirm'  => lang('WARNING: The {var:1} key code(s) of this offer will be permanently deleted.'),
         'deleteTitle'            => lang('Delete Offer'),

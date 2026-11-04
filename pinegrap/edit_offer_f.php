@@ -784,6 +784,14 @@ function _pg_offer_validate($payload)
     if (mb_strlen($offer['upsell']['button_label']) > 50) {
         $errors['offer.upsell.button_label'] = lang('The button label can be at most 50 characters long.');
     }
+    // Both columns are INT UNSIGNED: a larger value would be clamped by MySQL
+    // without a word, so it is refused like every other amount and count.
+    if ($offer['upsell']['trigger_subtotal'] > PG_OFFER_MAX_NUMBER) {
+        $errors['offer.upsell.trigger_subtotal'] = _pg_offer_amount_max_error();
+    }
+    if ($offer['upsell']['trigger_quantity'] > PG_OFFER_MAX_NUMBER) {
+        $errors['offer.upsell.trigger_quantity'] = _pg_offer_number_max_error();
+    }
 
     // Conditions: the current schema folds every condition into one
     // offer_rules row, so each type may appear once.
