@@ -89,7 +89,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-invoice-note-and-cancelled-pdf.md: The issued invoice's internal note (erp_invoice_notes_save(), erp.invoice.note_changed) and the cancelled invoice's PDF drawn live with a CANCELLED ribbon (label.cancelled).
 - erp-invoice-public-link.md: Public address of an invoice PDF (#3743, step 11.0.65, PR #3780): erp_invoices.public_token_hash, erp_invoice.php, token rules, revoke, 404s, WAF; what n11 and Trendyol require of the link
 - erp-invoice-register-cap.md: The ERP invoice register reads at most 500 rows; a full list is counted over the same conditions and the note and a line under the table name both numbers
-- erp-invoice-screen-layout.md: Invoice create and draft screens: the columns option of erp_invoice_form_cards(), what the status column holds, why the split starts at 2xl, the save bar column.
+- erp-invoice-screen-layout.md: Invoice create and draft and new quote screens: the columns option of erp_invoice_form_cards(), what the status column holds, why the split starts at 2xl, the save bar column.
 - erp-invoice-settlement.md: ERP invoice closing by settlement (erp_settlements): why it posts no money, derived paid_total, no auto matching, transaction nesting, and why balance caches never feed a report.
 - erp-isbasi-driver.md: Logo İşbaşı e-document driver (edoc/isbasi.php): source document, fields and environments, login without getplatform, session and quota, request helper, success envelope, test limits.
 - erp-isbasi-internet-sale.md: What an internet sale adds to the İşbaşı SimpleInv body: the e-Arşiv block, the carrier, the payment type codes, and the open test-environment refusal.
