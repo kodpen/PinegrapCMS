@@ -37,7 +37,7 @@ if (!defined('PG_INIT_LOADED')) {
 							<div class="find_replace">
 								<?php for ($number = 1; $number <= 10; $number++): ?>
 								<div class="find_replace_row row position-relative border bg-1 p-3 my-5 rounded-4">
-									<span class="position-absolute top-0 start-50 badge rounded-pill translate-middle badge-subtle theme-secondary border-top fw-light w-auto"><?=$number?></span>
+									<span class="position-absolute top-0 start-50 badge rounded-pill translate-middle badge-subtle theme-secondary border-top fw-light"><?=$number?></span>
 									<div class="col-12 md:col-6 my-1">
 										<label for="find_<?=$number?>" class="form-label"><?=lang('Find')?></label>
 										<input placeholder="<?=lang('Find')?>" type="text" class="form-control" id="find_<?=$number?>" name="find_<?=$number?>">
