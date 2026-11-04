@@ -104,7 +104,7 @@ function test_content_edit_names_code_fields_named()
 			'<textarea id="footer_content" name="footer_content" aria-label="\' . h(lang(\'Footer\')) . \'"',
 		),
 		'includes/forms/field_form.php' => array('<textarea name="options" id="options" aria-label="\' . h(lang(\'Value Options\')) . \'"'),
-		'edit_files.php' => array('<select class="form-control" id="optimize_mode" aria-label="\' . h(lang(\'Optimize Images\')) . \'"'),
+		'includes/fn/files.php' => array('<select class="form-control" id="\' . $id . \'_optimize_mode" aria-label="\' . h(lang(\'Optimize Images\')) . \'"'),
 	);
 	foreach ($pins as $path => $needles) {
 		$source = content_edit_names_source($path);

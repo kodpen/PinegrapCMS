@@ -8,7 +8,7 @@
  * link, status text uses the emphasis inks, the step messages print
  * their counts in the panel's number format, and the read's meter and
  * progress line say how far a read is. Also the Modify Files image
- * optimizing notice (edit_files.php), a named status with no fixed value.
+ * optimizing notice (pg_design_files_modify_dialog()), a named status with no fixed value.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -154,9 +154,9 @@ function test_marketplace_products_read_progress_is_announced_at_steps()
 
 function test_edit_files_optimizing_notice_is_a_named_status()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_files.php');
-	$start = strpos($source, 'opener.scrollTo(0, 0);');
-	$notice = substr($source, $start, (int) strpos($source, 'opener.document.form.submit();', $start) - $start);
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/files.php');
+	$start = strpos($source, 'window.scrollTo(0, 0);');
+	$notice = substr($source, $start, (int) strpos($source, 'form.submit();', $start) - $start);
 
 	pg_assert_true(strpos($notice, 'role="status"') !== false, 'the notice is a status region');
 	pg_assert_true(strpos($notice, 'aria-valuenow') === false, 'the busy bar claims no value');

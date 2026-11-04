@@ -27,7 +27,7 @@ function test_panel_help_lines_state_the_rule_the_code_applies()
 			'absent' => "lang('Format: h:mm AM/PM')",
 			'present' => "lang(array('string' => 'Format: {var:1}', 'vars' => array(pg_time_format_help())))",
 		),
-		'edit_files.php' => array(
+		'includes/fn/files.php' => array(
 			'absent' => 'shrink anything wider than',
 			'present' => 'Compress, and shrink any image whose longest edge is over {var:1} pixels',
 		),

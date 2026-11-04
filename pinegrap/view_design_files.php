@@ -101,8 +101,9 @@ $show_optimize_percent = ($unoptimized_count <= 30);
 
 // Every design file is printed: the list table driver sorts and searches
 // them in the browser (browser mode) and keeps a heading's sort in the
-// session. Modify Selected and Delete Selected post the selected ids as
-// files[] (edit_files.php).
+// session. Modify Selected (its changes asked in a dialog of the page,
+// pg_design_files_modify_dialog()) and Delete Selected post the selected
+// ids as files[] (edit_files.php).
 $list_rows = array();
 $image_types = array('bmp', 'gif', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'webp');
 
@@ -172,7 +173,7 @@ $list = pg_list_table_printed(array(
 ));
 
 $output_bulk_buttons =
-    '<button type="button" value="Modify Selected" class="btn btn-sm btn-solid theme-primary" onclick="window.open(\'edit_files.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'edit\',\'product\')"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Modify Selected') . '</button>'
+    '<button type="button" value="Modify Selected" class="no-submit btn btn-sm btn-solid theme-primary" data-pg-modify-open><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Modify Selected') . '</button>'
     . '<button type="button" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . h(lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('files'))))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang('Delete Selected') . '</button>';
 
 print
@@ -198,12 +199,9 @@ pg_page_shell(
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <form name="form" action="edit_files.php" method="post">
+            <form name="form" id="view_design_files_form" action="edit_files.php" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="action" />
-                <input type="hidden" name="move_to_folder" />
-                <input type="hidden" name="edit_design" />
-                <input type="hidden" name="optimize">
                 <input type="hidden" name="from" value="view_design_files" />
                 <input type="hidden" name="send_to" value="' . h(get_request_uri()) . '" />
                 ' . pg_list_table_html($list['source'], $list['page'], lang('All Design Files'), $output_bulk_buttons) . '
@@ -212,6 +210,7 @@ pg_page_shell(
     </div>
     ' . ($has_image ? pg_image_editor_includes() : '') . '
 </main>
+' . pg_design_files_modify_dialog($user, 'view_design_files_form') . '
 ' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 ' .
 output_footer();

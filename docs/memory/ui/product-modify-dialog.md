@@ -15,10 +15,9 @@ module: product_list
 - It was a 500x500 `window.open()` writing into `opener.document.form` (#6523): stopped by popup blockers, a new tab on phones, no focus trap; its template kept a hidden theme menu, Bootstrap 3 `col-xs-12`, popover markup as boxes and fixed `lg:col-3` columns that cut the option texts.
 
 ## What is still open from #6523?
-- Design Files (`view_design_files.php` → `edit_files.php`) still opens the popup.
 - Delete Selected on the list rows still asks with `window.confirm()` (the `data-confirm-content` handler in `backend.src.js`), not `pgConfirm`.
 
 ## Where is it tested?
 - `tests/bulk_popup_texts_test.php` (`test_bulk_popup_texts_modify_products_is_a_dialog`), plus the field pins in `tests/modify_selected_value_names_test.php`, `tests/locale_amount_inputs_test.php`, `tests/explorer_handle_products_bulk_test.php`.
 
-Related: docs/memory/ui/contacts-organize-dialog.md, docs/memory/ui/page-bulk-edit-dialog.md
+Related: docs/memory/ui/design-files-modify-dialog.md, docs/memory/ui/contacts-organize-dialog.md, docs/memory/ui/page-bulk-edit-dialog.md
