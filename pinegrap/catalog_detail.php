@@ -204,6 +204,13 @@ if (
 // add order item to order
 add_order_item($liveform->get_field_value('product_id'), $quantity, $donation_amount, $liveform->get_field_value('ship_to'), $liveform->get_field_value('add_name'));
 
+// A gift card line over its unit limit was refused by add_order_item().
+if (pg_gift_card_quantity_refusal_take()) {
+    $liveform->mark_error('quantity', pg_gift_card_line_quantity_error());
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('current_url')));
+    exit();
+}
+
 // An item has been added to the order, so offers for this order
 // need to be refreshed, so that the subtotal in a cart region is accurate.
 update_order_item_prices();
