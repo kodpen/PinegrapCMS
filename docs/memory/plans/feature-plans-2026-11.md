@@ -10,7 +10,6 @@ description: The eleven feature plans approved 2026-11-02: index and order, how 
 
 ## Which plans, in which order?
 4. `appointment-booking.md` (BK1-BK10): services, staff hours, slots, a booking widget.
-6. `audiences.md` (AU1-AU6): rule-driven contact groups.
 8. `store-credit.md` (SC1-SC7): spendable points, refunds to credit, auto-applied balance.
 
 ## How does a coordinator hold a plan?
