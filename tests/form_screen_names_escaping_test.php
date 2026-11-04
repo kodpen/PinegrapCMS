@@ -44,16 +44,12 @@ function test_form_screen_custom_form_select_names_escaped()
 	}
 }
 
-function test_form_screen_view_information_names_escaped()
+function test_form_list_view_summary_form_name_escaped()
 {
-	// The form item view prints the name in its Summary
-	// (tests/form_item_view_form_test.php).
-	foreach (array('edit_form_list_view.php') as $file) {
-		$source = pg_test_form_screen_source($file);
+	$source = pg_test_form_screen_source('edit_form_list_view.php');
 
-		pg_assert_same(0, preg_match('/\': \' \. \$custom_form_name;/', $source), $file . ': form name printed raw');
-		pg_assert_same(1, preg_match('/\': \' \. h\(\$custom_form_name\);/', $source), $file . ': form name through h()');
-	}
+	pg_assert_same(1, preg_match('/isset\(\$custom_form_name\) \? h\(\$custom_form_name\) : lang\(\'None\'\)/', $source), 'Summary form name through h()');
+	pg_assert_same(1, preg_match('/\. h\(\$page\[\'name\'\]\) \./', $source), 'Summary page name through h()');
 }
 
 function test_form_screen_list_view_field_labels_escaped()
