@@ -118,3 +118,57 @@ function test_menu_item_form_children_status()
 	$row = pg_menu_item_form_children_status(4);
 	pg_assert_contains('id="menu_item_summary_children">4</dd>', $row, 'the count');
 }
+
+function test_menu_item_form_link_target_is_one_of_two()
+{
+	pg_assert_same('New Window', pg_menu_item_form_link_target('New Window'), 'new window kept');
+	pg_assert_same('Same Window', pg_menu_item_form_link_target('Same Window'), 'same window kept');
+	pg_assert_same('Same Window', pg_menu_item_form_link_target('Bogus'), 'an unknown value');
+	pg_assert_same('Same Window', pg_menu_item_form_link_target(array('New Window')), 'an array');
+}
+
+/**
+ * Menu 20: 644 > 645 > 646, 647 at the top; menu 21: 700.
+ */
+function menu_item_parent_test_lookup()
+{
+	$rows = array(
+		644 => array('menu_id' => 20, 'parent_id' => 0),
+		645 => array('menu_id' => 20, 'parent_id' => 644),
+		646 => array('menu_id' => 20, 'parent_id' => 645),
+		647 => array('menu_id' => 20, 'parent_id' => 0),
+		700 => array('menu_id' => 21, 'parent_id' => 0),
+	);
+
+	return function ($id) use ($rows) {
+		return $rows[$id] ?? null;
+	};
+}
+
+function test_menu_item_parent_allowed()
+{
+	$lookup = menu_item_parent_test_lookup();
+
+	pg_assert_true(pg_menu_item_parent_allowed(20, 644, '0', $lookup), 'top level');
+	pg_assert_true(pg_menu_item_parent_allowed(20, 644, '', $lookup), 'empty is top level');
+	pg_assert_true(pg_menu_item_parent_allowed(20, 645, '647', $lookup), 'another branch of the menu');
+	pg_assert_true(pg_menu_item_parent_allowed(20, 646, '644', $lookup), 'an ancestor');
+	pg_assert_true(pg_menu_item_parent_allowed(20, 0, '646', $lookup), 'create below any item of the menu');
+	pg_assert_false(pg_menu_item_parent_allowed(20, 644, '644', $lookup), 'the item itself');
+	pg_assert_false(pg_menu_item_parent_allowed(20, 644, '646', $lookup), 'a grandchild is a cycle');
+	pg_assert_false(pg_menu_item_parent_allowed(20, 644, '645', $lookup), 'a child is a cycle');
+	pg_assert_false(pg_menu_item_parent_allowed(20, 644, '700', $lookup), 'an item of another menu');
+	pg_assert_false(pg_menu_item_parent_allowed(20, 0, '700', $lookup), 'create below another menu');
+	pg_assert_false(pg_menu_item_parent_allowed(20, 644, '999', $lookup), 'a missing item');
+	pg_assert_false(pg_menu_item_parent_allowed(20, 644, '-3', $lookup), 'a negative id');
+	pg_assert_false(pg_menu_item_parent_allowed(20, 644, array('0'), $lookup), 'an array');
+}
+
+function test_menu_item_parent_allowed_stops_on_a_stored_loop()
+{
+	$lookup = function ($id) {
+		return array('menu_id' => 5, 'parent_id' => ($id === 1 ? 2 : 1));
+	};
+
+	pg_assert_false(pg_menu_item_parent_allowed(5, 9, '1', $lookup), 'a loop that never reaches the top is refused');
+}
