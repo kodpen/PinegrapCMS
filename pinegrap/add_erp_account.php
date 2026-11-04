@@ -139,6 +139,7 @@ if (!$_POST) {
     $country_code = erp_account_form_country($liveform);
     erp_account_form_check_formats($liveform, $country_code);
     erp_account_form_check_tax_number_taken($liveform, $country_code);
+    $vat_said = erp_account_form_check_vat($liveform, $country_code);
 
     list($payment_days, $overdue_notify_days) = erp_account_form_check_days($liveform);
 
@@ -241,6 +242,14 @@ if (!$_POST) {
     $liveform->remove_form();
     $liveform_list = new liveform('erp_accounts');
     $liveform_list->add_notice(lang('The account has been created.'));
+
+    if ($vat_said['notice'] !== '') {
+        $liveform_list->add_notice($vat_said['notice']);
+    }
+
+    if ($vat_said['warning'] !== '') {
+        $liveform_list->add_warning($vat_said['warning']);
+    }
 
     go(PATH . SOFTWARE_DIRECTORY . '/erp_accounts.php');
 }

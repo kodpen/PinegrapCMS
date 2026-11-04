@@ -319,6 +319,7 @@ if (!$_POST) {
     erp_account_form_check_formats($liveform, $country_code);
     // Before the contact relink below, which writes.
     erp_account_form_check_tax_number_taken($liveform, $country_code, $account_id, (string) $account['tax_number']);
+    $vat_said = erp_account_form_check_vat($liveform, $country_code, (string) $account['tax_number']);
 
     list($payment_days, $overdue_notify_days) = erp_account_form_check_days($liveform);
 
@@ -371,6 +372,14 @@ if (!$_POST) {
     $liveform->remove_form();
     $liveform_list = new liveform('erp_accounts');
     $liveform_list->add_notice(lang('The account has been saved.'));
+
+    if ($vat_said['notice'] !== '') {
+        $liveform_list->add_notice($vat_said['notice']);
+    }
+
+    if ($vat_said['warning'] !== '') {
+        $liveform_list->add_warning($vat_said['warning']);
+    }
 
     go(pg_send_to_url(PATH . SOFTWARE_DIRECTORY . '/erp_accounts.php'));
 }
