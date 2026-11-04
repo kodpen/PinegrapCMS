@@ -558,7 +558,10 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
             $short_description = $calendar_event['short_description'];
             $all_day = $calendar_event['all_day'];
             $event_start_date_and_time = $calendar_event['start_time'];
-            $recurrence_number = $calendar_event['recurrence_number'];
+            // A stored repeat type the calendar cannot expand (an empty enum
+            // value) shows the event once instead of on its start day again
+            // and again.
+            $recurrence_number = in_array((string) $calendar_event['recurrence_type'], array('day', 'week', 'month', 'year'), true) ? $calendar_event['recurrence_number'] : 0;
             $recurrence_type = $calendar_event['recurrence_type'];
             $recurrence_day_sun = $calendar_event['recurrence_day_sun'];
             $recurrence_day_mon = $calendar_event['recurrence_day_mon'];
@@ -1432,7 +1435,7 @@ function check_calendar_event_location_availability($location_id, $event_start, 
             // This is a recurring event, check each day to make sure its not conflicting
             $event_start_date_and_time = $row['normal_start_time'];
             $event_end_date_and_time = $row['normal_end_time'];
-            $recurrence_number = $row['recurrence_number'];
+            $recurrence_number = in_array((string) $row['recurrence_type'], array('day', 'week', 'month', 'year'), true) ? $row['recurrence_number'] : 0;
             $recurrence_type = $row['recurrence_type'];
             $recurrence_day_sun = $row['recurrence_day_sun'];
             $recurrence_day_mon = $row['recurrence_day_mon'];
@@ -1704,6 +1707,10 @@ function get_calendar_event($event_id, $recurrence_number)
     $recurrence = $row['recurrence'];
     $total_recurrence_number = $row['total_recurrence_number'];
     $recurrence_type = $row['recurrence_type'];
+    // An unknown repeat type is no repeat: its instance date stayed unset.
+    if (!in_array((string) $recurrence_type, array('day', 'week', 'month', 'year'), true)) {
+        $recurrence = 0;
+    }
     $recurrence_day_sun = $row['recurrence_day_sun'];
     $recurrence_day_mon = $row['recurrence_day_mon'];
     $recurrence_day_tue = $row['recurrence_day_tue'];
