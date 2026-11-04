@@ -5,13 +5,28 @@ Source:
 https://registry.npmjs.org/bootstrap/-/bootstrap-6.0.0-alpha.1.tgz
 integrity sha512-snAWSjKDVdQAyPOtR69Upy247tZq13gw86SMDMZS4wNfBXGNdzbHdIP6GAyaAVJwTX4LjWowY8YYaJkSDv2wGQ==
 
-Files (copied unchanged from the package's dist/ folder):
+Files (copied from the package's dist/ folder, unchanged except the local change below):
 css/bootstrap.css, css/bootstrap.css.map
 css/bootstrap.min.css, css/bootstrap.min.css.map
 js/bootstrap.js, js/bootstrap.js.map (standalone ES module; imports @floating-ui/dom and vanilla-calendar-pro)
 js/bootstrap.bundle.min.js, js/bootstrap.bundle.min.js.map (ES module with Floating UI and Vanilla Calendar Pro)
 
-CDN SRI of the same files:
+Local changes (re-apply after every update):
+1. css/bootstrap.css and css/bootstrap.min.css, the check/radio/switch row
+   rule of .form-field (grid-column: 2). Upstream selector:
+     .form-field:has(> .check, > .radio, > .switch) > :not(.check, .radio, .switch)
+   Replaced with (same elements, same specificity 0,3,0):
+     .form-field > :not(.check, .radio, .switch):is(:has(~ :is(.check, .radio, .switch)), :is(.check, .radio, .switch) ~ *)
+   In bootstrap.min.css the same text without spaces:
+     .form-field>:not(.check,.radio,.switch):is(:has(~:is(.check,.radio,.switch)),:is(.check,.radio,.switch)~*)
+   Reason: while a sheet holds a rule that styles every child of a :has()
+   element, Chromium restyles the whole document on every element added or
+   removed; on the visual editor that made each click take about a second.
+   The .map files are left as published. tests/css_has_restyle_test.php
+   fails when an update brings the upstream form back.
+
+CDN SRI of the same files (the published files; the local
+bootstrap.min.css no longer matches its hash):
 css/bootstrap.min.css        sha384-B/GM4XqrwHnWXNOWMbloTmrYXZg10cakYGmpfsR/bbzQ6JAJI4ihuyADKLnBgrCe
 js/bootstrap.bundle.min.js   sha384-1a/pXj49ZQ1aHEmrJ+gMw1otqoVsYwlEnlD8mIfY2TV03r20Y0CN7uqx1tQogjPL
 

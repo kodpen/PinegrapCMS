@@ -692,6 +692,8 @@ function api_openapi_objects()
         'WishlistItem'      => 'api_wishlist_item_schema',
         'Consent'           => 'api_consent_schema',
         'Subscription'      => 'api_subscription_schema',
+        'CustomerCredit'    => 'api_customer_credit_schema',
+        'StoreCreditCard'   => 'api_store_credit_card_schema',
         'User'              => 'api_user_schema',
         'UserPermissions'   => 'api_user_permissions_schema',
         'UserTwoStep'       => 'api_user_two_step_schema',

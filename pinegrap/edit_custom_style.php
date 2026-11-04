@@ -155,29 +155,26 @@ if (!$_POST) {
     $output_header . '
     ' . pg_screen_toolbar(array(
         'secondary' => '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_style.php?id=' . h(escape_javascript(urlencode($_REQUEST['id']))) . get_token_query_string_field() . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>',
-        'grow'      => '<span class="fw-semibold text-break me-3">' . h($style_name) . '</span><span class="small fg-secondary">' . lang('Last Modified') . ': ' . get_relative_time(array('timestamp' => $style_timestamp)) . ' ' . h($user_username) . '</span>',
+        'grow'      => '<span class="fw-semibold text-break me-3">' . h($style_name) . '</span>',
     )) . '
-            <div class="row">
-            <div class="col-12">
-                ' . $liveform->output_notices() . '
-                <form name="form" action="edit_custom_style.php" method="post">
-                    ' . get_token_field() . '
-                    <input type="hidden" name="id" value="'. h($_REQUEST['id']) .'">
-                    <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
-                    ' . pg_custom_style_form_cards($style, SOCIAL_NETWORKING == TRUE, $name_error) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-solid theme-primary"><span class="material-icons me-3">arrow_backsave</span><span class="pg-btn-label">' . lang(array('string'=>'Save & Return') ) . '</span></button>
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                ' . $output_delete_button . '
-                            </div>
-                        </div>
-                    </nav>
-                </form>
-            </div>
-        </div>
-    
+            ' . $liveform->output_notices() . '
+            <form name="form" action="edit_custom_style.php" method="post">
+                ' . get_token_field() . '
+                <input type="hidden" name="id" value="'. h($_REQUEST['id']) .'">
+                <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
+                ' . pg_custom_style_form_layout(
+                    pg_custom_style_form_cards(
+                        $style,
+                        SOCIAL_NETWORKING == TRUE,
+                        $name_error,
+                        pg_custom_style_form_edit_status_rows($folders_using_style, $pages_using_style, get_relative_time(array('timestamp' => $style_timestamp)) . ' ' . h($user_username))
+                    ),
+                    '
+                                        <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1 btn-solid theme-primary"><span class="material-icons me-3">arrow_backsave</span><span class="pg-btn-label">' . lang(array('string'=>'Save & Return') ) . '</span></button>
+                                        <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        ' . $output_delete_button
+                ) . '
+            </form>
 </main>' .
         output_footer();
     $liveform->remove_form();

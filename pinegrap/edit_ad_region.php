@@ -58,19 +58,28 @@ if (!$_POST) {
     // get ad region data
     $query =
         "SELECT
-            name,
-            display_type,
-            transition_type,
-            transition_duration,
-            slideshow,
-            slideshow_interval,
-            slideshow_continuous
+            ad_regions.name,
+            ad_regions.display_type,
+            ad_regions.transition_type,
+            ad_regions.transition_duration,
+            ad_regions.slideshow,
+            ad_regions.slideshow_interval,
+            ad_regions.slideshow_continuous,
+            (SELECT COUNT(*) FROM ads WHERE ads.ad_region_id = ad_regions.id) AS ad_count,
+            ad_regions.last_modified_timestamp,
+            user.user_username
         FROM ad_regions
-        WHERE id = ?";
+        LEFT JOIN user ON ad_regions.last_modified_user_id = user.user_id
+        WHERE ad_regions.id = ?";
     $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $name = $row['name'];
+
+    // A region stored before the column was written has no time: show a dash.
+    $last_modified = ((int) $row['last_modified_timestamp'] > 0)
+        ? get_relative_time(array('timestamp' => (int) $row['last_modified_timestamp'])) . ((string) $row['user_username'] !== '' ? ' ' . h($row['user_username']) : '')
+        : '&mdash;';
     
     // if the form has not been submitted yet, pre-populate fields with data
     if ($liveform->field_in_session('id') == false) {
@@ -98,18 +107,19 @@ if (!$_POST) {
     
     $output_name = h($name);
     
-    $output_subheading = '';
-    
-    // if the user is a designer or above, then prepare to display subheading and name field
+    // A designer renames the region; the body tag a page style uses is in
+    // the Summary.
     if ($user['role'] <= 1) {
-        $output_subheading = '<span class="small fg-secondary">' . lang('Page Style Body Tag') . ': <code>' . h('<ad>' . $output_name . '</ad>') . '</code></span>';
-        
         $output_name_field_or_value = $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required'));
 
     // else the user is a manager, so prepare to just display name value,
     // because we don't want a manager to have access to update the name
     } else {
         $output_name_field_or_value = '<div class="input-group-text">' . $output_name . '</div>';
+
+        // A manager's save posts no name: the Summary's body tag reads the
+        // stored one, also after a refused save.
+        $liveform->assign_field_value('name', $name);
     }
     
   
@@ -141,7 +151,6 @@ if (!$_POST) {
             'breadcrumb' => array(array('label' => lang('All Ad Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_ad_regions'), array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Ad Region'))))),
         ]) . '
 <main id="content" class="container-fluid">
-    ' . pg_screen_toolbar(array('grow' => $output_subheading)) . '
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -150,16 +159,15 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
-                    ' . pg_ad_region_form_card($liveform, $output_name_field_or_value) . '
-
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
+                    ' . pg_ad_region_form_layout(
+                        pg_ad_region_form_card($liveform, $output_name_field_or_value)
+                        . pg_ad_region_form_status($liveform, false,
+                            pg_ad_region_form_status_row(lang('Ads'), h(number_format((int) $row['ad_count'])), false)
+                            . pg_ad_region_form_status_row(lang('Last Modified'), $last_modified)),
+                        '
                                 <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                ' . $output_delete_button . '
-                            </div>
-                        </div>
-                    </nav>
+                                ' . $output_delete_button
+                    ) . '
                 </form>
             </div>
         </div>

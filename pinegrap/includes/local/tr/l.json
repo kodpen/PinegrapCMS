@@ -122,6 +122,7 @@
     "Last day of the right of withdrawal:": "Cayma hakkının son günü:",
     "Last day of the right of withdrawal: {var:1}": "Cayma hakkının son günü: {var:1}",
     "Last day of the right of withdrawal: {var:1} (estimated; the 14 days run from delivery).": "Cayma hakkının son günü: {var:1} (tahmini; 14 gün teslimattan itibaren işler).",
+    "Last day: {var:1}": "Son gün: {var:1}",
     "Last delivered": "Son iletim",
     "Last delivery": "Son gönderim",
     "Last download": "Son indirme",

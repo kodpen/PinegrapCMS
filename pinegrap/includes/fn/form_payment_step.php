@@ -79,7 +79,8 @@ function pg_form_payment_methods($form_offline)
  *
  * $view: amount (HTML of the amount line), methods (method => label),
  * chosen (the posted method), box (the card driver's box, printed only when
- * the card is a choice), error (the driver's reason, text).
+ * the card is a choice), error (the driver's reason, text), offline_note
+ * (the line under the offline choice, text; the form's when not given).
  *
  * One choice is posted as a hidden value; several are radios. The card box
  * follows the choice itself (assets/js/payment_hosted.js).
@@ -126,7 +127,7 @@ function pg_form_payment_step_html($view)
 
     if (isset($methods['Offline Payment'])) {
         $html .= '<p class="small text-body-secondary" data-pg-cf-offline>'
-               . h(lang('With offline payment your submission is saved and you pay as the site tells you.')) . '</p>';
+               . h(isset($view['offline_note']) ? (string) $view['offline_note'] : lang('With offline payment your submission is saved and you pay as the site tells you.')) . '</p>';
     }
 
     return $html . '</div>';

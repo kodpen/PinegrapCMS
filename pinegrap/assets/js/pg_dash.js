@@ -113,6 +113,8 @@
     // opts.at(i): where point i is, {x, y} in viewport pixels (default: the
     // top centre of its part, or of its slice of the chart's width).
     // opts.mark(i): highlight point i (-1: none).
+    // opts.start: the point the first focus shows (default: the last).
+    // opts.open(i): what Enter does on point i (a map region opens its list).
     pgDash.chartTips = function (target, texts, opts) {
         opts = opts || {};
         var count = (texts || []).length;
@@ -191,7 +193,7 @@
         });
         target.addEventListener("focus", function () {
             focused = true;
-            show((current >= 0) ? current : count - 1, true);
+            show((current >= 0) ? current : ((typeof opts.start === "number") ? opts.start : count - 1), true);
         });
         target.addEventListener("blur", function () {
             focused = false;
@@ -201,6 +203,10 @@
             var keys = {ArrowLeft: current - 1, ArrowDown: current - 1, ArrowRight: current + 1, ArrowUp: current + 1, Home: 0, End: count - 1};
             if (event.key === "Escape") {
                 hide();
+                return;
+            }
+            if ((event.key === "Enter") && opts.open && (current >= 0)) {
+                opts.open(current);
                 return;
             }
             if (Object.prototype.hasOwnProperty.call(keys, event.key)) {
@@ -239,7 +245,11 @@
         });
         rows.forEach(function (row) {
             var item = el("li", "pg-dash-row");
-            var text = el("span", "pg-dash-row-text", row.text);
+            // A row with an address is a link over the whole row.
+            var text = el(row.url ? "a" : "span", "pg-dash-row-text", row.text);
+            if (row.url) {
+                text.href = row.url;
+            }
             text.title = row.text;
             item.appendChild(text);
             item.appendChild(el("span", "pg-dash-row-note", row.note));

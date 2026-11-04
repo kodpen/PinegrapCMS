@@ -7,7 +7,7 @@
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Active%20Development-success?style=flat-square)
 
-Pinegrap is an open-source, all-in-one website platform written in PHP. A website with its own design, an online store, accounting (ERP), a team workspace and an external API live in one codebase, and a new site can be up in minutes from a ready-made design template.
+Pinegrap is an open-source, all-in-one website platform written in PHP. A website with its own design, an online store, accounting (ERP), a team workspace and an external API live in one codebase, and a new site can be up in minutes from a ready-made design template. A built-in MCP server lets AI apps such as Claude and ChatGPT work on the site with a person's own permissions.
 
 Pinegrap grew out of LiveSite and has been developed by Kodpen since 2017. It runs wherever PHP runs, from a shared cPanel account to a dedicated IIS server, with no Composer step, no build pipeline and no outside service to set up.
 
@@ -139,7 +139,7 @@ Pinegrap began life as **LiveSite**, developed by Camelback Web Architects since
 
 ## Contributing and security
 
-Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) for the setup, the definition of done and the issue conventions. Pull requests target the `development` branch. Security issues are reported privately as described in [SECURITY.md](SECURITY.md); please do not open public issues for them.
+Bug reports, translations, design templates and small fixes are welcome. The core (the firewall, sign-in, payments, accounting and the visual page editor) is changed by the maintainers, and anything larger than a small fix starts as an issue, so we can agree on the approach before code is written. See [CONTRIBUTING.md](CONTRIBUTING.md) for what we accept, the setup, the definition of done and the issue conventions. Pull requests target the `development` branch. Security issues are reported privately as described in [SECURITY.md](SECURITY.md); please do not open public issues for them.
 
 ---
 

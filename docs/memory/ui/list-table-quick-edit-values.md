@@ -1,6 +1,6 @@
 ---
 name: list-table-quick-edit-values
-description: Which values of each driver list change in quick edit (products, pages), which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
+description: Which values of each driver list change in quick edit (products, pages, containers …), which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
 module: list_table_edit
 ---
 
@@ -19,8 +19,18 @@ module: list_table_edit
 ## Users: which cells change?
 - Username, e-mail, role, start page and a User's rights: `list-table-quick-edit-users.md`.
 
+## Contacts: which cells change?
+- Names, company, phones, e-mail, opt-in and the address views' address parts: `list-table-quick-edit-contacts.md`. The groups stay text (several choices).
+
+## Short links: which cells change?
+- Name, destination type, page, destination, tracking code and how it answers: `list-table-quick-edit-short-links.md`.
+
+## Containers: which cells change?
+- Name, enabled, the sizes, weight and cost: `list-table-quick-edit-containers.md`.
+
 ## Which lists are not done yet?
 - Products: zones and order receipt message (above).
-- Contacts, submitted forms, menus, short links, themes, containers, comments, styles, design files, and the commerce lists' columns outside their `pg_*_edit_columns()`.
+- Contacts: the contact groups (multi-select).
+- Submitted forms, menus, themes, comments, styles, design files, and the commerce lists' columns outside their `pg_*_edit_columns()`.
 
-Related: docs/memory/ui/list-table-quick-edit.md, docs/memory/ui/list-table-quick-edit-pages.md, docs/memory/ui/list-table-quick-edit-users.md, docs/memory/ui/product-list-paging.md
+Related: docs/memory/ui/list-table-quick-edit.md, docs/memory/ui/list-table-quick-edit-pages.md, docs/memory/ui/list-table-quick-edit-users.md, docs/memory/ui/list-table-quick-edit-contacts.md, docs/memory/ui/list-table-quick-edit-short-links.md, docs/memory/ui/list-table-quick-edit-containers.md, docs/memory/ui/product-list-paging.md

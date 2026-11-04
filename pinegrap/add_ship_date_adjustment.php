@@ -39,24 +39,15 @@ if (!$_POST) {
             'breadcrumb' => array(array('label' => lang('All Ship Date Adjustments'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_ship_date_adjustments.php'), array('label' => lang('Create Ship Date Adjustment'))),
         ]) . '
 <main id="content" class="container-fluid">
-                    <div class="row">
-                <div class="col-12">
                     ' . $liveform->output_errors() . '
-                    
                     <form method="post">
                         ' . get_token_field() . '
-                        ' . pg_ship_date_adjustment_form_card($liveform) . '
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class="btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang('Create') . '</span></button>
-                                </div>
-                            </div>
-                        </nav>
+                        ' . pg_ship_date_adjustment_form_layout(
+                            pg_ship_date_adjustment_form_card($liveform),
+                            '
+                                        <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang('Create') . '</span></button>'
+                        ) . '
                     </form>
-                </div>
-            </div>
-        
 </main>' .
         output_footer();
 

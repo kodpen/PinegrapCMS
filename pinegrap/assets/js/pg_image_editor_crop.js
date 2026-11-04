@@ -48,12 +48,23 @@
         return this.cropRatio || 0;
     };
 
+    // The longest output side a save accepts (pg_image_edit_validate()).
+    var OUTPUT_MAX = 8000;
+
+    // w x h in whole pixels, brought down at the same ratio when a side is
+    // longer than OUTPUT_MAX: a size the save would refuse is never set.
+    function fitOutput(w, h) {
+        var k = Math.min(1, OUTPUT_MAX / Math.max(w, h, 1));
+
+        return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)) };
+    }
+
     // A set output size keeps the crop box's ratio: its height follows.
     function keepOutput(d) {
         var o = d.geometry.output, c = d.geometry.crop;
 
         if (o && c) {
-            o.h = Math.max(1, Math.round(o.w * c.h / c.w));
+            d.geometry.output = fitOutput(o.w, o.w * c.h / c.w);
         }
     }
 
@@ -202,9 +213,11 @@
             return;
         }
 
-        value = Math.round(M.clamp(value, 1, 8000));
+        value = Math.round(M.clamp(value, 1, OUTPUT_MAX));
 
-        var o = (axis === 'w') ? { w: value, h: Math.max(1, Math.round(value * c.h / c.w)) } : { w: Math.max(1, Math.round(value * c.w / c.h)), h: value };
+        // The other side follows the crop box; a tall or wide box brings
+        // both down so neither passes the limit.
+        var o = (axis === 'w') ? fitOutput(value, value * c.h / c.w) : fitOutput(value * c.w / c.h, value);
 
         this.change(function (d) { d.geometry.output = o; });
     };
@@ -255,8 +268,8 @@
             self.change(function (d) { d.geometry.straighten = v; }, 'straighten', true);
         });
 
-        var w = el('input', { type: 'number', class: 'pgie-input', min: '1', max: '8000', value: String(out.w), 'aria-label': t('width') });
-        var h = el('input', { type: 'number', class: 'pgie-input', min: '1', max: '8000', value: String(out.h), 'aria-label': t('height') });
+        var w = el('input', { type: 'number', class: 'pgie-input', min: '1', max: String(OUTPUT_MAX), value: String(out.w), 'aria-label': t('width') });
+        var h = el('input', { type: 'number', class: 'pgie-input', min: '1', max: String(OUTPUT_MAX), value: String(out.h), 'aria-label': t('height') });
 
         w.addEventListener('change', function () { self.setOutput('w', Number(w.value)); });
         h.addEventListener('change', function () { self.setOutput('h', Number(h.value)); });

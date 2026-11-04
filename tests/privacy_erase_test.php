@@ -73,12 +73,12 @@ function test_privacy_erase_tables_are_pinned()
 	pg_assert_same(
 		array(
 			'ship_tos' => 'anonymise', 'order_documents' => 'anonymise',
-			'order_returns' => 'anonymise', 'shipment_labels' => 'anonymise', 'gift_cards' => 'anonymise', 'erp_accounts' => 'anonymise',
+			'order_returns' => 'anonymise', 'shipment_labels' => 'anonymise', 'gift_cards' => 'anonymise', 'store_credit' => 'anonymise', 'erp_accounts' => 'anonymise',
 			'erp_invoices' => 'anonymise', 'erp_quotes' => 'anonymise', 'erp_waybills' => 'anonymise',
 			'comments' => 'anonymise', 'remote_comments' => 'delete', 'consent_log' => 'anonymise', 'ws_approval_guests' => 'anonymise', 'ws_events' => 'anonymise', 'cart_quotes' => 'anonymise',
 			'audit_log' => 'anonymise', 'record_revisions' => 'delete', 'files' => 'delete', 'form_data_cells' => 'anonymise',
 			'form_data' => 'delete', 'form_signatures' => 'delete', 'forms' => 'delete',
-			'watchers' => 'delete', 'wishlist_items' => 'delete', 'stock_notify' => 'delete',
+			'watchers' => 'delete', 'wishlist_items' => 'delete', 'stock_notify' => 'delete', 'bookings' => 'anonymise',
 			'email_recipients' => 'delete', 'mail_outbox' => 'delete', 'mail_bounces' => 'delete', 'sms_outbox' => 'delete',
 			'chat_messages' => 'delete', 'chat_conversations' => 'delete', 'address_book' => 'delete',
 			'push_subscriptions' => 'delete', 'user_passkeys' => 'delete', 'user_identities' => 'delete',
@@ -109,6 +109,7 @@ function test_privacy_erase_tables_are_pinned()
 			'order_returns' => array('customer_note' => '', 'requested_by' => 0),
 			'shipment_labels' => array('label_file' => ''),
 			'gift_cards' => array('from_name' => '', 'message' => '', 'recipient_email_address' => ''),
+			'store_credit' => array('user_id' => 0),
 			'erp_accounts' => array(
 				'title' => '{name}', 'tax_number' => '', 'tax_office' => '', 'email' => '{token}',
 				'invoice_email' => '', 'phone' => '', 'address' => '', 'district' => '', 'city' => '',
@@ -133,6 +134,7 @@ function test_privacy_erase_tables_are_pinned()
 			'audit_log' => array('label' => ''),
 			'form_data_cells' => array('data' => ''),
 			'ws_wtable_cells' => array('cells' => ''),
+			'bookings' => array('name' => '{name}', 'email' => '{token}', 'phone' => '', 'notes' => '', 'manage_token' => '', 'user_id' => 0),
 	);
 
 	ksort($expected);
@@ -159,6 +161,7 @@ function test_privacy_erase_find_columns_are_pinned()
 			'order_returns' => array('order_id' => 'order_ids'),
 			'shipment_labels' => array('order_id' => 'order_ids'),
 			'gift_cards' => array('order_id' => 'order_ids', 'recipient_email_address' => 'emails'),
+			'store_credit' => array('user_id' => 'user_ids'),
 			'erp_accounts' => array('id' => 'account_ids'),
 			'erp_invoices' => array('account_id' => 'account_ids'),
 			'erp_quotes' => array('account_id' => 'account_ids'),
@@ -179,6 +182,7 @@ function test_privacy_erase_find_columns_are_pinned()
 			'watchers' => array('user_id' => 'user_ids', 'email_address' => 'emails'),
 			'wishlist_items' => $user,
 			'stock_notify' => array('user_id' => 'user_ids', 'email_address' => 'emails'),
+			'bookings' => array('user_id' => 'user_ids', 'email' => 'emails'),
 			'email_recipients' => array('contact_id' => 'contact_ids', 'email_address' => 'emails'),
 			'mail_outbox' => array('recipient' => 'emails'),
 			'mail_bounces' => array('address' => 'emails'),

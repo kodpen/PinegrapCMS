@@ -33,6 +33,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-connected-accounts.md: The site as an OAuth client (connected accounts, includes/fn/connect.php, 2026.4.10, model A): provider and purpose files, the Connect button, tokens and provider calls, refresh, service tokens
 - api-currency-symbol.md: External API currency symbol is plain text (₺, €), not the HTML entity the currency screen stores (&#8378;, &euro;): one rule, api_currency_symbol_text(), for GET /meta and GET /store/currencies
 - api-customer-consents.md: GET /customers/{id}/consents (the consent_log rows of a customer and its accounts) and the customer.consent_changed webhook announced by pg_consent_log_record(); what is left out and why
+- api-customer-credit.md: Store credit over the API: GET/POST /customers/{id}/credit and void under gift_cards:*, the account pick, credit.* events, export and erasure of a customer's cards
 - api-customer-subscriptions.md: GET /customers/{id}/subscriptions, the pause/resume/cancel moves with dry_run (PR #4399), and the subscription.* webhooks announced from pg_subscription_mail_send()
 - api-database-unavailable.md: External API and MCP 503 database_unavailable (a lost database connection, with Retry-After) versus 503 service_unavailable (a feature waiting for its database update)
 - api-datetime-end-bound.md: External API datetime parameters: only the documented forms are read (no relative words or rolled-over days); a bare day as an end bound (to, *_to) counts to 23:59:59 site time (PR #4091)

@@ -41,6 +41,20 @@ function workspace_claude_flow_drafts_test_code($function)
 	return $code;
 }
 
+// What stops publishing, from the graph's own check alone (no database).
+function workspace_claude_flow_drafts_test_problems($graph)
+{
+	$texts = array();
+
+	foreach (ws_flow_graph_check(ws_flow_graph_normalize($graph)) as $problem) {
+		if (empty($problem['warning'])) {
+			$texts[] = (string) $problem['text'];
+		}
+	}
+
+	return $texts;
+}
+
 // The instructions name the kinds of box, the draft's shape and what the
 // person does with it.
 function test_workspace_claude_flow_drafts_instructions()
@@ -105,4 +119,72 @@ function test_workspace_claude_flow_drafts_layout()
 	$placed = ws_flow_draft_proposal_input($sent)['data']['graph']['nodes'];
 	pg_assert_same(400, $placed[0]['x'], 'places of their own are kept');
 	pg_assert_same(0, $placed[2]['x'], 'and the others too');
+}
+
+// What stops a draft from being published comes back with the answer
+// refused, with the hints Pinegrap AI gets; one that can be published is
+// taken. Claude's draft of 2026-11-04 had the flow's name as its start box's
+// subject and went to the channel unpublishable.
+function test_workspace_claude_flow_drafts_refused_while_unpublishable()
+{
+	$catalogue = ws_flow_ai_catalogue_hints(ws_flow_kind_catalogue(), array('order', 'contact'));
+	$broken = array(
+		'nodes' => array(
+			array('id' => 'start', 'kind' => 'manual', 'config' => array('subject' => 'kampanyahazrlkak')),
+			array('id' => 'title', 'kind' => 'value', 'config' => array('rule' => 'join', 'a' => 'Autumn - 20%', 'b' => '')),
+			array('id' => 'say', 'kind' => 'post', 'config' => array('body' => '{{node.title.value}}', 'channel_id' => 3)),
+		),
+		'edges' => array(array('from' => 'start', 'to' => 'say', 'on' => 'next')),
+	);
+	// ws_flow_problems() also asks the database which kinds of record the
+	// Workspace knows: the graph's own check, and the start box's line as it
+	// would add it.
+	$problems = workspace_claude_flow_drafts_test_problems($broken);
+	$problems[] = 'The start box Elle başlat is about a kind of record the Workspace does not know (kampanyahazrlkak).';
+	$refusal = ws_flow_draft_answer_refusal($broken, $catalogue, $problems);
+
+	pg_assert_true(count($problems) === 2, 'two problems: the subject and the empty second value');
+	pg_assert_contains('This flow could not be published like this: ', $refusal, 'refused');
+	pg_assert_contains('kampanyahazrlkak', $refusal, 'the invented subject named');
+	pg_assert_contains('subject of a Started by hand box is one of: order, contact', $refusal, 'with the kinds it may be');
+	pg_assert_contains($problems[0], $refusal, 'the empty second value too');
+	pg_assert_contains('Fix it and send the answer again with all of it, or leave the flow out and say why.', $refusal, 'what to do');
+
+	$broken['nodes'][0]['config']['subject'] = '';
+	$broken['nodes'][1]['config'] = array('rule' => 'join', 'a' => 'Autumn -', 'b' => '20%');
+	pg_assert_same(array(), workspace_claude_flow_drafts_test_problems($broken), 'fixed');
+	pg_assert_same('', ws_flow_draft_answer_refusal($broken, $catalogue, array()), 'one that can be published is taken');
+
+	$input = workspace_claude_flow_drafts_test_code('ws_changes_input');
+	pg_assert_contains("\$unpublishable = \$drafts ? ws_flow_draft_answer_refusal(\$drafted['row']['snapshot']['data']['graph'] ?? array()) : '';", $input, 'only for Claude\'s channel answer');
+	pg_assert_contains('return $refuse($unpublishable);', $input, 'the answer refused');
+
+	$text = ws_claude_routine_prompt('https://shop.example/pinegrap/integration.php');
+	pg_assert_contains('the subject of a box started by hand (kind manual) is the kind of record', $text, 'the subject');
+	pg_assert_contains('never the flow\'s', $text, 'not a name');
+	pg_assert_contains('A flow that could not be published is refused with', $text, 'the refusal said');
+}
+
+// The drafts list is one column no wider than itself, so a wide flow drawing
+// scrolls in its pane instead of widening the card and the channel.
+function test_workspace_claude_flow_drafts_card_fits_the_column()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	preg_match('~\n\.ws-drafts \{([^}]*)\}~', $css, $rule);
+
+	pg_assert_contains('grid-template-columns: minmax(0, 1fr);', $rule[1] ?? '', 'the column');
+	pg_assert_contains('max-width: 34rem;', $rule[1] ?? '', 'as wide as before at most');
+}
+
+// The answer is sent once: a refused one posts nothing, so no trial answer
+// is sent to see what the site says. On 2026-11-04 Claude answered a request
+// with "probe" and a two-box draft named "x", and the flow asked for never came.
+function test_workspace_claude_flow_drafts_no_trial_answer()
+{
+	$text = ws_claude_routine_prompt('https://shop.example/pinegrap/integration.php');
+
+	pg_assert_contains('A refused answer posts nothing and the request stays open', $text, 'a refusal writes nothing');
+	pg_assert_contains('never a trial or test answer,', $text, 'no trial answer');
+	pg_assert_contains('nor a change made only to see what the site says', $text, 'no trial draft');
+	pg_assert_contains('is posted to the channel and ends the request', $text, 'a taken answer is final');
 }

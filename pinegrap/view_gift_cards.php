@@ -202,7 +202,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
             created_user.user_username AS created_username,
             gift_cards.created_timestamp,
             last_modified_user.user_username AS last_modified_username,
-            gift_cards.last_modified_timestamp
+            gift_cards.last_modified_timestamp,
+            " . (pg_credit_ready() ? 'gift_cards.user_id' : '0') . " AS credit_user_id
         FROM gift_cards
         LEFT JOIN orders ON gift_cards.order_id = orders.id
         LEFT JOIN user AS created_user ON gift_cards.created_user_id = created_user.user_id
@@ -230,6 +231,15 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
             $output_state = $expired ? pg_list_status_word(lang('Expired')) : pg_list_status_word(lang('No balance'));
         }
 
+        // A card bound to a customer is store credit, not a sold gift card.
+        if ((int) $gift_card['credit_user_id'] > 0) {
+            $output_state .= pg_list_status_word(lang('Store credit'));
+        }
+
+        // The code as stored (no dashes), unseen but read by the list's
+        // search: the API returns it so, and a customer reads it out so.
+        $output_raw_code = '<span hidden>' . h($gift_card['code']) . '</span>';
+
         $expires = ($gift_card['expiration_date'] != '0000-00-00') ? strtotime($gift_card['expiration_date']) : 0;
         $output_from_name = '';
         $output_delivery_date = '';
@@ -255,7 +265,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
         $list_rows[] = array(
             'id' => $id,
             'cells' => array(
-                'code' => pg_list_cell(pg_commerce_list_open_link('edit_gift_card.php?id=' . $id, '<span class="badge fw-lighter ' . $output_status_class . '">' . output_gift_card_code($gift_card['code']) . '</span>') . $output_state, 'align-middle', array('data-pg-sort-value' => (string) $gift_card['code'])),
+                'code' => pg_list_cell(pg_commerce_list_open_link('edit_gift_card.php?id=' . $id, '<span class="badge fw-lighter ' . $output_status_class . '">' . output_gift_card_code($gift_card['code']) . '</span>') . $output_raw_code . $output_state, 'align-middle', array('data-pg-sort-value' => (string) $gift_card['code'])),
                 'balance' => pg_list_cell('<span class="badge theme-secondary fw-lighter">' . pg_format_money($gift_card['balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span>', 'align-middle', array('data-pg-sort-value' => (string) (int) $gift_card['balance'])),
                 'original_amount' => pg_list_cell('<span class="badge theme-primary fw-lighter">' . pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span>', 'align-middle', array('data-pg-sort-value' => (string) (int) $gift_card['amount'])),
                 'expiration_date' => pg_list_cell($expires ? get_absolute_time(array('timestamp' => $expires, 'type' => 'date')) : '', 'align-middle', array('data-pg-sort-value' => (string) (int) $expires)),

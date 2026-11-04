@@ -125,6 +125,7 @@ $bm_facts = array(
     lang('Time')    => $bm_times['time'],
     lang('Place')   => (string) $bm_context['place'],
     lang('Status')  => pg_booking_customer_status_label($bm_status),
+    lang('Deposit') => pg_booking_deposit_label(pg_booking_deposit_view($bm_row)),
 );
 
 $bm_content .= '<dl class="mb-12">';

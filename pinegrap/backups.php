@@ -16,6 +16,7 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 $user = validate_user();
 validate_area_access($user, 'manager');
 
@@ -65,39 +66,56 @@ if ($unfinished_restore !== null) {
 
 $backup_times = backup_list(getcwd());
 $directory = pg_backup_list_order($backup_times);
-$output_rows =  '';
-if($directory){
-	foreach($directory as $backup_folder) {
-		$backup_is_archive = is_file('data/backups/'.$backup_folder);
-		// A folder without its dump (a delete that stopped half-way, a copy
-		// that never finished) cannot be restored, so it is not offered for
-		// download as if it were a backup.
-		$backup_incomplete = !$backup_is_archive && !is_file('data/backups/'.$backup_folder.'/sql.sql');
-		$backup_time = $backup_times[$backup_folder];
-		// A starter-site dump stays deletable, but its confirmation names
-		// what is lost: the installer offers only the dumps on disk.
-		$backup_delete_confirm = (!$backup_is_archive && pg_backup_is_starter_dump($backup_folder))
-			? lang(array('string' => 'Delete the backup {var:1} permanently? It is a starter site: a later install made from this copy no longer offers this language, and the panel does not bring the backup back.', 'vars' => array($backup_folder)))
-			: lang(array('string' => 'Delete the backup {var:1} permanently?', 'vars' => array($backup_folder)));
-		$output_rows .= '
-		<tr>
-			<td class="align-middle text-start actions-buttons">' . ($backup_incomplete ? '' : '
-        	    <button type="submit" name="download_selected" value="Download '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . h(lang('Download')) . '" aria-label="' . h(lang(array('string' => 'Download {var:1}', 'vars' => array($backup_folder)))) . '"><i class="bi bi-download" aria-hidden="true"></i></button>') . '
-        	    <button type="submit" name="delete_selected"   value="Delete '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " data-confirm-content="' . h($backup_delete_confirm) . '" title="' . h(lang('Delete')) . '" aria-label="' . h(lang(array('string' => 'Delete {var:1}', 'vars' => array($backup_folder)))) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>
-        	</td>
-			<td>
-				'.h($backup_folder).'
+// Every backup is printed: the list table driver sorts and searches them in
+// the browser (browser mode) and keeps a heading's sort. The row buttons
+// post the form the list sits in, as before.
+$list_rows = array();
+$sort_columns = array('name' => lang('Name'), 'last_modified' => lang('Last Modified'), 'size' => lang('Disk Usage'));
+$list_state = pg_list_state('backups', $sort_columns, array('sort' => 'last_modified', 'order' => 'desc'));
+
+foreach ($directory as $backup_number => $backup_folder) {
+	$backup_is_archive = is_file('data/backups/'.$backup_folder);
+	// A folder without its dump (a delete that stopped half-way, a copy
+	// that never finished) cannot be restored, so it is not offered for
+	// download as if it were a backup.
+	$backup_incomplete = !$backup_is_archive && !is_file('data/backups/'.$backup_folder.'/sql.sql');
+	$backup_time = (int) $backup_times[$backup_folder];
+	$backup_size = (int) ($backup_is_archive ? filesize('data/backups/'.$backup_folder) : folderSize('data/backups/'.$backup_folder));
+	// A starter-site dump stays deletable, but its confirmation names
+	// what is lost: the installer offers only the dumps on disk.
+	$backup_delete_confirm = (!$backup_is_archive && pg_backup_is_starter_dump($backup_folder))
+		? lang(array('string' => 'Delete the backup {var:1} permanently? It is a starter site: a later install made from this copy no longer offers this language, and the panel does not bring the backup back.', 'vars' => array($backup_folder)))
+		: lang(array('string' => 'Delete the backup {var:1} permanently?', 'vars' => array($backup_folder)));
+
+	$list_rows[] = array(
+		'id' => $backup_number + 1,
+		'cells' => array(
+			'name' => pg_list_cell(h($backup_folder) . '
 				<span class="badge rounded-pill ' . ($backup_is_archive ? 'theme-primary' : 'theme-secondary') . ' ms-1">' . ($backup_is_archive ? lang('Archive') : lang('Folder')) . '</span>' . ($backup_incomplete ? '
-				<span class="badge rounded-pill theme-warning ms-1" title="' . h(lang('This folder holds no database dump and cannot be restored.')) . '">' . lang('Incomplete') . '</span>' : '') . '
-			</td>
-			<td data-order="' . (int) $backup_time . '">
-				<time datetime="' . date('c', $backup_time) . '">' . h(get_absolute_time(array('timestamp' => $backup_time, 'format' => 'plain_text'))) . '</time>
-			</td>
-			<td>' . h(convert_bytes_to_string($backup_is_archive ? filesize('data/backups/'.$backup_folder) : folderSize('data/backups/'.$backup_folder), 2)) . '</td>
-		</tr>';
-	} 
-	   
+				<span class="badge rounded-pill theme-warning ms-1" title="' . h(lang('This folder holds no database dump and cannot be restored.')) . '">' . lang('Incomplete') . '</span>' : ''),
+				'align-middle', array('data-pg-sort-value' => $backup_folder)),
+			'last_modified' => pg_list_cell('<time datetime="' . date('c', $backup_time) . '">' . h(get_absolute_time(array('timestamp' => $backup_time, 'format' => 'plain_text'))) . '</time>',
+				'align-middle', array('data-pg-sort-value' => $backup_time)),
+			'size' => pg_list_cell(h(convert_bytes_to_string($backup_size, 2)), 'align-middle', array('data-pg-sort-value' => $backup_size)),
+			'actions' => pg_list_cell(($backup_incomplete ? '' : '
+				<button type="submit" name="download_selected" value="Download '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . h(lang('Download')) . '" aria-label="' . h(lang(array('string' => 'Download {var:1}', 'vars' => array($backup_folder)))) . '"><i class="bi bi-download" aria-hidden="true"></i></button>') . '
+				<button type="submit" name="delete_selected"   value="Delete '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " data-confirm-content="' . h($backup_delete_confirm) . '" title="' . h(lang('Delete')) . '" aria-label="' . h(lang(array('string' => 'Delete {var:1}', 'vars' => array($backup_folder)))) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>',
+				'align-middle text-nowrap'),
+		),
+	);
 }
+
+$list = pg_list_table_printed(array(
+	'list' => 'backups',
+	'columns' => array(
+		'name' => array('heading' => lang('Name')),
+		'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+		'size' => array('heading' => lang('Disk Usage'), 'kind' => 'number'),
+		'actions' => array('heading' => lang('Action'), 'kind' => 'actions'),
+	),
+	'levels' => $list_state['sorts'],
+	'rows' => $list_rows,
+));
 
 
 // Archives in the bucket of the "S3-compatible storage" destination. The
@@ -213,6 +231,7 @@ if (!$_POST) {
 	                });
 	            </script>',
 	        'grow' => '<span class="small fg-secondary">' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(folderSize('data/backups'), 2)) . '</span>',
+	        'search' => pg_list_table_search_box('backups'),
 	    )) . '
 
 	        <div class="mb-7">
@@ -243,32 +262,15 @@ if (!$_POST) {
 	                <form name="form" id="backupform" action="backups.php"
 	                      class="disable_shortcut" method="post" autocomplete="off">
 
-	                    <div class="card my-7">
-	                        <div class="card-body p-0 position-relative">
-	                            ' . get_token_field() . '
-
-	                            <table class="chart table-hover table" style="width:100%;display:none">
-	                                <thead>
-	                                    <tr>
-	                                        <th class="noVis">' . lang('Action') . '</th>
-	                                        <th>' . lang('Name') . '</th>
-	                                        <th>' . lang('Last Modified') . '</th>
-	                                        <th>' . lang('Disk Usage') . '</th>
-	                                    </tr>
-	                                </thead>
-	                                <tbody>
-	                                    ' . $output_rows . '
-	                                </tbody>
-	                            </table>
-	                        </div>
-	                    </div>
+	                    ' . get_token_field() . '
+	                    ' . pg_list_table_html($list['source'], $list['page'], lang('Backups')) . '
 
 	                    ' . $output_remote_card . '
 	                </form>
 	            </div>
 	        </div>
 	    
-</main>' . output_footer();
+</main>' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . output_footer();
 
 	print $output;
 	$liveform->remove_form('backups');

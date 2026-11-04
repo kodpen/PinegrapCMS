@@ -60,6 +60,27 @@ if (pg_catalog_group_binned($id)) {
 
 // If the form has not just been submitted, then output form.
 if (!$_POST) {
+    // What a copy can take along: the sub-groups and products directly
+    // inside the group, Recycle Bin items left out as the copy leaves them.
+    $sub_group_count = (int) db_value(
+        "SELECT COUNT(*)
+        FROM product_groups
+        WHERE parent_id = '" . $id . "'" . pg_catalog_bin_live_sql('product_groups'));
+
+    $product_count = (int) db_value(
+        "SELECT COUNT(*)
+        FROM products_groups_xref
+        JOIN products ON products_groups_xref.product = products.id
+        WHERE products_groups_xref.product_group = '" . $id . "'" . pg_catalog_bin_live_sql('products'));
+
+    $summary_row = function ($label, $value, $last = false) {
+        return '
+                                            <div class="d-flex justify-content-between gap-3 py-2' . ($last ? '' : ' border-bottom') . '">
+                                                <dt class="fw-normal">' . h($label) . '</dt>
+                                                <dd class="mb-0 fw-bold text-end text-break">' . $value . '</dd>
+                                            </div>';
+    };
+
     echo
     pg_page_shell([
         'title'=> lang('Duplicate Product Group'),
@@ -76,52 +97,59 @@ if (!$_POST) {
         ),
     ]) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                
+
                 <form method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . $id . '">
                     <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Duplicate Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 my-5">
-                                            <div class="form-field">
-                                                <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'duplicate_product_groups', 'name' => 'duplicate_product_groups', 'value' => '1', 'class' => 'no-bs')) . '</div>
-                                                <label class="" for="duplicate_product_groups">' . lang('Also duplicate Product Groups inside this Product Group') . '.</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 my-5">
-                                            <div class="form-field">
-                                                <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'duplicate_products', 'name' => 'duplicate_products', 'value' => '1', 'class' => 'no-bs')) . '</div>
-
-                                                <label class="" for="duplicate_products">' . lang('Also duplicate Products inside this Product Group') . '.</label>
-                                            </div>
-                                        </div>
+                                </h2>
+                                <div class="card-body pt-0">
+                                    <div class="form-field my-4">
+                                        <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'duplicate_product_groups', 'name' => 'duplicate_product_groups', 'value' => '1', 'class' => 'no-bs')) . '</div>
+                                        <label class="" for="duplicate_product_groups">' . lang('Also duplicate Product Groups inside this Product Group') . '.</label>
+                                    </div>
+                                    <div class="form-field my-4">
+                                        <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'duplicate_products', 'name' => 'duplicate_products', 'value' => '1', 'class' => 'no-bs')) . '</div>
+                                        <label class="" for="duplicate_products">' . lang('Also duplicate Products inside this Product Group') . '.</label>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class=" btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">control_point_duplicate</span><span class="pg-btn-label" >' . lang(array('string'=>'Duplicate') ) . '</span></button>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Summary') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <dl class="mb-0">'
+        . $summary_row(lang('Product Group'), '<a href="edit_product_group.php?id=' . $id . '">' . h((string) $product_group['name']) . '</a>')
+        . $summary_row(lang('Product Groups'), (string) $sub_group_count)
+        . $summary_row(lang('Products'), (string) $product_count, true) . '
+                                        </dl>
+                                    </div>
                                 </div>
                             </div>
-                        </nav>
+                        </div>
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">
+                                        <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">control_point_duplicate</span><span class="pg-btn-label">' . lang(array('string'=>'Duplicate') ) . '</span></button>
+                                    </div>
+                                </div>
+                            </nav>
+                        </div>
                     </div>
                 </form>
-            </div>
-        </div>
-    
 </main>' .
     output_footer();
         

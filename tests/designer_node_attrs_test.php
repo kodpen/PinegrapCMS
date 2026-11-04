@@ -245,7 +245,7 @@ function test_designer_attrs_editor_writes_the_same()
 
 	foreach ($cases as $name => $node) {
 		$php = str_replace('&#039;', "'", _test_designer_attrs_php($node));
-		$php = preg_replace('~ onerror="[^"]*"| data-pg-search-section~', '', $php);
+		$php = preg_replace('~ onerror="[^"]*"| data-pg-fallback="[^"]*"| data-pg-search-section~', '', $php);
 		pg_assert_same($php, $js[$name], $name);
 	}
 
@@ -287,7 +287,7 @@ function test_designer_attrs_image_ratio_box()
 	}
 
 	// The <img> keeps its own style, without the box's.
-	$img = preg_match('~<img\b[^>]*>~', _render_tree_node($nodes['whole style'], 0, 0), $m) ? preg_replace('~ onerror="[^"]*"~', '', $m[0]) : '';
+	$img = preg_match('~<img\b[^>]*>~', _render_tree_node($nodes['whole style'], 0, 0), $m) ? preg_replace('~ (?:onerror|data-pg-fallback)="[^"]*"~', '', $m[0]) : '';
 	pg_assert_same('<img src="https://example.com/a.png" alt="A" width="200" style="opacity:.5">', $img);
 	$js_img = _test_designer_attrs_js(array($nodes['whole style']));
 	pg_assert_same($img, $js_img[0]);

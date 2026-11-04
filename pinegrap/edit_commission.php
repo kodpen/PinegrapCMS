@@ -80,43 +80,28 @@ if (!$_POST) {
             'breadcrumb' => array(array('label' => lang('All Commissions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_commissions.php'), array('label' => lang('Edit Commission'))),
         ]) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                ' . $liveform->output_errors() . '
-                ' . $liveform->get_warnings() . '
-                ' . $liveform->output_notices() . '
-                ' . pg_commission_edit_summary($commission) . '
-                <form action="edit_commission.php" method="post">
-                    ' . get_token_field() . '
-                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$_GET['id'])) . '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+    ' . $liveform->output_errors() . '
+    ' . $liveform->get_warnings() . '
+    ' . $liveform->output_notices() . '
+    <form action="edit_commission.php" method="post">
+        ' . get_token_field() . '
+        ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$id)) . '
+        ' . pg_commission_edit_layout('
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Status') . '
-                                </div>
-                                <div class="card-body">
+                                </h2>
+                                <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 sm:col-4 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="status" class="form-label">' . lang('Status') . '</label>
                                             ' . $liveform->output_field(array('type'=>'select', 'name'=>'status', 'id'=>'status', 'class'=>'form-control', 'options'=>$status_options)) . '
                                         </div>
                                     </div>
-                                </div>       
-                            </div> 
-                        </div>
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
-                </form>
-            </div>
-        </div>
-    
+                                </div>
+                            </div>', $commission, '
+                                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>') . '
+    </form>
 </main>' .
     output_footer();
     

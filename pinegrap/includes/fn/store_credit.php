@@ -424,6 +424,15 @@ function pg_credit_issue($user_id, $amount, $kind, $reason = '', $expires = 0, $
 
     if ($id > 0) {
         pg_audit('create', 'store_credit', $id, array(), pg_credit_audit_fields($card), pg_credit_audit_label($code));
+
+        // The credit_issued mail, when a profile asks for it.
+        if (function_exists('pg_credit_mail_issued')) {
+            pg_credit_mail_issued($id);
+        }
+
+        if (function_exists('pg_credit_announce')) {
+            pg_credit_announce('credit.issued', $id);
+        }
     }
 
     return $id;

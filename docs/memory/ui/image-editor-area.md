@@ -12,6 +12,9 @@ module: image_editor
 - `selectionRings()` folds the ops with the shape builder's `clipRings()` (union, difference) and inverts within `M.pictureBox()`. At most `AREA_MAX_OPS` (40) ops; the panel says when it is full.
 - On an inverted selection Shift (add) stores a `sub` and Alt an `add`, so the inverted area grows or shrinks as asked. New (the panel's default) starts again and clears invert; a click without a drag deselects.
 
+## When is the outline worked out again?
+- `areaRings()` keeps it while the ops, invert, `doc.geometry`, the picture's place on the canvas (`M.picturePlace()`) and the picture stay the same. The place was left out at first: after an unlocked picture was moved or resized the ants, the inverted frame and Redact the selection stayed at the old place until the document reopened (`tests/image_editor_area_place_test.php`).
+
 ## How does the wand find its area?
 - The picture read back at most 1024 px a side (`areaPixels()`; a picture that cannot be read back shows a note). `wandMask()`: every channel within tolerance × 2.55 of the seed's; contiguous by four neighbours. `maskRings()` walks the edges between pixels in and out with the pixel on its right, turning right where two pixels touch only at a corner (simple rings), straight runs as one edge; `mapRings()` carries them by `placedMatrix × scale`.
 

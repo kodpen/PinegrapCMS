@@ -20,6 +20,9 @@ if (!defined('PG_VISITORS_SCREEN')) {
     exit;
 }
 
+// Rows a top list shows before its "Show all" button.
+const PG_VISITORS_LIST_ROWS = 5;
+
 /**
  * The HTML of every section there is, in the screen's order. A section file
  * that is missing, or whose function is not there, draws nothing.
@@ -102,13 +105,17 @@ function pg_visitors_change($now, $before, $lower_is_better = false)
 {
     $change = pg_visitors_change_data($now, $before, $lower_is_better);
 
+    // Without an earlier figure, and with none, a quiet mark: the words are
+    // read out and shown on hover, as a new site repeats them on every tile
+    // and every row.
     if ($change['direction'] === 'none') {
-        return '<span class="pg-visitors-change is-none">' . h(lang('No earlier figure')) . '</span>';
+        return '<span class="pg-visitors-change is-none" title="' . h(lang('No earlier figure')) . '"><span aria-hidden="true">–</span>'
+            . '<span class="visually-hidden">' . h(lang('No earlier figure')) . '</span></span>';
     }
 
     if ($change['direction'] === 'same') {
-        return '<span class="pg-visitors-change is-same"><i class="bi bi-dash" aria-hidden="true"></i>'
-            . h(lang('No change')) . '</span>';
+        return '<span class="pg-visitors-change is-same" title="' . h(lang('No change')) . '"><span aria-hidden="true">' . h(pg_visitors_percent(0, 0)) . '</span>'
+            . '<span class="visually-hidden">' . h(lang('No change')) . '</span></span>';
     }
 
     $up = ($change['direction'] === 'up');
@@ -116,7 +123,76 @@ function pg_visitors_change($now, $before, $lower_is_better = false)
     return '<span class="pg-visitors-change ' . ($change['good'] ? 'is-good' : 'is-bad') . '">'
         . '<i class="bi ' . ($up ? 'bi-arrow-up-right' : 'bi-arrow-down-right') . '" aria-hidden="true"></i>'
         . '<span class="visually-hidden">' . h($up ? lang('Up') : lang('Down')) . ' </span>'
-        . h(pg_format_number(abs($change['percent']), 0)) . ' %</span>';
+        . h(pg_visitors_percent(abs($change['percent']), 0)) . '</span>';
+}
+
+/**
+ * A percent as the panel writes one: through the '{var:1}%' key, which
+ * Turkish words as "%12". A sign or an arrow stays outside it. Pure.
+ *
+ * @param int|float $value    the percent (12.5 for 12.5 %)
+ * @param int       $decimals
+ * @return string text
+ */
+function pg_visitors_percent($value, $decimals = 1)
+{
+    return lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number($value, $decimals))));
+}
+
+/**
+ * The change column of a list: the change against the earlier count, the
+ * earlier count itself on hover (a column of its own was more than a small
+ * table could carry), a dash when the period is not compared.
+ *
+ * @param int|float      $now
+ * @param int|float|null $before null when the period is not compared
+ * @param bool           $lower_is_better
+ * @return array pg_visitors_table() cell
+ */
+function pg_visitors_change_cell($now, $before, $lower_is_better = false)
+{
+    if ($before === null) {
+        return array('html' => '<span class="pg-visitors-change is-none" aria-hidden="true">–</span>');
+    }
+
+    $title = lang(array('string' => 'Previous period: {var:1}', 'vars' => array(pg_format_number($before, 0))));
+
+    return array(
+        'html' => '<span class="pg-visitors-change-cell" title="' . h($title) . '">' . pg_visitors_change($now, $before, $lower_is_better) . '</span>',
+        'sort' => (float) $now - (float) $before,
+    );
+}
+
+/**
+ * The heading of the change column.
+ *
+ * @return array pg_visitors_table() heading
+ */
+function pg_visitors_change_heading()
+{
+    return array('label' => lang('Change vs. earlier'), 'end' => true);
+}
+
+/**
+ * The icon of each section's heading, by name.
+ *
+ * @return array name => Bootstrap Icons class
+ */
+function pg_visitors_section_icons()
+{
+    return array(
+        'alerts'      => 'bi-exclamation-triangle',
+        'traffic'     => 'bi-graph-up',
+        'conversions' => 'bi-bullseye',
+        'sources'     => 'bi-signpost-split',
+        'content'     => 'bi-file-earmark-text',
+        'site_search' => 'bi-search',
+        'google'      => 'bi-google',
+        'pages'       => 'bi-link-45deg',
+        'speed'       => 'bi-speedometer2',
+        'ai'          => 'bi-stars',
+        'places'      => 'bi-geo-alt',
+    );
 }
 
 /**
@@ -190,30 +266,53 @@ function pg_visitors_bars(array $rows, array $opts = array())
  * 'sort' => value for data-sort); a heading is text or array('label' =>
  * text, 'end' => true for a right-aligned figure column).
  *
+ * Options:
+ *   caption     the table's accessible name (text)
+ *   id          the table's id
+ *   limit       rows shown at first; the rest wait behind a "Show all"
+ *               button (assets/js/pg_visitors.src.js), 0 for all
+ *   hide_first  the first heading is read out but not shown, when the
+ *               list's own title already names the column
+ *
  * @param array $headings
  * @param array $rows list of lists of cells
- * @param array $opts 'caption': text; 'id': the table's id
+ * @param array $opts
  * @return string HTML; pg_visitors_empty() when there is no row
  */
 function pg_visitors_table(array $headings, array $rows, array $opts = array())
 {
+    static $tables = 0;
+
     if (!$rows) {
         return pg_visitors_empty();
     }
 
     $ends = array();
     $head = '';
+    $hide_first = !empty($opts['hide_first']);
 
     foreach (array_values($headings) as $index => $heading) {
         $label = is_array($heading) ? (string) $heading['label'] : (string) $heading;
         $ends[$index] = is_array($heading) && !empty($heading['end']);
-        $head .= '<th scope="col"' . ($ends[$index] ? ' class="text-end"' : '') . '>' . h($label) . '</th>';
+        $text = (($index === 0) && $hide_first) ? '<span class="visually-hidden">' . h($label) . '</span>' : h($label);
+        $head .= '<th scope="col"' . ($ends[$index] ? ' class="text-end"' : '') . '>' . $text . '</th>';
+    }
+
+    $limit = isset($opts['limit']) ? max(0, (int) $opts['limit']) : 0;
+    $more = ($limit > 0) && (count($rows) > $limit);
+    $id = isset($opts['id']) ? (string) $opts['id'] : '';
+
+    if ($more && ($id === '')) {
+        $tables++;
+        $id = 'pg_visitors_table_' . $tables;
     }
 
     $body = '';
+    $number = 0;
 
     foreach ($rows as $row) {
-        $body .= '<tr>';
+        $number++;
+        $body .= ($more && ($number > $limit)) ? '<tr class="pg-visitors-extra">' : '<tr>';
 
         foreach (array_values($row) as $index => $cell) {
             $class = !empty($ends[$index]) ? ' class="text-end"' : '';
@@ -229,16 +328,25 @@ function pg_visitors_table(array $headings, array $rows, array $opts = array())
         $body .= '</tr>';
     }
 
-    $id = isset($opts['id']) ? ' id="' . h((string) $opts['id']) . '"' : '';
-    $caption = isset($opts['caption']) ? '<caption class="visually-hidden">' . h((string) $opts['caption']) . '</caption>' : '';
+    // The name goes on the table itself: a visually hidden <caption> keeps a
+    // pixel in the layout (Bootstrap leaves captions in place), enough for
+    // the scrolling box around the table to draw a scroll bar.
+    $label = isset($opts['caption']) ? ' aria-label="' . h((string) $opts['caption']) . '"' : '';
+    $button = '';
+
+    if ($more) {
+        $button = '
+            <button type="button" class="btn btn-sm btn-text theme-primary pg-visitors-more" data-pg-more="' . h($id) . '" aria-controls="' . h($id) . '" aria-expanded="false"'
+            . ' data-pg-fewer="' . h(lang('Show fewer')) . '">' . h(lang(array('string' => 'Show all ({var:1})', 'vars' => array(pg_format_number(count($rows), 0))))) . '</button>';
+    }
 
     return '
         <div class="table-responsive">
-            <table class="table table-sm table-hover align-middle mb-0 pg-visitors-table"' . $id . '>' . $caption . '
+            <table class="table table-sm table-hover align-middle mb-0 pg-visitors-table' . ($more ? ' is-collapsed' : '') . '"' . (($id !== '') ? ' id="' . h($id) . '"' : '') . $label . '>
                 <thead><tr>' . $head . '</tr></thead>
                 <tbody>' . $body . '</tbody>
             </table>
-        </div>';
+        </div>' . $button;
 }
 
 /**
@@ -264,16 +372,37 @@ function pg_visitors_empty($text = '')
  */
 function pg_visitors_section($id, $title, $body, $aside = '')
 {
-    $id = preg_replace('/[^a-z0-9_]/', '', strtolower((string) $id));
+    $name = preg_replace('/[^a-z0-9_]/', '', strtolower((string) $id));
+    $anchor = pg_visitors_anchor($name);
+    $icons = pg_visitors_section_icons();
+    $icon = isset($icons[$name]) ? '<i class="bi ' . $icons[$name] . ' pg-visitors-section-icon" aria-hidden="true"></i>' : '';
 
     return '
-        <section id="' . $id . '" class="pg-visitors-section pg-visitors-' . $id . '" aria-labelledby="' . $id . '_heading">
+        <section id="' . $anchor . '" class="pg-visitors-section pg-visitors-' . $name . '" aria-labelledby="' . $anchor . '_heading">
             <header class="pg-visitors-section-head">
-                <h2 class="pg-visitors-section-title" id="' . $id . '_heading">' . h($title) . '</h2>
+                <h2 class="pg-visitors-section-title" id="' . $anchor . '_heading">' . $icon . h($title) . '</h2>
                 ' . ($aside !== '' ? '<div class="pg-visitors-section-aside">' . $aside . '</div>' : '') . '
             </header>
             <div class="pg-visitors-section-body">' . $body . '</div>
         </section>';
+}
+
+/**
+ * A titled block inside a section: a small heading over a table, a list or
+ * a line, without a frame of its own.
+ *
+ * @param string $title text
+ * @param string $body  HTML
+ * @param string $class more classes for the block
+ * @return string HTML
+ */
+function pg_visitors_block($title, $body, $class = '')
+{
+    return '
+        <div class="pg-visitors-block' . (($class !== '') ? ' ' . h($class) : '') . '">
+            <h3 class="pg-visitors-subtitle">' . h($title) . '</h3>
+            ' . $body . '
+        </div>';
 }
 
 /**
@@ -284,8 +413,10 @@ function pg_visitors_section($id, $title, $body, $aside = '')
  *   type     'line' (default) or 'bar'
  *   labels   the x-axis labels (text)
  *   series   list of array('label' => text, 'data' => list of numbers or
- *            null, 'dashed' => bool, 'axis' => 'right' for a second axis)
- *   notes    one more tooltip line for each label (text, '' for none)
+ *            null, 'dashed' => bool, 'axis' => 'right' for a second axis,
+ *            'unit' => a unit written after each figure, as 's')
+ *   notes    more tooltip text for each label, lines split by "\n" ('' for
+ *            none)
  *   caption  the hidden table's caption
  *   height   CSS height of the drawing, '16rem' by default
  *
@@ -308,6 +439,7 @@ function pg_visitors_chart($id, array $config)
             'data'   => array_values($one['data']),
             'dashed' => !empty($one['dashed']),
             'axis'   => (isset($one['axis']) && ($one['axis'] === 'right')) ? 'right' : 'left',
+            'unit'   => isset($one['unit']) ? (string) $one['unit'] : '',
         );
     }
 
@@ -317,6 +449,14 @@ function pg_visitors_chart($id, array $config)
         $head .= '<th scope="col">' . h($one['label']) . '</th>';
     }
 
+    // The tooltip lines are read out with the figures they go with.
+    $notes = isset($config['notes']) ? array_values($config['notes']) : array();
+    $has_notes = (count(array_filter($notes, 'strlen')) > 0);
+
+    if ($has_notes) {
+        $head .= '<th scope="col">' . h(lang('Notes')) . '</th>';
+    }
+
     $rows = '';
 
     foreach ($labels as $index => $label) {
@@ -324,7 +464,13 @@ function pg_visitors_chart($id, array $config)
 
         foreach ($series as $one) {
             $value = isset($one['data'][$index]) ? $one['data'][$index] : null;
-            $rows .= '<td>' . (($value === null) ? '–' : h(pg_format_number($value, (floor((float) $value) == (float) $value) ? 0 : 1))) . '</td>';
+            $rows .= '<td>' . (($value === null)
+                ? '–'
+                : h(pg_format_number($value, (floor((float) $value) == (float) $value) ? 0 : 1) . (($one['unit'] !== '') ? ' ' . $one['unit'] : ''))) . '</td>';
+        }
+
+        if ($has_notes) {
+            $rows .= '<td>' . h(isset($notes[$index]) ? str_replace("\n", '; ', (string) $notes[$index]) : '') . '</td>';
         }
 
         $rows .= '</tr>';
@@ -339,16 +485,21 @@ function pg_visitors_chart($id, array $config)
 
     $height = isset($config['height']) && preg_match('/^\d+(\.\d+)?(rem|px)$/', (string) $config['height']) ? $config['height'] : '16rem';
 
+    // The figures' table is hidden through a box around it: a table keeps its
+    // content's width whatever width it is given, and a hidden table that
+    // wide made the whole page scroll sideways on a phone.
     return '
         <div class="pg-visitors-chart" style="height:' . $height . '">
             <canvas id="' . $id . '" data-pg-chart="' . $id . '_data" aria-hidden="true"></canvas>
         </div>
         <script type="application/json" id="' . $id . '_data">' . json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . '</script>
-        <table class="visually-hidden">
-            <caption>' . h(isset($config['caption']) ? (string) $config['caption'] : '') . '</caption>
-            <thead><tr>' . $head . '</tr></thead>
-            <tbody>' . $rows . '</tbody>
-        </table>';
+        <div class="visually-hidden">
+            <table>
+                <caption>' . h(isset($config['caption']) ? (string) $config['caption'] : '') . '</caption>
+                <thead><tr>' . $head . '</tr></thead>
+                <tbody>' . $rows . '</tbody>
+            </table>
+        </div>';
 }
 
 /**
@@ -404,10 +555,11 @@ function pg_visitors_period_text(array $period)
         return ($from === $to) ? $text : $text . ' – ' . prepare_form_data_for_output($to, 'date', false);
     };
 
-    $text = '<span class="small">' . h($range($period['from'], $period['to'])) . '</span>';
+    // Two lines: the period, then quieter the one it is set against.
+    $text = '<span class="pg-visitors-dates">' . h($range($period['from'], $period['to'])) . '</span>';
 
     if ($period['compare']) {
-        $text .= ' <span class="small fg-secondary">' . h(lang(array(
+        $text .= '<span class="pg-visitors-dates-before">' . h(lang(array(
             'string' => 'against {var:1}',
             'vars'   => array($range($period['previous_from'], $period['previous_to'])),
         ))) . '</span>';

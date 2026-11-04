@@ -302,3 +302,32 @@ function test_field_form_number_boxes()
 	pg_assert_same(array(), pg_field_form_number_boxes('radio button'), 'radio button');
 	pg_assert_same(array(), pg_field_form_number_boxes(''), 'no type');
 }
+
+function test_field_form_wide_layout()
+{
+	$row = pg_field_form_status_row('Name', '<span>x</span>', false);
+	pg_assert_contains('<dt class="fw-normal">Name</dt>', $row, 'status row label');
+	pg_assert_contains('<span>x</span></dd>', $row, 'status row value as given');
+	pg_assert_contains('border-bottom', $row, 'a row that is not the last draws its line');
+	pg_assert_true(strpos(pg_field_form_status_row('A', 'b'), 'border-bottom') === false, 'the last row draws no line');
+
+	$layout = pg_field_form_layout('<!--cards-->', '<button>Save</button>');
+	pg_assert_contains('<!--cards-->', $layout, 'layout holds the columns');
+	pg_assert_contains('col-12 order-3 position-sticky', $layout, 'sticky save bar column');
+	pg_assert_contains('<button>Save</button>', $layout, 'save bar holds the buttons');
+
+	$form = file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/field_form.php');
+	pg_assert_contains('col-12 lg:col-8 2xl:col-9 order-1', $form, 'form column');
+	pg_assert_contains('col-12 lg:col-4 2xl:col-3 order-2', $form, 'status column after the form column');
+	pg_assert_contains('<div class="collapse" id="options_field_row">', $form, 'the settings wait for a type inside the form column');
+
+	foreach (array('add_field.php', 'edit_field.php') as $file) {
+		$screen = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('pg_field_form_layout(', $screen, $file . ' draws the shared layout');
+		pg_assert_contains("'form_label' =>", $screen, $file . ' names the form in the Summary');
+	}
+
+	$edit = file_get_contents(PG_FUNCTIONS_DIR . '/edit_field.php');
+	pg_assert_contains("lang('Last Modified')", $edit, 'edit shows Last Modified');
+	pg_assert_contains('theme-danger" formnovalidate', $edit, 'an emptied box does not block Delete');
+}

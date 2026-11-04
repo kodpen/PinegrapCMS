@@ -20,7 +20,7 @@ description: JPEG/PNG answered with its WebP derivative at its own address: swit
 
 ## What happens behind a CDN or proxy nobody confirmed?
 - A request with `CF-Ray`, `CDN-Loop`, `Via` or `X-Amz-Cf-Id` and bit 8 off is negotiated; WebP, original and 304 go out `private, max-age=604800` + `Vary: Accept`, so no shared cache hands anyone a wrong copy (#6144, replacing the #4676 guard). Price: JPEG/PNG leave the edge cache until confirmed. Nothing was purged.
-- The self-test (`cloudflare-image-vary-rule.md`) sets bit 8 (public again) or stores mode `original` in `data/cache/img/same_address.json` when the edge keeps even private answers: then the original goes, public, until the next test. `get_file.php` reads it only for a proxied request without bit 8. The test's `?pg_vary_check=` addresses are negotiated in every mode (`&pg_vary_cache=private` answers private).
+- The self-test (`cloudflare-image-vary-rule.md`) sets bit 8 (public again) only on cache hits, takes it back otherwise, or stores mode `original` in `data/cache/img/same_address.json` when the edge keeps even private answers: then the original goes, public, until the next test. `get_file.php` reads it only for a proxied request without bit 8. The test's `?pg_vary_check=` addresses are negotiated in every mode (`&pg_vary_cache=private` answers private).
 
 ## Which doors make WebP, and does any rename a picture?
 - None renames. File Manager "Prepare WebP" (`pg_explorer_handle_webp()`, JPEG/PNG only, `pg_explorer_webp_source_types()`) makes the cached copy with `pg_image_derivative()` (width 0, webp): no row added, renamed or removed; `busy` says it is made on the first visit. Edit File keeps only "Create a .webp copy", a new `.webp` row beside the picture.

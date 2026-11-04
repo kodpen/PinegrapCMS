@@ -116,7 +116,40 @@ function test_visitors_sources_markup_escapes_values_and_draws_the_bar()
 	pg_assert_contains('&lt;b&gt;x&lt;/b&gt;', $list);
 	pg_assert_true(strpos($list, '<b>x</b>') === false);
 
-	pg_assert_contains('pg-visitors-empty', pg_visitors_sources_top_table('Terms', array(), true));
+	pg_assert_same('', pg_visitors_sources_top_table('Terms', array(), true), 'an empty list is left out');
+}
+
+function test_visitors_sources_lists_show_the_change_without_an_earlier_column()
+{
+	$rows = array();
+
+	for ($i = 1; $i <= 8; $i++) {
+		$rows[] = array('value' => 'site' . $i, 'visits' => 10 * $i, 'before' => 5 * $i);
+	}
+
+	$html = pg_visitors_sources_top_table('Referring sites', $rows, true);
+
+	pg_assert_contains(h(lang('Change vs. earlier')), $html, 'one change column');
+	pg_assert_false(strpos($html, '>' . h(lang('Previous period')) . '</th>') !== false, 'no column of earlier figures');
+	pg_assert_contains(h(lang(array('string' => 'Previous period: {var:1}', 'vars' => array(pg_format_number(5, 0))))), $html, 'the earlier figure on hover');
+	pg_assert_same(3, substr_count($html, 'pg-visitors-extra'), 'five rows show, three wait');
+	pg_assert_contains('data-pg-more=', $html);
+	pg_assert_contains('<span class="visually-hidden">' . h(lang('Value')) . '</span>', $html, 'the title names the first column');
+}
+
+function test_visitors_sources_campaign_lists_are_folded()
+{
+	foreach (array('utm_source', 'utm_medium', 'utm_campaign', 'tracking_code', 'affiliate_code') as $dimension) {
+		pg_assert_true(pg_visitors_sources_is_campaign($dimension), $dimension);
+	}
+
+	foreach (array('referring_host_name', 'referring_search_engine', 'referring_search_terms') as $dimension) {
+		pg_assert_false(pg_visitors_sources_is_campaign($dimension), $dimension);
+	}
+
+	foreach (array_keys(pg_visitors_sources_lists(true)) as $dimension) {
+		pg_assert_true(is_bool(pg_visitors_sources_is_campaign($dimension)), 'every list is placed');
+	}
 }
 
 function test_visitors_sources_lists_show_affiliate_codes_only_with_the_program()

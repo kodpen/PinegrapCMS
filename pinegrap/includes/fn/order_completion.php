@@ -3682,7 +3682,7 @@ function pg_order_complete_gift_cards($order_id, $order_number, $required_amount
 
         // A gift card of this system.
         if ($applied_gift_card['givex'] == 0) {
-            $result = db_q("SELECT id, balance FROM gift_cards WHERE id = ?", array((string) $applied_gift_card['gift_card_id'])) or output_error('Query failed.');
+            $result = db_q("SELECT id, balance" . pg_credit_owner_select_sql() . " FROM gift_cards WHERE id = ?", array((string) $applied_gift_card['gift_card_id'])) or output_error('Query failed.');
 
             // the card was deleted after it was applied
             $gift_card = mysqli_fetch_assoc($result) ?: array('id' => '');
@@ -3733,6 +3733,11 @@ function pg_order_complete_gift_cards($order_id, $order_number, $required_amount
                     array((string) $amount, (string) $new_balance, (string) $applied_gift_card['id'])) or output_error('Query failed.');
 
                 $current_redemption_amount = $current_redemption_amount + $amount;
+
+                // A customer's store credit announces what the order took.
+                if (((int) ($gift_card['user_id'] ?? 0) > 0) && ($amount > 0)) {
+                    pg_credit_announce('credit.used', (int) $gift_card['id'], array('order_id' => (int) $order_id, 'amount_used' => (int) round($amount)));
+                }
             }
 
         // A Givex gift card: the service takes the amount.

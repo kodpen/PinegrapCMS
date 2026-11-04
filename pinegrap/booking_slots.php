@@ -18,8 +18,16 @@
  *        -> {"ok": true, "status": "confirmed"|"requested", "message": …}
  *        or {"ok": false, "error": "invalid", "fields": {field: sentence}}
  *        or {"ok": false, "error": "expired"|"taken", "message": …}
+ *        or {"ok": true, "status": "pay", "pay": {"html": …}} for a service
+ *        with a deposit (includes/fn/booking_deposit_pay.php)
+ *   {"action": "payment"}
+ *        -> {"ok": true, "state": "open"|"done"|"expired"|"none", …}
  *   {"action": "release"}
  *        -> {"ok": true}
+ *
+ * The deposit's payment itself is a form post here (pg_booking_pay=1 with
+ * the form token), and a payment service's page comes back here with
+ * ?mode=<return mode>; both end on the widget's page.
  *
  * Staff 0 is "anyone": the days of every staff member who takes the
  * service, and each time with the freest of them. A session holds one slot
@@ -56,6 +64,23 @@ function booking_slots_answer($data, $status = 200)
     exit();
 }
 
+// Back from a payment service's 3-D Secure or hosted page for a deposit:
+// the service's request carries no form token.
+if (isset($_GET['mode']) && is_string($_GET['mode']) && ($_GET['mode'] !== 'paypal_express_checkout_return') && pg_payment_is_return_mode($_GET['mode'])) {
+    pg_booking_pay_return();
+}
+
+// The deposit's payment, posted from the widget's payment form.
+if (isset($_POST['pg_booking_pay'])) {
+    validate_token_field();
+
+    if (pg_booking_throttled('hold')) {
+        output_error(lang('Too many requests from your address. Please wait a moment and try again.'));
+    }
+
+    pg_booking_pay_retry(time());
+}
+
 if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? '')) !== 'POST') {
     header('Allow: POST');
     booking_slots_answer(array('error' => 'method', 'message' => lang('Method not allowed.')), 405);
@@ -64,11 +89,11 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? '')) !== 'POST') {
 $request = json_decode((string) file_get_contents('php://input', false, null, 0, 16384), true);
 $action = (is_array($request) && isset($request['action']) && is_string($request['action'])) ? $request['action'] : '';
 
-if (!in_array($action, array('month', 'day', 'hold', 'confirm', 'release'), true)) {
+if (!in_array($action, array('month', 'day', 'hold', 'confirm', 'release', 'payment'), true)) {
     booking_slots_answer(array('error' => 'request', 'message' => lang('Invalid request.')), 400);
 }
 
-$throttled = pg_booking_throttled(in_array($action, array('hold', 'confirm', 'release'), true) ? 'hold' : 'read');
+$throttled = pg_booking_throttled(in_array($action, array('hold', 'confirm', 'release', 'payment'), true) ? 'hold' : 'read');
 
 if ($throttled) {
     header('Retry-After: ' . $throttled);
@@ -81,6 +106,10 @@ try {
     if ($action === 'release') {
         pg_booking_release_session_hold($now);
         booking_slots_answer(array('ok' => true));
+    }
+
+    if ($action === 'payment') {
+        booking_slots_answer(pg_booking_pay_state_request());
     }
 
     if ($action === 'confirm') {

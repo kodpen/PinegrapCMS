@@ -115,6 +115,24 @@ function test_page_quick_folder_choices_are_the_page_picker()
 		'no Workspace or Recycle Bin or what is below them; a folder the user may not edit is left out, its children move up');
 }
 
+function test_page_quick_folder_classes_are_each_folders_own_access()
+{
+	$folders = array(
+		array('folder_id' => 1, 'folder_access_control_type' => 'public'),
+		array('folder_id' => 2, 'folder_access_control_type' => 'private'),
+		array('folder_id' => 3, 'folder_access_control_type' => ''),
+		array('folder_id' => 4, 'folder_access_control_type' => 'Membership'),
+		array('folder_id' => 5, 'folder_access_control_type' => 'x" onclick="'),
+		array('folder_id' => 6, 'folder_access_control_type' => 'guest'),
+	);
+	$choices = array(1 => 'Root', 2 => 'Secret', 3 => 'Inherits', 4 => 'Members', 5 => 'Odd');
+
+	pg_assert_same(
+		array(1 => 'public', 2 => 'private', 4 => 'membership'),
+		pg_page_quick_folder_classes($folders, $choices),
+		'each offered folder its own access class, as the page picker prints it; none for an inherited or unknown type, nothing for a folder not offered');
+}
+
 function test_page_quick_option_pairs_read_a_picker()
 {
 	pg_assert_same(

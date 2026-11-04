@@ -98,7 +98,9 @@
     };
 
     // The selection's area in the turned space, kept while the selection
-    // and the picture's place stay as they are.
+    // and the picture's place stay as they are. The place on the canvas
+    // (doc.canvas.picture) is part of it: an unlocked picture moved or
+    // resized carries its wand outlines and the frame an invert fills.
     Editor.prototype.areaRings = function () {
         var sel = this.doc.selection;
 
@@ -106,7 +108,7 @@
             return [];
         }
 
-        var key = JSON.stringify([sel.ops, sel.invert, this.doc.geometry, this.img ? this.img.src : '']);
+        var key = JSON.stringify([sel.ops, sel.invert, this.doc.geometry, M.picturePlace(this.doc), this.img ? this.img.src : '']);
 
         if (!this.areaCache || (this.areaCache.key !== key)) {
             var px = null, wands = (sel.ops || []).map(function (o) {

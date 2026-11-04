@@ -14,6 +14,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_campaigns.php');
 
 $user = validate_user();
@@ -80,7 +81,10 @@ $result = db_q(
     array()) or output_error('Query failed.');
 
 $statuses = pg_sms_campaign_statuses();
-$output_rows = '';
+
+// Every campaign the user may manage is printed: the list table driver sorts
+// and searches them in the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
 
 while ($campaign = mysqli_fetch_assoc($result)) {
     if (($user['role'] == 3) && ((int) $campaign['created_by'] !== (int) $user['id'])) {
@@ -88,16 +92,8 @@ while ($campaign = mysqli_fetch_assoc($result)) {
     }
 
     $name = ($campaign['name'] !== '') ? $campaign['name'] : '[' . lang('No name') . ']';
-    // Cut like the text: table cells do not wrap, and a 100-character name
-    // would push the status and time columns off the screen.
-    $short_name = (mb_strlen($name) > 50) ? mb_substr($name, 0, 50) . '…' : $name;
     $text = (mb_strlen($campaign['body']) > 80) ? mb_substr($campaign['body'], 0, 80) . '…' : $campaign['body'];
-
-    $when = '';
-
-    if ((int) $campaign['start_at'] > 0) {
-        $when = get_relative_time(array('timestamp' => (int) $campaign['start_at']));
-    }
+    $start_at = (int) $campaign['start_at'];
 
     // What the queue still knows, then the counts kept on the campaign.
     $output_result = '';
@@ -111,31 +107,53 @@ while ($campaign = mysqli_fetch_assoc($result)) {
         ));
 
         if ($outbox) {
-            $output_result .= '<br><span class="form-text">' . lang(array(
+            $output_result .= '<div class="small fg-secondary">' . lang(array(
                 'string' => 'In the SMS queue: {var:1} sent, {var:2} waiting, {var:3} failed',
                 'vars'   => array(
                     pg_format_number($outbox['sent'] ?? 0, 0),
                     pg_format_number(($outbox['queued'] ?? 0) + ($outbox['sending'] ?? 0), 0),
                     pg_format_number(($outbox['failed'] ?? 0) + ($outbox['uncertain'] ?? 0), 0),
                 ),
-            )) . '</span>';
+            )) . '</div>';
         }
     }
 
-    $updated_username = ($campaign['updated_username'] != '') ? $campaign['updated_username'] : '[' . lang('Unknown') . ']';
-
-    $output_rows .=
-        '<tr>
-            <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="sms_campaigns[]" value="' . (int) $campaign['id'] . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($name)))) . '" /></td>
-            <td class="align-middle text-start"><a class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . h(lang('Edit')) . '" aria-label="' . h(lang(array('string' => 'Edit {var:1}', 'vars' => array($name)))) . '" href="edit_sms_campaign.php?id=' . (int) $campaign['id'] . '"><i class="bi bi-pencil" aria-hidden="true"></i></a></td>
-            <td class="align-middle"' . (($short_name !== $name) ? ' title="' . h($name) . '"' : '') . '>' . h($short_name) . '</td>
-            <td class="align-middle">' . h($text) . '</td>
-            <td class="align-middle">' . h($statuses[$campaign['status']] ?? $campaign['status']) . '</td>
-            <td class="align-middle">' . $when . '</td>
-            <td class="align-middle">' . $output_result . '</td>
-            <td class="align-middle">' . get_relative_time(array('timestamp' => (int) $campaign['updated_at'])) . ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($updated_username)))) . '</td>
-        </tr>';
+    $list_rows[] = array(
+        'id' => (int) $campaign['id'],
+        'cells' => array(
+            'name' => pg_list_cell('<a href="edit_sms_campaign.php?id=' . (int) $campaign['id'] . '" data-pg-open>' . h($name) . '</a>'),
+            'text' => pg_list_cell(h($text)),
+            'status' => pg_list_cell(h($statuses[$campaign['status']] ?? $campaign['status'])),
+            'send_time' => pg_list_cell($start_at > 0 ? get_relative_time(array('timestamp' => $start_at)) : '', 'align-middle', array('data-pg-sort-value' => $start_at)),
+            'result' => pg_list_cell($output_result, 'align-middle', array('data-pg-sort-value' => (int) $campaign['queued_count'])),
+            'last_modified' => pg_list_table_when_cell($campaign['updated_at'], (string) $campaign['updated_username']),
+        ),
+    );
 }
+
+$columns = array(
+    'name' => array('heading' => lang('Name')),
+    'text' => array('heading' => lang('Text')),
+    'status' => array('heading' => lang('Status'), 'kind' => 'badge'),
+    'send_time' => array('heading' => lang('Send Time'), 'kind' => 'date'),
+    'result' => array('heading' => lang('Result')),
+    'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+);
+$sort_columns = array();
+
+foreach ($columns as $key => $spec) {
+    $sort_columns[$key] = $spec['heading'];
+}
+
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
+$list_state = pg_list_state('view_sms_campaigns', $sort_columns, $sort_default);
+$list = pg_list_table_printed(array(
+    'list' => 'view_sms_campaigns',
+    'columns' => $columns,
+    'levels' => $list_state['sorts'],
+    'rows' => $list_rows,
+    'ids_field' => 'sms_campaigns[]',
+));
 
 $output_warning = '';
 
@@ -164,44 +182,16 @@ pg_page_shell(
             ' . pg_screen_toolbar(array(
                 'primary'   => array('label' => lang('Create'), 'url' => 'edit_sms_campaign.php', 'icon' => 'bi-plus-circle'),
                 'secondary' => array('label' => lang('My Campaigns'), 'url' => 'view_email_campaigns.php', 'icon' => 'bi-megaphone'),
+                'search'    => array(pg_list_table_search_box('view_sms_campaigns'), pg_list_sort_menu('view_sms_campaigns.php', $sort_columns, $list_state['sorts'], $sort_default)),
             )) . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <form name="form" action="view_sms_campaigns.php" method="post" class="disable_shortcut">
-                        ' . get_token_field() . '
-                        <table class="chart table-hover table" style="width:100%;display:none">
-                            <thead>
-                                <tr>
-                                    <th class="noVis">
-                                        <div class="form-field">
-                                            <div class="switch"><input title="' . h(lang('Select/Deselect All')) . '" type="checkbox" id="select_all"></div>
-                                        </div>
-                                    </th>
-                                    <th class="noVis">' . lang('Action') . '</th>
-                                    <th>' . lang('Name') . '</th>
-                                    <th>' . lang('Text') . '</th>
-                                    <th>' . lang('Status') . '</th>
-                                    <th>' . lang('Send Time') . '</th>
-                                    <th>' . lang('Result') . '</th>
-                                    <th>' . lang('Last Modified') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>' . $output_rows . '</tbody>
-                        </table>
-                        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class="btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                    <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . h(lang(array('string' => 'WARNING: Selected {var:1} will be permanently deleted.', 'vars' => array(lang('campaigns'))))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span>' . lang('Delete Selected') . '</button>
-                                </div>
-                            </div>
-                        </nav>
-                    </form>
-                </div>
-            </div>
+            <form name="form" action="view_sms_campaigns.php" method="post" class="disable_shortcut">
+                ' . get_token_field() . '
+                ' . pg_list_table_html($list['source'], $list['page'], lang('My SMS Campaigns'), '<button type="button" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . h(lang(array('string' => 'WARNING: Selected {var:1} will be permanently deleted.', 'vars' => array(lang('campaigns'))))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang('Delete Selected') . '</button>') . '
+            </form>
         </div>
     </div>
 </main>
-' .
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();
 
 $liveform->remove_form();

@@ -557,6 +557,25 @@ function pg_booking_customer($booking)
 }
 
 /**
+ * Frees a start from a hold that ran out, under the staff member's lock. A
+ * hold with a deposit order is cancelled, not removed: a payment that still
+ * arrives for the order finds its booking (pg_booking_deposit_mark_paid()).
+ *
+ * @param int $staff_id
+ * @param int $start
+ * @param int $now
+ */
+function pg_booking_clear_expired_hold($staff_id, $start, $now)
+{
+    if (function_exists('pg_booking_deposit_ready') && pg_booking_deposit_ready()) {
+        db_q("UPDATE bookings SET status = 'cancelled', slot_at = NULL, hold_until = 0, updated_at = ? WHERE staff_id = ? AND start_at = ? AND status = 'held' AND hold_until < ? AND order_id > 0",
+            array((int) $now, (int) $staff_id, (int) $start, (int) $now));
+    }
+
+    db_q("DELETE FROM bookings WHERE staff_id = ? AND start_at = ? AND status = 'held' AND hold_until < ?", array((int) $staff_id, (int) $start, (int) $now));
+}
+
+/**
  * Writes one booking row under the staff member's lock: an expired hold on
  * the same start is removed first, a live booking that overlaps the slot with
  * the service's buffers refuses it, and the INSERT itself is refused by the
@@ -588,7 +607,7 @@ function pg_booking_insert($booking, $status, $hold_until, $source, $now)
         return array('answer' => 'error', 'id' => 0);
     }
 
-    db_q("DELETE FROM bookings WHERE staff_id = ? AND start_at = ? AND status = 'held' AND hold_until < ?", array($staff_id, $start, (int) $now));
+    pg_booking_clear_expired_hold($staff_id, $start, $now);
 
     $before = isset($service['buffer_before']) ? (int) $service['buffer_before'] * 60 : 0;
     $after = isset($service['buffer_after']) ? (int) $service['buffer_after'] * 60 : 0;

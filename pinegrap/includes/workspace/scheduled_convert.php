@@ -331,8 +331,9 @@ function ws_scheduled_flow_new($viewer, $channel_id, $data = array())
 }
 
 /**
- * The two boxes of Add › Scheduled flow as the mini window draws them before
- * anything is written (ws_flow_card_graph()), each with its dry run as its
+ * The two boxes of Add › Scheduled flow before anything is written: as a
+ * card draws them (ws_flow_card_graph(), the form's legends read their
+ * names) and as the window's read-only canvas draws them, each with its dry run as its
  * third line, tried with the person's own rights on the flow in memory
  * (ws_flow_card_try_flow()), with the start's settings the form opens on.
  * What the form holds so far (ws_scheduled_flow_fill()) is drawn and tried
@@ -341,7 +342,7 @@ function ws_scheduled_flow_new($viewer, $channel_id, $data = array())
  * @param array $viewer
  * @param int   $channel_id
  * @param array $fill ws_scheduled_flow_fill(), none for the first drawing
- * @return array ok, error, graph, start
+ * @return array ok, error, graph, view (ws_scheduled_flow_sketch_view()), start
  */
 function ws_scheduled_flow_sketch($viewer, $channel_id, $fill = array())
 {
@@ -353,8 +354,23 @@ function ws_scheduled_flow_sketch($viewer, $channel_id, $fill = array())
 
     $graph = ws_scheduled_flow_graph($channel['id'], date('Y-m-d'), $fill);
     $flow = ws_flow_card_try_flow($viewer, 'new', $graph, null, false, (string) ($fill['name'] ?? lang('Scheduled flow')));
+    $card = ws_flow_card_tries($viewer, $flow, ws_flow_card_graph($graph));
 
-    return array('ok' => true, 'error' => '', 'graph' => ws_flow_card_tries($viewer, $flow, ws_flow_card_graph($graph)), 'start' => $graph['nodes'][0]['config']);
+    return array('ok' => true, 'error' => '', 'graph' => $card, 'view' => ws_scheduled_flow_sketch_view($graph, $card), 'start' => $graph['nodes'][0]['config']);
+}
+
+/**
+ * What the read-only Flows canvas of Add › Scheduled flow draws
+ * (PGWsFlow.embed()), pure: the sketch at its real places and each box's
+ * dry run as the card graph was tried (ws_flow_card_tries()).
+ *
+ * @param array $graph ws_scheduled_flow_graph()
+ * @param array $card  ws_flow_card_graph(), tried
+ * @return array graph, tries (box id => said, failed)
+ */
+function ws_scheduled_flow_sketch_view($graph, $card)
+{
+    return array('graph' => $graph, 'tries' => (object) ws_flow_card_view_tries($card['nodes']));
 }
 
 /**

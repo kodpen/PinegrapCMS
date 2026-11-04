@@ -10,6 +10,10 @@ module: list_table_edit
 ## Where do the choices come from?
 - Folder and style choices are the page screen's pickers: `pg_page_quick_folder_choices()` (no Workspace, no Recycle Bin, only folders the user may edit) and `select_style()`/`get_mobile_style_options()` read by `pg_page_quick_option_pairs()`. A visual editor page's style cell stays text and the write refuses it.
 
+## How are the folder choices coloured?
+- Each folder option wears its folder's own access class (`pg_page_quick_folder_classes()`, as `select_folder()` prints it; none when the folder inherits), passed as the column's `option_classes` and sent by `pg_list_edit_table()` as a third item of the option's pair. `tintSelect()` in `pg_list_table_edit.js` gives the closed select the chosen option's class on open, change, Escape and a saved answer.
+- The cell's own access class (`td.private`) used to colour the select and every option through `.private *`; `select.pg-list-table-field` and its options now reset to `--pg-fg-body` and take only their own class (`backend.src.css`).
+
 ## How is each value written?
 - Folder, style and switches are written by Modify Selected's rules (`pg_page_quick_decide()` → `pg_page_bulk_decide()`/`apply()`): tag cloud, SEO stale; the destination folder needs edit rights and passes `pg_page_form_folder_errors()`. While another theme is previewed the style goes to `preview_styles`, as in Modify Selected.
 - The name: `pg_page_form_clean_name()`, `check_name_availability()`, SEO stale, and for staff the old address redirects (`pg_short_link_page_renamed()`, the page screen's box on by default). What became of the old address comes back as `notice`, which `pg_list_table_edit.js` shows as a toast.
