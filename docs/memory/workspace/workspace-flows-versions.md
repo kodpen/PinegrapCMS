@@ -1,10 +1,10 @@
 ---
 name: workspace-flows-versions
-description: A paused flow resumed on its live version, and a flow's published versions listed, read and brought back into the draft (flow_versions.php, API routes, no schema)
+description: A paused flow resumed on its live version (canvas Resume and API), and a flow's published versions listed, read and brought back into the draft (flow_versions.php, API routes, no schema)
 ---
 
 ## Where is it?
-- Engine `includes/workspace/flow_versions.php` (loaded after flow_shares.php); handlers in `api_flows.php`; tests `tests/workspace_flow_versions_test.php`. Columns of 11.0.80 only. API only for now: the canvas still makes a paused flow live by publishing.
+- Engine `includes/workspace/flow_versions.php` (loaded after flow_shares.php); handlers in `api_flows.php`; tests `tests/workspace_flow_versions_test.php`. Columns of 11.0.80 only. The canvas offers Resume on a paused flow to its owner (`flow.manage`): panel action `ws_flow_resume` (`includes/workspace/actions.php`, listed in `includes/panel/actions.php`) calls `ws_flow_resume()`, so no identical version is published; before it, Publish was the only way back and added a new version.
 
 ## What does resume do?
 - `ws_flow_resume_check()` / `ws_flow_resume()`: the owner only (`ws_flow_share_manager()`, 403), a paused flow with a live version (`ws_flow_resume_refusal()`, pure: `not_paused`, `no_version`), then `ws_flow_publish_check()` handed the version's graph as `draft`, so the owner's rights now are checked as at publish (a channel left, a time gone, an assignee no longer allowed → 422, the owner publishes a changed draft).
