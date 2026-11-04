@@ -271,6 +271,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-table-driver-browser.md: List table driver in the browser (assets/js/pg_list_table.js): selection, Ctrl+A, undo, rows on scroll, sort, search, columns menu, details panel, phone cards, thumbnails, layout
 - list-table-driver-lists.md: Which screens are on the list table driver (pages, users, contacts, submitted forms, products, logs, the printed lists): sources, columns, bulk actions, what each keeps
 - list-table-driver.md: List table driver server core (includes/fn/list_table.php): source and column model, first rows printed, keyset batches, the list_table_rows action, the selection resolver
+- list-table-layout.md: How a list on the table driver looks (backend.src.css): the frame, one-line rows, sticky name and actions columns, the selection bar, the details panel's layout rule, the SEO score column
 - list-table-printed.md: Browser mode of the list table driver: a small list printed whole (pg_list_table_printed()), its sort kept by list_table_sort, the toolbar search box
 - list-table-quick-edit.md: Quick edit mode of the list table driver (assets/js/pg_list_table_edit.js): the source's edit key, F2, save on leave, refused values, undo, apply to the selected rows
 - live-filter-status.md: Live filters that say what they found (API applications, Workspace MCP tools, marketplace picker and category search): hidden status region, empty line, Enter in the MCP tool filter
