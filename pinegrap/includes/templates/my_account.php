@@ -48,19 +48,6 @@ if (!defined('PG_INIT_LOADED')) {
 			<dt><?=h(lang('Reward Points'))?></dt>
 			<dd><?=h(pg_format_number($reward_points, 0))?></dd>
 			<?php endif ?>
-			<?php if (!empty($reward_points_credit['enabled']) && $reward_points_credit['points'] >= $reward_points_credit['minimum']): ?>
-			<dt><?=h(lang('Store credit'))?></dt>
-			<dd>
-				<form action="<?=h($reward_points_credit['url'])?>" method="post" class="form-inline">
-					<?=$reward_points_credit['token_field']?>
-					<input type="hidden" name="send_to" value="<?=h($reward_points_credit['send_to'])?>">
-					<label for="reward_points_convert" class="sr-only visually-hidden"><?=h(lang('Points to convert'))?></label>
-					<input type="number" id="reward_points_convert" name="points" class="form-control input-sm" min="<?=(int) $reward_points_credit['minimum']?>" max="<?=(int) $reward_points_credit['points']?>" step="1" value="<?=(int) $reward_points_credit['points']?>" required>
-					<button type="submit" class="btn btn-default btn-secondary btn-xs"><?=h(lang('Convert to store credit'))?></button>
-				</form>
-				<div class="help-block form-text"><?=h(lang(array('string' => 'All your points are worth {var:1}.', 'vars' => array(html_entity_decode($reward_points_credit['value_info'], ENT_QUOTES, 'UTF-8')))))?></div>
-			</dd>
-			<?php endif ?>
 		</dl>
 	</div>
 	<div class="col-sm-6">
@@ -216,6 +203,54 @@ if (!defined('PG_INIT_LOADED')) {
 			<td><?=h($commission['status_label'])?></td>
 			<td class="text-right">
 				<?=pg_format_money($commission['amount'], BASE_CURRENCY_SYMBOL)?>
+			</td>
+		</tr>
+		<?php endforeach ?>
+	</table>
+</div>
+<?php endif ?>
+<?php endif ?>
+<?php if (!empty($store_credit['shown'])): ?>
+<h2><?=h(lang('Store credit'))?></h2>
+<p><?=h(lang('Balance'))?>: <strong><?=h($store_credit['balance_info'])?></strong></p>
+<?php if (!empty($store_credit['convert']['shown'])): ?>
+<form action="<?=h($store_credit['convert']['url'])?>" method="post" class="form-inline">
+	<?=$store_credit['convert']['token_field']?>
+	<input type="hidden" name="send_to" value="<?=h($store_credit['convert']['send_to'])?>">
+	<label for="reward_points_convert" class="sr-only visually-hidden"><?=h(lang('Points to convert'))?></label>
+	<input type="number" id="reward_points_convert" name="points" class="form-control input-sm" min="<?=(int) $store_credit['convert']['minimum']?>" max="<?=(int) $store_credit['convert']['points']?>" step="1" value="<?=(int) $store_credit['convert']['points']?>" required>
+	<button type="submit" class="btn btn-default btn-secondary btn-xs"><?=h(lang('Convert to store credit'))?></button>
+</form>
+<div class="help-block form-text"><?=h(lang(array('string' => 'All your points are worth {var:1}.', 'vars' => array(html_entity_decode($store_credit['convert']['value_info'], ENT_QUOTES, 'UTF-8')))))?></div>
+<?php endif ?>
+<?php if ($store_credit['cards']): ?>
+<div class="table-responsive">
+	<table class="table table-striped">
+		<tr>
+			<th><?=h(lang('Source'))?></th>
+			<th class="text-right"><?=h(lang('Amount'))?></th>
+			<th class="text-right"><?=h(lang('Balance'))?></th>
+			<th><?=h(lang('Last day'))?></th>
+			<th><?=h(lang('Status'))?></th>
+			<th><?=h(lang('Used for'))?></th>
+		</tr>
+		<?php foreach($store_credit['cards'] as $card): ?>
+		<tr>
+			<td>
+				<?=h($card['kind_label'])?>
+				<?php if ($card['reason'] !== ''): ?>
+				<br><small><?=h($card['reason'])?></small>
+				<?php endif ?>
+			</td>
+			<td class="text-right"><?=h($card['amount_info'])?></td>
+			<td class="text-right"><?=h($card['balance_info'])?></td>
+			<td><?=($card['last_day_info'] !== '') ? h($card['last_day_info']) : h(lang('Never'))?></td>
+			<td><?=h($card['state_label'])?></td>
+			<td>
+				<?php foreach($card['uses'] as $use): ?>
+				<?php if ($use['view_url']): ?><a href="<?=h($use['view_url'])?>"><?=h($use['order_number'])?></a><?php else: ?><?=h($use['order_number'])?><?php endif ?>
+				(<?=h($use['date_info'])?>): <?=h($use['amount_info'])?><br>
+				<?php endforeach ?>
 			</td>
 		</tr>
 		<?php endforeach ?>

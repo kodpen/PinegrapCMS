@@ -1285,6 +1285,7 @@
     "Reward points (while the reward program runs)": "Ödül puanları (ödül programı açıkken)",
     "Reward points cannot be converted to store credit.": "Ödül puanları mağaza kredisine çevrilemiyor.",
     "Reward points of order #{var:1} taken back: {var:2} points off the balance, {var:3} off the store credit.": "#{var:1} numaralı siparişin ödül puanları geri alındı: bakiyeden {var:2} puan, mağaza kredisinden {var:3}.",
+    "Reward points: {var:1}": "Ödül puanları: {var:1}",
     "Rework the quote": "Teklifi yeniden düzenle",
     "Rewrite with AI": "Yapay zekâyla yeniden yaz",
     "Rewrites the whole page": "Tüm sayfayı yeniden yazar",
