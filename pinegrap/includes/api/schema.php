@@ -3315,6 +3315,57 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'customers.credit',
+			'method'  => 'GET',
+			'path'    => '/customers/{id}/credit',
+			'scope'   => 'gift_cards:read',
+			'handler' => 'api_customers_credit',
+			'returns' => 'CustomerCredit',
+			'summary' => 'A customer\'s store credit',
+			'description' => 'The store credit of the site accounts linked to this customer record (account_ids): balance is what the customer can spend at checkout now, the sum of the open cards. cards lists the last 50 cards of each account, newest first, open or not: kind (points, refund, manual), the reason shown to the customer, amount and balance in minor units, status (open, used: spent or voided, expired), last_day, the last day it can be spent (null: never) and issued_by, the panel user who gave it (null: the shop itself). A card is a gift card bound to its customer (GET /gift-cards/{id} shows it with its redemptions); its code is not given here, as only the customer signed in can spend it. Under gift_cards:read: the right of the gift cards screen. The customers row rule applies: an application whose owner has the user role reaches only the customers of the contact groups given to that account, 404 for the rest. 503 service_unavailable before the software update that adds store credit. Changes are announced as credit.issued, credit.used and credit.expired.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'customers.credit.issue',
+			'method'  => 'POST',
+			'path'    => '/customers/{id}/credit',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_customers_credit_issue',
+			'dry_run' => true,
+			'returns' => 'StoreCreditCard',
+			'status'  => 201,
+			'summary' => 'Give a customer store credit',
+			'description' => 'One new card of kind manual for one of the customer\'s site accounts, as Issue on the customer\'s screen gives it, with this application\'s owner as issued_by. The customer gets the store credit e-mail when the shop has a campaign profile for it, and credit.issued is announced. 409 customer_has_no_account when the record has no site account (store credit is spent signed in); 422 on account_id when it has several and none is sent, or the one sent is not its own. The customers row rule applies, 404 outside it. 503 service_unavailable before the software update that adds store credit.',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'amount',     'in' => 'body', 'type' => 'money', 'min' => 1, 'max' => 100000000, 'required' => true, 'description' => 'Minor units, greater than zero, at most 100000000.'),
+				array('name' => 'reason',     'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true, 'description' => 'Why it is given; shown to the customer in My Account and in the e-mail.'),
+				array('name' => 'last_day',   'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD, the last day it can be spent (in the site\'s time zone), today or later. Left out, it never expires.'),
+				array('name' => 'account_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Which of the customer\'s site accounts (account_ids of GET /customers/{id}/credit) gets it; needed only when there are several.')
+			)
+		),
+
+		array(
+			'id'      => 'customers.credit.void',
+			'method'  => 'POST',
+			'path'    => '/customers/{id}/credit/{card_id}/void',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_customers_credit_void',
+			'dry_run' => true,
+			'returns' => 'StoreCreditCard',
+			'summary' => 'Void a store credit card',
+			'description' => 'What is left on the card goes to zero, as Void on the customer\'s screen does; the reason is written on the card\'s notes and the audit trail. It cannot be undone: give new credit instead. 409 credit_not_open when nothing is left on it, or an order spent from it meanwhile (read it again and retry); 404 for a card that is not this customer\'s store credit. A void is not announced. 503 service_unavailable before the software update that adds store credit.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'card_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'reason',  'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true, 'description' => 'Why it is voided; kept on the card for the staff.')
+			)
+		),
+
+		array(
 			'id'      => 'customers.subscriptions.pause',
 			'method'  => 'POST',
 			'path'    => '/customers/{id}/subscriptions/{subscription_id}/pause',

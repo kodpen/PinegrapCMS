@@ -5759,6 +5759,7 @@
     "This count is open; you can view it but not change it. The stock column is what the store has now.": "Bu sayım açık; görebilirsiniz ama değiştiremezsiniz. Stok sütunu mağazanın şimdiki stoğudur.",
     "This count was cancelled; no stock was changed.": "Bu sayım iptal edildi; stok değişmedi.",
     "This customer has no store credit yet.": "Bu müşterinin henüz mağaza kredisi yok.",
+    "This customer has several site accounts: send account_id to say which one gets the credit.": "Bu müşterinin birden fazla site hesabı var: krediyi hangisinin alacağını belirtmek için account_id gönderin.",
     "This decision records a change to a record and cannot be edited.": "Bu karar bir kayıt değişikliğinin izidir, düzenlenemez.",
     "This decision records a change to a record. People with the User role cannot delete it.": "Bu karar bir kayıt değişikliğinin izidir. Kullanıcı rolündekiler silemez.",
     "This decision records a change to a record. People with the User role cannot take its mark off.": "Bu karar bir kayıt değişikliğinin izidir. Kullanıcı rolündekiler karar işaretini kaldıramaz.",

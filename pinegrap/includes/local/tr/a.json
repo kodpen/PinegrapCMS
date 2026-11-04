@@ -4425,6 +4425,7 @@
     "account, password, age, sign up": "hesap, parola, yaş, kayıt",
     "account-details": "hesap-bilgileri",
     "account-email": "hesap-e-postasi",
+    "account_id is not one of this customer's site accounts.": "account_id bu müşterinin site hesaplarından biri değil.",
     "account_id is one current account.": "account_id tek bir cari hesaptır.",
     "accounting rules, vat, withholding, exemption code, zero-rated, expense category": "accounting rules, vat, withholding, exemption code, zero-rated, expense category, muhasebe kuralları, kdv, tevkifat, istisna kodu, sıfır oranlı, gider kategorisi",
     "action": "eylem",

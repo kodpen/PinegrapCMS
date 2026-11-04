@@ -73,7 +73,7 @@ function test_privacy_erase_tables_are_pinned()
 	pg_assert_same(
 		array(
 			'ship_tos' => 'anonymise', 'order_documents' => 'anonymise',
-			'order_returns' => 'anonymise', 'shipment_labels' => 'anonymise', 'gift_cards' => 'anonymise', 'erp_accounts' => 'anonymise',
+			'order_returns' => 'anonymise', 'shipment_labels' => 'anonymise', 'gift_cards' => 'anonymise', 'store_credit' => 'anonymise', 'erp_accounts' => 'anonymise',
 			'erp_invoices' => 'anonymise', 'erp_quotes' => 'anonymise', 'erp_waybills' => 'anonymise',
 			'comments' => 'anonymise', 'remote_comments' => 'delete', 'consent_log' => 'anonymise', 'ws_approval_guests' => 'anonymise', 'ws_events' => 'anonymise', 'cart_quotes' => 'anonymise',
 			'audit_log' => 'anonymise', 'record_revisions' => 'delete', 'files' => 'delete', 'form_data_cells' => 'anonymise',
@@ -109,6 +109,7 @@ function test_privacy_erase_tables_are_pinned()
 			'order_returns' => array('customer_note' => '', 'requested_by' => 0),
 			'shipment_labels' => array('label_file' => ''),
 			'gift_cards' => array('from_name' => '', 'message' => '', 'recipient_email_address' => ''),
+			'store_credit' => array('user_id' => 0),
 			'erp_accounts' => array(
 				'title' => '{name}', 'tax_number' => '', 'tax_office' => '', 'email' => '{token}',
 				'invoice_email' => '', 'phone' => '', 'address' => '', 'district' => '', 'city' => '',
@@ -159,6 +160,7 @@ function test_privacy_erase_find_columns_are_pinned()
 			'order_returns' => array('order_id' => 'order_ids'),
 			'shipment_labels' => array('order_id' => 'order_ids'),
 			'gift_cards' => array('order_id' => 'order_ids', 'recipient_email_address' => 'emails'),
+			'store_credit' => array('user_id' => 'user_ids'),
 			'erp_accounts' => array('id' => 'account_ids'),
 			'erp_invoices' => array('account_id' => 'account_ids'),
 			'erp_quotes' => array('account_id' => 'account_ids'),
