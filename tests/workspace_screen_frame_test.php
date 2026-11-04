@@ -2,11 +2,10 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Source checks for the frame of the Workspace screens in backend.src.css:
- * the MCP connections, channel template and tables screens put their
- * columns straight into .ws-shell-main, so they take the settings screen's
- * padding and gutter; sticky status columns stay below the fixed panel header; the
- * MCP servers card wraps on a phone.
+ * Source checks for the frame of the Workspace screens: every screen but the
+ * channel one sits in .ws-shell-main, which pads it for all of them; sticky
+ * status columns stay below the fixed panel header; the MCP servers card
+ * wraps on a phone.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -33,29 +32,47 @@ function ws_frame_css_rule($source, $selector)
 	return $match[1];
 }
 
-// The rows of the MCP and template screens keep their gutter.
-function test_ws_frame_gutter_rule_leaves_out_framed_screens()
+// Every screen in .ws-shell-main takes its padding from the wrapper itself,
+// never from a list of screens: a screen left out of such a list ran its
+// cards against the edge of the page (calendar subscription, tables).
+function test_ws_frame_shell_main_pads_every_screen()
 {
 	$source = ws_frame_css_source();
-	$framed = 'body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables)';
 
-	pg_assert_true(strpos($source, $framed . ' #content.p-0 > .row,') !== false, 'the gutter-0 rule on #content leaves out the framed screens');
-	$rule = ws_frame_css_rule($source, $framed . ' .ws-shell-main > .row');
-	pg_assert_true(strpos($rule, '--bs-gutter-x: 0;') !== false, 'the gutter-0 rule on .ws-shell-main leaves out the framed screens');
-	pg_assert_true(strpos($source, 'body.workspace:not(.workspace_settings) .ws-shell-main > .row') === false, 'the old gutter-0 selector is gone');
+	pg_assert_true(preg_match('/body\.workspace:(?:is|not)\(\.workspace_/', $source) !== 1, 'no frame rule names a list of workspace screens');
+
+	$main = ws_frame_css_rule($source, "\nbody.workspace .ws-shell-main");
+	pg_assert_true(strpos($main, 'padding: 0 .75rem .75rem;') !== false, '.ws-shell-main is padded on every workspace screen');
+
+	pg_assert_true(strpos($source, '.ws-shell-main > .row {' . "\n" . '  --bs-gutter-x: 0;') === false, 'a row in .ws-shell-main keeps its gutter');
+	pg_assert_true(preg_match('/(^|\n)[^\n{]*#ws-root\s*\{\s*padding/', $source) !== 1, '#ws-root adds no second padding');
 }
 
-// The MCP and template screens get the settings screen's padding and toolbar.
-function test_ws_frame_mcp_and_template_take_settings_frame()
+// The toolbar runs over the padding, across the whole width.
+function test_ws_frame_toolbar_spans_the_padding()
 {
 	$source = ws_frame_css_source();
-	$screens = 'body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables)';
 
-	$main = ws_frame_css_rule($source, $screens . ' .ws-shell-main');
-	pg_assert_true(strpos($main, 'padding: 0 .75rem .75rem;') !== false, 'the framed screens pad .ws-shell-main');
+	pg_assert_true(strpos($source, 'body.workspace .ws-shell-main #ws-root > .pg-toolbar,' . "\n" . 'body.workspace .ws-shell-main > #button_bar {' . "\n" . '  max-width: none;' . "\n" . '  margin-left: -.75rem;' . "\n" . '  margin-right: -.75rem;') !== false, 'both toolbars stretch over the padding');
+	pg_assert_true(preg_match('/\nbody\.workspace \.ws-shell-main > #button_bar\s*\{\s*padding: \.5rem \.75rem;\s*border-bottom/', $source) === 1, 'the server-drawn toolbar is padded and underlined');
+}
 
-	pg_assert_true(strpos($source, $screens . ' .ws-shell-main > #button_bar {' . "\n" . '  max-width: none;') !== false, 'the framed screens stretch the toolbar over the padding');
-	pg_assert_true(preg_match('/' . preg_quote($screens . ' .ws-shell-main > #button_bar', '/') . '\s*\{\s*padding: \.5rem \.75rem;\s*border-bottom/', $source) === 1, 'the framed screens pad and underline the toolbar');
+// Every Workspace screen but the channel one sits in the shared wrapper.
+function test_ws_frame_screens_use_the_shell()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+
+	foreach (glob($root . 'workspace_*.php') as $file) {
+		$source = (string) file_get_contents($file);
+
+		if (strpos($source, '<main id="content"') === false) {
+			continue;
+		}
+
+		$name = basename($file, '.php');
+		pg_assert_true(preg_match("/'extra classes'\s*=>\s*'workspace " . preg_quote($name, '/') . "'/", $source) === 1, $name . ' carries the workspace body classes');
+		pg_assert_true(preg_match('/<main id="content" class="container-fluid p-0">\s*<div class="ws-shell">\s*<div class="ws-shell-main">/', $source) === 1, $name . ' draws its columns in .ws-shell-main');
+	}
 }
 
 // Sticky columns stop below the 50px panel header, not under it.
@@ -79,15 +96,6 @@ function test_ws_frame_mcp_rows_wrap()
 	pg_assert_true(strpos(ws_frame_css_rule($source, '#ws-mcp > .card-body > .ws-dept-row'), 'flex-wrap: wrap;') !== false, 'an MCP server row wraps');
 	pg_assert_true(strpos(ws_frame_css_rule($source, '#ws-mcp > .card-body > .ws-dept-row > .ws-grow'), 'flex-basis: 12rem;') !== false, 'an MCP server name column keeps 12rem before the buttons wrap');
 	pg_assert_true(strpos(ws_frame_css_rule($source, "\n.ws-dept-row"), 'flex-wrap') === false, '.ws-dept-row itself still does not wrap');
-}
-
-// Calendar subscription sits in the Workspace frame like the MCP screen.
-function test_ws_frame_calendar_feed_in_the_frame()
-{
-	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/workspace_calendar_feed.php');
-
-	pg_assert_contains("'extra classes'       => 'workspace workspace_calendar_feed',", $source, 'the workspace body classes');
-	pg_assert_contains('<main id="content" class="container-fluid p-0">' . "\n" . '<div class="ws-shell">' . "\n" . '<div class="ws-shell-main">', $source, 'the shell around the columns');
 }
 
 // A small select keeps its longest option clear of its arrow (the panel's
