@@ -151,10 +151,12 @@ function erp_webhook_events()
         'erp.quote_template.deleted' => 'An ERP sales quote template was deleted. Carries id, name and scope (personal or site)',
         'erp.stock_count.applied' => 'An ERP stock count was applied: the store\'s stock of every product on it was set to what was counted. Carries line_count and changed (the products whose stock moved)',
         'erp.purchase_order.created' => 'An ERP purchase order to a supplier was written and took its number',
+        'erp.purchase_order.changed' => 'An open or sent ERP purchase order was changed: its supplier, dates, lines, prices or total',
         'erp.purchase_order.sent' => 'An ERP purchase order went to the supplier (e-mailed, or marked sent by hand); only the first time',
         'erp.purchase_order.received' => 'Everything on an ERP purchase order came in: the purchase invoices made from it carry every line in full',
         'erp.purchase_order.cancelled' => 'An ERP purchase order was cancelled',
         'erp.purchase_order.reopened' => 'A cancelled ERP purchase order was opened again; status is what its purchase invoices give it',
+        'erp.purchase_order.invoiced' => 'A purchase invoice draft was made from an ERP purchase order for what has not come yet; repeatable, one draft per delivery',
     );
 }
 
@@ -1397,7 +1399,7 @@ function erp_api_routes()
             'dry_run' => true,
             'returns' => 'ErpPurchaseOrder',
             'summary' => 'Change a purchase order',
-            'description' => 'Changes only the fields sent; lines, when sent, replace every line: send each line that stays with its key. The number stays. Only an open or sent order can be changed; one whose goods have started to come in, one received in full and a cancelled one answer 409 purchase_order_not_editable. PATCH is accepted beside POST.',
+            'description' => 'Changes only the fields sent; lines, when sent, replace every line: send each line that stays with its key. The number stays. Only an open or sent order can be changed; one whose goods have started to come in, one received in full and a cancelled one answer 409 purchase_order_not_editable. PATCH is accepted beside POST. Announced as erp.purchase_order.changed.',
             'params' => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'account_id', 'in' => 'body', 'type' => 'int', 'min' => 1),
@@ -1436,7 +1438,7 @@ function erp_api_routes()
             'returns' => 'ErpInvoice',
             'status' => 201,
             'summary' => 'Make a purchase invoice draft from a purchase order',
-            'description' => 'Writes a purchase invoice draft for what has not come yet and is not already on a draft: the order\'s prices, today\'s date, the supplier\'s payment term, the order\'s number in its notes, and on each line the key of the order line it delivers (lines[].purchase_order_line). Repeatable, one draft per delivery. Match it to the supplier\'s bill with POST /erp/invoices/{id} (its number and date, the quantities that came), then POST /erp/invoices/{id}/issue: stock and cost move then, and the order turns partial or received. A cancelled order, one received in full and one whose every line is already on an invoice or a draft answer 409 purchase_order_not_invoiceable. In another currency the rate recorded for today is used, or the one of the day the draft is issued. Deleting the draft gives its quantities back to the order. The answer is the draft.',
+            'description' => 'Writes a purchase invoice draft for what has not come yet and is not already on a draft: the order\'s prices, today\'s date, the supplier\'s payment term, the order\'s number in its notes, and on each line the key of the order line it delivers (lines[].purchase_order_line). Repeatable, one draft per delivery. Match it to the supplier\'s bill with POST /erp/invoices/{id} (its number and date, the quantities that came), then POST /erp/invoices/{id}/issue: stock and cost move then, and the order turns partial or received. A cancelled order, one received in full and one whose every line is already on an invoice or a draft answer 409 purchase_order_not_invoiceable. In another currency the rate recorded for today is used, or the one of the day the draft is issued. Deleting the draft gives its quantities back to the order. Announced as erp.purchase_order.invoiced. The answer is the draft.',
             'params' => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
