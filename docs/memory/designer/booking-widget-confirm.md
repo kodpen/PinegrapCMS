@@ -12,3 +12,6 @@ module: widgets_booking
 
 ## Where does the consent box link?
 - To the page the design templates install as the privacy notice: `lang('privacy-policy')` or `privacy-policy` (`pg_booking_widget_privacy_url()`); without one the link's span is hidden by `has_privacy_page`, never a dead link.
+
+## Why do the month and the day have their own request tickets?
+- Read again together after "taken" or "expired", one shared ticket dropped the day's answer, so the taken time stayed on the list, and the month's answer cleared the message. Now `loadMonth(month, true)` leaves the status line to `pickDay(day, note)`, which says the note before the times (#6596).

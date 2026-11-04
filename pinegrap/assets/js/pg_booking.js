@@ -46,6 +46,7 @@
         this.calendar = null;
         this.lang = String(document.documentElement.lang || 'en').slice(0, 2).toLowerCase();
         this.request = 0;
+        this.monthRequest = 0;
     }
 
     Widget.prototype.part = function (name) {
@@ -183,21 +184,30 @@
         });
     };
 
-    Widget.prototype.loadMonth = function (month) {
-        var self = this, ticket = ++this.request;
+    // quiet: the status line is left to the day's times read at the same
+    // time; the month and the day have tickets of their own.
+    Widget.prototype.loadMonth = function (month, quiet) {
+        var self = this, ticket = ++this.monthRequest;
         this.state.month = month;
-        this.say(this.w.loading);
+        if (!quiet) {
+            this.say(this.w.loading);
+        }
         this.post({ action: 'month', service: this.state.service, staff: this.state.staff, month: month }).then(function (answer) {
-            if (ticket !== self.request) {
+            if (ticket !== self.monthRequest) {
                 return;
             }
             var days = (answer && answer.ok && answer.days) || [];
             if (self.calendar) {
                 self.calendar.days(days);
             }
+            if (quiet && answer && answer.ok) {
+                return;
+            }
             self.say(answer && answer.ok ? (days.length ? '' : self.w.noDays) : (answer.message || self.w.failed));
         }, function () {
-            self.say(self.w.failed);
+            if (ticket === self.monthRequest) {
+                self.say(self.w.failed);
+            }
         });
     };
 
@@ -209,7 +219,8 @@
         }
     };
 
-    Widget.prototype.pickDay = function (iso) {
+    // note: a sentence said before the day's times (why they were read again).
+    Widget.prototype.pickDay = function (iso, note) {
         var self = this, ticket = ++this.request, list = this.part('times');
         this.state.day = iso;
         this.say(this.w.loading);
@@ -226,7 +237,7 @@
                     self.hold(time);
                 }));
             });
-            self.say(answer && answer.ok ? (times.length ? fill(self.w.times, { day: self.dayLabel(iso) }) + ' ' + fill(self.w.zoneNote, { zone: self.s.zone }) : self.w.noTimes) : (answer.message || self.w.failed));
+            self.say((note ? note + ' ' : '') + (answer && answer.ok ? (times.length ? fill(self.w.times, { day: self.dayLabel(iso) }) + ' ' + fill(self.w.zoneNote, { zone: self.s.zone }) : self.w.noTimes) : (answer.message || self.w.failed)));
         }, function () {
             self.say(self.w.failed);
         });
@@ -248,11 +259,12 @@
                 self.say(text);
                 return;
             }
-            self.say((answer && answer.message) || self.w.failed);
             if (answer && answer.error === 'taken') {
-                self.pickDay(self.state.day);
-                self.loadMonth(self.state.month);
+                self.loadMonth(self.state.month, true);
+                self.pickDay(self.state.day, answer.message || self.w.taken);
+                return;
             }
+            self.say((answer && answer.message) || self.w.failed);
         }, function () {
             self.say(self.w.failed);
         });
@@ -300,9 +312,8 @@
         }
         this.state.held = null;
         this.show('step_when');
-        this.pickDay(this.state.day);
-        this.loadMonth(this.state.month);
-        this.say(message);
+        this.loadMonth(this.state.month, true);
+        this.pickDay(this.state.day, message);
     };
 
     Widget.prototype.confirm = function () {
