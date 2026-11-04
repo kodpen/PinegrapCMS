@@ -161,9 +161,9 @@ function test_products_mass_change_quantity_is_read_before_the_write()
 	pg_assert_same(false, strpos($screen, "'\" . e(\$_POST['edit_inventory_quantity']"), 'the posted text is not written');
 
 	$template = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/edit_products.php');
-	$box = substr($template, (int) strpos($template, "'id' => 'inventory_quantity'"), 400);
+	$box = substr($template, (int) strpos($template, 'id="inventory_quantity"'), 400);
 
-	pg_assert_contains("'data-inputmask-alias'=>'integer'", $box, 'the box is an integer field');
+	pg_assert_contains('data-inputmask-alias="integer"', $box, 'the box is an integer field');
 }
 
 // products.inventory_quantity is INT UNSIGNED and the session is not strict,
