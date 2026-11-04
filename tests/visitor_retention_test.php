@@ -127,11 +127,11 @@ function test_visitor_retention_device_sql()
 function test_visitor_retention_channel_sql_without_flag()
 {
 	if (defined('PAY_PER_CLICK_FLAG') && (trim((string) PAY_PER_CLICK_FLAG) !== '')) {
-		pg_assert_contains("THEN 'pay_per_click'", pg_visitor_channel_sql());
+		pg_assert_contains("THEN 'pay_per_click'", pg_visitor_paid_organic_sql());
 		return;
 	}
 
-	$sql = pg_visitor_channel_sql('v.');
+	$sql = pg_visitor_paid_organic_sql('v.');
 
 	pg_assert_false(strpos($sql, 'pay_per_click') !== false, 'no paid branch without a flag');
 	pg_assert_contains("WHEN (v.referring_search_engine <> '') THEN 'organic'", $sql);

@@ -6211,11 +6211,20 @@ function initialize_developer_security()
 
 /**
  * Encrypt a string with AES-256-CBC and return [encrypted_base64, iv_base64].
+ *
+ * @param string      $plaintext
+ * @param string|null $key the key to seal with; null is ENCRYPTION_KEY (a
+ *                         key reset seals with the new key while the constant
+ *                         still holds the old one)
+ * @return array
  */
-function encrypt_string_with_iv($plaintext)
+function encrypt_string_with_iv($plaintext, $key = null)
 {
+    if ($key === null) {
+        $key = ENCRYPTION_KEY;
+    }
     $crypto_method = 'aes-256-cbc';
-    $crypto_key = substr(hash('sha256', ENCRYPTION_KEY, true), 0, 32);
+    $crypto_key = substr(hash('sha256', (string) $key, true), 0, 32);
     $ivlen = openssl_cipher_iv_length($crypto_method);
     $iv = function_exists('random_bytes') ? random_bytes($ivlen) : openssl_random_pseudo_bytes($ivlen);
     $encrypted_raw = openssl_encrypt($plaintext, $crypto_method, $crypto_key, OPENSSL_RAW_DATA, $iv);

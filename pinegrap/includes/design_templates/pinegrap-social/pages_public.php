@@ -11,7 +11,8 @@
  * The sample cards and tiles here come from parts.php (topics, members,
  * posts, guidelines, how joining works), so a change made there reaches
  * every page here. The home page places two list widgets of other parts:
- * home_posts (the newest member posts) and home_news (Community News).
+ * home_featured_posts and home_latest_posts (the featured and the newest
+ * member posts), home_news (Community News) and newsletter_band.
  * The community has no likes, no following and no messages between
  * members: the pages never offer them, and the questions page says how a
  * member talks to another (comments on a post).
@@ -178,16 +179,23 @@ $public_pages[] = array(
             )),
         )),
 
-        // The newest posts: the Posts list of the posts part.
-        $el('section', 'py-5 bg-body-tertiary', lang('Newest Member Posts'), array(
+        // The posts the moderators feature, then the newest ones: the two
+        // Posts lists of the posts part.
+        $el('section', 'py-5 bg-body-tertiary', lang('Featured Member Posts'), array(
+            $container(array(
+                $section_header(lang('Picked by the moderators'), lang('Featured photos'), lang('Explore'), '{{page:explore}}'),
+                $widget('home_featured_posts'),
+            )),
+        )),
+        $el('section', 'py-5', lang('Newest Member Posts'), array(
             $container(array(
                 $section_header(lang('Fresh from the members'), lang('Newest member posts'), lang('Explore'), '{{page:explore}}'),
-                $widget('home_posts'),
+                $widget('home_latest_posts'),
             )),
         )),
 
         // A few members to meet; the people page lists them all.
-        $el('section', 'py-5', lang('People'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('People'), array(
             $container(array(
                 $section_header(lang('Say hello'), lang('People to meet'), lang('All people'), '{{page:people}}'),
                 $row($pub_people, '4'),
@@ -195,7 +203,7 @@ $public_pages[] = array(
         )),
 
         // How joining works, in four steps beside a picture.
-        $el('section', 'py-5 bg-body-tertiary', lang('How it works'), array(
+        $el('section', 'py-5', lang('How it works'), array(
             $container(array(
                 $row(array(
                     $col(array(
@@ -214,12 +222,15 @@ $public_pages[] = array(
         )),
 
         // The newest Community News: the blog list of the standard part.
-        $el('section', 'py-5', lang('Community News'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('Community News'), array(
             $container(array(
                 $section_header(lang('From the team'), lang('Community News'), lang('All news'), '{{page:blog}}'),
                 $widget('home_news'),
             )),
         )),
+
+        // The newsletter band of the standard part.
+        $widget('newsletter_band'),
     )),
 );
 
@@ -530,7 +541,8 @@ $public_pages[] = array(
     ), false),
 );
 
-// The home page's lists (home_posts, home_news) belong to the parts that
+// The home page's lists (home_featured_posts, home_latest_posts,
+// home_news) and the newsletter band belong to the parts that
 // build those lists; this part places no widget of its own.
 $public_widgets = array();
 

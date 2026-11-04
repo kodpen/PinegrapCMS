@@ -1,0 +1,44 @@
+{
+    "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/v1",
+        {
+            "manuallyApprovesFollowers": "as:manuallyApprovesFollowers",
+            "toot": "http://joinmastodon.org/ns#",
+            "featured": {
+                "@id": "toot:featured",
+                "@type": "@id"
+            },
+            "discoverable": "toot:discoverable",
+            "indexable": "toot:indexable"
+        }
+    ],
+    "id": "https://mastodon.example/users/alice",
+    "type": "Person",
+    "following": "https://mastodon.example/users/alice/following",
+    "followers": "https://mastodon.example/users/alice/followers",
+    "inbox": "https://mastodon.example/users/alice/inbox",
+    "outbox": "https://mastodon.example/users/alice/outbox",
+    "featured": "https://mastodon.example/users/alice/collections/featured",
+    "preferredUsername": "alice",
+    "name": "Alice",
+    "summary": "<p>Reads blogs.</p>",
+    "url": "https://mastodon.example/@alice",
+    "manuallyApprovesFollowers": false,
+    "discoverable": true,
+    "indexable": true,
+    "published": "2023-04-01T00:00:00Z",
+    "publicKey": {
+        "id": "https://mastodon.example/users/alice#main-key",
+        "owner": "https://mastodon.example/users/alice",
+        "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtsSKmVnL7KIMo6Z3Fk9Q\nzhZEt4Wlcd3sYtIIGA8VNVwxPZJswm7lWNx8nVNvhWgG1Clv9BlB59xaS9IMO/Aj\nqvIghaNS4tBzLu2c7JnRxwJmqoa+Rs41N8IV/P988r88vB4SEJsz9ju8voxi02iI\n4nrzdOVicyndlIptz9yESFuaQZckIig9gEfCJFQk0bTb9mIVkhe1jDquKPmEx3HQ\ng3G3AHsUwtzU/KTbWCJDeeF1jmbryTZ1U+yv3S0V4Fs4EMS6ZefvvmNafaQ9+mSk\naVkMWpjHa44GExw6/91RW9wc92voCCwbZhs5fGnMqChHDTOLP0/vKVRWSoOVn4Hj\n8wIDAQAB\n-----END PUBLIC KEY-----\n"
+    },
+    "endpoints": {
+        "sharedInbox": "https://mastodon.example/inbox"
+    },
+    "icon": {
+        "type": "Image",
+        "mediaType": "image/png",
+        "url": "https://files.mastodon.example/accounts/avatars/alice.png"
+    }
+}

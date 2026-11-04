@@ -25,7 +25,6 @@ description: Plan (owner 2026-11-01): image editor animation, layers and scenes 
 
 ## Which questions are decided? (owner 2026-11-01; `workflow/decisions-made-product-18.md`)
 1. Presentation (#4714): editor only. Scenes with transitions, a full-screen Present mode in the editor, exports as PDF (a page per scene), video and GIF; nothing on the live site (no share link, no widget). AN7 and AN8 are free.
-2. Sound (#4716): videos are silent; a music track from Files may come later as a step after AN6 if asked.
 - Not in this plan: a video widget for the designer (none exists); a saved video is a file in Files, linked or downloaded.
 
 ## Where does it start?

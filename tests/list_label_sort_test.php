@@ -19,6 +19,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/commission_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/waf_log_list.php');
 
 // The codes come out in the order of their labels, not of the codes.
@@ -65,13 +66,13 @@ function test_list_label_order_in_the_sort_maps()
 	}
 
 	$_SESSION['software']['list_state']['view_commissions'] = array('sort' => 'status', 'order' => 'desc');
-	pg_assert_same("FIELD(commissions.status, 'ineligible', 'paid', 'payable', 'pending') desc, commissions.id desc", pg_commission_list_sort()['order_by']);
+	pg_assert_same("FIELD(commissions.status, 'ineligible', 'paid', 'payable', 'pending') desc, commissions.id desc", pg_list_table_order_sql(pg_commission_list_source(array('role' => 0), array())));
 
 	$_SESSION['software']['list_state']['view_commissions'] = array('sort' => 'frequency', 'order' => 'asc');
-	pg_assert_contains("FIELD(IFNULL(recurring_commission_profiles.period, ''), 'Every Four Weeks', 'Every Two Weeks', 'Monthly', '', 'Quarterly',", pg_commission_list_sort()['order_by']);
+	pg_assert_contains("FIELD(IFNULL(recurring_commission_profiles.period, ''), 'Every Four Weeks', 'Every Two Weeks', 'Monthly', '', 'Quarterly',", pg_list_table_order_sql(pg_commission_list_source(array('role' => 0), array())));
 
 	$_SESSION['software']['list_state']['view_recurring_commission_profiles'] = array('sort' => 'frequency', 'order' => 'asc');
-	pg_assert_contains("FIELD(IFNULL(recurring_commission_profiles.period, ''), 'Every Four Weeks'", pg_commission_profile_list_sort()['order_by']);
+	pg_assert_contains("FIELD(IFNULL(recurring_commission_profiles.period, ''), 'Every Four Weeks'", pg_list_table_order_sql(pg_commission_profile_list_source(array('role' => 0), array())));
 
 	$_SESSION['software']['list_state']['view_waf_log'] = array('sort' => 'action', 'order' => 'asc');
 	pg_assert_same("FIELD(action, 'ban', 'block', 'rate', 'log', 'would-ban', 'would-block', 'would-rate') asc, id asc", pg_waf_log_list_sort()['order_by']);

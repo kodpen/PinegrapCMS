@@ -1798,6 +1798,9 @@ $pages[] = array(
         'confirm_email'        => 1,
         'confirm_subject'      => lang('We received your catering request'),
         'confirm_page_id'      => '{{tab:email_quote_received}}',
+        // The deposit, paid as the form's last step; bank transfer where
+        // the store takes it. Without the shop there is no deposit.
+        'payment'              => array('product_id' => '{{product:catering_deposit}}', 'amount_source' => 'product', 'offline' => 1),
     ),
     'tree'             => $page(array(
         $page_header(lang('Corporate & Catering'), lang('From a coffee break for ten to lunch for two hundred: cooked in our kitchen the same morning and brought at the time you set.'), array(
@@ -3653,7 +3656,10 @@ $widgets = array(
             ), '3'),
             $choices('cf-quote-delivery', 'delivery', lang('Delivery'), array(lang('Delivered to us'), lang('We collect it from a café')), array(lang('Delivered to us'))),
             $field('cf-quote-address', lang('Delivery address'), $input('cf-quote-address', 'text', 'address', 'street-address', false,
-                array('rules' => array('required_when' => array('field' => 'delivery', 'answers' => array(lang('Delivered to us'))))))),
+                array('rules' => array(
+                    'required_when' => array('field' => 'delivery', 'answers' => array(lang('Delivered to us'))),
+                    'shown_when'    => array('field' => 'delivery', 'answers' => array(lang('Delivered to us'))),
+                )))),
             $form_step(2, lang('Your company')),
             $field('cf-quote-company', lang('Company'), $input('cf-quote-company', 'text', 'company', 'organization', true, array('contact_field' => 'company'))),
             $person_fields('cf-quote'),
@@ -4616,7 +4622,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Café'),
-    'version'     => '1.1.2',
+    'version'     => '1.2.0',
     'framework'   => 'bootstrap5',
     'order'       => 60,
     'icon'        => 'bi-cup-hot',
@@ -4645,6 +4651,19 @@ return array(
         'public'       => array('name' => 'public', 'parent' => 'root', 'access' => 'public'),
         'registration' => array('name' => 'registration', 'parent' => 'root', 'access' => 'registration'),
         'private'      => array('name' => 'private', 'parent' => 'root', 'access' => 'private'),
+    ),
+
+    // The catering request's deposit: a hidden product (in no group, not
+    // shipped), made with the shop only (_pg_tpl_catalog()).
+    'catalog'     => array(
+        'fees' => array(
+            'catering_deposit' => array(
+                'sku'         => 'CAFE-CATERING-DEPOSIT',
+                'title'       => lang('Catering deposit'),
+                'description' => lang('The deposit paid with a catering request.'),
+                'price'       => array('USD' => 50, 'EUR' => 45, 'GBP' => 40, 'TRY' => 1500),
+            ),
+        ),
     ),
 
     'contact_groups' => array(

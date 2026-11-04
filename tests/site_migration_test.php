@@ -91,13 +91,36 @@ function test_site_migration_design_entry()
 
 function test_site_migration_rows_carried_by_design()
 {
-	pg_assert_true(pg_migration_page_carried_by_design(array('visual_design' => 1), true));
-	pg_assert_false(pg_migration_page_carried_by_design(array('visual_design' => 1), false), 'without the designs a page comes classic, as before');
-	pg_assert_false(pg_migration_page_carried_by_design(array('name' => 'x'), true), 'an older source marks nothing');
+	pg_assert_true(pg_migration_page_carried_by_design(array('visual_design' => 1)), 'a design page never comes as an empty classic page');
+	pg_assert_false(pg_migration_page_carried_by_design(array('name' => 'x')), 'an older source marks nothing');
 
-	pg_assert_true(pg_migration_style_carried_by_design(array('layout' => 'visual_designer'), true));
-	pg_assert_false(pg_migration_style_carried_by_design(array('layout' => 'visual_designer'), false));
-	pg_assert_false(pg_migration_style_carried_by_design(array('layout' => 'one_column'), true));
+	pg_assert_true(pg_migration_style_carried_by_design(array('layout' => 'visual_designer')));
+	pg_assert_false(pg_migration_style_carried_by_design(array('layout' => 'one_column')));
+}
+
+function test_site_migration_design_only_folders()
+{
+	$folders = array(
+		array('id' => 10, 'parent_folder_id' => 0),   // design pages only
+		array('id' => 11, 'parent_folder_id' => 10),  // empty, below a design folder
+		array('id' => 20, 'parent_folder_id' => 0),   // mixed
+		array('id' => 21, 'parent_folder_id' => 20),  // design pages only, below a mixed one
+		array('id' => 30, 'parent_folder_id' => 0),   // empty
+		array('id' => 40, 'parent_folder_id' => 0),   // a classic page deeper down
+		array('id' => 41, 'parent_folder_id' => 40),
+	);
+	$pages = array(
+		array('folder_id' => 10, 'visual_design' => 1),
+		array('folder_id' => 20, 'visual_design' => 0),
+		array('folder_id' => 21, 'visual_design' => 1),
+		array('folder_id' => 40, 'visual_design' => 1),
+		array('folder_id' => 41),
+	);
+	$skip = pg_migration_design_only_folder_ids($folders, $pages);
+	ksort($skip);
+	pg_assert_same(array(10, 11, 21), array_keys($skip));
+	pg_assert_same(array(), pg_migration_design_only_folder_ids(array(), $pages), 'no folders');
+	pg_assert_same(array(), pg_migration_design_only_folder_ids($folders, array()), 'no pages: every folder stays');
 }
 
 function test_site_migration_uses_the_template_export_both_ways()

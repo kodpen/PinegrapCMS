@@ -4,7 +4,7 @@ description: Plan (owner decision 2026-10-30) for a tidier Workspace list in the
 ---
 
 ## What is this plan?
-- Owner request (2026-10-30, "Menü çok karışık"): the Workspace list (`workspace/workspace-menu-list.md`) gets the layout below, which the owner approved (`workflow/decisions-made-workspace-5.md`); the channel screen as redrawn: `workspace/workspace-channel-screen.md`.
+- Owner request (2026-10-30, "Menü çok karışık"): the Workspace list got the layout the owner approved (`workflow/decisions-made-workspace-5.md`), described in `workspace/workspace-menu-list.md`; the channel screen as redrawn: `workspace/workspace-channel-screen.md`.
 - Kept: the place (#2545), the data (`ws_side_payload()`: every entry under its screen's gate, the script hides nothing), `<a href>` links, pin, drag into a group, right-click menus, the closed state in localStorage, the panel colours (`--pg-*`, `--ws-accent`) in light and dark.
 - Files: `assets/js/workspace_side.js` (`draw()`), `includes/workspace/nav.php`, the Workspace block of `assets/css/backend.src.css`, `includes/workspace/tour.php`, `tests/workspace_side_test.php`. No schema, no new right.
 
@@ -12,22 +12,8 @@ description: Plan (owner decision 2026-10-30) for a tidier Workspace list in the
 - From M2 on, only a session the owner names in chat for the design; a coordinator does not hand the steps out and a worker does not claim them (owner, 2026-10-31, `workflow/decisions-made-workspace-5.md`).
 - Each step is checked on dev against the drawn design at desktop and phone width, light and dark, before it is marked ready.
 
-## What is the order, top to bottom?
-1. Head: one search field that opens the workspace search (`hooks.palette`, elsewhere `?view=home&palette=1`), so the separate message search input goes. Beside the panel's name: "+" New channel and the gear of Workspace Settings (from `nav.foot`); the tour button is in the channel header since M4.
-2. Today alone, no heading (was Overview; owner, 2026-10-31, #4192); Inbox (the bell, M3) and My Tasks left the places in M4.
-3. Channels, one heading: pinned first (pin icon), then the groups (tree; a closed group shows its unread), then the person's other channels, then the channels not joined, dimmed (`ws-notjoined`). The Pinned, My channels and Other channels headings go; sorting, drag and drop-out keep working per part. Since M4 a group is a folder row and New group closes the section.
-4. My discussions (today's Discussions, moved below the channels): title, `#channel` under it, unread count, Show all after the first few.
-5. Tools: two-column tiles of a new `tools` group (My Tasks from M4, Notes, Tables, Flows, Work Calendar, Planning Board, Decision Timeline, E-mails, each under its gate) and a last tile, More, opening a `more` group: Scheduled messages or actions, My MCP connections, Calendar subscription, Archived channels, Private channels (staff).
-6. Counts: a mention count in the workspace accent, an unread count neutral; a closed section still shows the open entry and its unread sum.
-
 ## What are the steps?
-- M1 Head, places, Channels, My discussions: done #3794 (`workspace/workspace-menu-list.md`; settings gear in a new `head` group, `foot` gone).
-
-- M2 Tools tiles and More: done #3817 (`workspace/workspace-menu-tools.md`; the tour opens what hides a place with `PGWsSide.openFor()`; the `search` hook of `sideHooks()` is gone).
-
-- M3 The bell is the one inbox: done #3817 (`ui/notifications-one-inbox.md`; filters All, Site, Workspace, a flow's runs folded, a 26rem panel; no schema).
-
-- M4 Today alone, My Tasks a tile, no Inbox entry, the tour in the channel header, folder groups, a round "+": done #6281 (`workflow/decisions-made-workspace-6.md`).
+- Done: M1 #3794, M2 #3817, M3 #3817, M4 #6281
 
 ## What is still open?
 1. My Tasks count: none for now; a count of overdue and today's tasks on its tile needs one more query in `ws_side_payload()`.

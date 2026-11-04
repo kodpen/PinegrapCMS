@@ -671,6 +671,11 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
     if ($summary['complete']) {
         $query = "UPDATE email_campaigns SET status = 'complete' WHERE id = ?";
         $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+
+        // Announced once, by the run that finished it.
+        if (mysqli_affected_rows(db::$con) === 1) {
+            pg_announce('campaign.sent', pg_campaign_sent_event('email', $id, (string) db_value("SELECT type FROM email_campaigns WHERE id = '" . (int) $id . "'")));
+        }
     }
 
     $log_page = '';

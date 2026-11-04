@@ -11,12 +11,14 @@ description: Steps FL5-FL8 of plans/designer-form-logic.md: the payment step on 
   - Done in #6368 (`designer/custom-form-payment-step.md`), cut: FL5a the step, charge, return and retry.
 - FL5b (S) The form's mails when its record is paid. After FL5a.
   - A record owing a fee gets no submitter or administrator mail at submit (FL5a); send them when `pg_form_payment_mark_paid()` marks it (moving the mail block of `custom_form.php` into a function), and from `pg_order_mark_paid()` for an offline order (with FL6).
+  - Done in #6467 (`designer/custom-form-mails.md`).
 
-- FL6 (S) Staff side and API. After FL4. Done in #6367 except the list badge and Unpaid filter on `view_submitted_forms.php` (held by #6366 TD4c): those are FL6b, after TD4c merges, with `pg_form_payment_unpaid_where()`.
+- FL6 (S) Staff side and API. After FL4. Done in #6367 except the list badge and Unpaid filter on `view_submitted_forms.php` (held by #6366 TD4c): FL6b done (#6406).
   - `view_submitted_forms.php` and `edit_submitted_form.php`: the Paid / Unpaid badge, the order link, "Record an offline payment" (marks the order paid through the order screen's own offline path, which then marks the record); the list filter Unpaid; the `forms` API resource and MCP expose `order_number` and `paid` as read-only fields (`api/api-endpoint-rules.md`); webhooks `form.paid` through `pg_announce()`. Memory: `designer/custom-form-payment.md` grows.
 
 - FL7 (S) Templates. After FL5.
   - The Events template's registration takes an optional fee, the Cafe's catering request a deposit, the Courses' enrolment a fee: hidden fee products in the install dumps (question 2), the settings sheet values, `min_date` and `shown_when` where the Cafe and Clinic forms already branch. Installed sites get no data step. Memory: the templates' `designer/design-template-*.md` files.
+  - Done in #6494 (`designer/design-template-form-fees.md`).
 
 - FL8 (S) Close-out. After FL1-FL7.
   - PR body names `[NEW] Added conditional fields, multi-step forms and a payment step to the visual designer's forms`; decisions to `designer/`; the three plan files and the line in `feature-plans-2026-11.md` deleted; `php tools/memory_index.php`.

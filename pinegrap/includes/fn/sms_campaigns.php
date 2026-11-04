@@ -368,6 +368,8 @@ function pg_sms_campaigns_run_due($now = null)
             "UPDATE sms_campaigns SET queued_count = ?, refused_count = ? WHERE id = ?",
             array((string) $counts['queued'], (string) $counts['refused'], (string) (int) $campaign['id']));
 
+        pg_announce('campaign.sent', pg_campaign_sent_event('sms', $campaign['id'], 'manual'));
+
         log_activity(lang(array(
             'string' => 'SMS campaign queued: {var:1} messages, {var:2} numbers refused by the SMS checks',
             'vars'   => array($counts['queued'], $counts['refused']),

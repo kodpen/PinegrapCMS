@@ -54,6 +54,9 @@ if (!$_POST) {
         lang('Set the tax rate to the value below')=>'set',
         lang('Follow the tax zone (clear the product rate)')=>'zone',
     );
+    // The locations a quantity change can go to, default first; none on a
+    // site without stock locations.
+    $stock_locations = pg_stock_screen_locations();
     require('includes/templates/edit_products.php');
 
 // Otherwise the form has been submitted, so process it.
@@ -141,6 +144,11 @@ if (!$_POST) {
             go(PATH . SOFTWARE_DIRECTORY . '/view_products.php');
         }
     }
+
+    // With stock locations the quantity goes to one location (0 = the
+    // default) through the writer, which keeps the total the sum.
+    $quantity_by_location = ($quantity_value !== null) && (bool) pg_stock_screen_locations();
+    $quantity_location = (int) ($_POST['edit_inventory_location'] ?? 0);
 
     // If at least one product was selected then continue.
     if ($product_ids) {
@@ -290,7 +298,7 @@ if (!$_POST) {
                         }
                         // The new count, worked out from the stored one by the
                         // Catalog Manager's rule: never below zero.
-                        if ($quantity_value !== null) {
+                        if (($quantity_value !== null) && !$quantity_by_location) {
                             $inventory_quantity = (int) ($stock_stored['inventory_quantity'] ?? 0);
                             $new_inventory_quantity = pg_explorer_bulk_product_new_quantity($inventory_quantity, $quantity_process, $quantity_value);
 
@@ -389,7 +397,7 @@ if (!$_POST) {
                         // stock really moved. A selection on the list is a few rows
                         // an operator changed on purpose, not a product import, so
                         // each one is announced the way a single save is.
-                        $stock_was = (($sql_inventory_quantity !== '') || ($sql_inventory !== ''))
+                        $stock_was = (($sql_inventory_quantity !== '') || ($sql_inventory !== '') || $quantity_by_location)
                             ? db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . escape($product_id) . "'")
                             : null;
 
@@ -408,6 +416,21 @@ if (!$_POST) {
                             WHERE id = '" . escape($product_id) . "'");
 
                         pg_audit_record('update', 'products', $product_id, $audit_before);
+
+                        // The quantity at the chosen location, once tracking
+                        // is written. A product that does not track stock has
+                        // no rows and is left alone, a bundle follows its
+                        // components; one the change would take past the top
+                        // is counted.
+                        if ($quantity_by_location && !pg_bundle_ids_among(array((int) $product_id))) {
+                            $location_result = pg_stock_bulk_write($product_id, $quantity_location, $quantity_process, $quantity_value, 'bulk_edit');
+
+                            if ($location_result['error'] === 'too_many') {
+                                $number_of_too_large_quantity_products++;
+                            }
+
+                            pg_stock_refresh_out_of_stock($product_id);
+                        }
 
                         // A bundle's stock (and a summed price) is worked
                         // out from its components: whatever this edit wrote

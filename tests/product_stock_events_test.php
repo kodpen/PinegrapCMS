@@ -378,7 +378,7 @@ function test_product_stock_events_crossing_depends_on_the_fresh_before()
 function test_product_stock_checkout_reads_the_stock_before_the_decrement()
 {
 	// The checkout's line stock stage (pg_order_complete_line_stock()).
-	$block = product_stock_events_test_block(product_stock_events_test_source('includes/fn/order_completion.php'), 'function pg_order_complete_line_stock(', "'checkout');");
+	$block = product_stock_events_test_block(product_stock_events_test_source('includes/fn/order_completion.php'), 'function pg_order_complete_line_stock(', "'checkout',\n        (\$sale === null)");
 	$select = strpos($block, "SELECT inventory, inventory_quantity FROM products WHERE id = '");
 	$decrement = strpos($block, "UPDATE products SET inventory_quantity = (inventory_quantity - ?)");
 

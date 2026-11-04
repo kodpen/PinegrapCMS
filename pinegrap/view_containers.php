@@ -23,6 +23,7 @@ validate_ecommerce_access($user);
 
 include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/container_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 $liveform = new liveform('view_containers');
 
 // The columns this list sorts by, in the order the table shows them.
@@ -78,81 +79,52 @@ $containers = db_items(
     LEFT JOIN user AS last_modified_user ON containers.last_modified_user_id = last_modified_user.user_id
     ORDER BY $order_by");
 
-$output_rows = '';
-
-// The icon is hidden from screen readers and from the table search; the
-// word beside it says the state.
+// Every container is printed: the list table driver sorts and searches them
+// in the browser (browser mode) and keeps a heading's sort in the session.
+// The icon is hidden from screen readers; the word beside it says the state.
 $output_checkmark = '<i class="bi bi-check-circle" aria-hidden="true"></i><span class="visually-hidden">' . lang('Yes') . '</span>';
 $output_no = '<span class="visually-hidden">' . lang('No') . '</span>';
+$list_rows = array();
+
+// A measure cell: the value with its unit, empty when not set; sorted by
+// the number.
+$measure_cell = function ($value, $unit) {
+    return pg_list_cell(($value > 0) ? pg_container_format_measure($value) . ' ' . $unit : '', 'align-middle', array('data-pg-sort-value' => (float) $value));
+};
 
 foreach ($containers as $container) {
-
-    $output_enabled = $output_no;
-
-    if ($container['enabled']) {
-        $output_enabled = $output_checkmark;
-    }
-
-    $output_length = '';
-
-    if ($container['length'] > 0) {
-        $output_length = pg_container_format_measure($container['length']) . ' ' . lang('in');
-    }
-
-    $output_width = '';
-
-    if ($container['width'] > 0) {
-        $output_width = pg_container_format_measure($container['width']) . ' ' . lang('in');
-    }
-
-    $output_height = '';
-
-    if ($container['height'] > 0) {
-        $output_height = pg_container_format_measure($container['height']) . ' ' . lang('in');
-    }
-
-    $output_weight = '';
-
-    if ($container['weight'] > 0) {
-        $output_weight = pg_container_format_measure($container['weight']) . ' ' . lang('lbs');
-    }
-
-    $output_cost = '';
-
-    if ($container['cost'] > 0) {
-        $output_cost = pg_format_money($container['cost'], BASE_CURRENCY_SYMBOL);
-    }
-
-    $created_username = '';
-
-    if ($container['created_username'] != '') {
-        $created_username = ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($container['created_username']))));
-    }
-
-    $last_modified_username = '';
-
-    if ($container['last_modified_username'] != '') {
-        $last_modified_username = ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($container['last_modified_username']))));
-    }
-
-    $output_rows .=
-        '<tr>
-            <td></td>
-            <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_container.php?id=' . $container['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2" title="' . lang('Delete') . '"><i class="material-icons">delete</i></button>-->
-            </td>
-            <td class="chart_label align-middle ' . ($container['enabled'] ? 'status_enabled' : 'status_disabled') . '">' . h($container['name']) . '</td>
-            <td class="align-middle text-center">' . $output_enabled . '</td>
-            <td class="align-middle">' . $output_length . '</td>
-            <td class="align-middle">' . $output_width . '</td>
-            <td class="align-middle">' . $output_height . '</td>
-            <td class="align-middle">' . $output_weight . '</td>
-            <td class="align-middle text-end">' . $output_cost . '</td>
-            <td class="align-middle">' . get_relative_time(array('timestamp' => $container['created_timestamp'])) . $created_username . '</td>
-            <td class="align-middle">' . get_relative_time(array('timestamp' => $container['last_modified_timestamp'])) . $last_modified_username . '</td>
-        </tr>';
+    $list_rows[] = array(
+        'id' => $container['id'],
+        'cells' => array(
+            'name' => pg_list_cell('<a href="edit_container.php?id=' . (int) $container['id'] . '" data-pg-open>' . h($container['name']) . '</a>', 'align-middle ' . ($container['enabled'] ? 'status_enabled' : 'status_disabled')),
+            'enabled' => pg_list_cell($container['enabled'] ? $output_checkmark : $output_no, 'align-middle', array('data-pg-sort-value' => $container['enabled'] ? 1 : 0)),
+            'length' => $measure_cell($container['length'], lang('in')),
+            'width' => $measure_cell($container['width'], lang('in')),
+            'height' => $measure_cell($container['height'], lang('in')),
+            'weight' => $measure_cell($container['weight'], lang('lbs')),
+            'cost' => pg_list_cell(($container['cost'] > 0) ? pg_format_money($container['cost'], BASE_CURRENCY_SYMBOL) : '', 'align-middle', array('data-pg-sort-value' => (float) $container['cost'])),
+            'created' => pg_list_table_when_cell($container['created_timestamp'], $container['created_username'] ?? ''),
+            'last_modified' => pg_list_table_when_cell($container['last_modified_timestamp'], $container['last_modified_username'] ?? ''),
+        ),
+    );
 }
+
+$list = pg_list_table_printed(array(
+    'list' => 'view_containers',
+    'columns' => array(
+        'name' => array('heading' => lang('Name')),
+        'enabled' => array('heading' => lang('Enabled'), 'kind' => 'check'),
+        'length' => array('heading' => lang('Length'), 'kind' => 'number'),
+        'width' => array('heading' => lang('Width'), 'kind' => 'number'),
+        'height' => array('heading' => lang('Height'), 'kind' => 'number'),
+        'weight' => array('heading' => lang('Weight'), 'kind' => 'number'),
+        'cost' => array('heading' => lang('Cost'), 'kind' => 'money'),
+        'created' => array('heading' => lang('Created'), 'kind' => 'date'),
+        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+    ),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+));
 
 echo
     pg_page_shell([
@@ -171,34 +143,14 @@ echo
 
                 ' . pg_screen_toolbar(array(
                     'primary' => array('label' => lang('Create'), 'url' => 'add_container.php', 'icon' => 'bi-plus-circle'),
-                    'search'  => pg_list_sort_menu('view_containers.php', $sort_columns, $sort_levels, $sort_default),
+                    'search'  => array(pg_list_table_search_box('view_containers'), pg_list_sort_menu('view_containers.php', $sort_columns, $sort_levels, $sort_default)),
                 )) . '
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative">
-                        <table class="chart table-hover table" style="width:100%;display:none">
-                            <thead>
-                                <tr>
-                                    <th class="noVis"></th>
-                                    <th class="noVis">' . lang('Action') . '</th>
-                                    <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                    <th class="text-center">' . get_column_heading(lang('Enabled'), $sort_levels, '', '', 'enabled') . '</th>
-                                    <th>' . get_column_heading(lang('Length'), $sort_levels, '', '', 'length') . '</th>
-                                    <th>' . get_column_heading(lang('Width'), $sort_levels, '', '', 'width') . '</th>
-                                    <th>' . get_column_heading(lang('Height'), $sort_levels, '', '', 'height') . '</th>
-                                    <th>' . get_column_heading(lang('Weight'), $sort_levels, '', '', 'weight') . '</th>
-                                    <th class="text-end">' . get_column_heading(lang('Cost'), $sort_levels, '', '', 'cost') . '</th>
-                                    <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>' . $output_rows . '</tbody>
-                        </table>
-                    </div>
-                </div>
+                ' . pg_list_table_html($list['source'], $list['page'], lang('All Containers')) . '
             </div>
         </div>
-    
-</main>' .
+</main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
+' .
     output_footer();
 
 $liveform->remove_form();

@@ -63,6 +63,44 @@ function test_session_screen_disabled_lock_button_is_reachable()
 	pg_assert_contains('id="pg_pin_redundant_reason"', $source, 'the reason is on the screen');
 }
 
+// The inert button stands in for the Lock action on a session that is not
+// locked: it must not carry the Locked badge's word and filled pin.
+function test_session_screen_inert_lock_button_names_the_action()
+{
+	$source = session_screen_reasons_test_source('view_sessions.php');
+
+	$at = strpos($source, 'aria-describedby="pg_pin_redundant_reason"');
+	pg_assert_true($at !== false, 'the inert button is still there');
+	$start = strrpos(substr($source, 0, $at), '<button');
+	$end = strpos($source, '</button>', $at);
+	$button = substr($source, $start, $end - $start);
+
+	pg_assert_contains("lang('Lock')", $button, 'the inert button is labelled Lock');
+	pg_assert_true(strpos($button, "lang('Locked')") === false, 'the inert button is not labelled Locked');
+	pg_assert_contains('bi bi-pin-angle me-1', $button, 'the inert button has the outline pin');
+	pg_assert_true(strpos($button, 'style="') === false, 'the inert look comes from a class');
+	pg_assert_contains('pg-btn-inert', $button, 'the inert look comes from a class');
+}
+
+// The raw user agent is a compact tooltip on a focusable span, never a
+// title on the cell (that becomes a large header-only popover).
+function test_session_screen_user_agent_is_a_tooltip()
+{
+	$source = session_screen_reasons_test_source('view_sessions.php');
+
+	pg_assert_true(strpos($source, '<td class="align-middle" title=') === false, 'no cell carries a hover title');
+	pg_assert_true(substr_count($source, 'class="no-popover" data-bs-toggle="tooltip" tabindex="0" title="') >= 2, 'both device cells use a focusable tooltip');
+}
+
+function test_device_pairing_reads_an_array_action_as_empty()
+{
+	$source = session_screen_reasons_test_source('device_pairing.php');
+
+	pg_assert_contains("is_scalar(\$_POST['pairing_action'])", $source, 'pairing_action[] reads as empty');
+	pg_assert_contains('id="pairing_clock"', $source, 'the countdown has its own span');
+	pg_assert_true(strpos($source, 'line.textContent = minutes') === false, 'the countdown keeps the sentence');
+}
+
 function test_session_screen_button_hints_are_tooltips()
 {
 	$source = session_screen_reasons_test_source('view_sessions.php');

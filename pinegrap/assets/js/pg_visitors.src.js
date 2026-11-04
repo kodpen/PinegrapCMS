@@ -167,7 +167,16 @@
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: { display: datasets.length > 1, position: 'bottom', labels: { color: colours.text, usePointStyle: true } },
-                        tooltip: { callbacks: { label: function (ctx) { return ctx.dataset.label + ': ' + format(ctx.parsed.y); } } }
+                        tooltip: {
+                            callbacks: {
+                                label: function (ctx) { return ctx.dataset.label + ': ' + format(ctx.parsed.y); },
+                                footer: function (items) {
+                                    var notes = data.notes || [];
+
+                                    return (items.length && notes[items[0].dataIndex]) ? notes[items[0].dataIndex] : '';
+                                }
+                            }
+                        }
                     },
                     scales: {
                         x: { ticks: { color: colours.text }, grid: { color: colours.grid } },

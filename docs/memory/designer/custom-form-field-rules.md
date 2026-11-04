@@ -26,7 +26,7 @@ module: custom_form
 - A cached page may carry yesterday's `min`; the server refuses anyway.
 
 ## Templates?
-- Cafe: reservation date (`cf-res-date`) and catering date (`cf-quote-date`) `min_date`; the catering address `required_when` delivery = `lang('Delivered to us')` (the radio's own value). Clinic: preferred date (`cl-appt-date`). Set at install; installed sites get no data step (the operator turns them on in the designer). Fixes #3572 items 1, 3, 4.
+- Cafe: reservation date (`cf-res-date`) and catering date (`cf-quote-date`) `min_date`; the catering address `required_when` and `shown_when` delivery = `lang('Delivered to us')` (the radio's own value). Clinic: preferred date (`cl-appt-date`); the policy number (`cl-appt-policy`) `shown_when` insurance = Private insurance ([[design-template-form-fees]]). Set at install; installed sites get no data step (the operator turns them on in the designer). Fixes #3572 items 1, 3, 4.
 
 ## Tests?
 - `tests/custom_form_rules_test.php`: cleaning, JSON, today boundary and zone, several answers, missing/renamed field, the migration step, derivation from controls, sync and site check sources, staff exemption, browser side, templates.

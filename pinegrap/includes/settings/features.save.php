@@ -25,6 +25,16 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // row (includes/fn/site_search_tuning.php); an empty box removes its row.
     if (array_key_exists('search_tuning_card', $_POST) && pg_schema_has('config_text')) {
         pg_search_tuning_save(post_value('search_synonyms'), post_value('search_promoted'));
+
+        // The good lines are saved; a line that makes no entry is named
+        // rather than dropped without a word.
+        $search_promoted_rejected = pg_search_promoted_rejected(post_value('search_promoted'));
+
+        if ($search_promoted_rejected) {
+            $liveform->add_warning(h(lang(array(
+                'string' => 'These Promoted Results lines were left out: each needs "terms => address" with a path on this site as the address: {var:1}',
+                'vars'   => array(implode(' · ', $search_promoted_rejected))))));
+        }
     }
 
     // ── Performance monitoring ───────────────────────────────────────────

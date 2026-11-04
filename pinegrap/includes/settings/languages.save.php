@@ -95,6 +95,23 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
             'vars'   => array($translation_code))));
     }
 
+    // ── og:locale, refused rather than blanked ──
+    // Blanking an invalid value also threw away the valid one stored before.
+    foreach ($translation_prefix_wanted as $translation_code => $translation_unused) {
+
+        if (!isset($translation_posted[$translation_code]) || !is_array($translation_posted[$translation_code])) {
+            continue;
+        }
+
+        $translation_og = trim((string) ($translation_posted[$translation_code]['og_locale'] ?? ''));
+
+        if (($translation_og !== '') && !preg_match('/^[a-z]{2,3}_[A-Z]{2,4}$/', $translation_og)) {
+            $liveform->mark_error('languages[' . $translation_code . '][og_locale]', lang(array(
+                'string' => 'The og:locale of {var:1} must look like en_US: a lower-case language code, an underscore and an upper-case country code.',
+                'vars'   => array($translation_code))));
+        }
+    }
+
     if ($liveform->check_form_errors()) {
         // Nothing is written: the operator sees the errors and the form as it was.
         return;

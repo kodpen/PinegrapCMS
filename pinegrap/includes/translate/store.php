@@ -1340,18 +1340,26 @@ function pg_tr_page_stats($language)
 }
 
 /**
- * Site-wide counts for one language.
+ * Counts for one language: site-wide, or for the texts the given owner
+ * condition selects (a page or a group of the Translations screen).
  *
+ * @param string $language
+ * @param string $owner_where condition on translation_uses u, from
+ *                            pg_tr_owner_where(); empty for the whole site
  * @return array total, translated, reviewed, machine, pending
  */
-function pg_tr_language_stats($language)
+function pg_tr_language_stats($language, $owner_where = '')
 {
+    if ($owner_where === '') {
+        $owner_where = pg_tr_owner_where(array());
+    }
+
     $row = db_item("SELECT COUNT(DISTINCT u.string_id) AS total,
                            COUNT(DISTINCT t.string_id) AS translated,
                            COUNT(DISTINCT CASE WHEN t.status = 'reviewed' THEN t.string_id END) AS reviewed
                     FROM translation_uses u
                     LEFT JOIN translations t ON t.string_id = u.string_id AND t.language = '" . e($language) . "'
-                    WHERE u.string_id > 0 AND " . pg_tr_owner_where(array()));
+                    WHERE u.string_id > 0 AND (" . $owner_where . ")");
 
     $total = is_array($row) ? (int) $row['total'] : 0;
     $translated = is_array($row) ? (int) $row['translated'] : 0;

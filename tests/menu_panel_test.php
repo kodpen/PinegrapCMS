@@ -117,6 +117,18 @@ function test_menu_panel_carries_its_entries_as_they_are()
 	pg_assert_false(strpos($html, 'data-pg-menu-tone') !== false, 'no module, plain icons');
 }
 
+function test_menu_panel_entries_wrap_instead_of_ending_in_an_ellipsis()
+{
+	$entries = '<a href=\'/pinegrap/view_verified_shipping_addresses.php\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-geo bi-me-2\'>All Verified Shipping Addresses</a>';
+	$html = pg_menu_panel('menu_panel_15', 'menu_item_15', 'Shipping', $entries);
+
+	pg_assert_false(strpos($html, 'text-truncate') !== false, 'the utility that would beat the panel CSS is dropped');
+	pg_assert_contains("class='btn btn-link pg-link-body-emphasis text-start text-decoration-none bi bi-geo bi-me-2'", $html, 'the other classes stay');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	pg_assert_contains("#menu .menu-body .pg-menu-panel-body > a.bi {\n  display: flex;\n  align-items: center;\n}", $css, 'the name wraps beside its icon');
+}
+
 function test_menu_panel_names_its_module_for_two_colour_icons()
 {
 	pg_assert_contains('data-pg-menu-row="menu_item_2" data-pg-menu-tone="pages" role="group"', pg_menu_panel('menu_panel_2', 'menu_item_2', 'Pages', '', 'pages'), 'the module');

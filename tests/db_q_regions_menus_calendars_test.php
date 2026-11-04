@@ -130,7 +130,7 @@ function db_q_regions_menus_calendars_test_files()
 		'includes/forms/menu_item_form.php' => 2,
 		'edit_form_list_view.php' => 11,
 		'edit_calendar.php' => 2,
-		'includes/fn/calendar_writes.php' => 5,
+		'includes/fn/calendar_writes.php' => 10,
 		'add_calendar_event.php' => 3,
 		'includes/forms/calendar_event_form.php' => 4,
 		'update_calendar_event_exception.php' => 7,

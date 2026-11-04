@@ -396,6 +396,406 @@
     color: var(--pgd-bad);
   }
 
+  /* ── Brief ────────────────────────────────────────────────────────────
+     includes/dashboard/brief.php's sentence under the greeting's title,
+     the workspace strip under it and the next meeting beside the date
+     line. The strip and the meeting keep brief.php's markup, which
+     backend.src.css draws for the old dashboard; the rules here redraw
+     them in this palette, each scoped high enough to win over those.
+     On a narrow dashboard the brief is one box: the mark, the next
+     meeting (its time and countdown; the brief's name when nothing is
+     left today) and "Say something else" on a row, the sentence across
+     the box, and the strip on one line that scrolls sideways. From 38rem
+     the box opens up: the mark and the button flank the sentence, the
+     strip wraps and the meeting moves beside the date line. */
+
+  .pg-dash-greeting-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .375rem .75rem;
+    margin-bottom: .375rem;
+  }
+
+  .pg-dash-greeting-head > .pg-dash-greeting-when {
+    margin: 0;
+  }
+
+  .pg-dash-brief {
+    display: flex;
+    flex-direction: column;
+    gap: .625rem;
+    margin-top: .875rem;
+    padding: .75rem .875rem;
+    border: 1px solid var(--pgd-line);
+    border-radius: .875rem;
+    background: var(--pgd-fill);
+  }
+
+  .pg-dash-compact .pg-dash-brief {
+    margin-top: .625rem;
+  }
+
+  .pg-dash-brief-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .5rem .625rem;
+  }
+
+  /* The speaker: the hour's own glyph (sunrise, sun, dusk, moon) on the
+     dashboard's gradient. */
+  .pg-dash-brief-mark {
+    display: inline-flex;
+    grid-column: 1;
+    grid-row: 1;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    background: var(--pgd-main);
+    box-shadow: var(--pgd-main-glow);
+    color: #fff;
+    font-size: .8125rem;
+    line-height: 1;
+  }
+
+  .pg-dash-brief-head {
+    display: flex;
+    grid-column: 2;
+    grid-row: 1;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .pg-dash-brief-head:has(> .pg-dash-brief-next:not(:empty)) > .pg-dash-brief-kicker {
+    display: none;
+  }
+
+  .pg-dash-brief-kicker {
+    min-width: 0;
+    overflow: hidden;
+    font-size: .6875rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-brief-text {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-width: 0;
+    max-width: 72ch;
+    margin: 0;
+    font-size: .9375rem;
+    line-height: 1.55;
+    color: var(--pgd-soft);
+    text-wrap: pretty;
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-link {
+    color: var(--pgd-accent);
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: var(--pgd-accent-line);
+    text-underline-offset: .2em;
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-link:hover,
+  .pg-dash .pg-dash-brief .pg-brief-link:focus-visible {
+    color: var(--pgd-strong);
+    text-decoration-color: currentColor;
+  }
+
+  /* "Say something else" at the reading end, however short the sentence;
+     it turns while the new line is on its way. */
+  .pg-dash .pg-dash-brief-again {
+    display: inline-flex;
+    grid-column: 3;
+    grid-row: 1;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .625rem;
+    background: var(--pgd-fill);
+    color: var(--pgd-muted);
+    font-size: .9375rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .pg-dash .pg-dash-brief-again:hover {
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-strong);
+  }
+
+  .pg-dash .pg-dash-brief-again:focus-visible {
+    outline: 2px solid var(--pg-primary-ink);
+    outline-offset: 2px;
+  }
+
+  .pg-dash .pg-dash-brief-again:disabled {
+    cursor: progress;
+  }
+
+  .pg-dash-brief-again .bi {
+    display: inline-block;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .pg-dash-brief-again.is-busy .bi {
+      animation: pg-dash-brief-spin .8s linear infinite;
+    }
+
+    .pg-dash-brief.is-new .pg-dash-brief-text {
+      animation: pg-dash-brief-in .45s ease-out both;
+    }
+  }
+
+  @keyframes pg-dash-brief-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes pg-dash-brief-in {
+    from { opacity: .25; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* The workspace strip: one line that scrolls sideways to the box's
+     edges on a narrow dashboard, no scroll bar drawn; each item is a
+     link, so the keyboard brings it into view. */
+  .pg-dash .pg-dash-brief .pg-brief-ws {
+    flex-wrap: nowrap;
+    gap: .5rem;
+    margin-inline: -.875rem;
+    padding: .125rem .875rem;
+    overflow-x: auto;
+    scroll-padding-inline: .875rem;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-item {
+    flex: 0 0 auto;
+    gap: .5rem;
+    min-height: 2.125rem;
+    padding: .25rem .625rem;
+    border: 1px solid var(--pgd-tile-line);
+    border-radius: .6875rem;
+    background: var(--pgd-tile);
+    color: var(--pgd-fg);
+    font-size: .8125rem;
+    line-height: 1.4;
+    scroll-snap-align: start;
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-item:hover,
+  .pg-dash .pg-dash-brief .pg-brief-ws-item:focus-visible {
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-fg);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-item .bi {
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-label {
+    font-size: .75rem;
+    font-weight: 500;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-text {
+    max-width: 16ch;
+    font-weight: 600;
+    color: var(--pgd-strong);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-pct {
+    font-weight: 700;
+    color: var(--pgd-new);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-bar {
+    background: var(--pgd-track);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-bar > span {
+    background: var(--pgd-main);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-item.is-new::before,
+  .pg-dash .pg-dash-brief .pg-brief-ws-item.is-live::before {
+    background: var(--pgd-new-dot);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-item.is-live {
+    border-color: var(--pgd-new-line);
+    background: var(--pgd-new-bg);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-item.is-live .bi {
+    color: var(--pgd-new);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-item.is-late {
+    border-color: var(--pgd-bad-line);
+    background: var(--pgd-bad-bg);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-item.is-late .bi,
+  .pg-dash .pg-dash-brief .pg-brief-ws-item.is-late .pg-brief-ws-label {
+    color: var(--pgd-bad);
+  }
+
+  /* The next meeting or visit; the page script takes out one that has
+     ended, and an empty box takes no room. Narrow, the title is left to
+     screen readers and the tooltip, so time and countdown fit the brief's
+     first row. */
+  .pg-dash-brief-next {
+    display: inline-flex;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .pg-dash-brief-next:empty,
+  .pg-dash-brief-next.is-head {
+    display: none;
+  }
+
+  .pg-dash .pg-dash-brief-next .pg-next {
+    gap: .5rem;
+    min-height: 2rem;
+    padding: .1875rem .6875rem;
+    border: 1px solid var(--pgd-new-line);
+    border-radius: 999px;
+    background: var(--pgd-new-bg);
+    color: var(--pgd-new);
+    font-size: .8125rem;
+  }
+
+  .pg-dash .pg-dash-brief-next .pg-next:hover,
+  .pg-dash .pg-dash-brief-next .pg-next:focus-visible {
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-new);
+  }
+
+  .pg-dash .pg-dash-brief-next .pg-next .bi {
+    color: inherit;
+  }
+
+  .pg-dash .pg-dash-brief-next .pg-next-time {
+    font-weight: 700;
+  }
+
+  .pg-dash .pg-dash-brief-next .pg-next-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    color: var(--pgd-fg);
+  }
+
+  .pg-dash .pg-dash-brief-next .pg-next-until {
+    color: var(--pgd-new);
+  }
+
+  .pg-dash .pg-dash-brief-next .pg-next.is-now .pg-next-until {
+    color: var(--pgd-good);
+  }
+
+  @container pgdash (min-width: 38rem) {
+    .pg-dash-brief {
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: none;
+    }
+
+    .pg-dash-brief-row {
+      display: flex;
+      align-items: flex-start;
+      gap: .75rem;
+    }
+
+    .pg-dash-brief-mark {
+      flex: 0 0 2rem;
+      width: 2rem;
+      height: 2rem;
+      font-size: .9375rem;
+    }
+
+    .pg-dash-brief-head {
+      display: none;
+    }
+
+    .pg-dash-brief-next.is-head:not(:empty) {
+      display: inline-flex;
+    }
+
+    .pg-dash-brief-text {
+      flex: 1 1 auto;
+      margin-top: .1875rem;
+      font-size: 1rem;
+    }
+
+    .pg-dash .pg-dash-brief-again {
+      flex: 0 0 2.125rem;
+      width: 2.125rem;
+      height: 2.125rem;
+      margin-inline-start: auto;
+      border-radius: .6875rem;
+      font-size: 1rem;
+    }
+
+    .pg-dash .pg-dash-brief .pg-brief-ws {
+      flex-wrap: wrap;
+      margin-inline: 0;
+      padding: 0 0 0 2.75rem;
+      overflow: visible;
+    }
+
+    .pg-dash .pg-dash-brief .pg-brief-ws-text {
+      max-width: 22ch;
+    }
+
+    .pg-dash .pg-dash-brief-next .pg-next-title {
+      position: static;
+      width: auto;
+      height: auto;
+      max-width: 22ch;
+      clip-path: none;
+      text-overflow: ellipsis;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .pg-dash-brief {
+      border-color: CanvasText;
+    }
+
+    .pg-dash-brief-mark {
+      border: 1px solid CanvasText;
+      background: none;
+      box-shadow: none;
+      color: CanvasText;
+    }
+  }
+
   /* ── System Status card ───────────────────────────────────────────────
      Widget 2's gauge (.pg-health* in backend.src.css, kept as it is) and its
      checks as the drawings' chips, in a card about 340 px wide beside the
@@ -3606,6 +4006,20 @@
   .pg-dash-map-step[data-step="3"] { background: color-mix(in srgb, var(--pg-dash-cat) 70%, var(--pg-card-bg)); }
   .pg-dash-map-step[data-step="4"] { background: var(--pg-dash-cat); }
 
+  /* Visitor map (pg_dash_cards_visitors.js): a bubble per place over the
+     plain provinces; the hovered or focused one is outlined. */
+  .pg-dash-map .pg-dash-map-bubble {
+    fill: color-mix(in srgb, var(--pg-dash-cat) 55%, transparent);
+    stroke: var(--pg-dash-cat);
+    stroke-width: 1;
+  }
+
+  .pg-dash-map .pg-dash-map-bubble[data-active] {
+    fill: var(--pg-dash-cat);
+    stroke: var(--pg-fg-emphasis);
+    stroke-width: 2;
+  }
+
   /* Operations Desk: three lanes beside each other, under each other on a
      narrow card. */
   .pg-dash-ops {
@@ -3662,6 +4076,7 @@
   @media (forced-colors: active) {
     .pg-dash-map path { fill: Canvas; stroke: CanvasText; }
     .pg-dash-map [data-step], .pg-dash-map-step { forced-color-adjust: none; }
+    .pg-dash-map .pg-dash-map-bubble { fill: Highlight; stroke: CanvasText; }
     .pg-dash-spark path { stroke: CanvasText; }
   }
 

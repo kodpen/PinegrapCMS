@@ -295,7 +295,7 @@ function test_core_timezone_list_labels_follow_the_offsets()
 		'Europe/Skopje', 'Europe/Stockholm', 'Europe/Vienna', 'Europe/Warsaw',
 		'Africa/Lagos', 'Europe/Zagreb', 'Europe/Athens', 'Europe/Bucharest',
 		'Africa/Cairo', 'Africa/Harare', 'Europe/Helsinki', 'Asia/Jerusalem',
-		'Europe/Helsinki', 'Africa/Johannesburg', 'Europe/Riga', 'Europe/Sofia',
+		'Europe/Kyiv', 'Africa/Johannesburg', 'Europe/Riga', 'Europe/Sofia',
 		'Europe/Tallinn', 'Europe/Vilnius', 'Europe/Istanbul', 'Asia/Baghdad',
 		'Asia/Kuwait', 'Europe/Minsk', 'Africa/Nairobi', 'Asia/Riyadh',
 		'Europe/Volgograd', 'Asia/Tehran', 'Asia/Baku', 'Europe/Moscow',
@@ -308,7 +308,7 @@ function test_core_timezone_list_labels_follow_the_offsets()
 		'Asia/Urumqi', 'Asia/Irkutsk', 'Asia/Seoul', 'Asia/Tokyo',
 		'Australia/Adelaide', 'Australia/Darwin', 'Australia/Brisbane',
 		'Australia/Sydney', 'Pacific/Guam', 'Australia/Hobart',
-		'Australia/Melbourne', 'Pacific/Port_Moresby', 'Australia/Sydney',
+		'Australia/Melbourne', 'Pacific/Port_Moresby',
 		'Asia/Yakutsk', 'Asia/Vladivostok', 'Pacific/Noumea',
 		'Pacific/Auckland', 'Pacific/Fiji', 'Pacific/Kwajalein',
 		'Asia/Kamchatka', 'Asia/Magadan', 'Pacific/Tongatapu'
@@ -318,6 +318,7 @@ function test_core_timezone_list_labels_follow_the_offsets()
 	sort($values);
 	sort($offered);
 	pg_assert_same($values, $offered, 'the zone values are unchanged, and no label is lost to a duplicate');
+	pg_assert_same(count($offered), count(array_unique($offered)), 'no two labels share a zone: a single select shows only one of them as chosen');
 }
 
 // A stored name is read as this PHP knows it: an old name as its current one,

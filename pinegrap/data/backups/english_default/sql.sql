@@ -3566,7 +3566,7 @@ CREATE TABLE `visitors` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `http_referer` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
   `referring_host_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
-  `referring_search_engine` enum('','AlltheWeb','AltaVista','AOL','Ask.com','Bing','Comet Web Search','EarthLink','Excite','Google','HotBot','LookSmart','Lycos','Mamma.com','MetaCrawler','MSN','Netscape','Open Directory Project','Overture','Viewpoint','WebCrawler','Yahoo!') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `referring_search_engine` enum('','AlltheWeb','AltaVista','AOL','Ask.com','Bing','Comet Web Search','EarthLink','Excite','Google','HotBot','LookSmart','Lycos','Mamma.com','MetaCrawler','MSN','Netscape','Open Directory Project','Overture','Viewpoint','WebCrawler','Yahoo!','Yandex','DuckDuckGo','Ecosia','Brave Search','Qwant','Startpage','Baidu','Naver','Seznam') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
   `referring_search_terms` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
   `first_visit` tinyint(4) NOT NULL DEFAULT 0,
   `landing_page_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',

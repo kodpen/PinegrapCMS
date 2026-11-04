@@ -150,15 +150,15 @@
     // ---- tools ----
 
     var PROFILES = {
-        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'scissors', 'motion'],
-        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'image', 'vector', 'scissors', 'frame', 'motion'],
+        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'motion'],
+        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'image', 'vector', 'scissors', 'warp', 'frame', 'motion'],
         annotate: ['arrow', 'rect', 'text', 'pen', 'redact'],
         optimise: ['export']
     };
 
     // Tools a caller may name: the rail's and the marking tools of the mini
     // bar (one draw kind each).
-    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'scissors', 'artboard', 'image', 'export', 'motion',
+    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'artboard', 'image', 'export', 'motion',
         'arrow', 'line', 'rect', 'ellipse', 'pen'];
 
     // The tools of one call: the caller's list (known names, first mention
@@ -563,6 +563,22 @@
 
         if (d.geometry.output && ((before.rot % 180) !== (after.rot % 180))) {
             d.geometry.output = { w: d.geometry.output.h, h: d.geometry.output.w };
+        }
+
+        // A picture placed on its canvas turns alone around its middle: the
+        // canvas and the layers stay, the redaction areas go with it.
+        if (doc.canvas && doc.canvas.picture) {
+            var p0 = pictureBox(doc), c1 = cropBox(d), k = d.canvas.picture.k || 1, a0 = placeMatrix(doc);
+
+            d.canvas.picture.x = p0.x + p0.w / 2 - (c1.x + c1.w / 2) * k;
+            d.canvas.picture.y = p0.y + p0.h / 2 - (c1.y + c1.h / 2) * k;
+
+            var mv = mul(placeMatrix(d), mul(map, inv(a0)));
+
+            d.layers = d.layers.map(function (l) { return (l.type === 'redact') ? mapLayer(l, function (x, y) { return apply(mv, x, y); }) : l; });
+            keepCanvas(doc, d);
+
+            return d;
         }
 
         d.layers = d.layers.map(function (l) { return mapLayer(l, fn); });
@@ -1266,6 +1282,10 @@
     function shapePath(l) {
         var w = l.w, h = l.h, r = clamp(Number(l.radius) || 0, 0, maxRadius(l)), d = '';
 
+        if (warpOn(l)) {
+            return warpShape(l);
+        }
+
         if (l.type === 'path') {
             return pathShape(l);
         }
@@ -1291,6 +1311,10 @@
     // walked in short steps.
     function outline(l) {
         var w = l.w, h = l.h, out = [], i, n = 48;
+
+        if (warpOn(l)) {
+            return warpOutline(l);
+        }
 
         if (LINE_KINDS.indexOf(l.type) >= 0) {
             return [[[0, h / 2], [w, h / 2]]];
@@ -1900,6 +1924,12 @@
             next.filter = next.filter || 'none';
             next.frame = (next.frame === undefined) ? null : next.frame;
 
+            // Scenes only with the open one among them (sceneList()).
+            if (!Array.isArray(next.scenes) || (next.scenes.length < 2) || (sceneIndex(next) < 0)) {
+                delete next.scenes;
+                delete next.scene;
+            }
+
             return next;
         },
 
@@ -2028,7 +2058,7 @@
     // the rotated space's units; null when the canvas is the crop box. What
     // the picture does not cover takes the background.
     function canvasBox(doc) {
-        var c = cropBox(doc), m = doc.canvas;
+        var c = pictureBox(doc), m = doc.canvas;
 
         return m ? { x: c.x - m.l, y: c.y - m.t, w: c.w + m.l + m.r, h: c.h + m.t + m.b } : c;
     }
@@ -2080,14 +2110,44 @@
             return null;
         }
 
-        var b = saveBox(doc), c = cropBox(doc), out = outputSize(doc), sx = out.w / c.w, sy = out.h / c.h;
+        var b = saveBox(doc), c = cropBox(doc), p = pictureBox(doc), out = outputSize(doc), sx = out.w / c.w, sy = out.h / c.h;
         var fill = doc.canvas ? doc.canvas.background : doc.frame.color;
-
-        return {
+        var r = {
             w: Math.round(clamp(b.w * sx, 1, SIZE_MAX)), h: Math.round(clamp(b.h * sy, 1, SIZE_MAX)),
-            x: Math.round((c.x - b.x) * sx), y: Math.round((c.y - b.y) * sy),
+            x: Math.round((p.x - b.x) * sx), y: Math.round((p.y - b.y) * sy),
             fill: /^#[0-9a-f]{6}$/i.test(fill || '') ? fill : 'transparent'
         };
+
+        // A picture resized on its canvas is laid at that size (pw, ph).
+        if (picturePlace(doc).k !== 1) {
+            r.pw = Math.round(clamp(p.w * sx, 1, SIZE_MAX));
+            r.ph = Math.round(clamp(p.h * sy, 1, SIZE_MAX));
+        }
+
+        return r;
+    }
+
+    // The crop shape over box as an SVG path: the box, the box with rounded
+    // corners (12 % of the shorter side, as the save cuts them) or the
+    // ellipse in it. On a canvas that reaches past the picture the shape
+    // cuts the picture only: the stage's mat leaves this hole.
+    function cropShapePath(box, shape) {
+        var x = box.x, y = box.y, w = box.w, h = box.h, rx = w / 2, ry = h / 2, r;
+
+        if (shape === 'circle') {
+            return 'M' + x + ' ' + (y + ry) + 'a' + rx + ' ' + ry + ' 0 1 0 ' + w + ' 0a' + rx + ' ' + ry + ' 0 1 0 ' + (-w) + ' 0Z';
+        }
+
+        if (shape === 'rounded') {
+            r = Math.min(w, h) * 0.12;
+
+            return 'M' + (x + r) + ' ' + y + 'H' + (x + w - r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x + w) + ' ' + (y + r)
+                + 'V' + (y + h - r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x + w - r) + ' ' + (y + h)
+                + 'H' + (x + r) + 'A' + r + ' ' + r + ' 0 0 1 ' + x + ' ' + (y + h - r)
+                + 'V' + (y + r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x + r) + ' ' + y + 'Z';
+        }
+
+        return 'M' + x + ' ' + y + 'H' + (x + w) + 'V' + (y + h) + 'H' + x + 'Z';
     }
 
     // The size a save writes.
@@ -2100,15 +2160,149 @@
     // doc with its picture's canvas moved to r (in the canvas box's units,
     // as boardDrag() gives it): whole units on each side, at least SIZE_MIN
     // and at most SIZE_MAX across. The layers stay: they lie in the rotated
-    // space, not on the canvas. A canvas back on the crop box with a white
-    // background is none.
+    // space, not on the canvas. A canvas back on the picture with a white
+    // background and no place of the picture is none.
     function applyCanvas(doc, r) {
-        var d = clone(doc), c = cropBox(doc), b = canvasBox(doc);
+        var d = clone(doc), b = canvasBox(doc);
         var x = b.x + Math.round(r.x), y = b.y + Math.round(r.y), w = boardSide(r.w), h = boardSide(r.h);
-        var m = { l: c.x - x, t: c.y - y, r: x + w - c.x - c.w, b: y + h - c.y - c.h, background: doc.canvas ? doc.canvas.background : '#ffffff' };
+
+        d.canvas = canvasAround(doc, { x: x, y: y, w: w, h: h });
+
+        return d;
+    }
+
+    // doc.canvas holding the canvas box b around the picture's place.
+    function canvasAround(doc, b) {
+        var c = pictureBox(doc), m = { l: c.x - b.x, t: c.y - b.y, r: b.x + b.w - c.x - c.w, b: b.y + b.h - c.y - c.h, background: doc.canvas ? doc.canvas.background : '#ffffff' };
 
         ['l', 't', 'r', 'b'].forEach(function (k) { m[k] = Math.round(m[k] * 1000) / 1000; });
-        d.canvas = (!m.l && !m.t && !m.r && !m.b && (m.background === '#ffffff')) ? null : m;
+
+        if (doc.canvas && doc.canvas.picture) {
+            m.picture = clone(doc.canvas.picture);
+        }
+
+        return (!m.l && !m.t && !m.r && !m.b && (m.background === '#ffffff') && !m.picture) ? null : m;
+    }
+
+    // -- the picture as the bottom layer --
+
+    // doc.canvas.picture = { x, y, k, locked }: the picture on its canvas,
+    // the crop box scaled by k and moved by x, y in the rotated space's
+    // units (the layers'); without it the picture lies on its crop box.
+    // Unlocked (locked false) it is moved, resized and deleted like a layer.
+    function picturePlace(doc) {
+        var p = doc.canvas && doc.canvas.picture;
+
+        return p ? { x: Number(p.x) || 0, y: Number(p.y) || 0, k: Number(p.k) || 1, locked: p.locked !== false } : { x: 0, y: 0, k: 1, locked: true };
+    }
+
+    // From the crop box's space to the canvas: the picture's place.
+    function placeMatrix(doc) {
+        var p = picturePlace(doc);
+
+        return mul(translate(p.x, p.y), scale(p.k));
+    }
+
+    // The picture's box on its canvas, in the layers' units.
+    function pictureBox(doc) {
+        var c = cropBox(doc), p = picturePlace(doc);
+
+        return { x: c.x * p.k + p.x, y: c.y * p.k + p.y, w: c.w * p.k, h: c.h * p.k };
+    }
+
+    // From the picture's pixels to the canvas.
+    function placedMatrix(doc) {
+        return mul(placeMatrix(doc), pictureMatrix(doc));
+    }
+
+    // Whether the picture is unlocked: a photo whose canvas lets it move.
+    function pictureFree(doc) {
+        return !!doc.source && !doc.artboard && !picturePlace(doc).locked;
+    }
+
+    // The canvas of before kept around the picture of doc, in place: after a
+    // crop, a turn or a move of a placed picture the canvas stays.
+    function keepCanvas(before, doc) {
+        if (!doc.canvas || !doc.canvas.picture || doc.artboard || !before.source || sameDocument(pictureBox(before), pictureBox(doc))) {
+            return doc;
+        }
+
+        doc.canvas = canvasAround(doc, canvasBox(before));
+
+        return doc;
+    }
+
+    // doc with its picture unlocked (a canvas made on the picture when it
+    // had none) or locked again where it is.
+    function lockPicture(doc, locked) {
+        var d = clone(doc);
+
+        d.canvas = d.canvas || { l: 0, t: 0, r: 0, b: 0, background: '#ffffff' };
+        d.canvas.picture = d.canvas.picture || { x: 0, y: 0, k: 1 };
+        d.canvas.picture.locked = !!locked;
+
+        return d;
+    }
+
+    // doc with its picture placed on box r (the layers' units, its width
+    // sets the scale, the ratio kept): the canvas and the layers stay, the
+    // redaction areas, which belong to the picture's pixels, go with it.
+    function placePicture(doc, r) {
+        var d = clone(doc), c = cropBox(doc), p0 = picturePlace(doc), b = canvasBox(doc);
+        var k = clamp(r.w / c.w, 1 / c.w, SIZE_MAX / c.w), w = c.w * k, h = c.h * k;
+
+        // Some of it stays on the canvas, as the save's extend step asks.
+        var x = clamp(r.x, b.x + 1 - w, b.x + b.w - 1), y = clamp(r.y, b.y + 1 - h, b.y + b.h - 1);
+        var place = { x: Math.round((x - c.x * k) * 1000) / 1000, y: Math.round((y - c.y * k) * 1000) / 1000, k: Math.round(k * 1e6) / 1e6, locked: p0.locked };
+
+        d.canvas = d.canvas || { l: 0, t: 0, r: 0, b: 0, background: '#ffffff' };
+        d.canvas.picture = place;
+
+        var mv = mul(placeMatrix(d), inv(placeMatrix(doc))), s = place.k / p0.k;
+
+        d.layers = d.layers.map(function (l) {
+            if (l.type !== 'redact') {
+                return l;
+            }
+
+            var n = mapLayer(l, function (x, y) { return apply(mv, x, y); }), cx = n.x + n.w / 2, cy = n.y + n.h / 2;
+
+            n.w *= s;
+            n.h *= s;
+            n.x = cx - n.w / 2;
+            n.y = cy - n.h / 2;
+
+            if (n.size) {
+                n.size *= s;
+            }
+
+            return n;
+        });
+
+        return keepCanvas(doc, d);
+    }
+
+    // doc without its picture: the canvas with its fill and the layers
+    // become an artboard of the canvas's size (in the layers' units), the
+    // layers moved onto it; the picture's own (redaction areas,
+    // adjustments, an outward frame) go with the picture.
+    function dropPicture(doc) {
+        var d = clone(doc), b = canvasBox(doc), dx = b.x, dy = b.y, bg = doc.canvas ? doc.canvas.background : '#ffffff';
+
+        d.artboard = { width: boardSide(b.w), height: boardSide(b.h), background: (typeof bg === 'string') ? bg : '#ffffff' };
+        d.source = null;
+        d.canvas = null;
+        d.geometry = { rot: 0, flipX: false, flipY: false, straighten: 0, crop: null, cropShape: 'rect', output: null };
+        d.adjust = {};
+        d.filter = 'none';
+
+        if (d.frame) {
+            delete d.frame.outside;
+        }
+
+        d.layers = d.layers.filter(function (l) { return l.type !== 'redact'; }).map(function (l) {
+            return mapLayer(l, function (x, y) { return [x - dx, y - dy]; });
+        });
 
         return d;
     }
@@ -2117,7 +2311,9 @@
         BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
         boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard,
         canvasBox: canvasBox, FRAME_OUT: FRAME_OUT, frameOutward: frameOutward, framePads: framePads, saveBox: saveBox,
-        saveLayout: saveLayout, saveSize: saveSize, applyCanvas: applyCanvas
+        saveLayout: saveLayout, cropShapePath: cropShapePath, saveSize: saveSize, applyCanvas: applyCanvas,
+        picturePlace: picturePlace, placeMatrix: placeMatrix, pictureBox: pictureBox, placedMatrix: placedMatrix, pictureFree: pictureFree,
+        keepCanvas: keepCanvas, lockPicture: lockPicture, placePicture: placePicture, dropPicture: dropPicture
     };
 
     // -- export (pg_image_editor_export.js) --
@@ -3966,6 +4162,593 @@
 
     var GLYPH = { EMOJI: EMOJI, iconSearch: iconSearch, emojiRecent: emojiRecent, glyphText: glyphText, glyphSize: glyphSize, swapGlyph: swapGlyph };
 
+    // ---- warp ----
+
+    // A path or a drawn shape bent as a whole, kept as l.warp and drawn by
+    // mapping its flattened outline: a preset ({ style, bend, h, v }: bend,
+    // horizontal and vertical distortion, each -1 to 1) or an envelope mesh
+    // ({ style: 'mesh', cols, rows, pts }: cols x rows points, row by row,
+    // as parts of the box; the curve runs through them). The mapping works in
+    // the box's frame before the mirror, so turns and flips carry it.
+
+    var WARP_STYLES = ['arc', 'arch', 'bulge', 'flag', 'wave', 'fish', 'rise', 'squeeze', 'twist'];
+    var MESH_MIN = 3;
+    var MESH_MAX = 6;
+
+    // A curve's flattening step in pixels and the most points one segment gets.
+    var WARP_STEP = 3;
+    var WARP_MAX = 64;
+
+    // Whether a layer can be warped: a path, or a drawn shape that is not a
+    // line or an arrow (their heads do not bend).
+    function warpable(l) {
+        if (!l) {
+            return false;
+        }
+
+        if (l.type === 'path') {
+            return !!(l.knots && (l.knots.length > 1));
+        }
+
+        return (DRAW_KINDS.indexOf(l.type) >= 0) && (LINE_KINDS.indexOf(l.type) < 0);
+    }
+
+    function meshValid(wp) {
+        var c = Number(wp.cols), r = Number(wp.rows);
+
+        return (c >= MESH_MIN) && (c <= MESH_MAX) && (r >= MESH_MIN) && (r <= MESH_MAX)
+            && Array.isArray(wp.pts) && (wp.pts.length === c * r);
+    }
+
+    // Whether the layer's drawing goes through its warp.
+    function warpOn(l) {
+        var wp = l && l.warp;
+
+        if (!wp || !warpable(l)) {
+            return false;
+        }
+
+        return (wp.style === 'mesh') ? meshValid(wp) : (WARP_STYLES.indexOf(wp.style) >= 0);
+    }
+
+    // The even mesh that changes nothing.
+    function meshGrid(cols, rows) {
+        var c = clamp(Math.round(cols) || MESH_MIN, MESH_MIN, MESH_MAX), r = clamp(Math.round(rows) || MESH_MIN, MESH_MIN, MESH_MAX), pts = [], i, j;
+
+        for (j = 0; j < r; j++) {
+            for (i = 0; i < c; i++) {
+                pts.push([frac(i, c - 1), frac(j, r - 1)]);
+            }
+        }
+
+        return { style: 'mesh', cols: c, rows: r, pts: pts };
+    }
+
+    // One Catmull-Rom step between p1 and p2: an even row stays straight.
+    function catmull(p0, p1, p2, p3, t) {
+        var t2 = t * t, t3 = t2 * t;
+
+        return [0, 1].map(function (k) {
+            return 0.5 * (2 * p1[k] + (p2[k] - p0[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (3 * p1[k] - p0[k] - 3 * p2[k] + p3[k]) * t3);
+        });
+    }
+
+    // A mesh point; one past an edge is mirrored through the edge point.
+    function meshPoint(wp, i, j) {
+        var c = wp.cols, r = wp.rows;
+        var ext = function (a, b) { return [2 * a[0] - b[0], 2 * a[1] - b[1]]; };
+
+        if (i < 0) { return ext(meshPoint(wp, 0, j), meshPoint(wp, 1, j)); }
+        if (i >= c) { return ext(meshPoint(wp, c - 1, j), meshPoint(wp, c - 2, j)); }
+        if (j < 0) { return ext(meshPoint(wp, i, 0), meshPoint(wp, i, 1)); }
+        if (j >= r) { return ext(meshPoint(wp, i, r - 1), meshPoint(wp, i, r - 2)); }
+
+        return wp.pts[j * c + i];
+    }
+
+    // Where the mesh takes the box's point u, v (parts of the box).
+    function meshAt(wp, u, v) {
+        var s = clamp(u, 0, 1) * (wp.cols - 1), q = clamp(v, 0, 1) * (wp.rows - 1);
+        var i = Math.min(Math.floor(s), wp.cols - 2), j = Math.min(Math.floor(q), wp.rows - 2), rows = [], n;
+
+        for (n = j - 1; n <= j + 2; n++) {
+            rows.push(catmull(meshPoint(wp, i - 1, n), meshPoint(wp, i, n), meshPoint(wp, i + 1, n), meshPoint(wp, i + 2, n), s - i));
+        }
+
+        return catmull(rows[0], rows[1], rows[2], rows[3], q - j);
+    }
+
+    // The mesh with cols x rows points, each where the old mesh took it.
+    function meshResize(wp, cols, rows) {
+        var grid = meshGrid(cols, rows), old = (wp && (wp.style === 'mesh') && meshValid(wp)) ? wp : null;
+
+        if (old) {
+            grid.pts = grid.pts.map(function (p) {
+                var q = meshAt(old, p[0], p[1]);
+
+                return [frac(q[0], 1), frac(q[1], 1)];
+            });
+        }
+
+        return grid;
+    }
+
+    // Where the warp takes the point u, v of a w x h box, in the box's
+    // pixels. The presets bend around the box's middle.
+    function warpPoint(wp, w, h, u, v) {
+        if (wp.style === 'mesh') {
+            var m = meshAt(wp, u, v);
+
+            return [m[0] * w, m[1] * h];
+        }
+
+        var b = clamp(Number(wp.bend) || 0, -1, 1), X = u - 0.5, Y = v - 0.5;
+        var x = X * w * (1 + clamp(Number(wp.v) || 0, -1, 1) * Y), y = Y * h * (1 + clamp(Number(wp.h) || 0, -1, 1) * X);
+        var dome = 1 - 4 * X * X, a, r, phi, R;
+
+        if (wp.style === 'arc') {
+            a = b * Math.PI;
+
+            if (Math.abs(a) > 1e-9) {
+                // The middle line becomes an arc of angle a; the box's top
+                // lies outside it, its bottom inside.
+                R = w / a;
+                phi = x / R;
+                r = R - y;
+                x = r * Math.sin(phi);
+                y = R - r * Math.cos(phi);
+            }
+        } else if (wp.style === 'arch') {
+            y -= b * h / 2 * dome;
+        } else if (wp.style === 'bulge') {
+            y *= 1 + b * dome;
+        } else if (wp.style === 'flag') {
+            y -= b * h / 4 * Math.sin(2 * Math.PI * X);
+        } else if (wp.style === 'wave') {
+            y -= b * h / 4 * Math.sin(2 * Math.PI * (X + Y));
+        } else if (wp.style === 'fish') {
+            y *= 1 - b / 2 * Math.sin(2 * Math.PI * X);
+        } else if (wp.style === 'rise') {
+            y -= b * h / 2 * Math.sin(Math.PI * X);
+        } else if (wp.style === 'squeeze') {
+            x *= 1 - b / 2 * (1 - 4 * Y * Y);
+        } else if (wp.style === 'twist') {
+            // Turns most in the middle, not at all at the corners.
+            a = b * Math.PI * (1 - Math.min(1, Math.hypot(2 * X, 2 * Y) / Math.SQRT2));
+            r = x;
+            x = r * Math.cos(a) - y * Math.sin(a);
+            y = r * Math.sin(a) + y * Math.cos(a);
+        }
+
+        return [x + w / 2, y + h / 2];
+    }
+
+    // Knots as a point list in short steps, straight segments included
+    // (a warp bends them).
+    function flattenKnots(knots, closed) {
+        var pts = knots.length ? [[knots[0].x, knots[0].y]] : [];
+
+        segments(knots, closed).forEach(function (s) {
+            var a = s[0], b = s[1];
+            var len = Math.hypot(a.ox - a.x, a.oy - a.y) + Math.hypot(b.ix - a.ox, b.iy - a.oy) + Math.hypot(b.x - b.ix, b.y - b.iy);
+            var n = clamp(Math.ceil(len / WARP_STEP), 2, WARP_MAX), k;
+
+            for (k = 1; k <= n; k++) {
+                pts.push(cubicAt(a, b, k / n));
+            }
+        });
+
+        return pts;
+    }
+
+    // The layer's contours before the warp, as knots in its box's frame: a
+    // path's own (and the other contours of outlined letters), a shape's as
+    // convert to path gives them.
+    function warpSource(l) {
+        var bare = Object.assign({}, l), out;
+
+        delete bare.warp;
+
+        if (l.type !== 'path') {
+            return [shapeKnots(bare)];
+        }
+
+        out = [{ knots: pathKnots(bare), closed: !!l.closed }];
+
+        (Array.isArray(l.subs) ? l.subs : []).forEach(function (sub) {
+            out.push({ knots: moveKnots(sub.knots || [], function (u, v) { return [u * l.w, v * l.h]; }), closed: !!sub.closed });
+        });
+
+        return out;
+    }
+
+    // The warped contours: [{ pts, closed }] in the box's frame; a closed
+    // one does not repeat its first point.
+    function warpContours(l) {
+        var w = l.w, h = l.h;
+
+        return warpSource(l).map(function (c) {
+            var pts = flattenKnots(c.knots, c.closed && (c.knots.length > 2)), closed = c.closed && (c.knots.length > 2);
+
+            if (closed && (pts.length > 1)) {
+                pts.pop();
+            }
+
+            return {
+                closed: closed,
+                pts: pts.map(function (p) { return warpPoint(l.warp, w, h, w ? p[0] / w : 0, h ? p[1] / h : 0); })
+            };
+        });
+    }
+
+    // The warped drawing as shapePath() answers it.
+    function warpShape(l) {
+        var cs = warpContours(l);
+
+        return {
+            d: cs.map(function (c) {
+                return c.pts.map(function (p, i) { return (i ? 'L' : 'M') + rnd(p[0]) + ' ' + rnd(p[1]); }).join('') + (c.closed ? 'Z' : '');
+            }).join(''),
+            head: null,
+            closed: cs.length ? cs[0].closed : false
+        };
+    }
+
+    // The warped outline as outline() answers it: a closed list ends on its
+    // first point.
+    function warpOutline(l) {
+        return warpContours(l).map(function (c) {
+            return c.closed ? c.pts.concat([c.pts[0]]) : c.pts;
+        });
+    }
+
+    // Expand: the drawn outline baked into a path of corner points, its box
+    // fitted to it, angle and mirror kept. The fields to set; the caller
+    // drops the warp and a shape's own fields.
+    function warpExpand(l) {
+        var cs = warpContours(l).filter(function (c) { return c.pts.length > 1; }), all = [];
+
+        cs.forEach(function (c) { all = all.concat(c.pts); });
+
+        if (!all.length) {
+            return null;
+        }
+
+        var xs = all.map(function (p) { return p[0]; }), ys = all.map(function (p) { return p[1]; });
+        var x0 = Math.min.apply(null, xs), y0 = Math.min.apply(null, ys), bw = Math.max.apply(null, xs) - x0, bh = Math.max.apply(null, ys) - y0;
+        var w = Math.max(1, bw), h = Math.max(1, bh), left = x0 + bw / 2 - w / 2, top = y0 + bh / 2 - h / 2, c = drawnPoint(l, left + w / 2, top + h / 2);
+        var part = function (pts) {
+            return pts.map(function (p) { return knot(frac(p[0] - left, w), frac(p[1] - top, h)); });
+        };
+        var out = { type: 'path', x: c[0] - w / 2, y: c[1] - h / 2, w: w, h: h, knots: part(cs[0].pts), closed: cs[0].closed };
+
+        if (cs.length > 1) {
+            out.subs = cs.slice(1).map(function (o) { return { knots: part(o.pts), closed: o.closed }; });
+        }
+
+        return out;
+    }
+
+    var WARP = {
+        WARP_STYLES: WARP_STYLES, MESH_MIN: MESH_MIN, MESH_MAX: MESH_MAX, warpable: warpable, warpOn: warpOn, meshGrid: meshGrid,
+        meshAt: meshAt, meshResize: meshResize, warpPoint: warpPoint, flattenKnots: flattenKnots, warpContours: warpContours,
+        warpShape: warpShape, warpOutline: warpOutline, warpExpand: warpExpand
+    };
+
+    // -- scenes (pg_image_editor_scenes.js) --
+
+    // A canvas may hold scenes played one after another: doc.scenes lists
+    // them as { id, name, transition } and doc.scene names the open one,
+    // whose layers, background and duration are the document's own
+    // (doc.layers, doc.artboard.background, doc.motion.duration), so the
+    // tools need no change. A closed scene keeps them in its entry: layers,
+    // background, duration. A document without doc.scenes is one scene.
+    var SCENE_MAX = 50;
+    var SCENE_LAYERS_MAX = 500;
+    var SCENE_TRANSITIONS = ['none', 'fade', 'slide', 'zoom', 'wipe'];
+    var SCENE_TRANSITION_MIN = 100, SCENE_TRANSITION_MAX = 2000, SCENE_TRANSITION_MS = 600;
+    var SCENE_DEFAULT = 3000;
+
+    function sceneCount(doc) {
+        return (doc && Array.isArray(doc.scenes)) ? doc.scenes.length : 0;
+    }
+
+    // The open scene's place in doc.scenes; -1 without scenes.
+    function sceneIndex(doc) {
+        var list = (doc && Array.isArray(doc.scenes)) ? doc.scenes : [];
+
+        for (var i = 0; i < list.length; i++) {
+            if (list[i] && (list[i].id === doc.scene)) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    // A transition to the next scene with its defaults: a kind from
+    // SCENE_TRANSITIONS and its time in ms, in steps of 100.
+    function sceneTransition(tr) {
+        tr = (tr && (typeof tr === 'object')) ? tr : {};
+
+        return {
+            kind: (SCENE_TRANSITIONS.indexOf(tr.kind) >= 0) ? tr.kind : 'none',
+            ms: clamp(Math.round((Number(tr.ms) || SCENE_TRANSITION_MS) / 100) * 100, SCENE_TRANSITION_MIN, SCENE_TRANSITION_MAX)
+        };
+    }
+
+    function sceneDuration(ms) {
+        return clamp(Math.round(Number(ms) || SCENE_DEFAULT), MOTION_MIN, MOTION_MAX);
+    }
+
+    // The scenes as they play, the open one filled from the document:
+    // [{ id, name, layers, background, duration, transition, open }]. One
+    // entry for a document without scenes. The layers are the document's
+    // own arrays, not copies.
+    function sceneList(doc) {
+        var bg = (doc.artboard && (typeof doc.artboard.background === 'string')) ? doc.artboard.background : '#ffffff';
+        var live = { layers: doc.layers || [], background: bg, duration: docMotion(doc).duration };
+
+        if (!sceneCount(doc)) {
+            return [{ id: '', name: '', layers: live.layers, background: bg, duration: live.duration, transition: sceneTransition(null), open: true }];
+        }
+
+        return doc.scenes.map(function (s) {
+            var open = (s.id === doc.scene);
+
+            return {
+                id: s.id,
+                name: (typeof s.name === 'string') ? s.name : '',
+                layers: open ? live.layers : (Array.isArray(s.layers) ? s.layers : []),
+                background: open ? bg : ((typeof s.background === 'string') ? s.background : '#ffffff'),
+                duration: open ? live.duration : sceneDuration(s.duration),
+                transition: sceneTransition(s.transition),
+                open: open
+            };
+        });
+    }
+
+    // A scene id not yet in the document.
+    function sceneNewId(doc) {
+        var n = sceneCount(doc) + 1;
+
+        while ((doc.scenes || []).some(function (s) { return s.id === 's' + n; })) {
+            n++;
+        }
+
+        return 's' + n;
+    }
+
+    // The document's own content as its first scene (changes doc).
+    function sceneStart(doc) {
+        if (!sceneCount(doc)) {
+            doc.scenes = [{ id: 's1', name: '', transition: sceneTransition(null) }];
+            doc.scene = 's1';
+            doc.motion = docMotion(doc);
+        }
+
+        return doc;
+    }
+
+    // Opens the scene id: the open one's layers, background and duration go
+    // into its entry, the other's come out of it (changes doc).
+    function sceneOpen(doc, id) {
+        var from = sceneIndex(doc), to = -1;
+
+        (doc.scenes || []).forEach(function (s, i) {
+            if (s.id === id) {
+                to = i;
+            }
+        });
+
+        if ((to < 0) || (to === from)) {
+            return doc;
+        }
+
+        var motion = docMotion(doc), board = doc.artboard || {}, next = doc.scenes[to];
+
+        if (from >= 0) {
+            Object.assign(doc.scenes[from], {
+                layers: doc.layers || [],
+                background: (typeof board.background === 'string') ? board.background : '#ffffff',
+                duration: motion.duration
+            });
+        }
+
+        doc.layers = Array.isArray(next.layers) ? next.layers : [];
+
+        if (doc.artboard) {
+            doc.artboard.background = (typeof next.background === 'string') ? next.background : '#ffffff';
+        }
+
+        doc.motion = Object.assign({}, doc.motion || motion, { duration: sceneDuration(next.duration) });
+        delete next.layers;
+        delete next.background;
+        delete next.duration;
+        doc.scene = id;
+
+        return doc;
+    }
+
+    // A new scene after the open one, opened: empty, or a copy of the open
+    // one (copy true) with its duration and transition (changes doc).
+    function sceneAdd(doc, copy) {
+        sceneStart(doc);
+
+        if (sceneCount(doc) >= SCENE_MAX) {
+            return doc;
+        }
+
+        var at = sceneIndex(doc), open = doc.scenes[at], id = sceneNewId(doc), board = doc.artboard || {};
+
+        doc.scenes.splice(at + 1, 0, {
+            id: id,
+            name: '',
+            transition: copy ? sceneTransition(open.transition) : sceneTransition(null),
+            layers: copy ? clone(doc.layers || []) : [],
+            background: (typeof board.background === 'string') ? board.background : '#ffffff',
+            duration: copy ? docMotion(doc).duration : SCENE_DEFAULT
+        });
+
+        return sceneOpen(doc, id);
+    }
+
+    // Deletes the scene id, opening its neighbour when it was open; with one
+    // scene left the document has none (changes doc).
+    function sceneDelete(doc, id) {
+        var at = -1;
+
+        (doc.scenes || []).forEach(function (s, i) {
+            if (s.id === id) {
+                at = i;
+            }
+        });
+
+        if ((at < 0) || (sceneCount(doc) < 2)) {
+            return doc;
+        }
+
+        if (doc.scene === id) {
+            sceneOpen(doc, doc.scenes[(at + 1 < doc.scenes.length) ? at + 1 : at - 1].id);
+        }
+
+        doc.scenes.splice(at, 1);
+
+        if (doc.scenes.length === 1) {
+            delete doc.scenes;
+            delete doc.scene;
+        }
+
+        return doc;
+    }
+
+    // Moves the scene id by delta places, within the list (changes doc).
+    function sceneMove(doc, id, delta) {
+        var list = doc.scenes || [], at = -1;
+
+        list.forEach(function (s, i) {
+            if (s.id === id) {
+                at = i;
+            }
+        });
+
+        var to = clamp(at + delta, 0, list.length - 1);
+
+        if ((at >= 0) && (to !== at)) {
+            list.splice(to, 0, list.splice(at, 1)[0]);
+        }
+
+        return doc;
+    }
+
+    // Sets a scene's duration or its transition to the next ({ kind, ms }
+    // merged) (changes doc). The open scene's duration is the document's.
+    function sceneSet(doc, id, patch) {
+        var s = (doc.scenes || []).filter(function (e) { return e.id === id; })[0];
+
+        if (patch.duration !== undefined) {
+            if (!s || (s.id === doc.scene)) {
+                doc.motion = Object.assign(docMotion(doc), { duration: sceneDuration(patch.duration) });
+            } else {
+                s.duration = sceneDuration(patch.duration);
+            }
+        }
+
+        if (s && patch.transition) {
+            s.transition = sceneTransition(Object.assign({}, sceneTransition(s.transition), patch.transition));
+        }
+
+        return doc;
+    }
+
+    // The whole length: every scene back to back.
+    function sceneTotal(doc) {
+        return sceneList(doc).reduce(function (sum, s) { return sum + s.duration; }, 0);
+    }
+
+    // The moment t of the whole animation: the scene playing (index) at its
+    // own time (local) and, while the previous scene's transition runs over
+    // the start of this one, that scene (from, shown at its end), the kind
+    // and its progress p (0-1, eased). A transition is never longer than the
+    // scene it leads into.
+    function sceneAt(doc, t) {
+        var list = sceneList(doc), start = 0, i;
+
+        t = Math.max(0, Number(t) || 0);
+
+        for (i = 0; i < list.length - 1; i++) {
+            if (t < start + list[i].duration) {
+                break;
+            }
+
+            start += list[i].duration;
+        }
+
+        var local = Math.min(t - start, list[i].duration), at = { index: i, local: local, from: null, kind: 'none', p: 1 };
+        var tr = (i > 0) ? list[i - 1].transition : null, ms = tr ? Math.min(tr.ms, list[i].duration) : 0;
+
+        if (tr && (tr.kind !== 'none') && (local < ms)) {
+            at.from = i - 1;
+            at.kind = tr.kind;
+            at.p = easeAt('in-out', local / ms);
+        }
+
+        return at;
+    }
+
+    // Scene i as a document of its own for drawing a frame: its layers,
+    // background and duration in place of the open scene's.
+    function sceneView(doc, i) {
+        var s = sceneList(doc)[i], view = Object.assign({}, doc, { layers: s.layers, motion: Object.assign(docMotion(doc), { duration: s.duration }) });
+
+        if (doc.artboard) {
+            view.artboard = Object.assign({}, doc.artboard, { background: s.background });
+        }
+
+        delete view.scenes;
+        delete view.scene;
+
+        return view;
+    }
+
+    // How the two scenes are drawn at a transition's progress p on a w x h
+    // frame: each { alpha, x, y, scale } (scale about the centre), the new
+    // one with clip, the part of the frame it shows (a wipe), or null.
+    function sceneTransitionAt(kind, p, w, h) {
+        var from = { alpha: 1, x: 0, y: 0, scale: 1 }, to = { alpha: 1, x: 0, y: 0, scale: 1, clip: null };
+
+        p = clamp(p, 0, 1);
+
+        switch (kind) {
+            case 'fade':
+                to.alpha = p;
+                break;
+            case 'slide':
+                from.x = -w * p;
+                to.x = w * (1 - p);
+                break;
+            case 'zoom':
+                to.scale = 0.6 + 0.4 * p;
+                to.alpha = p;
+                from.scale = 1 + 0.15 * p;
+                break;
+            case 'wipe':
+                to.clip = { x: 0, y: 0, w: w * p, h: h };
+                break;
+            default:
+                from = null;
+        }
+
+        return { from: from, to: to };
+    }
+
+    var SCENES = {
+        SCENE_MAX: SCENE_MAX, SCENE_LAYERS_MAX: SCENE_LAYERS_MAX, SCENE_TRANSITIONS: SCENE_TRANSITIONS, SCENE_TRANSITION_MIN: SCENE_TRANSITION_MIN,
+        SCENE_TRANSITION_MAX: SCENE_TRANSITION_MAX, sceneCount: sceneCount, sceneIndex: sceneIndex, sceneTransition: sceneTransition, sceneList: sceneList,
+        sceneStart: sceneStart, sceneOpen: sceneOpen, sceneAdd: sceneAdd, sceneDelete: sceneDelete, sceneMove: sceneMove, sceneSet: sceneSet,
+        sceneTotal: sceneTotal, sceneAt: sceneAt, sceneView: sceneView, sceneTransitionAt: sceneTransitionAt
+    };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -3982,7 +4765,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, SCENES].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

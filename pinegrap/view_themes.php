@@ -17,9 +17,7 @@
  */
 
 include('init.php');
-
-// only ever appended to further below, so it has to start out empty
-$output_rows = '';
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
 $user = validate_user();
 validate_area_access($user, 'designer');
@@ -54,36 +52,6 @@ $order_by = pg_list_order_by($sort_levels, array(
     'last_modified'     => 'timestamp',
 ));
 
-// count all stylesheet files
-$query =
-    "SELECT
-        COUNT(files.id)
-    FROM files
-    WHERE
-        (type = 'css')
-        AND (design = '1')
-        AND (theme = '1')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-$row = mysqli_fetch_row($result);
-$all_theme_files = $row[0];
-
-$where = '';
-
-// if the search query is not set yet, then default it to empty
-if (isset($_SESSION['software']['design']['view_themes']['query']) == false) {
-    $_SESSION['software']['design']['view_themes']['query'] = '';
-}
-
-$search_query = pg_search_lower($_SESSION['software']['design']['view_themes']['query'] ?? '');
-
-// create where clause for sql
-$sql_search = "(LOWER(CONCAT_WS(',', files.name, folder.folder_name, user.user_username)) LIKE '" . escape(pg_list_like_pattern($search_query)) . "')";
-
-if (!empty($_SESSION['software']['design']['view_themes']['query'])) {
-    // Get only the results the user wanted in the search.
-    $where .= " AND ($sql_search) ";
-}
-
 // get all stylesheet files
 $query =
     "SELECT
@@ -103,7 +71,6 @@ $query =
         (type = 'css')
         AND (design = '1')
         AND (theme = '1')
-        $where
     ORDER BY $order_by";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -112,55 +79,41 @@ while ($row = mysqli_fetch_assoc($result)) {
     $files[] = $row;
 }
 
-// if there is at least one result to display
-if ($files) {
- 
-    foreach ($files as $file) {
-        $output_activated_desktop_theme_check_mark = '';
+// Every theme is printed: the list table driver sorts and searches them in
+// the browser (browser mode) and keeps a heading's sort in the session.
+$list_rows = array();
 
-        // if this theme is the activated desktop theme, then output check mark
-        if ($file['activated_desktop_theme'] == 1) {
-            $output_activated_desktop_theme_check_mark = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
-        }
+foreach ($files as $file) {
+    // The folder's access control, shown beside its name.
+    $folder_access_control_type = get_access_control_type($file['folder']);
+    $output_access_control = get_access_control_type_name($folder_access_control_type);
 
-        $output_activated_mobile_theme_check_mark = '';
-
-        // if this theme is the activated mobile theme, then output check mark
-        if ($file['activated_mobile_theme'] == 1) {
-            $output_activated_mobile_theme_check_mark = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
-        }
-        
-        // If the theme was upload by a user then display their name.
-        if (isset($file['user_username']) == TRUE) {
-            $output_created_by_user = lang(array('string'=>'by {var:1}','vars'=>h($file['user_username'])));
-        } else {
-            
-            $output_created_by_user = lang(array('string'=>'by {var:1}','vars'=>'[' . lang('Unknown') . ']'));
-        }
-
-
-        // Get folder access control type
-        $folder_access_control_type = get_access_control_type($file['folder']);
-        // Get folder access control name
-        $output_access_control = get_access_control_type_name($folder_access_control_type);
-
-        $output_link_url = h(escape_javascript(PATH . SOFTWARE_DIRECTORY)) . '/edit_theme_file.php?id=' . $file['id'];
-
-        $output_rows .=
-            '<tr>
-                <td class="align-middle text-start">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
-                </td>
-                <td class="align-middle chart_label">' . h($file['name']) . '</td>
-                <td class="align-middle">' . nl2br(h($file['description'])) . '</td>
-                <td class="align-middle text-start text-wrap ' . $folder_access_control_type . '">' . pg_folder_list_name($file['folder_name']) . '<span class="badge fw-light fg-reset d-inline">(' . $output_access_control . ')</span></td>
-                <td class="align-middle text-center">' . $output_activated_desktop_theme_check_mark . '</td>
-                <td class="align-middle text-center">' . $output_activated_mobile_theme_check_mark . '</td>
-                <td class="align-middle">' . get_relative_time(array('timestamp' => $file['timestamp'])) . ' ' . $output_created_by_user . '</td>
-            </tr>';
-    }
+    $list_rows[] = array(
+        'id' => $file['id'],
+        'cells' => array(
+            'name' => pg_list_cell('<a href="edit_theme_file.php?id=' . (int) $file['id'] . '" data-pg-open>' . h($file['name']) . '</a>'),
+            'description' => pg_list_cell(nl2br(h($file['description']))),
+            'folder' => pg_list_cell(pg_folder_list_name($file['folder_name']) . '<span class="badge fw-light fg-reset d-inline">(' . $output_access_control . ')</span>', 'align-middle text-wrap ' . $folder_access_control_type),
+            'activated_desktop' => pg_list_table_check_cell($file['activated_desktop_theme'] == 1),
+            'activated_mobile' => pg_list_table_check_cell($file['activated_mobile_theme'] == 1),
+            'last_modified' => pg_list_table_when_cell($file['timestamp'], $file['user_username'] ?? ''),
+        ),
+    );
 }
+
+$list = pg_list_table_printed(array(
+    'list' => 'view_themes',
+    'columns' => array(
+        'name' => array('heading' => lang('File Name')),
+        'description' => array('heading' => lang('Description')),
+        'folder' => array('heading' => lang('Folder')),
+        'activated_desktop' => array('heading' => lang('Activated for Desktop'), 'kind' => 'check'),
+        'activated_mobile' => array('heading' => lang('Activated for Mobile'), 'kind' => 'check'),
+        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+    ),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+));
 
 print
 pg_page_shell([
@@ -178,29 +131,13 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
             ' . pg_screen_toolbar(array(
                 'primary' => array('label' => lang('Create'), 'url' => 'add_theme_file.php', 'icon' => 'bi-plus-circle'),
-                'search'  => pg_list_sort_menu('view_themes.php', $sort_columns, $sort_levels, $sort_default),
+                'search'  => array(pg_list_table_search_box('view_themes'), pg_list_sort_menu('view_themes.php', $sort_columns, $sort_levels, $sort_default)),
             )) . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table " style="width:100%;display:none">
-                        <thead>
-                            <tr>
-                                <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th>' . get_column_heading(lang('File Name'), $sort_levels, '', '', 'name') . '</th>
-                                <th>' . get_column_heading(lang('Description'), $sort_levels, '', '', 'description') . '</th>
-                                <th>' . get_column_heading(lang('Folder'), $sort_levels, '', '', 'folder') . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Activated for Desktop'), $sort_levels, '', '', 'activated_desktop') . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Activated for Mobile'), $sort_levels, '', '', 'activated_mobile') . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>' . $output_rows . '</tbody>
-                    </table>
-                </div>
-            </div>
+            ' . pg_list_table_html($list['source'], $list['page'], lang('All Themes')) . '
         </div>
     </div>
 </main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 ' .
 output_footer();
 

@@ -132,6 +132,9 @@ $study_pages[] = array(
         'confirm_email'        => 1,
         'confirm_subject'      => lang('We received your enrolment request'),
         'confirm_page_id'      => '{{tab:email_enrolment_received}}',
+        // The enrolment fee, paid as the form's last step; bank transfer
+        // where the store takes it. Without the shop there is no fee.
+        'payment'              => array('product_id' => '{{product:enrolment_fee}}', 'amount_source' => 'product', 'offline' => 1),
     ),
     'tree'             => $page(array(
         $page_header(lang('Request Enrolment'), lang('For an invoice, a team or a course you would rather not pay for online. We answer within a working day and open the course for you.')),

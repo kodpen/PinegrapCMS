@@ -4,6 +4,7 @@ description: Quick edit mode of the list table driver (assets/js/pg_list_table_e
 ---
 
 ## How does a list get quick edit?
+- Every value the record's edit screen can change is a field; only computed values stay text (`list-table-quick-edit-values.md`).
 - Its source names `edit` => `array('url' => the screen, 'columns' => the screen's pg_list_edit columns)` (`pg_list_table_edit_spec()`), only for a user who may change the list. Kept only while some column has `editable`; then `pg_list_table_html()` prints `data-pg-edit-url`/`data-pg-edit-columns` (`pg_list_edit_table()`) on the root and the "Hızlı düzenleme" button (`.pg-list-table-quick`, `aria-pressed`) in the bar's tools.
 - A cell becomes a field when its column has `editable` **and** it carries `pg_list_edit_cell_attributes()` (`data-pg-edit` field, `-id`, `-value`) whose field is in the definitions. A row whose cell lacks the attributes (a product that does not track stock) stays text. The driver drops the cells' `tabindex`: the keyboard reaches a row, not every cell.
 - The writes go to the screen's own `pg_list_edit_request()` endpoint, one cell per POST (`pg_list_edit`, `token`, `field`, `id`, `value`), unchanged; its answer (`value`, `html`, `class`, `cells`) draws the cell and the other cells it names (by `data-pg-cell`, `data-pg-col` or `data-pg-edit`).
@@ -22,4 +23,4 @@ description: Quick edit mode of the list table driver (assets/js/pg_list_table_e
 ## Why does the old cell editor skip these lists?
 - `backend.src.js`'s click/F2 editor (`list-quick-edit-keyboard.md`) opens on any `td[data-pg-edit]`; inside `.pg-list-table` it now does nothing, so a click selects the row and the mode owns editing. DataTables screens keep the old editor until they move.
 
-Related: docs/memory/ui/list-table-driver-browser.md, docs/memory/ui/list-quick-edit-keyboard.md
+Related: docs/memory/ui/list-table-quick-edit-values.md, docs/memory/ui/list-table-driver-browser.md, docs/memory/ui/list-quick-edit-keyboard.md

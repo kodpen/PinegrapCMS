@@ -179,6 +179,67 @@ JS
 	pg_assert_same('3 seçili', $result['text']);
 }
 
+function test_list_table_js_sort_menu_edits_and_marks()
+{
+	$result = list_table_js_test_node(<<<'JS'
+var out = {};
+var levels = T.sortParse('name:asc,price:desc');
+out.reverse = T.sortEdit(levels, 'reverse', 1);
+out.remove = T.sortEdit(levels, 'remove', 0);
+out.removeLast = T.sortEdit([{ sort: 'name', order: 'asc' }], 'remove', 0);
+out.add = T.sortEdit(levels, 'add', -1, 'folder', 'desc');
+out.addAgain = T.sortEdit(levels, 'add', -1, 'price', 'asc');
+out.untouched = levels;
+out.marksOne = T.sortMarks([{ sort: 'name', order: 'desc' }]);
+out.marksTwo = T.sortMarks(levels);
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(array('sort' => 'name', 'order' => 'asc'), array('sort' => 'price', 'order' => 'asc')), $result['reverse']);
+	pg_assert_same(array(array('sort' => 'price', 'order' => 'desc')), $result['remove'], 'the lead level leaves, the next one leads');
+	pg_assert_same(array(array('sort' => 'name', 'order' => 'asc')), $result['removeLast'], 'the last level stays');
+	pg_assert_same(array('sort' => 'folder', 'order' => 'desc'), $result['add'][2]);
+	pg_assert_same(2, count($result['addAgain']), 'a column already sorted by is not added twice');
+	pg_assert_same('asc', $result['untouched'][0]['order'], 'the levels given are not changed');
+	pg_assert_same(array('name' => array('level' => 1, 'order' => 'desc', 'numbered' => false)), $result['marksOne']);
+	pg_assert_same(array('level' => 2, 'order' => 'desc', 'numbered' => true), $result['marksTwo']['price']);
+}
+
+function test_list_table_js_select_all_button_state()
+{
+	$result = list_table_js_test_node(<<<'JS'
+var s = new T.Selection(), out = {};
+out.none = T.allSelected(s, ['1', '2']);
+s.selectIds(['1', '2']);
+out.shownAll = T.allSelected(s, ['1', '2']);
+out.serverIds = T.allSelected(s, null);
+s.toggle('2');
+out.shownSome = T.allSelected(s, ['1', '2']);
+out.emptyList = T.allSelected(new T.Selection(), []);
+s.selectAll(1700000000);
+s.toggle('5');
+out.condition = T.allSelected(s, null);
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(false, $result['none']);
+	pg_assert_same(true, $result['shownAll'], 'every shown row of a list printed whole');
+	pg_assert_same(false, $result['serverIds'], 'loaded rows of a server list are not all of it');
+	pg_assert_same(false, $result['shownSome']);
+	pg_assert_same(false, $result['emptyList']);
+	pg_assert_same(true, $result['condition'], 'the whole condition, exceptions or not');
+}
+
 function test_list_table_js_column_preferences()
 {
 	$result = list_table_js_test_node(<<<'JS'
@@ -229,4 +290,71 @@ JS
 	pg_assert_same(array('order' => array(), 'hidden' => array('b' => true), 'details' => false), $result['junk']);
 	pg_assert_same(array('order' => array(), 'hidden' => array(), 'details' => true), $result['reset']);
 	pg_assert_same('pg.list.7.view_pages', $result['key']);
+}
+
+// A list printed whole keeps the rows whose filtered cell carries the
+// value, beside the search words; a server list sends the filter with its
+// parameters and asks again.
+function test_list_table_js_filter()
+{
+	$result = list_table_js_test_node(<<<'JS'
+function row(text, type) {
+    return { textContent: text, hidden: false, querySelector: function (selector) {
+        return (selector === 'td[data-pg-col="type"]') ? { getAttribute: function () { return type; } } : null;
+    } };
+}
+var rows = [row('saved page', 'site'), row('PHP Warning', 'warn'), row('PHP Fatal', 'error')];
+var list = { browser: true, search: '', filters: {}, params: {}, selection: new T.Selection(), tbody: { rows: rows }, paint: function () {}, showHere: T.Driver.prototype.showHere };
+var out = {};
+function shown() { return rows.filter(function (r) { return !r.hidden; }).length; }
+T.Driver.prototype.setFilter.call(list, 'type', 'error');
+out.error = [shown(), list.total];
+list.search = 'php';
+T.Driver.prototype.setFilter.call(list, 'type', '');
+out.all = shown();
+list.search = 'saved';
+T.Driver.prototype.showHere.call(list);
+out.searched = shown();
+var server = { browser: false, filters: {}, params: { start_time: '1' }, selection: new T.Selection(), loads: 0, load: function () { this.loads++; } };
+T.Driver.prototype.setFilter.call(server, 'type', 'warn');
+T.Driver.prototype.setFilter.call(server, 'type', 'warn');
+out.server = [server.params.type, server.loads];
+T.Driver.prototype.setFilter.call(server, 'type', '');
+out.cleared = [server.params.hasOwnProperty('type'), server.loads];
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(1, 1), $result['error'], 'only the error row, counted');
+	pg_assert_same(2, $result['all'], 'every type, the search words still apply');
+	pg_assert_same(1, $result['searched']);
+	pg_assert_same(array('warn', 1), $result['server'], 'sent with the parameters, asked once');
+	pg_assert_same(array(false, 2), $result['cleared']);
+}
+
+// The details panel's sections: the name first, then the pictures, the
+// label/value lines and the buttons; an empty cell is left out.
+function test_list_table_js_details_sections()
+{
+	$result = list_table_js_test_node(<<<'JS'
+var T = window.PGListTable;
+var cols = [{ key: 'name' }, { key: 'pic', kind: 'image' }, { key: 'price', kind: 'money' }, { key: 'note' }, { key: 'actions', kind: 'actions' }, { key: 'seo', kind: 'badge' }];
+var filled = { name: 1, pic: 1, price: 1, actions: 1, seo: 1 };
+var out = {};
+out.full = T.detailsSections(cols, function (key) { return !!filled[key]; });
+out.bare = T.detailsSections(cols, function () { return false; });
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('title' => 'name', 'pictures' => array('pic'), 'fields' => array('price', 'seo'), 'actions' => array('actions')), $result['full'], 'in the user\'s order, the empty note left out');
+	pg_assert_same(array('title' => 'name', 'pictures' => array(), 'fields' => array(), 'actions' => array()), $result['bare'], 'the name always leads');
 }

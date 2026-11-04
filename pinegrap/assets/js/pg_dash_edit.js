@@ -325,7 +325,7 @@
 
     // The preset's cards at their defaults, every top-section part on.
     function backToDefault() {
-        var top = {since: 1, actions: 1, tiles: 1, status: 1};
+        var top = {since: 1, actions: 1, tiles: 1, status: 1, brief: 1};
 
         if (JSON.stringify(top) !== JSON.stringify(state.top)) {
             greetingDirty = true;
@@ -772,6 +772,12 @@
             if (node) {
                 node.hidden = !state.top[pair[0]];
             }
+        });
+
+        // The brief has two parts: the next meeting by the date and the
+        // sentence under the title.
+        greeting.querySelectorAll("[data-top-part=\"brief\"]").forEach(function (node) {
+            node.hidden = !state.top.brief;
         });
     }
 

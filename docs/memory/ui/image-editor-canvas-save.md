@@ -5,8 +5,8 @@ module: image_editor
 ---
 
 ## How is it saved?
-- `M.saveLayout()`: the canvas in output pixels (`w`, `h`), the picture's place on it (`x`, `y`) and the fill (the canvas's, else the outward frame's colour), sent as `extend` by a save hook for every mode but new. The overlay and frame are drawn at `M.saveSize()` over `M.saveBox()`.
-- Server: `pg_image_edit_extend()` checks it (whole numbers, 1-8000, the picture touching the canvas, `#rrggbb` or transparent); the engine's `extend` step comes after redaction and before the overlay (Imagick `extentImage()`, GD `pg_image_edit_gd_extend()`); a transparent fill is white for a format without alpha; the crop shape cuts the whole canvas.
+- `M.saveLayout()`: the canvas in output pixels (`w`, `h`), the picture's place on it (`x`, `y`), its size there (`pw`, `ph`) when it was resized on the canvas (`image-editor-picture-layer.md`) and the fill (the canvas's, else the outward frame's colour), sent as `extend` by a save hook for every mode but new. The overlay and frame are drawn at `M.saveSize()` over `M.saveBox()`.
+- Server: `pg_image_edit_extend()` checks it (whole numbers, 1-8000, the picture touching the canvas, `#rrggbb` or transparent); the engine's `extend` step comes after redaction and before the overlay (Imagick `extentImage()`, GD `pg_image_edit_gd_extend()`); a transparent fill is white for a format without alpha. A crop shape cuts the picture before the canvas (its cut corners take the fill) and leaves the layers whole; before, it cut the whole canvas into an ellipse.
 - The vignette covers the picture only, in the preview (`placeVignette()`) and the save.
 
 ## What happens to pictures from this computer?

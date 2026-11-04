@@ -681,6 +681,15 @@ if ($import_tick['swept'] > 0) {
     )), 'UNKNOWN');
 }
 
+// The bulk move to the visual designer (includes/fn/legacy_to_designer_run.php):
+// a move started on its screen is worked for a short budget every tick, so it
+// carries on with the screen closed. With none it is one missing file, and the
+// converters are not loaded (the path is pg_ltd_state_path()'s).
+if (is_file(PG_FUNCTIONS_DIR . '/data/temp/legacy_to_designer.json')) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_run.php');
+    pg_ltd_job_tick(pg_cron_time_left(20));
+}
+
 // Page revisions (includes/fn/page_revisions.php): once a day the rows of
 // deleted pages go, and every page holding more revisions than the count rule
 // keeps is trimmed by the age rule. A tick with nothing due reads one small

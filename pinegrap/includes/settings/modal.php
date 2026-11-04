@@ -40,7 +40,7 @@ function pg_settings_modal_button()
                 <ul class="navbar-nav">
                     <li class="nav-item no-popover" title="' . h(lang('Site Settings')) . '">
                         <button type="button" id="pg_settings_open" class="nav-link nav-link-sm no-popover" aria-label="' . h(lang('Site Settings')) . '">
-                            <span class="bi bi-gear"></span>
+                            <span class="bi bi-gear" aria-hidden="true"></span>
                         </button>
                     </li>
                 </ul>';
