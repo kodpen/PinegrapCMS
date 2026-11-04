@@ -43,21 +43,24 @@ validate_contacts_access($user);
 // Stop early when the screen is opened without an existing record (stale
 // link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
 // "not found" screen instead of PHP notices from the unchecked row below or
-// an error page.
-$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+// an error page. The id is the one the handlers below act on (POST on a
+// submit, GET on the form), never $_REQUEST, which a cookie of the same name
+// can feed past the access check.
+$requested_contact_group_id = $_POST ? ($_POST['id'] ?? '') : ($_GET['id'] ?? '');
+$id = is_scalar($requested_contact_group_id) ? (int) $requested_contact_group_id : 0;
 if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM contact_groups WHERE id = '" . $id . "'") < 1)) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
 // if user does not have access to edit contact group, output error
-if (validate_contact_group_access($user, $_REQUEST['id']) == false) {
+if (validate_contact_group_access($user, $id) == false) {
     log_activity(lang('access denied to edit contact group'), $_SESSION['sessionusername']);
     output_error(lang('Access denied.'));
 }
 
 include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/contact_group_form.php');
-$liveform = new liveform('edit_contact_group', $_REQUEST['id']);
+$liveform = new liveform('edit_contact_group', $id);
 
 // The rule state of the group, once the upgrade has added the columns.
 $audience_ready = pg_audience_ready();
@@ -71,13 +74,13 @@ if ($audience_ready) {
 // get number of contacts in this contact group; the members a group filled by
 // rules got from its rules do not hold its delete back, they are derived
 $query = "SELECT COUNT(contact_id) FROM contacts_contact_groups_xref WHERE contact_group_id = ?" . (($group_rules['kind'] === 'dynamic') ? " AND source <> 'rule'" : '');
-$result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
+$result = db_q($query, array((string) $id)) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 $number_of_contacts = $row[0];
 
 if (!$_POST) {
     // if edit contact group screen has not been submitted already, pre-populate fields with data
-    if (isset($_SESSION['software']['liveforms']['edit_contact_group'][$_GET['id']]) == false) {
+    if (isset($_SESSION['software']['liveforms']['edit_contact_group'][$id]) == false) {
         // get contact group data
         $query =
             "SELECT
@@ -87,7 +90,7 @@ if (!$_POST) {
                 description
             FROM contact_groups
             WHERE id = ?";
-        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+        $result = db_q($query, array((string) $id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         $liveform->assign_field_value('name', $row['name']);
@@ -145,7 +148,7 @@ if (!$_POST) {
                             </div>
                         </div>
                     </nav>
-                    <input type="hidden" name="id" value="' . h($_GET['id']) . '">
+                    <input type="hidden" name="id" value="' . $id . '">
                 </form>
             </div>
         </div>
@@ -165,33 +168,33 @@ if (!$_POST) {
         if ($number_of_contacts == 0) {
             // get contact group name for log
             $query = "SELECT name FROM contact_groups WHERE id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+            $result = db_q($query, array((string) $id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $contact_group_name = $row['name'];
             
             // delete contact group
             $query = "DELETE FROM contact_groups WHERE id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+            $result = db_q($query, array((string) $id)) or output_error('Query failed.');
             
             // delete contact group references in contacts_contact_groups_xref
             $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_group_id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+            $result = db_q($query, array((string) $id)) or output_error('Query failed.');
             
             // delete contact group references in users_contact_groups_xref
             $query = "DELETE FROM users_contact_groups_xref WHERE contact_group_id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+            $result = db_q($query, array((string) $id)) or output_error('Query failed.');
             
             // delete contact group references in opt_in
             $query = "DELETE FROM opt_in WHERE contact_group_id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+            $result = db_q($query, array((string) $id)) or output_error('Query failed.');
             
             // delete contact group references in contact_groups_email_campaigns_xref
             $query = "DELETE FROM contact_groups_email_campaigns_xref WHERE contact_group_id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+            $result = db_q($query, array((string) $id)) or output_error('Query failed.');
 
             // Its SMS campaign rows, once the upgrade has created the table.
             if (pg_schema_has('contact_groups_sms_campaigns_xref')) {
-                db_q("DELETE FROM contact_groups_sms_campaigns_xref WHERE contact_group_id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+                db_q("DELETE FROM contact_groups_sms_campaigns_xref WHERE contact_group_id = ?", array((string) $id)) or output_error('Query failed.');
             }
 
             // A recompute left half way keeps its state in a file.
@@ -215,13 +218,13 @@ if (!$_POST) {
             $liveform->mark_error('', lang('Please delete or remove all contacts from this contact group before deleting this contact group.'));
             
             // forward user to edit contact group screen
-            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_contact_group.php?id=' . $_POST['id']);
+            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_contact_group.php?id=' . $id);
         }
         
     // else contact group was not selected for delete
     } else {
         $liveform->add_fields_to_session();
-        pg_contact_group_form_validate_name($liveform, (string) ($_POST['id'] ?? ''));
+        pg_contact_group_form_validate_name($liveform, (string) $id);
         $posted_rules = $may_edit_rules ? pg_audience_editor_posted($_POST) : null;
 
         if ($posted_rules && ($posted_rules['kind'] === 'dynamic') && ($posted_rules['count'] === 0)) {
@@ -230,7 +233,7 @@ if (!$_POST) {
         
         // if there is an error, forward user back to edit contact group screen
         if ($liveform->check_form_errors() == true) {
-            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_contact_group.php?id=' . $_POST['id']);
+            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_contact_group.php?id=' . $id);
             exit();
         }
         
@@ -245,7 +248,7 @@ if (!$_POST) {
                 last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
             WHERE id = ?";
-        $result = db_q($query, array_merge(pg_contact_group_form_values($liveform), array((string) $user['id'], (string) ($_POST['id'] ?? '')))) or output_error('Query failed.');
+        $result = db_q($query, array_merge(pg_contact_group_form_values($liveform), array((string) $user['id'], (string) $id))) or output_error('Query failed.');
 
         // A group that becomes filled by rules, or whose rules change, is due
         // at the next general job tick (computed_at 0); its hand rows stay.
