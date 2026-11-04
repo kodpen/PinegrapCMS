@@ -576,6 +576,7 @@
     "Payment due": "Ödeme bekleniyor",
     "Payment failed": "Ödeme başarısız",
     "Payment failed. Please try again.": "Ödeme başarısız. Lütfen tekrar deneyiniz.",
+    "Payment gateway secrets": "Ödeme altyapısı gizli anahtarları",
     "Payment in progress": "Ödeme işleniyor",
     "Payment information": "Ödeme bilgisi",
     "Payment intermediary": "Ödeme aracısı",
