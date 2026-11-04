@@ -1646,6 +1646,7 @@
     "{var:1} was not imported: the design uses its own Bootstrap / jQuery.": "{var:1} içe aktarılmadı: tasarım kendi Bootstrap / jQuery'sini kullanıyor.",
     "{var:1} was not written: the books are locked up to {var:2}.": "{var:1} yazılmadı: defterler {var:2} dahil kilitli.",
     "{var:1} was refunded to the card, and return invoices cover {var:2}. Choose the lines that came back.": "Karta {var:1} iade edildi, iade faturaları {var:2} tutarını karşılıyor. Geri gelen kalemleri seçin.",
+    "{var:1} was refunded, and return invoices cover {var:2}. Choose the lines that came back.": "{var:1} iade edildi, iade faturaları {var:2} tutarını karşılıyor. Geri gelen kalemleri seçin.",
     "{var:1} was removed, and its connections were ended.": "{var:1} kaldırıldı ve bağlantıları sonlandırıldı.",
     "{var:1} was renamed to {var:2}": "{var:1} adı {var:2} olarak değiştirildi",
     "{var:1} was resized to {var:2} x {var:3} pixels and optimized ({var:4} -> {var:5}, {var:6}%).": "{var:1} {var:2} x {var:3} piksele küçültüldü ve optimize edildi ({var:4} -> {var:5}, %{var:6}).",
