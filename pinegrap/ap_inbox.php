@@ -26,6 +26,6 @@ ob_start();
 
 include(dirname(__FILE__) . '/init.php');
 
-require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub_inbox.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub_moderation.php');
 
 pg_ap_inbox_receive();
