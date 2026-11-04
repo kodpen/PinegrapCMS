@@ -1,6 +1,6 @@
 ---
 name: erp-expense-form-checks
-description: Expense screen checks: non-numbers, the field a refusal marks, the paid cancel's till right, send_to, repeat end dates, refused category saves, kept dates, card-body grids.
+description: Expense screen checks: non-numbers, the field a refusal marks, the paid cancel's till right, send_to, repeat end dates, refused category saves, kept dates, card-body grids, the form layout.
 ---
 
 ## How does the expense form read a typed amount or rate?
@@ -66,3 +66,11 @@ date and end date back and marks the one the refusal names
 `backend.src.css` sets `.card-body { display: block }`, which beats
 `.row`'s flex on a `card-body row` element and stacks every column. A grid
 in a card is `<div class="card-body"><div class="row …">` (#5517).
+
+## How is the expense form laid out?
+
+As `erp-screen-status-column-pattern.md` asks: the cards in the form column,
+a sticky "Total" card beside them with Net, tax and total (the live
+`#erp_expense_preview`, or a paid expense's stored figures), the save bar
+its own sticky `order-3` column. The script finds the preview inside the
+form, so the status column stays inside `<form>`.
