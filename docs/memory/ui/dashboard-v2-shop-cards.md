@@ -15,7 +15,7 @@ description: The new dashboard's shop cards (shop, salesmap, ops, orders, offers
 
 ## How is the map drawn?
 - `pg_dash_cards_shop.js` fetches the map file once a page and copies only path ids and shapes into a fresh SVG (`role="img"`, labelled, the country through `lang()`); a region with sales gets `data-step` 1-4, coloured from the card colour; the legend repeats the steps. Region figures are also in the rows, so the colours never carry them alone.
-- Every region names itself in the figure box (`pgDash.chartTips`: one tab stop, arrows step, Enter opens, a ring path outlines it). `places` holds the regions that sold, by sales (name, money · orders, best cities; lines split by `\n`, the box is `pre-line`), then the rest of the map's names table with "No sales". With the `shop` gate a region that sold is an SVG link (`tabindex=-1`) and its row a link, both `pg_sales_map_orders_url()` as on widget 1. Before, the card's map named and opened nothing.
+- Every region names itself in the figure box (`pgDash.chartTips`: one tab stop, arrows step, Enter opens, a ring path outlines it). `places` holds the regions that sold, by sales (name, money · orders, best cities; lines split by `\n`, the box is `pre-line`), then the rest of the map's names table with "No sales". With the `shop` gate a region that sold is an SVG link (`tabindex=-1`) and its row a link, both `pg_sales_map_orders_url()` as on widget 1. Before, the card's map named and opened nothing (#6661).
 
 ## How does the Operations Desk card read widget 9? (#5031)
 - `ops` draws three lanes, To ship, To refund, Out of stock, each its count, a line under it and at most three rows (`PG_DASHBOARD_V2_OPS_ROWS`), with a "more" link to the filtered list when the count is larger.
