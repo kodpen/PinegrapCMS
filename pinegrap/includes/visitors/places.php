@@ -228,10 +228,10 @@ function pg_visitors_places_share_text($part, $total)
     $share = pg_visitors_places_share($part, $total);
 
     if (((int) $part > 0) && ($share < 0.1)) {
-        return '< ' . pg_format_number(0.1, 1) . ' %';
+        return '< ' . pg_visitors_percent(0.1, 1);
     }
 
-    return pg_format_number($share, ($share >= 10) ? 0 : 1) . ' %';
+    return pg_visitors_percent($share, ($share >= 10) ? 0 : 1);
 }
 
 /**

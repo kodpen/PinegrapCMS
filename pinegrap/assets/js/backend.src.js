@@ -512,6 +512,26 @@ $(document).ready(function () {
                 result = true;
                 break;
         }
+        // A list's bulk action (Delete Selected and the others above) posts
+        // document.form itself, so its question can wait for the panel's
+        // own dialog: the click is stopped here and the form goes out once
+        // the answer is yes. A refusal takes the bulk action back, or a
+        // later Ctrl+S or Return would still post it with the selected rows.
+        if (result == true && autoconfirm == false && confirm_content && !confirm_action && typeof window.pgConfirm === 'function') {
+            window.pgConfirm({
+                title: $.trim(el.text()) || lang('Confirm'),
+                message: confirm_content,
+                confirmText: $.trim(el.text()) || lang('OK'),
+                variant: value == 'Delete Selected' ? 'danger' : 'primary'
+            }).then(function (ok) {
+                if (ok) {
+                    document.form.submit();
+                } else {
+                    document.form.action.value = '';
+                }
+            });
+            return false;
+        }
         // if its not autoconfirmed btn and there is confirm content in this button
         if (autoconfirm == false && confirm_content) {
             if (confirm(confirm_content) == true) {
@@ -5928,6 +5948,12 @@ function change_email_campaign_profile_action() {
             $('#standard_schedule_period_and_base').addClass('show');
             break;
 
+        case 'credit_issued':
+        case 'credit_expiring':
+            $('#credit_fields_row').addClass('show');
+            $('#standard_schedule_period_and_base').addClass('show');
+            break;
+
         default:
             $('#standard_schedule_period_and_base').addClass('show');
             break;
@@ -10044,11 +10070,11 @@ function pg_poll_while_visible(poll, ms) {
         el.setAttribute('aria-atomic', 'true');
         el.innerHTML =
             '<div class="d-flex">' +
-                '<div class="toast-body">' +
+                '<div class="toast-body flex-grow-1">' +
                     '<i class="bi ' + iconMap[variant] + ' me-3" aria-hidden="true"></i>' +
                     escapeHtml(message) +
                 '</div>' +
-                '<button type="button" class="btn-close me-3 m-auto" data-bs-dismiss="toast" aria-label="' + escapeHtml(lang('Close')) + '"></button>' +
+                '<button type="button" class="btn-close ms-2 me-3 my-auto flex-shrink-0" data-bs-dismiss="toast" aria-label="' + escapeHtml(lang('Close')) + '"></button>' +
             '</div>';
         container.appendChild(el);
 
@@ -14436,5 +14462,43 @@ $(document).on('submit', 'form', function (event) {
         document.addEventListener('DOMContentLoaded', addStyle);
     } else {
         addStyle();
+    }
+})();
+
+// The mascot in the panel's logo (pg_logo_markup()) plays as a short muted
+// loop. Reduced motion, a data saver or a small device keep its still poster,
+// and so does a browser that refuses to play it: the video is only fetched
+// once play() is called.
+(function () {
+    function pgLogoVideos() {
+        var still = true;
+
+        try {
+            var connection = navigator.connection;
+
+            still = (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+                || !!(connection && connection.saveData)
+                || !!(navigator.deviceMemory && (navigator.deviceMemory < 2));
+        } catch (e) {
+            still = true;
+        }
+
+        if (still) {
+            return;
+        }
+
+        Array.prototype.forEach.call(document.querySelectorAll('video[data-pg-logo-video]'), function (video) {
+            var playing = video.play ? video.play() : null;
+
+            if (playing && playing.catch) {
+                playing.catch(function () {});
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', pgLogoVideos);
+    } else {
+        pgLogoVideos();
     }
 })();

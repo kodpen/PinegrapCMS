@@ -75,7 +75,7 @@ function test_country_form_card_prints_stored_values()
 
 	$empty = pg_country_form_card(null);
 
-	pg_assert_false(strpos($empty, 'checked') !== false, 'the create card has no switch on');
+	pg_assert_false(strpos($empty, ' checked name=') !== false, 'the create card has no switch on');
 	pg_assert_contains('maxlength="50" required />', $empty, 'the create card prints no name value');
 }
 
@@ -122,4 +122,35 @@ function test_country_form_screens_refuse_a_blank_name_and_code()
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/add_country.php');
 	pg_assert_contains("'cancel'=>array('enable'=>'true','url'=>'view_countries.php')", $source, 'add_country.php has the back arrow');
 	pg_assert_true(strpos($source, 'all_ad_regions') === false, 'the breadcrumb goes to the plain list');
+}
+
+function test_country_form_wide_layout()
+{
+	$card = pg_country_form_card(array('name' => 'Germany', 'code' => 'DE', 'zip_code_required' => '1', 'transit_adjustment_days' => '007', 'default_selected' => '1'));
+
+	pg_assert_contains('<div class="col-12 lg:col-8 2xl:col-9 order-1">', $card, 'the form column');
+	pg_assert_contains('<div class="col-12 lg:col-4 2xl:col-3 order-2">', $card, 'the status column');
+	pg_assert_contains('<div class="position-sticky" style="top:3.3rem;">', $card, 'the status box sticks below the top bar');
+	pg_assert_true(strpos($card, 'order-1') < strpos($card, 'name="zip_code_required"') && strpos($card, 'name="zip_code_required"') < strpos($card, 'order-2'), 'the zip switch sits in the form column');
+	pg_assert_true(strpos($card, 'order-2') < strpos($card, 'name="default_selected"'), 'the default switch sits in the status column');
+	pg_assert_contains('id="country_summary_code">DE</dd>', $card, 'the Summary shows the code');
+	pg_assert_contains('id="country_summary_zip">' . h(lang('Yes')) . '</dd>', $card, 'the Summary shows the zip rule');
+	pg_assert_contains('id="country_summary_days">7</dd>', $card, 'the Summary shows the days as stored');
+
+	$rows = pg_country_form_edit_status_rows(3, 2, 1, '5 minutes ago admin');
+	pg_assert_contains('<dd class="mb-0 fw-bold text-end text-break">3</dd>', $rows, 'the state count');
+	pg_assert_contains(h(lang('Tax Zones')), $rows, 'the tax zone row');
+	pg_assert_contains('<dd class="mb-0 fw-bold text-end text-break">5 minutes ago admin</dd>', $rows, 'the last change');
+
+	$with_rows = pg_country_form_card(null, array(), $rows);
+	pg_assert_contains('py-2 border-bottom">' . "\n" . '                                                <dt class="fw-normal">' . h(lang('Extra Delivery Days')) . '</dt>', $with_rows, 'the days row keeps its border above the edit rows');
+
+	$layout = pg_country_form_layout('CARDS', '<button>Save</button>');
+	pg_assert_contains('<div class="row">CARDS', $layout, 'the columns inside the row');
+	pg_assert_contains('<div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">', $layout, 'the sticky save bar');
+
+	foreach (array('add_country.php', 'edit_country.php') as $file) {
+		pg_assert_contains('pg_country_form_layout(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ' draws the shared layout');
+	}
+	pg_assert_contains('pg_country_form_card($values, $errors, $status_rows)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_country.php'), 'edit passes its Summary rows');
 }

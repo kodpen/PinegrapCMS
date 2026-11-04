@@ -25,7 +25,7 @@ description: Constants defined in init.php (CONFIG_FILE_PATH, OUTPUT_PATH, ECOMM
 - `update_config_define()` replaces the key's line (`pg_config_define_value_pattern()`, confined to one line) or adds one; `remove_config_define()` drops it.
 - `smtp_settings.php` and the Private Label card save values as typed minus control characters and surrounding space (the card through `pg_config_form_value()`, `smtp_settings.php` with the same rule inline); both used to strip `'`, which turned `O'Neil` into `ONeil` (smtp: #741, private label: #800).
 - The Private Label card builds the file with `pg_private_label_config_content()` (`core.php`, fields in `pg_private_label_config_keys()`): empty removes the define, a value equal to the loaded constant leaves the file alone (a hand-written double-quoted line is not duplicated), private label off removes all twelve. Test: `tests/private_label_config_test.php`.
-- The panel prints these values with `h()`: `CONTROL_PANEL_STYLESHEET_URL` (`<link href>`), `LOGO_URL` (`output.php` header, `theme_designer.php`), footer links (`pg_account_menu()`).
+- The panel prints these values with `h()`: `CONTROL_PANEL_STYLESHEET_URL` (`<link href>`), `LOGO_URL` (`output.php` header and `theme_designer.php` with `PRIVATE_LABEL`; default `assets/images/logo.png`, the square mascot), footer links (`pg_account_menu()`).
 
 ## Where does a new line go?
 - `pg_config_insert_line()`: before the closing tag at the very end only, or after the last line when the file has none; text that does not start with `<?php` is returned unchanged.

@@ -1,6 +1,6 @@
 ---
 name: css-has-whole-document-restyle
-description: Chromium restyles the whole document on every DOM insertion while a rule styles every child of a :has() element; the settings card rewrite, the guard test, the Bootstrap 6 rule left
+description: Chromium restyles the whole document on every DOM insertion while a rule styles every child of a :has() element; the settings card rewrite, the Bootstrap 6 dist rewrite, the guard test
 ---
 
 ## What is the trap?
@@ -20,9 +20,10 @@ description: Chromium restyles the whole document on every DOM insertion while a
 - Checked: computed grid placement, margins, paddings and box rectangles of every element of the 14 settings panes at 900 px and 420 px wide, old against new: no difference.
 
 ## What guards it?
-- `tests/css_has_restyle_test.php` parses `backend.src.css` and `style_designer.css` and fails on any such selector. Known and accepted: `.ws-strip:has(.ws-catchup) .ws-pin-bar > :not(.ws-pin-text)`, inside the Workspace phone media query.
+- `tests/css_has_restyle_test.php` parses `backend.src.css`, `style_designer.css` and the Bootstrap 6 dist (`bootstrap.css`, `bootstrap.min.css`) and fails on any such selector. Known and accepted: `.ws-strip:has(.ws-catchup) .ws-pin-bar > :not(.ws-pin-text)`, inside the Workspace phone media query.
 
-## What is still slow?
-- The Bootstrap 6 dist (`assets/lib/bootstrap-6`, 6.0.0-alpha.1, copied unchanged) has one such rule: `.form-field:has(> .check, > .radio, > .switch) > :not(.check, .radio, .switch) { grid-column: 2 }`. While it is loaded, every insertion on a panel page still restyles the whole document; the editor's gain needs both rules gone (each alone: no gain).
-- An equal form with the same weight (0,3,0): `.form-field > :not(.check, .radio, .switch):is(:has(~ :is(.check, .radio, .switch)), :is(.check, .radio, .switch) ~ *)`. Whether the dist may be patched is an open question (the dist is copied unchanged).
-- Measured with both rules replaced in the browser: an insertion 250-450 ms to about 5-10 ms; selecting on the canvas of design 834 0.9-1.3 s to 0.26-0.32 s.
+## How was the Bootstrap 6 rule removed?
+- The dist (`assets/lib/bootstrap-6`, 6.0.0-alpha.1) had one such rule: `.form-field:has(> .check, > .radio, > .switch) > :not(.check, .radio, .switch) { grid-column: 2 }`. While loaded, every insertion on a panel page restyled the whole document; the editor's gain needed both rules gone (each alone: no gain).
+- Since PR #6685 (issue #6619) the dist carries one local change: that selector became `.form-field > :not(.check, .radio, .switch):is(:has(~ :is(.check, .radio, .switch)), :is(.check, .radio, .switch) ~ *)` in `bootstrap.css` and `bootstrap.min.css`: same elements (a sibling of a check, radio or switch inside one `.form-field`), same weight (0,3,0), so the later `> .form-label` rule still wins. The `.map` files are untouched; nothing else in the dist changes.
+- `document.txt` of the library holds a "Local changes" block (old rule, new rule, reason) so an update re-applies it; the guard test fails if an update brings the old form back. Only this library may carry a local change; the other vendored libraries stay copied unchanged.
+- Measured with both rules replaced: an insertion 250-450 ms to about 5-10 ms; selecting on the canvas of design 834 0.9-1.3 s to 0.26-0.32 s.

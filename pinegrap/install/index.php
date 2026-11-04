@@ -2396,7 +2396,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					$output_upgrade ='
 					<div class="col-12" id="pg_upgrade_panel">
 						<div class="d-flex flex-wrap align-items-center gap-5 pt-5 pb-3">
-							<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/logo.png" width="78" height="78" alt="Pinegrap" class="pg-install-logo">
+							<span class="pg-install-logo" style="--pg-logo-h: 50px;">' . pg_logo_markup('-in1') . '</span>
 							<div class="flex-grow-1" style="min-width:16rem;">
 								<h1 class="h3 mb-1">' . lang('A new version is ready') . '</h1>
 								<p class="fg-secondary mb-0">' . lang('The content of your site stays where it is. The upgrade only updates the database schema and the software files.') . '</p>
@@ -3014,10 +3014,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	get_header() . '
 	<style>@layer custom {
 		.pg-install-logo {
-			padding: 7px;
-			border-radius: 24px;
-			border: 1px solid var(--pg-border-color);
-			background: linear-gradient(135deg, color-mix(in srgb, var(--pg-primary) 12%, transparent), color-mix(in srgb, var(--pg-warning) 16%, transparent));
+			display: inline-flex;
 		}
 		.pg-wizard-on .pg-step-panel { display: none; }
 		.pg-wizard-on .pg-step-panel.active { display: block; }
@@ -3182,7 +3179,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
     	  	  	' . $liveform->output_notices() . '
 					' . $output_version_warning . '
 				<div class="d-flex flex-wrap align-items-center gap-5 pt-5 pb-3" id="pg_install_hero">
-					<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/logo.png" width="78" height="78" alt="Pinegrap" class="pg-install-logo">
+					<span class="pg-install-logo" style="--pg-logo-h: 50px;">' . pg_logo_markup('-in2') . '</span>
 					<div class="flex-grow-1" style="min-width:16rem;">
 						<h1 class="h3 mb-1" title="' . lang('Installation') . '">' . lang('Pinegrap installation') . '</h1>
 						<p class="fg-secondary mb-0">' . lang('Your site will be online in six short steps. If you already have a backup, you can restore it from the same wizard.') . '</p>
@@ -6716,17 +6713,14 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 			.pg-install-console .pg-ok { color: #4ade80; }
 			.pg-install-console .pg-detail { opacity: .6; }
 			.pg-install-logo {
-				padding: 8px;
-				border-radius: 26px;
-				border: 1px solid var(--pg-border-color);
-				background: linear-gradient(135deg, color-mix(in srgb, var(--pg-primary) 12%, transparent), color-mix(in srgb, var(--pg-warning) 16%, transparent));
+				display: inline-flex;
 			}
 		}</style>
 		<main id="content" class="container">
 		    <div class="row">
 				<div class="col-12 lg:col-8 lg:offset-2">
 					<div class="text-center my-7">
-						<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/logo.png" width="96" height="96" alt="Pinegrap" class="pg-install-logo mb-5">
+						<span class="pg-install-logo mb-5" style="--pg-logo-h: 60px;">' . pg_logo_markup('-in3') . '</span>
 						<h1 class="h3 fg-success"><span class="material-icons align-middle" style="font-size:1.6em;line-height:1;">check_circle</span> ' . lang('Congratulations, the installation is complete!') . '</h1>
 						<p class="fg-secondary mb-0">' . lang(array('string' => 'Pinegrap {var:1} is installed and your administrator account is ready.', 'vars' => $software_version)) . '</p>
 					</div>
@@ -6820,10 +6814,7 @@ function start_install_stream() {
 		.pg-install-console .pg-error { color: #f87171; }
 		.pg-install-console .pg-detail { opacity: .6; }
 		.pg-install-logo {
-			padding: 8px;
-			border-radius: 26px;
-			border: 1px solid var(--pg-border-color);
-			background: linear-gradient(135deg, color-mix(in srgb, var(--pg-primary) 12%, transparent), color-mix(in srgb, var(--pg-warning) 16%, transparent));
+			display: inline-flex;
 		}
 		#pg_stream_bar { background: linear-gradient(90deg, var(--pg-logo-color-1), var(--pg-logo-color-2)); }
 	}</style>
@@ -6832,7 +6823,7 @@ function start_install_stream() {
 	</nav>
 	<div class="xl:container" style="max-width:960px;" id="pg_stream_area">
 		<div class="d-flex flex-wrap align-items-center gap-5 pt-7 pb-3">
-			<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/logo.png" width="72" height="72" alt="Pinegrap" class="pg-install-logo">
+			<span class="pg-install-logo" style="--pg-logo-h: 46px;">' . pg_logo_markup('-in4') . '</span>
 			<div class="flex-grow-1" style="min-width:16rem;">
 				<h1 class="h4 mb-1" id="pg_stream_title">' . lang('The installation is running') . '</h1>
 				<p class="fg-secondary mb-0" id="pg_stream_text">' . lang('Please do not close this window. Depending on the server this takes between ten seconds and a minute, and the steps are listed when it is done.') . '</p>
@@ -7981,10 +7972,7 @@ function output_install_lock_screen() {
 	get_header() . '
 	<style>@layer custom {
 		.install-lock-logo {
-			padding: 10px;
-			border-radius: 32px;
-			border: 1px solid var(--pg-border-color);
-			background: linear-gradient(135deg, color-mix(in srgb, var(--pg-primary) 12%, transparent), color-mix(in srgb, var(--pg-warning) 16%, transparent));
+			display: inline-flex;
 		}
 		.install-lock-ghost {
 			height: 54px;
@@ -8014,7 +8002,7 @@ function output_install_lock_screen() {
 		<div class="row justify-content-center">
 			<div class="col-12" style="max-width:540px;">
 				<div class="text-center mb-7">
-					<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/logo.png" width="112" height="112" alt="Pinegrap" class="install-lock-logo mb-5">
+					<span class="install-lock-logo mb-5" style="--pg-logo-h: 68px;">' . pg_logo_markup('-in5') . '</span>
 					<h1 class="h4 fw-bold mb-3">' . lang('A Pinegrap site is already installed on this server') . '</h1>
 					<p class="fg-secondary mb-0">' . lang('Verify your identity with an administrator account of the existing site to see the installation and restore options.') . '</p>
 				</div>

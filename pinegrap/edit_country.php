@@ -54,6 +54,16 @@ if ($_POST) {
 }
 
 if (!$_POST || $errors) {
+    // The Summary's counts; the zone counts also word the Delete confirmation.
+    $usage = pg_zone_form_member_delete_counts('country', $id);
+    $summary_result = db_q("SELECT
+            (SELECT COUNT(*) FROM states WHERE country_id = ?) AS state_count,
+            (SELECT user_username FROM user WHERE user_id = ?) AS username", array($id, (int) ($row['user'] ?? 0)));
+    $summary = $summary_result ? mysqli_fetch_assoc($summary_result) : null;
+    $change_user = (string) ($summary['username'] ?? '');
+    $status_rows = pg_country_form_edit_status_rows((int) ($summary['state_count'] ?? 0), $usage[0], $usage[1],
+        get_relative_time(array('timestamp' => (int) ($row['timestamp'] ?? 0))) . ($change_user !== '' ? ' ' . h($change_user) : ''));
+
     $output =
         pg_page_shell([
             'title'=> lang('Edit Country'),
@@ -66,25 +76,16 @@ if (!$_POST || $errors) {
             'breadcrumb' => array(array('label' => lang('All Countries'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_countries.php'), array('label' => lang('Edit Country'))),
         ]) . '
 <main id="content" class="container-fluid">
-                    <div class="row">
-                <div class="col-12">
-                    
                     <form name="form" action="edit_country.php" method="post">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $id . '">
-                        ' . pg_country_form_card($values, $errors) . '
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class="btn-group flex-wrap justify-content-center">
-                                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(implode(' ', array_map('lang', pg_country_form_delete_confirm(...pg_zone_form_member_delete_counts('country', $id))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
-                                </div>
-                            </div>
-                        </nav>
+                        ' . pg_country_form_layout(
+                            pg_country_form_card($values, $errors, $status_rows),
+                            '
+                                        <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(implode(' ', array_map('lang', pg_country_form_delete_confirm(...$usage)))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>'
+                        ) . '
                     </form>
-                </div>
-            </div>
-        
 </main>' .
         output_footer();
 

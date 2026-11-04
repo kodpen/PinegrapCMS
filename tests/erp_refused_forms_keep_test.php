@@ -70,4 +70,14 @@ function test_erp_expense_pay_and_repeat_refusals_keep_choices()
 	pg_assert_contains('$repeat_every = (int) $liveform->get_field_value(\'repeat_every\');', $source, 'How often keeps the chosen period');
 	pg_assert_contains('$liveform->get_field_value(\'repeat_due_days\')', $source, 'Due after keeps the typed days');
 	pg_assert_contains('$liveform->get_field_value(\'repeat_pay\')', $source, 'Write the next ones as paid keeps its switch');
+
+	// The typed dates come back and are marked when the refusal is about them.
+	pg_assert_contains('h($sent_form(\'pay\') ? (string) $liveform->get_field_value(\'paid_date\') :', $source, 'Paid on keeps the typed date');
+	pg_assert_contains('h($sent_form(\'repeat\') ? (string) $liveform->get_field_value(\'repeat_end\') :', $source, 'Until keeps the typed date');
+	pg_assert_contains('$date_invalid(\'pay\', \'paid_date\')', $source, 'a refused payment date is marked');
+	pg_assert_contains('$date_invalid(\'repeat\', \'repeat_end\')', $source, 'a refused end date is marked');
+	pg_assert_contains('$liveform->mark_error(((string) ($result[\'field\'] ?? \'\') !== \'\') ? (string) $result[\'field\'] : \'_error\'', $pay, 'a pay refusal marks the field it names');
+
+	$expenses = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/expenses.php');
+	pg_assert_contains('\'field\' => (string) ($checked[\'field\'] ?? \'\')', $expenses, 'erp_expense_pay() passes on the refused field');
 }

@@ -569,7 +569,7 @@
         box.setAttribute('role', 'status');
 
         var row = el('div', 'd-flex');
-        var text = el('div', 'toast-body', message);
+        var text = el('div', 'toast-body flex-grow-1', message);
 
         // A way to what was just done: the note kept, the channel made.
         if (action && action.href) {
@@ -580,7 +580,7 @@
 
         row.appendChild(text);
 
-        var close = button('btn-close me-3 m-auto', '', '', t('close'));
+        var close = button('btn-close ms-2 me-3 my-auto flex-shrink-0', '', '', t('close'));
         close.setAttribute('data-bs-dismiss', 'toast');
         row.appendChild(close);
         box.appendChild(row);
@@ -5931,17 +5931,35 @@
         }).catch(fail);
     }
 
-    // A card of the overview: a title, a link to the whole list, a body.
-    function homeCard(title, iconName, moreUrl, moreLabel) {
-        var node = el('section', 'card ws-home-card');
-        var head = el('div', 'card-header d-flex align-items-center gap-3');
-        var heading = el('h3', 'h6 mb-0 flex-grow-1');
-        heading.appendChild(icon(iconName, 'me-1'));
-        heading.appendChild(document.createTextNode(title));
+    // A card of Today in the new dashboard's frame (pg_dash.js frame()):
+    // the category's icon chip, the title, a count badge kept hidden until
+    // there is one, the link to the whole list at the end, then the body.
+    // Today's cards are fixed, so the frame has no period, grip or menu.
+    function todayCard(id, title, iconName, width, category, moreUrl, moreLabel) {
+        var node = el('section', 'card pg-dash-card pg-dash-cardbox ws-today-card');
+        var titleId = 'ws_today_card_' + id;
+
+        node.setAttribute('data-card', id);
+        node.setAttribute('data-width', width);
+        node.setAttribute('data-category', category);
+        node.setAttribute('aria-labelledby', titleId);
+
+        var head = el('header', 'pg-dash-card-head');
+        var chip = el('span', 'pg-dash-card-icon');
+        chip.setAttribute('aria-hidden', 'true');
+        chip.appendChild(icon(iconName));
+        head.appendChild(chip);
+
+        var heading = el('h2', 'pg-dash-card-title', title);
+        heading.id = titleId;
         head.appendChild(heading);
 
+        var badge = el('span', 'pg-dash-card-badge ws-today-count');
+        badge.hidden = true;
+        head.appendChild(badge);
+
         if (moreUrl) {
-            var more = el('a', 'small text-decoration-none text-nowrap', moreLabel);
+            var more = el('a', 'ws-today-more', moreLabel);
             more.href = moreUrl;
             more.appendChild(icon('bi-arrow-right-short'));
             head.appendChild(more);
@@ -5949,10 +5967,10 @@
 
         node.appendChild(head);
 
-        var body = el('div', 'card-body p-3');
+        var body = el('div', 'pg-dash-card-body');
         node.appendChild(body);
 
-        return { node: node, body: body };
+        return { node: node, head: head, badge: badge, body: body };
     }
 
     // What the feature files draw with (workspace_approvals.js,
@@ -7495,72 +7513,108 @@
             });
         },
 
-        // The overview as drawn: the greeting, only here, with the ways to
-        // start; then what waits for the person, their tasks due today or
-        // before, today's calendar; then what happened in their channels and
-        // the latest decisions; the channels to join and what this place is
-        // for at the end.
+        // Today as drawn, in the new dashboard's design: the greeting card,
+        // only here, with the ways to start; then the cards in a fixed order
+        // (what waits for the person, their tasks due today or before,
+        // today's calendar, what happened in their channels, the latest
+        // decisions, the channels to join, what this place is for).
         drawHome: function (body, data) {
             var self = this;
+            var look = CFG.today_look || {};
 
             clear(body);
 
             var waitingCount = (data.talk || []).filter(function (item) { return item.unread; }).length
                 + (data.approvals || []).length + (data.acks || []).length;
 
-            var hello = el('div', 'ws-home-hello');
-            var words = el('div', 'ws-home-hello-text');
+            // The new dashboard's container: its columns follow this width,
+            // its palette and the person's card face apply inside it.
+            var page = el('div', 'pg-dash ws-today' + (look.calm ? ' pg-dash-calm' : ''));
+            page.setAttribute('data-widget-theme', look.style || 'flat');
 
-            words.appendChild(el('p', 'ws-home-date', data.date));
-            words.appendChild(el('h1', 'ws-home-greeting', t('home_greeting', data.greeting || '', data.name)));
+            var top = el('div', 'pg-dash-top');
+            var hello = el('section', 'card pg-dash-card pg-dash-greeting ws-today-greeting');
+            hello.setAttribute('aria-labelledby', 'ws_today_greeting');
+
+            hello.appendChild(el('p', 'pg-dash-greeting-when', data.date));
+
+            // The translated sentence, the name in it drawn in the gradient.
+            var greeting = el('h1', 'pg-dash-greeting-title');
+            var words = t('home_greeting', data.greeting || '', data.name);
+            var at = data.name ? words.lastIndexOf(data.name) : -1;
+
+            greeting.id = 'ws_today_greeting';
+
+            if (at < 0) {
+                greeting.textContent = words;
+            } else {
+                greeting.appendChild(document.createTextNode(words.slice(0, at)));
+                greeting.appendChild(el('span', 'pg-dash-name', data.name));
+                greeting.appendChild(document.createTextNode(words.slice(at + data.name.length)));
+            }
+
+            hello.appendChild(greeting);
+
             // The counts as parts that wrap whole, each dot at a line's end.
-            var lead = el('p', 'ws-home-lead');
+            var lead = el('p', 'ws-today-lead');
             var parts = data.lead || [];
 
             parts.forEach(function (part, index) {
                 var last = (index === parts.length - 1);
 
-                lead.appendChild(el('span', 'ws-home-lead-part', last ? part : part + ' ·'));
+                lead.appendChild(el('span', 'ws-today-lead-part', last ? part : part + ' ·'));
 
                 if (!last) {
                     lead.appendChild(document.createTextNode(' '));
                 }
             });
 
-            words.appendChild(lead);
-            hello.appendChild(words);
+            hello.appendChild(lead);
 
             // A way to start, always in sight.
-            var start = el('div', 'ws-home-start');
+            var start = el('nav', 'pg-dash-actions ws-today-start');
             var created = function (id) { self.reloadChannels(id); };
-            var publicButton = button('btn btn-sm btn-solid theme-primary rounded-pill px-4', t('home_new_channel'), 'bi-plus-lg');
+            start.setAttribute('aria-label', t('home_start'));
+
+            var publicButton = button('pg-dash-btn pg-dash-btn-main', t('home_new_channel'), 'bi-plus-lg');
             publicButton.addEventListener('click', function () { channelForm(null, { kind: 'public' }, created); });
             start.appendChild(publicButton);
 
-            var privateButton = button('btn btn-sm btn-outline theme-secondary rounded-pill px-4', t('home_new_private'), 'bi-lock');
+            var privateButton = button('pg-dash-btn', t('home_new_private'), 'bi-lock');
             privateButton.addEventListener('click', function () { channelForm(null, { kind: 'private' }, created); });
             start.appendChild(privateButton);
 
             if ((CFG.guests || {}).can_host) {
-                var guestButton = button('btn btn-sm btn-outline theme-secondary rounded-pill px-4', t('guest_start'), 'bi-door-open');
+                var guestButton = button('pg-dash-btn', t('guest_start'), 'bi-door-open');
                 guestButton.addEventListener('click', function () { guestForm(created); });
                 start.appendChild(guestButton);
             }
 
             hello.appendChild(start);
-            body.appendChild(hello);
+            top.appendChild(hello);
+            page.appendChild(top);
 
-            var first = el('div', 'ws-home-grid ws-home-grid-3');
-            first.appendChild(self.homeWaiting(data, waitingCount));
-            first.appendChild(self.homeDue(data));
-            first.appendChild(self.homeCalendar(data));
-            body.appendChild(first);
+            var grid = el('div', 'pg-dash-grid ws-today-grid');
+            grid.appendChild(self.homeWaiting(data, waitingCount));
+            grid.appendChild(self.homeDue(data));
+            grid.appendChild(self.homeCalendar(data));
+            grid.appendChild(self.homeDigest(data));
+            grid.appendChild(self.homeDecisions(data));
 
-            var second = el('div', 'ws-home-grid ws-home-grid-2');
-            second.appendChild(self.homeDigest(data));
+            // Public channels the person is not in yet, only when there are.
+            if (data.join.length) {
+                grid.appendChild(self.homeJoin(data));
+            }
 
-            // Beside it: the latest decisions, unfiltered.
-            var decisions = homeCard(t('home_decisions'), 'bi-clock-history', CFG.urls.timeline, t('nav_timeline'));
+            grid.appendChild(self.homeAbout(data));
+            page.appendChild(grid);
+            body.appendChild(page);
+        },
+
+        // The latest decisions, unfiltered, a link to the Decision Timeline.
+        homeDecisions: function (data) {
+            var self = this;
+            var decisions = todayCard('decisions', t('home_decisions'), 'bi-clock-history', 'S', 'general', CFG.urls.timeline, t('nav_timeline'));
 
             if (!data.decisions.length) {
                 decisions.body.appendChild(el('div', 'ws-home-empty', t('home_decisions_empty')));
@@ -7595,51 +7649,61 @@
             });
 
             decisions.body.appendChild(line);
-            second.appendChild(decisions.node);
 
-            body.appendChild(second);
+            return decisions.node;
+        },
 
-            // Public channels the person is not in yet.
-            if (data.join.length) {
-                var join = homeCard(t('home_join'), 'bi-door-open');
+        // Public channels the person is not in yet, each with Join.
+        homeJoin: function (data) {
+            var self = this;
+            var join = todayCard('join', t('home_join'), 'bi-door-open', 'S', 'general');
 
-                data.join.forEach(function (channel) {
-                    var row = el('div', 'ws-home-row ws-home-join');
-                    row.appendChild(icon('bi-hash', 'fg-secondary'));
+            data.join.forEach(function (channel) {
+                var row = el('div', 'ws-home-row ws-home-join');
+                row.appendChild(icon('bi-hash', 'fg-secondary'));
 
-                    var text = el('span', 'ws-home-row-text');
-                    text.appendChild(el('span', 'ws-home-row-title', channel.name));
-                    text.appendChild(el('small', 'fg-secondary', (channel.topic ? channel.topic + ' · ' : '') + t('home_members', channel.members)));
-                    row.appendChild(text);
+                var text = el('span', 'ws-home-row-text');
+                text.appendChild(el('span', 'ws-home-row-title', channel.name));
+                text.appendChild(el('small', 'fg-secondary', (channel.topic ? channel.topic + ' · ' : '') + t('home_members', channel.members)));
+                row.appendChild(text);
 
-                    var joinButton = button('btn btn-sm btn-outline theme-primary rounded-pill', t('join'));
-                    joinButton.addEventListener('click', function () {
-                        joinButton.disabled = true;
-                        api('ws_channel_join', { channel_id: channel.id }).then(function () {
-                            self.reloadChannels(channel.id);
-                        }).catch(function (error) {
-                            joinButton.disabled = false;
-                            fail(error);
-                        });
+                var joinButton = button('btn btn-sm btn-outline theme-primary rounded-pill', t('join'));
+                joinButton.addEventListener('click', function () {
+                    joinButton.disabled = true;
+                    api('ws_channel_join', { channel_id: channel.id }).then(function () {
+                        self.reloadChannels(channel.id);
+                    }).catch(function (error) {
+                        joinButton.disabled = false;
+                        fail(error);
                     });
-                    row.appendChild(joinButton);
-                    join.body.appendChild(row);
                 });
+                row.appendChild(joinButton);
+                join.body.appendChild(row);
+            });
 
-                body.appendChild(join.node);
-            }
-            // What this place is for: open for somebody who has not written
-            // anything yet, folded for the others.
-            var about = el('details', 'card ws-home-about');
+            return join.node;
+        },
+
+        // What this place is for: open for somebody who has not written
+        // anything yet, folded for the others. The whole row of the grid,
+        // its heading in the card frame's look.
+        homeAbout: function (data) {
+            var about = el('details', 'card pg-dash-card pg-dash-cardbox ws-today-card ws-home-about');
+            about.setAttribute('data-card', 'about');
+            about.setAttribute('data-width', 'L');
+            about.setAttribute('data-category', 'general');
             about.open = !!data.newcomer;
 
-            var summary = el('summary', 'card-header');
-            summary.appendChild(icon('bi-info-circle', 'me-1'));
-            summary.appendChild(document.createTextNode(t('home_about')));
+            var summary = el('summary', 'pg-dash-card-head');
+            var chip = el('span', 'pg-dash-card-icon');
+            chip.setAttribute('aria-hidden', 'true');
+            chip.appendChild(icon('bi-info-circle'));
+            summary.appendChild(chip);
+            summary.appendChild(el('span', 'pg-dash-card-title', t('home_about')));
             about.appendChild(summary);
 
-            var aboutBody = el('div', 'card-body');
-            aboutBody.appendChild(el('p', 'mb-5', t('home_about_text')));
+            var aboutBody = el('div', 'pg-dash-card-body');
+            aboutBody.appendChild(el('p', 'mb-0', t('home_about_text')));
 
             var tiles = el('div', 'row g-3');
             var tileList = [
@@ -7670,15 +7734,19 @@
 
             aboutBody.appendChild(tiles);
             about.appendChild(aboutBody);
-            body.appendChild(about);
 
+            return about;
         },
 
-        // A card's heading with the count of what is in it, when there is
-        // any; in the accent for what waits for an answer.
+        // A card's count of what is in it, when there is any, in the frame's
+        // badge; in the accent for what waits for an answer. The badge
+        // shows at most 99+, its label the whole number.
         homeCount: function (card, count, hot) {
             if (count > 0) {
-                card.node.querySelector('h3').appendChild(el('span', 'ws-count ws-home-count' + (hot ? ' ws-home-count-hot' : ''), count > 99 ? '99+' : String(count)));
+                card.badge.textContent = count > 99 ? '99+' : String(count);
+                card.badge.title = String(count);
+                card.badge.classList.toggle('ws-today-count-hot', !!hot);
+                card.badge.hidden = false;
             }
         },
 
@@ -7686,18 +7754,21 @@
         // (workspace_approvals.js, workspace_acks.js), then the replies to
         // their messages and the mentions of them, the unread ones marked;
         // the ones already read only while the card has fewer than five rows.
+        // Every row starts with a sign of the same size (a face or an
+        // icon), so the texts line up.
         homeWaiting: function (data, count) {
             var self = this;
-            var card = homeCard(t('home_waiting'), 'bi-inbox');
+            var card = todayCard('waiting', t('home_waiting'), 'bi-inbox', 'S', 'team');
             var helpers = featureHelpers();
+            var list = el('div', 'ws-today-rows');
             var rows = 0;
 
-            card.node.classList.add('ws-home-waiting');
+            card.node.classList.add('ws-today-waiting');
             self.homeCount(card, count, true);
 
             [window.PGWsApprovals, window.PGWsAcks].forEach(function (feature) {
                 if (feature && feature.homeRows) {
-                    rows += feature.homeRows(data, self, helpers, card.body);
+                    rows += feature.homeRows(data, self, helpers, list);
                 }
             });
 
@@ -7706,28 +7777,26 @@
                     return;
                 }
 
-                var row = button('ws-home-row' + (item.unread ? ' ws-home-unread' : ''));
-                var face = el('span', 'ws-home-face');
+                var row = button('ws-today-row' + (item.unread ? ' ws-today-unread' : ''));
+                var face = el('span', 'ws-today-sign ws-today-face');
                 face.appendChild(avatar(item.sender));
                 row.appendChild(face);
 
-                var text = el('span', 'ws-home-row-text');
-                var meta = el('small', 'ws-home-row-meta');
+                var text = el('span', 'ws-today-row-text');
+                var meta = el('small', 'ws-today-row-meta');
                 meta.appendChild(el('b', '', item.sender ? item.sender.name : ''));
                 meta.appendChild(document.createTextNode(' ' + (item.kind === 'reply' ? t('home_reply') : t('home_mention')) + ' · '));
                 meta.appendChild(icon(item.channel.private ? 'bi-lock' : 'bi-hash'));
                 meta.appendChild(document.createTextNode(item.channel.name + ' · ' + item.time));
                 text.appendChild(meta);
-                text.appendChild(el('span', 'ws-home-row-quote', item.text));
+                text.appendChild(el('span', 'ws-today-row-quote', item.text));
                 row.appendChild(text);
                 row.addEventListener('click', function () { self.open(item.channel.id, item.id); });
-                card.body.appendChild(row);
+                list.appendChild(row);
                 rows++;
             });
 
-            if (!rows) {
-                card.body.appendChild(el('div', 'ws-home-empty', t('home_waiting_empty')));
-            }
+            card.body.appendChild(rows ? list : el('p', 'pg-dash-card-empty', t('home_waiting_empty')));
 
             return card.node;
         },
@@ -7735,26 +7804,29 @@
         // The person's tasks due today or before, the earliest first; with
         // none, the ones coming up. Each is ticked off from here, as in the
         // task lists, or opened. Under them how many are open, overdue and
-        // pressing.
+        // pressing, as the dashboard's chips; the pressing one links to the
+        // pressing list (?urgent=1).
         homeDue: function (data) {
             var self = this;
-            var card = homeCard(t('home_due'), 'bi-check2-square', CFG.urls.tasks, t('my_tasks'));
+            var card = todayCard('due', t('home_due'), 'bi-check2-square', 'S', 'team', CFG.urls.tasks, t('my_tasks'));
             var list = (data.due && data.due.length) ? data.due : data.tasks;
+            var rows = el('div', 'ws-today-rows');
 
+            card.node.classList.add('ws-today-due');
             self.homeCount(card, data.tasks_due || 0);
 
             if (!(data.due && data.due.length) && data.tasks.length) {
-                card.body.appendChild(el('div', 'ws-home-sub', t('home_tasks')));
+                card.body.appendChild(el('div', 'pg-dash-rows-title', t('home_tasks')));
             }
 
             if (!list.length) {
-                card.body.appendChild(el('div', 'ws-home-empty', t('home_tasks_empty')));
+                card.body.appendChild(el('p', 'pg-dash-card-empty', t('home_tasks_empty')));
             }
 
             list.forEach(function (task) {
                 var hot = (task.priority === 'urgent' || task.priority === 'high');
-                var row = el('div', 'ws-home-row ws-home-task' + (hot ? ' ws-home-row-hot ws-home-row-' + task.priority : ''));
-                var done = el('input', 'check ws-home-done');
+                var row = el('div', 'ws-today-row ws-today-task' + (hot ? ' ws-today-task-' + task.priority : ''));
+                var done = el('input', 'check ws-today-done');
 
                 done.type = 'checkbox';
                 done.title = t('mark_done');
@@ -7765,59 +7837,66 @@
                     }
 
                     done.disabled = true;
-                    row.classList.add('ws-home-task-done');
+                    row.classList.add('ws-today-task-done');
                     api('ws_task_status', { task_id: task.id, status: 'done' }).then(function () {
                         toast(t('task_saved'), 'success');
                         self.showHome(false);
                     }).catch(function (error) {
                         done.checked = false;
                         done.disabled = false;
-                        row.classList.remove('ws-home-task-done');
+                        row.classList.remove('ws-today-task-done');
                         fail(error);
                     });
                 });
                 row.appendChild(done);
 
-                var open = button('ws-home-task-open');
-                var text = el('span', 'ws-home-row-text');
+                var open = button('ws-today-task-open');
+                var text = el('span', 'ws-today-row-text');
                 // The badge sits beside the shortened title, never inside
                 // it, so a long title cannot cut it off.
-                var head = el('span', 'ws-home-task-head');
-                head.appendChild(el('span', 'ws-home-row-title', task.title));
+                var head = el('span', 'ws-today-task-head');
+                head.appendChild(el('span', 'ws-today-row-title', task.title));
 
                 if (hot) {
                     head.appendChild(el('span', 'ws-priority ws-priority-' + task.priority, (BOOT.priorities || {})[task.priority] || task.priority));
                 }
 
                 text.appendChild(head);
-                text.appendChild(el('small', task.overdue ? 'fg-danger' : 'fg-secondary', task.number + ' · ' + task.due_label));
+                text.appendChild(el('small', 'ws-today-row-meta' + (task.overdue ? ' ws-today-late' : ''), task.number + ' · ' + task.due_label));
                 open.appendChild(text);
                 open.addEventListener('click', function () {
                     taskDrawer.open(task.id, null, function () { self.showHome(false); });
                 });
                 row.appendChild(open);
-                card.body.appendChild(row);
+                rows.appendChild(row);
             });
+
+            if (list.length) {
+                card.body.appendChild(rows);
+            }
 
             // The due ones the card has no room for, a link to all of them.
             if (data.due && data.due.length && ((data.tasks_due || 0) > data.due.length)) {
-                var more = el('a', 'ws-home-more', t('home_tasks_more', data.tasks_due - data.due.length));
+                var more = el('a', 'ws-today-due-more', t('home_tasks_more', data.tasks_due - data.due.length));
                 more.href = CFG.urls.tasks;
                 card.body.appendChild(more);
             }
 
             if (data.tasks_open) {
-                var counts = el('div', 'ws-home-counts');
-                counts.appendChild(el('span', '', t('home_tasks_count', data.tasks_open)));
+                var counts = el('div', 'pg-dash-chips ws-today-chips');
+                counts.appendChild(el('span', 'pg-dash-chip', t('home_tasks_count', data.tasks_open)));
 
                 if (data.tasks_overdue) {
-                    counts.appendChild(el('span', 'fg-danger', t('home_tasks_overdue', data.tasks_overdue)));
+                    var late = el('span', 'pg-dash-chip', t('home_tasks_overdue', data.tasks_overdue));
+                    late.setAttribute('data-tone', 'bad');
+                    counts.appendChild(late);
                 }
 
                 // The pressing ones, a link to all of them.
                 if (data.tasks_hot) {
-                    var hotLink = el('a', 'ws-home-hot');
+                    var hotLink = el('a', 'pg-dash-chip ws-today-hot');
                     hotLink.href = CFG.urls.tasks + '?urgent=1';
+                    hotLink.setAttribute('data-tone', 'warn');
                     hotLink.appendChild(icon('bi-fire', 'me-1'));
                     hotLink.appendChild(document.createTextNode(t('home_tasks_hot', data.tasks_hot)));
                     counts.appendChild(hotLink);
@@ -7830,53 +7909,76 @@
         },
 
         // Today's plan items about the person and their own calendars'
-        // events (home.php): the hour, a bar, the title; the one going on
-        // now marked, the ones over dimmed, a meeting's call to join.
+        // events (home.php) as the new dashboard's list rows: a time box
+        // (the start hour, or "all day") in front of the title and its
+        // span; the one going on now framed in the accent with its badge and
+        // a meeting's call to join, the ones over dimmed.
         homeCalendar: function (data) {
-            var card = homeCard(t('home_calendar'), 'bi-calendar-event', CFG.urls.calendar || '', t('home_calendar_more'));
+            var card = todayCard('calendar', t('home_calendar'), 'bi-calendar-event', 'S', 'team', CFG.urls.calendar || '', t('home_calendar_more'));
             var items = data.calendar || [];
 
             if (!items.length) {
-                card.body.appendChild(el('div', 'ws-home-empty', t('home_calendar_empty')));
+                card.body.appendChild(el('p', 'pg-dash-item-none', t('home_calendar_empty')));
+                return card.node;
             }
 
+            this.homeCount(card, items.length);
+
+            var list = el('ul', 'pg-dash-items ws-today-events');
+
             items.forEach(function (item) {
-                var row = el('div', 'ws-home-event' + (item.now ? ' ws-home-event-now' : '') + (item.past ? ' ws-home-event-past' : ''));
+                var row = el('li', 'pg-dash-item ws-today-event' + (item.now ? ' is-now' : '') + (item.past ? ' is-past' : ''));
 
-                row.appendChild(el('span', 'ws-home-event-time', item.all_day ? t('home_all_day') : item.time));
-                row.appendChild(el('span', 'ws-home-event-bar'));
+                // The time box is the start alone; under a timed title the
+                // span says it in full, so only "all day" is read from the box.
+                var when = el('span', 'ws-today-event-time' + (item.all_day ? ' is-all-day' : ''), item.all_day ? t('home_all_day') : item.time);
 
-                var text = el('span', 'ws-home-row-text');
-                var title = el(item.url ? 'a' : 'span', 'ws-home-row-title', item.title);
+                if (!item.all_day) {
+                    when.setAttribute('aria-hidden', 'true');
+                }
+
+                row.appendChild(when);
+
+                var main = el('div', 'pg-dash-item-main');
+                var title = el(item.url ? 'a' : 'span', 'pg-dash-item-text', item.title);
 
                 // A booking opens on the agenda.
                 if (item.url) {
                     title.href = item.url;
                 }
 
-                text.appendChild(title);
+                title.title = item.title;
+                main.appendChild(title);
 
-                if (!item.all_day || item.layer) {
-                    text.appendChild(el('small', 'fg-secondary', [item.all_day ? '' : item.time + '–' + item.until, item.layer].filter(Boolean).join(' · ')));
+                var note = [item.all_day ? '' : item.time + '–' + item.until, item.layer].filter(Boolean).join(' · ');
+
+                if (note) {
+                    main.appendChild(el('span', 'pg-dash-item-note', note));
                 }
 
-                row.appendChild(text);
+                row.appendChild(main);
 
                 if (item.now) {
-                    row.appendChild(el('span', 'badge rounded-pill theme-success', t('home_now')));
+                    var now = el('span', 'pg-dash-chip ws-today-event-now', t('home_now'));
+                    now.setAttribute('data-tone', 'good');
+                    row.appendChild(now);
                 }
 
                 // A call link is followed only when it is a web address.
                 if (item.meeting_url && /^https?:/i.test(item.meeting_url) && !item.past) {
-                    var call = el('a', 'btn btn-sm btn-outline theme-secondary rounded-pill', t('join'));
+                    var call = el('a', 'pg-dash-btn pg-dash-item-action ws-today-event-join', t('join'));
                     call.href = item.meeting_url;
                     call.target = '_blank';
                     call.rel = 'noopener noreferrer';
+                    call.setAttribute('aria-label', t('join') + ': ' + item.title);
+                    call.insertBefore(icon('bi-camera-video'), call.firstChild);
                     row.appendChild(call);
                 }
 
-                card.body.appendChild(row);
+                list.appendChild(row);
             });
+
+            card.body.appendChild(list);
 
             return card.node;
         },
@@ -7886,7 +7988,7 @@
         // last message.
         homeDigest: function (data) {
             var self = this;
-            var card = homeCard(t('home_digest'), 'bi-chat-square-text');
+            var card = todayCard('digest', t('home_digest'), 'bi-chat-square-text', 'M', 'general');
             var items = data.digest || [];
 
             if (!items.length) {
@@ -11452,20 +11554,17 @@
             }
         },
 
-        // onPick, when given, is told the box picked (the mini window of
-        // Add › Scheduled flow shows its form); without it the picture is
-        // still (a flow draft's card at rest, flowWindow()).
+        // A still picture of a flow: a flow draft's card at rest
+        // (flowWindow()), Add › Scheduled flow where the canvas cannot load.
         // Drawn to the visual spec in px (ws_flow_card_graph()): boxes
         // 128 × 60 with the kind's icon and name, the kind and the box's dry
         // run as its third line; control arrows 2 px with a filled head;
         // data threads 1 px in their type's tone, placed by the server.
-        flowWindowDraw: function (wrap, graph, onPick) {
+        flowWindowDraw: function (wrap, graph) {
             var NS = 'http://www.w3.org/2000/svg';
             var W = 128;
             var H = 60;
             var byId = {};
-            var groups = {};
-            var picked = null;
 
             if (!graph || !graph.nodes.length) {
                 return;
@@ -11534,28 +11633,8 @@
                 }
             });
 
-            function show(node, group) {
-                if (picked) {
-                    picked.classList.remove('is-picked');
-                }
-
-                picked = group;
-                group.classList.add('is-picked');
-                onPick(node);
-            }
-
             graph.nodes.forEach(function (node) {
-                // An untitled box is named by its kind: the kind is not said
-                // twice.
-                var named = (node.name !== node.label) ? node.name + ', ' + node.label : node.name;
-                var group = make('g', onPick ? {
-                    'class': 'ws-fd-box' + (node.outbound ? ' is-outbound' : '') + (node.mark ? ' is-' + node.mark : ''),
-                    tabindex: 0,
-                    role: 'button',
-                    'aria-label': named + (node.outbound ? ', ' + t('fd_outbound') : '')
-                        + (node.mark ? ', ' + t(node.mark === 'added' ? 'fd_added' : 'fd_changed') : '')
-                        + (node.said ? ', ' + node.said : '')
-                } : { 'class': 'ws-fd-box is-still' + (node.outbound ? ' is-outbound' : '') + (node.mark ? ' is-' + node.mark : '') });
+                var group = make('g', { 'class': 'ws-fd-box' + (node.outbound ? ' is-outbound' : '') + (node.mark ? ' is-' + node.mark : '') });
                 var cut = function (text, most) {
                     return text.length > most ? text.slice(0, most - 1) + '…' : text;
                 };
@@ -11582,20 +11661,6 @@
 
                 if (node.outbound) {
                     group.appendChild(make('path', { 'class': 'ws-fd-out', d: 'M' + (node.x + W - 18) + ' ' + (node.y + 18) + ' l10 -10 m-6 0 h6 v6' }));
-                }
-
-                groups[node.id] = group;
-
-                if (onPick) {
-                    group.addEventListener('click', function () {
-                        show(node, group);
-                    });
-                    group.addEventListener('keydown', function (event) {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            show(node, group);
-                        }
-                    });
                 }
 
                 drawing.appendChild(group);
@@ -12301,8 +12366,21 @@
             var body = clear(node.querySelector('.drawer-body'));
             var footer = clear(node.querySelector('.drawer-footer'));
             var drawing = el('div', 'ws-fd-window mb-5');
+            var stage = null;
             var saved = { flow_id: 0, draft_rev: 0 };
             var busy = false;
+
+            // The canvas lives while the drawer is open: closing it ends
+            // the drawing (one canvas drawing at a time, flowCardOpen()).
+            if (!node.wsSketchBound) {
+                node.wsSketchBound = true;
+                pgUI.drawer.on(node, 'hidden', function () {
+                    if (self.flowSketch) {
+                        self.flowSketch.destroy();
+                        self.flowSketch = null;
+                    }
+                });
+            }
 
             footer.classList.remove('d-none');
             body.appendChild(el('p', 'small fg-secondary', t('sf_help', self.channel.name)));
@@ -12396,15 +12474,59 @@
                 repeat.addEventListener('change', shown);
                 shown();
 
-                // A box picked in the drawing brings its settings forward.
-                function draw(graph) {
-                    clear(drawing);
-                    self.flowWindowDraw(drawing, graph, function (picked) {
-                        var target = (picked.id === 'post') ? message : date;
+                // The sketch on the Flows canvas itself, read-only
+                // (PGWsFlow.embed()), drawn anew with each answer; a box
+                // picked brings its settings forward. Where the canvas cannot
+                // be loaded, or the Flows screen holds it, the card's still
+                // picture stands in.
+                function draw(answer) {
+                    self.flowEmbedKit().then(function (config) {
+                        if (!node.open) {
+                            return;
+                        }
 
-                        target.focus();
-                        target.scrollIntoView({ block: 'nearest' });
+                        clear(drawing);
+                        drawing.className = 'ws-fd-window mb-5';
+                        stage = el('div', 'ws-fd-stage is-open');
+                        drawing.appendChild(stage);
+                        self.flowSketch = window.PGWsFlow.embed(stage, {
+                            graph: answer.view.graph,
+                            tries: answer.view.tries,
+                            config: config,
+                            people: (BOOT && BOOT.people) || [],
+                            onSelect: function (picked) {
+                                if (!picked) {
+                                    return;
+                                }
+
+                                var target = (picked.id === 'post') ? message : date;
+
+                                // After the canvas has focused the box it
+                                // selected.
+                                setTimeout(function () {
+                                    target.focus();
+                                    target.scrollIntoView({ block: 'nearest' });
+                                }, 0);
+                            }
+                        });
+
+                        if (!self.flowSketch) {
+                            still(answer);
+                        }
+                    }).catch(function () {
+                        still(answer);
                     });
+                }
+
+                // A late answer (the change event of a box left as the
+                // drawer closes) draws nothing in a closed drawer.
+                function still(answer) {
+                    if (!node.open) {
+                        return;
+                    }
+
+                    clear(drawing);
+                    self.flowWindowDraw(drawing, answer.graph);
                 }
 
                 function filled() {
@@ -12425,7 +12547,7 @@
                     };
                 }
 
-                draw(data.graph);
+                draw(data);
 
                 // Each box's dry run follows the form: the sketch is asked
                 // again with what it holds once typing stops. A late answer
@@ -12438,7 +12560,7 @@
 
                     api('ws_flow_scheduled_new', Object.assign(filled(), { sketch: 1 })).then(function (again) {
                         if (mine === asked) {
-                            draw(again.graph);
+                            draw(again);
                         }
                     }).catch(function () {
                         // The drawing as it was stays; Publish says what is wrong.

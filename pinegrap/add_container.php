@@ -44,25 +44,17 @@ if (!$_POST) {
             'breadcrumb' => array(array('label' => lang('All Containers'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_containers.php'), array('label' => lang('Create Container'))),
         ]) . '
 <main id="content" class="container-fluid">
-                    <div class="row">
+            <div class="row">
                 <div class="col-12">
                     ' . $liveform->output_errors() . '
-                    
                     <form method="post">
                         ' . get_token_field() . '
-                        ' . pg_container_form_card($liveform) . '
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class="btn-group flex-wrap justify-content-center">
-                                    <button type="submit" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang('Create') . '</span></button>
-                                </div>
-                            </div>
-                        </nav>
+                        ' . pg_container_form_layout(pg_container_form_cards($liveform), '
+                                        <button type="submit" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang('Create') . '</span></button>') . '
                     </form>
                     ' . pg_container_form_script() . '
                 </div>
             </div>
-        
 </main>' .
         output_footer();
 

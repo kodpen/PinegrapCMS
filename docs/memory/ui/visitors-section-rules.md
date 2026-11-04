@@ -17,8 +17,8 @@ description: Rules for a Visitors overview section (includes/visitors/<name>.php
 - A new section's figure is checked once against the saved-report screen for the same window: the two agree to the visit.
 
 ## How is it printed?
-- Texts through `lang()`, added with `php tools/tr_add.php`; every value through `h()` (`pg_visitors_table()` escapes text cells); counts `pg_format_number()`, money from minor units through `prepare_amount()` / `pg_money_text()`; dates in site time.
-- Markup in Bootstrap 6 (`php tools/check_bs6.php --strict`), wide tables in `.table-responsive`; CSS in `@layer custom` on `--pg-*` tokens so light and dark both hold (`panel-css-tokens.md`). Charts through `pg_visitors_chart()`: Chart.js with animation off, a hidden table of the figures for screen readers.
+- Texts through `lang()`, added with `php tools/tr_add.php`; every value through `h()` (`pg_visitors_table()` escapes text cells); counts `pg_format_number()`, percents `pg_visitors_percent()` (the `'{var:1}%'` key, Turkish `%12`, a sign or arrow outside; never a `%` glued in code, `tests/visitors_shell_test.php` reads the files), money from minor units through `prepare_amount()` / `pg_money_text()`; dates in site time.
+- Markup in Bootstrap 6 (`php tools/check_bs6.php --strict`), wide tables in `.table-responsive`; CSS in `@layer custom` on `--pg-*` tokens so light and dark both hold (`panel-css-tokens.md`). Charts through `pg_visitors_chart()`: Chart.js with animation off, a hidden table of the figures for screen readers; a series' `unit` follows its figures, `notes` add tooltip lines (split on `\n`).
 - No data: `pg_visitors_empty()` with one line saying why, or `''` when a section has nothing to say (alerts with nothing fallen; speed, ai and site search before their ready checks).
 - Links keep the period with `pg_visitor_period_query()`; a section's own filter takes a prefixed name (`speed_device`) so another section's query value is never read.
 

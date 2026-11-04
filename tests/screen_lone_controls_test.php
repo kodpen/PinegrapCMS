@@ -117,6 +117,8 @@ function test_screen_lone_controls_edit_screen_rows_join_the_toolbar()
 		'edit_ad_region.php', 'edit_login_region.php', 'view_menu_items.php',
 		'edit_javascript.php', 'edit_theme_css.php', 'view_fields.php', 'add_submitted_form.php',
 	);
+	// The login and ad regions' only bar item, the body tag, moved into the Summary.
+	$screens = array_diff($screens, array('edit_login_region.php', 'edit_ad_region.php'));
 
 	foreach ($screens as $file) {
 		$source = screen_lone_controls_source($file);

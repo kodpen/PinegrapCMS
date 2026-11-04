@@ -68,3 +68,26 @@ function test_erp_expense_screens_cancel_send_to_and_repeat()
 	pg_assert_contains("), 'repeat_end');", $recurring, 'an end before the first repeat is refused on the end field');
 	pg_assert_true(strpos($recurring, "'stopped' : 'active'") === false, 'a new repeat is never saved stopped');
 }
+
+function test_erp_expense_categories_blank_row_is_found_before_any_write()
+{
+	$rows = array(
+		16 => array('name' => 'Rent changed'),
+		17 => array('name' => '   '),
+		18 => array('name' => 'Fuel'),
+	);
+	pg_assert_same(17, erp_expense_categories_blank_row($rows, array(16, 17, 18)), 'a blank second row is named');
+	pg_assert_same(0, erp_expense_categories_blank_row($rows, array(16, 18)), 'a row the list does not know is skipped');
+	pg_assert_same(0, erp_expense_categories_blank_row(array(16 => array('name' => 'Rent')), array(16)), 'named rows pass');
+	pg_assert_same(16, erp_expense_categories_blank_row(array(16 => 'x'), array('16')), 'a row that is not a list of fields counts as blank');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/expenses.php');
+	$start = (int) strpos($source, 'function erp_expense_categories_save(');
+	$body = substr($source, $start, 4000);
+	pg_assert_true(strpos($body, 'erp_expense_categories_blank_row(') < strpos($body, 'UPDATE erp_expense_categories'), 'every row is checked before the first write');
+	pg_assert_contains('erp_tx_begin()', $body, 'the writes run in one transaction');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/erp_expense_categories.php');
+	pg_assert_contains("\$_SESSION['erp_expense_categories_sent']", $screen, 'a refused save keeps what was typed');
+	pg_assert_contains("(defined('USER_ERP_READONLY') && USER_ERP_READONLY && !validate_erp_access(\$user, 'write'))", $screen, 'the read-only accountant is refused at the door');
+}

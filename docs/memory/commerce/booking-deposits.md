@@ -18,8 +18,8 @@ module: booking_deposits
 - `pg_booking_deposit_mark_paid($order_id)`, called beside `pg_form_payment_mark_paid()` by `pg_order_complete()` (only when the completion wrote `paid_at`) and `pg_order_mark_paid()`. One UPDATE joined on `orders.paid_at > 0`, `bookings.paid_at = 0`: held/requested with a live or no hold → confirmed; a held row whose hold ran out → requested (its time may be taken, staff decide); cancelled/no_show/done only record the payment. An offline completion marks nothing.
 - A held row gets its manage token here and `pg_booking_created()` (created + confirmed mails); requested → confirmed calls `pg_booking_changed($id, 'confirmed')`.
 
-## What is left for BK9b?
-- The widget's payment at the details step (choices, card box, redirect return, retry), the hold kept during payment, and showing paid in the agenda, manage page and API (`plans/appointment-booking-steps-2.md`).
+## How does the visitor pay?
+- The widget's payment, the hold kept during it and paid on the screens: [[booking-deposit-payment]] (BK9b).
 
 ## Tested?
 - `tests/booking_deposit_test.php`: the boxes, what is due, the order columns, the paid statement and its event, the wiring. No database run.

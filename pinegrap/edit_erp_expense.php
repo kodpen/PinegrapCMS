@@ -84,9 +84,10 @@ if ($_POST) {
         ), (int) $user['id']);
 
         if (!$result['success']) {
-            // Keep the chosen till and method for the next try.
+            // Keep the chosen till, method and date for the next try, and mark
+            // the field the refusal is about.
             $liveform->add_fields_to_session();
-            $liveform->mark_error('_error', h($result['error']));
+            $liveform->mark_error(((string) ($result['field'] ?? '') !== '') ? (string) $result['field'] : '_error', h($result['error']));
             go($self);
         }
 
@@ -228,7 +229,7 @@ $date = function ($value) {
 $method_words = array(
     'cash' => lang('Cash'),
     'transfer' => lang('Bank transfer'),
-    'card' => lang('Credit card'),
+    'card' => lang('Card'),
     'cheque' => lang('Cheque'),
     'other' => lang('Other'),
 );
@@ -293,6 +294,12 @@ $sent_form = function ($form) use ($liveform) {
     return !$liveform->prefill() && ((string) $liveform->get_field_value('erp_action') === $form);
 };
 
+// A date of the sent form that the refusal names is marked. These inputs are
+// written by hand, not through the liveform, so nothing else marks them.
+$date_invalid = function ($form, $field) use ($liveform, $sent_form) {
+    return $sent_form($form) && $liveform->check_field_error($field);
+};
+
 $method_options = function ($selected = '') use ($method_words) {
     $options = '';
 
@@ -333,7 +340,7 @@ if ($status === 'paid') {
             </div>
             <div class="col-6 md:col-2">
                 <label class="form-label small mb-1" for="paid_date">' . lang('Paid on') . '</label>
-                <input type="text" class="form-control form-control-sm" id="paid_date" name="paid_date" data-pg-date value="' . h(prepare_form_data_for_output(date('Y-m-d'), 'date')) . '" maxlength="10" autocomplete="off" />
+                <input type="text" class="form-control form-control-sm' . ($date_invalid('pay', 'paid_date') ? ' is-invalid' : '') . '" id="paid_date" name="paid_date" data-pg-date value="' . h($sent_form('pay') ? (string) $liveform->get_field_value('paid_date') : prepare_form_data_for_output(date('Y-m-d'), 'date')) . '" maxlength="10" autocomplete="off" />
             </div>
             <div class="col-12 md:col-2">
                 <button type="submit" class="btn btn-sm btn-solid theme-success w-100"><i class="bi bi-cash-coin me-1" aria-hidden="true"></i>' . lang('Pay') . '</button>
@@ -537,7 +544,7 @@ if (erp_expense_recurring_ready()) {
                 </div>
                 <div class="col-6 md:col-3">
                     <label class="form-label small mb-1" for="repeat_end">' . lang('Until (optional)') . '</label>
-                    <input type="text" class="form-control form-control-sm" id="repeat_end" name="repeat_end" data-pg-date maxlength="10" autocomplete="off" />
+                    <input type="text" class="form-control form-control-sm' . ($date_invalid('repeat', 'repeat_end') ? ' is-invalid' : '') . '" id="repeat_end" name="repeat_end" data-pg-date value="' . h($sent_form('repeat') ? (string) $liveform->get_field_value('repeat_end') : '') . '" maxlength="10" autocomplete="off" />
                 </div>
                 <div class="col-12 md:col-2">
                     <button type="submit" class="btn btn-sm btn-outline theme-primary w-100"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Make it repeat') . '</button>

@@ -324,7 +324,7 @@ function pg_booking_manage_move($row, $service, $start, $now)
         return array('answer' => 'error', 'token' => '');
     }
 
-    db_q("DELETE FROM bookings WHERE staff_id = ? AND start_at = ? AND status = 'held' AND hold_until < ?", array($staff_id, $start, (int) $now));
+    pg_booking_clear_expired_hold($staff_id, $start, $now);
 
     $before = (int) $service['buffer_before'] * 60;
     $after = (int) $service['buffer_after'] * 60;
@@ -437,13 +437,15 @@ function pg_booking_customer_section_html($rows, $now)
         foreach ($split[$part] as $row) {
             $times = pg_booking_message_times((int) $row['start_at'], (int) $row['end_at'], $context['zone'], $context['date_code'], $context['time_code']);
             $status = (string) $row['status'];
+            $deposit = pg_booking_deposit_label(pg_booking_deposit_view($row));
             $html .= '<div class="list-group-item">'
                 . '<div class="d-flex flex-wrap justify-content-between align-items-center gap-2">'
                 . '<span class="fw-semibold">' . h((string) $row['service_name']) . '</span>'
                 . '<span class="badge ' . (isset($badges[$status]) ? $badges[$status] : 'text-bg-secondary') . '">' . h(pg_booking_customer_status_label($status)) . '</span>'
                 . '</div>'
                 . '<div class="small text-body-secondary">' . h($times['date'] . ' ' . $times['time'])
-                . (((string) $row['staff_name'] !== '') ? ' · ' . h((string) $row['staff_name']) : '') . '</div>';
+                . (((string) $row['staff_name'] !== '') ? ' · ' . h((string) $row['staff_name']) : '')
+                . (($deposit !== '') ? ' · ' . h($deposit) : '') . '</div>';
 
             $url = ($part === 'upcoming') ? pg_booking_manage_url((int) $row['id'], (int) $row['end_at']) : '';
 

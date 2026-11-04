@@ -68,7 +68,7 @@ function _test_law_page_keys()
 {
 	$keys = array(
 		'home', 'practice', 'lawyers', 'results', 'fees', 'about', 'faq', 'careers',
-		'consultation', 'consultation_view', 'my_consultations', 'staff_consultations', 'privacy',
+		'consultation', 'book_online', 'consultation_view', 'my_consultations', 'staff_consultations', 'privacy',
 		'application', 'application_view', 'staff_applications',
 		'email_consultation_new', 'email_consultation_received', 'email_application_new', 'email_application_received', 'email_reply',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
@@ -283,7 +283,7 @@ function test_law_consultation_pages_and_widgets()
 	$keys = array();
 	foreach ($c['pages'] as $p) $keys[] = $p['key'];
 	pg_assert_same(array(
-		'consultation', 'consultation_view', 'my_consultations', 'staff_consultations', 'privacy', 'careers', 'application',
+		'consultation', 'book_online', 'consultation_view', 'my_consultations', 'staff_consultations', 'privacy', 'careers', 'application',
 		'application_view', 'staff_applications', 'email_consultation_new', 'email_consultation_received',
 		'email_application_new', 'email_application_received', 'email_reply',
 	), $keys, 'the consultation and careers pages in order');

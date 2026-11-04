@@ -187,7 +187,7 @@ function pg_visitors_conversions_format($value, $format)
     }
 
     if ($format === 'percent') {
-        return ($value === null) ? '–' : pg_format_number($value, 2) . ' %';
+        return ($value === null) ? '–' : pg_visitors_percent($value, 2);
     }
 
     return pg_format_number((int) $value, 0);
@@ -222,7 +222,7 @@ function pg_visitors_conversions_funnel(array $totals)
         $text = pg_format_number($value, 0);
 
         if ($key !== 'visits') {
-            $text .= ' · ' . pg_format_number(round($value / $visits * 100, 2), 2) . ' %';
+            $text .= ' · ' . pg_visitors_percent(round($value / $visits * 100, 2), 2);
         }
 
         $rows[] = array('label' => $label, 'value' => $value, 'text' => $text);
@@ -262,9 +262,10 @@ function pg_visitors_conversions_buckets(array $period)
 
 /**
  * The figures by the period's grain: forms and, with commerce, completed
- * orders, with the revenue on a second axis. The summary run is read once
- * and every bucket split against it, so a bucket costs at most one summary
- * and one raw query.
+ * orders, on one axis; the revenue of each point is in its tooltip (a
+ * second axis with a third line made the chart hard to read). The summary
+ * run is read once and every bucket split against it, so a bucket costs at
+ * most one summary and one raw query.
  *
  * @param array $period   pg_visitor_period()
  * @param bool  $commerce
@@ -285,7 +286,8 @@ function pg_visitors_conversions_chart(array $period, $commerce)
     $labels = array();
     $forms = array();
     $completed = array();
-    $revenue = array();
+    $notes = array();
+    $symbol = defined('BASE_CURRENCY_SYMBOL') ? BASE_CURRENCY_SYMBOL : '';
 
     foreach ($buckets as $bucket) {
         $bounds = pg_visitor_window_bounds($bucket['from'], $bucket['to']);
@@ -299,20 +301,20 @@ function pg_visitors_conversions_chart(array $period, $commerce)
         $labels[] = prepare_form_data_for_output($bucket['bucket'], 'date', false);
         $forms[] = $totals['forms_submitted'];
         $completed[] = $totals['orders_completed'];
-        $revenue[] = round($totals['order_total'] / 100, 2);
+        $notes[] = $commerce ? lang('Revenue') . ': ' . pg_money_text((int) $totals['order_total'] / 100, $symbol) : '';
     }
 
     $series = array(array('label' => lang('Forms submitted'), 'data' => $forms));
 
     if ($commerce) {
         $series[] = array('label' => lang('Orders completed'), 'data' => $completed);
-        $series[] = array('label' => lang('Revenue'), 'data' => $revenue, 'dashed' => true, 'axis' => 'right');
     }
 
     return pg_visitors_chart('conversions_chart', array(
         'type'    => 'line',
         'labels'  => $labels,
         'series'  => $series,
+        'notes'   => $notes,
         'caption' => lang('Forms and orders over the period'),
     ));
 }

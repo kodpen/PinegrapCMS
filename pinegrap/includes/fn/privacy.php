@@ -869,6 +869,12 @@ function pg_privacy_erase_tables()
             'message'                 => '',
             'recipient_email_address' => '',
         )),
+        // The person's store credit is voided and no longer names their
+        // account (_pg_privacy_erase_apply_store_credit()); the cards stay
+        // with the orders that spent them.
+        'store_credit' => array('table' => 'gift_cards', 'find' => $user, 'action' => 'anonymise', 'fields' => array(
+            'user_id' => 0,
+        )),
         'erp_accounts' => array('find' => array('id' => 'account_ids'), 'action' => 'anonymise', 'fields' => array(
             'title'            => '{name}',
             'tax_number'       => '',
@@ -955,6 +961,17 @@ function pg_privacy_erase_tables()
         'watchers'                     => array('find' => array('user_id' => 'user_ids', 'email_address' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'wishlist_items'               => array('find' => $user, 'action' => 'delete', 'fields' => array()),
         'stock_notify'                 => array('find' => array('user_id' => 'user_ids', 'email_address' => 'emails'), 'action' => 'delete', 'fields' => array()),
+        // A booking stays on the staff agenda without naming the person; a
+        // live one still to come is cancelled first, so its slot opens
+        // (_pg_privacy_erase_apply_bookings()).
+        'bookings' => array('find' => array('user_id' => 'user_ids', 'email' => 'emails'), 'action' => 'anonymise', 'fields' => array(
+            'name'         => '{name}',
+            'email'        => '{token}',
+            'phone'        => '',
+            'notes'        => '',
+            'manage_token' => '',
+            'user_id'      => 0,
+        )),
         'email_recipients'             => array('find' => array('contact_id' => 'contact_ids', 'email_address' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'mail_outbox'                  => array('find' => array('recipient' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'mail_bounces'                 => array('find' => array('address' => 'emails'), 'action' => 'delete', 'fields' => array()),
@@ -1043,6 +1060,7 @@ function pg_privacy_erase_labels()
         'order_returns'                => lang('Returns'),
         'shipment_labels'              => lang('Shipping labels'),
         'gift_cards'                   => lang('Gift cards'),
+        'store_credit'                 => lang('Store credit'),
         'erp_accounts'                 => lang('Current accounts'),
         'erp_invoices'                 => lang('Invoices'),
         'erp_quotes'                   => lang('Quotes'),
@@ -1063,6 +1081,7 @@ function pg_privacy_erase_labels()
         'watchers'                     => lang('Watched items'),
         'wishlist_items'               => lang('Favourites'),
         'stock_notify'                 => lang('Back-in-stock requests'),
+        'bookings'                     => lang('Appointment bookings'),
         'email_recipients'             => lang('E-mail campaigns'),
         'mail_outbox'                  => lang('E-mail messages'),
         'mail_bounces'                 => lang('E-mail bounces and complaints'),
@@ -1799,6 +1818,21 @@ function _pg_privacy_erase_write($table, $where, array $fields, $name)
 }
 
 /**
+ * The person's live bookings still to come are cancelled first, the way the
+ * agenda cancels one (status and slot in one UPDATE, so the slot opens
+ * again), without the mails: the person is being erased. Then the personal
+ * columns of all their bookings are replaced.
+ */
+function _pg_privacy_erase_apply_bookings($where, array $fields, array $scope, $name)
+{
+    $now = time();
+
+    db("UPDATE bookings SET status = 'cancelled', slot_at = NULL, updated_at = '" . $now . "' WHERE (" . $where . ") AND " . pg_booking_erase_cancel_where($now));
+
+    _pg_privacy_erase_write('bookings', $where, $fields, $name);
+}
+
+/**
  * A Fediverse account's comments go the way a block or a Delete of the
  * account takes them (pg_ap_forget_actor()): with their notifications and
  * the records' counters rebuilt, and with the account's follower row and
@@ -1848,6 +1882,22 @@ function _pg_privacy_erase_apply_gift_cards($where, array $fields, array $scope,
             _pg_privacy_erase_write('gift_cards', $part_where, $part_fields, $name);
         }
     }
+}
+
+/**
+ * The person's store credit: every card with a balance is voided first, with
+ * a note line and an audit line (pg_credit_void()), so nothing is left to
+ * spend, then the cards stop naming the account.
+ */
+function _pg_privacy_erase_apply_store_credit($where, array $fields, array $scope, $name)
+{
+    if (function_exists('pg_credit_void')) {
+        foreach (db_values("SELECT id FROM gift_cards WHERE (balance > 0) AND " . $where) as $card_id) {
+            pg_credit_void((int) $card_id, lang('Personal data erased'));
+        }
+    }
+
+    _pg_privacy_erase_write('gift_cards', $where, $fields, $name);
 }
 
 /**

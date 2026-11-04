@@ -17,11 +17,11 @@ module: visitor_periods
 
 ## How does a section land?
 - `pg_visitors_sections()` (same module): name => heading, in screen order: alerts, traffic, conversions, sources, content, site_search, google, pages, speed, ai, places. The file `includes/visitors/<name>.php` (gate `PG_VISITORS_SCREEN`) defines `pg_visitors_section_<name>($period, $user)` returning HTML or `''`. The loader includes it when `pg_visitors_section_exists()`; the screen is not edited.
-- Draw with `includes/visitors/shell.php`: `pg_visitors_section($id, $title, $body, $aside)` (anchor = name), `pg_visitors_tile()`, `pg_visitors_change($now, $before, $lower_is_better)` ("No earlier figure" for none or 0 before, never 0 %), `pg_visitors_bars()`, `pg_visitors_table()` (text cells escaped, `array('html'=>…)` raw), `pg_visitors_empty()`, `pg_visitors_chart($id, $config)` (canvas `aria-hidden`, JSON in a script beside it, a visually hidden table of the figures; the script colours series with the theme's ink tokens and redraws on a theme change).
+- Draw with `includes/visitors/shell.php`: `pg_visitors_section()` (anchor `pg_visitors_anchor()`), `pg_visitors_block()`, `pg_visitors_tile()`, `pg_visitors_change()` (none or 0 before: a dash read out as "No earlier figure", never 0 %), `pg_visitors_change_cell()`, `pg_visitors_bars()`, `pg_visitors_table()` (text escaped, `array('html'=>…)` raw, `limit`, `hide_first`), `pg_visitors_empty()`, `pg_visitors_chart()` (canvas `aria-hidden`, JSON beside it, the figures in a hidden box). The look: `visitors-screen-look.md`.
 - Each section edits only its labelled block in `pg_visitors.src.css` and runs `php tools/build_css.php`.
 
 ## What do the menu and search show?
-- Menu item 6 opens `visitors.php`: Overview, then each section whose file exists as `visitors.php#<name>`; Site Search, Page Speed and AI Visibility only when `pg_site_search_stats_ready()`, `pg_vitals_ready()`, `pg_ai_visibility_ready()` (their old screens answer a 301 to the anchor); then Saved reports, Create a visitor report, the order and shipping block, Search Console settings, external analytics. `visitors.php` is in the active-menu switch.
+- Menu item 6 opens `visitors.php`: Overview, then each section whose file exists as `visitors.php#<anchor>` (`.pg-menu-anchor`); Site Search, Page Speed and AI Visibility only when `pg_site_search_stats_ready()`, `pg_vitals_ready()`, `pg_ai_visibility_ready()` (their old screens answer a 301 to the anchor); then Saved reports, Create a visitor report, the order and shipping block, Search Console settings, external analytics. `visitors.php` is in the active-menu switch.
 - Panel search: "Visitors" → `visitors.php`. Help: `get_help_url.php` `visitors` → `visitors#overview`.
 
 ## What pins it?

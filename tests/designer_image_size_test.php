@@ -132,7 +132,7 @@ function designer_image_size_test_canon($html)
 // One line, without the no-image fallback handler and the indentation.
 function designer_image_size_test_flat($html)
 {
-	$html = preg_replace('/\s*onerror="[^"]*"/', '', (string) $html);
+	$html = preg_replace('/\s*(?:onerror|data-pg-fallback)="[^"]*"/', '', (string) $html);
 
 	return trim(preg_replace('/>\s+</', '><', $html));
 }

@@ -32,6 +32,23 @@ include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/gift_card_form.php');
 $liveform = new liveform('edit_gift_card');
 
+// A card bound to a customer is store credit: its owner, kind, reason and
+// expiry, read once the upgrade has added the columns.
+if (pg_credit_ready()) {
+    $credit_select = ",
+        gift_cards.user_id AS credit_user_id,
+        gift_cards.kind AS credit_kind,
+        gift_cards.reason AS credit_reason,
+        gift_cards.issued_by AS credit_issued_by,
+        gift_cards.expires_at AS credit_expires_at,
+        credit_user.user_username AS credit_username,
+        credit_user.user_role AS credit_user_role";
+    $credit_join = "LEFT JOIN user AS credit_user ON gift_cards.user_id = credit_user.user_id";
+} else {
+    $credit_select = ", 0 AS credit_user_id";
+    $credit_join = '';
+}
+
 $gift_card = db_item(
     "SELECT
         gift_cards.id,
@@ -48,11 +65,12 @@ $gift_card = db_item(
         contacts.id AS contact_id,
         gift_cards.recipient_email_address,
         gift_cards.message,
-        gift_cards.delivery_date
+        gift_cards.delivery_date" . $credit_select . "
     FROM gift_cards
     LEFT JOIN orders ON gift_cards.order_id = orders.id
     LEFT JOIN user ON orders.user_id = user.user_id
     LEFT JOIN contacts ON orders.contact_id = contacts.id
+    " . $credit_join . "
     WHERE gift_cards.id = '" . e($_REQUEST['id']) . "'");
 
 // If the form has not just been submitted, then output form.
@@ -197,6 +215,27 @@ if (!$_POST) {
                 </div>';
     }
 
+    // Store credit names its customer, kind, reason and last day; a credit
+    // card with no order has no "created manually" sentence.
+    $credit_user_id = (int) $gift_card['credit_user_id'];
+
+    if ($credit_user_id > 0) {
+        if ((string) $gift_card['credit_username'] === '') {
+            $output_owner = '#' . $credit_user_id;
+        } else if (pg_can_open_user($user, $gift_card['credit_user_role'])) {
+            $output_owner = '<a href="edit_user.php?id=' . $credit_user_id . '&amp;send_to=' . h(urlencode($request_uri)) . '#store_credit">' . h($gift_card['credit_username']) . '</a>';
+        } else {
+            $output_owner = h($gift_card['credit_username']);
+        }
+
+        $output_credit_info = pg_credit_staff_gift_card_info_html(array(
+            'kind' => $gift_card['credit_kind'],
+            'reason' => $gift_card['credit_reason'],
+            'expires_at' => $gift_card['credit_expires_at']), $output_owner);
+
+        $output_order_info_rows = $gift_card['order_id'] ? $output_credit_info . $output_order_info_rows : $output_credit_info;
+    }
+
     $output_redemption_history = '';
 
     $redemptions = db_items(
@@ -215,22 +254,17 @@ if (!$_POST) {
 
     // If there is at least one redemption, then output them.
     if ($redemptions) {
+        // A ledger: newest first, each row with the balance it left, so the
+        // order is its meaning and it stays a plain table (no sorting).
         $output_redemption_history_rows = '';
 
-        
         foreach ($redemptions as $redemption) {
-            $output_link_url = 'view_order.php?id=' . $redemption['order_id'] . '&amp;send_to=' . h(urlencode($request_uri));
             $output_redemption_history_rows .=
                 '<tr>
-                    <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                        <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
-                    </td>
-                    <td class="align-middle">' . h($redemption['order_number']) . '</td>
-                    <td class="align-middle text-end"><span class=" badge theme-secondary  fw-lighter">' . pg_format_money($redemption['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
-                    <td class="align-middle text-end"><span class=" badge theme-primary  fw-lighter">' . pg_format_money($redemption['new_balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
-                    <td>' . get_relative_time(array('timestamp' => $redemption['order_date'])) . '</td>
-                    <td></td>
+                    <td class="align-middle"><a href="view_order.php?id=' . (int) $redemption['order_id'] . '&amp;send_to=' . h(urlencode($request_uri)) . '">' . h($redemption['order_number']) . '</a></td>
+                    <td class="align-middle text-end">' . pg_format_money($redemption['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                    <td class="align-middle text-end">' . pg_format_money($redemption['new_balance'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                    <td class="align-middle">' . get_relative_time(array('timestamp' => $redemption['order_date'])) . '</td>
                 </tr>';
         }
 
@@ -239,17 +273,15 @@ if (!$_POST) {
                     <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Redemption History') . '
                     </h2>
-                    <div class="card-body">
-                        <div class="row">
-                            <table class="chart table-hover table " style="width:100%;display:none">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
                                 <thead>
                                     <tr>
-                                        <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                        <th>' . lang('Order') . '</th>
-                                        <th class="text-end">' . lang('Amount') . '</th>
-                                        <th class="text-end">' . lang('Remaining Balance') . '</th>
-                                        <th>' . lang('Redeemed On') . '</th>
-                                        <th class="noVis"></th>
+                                        <th scope="col">' . lang('Order') . '</th>
+                                        <th scope="col" class="text-end">' . lang('Amount') . '</th>
+                                        <th scope="col" class="text-end">' . lang('Remaining Balance') . '</th>
+                                        <th scope="col">' . lang('Redeemed On') . '</th>
                                     </tr>
                                 </thead>
                                 <tbody>' . $output_redemption_history_rows . '</tbody>
@@ -314,8 +346,8 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                            <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('gift card')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>
+                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                            <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('gift card')))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -366,8 +398,11 @@ if (!$_POST) {
         // before this check existed) writes it as before.
         $balance_was = $liveform->get_field_value('balance_was');
         $balance_set = '';
+        $balance_before = null;
 
         if (!is_numeric($balance_was) || ((int) $balance_was !== $balance)) {
+            $balance_before = is_numeric($balance_was) ? (int) $balance_was : (int) $gift_card['balance'];
+
             if (is_numeric($balance_was)) {
                 db("UPDATE gift_cards SET balance = '" . $balance . "' WHERE id = '" . (int) $gift_card['id'] . "' AND balance = '" . (int) $balance_was . "'");
                 $now = (int) db_value("SELECT balance FROM gift_cards WHERE id = '" . (int) $gift_card['id'] . "'");
@@ -395,7 +430,23 @@ if (!$_POST) {
                 last_modified_user_id = '" . USER_ID . "',
                 last_modified_timestamp = UNIX_TIMESTAMP()
             WHERE id = '" . e($liveform->get_field_value('id')) . "'");
-        
+
+        // A changed balance of store credit reaches the audit trail, as
+        // every other change of a customer's credit does.
+        if (($balance_before !== null) && ($balance_before !== $balance) && ((int) $gift_card['credit_user_id'] > 0)) {
+            $credit_before = array(
+                'user_id' => (int) $gift_card['credit_user_id'],
+                'kind' => $gift_card['credit_kind'],
+                'amount' => (int) $gift_card['amount'],
+                'balance' => $balance_before,
+                'reason' => $gift_card['credit_reason'],
+                'issued_by' => (int) $gift_card['credit_issued_by'],
+                'expires_at' => (int) $gift_card['credit_expires_at']);
+            $credit_after = array('balance' => $balance) + $credit_before;
+
+            pg_audit('update', 'store_credit', (int) $gift_card['id'], pg_credit_audit_fields($credit_before), pg_credit_audit_fields($credit_after), pg_credit_audit_label($gift_card['code']));
+        }
+
         log_activity(lang(array('string'=>'gift card ({var:1}) was modified','vars'=>output_gift_card_code($gift_card['code']))), $_SESSION['sessionusername']);
         $liveform->remove_form();
         $liveform_view_gift_cards = new liveform('view_gift_cards');

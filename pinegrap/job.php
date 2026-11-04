@@ -516,11 +516,12 @@ if (pg_image_derivative_sweep_due(pg_image_derivative_directory())) {
     }
 }
 
-// WebP at a picture's own address behind a CDN or proxy nobody confirmed
+// WebP at a picture's own address behind a CDN or proxy
 // (includes/fn/image_vary_check.php): the token-free self-test through the
-// site's own address, once after the switch is turned on or the confirmation
-// taken back, then daily while unconfirmed. It sets the confirmation when the
-// edge keeps a copy per format, and sends the original when the edge keeps
+// site's own address, once after the switch or the confirmation changes,
+// then daily while the switch is on, confirmed or not. It sets the
+// confirmation only when both copies come back out of the edge's cache,
+// takes it back when they do not, and sends the original when the edge keeps
 // even private answers. A tick with nothing due reads one small file.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_vary_check.php');
 pg_image_vary_test_daily();
@@ -824,6 +825,22 @@ if (pg_privacy_retention_due()) {
     }
 }
 
+// Cancelled appointment bookings past 400 days since their last change
+// (includes/fn/booking_retention.php): once a day, five seconds a tick until
+// the pass is through. Nothing to do on a site without the booking tables; a
+// tick with nothing due reads one small file.
+if (pg_booking_retention_due()) {
+
+    $booking_retention = pg_booking_retention_run(5);
+
+    if ($booking_retention['removed'] > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} cancelled booking(s) older than {var:2} days',
+            'vars'   => array(pg_format_number($booking_retention['removed'], 0), pg_booking_retention_limits()['days']),
+        )), 'UNKNOWN');
+    }
+}
+
 // The price visitors are shown under the offers, into the product price
 // history (pg_price_history_offer_pass_run()): once an hour, ten seconds a
 // tick until the pass is through. A tick with nothing due reads one small
@@ -925,6 +942,16 @@ if (pg_cron_job_is_enabled('push_job')) {
 if (function_exists('pg_booking_reminders_run')) {
 
     pg_booking_reminders_run(time());
+
+}
+
+// Store credit (pg_credit_mails_run() in includes/fn/store_credit_mails.php):
+// the credit_expiring notices whose moment fell since the last pass, then the
+// customer cards whose end has come are closed. Before the mail pass, so a
+// notice made now goes out in this run.
+if (function_exists('pg_credit_mails_run')) {
+
+    pg_credit_mails_run(time());
 
 }
 

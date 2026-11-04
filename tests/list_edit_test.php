@@ -129,6 +129,19 @@ function test_list_edit_table_carries_the_definitions_in_order()
 	pg_assert_same(false, isset($client['note']['required']), 'server-side rules stay on the server');
 }
 
+function test_list_edit_table_gives_an_option_its_class()
+{
+	$columns = array('folder' => array('type' => 'select', 'label' => 'Folder', 'options' => array(2 => 'Secret', 1 => 'Root', 3 => 'Inherits'),
+		'option_classes' => array(1 => 'public', 2 => 'private')));
+
+	pg_assert_true(preg_match('/data-pg-edit-columns="([^"]*)"/', pg_list_edit_table('view_pages.php', $columns), $match) === 1, 'definitions present');
+
+	$client = json_decode(html_entity_decode($match[1], ENT_QUOTES, 'UTF-8'), true);
+
+	pg_assert_same(array(array('2', 'Secret', 'private'), array('1', 'Root', 'public'), array('3', 'Inherits')), $client['folder']['options'], 'a class rides with its option; an option without one stays a pair');
+	pg_assert_same(false, isset($client['folder']['option_classes']), 'the classes travel only inside the options');
+}
+
 function test_list_edit_table_and_cell_are_plain_without_columns()
 {
 	pg_assert_same('', pg_list_edit_table('view_products.php', array()), 'no columns, no attributes');

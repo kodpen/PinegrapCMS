@@ -20,8 +20,9 @@
  * selected rows"): one request per row; that group is then the last save.
  * With the mode off, a click selects and a double-click opens, as always.
  *
- * QuickEdits, applyTargets(), quickValue() and quickChanged() are pure (no
- * DOM; tests/list_table_quick_edit_js_test.php runs them in Node).
+ * QuickEdits, applyTargets(), quickValue(), quickChanged() and
+ * rowNameText() are pure (no browser; tests/list_table_quick_edit_js_test.php
+ * runs them in Node).
  *
  * Bundled after pg_list_table.js into pg_list_table.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
@@ -115,6 +116,53 @@
     /** Whether a field holds something else than the stored value. */
     function quickChanged(type, raw, stored) {
         return quickValue(type, raw) !== String(stored);
+    }
+
+    /**
+     * The text a cell names its row by, as shown: words of a block child
+     * kept apart (textContent fused a gift card's code with the
+     * "Expired" printed under it) and hidden text left out (unseen search
+     * words, icon ligatures). Reads only childNodes, nodeType, nodeValue,
+     * tagName, hidden and getAttribute, so it runs on any node tree.
+     */
+    /**
+     * A select whose options carry classes wears the chosen option's class
+     * (the Pages list's folders, coloured by their access type), dropping
+     * the one it wore before.
+     */
+    function tintSelect(select) {
+        var option = (select.selectedIndex >= 0) ? select.options[select.selectedIndex] : null;
+        var tint = option ? String(option.className || '') : '';
+
+        if (select.pgTint && (select.pgTint !== tint)) {
+            select.classList.remove(select.pgTint);
+        }
+
+        if (tint !== '') {
+            select.classList.add(tint);
+        }
+
+        select.pgTint = tint;
+    }
+
+    function rowNameText(node) {
+        var walk = function (parent) {
+            var text = '';
+
+            Array.prototype.forEach.call(parent.childNodes || [], function (child) {
+                if (child.nodeType === 3) {
+                    text += child.nodeValue;
+                } else if ((child.nodeType === 1) && !child.hidden && (child.getAttribute('aria-hidden') !== 'true')) {
+                    var gap = /^(DIV|P|BR|LI|UL|OL|DL|DT|DD|H[1-6])$/.test(String(child.tagName).toUpperCase()) ? ' ' : '';
+
+                    text += gap + walk(child) + gap;
+                }
+            });
+
+            return text;
+        };
+
+        return node ? walk(node).replace(/\s+/g, ' ').trim() : '';
     }
 
     // ------------------------------------------------------------------
@@ -301,8 +349,15 @@
                 option.value = String(pair[0]);
                 option.textContent = String(pair[1]);
                 option.selected = (option.value === value);
+
+                if (pair[2]) {
+                    option.className = String(pair[2]);
+                }
+
                 control.appendChild(option);
             });
+
+            tintSelect(control);
         } else {
             control = document.createElement('input');
             control.type = 'text';
@@ -323,7 +378,7 @@
         // The row's name is its first cell's text. That cell may be an open
         // field itself (quick edit opens a row's fields in order), so its text
         // is the one kept when it opened, not the empty text it has now.
-        var nameText = name ? (name.pgQuick ? (name.pgQuickName || '') : name.textContent.trim()) : '';
+        var nameText = name ? (name.pgQuick ? (name.pgQuickName || '') : rowNameText(name)) : '';
 
         // No name: the field never travels with a form the list sits in.
         control.setAttribute('aria-label', String(def.label || '') + ((name && (name !== cell) && (nameText !== '')) ? ': ' + nameText : ''));
@@ -336,13 +391,17 @@
         control.setAttribute('aria-describedby', note.id);
 
         cell.pgQuickHtml = cell.innerHTML;
-        cell.pgQuickName = cell.textContent.trim();
+        cell.pgQuickName = rowNameText(cell);
         cell.pgQuick = { control: control, note: note, def: def };
         cell.textContent = '';
         cell.appendChild(control);
         cell.appendChild(note);
 
         control.addEventListener('change', function () {
+            if (control.tagName === 'SELECT') {
+                tintSelect(control);
+            }
+
             self.quickSave(cell);
         });
 
@@ -375,6 +434,11 @@
         } else if (event.key === 'Escape') {
             event.preventDefault();
             quick.control.value = cell.getAttribute('data-pg-edit-value') || '';
+
+            if (quick.control.tagName === 'SELECT') {
+                tintSelect(quick.control);
+            }
+
             this.fieldNote(cell, '');
         } else if (event.key === 'F2') {
             event.preventDefault();
@@ -491,6 +555,10 @@
 
             if (cell.pgQuick) {
                 cell.pgQuick.control.value = String(view.value);
+
+                if (cell.pgQuick.control.tagName === 'SELECT') {
+                    tintSelect(cell.pgQuick.control);
+                }
             }
         }
 
@@ -759,6 +827,8 @@
     T.applyTargets = applyTargets;
     T.quickValue = quickValue;
     T.quickChanged = quickChanged;
+    T.rowNameText = rowNameText;
+    T.tintSelect = tintSelect;
 
     // Lists the driver started before this part loaded.
     if (typeof document !== 'undefined' && document.querySelectorAll) {

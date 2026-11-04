@@ -132,6 +132,7 @@
     "Verification failed. Please try again.": "Doğrulama başarısız. Lütfen tekrar deneyin.",
     "Verified Addresses": "Doğrulanmış Adresler",
     "Verified Shipping Address": "Doğrulanmış Teslimat Adresi",
+    "Verified Shipping Addresses": "Doğrulanmış Teslimat Adresleri",
     "Verified purchase": "Doğrulanmış satın alma",
     "Verified purchase: order {var:1}": "Doğrulanmış satın alma: {var:1} numaralı sipariş",
     "Verified purchases": "Doğrulanmış satın almalar",

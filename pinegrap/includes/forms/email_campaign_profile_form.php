@@ -53,6 +53,18 @@ function pg_email_campaign_profile_booking_actions()
 }
 
 /**
+ * The store credit actions (includes/fn/store_credit_mails.php): tied to no
+ * record, they need commerce access like the order actions and are offered
+ * once the upgrade has added them (pg_credit_mail_ready()).
+ *
+ * @return array
+ */
+function pg_email_campaign_profile_credit_actions()
+{
+    return array('credit_issued', 'credit_expiring');
+}
+
+/**
  * The contact group actions: one mail per contact put into the group the
  * profile names (pg_contact_group_joined_heard()), whatever the commerce
  * access. Offered once the upgrade has added the value to both action
@@ -201,6 +213,7 @@ function pg_email_campaign_profile_action_rows($action)
         'standard_schedule' => 'show',
         'subscription_fields' => '',
         'booking_fields' => '',
+        'credit_fields' => '',
     );
 
     if (strpos((string) $action, 'subscription_') === 0) {
@@ -209,6 +222,10 @@ function pg_email_campaign_profile_action_rows($action)
 
     if (in_array((string) $action, pg_email_campaign_profile_booking_actions(), true)) {
         $rows['booking_fields'] = 'show';
+    }
+
+    if (in_array((string) $action, pg_email_campaign_profile_credit_actions(), true)) {
+        $rows['credit_fields'] = 'show';
     }
 
     $item_field = pg_email_campaign_profile_action_item_field($action);
@@ -247,7 +264,7 @@ function pg_email_campaign_profile_action_values($action, $fields)
 
     if ($item_field != '') {
         $values['action_item_id'] = isset($fields[$item_field]) ? (string) $fields[$item_field] : '';
-    } elseif (in_array($action, pg_email_campaign_profile_commerce_actions(), true) || in_array($action, pg_email_campaign_profile_booking_actions(), true)) {
+    } elseif (in_array($action, pg_email_campaign_profile_commerce_actions(), true) || in_array($action, pg_email_campaign_profile_booking_actions(), true) || in_array($action, pg_email_campaign_profile_credit_actions(), true)) {
         $values['action_item_id'] = '0';
     } else {
         return $values;
@@ -329,6 +346,12 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
         return (isset($values[$name]) && is_scalar($values[$name])) ? trim((string) $values[$name]) : '';
     };
 
+    // Import rows and API values carry raw column names, so the message
+    // names the column in quotes instead of reading it as a field label.
+    $invalid = function ($column) {
+        return lang(array('string' => 'The "{var:1}" column has an invalid value.', 'vars' => $column));
+    };
+
     $name = $value('name');
 
     if ($name === '') {
@@ -342,17 +365,17 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
     }
 
     if (!in_array($value('enabled'), array('0', '1'), true)) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'enabled'));
+        return $invalid('enabled');
     }
 
     $action = $value('action');
-    $actions = array_merge(array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent'), pg_email_campaign_profile_commerce_actions(), pg_email_campaign_profile_booking_actions(), pg_email_campaign_profile_group_actions());
+    $actions = array_merge(array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent'), pg_email_campaign_profile_commerce_actions(), pg_email_campaign_profile_booking_actions(), pg_email_campaign_profile_group_actions(), pg_email_campaign_profile_credit_actions());
 
     if (!in_array($action, $actions, true)) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'action'));
+        return $invalid('action');
     }
 
-    if (!$commerce && in_array($action, pg_email_campaign_profile_commerce_actions(), true)) {
+    if (!$commerce && (in_array($action, pg_email_campaign_profile_commerce_actions(), true) || in_array($action, pg_email_campaign_profile_credit_actions(), true))) {
         return lang('Sorry, you do not have access to that action.');
     }
 
@@ -360,11 +383,11 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
         (pg_email_campaign_profile_action_item_field($action) !== '')
         && !preg_match('/^[1-9]\d{0,9}$/', $value('action_item_id'))
     ) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'action_item_id'));
+        return $invalid('action_item_id');
     }
 
     if (!in_array($value('format'), array('plain_text', 'html'), true)) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'format'));
+        return $invalid('format');
     }
 
     if (($value('format') === 'html') && !preg_match('/^[1-9]\d{0,9}$/', $value('page_id'))) {
@@ -372,17 +395,17 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
     }
 
     if (!validate_email_address($value('from_email_address'))) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'from_email_address'));
+        return $invalid('from_email_address');
     }
 
     foreach (array('reply_email_address', 'bcc_email_address') as $column) {
         if (($value($column) !== '') && !validate_email_address($value($column))) {
-            return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => $column));
+            return $invalid($column);
         }
     }
 
     if (($value('schedule_time') !== '') && !validate_time($value('schedule_time'))) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'schedule_time'));
+        return $invalid('schedule_time');
     }
 
     if (!pg_email_campaign_profile_schedule_length_valid($value('schedule_length'))) {
@@ -390,18 +413,18 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
     }
 
     if (!in_array($value('schedule_unit'), array('days', 'hours'), true)) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'schedule_unit'));
+        return $invalid('schedule_unit');
     }
 
     // Only a calendar event reservation takes its period and base from the
     // row (pg_email_campaign_profile_action_values()).
     if ($action === 'calendar_event_reserved') {
         if (!in_array($value('schedule_period'), array('before', 'after'), true)) {
-            return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'schedule_period'));
+            return $invalid('schedule_period');
         }
 
         if (!in_array($value('schedule_base'), array('action', 'calendar_event_start_time'), true)) {
-            return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'schedule_base'));
+            return $invalid('schedule_base');
         }
 
         if (($value('schedule_period') === 'before') && ($value('schedule_base') === 'action')) {
@@ -410,7 +433,7 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
     }
 
     if (!in_array($value('purpose'), array('commercial', 'transactional'), true)) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'purpose'));
+        return $invalid('purpose');
     }
 
     return '';
@@ -843,6 +866,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
             </div>';
     }
     $output_booking_fields_row = '';
+    $output_credit_fields_row = '';
 
     // The booking actions, once the booking tables are in place, or when the
     // profile already has one.
@@ -883,6 +907,25 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
 
         foreach (pg_email_campaign_profile_subscription_fields() as $name => $meaning) {
             $output_subscription_fields .= '<li><code>^^' . h($name) . '^^</code> ' . h($meaning) . '</li>';
+        }
+
+        // Store credit, once the upgrade has added the actions, or when the
+        // profile already has one.
+        if (pg_credit_mail_ready() || in_array($liveform->get_field_value('action'), pg_email_campaign_profile_credit_actions(), true)) {
+            $action_options[lang('Store Credit Issued')] = 'credit_issued';
+            $action_options[lang('Store Credit Expiring')] = 'credit_expiring';
+
+            $output_credit_fields = '';
+
+            foreach (pg_credit_mail_field_meanings() as $name => $meaning) {
+                $output_credit_fields .= '<li><code>^^' . h($name) . '^^</code> ' . h($meaning) . '</li>';
+            }
+
+            $output_credit_fields_row =
+                '<div class="col-12 my-3 collapse ' . $rows['credit_fields'] . '" id="credit_fields_row">
+                    <div class="form-text">' . h(lang(array('string' => 'The subject and the body can use these fields; the expiring e-mail goes {var:1} days before a card ends, once.', 'vars' => array(PG_CREDIT_EXPIRING_DAYS)))) . '</div>
+                    <ul class="form-text mb-0">' . $output_credit_fields . '</ul>
+                </div>';
         }
 
         $output_subscription_fields_row =
@@ -939,6 +982,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                 ' . $output_contact_group_id_row . '
                                 ' . $output_subscription_fields_row . '
                                 ' . $output_booking_fields_row . '
+                                ' . $output_credit_fields_row . '
                             </div>
                         </div>
                     </div>

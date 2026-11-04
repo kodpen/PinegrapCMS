@@ -180,7 +180,7 @@ if ($bookings_view === 'list') {
                             <a class="d-block pg-link-body-emphasis text-decoration-none" href="edit_booking.php?id=' . (int) $bookings_row['id'] . '">
                                 <span class="d-flex justify-content-between align-items-start gap-2">
                                     <span class="fw-semibold text-nowrap">' . h(pg_booking_agenda_time($bookings_row['start_at'])) . ' – ' . h(pg_booking_agenda_time($bookings_row['end_at'])) . '</span>
-                                    ' . pg_booking_agenda_badge($bookings_row['status']) . '
+                                    <span class="text-nowrap">' . pg_booking_agenda_badge($bookings_row['status']) . pg_booking_deposit_badge($bookings_row) . '</span>
                                 </span>
                                 <span class="d-block text-break">' . h($bookings_row['name']) . '</span>
                                 <span class="d-block small fg-secondary text-break">' . h((string) $bookings_row['service_name']) . (($bookings_scope === null) && ($bookings_staff_id === 0) && ($bookings_who !== '') ? ' · ' . h($bookings_who) : '') . '</span>

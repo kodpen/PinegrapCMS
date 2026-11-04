@@ -70,7 +70,7 @@ function _test_salon_page_keys()
 {
 	return array(
 		'home', 'services', 'team', 'lookbook', 'about',
-		'appointment', 'appointment_view', 'my_appointments', 'privacy',
+		'appointment', 'book_online', 'appointment_view', 'my_appointments', 'privacy',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post',
 		'my_account', 'search', 'staff', 'error', 'forgot_password',
 		'email_appointment_new', 'email_appointment_received', 'email_reply',
@@ -182,7 +182,7 @@ function test_salon_booking_pages()
 		$keys[$p['key']] = $p['folder'];
 	}
 	pg_assert_same(array(
-		'appointment' => 'public', 'appointment_view' => 'registration', 'my_appointments' => 'registration', 'privacy' => 'public',
+		'appointment' => 'public', 'book_online' => 'public', 'appointment_view' => 'registration', 'my_appointments' => 'registration', 'privacy' => 'public',
 		'email_appointment_new' => 'private', 'email_appointment_received' => 'private', 'email_reply' => 'private',
 	), $keys);
 

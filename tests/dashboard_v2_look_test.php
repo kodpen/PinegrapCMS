@@ -115,3 +115,10 @@ function test_dashboard_v2_grid_follows_the_dashboard_width()
 	pg_assert_same(1, preg_match($fallback, $css), 'one fallback for browsers without container queries');
 	pg_assert_false((bool) preg_match('/@media \([^)]*width[^)]*\) \{\s*\.pg-dash-(grid|tiles|top)\b/', preg_replace($fallback, '', $css)), 'no window-width rule for the grid, tiles or top outside it');
 }
+
+// The sales map's figure box puts a region's figures and best cities on
+// lines of their own ("\n" in the text it is given).
+function test_dashboard_v2_figure_box_keeps_line_breaks()
+{
+	pg_assert_true((bool) preg_match('/  \.pg-dash-tip \{[^}]*white-space: pre-line;/', pg_test_dashboard_v2_look_css()));
+}
