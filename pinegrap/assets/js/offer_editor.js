@@ -116,6 +116,8 @@
     // The largest amount (minor units) or count a field takes; edit_offer_f.php
     // holds the same bound (PG_OFFER_MAX_NUMBER).
     var MAX_NUMBER = 2147483647;
+    // An empty amount box shows zero in the site's own decimal separator.
+    function decimalPlaceholder() { return '0' + (C.money_separators || { decimal: '.' }).decimal + '00'; }
     function amountMax() { return fmt(L.amountMax, [money(MAX_NUMBER)]); }
     function numberMax() { return fmt(L.numberMax, [MAX_NUMBER]); }
     function productLabel(id) {
@@ -313,7 +315,7 @@
             var cols = '';
             if (c.type === 'subtotal') {
                 cols = '<div class="col-7 sm:col-5 md:col-3 xl:col-2">' +
-                    '<label class="form-control form-control-sm form-adorn form-adorn-end"><span class="form-adorn-text" aria-hidden="true">' + esc(C.currency) + '</span><input type="text" class="form-ghost text-end" inputmode="decimal" value="' + esc(centsToInput(c.amount)) + '" placeholder="0.00" aria-label="' + esc(t.label) + '" data-on="cond-amount" data-index="' + i + '"></label>' +
+                    '<label class="form-control form-control-sm form-adorn form-adorn-end"><span class="form-adorn-text" aria-hidden="true">' + esc(C.currency) + '</span><input type="text" class="form-ghost text-end" inputmode="decimal" value="' + esc(centsToInput(c.amount)) + '" placeholder="' + esc(decimalPlaceholder()) + '" aria-label="' + esc(t.label) + '" data-on="cond-amount" data-index="' + i + '"></label>' +
                     '</div>';
             } else if (c.type === 'products') {
                 var tags = c.product_ids.map(function (id) {
@@ -338,8 +340,8 @@
                     '</div>' +
                     '<div class="col-auto fg-secondary small">' + esc(L.pieces) + '</div>';
             } else if (c.type === 'cart quantity') {
-                cols = '<div class="col-auto fg-secondary small">' + esc(L.atLeast) + '</div>' +
-                    '<div class="col-3 sm:col-2 lg:col-1">' +
+                // The type label already says "at least".
+                cols = '<div class="col-3 sm:col-2 lg:col-1">' +
                     '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" value="' + esc(c.quantity || '') + '" aria-label="' + esc(L.quantity) + '" data-on="cond-quantity" data-index="' + i + '">' +
                     '</div>' +
                     '<div class="col-auto fg-secondary small">' + esc(L.pieces) + '</div>';
@@ -521,7 +523,7 @@
                 '<div class="row g-3 align-items-center">' +
                 '<div class="col-auto fg-secondary small">' + esc(L.tierFrom) + '</div>' +
                 '<div class="col-6 sm:col-4 md:col-3 xl:col-2">' +
-                '<label class="form-control form-control-sm form-adorn form-adorn-end"><span class="form-adorn-text" aria-hidden="true">' + esc(C.currency) + '</span><input type="text" class="form-ghost text-end" inputmode="decimal" value="' + esc(centsToInput(t.min)) + '" placeholder="0.00" aria-label="' + esc(L.tierMinLabel) + '" data-on="tier-min" data-index="' + i + '" data-tier="' + k + '"></label>' +
+                '<label class="form-control form-control-sm form-adorn form-adorn-end"><span class="form-adorn-text" aria-hidden="true">' + esc(C.currency) + '</span><input type="text" class="form-ghost text-end" inputmode="decimal" value="' + esc(centsToInput(t.min)) + '" placeholder="' + esc(decimalPlaceholder()) + '" aria-label="' + esc(L.tierMinLabel) + '" data-on="tier-min" data-index="' + i + '" data-tier="' + k + '"></label>' +
                 '</div>' +
                 '<div class="col-auto fg-secondary small">→</div>' +
                 '<div class="col-4 sm:col-3 md:col-2 xl:col-1">' +
@@ -593,7 +595,14 @@
         S.actions.forEach(function (a) { if (actionClientError(a)) { n++; } });
         if (S.offer.period === 'range' && (!S.offer.start_date || !S.offer.end_date)) { n++; }
         if (S.offer.period === 'range' && S.offer.start_date && S.offer.end_date && S.offer.start_date > S.offer.end_date) { n++; }
+        if (upsellSubtotalError()) { n++; }
+        if (upsellQuantityError()) { n++; }
         return n;
+    }
+    // The up-sell distances are stored in INT UNSIGNED columns, bounded like
+    // every other amount and count.
+    function upsellSubtotalError() { return S.offer.upsell.trigger_subtotal > MAX_NUMBER ? amountMax() : ''; }
+    function upsellQuantityError() { return S.offer.upsell.trigger_quantity > MAX_NUMBER ? numberMax() : '';
     }
     function periodText() {
         if (S.offer.period === 'open') { return L.openEnded; }
@@ -649,6 +658,13 @@
         el.textContent = on ? fmt(L.keyCodesFollow, [C.key_code_count]) : '';
         show(el, on);
     }
+    // Codes are generated for the saved offer, so the button waits for a save.
+    function renderGenerate() {
+        var generate = $('[data-on="keycodes-generate"]');
+        if (!generate) { return; }
+        generate.disabled = dirty;
+        if (dirty) { generate.title = L.saveFirstCodes; } else { generate.removeAttribute('title'); }
+    }
     function renderHeader() {
         $('#pg-if-code').value = S.offer.code;
         renderCodeFollow();
@@ -657,8 +673,7 @@
         $('#pg-if-require-code').checked = !!S.offer.require_code;
         $('#pg-if-require-code-hint').textContent = S.offer.require_code ? L.requireCodeOn : L.requireCodeOff;
         show($('#pg-if-keycodes'), S.offer.require_code && !isNew);
-        var generate = $('[data-on="keycodes-generate"]');
-        if (generate) { generate.disabled = dirty; }
+        renderGenerate();
         show($('#pg-if-orders'), !isNew && C.order_count > 0);
         $('#pg-if-orders-count').textContent = fmt(L.orderCount, [C.order_count]);
         $('#pg-if-keycodes-count').textContent = fmt(L.keyCodes, [C.key_code_count]);
@@ -707,6 +722,8 @@
         if (document.activeElement !== $('#pg-if-upsell-quantity')) { $('#pg-if-upsell-quantity').value = S.offer.upsell.trigger_quantity || ''; }
         if (document.activeElement !== $('#pg-if-upsell-button')) { $('#pg-if-upsell-button').value = S.offer.upsell.button_label; }
         $('#pg-if-upsell-page').value = String(S.offer.upsell.page_id || '');
+        upsellError('#pg-if-upsell-subtotal-error', upsellSubtotalError() || serverErrors['offer.upsell.trigger_subtotal']);
+        upsellError('#pg-if-upsell-quantity-error', upsellQuantityError() || serverErrors['offer.upsell.trigger_quantity']);
         show($('#pg-if-upsell-quantity-wrap'), S.conditions.some(function (c) { return c.type === 'products' || c.type === 'product group'; }));
 
         show($('#pg-if-best-row'), C.same_code_count > 0);
@@ -718,6 +735,12 @@
         pressed($('#pg-if-scope-recipient'), S.offer.scope === 'recipient');
         show($('#pg-if-multiple-wrap'), S.offer.scope === 'recipient');
         $('#pg-if-multiple').checked = !!S.offer.multiple_recipients;
+    }
+    function upsellError(sel, message) {
+        var el = $(sel);
+        if (!el) { return; }
+        el.textContent = message || '';
+        show(el, !!message);
     }
     function enhance() {
         // A searchable combobox for a long product picker (pg_fields.js); the
@@ -839,7 +862,7 @@
         renderSummary();
         renderSteps();
     }
-    function touch() { dirty = true; }
+    function touch() { dirty = true; renderGenerate(); }
 
     // ── events ───────────────────────────────────────────────────────────
     root.addEventListener('click', function (e) {
@@ -1020,9 +1043,13 @@
             case 'upsell-message':
                 S.offer.upsell.message = el.value; touch(); break;
             case 'upsell-subtotal':
-                S.offer.upsell.trigger_subtotal = inputToCents(el.value); touch(); break;
+                S.offer.upsell.trigger_subtotal = inputToCents(el.value); touch();
+                delete serverErrors['offer.upsell.trigger_subtotal'];
+                renderOptions(); renderSummary(); break;
             case 'upsell-quantity':
-                S.offer.upsell.trigger_quantity = parseInt(el.value, 10) || 0; touch(); break;
+                S.offer.upsell.trigger_quantity = parseInt(el.value, 10) || 0; touch();
+                delete serverErrors['offer.upsell.trigger_quantity'];
+                renderOptions(); renderSummary(); break;
             case 'upsell-button':
                 S.offer.upsell.button_label = el.value; touch(); break;
             case 'start':
@@ -1154,7 +1181,8 @@
     // need them; this is one button and a count, and the key code screen keeps
     // the rest.
     function generateKeyCodes(button) {
-        if (isNew || dirty) { return; }
+        if (isNew) { return; }
+        if (dirty) { toast(L.saveFirstCodes, 'warning'); return; }
         // The stepper keeps the field in range while it is clicked, but the
         // field is typeable, so the value is clamped here as well. The server
         // clamps it again.

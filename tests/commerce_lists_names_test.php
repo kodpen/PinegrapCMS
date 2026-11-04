@@ -65,7 +65,8 @@ function test_commerce_lists_names_orders_for_contact_view_button()
 {
 	$source = commerce_lists_names_source('view_orders_for_contact.php');
 
-	pg_assert_contains("title=\"' . h(lang('View Order')) . '\" aria-label=\"' . h(lang('View Order')) . '\"", $source);
+	// The order number is the row's link to the order (no Edit button).
+	pg_assert_contains("<a href=\"view_order.php?id=' . \$order_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '\" data-pg-open>", $source);
 	pg_assert_true(strpos($source, "title=\"' . lang('Edit') . '\"") === false, 'row button titled Edit');
 }
 

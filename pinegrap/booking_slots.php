@@ -13,6 +13,11 @@
  *   {"action": "hold", "service": id, "staff": id, "start": unix}
  *        -> {"ok": true, "hold": {"until": unix, "label": "…"}}
  *        or {"ok": false, "error": "taken", "message": …}
+ *        with "visitor": {name, email, phone} of a signed-in account
+ *   {"action": "confirm", "name", "email", "phone", "notes", "consent"?}
+ *        -> {"ok": true, "status": "confirmed"|"requested", "message": …}
+ *        or {"ok": false, "error": "invalid", "fields": {field: sentence}}
+ *        or {"ok": false, "error": "expired"|"taken", "message": …}
  *   {"action": "release"}
  *        -> {"ok": true}
  *
@@ -56,14 +61,14 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? '')) !== 'POST') {
     booking_slots_answer(array('error' => 'method', 'message' => lang('Method not allowed.')), 405);
 }
 
-$request = json_decode((string) file_get_contents('php://input', false, null, 0, 4096), true);
+$request = json_decode((string) file_get_contents('php://input', false, null, 0, 16384), true);
 $action = (is_array($request) && isset($request['action']) && is_string($request['action'])) ? $request['action'] : '';
 
-if (!in_array($action, array('month', 'day', 'hold', 'release'), true)) {
+if (!in_array($action, array('month', 'day', 'hold', 'confirm', 'release'), true)) {
     booking_slots_answer(array('error' => 'request', 'message' => lang('Invalid request.')), 400);
 }
 
-$throttled = pg_booking_throttled(in_array($action, array('hold', 'release'), true) ? 'hold' : 'read');
+$throttled = pg_booking_throttled(in_array($action, array('hold', 'confirm', 'release'), true) ? 'hold' : 'read');
 
 if ($throttled) {
     header('Retry-After: ' . $throttled);
@@ -76,6 +81,10 @@ try {
     if ($action === 'release') {
         pg_booking_release_session_hold($now);
         booking_slots_answer(array('ok' => true));
+    }
+
+    if ($action === 'confirm') {
+        booking_slots_answer(pg_booking_confirm_request($request, $now));
     }
 
     $answer = pg_booking_slots_request($request, $now);

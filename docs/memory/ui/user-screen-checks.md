@@ -13,7 +13,7 @@ description: The checks of the user create, edit, import and bulk delete screens
 - Why: an invalid date saved rights 0 under "The user has been saved."
 
 ## What does the notice say after "Notify User"?
-- `add_user.php` reads `email()`'s answer; `pg_new_user_notice($notified, $sent, $url, $password)` (`includes/fn/auth.php`) says when it failed and points to "Forgot password". A notified user's password is never shown; a user not notified gets it, as before.
+- `add_user.php` reads `email()`'s answer; `pg_new_user_notice($notified, $sent, $url, $password)` (`includes/fn/auth.php`) says when it failed and points to "Forgot password". A failed mail is queued with `add_warning()`, not `add_notice()` (#6555): the account has a password nobody knows. A notified user's password is never shown; a user not notified gets it, as before.
 - `import_users.php` lists the users whose e-mail failed in a warning.
 
 ## What is "My Registered Users"?

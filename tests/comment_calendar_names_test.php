@@ -34,7 +34,7 @@ function test_comment_rating_radios_reachable_and_named()
 		pg_assert_contains("'aria-label'=>lang(array('string'=>'Rated {var:1} out of 5'", $call);
 	}
 
-	pg_assert_contains('<label id="comment_rating_label" class="form-label">', $source);
+	pg_assert_contains('<div class="col-12 my-3">' . "\n" . '        <label id="comment_rating_label" class="form-label d-block">', str_replace("\r\n", "\n", $source));
 	pg_assert_contains('role="radiogroup" aria-labelledby="comment_rating_label"', $source);
 	pg_assert_true(strpos($source, 'aria-label="Rating"') === false, 'the rating group keeps a literal English name');
 	pg_assert_contains('.rating .btn-check:focus-visible+label{outline: 2px solid var(--pg-primary-ink);', $source);

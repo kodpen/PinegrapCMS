@@ -40,7 +40,8 @@ function test_erp_input_keyboards_mail_recipient()
 {
 	foreach (array('edit_erp_invoice.php', 'edit_erp_quote.php', 'edit_erp_purchase_order.php') as $path) {
 		$source = erp_input_keyboards_source($path);
-		pg_assert_contains('<input type="text" class="form-control" id="mail_to" name="mail_to" value="', $source, $path . ': still a list box');
-		pg_assert_contains('maxlength="500" inputmode="email" spellcheck="false" autocapitalize="off" autocomplete="off" required />', $source, $path);
+		// The class may carry is-invalid after a refused address.
+		pg_assert_true(preg_match('/<input type="text" class="form-control[^"]*" id="mail_to" name="mail_to" value="/', $source) === 1, $path . ': still a list box');
+		pg_assert_contains('maxlength="500" inputmode="email" spellcheck="false" autocapitalize="off" autocomplete="off" required', $source, $path);
 	}
 }

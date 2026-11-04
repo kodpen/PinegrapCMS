@@ -150,6 +150,27 @@ function pg_user_write_problem_message($problem)
 }
 
 /**
+ * Whether a contact record exists and the account already linked to it, for
+ * pg_user_form_contact_problem(): 'found' => bool, 'username' => the linked
+ * account's username, null when none. A contact has one account at most:
+ * membership, the contact's user card and the user lookups read one.
+ *
+ * @param mixed $contact_id
+ * @return array
+ */
+function pg_user_contact_holder($contact_id)
+{
+    $contact_id = (is_scalar($contact_id) && ctype_digit((string) $contact_id)) ? (string) (int) $contact_id : '0';
+
+    $found = (db_value("SELECT COUNT(*) FROM contacts WHERE id = '" . e($contact_id) . "'") > 0);
+
+    $result = db_q("SELECT user_username FROM user WHERE user_contact = ? ORDER BY user_id LIMIT 1", array($contact_id)) or output_error('Query failed.');
+    $row = mysqli_fetch_assoc($result);
+
+    return array('found' => $found, 'username' => $row ? (string) $row['user_username'] : null);
+}
+
+/**
  * Whether no other enabled administrator than this account is left: such an
  * account keeps its role and is not deleted, or nobody could reach the
  * administrator-only screens.
@@ -247,7 +268,7 @@ function pg_user_create($fields, $editor_id)
             '" . escape($fields['home_page'] ?? '') . "',
             '" . escape($fields['badge'] ?? '') . "',
             '" . escape($fields['badge_label'] ?? '') . "',
-            '" . escape($fields['reward_points'] ?? '') . "',
+            '" . (int) pg_user_form_reward_points($fields['reward_points'] ?? null) . "',
             '" . escape($fields['manage_contacts'] ?? '') . "',
             '" . escape($fields['manage_visitors'] ?? '') . "',
             '" . escape($fields['create_pages'] ?? '') . "',

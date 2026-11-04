@@ -108,6 +108,21 @@ function pg_returns_ready()
     return pg_schema_has('order_returns', 'closed_at') && pg_schema_has('order_return_items', 'quantity');
 }
 
+/**
+ * The SET part that moves a return's last-change stamp (order_returns.
+ * updated_at, 11.0.168) to now, with its leading comma, for the UPDATE that
+ * changes what GET /returns shows: GET /returns?modified_since= finds the
+ * return again by it. Set in the same statement, never as a second UPDATE,
+ * so a change is never seen without its stamp. Empty before the step adds
+ * the column: the files land before the upgrade runs.
+ *
+ * @return string
+ */
+function pg_return_touch_sql()
+{
+    return pg_schema_has('order_returns', 'updated_at') ? ', updated_at = UNIX_TIMESTAMP()' : '';
+}
+
 /* ---------------------------------------------------------------------------
    Statuses
    --------------------------------------------------------------------------- */
@@ -1389,7 +1404,10 @@ function pg_return_create($order_id, $ship_to_id, $quantities, $reason, $note, $
     // commit, and the half-written return goes with the connection.
     db("START TRANSACTION");
 
-    db("INSERT INTO order_returns (order_id, ship_to_id, status, reason, customer_note, decision_note, source, requested_by, requested_at)
+    // A new return's last change is its request (pg_return_touch_sql()).
+    $stamped = pg_schema_has('order_returns', 'updated_at');
+
+    db("INSERT INTO order_returns (order_id, ship_to_id, status, reason, customer_note, decision_note, source, requested_by, requested_at" . ($stamped ? ", updated_at" : "") . ")
         VALUES (
             '" . $order_id . "',
             '" . $ship_to_id . "',
@@ -1399,7 +1417,7 @@ function pg_return_create($order_id, $ship_to_id, $quantities, $reason, $note, $
             '',
             '" . e($source) . "',
             '" . $user_id . "',
-            '" . $now . "')");
+            '" . $now . "'" . ($stamped ? ", '" . $now . "'" : "") . ")");
 
     $return_id = (int) mysqli_insert_id(db::$con);
     $values = array();
@@ -1566,7 +1584,7 @@ function pg_return_move($return_id, $to, $options = array())
         $set[] = "tracking_number = '" . e(pg_return_text($options['tracking_number'], 100)) . "'";
     }
 
-    db("UPDATE order_returns SET " . implode(', ', $set) . "
+    db("UPDATE order_returns SET " . implode(', ', $set) . pg_return_touch_sql() . "
         WHERE (id = '" . (int) $return['id'] . "') AND (status = '" . e($from) . "')");
 
     if ((int) mysqli_affected_rows(db::$con) !== 1) {
@@ -3117,7 +3135,7 @@ function pg_return_create_label($return_id, $user_id = 0)
         $set[] = "`" . $column . "` = '" . e($value) . "'";
     }
 
-    db("UPDATE order_returns SET " . implode(', ', $set) . " WHERE id = '" . (int) $before['id'] . "'");
+    db("UPDATE order_returns SET " . implode(', ', $set) . pg_return_touch_sql() . " WHERE id = '" . (int) $before['id'] . "'");
 
     $after = pg_return_load($before['id']);
     $order_number = (string) db_value("SELECT order_number FROM orders WHERE id = '" . (int) $before['order_id'] . "'");
@@ -3993,7 +4011,7 @@ function pg_return_refund($return_id, $options, $user_id = 0)
                 SET refund_amount = '" . (int) $amount . "',
                     refund_method = 'driver',
                     refund_reference = '',
-                    refund_unclear = 1
+                    refund_unclear = 1" . pg_return_touch_sql() . "
                 WHERE (id = '" . (int) $return['id'] . "') AND (refunded_at > 0)");
         }
 
@@ -4020,7 +4038,7 @@ function pg_return_refund($return_id, $options, $user_id = 0)
             log_activity($unclear['log'], $log_user);
         } elseif (!$answer['success']) {
             db("UPDATE order_returns SET status = 'received', refunded_at = 0"
-                . ($kept ? ", refund_amount = 0, refund_method = '', refund_reference = '', refund_unclear = 0" : "") . "
+                . ($kept ? ", refund_amount = 0, refund_method = '', refund_reference = '', refund_unclear = 0" : "") . pg_return_touch_sql() . "
                 WHERE (id = '" . (int) $return['id'] . "') AND (status = 'refunded')");
 
             $release();
@@ -4058,7 +4076,7 @@ function pg_return_refund($return_id, $options, $user_id = 0)
             SET refund_amount = '" . (int) $amount . "',
                 refund_method = '" . e($method) . "',
                 refund_reference = '" . e($reference) . "',
-                refund_unclear = '" . (($unclear !== null) ? 1 : 0) . "'
+                refund_unclear = '" . (($unclear !== null) ? 1 : 0) . "'" . pg_return_touch_sql() . "
             WHERE (id = '" . (int) $return['id'] . "') AND (refunded_at > 0)");
     }
 
@@ -4419,6 +4437,8 @@ function pg_return_remind_refunds($today = '')
             continue;
         }
 
+        // A reminder stamp is not part of what GET /returns shows, so these
+        // two statements leave updated_at (pg_return_touch_sql()) alone.
         db("UPDATE order_returns SET " . $column . " = UNIX_TIMESTAMP()
             WHERE (id = '" . (int) $row['id'] . "') AND (" . $column . " = 0)");
 

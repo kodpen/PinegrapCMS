@@ -753,10 +753,14 @@ function erp_invoice_form_read($liveform, $user)
             return erp_typed_number_ok($value) ? $reader($value) : -1.0;
         };
 
-        foreach (array_values($posted_lines) as $line) {
+        foreach (array_values($posted_lines) as $index => $line) {
             // One value per field: one posted as an array is not given,
             // rather than a line described as "Array".
             $line = pg_request_row_values($line);
+            // erp_kurus() drops letters, so 'abc' would save as a price of 0.
+            if (!erp_typed_price_ok($line['unit_price'] ?? '')) {
+                return $fail('lines[' . $index . '][unit_price]', lang(array('string' => 'Line {var:1}: enter the unit price as a number.', 'vars' => $index + 1)));
+            }
             $lines[] = array(
                 'product_id' => (int) ($line['product_id'] ?? 0),
                 'description' => (string) ($line['description'] ?? ''),

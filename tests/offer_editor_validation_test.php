@@ -116,3 +116,25 @@ function test_offer_editor_checks_whole_percent_duplicates_and_bounds()
 	pg_assert_contains("var MAX_NUMBER = 2147483647;", $js);
 	pg_assert_contains("inputmode=\"' + (a.unit === 'amount' ? 'decimal' : 'numeric') + '\"", $js);
 }
+
+function test_offer_upsell_distances_are_bounded()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_offer_f.php');
+	pg_assert_contains("\$errors['offer.upsell.trigger_subtotal'] = _pg_offer_amount_max_error();", $src, 'up-sell subtotal');
+	pg_assert_contains("\$errors['offer.upsell.trigger_quantity'] = _pg_offer_number_max_error();", $src, 'up-sell quantity');
+	$js = offer_editor_validation_js();
+	pg_assert_contains("if (upsellSubtotalError()) { n++; }", $js, 'the client blocks the save as well');
+	pg_assert_contains("if (upsellQuantityError()) { n++; }", $js);
+	pg_assert_contains("serverErrors['offer.upsell.trigger_subtotal']", $js, 'a server message is shown under the box');
+	$tpl = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/edit_offer.php');
+	pg_assert_contains('id="pg-if-upsell-subtotal-error"', $tpl);
+	pg_assert_contains('id="pg-if-upsell-quantity-error"', $tpl);
+}
+
+function test_offer_editor_generate_codes_waits_for_a_save()
+{
+	$js = offer_editor_validation_js();
+	pg_assert_contains("function touch() { dirty = true; renderGenerate(); }", $js, 'an edit disables the button at once');
+	pg_assert_contains("if (dirty) { toast(L.saveFirstCodes, 'warning'); return; }", $js, 'no silent click');
+	pg_assert_same(false, strpos($js, 'placeholder="0.00"'), 'the placeholder follows the decimal separator');
+}

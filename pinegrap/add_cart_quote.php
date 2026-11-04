@@ -172,6 +172,10 @@ $selected = function ($value, $text) {
 $contact_value = (int) $liveform->get_field_value('contact_id');
 $contact_row = ($contact_value > 0) ? db_item("SELECT id, first_name, last_name, company, email_address FROM contacts WHERE id = '" . $contact_value . "'") : null;
 
+// The back arrow, Cancel and the breadcrumb go where Save goes: the list of
+// the chosen contact's quotes.
+$back = 'view_cart_quotes.php' . (is_array($contact_row) ? '?contact_id=' . (int) $contact_row['id'] : '');
+
 $output_rows = '';
 
 for ($row = 1; $row <= ADD_CART_QUOTE_ROWS; $row++) {
@@ -181,13 +185,13 @@ for ($row = 1; $row <= ADD_CART_QUOTE_ROWS; $row++) {
 
     $output_rows .= '
                     <div class="row g-5 mb-5">
-                        <div class="col-9">
+                        <div class="col-12 sm:col-9">
                             <select class="form-control" id="product_' . $row . '" name="product_' . $row . '" aria-label="' . h(lang(array('string' => 'Product {var:1}', 'vars' => $row))) . '" data-pg-combobox data-pg-source="add_cart_quote.php?request=products" data-pg-min-length="2" data-placeholder="' . h(lang('Search for a product')) . '">
                                 <option value=""></option>
                                 ' . (is_array($product_row) ? $selected($product_row['id'], trim($product_row['short_description'] . ' (' . $product_row['name'] . ')')) : '') . '
                             </select>
                         </div>
-                        <div class="col-3">
+                        <div class="col-12 sm:col-3">
                             <input class="form-control' . ($liveform->check_field_error('quantity_' . $row) ? ' is-invalid' : '') . '" type="number" min="1" max="' . PG_CART_QUOTE_MAX_QUANTITY . '" step="1" id="quantity_' . $row . '" name="quantity_' . $row . '" value="' . h($quantity) . '" aria-label="' . h(lang(array('string' => 'Quantity {var:1}', 'vars' => $row))) . '">
                         </div>
                     </div>';
@@ -200,12 +204,13 @@ echo
         'icon'                => 'store',
         'heading'             => lang('New cart quote'),
         'heading_description' => lang('The link puts these products into the customer\'s cart at the store\'s prices on the day it is used.'),
+        'cancel'              => array('enable' => 'true', 'url' => $back, 'title' => lang('Cart quotes')),
         'breadcrumb'          => array(
-            array('label' => lang('Cart quotes'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_cart_quotes.php'),
+            array('label' => lang('Cart quotes'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $back),
             array('label' => lang('New cart quote')),
         ),
     )) . '
-<main id="content" class="container">
+<main id="content" class="container-fluid">
     ' . $liveform->output_errors() . '
     ' . $liveform->output_notices() . '
     <form action="add_cart_quote.php" method="post">
@@ -214,7 +219,7 @@ echo
             <div class="card-body">
                 <div class="mb-12">
                     <label class="form-label" for="contact_id">' . h(lang('Customer')) . '</label>
-                    <select class="form-control" id="contact_id" name="contact_id" data-pg-combobox data-pg-source="add_cart_quote.php?request=contacts" data-pg-min-length="2" data-placeholder="' . h(lang('Search for a contact')) . '">
+                    <select class="form-control' . ($liveform->check_field_error('contact_id') ? ' is-invalid' : '') . '" id="contact_id" name="contact_id" data-pg-combobox data-pg-source="add_cart_quote.php?request=contacts" data-pg-min-length="2" data-placeholder="' . h(lang('Search for a contact')) . '">
                         <option value=""></option>
                         ' . (is_array($contact_row) ? $selected($contact_row['id'], add_cart_quote_contact_text($contact_row)) : '') . '
                     </select>
@@ -233,7 +238,7 @@ echo
             </div>
         </div>
         <div class="buttons position-sticky text-end" style="bottom:.5rem;">
-            <a class="btn btn-outline theme-secondary" href="view_cart_quotes.php">' . h(lang('Cancel')) . '</a>
+            <a class="btn btn-outline theme-secondary" href="' . h($back) . '">' . h(lang('Cancel')) . '</a>
             <button type="submit" class="btn btn-solid theme-primary"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . h(lang('Save and make the link')) . '</button>
         </div>
     </form>

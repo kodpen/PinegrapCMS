@@ -44,10 +44,10 @@ function test_page_quick_edit_columns_follow_the_user_rights()
 {
 	pg_assert_same(array('searchable', 'comments', 'sitemap'), array_keys(pg_page_quick_edit_columns()), 'without a user, the three switches');
 
-	$choices = array('device' => 'desktop', 'preview_theme_id' => 0, 'folders' => array(1 => 'Root'), 'styles' => array('0' => 'Default', '5' => 'Two columns'), 'style_label' => 'Desktop Page Style');
+	$choices = array('device' => 'desktop', 'preview_theme_id' => 0, 'folders' => array(1 => 'Root'), 'styles' => array('0' => 'Default', '5' => 'Two columns'), 'style_label' => 'Desktop Page Style', 'types' => array('standard' => 'Standard', 'custom form' => 'Custom Form'));
 	$manager = pg_page_quick_edit_columns(array('id' => 1, 'role' => 2), $choices);
 
-	pg_assert_same(array('name', 'folder', 'style', 'form_name', 'form_enabled', 'searchable', 'comments', 'sitemap'), array_keys($manager), 'staff change every column the page screen sets');
+	pg_assert_same(array('name', 'folder', 'style', 'page_type', 'form_name', 'form_enabled', 'searchable', 'comments', 'sitemap'), array_keys($manager), 'staff change every column the page screen sets');
 	pg_assert_same(array(1 => 'Root'), $manager['folder']['options'], 'the folders offered');
 	pg_assert_true(!empty($manager['name']['required']) && ($manager['name']['max'] === 100), 'a name is required, at most 100 characters');
 
@@ -88,6 +88,11 @@ function test_page_quick_edit_values_and_cells()
 	pg_assert_true(pg_page_quick_cell_editable('style', $page, false), 'another page changes its style');
 	pg_assert_true(!pg_page_quick_cell_editable('form_name', $page, false), 'no form fields but on a custom form page');
 	pg_assert_true(pg_page_quick_cell_editable('form_enabled', array('page_type' => 'custom form'), false), 'a custom form page has them');
+
+	$columns = array('page_type' => array('options' => array('standard' => 'Standard', 'custom form' => 'Custom Form')));
+	pg_assert_same('standard', pg_page_quick_edit_value('page_type', $page), 'the type');
+	pg_assert_true(pg_page_quick_cell_editable('page_type', $page, false, $columns), 'a type the user may set changes');
+	pg_assert_true(!pg_page_quick_cell_editable('page_type', array('page_type' => 'login'), false, $columns), 'a page of a type the user may not set keeps it, as on the page screen');
 }
 
 function test_page_quick_folder_choices_are_the_page_picker()
@@ -117,6 +122,11 @@ function test_page_quick_option_pairs_read_a_picker()
 		pg_page_quick_option_pairs('<option value="0">Default (inherit)</option><option value="5" selected>A &amp; B</option><option value="9">Two</option>'),
 		'value => label, entities read');
 	pg_assert_same(array(), pg_page_quick_option_pairs(''), 'no options');
+	pg_assert_same(
+		array('standard' => 'Standard', 'change password' => 'Change Password'),
+		pg_page_quick_option_pairs('<option value="standard">Standard</option><optgroup label="Misc">
+			<option value="change password" selected="selected">Change Password</option></optgroup>'),
+		'the type picker: text values, groups read through');
 }
 
 function test_page_quick_decide_follows_the_bulk_rules()
@@ -146,4 +156,21 @@ function test_page_quick_decide_follows_the_bulk_rules()
 	pg_assert_same(array('mobile' => 5), pg_page_quick_decide($page, 'style', '5', 2, 'mobile')['decision']['styles'], 'the mobile style on the mobile list');
 	pg_assert_same(array('desktop' => 0), pg_page_quick_decide($page, 'style', '0', 2)['decision']['styles'], '0 goes back to the folder style');
 	pg_assert_true(!pg_page_quick_decide(array('is_visual' => 1) + $page, 'style', '5', 2)['ok'], 'a visual editor page is refused, with the reason');
+}
+
+function test_page_quick_type_properties_start_like_a_new_page()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/forms/page_form.php');
+
+	pg_assert_same(array(), pg_page_quick_type_properties('standard', 4), 'a type without a table of its own');
+
+	$form = pg_page_quick_type_properties('custom form', 4);
+	pg_assert_same(4, $form['page_id'], 'the row is the page\'s');
+	pg_assert_same('1', $form['enabled'], 'the form starts switched on, as the page screen draws it');
+	pg_assert_same('plain_text', $form['submitter_email_format'], 'a new page\'s e-mail format');
+	pg_assert_same('', $form['form_name'], 'no name');
+
+	$cart = pg_page_quick_type_properties('shopping cart', 4);
+	pg_assert_same('full_description', $cart['product_description_type'], 'a new cart page\'s defaults');
+	pg_assert_same(4, pg_page_quick_type_properties('photo gallery', 4)['number_of_columns'], 'a count starts at its default');
 }

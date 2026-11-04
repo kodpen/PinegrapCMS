@@ -15,6 +15,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
 if (pg_post_body_discarded()) {
     output_error(lang('The request was too large for this server and arrived empty.'), 413);
@@ -86,7 +87,7 @@ $ready = pg_returns_ready();
 $rows = $ready ? pg_returns_panel_rows(pg_return_filter_statuses($filter)) : array();
 $reasons = pg_return_reasons();
 $today = date('Y-m-d');
-$output_rows = '';
+$list_rows = array();
 
 foreach ($rows as $row) {
     $id = (int) $row['id'];
@@ -109,25 +110,45 @@ foreach ($rows as $row) {
             : h(pg_return_day_text($refund_due));
     }
 
-    // Only a request waiting for an answer can be approved from the list.
-    $selectable = ($status === 'requested');
-
-    $output_rows .= '
-            <tr id="' . $id . '"' . ($selectable ? '' : ' class="unselectable"') . '>
-                <td class="select-all align-middle text-start">' . ($selectable ? '<input class="check" type="checkbox" name="returns[]" value="' . $id . '" aria-label="' . h(lang(array('string' => 'Select return request #{var:1}', 'vars' => array($id)))) . '">' : '') . '</td>
-                <td class="align-middle text-start col-reorder-none action-buttons">
-                    <a class="btn-data-control m-1 btn btn-outline theme-primary border-2" href="view_return.php?id=' . $id . '" title="' . h(lang('Open the return')) . '" aria-label="' . h(lang('Open the return')) . '"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i></a>
-                </td>
-                <td class="align-middle" data-order="' . $id . '">#' . $id . '</td>
-                <td class="align-middle"><a href="view_order.php?id=' . (int) $row['order_id'] . '">' . h($order_number) . '</a></td>
-                <td class="align-middle">' . h($row['customer']) . (((string) $row['email'] !== '') ? '<div class="small fg-secondary">' . h((string) $row['email']) . '</div>' : '') . '</td>
-                <td class="align-middle">' . h(lang(array('string' => '{var:1} item(s)', 'vars' => array($quantity)))) . (($names !== array()) ? '<div class="small fg-secondary">' . h(implode(', ', $names)) . '</div>' : '') . '</td>
-                <td class="align-middle">' . h(isset($reasons[(string) $row['reason']]) ? $reasons[(string) $row['reason']] : '') . '</td>
-                <td class="align-middle"><span class="' . h(pg_return_panel_badge_class($status)) . '">' . h(pg_return_status_label($status)) . '</span></td>
-                <td class="align-middle" data-order="' . (int) $row['requested_at'] . '">' . h(pg_return_time_text($row['requested_at'])) . '</td>
-                <td class="align-middle" data-order="' . h($refund_due) . '">' . $output_refund_due . '</td>
-            </tr>';
+    // The return's number opens it. Approve Selected acts on the requests
+    // still waiting for an answer and leaves the others as they are.
+    $list_rows[] = array(
+        'id' => $id,
+        'cells' => array(
+            'return' => pg_list_cell('<a href="view_return.php?id=' . $id . '" data-pg-open>#' . $id . '</a>', 'align-middle', array('data-pg-sort-value' => $id)),
+            'order' => pg_list_cell('<a href="view_order.php?id=' . (int) $row['order_id'] . '">' . h($order_number) . '</a>'),
+            'customer' => pg_list_cell(h($row['customer']) . (((string) $row['email'] !== '') ? '<div class="small fg-secondary">' . h((string) $row['email']) . '</div>' : '')),
+            'items' => pg_list_cell(h(lang(array('string' => '{var:1} item(s)', 'vars' => array($quantity)))) . (($names !== array()) ? '<div class="small fg-secondary text-wrap">' . h(implode(', ', $names)) . '</div>' : ''), 'align-middle', array('data-pg-sort-value' => $quantity)),
+            'reason' => pg_list_cell(h(isset($reasons[(string) $row['reason']]) ? $reasons[(string) $row['reason']] : '')),
+            'status' => pg_list_cell('<span class="' . h(pg_return_panel_badge_class($status)) . '">' . h(pg_return_status_label($status)) . '</span>'),
+            'requested' => pg_list_cell(h(pg_return_time_text($row['requested_at'])), 'align-middle', array('data-pg-sort-value' => (int) $row['requested_at'])),
+            'refund_due' => pg_list_cell($output_refund_due, 'align-middle', array('data-pg-sort-value' => $refund_due)),
+        ),
+    );
 }
+
+// Every return of the filter is printed: the list table driver sorts and
+// searches them in the browser (browser mode). The status workflow (approve,
+// receive, refund) runs on the return's own screen, so nothing changes in
+// place here.
+$columns = array(
+    'return' => array('heading' => lang('Return No.')),
+    'order' => array('heading' => lang('Order Number')),
+    'customer' => array('heading' => lang('Customer')),
+    'items' => array('heading' => lang('Items')),
+    'reason' => array('heading' => lang('Reason')),
+    'status' => array('heading' => lang('Status'), 'kind' => 'badge'),
+    'requested' => array('heading' => lang('Requested on'), 'kind' => 'date'),
+    'refund_due' => array('heading' => lang('Refund due by'), 'kind' => 'date'),
+);
+$sort_columns = array();
+
+foreach ($columns as $key => $spec) {
+    $sort_columns[$key] = $spec['heading'];
+}
+
+$list_state = pg_list_state('view_returns', $sort_columns, array('sort' => 'requested', 'order' => 'desc'));
+$list = pg_list_table_printed(array('list' => 'view_returns', 'columns' => $columns, 'levels' => $list_state['sorts'], 'rows' => $list_rows, 'ids_field' => 'returns[]'));
 
 $output_not_ready = $ready ? '' : '
                 <div class="alert theme-warning" role="status">' . h(lang('Returns are not installed yet: the database has to be updated first.')) . '</div>';
@@ -163,48 +184,17 @@ echo
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
                 ' . ($ready ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_return.php"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Record a Return')) . '</a>' : '') . '
                 <div class="pg-toolbar-grow"></div>
+                ' . pg_list_table_search_box('view_returns') . '
                 ' . pg_filter_select('status', pg_return_filter_options(pg_return_status_counts()), $filter, array('label' => lang('Status'), 'action' => 'view_returns.php', 'id' => 'status')) . '
             </nav>
             ' . $output_limit . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <form name="form" action="view_returns.php" method="post">
-                        ' . get_token_field() . '
-                        <table class="chart table-hover table" style="width:100%;display:none;">
-                            <thead>
-                                <tr>
-                                    <th class="noVis">
-                                        <div class="form-field">
-                                            <div class="switch"><input class="" title="' . h(lang('Select/Deselect All')) . '" type="checkbox" id="select_all"></div>
-                                        </div>
-                                    </th>
-                                    <th class="noVis">' . h(lang('Action')) . '</th>
-                                    <th>' . h(lang('Return No.')) . '</th>
-                                    <th>' . h(lang('Order Number')) . '</th>
-                                    <th>' . h(lang('Customer')) . '</th>
-                                    <th>' . h(lang('Items')) . '</th>
-                                    <th>' . h(lang('Reason')) . '</th>
-                                    <th>' . h(lang('Status')) . '</th>
-                                    <th>' . h(lang('Requested on')) . '</th>
-                                    <th>' . h(lang('Refund due by')) . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ' . $output_rows . '
-                            </tbody>
-                        </table>
-                        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('Actions on the selected returns')) . '">
-                            <div class="container">
-                                <div class="btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                    <button type="submit" name="bulk" value="approve" class="btn mb-1 mt-1 btn-solid theme-primary disabled" data-confirm-content="' . h(lang('The selected requests will be approved, each with the return carrier and code its own screen offers, and every customer is told by e-mail.')) . '"><i class="bi bi-check2-circle me-3" aria-hidden="true"></i>' . h(lang('Approve Selected')) . '</button>
-                                </div>
-                            </div>
-                        </nav>
-                    </form>
-                </div>
-            </div>
+            <form name="form" action="view_returns.php" method="post">
+                ' . get_token_field() . '
+                ' . pg_list_table_html($list['source'], $list['page'], lang('Returns'), '<button type="submit" name="bulk" value="approve" class="btn btn-sm btn-solid theme-primary" data-confirm-content="' . h(lang('The selected requests will be approved, each with the return carrier and code its own screen offers, and every customer is told by e-mail.')) . '"><i class="bi bi-check2-circle me-1" aria-hidden="true"></i>' . h(lang('Approve Selected')) . '</button>') . '
+            </form>
         </div>
     </div>
-</main>' . output_footer();
+</main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . output_footer();
 
 $liveform->remove_form();

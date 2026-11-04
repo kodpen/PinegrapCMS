@@ -702,6 +702,19 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok(array('graph' => $result['graph'])) : ws_action_error($result['error']);
 
+        // What the read-only Flows canvas of a flow draft's card draws
+        // (flow_draft.php): the graph at its real places with each box's dry
+        // run, read with the same rights; nothing is written.
+        case 'ws_flow_draft_view':
+            $result = ws_flow_draft_card_view_read($viewer, (int) ($request['change_id'] ?? 0));
+
+            return $result['ok'] ? ws_action_ok(array('view' => $result['view'])) : ws_action_error($result['error']);
+
+        // The lists a read-only Flows canvas outside the Flows screen reads,
+        // labels only (flows.php), read once per page.
+        case 'ws_flow_embed_config':
+            return ws_action_ok(array('config' => ws_flow_embed_config($viewer)));
+
         // Add › Scheduled flow in a channel's composer (scheduled_convert.php):
         // with sketch, the two boxes its mini window draws with what the form
         // holds so far, each with its dry run, nothing written;

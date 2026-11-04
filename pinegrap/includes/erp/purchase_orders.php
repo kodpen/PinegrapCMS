@@ -341,6 +341,10 @@ function erp_purchase_order_save($data, $order_id, $user_id)
             return $fail($error);
         }
 
+        // A change of lines, prices or dates is announced in the transaction
+        // too, so the order's audit trail shows who changed its total.
+        erp_event_purchase_order((int) $order_id, 'erp.purchase_order.changed');
+
         if (!erp_tx_commit()) {
             $error = erp_db_error();
             erp_tx_rollback();
@@ -1237,6 +1241,7 @@ function erp_purchase_order_to_invoice($order_id, $user_id)
     // What is on drafts is part of the order as it is read; a client that
     // follows changes by updated_at sees it.
     db("UPDATE erp_purchase_orders SET updated_at = UNIX_TIMESTAMP() WHERE id = '" . (int) $order['id'] . "'");
+    erp_event_purchase_order((int) $order['id'], 'erp.purchase_order.invoiced');
 
     return array('success' => true, 'invoice_id' => (int) $saved['invoice_id'], 'error' => '');
 }

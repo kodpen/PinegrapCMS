@@ -25,13 +25,11 @@ if (!defined('PG_INIT_LOADED')) {
             <span class="badge rounded-pill theme-secondary" id="pg-if-status"></span>
             <div class="pg-toolbar-grow"></div>
             <?= $output_workspace_button ?? '' ?>
-            <div class="pg-menu-wrap ms-auto">
+            <?php // Only meaningful once the offer has an id; the script reveals it after the first save. ?>
+            <div class="pg-menu-wrap ms-auto<?php if ($is_new): ?> d-none<?php endif ?>" data-saved-only>
                 <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="<?=lang('More')?>"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
                 <ul class="menu pg-menu-end">
-                    <?php // Only meaningful once the offer has an id; the script reveals them after the first save. ?>
-                    <li data-saved-only<?php if ($is_new): ?> class="d-none"<?php endif ?>><a class="menu-item pg-link-body-emphasis" href="#" data-on="duplicate"><i class="bi bi-copy me-3" aria-hidden="true"></i><?=lang('Duplicate')?></a></li>
-                    <li data-saved-only<?php if ($is_new): ?> class="d-none"<?php endif ?>><hr class="menu-divider"></li>
-                    <li><a class="menu-item pg-link-body-emphasis" href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/view_offers.php"><i class="bi bi-list-ul me-3" aria-hidden="true"></i><?=lang('All Offers')?></a></li>
+                    <li><a class="menu-item pg-link-body-emphasis" href="#" data-on="duplicate"><i class="bi bi-copy me-3" aria-hidden="true"></i><?=lang('Duplicate')?></a></li>
                 </ul>
             </div>
         </div>
@@ -80,7 +78,7 @@ if (!defined('PG_INIT_LOADED')) {
                 <span class="small fw-bold text-uppercase fg-secondary"><?=lang('Template')?></span>
                 <span class="fg-secondary small"><?=lang('Pick a template, or start from scratch.')?></span>
             </div>
-            <div class="row row-cols-1 sm:row-cols-2 lg:row-cols-4 2xl:row-cols-5 2xl:row-cols-3 g-5 overflow-x-scroll flex-nowrap pb-5 pt-5">
+            <div class="row row-cols-1 sm:row-cols-2 lg:row-cols-4 2xl:row-cols-5 g-5 overflow-x-scroll flex-nowrap pb-5 pt-5">
                 <?php foreach ($templates as $t): ?>
                 <div class="col">
                     <button type="button" class="list-group-item list-group-item-action rounded-4 border h-100 text-start p-3" data-on="quick" data-template="<?=$t['key']?>">
@@ -243,10 +241,12 @@ if (!defined('PG_INIT_LOADED')) {
                                         <div class="col-12 sm:col-6 xl:col-4">
                                             <label class="form-label" for="pg-if-upsell-subtotal"><?=lang('Show when the subtotal is within')?> <span class="fg-secondary small">· <?=lang('of the required subtotal')?></span></label>
                                             <label class="form-control form-control-sm form-adorn form-adorn-end"><span class="form-adorn-text" aria-hidden="true"><?=h(_pg_offer_currency())?></span><input type="text" class="form-ghost text-end" id="pg-if-upsell-subtotal" inputmode="decimal" data-on="upsell-subtotal"></label>
+                                            <div class="small fg-emphasis-danger mt-1 d-none" id="pg-if-upsell-subtotal-error"></div>
                                         </div>
                                         <div class="col-12 sm:col-6 xl:col-4" id="pg-if-upsell-quantity-wrap">
                                             <label class="form-label" for="pg-if-upsell-quantity"><?=lang('Show when the quantity is within')?> <span class="fg-secondary small">· <?=lang('of the required quantity')?></span></label>
                                             <input type="text" class="form-control form-control-sm" id="pg-if-upsell-quantity" inputmode="numeric" data-on="upsell-quantity">
+                                            <div class="small fg-emphasis-danger mt-1 d-none" id="pg-if-upsell-quantity-error"></div>
                                         </div>
                                         <div class="col-12 sm:col-6 xl:col-4">
                                             <label class="form-label" for="pg-if-upsell-button"><?=lang('Button label')?> <span class="fg-secondary small">· <?=lang('leave blank for no button')?></span></label>
@@ -254,7 +254,7 @@ if (!defined('PG_INIT_LOADED')) {
                                         </div>
                                         <div class="col-12 sm:col-6 xl:col-4">
                                             <label class="form-label" for="pg-if-upsell-page"><?=lang('Button page')?></label>
-                                            <select class="form-control form-control-sm" id="pg-if-upsell-page" data-on="upsell-page"><option value="">-<?=lang(array('string' => 'Select {var:1}', 'vars' => array(lang('page'))))?>-</option><?=$editor['pages_html']?></select>
+                                            <select class="form-control form-control-sm" id="pg-if-upsell-page" data-on="upsell-page"><option value="">– <?=lang(array('string' => 'Select {var:1}', 'vars' => array(lang('page'))))?> –</option><?=$editor['pages_html']?></select>
                                         </div>
                                     </div>
                                 </div>
