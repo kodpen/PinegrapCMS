@@ -22,10 +22,10 @@ function test_calendar_event_location_refused_name_is_kept()
 
 	$guard = strpos($source, "if (!\$liveform->field_in_session('name')) {");
 	$assign = strpos($source, "\$liveform->assign_field_value('name', \$row['name']);");
-	$select = strpos($source, "FROM calendar_event_locations\n            WHERE id = ?");
+	$select = strpos($source, "FROM calendar_event_locations\n        LEFT JOIN user");
 
 	pg_assert_true($guard !== false, 'the GET branch checks the session for a typed name');
 	pg_assert_true($assign !== false && $assign > $guard, 'the stored name is assigned inside the session check');
-	pg_assert_true($select !== false && $select > $guard, 'the stored name is read only when no typed name waits');
+	pg_assert_true($select !== false && $select < $guard, 'the record is read before the check, for the Summary');
 	pg_assert_contains('$liveform->remove_form();', $source, 'the typed values are cleared after they are shown');
 }
