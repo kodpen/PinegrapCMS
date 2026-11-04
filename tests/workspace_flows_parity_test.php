@@ -2294,6 +2294,7 @@ function workspace_flows_parity_table()
 		'events' => array(
 			array(array('order.created', 'order.status_changed', 'order.shipped', 'order.delivered', 'order.cancelled', 'order.return.requested', 'stock.low'), 3, 'event trigger box: shop events (with the shop only)'),
 			array(array('customer.created', 'customer.updated', 'form.submitted'), 3, 'event trigger box: site events'),
+			array(array('booking.created', 'booking.confirmed', 'booking.rescheduled', 'booking.cancelled'), 3, 'event trigger box: staff agenda events (once the booking tables exist), each checked against the bookings the creator\'s agenda shows (ws_events_creator_sees())'),
 			array(array('workspace.task.completed', 'workspace.task.status_changed', 'workspace.task.overdue', 'workspace.approval.decided', 'workspace.guest.message', 'workspace.mail.received'), 3, 'event trigger box: Workspace events, each checked against what the creator reads (ws_events_creator_sees())'),
 		),
 		'event_filters' => array(

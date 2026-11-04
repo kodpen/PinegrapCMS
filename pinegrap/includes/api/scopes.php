@@ -57,7 +57,8 @@ function api_scope_groups() {
 		// layout a person published before (a revision), and share a design's
 		// drafts as a prototype by a link (never as an MCP tool). Ads and ad
 		// regions are the exception: they are written directly and go live at
-		// once (/design/ads, /design/ad-regions), as on their panel screens.
+		// once (/design/ads, /design/ad-regions), as are auto dialogs and common
+		// regions (/design/auto-dialogs, /design/common-regions).
 		'design'    => array('label' => 'Page design', 'read' => 'design:read',   'write' => 'design:write'),
 
 		// A/B experiments of the designed pages and their results. Writing
@@ -145,6 +146,10 @@ function api_scope_groups() {
 
 		// Who did what on the site, from which address. Read only.
 		'site_log'  => array('label' => 'Site Log',   'read' => 'site_log:read',  'write' => ''),
+
+		// The Fediverse account's followers and what was delivered to them.
+		// Read only: blocks and retries stay on the settings screen.
+		'fediverse' => array('label' => 'Fediverse',  'read' => 'fediverse:read', 'write' => ''),
 
 		// The caller's own account: its notifications, the devices it is signed
 		// in on and its push registration. A device signed in by a person always
@@ -405,6 +410,9 @@ function api_owner_scopes($owner) {
 
 		// The Site Log screen opens to the same roles.
 		$scopes[] = 'site_log:read';
+
+		// So does Settings › Fediverse, which lists the followers and deliveries.
+		$scopes[] = 'fediverse:read';
 
 	}
 

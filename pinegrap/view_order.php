@@ -242,6 +242,7 @@ if (!$_POST) {
             </div>';
     }
     $order_refund_reference = isset($row['refund_reference']) ? (string) $row['refund_reference'] : '';
+    $order_customer_id = (int) $row['user_id'];
     $commission = $row['commission'] / 100;
     $transaction_id = $row['transaction_id'];
     $authorization_code = $row['authorization_code'];
@@ -2533,6 +2534,24 @@ if (!$_POST) {
 
     if (in_array($refund_state, array('manual_required', 'failed', 'pending'), true)) {
 
+        // A customer's order may get what it owes as store credit instead
+        // (pg_credit_refund_cancelled_order()), the site's bonus on top.
+        $output_refund_credit_choice = '';
+        if (($status == 'cancelled') && ($refund_owed['total'] > 0) && pg_credit_refund_possible($order_customer_id)) {
+            $refund_credit_cents = pg_credit_refund_card_amount($refund_owed['total'], pg_credit_refund_bonus());
+            $output_refund_credit_choice = '
+                                <div class="mb-3">
+                                    <div class="form-field">
+                                        <input class="radio" type="radio" name="refund_as" id="refund_as_recorded" value="recorded" checked>
+                                        <label class="" for="refund_as_recorded">' . lang('I refunded it another way') . '</label>
+                                    </div>
+                                    <div class="form-field">
+                                        <input class="radio" type="radio" name="refund_as" id="refund_as_credit" value="credit">
+                                        <label class="" for="refund_as_credit">' . h(lang(array('string' => 'Give it as store credit: the customer\'s account gets {var:1}', 'vars' => array(pg_order_log_money($refund_credit_cents))))) . '</label>
+                                    </div>
+                                </div>';
+        }
+
         $output_refund_banner =
             '<div class="alert theme-warning d-flex flex-wrap align-items-center gap-3 pg-print-none" role="alert">
                 <i class="bi bi-cash-coin"></i>
@@ -2558,6 +2577,7 @@ if (!$_POST) {
                             <div class="dialog-body">
                                 <p>' . lang('This only records that you processed the refund; it does not move any money.') . '</p>
                                 <p class="fw-semibold mb-3">' . $refund_amount_text . '</p>
+                                ' . $output_refund_credit_choice . '
                                 <label class="form-label fw-semibold mt-3" for="refund_reference">' . lang('Refund reference') . ' <span class="fg-secondary fw-normal">(' . lang('optional') . ')</span></label>
                                 <input type="text" class="form-control" id="refund_reference" name="refund_reference" maxlength="255">
                             </div>
@@ -2576,9 +2596,10 @@ if (!$_POST) {
             ? ' · ' . get_relative_time(array('timestamp' => $order_refunded_at))
             : '';
 
-        $refund_done_reference = ($order_refund_reference !== '')
-            ? ' · ' . h($order_refund_reference)
-            : '';
+        $refund_done_card = pg_credit_refund_card_id($order_refund_reference);
+        $refund_done_reference = ($refund_done_card > 0)
+            ? ' · <a href="edit_gift_card.php?id=' . $refund_done_card . '">' . lang('Store credit') . ' #' . $refund_done_card . '</a>'
+            : (($order_refund_reference !== '') ? ' · ' . h($order_refund_reference) : '');
 
         $output_refund_banner =
             '<div class="alert theme-success d-flex align-items-center gap-3 pg-print-none" role="alert">
@@ -3404,6 +3425,24 @@ if (!$_POST) {
 
         if (!$refund_row) {
             output_error(lang('Order not found.'));
+        }
+
+        // What the order owes given as store credit: the card, the refund
+        // record and the customer's mail (pg_credit_refund_cancelled_order()).
+        if ($liveform->get_field_value('refund_as') == 'credit') {
+            $refund_credit = pg_credit_refund_cancelled_order($order_id, (int) (isset($user['id']) ? $user['id'] : 0));
+
+            if (!$refund_credit['ok']) {
+                $liveform->mark_error('_error', h($refund_credit['error']));
+                go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
+            }
+
+            pg_audit_record('refund', 'orders', $order_id, $audit_before);
+
+            $liveform->add_notice(h($refund_credit['mailed']
+                ? lang(array('string' => 'The refund of {var:1} was given as store credit of {var:2}. The customer was told by e-mail.', 'vars' => array(pg_return_money_text($refund_credit['amount']), pg_return_money_text($refund_credit['credit']))))
+                : lang(array('string' => 'The refund of {var:1} was given as store credit of {var:2}, but the e-mail to the customer could not be sent.', 'vars' => array(pg_return_money_text($refund_credit['amount']), pg_return_money_text($refund_credit['credit']))))));
+            go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
         }
 
         // Only from a state that actually owes money. Refuses to overwrite an

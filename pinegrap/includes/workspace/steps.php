@@ -887,7 +887,8 @@ function ws_step_trigger_values($context, $sees, $names = array())
 /**
  * ws_step_trigger_values() of a run for its owner: whether they may see the
  * event's record now (the right its kind of record needs, and for the
- * workspace's own events the task or the channel, ws_events_creator_sees()),
+ * workspace's own events the task or the channel, for a booking's the
+ * booking, ws_events_creator_sees()),
  * and the names of the newcomer and the channel joined.
  *
  * @param array $owner   the flow's owner, as the workspace sees their rights
@@ -905,7 +906,7 @@ function ws_step_trigger_values_for($owner, $context)
         $right = (string) (ws_events_catalog()[$event]['right'] ?? '');
         $payload = is_array($context['event_payload'] ?? null) ? $context['event_payload'] : array();
         $sees = ($right !== '') && !empty($owner[$right])
-            && (!ws_events_is_own($event) || ws_events_creator_sees((int) ($owner['id'] ?? 0), $event, $payload));
+            && (!ws_events_checks_creator($event) || ws_events_creator_sees((int) ($owner['id'] ?? 0), $event, $payload));
     }
 
     // A row box: the table read by the owner now, its columns as they are.

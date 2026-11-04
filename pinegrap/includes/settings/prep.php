@@ -373,6 +373,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $credit_points_per_unit = pg_credit_points_rate_for_input(pg_config_text('credit_points_per_unit'));
     $credit_points_smallest_minor = (int) pg_config_text('credit_points_smallest');
     $credit_points_smallest = ($credit_points_smallest_minor > 0) ? pg_format_number($credit_points_smallest_minor / 100, 2) : '';
+    $credit_refund_bonus = pg_credit_points_rate_for_input(pg_config_text('credit_refund_bonus'));
     $ecommerce_custom_product_field_1_label = $row['ecommerce_custom_product_field_1_label'];
     $ecommerce_custom_product_field_2_label = $row['ecommerce_custom_product_field_2_label'];
     $ecommerce_custom_product_field_3_label = $row['ecommerce_custom_product_field_3_label'];

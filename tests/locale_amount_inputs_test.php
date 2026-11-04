@@ -49,10 +49,10 @@ function test_products_mass_price_is_read_the_panel_way()
 	pg_assert_same(false, strpos($screen, "str_replace(',', '', \$raw_price_value)"), 'commas are not stripped');
 
 	$template = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/edit_products.php');
-	$box = substr($template, (int) strpos($template, "'id' => 'price_value'"), 300);
+	$box = substr($template, (int) strpos($template, 'id="price_value"') - 20, 300);
 
-	pg_assert_same(false, strpos($box, "'type' => 'number'"), 'not a number box');
-	pg_assert_contains('pg_money_mask_attributes()', $box, 'a money mask');
+	pg_assert_contains('<input type="text" id="price_value"', $box, 'not a number box');
+	pg_assert_contains('pg_money_mask_html()', $box, 'a money mask');
 }
 
 // The import reads the stock quantity cell with Modify Selected's reader,

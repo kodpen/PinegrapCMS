@@ -5,7 +5,7 @@ module: audiences
 ---
 
 ## Where is it?
-- Edit Contact Group (`edit_contact_group.php`) draws `pg_contact_group_rules_card()` (`includes/forms/contact_group_form.php`) under the main card once `pg_audience_ready()`. Create Contact Group has no card: a group is made first, then given rules.
+- Edit Contact Group (`edit_contact_group.php`) draws `pg_contact_group_rules_card()` (`includes/forms/contact_group_form.php`) in the form column after the shared cards once `pg_audience_ready()`. Create Contact Group has no card: a group is made first, then given rules.
 - Managers and above (role < 3) edit rules; the user role sees a read-only line on a group filled by rules and the save ignores `kind` and `rules` from it. Rules read orders, consents and visits, which the user role does not see elsewhere.
 
 ## How does the editor work?

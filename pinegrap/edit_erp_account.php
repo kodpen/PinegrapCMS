@@ -126,16 +126,20 @@ if (!$_POST) {
     $credit_state = function_exists('erp_credit_state') ? erp_credit_state($account) : null;
 
     if ($credit_state !== null) {
-        $output_credit = '<span class="lg:ms-auto small ' . ($credit_state['over'] ? 'fg-danger fw-bold' : 'fg-secondary') . '">'
+        $output_credit = '<div class="small mt-3 ' . ($credit_state['over'] ? 'fg-danger fw-bold' : 'fg-secondary') . '">'
             . '<i class="bi bi-speedometer2 me-1" aria-hidden="true"></i>'
             . h($credit_state['over']
                 ? lang(array('string' => 'Credit limit {var:1}, over by {var:2}', 'vars' => array(erp_money_out($credit_state['limit']), erp_money_out($credit_state['balance'] - $credit_state['limit']))))
                 : lang(array('string' => 'Credit limit {var:1}, {var:2} left', 'vars' => array(erp_money_out($credit_state['limit']), erp_money_out($credit_state['available'])))))
-            . '</span>';
+            . '</div>';
     }
 
     // What the account has run up in late payment fees this year, with the
     // button that writes it on an invoice draft (includes/erp/late_fee.php).
+    // It goes in the status column, outside the account form: the panel
+    // carries a form of its own, and a form inside a form is dropped.
+    // The save bar sits under the cards in the form column for the same
+    // reason, rather than in its own row below both columns.
     $output_late_fee = function_exists('erp_late_fee_panel') ? erp_late_fee_panel($account) : '';
 
     // ------------------------------------------------------------ statement
@@ -234,18 +238,9 @@ if (!$_POST) {
                         ' . $output_card_sync . '
                         ' . $output_workspace_button . '
                     </nav>
+        </div>
 
-            <div class="card my-7">
-                <div class="card-body d-flex flex-wrap align-items-baseline gap-5">
-                    <span class="text-uppercase fg-secondary">' . lang('Balance') . '</span>
-                    <span class="h4 mb-0 ' . $balance_class . '">' . h(erp_money_out(abs($balance))) . '</span>
-                    <span class="fg-secondary">' . h($balance_side) . '</span>
-                    ' . $output_balance_fc . '
-                    ' . $output_credit . '
-                </div>
-                ' . (($output_late_fee !== '') ? '<div class="card-footer bg-reset">' . $output_late_fee . '</div>' : '') . '
-            </div>
-
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
             <form name="form" id="erp_account_form" action="' . $self_action . '" method="post">
                 ' . get_token_field() . '
                 ' . $liveform->field(array('type' => 'hidden', 'name' => 'id')) . '
@@ -262,7 +257,26 @@ if (!$_POST) {
                     </div>
                 </nav>') . '
             </form>
+        </div>
 
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+            <div class="position-sticky" style="top:3.3rem;">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                        ' . lang('Balance') . '
+                    </div>
+                    <div class="card-body">
+                        <div class="h4 mb-1 ' . $balance_class . '">' . h(erp_money_out(abs($balance))) . '</div>
+                        ' . (($balance_side !== '') ? '<div class="fg-secondary">' . h($balance_side) . '</div>' : '') . '
+                        ' . (($output_balance_fc !== '') ? '<div>' . $output_balance_fc . '</div>' : '') . '
+                        ' . $output_credit . '
+                    </div>
+                    ' . (($output_late_fee !== '') ? '<div class="card-footer bg-reset">' . $output_late_fee . '</div>' : '') . '
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 order-3">
             <div class="card my-7">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Statement') . '

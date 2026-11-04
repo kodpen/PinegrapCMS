@@ -176,7 +176,7 @@ if (!$_POST) {
     
     // Get page type
     if ($page_type != '') {
-        $output_subnav_page_type = ' | ' . lang('Page Type') . ': ' . h(get_page_type_name($page_type));
+        $output_subnav_page_type = '<li>' . lang('Page Type') . ': ' . h(get_page_type_name($page_type)) . '</li>';
     }
     
     $output_subnav_short_link = '';
@@ -193,10 +193,10 @@ if (!$_POST) {
     $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $short_link = mysqli_fetch_assoc($result);
 
-    // if there is a short link, then prepare to output description in sub-navigation area
+    // if there is a short link, then prepare to output description in the summary card
     // ($short_link is null when the page has no short link)
     if (!empty($short_link['name'])) {
-        $output_subnav_short_link = ' | ' . lang('Short Link') . ': ' . h($short_link['name']);
+        $output_subnav_short_link = '<li>' . lang('Short Link') . ': ' . h($short_link['name']) . '</li>';
     }
     
     $output_subnav_home = '';
@@ -205,7 +205,7 @@ if (!$_POST) {
     $output_subnav_next_page = '';
     $output_subnav_skip_page = '';
     
-    // if this is a home page, then prepare to output description in sub-navigation area
+    // if this is a home page, then prepare to output description in the summary card
     if ($page_home == 'yes') {
         $output_subnav_home = '<span class="badge material-icons fg-primary align-middle">home</span>';
     }
@@ -213,13 +213,13 @@ if (!$_POST) {
     $output_subnav_search = '';
     $output_subnav_search_keywords = '';
     
-    // if search is enabled, then prepare to output description in sub-navigation area
+    // if search is enabled, then prepare to output description in the summary card
     if ($page_search == 1) {
-        $output_subnav_search = ' | ' . lang('Searchable');
+        $output_subnav_search = '<li>' . lang('Searchable') . '</li>';
         
-        // if there are search keywords, then prepare to output description in sub-navigation area
+        // if there are search keywords, then prepare to output description in the summary card
         if ($page_search_keywords != '') {
-            $output_subnav_search_keywords = ' | ' . lang('Keyword') . ': ' . h($page_search_keywords);
+            $output_subnav_search_keywords = '<li>' . lang('Keyword') . ': ' . h($page_search_keywords) . '</li>';
         }
     }
     
@@ -246,20 +246,20 @@ if (!$_POST) {
             $next_page_name = get_page_name(($page_type_properties['next_page_id'] ?? ''));
             // Next page is blank then output none.
             if ($next_page_name == '') {
-                $output_subnav_next_page = ' | ' . lang('Next Page') . ': ' . lang('None');
+                $output_subnav_next_page = '<li>' . lang('Next Page') . ': ' . lang('None') . '</li>';
             // else output name
             } else {
-                $output_subnav_next_page = ' | ' . lang('Next Page') . ': ' . pg_page_subnav_link($next_page_name);
+                $output_subnav_next_page = '<li>' . lang('Next Page') . ': ' . pg_page_subnav_link($next_page_name) . '</li>';
             }
         } else if((isset($page_type_properties['add_button_next_page_id']) && (($page_type_properties['add_button_next_page_id'] ?? '') != 0))) {
             // Get the next page name and output the next page. 
             $next_page_name = get_page_name(($page_type_properties['add_button_next_page_id'] ?? ''));
             // Next page is blank then output none.
             if ($next_page_name == '') {
-                $output_subnav_next_page = ' | ' . lang('Next Page') . ': ' . lang('None');
+                $output_subnav_next_page = '<li>' . lang('Next Page') . ': ' . lang('None') . '</li>';
             // else output name
             } else {
-                $output_subnav_next_page = ' | ' . lang('Next Page') . ': ' . pg_page_subnav_link($next_page_name);
+                $output_subnav_next_page = '<li>' . lang('Next Page') . ': ' . pg_page_subnav_link($next_page_name) . '</li>';
             }
         } else {
             // If no next page set the variable to blank.
@@ -269,7 +269,7 @@ if (!$_POST) {
         if((isset($page_type_properties['skip_button_next_page_id']) && (($page_type_properties['skip_button_next_page_id'] ?? '') != 0))) {
             // Get the next page name and output the next page.
             $skip_page_name = get_page_name(($page_type_properties['skip_button_next_page_id'] ?? ''));
-            $output_subnav_skip_page = ' | ' . lang('Skip Page') . ': ' . pg_page_subnav_link($skip_page_name);
+            $output_subnav_skip_page = '<li>' . lang('Skip Page') . ': ' . pg_page_subnav_link($skip_page_name) . '</li>';
         } else {
             // If no next page set the variable to blank.
             $output_subnav_skip_page = '';
@@ -568,7 +568,7 @@ if (!$_POST) {
             </div>';
     }
     
-    $sitemap_row_style = 'display: none';
+    $sitemap_row_style = ' d-none';
     
     // if the selected page type is a valid page type for the sitemap, then show sitemap row
     if (
@@ -678,13 +678,13 @@ if (!$_POST) {
     $comments_require_login_to_comment_checked = '';
     $comments_allow_file_attachments_checked = '';
     $comments_show_submitted_date_and_time_checked = '';
-    $comments_administrator_email_row_style = 'display: none';
+    $comments_administrator_email_row_style = ' d-none';
     $comments_administrator_email_conditional_administrators_checked = '';
-    $comments_administrator_email_conditional_administrators_row_style = 'display: none';
-    $comments_submitter_email_row_style = 'display: none';
-    $comments_watcher_email_row_style = 'display: none';
+    $comments_administrator_email_conditional_administrators_row_style = ' d-none';
+    $comments_submitter_email_row_style = ' d-none';
+    $comments_watcher_email_row_style = ' d-none';
     $comments_watchers_managed_by_submitter_checked = '';
-    $comments_watchers_managed_by_submitter_row_style = 'display: none';
+    $comments_watchers_managed_by_submitter_row_style = ' d-none';
     
     // if comments are on then prepare the fields to be outputted
     if ($comments == '1') {
@@ -795,13 +795,26 @@ if (!$_POST) {
     $ai_title_marker = $ai_marks_ready ? pg_ai_fields_marker('page_title', 'title', in_array('page_title', $ai_marks, true)) : '';
     $ai_description_marker = $ai_marks_ready ? pg_ai_fields_marker('page_meta_description', 'meta_description', in_array('page_meta_description', $ai_marks, true)) : '';
 
-    // The page's facts (access, type, short link, search, next pages) sit in
-    // the bar's grow slot, so the bar is drawn even when the page has no edit
-    // buttons or the user may not set its type.
+    // Empty, and not drawn, when the page has no edit buttons or the user may
+    // not set its type.
     $output_button_bar = pg_screen_toolbar(array(
         'secondary' => $output_button_bar_buttons,
-        'grow' => '<p class="mb-0">' . $output_subnav_home . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($page_folder))) . $output_subnav_page_type . $output_subnav_short_link . $output_subnav_search . $output_subnav_search_keywords . $output_subnav_next_page . $output_subnav_skip_page . '</p>',
     ));
+
+    // The page's facts (access, type, short link, search, next pages) and
+    // its SEO score, read beside the form in the status column.
+    $output_summary_card =
+        '<div class="card mb-7">
+            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex align-items-center gap-3">
+                ' . lang('Summary') . '<span class="ms-auto" data-pg-seo-badge="page:' . (int) $page_id . '">' . pg_seo_render_badge($seo_row) . '</span>
+            </h2>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0 d-grid gap-2" style="overflow-wrap:anywhere">
+                    <li>' . $output_subnav_home . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($page_folder))) . '</li>
+                    ' . $output_subnav_page_type . $output_subnav_short_link . $output_subnav_search . $output_subnav_search_keywords . $output_subnav_next_page . $output_subnav_skip_page . '
+                </ul>
+            </div>
+        </div>';
 
     print
     pg_page_shell(
@@ -839,11 +852,11 @@ if (!$_POST) {
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                     ' . ($ai_marks_ready ? pg_ai_fields_input('page', $ai_marks) : '') . '
                     <div class="row">
-                        ' . $output_page_type_selector . '
-                        <div class="col-12 md:col" style="min-width:0">
+                        <!-- Form column first: below lg the columns stack in source order. -->
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
                             <div class="row">
                                 <div class="col-12">
-                                    <div class="card my-7 position-sticky" style="top:56px;">
+                                    <div class="card my-7">
                                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Main Informations') . '
                                         </div>
@@ -894,7 +907,7 @@ if (!$_POST) {
                                 <div class="col-12">
                                     <div class="card my-7">
                                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                            ' . lang('Search Engine Optimization') . '<span class="float-end" data-pg-seo-badge="page:' . (int) $page_id . '">' . pg_seo_render_badge($seo_row) . '</span>
+                                            ' . lang('Search Engine Optimization') . '
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
@@ -908,7 +921,7 @@ if (!$_POST) {
                                                     <textarea name="meta_description" id="meta_description" class="form-control" maxlength="255" >' . h($page_meta_description) . '</textarea>
                                                     <div id="seo_c_meta_description"></div>
                                                 </div>
-                                                <div class="col-12 my-5" id="sitemap_row" style="' . $sitemap_row_style . '">
+                                                <div class="col-12 my-5' . $sitemap_row_style . '" id="sitemap_row">
                                                     <div class="form-field">
                                                         <div class="switch"><input value="1"' . $sitemap_checked . ' id="sitemap" name="sitemap" class="" type="checkbox" /></div>
                                                         <label class="" for="sitemap">' . lang('Include in Site Map') . '</label>
@@ -936,14 +949,11 @@ if (!$_POST) {
                                                         <div class="switch"><input value="1"' . $search_checked . ' id="search" name="search" class="collapse-switcher" type="checkbox"  data-bs-target="#show_or_hide_search"/></div>
                                                         <label class="" for="search">' . lang('Include in Site Search') . '</label>
                                                     </div>
-                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_search">
-                                                        <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                        <div class="popover-body">
-                                                            <div class="row">
-                                                                <div class="col-12 mt-5 mb-3">
-                                                                    <label for="search_keywords" class="form-label">' . lang('Promote on Keyword') . '</label>
-                                                                    <input value="' . h($page_search_keywords) . '" type="text" name="search_keywords" id="search_keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"/>' . pg_fields_script() . '
-                                                                </div>
+                                                    <div class="collapse border rounded p-5 mt-3 mb-3" id="show_or_hide_search">
+                                                        <div class="row">
+                                                            <div class="col-12 mt-5 mb-3">
+                                                                <label for="search_keywords" class="form-label">' . lang('Promote on Keyword') . '</label>
+                                                                <input value="' . h($page_search_keywords) . '" type="text" name="search_keywords" id="search_keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"/>' . pg_fields_script() . '
                                                             </div>
                                                         </div>
                                                     </div>
@@ -961,133 +971,115 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 my-3">
                                                     <div class="form-field">
-                                                        <div class="switch"><input value="1"' . $comments_checked . ' id="comments" name="comments" class="collapse-switcher"  type="checkbox" role="switch" onclick="show_or_hide_comments();" data-bs-target="#show_or_hide_comments" /></div>
+                                                        <div class="switch"><input value="1"' . $comments_checked . ' id="comments" name="comments" class="collapse-switcher"  type="checkbox" role="switch" data-page-type="' . h($page_type) . '" data-bs-target="#show_or_hide_comments" /></div>
                                                         <label class="" for="comments">' . lang('Enable Comments') . '</label>
                                                     </div>
-                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_comments">
-                                                        <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                        <div class="popover-body">
-                                                            <div class="row">
-                                                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                                    <label for="comments_label" class="form-label">' . lang('Comment Label') . '</label>
-                                                                    <input value="' . h($comments_label) . '" type="text" name="comments_label" id="comments_label" class="form-control" maxlength="100" placeholder="' . h(lang('Comment')) . '"/>
+                                                    <div class="collapse border rounded p-5 mt-3 mb-3" id="show_or_hide_comments">
+                                                        <div class="row">
+                                                            <div class="col-12 md:col-6 lg:col-4 my-3">
+                                                                <label for="comments_label" class="form-label">' . lang('Comment Label') . '</label>
+                                                                <input value="' . h($comments_label) . '" type="text" name="comments_label" id="comments_label" class="form-control" maxlength="100" placeholder="' . h(lang('Comment')) . '"/>
+                                                            </div>
+                                                            <div class="col-12 md:col-6 lg:col-8 my-3">
+                                                                <label for="comments_message" class="form-label">' . lang('Add Comment Message') . '</label>
+                                                                <input value="' . h($comments_message) . '" type="text" name="comments_message" id="comments_message" class="form-control" maxlength="255"/>
+                                                            </div>
+                                                            <div class="col-12 my-3">
+                                                                <label for="comments_disallow_new_comment_message" class="form-label">' . lang('Do Not Allow New Comments Message') . '</label>
+                                                                <input value="' . h($comments_disallow_new_comment_message) . '" type="text" name="comments_disallow_new_comment_message" id="comments_disallow_new_comment_message" class="form-control" maxlength="255"/>
+                                                            </div>
+                                                            <div class="col-12 my-1 mt-5">
+                                                                <div class="form-field">
+                                                                    <div class="switch"><input type="checkbox" id="comments_allow_new_comments" name="comments_allow_new_comments" class="" role="switch" value="1"' . $comments_allow_new_comments_checked . ' /></div>
+                                                                    <label class="" for="comments_allow_new_comments">' . lang('Allow New Comments') . '</label>
                                                                 </div>
-                                                                <div class="col-12 md:col-6 lg:col-8 my-3">
-                                                                    <label for="comments_message" class="form-label">' . lang('Add Comment Message') . '</label>
-                                                                    <input value="' . h($comments_message) . '" type="text" name="comments_message" id="comments_message" class="form-control" maxlength="255"/>
+                                                            </div>
+                                                            <div class="col-12 my-1">
+                                                                <div class="form-field">
+                                                                    <div class="switch"><input type="checkbox" id="comments_automatic_publish" name="comments_automatic_publish" class="" role="switch" value="1"' . $comments_automatic_publish_checked . ' /></div>
+                                                                    <label class="" for="comments_automatic_publish">' . lang('Automatically Publish Comments') . '</label>
                                                                 </div>
-                                                                <div class="col-12 my-3">
-                                                                    <label for="comments_disallow_new_comment_message" class="form-label">' . lang('Do Not Allow New Comments Message') . '</label>
-                                                                    <input value="' . h($comments_disallow_new_comment_message) . '" type="text" name="comments_disallow_new_comment_message" id="comments_disallow_new_comment_message" class="form-control" maxlength="255"/>
+                                                            </div>
+                                                            <div class="col-12 my-1">
+                                                                <div class="form-field">
+                                                                    <div class="switch"><input type="checkbox" id="comments_rating" name="comments_rating" class="" role="switch" value="1"' . $comments_rating_checked . ' /></div>
+                                                                    <label class="" for="comments_rating">' . lang('Enable Rating') . '</label>
                                                                 </div>
-                                                                <div class="col-12 my-1 mt-5">
-                                                                    <div class="form-field">
-                                                                        <div class="switch"><input type="checkbox" id="comments_allow_new_comments" name="comments_allow_new_comments" class="" role="switch" value="1"' . $comments_allow_new_comments_checked . ' /></div>
-                                                                        <label class="" for="comments_allow_new_comments">' . lang('Allow New Comments') . '</label>
+                                                            </div>
+                                                            
+                                                            <div class="col-12 my-1">
+                                                                <div class="form-field">
+                                                                    <div class="switch"><input type="checkbox" id="comments_allow_user_to_select_name" name="comments_allow_user_to_select_name" class="" role="switch" value="1"' . $comments_allow_user_to_select_name_checked . ' /></div>
+                                                                    <label class="" for="comments_allow_user_to_select_name">' . lang('Allow User to Select Name') . '</label>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-12 my-1">
+                                                                <div class="form-field">
+                                                                    <div class="switch"><input type="checkbox" id="comments_require_login_to_comment" name="comments_require_login_to_comment" class="" role="switch" value="1"' . $comments_require_login_to_comment_checked . ' /></div>
+                                                                    <label class="" for="comments_require_login_to_comment">' . lang('Require Login to Comment') . '</label>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-12 my-1">
+                                                                <div class="form-field">
+                                                                    <div class="switch"><input type="checkbox" id="comments_allow_file_attachments" name="comments_allow_file_attachments" class="" role="switch" value="1"' . $comments_allow_file_attachments_checked . ' /></div>
+                                                                    <label class="" for="comments_allow_file_attachments">' . lang('Allow File Attachments') . '</label>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-12 my-1">
+                                                                <div class="form-field">
+                                                                    <div class="switch"><input type="checkbox" id="comments_show_submitted_date_and_time" name="comments_show_submitted_date_and_time" class="" role="switch" value="1"' . $comments_show_submitted_date_and_time_checked . ' /></div>
+                                                                    <label class="" for="comments_show_submitted_date_and_time">' . lang('Show Submitted Date & Time') . '</label>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-12 my-1 mb-5' . $comments_watchers_managed_by_submitter_row_style . '" id="comments_watchers_managed_by_submitter_row">
+                                                                <div class="form-field">
+                                                                    <div class="switch"><input type="checkbox" id="comments_watchers_managed_by_submitter" name="comments_watchers_managed_by_submitter" class="" role="switch" value="1"' . $comments_watchers_managed_by_submitter_checked . ' /></div>
+                                                                    <label class="" for="comments_watchers_managed_by_submitter">' . lang('Allow submitter to manage watchers') . '</label>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-12 my-3 mt-7' . $comments_administrator_email_row_style . '" id="comments_administrator_email_row">
+                                                                <h5>' . lang('E-mail moderator when a comment is added') . '</h5>
+                                                                <div class="row">
+                                                                    <div class="col-12 md:col-6 lg:col-4 my-3">
+                                                                        <label for="comments_administrator_email_to_email_address" class="form-label">' . lang('To E-mail Address') . '</label>
+                                                                        <input value="' . h($comments_administrator_email_to_email_address) . '" type="email" class="form-control' . ($liveform->check_field_error('comments_administrator_email_to_email_address') ? ' is-invalid' : '') . '" id="comments_administrator_email_to_email_address" name="comments_administrator_email_to_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                                                                     </div>
-                                                                </div>
-                                                                <div class="col-12 my-1">
-                                                                    <div class="form-field">
-                                                                        <div class="switch"><input type="checkbox" id="comments_automatic_publish" name="comments_automatic_publish" class="" role="switch" value="1"' . $comments_automatic_publish_checked . ' /></div>
-                                                                        <label class="" for="comments_automatic_publish">' . lang('Automatically Publish Comments') . '</label>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="col-12 my-1">
-                                                                    <div class="form-field">
-                                                                        <div class="switch"><input type="checkbox" id="comments_rating" name="comments_rating" class="" role="switch" value="1"' . $comments_rating_checked . ' /></div>
-                                                                        <label class="" for="comments_rating">' . lang('Enable Rating') . '</label>
-                                                                    </div>
-                                                                </div>
-                                                                
-                                                                <div class="col-12 my-1">
-                                                                    <div class="form-field">
-                                                                        <div class="switch"><input type="checkbox" id="comments_allow_user_to_select_name" name="comments_allow_user_to_select_name" class="" role="switch" value="1"' . $comments_allow_user_to_select_name_checked . ' /></div>
-                                                                        <label class="" for="comments_allow_user_to_select_name">' . lang('Allow User to Select Name') . '</label>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="col-12 my-1">
-                                                                    <div class="form-field">
-                                                                        <div class="switch"><input type="checkbox" id="comments_require_login_to_comment" name="comments_require_login_to_comment" class="" role="switch" value="1"' . $comments_require_login_to_comment_checked . ' /></div>
-                                                                        <label class="" for="comments_require_login_to_comment">' . lang('Require Login to Comment') . '</label>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="col-12 my-1">
-                                                                    <div class="form-field">
-                                                                        <div class="switch"><input type="checkbox" id="comments_allow_file_attachments" name="comments_allow_file_attachments" class="" role="switch" value="1"' . $comments_allow_file_attachments_checked . ' /></div>
-                                                                        <label class="" for="comments_allow_file_attachments">' . lang('Allow File Attachments') . '</label>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="col-12 my-1">
-                                                                    <div class="form-field">
-                                                                        <div class="switch"><input type="checkbox" id="comments_show_submitted_date_and_time" name="comments_show_submitted_date_and_time" class="" role="switch" value="1"' . $comments_show_submitted_date_and_time_checked . ' /></div>
-                                                                        <label class="" for="comments_show_submitted_date_and_time">' . lang('Show Submitted Date & Time') . '</label>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="col-12 my-1 mb-5" id="comments_watchers_managed_by_submitter_row" style="' . $comments_watchers_managed_by_submitter_row_style . '">
-                                                                    <div class="form-field">
-                                                                        <div class="switch"><input type="checkbox" id="comments_watchers_managed_by_submitter" name="comments_watchers_managed_by_submitter" class="" role="switch" value="1"' . $comments_watchers_managed_by_submitter_checked . ' /></div>
-                                                                        <label class="" for="comments_watchers_managed_by_submitter">' . lang('Allow submitter to manage watchers') . '</label>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="col-12 my-3 mt-7" id="comments_administrator_email_row" style="' . $comments_administrator_email_row_style . '">
-                                                                    <h5>' . lang('E-mail moderator when a comment is added') . '</h5>
-                                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100 show" id="fake_popover_1000000000">
-                                                                        <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                                        <div class="popover-body ">
-                                                                            <div class="row">
-                                                                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                                                    <label for="comments_administrator_email_to_email_address" class="form-label">' . lang('To E-mail Address') . '</label>
-                                                                                    <input value="' . h($comments_administrator_email_to_email_address) . '" type="email" class="form-control' . ($liveform->check_field_error('comments_administrator_email_to_email_address') ? ' is-invalid' : '') . '" id="comments_administrator_email_to_email_address" name="comments_administrator_email_to_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
-                                                                                </div>
-                                                                                <div class="col-12 md:col-6 lg:col-8 my-3">
-                                                                                    <label for="comments_administrator_email_subject" class="form-label">' . lang('Subject') . '</label>
-                                                                                    <input value="' . h($comments_administrator_email_subject) . '" type="text" name="comments_administrator_email_subject" id="comments_administrator_email_subject" class="form-control" maxlength="255"/>
-                                                                                </div> 
-                                                                                <div class="col-12 my-5" id="comments_administrator_email_conditional_administrators_row" style="' . $comments_administrator_email_conditional_administrators_row_style . '">
-                                                                                    <div class="form-field">
-                                                                                        <div class="switch"><input type="checkbox" id="comments_administrator_email_conditional_administrators" name="comments_administrator_email_conditional_administrators" class="" role="switch" value="1"' . $comments_administrator_email_conditional_administrators_checked . ' /></div>
-                                                                                        <label class="" for="comments_administrator_email_conditional_administrators">' . lang('Also send e-mail to custom form conditional administrators') . '</label>
-                                                                                    </div>
-                                                                                </div>
-
-                                                                            </div>
+                                                                    <div class="col-12 md:col-6 lg:col-8 my-3">
+                                                                        <label for="comments_administrator_email_subject" class="form-label">' . lang('Subject') . '</label>
+                                                                        <input value="' . h($comments_administrator_email_subject) . '" type="text" name="comments_administrator_email_subject" id="comments_administrator_email_subject" class="form-control" maxlength="255"/>
+                                                                    </div> 
+                                                                    <div class="col-12 my-5' . $comments_administrator_email_conditional_administrators_row_style . '" id="comments_administrator_email_conditional_administrators_row">
+                                                                        <div class="form-field">
+                                                                            <div class="switch"><input type="checkbox" id="comments_administrator_email_conditional_administrators" name="comments_administrator_email_conditional_administrators" class="" role="switch" value="1"' . $comments_administrator_email_conditional_administrators_checked . ' /></div>
+                                                                            <label class="" for="comments_administrator_email_conditional_administrators">' . lang('Also send e-mail to custom form conditional administrators') . '</label>
                                                                         </div>
                                                                     </div>
+
                                                                 </div>
-                                                                <div class="col-12 my-3 mt-7" id="comments_submitter_email_row" style="' . $comments_submitter_email_row_style . '">
-                                                                    <h5>' . lang('E-mail custom form submitter when a comment is published') . '</h5>
-                                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100 show" id="fake_popover_1000000001">
-                                                                        <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                                        <div class="popover-body ">
-                                                                            <div class="row">
-                                                                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                                                    <label for="comments_submitter_email_page_id" class="form-label">' . lang('Page') . '</label>
-                                                                                    <select name="comments_submitter_email_page_id" id="comments_submitter_email_page_id" class="form-control"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($comments_submitter_email_page_id) . '</select>
-                                                                                </div>
-                                                                                <div class="col-12 md:col-6 lg:col-8 my-3">
-                                                                                    <label for="comments_submitter_email_subject" class="form-label">' . lang('Subject') . '</label>
-                                                                                    <input value="' . h($comments_submitter_email_subject) . '" type="text" name="comments_submitter_email_subject" id="comments_submitter_email_subject" class="form-control" maxlength="255"/>
-                                                                                </div> 
-                                                                            </div> 
-                                                                        </div> 
+                                                            </div>
+                                                            <div class="col-12 my-3 mt-7' . $comments_submitter_email_row_style . '" id="comments_submitter_email_row">
+                                                                <h5>' . lang('E-mail custom form submitter when a comment is published') . '</h5>
+                                                                <div class="row">
+                                                                    <div class="col-12 md:col-6 lg:col-4 my-3">
+                                                                        <label for="comments_submitter_email_page_id" class="form-label">' . lang('Page') . '</label>
+                                                                        <select name="comments_submitter_email_page_id" id="comments_submitter_email_page_id" class="form-control"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($comments_submitter_email_page_id) . '</select>
+                                                                    </div>
+                                                                    <div class="col-12 md:col-6 lg:col-8 my-3">
+                                                                        <label for="comments_submitter_email_subject" class="form-label">' . lang('Subject') . '</label>
+                                                                        <input value="' . h($comments_submitter_email_subject) . '" type="text" name="comments_submitter_email_subject" id="comments_submitter_email_subject" class="form-control" maxlength="255"/>
                                                                     </div> 
                                                                 </div> 
-                                                                <div class="col-12 my-3 mt-7" id="comments_watcher_email_row" style="' . $comments_watcher_email_row_style . '">
-                                                                    <h5>' . lang('E-mail watchers when a comment is published') . '</h5>
-                                                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100 show" id="fake_popover_1000000002">
-                                                                        <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                                        <div class="popover-body ">
-                                                                            <div class="row">
-                                                                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                                                    <label for="comments_watcher_email_page_id" class="form-label">' . lang('Page') . '</label>
-                                                                                    <select name="comments_watcher_email_page_id" id="comments_watcher_email_page_id" class="form-control"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($comments_watcher_email_page_id) . '</select>
-                                                                                </div>
-                                                                                <div class="col-12 md:col-6 lg:col-8 my-3">
-                                                                                    <label for="comments_watcher_email_subject" class="form-label">' . lang('Subject') . '</label>
-                                                                                    <input value="' . h($comments_watcher_email_subject) . '" type="text" name="comments_watcher_email_subject" id="comments_watcher_email_subject" class="form-control" maxlength="255"/>
-                                                                                </div> 
-                                                                            </div> 
-                                                                        </div> 
+                                                            </div> 
+                                                            <div class="col-12 my-3 mt-7' . $comments_watcher_email_row_style . '" id="comments_watcher_email_row">
+                                                                <h5>' . lang('E-mail watchers when a comment is published') . '</h5>
+                                                                <div class="row">
+                                                                    <div class="col-12 md:col-6 lg:col-4 my-3">
+                                                                        <label for="comments_watcher_email_page_id" class="form-label">' . lang('Page') . '</label>
+                                                                        <select name="comments_watcher_email_page_id" id="comments_watcher_email_page_id" class="form-control"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($comments_watcher_email_page_id) . '</select>
+                                                                    </div>
+                                                                    <div class="col-12 md:col-6 lg:col-8 my-3">
+                                                                        <label for="comments_watcher_email_subject" class="form-label">' . lang('Subject') . '</label>
+                                                                        <input value="' . h($comments_watcher_email_subject) . '" type="text" name="comments_watcher_email_subject" id="comments_watcher_email_subject" class="form-control" maxlength="255"/>
                                                                     </div> 
                                                                 </div> 
                                                             </div> 
@@ -1100,15 +1092,25 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                ' . $output_delete_button . '
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem keeps the box below the fixed top bar. -->
+                            <div class="position-sticky mt-7" style="top:3.3rem;">
+                                ' . $output_page_type_selector . '
+                                ' . $output_summary_card . '
                             </div>
                         </div>
-                    </nav>
+                        <!-- Sticky on its own column: the row is as tall as the form. -->
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class=" btn-group flex-wrap justify-content-center">
+                                        <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                        ' . $output_delete_button . '
+                                    </div>
+                                </div>
+                            </nav>
+                        </div>
+                    </div>
                 </form>
             </div>
         </div>
@@ -1121,6 +1123,9 @@ if (!$_POST) {
 
     // Indexing switch dependencies — logic in assets/js/backend.src.js
     bindPageIndexingSwitches();
+
+    // Page type rows and the comments switch — logic in assets/js/backend.src.js
+    bindPageTypePicker();
 
     // The old address of a renamed page — logic in assets/js/backend.src.js
     bindPageRenameRedirect();

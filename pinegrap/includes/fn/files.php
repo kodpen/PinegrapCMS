@@ -2169,3 +2169,138 @@ function pg_user_display_name($first_name, $last_name, $username)
 
     return ($name !== '') ? $name : (string) $username;
 }
+
+/**
+ * The Modify Selected dialog of the design files list (view_design_files.php).
+ * Its fields belong to the page's form by their form attribute, so Save posts
+ * them with the ticked files[] to edit_files.php; the form carries the token
+ * and the action field. An empty pick list leaves its property alone; the
+ * Design pick list is offered to a designer or administrator only.
+ *
+ * @param array  $user    validate_user()
+ * @param string $form_id the id of the page's form that posts the change
+ * @return string HTML
+ */
+function pg_design_files_modify_dialog($user, $form_id)
+{
+    $id = 'design_files_modify_dialog';
+    $owner = ' form="' . h($form_id) . '"';
+
+    // Printed in the two option labels, so what the operator is choosing
+    // between is a pair of numbers rather than a pair of adjectives.
+    $optimize_settings = pg_image_settings();
+    $optimize_resize_trigger = $optimize_settings['file_resize_trigger'];
+    $optimize_resize_target = $optimize_settings['file_max_dimension'];
+
+    $output_design_field = '';
+
+    if ((int) $user['role'] <= 1) {
+        $output_design_field = '
+                    <div class="col-12 sm:col-6">
+                        <label class="form-label" for="' . $id . '_design">' . lang('Design') . '</label>
+                        <select class="form-control" id="' . $id . '_design" name="edit_design"' . $owner . '><option value=""></option><option value="1">' . h(lang('Yes')) . '</option><option value="0">' . h(lang('No')) . '</option></select>
+                    </div>';
+    }
+
+    return '<dialog id="' . $id . '" class="dialog" aria-labelledby="' . $id . '_title" data-pg-modify-form="' . h($form_id) . '">
+            <div class="dialog-header">
+                <h5 class="dialog-title" id="' . $id . '_title">' . lang('Modify Files') . '</h5>
+                <button type="button" class="btn-close no-submit" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
+            </div>
+            <div class="dialog-body">
+                <p class="small fg-secondary">' . lang('You may update the selected Files via the form below. You may leave an option unselected if you do not want to modify a property.') . '</p>
+                <div class="row g-5">
+                    <div class="col-12 sm:col-6">
+                        <label class="form-label" for="' . $id . '_folder">' . lang('Folder') . '</label>
+                        <select class="form-control" id="' . $id . '_folder" name="move_to_folder"' . $owner . '><option value=""></option>' . select_folder() . '</select>
+                    </div>' . $output_design_field . '
+                    <div class="col-12">
+                        <div class="form-field">
+                            <div class="switch"><input type="checkbox" id="' . $id . '_optimize" value="1" /></div>
+                            <label for="' . $id . '_optimize">' . lang('Optimize Images') . '</label>
+                        </div>
+                        <div class="mt-3">
+                            <select class="form-control" id="' . $id . '_optimize_mode" aria-label="' . h(lang('Optimize Images')) . '">
+                                <option value="optimize">' . lang('Compress only, keep the original size') . '</option>
+                                <option value="resize">' . lang(array('string' => 'Compress, and shrink any image whose longest edge is over {var:1} pixels', 'vars' => array($optimize_resize_trigger))) . '</option>
+                            </select>
+                            <div class="form-text">' . lang(array('string' => 'Shrinking scales the longest edge down to {var:1} pixels, keeping the proportions. Smaller images are left alone.', 'vars' => array($optimize_resize_target))) . '</div>
+                        </div>
+                        <input type="hidden" name="optimize"' . $owner . ' />
+                    </div>
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <button type="button" class="no-submit btn btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                <button type="button" class="no-submit btn btn-solid theme-primary" data-pg-modify-save><i class="bi bi-check-lg me-3" aria-hidden="true"></i>' . lang('Modify Files') . '</button>
+            </div>
+        </dialog>
+        <script>
+            // Modify Selected: the dialog opens empty, so nothing left from an
+            // earlier opening is posted; Save submits the page form only once
+            // the dialog has closed. Optimizing can take a while, so a status
+            // notice tells the operator to stay on the page first.
+            (function () {
+                var dialog = document.getElementById("' . $id . '");
+                var form = dialog ? document.getElementById(dialog.getAttribute("data-pg-modify-form")) : null;
+
+                if (!dialog || !form) {
+                    return;
+                }
+
+                var save = dialog.querySelector("[data-pg-modify-save]");
+                var optimize = document.getElementById("' . $id . '_optimize");
+
+                document.addEventListener("click", function (event) {
+                    if (!event.target.closest("[data-pg-modify-open]")) {
+                        return;
+                    }
+                    dialog.querySelectorAll("select").forEach(function (select) {
+                        select.selectedIndex = 0;
+                    });
+                    optimize.checked = false;
+                    save.disabled = false;
+                    pgUI.dialog.show(dialog);
+                });
+
+                save.addEventListener("click", function () {
+                    /* The mode travels in the optimize field; edit_files.php
+                       treats any truthy value other than resize as plain
+                       optimizing. */
+                    form.elements.optimize.value = optimize.checked ? document.getElementById("' . $id . '_optimize_mode").value : "";
+                    form.elements.action.value = "edit";
+                    save.disabled = true;
+
+                    pgUI.dialog.hide(dialog).then(function () {
+                        if (!optimize.checked) {
+                            form.submit();
+                            return;
+                        }
+
+                        window.scrollTo(0, 0);
+
+                        // The status region goes in empty and is filled a moment
+                        // later, so screen readers hear the notice. The bar is
+                        // indeterminate: it is named but claims no value.
+                        var notice = $(\'<div class="alert theme-secondary software_notice" role="status"></div>\');
+
+                        $("#content").prepend(notice);
+
+                        setTimeout(function () {
+                            notice.html(\'\
+                                <h4 class="alert-heading">' . lang('Optimizing images') . '...</h4>\
+                                <p>' . lang('Please stay on this page until this process is complete.') . '</p>\
+                                <div class="progress">\
+                                  <div class="progress-bar progress-bar-striped progress-bar-animated bg-secondary" role="progressbar" aria-label="' . h(lang('Optimizing images')) . '" style="width: 100%"></div>\
+                                </div>\');
+                        }, 50);
+
+                        // A short delay before the post, so the notice is drawn.
+                        setTimeout(function () {
+                            form.submit();
+                        }, 500);
+                    });
+                });
+            }());
+        </script>';
+}

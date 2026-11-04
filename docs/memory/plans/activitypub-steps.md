@@ -18,5 +18,5 @@ description: Steps AP1-AP4 of plans/activitypub.md: actor, WebFinger and signatu
   - `pg_ap_object_for_record($row)` and `pg_ap_object_for_page($page)` (Article: name, summary, content through `pg_sanitize_rich_text()` with absolute addresses, attachments from the record's pictures, url, published, attributedTo); the settings choose the forms and folders; `pg_announce()` listeners on record publish, page publish, edit and unpublish queue Create, Update or Delete into `ap_outbox`, one row per follower's shared inbox, sent by the general job with the mail queue's attempts and backoff (`pg_ap_deliver()` signs and posts); the actor's `outbox` collection lists the last 20. Tests: the object shapes, the fan-out by shared inbox, the backoff. Memory: `platform/activitypub-outbox.md`.
 
 - AP4 (M) Replies as comments. `done` (#6586); likes and boosts counts moved to AP4b (`platform/activitypub-comments.md`).
-- AP4b (S) Likes and boosts in the comments widget. After AP4.
+- AP4b (S) Likes and boosts in the comments widget. After AP4. `done` (#6638)
   - Thread tokens for the `ap_reactions` counts of the drawn page or record (likes, boosts) on the widget's count line, in `widgets_comments.php` and its JS list (`tools/check_bindings.php`), texts through `tr_add.php`. Memory: `platform/activitypub-comments.md` grows.

@@ -332,14 +332,22 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 8px 2px 7px;
+  gap: 2px;
+  padding: 6px 2px 5px;
   border: 0;
   border-radius: 12px;
   background: transparent;
-  font-size: 11.5px;
+  font-size: 10.5px;
   font-weight: 550;
+  line-height: 1.2;
   cursor: pointer;
+}
+
+/* A label wider than its button (a long word, a wide system font) breaks
+   inside the button instead of running over its edges. */
+.pgie-tool span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .pgie .pgie-tool {
@@ -387,13 +395,13 @@
 
   .pgie-rail-tight .pgie-tool {
     gap: 1px;
-    padding: 5px 2px 4px;
-    font-size: 11px;
-    line-height: 1.25;
+    padding: 4px 2px 3px;
+    font-size: 10px;
+    line-height: 1.2;
   }
 
   .pgie-rail-icons .pgie-tool {
-    padding: 8px 2px;
+    padding: 7px 2px;
   }
 
   .pgie .pgie-rail-icons .pgie-tool span {
@@ -470,6 +478,13 @@
 
 .pgie-selbox.pgie-locked {
   outline-style: dashed;
+}
+
+/* The box dragged over the stage to select the layers it touches. */
+.pgie-marquee {
+  position: absolute;
+  border: 1px solid var(--pgie-sel);
+  background: color-mix(in srgb, var(--pgie-sel) 12%, transparent);
 }
 
 .pgie-sh {
@@ -585,6 +600,35 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Select all above the list. */
+.pgie-selall {
+  margin-bottom: 8px;
+}
+
+/* The selected picture's file name in its panel. */
+.pgie-picname {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 10px;
+  font-weight: 550;
+}
+
+.pgie-picname .pgie-ic {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--pgie-muted);
+}
+
+.pgie-picname span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Adjust: the preview's filter, the vignette over the picture */
@@ -3283,6 +3327,101 @@
 .pgie-pb > .pgie-scenes .pgie-sadd,
 .pgie-pb > .pgie-scenes .pgie-strans {
   height: 48px;
+}
+
+/* -- Present (pg_image_editor_present.js) -- */
+
+/* The presentation fills the editor, then the screen: the scene on black,
+   the controls along the bottom. */
+.pgie-present {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  overflow: hidden;
+  background: #000000;
+  color: #ffffff;
+  outline: none;
+  touch-action: none;
+  user-select: none;
+}
+
+.pgie-present:fullscreen {
+  width: 100%;
+  height: 100%;
+}
+
+.pgie-pcanvas {
+  position: absolute;
+}
+
+.pgie-pbar {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(20, 22, 26, 0.72);
+  transform: translateX(-50%);
+  opacity: 0.55;
+  transition: opacity 0.2s;
+}
+
+.pgie-pbar:hover,
+.pgie-pbar:focus-within {
+  opacity: 1;
+}
+
+.pgie-pbar .pgie-ibtn {
+  color: #ffffff;
+}
+
+.pgie-pbar .pgie-ibtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.pgie-pbar .pgie-ibtn:disabled {
+  opacity: 0.35;
+}
+
+.pgie-pcount {
+  min-width: 96px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* The Escape hint, at the top, gone after a moment. */
+.pgie-phint {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(20, 22, 26, 0.72);
+  font-size: 13px;
+  transform: translateX(-50%);
+  transition: opacity 0.4s;
+}
+
+.pgie-phint.pgie-pgone {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgie-pbar,
+  .pgie-phint {
+    transition: none;
+  }
+}
+
+@media (max-width: 599.98px) {
+  .pgie-presentbtn .pgie-vlabel {
+    display: none;
+  }
 }
 
 /* -- Icons and emoji (pg_image_editor_glyph.js) -- */
