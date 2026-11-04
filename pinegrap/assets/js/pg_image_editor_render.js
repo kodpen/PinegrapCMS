@@ -501,6 +501,11 @@
         var bitrate = M.animBitrate(size, set.fps);
         var canvas = document.createElement('canvas');
 
+        // A PDF is a page per scene, made by pg_image_editor_present.js.
+        if (f.pdf && this.pdfJob) {
+            return this.pdfJob(set, estimate, progress);
+        }
+
         job.cancel = function () {
             job.cancelled = true;
 
@@ -662,6 +667,8 @@
         }
 
         this.animSet = this.animSet || M.animDefaults(this.doc, 'gif', small);
+        // The formats again: PDF only while there are scenes.
+        this.animKinds = null;
         this.animBase = null;
         this.animReturn = document.activeElement;
         this.animBox = el('div', { class: 'pgie-confirm pgie-anim', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-anim-title' });
@@ -722,6 +729,15 @@
         var size = M.animSize(out, set.edge, f.even), ms = M.sceneTotal(this.doc), long = ms > f.maxMs;
         var box = this.animBox;
 
+        this.animKinds = this.animKinds || M.animFormats(Object.assign(animCaps(), this.animVia, { scenes: M.sceneCount(this.doc) > 1 }));
+
+        if (this.animKinds.indexOf(set.format) < 0) {
+            this.animSet = set = M.animSwitch(set, 'gif');
+            f = M.ANIM_FORMATS.gif;
+            size = M.animSize(out, set.edge, f.even);
+            long = ms > f.maxMs;
+        }
+
         box.textContent = '';
         this.animEls = {};
 
@@ -748,12 +764,15 @@
             self.renderAnimation();
         }
 
-        this.animKinds = this.animKinds || M.animFormats(Object.assign(animCaps(), this.animVia));
         main.appendChild(chips(t('animFormat'), this.animKinds.map(function (k) { return [k, t('animFormat_' + k)]; }), set.format, function (v) { change(M.animSwitch(set, v)); }));
         main.appendChild(chips(t('animSize'), M.animEdges(out, set.format).map(function (e) { return [e, String(e)]; }), Math.min(set.edge, Math.max(out.w, out.h)), function (v) { change({ edge: v }); }, size.w + ' × ' + size.h + ' px'));
-        main.appendChild(chips(t('animRate'), f.rates.map(function (r) { return [r, String(r)]; }), set.fps, function (v) { change({ fps: v }); }, set.fps + ' ' + t('animFps')));
+        // A PDF's pages are still: no rate, no repeat.
+        if (!f.pdf) {
+            main.appendChild(chips(t('animRate'), f.rates.map(function (r) { return [r, String(r)]; }), set.fps, function (v) { change({ fps: v }); }, set.fps + ' ' + t('animFps')));
+        }
+
         // A video's repeat is its player's.
-        if (!f.video) {
+        if (!f.video && !f.pdf) {
             main.appendChild(chips(t('animRepeat'), M.animLoops(set.loop).map(function (n) { return [n, n ? t('animTimes').replace('{n}', n) : t('animForever')]; }), set.loop, function (v) { change({ loop: v }); }));
         }
 
@@ -860,7 +879,7 @@
                 var e = self.animEls.estimate;
 
                 e.children[1].textContent = '≈ ' + bytesText(r.bytes);
-                e.children[2].textContent = t('animFrames').replace('{n}', r.count) + ' · ' + X.decimal(M.sceneTotal(self.doc) / 1000) + ' ' + t('motionSecondsUnit');
+                e.children[2].textContent = M.ANIM_FORMATS[set.format].pdf ? t('animPages').replace('{n}', r.count) : t('animFrames').replace('{n}', r.count) + ' · ' + X.decimal(M.sceneTotal(self.doc) / 1000) + ' ' + t('motionSecondsUnit');
                 self.animLimit(r.bytes);
             }, function (err) {
                 if ((self.animTask === task) && err) {
@@ -958,7 +977,7 @@
         body.appendChild(side);
         body.appendChild(main);
         foot.textContent = '';
-        foot.appendChild(el('p', { class: 'pgie-note', text: [t('animFormat_' + set.format), size.w + ' × ' + size.h + ' px', set.fps + ' ' + t('animFps')].join(' · ') }));
+        foot.appendChild(el('p', { class: 'pgie-note', text: [t('animFormat_' + set.format), size.w + ' × ' + size.h + ' px', f.pdf ? t('animPages').replace('{n}', M.sceneCount(this.doc)) : set.fps + ' ' + t('animFps')].join(' · ') }));
 
         var cancel = el('button', { type: 'button', class: 'pgie-btn', text: t('cancel'), onclick: function () { self.closeAnimation(); } });
 

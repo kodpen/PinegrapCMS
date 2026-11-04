@@ -394,6 +394,7 @@
     "Scanning the pages…": "Sayfalar taranıyor…",
     "Scanning the pages… {var} of {var2}": "Sayfalar taranıyor… {var}/{var2}",
     "Scene {n}": "Sahne {n}",
+    "Scene {n} of {count}": "Sahne {n} / {count}",
     "Scenes": "Sahneler",
     "Schedule": "Zamanlama",
     "Schedule it": "Programla",
