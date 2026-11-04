@@ -159,6 +159,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_return_updated_at();       // 11.0.168
 	upgrade_2026_11_0_booking_deposit();         // 11.0.169
 	upgrade_2026_11_0_contact_group_joined_campaigns(); // 11.0.170
+	upgrade_2026_11_0_credit_campaigns();         // 11.0.171
 
 }
 
@@ -5267,5 +5268,61 @@ function upgrade_2026_11_0_contact_group_joined_campaigns() {
 	}
 
 	install_note('E-mail campaigns: automatic e-mails gain the joined a contact group action, one e-mail to each contact put into the chosen group. Nothing is sent until such a profile is created.');
+
+}
+
+// Store credit mails (2026.11.0, 11.0.171; includes/fn/store_credit_mails.php):
+// the campaign profile actions credit_issued and credit_expiring appended to
+// email_campaign_profiles.action and email_campaigns.action. The values are
+// read first and only appended, so a value a later step added is kept. The
+// expiring notice goes once per card without a column: the general job sends
+// the cards whose notice moment fell since its last pass.
+function upgrade_2026_11_0_credit_campaigns() {
+
+	$actions = array('credit_issued', 'credit_expiring');
+
+	foreach (array('email_campaign_profiles', 'email_campaigns') as $table) {
+
+		$action = install_column_info($table, 'action');
+
+		if (!$action) {
+
+			continue;
+
+		}
+
+		preg_match_all("/'((?:[^']|'')*)'/", (string) $action['Type'], $matches);
+
+		$values = $matches[1];
+		$added = false;
+
+		foreach ($actions as $value) {
+
+			if (!in_array($value, $values, true)) {
+
+				$values[] = $value;
+				$added = true;
+
+			}
+
+		}
+
+		if (!$added) {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => $table . '.action credit_*')));
+
+			continue;
+
+		}
+
+		$definition = "ENUM('" . implode("','", $values) . "')"
+			. ((($action['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+			. (($action['Default'] !== null) ? " DEFAULT '" . e((string) $action['Default']) . "'" : '');
+
+		install_modify_column($table, 'action', $definition);
+
+	}
+
+	install_note('E-mail campaigns: automatic e-mails gain the store credit issued and store credit expiring actions. Nothing is sent until such a profile is created.');
 
 }
