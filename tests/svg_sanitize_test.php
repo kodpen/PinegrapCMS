@@ -214,3 +214,50 @@ function test_svg_sanitize_foreign_namespaces()
 	pg_assert_contains('<polygon points="0,0 5,5 0,5"/>', $out, 'a polygon stays');
 	pg_assert_contains('width="50" height="40"', $out, 'the root keeps its size');
 }
+
+// A file whose sheet styles symbol content drawn by <use> (as Illustrator
+// exports it): what a <use> draws matches selectors inside the use's own
+// tree, so a rule scoped under the root's id stops there. Ids and classes
+// get the file's prefix (in the elements, href, url(#…) and the rules) and
+// a rule whose every compound names one of them is left unscoped.
+function test_svg_sanitize_sheet_reaches_use_copies()
+{
+	$in = svg_sanitize_doc('<defs><style>.cls-1{fill:#e30000}#star{stroke:#000;stroke-width:2}.cls-1 path{fill:#00f}.cls-1 > .cls-2{opacity:.5}#Layer_1 .cls-2{fill:url(#g1)}#Layer_1{color:red}</style>'
+		. '<linearGradient id="g1"><stop offset="0" stop-color="#fff"/></linearGradient>'
+		. '<symbol id="star" viewBox="0 0 10 10"><path class="cls-1 cls-2" d="M0 0h10v10z" fill="url(#g1)" style="stroke: url(&quot;#g1&quot;)"/></symbol></defs>'
+		. '<use href="#star" width="10" height="10"/><use xlink:href="#star" x="20"/>', ' id="Layer_1"');
+	$out = pg_svg_sanitize($in);
+
+	pg_assert_true((bool) preg_match('#<svg [^>]*id="Layer_1"#', $out), 'the root keeps its id');
+	pg_assert_contains("<style>.pgsvg-Layer_1-cls-1{fill: #e30000}\n#pgsvg-Layer_1-star{stroke: #000; stroke-width: 2}\n#Layer_1 .pgsvg-Layer_1-cls-1 path{fill: #00f}\n"
+		. ".pgsvg-Layer_1-cls-1 &gt; .pgsvg-Layer_1-cls-2{opacity: .5}\n.pgsvg-Layer_1-cls-2{fill: url(#pgsvg-Layer_1-g1)}\n#Layer_1 #Layer_1{color: red}</style>", $out,
+		'a rule of prefixed ids and classes only is unscoped; one with an element name or the root\'s id stays under the root');
+	pg_assert_contains('<symbol id="pgsvg-Layer_1-star"', $out, 'ids get the prefix');
+	pg_assert_contains('<linearGradient id="pgsvg-Layer_1-g1">', $out, 'a definition\'s id gets the prefix');
+	pg_assert_contains('class="pgsvg-Layer_1-cls-1 pgsvg-Layer_1-cls-2"', $out, 'every class gets the prefix');
+	pg_assert_contains('fill="url(#pgsvg-Layer_1-g1)"', $out, 'url(#…) in an attribute follows');
+	pg_assert_contains('style="stroke: url(&quot;#pgsvg-Layer_1-g1&quot;)"', $out, 'url(#…) in a style attribute follows');
+	pg_assert_contains('<use href="#pgsvg-Layer_1-star"', $out, 'href follows');
+	pg_assert_contains('xlink:href="#pgsvg-Layer_1-star"', $out, 'xlink:href follows');
+	pg_assert_same($out, pg_svg_sanitize($out), 'a sanitized file comes through unchanged: names are prefixed once');
+
+	// A chosen root id cannot steer an unscoped rule onto the panel's names.
+	$out = pg_svg_sanitize(svg_sanitize_doc('<style>.top{display:none}#pgie-top{display:none}</style><rect class="top" width="1" height="1"/>', ' id="pgie-top"'));
+	pg_assert_contains("<style>.pgsvg-pgie-top-top{display: none}\n#pgie-top #pgie-top{display: none}</style>", $out, 'unscoped names all start with pgsvg-');
+
+	// A generated root id is the prefix itself.
+	$out = pg_svg_sanitize(svg_sanitize_doc('<style>.a{fill:red}</style><rect class="a" width="1" height="1"/>'));
+	pg_assert_true((bool) preg_match('#<svg [^>]*id="(pgsvg-[0-9a-f]{10})"#', $out, $m), 'a root without an id gets one');
+	pg_assert_contains('<style>.' . (isset($m[1]) ? $m[1] : '?') . '-a{fill: red}</style>', $out, 'prefixed with the generated id');
+
+	// A file sanitized before names were prefixed: its scoped rules and
+	// plain classes are brought to the prefixed form together.
+	$out = pg_svg_sanitize(svg_sanitize_doc('<style>#art .a{fill:red}</style><rect class="a" width="1" height="1"/>', ' id="art"'));
+	pg_assert_contains('<style>.pgsvg-art-a{fill: red}</style>', $out, 'an old scoped rule');
+	pg_assert_contains('class="pgsvg-art-a"', $out, 'and its class');
+
+	// Without a sheet nothing is renamed.
+	$out = pg_svg_sanitize(svg_sanitize_doc('<symbol id="s"><rect class="a" width="1" height="1"/></symbol><use href="#s"/>'));
+	pg_assert_contains('<symbol id="s"><rect class="a"', $out, 'no sheet, names unchanged');
+	pg_assert_contains('href="#s"', $out, 'no sheet, references unchanged');
+}
