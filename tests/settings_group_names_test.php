@@ -104,13 +104,15 @@ function test_settings_group_names_select_all_names_its_list()
 
 function test_settings_group_names_organize_contacts_select_all_names_its_list()
 {
-	$source = settings_group_names_source('organize_contacts.php');
+	// The Organize Selected dialog of the contacts list builds both lists
+	// from one template.
+	$source = settings_group_names_source('view_contacts.php');
 
 	foreach (array('0' => 'Add to Contact Groups', '1' => 'Remove from Contact Groups') as $n => $heading) {
-		$id = 'multiselect-checkbox-checker-' . $n;
-
-		pg_assert_contains('id="' . $id . '_title">\' . lang(array(\'string\'=>\'' . $heading . '\') ) . \'</div>', $source, $heading . ' heading has an id');
-		pg_assert_contains('<input id="' . $id . '" class="multiselect-checkbox-checker" type="checkbox" aria-labelledby="' . $id . '_label ' . $id . '_title">', $source, $heading . ' Select All reads its list');
-		pg_assert_contains('<label for="' . $id . '" class="" id="' . $id . '_label">', $source, $heading . ' Select All label has an id');
+		pg_assert_contains("array('" . $n . "', lang('" . $heading . "')", $source, $heading . ' list is built');
 	}
+
+	pg_assert_contains('id="\' . $checker . \'_title">\' . $organize_list[1] . \'</div>', $source, 'the heading has an id');
+	pg_assert_contains('<input id="\' . $checker . \'" class="multiselect-checkbox-checker" type="checkbox" aria-labelledby="\' . $checker . \'_label \' . $checker . \'_title">', $source, 'Select All reads its list');
+	pg_assert_contains('<label for="\' . $checker . \'" class="" id="\' . $checker . \'_label">', $source, 'the Select All label has an id');
 }

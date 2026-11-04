@@ -153,3 +153,79 @@ function test_page_form_number_errors()
 	pg_assert_same(array(), pg_page_form_number_errors('photo gallery', array('photo_gallery_thumbnail_max_size' => '100')));
 	pg_assert_same(array(), pg_page_form_number_errors('standard', array('photo_gallery_thumbnail_max_size' => '0')), 'other types are not read');
 }
+
+function test_page_form_number_errors_whole_boxes()
+{
+	$catalog = function ($fields) {
+		return array_keys(pg_page_form_number_errors('catalog', $fields));
+	};
+	pg_assert_same(array(), $catalog(array('catalog_number_of_featured_items' => '0', 'catalog_number_of_new_items' => '99', 'catalog_number_of_columns' => '4', 'catalog_image_width' => '0', 'catalog_image_height' => '1200')));
+	pg_assert_same(array(), $catalog(array('catalog_number_of_columns' => '')), 'an empty box keeps the default');
+	pg_assert_same(array('catalog_number_of_featured_items', 'catalog_number_of_new_items'), $catalog(array('catalog_number_of_featured_items' => '-1', 'catalog_number_of_new_items' => '1,5')), 'a minus sign and a decimal are refused, not cut');
+	pg_assert_same(array('catalog_number_of_columns'), $catalog(array('catalog_number_of_columns' => '0')), 'a catalog has one column or more');
+	pg_assert_same(array('catalog_image_width', 'catalog_image_height'), $catalog(array('catalog_image_width' => '-50', 'catalog_image_height' => '12.50')));
+	pg_assert_same(array('catalog_number_of_featured_items'), $catalog(array('catalog_number_of_featured_items' => '300')), 'over the box is refused, not cut to 255');
+
+	pg_assert_same(array('form_view_directory_summary_days', 'form_view_directory_summary_maximum_number_of_results'), array_keys(pg_page_form_number_errors('form view directory', array('form_view_directory_summary_days' => '-1', 'form_view_directory_summary_maximum_number_of_results' => '2.5'))));
+	pg_assert_same(array('calendar_view_number_of_upcoming_events'), array_keys(pg_page_form_number_errors('calendar view', array('calendar_view_number_of_upcoming_events' => '-3'))));
+	pg_assert_same(array(), pg_page_form_number_errors('calendar view', array('calendar_view_number_of_upcoming_events' => '5')));
+	pg_assert_same(array('photo_gallery_number_of_columns'), array_keys(pg_page_form_number_errors('photo gallery', array('photo_gallery_number_of_columns' => '0'))));
+	pg_assert_same(array(), pg_page_form_number_errors('standard', array('catalog_number_of_columns' => '-1')), 'other types are not read');
+}
+
+function test_page_form_folder_verdict()
+{
+	// 1 root, 2 the Workspace, 3 below it, 4 the bin, 5 below the bin, 6 a folder
+	$rows = array(
+		1 => array('folder_parent' => 0),
+		2 => array('folder_parent' => 1),
+		3 => array('folder_parent' => 2),
+		4 => array('folder_parent' => 1),
+		5 => array('folder_parent' => 4),
+		6 => array('folder_parent' => 1),
+	);
+	pg_assert_same('', pg_page_form_folder_verdict('6', $rows, 2, 4));
+	pg_assert_same('', pg_page_form_folder_verdict('1', $rows, 2, 4), 'the root takes pages');
+	pg_assert_same('missing', pg_page_form_folder_verdict('999999', $rows, 2, 4), 'a deleted folder');
+	pg_assert_same('missing', pg_page_form_folder_verdict('', $rows, 2, 4), 'no folder');
+	pg_assert_same('missing', pg_page_form_folder_verdict('0', $rows, 2, 4));
+	pg_assert_same('missing', pg_page_form_folder_verdict('6x', $rows, 2, 4));
+	pg_assert_same('missing', pg_page_form_folder_verdict(array('6'), $rows, 2, 4));
+	pg_assert_same('missing', pg_page_form_folder_verdict('5', $rows, 2, 4), 'a binned folder');
+	pg_assert_same('workspace', pg_page_form_folder_verdict('3', $rows, 2, 4));
+	pg_assert_same('workspace', pg_page_form_folder_verdict('2', $rows, 2, 4));
+	pg_assert_same('', pg_page_form_folder_verdict('3', $rows, 2, 4, 3), 'a page keeps its stored folder');
+	pg_assert_same('missing', pg_page_form_folder_verdict('999998', $rows, 2, 4, 999998), 'a stored folder that is gone is not kept');
+	pg_assert_same('', pg_page_form_folder_verdict('3', $rows, 0, 0), 'no Workspace, no bin');
+}
+
+function test_page_form_style_ok()
+{
+	$plain = array('style_type' => 'system', 'style_layout' => 'two_column');
+	$custom = array('style_type' => 'custom', 'style_layout' => '');
+	$mobile = array('style_type' => 'system', 'style_layout' => 'one_column_mobile');
+	$design = array('style_type' => 'custom', 'style_layout' => 'visual_designer');
+
+	pg_assert_true(pg_page_form_style_ok('0', 'desktop', null, 0, true), 'inherit');
+	pg_assert_true(pg_page_form_style_ok('', 'desktop', null, 0, true), 'an empty value inherits');
+	pg_assert_true(pg_page_form_style_ok('7', 'desktop', $plain, 0, true));
+	pg_assert_true(!pg_page_form_style_ok('99999', 'desktop', null, 0, true), 'a deleted style');
+	pg_assert_true(!pg_page_form_style_ok('7x', 'desktop', $plain, 0, true));
+	pg_assert_true(!pg_page_form_style_ok('8', 'desktop', $design, 0, true), 'a visual-editor design is not offered');
+	pg_assert_true(pg_page_form_style_ok('8', 'desktop', $design, 8, true), 'the stored design is kept');
+	pg_assert_true(!pg_page_form_style_ok('9', 'desktop', $mobile, 0, true), 'a mobile layout is not a desktop style');
+	pg_assert_true(pg_page_form_style_ok('9', 'mobile', $mobile, 0, true));
+	pg_assert_true(pg_page_form_style_ok('10', 'mobile', $custom, 0, true));
+	pg_assert_true(!pg_page_form_style_ok('7', 'mobile', $plain, 0, true), 'only custom and mobile styles while the mobile site is on');
+	pg_assert_true(pg_page_form_style_ok('7', 'mobile', $plain, 0, false), 'every style while it is off');
+	pg_assert_true(!pg_page_form_style_ok('99999', 'mobile', null, 0, false), 'a deleted mobile style');
+}
+
+function test_page_form_sitemap_type()
+{
+	pg_assert_true(pg_page_form_sitemap_type('standard'));
+	pg_assert_true(pg_page_form_sitemap_type('catalog detail'));
+	pg_assert_true(!pg_page_form_sitemap_type('login'));
+	pg_assert_true(!pg_page_form_sitemap_type('logout'));
+	pg_assert_true(!pg_page_form_sitemap_type('checkout'));
+}

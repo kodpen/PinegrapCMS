@@ -29,156 +29,11 @@ if (!empty($_SESSION['software']['preview_theme_id'])) {
     $activated_mobile_theme_id = db_value("SELECT id FROM files WHERE activated_mobile_theme = '1'");
 }
 
-// if the form has not been submitted yet, then output form
+// Modify Selected asks for its changes in a dialog of the Pages list
+// (pg_page_bulk_edit_dialog()); this file only takes the post.
 if (!$_POST) {
-    $output_preview_style_warning_row = '';
-    $default_style_label = lang('Default') . ' (' . lang('inherit') . ')';
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_pages.php');
 
-    // If the user is currently previewing a theme that is not the activated theme
-    if (
-        (!empty($_SESSION['software']['preview_theme_id']))
-        && ($_SESSION['software']['preview_theme_id'] != $activated_desktop_theme_id)
-        && ($_SESSION['software']['preview_theme_id'] != $activated_mobile_theme_id)
-    ) {
-        $output_preview_style_warning_row ='
-        <div class="col-12">
-            <div class="alert theme-success" role="alert">
-                <h4 class="alert-heading">' . lang('Theme Preview Mode') . '</h4>
-                <p>' . lang('You are currently previewing a Theme that is not activated, so your Page Style and Mobile Page Style selections below will update the preview Page Style, and not the activated Page Style.  The preview Page Styles that you set here will be activated when you activate the Theme.') . '</p>
-            </div>
-        </div>';
-
-        $default_style_label = '[' . lang('Activated') . ']';
-    }
-    // Only staff set a style, as on the page screen; a page the visual
-    // editor opens keeps its own whatever is picked here.
-    $output_style_rows = '';
-
-    if ($user['role'] < 3) {
-        $output_style_rows = '
-            <div class="col-12">
-                <div class="row">
-                    ' . $output_preview_style_warning_row . '
-                    <div class="col-12 sm:col-6">
-                        <div class="form-floating mt-1 mb-3">
-                            <label for="page_style" class="form-label">' . lang('Page Style') . '</label>
-                            <select class="form-control" id="page_style"><option value=""></option>' . select_style('', $default_style_label) . '</select>
-                        </div>
-                    </div>
-                    <div class="col-12 sm:col-6">
-                        <div class="form-floating mt-1 mb-3">
-                            <label for="mobile_style_id" class="form-label">' . lang('Mobile Page Style') . '</label>
-                            <select class="form-control" id="mobile_style_id"><option value=""></option>' . get_mobile_style_options('', $default_style_label) . '</select>
-                        </div>
-                    </div>
-                </div>
-            </div>';
-    }
-
-    // set options for search pick list
-    $site_search_options =
-        array(
-            '' => '',
-            lang('Include') => '1',
-            lang('Exclude') => '0'
-        );
-    
-    // set options for sitemap pick list
-    $sitemap_options =
-        array(
-            '' => '',
-            lang('Include') => '1',
-            lang('Exclude') => '0'
-        );
-
-    print
-    output_header_secure(array('title'=>lang('Modify Pages'),'icon'=>'page')) . '
-    <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
-        <div class="container-fluid">
-            <span class="navbar-text me-auto">' . lang('Modify Pages') . '</span>
-            
-            <ul class="navbar-nav ms-auto">
-                <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
-                    <button class="nav-link nav-link-sm position-relative pg-menu-caret d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
-                    <ul aria-labelledby="bd-theme" class="menu shadow pg-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-menu-min-width: 8rem;">
-                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i>' . lang('Light') . '</button></li>
-                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i>' . lang('Dark') . '</button></li>
-                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i>' . lang('Auto') . '</button></li>
-                    </ul>
-                </li>
-                <li class="nav-item">
-                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.close()" aria-label="' . h(lang('Close')) . '">
-                        <span class="bi bi-x-lg"></span>
-                    </button>
-                </li>
-            </ul>
-        </div>
-    </nav>
-    <script type="text/javascript">
-        function edit_pages()
-        {
-            // if there is a value then update field in the form
-            if (document.getElementById("folder").value != "") {
-                opener.document.form.move_to_folder.value = document.getElementById("folder").value;
-            }
-
-            // the two style pick lists are drawn for staff only
-            var page_style = document.getElementById("page_style");
-            if (page_style && (page_style.value != "")) {
-                opener.document.form.edit_page_style.value = page_style.value;
-            }
-            var mobile_style_id = document.getElementById("mobile_style_id");
-            if (mobile_style_id && (mobile_style_id.value != "")) {
-                opener.document.form.edit_mobile_style_id.value = mobile_style_id.value;
-            }
-
-            // if there is a value then update field in the form
-            if (document.getElementById("site_search").value != "") {
-                opener.document.form.edit_site_search.value = document.getElementById("site_search").value;
-            }
-
-            // if there is a value then update field in the form
-            if (document.getElementById("sitemap").value != "") {
-                opener.document.form.edit_sitemap.value = document.getElementById("sitemap").value;
-            }
-
-            // close window
-            opener.document.form.submit();
-            window.close();
-        }
-    </script>
-    <main id="content" class="container-fluid">
-        <p class="mt-1 mb-3">' . lang('You may update various properties below for the selected pages. You may leave a pick list unselected if you do not want to modify a property.') . '</p>
-        <div class="row">
-            <div class="col-12 sm:col-6">
-                <div class="form-floating mt-1 mb-3">
-                    <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                    <select class="form-control" id="folder"><option value=""></option>' . pg_page_select_folder() . '</select>
-                </div>
-            </div>
-            
-            ' . $output_style_rows . '
-            <div class="col-12 sm:col-6">
-                <div class="form-floating mt-1 mb-3">
-                    <label for="site_search" class="form-label">' . lang('Site Search') . '</label>
-                    ' . $liveform->output_field(array('type'=>'select', 'id'=>'site_search','class'=>'form-control', 'options'=>$site_search_options)) . '
-                </div>
-            </div>
-            <div class="col-12 sm:col-6">
-                <div class="form-floating mt-1 mb-3">
-                    <label for="sitemap" class="form-label">sitemap.xml</label>
-                    ' . $liveform->output_field(array('type'=>'select', 'id'=>'sitemap','class'=>'form-control', 'options'=>$sitemap_options)) . '
-                </div>
-            </div>
-            <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                <div class="container">
-                    <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
-                        <button type="button" name="submit_save" value="Modify Pages" class="btn mb-1 mt-1  btn-solid theme-primary submit-primary" onclick="edit_pages()"><span class="material-icons me-3">save</span>' . lang(array('string'=>'Modify Pages') ) . '</button>
-                    </div>
-                </div>
-            </nav>
-        </main>' . output_footer_secure();
-                
 // else the form has been submitted, so process it
 } else {
     validate_token_field();
@@ -207,10 +62,27 @@ if (!$_POST) {
             case 'edit':
                 // if a folder was selected to move the page(s) to
                 // and if user does not have access to the folder that he/she is trying to move pages to, output error
-                if (($_POST['move_to_folder']) && (check_edit_access($_POST['move_to_folder']) == false)) {
-                    output_error(lang('You do not have access to move pages to the folder that you selected') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+                $move_to_folder = (int) ($_POST['move_to_folder'] ?? 0);
+                $move_to_folder_name = '';
+
+                if ($move_to_folder > 0) {
+                    if (check_edit_access($move_to_folder) == false) {
+                        output_error(lang('You do not have access to move pages to the folder that you selected') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+                    }
+
+                    // Only a folder the move picker offers: one that exists,
+                    // outside the Recycle Bin and the Workspace.
+                    $folder_tree = pg_folder_access_tree();
+
+                    if (!pg_page_bulk_folder_ok($move_to_folder, $folder_tree['rows'], pg_workspace_folder_id(), $folder_tree['bin'])) {
+                        output_error(lang('Pages cannot be moved to the folder that you selected.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+                    }
+
+                    $result = db_q("SELECT folder_name FROM folder WHERE folder_id = ?", array($move_to_folder)) or output_error('Query failed.');
+                    $row = mysqli_fetch_assoc($result);
+                    $move_to_folder_name = $row ? (string) $row['folder_name'] : '';
                 }
-                
+
                 // While a theme other than the activated one is previewed, the styles are set for the preview.
                 $previewing = (
                     (!empty($_SESSION['software']['preview_theme_id']))
@@ -225,15 +97,16 @@ if (!$_POST) {
                 $edit_mobile_style_id = $staff ? (string) ($_POST['edit_mobile_style_id'] ?? '') : '';
 
                 $set = array(
-                    'folder' => $_POST['move_to_folder'] ?? '',
+                    'folder' => $move_to_folder,
                     'search' => $_POST['edit_site_search'] ?? '',
                     'sitemap' => $_POST['edit_sitemap'] ?? '',
                     'style' => $edit_page_style,
                     'mobile_style' => $edit_mobile_style_id,
                 );
 
-                $number_of_styled_pages = 0;
-                $number_of_style_skipped_pages = 0;
+                // What was written, counted from the decisions: the notice,
+                // the log and the audit name nothing a page did not get.
+                $tally = pg_page_bulk_tally_start();
 
                 // loop through each page and process actions
                 foreach ($page_ids as $page_id) {
@@ -245,24 +118,21 @@ if (!$_POST) {
 
                     // if user has access to page then proceed
                     if (check_edit_access($page['page_folder']) == true) {
+                        $decision = pg_page_bulk_decide($page, $set, $user['role']);
+                        $tally = pg_page_bulk_tally($tally, $page, $set, $decision);
+
+                        // Nothing to write for this page: no audit line either.
+                        if ((count($decision['columns']) == 0) && (count($decision['styles']) == 0)) {
+                            continue;
+                        }
+
                         $audit_before = pg_audit_fetch('page', $page['page_id']);
 
-                        $decision = pg_page_bulk_decide($page, $set, $user['role']);
                         if (!pg_page_bulk_apply($page, $decision, $user['id'], $previewing ? (int) $_SESSION['software']['preview_theme_id'] : 0)) {
                             output_error('Query failed.');
                         }
 
                         pg_audit_record('update', 'page', $page['page_id'], $audit_before);
-
-                        if (count($decision['styles']) > 0) {
-                            $number_of_styled_pages++;
-                        }
-
-                        if ($decision['style_skipped']) {
-                            $number_of_style_skipped_pages++;
-                        }
-
-                        $number_of_pages++;
 
                     // else output error
                     } else {
@@ -270,87 +140,97 @@ if (!$_POST) {
                     }
                 }
 
-                // if more than 0 pages were modified, then log activity
-                if ($number_of_pages > 0) {
-                    // Each change is a verb-free phrase; they are joined with ', ' inside one sentence key.
-                    $changes = array();
+                // Each change is a verb-free phrase, named only when at least
+                // one page got it; they are joined with ', ' inside one
+                // sentence key.
+                $changes = array();
 
-                    // if a folder was selected to move the page(s) to, then name the folder
-                    if ($_POST['move_to_folder']) {
-                        $query = "SELECT folder_name FROM folder WHERE folder_id = ?";
-                        $result = db_q($query, array((string) ($_POST['move_to_folder'] ?? ''))) or output_error('Query failed.');
-                        $row = mysqli_fetch_assoc($result);
+                if ($tally['folder'] > 0) {
+                    $changes[] = lang(array('string' => 'moved to the folder {var:1}', 'vars' => array($move_to_folder_name)));
+                }
 
-                        $changes[] = lang(array('string' => 'moved to the folder {var:1}', 'vars' => array($row['folder_name'])));
+                $style_label = function ($style_id) use ($previewing) {
+                    if ((string) $style_id === '0') {
+                        return $previewing ? '[' . lang('Activated') . ']' : lang('Default') . ' (' . lang('inherit') . ')';
                     }
 
-                    // if a page style was applied to any of the page(s), then name the style
-                    if (($edit_page_style != '') && ($number_of_styled_pages > 0)) {
-                        if ($edit_page_style == '0') {
-                            $style = $previewing ? '[' . lang('Activated') . ']' : lang('Default') . ' (' . lang('inherit') . ')';
-                        } else {
-                            $query = "SELECT style_name FROM style WHERE style_id = ?";
-                            $result = db_q($query, array($edit_page_style)) or output_error('Query failed.');
-                            $row = mysqli_fetch_assoc($result);
-                            $style = $row['style_name'];
-                        }
+                    $result = db_q("SELECT style_name FROM style WHERE style_id = ?", array((int) $style_id)) or output_error('Query failed.');
+                    $row = mysqli_fetch_assoc($result);
 
-                        if ($previewing) {
-                            $changes[] = lang(array('string' => 'preview page style set to {var:1}', 'vars' => array($style)));
-                        } else {
-                            $changes[] = lang(array('string' => 'page style set to {var:1}', 'vars' => array($style)));
-                        }
+                    return $row ? (string) $row['style_name'] : '';
+                };
+
+                if ($tally['style_desktop'] > 0) {
+                    $style = $style_label($edit_page_style);
+                    $changes[] = $previewing
+                        ? lang(array('string' => 'preview page style set to {var:1}', 'vars' => array($style)))
+                        : lang(array('string' => 'page style set to {var:1}', 'vars' => array($style)));
+                }
+
+                if ($tally['style_mobile'] > 0) {
+                    $mobile_style = $style_label($edit_mobile_style_id);
+                    $changes[] = $previewing
+                        ? lang(array('string' => 'mobile preview page style set to {var:1}', 'vars' => array($mobile_style)))
+                        : lang(array('string' => 'mobile page style set to {var:1}', 'vars' => array($mobile_style)));
+                }
+
+                if ($tally['search_on'] > 0) {
+                    $changes[] = lang('site search turned on');
+                }
+
+                if ($tally['search_off'] > 0) {
+                    $changes[] = lang('site search turned off');
+                }
+
+                if ($tally['sitemap_on'] > 0) {
+                    $changes[] = lang('added to sitemap.xml');
+                }
+
+                if ($tally['sitemap_off'] > 0) {
+                    $changes[] = lang('removed from sitemap.xml');
+                }
+
+                $number_of_pages = $tally['pages'];
+                $message = '';
+
+                if (($number_of_pages > 0) && $changes) {
+                    if ($number_of_pages == 1) {
+                        $message = lang(array('string' => '{var:1} page was changed: {var:2}.', 'vars' => array($number_of_pages, implode(', ', $changes))));
+                    } else {
+                        $message = lang(array('string' => '{var:1} pages were changed: {var:2}.', 'vars' => array($number_of_pages, implode(', ', $changes))));
                     }
 
-                    // if a mobile page style was applied to any of the page(s), then name the style
-                    if (($edit_mobile_style_id != '') && ($number_of_styled_pages > 0)) {
-                        if ($edit_mobile_style_id == '0') {
-                            $mobile_style = $previewing ? '[' . lang('Activated') . ']' : lang('Default') . ' (' . lang('inherit') . ')';
-                        } else {
-                            $query = "SELECT style_name FROM style WHERE style_id = ?";
-                            $result = db_q($query, array($edit_mobile_style_id)) or output_error('Query failed.');
-                            $row = mysqli_fetch_assoc($result);
-                            $mobile_style = $row['style_name'];
-                        }
+                    log_activity($message, $_SESSION['sessionusername']);
+                }
 
-                        if ($previewing) {
-                            $changes[] = lang(array('string' => 'mobile preview page style set to {var:1}', 'vars' => array($mobile_style)));
-                        } else {
-                            $changes[] = lang(array('string' => 'mobile page style set to {var:1}', 'vars' => array($mobile_style)));
-                        }
-                    }
+                // Said rather than left to be noticed: a change that did
+                // nothing on part of the selection would look like a bug.
+                $left_alone = array();
 
-                    // if the site search was selected to be edited, then say which way
-                    if ($_POST['edit_site_search'] != '') {
-                        $changes[] = ($_POST['edit_site_search'] == '1') ? lang('site search turned on') : lang('site search turned off');
-                    }
+                if ($tally['style_skipped'] > 0) {
+                    $left_alone[] = lang(array(
+                        'string' => 'The style was left alone on {var:1} of them, because a page the visual editor opens carries its own layout.',
+                        'vars' => $tally['style_skipped']));
+                }
 
-                    // if sitemap was selected to be edited, then say which way
-                    if ($_POST['edit_sitemap'] != '') {
-                        $changes[] = ($_POST['edit_sitemap'] == '1') ? lang('added to sitemap.xml') : lang('removed from sitemap.xml');
-                    }
-
-                    // if there is a change, then log it and add notice
-                    if ($changes) {
-                        if ($number_of_pages == 1) {
-                            $message = lang(array('string' => '{var:1} page was changed: {var:2}.', 'vars' => array($number_of_pages, implode(', ', $changes))));
-                        } else {
-                            $message = lang(array('string' => '{var:1} pages were changed: {var:2}.', 'vars' => array($number_of_pages, implode(', ', $changes))));
-                        }
-
-                        // Said rather than left to be noticed: a style that changed
-                        // nothing on part of the selection would look like a bug.
-                        if ($number_of_style_skipped_pages > 0) {
-                            $message .= ' ' . lang(array(
-                                'string' => 'The style was left alone on {var:1} of them, because a page the visual editor opens carries its own layout.',
-                                'vars' => $number_of_style_skipped_pages));
-                        }
-
-                        log_activity($message, $_SESSION['sessionusername']);
-                        $liveform->add_notice(h($message));
+                // The two reasons the list's quick edit gives
+                // (pg_page_quick_decide()).
+                foreach (array(
+                    'sitemap_noindex' => lang('A page closed to search engines is not listed in the site map. Open it to search engines on the page screen first.'),
+                    'sitemap_type' => lang('Pages of this type are not listed in the site map.'),
+                ) as $key => $reason) {
+                    if ($tally[$key] > 0) {
+                        $left_alone[] = lang(array('string' => 'sitemap.xml was left alone on {var:1} of the selected pages.', 'vars' => $tally[$key])) . ' ' . $reason;
                     }
                 }
-                
+
+                if (($message === '') && !$left_alone) {
+                    $message = lang('No change detected.');
+                }
+
+                $message = trim($message . ' ' . implode(' ', $left_alone));
+                $liveform->add_notice(h($message));
+
                 break;
 
             // if pages are being deleted

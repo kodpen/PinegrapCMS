@@ -349,3 +349,32 @@ function test_contact_list_screen_wiring()
 	pg_assert_true(strpos($source, '$show_hide_contact_group_select = ($filter == \'all_duplicate_contacts\')') < strpos($source, '$output_contact_group_selection = \''), 'the duplicates view hides the group picker before its markup is built');
 	pg_assert_true(strpos($source, "db_q(\$query, \$list_filter['params']) or output_error('Query failed.');\n\n    pg_csv_download_start('contacts.csv')") !== false, 'the export queries before the download starts');
 }
+
+function test_contact_list_organized_count_counts_changed_contacts_once()
+{
+	pg_assert_same(0, pg_contact_list_organized_count(array()), 'nothing moved counts nothing');
+	pg_assert_same(2, pg_contact_list_organized_count(array(
+		4 => array('added' => array(219, 220)),
+		5 => array('removed' => array(219)),
+	)), 'a contact moved in two groups counts once');
+	pg_assert_same(1, pg_contact_list_organized_count(array(
+		4 => array('added' => array('7'), 'removed' => array(7)),
+		6 => array(),
+	)), 'ids are compared as whole numbers; an empty group entry adds nothing');
+}
+
+function test_contact_list_organize_dialog_in_page()
+{
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_contacts.php');
+	$module = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/contact_list.php');
+	$popup = (string) file_get_contents(PG_FUNCTIONS_DIR . '/organize_contacts.php');
+	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_contacts.php');
+
+	pg_assert_false(strpos($screen, "window.open(\\'organize_contacts.php") !== false, 'Organize Selected opens no popup window');
+	pg_assert_contains('data-bs-target="#organize_contacts_dialog"', $screen, 'Organize Selected opens the dialog');
+	pg_assert_contains('pgUI.dialog.hide(dialog).then(', $screen, 'the list form is posted once the dialog has closed');
+	pg_assert_contains('WHERE " . pg_audience_hand_sql() . "', $module, 'groups filled by rules are not offered');
+	pg_assert_contains("go(PATH . SOFTWARE_DIRECTORY . '/view_contacts.php');", $popup, 'the old popup address leads back to the list');
+	pg_assert_contains('$number_of_contacts = pg_contact_list_organized_count($moved);', $save, 'only contacts whose groups changed are counted');
+	pg_assert_contains("lang('No contact group was selected.')", $save, 'an organize with no group says so');
+}

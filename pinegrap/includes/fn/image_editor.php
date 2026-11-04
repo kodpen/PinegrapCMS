@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'access', 'fonts', 'glyph', 'warp', 'outline');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'access', 'fonts', 'glyph', 'warp', 'outline', 'builder');
 }
 
 /**
@@ -113,6 +113,7 @@ function pg_image_editor_strings_core()
         'tool_vector'    => lang('Vector'),
         'tool_scissors'  => lang('Scissors'),
         'tool_warp'      => lang('Warp'),
+        'tool_builder'   => lang('Shape builder'),
         'tool_artboard'  => lang('Canvas'),
         'tool_image'     => lang('Image'),
         'tool_export'    => lang('Export'),
@@ -4652,4 +4653,29 @@ function pg_image_editor_action_content($request, $user)
     }
 
     return array(array('status' => 'success'), 200);
+}
+
+// -- Shape builder (pg_image_editor_builder.js) --
+
+/**
+ * The Shape builder part's labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_builder()
+{
+    return array(
+        'pathfinder'     => lang('Combine shapes'),
+        'pfUnite'        => lang('Unite'),
+        'pfMinusFront'   => lang('Subtract front'),
+        'pfIntersect'    => lang('Intersect'),
+        'pfExclude'      => lang('Exclude'),
+        'pfDivide'       => lang('Divide'),
+        'pathfinderNote' => lang('Select two or more closed shapes or paths to combine them. Or drag across the regions where shapes overlap to merge or remove them.'),
+        'builderNote'    => lang('Drag across the regions of the selected shapes to merge or remove them; Alt while dragging removes them too.'),
+        'hintBuilder'    => lang('Drag across overlapping regions: merge them. Alt-drag: remove them.'),
+        'builderDrag'    => lang('Dragging across regions'),
+        'builderMerge'   => lang('Merge'),
+        'builderRemove'  => lang('Remove'),
+    );
 }

@@ -46,6 +46,21 @@ function pg_layout_same_as_generated($content, $generated)
     return preg_replace('/\s+/', '', (string) $content) === preg_replace('/\s+/', '', (string) $generated);
 }
 
+// A view template without its file header: the Pinegrap comment block, the
+// note under it and the PG_INIT_LOADED gate that keep the file from being
+// requested on its own. A generated layout is code an operator copies or
+// edits, so it holds the template markup only. A text that does not start
+// with that block is returned as it is.
+function pg_layout_strip_template_header($content)
+{
+    return preg_replace(
+        '~\A<\?php\s*/\*\*.*?\*/\s*(?://[^\n]*\n\s*)*if\s*\(\s*!\s*defined\(\s*\'PG_INIT_LOADED\'\s*\)\s*\)\s*\{[^{}]*\}\s*\?>[ \t]*(?:\r?\n)?~s',
+        '',
+        (string) $content,
+        1
+    );
+}
+
 function pg_layout_generated($page_id)
 {
     require_once(PG_FUNCTIONS_DIR . '/generate_layout_content.php');
