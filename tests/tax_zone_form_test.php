@@ -121,7 +121,9 @@ function test_tax_zone_form_wide_layout()
 	pg_assert_contains('<div class="col-12 lg:col-8 2xl:col-9 order-1">', $html, 'the form column');
 	pg_assert_contains('<div class="col-12 lg:col-4 2xl:col-3 order-2">', $html, 'the status column');
 	pg_assert_contains('<span id="tax_zone_summary_name">EU &lt;b&gt;</span>', $html, 'the Summary names the zone, escaped');
-	pg_assert_contains('<span id="tax_zone_summary_rate">8.25</span>%', $html, 'the Summary shows the rate');
+	pg_assert_contains('">' . h(pg_tax_zone_form_rate_label('8.25')) . '</span>', $html, 'the Summary shows the rate as the list writes it');
+	pg_assert_contains('data-template="' . h(lang('{var:1}%')) . '"', $html, 'the live Summary has the localized template');
+	pg_assert_contains('<span id="tax_zone_summary_rate" data-template="' . h(lang('{var:1}%')) . '" data-decimal="' . h(pg_number_separators()['decimal']) . '"></span>', pg_tax_zone_form_cards(null, '', ''), 'an empty rate leaves the row empty');
 	pg_assert_contains('<span id="tax_zone_summary_countries">2</span>', $html, 'the Summary counts the picked countries');
 	pg_assert_contains('<span id="tax_zone_summary_states">0</span>', $html, 'the Summary counts the picked states');
 
@@ -168,4 +170,13 @@ function test_tax_zone_form_state_items()
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/tax_zone_form.php');
 	pg_assert_contains('$states = pg_tax_zone_form_state_items(', $source, 'the form lists its states through it');
 	pg_assert_same(0, substr_count($source, 'ORDER BY countries.name'), 'not ordered by the stored country name');
+}
+
+function test_tax_zone_form_rate_label()
+{
+	pg_assert_same('', pg_tax_zone_form_rate_label(''), 'no rate, no sign');
+	pg_assert_same(lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number(8.25, 2)))), pg_tax_zone_form_rate_label('8.25'), 'the decimals the rate has, in the panel separators');
+	pg_assert_same(lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number(20, 0)))), pg_tax_zone_form_rate_label('20'), 'a whole rate has no decimals');
+	pg_assert_contains('pg_list_when(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_tax_zone.php'), 'Last Modified says who, as every list does');
+	pg_assert_contains('formnovalidate', (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_zone.php'), 'Delete is not held back by an empty name');
 }
