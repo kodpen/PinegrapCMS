@@ -1916,6 +1916,7 @@
     "The customer": "Müşteri",
     "The customer and supplier cards at {var:1} beside the ERP accounts.": "{var:1} müşteri ve tedarikçi kartları, ERP carileriyle yan yana.",
     "The customer cannot be told by e-mail: the order has no e-mail address, or the site has no sender address.": "Müşteriye e-postayla haber verilemiyor: siparişte e-posta adresi yok ya da sitenin gönderen adresi tanımlı değil.",
+    "The customer collects the order at this location: no rate is charged, the order takes its units from there, and the checkout offers the method only while the location holds every item of the cart.": "Müşteri siparişi bu konumdan teslim alır: ücret alınmaz, sipariş stoğunu buradan düşer ve ödeme adımı bu yöntemi yalnızca konum sepetteki tüm ürünleri karşıladığı sürece sunar.",
     "The customer could not ask for this return from their account. Record it anyway?": "Müşteri bu iadeyi hesabından isteyemezdi. Yine de kaydedilsin mi?",
     "The customer enters the recipient, message and delivery date at checkout.": "Alıcıyı, mesajı ve teslim tarihini müşteri ödeme adımında girer.",
     "The customer gave no explicit consent.": "Müşteri açık rıza vermedi.",

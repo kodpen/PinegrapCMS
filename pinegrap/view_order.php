@@ -1202,6 +1202,13 @@ if (!$_POST) {
                             h($recipient['shipping_method_name']) . ' (' . h($recipient['shipping_method_code']) . ')' .
                         '</a>';
 
+                    // The place a pickup order is collected at.
+                    $pickup_location = pg_stock_pickup_location($recipient['shipping_method_id']);
+
+                    if ($pickup_location) {
+                        $shipping_method .= '<div class="small fg-secondary">' . h(lang('Pickup at') . ': ' . pg_stock_pickup_place($pickup_location)) . '</div>';
+                    }
+
                 // Otherwise the shipping method no longer exists, so just show code.
                 } else {
                     $shipping_method = h($recipient['shipping_method_code']);

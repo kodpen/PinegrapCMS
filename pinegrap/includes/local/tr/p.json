@@ -820,6 +820,8 @@
     "Picked by the moderators": "Moderatörlerin seçtikleri",
     "Picking files": "Dosya seçme",
     "Pickup Location": "Teslim Alma Noktası",
+    "Pickup at": "Teslim alma yeri",
+    "Pickup at a location": "Bir konumda teslim alma",
     "Pickup booked: {var:1}, {var:2}": "Kurye çağrıldı: {var:1}, {var:2}",
     "Picture": "Görsel",
     "Picture (their photo, else the picture of their initials)": "Görsel (fotoğrafı, yoksa baş harflerinden oluşan görsel)",
