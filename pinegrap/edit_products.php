@@ -560,7 +560,10 @@ if (!$_POST) {
                             } else {
                                 $barcode = str_pad($pid, 5, '0', STR_PAD_LEFT) . str_pad(rand(0, 9999999), 7, '0', STR_PAD_LEFT);
                             }
-                            $exists = db_value("SELECT COUNT(*) FROM product_barcodes WHERE barcode = '" . e($barcode) . "'");
+                            // Taken when another barcode or another product's
+                            // code is the same: a scan would reach either.
+                            $exists = db_value("SELECT COUNT(*) FROM product_barcodes WHERE barcode = '" . e($barcode) . "'")
+                                || pg_product_name_holder($barcode, $pid, false);
                             $attempts++;
                         } while ($exists && $attempts < 30);
 
@@ -572,7 +575,7 @@ if (!$_POST) {
                     }
 
                     if ($assigned > 0) {
-                        log_activity(lang(array('string' => '{var:1} barcode(s) assigned.', 'vars' => array($assigned))));
+                        log_activity(lang(array('string' => '{var:1} barcode(s) assigned.', 'vars' => array($assigned))), $_SESSION['sessionusername']);
                         $liveform->add_notice(lang(array('string' => '{var:1} barcode(s) assigned.', 'vars' => array($assigned))));
                     }
                 }

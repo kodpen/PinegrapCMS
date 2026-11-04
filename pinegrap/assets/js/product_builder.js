@@ -1573,7 +1573,7 @@
 
             html += '<div class="pg-pb-pr-attr border rounded-4 px-5 py-3 mb-3" data-attr-id="' + esc(attrId) + '">' +
                 '<div class="d-flex flex-wrap align-items-center gap-3">' +
-                '<span class="fw-semibold">' + esc(attrName) + '</span>' +
+                '<span class="fw-semibold text-break min-w-0">' + esc(attrName) + '</span>' +
                 '<select class="form-control form-control-sm pg-pb-pr-mode" aria-label="' + esc(attrName) + '">' +
                 choice('', label('No effect on price'), false) +
                 choice('set', label('Sets the price'), (setOwner !== '') && (setOwner !== attrId)) +
@@ -3198,6 +3198,10 @@
         }
 
         $('#variants_json').val(JSON.stringify(collectVariants()));
+        /* Says the ticks above were read: an empty list then means "no
+           attribute", which the edit save writes, rather than a post that
+           never went through this handler. */
+        $('#pg_pb_attributes_posted').val('1');
         $('#attributes_meta_json').val(JSON.stringify(collectAttributeMeta()));
 
         /* Read again rather than taken from activeRules: a value typed a
@@ -3289,12 +3293,22 @@
     });
 
     /* The product price is the base of every rule, so the rows follow it while
-       there are rules. Without rules it keeps seeding new rows only, as
-       before. */
+       there are rules. Without rules the rows nobody typed a price into follow
+       it as well, the way SKU and short description follow #name: a Unit
+       Price typed after the options were ticked otherwise left every row at
+       0.00 and the set was created at that price. */
     $('#price').on('input change', function () {
+
         if (activeRules) {
             refreshRulePrices();
+            return;
         }
+
+        $('#pg_pb_matrix .pg-pb-variant').not('[data-price-manual="1"]')
+            .removeAttr('data-price-auto')
+            .find('.pg-pb-v-price').val(matrixPrice($(this).val()));
+
+        updatePreview();
     });
 
     /* ---------------------------------------------------------- first run */

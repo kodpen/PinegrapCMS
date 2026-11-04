@@ -5,7 +5,8 @@
  * Checks the product screen makes before a save: count boxes read
  * strictly, the quantity range (pg_pb_whole_number_from_input(),
  * pg_pb_number_fields_problem()) and a variant set member's combination
- * (pg_pb_variant_set_clash()).
+ * (pg_pb_variant_set_clash()), and when an edit post unticked every option
+ * (pg_pb_attributes_cleared()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -99,4 +100,33 @@ function test_product_builder_variant_set_clash()
 	pg_assert_same(array(), pg_pb_variant_set_clash(array(array('attribute_id' => 3, 'option_id' => 5)), array(), array()), 'a set naming no attributes');
 	pg_assert_same(array(), pg_pb_variant_set_clash(array(array('attribute_id' => 1, 'option_id' => 38)), $set, $siblings), 'a part of a combination is not a clash');
 	pg_assert_same(array(), pg_pb_variant_set_clash(array(), $set, $siblings), 'nothing chosen');
+}
+
+function test_product_builder_weight_and_dimensions_read_as_numbers()
+{
+	pg_assert_same('', pg_pb_number_fields_problem(array('weight' => '0,125', 'length' => '12.5', 'width' => ' 1.234,5 ', 'height' => ''), '.'), 'decimals, grouping and an empty box');
+	pg_assert_same('', pg_pb_number_fields_problem(array('weight' => '99999999.9999'), '.'), 'the column top');
+	pg_assert_same('', pg_pb_number_fields_problem(array('weight' => '-0'), '.'), 'minus zero');
+
+	foreach (array('abc', '1e5', '12 kg', '5x', '.', ',') as $value) {
+		pg_assert_contains(lang('Length'), pg_pb_number_fields_problem(array('length' => $value), '.'), 'letters refused: ' . $value);
+	}
+
+	pg_assert_contains(lang('Weight'), pg_pb_number_fields_problem(array('weight' => '123456789012'), '.'), 'above the column');
+	pg_assert_contains(lang('Weight'), pg_pb_number_fields_problem(array('weight' => array('1')), '.'), 'an array');
+	// Kilograms are stored as pounds: 50,000,000 kg is above the column once converted.
+	pg_assert_same('', pg_pb_number_fields_problem(array('weight' => '50000000'), '.'), 'fits in pounds');
+	pg_assert_contains(lang('Weight'), pg_pb_number_fields_problem(array('weight' => '50000000', 'convert_to_metric_system' => '1'), '.'), 'too large once converted');
+	pg_assert_same('', pg_pb_number_fields_problem(array('height' => '99999999', 'convert_to_metric_system' => '1'), '.'), 'centimetres shrink to inches');
+}
+
+function test_product_builder_attributes_cleared_needs_the_mark()
+{
+	pg_assert_same(true, pg_pb_attributes_cleared(array('pg_pb_attributes_posted' => '1', 'variants_json' => '[]')), 'every option unticked');
+	pg_assert_same(true, pg_pb_attributes_cleared(array('pg_pb_attributes_posted' => '1', 'variants_json' => ' [] ')), 'spaces around the list');
+	pg_assert_same(false, pg_pb_attributes_cleared(array('variants_json' => '[]')), 'no mark: no script read the ticks');
+	pg_assert_same(false, pg_pb_attributes_cleared(array('pg_pb_attributes_posted' => '1', 'variants_json' => '')), 'an empty field is not an empty list');
+	pg_assert_same(false, pg_pb_attributes_cleared(array('pg_pb_attributes_posted' => '1', 'variants_json' => '[{"name":"A"}]')), 'an option ticked');
+	pg_assert_same(false, pg_pb_attributes_cleared(array('pg_pb_attributes_posted' => '1', 'variants_json' => array('[]'))), 'an array');
+	pg_assert_same(false, pg_pb_attributes_cleared(array('pg_pb_attributes_posted' => '1')), 'nothing posted');
 }

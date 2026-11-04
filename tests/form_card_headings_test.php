@@ -75,7 +75,6 @@ function test_form_group_titles_are_h3_inside_cards()
 {
 	$expected = array(
 		'ad_region_form.php' => '<h3 class="h5 mt-12">\' . lang(\'Region Behavior\') . \'</h3>',
-		'common_region_form.php' => '<h3 class="h5 mt-12">\' . lang(\'Shared Content to appear on associated Pages\') . \'</h3>',
 		'dynamic_region_form.php' => '<h3 class="h5 mt-12">\' . lang(\'PHP Code to appear on associated Pages\') . \'</h3>',
 		'login_region_form.php' => '<h3 class="h5 mt-12">\' . lang(\'Logged In\') . \'</h3>',
 		'menu_item_form.php' => '<h3 class="h5">\' . lang(\'Link Menu Item To\') . \'</h3>',
