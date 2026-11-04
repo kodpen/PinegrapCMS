@@ -1370,6 +1370,7 @@
     "Service price (empty when free)": "Hizmet fiyatı (ücretsizse boş)",
     "Service step": "Hizmet adımı",
     "Service {var}": "Hizmet {var}",
+    "Service: {var:1}": "Hizmet: {var:1}",
     "Services": "Servisler",
     "Services & Booking": "Hizmetler ve Randevu",
     "Services & Prices": "Hizmetler ve Fiyatlar",

@@ -328,8 +328,16 @@ function ws_home_calendar($viewer, $today)
         }
     }
 
+    // The person's own confirmed bookings, read from the bookings table.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
+
+    foreach (ws_booking_calendar_events(pg_booking_calendar_items($me, $start, $end + 1)) as $event) {
+        $items[] = $event;
+    }
+
     return ws_home_calendar_rows($items, $start, $end, time());
 }
+
 
 /**
  * The calendar card's rows: the all-day items first, then by the hour, at
@@ -339,7 +347,7 @@ function ws_home_calendar($viewer, $today)
  * @param int     $start today's first second
  * @param int     $end   today's last second
  * @param int     $now
- * @return array[] id, title, kind, all_day, time, until, now, past, meeting_url, layer
+ * @return array[] id, title, kind, all_day, time, until, now, past, meeting_url, layer, url
  */
 function ws_home_calendar_rows($items, $start, $end, $now)
 {
@@ -361,6 +369,7 @@ function ws_home_calendar_rows($items, $start, $end, $now)
             'past'        => !$all_day && ($to <= $now),
             'meeting_url' => (string) ($event['meeting_url'] ?? ''),
             'layer'       => (string) ($event['layer'] ?? ''),
+            'url'         => (string) ($event['url'] ?? ''),
             'at'          => $all_day ? 0 : $from,
         );
     }
