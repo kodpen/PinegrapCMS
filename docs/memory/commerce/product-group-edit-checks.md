@@ -24,3 +24,10 @@ description: Edit Product Group, Duplicate Product Group and Featured and New It
 
 ## Does Featured and New Items list binned records?
 - No. `get_items_that_can_be_featured_and_new()` filters groups with `pg_catalog_bin_live_sql('product_groups')` and products with `pg_catalog_bin_live_sql('products')`; the save walks the same list.
+
+## What does a Create or Edit Product Group save refuse?
+- `pg_product_group_form_post_problems()` (pure, `tests/product_group_form_test.php`): a name blank once trimmed, a name or short description past 100 characters, a sort order of a ticked product or child group that is no whole number 0-65535 (`pg_product_group_form_sort_order()`). Before, '   ' was saved as a name and '-12' was stored as 0 by the smallint unsigned column.
+
+## Can a group with sub-groups be deleted from Edit Product Group?
+- With the Recycle Bin yes: the subtree goes there together, and the ask says so. Without the bin Delete is disabled with the reason beside it; no native alert().
+- A binned group offers no Duplicate, and `duplicate_product_group.php` refuses it: a copy came out live without its (binned) sub-groups.
