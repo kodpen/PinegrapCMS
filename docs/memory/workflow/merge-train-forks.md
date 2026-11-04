@@ -11,7 +11,7 @@ description: A PR from a fork never rides a merge train, never lands alone and i
 - Since 2026-11-04 the repository's Actions setting requires approval for all external contributors, so a fork PR's checks do not run until the owner approves them; no check run is not green (`merge_train_checks_green()`).
 
 ## Where does the tool enforce it?
-- `merge_train_same_repo($pr)`: the head and base repository ids that the pulls endpoint gives are equal; no head repository (a deleted fork) counts as a fork.
+- `merge_train_same_repo($pr)` (#6720): the head and base repository ids that the pulls endpoint gives are equal; no head repository (a deleted fork) counts as a fork.
 - `--list` (`merge_train_candidates()`) skips fork PRs; `--build` leaves a fork PR out even when it is named; `merge_train_open_trains()` counts only this repository's `merge-train/*` branches, so a fork's branch of that name holds no lock and carries no PR numbers.
 - Tests: `tests/merge_train_test.php` (`test_merge_train_same_repo`, `test_merge_train_open_trains_from_this_repository_only`).
 
