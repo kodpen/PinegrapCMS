@@ -89,6 +89,70 @@
 
   /* ── Calendar · today ─────────────────────────────────────────────────── */
 
+  /* The dashboard's list rows with a time box in the place of the date box:
+     the start hour, or "all day" in smaller type; the one going on now
+     framed in the accent, the ones over dimmed. The join link is a compact
+     dashboard button at the row's end. */
+
+  .ws-today .ws-today-event-time {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 3.25rem;
+    min-height: 2.25rem;
+    padding: .1875rem .25rem;
+    border: 1px solid var(--pgd-line);
+    border-radius: .6875rem;
+    background: var(--pgd-fill);
+    font-size: .875rem;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -.01em;
+    color: var(--pgd-strong);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+
+  .ws-today .ws-today-event-time.is-all-day {
+    font-size: .6875rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    color: var(--pgd-soft);
+    overflow-wrap: anywhere;
+  }
+
+  .ws-today .ws-today-event.is-now .ws-today-event-time {
+    border-color: var(--pgd-accent-line);
+    background: color-mix(in srgb, var(--pgd-accent) 14%, transparent);
+    color: var(--pgd-accent);
+  }
+
+  .ws-today .ws-today-event.is-past .ws-today-event-time,
+  .ws-today .ws-today-event.is-past .pg-dash-item-main {
+    opacity: .55;
+  }
+
+  .ws-today .ws-today-event-now {
+    flex: none;
+    padding-block: .0625rem;
+    font-size: .75rem;
+  }
+
+  .ws-today .ws-today-event-join {
+    flex: none;
+    gap: .375rem;
+    min-height: 2rem;
+    padding-inline: .625rem;
+    font-size: .8125rem;
+  }
+
+  @media (forced-colors: active) {
+    .ws-today .ws-today-event.is-now .ws-today-event-time {
+      border-color: Highlight;
+    }
+  }
+
   /* ── What happened in the channels ────────────────────────────────────── */
 
   /* ── Latest decisions ─────────────────────────────────────────────────── */

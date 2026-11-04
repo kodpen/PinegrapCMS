@@ -7896,53 +7896,76 @@
         },
 
         // Today's plan items about the person and their own calendars'
-        // events (home.php): the hour, a bar, the title; the one going on
-        // now marked, the ones over dimmed, a meeting's call to join.
+        // events (home.php) as the new dashboard's list rows: a time box
+        // (the start hour, or "all day") in front of the title and its
+        // span; the one going on now framed in the accent with its badge and
+        // a meeting's call to join, the ones over dimmed.
         homeCalendar: function (data) {
             var card = todayCard('calendar', t('home_calendar'), 'bi-calendar-event', 'S', 'team', CFG.urls.calendar || '', t('home_calendar_more'));
             var items = data.calendar || [];
 
             if (!items.length) {
-                card.body.appendChild(el('div', 'ws-home-empty', t('home_calendar_empty')));
+                card.body.appendChild(el('p', 'pg-dash-item-none', t('home_calendar_empty')));
+                return card.node;
             }
 
+            this.homeCount(card, items.length);
+
+            var list = el('ul', 'pg-dash-items ws-today-events');
+
             items.forEach(function (item) {
-                var row = el('div', 'ws-home-event' + (item.now ? ' ws-home-event-now' : '') + (item.past ? ' ws-home-event-past' : ''));
+                var row = el('li', 'pg-dash-item ws-today-event' + (item.now ? ' is-now' : '') + (item.past ? ' is-past' : ''));
 
-                row.appendChild(el('span', 'ws-home-event-time', item.all_day ? t('home_all_day') : item.time));
-                row.appendChild(el('span', 'ws-home-event-bar'));
+                // The time box is the start alone; under a timed title the
+                // span says it in full, so only "all day" is read from the box.
+                var when = el('span', 'ws-today-event-time' + (item.all_day ? ' is-all-day' : ''), item.all_day ? t('home_all_day') : item.time);
 
-                var text = el('span', 'ws-home-row-text');
-                var title = el(item.url ? 'a' : 'span', 'ws-home-row-title', item.title);
+                if (!item.all_day) {
+                    when.setAttribute('aria-hidden', 'true');
+                }
+
+                row.appendChild(when);
+
+                var main = el('div', 'pg-dash-item-main');
+                var title = el(item.url ? 'a' : 'span', 'pg-dash-item-text', item.title);
 
                 // A booking opens on the agenda.
                 if (item.url) {
                     title.href = item.url;
                 }
 
-                text.appendChild(title);
+                title.title = item.title;
+                main.appendChild(title);
 
-                if (!item.all_day || item.layer) {
-                    text.appendChild(el('small', 'fg-secondary', [item.all_day ? '' : item.time + '–' + item.until, item.layer].filter(Boolean).join(' · ')));
+                var note = [item.all_day ? '' : item.time + '–' + item.until, item.layer].filter(Boolean).join(' · ');
+
+                if (note) {
+                    main.appendChild(el('span', 'pg-dash-item-note', note));
                 }
 
-                row.appendChild(text);
+                row.appendChild(main);
 
                 if (item.now) {
-                    row.appendChild(el('span', 'badge rounded-pill theme-success', t('home_now')));
+                    var now = el('span', 'pg-dash-chip ws-today-event-now', t('home_now'));
+                    now.setAttribute('data-tone', 'good');
+                    row.appendChild(now);
                 }
 
                 // A call link is followed only when it is a web address.
                 if (item.meeting_url && /^https?:/i.test(item.meeting_url) && !item.past) {
-                    var call = el('a', 'btn btn-sm btn-outline theme-secondary rounded-pill', t('join'));
+                    var call = el('a', 'pg-dash-btn pg-dash-item-action ws-today-event-join', t('join'));
                     call.href = item.meeting_url;
                     call.target = '_blank';
                     call.rel = 'noopener noreferrer';
+                    call.setAttribute('aria-label', t('join') + ': ' + item.title);
+                    call.insertBefore(icon('bi-camera-video'), call.firstChild);
                     row.appendChild(call);
                 }
 
-                card.body.appendChild(row);
+                list.appendChild(row);
             });
+
+            card.body.appendChild(list);
 
             return card.node;
         },
