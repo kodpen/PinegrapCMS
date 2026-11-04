@@ -167,7 +167,7 @@ foreach ($ap_followers as $ap_follower) {
                                 <tr>
                                     <td>' . h(($ap_follower['name'] !== '') ? $ap_follower['name'] : $ap_follower['host']) . '</td>
                                     <td class="text-break"><a href="' . h($ap_follower['actor_id']) . '" target="_blank" rel="noopener noreferrer">' . h($ap_follower['actor_id']) . '</a></td>
-                                    <td class="text-nowrap">' . ((int) $ap_follower['followed_at'] ? h(get_absolute_time(array('timestamp' => (int) $ap_follower['followed_at']))) : '') . '</td>
+                                    <td class="text-nowrap">' . ((int) $ap_follower['followed_at'] ? get_absolute_time(array('timestamp' => (int) $ap_follower['followed_at'])) : '') . '</td>
                                 </tr>';
 }
 
@@ -229,7 +229,7 @@ foreach (pg_ap_delivery_log(50) as $ap_delivery) {
                                     <td class="text-break">' . h($ap_delivery['host']) . '</td>
                                     <td>' . h(isset($ap_states[$ap_delivery['state']]) ? $ap_states[$ap_delivery['state']] : $ap_delivery['state']) . '</td>
                                     <td class="text-end">' . (int) $ap_delivery['attempts'] . '</td>
-                                    <td class="text-nowrap">' . ($ap_delivery['created_at'] ? h(get_absolute_time(array('timestamp' => $ap_delivery['created_at']))) : '') . '</td>
+                                    <td class="text-nowrap">' . ($ap_delivery['created_at'] ? get_absolute_time(array('timestamp' => $ap_delivery['created_at'])) : '') . '</td>
                                     <td class="text-end">' . ($ap_delivery['retry'] ? '<button type="submit" name="ap_retry" value="' . $ap_delivery['id'] . '" class="btn btn-sm btn-outline theme-secondary"><span class="pg-btn-label">' . lang('Try again') . '</span></button>' : '') . '</td>
                                 </tr>';
 }
