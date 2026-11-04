@@ -55,7 +55,7 @@ function test_contact_group_form_name_required_on_both_screens()
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_contact_group.php');
 	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/contact_group_form.php');
 
-	pg_assert_contains("pg_contact_group_form_cards($liveform, array('required' => true))", $add, 'create marks the name required');
+	pg_assert_contains("pg_contact_group_form_cards(\$liveform, array('required' => true))", $add, 'create marks the name required');
 	pg_assert_contains("'required' => true,", $edit, 'edit marks the name required too');
 	pg_assert_contains('name="submit_delete" value="Delete" formnovalidate', $edit, 'Delete submits with an emptied name');
 	pg_assert_contains("'class'=>'form-control') + \$required)", $form, 'required follows the class attribute');
