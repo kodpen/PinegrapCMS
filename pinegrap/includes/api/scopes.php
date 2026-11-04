@@ -55,7 +55,9 @@ function api_scope_groups() {
 		// application never rewrites a layout by itself. It may add a page as a
 		// draft, set when a page goes on the site and comes off it, put back a
 		// layout a person published before (a revision), and share a design's
-		// drafts as a prototype by a link (never as an MCP tool).
+		// drafts as a prototype by a link (never as an MCP tool). Ads and ad
+		// regions are the exception: they are written directly and go live at
+		// once (/design/ads, /design/ad-regions), as on their panel screens.
 		'design'    => array('label' => 'Page design', 'read' => 'design:read',   'write' => 'design:write'),
 
 		// A/B experiments of the designed pages and their results. Writing
