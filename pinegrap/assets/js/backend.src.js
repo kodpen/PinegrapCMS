@@ -10070,11 +10070,11 @@ function pg_poll_while_visible(poll, ms) {
         el.setAttribute('aria-atomic', 'true');
         el.innerHTML =
             '<div class="d-flex">' +
-                '<div class="toast-body">' +
+                '<div class="toast-body flex-grow-1">' +
                     '<i class="bi ' + iconMap[variant] + ' me-3" aria-hidden="true"></i>' +
                     escapeHtml(message) +
                 '</div>' +
-                '<button type="button" class="btn-close me-3 m-auto" data-bs-dismiss="toast" aria-label="' + escapeHtml(lang('Close')) + '"></button>' +
+                '<button type="button" class="btn-close ms-2 me-3 my-auto flex-shrink-0" data-bs-dismiss="toast" aria-label="' + escapeHtml(lang('Close')) + '"></button>' +
             '</div>';
         container.appendChild(el);
 
@@ -14462,5 +14462,43 @@ $(document).on('submit', 'form', function (event) {
         document.addEventListener('DOMContentLoaded', addStyle);
     } else {
         addStyle();
+    }
+})();
+
+// The mascot in the panel's logo (pg_logo_markup()) plays as a short muted
+// loop. Reduced motion, a data saver or a small device keep its still poster,
+// and so does a browser that refuses to play it: the video is only fetched
+// once play() is called.
+(function () {
+    function pgLogoVideos() {
+        var still = true;
+
+        try {
+            var connection = navigator.connection;
+
+            still = (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+                || !!(connection && connection.saveData)
+                || !!(navigator.deviceMemory && (navigator.deviceMemory < 2));
+        } catch (e) {
+            still = true;
+        }
+
+        if (still) {
+            return;
+        }
+
+        Array.prototype.forEach.call(document.querySelectorAll('video[data-pg-logo-video]'), function (video) {
+            var playing = video.play ? video.play() : null;
+
+            if (playing && playing.catch) {
+                playing.catch(function () {});
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', pgLogoVideos);
+    } else {
+        pgLogoVideos();
     }
 })();

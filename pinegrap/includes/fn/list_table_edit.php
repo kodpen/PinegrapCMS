@@ -177,6 +177,33 @@ function pg_page_quick_folder_choices($folders, $may, $workspace, $bin)
 }
 
 /**
+ * The class each offered folder's option wears: the folder's own access
+ * type, as the page screen's picker prints it (select_folder()), so the
+ * list colours every folder as the picker and the folder tree do. A folder
+ * that inherits its access, or has an unknown type, gets none. Pure.
+ *
+ * @param array $folders rows (folder_id, folder_access_control_type)
+ * @param array $choices pg_page_quick_folder_choices()
+ * @return array folder id => class
+ */
+function pg_page_quick_folder_classes($folders, $choices)
+{
+    $known = array('public', 'guest', 'registration', 'membership', 'private');
+    $classes = array();
+
+    foreach ((array) $folders as $folder) {
+        $id = (int) $folder['folder_id'];
+        $type = strtolower((string) ($folder['folder_access_control_type'] ?? ''));
+
+        if (isset($choices[$id]) && in_array($type, $known, true)) {
+            $classes[$id] = $type;
+        }
+    }
+
+    return $classes;
+}
+
+/**
  * The value => label pairs of a picker's <option> list, as the page screen
  * prints it (select_style(), get_mobile_style_options(), select_page_type()).
  * Pure.
@@ -204,7 +231,7 @@ function pg_page_quick_option_pairs($html)
  * may set (the page screen's picker, select_page_type()).
  *
  * @param array $user the signed-in user
- * @return array 'device', 'preview_theme_id', 'folders', 'styles', 'style_label', 'types'
+ * @return array 'device', 'preview_theme_id', 'folders', 'folder_classes', 'styles', 'style_label', 'types'
  */
 function pg_page_quick_edit_choices($user)
 {
@@ -220,8 +247,9 @@ function pg_page_quick_edit_choices($user)
     $device = pg_page_list_device_type();
     $preview = pg_page_quick_preview_theme($device);
 
-    $folders = db_items("SELECT folder_id, folder_name, folder_parent, folder_archived FROM folder ORDER BY folder_level, folder_order, folder_name");
-    $folders = pg_page_quick_folder_choices(is_array($folders) ? $folders : array(), function ($folder_id) {
+    $rows = db_items("SELECT folder_id, folder_name, folder_parent, folder_archived, folder_access_control_type FROM folder ORDER BY folder_level, folder_order, folder_name");
+    $rows = is_array($rows) ? $rows : array();
+    $folders = pg_page_quick_folder_choices($rows, function ($folder_id) {
         return check_edit_access($folder_id);
     }, (int) pg_workspace_folder_id(), (int) pg_recycle_bin_folder_id());
 
@@ -238,6 +266,7 @@ function pg_page_quick_edit_choices($user)
         'device' => $device,
         'preview_theme_id' => $preview,
         'folders' => $folders,
+        'folder_classes' => pg_page_quick_folder_classes($rows, $folders),
         'styles' => $styles,
         'style_label' => ($device === 'mobile') ? lang('Mobile Page Style') : lang('Desktop Page Style'),
     );
@@ -266,7 +295,8 @@ function pg_page_quick_edit_columns($user = null, $choices = null)
         $choices = is_array($choices) ? $choices : pg_page_quick_edit_choices($user);
 
         $columns['name'] = array('type' => 'text', 'label' => lang('Name'), 'required' => true, 'max' => 100);
-        $columns['folder'] = array('type' => 'select', 'label' => lang('Folder'), 'options' => $choices['folders']);
+        $columns['folder'] = array('type' => 'select', 'label' => lang('Folder'), 'options' => $choices['folders'],
+            'option_classes' => $choices['folder_classes'] ?? array());
 
         if ((int) $user['role'] < 3) {
             $columns['style'] = array('type' => 'select', 'label' => $choices['style_label'], 'options' => $choices['styles']);

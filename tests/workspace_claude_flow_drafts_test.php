@@ -175,3 +175,16 @@ function test_workspace_claude_flow_drafts_card_fits_the_column()
 	pg_assert_contains('grid-template-columns: minmax(0, 1fr);', $rule[1] ?? '', 'the column');
 	pg_assert_contains('max-width: 34rem;', $rule[1] ?? '', 'as wide as before at most');
 }
+
+// The answer is sent once: a refused one posts nothing, so no trial answer
+// is sent to see what the site says. On 2026-11-04 Claude answered a request
+// with "probe" and a two-box draft named "x", and the flow asked for never came.
+function test_workspace_claude_flow_drafts_no_trial_answer()
+{
+	$text = ws_claude_routine_prompt('https://shop.example/pinegrap/integration.php');
+
+	pg_assert_contains('A refused answer posts nothing and the request stays open', $text, 'a refusal writes nothing');
+	pg_assert_contains('never a trial or test answer,', $text, 'no trial answer');
+	pg_assert_contains('nor a change made only to see what the site says', $text, 'no trial draft');
+	pg_assert_contains('is posted to the channel and ends the request', $text, 'a taken answer is final');
+}

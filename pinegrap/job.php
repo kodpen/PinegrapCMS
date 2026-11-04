@@ -825,6 +825,22 @@ if (pg_privacy_retention_due()) {
     }
 }
 
+// Cancelled appointment bookings past 400 days since their last change
+// (includes/fn/booking_retention.php): once a day, five seconds a tick until
+// the pass is through. Nothing to do on a site without the booking tables; a
+// tick with nothing due reads one small file.
+if (pg_booking_retention_due()) {
+
+    $booking_retention = pg_booking_retention_run(5);
+
+    if ($booking_retention['removed'] > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} cancelled booking(s) older than {var:2} days',
+            'vars'   => array(pg_format_number($booking_retention['removed'], 0), pg_booking_retention_limits()['days']),
+        )), 'UNKNOWN');
+    }
+}
+
 // The price visitors are shown under the offers, into the product price
 // history (pg_price_history_offer_pass_run()): once an hour, ten seconds a
 // tick until the pass is through. A tick with nothing due reads one small

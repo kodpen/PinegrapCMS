@@ -429,6 +429,10 @@ function pg_credit_issue($user_id, $amount, $kind, $reason = '', $expires = 0, $
         if (function_exists('pg_credit_mail_issued')) {
             pg_credit_mail_issued($id);
         }
+
+        if (function_exists('pg_credit_announce')) {
+            pg_credit_announce('credit.issued', $id);
+        }
     }
 
     return $id;

@@ -70,6 +70,14 @@ if (!$_POST) {
         $count++;
     }
     
+    // The last change, under the Summary.
+    $last_change = db_item(
+        "SELECT arrival_dates.timestamp, user.user_username
+        FROM arrival_dates
+        LEFT JOIN user ON user.user_id = arrival_dates.user
+        WHERE arrival_dates.id = '" . $id . "'");
+    $status_rows = pg_arrival_date_form_status_row(lang('Last Modified'), get_relative_time(array('timestamp' => (int) ($last_change['timestamp'] ?? 0))) . ((string) ($last_change['user_username'] ?? '') !== '' ? ' ' . h($last_change['user_username']) : ''));
+
     $output =
     pg_page_shell([
         'title'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Arrival Date'))),
@@ -82,30 +90,18 @@ if (!$_POST) {
             'breadcrumb' => array(array('label' => lang('All Shipping Arrival Dates'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_arrival_dates.php'), array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Arrival Date'))))),
         ]) . '
 <main id="content" class="container-fluid">
-            ' . get_date_picker_format() . '
-        <div class="row">
-            <div class="col-12">
-                ' . $liveform->output_errors() . '
-                ' . $liveform->output_notices() . '
-                
-                <form name="form" action="edit_arrival_date.php" method="post">
-                    ' . get_token_field() . '
-                    <input type="hidden" id="last_shipping_cutoff_number" name="last_shipping_cutoff_number" value="0" />
-                    ' . pg_arrival_date_form_cards($arrival_date_row, $output_shipping_cutoffs_for_javascript) . '
-                    ' . pg_fields_script() . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('arrival date')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
-                    <input type="hidden" name="id" value="' . h($_GET['id']) . '">
-                </form>
-            </div>
-        </div>
-    
+    ' . get_date_picker_format() . '
+    ' . $liveform->output_errors() . '
+    ' . $liveform->output_notices() . '
+    <form name="form" action="edit_arrival_date.php" method="post">
+        ' . get_token_field() . '
+        <input type="hidden" id="last_shipping_cutoff_number" name="last_shipping_cutoff_number" value="0" />
+        <input type="hidden" name="id" value="' . $id . '">
+        ' . pg_arrival_date_form_layout(pg_arrival_date_form_cards($arrival_date_row, $output_shipping_cutoffs_for_javascript, $status_rows), '
+                                        <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('arrival date'))))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>') . '
+        ' . pg_fields_script() . '
+    </form>
 </main>' .
     output_footer();
 
@@ -122,7 +118,7 @@ if (!$_POST) {
         $errors = pg_arrival_date_form_errors($_POST);
 
         if ($errors) {
-            output_error(implode(' ', array_map('h', $errors)) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+            output_error(pg_arrival_date_form_error_text($errors) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
     }
 

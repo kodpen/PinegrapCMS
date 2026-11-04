@@ -793,7 +793,6 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --bs-body-bg: rgb(var(--pg-body-bg-rgb));
   --bs-card-bg: var(--pg-card-bg);
   --dt-row-selected-text: unset;
-  --pg-logo-fallback-color: var(--pg-logo-color-1);
 
   /* Ink printed on every filled accent. The pastel fills below sit between
      0.30 and 0.70 relative luminance, where white text tops out near 2.9:1;
@@ -947,10 +946,12 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
      a blurred glyph rather than a lit one. */
   --clock-glow: rgba(219, 39, 119, 0.28);
   --clock-bloom: 7px;
-  /* Logo gradient stops. Single source of truth: the CSS text gradient and the
-     inline SVG logo in the navbar both read these two colors. */
-  --pg-logo-color-1: rgb(23 73 177);
-  --pg-logo-color-2: rgb(207 105 0);
+  /* Logo gradient stops: blue, purple in the middle (3) and pink, the colours
+     of the mascot's nebula, deep enough to read on white. The inline wordmark
+     and the CSS text gradient read them. */
+  --pg-logo-color-1: #3D5AFE;
+  --pg-logo-color-2: #FF3D72;
+  --pg-logo-color-3: #B44DFF;
   --pg-card-bg: rgb(245, 245, 245);
 }
 
@@ -1009,8 +1010,9 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --clock-gradient: linear-gradient(100deg, #22d3ee 0%, #818cf8 50%, #f472b6 100%);
   --clock-glow: rgba(244, 114, 182, 0.5);
   --clock-bloom: 14px;
-  --pg-logo-color-1: rgb(142 179 255);
-  --pg-logo-color-2: rgb(255 188 119);
+  --pg-logo-color-1: #7D8FFF;
+  --pg-logo-color-2: #FF7096;
+  --pg-logo-color-3: #C37CFF;
   --pg-card-bg: rgb(12, 13, 15);
 }
 
@@ -8548,16 +8550,18 @@ html[data-bs-theme="dark"] .pg-next {
 }
 
 /* ──────────────────────────────────────────────────────────────────────
-   Navbar brand: inline SVG logo lockup (icon + Pinegrap wordmark)
+   Navbar brand: the mascot's window and the Pinegrap wordmark
    ────────────────────────────────────────────────────────────────────
    Layout-shift notes — every rule here earns its place:
-   - The lockup is inline-flex with line-height:1 so the SVG never sits on a
-     text baseline. An inline SVG defaults to display:inline, which reserves
-     descender space below it and pushes the 50px navbar row around.
-   - .pinegrap-logo carries an explicit width AND height derived from one
-     variable, so the box is known before the SVG paints (no CLS) and the
-     version pill next to it never jumps.
-   - Below md the header hides the lockup altogether (#header .pg-brand-item).
+   - The lockup is inline-flex with line-height:1 so nothing sits on a text
+     baseline and pushes the 50px navbar row around.
+   - The mascot (a muted loop over its still poster) and the inline wordmark
+     carry explicit sizes from one variable, so the box is known before they
+     paint (no CLS) and the version pill never jumps.
+   - The wordmark's view box keeps room above the letters as large as the
+     descenders below, so centring it centres the letters on the mascot.
+   - Below md the header shows the mascot alone: a narrow place gets the
+     square, a wide one the whole lockup.
    ──────────────────────────────────────────────────────────────────── */
 .pinegrap-logo-lockup {
   display: inline-flex;
@@ -8566,35 +8570,63 @@ html[data-bs-theme="dark"] .pg-next {
   line-height: 1;
 }
 
+/* Only knob worth touching: --pg-logo-h, the mascot's side (32px in the
+   header); the wordmark follows. A wrapper sets it for a larger lockup
+   (installer, theme designer, loading curtain). */
 .pinegrap-logo {
-  /* Only knob worth touching: everything below scales off this. */
-  --pg-logo-h: 30px;
-  /* viewBox 530.44 x 142.47 -> full lockup aspect ratio */
-  --pg-logo-w: calc(var(--pg-logo-h) * 3.7232);
-
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--pg-logo-h, 32px) * 0.22);
   flex: 0 0 auto;
-  height: var(--pg-logo-h);
-  width: var(--pg-logo-w);
-  overflow: hidden;
+  height: var(--pg-logo-h, 32px);
   line-height: 0;
-  color: var(--pg-logo-fallback-color);
 }
 
-.pinegrap-logo > svg {
+/* A square video (the loop, its poster): the window's corners are rounded
+   here, at the mascot drawing's 116/512. */
+.pinegrap-logo-mark {
   display: block;
-  height: 100%;
-  width: var(--pg-logo-w);
-  fill: url(#pgLogoGradient);
+  flex: none;
+  width: var(--pg-logo-h, 32px);
+  height: var(--pg-logo-h, 32px);
+  border-radius: 22.6%;
+  object-fit: cover;
+  background: #0E1440;
 }
 
-/* Below md the full lockup no longer fits beside the menu button and the
-   right hand cluster, and the bar had room only for a sliver of the logo and
-   three letters of the page name. Both give way there, so the menu button
-   and the controls opposite keep the whole row; from md up nothing changes. */
+.pinegrap-logo-word {
+  display: block;
+  flex: none;
+}
+
+/* viewBox 958 x 375: the letters' height is 0.62 of the mascot's side. */
+.pinegrap-logo-word > svg {
+  display: block;
+  height: calc(var(--pg-logo-h, 32px) * 1.345);
+  width: calc(var(--pg-logo-h, 32px) * 3.436);
+}
+
+/* Below md the lockup no longer fits beside the menu button and the right
+   hand cluster: the mascot stays as the square logo, the wordmark, the
+   version pill and the page heading give way, so the controls keep the row.
+   From md up nothing changes. */
 @media (max-width: 767.98px) {
-  #header .pg-brand-item,
+  #header .pinegrap-logo-word,
+  #header .pinegrap-version,
   #header .pg-navhead {
+    display: none;
+  }
+
+  #header .pg-brand-item > a {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+}
+
+/* The row of controls needs 348px; the mascot adds 40. Below 390px it gives
+   way too rather than push the site link off the bar. */
+@media (max-width: 389.98px) {
+  #header .pg-brand-item {
     display: none;
   }
 }
@@ -8602,8 +8634,8 @@ html[data-bs-theme="dark"] .pg-next {
 .pinegrap-version {
   font-size: 0.65em;
     position: absolute;
-    bottom: -5px;
-    left: 18px;
+    bottom: -7px;
+    left: 22px;
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -9275,8 +9307,8 @@ html.pg-is-leaving * { cursor: progress !important; }
     display: flex;
     animation: pg-preloader-appear .45s ease .3s forwards;
 }
-.pg-preloader-logo { display: block; width: min(210px, 46vw); }
-.pg-preloader-logo svg { display: block; width: 100%; height: auto; }
+.pg-preloader-logo { display: block; }
+.pg-preloader-logo { --pg-logo-h: min(56px, 13vw); }
 .pg-preloader-dots {
     display: flex; gap: 7px;
 }
@@ -22482,6 +22514,33 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 }
 .pg-list-table-field {
   min-width: 6rem;
+}
+/* A select in a cell coloured by an access level (.private * and the like)
+   keeps the field's own colour; it and each option wear their own level's
+   class instead (the Pages list's folders, tintSelect()). */
+select.pg-list-table-field,
+select.pg-list-table-field option {
+  color: var(--pg-fg-body);
+}
+select.pg-list-table-field.public,
+select.pg-list-table-field option.public {
+  color: var(--pg-access-public);
+}
+select.pg-list-table-field.guest,
+select.pg-list-table-field option.guest {
+  color: var(--pg-access-guest);
+}
+select.pg-list-table-field.registration,
+select.pg-list-table-field option.registration {
+  color: var(--pg-access-registration);
+}
+select.pg-list-table-field.membership,
+select.pg-list-table-field option.membership {
+  color: var(--pg-access-membership);
+}
+select.pg-list-table-field.private,
+select.pg-list-table-field option.private {
+  color: var(--pg-access-private);
 }
 .pg-list-table-grid > tbody > tr > td[aria-busy="true"] > .pg-list-table-field {
   opacity: 0.6;

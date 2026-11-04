@@ -332,34 +332,60 @@ function pg_chat_launcher_html()
 
 
 /**
- * The brand lockup, as inline SVG.
+ * The Pinegrap wordmark, as inline SVG.
  *
  * Inline rather than an <img> so the gradient can read the theme's
- * --pg-logo-color-* variables and follow light/dark mode. It lives in a
- * function because two places draw it now — the header and the loading
- * curtain — and a second copy of an eight-kilobyte path list is the copy
- * that stops matching.
+ * --pg-logo-color-* variables and follow light/dark mode; each stop carries
+ * its colour as the fallback for a page without the panel stylesheet. One
+ * line drawn with round ends (stroke 22 here: the header and curtain sizes;
+ * assets/images/pinegrap-wordmark.svg is the 18 master). The view box keeps
+ * 100 units above the letters, as much as the descenders take below, so a
+ * flex row centres the letters' height on the mascot beside them.
  *
- * $id_suffix keeps the gradient ids unique when both copies are on the page:
- * duplicate ids resolve to the first element, which happens to look the same
- * here, but only by luck. One regex pass rather than str_replace: str_replace
- * with an array runs each pair over the WHOLE string in turn, so renaming
- * 'pgLogoGradientIcon' first and 'pgLogoGradient' second produced
- * 'pgLogoGradient-plIcon-pl' — the second pass walking back into the first
- * pass's output.
+ * $id_suffix keeps the gradient id unique when two copies are on the page
+ * (header and loading curtain): duplicate ids resolve to the first element.
  */
 function pg_logo_svg($id_suffix = '')
 {
     $svg = <<<'PGLOGOSVG'
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 530.44 142.47" role="img" aria-label="PineGrap" fill="url(#pgLogoGradient)"><defs><linearGradient id="pgLogoGradient" gradientUnits="userSpaceOnUse" x1="0" y1="142.47" x2="530.44" y2="0"><stop offset="0" style="stop-color:var(--pg-logo-color-1)"/><stop offset=".75" style="stop-color:var(--pg-logo-color-2)"/></linearGradient><linearGradient id="pgLogoGradientIcon" gradientUnits="userSpaceOnUse" x1="0" y1="142.47" x2="64.6" y2="0"><stop offset="0" style="stop-color:var(--pg-logo-color-1)"/><stop offset=".75" style="stop-color:var(--pg-logo-color-2)"/></linearGradient></defs><path d="M64.38,1.66c-.04-.09-.16-.06-.16,0l-.1,2.74c-.24,1.08-.08,2.15.26,3.15l.06,1.21c-14.53.04-27.91,5.61-38.28,15.32-3.38,3.16-6.16,6.51-8.54,10.36l-1.44,2.33c-.76,1.23-1.44,2.44-1.82,3.94,1.51-2.34,3.03-4.36,4.98-6.32,3.66-3.68,7.73-6.81,12.35-8.9l22.66,22.66,2.56-1.44c2.44-.93,4.81-1.75,7.49-1.65v3.17c-2.94.09-5.58.88-8.13,2.46l1.97,2c1.95-1.01,4.23-1.84,6.15-1.81v3.03c-4.86.35-8.76,3.6-10.04,8.44-1.74,6.6,3.14,13.16,10.03,13.61l-.02,2.97c-2.7-.1-5.3-.89-7.43-2.56-.26-.2-.69-.9-1.05-.58l-1.84,1.62c2.51,2.5,6.75,4.22,10.36,4.19l-.05,3.21c-3.63-.15-7.06-1.18-10.11-3.24l-2.49,2.39-1.84-1.18c-1.1-.47-3.08-.57-4.06.4l-10.5,10.5-8.01,8c-1.19,1.19-2.87,1.43-4.45,1.46l-1.58.03c-1.07,1.14-2.28,2.09-3.42,3.16l-1.87,1.75c-5.7-6.39-10.2-13.53-12.89-21.52-1.36-4.04-2.57-8.08-2.91-12.36l-.24-17.76c1.69-11.47,5.87-22.29,13.11-31.49C23.4,11.86,37.96,3.28,53.83.87c3.61-.55,6.93-.98,10.58-.85l-.03,1.63ZM17.72,87.12c1.85.53,3.61.58,5.48.75,3.84.35,6.04,4.12,5.19,8.2l2.55-2.41,21.81-21.77c.33-.33-.33-.8-.44-1.05-2.26-5.13-1.37-11.13,2.28-15.39-1.24-1-2.24-2.05-3.33-3.16l-10.01-10.07-3.17-3.24c-.59.45-1.19.56-1.83.78-5.46,1.88-10.05,5.21-14.15,9.31-4.94,4.95-9.45,10.12-13.8,15.57-1.64,2.06-5.05,6.31-2.51,7.02.88.25,2.12.16,2.95-.28l1.96-1.05c.53,1.02-.1,1.81-.48,2.61-.58,1.24-1.43,2.19-2.67,3.01.45.4.35,1.01.57,1.54.6,1.53,1.26,3.05,2.19,4.36,1.86,2.63,4.37,4.42,7.41,5.29Z"/><path d="M41.18,127.17c-1.68,3.05-2.92,6.2-3.68,9.59-.44,1.95-.94,3.78-.99,5.72h-9.32c.5-5.97,2.2-11.56,5.22-16.87l-11.64-.11c-1.48-.01-2.37-1.17-3.11-2.48v-13.32c-.39-.16-.55-.38-.71-.77l4.46-4.04c1.02-.06,2.16.26,3.26-.09,1.31-.43,2.92-.85,3.94-1.86l8.91-8.88c.56-.56,1.02-1.08,1.58-1.65l1.22-1.25.58,3.75-4.47,4.29-10,9.87-.02,7.47,14.1.05c5.52-4.53,12.26-7.35,19.48-8.26,1.57-.2,2.99-.52,4.58-.39l-.16,2.02c-4.78.64-9.05,2.46-12.87,5.21-1.99,1.43-3.82,2.89-5.4,4.93,5.92,2.14,11.99,3.16,18.28,3.35v8.53c-3.91.11-7.61-.26-11.43-1.09-4.01-.76-7.76-1.81-11.79-3.7Z"/><path d="M55.59,37.01c1.74-.65,3.5-.87,5.25-1.17,1.19-.2,2.32-.36,3.56-.26l-.03,6.16c-3.57,0-7.04.88-10.1,2.66l-18.81-18.91c1.26-.88,2.62-1.66,4.18-1.6l2.72.58c4.37-1.16,8.72-1.92,13.36-2.41l1.16,3.29-2.27.18-6.35,1.06-5.74,1.43,7.83,7.72c1.62.97,3.39,1.42,5.24,1.27Z"/><path d="M64.38,59.35c-.47,1.8-.54,4.22,0,6.06l.13,1.44-4.38,4.43c-3.45-2.84-4.06-7.84-1.31-11.29,1.38-1.74,3.35-2.72,5.57-3l-.02,2.36Z"/><path d="M64.38,22.85c-.04-.09-.14-.06-.14,0l-.13,3.97c-.02.75-.08,1.43.27,2.09l.02,3.96-3.72.46-.46-1.17-1.39-5.06c-.47-1.72-.86-3.44-1.5-5.16l4.53-.26,2.52.02v1.15Z"/><path d="M56.09,94.87c-.08.23-.15.41-.23.49-.2.19-.38-.1-.52-.15-2.72-.92-5.3-1.98-7.71-3.77l6.03-6c1.44.85,2.85,1.46,4.44,1.94l-2.01,7.49Z"/><path d="M64.4,96.51c-2.45.17-4.74-.22-7.08-.77l.7-2.21,1.54-5.76c1.64.32,3.14.69,4.85.58l-.02,8.17Z"/><path d="M55.75,34.38c-2.01.5-3.83-.12-5.03-1.66-.74-.95-1.86-1.19-1.96-2.19-.03-.33.1-1.17.55-1.24l6.69-.98c2.42-.35,1.87,2.36,3.09,5.24l-3.34.83Z"/><path d="M42.24,93.42l-.73-3.57,4.55-4.55c1.32-1.32,3.31-1.35,4.44.03l-8.26,8.09Z"/><path d="M64.39,65.41c-.54-1.83-.48-4.26,0-6.06v6.06Z"/><path d="M64.38,7.54c-.34-.99-.5-2.07-.26-3.15l.1-2.74c0-.06.12-.09.16,0v5.89Z"/><path d="M64.39,28.91c-.35-.66-.29-1.34-.27-2.09l.13-3.97c0-.06.1-.09.14,0v6.06Z"/><path d="M40.26,57.95c.09,3.32-2.42,5.9-5.35,6.19-3.22.31-6.1-1.91-6.53-5.06-.42-3.1,1.4-6.01,4.71-6.75s7.07,1.89,7.18,5.63Z"/><path d="M48.8,68.84l1.02,3.09-2.25,2.25c-3.58-6.72-2.9-14.81,1.51-21.02l2.29,2.28c-2.62,3.91-3.7,8.77-2.56,13.4Z"/><path d="M121.76,33.52c-2.12-3.5-5.02-6.26-8.69-8.27-3.68-2.01-7.67-3.02-11.98-3.02h-23.96v74.22h13.78v-27.25h10.18c4.31,0,8.29-1.08,11.93-3.23,3.64-2.16,6.54-5.07,8.69-8.75,2.16-3.67,3.23-7.67,3.23-11.98s-1.06-8.22-3.18-11.72ZM108.46,53.56c-1.8,2.23-4.26,3.34-7.37,3.34h-10.18v-22.37h10.18c3.11,0,5.57.97,7.37,2.92,1.8,1.94,2.7,4.54,2.7,7.79s-.9,6.1-2.7,8.32Z"/><path d="M133.16,35.43c-1.59-1.59-2.39-3.55-2.39-5.88s.79-4.19,2.39-5.78c1.59-1.59,3.55-2.39,5.88-2.39s4.19.79,5.78,2.39c1.59,1.59,2.39,3.52,2.39,5.78s-.79,4.29-2.39,5.88c-1.59,1.59-3.52,2.39-5.78,2.39s-4.29-.79-5.88-2.39Z"/><rect x="132.15" y="43.44" width="13.78" height="53.01"/><path d="M201.28,96.45h-13.78v-27.88c0-4.31-.76-7.47-2.28-9.49-1.52-2.01-3.94-3.02-7.26-3.02s-5.74,1.01-7.26,3.02c-1.52,2.01-2.28,5.18-2.28,9.49v27.88h-13.78v-27.88c0-8.62,2.12-15.11,6.36-19.46,4.24-4.35,9.9-6.52,16.96-6.52s12.72,2.17,16.96,6.52c4.24,4.35,6.36,10.83,6.36,19.46v27.88Z"/><path d="M261.71,68.77c-.14-5.37-1.57-10.04-4.29-14-2.72-3.96-6.17-6.98-10.34-9.07-4.17-2.08-8.52-3.13-13.04-3.13-4.95,0-9.49,1.26-13.62,3.76-4.13,2.51-7.39,5.87-9.75,10.07-2.37,4.21-3.55,8.75-3.55,13.62s1.22,9.51,3.66,13.68c2.44,4.17,5.74,7.47,9.91,9.91,4.17,2.44,8.76,3.66,13.78,3.66,5.51,0,10.53-1.52,15.05-4.56,4.52-3.04,7.88-7,10.07-11.87l-16.43-.11c-1.13.92-2.38,1.66-3.76,2.23-1.38.57-3.16.85-5.35.85-3.11,0-5.74-.76-7.9-2.28-2.16-1.52-3.55-3.59-4.19-6.2h39.33c.35-2.12.49-4.31.42-6.57ZM221.95,64.32c1.13-2.54,2.76-4.56,4.88-6.04,2.12-1.48,4.67-2.23,7.63-2.23,2.69,0,5.18.76,7.47,2.28,2.3,1.52,3.98,3.52,5.04,5.99h-25.02Z"/><path d="M318.06,56.21c-2.44-4.2-5.76-7.53-9.97-9.97-4.21-2.44-8.78-3.66-13.73-3.66s-9.53,1.22-13.73,3.66c-4.21,2.44-7.53,5.76-9.97,9.97-2.44,4.21-3.66,8.78-3.66,13.73s1.22,9.53,3.66,13.73c2.44,4.21,5.76,7.53,9.97,9.97,4.21,2.44,8.78,3.66,13.73,3.66s9.15-1.17,13.25-3.5v.11c0,3.18-1.29,5.69-3.87,7.53-2.58,1.84-5.71,2.76-9.38,2.76-1.56,0-2.99-.23-4.29-.69-1.31-.46-2.63-1.22-3.98-2.28h-16.75c2.12,4.95,5.44,8.92,9.97,11.93,4.52,3,9.54,4.51,15.06,4.51,4.95,0,9.52-1.22,13.73-3.66,4.21-2.44,7.53-5.76,9.97-9.97,2.44-4.21,3.66-8.78,3.66-13.73v-20.36c0-4.95-1.22-9.52-3.66-13.73ZM304.12,79.85c-2.54,2.65-5.76,3.98-9.65,3.98s-7.14-1.33-9.75-3.98c-2.62-2.65-3.92-5.95-3.92-9.91s1.31-7.26,3.92-9.91c2.61-2.65,5.87-3.98,9.75-3.98s7.1,1.33,9.65,3.98,3.82,5.96,3.82,9.91-1.27,7.26-3.82,9.91Z"/><path d="M328.08,68.56c0-8.41,2.08-14.74,6.26-18.98,4.17-4.24,9.65-6.36,16.43-6.36h.64v13.46h-.53c-3.04,0-5.3.95-6.79,2.86-1.48,1.91-2.23,4.91-2.23,9.01v27.88h-13.78v-27.88Z"/><path d="M406.06,56.21c-2.44-4.2-5.74-7.53-9.91-9.97-4.17-2.44-8.73-3.66-13.68-3.66s-9.51,1.22-13.68,3.66c-4.17,2.44-7.49,5.76-9.97,9.97-2.47,4.21-3.71,8.78-3.71,13.73s1.24,9.53,3.71,13.73c2.47,4.21,5.79,7.53,9.97,9.97,4.17,2.44,8.73,3.66,13.68,3.66,2.97,0,5.76-.64,8.38-1.91,2.61-1.27,4.31-2.79,5.09-4.56v5.62h13.78v-26.51c0-4.95-1.22-9.52-3.66-13.73ZM392.23,79.85c-2.54,2.65-5.76,3.98-9.65,3.98s-7.14-1.33-9.75-3.98c-2.62-2.65-3.92-5.95-3.92-9.91s1.31-7.26,3.92-9.91c2.61-2.65,5.87-3.98,9.75-3.98s7.1,1.33,9.65,3.98,3.82,5.96,3.82,9.91-1.27,7.26-3.82,9.91Z"/><path d="M466.97,56.21c-2.48-4.2-5.8-7.53-9.97-9.97-4.17-2.44-8.73-3.66-13.68-3.66s-9.51,1.22-13.68,3.66c-4.17,2.44-7.47,5.76-9.91,9.97-2.44,4.21-3.66,8.78-3.66,13.73v47.71h13.89v-24.39c3.75,2.69,8.2,4.03,13.36,4.03s9.51-1.22,13.68-3.66c4.17-2.44,7.49-5.76,9.97-9.97,2.47-4.21,3.71-8.78,3.71-13.73s-1.24-9.52-3.71-13.73ZM453.08,79.85c-2.54,2.65-5.76,3.98-9.65,3.98s-7.14-1.33-9.75-3.98c-2.62-2.65-3.92-5.95-3.92-9.91s1.31-7.26,3.92-9.91c2.61-2.65,5.87-3.98,9.75-3.98s7.1,1.33,9.65,3.98c2.54,2.65,3.82,5.96,3.82,9.91s-1.27,7.26-3.82,9.91Z"/><polygon points="497.86 28.36 497.86 32.57 489.71 32.57 489.71 53.83 484.66 53.83 484.66 32.57 476.51 32.57 476.51 28.36 497.86 28.36"/><path d="M525.38,53.83l-.94-14.98c-.09-1.97-.09-4.4-.19-7.12h-.28c-.66,2.25-1.4,5.24-2.15,7.58l-4.59,14.14h-5.24l-4.59-14.51c-.47-1.97-1.22-4.96-1.78-7.21h-.28c0,2.34-.09,4.78-.19,7.12l-.94,14.98h-4.87l1.87-25.47h7.58l4.4,12.45c.56,1.97,1.03,3.84,1.69,6.46h.09c.66-2.34,1.22-4.49,1.78-6.37l4.4-12.55h7.3l1.97,25.47h-5.06Z"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-152 -100 958 375" role="img" aria-label="Pinegrap"><defs><linearGradient id="pgLogoGradient" gradientUnits="userSpaceOnUse" x1="-151" y1="0" x2="805" y2="0"><stop offset="0" style="stop-color:var(--pg-logo-color-1, #3D5AFE)"/><stop offset=".5" style="stop-color:var(--pg-logo-color-3, #B44DFF)"/><stop offset="1" style="stop-color:var(--pg-logo-color-2, #FF3D72)"/></linearGradient></defs><g fill="none" stroke="url(#pgLogoGradient)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"><path d="M-142 9V166"/><circle cx="-86" cy="65" r="56"/><path d="M12 54V146A20 20 0 0 0 52 146V98A44 44 0 0 1 140 98V146A20 20 0 0 0 180 146V110H292A56 56 0 0 0 180 110A56 56 0 0 0 276.3 148.9C293.9 130.7 325.9 126.3 333.9 124.5"/><circle cx="388" cy="110" r="56"/><path d="M444 54V236C444 262.6 421.5 266 416.5 266C394.5 266 388 245.8 388 240C388 232 389.6 223.9 408 215.7L454 195.2C463.4 191 488 175.9 488 146V89.5A35.5 35.5 0 0 1 523.5 54H588"/><circle cx="588" cy="110" r="56"/><path d="M644 54V146A20 20 0 0 0 684 146"/><path d="M684 54V266"/><circle cx="740" cy="110" r="56"/></g><circle cx="12" cy="12" r="14" fill="url(#pgLogoGradient)"/></svg>
 PGLOGOSVG;
 
     if ($id_suffix !== '') {
-        $svg = preg_replace_callback('/pgLogoGradient(Icon)?/', function ($m) use ($id_suffix) {
-            return $m[0] . $id_suffix;
-        }, $svg);
+        $svg = str_replace('pgLogoGradient', 'pgLogoGradient' . $id_suffix, $svg);
     }
     return $svg;
+}
+
+/**
+ * The brand in the panel: the mascot's window and the wordmark beside it.
+ *
+ * The mascot is a 12-second muted loop (WebM, then MP4) over its still frame
+ * as the poster. Nothing is downloaded until backend.js starts it
+ * (pgLogoVideos()), which it does not do for reduced motion, a data saver or
+ * a small device: those, and a browser that will not play it, keep the still
+ * frame. The wordmark is pg_logo_svg(). A narrow place shows the mascot
+ * alone: the header below md hides the wordmark in CSS
+ * (.pinegrap-logo-word). The name stays in the hidden text for both.
+ * Sizes live in backend.src.css.
+ *
+ * @param string $id_suffix passed to pg_logo_svg()
+ * @return string HTML
+ */
+function pg_logo_markup($id_suffix = '')
+{
+    $images = ((defined('OUTPUT_PATH') && defined('OUTPUT_SOFTWARE_DIRECTORY')) ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY : '') . '/assets/images/';
+
+    return '<span class="pinegrap-logo">'
+        . '<video class="pinegrap-logo-mark" width="32" height="32" muted loop playsinline preload="none" disablepictureinpicture'
+        . ' poster="' . h($images . 'pinegrap-mascot-still.webp') . '" aria-hidden="true" data-pg-logo-video>'
+        . '<source src="' . h($images . 'pinegrap-mascot-loop.webm') . '" type="video/webm">'
+        . '<source src="' . h($images . 'pinegrap-mascot-loop.mp4') . '" type="video/mp4">'
+        . '<img src="' . h($images . 'pinegrap-mascot-still.webp') . '" width="32" height="32" alt="">'
+        . '</video>'
+        . '<span class="pinegrap-logo-word" aria-hidden="true">' . pg_logo_svg($id_suffix) . '</span>'
+        . '<span class="visually-hidden">Pinegrap</span>'
+        . '</span>';
 }
 
 
@@ -408,7 +434,7 @@ function pg_preloader_markup()
     // screens get the three dots and nothing else.
     $mark = '';
     if (!defined('PRIVATE_LABEL') or !PRIVATE_LABEL) {
-        $mark = '<span class="pg-preloader-logo">' . pg_logo_svg('-pl') . '</span>';
+        $mark = '<span class="pg-preloader-logo">' . pg_logo_markup('-pl') . '</span>';
     }
 
     $session_url = (defined('OUTPUT_PATH') && defined('OUTPUT_SOFTWARE_DIRECTORY'))
@@ -1528,11 +1554,20 @@ function pg_list_edit_table($url, $columns)
 
         // Pairs rather than an object: an object with numeric keys comes
         // back in numeric order, and the order of the choices is the screen's.
+        // An option with a class ('option_classes', value => class) carries
+        // it as a third item.
         if (isset($column['options'])) {
             $entry['options'] = array();
+            $classes = (array) ($column['option_classes'] ?? array());
 
             foreach ((array) $column['options'] as $value => $label) {
-                $entry['options'][] = array((string) $value, (string) $label);
+                $pair = array((string) $value, (string) $label);
+
+                if (isset($classes[$value]) && ((string) $classes[$value] !== '')) {
+                    $pair[] = (string) $classes[$value];
+                }
+
+                $entry['options'][] = $pair;
             }
         }
 
@@ -2019,6 +2054,7 @@ function pg_css_bundles()
         'assets/css/pg_image_editor.min.css' => 'assets/css/pg_image_editor.src.css',
         'assets/css/pg_dash.min.css' => 'assets/css/pg_dash.src.css',
         'assets/css/pg_visitors.min.css' => 'assets/css/pg_visitors.src.css',
+        'assets/css/ws_today.min.css' => 'assets/css/ws_today.src.css',
     );
 }
 
@@ -2375,14 +2411,11 @@ function output_header($properties = false)
 
     if (!defined('PRIVATE_LABEL') or PRIVATE_LABEL == false) {
         $output_software_metanames = '<link rel="manifest" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/manifest.php">';
-        // Brand lockup: inline SVG (icon + wordmark) plus the version pill.
-        // Inline rather than an <img>, so the gradient can read the theme's
-        // --pg-logo-color-* variables and follow light/dark mode.
-        // Sizing/cropping lives in backend.src.css (.pinegrap-logo).
+        // Brand lockup: the mascot and the wordmark (pg_logo_markup()) plus
+        // the version pill; below md only the mascot shows. Sizes live in
+        // backend.src.css (.pinegrap-logo).
         $output_logo = '<span class="pinegrap-logo-lockup position-relative">'
-            . '<span class="pinegrap-logo">'
-            . pg_logo_svg()
-            . '</span>'
+            . pg_logo_markup()
             . ((get_short_version() !== '') ? '<span class="pinegrap-version ms-1 border rounded-pill px-1 d-none md:d-inline-block">' . get_short_version() . '</span>' : '')
             . '</span>';
     } else {

@@ -196,7 +196,27 @@ function test_commission_edit_screens_print_the_summary()
 {
 	foreach (array('edit_commission.php', 'edit_recurring_commission_profile.php') as $file) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
-		pg_assert_contains('pg_commission_edit_summary($', $source, $file . ' names the record');
+		pg_assert_contains('pg_commission_edit_layout(', $source, $file . ' names the record');
 		pg_assert_contains('orders.status AS order_status', $source, $file . ' reads the order status');
+	}
+}
+
+// The commission and profile edit screens use the wide layout: the Status
+// card in the form column, the Summary in the sticky status column.
+function test_commission_edit_layout()
+{
+	$html = pg_commission_edit_layout('<div id="cards"></div>', array('affiliate_name' => 'Ann', 'affiliate_code' => 'A1', 'amount' => '100', 'order_id' => '0', 'order_number' => ''), '<button id="b"></button>');
+
+	pg_assert_contains('col-12 lg:col-8 2xl:col-9 order-1">' . '<div id="cards"></div>', $html, 'the cards in the form column');
+	pg_assert_contains('col-12 lg:col-4 2xl:col-3 order-2', $html, 'the status column');
+	pg_assert_contains('position-sticky" style="top:3.3rem;"', $html, 'its sticky box below the top bar');
+	pg_assert_true(strpos($html, 'order-2') < strpos($html, lang('Summary')), 'the Summary sits in the status column');
+	pg_assert_true(strpos($html, 'order-3') < strpos($html, '<button id="b">'), 'the buttons in the save bar');
+	pg_assert_same(4, substr_count($html, '<dt class="fw-normal">'), 'name, code, amount and order rows');
+
+	foreach (array('edit_commission.php', 'edit_recurring_commission_profile.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('pg_commission_edit_layout(', $source, $file . ': the layout');
+		pg_assert_contains("'name'=>'id', 'value'=>\$id", $source, $file . ': the checked id');
 	}
 }

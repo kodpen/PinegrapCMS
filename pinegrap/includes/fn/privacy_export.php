@@ -59,6 +59,7 @@ function pg_privacy_export_sections()
         'watchers'           => lang('Watched items'),
         'wishlist'           => lang('Favourites'),
         'stock_notify'       => lang('Back-in-stock requests'),
+        'bookings'           => lang('Appointment bookings'),
         'campaigns'          => lang('E-mail campaigns'),
         'consents'           => lang('Consents'),
         'mail'               => lang('E-mail messages'),
@@ -1007,6 +1008,26 @@ function pg_privacy_export_collect(array $found)
             WHERE " . $notify_where . "
             ORDER BY stock_notify.id",
             ($notify_where !== '') ? array(1) : array()
+        );
+    }
+
+    // Appointment bookings, by the account or the address given when
+    // booking, with the service's name. The manage link's hash is left out.
+    if (pg_booking_ready()) {
+        $booking_where = _pg_privacy_export_any(array(
+            _pg_privacy_export_in('bookings.user_id', $user_ids),
+            _pg_privacy_export_in('bookings.email', $emails),
+        ));
+
+        $sections['bookings'] = _pg_privacy_export_select(
+            "SELECT bookings.*, booking_services.name AS service_name
+            FROM bookings
+            LEFT JOIN booking_services ON booking_services.id = bookings.service_id
+            WHERE " . $booking_where . "
+            ORDER BY bookings.id",
+            ($booking_where !== '') ? array(1) : array(),
+            array(),
+            array('manage_token', 'slot_at', 'hold_until')
         );
     }
 

@@ -17,9 +17,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, not before 2026.11.0 ships): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - agent-channel.md: DRAFT, not to be started (owner, 2026-10-29): a Workspace channel as the messaging space of agents and people: wake rules, claim queue, memory, doors; the full plan stays with the owner
-- appointment-booking-steps-2.md: Steps BK6-BK10 of plans/appointment-booking.md: Workspace calendar rows, My bookings and manage page, API, deposits, templates and close-out; claim as [plan:appointment-booking] BK<n>
-- appointment-booking-steps.md: Steps BK1-BK5 of plans/appointment-booking.md: schema and slot engine, settings, the staff agenda, the booking widget, mails, SMS and reminders; claim as [plan:appointment-booking] BK<n>
-- appointment-booking.md: Plan (owner 2026-11-02): appointments with real time slots: services, staff hours, a booking widget, confirmations and reminders, the agenda, Workspace calendars; steps BK1-BK10
 - bootstrap-6-components.md: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped for native Bootstrap 6 components, the conditions research found, what stays as it is
 - bootstrap-6-findings.md: Research of 2026-10-25 behind plans/bootstrap-6-panel.md: old browsers, conflict rates, work size, hot spots, the visual editor split, third-party coupling
 - bootstrap-6-panel-steps.md: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status (each done step names its PR); claim as [plan:bootstrap-6-panel] B<n>
@@ -90,9 +87,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - small-features-2026-11-steps-2.md: Steps SF4-SF8 of plans/small-features-2026-11.md: product questions, pre-order, EU VAT checks, the panel offline page, Slack, Teams and Telegram channels; claim as [plan:small-features-2026-11] SF<n>
 - small-features-2026-11-steps.md: Steps SF1-SF3 of plans/small-features-2026-11.md: address autocomplete, the accessibility statement widget, site search rollup with synonyms; claim as [plan:small-features-2026-11] SF<n>
 - small-features-2026-11.md: Plan (owner 2026-11-02): eight small independent features: address autocomplete, accessibility statement, search tuning, product questions, pre-order, EU VAT, offline page, chat channels; SF1-SF8
-- store-credit-steps-2.md: Steps SC5-SC7 of plans/store-credit.md: the staff and account screens with mails and expiry, API and webhooks, close-out; claim as [plan:store-credit] SC<n>
-- store-credit-steps.md: Steps SC1-SC4 of plans/store-credit.md: the customer-bound card model, credit at checkout through applied_gift_cards, points to credit, refunds to credit; claim as [plan:store-credit] SC<n>
-- store-credit.md: Plan (owner 2026-11-02): store credit as customer-bound gift cards: points to credit, refunds to credit, staff-issued credit, the balance applied at checkout; steps SC1-SC7
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings
 - storefront-api-callers.md: Storefront API design note: who calls it (application key + optional cart or customer token), the storefront:* scopes, rate buckets, Idempotency-Key and dry-run rules shared by every route
@@ -110,3 +104,4 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-agent-handles.md: Plan (2026-10-21): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
 - workspace-menu-layout.md: Plan (owner decision 2026-10-30) for a tidier Workspace list in the main menu: search, places, one Channels section, discussions, Tools tiles; channel screen unchanged
+- workspace-today-dashboard.md: Plan: the Workspace Today page (?view=home) drawn as new-dashboard cards (v2 top row, greeting, grid, card frame), every link and action kept

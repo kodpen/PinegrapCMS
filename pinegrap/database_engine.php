@@ -25,6 +25,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
 if (pg_post_body_discarded()) {
     output_error(lang('The request was too large for this server and arrived empty.'), 413);
@@ -1054,10 +1055,29 @@ if (count($engine_health['issues']) == 0) {
 
 // -- All tables ---------------------------------------------------------------
 
-// The only DataTable of the screen: backend.src.js sets up one table.chart
-// per page. Rows come largest first; the column order attributes are for
-// DataTables' own sorting where it is enabled.
-$catalog_rows = '';
+// Every table is printed: the list table driver sorts and searches them in
+// the browser (browser mode) and keeps a heading's sort, largest first until
+// another is chosen. The row buttons are heard by the delegated listener
+// below.
+$catalog_columns = array(
+    'table' => array('heading' => lang('Table')),
+    'engine' => array('heading' => lang('Engine'), 'kind' => 'badge'),
+    'rows' => array('heading' => lang('Rows'), 'kind' => 'number'),
+    'size' => array('heading' => lang('Size'), 'kind' => 'number'),
+    'free' => array('heading' => lang('Free space'), 'kind' => 'number'),
+    'collation' => array('heading' => lang('Collation')),
+    'actions' => array('heading' => lang('Action'), 'kind' => 'actions'),
+);
+$catalog_sort_columns = array();
+
+foreach ($catalog_columns as $key => $spec) {
+    if ($key !== 'actions') {
+        $catalog_sort_columns[$key] = $spec['heading'];
+    }
+}
+
+$catalog_state = pg_list_state('database_engine', $catalog_sort_columns, array('sort' => 'size', 'order' => 'desc'));
+$catalog_rows = array();
 $catalog_bytes = 0.0;
 $catalog_free = 0.0;
 
@@ -1078,17 +1098,26 @@ foreach ($engine_catalog as $catalog_table => $catalog_row) {
 
     $catalog_candidate = isset($engine_candidates[$catalog_table]);
 
-    $catalog_rows .= '
-                            <tr>
-                                <td>' . $engine_optimize_button($catalog_table, ($engine_tools && ($catalog_row['engine'] !== ''))) . '</td>
-                                <th scope="row" class="fw-normal"><code>' . h($catalog_table) . '</code></th>
-                                <td>' . $catalog_engine . '</td>
-                                <td class="text-end" data-order="' . (int) $catalog_row['rows'] . '">' . h(pg_format_number($catalog_row['rows'], 0)) . '</td>
-                                <td class="text-end" data-order="' . h(sprintf('%.0f', $catalog_row['bytes'])) . '">' . h(pg_innodb_size_label($catalog_row['bytes'])) . '</td>
-                                <td class="text-end' . ($catalog_candidate ? ' fg-warning fw-semibold' : '') . '" data-order="' . h(sprintf('%.0f', $catalog_row['free'])) . '">' . h(pg_innodb_size_label($catalog_row['free'])) . '</td>
-                                <td class="small fg-secondary">' . h($catalog_row['collation']) . '</td>
-                            </tr>';
+    $catalog_rows[] = array(
+        'id' => count($catalog_rows) + 1,
+        'cells' => array(
+            'table' => pg_list_cell('<code>' . h($catalog_table) . '</code>', 'align-middle', array('data-pg-sort-value' => (string) $catalog_table)),
+            'engine' => pg_list_cell($catalog_engine, 'align-middle', array('data-pg-sort-value' => (string) $catalog_row['engine'])),
+            'rows' => pg_list_cell(h(pg_format_number($catalog_row['rows'], 0)), 'align-middle', array('data-pg-sort-value' => (int) $catalog_row['rows'])),
+            'size' => pg_list_cell(h(pg_innodb_size_label($catalog_row['bytes'])), 'align-middle', array('data-pg-sort-value' => sprintf('%.0f', $catalog_row['bytes']))),
+            'free' => pg_list_cell(h(pg_innodb_size_label($catalog_row['free'])), 'align-middle' . ($catalog_candidate ? ' fg-warning fw-semibold' : ''), array('data-pg-sort-value' => sprintf('%.0f', $catalog_row['free']))),
+            'collation' => pg_list_cell(h($catalog_row['collation']), 'align-middle small fg-secondary'),
+            'actions' => pg_list_cell($engine_optimize_button($catalog_table, ($engine_tools && ($catalog_row['engine'] !== '')))),
+        ),
+    );
 }
+
+$catalog_list = pg_list_table_printed(array(
+    'list' => 'database_engine',
+    'columns' => $catalog_columns,
+    'levels' => $catalog_state['sorts'],
+    'rows' => $catalog_rows,
+));
 
 // -- Server -------------------------------------------------------------------
 
@@ -1205,23 +1234,10 @@ echo '
                     <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('All tables')) . '</span>
+                            ' . pg_list_table_search_box('database_engine') . '
                         </div>
-                        <div class="card-body p-0 position-relative">
-                            <table class="chart table-hover table" style="width:100%;display:none;" data-order=\'[[4,"desc"]]\' data-page-length="100">
-                                <thead>
-                                    <tr>
-                                        <th class="noVis">' . h(lang('Action')) . '</th>
-                                        <th>' . h(lang('Table')) . '</th>
-                                        <th>' . h(lang('Engine')) . '</th>
-                                        <th class="text-end">' . h(lang('Rows')) . '</th>
-                                        <th class="text-end">' . h(lang('Size')) . '</th>
-                                        <th class="text-end">' . h(lang('Free space')) . '</th>
-                                        <th>' . h(lang('Collation')) . '</th>
-                                    </tr>
-                                </thead>
-                                <tbody>' . $catalog_rows . '
-                                </tbody>
-                            </table>
+                        <div class="card-body p-0">
+                            ' . pg_list_table_html($catalog_list['source'], $catalog_list['page'], lang('All tables')) . '
                         </div>
                     </div>
                 </div>
@@ -1371,6 +1387,6 @@ echo '
             step();
         });
     })();
-</script>' . output_footer();
+</script>' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . output_footer();
 
 $liveform->remove_form();

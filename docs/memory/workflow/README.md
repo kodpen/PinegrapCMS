@@ -56,7 +56,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-25.md: Decisions list, product part 25 (2026-11-03 evening on): bookings on the Workspace calendar, reward points of a cancelled order, hand rows of a group filled by rules; the key reset warning
 - decisions-made-product-26.md: Decisions list, product part 26 (2026-11-04 on): the starter dumps stay deletable in the Backup Manager, with a confirmation that names the consequence
 - decisions-made-product-27.md: Decisions list, product part 27 (2026-11-04 midday on): image editor rail groups, Import, SVG layer, context menu; group-join triggers; no Delete for a store credit card on the gift card screen
-- decisions-made-product-28.md: Decisions list, product part 28 (2026-11-04 afternoon on): a changed expense updates its active repeat; a duplicated campaign profile starts disabled
+- decisions-made-product-28.md: Decisions list, product part 28 (2026-11-04 afternoon on): a changed expense updates its active repeat; a duplicated campaign profile starts disabled; the new logo
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
@@ -89,6 +89,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - install-check-filter.md: When install-check.yml runs its six-database matrix (#1985): the changes job, the paths it reads, always on merge trains and pushes, why plain git, a skipped job blocks nothing
 - memory-index-key-rules.md: The hand-written key-rules block of each memory folder README, what tools/memory_index.php keeps and regenerates, when it stops with exit 1 and how a merge conflict in a README is settled
 - merge-review.md: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, digs deeper for access, payments, SQL, schema; an architect decision counts as the owner's
+- merge-train-forks.md: A PR from a fork never rides a merge train, never lands alone and is never merged by a session; the owner reviews it. Where tools/merge_train.php enforces it
 - merge-train-landing.md: How a green merge train lands (2026-10-25): one fast-forward push, GitHub marks the PRs merged and wakes their sessions, no push to PR branches; why not a squash per PR; a red train; the merge queue
 - merge-train-tool.md: tools/merge_train.php (#2002): --start (the lock), --list (train order), --build (merge, settle, changelog, push), --land (fast-forward); what it leaves to the merging session
 - merge-train.md: Working rule (2026-10-25) for the merging session: one merger, one train at a time, 30-minute windows, rules-only PRs alone, the ready label, one merge commit per PR, one CI run

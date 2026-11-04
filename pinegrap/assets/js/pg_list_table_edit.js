@@ -125,6 +125,26 @@
      * words, icon ligatures). Reads only childNodes, nodeType, nodeValue,
      * tagName, hidden and getAttribute, so it runs on any node tree.
      */
+    /**
+     * A select whose options carry classes wears the chosen option's class
+     * (the Pages list's folders, coloured by their access type), dropping
+     * the one it wore before.
+     */
+    function tintSelect(select) {
+        var option = (select.selectedIndex >= 0) ? select.options[select.selectedIndex] : null;
+        var tint = option ? String(option.className || '') : '';
+
+        if (select.pgTint && (select.pgTint !== tint)) {
+            select.classList.remove(select.pgTint);
+        }
+
+        if (tint !== '') {
+            select.classList.add(tint);
+        }
+
+        select.pgTint = tint;
+    }
+
     function rowNameText(node) {
         var walk = function (parent) {
             var text = '';
@@ -329,8 +349,15 @@
                 option.value = String(pair[0]);
                 option.textContent = String(pair[1]);
                 option.selected = (option.value === value);
+
+                if (pair[2]) {
+                    option.className = String(pair[2]);
+                }
+
                 control.appendChild(option);
             });
+
+            tintSelect(control);
         } else {
             control = document.createElement('input');
             control.type = 'text';
@@ -371,6 +398,10 @@
         cell.appendChild(note);
 
         control.addEventListener('change', function () {
+            if (control.tagName === 'SELECT') {
+                tintSelect(control);
+            }
+
             self.quickSave(cell);
         });
 
@@ -403,6 +434,11 @@
         } else if (event.key === 'Escape') {
             event.preventDefault();
             quick.control.value = cell.getAttribute('data-pg-edit-value') || '';
+
+            if (quick.control.tagName === 'SELECT') {
+                tintSelect(quick.control);
+            }
+
             this.fieldNote(cell, '');
         } else if (event.key === 'F2') {
             event.preventDefault();
@@ -519,6 +555,10 @@
 
             if (cell.pgQuick) {
                 cell.pgQuick.control.value = String(view.value);
+
+                if (cell.pgQuick.control.tagName === 'SELECT') {
+                    tintSelect(cell.pgQuick.control);
+                }
             }
         }
 
@@ -788,6 +828,7 @@
     T.quickValue = quickValue;
     T.quickChanged = quickChanged;
     T.rowNameText = rowNameText;
+    T.tintSelect = tintSelect;
 
     // Lists the driver started before this part loaded.
     if (typeof document !== 'undefined' && document.querySelectorAll) {

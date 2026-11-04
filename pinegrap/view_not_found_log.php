@@ -16,6 +16,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 $user = validate_user();
 validate_area_access($user, 'manager');
 
@@ -123,8 +124,6 @@ $order_by = pg_list_order_by($sort_levels, array(
     'last_seen'  => 'last_seen',
 )) . ', id DESC';
 
-$kept_extras = $kept ? h('&' . http_build_query($kept)) : '';
-
 $where = pg_not_found_log_where(array('since' => pg_not_found_log_since(), 'who' => $who, 'search' => $search, 'turkish' => pg_list_search_turkish_charset()));
 
 // One row per address, so the counts are sums and the rows are counted.
@@ -149,11 +148,15 @@ $answers = pg_not_found_log_answers(array_column($rows, 'path'));
 
 // ---- Rows ------------------------------------------------------------------
 
-$output_rows = '';
+// Every row read is printed: the list table driver sorts the printed rows in
+// the browser (browser mode) and keeps a heading's sort; the toolbar's search
+// box and filter still ask the server, which also finds the addresses past
+// the first rows.
+$list_rows = array();
 
-// table.chart cells keep to one line; the address, its note and the referrer
-// wrap inside a bounded width instead, so a long address or the Recycle Bin
-// note does not push the counts and dates off the screen.
+// The address, its note and the referrer wrap inside a bounded width, so a
+// long address or the Recycle Bin note does not push the counts and dates
+// off the screen.
 $wrap_style = 'white-space: normal; min-width: 12rem; max-width: 28rem; overflow-wrap: anywhere';
 
 foreach ($rows as $row) {
@@ -184,21 +187,36 @@ foreach ($rows as $row) {
     $crawler_hits = (int) $row['crawler_hits'];
     $referrer = (string) $row['referrer'];
 
-    $output_rows .=
-        '<tr>
-            <td class="align-middle text-start action-buttons text-nowrap">
-                ' . $output_create . '
-                <a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" href="' . OUTPUT_PATH . h(encode_url_path($path)) . '" target="_blank" rel="noopener" title="' . h(lang('Visit')) . '" aria-label="' . h(lang('Visit')) . '"><i class="bi bi-link" aria-hidden="true"></i></a>
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 no-submit pg-404-delete" data-id="' . (int) $row['id'] . '" data-path="' . h($path) . '" title="' . h(lang('Delete')) . '" aria-label="' . h(lang('Delete')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>
-            </td>
-            <td class="align-middle chart_label"><div style="' . $wrap_style . '"><span class="font-monospace text-break">' . $address . '</span>' . $output_state . '</div></td>
-            <td class="align-middle" data-order="' . $hits . '">' . pg_format_number($hits, 0) . '</td>
-            <td class="align-middle" data-order="' . $crawler_hits . '">' . (($crawler_hits > 0) ? pg_format_number($crawler_hits, 0) : '<span class="fg-secondary">-</span>') . '</td>
-            <td class="align-middle small">' . (($referrer !== '') ? '<div class="text-break" style="' . $wrap_style . '">' . h(mb_substr($referrer, 0, 90, 'UTF-8')) . ((mb_strlen($referrer, 'UTF-8') > 90) ? '…' : '') . '</div>' : '<span class="fg-secondary">-</span>') . '</td>
-            <td class="align-middle text-nowrap" data-order="' . (int) $row['first_seen'] . '">' . get_relative_time(array('timestamp' => (int) $row['first_seen'])) . '</td>
-            <td class="align-middle text-nowrap" data-order="' . (int) $row['last_seen'] . '">' . get_relative_time(array('timestamp' => (int) $row['last_seen'])) . '</td>
-        </tr>';
+    $list_rows[] = array(
+        'id' => (int) $row['id'],
+        'cells' => array(
+            'path' => pg_list_cell('<div style="' . $wrap_style . '"><span class="font-monospace text-break">' . $address . '</span>' . $output_state . '</div>', 'align-middle', array('data-pg-sort-value' => $path)),
+            'hits' => pg_list_cell(pg_format_number($hits, 0), 'align-middle', array('data-pg-sort-value' => $hits)),
+            'crawlers' => pg_list_cell(($crawler_hits > 0) ? pg_format_number($crawler_hits, 0) : '<span class="fg-secondary">-</span>', 'align-middle', array('data-pg-sort-value' => $crawler_hits)),
+            'referrer' => pg_list_cell(($referrer !== '') ? '<div class="text-break" style="' . $wrap_style . '">' . h(mb_substr($referrer, 0, 90, 'UTF-8')) . ((mb_strlen($referrer, 'UTF-8') > 90) ? '…' : '') . '</div>' : '<span class="fg-secondary">-</span>', 'align-middle small'),
+            'first_seen' => pg_list_table_when_cell((int) $row['first_seen']),
+            'last_seen' => pg_list_table_when_cell((int) $row['last_seen']),
+            'actions' => pg_list_cell($output_create
+                . '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" href="' . OUTPUT_PATH . h(encode_url_path($path)) . '" target="_blank" rel="noopener" title="' . h(lang('Visit')) . '" aria-label="' . h(lang('Visit')) . '"><i class="bi bi-link" aria-hidden="true"></i></a>'
+                . '<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 no-submit pg-404-delete" data-id="' . (int) $row['id'] . '" data-path="' . h($path) . '" title="' . h(lang('Delete')) . '" aria-label="' . h(lang('Delete')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>', 'align-middle text-nowrap'),
+        ),
+    );
 }
+
+$list = pg_list_table_printed(array(
+    'list' => 'view_not_found_log',
+    'columns' => array(
+        'path' => array('heading' => lang('Address')),
+        'hits' => array('heading' => lang('Requests'), 'kind' => 'number'),
+        'crawlers' => array('heading' => lang('Search engines'), 'kind' => 'number'),
+        'referrer' => array('heading' => lang('Referrer'), 'sortable' => false),
+        'first_seen' => array('heading' => lang('First asked for'), 'kind' => 'date'),
+        'last_seen' => array('heading' => lang('Last asked for'), 'kind' => 'date'),
+        'actions' => array('heading' => lang('Action'), 'kind' => 'actions'),
+    ),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+));
 
 $addresses = (int) $summary['addresses'];
 
@@ -213,24 +231,9 @@ if ($addresses > $row_limit) {
 
 // ---- Screen ----------------------------------------------------------------
 
-$output_table = ($output_rows === '')
-    ? '<p class="fg-secondary m-7">' . h(($search !== '' || $who !== '') ? lang('No address in the log matches.') : lang('No missing addresses were recorded in the last 90 days.')) . '</p>'
-    : '<table class="chart table-hover table" style="width:100%;display:none">
-        <thead>
-            <tr>
-                <th class="noVis">' . h(lang('Action')) . '</th>
-                <th>' . get_column_heading(lang('Address'), $sort_levels, '', $kept_extras, 'path') . '</th>
-                <th>' . get_column_heading(lang('Requests'), $sort_levels, '', $kept_extras, 'hits') . '</th>
-                <th>' . get_column_heading(lang('Search engines'), $sort_levels, '', $kept_extras, 'crawlers') . '</th>
-                <th>' . h(lang('Referrer')) . '</th>
-                <th>' . get_column_heading(lang('First asked for'), $sort_levels, '', $kept_extras, 'first_seen') . '</th>
-                <th>' . get_column_heading(lang('Last asked for'), $sort_levels, '', $kept_extras, 'last_seen') . '</th>
-            </tr>
-        </thead>
-        <tbody>
-            ' . $output_rows . '
-        </tbody>
-    </table>';
+$output_table = ($list_rows === array())
+    ? '<div class="card my-7"><p class="fg-secondary m-7">' . h(($search !== '' || $who !== '') ? lang('No address in the log matches.') : lang('No missing addresses were recorded in the last 90 days.')) . '</p></div>'
+    : pg_list_table_html($list['source'], $list['page'], lang('404 Log'));
 
 echo pg_page_shell($shell) . '
 <main id="content" class="container-fluid">
@@ -260,11 +263,7 @@ echo pg_page_shell($shell) . '
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    ' . $output_table . '
-                </div>
-            </div>
+            ' . $output_table . '
         </div>
     </div>
     <form id="pg-404-delete-form" method="post" action="' . h($log_url) . '" class="d-none">
@@ -278,8 +277,8 @@ echo pg_page_shell($shell) . '
     </form>
     <script>
     // Delete one address or clear the log: confirmed, then the hidden form
-    // outside the table is posted. Delegated from document, since the table
-    // is a DataTable whose rows are detached and drawn again.
+    // outside the list is posted. Delegated from document, since the list
+    // table driver draws its rows again on a sort.
     (function () {
         function ask(question, title, done) {
             if (typeof window.pgConfirm !== "function") {
@@ -315,6 +314,6 @@ echo pg_page_shell($shell) . '
     })();
     </script>
 </main>
-' . output_footer();
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . output_footer();
 
 $liveform->remove_form();

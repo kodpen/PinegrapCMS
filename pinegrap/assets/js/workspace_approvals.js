@@ -435,24 +435,26 @@
     }
 
     // The requests waiting for the reader's answer, as rows of the
-    // overview's Waiting for you card; answers how many it put there.
+    // Today page's Waiting for you card; answers how many it put there.
     function homeRows(data, view, h, into) {
         var items = (data && data.approvals) || [];
         var t = h.t;
         var el = h.el;
 
         items.forEach(function (item) {
-            var row = h.button('ws-home-row ws-home-unread');
-            var text = el('span', 'ws-home-row-text');
-            var meta = el('small', 'ws-home-row-meta');
+            var row = h.button('ws-today-row ws-today-unread');
+            var text = el('span', 'ws-today-row-text');
+            var meta = el('small', 'ws-today-row-meta');
 
-            row.appendChild(h.icon('bi-patch-question', 'fg-secondary'));
+            var sign = el('span', 'ws-today-sign');
+            sign.appendChild(h.icon('bi-patch-question'));
+            row.appendChild(sign);
             meta.appendChild(el('b', '', item.asker));
             meta.appendChild(document.createTextNode(' ' + t('apv_home_asks') + ' · '));
             meta.appendChild(h.icon(item.channel['private'] ? 'bi-lock' : 'bi-hash'));
             meta.appendChild(document.createTextNode(item.channel.name + ' · ' + item.time + (item.closes ? ' · ' + t('apv_home_until', item.closes) : '')));
             text.appendChild(meta);
-            text.appendChild(el('span', 'ws-home-row-quote', item.title));
+            text.appendChild(el('span', 'ws-today-row-quote', item.title));
             row.appendChild(text);
             row.title = t('apv_home');
             row.addEventListener('click', function () { view.open(item.channel.id, item.message_id); });

@@ -22,7 +22,7 @@ description: Panel transitions (pg_preloader_markup()): arrival curtain after 12
 
 ## Brand and ids?
 - With `PRIVATE_LABEL` on, no brand is printed, only the dots.
-- The brand comes from `pg_logo_svg($id_suffix)`; header and curtain share one path list, gradient ids get the suffix in **one `preg_replace` pass** (array `str_replace` re-enters its own output: `pgLogoGradient-plIcon-pl`).
+- The brand is `pg_logo_markup('-pl')` (`ui/brand-logo.md`): the mascot's loop and the wordmark, its own gradient id, its size from `--pg-logo-h` on `.pg-preloader-logo`.
 
 ## Do loops run behind a done curtain?
 - No. `.is-done` pauses the bar and dot loops (#3592, #3676); the leaving bar is `display: none` until wanted.
