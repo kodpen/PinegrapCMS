@@ -451,6 +451,17 @@ if ($can_return && !erp_return_lines_left(erp_returnable_lines($invoice_id))) {
     $returned_in_full = true;
 }
 
+// The read-only accountant sees the document but no control that changes
+// it: the gate would refuse every one of them only after the press.
+$erp_readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
+
+if ($erp_readonly) {
+    $can_cancel = false;
+    $can_return = false;
+    $cancel_locked = '';
+    $cancel_note = '';
+}
+
 $status_labels = erp_invoice_status_labels();
 
 // The lines are shown in the order they were written on the document, so this
@@ -826,7 +837,7 @@ if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($remind
 
     // A snooze is offered while the reminders have anything left to say: up
     // to and including the second announcement.
-    $can_snooze = ($reminder['phase'] !== 'off') && (($reminder['second_notified_at'] === 0) || ($reminder['phase'] === 'snoozed'));
+    $can_snooze = !$erp_readonly && ($reminder['phase'] !== 'off') && (($reminder['second_notified_at'] === 0) || ($reminder['phase'] === 'snoozed'));
 
     $output_snooze = '';
 
@@ -894,7 +905,7 @@ if (((string) $invoice['direction'] === 'sales') && !$is_return && !$is_cancelle
 
     if ($invoice_waybills) {
         $output_waybill_button = '<a class="btn btn-sm btn-outline theme-secondary m-1" href="edit_erp_waybill.php?id=' . (int) $invoice_waybills[0]['id'] . '"><i class="bi bi-truck me-3"></i>' . h($invoice_waybills[0]['full_number']) . '</a>';
-    } else {
+    } elseif (!$erp_readonly) {
         $output_waybill_button = '<a class="btn btn-sm btn-outline theme-primary m-1" href="add_erp_waybill.php?invoice_id=' . $invoice_id . '"><i class="bi bi-truck me-3"></i>' . lang('Issue the Delivery Note') . '</a>';
     }
 }
@@ -917,6 +928,8 @@ if (((string) $invoice['direction'] === 'sales')
     $edoc_status = (string) ($invoice['edoc_status'] ?? 'none');
     $edoc_label = $edoc_labels[$edoc_status] ?? array($edoc_status, 'secondary');
     $edoc_gate = erp_edoc_invoice_can_send($invoice);
+    // The send, hand-over, status question and repairs are writes.
+    $edoc_can_act = $edoc_gate['ok'] && !$erp_readonly;
     $edoc_carrier = ($edoc_provider !== '') ? $edoc_provider : $edoc_active;
     $edoc_carrier_info = ($edoc_carrier !== '') ? erp_edoc_info($edoc_carrier) : null;
     $edoc_carrier_label = is_array($edoc_carrier_info) ? (string) $edoc_carrier_info['label'] : $edoc_carrier;
@@ -942,11 +955,11 @@ if (((string) $invoice['direction'] === 'sales')
     // at them instead.
     $edoc_send_gaps = array_merge((array) erp_edoc_invoice_party_missing($invoice)['fields'], (array) erp_edoc_invoice_document_missing($invoice)['fields']);
 
-    if ($edoc_gate['ok'] && !empty($edoc_send_gaps) && erp_edoc_invoice_party_editable($invoice)) {
+    if ($edoc_can_act && !empty($edoc_send_gaps) && erp_edoc_invoice_party_editable($invoice)) {
         $output_edoc_buttons .= '<a class="btn btn-sm btn-outline theme-warning m-1" href="#edoc_fix"><i class="bi bi-pencil-square me-3" aria-hidden="true"></i>' . lang('Complete the missing fields') . '</a>';
-    } elseif ($edoc_gate['ok'] && $edoc_date_blocked) {
+    } elseif ($edoc_can_act && $edoc_date_blocked) {
         $output_edoc_buttons .= '<a class="btn btn-sm btn-outline theme-warning m-1" href="#edoc_date"><i class="bi bi-calendar-x me-3" aria-hidden="true"></i>' . lang('Fix the date') . '</a>';
-    } elseif ($edoc_gate['ok']) {
+    } elseif ($edoc_can_act) {
         $output_edoc_buttons .= '<form method="post" action="' . $self_action . '" class="d-inline">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $invoice_id . '" />
@@ -957,7 +970,7 @@ if (((string) $invoice['direction'] === 'sales')
 
     // Only while the document is still a draft there: once it has gone, the
     // button goes with it, so nothing is handed over twice.
-    if (($edoc_status === 'created') && ($edoc_provider !== '') && ((string) $invoice['edoc_external_id'] !== '') && erp_edoc_supports('submit_invoice', $edoc_provider)) {
+    if (!$erp_readonly && ($edoc_status === 'created') && ($edoc_provider !== '') && ((string) $invoice['edoc_external_id'] !== '') && erp_edoc_supports('submit_invoice', $edoc_provider)) {
         $output_edoc_buttons .= '<form method="post" action="' . $self_action . '" class="d-inline">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $invoice_id . '" />
@@ -966,7 +979,7 @@ if (((string) $invoice['direction'] === 'sales')
                     </form>';
     }
 
-    if (($edoc_provider !== '') && ((string) $invoice['edoc_external_id'] !== '') && erp_edoc_supports('poll', $edoc_provider)) {
+    if (!$erp_readonly && ($edoc_provider !== '') && ((string) $invoice['edoc_external_id'] !== '') && erp_edoc_supports('poll', $edoc_provider)) {
         $output_edoc_buttons .= '<form method="post" action="' . $self_action . '" class="d-inline">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $invoice_id . '" />
@@ -1018,7 +1031,7 @@ if (((string) $invoice['direction'] === 'sales')
                                     : $edoc_redate['reason']) . '</div>
                             </div>
                         </div>
-                        ' . ($edoc_redate['ok'] ? '<div class="d-flex flex-wrap gap-3">
+                        ' . (($edoc_redate['ok'] && !$erp_readonly) ? '<div class="d-flex flex-wrap gap-3">
                         ' . ($edoc_gate['ok'] && empty($edoc_send_gaps) ? '<form method="post" action="' . $self_action . '">
                             ' . get_token_field() . '
                             <input type="hidden" name="id" value="' . $invoice_id . '" />
@@ -1044,7 +1057,7 @@ if (((string) $invoice['direction'] === 'sales')
         $edoc_missing['fields'] = array_merge((array) $edoc_missing['fields'], $edoc_doc_missing['fields']);
     }
 
-    if (!empty($edoc_missing['fields']) && erp_edoc_invoice_party_editable($invoice)) {
+    if (!$erp_readonly && !empty($edoc_missing['fields']) && erp_edoc_invoice_party_editable($invoice)) {
         // Offered filled in wherever something is known: the document's own
         // copy first, then the account card. The common case is a card that
         // was completed after the invoice was raised - then the boxes come
@@ -1540,12 +1553,13 @@ pg_page_shell([
                                 ' . $liveform->output_field(array(
                                     'type' => 'textarea', 'id' => 'notes', 'name' => 'notes',
                                     'class' => 'form-control', 'rows' => '2', 'maxlength' => '5000',
+                                    'readonly' => $erp_readonly ? 'readonly' : '',
                                     'aria-label' => lang('Notes'))) . '
                                 <div class="form-text">' . lang('Printed at the foot of the document. The only part of an issued invoice that may still be changed; the figures and the lines cannot.') . '</div>
                             </div>
-                            <div class="col-12 lg:col-3 my-3 d-flex align-items-start">
+                            ' . ($erp_readonly ? '' : '<div class="col-12 lg:col-3 my-3 d-flex align-items-start">
                                 <button type="submit" name="submit_notes" value="Save" class="btn btn-outline theme-secondary"><i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save the Note') . '</span></button>
-                            </div>
+                            </div>') . '
                         </div>
                     </div>
                 </div>
