@@ -108,7 +108,7 @@ if (function_exists('erp_profit_report')) {
                 ($open_overdue > 0)
                     ? lang(array('string' => '{var:1} past their due date', 'vars' => $open_overdue))
                     : lang(array('string' => '{var:1} expense(s), any date', 'vars' => $expenses_open['count'])),
-                'bi-hourglass-split', 'erp_expenses.php?status=unpaid&period=dates&from=2000-01-01&to=' . date('Y-12-31'),
+                'bi-hourglass-split', 'erp_expenses.php?status=unpaid&period=all',
                 ($open_overdue > 0) ? 'fg-danger' : '');
     }
 }

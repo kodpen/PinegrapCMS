@@ -607,6 +607,33 @@ function erp_expense_unpaid_summary()
 }
 
 /**
+ * The "all dates" period of the expenses list: from the first expense to the
+ * last one or today, whichever is later. The dashboard's "Expenses to pay"
+ * card counts the unpaid expenses of any date and links here; a two-date
+ * period is capped at two years, so it cannot list them all.
+ *
+ * @param string $first  Y-m-d of the earliest expense, '' when there is none
+ * @param string $last   Y-m-d of the latest expense, '' when there is none
+ * @param string $today  Y-m-d
+ * @return array ['from', 'to', 'range' => 'all', 'error' => '']
+ */
+function erp_expense_all_period($first, $last, $today)
+{
+    $valid = function ($date) {
+        return is_string($date) && preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $parts) && checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]);
+    };
+
+    $from = $valid($first) ? (string) $first : (string) $today;
+    $to = ($valid($last) && ((string) $last > (string) $today)) ? (string) $last : (string) $today;
+
+    if ($from > $to) {
+        $from = $to;
+    }
+
+    return array('from' => $from, 'to' => $to, 'range' => 'all', 'error' => '');
+}
+
+/**
  * Check a till can pay an amount in a currency.
  *
  * @param int    $cash_account_id
