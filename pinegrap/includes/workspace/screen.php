@@ -864,6 +864,10 @@ function ws_screen_config($viewer, $mode, $extra = array())
             // ERP documents: the accountant's read-only right saves none.
             'erp_quote_copy' => (!empty($viewer['erp']) && empty($viewer['erp_readonly'])) ? $base . 'add_erp_quote.php' : '',
         ),
+        // The flow canvas's scripts in their order, which a flow draft's card
+        // fetches once when it is first opened (workspace.js flowEmbedKit());
+        // the Flows screen prints them (ws_screen_scripts()).
+        'flow_scripts' => array_merge(pg_js_bundle_urls('assets/js/pg_graph_canvas.min.js'), pg_js_bundle_urls('assets/js/workspace_flow.min.js')),
         'notes'        => function_exists('ws_notes_ready') && ws_notes_ready(),
         // What one import of notes may send (workspace_notes_import.php): its
         // size, how many files the server takes in one request and the kinds
