@@ -44,8 +44,16 @@
         return l.type === 'redact';
     }
 
-    // The area's shape filled white: a turned box, or the brush's stroke.
+    // The area's shape filled white: a turned box, the brush's stroke, or a
+    // selection's outline (shape 'area', from pg_image_editor_area.js).
     function areaShape(l) {
+        if (l.shape === 'area') {
+            return svg('path', {
+                d: M.areaPoints(l).map(function (r) { return 'M' + r.map(function (p) { return p[0] + ' ' + p[1]; }).join('L') + 'Z'; }).join(''),
+                fill: '#fff', 'fill-rule': 'evenodd'
+            });
+        }
+
         if (l.shape === 'brush') {
             var pts = M.brushPoints(l);
 
@@ -64,10 +72,31 @@
         return r;
     }
 
-    // The same shape onto a canvas, in the turned space's units.
-    function paintShape(g, l) {
+    // The same shape onto a canvas, in the turned space's units; k is the
+    // canvas's pixels per unit, for a feathered edge.
+    function paintShape(g, l, k) {
         g.fillStyle = '#fff';
         g.strokeStyle = '#fff';
+
+        if (l.shape === 'area') {
+            if (l.feather) {
+                g.filter = 'blur(' + (l.feather / 2 * (k || 1)) + 'px)';
+            }
+
+            g.beginPath();
+            M.areaPoints(l).forEach(function (r) {
+                r.forEach(function (p, i) {
+                    if (i) {
+                        g.lineTo(p[0], p[1]);
+                    } else {
+                        g.moveTo(p[0], p[1]);
+                    }
+                });
+                g.closePath();
+            });
+            g.fill('evenodd');
+            return;
+        }
 
         if (l.shape === 'brush') {
             var pts = M.brushPoints(l);
@@ -99,9 +128,9 @@
     }
 
     // The area's upright box in the turned space, a brush grown by half its
-    // width.
+    // width, a feathered area by its soft edge.
     function areaBox(l) {
-        var grow = (l.shape === 'brush') ? (l.size || 0) / 2 : 0, pts = (l.shape === 'brush') ? M.brushPoints(l) : M.corners(l);
+        var grow = (l.shape === 'brush') ? (l.size || 0) / 2 : M.redactGrow(l), pts = (l.shape === 'brush') ? M.brushPoints(l) : M.corners(l);
         var xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
         var x0 = Math.min.apply(null, xs) - grow, y0 = Math.min.apply(null, ys) - grow;
 
@@ -118,7 +147,18 @@
         mask.setAttribute('y', b.y - 1);
         mask.setAttribute('width', b.w + 2);
         mask.setAttribute('height', b.h + 2);
-        mask.appendChild(areaShape(l));
+        var shape = areaShape(l);
+
+        // A feathered area fades out over its edge.
+        if ((l.shape === 'area') && l.feather) {
+            var soft = svg('filter', { id: id + '-s', filterUnits: 'userSpaceOnUse', x: b.x - 1, y: b.y - 1, width: b.w + 2, height: b.h + 2 });
+
+            soft.appendChild(svg('feGaussianBlur', { stdDeviation: l.feather / 2 }));
+            defs.appendChild(soft);
+            shape.setAttribute('filter', 'url(#' + id + '-s)');
+        }
+
+        mask.appendChild(shape);
         defs.appendChild(mask);
         g.appendChild(defs);
 
@@ -387,7 +427,7 @@
             canvas.height = r.h;
             g = canvas.getContext('2d');
             g.setTransform(out.w / box.w, 0, 0, out.h / box.h, -box.x * out.w / box.w - r.x, -box.y * out.h / box.h - r.y);
-            paintShape(g, l);
+            paintShape(g, l, out.w / box.w);
             list.push({ mode: l.mode, strength: Math.min(100, Math.max(1, Math.round(l.strength || 60))), x: r.x, y: r.y, mask: canvas.toDataURL('image/png') });
         });
 
