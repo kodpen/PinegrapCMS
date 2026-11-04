@@ -66,7 +66,7 @@ function test_auto_dialog_form_screens_use_shared_helpers()
 
 		pg_assert_contains('includes/forms/auto_dialog_form.php', $source, $file . ' loads the helpers');
 		pg_assert_contains('pg_auto_dialog_form_validate($liveform, ' . $id . ')', $source, $file . ' checks the shared way');
-		pg_assert_contains('array_merge(pg_auto_dialog_form_values($liveform), ', $source, $file . ' saves the shared values');
+		pg_assert_contains('pg_auto_dialog_save(' . (($id === 'null') ? '0' : '$id') . ', pg_auto_dialog_form_values($liveform), USER_ID)', $source, $file . ' saves the shared values through pg_auto_dialog_save()');
 		pg_assert_contains("validate_area_access(\$user, 'manager')", $source, $file . ' is for managers');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 		pg_assert_false(strpos($source, 'already in use') !== false, $file . ' keeps no copy of the name check');

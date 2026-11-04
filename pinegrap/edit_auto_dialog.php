@@ -114,7 +114,7 @@ if (!$_POST) {
 
     // If the user selected to delete this auto dialog, then delete it.
     if ($liveform->field_in_session('delete')) {
-        db("DELETE FROM auto_dialogs WHERE id = '" . e($liveform->get_field_value('id')) . "'");
+        pg_auto_dialog_delete($id) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array( lang('auto dialog'),$auto_dialog['name'] ) )), $_SESSION['sessionusername']);
         $liveform->remove_form();
@@ -130,21 +130,7 @@ if (!$_POST) {
             go($_SERVER['PHP_SELF'] . '?id=' . $id);
         }
 
-        $query =
-            "UPDATE auto_dialogs
-            SET
-                name = ?,
-                enabled = ?,
-                url = ?,
-                width = ?,
-                height = ?,
-                delay = ?,
-                frequency = ?,
-                page = ?,
-                last_modified_user_id = ?,
-                last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = ?";
-        db_q($query, array_merge(pg_auto_dialog_form_values($liveform), array((string) USER_ID, (string) $id))) or output_error('Query failed.');
+        pg_auto_dialog_save($id, pg_auto_dialog_form_values($liveform), USER_ID) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('auto dialog'),$liveform->get_field_value('name')))), $_SESSION['sessionusername']);
         $liveform->remove_form();

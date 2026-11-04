@@ -62,8 +62,8 @@ function test_common_region_form_screens_use_shared_form()
 
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_common_region.php');
 
-	pg_assert_contains('INSERT INTO cregion', (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_common_region.php'), 'create keeps its INSERT');
-	pg_assert_contains('UPDATE cregion', $edit, 'edit keeps its UPDATE');
+	pg_assert_contains("pg_cregion_save(0, \$name, ", (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_common_region.php'), 'create writes through pg_cregion_save()');
+	pg_assert_contains('pg_cregion_save($id, $name, $new_content, $cregion_designer_type, ', $edit, 'edit writes the region it checked at the top through pg_cregion_save()');
 	pg_assert_contains("'with_content' => !\$component_id,", $edit, 'a converted region shows no content field');
 	pg_assert_contains("'type_locked' => (bool) \$component_id,", $edit, 'a converted region keeps the common type');
 	pg_assert_contains('disable_shortcut', $edit, 'the convert form keeps out of the save shortcut');
@@ -81,7 +81,7 @@ function test_common_region_delete_refused_while_its_component_exists()
 
 	pg_assert_true($branch !== false, 'delete branch');
 	pg_assert_true($refusal !== false && $refusal > $branch, 'refusal inside the branch');
-	pg_assert_true($refusal < strpos($source, 'DELETE FROM cregion'), 'before the DELETE');
+	pg_assert_true($refusal < strpos($source, 'pg_cregion_delete($id)'), 'before the DELETE');
 	pg_assert_contains("lang('This region is a shared component and cannot be deleted while the component exists. Delete the component first.')", $source, 'confirmation');
 }
 
