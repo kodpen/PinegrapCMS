@@ -7542,7 +7542,7 @@ function pg_pb_apply_stock_flag(&$product, $product_id = 0)
  *
  * @return array field => definition
  */
-function pg_pb_quick_edit_columns()
+function pg_pb_quick_edit_columns($choices = null)
 {
     $columns = array(
         'short_description'  => array('type' => 'text', 'label' => lang('Short Description'), 'max' => 100),
@@ -7559,12 +7559,182 @@ function pg_pb_quick_edit_columns()
 
     $columns['inventory_quantity'] = array('type' => 'integer', 'label' => lang('Inventory Quantity'), 'min' => 0, 'max' => 9999999);
 
-    // Every other value of the list the product screen changes.
-    foreach (pg_pb_quick_edit_more_fields() as $field => $more) {
+    // Every other value of the list the product screen changes; the pages,
+    // folders and contact groups only with the choices of the user.
+    foreach (pg_pb_quick_edit_fields($choices) as $field => $more) {
         $columns[$field] = $more['edit'];
     }
 
     return $columns;
+}
+
+/**
+ * The product list's columns whose quick edit is a choice from the site
+ * (pg_pb_quick_edit_choice_fields()).
+ *
+ * @return array
+ */
+function pg_pb_quick_edit_choice_codes()
+{
+    return array('set_start_page', 'grant_private_access', 'email_page', 'contact_group');
+}
+
+/**
+ * What the product screen's pickers offer the user, read once per request:
+ * the pages (select_page()), the folders with private access
+ * (select_folder()) and the contact groups (select_contact_group(), a
+ * role-3 user's own only). The pickers read the global $user, which a
+ * quick edit request has not set yet.
+ *
+ * @param array $user the signed-in user
+ * @return array 'pages', 'folders', 'groups': id => label
+ */
+function pg_pb_quick_edit_choices($user)
+{
+    static $read = array();
+
+    $key = (int) ($user['id'] ?? 0) . ':' . (int) ($user['role'] ?? 99);
+
+    if (isset($read[$key])) {
+        return $read[$key];
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table_edit.php');
+
+    $had_user = array_key_exists('user', $GLOBALS);
+    $global_user = $had_user ? $GLOBALS['user'] : null;
+    $GLOBALS['user'] = $user;
+
+    $pages = array();
+
+    foreach (pg_select_page_options('') as $option) {
+        $pages[(string) (int) $option['id']] = (string) $option['label'];
+    }
+
+    $read[$key] = array(
+        'pages' => $pages,
+        'folders' => pg_page_quick_option_pairs(select_folder(0, 0, 0, 0, array(), array(), 'private')),
+        'groups' => pg_page_quick_option_pairs(select_contact_group('', $user)),
+    );
+
+    if ($had_user) {
+        $GLOBALS['user'] = $global_user;
+    } else {
+        unset($GLOBALS['user']);
+    }
+
+    return $read[$key];
+}
+
+/**
+ * The product list's cells chosen from the site, as the product screen's
+ * pickers offer them (pg_pb_quick_edit_choices()), each with a first choice
+ * for none: the customer's start page and the private folder (only on a
+ * product that grants private access, where the screen shows them), the
+ * e-mail page and the contact group. Pure.
+ *
+ * @param array $choices pg_pb_quick_edit_choices()
+ * @return array field => array('column', 'kind', 'edit'[, 'row', 'private'])
+ */
+function pg_pb_quick_edit_choice_fields($choices)
+{
+    $none = array('0' => '[' . lang('None') . ']');
+
+    $choice = function ($column, $label, $options, $extra = array()) use ($none) {
+        $pairs = $none;
+
+        foreach ((array) $options as $value => $text) {
+            if ((int) $value > 0) {
+                $pairs[(string) (int) $value] = (string) $text;
+            }
+        }
+
+        return $extra + array('column' => $column, 'kind' => 'choice', 'edit' => array('type' => 'select', 'label' => $label, 'options' => $pairs));
+    };
+
+    return array(
+        'set_start_page' => $choice('send_to_page', lang('Set Start Page'), $choices['pages'] ?? array(), array('private' => true)),
+        'grant_private_access' => $choice('private_folder', lang('Grant Private Access'), $choices['folders'] ?? array(), array('private' => true, 'row' => 'private_folder_id')),
+        'email_page' => $choice('email_page', lang('E-mail Page'), $choices['pages'] ?? array(), array('row' => 'email_page_id')),
+        'contact_group' => $choice('contact_group_id', lang('Contact Group'), $choices['groups'] ?? array()),
+    );
+}
+
+/**
+ * Every quick edit field beside the five of pg_pb_quick_edit_columns():
+ * pg_pb_quick_edit_more_fields(), and with the user's choices the ones
+ * picked from the site.
+ *
+ * @param array|null $choices pg_pb_quick_edit_choices()
+ * @return array field => definition
+ */
+function pg_pb_quick_edit_fields($choices = null)
+{
+    return pg_pb_quick_edit_more_fields() + (is_array($choices) ? pg_pb_quick_edit_choice_fields($choices) : array());
+}
+
+/**
+ * Whether a product's cell opens as a field: a picked value only while the
+ * stored one is among the choices (or none), so the select can show it, and
+ * the private access pair only on a product that grants it, as the product
+ * screen shows them only under that switch. Pure.
+ *
+ * @param string $field
+ * @param array  $product
+ * @param array  $fields pg_pb_quick_edit_fields()
+ * @return bool
+ */
+function pg_pb_quick_cell_editable($field, $product, $fields)
+{
+    if (!isset($fields[$field])) {
+        return false;
+    }
+
+    $more = $fields[$field];
+
+    if ($more['kind'] !== 'choice') {
+        return true;
+    }
+
+    if (!empty($more['private']) && ((string) ($product['grant_private_access'] ?? '') !== '1')) {
+        return false;
+    }
+
+    return isset($more['edit']['options'][pg_pb_quick_edit_value($field, $product, $fields)]);
+}
+
+/**
+ * Length, width and height typed into the one Dim cell, "12 x 3 x 4.5"
+ * (x, × or *, either decimal separator), checked the way the product screen
+ * checks its three boxes (pg_pb_number_fields_problem()), in inches as
+ * stored. An empty cell takes the three off. Pure.
+ *
+ * @param string $value
+ * @return array array('ok' => bool, 'change' => length, width, height, 'message')
+ */
+function pg_pb_quick_dimensions_change($value)
+{
+    $value = trim((string) $value);
+    $parts = ($value === '') ? array('0', '0', '0') : preg_split('/\s*[x×*]\s*/iu', $value);
+
+    if (count($parts) !== 3) {
+        return array('ok' => false, 'change' => array(), 'message' => lang(array('string' => '{var:1} takes length, width and height, such as {var:2}.', 'vars' => array(lang('Dim'), '12 x 3 x 4'))));
+    }
+
+    $sizes = array_combine(array('length', 'width', 'height'), $parts);
+    $problem = pg_pb_number_fields_problem($sizes);
+
+    if ($problem !== '') {
+        return array('ok' => false, 'change' => array(), 'message' => $problem);
+    }
+
+    $change = array();
+
+    foreach ($sizes as $column => $size) {
+        $change[$column] = number_format(round(pg_pb_measure_from_input($size, $column, false), 4), 4, '.', '');
+    }
+
+    return array('ok' => true, 'change' => $change, 'message' => '');
 }
 
 /**
@@ -7576,11 +7746,12 @@ function pg_pb_quick_edit_columns()
  * field, 'code' (the list's column) and 'row' (the list read's key). A
  * block the product screen does not draw is not offered either: the
  * shipping figures while the store does not ship, Start where the gateway
- * takes no start day. Left on the product screen: the dimensions (three
- * boxes in one cell), the zones, the pages, folder and contact group
- * chosen from the site, and the order receipt message (rich text).
+ * takes no start day. The pages, folder and contact group chosen from the
+ * site need the user's choices (pg_pb_quick_edit_choice_fields()). Left on
+ * the product screen: the zones (several choices) and the order receipt
+ * message (rich text).
  *
- * @return array field => array('column', 'kind', 'edit'[, 'code', 'row'])
+ * @return array field => array('column', 'kind', 'edit'[, 'code', 'row', 'columns'])
  */
 function pg_pb_quick_edit_more_fields()
 {
@@ -7640,6 +7811,8 @@ function pg_pb_quick_edit_more_fields()
             'weight' => $field('weight', 'decimal', array('type' => 'decimal', 'label' => lang('Weight'))),
             'pwp' => $whole('primary_weight_points', lang('PWP')),
             'swp' => $whole('secondary_weight_points', lang('SWP')),
+            // Length, width and height in one cell (pg_pb_quick_dimensions_change()).
+            'dim' => array('columns' => array('length', 'width', 'height')) + $field('length', 'dimensions', array('type' => 'text', 'label' => lang('Dim'), 'max' => 80)),
             'cont_req' => $switch('container_required', lang('Cont Req')),
             'prep' => $whole('preparation_time', lang('Prep')),
             'free_ship' => $switch('free_shipping', lang('Free Ship')),
@@ -7695,11 +7868,13 @@ function pg_pb_quick_edit_field_of($code)
  * @param mixed  $value   as pg_list_edit_parse() read it
  * @param array  $current the stored row (minimum_quantity and
  *                        maximum_quantity for the default quantity)
+ * @param array|null $fields pg_pb_quick_edit_fields(), the ones without
+ *                        choices when null
  * @return array array('ok' => bool, 'change' => column => value, 'message' => the refusal)
  */
-function pg_pb_quick_more_change($field, $value, $current)
+function pg_pb_quick_more_change($field, $value, $current, $fields = null)
 {
-    $fields = pg_pb_quick_edit_more_fields();
+    $fields = is_array($fields) ? $fields : pg_pb_quick_edit_more_fields();
 
     $fail = function ($message) {
         return array('ok' => false, 'change' => array(), 'message' => $message);
@@ -7759,6 +7934,14 @@ function pg_pb_quick_more_change($field, $value, $current)
             }
 
             break;
+
+        case 'choice':
+            // One of the choices pg_list_edit_parse() let through; none is 0.
+            $value = (int) $value;
+            break;
+
+        case 'dimensions':
+            return pg_pb_quick_dimensions_change($value);
     }
 
     return array('ok' => true, 'change' => array($more['column'] => $value), 'message' => '');
@@ -7773,10 +7956,11 @@ function pg_pb_quick_more_change($field, $value, $current)
  * @param array  $product
  * @return string
  */
-function pg_pb_quick_more_shown($field, $product)
+function pg_pb_quick_more_shown($field, $product, $fields = null)
 {
-    $more = pg_pb_quick_edit_more_fields()[$field];
-    $value = pg_pb_quick_edit_value($field, $product);
+    $fields = is_array($fields) ? $fields : pg_pb_quick_edit_more_fields();
+    $more = $fields[$field];
+    $value = pg_pb_quick_edit_value($field, $product, $fields);
 
     if (isset($more['edit']['options'][$value])) {
         return (string) $more['edit']['options'][$value];
@@ -7860,17 +8044,19 @@ function pg_pb_list_cells($product)
  * in the site's decimal style without grouping, which pg_pb_price_to_cents()
  * reads back either way.
  *
- * @param string $field
- * @param array  $product
+ * @param string     $field
+ * @param array      $product
+ * @param array|null $fields pg_pb_quick_edit_fields(), the ones without
+ *                           choices when null
  * @return string
  */
-function pg_pb_quick_edit_value($field, $product)
+function pg_pb_quick_edit_value($field, $product, $fields = null)
 {
     if ($field === 'price') {
         return pg_format_input_amount(((int) $product['price']) / 100);
     }
 
-    $more = pg_pb_quick_edit_more_fields();
+    $more = is_array($fields) ? $fields : pg_pb_quick_edit_more_fields();
 
     if (isset($more[$field])) {
         // The list's read names the start day recurring_start.
@@ -7889,7 +8075,27 @@ function pg_pb_quick_edit_value($field, $product)
 
                 return str_replace('.', (string) ($separators['decimal'] ?? '.'), $shown);
             case 'whole':
+            case 'choice':
                 return (string) (int) $raw;
+            case 'dimensions':
+                // 12 x 3 x 4.5 in the site's decimal style; empty for none.
+                $sizes = array();
+
+                foreach ($more[$field]['columns'] as $column) {
+                    $sizes[] = isset($product[$column]) ? (float) $product[$column] : 0.0;
+                }
+
+                if (max($sizes) <= 0) {
+                    return '';
+                }
+
+                $separators = function_exists('pg_number_separators') ? pg_number_separators() : array('decimal' => '.');
+
+                foreach ($sizes as $index => $size) {
+                    $sizes[$index] = str_replace('.', (string) ($separators['decimal'] ?? '.'), rtrim(rtrim(number_format($size, 4, '.', ''), '0'), '.'));
+                }
+
+                return implode(' x ', $sizes);
         }
 
         return $raw;
@@ -7925,12 +8131,19 @@ function pg_pb_quick_edit_value($field, $product)
 function pg_pb_quick_update($product_id, $field, $value, $user = null)
 {
     $product_id = (int) $product_id;
-    $columns = pg_pb_quick_edit_columns();
-    $more = pg_pb_quick_edit_more_fields();
-    $more_columns = array();
+
+    // A value picked from the site is checked against the user's choices.
+    $choices = in_array((string) $field, pg_pb_quick_edit_choice_codes(), true)
+        ? pg_pb_quick_edit_choices(is_array($user) ? $user : validate_user())
+        : null;
+    $columns = pg_pb_quick_edit_columns($choices);
+    $more = pg_pb_quick_edit_fields($choices);
+    $more_columns = array('grant_private_access' => 'grant_private_access');
 
     foreach ($more as $more_field) {
-        $more_columns[$more_field['column']] = $more_field['column'];
+        foreach (isset($more_field['columns']) ? $more_field['columns'] : array($more_field['column']) as $more_column) {
+            $more_columns[$more_column] = $more_column;
+        }
     }
 
     unset($more_columns['name']);
@@ -8014,9 +8227,18 @@ function pg_pb_quick_update($product_id, $field, $value, $user = null)
             break;
 
         default:
+            // The private access pair shows on the product screen only
+            // under its switch; a value no longer offered (a page or folder
+            // moved away, another user's contact group) is changed there.
+            if (!pg_pb_quick_cell_editable($field, $current, $more)) {
+                return array('ok' => false, 'code' => 'invalid', 'message' => !empty($more[$field]['private']) && ((string) $current['grant_private_access'] !== '1')
+                    ? lang('This product does not grant private access. Turn it on in the product first.')
+                    : lang('The stored value is not among the choices: change it on the product screen.'));
+            }
+
             // Every other value the product screen changes, checked as it
             // checks the same box.
-            $asked = pg_pb_quick_more_change($field, $value, $current);
+            $asked = pg_pb_quick_more_change($field, $value, $current, $more);
 
             if (!$asked['ok']) {
                 return array('ok' => false, 'code' => 'invalid', 'message' => $asked['message']);
@@ -8035,9 +8257,12 @@ function pg_pb_quick_update($product_id, $field, $value, $user = null)
             $change = $asked['change'];
     }
 
-    $column = isset($more[$field]) ? $more[$field]['column'] : $field;
     $product = array_merge($current, $change);
-    $changed = ((string) $current[$column] !== (string) $product[$column]);
+    $changed = false;
+
+    foreach (isset($more[$field]) ? array_keys($change) : array($field) as $column) {
+        $changed = $changed || ((string) $current[$column] !== (string) $product[$column]);
+    }
 
     // The same value again writes nothing and logs nothing; the list is still
     // redrawn from what is stored.
@@ -8081,7 +8306,7 @@ function pg_pb_quick_update($product_id, $field, $value, $user = null)
 
         $shown = function ($product) use ($field, $more) {
             if (isset($more[$field])) {
-                return pg_pb_quick_more_shown($field, $product);
+                return pg_pb_quick_more_shown($field, $product, $more);
             }
 
             switch ($field) {
@@ -8115,7 +8340,7 @@ function pg_pb_quick_update($product_id, $field, $value, $user = null)
         $source = pg_product_list_source(is_array($user) ? $user : validate_user(), array('filter' => $_SESSION['software']['view_products']['filter'] ?? ''));
         $row = $source ? pg_list_table_record_row($source, $product_id) : null;
 
-        return array('ok' => true, 'value' => pg_pb_quick_edit_value($field, $product))
+        return array('ok' => true, 'value' => pg_pb_quick_edit_value($field, $product, $more))
             + pg_list_table_edit_answer($row, isset($more[$field]['code']) ? $more[$field]['code'] : $field, array('last_modified'));
     }
 
