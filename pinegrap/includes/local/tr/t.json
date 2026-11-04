@@ -5845,6 +5845,7 @@
     "This file will be moved to the Recycle Bin.": "Bu dosya Geri Dönüşüm Kutusuna taşınacak.",
     "This finance request could not be found, or it is not yours to see.": "Bu kredi başvurusu bulunamadı ya da görme yetkiniz yok.",
     "This flow already has an open run for that customer.": "Bu akışın o müşteri için açık bir çalıştırması zaten var.",
+    "This flow could not be published like this: {var:1} Fix it and send the answer again with all of it, or leave the flow out and say why.": "Bu akış bu hâliyle yayımlanamazdı: {var:1} Düzeltip yanıtı tamamıyla yeniden gönderin ya da akışı çıkarıp nedenini söyleyin.",
     "This flow has no published version to resume. Publish it instead.": "Bu akışın sürdürülecek yayımlanmış bir sürümü yok. Bunun yerine yayımlayın.",
     "This flow has not run yet.": "Bu akış henüz çalıştırılmadı.",
     "This flow has {var:1} runs open already; it starts again once some of them end.": "Bu akışın zaten {var:1} açık çalıştırması var; bazıları bitince yeniden başlatılabilir.",
