@@ -28,7 +28,7 @@ description: Coordinator session: one per account, keeps its cloud workers on fr
 - Model and effort, session sources, quota guard, worker range, decided drafts: `coordinator-limits.md`.
 
 ## When does it hand over to a fresh coordinator?
-- Past about 200k tokens of context (`get_session` `context_usage.used_tokens`, at a check-in), under depth 6: each wake pays for all of it. From depth 6 it works on, whatever its size (`coordinator-limits.md`).
+- Past about 200k tokens of context (`get_session` `context_usage.used_tokens`, at a check-in), up to depth 6: each wake pays for all of it. At depth 7 it works on, whatever its size (`coordinator-limits.md`).
 - The workers go with it. Its note: each worker's session id and PR, waits it named to the owner, its to-do list, and the schedules the new one sets up (chain, routine, check-ins).
 - First it deletes its own schedules (chain and routine, `delete_trigger`) and archives its finished workers (PR merged, ended; `archive_session`), then starts the new one with `create_session` and the note, sends each running worker the new one's session id (`send_message`) and ends. The new one's first act is to archive it. A worker's failure event then reaches no one; the 30-minute check finds a stopped worker.
 
