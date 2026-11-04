@@ -63,28 +63,15 @@ function pg_credit_staff_issue_input($amount_raw, $last_day_raw, $reason_raw, $n
 
     $out['amount'] = $amount;
 
-    $last_day = is_scalar($last_day_raw) ? trim((string) $last_day_raw) : '';
+    $expires = pg_credit_last_day_expires($last_day_raw, $now);
 
-    if ($last_day !== '') {
-        $date = DateTime::createFromFormat('!Y-m-d', $last_day);
+    if ($expires < 0) {
+        $out['error'] = 'date';
 
-        if (!$date || ($date->format('Y-m-d') !== $last_day)) {
-            $out['error'] = 'date';
-
-            return $out;
-        }
-
-        $date->modify('+1 day');
-        $expires = (int) $date->getTimestamp();
-
-        if ($expires <= (int) $now) {
-            $out['error'] = 'date';
-
-            return $out;
-        }
-
-        $out['expires'] = $expires;
+        return $out;
     }
+
+    $out['expires'] = $expires;
 
     $reason = is_scalar($reason_raw) ? trim((string) $reason_raw) : '';
 
@@ -97,6 +84,35 @@ function pg_credit_staff_issue_input($amount_raw, $last_day_raw, $reason_raw, $n
     $out['reason'] = mb_substr($reason, 0, PG_CREDIT_REASON_LENGTH);
 
     return $out;
+}
+
+/**
+ * The moment a card given a last day stops (pure): the start of the next
+ * day, so the card is valid through the day itself. Shared by the staff
+ * screen and POST /customers/{id}/credit.
+ *
+ * @param mixed $last_day_raw  Y-m-d, or empty for never
+ * @param int   $now
+ * @return int  unix time, 0 for never, -1 for an impossible or past day
+ */
+function pg_credit_last_day_expires($last_day_raw, $now)
+{
+    $last_day = is_scalar($last_day_raw) ? trim((string) $last_day_raw) : '';
+
+    if ($last_day === '') {
+        return 0;
+    }
+
+    $date = DateTime::createFromFormat('!Y-m-d', $last_day);
+
+    if (!$date || ($date->format('Y-m-d') !== $last_day)) {
+        return -1;
+    }
+
+    $date->modify('+1 day');
+    $expires = (int) $date->getTimestamp();
+
+    return ($expires <= (int) $now) ? -1 : $expires;
 }
 
 /**

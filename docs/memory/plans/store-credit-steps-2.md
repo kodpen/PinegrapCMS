@@ -12,7 +12,7 @@ description: Steps SC5-SC7 of plans/store-credit.md: the staff and account scree
   - SC5c (S) Mails `credit_issued` and `credit_expiring` as campaign profile actions with their fields; the general job expires cards on their date and sends the expiring notice 14 days ahead once (no column: a pass window in `config_text`, as booking reminders; the migration step only widens the two ENUMs). Done in PR #6684. Memory: `commerce/store-credit-mails.md`.
 
 - SC6 (S) API, MCP, webhooks, personal data. After SC2-SC5.
-  - `GET /customers/{id}/credit` (balance, cards) and `POST` (issue, void) with scopes and `dry_run` (`api/api-endpoint-rules.md`); events `credit.issued`, `credit.used`, `credit.expired` through `pg_announce()`; the export lists a customer's cards, erasure voids them and clears `user_id`. Memory: `api/api-customer-credit.md`.
+  - `GET /customers/{id}/credit` (balance, cards) and `POST` (issue, void) with scopes and `dry_run` (`api/api-endpoint-rules.md`); events `credit.issued`, `credit.used`, `credit.expired` through `pg_announce()`; the export lists a customer's cards, erasure voids them and clears `user_id`. Done in PR #6711. Memory: `api/api-customer-credit.md`.
 
 - SC7 (S) Close-out. After SC1-SC6.
   - PR body names `[NEW] Added store credit: points convert to credit, refunds can go to credit, and a customer's balance is applied at checkout`; decisions to `commerce/`; the two plan files and the line in `feature-plans-2026-11.md` deleted; `php tools/memory_index.php`.

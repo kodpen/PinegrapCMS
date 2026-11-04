@@ -184,6 +184,7 @@ description: Generated from the module field of the memory files: each includes/
 - `stock_sales`: [[stock-locations-completion]]
 - `store_credit`: [[store-credit-checkout]], [[store-credit-model]]
 - `store_credit_account`: [[store-credit-screens]]
+- `store_credit_events`: [[api-customer-credit]]
 - `store_credit_mails`: [[store-credit-mails]]
 - `store_credit_points`: [[store-credit-points]], [[store-credit-points-take-back]]
 - `store_credit_refunds`: [[store-credit-refunds]]
