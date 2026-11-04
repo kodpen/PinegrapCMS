@@ -6,7 +6,7 @@ description: Steps AP5-AP8 of plans/activitypub.md: moderation and blocks, the F
 ## Which steps are there?
 - Sizes, tests and memory rules as in `activitypub-steps.md`; AP5 and AP6 run beside AP4.
 
-- AP5 (S) Moderation. After AP2.
+- AP5 (S) Moderation. `done` (#6483); blocks and erasure in `platform/activitypub-moderation.md`.
   - `ap_blocks` rows (actor or domain) from the comment moderation screen and the Fediverse screen; a block deletes that actor's comments and follower row and refuses its signature; erasure requests from a remote actor (Delete of an actor) handled by the same path. Memory: `platform/activitypub-inbox.md` grows.
 
 - AP6 (S) The Fediverse screen. After AP2 and AP3.

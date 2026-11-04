@@ -967,6 +967,7 @@
     "Every Two Weeks": "Her İki Haftada Bir",
     "Every account has a private calendar feed of its tasks that have a due date. Any calendar app that can subscribe to a calendar by its address can show them.": "Her hesabın, son tarihi olan görevlerinden oluşan özel bir takvim beslemesi vardır. Bir takvime adresiyle abone olabilen her takvim uygulaması bunları gösterebilir.",
     "Every account has a private e-mail address for notes. Anything you send or forward to it becomes a note in your Inbox notebook.": "Her hesabın notlar için özel bir e-posta adresi vardır. Bu adrese gönderdiğiniz ya da ilettiğiniz her şey Gelen Kutusu defterinizde bir not olur.",
+    "Every account on {var:1} will be blocked: their comments, likes and boosts are deleted and they can no longer follow the site or reply.": "{var:1} üzerindeki tüm hesaplar engellenecek: yorumları, beğenileri ve paylaşımları silinir; siteyi artık takip edemez ve yanıt yazamazlar.",
     "Every address the site writes starts with https:// and a plain http request is redirected. This is the switch the HSTS option below depends on.": "Sitenin yazdığı her adres https:// ile başlar ve düz http istekleri yönlendirilir. Aşağıdaki HSTS seçeneği bu anahtara bağlıdır.",
     "Every address this site is telling, whoever registered it.": "Bu sitenin haber verdiği bütün adresler, kaydeden kim olursa olsun.",
     "Every administrator, designer and manager is in the team, unless taken out of it on this screen.": "Bu ekranda ekipten çıkarılmadıkça her yönetici, tasarımcı ve müdür ekiptedir.",

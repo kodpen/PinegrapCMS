@@ -9,6 +9,7 @@ description: Generated from the module field of the memory files: each includes/
 - `a11y`: [[accessibility-report]], [[editor-a11y-measurements]]
 - `activitypub`: [[activitypub-actor]]
 - `activitypub_inbox`: [[activitypub-inbox]]
+- `activitypub_moderation`: [[activitypub-moderation]]
 - `address_autocomplete`: [[address-autocomplete]]
 - `ai_prompts`: [[ai-prompt-version]]
 - `ai_visibility`: [[ai-visibility-figures]]
