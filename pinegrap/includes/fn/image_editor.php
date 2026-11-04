@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'access', 'fonts', 'glyph', 'warp');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'access', 'fonts', 'glyph', 'warp');
 }
 
 /**
@@ -428,6 +428,22 @@ function pg_image_edit_validate($doc)
     if (isset($doc['layers']) && (!is_array($doc['layers']) || (count($doc['layers']) > 500))) {
         $result['error'] = 'layers';
         return $result;
+    }
+
+    // A canvas's scenes: a closed one keeps its layers in its entry, capped
+    // as the open one's (the editor's SCENE_MAX and SCENE_LAYERS_MAX).
+    if (isset($doc['scenes'])) {
+        if (!is_array($doc['scenes']) || !isset($doc['artboard']) || (count($doc['scenes']) > 50)) {
+            $result['error'] = 'scenes';
+            return $result;
+        }
+
+        foreach ($doc['scenes'] as $scene) {
+            if (!is_array($scene) || (isset($scene['layers']) && (!is_array($scene['layers']) || (count($scene['layers']) > 500)))) {
+                $result['error'] = 'scenes';
+                return $result;
+            }
+        }
     }
 
     if (isset($doc['artboard'])) {
@@ -3690,7 +3706,7 @@ function pg_image_editor_binary_body($body)
 /**
  * The document an animation file's version keeps: the browser's (decoded as
  * objects) with an animation member naming the file its frames are drawn
- * from (0 for a canvas), the version_no of that file's base row and the
+ * from (a saved canvas's file; 0 for a canvas not saved), the version_no of that file's base row and the
  * format; '' when it may not be kept (pg_file_versions_doc_storable()).
  * Pure.
  *
@@ -3847,19 +3863,32 @@ function pg_image_editor_animation_open($file_id, $user)
         'replace' => !(((int) $row['design'] === 1) && ($user['role'] > 1)));
     $versions = count(pg_file_versions_rows((int) $row['id']));
 
-    if ($made['animation']['source'] === 0) {
-        if (!pg_image_editor_canvas_is_doc($made['doc'])) {
-            return null;
+    // A canvas's animation opens as that canvas (a still save is a copy of
+    // it), so Save animation names the canvas the animation was made from;
+    // one whose canvas is gone, or was never saved, as a canvas of its own.
+    if (pg_image_editor_canvas_is_doc($made['doc'])) {
+        $canvas = ($made['animation']['source'] > 0) ? pg_image_editor_file($made['animation']['source'], $user) : null;
+        $file = array('id' => (int) $row['id'], 'name' => (string) $row['name'], 'url' => '', 'replace' => false, 'notice' => '');
+
+        if ($canvas && !$canvas['refusal']) {
+            $file['id'] = (int) $canvas['row']['id'];
+            $file['name'] = (string) $canvas['row']['name'];
+            $file['notice'] = lang(array('string' => 'Editing the animation {var:1}: its frames are drawn from {var:2}.', 'vars' => array((string) $row['name'], (string) $canvas['row']['name'])));
+            $versions = count(pg_file_versions_rows((int) $canvas['row']['id']));
         }
 
         return array(array(
             'status'    => 'success',
-            'file'      => array('id' => (int) $row['id'], 'name' => (string) $row['name'], 'url' => '', 'replace' => false, 'notice' => ''),
+            'file'      => $file,
             'versions'  => $versions,
             'doc'       => $made['doc'],
             'base'      => 0,
             'canvas'    => true,
             'animation' => $animation), 200);
+    }
+
+    if ($made['animation']['source'] === 0) {
+        return null;
     }
 
     $source = pg_image_editor_file($made['animation']['source'], $user);
@@ -3922,6 +3951,14 @@ function pg_image_editor_action_animation($request, $user)
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
+    // The document its version keeps passes the save's checks (the layers
+    // and scenes capped).
+    $check = pg_image_edit_validate(isset($request['doc']) ? $request['doc'] : null);
+
+    if ($check['error'] !== '') {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
     $limit = pg_image_editor_animation_limit(pg_upload_limits());
 
     if (($limit > 0) && (strlen($bytes) > $limit)) {
@@ -3971,6 +4008,11 @@ function pg_image_editor_action_animation($request, $user)
 
         $folder = (int) $file['row']['folder'];
         $stem = (string) $file['row']['name'];
+        // The animation names its canvas, so only an animation of this
+        // canvas is replaced from it; one opened as its own canvas (its
+        // canvas gone) keeps the canvas it names.
+        $self = pg_image_editor_animation_file($file_id);
+        $source_id = $self ? (int) $self['animation']['source'] : $file_id;
 
     } else {
         $folder = isset($request['folder_id']) ? (int) $request['folder_id'] : 0;
@@ -4045,6 +4087,34 @@ function pg_image_editor_action_animation($request, $user)
     $record[0]['format'] = $format;
 
     return $record;
+}
+
+// -- Scenes (pg_image_editor_scenes.js) --
+
+/**
+ * The scenes part's labels: the strip under the play bar and the open
+ * scene's panel. {n} is a scene's number, {kind} a transition's name and
+ * {time} its time.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_scenes()
+{
+    return array(
+        'scenesRegion'        => lang('Scenes'),
+        'sceneName'           => lang('Scene {n}'),
+        'sceneAdd'            => lang('Add a scene'),
+        'sceneMax'            => lang('A canvas holds at most {n} scenes.'),
+        'sceneDuration'       => lang('Duration'),
+        'sceneTransition'     => lang('Transition to the next scene'),
+        'sceneTransitionTime' => lang('Transition time'),
+        'sceneTransitionTip'  => lang('Transition: {kind} · {time}'),
+        'sceneDuplicate'      => lang('Duplicate'),
+        'sceneDelete'         => lang('Delete'),
+        'sceneEarlier'        => lang('Move earlier'),
+        'sceneLater'          => lang('Move later'),
+        'sceneNote'           => lang('The layers move within their own scene\'s duration. Play shows the open scene; Save animation plays the scenes one after another.'),
+    );
 }
 
 // -- Access (pg_image_editor_access.js) --

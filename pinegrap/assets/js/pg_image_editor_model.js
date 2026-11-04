@@ -1908,6 +1908,12 @@
             next.filter = next.filter || 'none';
             next.frame = (next.frame === undefined) ? null : next.frame;
 
+            // Scenes only with the open one among them (sceneList()).
+            if (!Array.isArray(next.scenes) || (next.scenes.length < 2) || (sceneIndex(next) < 0)) {
+                delete next.scenes;
+                delete next.scene;
+            }
+
             return next;
         },
 
@@ -4270,6 +4276,320 @@
         warpShape: warpShape, warpOutline: warpOutline, warpExpand: warpExpand
     };
 
+    // -- scenes (pg_image_editor_scenes.js) --
+
+    // A canvas may hold scenes played one after another: doc.scenes lists
+    // them as { id, name, transition } and doc.scene names the open one,
+    // whose layers, background and duration are the document's own
+    // (doc.layers, doc.artboard.background, doc.motion.duration), so the
+    // tools need no change. A closed scene keeps them in its entry: layers,
+    // background, duration. A document without doc.scenes is one scene.
+    var SCENE_MAX = 50;
+    var SCENE_LAYERS_MAX = 500;
+    var SCENE_TRANSITIONS = ['none', 'fade', 'slide', 'zoom', 'wipe'];
+    var SCENE_TRANSITION_MIN = 100, SCENE_TRANSITION_MAX = 2000, SCENE_TRANSITION_MS = 600;
+    var SCENE_DEFAULT = 3000;
+
+    function sceneCount(doc) {
+        return (doc && Array.isArray(doc.scenes)) ? doc.scenes.length : 0;
+    }
+
+    // The open scene's place in doc.scenes; -1 without scenes.
+    function sceneIndex(doc) {
+        var list = (doc && Array.isArray(doc.scenes)) ? doc.scenes : [];
+
+        for (var i = 0; i < list.length; i++) {
+            if (list[i] && (list[i].id === doc.scene)) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    // A transition to the next scene with its defaults: a kind from
+    // SCENE_TRANSITIONS and its time in ms, in steps of 100.
+    function sceneTransition(tr) {
+        tr = (tr && (typeof tr === 'object')) ? tr : {};
+
+        return {
+            kind: (SCENE_TRANSITIONS.indexOf(tr.kind) >= 0) ? tr.kind : 'none',
+            ms: clamp(Math.round((Number(tr.ms) || SCENE_TRANSITION_MS) / 100) * 100, SCENE_TRANSITION_MIN, SCENE_TRANSITION_MAX)
+        };
+    }
+
+    function sceneDuration(ms) {
+        return clamp(Math.round(Number(ms) || SCENE_DEFAULT), MOTION_MIN, MOTION_MAX);
+    }
+
+    // The scenes as they play, the open one filled from the document:
+    // [{ id, name, layers, background, duration, transition, open }]. One
+    // entry for a document without scenes. The layers are the document's
+    // own arrays, not copies.
+    function sceneList(doc) {
+        var bg = (doc.artboard && (typeof doc.artboard.background === 'string')) ? doc.artboard.background : '#ffffff';
+        var live = { layers: doc.layers || [], background: bg, duration: docMotion(doc).duration };
+
+        if (!sceneCount(doc)) {
+            return [{ id: '', name: '', layers: live.layers, background: bg, duration: live.duration, transition: sceneTransition(null), open: true }];
+        }
+
+        return doc.scenes.map(function (s) {
+            var open = (s.id === doc.scene);
+
+            return {
+                id: s.id,
+                name: (typeof s.name === 'string') ? s.name : '',
+                layers: open ? live.layers : (Array.isArray(s.layers) ? s.layers : []),
+                background: open ? bg : ((typeof s.background === 'string') ? s.background : '#ffffff'),
+                duration: open ? live.duration : sceneDuration(s.duration),
+                transition: sceneTransition(s.transition),
+                open: open
+            };
+        });
+    }
+
+    // A scene id not yet in the document.
+    function sceneNewId(doc) {
+        var n = sceneCount(doc) + 1;
+
+        while ((doc.scenes || []).some(function (s) { return s.id === 's' + n; })) {
+            n++;
+        }
+
+        return 's' + n;
+    }
+
+    // The document's own content as its first scene (changes doc).
+    function sceneStart(doc) {
+        if (!sceneCount(doc)) {
+            doc.scenes = [{ id: 's1', name: '', transition: sceneTransition(null) }];
+            doc.scene = 's1';
+            doc.motion = docMotion(doc);
+        }
+
+        return doc;
+    }
+
+    // Opens the scene id: the open one's layers, background and duration go
+    // into its entry, the other's come out of it (changes doc).
+    function sceneOpen(doc, id) {
+        var from = sceneIndex(doc), to = -1;
+
+        (doc.scenes || []).forEach(function (s, i) {
+            if (s.id === id) {
+                to = i;
+            }
+        });
+
+        if ((to < 0) || (to === from)) {
+            return doc;
+        }
+
+        var motion = docMotion(doc), board = doc.artboard || {}, next = doc.scenes[to];
+
+        if (from >= 0) {
+            Object.assign(doc.scenes[from], {
+                layers: doc.layers || [],
+                background: (typeof board.background === 'string') ? board.background : '#ffffff',
+                duration: motion.duration
+            });
+        }
+
+        doc.layers = Array.isArray(next.layers) ? next.layers : [];
+
+        if (doc.artboard) {
+            doc.artboard.background = (typeof next.background === 'string') ? next.background : '#ffffff';
+        }
+
+        doc.motion = Object.assign({}, doc.motion || motion, { duration: sceneDuration(next.duration) });
+        delete next.layers;
+        delete next.background;
+        delete next.duration;
+        doc.scene = id;
+
+        return doc;
+    }
+
+    // A new scene after the open one, opened: empty, or a copy of the open
+    // one (copy true) with its duration and transition (changes doc).
+    function sceneAdd(doc, copy) {
+        sceneStart(doc);
+
+        if (sceneCount(doc) >= SCENE_MAX) {
+            return doc;
+        }
+
+        var at = sceneIndex(doc), open = doc.scenes[at], id = sceneNewId(doc), board = doc.artboard || {};
+
+        doc.scenes.splice(at + 1, 0, {
+            id: id,
+            name: '',
+            transition: copy ? sceneTransition(open.transition) : sceneTransition(null),
+            layers: copy ? clone(doc.layers || []) : [],
+            background: (typeof board.background === 'string') ? board.background : '#ffffff',
+            duration: copy ? docMotion(doc).duration : SCENE_DEFAULT
+        });
+
+        return sceneOpen(doc, id);
+    }
+
+    // Deletes the scene id, opening its neighbour when it was open; with one
+    // scene left the document has none (changes doc).
+    function sceneDelete(doc, id) {
+        var at = -1;
+
+        (doc.scenes || []).forEach(function (s, i) {
+            if (s.id === id) {
+                at = i;
+            }
+        });
+
+        if ((at < 0) || (sceneCount(doc) < 2)) {
+            return doc;
+        }
+
+        if (doc.scene === id) {
+            sceneOpen(doc, doc.scenes[(at + 1 < doc.scenes.length) ? at + 1 : at - 1].id);
+        }
+
+        doc.scenes.splice(at, 1);
+
+        if (doc.scenes.length === 1) {
+            delete doc.scenes;
+            delete doc.scene;
+        }
+
+        return doc;
+    }
+
+    // Moves the scene id by delta places, within the list (changes doc).
+    function sceneMove(doc, id, delta) {
+        var list = doc.scenes || [], at = -1;
+
+        list.forEach(function (s, i) {
+            if (s.id === id) {
+                at = i;
+            }
+        });
+
+        var to = clamp(at + delta, 0, list.length - 1);
+
+        if ((at >= 0) && (to !== at)) {
+            list.splice(to, 0, list.splice(at, 1)[0]);
+        }
+
+        return doc;
+    }
+
+    // Sets a scene's duration or its transition to the next ({ kind, ms }
+    // merged) (changes doc). The open scene's duration is the document's.
+    function sceneSet(doc, id, patch) {
+        var s = (doc.scenes || []).filter(function (e) { return e.id === id; })[0];
+
+        if (patch.duration !== undefined) {
+            if (!s || (s.id === doc.scene)) {
+                doc.motion = Object.assign(docMotion(doc), { duration: sceneDuration(patch.duration) });
+            } else {
+                s.duration = sceneDuration(patch.duration);
+            }
+        }
+
+        if (s && patch.transition) {
+            s.transition = sceneTransition(Object.assign({}, sceneTransition(s.transition), patch.transition));
+        }
+
+        return doc;
+    }
+
+    // The whole length: every scene back to back.
+    function sceneTotal(doc) {
+        return sceneList(doc).reduce(function (sum, s) { return sum + s.duration; }, 0);
+    }
+
+    // The moment t of the whole animation: the scene playing (index) at its
+    // own time (local) and, while the previous scene's transition runs over
+    // the start of this one, that scene (from, shown at its end), the kind
+    // and its progress p (0-1, eased). A transition is never longer than the
+    // scene it leads into.
+    function sceneAt(doc, t) {
+        var list = sceneList(doc), start = 0, i;
+
+        t = Math.max(0, Number(t) || 0);
+
+        for (i = 0; i < list.length - 1; i++) {
+            if (t < start + list[i].duration) {
+                break;
+            }
+
+            start += list[i].duration;
+        }
+
+        var local = Math.min(t - start, list[i].duration), at = { index: i, local: local, from: null, kind: 'none', p: 1 };
+        var tr = (i > 0) ? list[i - 1].transition : null, ms = tr ? Math.min(tr.ms, list[i].duration) : 0;
+
+        if (tr && (tr.kind !== 'none') && (local < ms)) {
+            at.from = i - 1;
+            at.kind = tr.kind;
+            at.p = easeAt('in-out', local / ms);
+        }
+
+        return at;
+    }
+
+    // Scene i as a document of its own for drawing a frame: its layers,
+    // background and duration in place of the open scene's.
+    function sceneView(doc, i) {
+        var s = sceneList(doc)[i], view = Object.assign({}, doc, { layers: s.layers, motion: Object.assign(docMotion(doc), { duration: s.duration }) });
+
+        if (doc.artboard) {
+            view.artboard = Object.assign({}, doc.artboard, { background: s.background });
+        }
+
+        delete view.scenes;
+        delete view.scene;
+
+        return view;
+    }
+
+    // How the two scenes are drawn at a transition's progress p on a w x h
+    // frame: each { alpha, x, y, scale } (scale about the centre), the new
+    // one with clip, the part of the frame it shows (a wipe), or null.
+    function sceneTransitionAt(kind, p, w, h) {
+        var from = { alpha: 1, x: 0, y: 0, scale: 1 }, to = { alpha: 1, x: 0, y: 0, scale: 1, clip: null };
+
+        p = clamp(p, 0, 1);
+
+        switch (kind) {
+            case 'fade':
+                to.alpha = p;
+                break;
+            case 'slide':
+                from.x = -w * p;
+                to.x = w * (1 - p);
+                break;
+            case 'zoom':
+                to.scale = 0.6 + 0.4 * p;
+                to.alpha = p;
+                from.scale = 1 + 0.15 * p;
+                break;
+            case 'wipe':
+                to.clip = { x: 0, y: 0, w: w * p, h: h };
+                break;
+            default:
+                from = null;
+        }
+
+        return { from: from, to: to };
+    }
+
+    var SCENES = {
+        SCENE_MAX: SCENE_MAX, SCENE_LAYERS_MAX: SCENE_LAYERS_MAX, SCENE_TRANSITIONS: SCENE_TRANSITIONS, SCENE_TRANSITION_MIN: SCENE_TRANSITION_MIN,
+        SCENE_TRANSITION_MAX: SCENE_TRANSITION_MAX, sceneCount: sceneCount, sceneIndex: sceneIndex, sceneTransition: sceneTransition, sceneList: sceneList,
+        sceneStart: sceneStart, sceneOpen: sceneOpen, sceneAdd: sceneAdd, sceneDelete: sceneDelete, sceneMove: sceneMove, sceneSet: sceneSet,
+        sceneTotal: sceneTotal, sceneAt: sceneAt, sceneView: sceneView, sceneTransitionAt: sceneTransitionAt
+    };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -4286,7 +4606,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, SCENES].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');
