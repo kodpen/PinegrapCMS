@@ -257,26 +257,32 @@ $money = function ($kurus) use ($quote) {
 };
 
 // The actions: each is a small form, so a readonly account never sees one.
+// A menu row ($class 'menu-item ...') is a full-width form in the overflow menu.
 $action_button = function ($action, $label, $icon, $class, $confirm = '') use ($quote_id, $self_action) {
-    return '<form method="post" action="' . $self_action . '" class="d-inline">' . get_token_field()
+    $menu = (strpos($class, 'menu-item') === 0);
+    return '<form method="post" action="' . $self_action . '" class="' . ($menu ? 'disable_shortcut' : 'd-inline') . '">' . get_token_field()
         . '<input type="hidden" name="id" value="' . $quote_id . '" /><input type="hidden" name="erp_action" value="' . h($action) . '" />'
-        . '<button type="submit" class="btn btn-sm ' . $class . '"' . (($confirm !== '') ? ' data-confirm-content="' . h($confirm) . '"' : '') . '><i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>' . $label . '</button></form>';
+        . '<button type="submit" class="' . ($menu ? '' : 'btn btn-sm ') . $class . '"' . (($confirm !== '') ? ' data-confirm-content="' . h($confirm) . '"' : '') . '><i class="bi ' . $icon . ' ' . ($menu ? 'me-3' : 'me-1') . '" aria-hidden="true"></i>' . $label . '</button></form>';
 };
 
-$output_actions = '';
+// The next step is the toolbar's primary button; the status changes are
+// rarer and sit in the three-dots menu.
+$output_invoice_button = '';
+$status_actions = array();
 if (!$readonly) {
+    $menu_row = 'menu-item pg-link-body-emphasis';
     if (in_array($state, array('open', 'expired', 'accepted'), true)) {
-        $output_actions .= $action_button('invoice', lang('Turn into an invoice'), 'bi-receipt', 'btn-solid theme-success', lang('Make an invoice draft from this quote, at the prices quoted and dated today?'));
+        $output_invoice_button = $action_button('invoice', lang('Turn into an invoice'), 'bi-receipt', 'btn-solid theme-primary rounded-pill px-5', lang('Make an invoice draft from this quote, at the prices quoted and dated today?'));
     }
     if (in_array($state, array('open', 'expired'), true)) {
-        $output_actions .= $action_button('accepted', lang('Mark as accepted'), 'bi-hand-thumbs-up', 'btn-outline theme-success');
+        $status_actions[] = $action_button('accepted', lang('Mark as accepted'), 'bi-hand-thumbs-up', $menu_row);
     }
     if (in_array($state, array('open', 'expired', 'accepted'), true)) {
-        $output_actions .= $action_button('rejected', lang('Mark as rejected'), 'bi-hand-thumbs-down', 'btn-outline theme-danger');
-        $output_actions .= $action_button('cancelled', lang('Cancel'), 'bi-x-circle', 'btn-outline theme-secondary', lang('Cancel this quote? It stays on the list, marked cancelled.'));
+        $status_actions[] = $action_button('rejected', lang('Mark as rejected'), 'bi-hand-thumbs-down', $menu_row);
+        $status_actions[] = $action_button('cancelled', lang('Cancel'), 'bi-x-circle', $menu_row, lang('Cancel this quote? It stays on the list, marked cancelled.'));
     }
     if (in_array($state, array('expired', 'accepted', 'rejected', 'cancelled'), true)) {
-        $output_actions .= $action_button('open', lang('Open again'), 'bi-arrow-counterclockwise', 'btn-outline theme-secondary');
+        $status_actions[] = $action_button('open', lang('Open again'), 'bi-arrow-counterclockwise', $menu_row);
     }
 }
 
@@ -396,18 +402,18 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
     $output_mail_form = '';
 
     if ($can_mail) {
-        $output_mail_button = '<a class="btn btn-sm btn-outline theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
+        $output_mail_button = '<a class="btn btn-sm btn-text theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
         $output_mail_form = '
             <form name="mail_form" action="' . $self_action . '" method="post" class="row g-3" data-erp-send-once>
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $quote_id . '" />
                 <input type="hidden" name="erp_action" value="mail" />
-                <div class="col-12 md:col-6">
+                <div class="col-12 md:col-6 lg:col-12">
                     <label class="form-label" for="mail_to">' . lang('Recipient e-mail') . '</label>
                     <input type="text" class="form-control" id="mail_to" name="mail_to" value="' . h((string) $defaults['to']) . '" maxlength="500" inputmode="email" spellcheck="false" autocapitalize="off" autocomplete="off" required />
                     <div class="form-text">' . (((string) $defaults['to'] === '') ? lang('The account has no e-mail address. Type one, or add it to the account.') : lang('More than one address: separate them with commas.')) . '</div>
                 </div>
-                <div class="col-12 md:col-6">
+                <div class="col-12 md:col-6 lg:col-12">
                     <label class="form-label" for="mail_subject">' . lang('Subject') . '</label>
                     <input type="text" class="form-control" id="mail_subject" name="mail_subject" value="' . h((string) $defaults['subject']) . '" maxlength="255" />
                 </div>
@@ -468,12 +474,12 @@ if ($signature !== null) {
                 <div class="card-body">
                     ' . $card_slot('signature') . '
                     <div class="row g-5 align-items-center">
-                        <div class="col-12 md:col-5">'
+                        <div class="col-12 md:col-5 lg:col-12">'
                             . (((string) $signature['file_name'] !== '' && pg_file_kept((string) $signature['file_name']))
                                 ? '<img src="' . h(OUTPUT_PATH . (string) $signature['file_name']) . '" alt="' . h(lang('Customer signature')) . '" class="img-fluid border rounded-4 bg-white p-3" style="max-height:10rem" />'
                                 : '<span class="fg-danger">' . lang('The drawing of the signature is missing.') . '</span>') . '
                         </div>
-                        <div class="col-12 md:col-7">
+                        <div class="col-12 md:col-7 lg:col-12">
                             <div><span class="fg-secondary">' . lang('Signed by') . '</span> <b>' . h((string) $signature['signer_name']) . '</b></div>
                             <div class="small fg-secondary mb-3">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $signature['signed_at']), 'date and time'))
                                 . (((string) ($signature['username'] ?? '') !== '') ? ' · ' . h(lang(array('string' => 'on the screen of {var:1}', 'vars' => (string) $signature['username']))) : (((int) $signature['user_id'] === 0) ? ' · ' . h(lang('through the guest link')) : ''))
@@ -501,7 +507,7 @@ if ($signature !== null) {
                         <div class="col-12">
                             <div class="form-text mt-0">' . lang('The customer signs below, on this screen or a tablet showing it. The quote is then accepted, and the signature is printed on it.') . '</div>
                         </div>
-                        <div class="col-12 md:col-6">
+                        <div class="col-12">
                             <label class="form-label" for="signer_name">' . lang('Name of the person signing') . '</label>
                             <input type="text" class="form-control" id="signer_name" name="signer_name" value="' . h($signer_default) . '" maxlength="255" required />
                         </div>
@@ -580,12 +586,12 @@ if (!$readonly && erp_quote_links_ready()) {
 
 // A copy is always a new open quote, whatever became of this one.
 $output_copy_button = (!$readonly && erp_quotes_ready())
-    ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_quote.php?copy=' . $quote_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>'
+    ? '<a class="menu-item pg-link-body-emphasis" href="add_erp_quote.php?copy=' . $quote_id . '"><i class="bi bi-files me-3" aria-hidden="true"></i>' . lang('Copy') . '</a>'
     : '';
 
 // The same gate as the audit trail screen: the ERP settings managers and the accountant.
 $output_audit_button = (function_exists('erp_audit_ready') && erp_audit_ready() && ((((int) $user['role'] < 3) || !empty($user['manage_erp_settings']) || $readonly)))
-    ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_audit.php?type=quote&amp;id=' . $quote_id . '"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>' . lang('Audit trail') . '</a>'
+    ? '<a class="menu-item pg-link-body-emphasis" href="erp_audit.php?type=quote&amp;id=' . $quote_id . '"><i class="bi bi-shield-check me-3" aria-hidden="true"></i>' . lang('Audit trail') . '</a>'
     : '';
 
 // Where it was talked about in the workspace, and the tasks about it.
@@ -593,7 +599,7 @@ $output_workspace_button = '';
 
 if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
     require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
-    $output_workspace_button = ws_record_button($user, 'erp_quote', (int) $quote_id, lang('Sales quote') . ' ' . (string) $quote['full_number']);
+    $output_workspace_button = ws_record_button($user, 'erp_quote', (int) $quote_id, lang('Sales quote') . ' ' . (string) $quote['full_number'], 'menu-item pg-link-body-emphasis');
 }
 
 // The status, the account and the date it runs to, in the page body too:
@@ -603,6 +609,35 @@ $facts = array(
     '<span class="fg-secondary me-2">' . lang('Account') . '</span><a class="pg-link-body-emphasis fw-semibold" href="edit_erp_account.php?id=' . (int) $quote['account_id'] . '">' . h((string) $quote['account_title']) . '</a>',
     h(lang(array('string' => 'Valid until {var:1}', 'vars' => prepare_form_data_for_output((string) $quote['valid_until'], 'date', false)))),
 );
+
+// One toolbar: the next step first, the PDF and the e-mail beside it, the
+// facts in the grow slot and the rarer things in the three-dots menu.
+$pdf_link = function ($class) use ($quote_id) {
+    return '<a class="' . $class . '" href="get_erp_quote_pdf.php?id=' . $quote_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>';
+};
+$toolbar_more = array_values(array_filter(array(
+    '<a class="menu-item pg-link-body-emphasis" href="get_erp_quote_pdf.php?id=' . $quote_id . '&amp;download=1"><i class="bi bi-download me-3" aria-hidden="true"></i>' . lang('Download') . '</a>',
+    $output_copy_button,
+    $output_audit_button,
+    $output_workspace_button,
+)));
+if ($status_actions) {
+    $toolbar_more[] = '<hr class="menu-divider">';
+    $toolbar_more = array_merge($toolbar_more, $status_actions);
+}
+
+$output_toolbar = pg_screen_toolbar(array(
+    'primary' => ($output_invoice_button !== '') ? $output_invoice_button : $pdf_link('btn btn-sm btn-solid theme-primary rounded-pill px-5'),
+    'secondary' => (($output_invoice_button !== '') ? $pdf_link('btn btn-sm btn-text theme-secondary') : '') . $output_mail_button,
+    'grow' => '<div class="small d-flex flex-wrap align-items-center column-gap-5 row-gap-1"><span>' . implode('</span><span>', $facts) . '</span></div>',
+    'overflow' => '<div class="pg-menu-wrap">
+                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-display="static" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                <ul class="menu pg-menu-end">
+                    <li>' . implode('</li>
+                    <li>', $toolbar_more) . '</li>
+                </ul>
+            </div>',
+));
 
 echo
 pg_page_shell([
@@ -624,18 +659,19 @@ pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . (($msg_card === '') ? $liveform->output_notices() : '') . '
 
-            <div class="mb-3 small d-flex flex-wrap align-items-center column-gap-5 row-gap-1"><span>' . implode('</span><span>', $facts) . '</span></div>
+            ' . $output_toolbar . '
+        </div>
 
-            <nav id="button_bar" class="pg-toolbar navigation d-flex flex-wrap gap-1" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_quote_pdf.php?id=' . $quote_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>
-                <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_quote_pdf.php?id=' . $quote_id . '&amp;download=1"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Download') . '</a>
-                ' . $output_mail_button . '
-                ' . $output_copy_button . '
-                ' . $output_audit_button . '
-                ' . $output_workspace_button . '
-                <span class="ms-auto d-flex flex-wrap gap-1">' . $output_actions . '</span>
-            </nav>
-
+        <!--
+            The form column: the quote itself. The signature, guest link and
+            e-mail cards go in the status column after it, so a narrow screen
+            puts them below the quote. That column is not sticky: it holds
+            forms, is taller than the window and is reached by #erp-* jumps,
+            and a sticky box taller than the window hides its own end. The
+            line editor needs about 1,060px, so an open quote splits only
+            from 2xl; below that its cards follow the editor.
+        -->
+        <div class="col-12 ' . ($editable ? '' : 'lg:col-8 ') . '2xl:col-9 order-1">
             ' . $output_invoice . '
             ' . ((!$editable && ((string) $quote['status'] !== 'open') && !$readonly)
                 ? '<div class="form-text mb-3">' . (($state === 'invoiced')
@@ -643,6 +679,8 @@ pg_page_shell([
                     : lang('Only an open quote can be changed; "Open again" makes it editable.')) . '</div>'
                 : '') . '
             ' . $output_body . '
+        </div>
+        <div class="col-12 ' . ($editable ? '' : 'lg:col-4 ') . '2xl:col-3 order-2">
             ' . $output_signature . '
             ' . $output_guest_link . '
             ' . $output_mail . '
