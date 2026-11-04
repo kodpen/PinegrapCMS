@@ -119,7 +119,122 @@ function test_api_forms_every_route_applies_the_folder_rule()
 		pg_assert_same(($route['method'] === 'GET') ? 'forms:read' : 'forms:write', $route['scope'], $route['id'] . ' scope');
 	}
 
-	pg_assert_same(5, $found, 'list, get, submissions, one submission and its update');
+	pg_assert_same(9, $found, 'list, get, fields, submissions, one submission, its create, update and both deletes');
 
 	pg_assert_contains('api_form_owner_filter(', api_forms_test_function_source('api_form_submission_owned'), 'the submission loader');
+}
+
+// A record with a fee says whether it is paid and the order's number; one
+// without a fee answers null for both, and a pre-upgrade row has neither key.
+function test_api_forms_submission_payment_fields()
+{
+	$row = array(
+		'id' => 5, 'page_id' => 3, 'reference_code' => 'R', 'complete' => 1, 'contact_id' => 0,
+		'quiz_score' => 0, 'submitted_timestamp' => 0, 'last_modified_timestamp' => 0,
+	);
+
+	$none = api_form_submission_present($row, array());
+	pg_assert_same(null, $none['order_number'], 'no fee: no order number');
+	pg_assert_same(null, $none['paid'], 'no fee: paid is null');
+
+	$unpaid = api_form_submission_present($row + array('order_id' => 9, 'paid_at' => 0, 'order_number' => '0'), array());
+	pg_assert_same(false, $unpaid['paid'], 'a fee order not yet paid');
+	pg_assert_same(null, $unpaid['order_number'], 'an incomplete order has no number');
+
+	$paid = api_form_submission_present($row + array('order_id' => 9, 'paid_at' => 1700000000, 'order_number' => '1009'), array());
+	pg_assert_same(true, $paid['paid'], 'paid');
+	pg_assert_same('1009', $paid['order_number'], 'the order number');
+
+	$schema = api_form_submission_schema();
+	pg_assert_same('string?', $schema['order_number'], 'declared');
+	pg_assert_same('boolean?', $schema['paid'], 'declared');
+}
+
+// The fields of a choice form, as pg_submitted_form_fields() reads them.
+function api_forms_test_fields()
+{
+	return array(
+		array('id' => 1, 'name' => 'email', 'type' => 'email address', 'multiple' => 0),
+		array('id' => 2, 'name' => 'topic', 'type' => 'pick list', 'multiple' => 0),
+		array('id' => 3, 'name' => 'tags', 'type' => 'check box', 'multiple' => 0),
+		array('id' => 4, 'name' => 'cv', 'type' => 'file upload', 'multiple' => 0),
+		array('id' => 5, 'name' => 'sizes', 'type' => 'pick list', 'multiple' => 1),
+		array('id' => 6, 'name' => 'sign', 'type' => 'signature', 'multiple' => 0),
+	);
+}
+
+// Answers are keyed by field id: one string a field, a list for a field that
+// takes several, and a choice must be one the field offers.
+function test_api_forms_submission_answers_by_field()
+{
+	$choices = array(2 => array('sales', 'support'), 3 => array('a', 'b'), 5 => array('s', 'm'));
+
+	$answers = api_form_submission_answers(array(
+		array('name' => 'email', 'value' => " ada@example.com \r\n"),
+		array('name' => 'topic', 'value' => 'support'),
+		array('name' => 'tags', 'value' => 'a'),
+		array('name' => 'tags', 'value' => 'b'),
+		array('name' => 'sizes', 'value' => 'm'),
+	), api_forms_test_fields(), $choices);
+
+	pg_assert_same(array(1 => 'ada@example.com', 2 => 'support', 3 => array('a', 'b'), 5 => array('m')), $answers, 'answers');
+	pg_assert_same(array(), api_form_submission_answers(array(), api_forms_test_fields(), $choices), 'nothing sent');
+	pg_assert_same(array(2 => ''), api_form_submission_answers(array(array('name' => 'topic', 'value' => null)), api_forms_test_fields(), $choices), 'an empty choice is no answer');
+}
+
+// What a new submission cannot carry is refused with a sentence, not stored.
+function test_api_forms_submission_answers_refusals()
+{
+	$choices = array(2 => array('sales', 'support'), 3 => array('a', 'b'));
+	$fields = api_forms_test_fields();
+
+	$refused = array(
+		'unknown field' => array(array('name' => 'phone', 'value' => '1')),
+		'file upload'   => array(array('name' => 'cv', 'value' => 'x.pdf')),
+		'signature'     => array(array('name' => 'sign', 'value' => 'data:image/png;base64,AA')),
+		'not a choice'  => array(array('name' => 'topic', 'value' => 'billing')),
+		'twice'         => array(array('name' => 'email', 'value' => 'a@b.co'), array('name' => 'email', 'value' => 'c@d.co')),
+		'not an object' => array('email'),
+		'array value'   => array(array('name' => 'email', 'value' => array('a'))),
+		'too long'      => array(array('name' => 'email', 'value' => str_repeat('a', 10001))),
+	);
+
+	foreach ($refused as $label => $items) {
+		pg_assert_true(is_string(api_form_submission_answers($items, $fields, $choices)), $label);
+	}
+}
+
+// The create and delete handlers go through the write path the screens use,
+// stop a rehearsal above it, and announce through pg_announce().
+function test_api_forms_submission_writes_share_the_screen_path()
+{
+	$create = api_forms_test_function_source('api_form_submission_create');
+
+	pg_assert_contains('pg_submitted_form_create_check(', $create, 'the screen\'s checks');
+	pg_assert_contains('pg_submitted_form_create(', $create, 'the screen\'s write');
+	pg_assert_contains("pg_announce('form.submitted'", $create, 'announced');
+	pg_assert_true(strpos($create, 'api_dry_run_stop(') < strpos($create, 'pg_submitted_form_create($liveform'), 'rehearsal stops above the write');
+	pg_assert_true(strpos($create, 'pg_submitted_form_create_check(') < strpos($create, 'api_dry_run_stop('), 'checks run in a rehearsal');
+
+	$delete = api_forms_test_function_source('api_form_submission_delete');
+
+	pg_assert_contains('pg_submitted_form_delete(', $delete, 'the screen\'s delete');
+	pg_assert_true(strpos($delete, 'api_dry_run_stop(') < strpos($delete, 'pg_submitted_form_delete('), 'rehearsal stops above the delete');
+
+	$writes = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_writes.php');
+	pg_assert_contains("pg_announce('form.submission.deleted'", $writes, 'the delete announces');
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php');
+	$events = api_webhook_events();
+	pg_assert_true(isset($events['form.submission.deleted']), 'the event is in the catalogue');
+	pg_assert_true(isset($events['form.submitted']), 'form.submitted stays');
+}
+
+// A check box group and a multiple pick list take several answers.
+function test_api_forms_field_takes_many()
+{
+	pg_assert_true(api_form_field_takes_many(array('type' => 'check box', 'multiple' => 0)), 'check box');
+	pg_assert_true(api_form_field_takes_many(array('type' => 'pick list', 'multiple' => 1)), 'multiple pick list');
+	pg_assert_false(api_form_field_takes_many(array('type' => 'pick list', 'multiple' => 0)), 'pick list');
+	pg_assert_false(api_form_field_takes_many(array('type' => 'radio button', 'multiple' => 1)), 'radio button');
 }

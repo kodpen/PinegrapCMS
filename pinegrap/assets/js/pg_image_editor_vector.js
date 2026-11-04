@@ -3,7 +3,7 @@
  *
  * Image editor: the vector pen: Bezier paths drawn point by point, their
  * points and handles edited, open or closed, and drawn shapes converted to
- * paths.
+ * paths; the scissors cut paths and shapes.
  *
  * A part of window.PgImageEditor, bundled after pg_image_editor.js
  * (pg_js_bundles()); it hangs its code on the editor through
@@ -22,9 +22,13 @@
 
     X.icons.smooth = 'M4 16c4-10 12-10 16 0';
     X.icons.sharp = 'M4 18l8-12 8 12';
+    X.icons.scissors = 'M6.5 9.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM6.5 19.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM8.6 8.4L20 17M8.6 15.6L20 7';
 
     // Kinds a path can be made from (convert to path).
     var SHAPES = M.DRAW_KINDS;
+
+    // A shape's own fields, dropped when it becomes a path.
+    var SHAPE_FIELDS = ['radius', 'sides', 'points', 'inner', 'heads', 'head', 'smooth', 'trace'];
 
     // The open editor, for the path type's box flag below.
     function current() {
@@ -428,7 +432,7 @@
             ids.forEach(function (id) {
                 var l = find(doc, id), sk = M.shapeKnots(l), fit = M.refitPath(l, sk.knots), closed = sk.closed;
 
-                ['radius', 'sides', 'points', 'inner', 'heads', 'head', 'smooth', 'trace'].forEach(function (key) { delete l[key]; });
+                SHAPE_FIELDS.forEach(function (key) { delete l[key]; });
 
                 if (!closed) {
                     delete l.fill;
@@ -504,6 +508,160 @@
         this.drawStyle(body, null, 'path');
     };
 
+    // ---- scissors ----
+
+    // A layer the scissors cut: a path, or a drawn shape (cut as the path
+    // it converts to); its knots in its box's frame. Null for the rest.
+    function cuttable(l) {
+        if (!l || l.hidden || l.locked) {
+            return null;
+        }
+
+        if (l.type === 'path') {
+            return (l.knots && (l.knots.length > 1)) ? { knots: M.pathKnots(l), closed: !!l.closed } : null;
+        }
+
+        return (SHAPES.indexOf(l.type) >= 0) ? M.shapeKnots(l) : null;
+    }
+
+    // Cuts the layers of plan ([{ id, cuts }], cuts on their knots as
+    // cuttable() gives them) in one undo step: each layer becomes its
+    // first piece, the other pieces copies of it just above. Selects the
+    // pieces.
+    Editor.prototype.cutLayers = function (plan) {
+        var picked = [];
+
+        this.change(function (doc) {
+            plan.forEach(function (c) {
+                var l = find(doc, c.id), kc = cuttable(l), pieces = kc ? M.cutKnots(kc.knots, kc.closed, c.cuts) : null;
+
+                if (!pieces) {
+                    return;
+                }
+
+                var frame = Object.assign({}, l, { closed: false }), fits = pieces.map(function (piece) { return M.refitPath(frame, piece.knots); });
+
+                SHAPE_FIELDS.forEach(function (key) { delete l[key]; });
+                l.type = 'path';
+                l.closed = false;
+
+                var base = M.clone(l), at = doc.layers.indexOf(l);
+
+                fits.forEach(function (fit, i) {
+                    var o = i ? M.clone(base) : l;
+
+                    Object.keys(fit).forEach(function (key) { o[key] = fit[key]; });
+
+                    if (i) {
+                        o.id = M.newId(doc);
+                        doc.layers.splice(at + i, 0, o);
+                    }
+
+                    picked.push(o.id);
+                });
+            });
+        });
+        this.history.key = null;
+        this.select(picked);
+    };
+
+    // A click: the top path or shape whose outline passes within reach of
+    // p is cut at the nearest point.
+    Editor.prototype.clickCut = function (p) {
+        var k = this.view.k, layers = this.doc.layers;
+
+        for (var i = layers.length - 1; i >= 0; i--) {
+            var l = layers[i], kc = cuttable(l);
+
+            if (kc) {
+                var near = M.nearestCut(kc.knots, kc.closed, M.drawnLocal(l, p[0], p[1]));
+
+                if ((near.seg >= 0) && (near.d * k < 8 + (l.stroke || 1) * k / 2)) {
+                    this.cutLayers([{ id: l.id, cuts: [{ seg: near.seg, t: near.t }] }]);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    };
+
+    // A drag: every path and shape is cut where the line crosses it.
+    Editor.prototype.lineCut = function (a, b) {
+        var plan = [];
+
+        this.doc.layers.forEach(function (l) {
+            var kc = cuttable(l), cuts = kc ? M.lineCuts(kc.knots, kc.closed, M.drawnLocal(l, a[0], a[1]), M.drawnLocal(l, b[0], b[1])) : [];
+
+            if (cuts.length) {
+                plan.push({ id: l.id, cuts: cuts });
+            }
+        });
+
+        if (plan.length) {
+            this.cutLayers(plan);
+        }
+
+        return plan.length > 0;
+    };
+
+    Editor.prototype.scissorsDown = function (e) {
+        var p = this.toDoc(e.clientX, e.clientY);
+
+        this.drag = { kind: 'scut', a: p, b: p };
+        e.preventDefault();
+
+        try {
+            this.stage.setPointerCapture(e.pointerId);
+        } catch (err) {
+            // The pointer is already gone.
+        }
+    };
+
+    Editor.prototype.scissorsMove = function (e) {
+        if (this.drag.kind === 'scut') {
+            this.drag.b = this.toDoc(e.clientX, e.clientY);
+            this.renderView();
+        }
+    };
+
+    // A press that hardly moved is a click; a longer one a line.
+    Editor.prototype.scissorsUp = function (e) {
+        var d = this.drag;
+
+        this.drag = null;
+
+        if (!d || (d.kind !== 'scut')) {
+            return;
+        }
+
+        var b = e ? this.toDoc(e.clientX, e.clientY) : d.b, moved = Math.hypot(b[0] - d.a[0], b[1] - d.a[1]) * this.view.k >= 4;
+
+        if (!(moved ? this.lineCut(d.a, b) : this.clickCut(d.a))) {
+            this.renderView();
+        }
+    };
+
+    // The cutting line while the scissors drag.
+    Editor.prototype.renderScissors = function () {
+        var d = this.drag;
+
+        if ((this.tool !== 'scissors') || !d || (d.kind !== 'scut') || !this.ready) {
+            return;
+        }
+
+        var v = this.view, vr = this.viewRect(), k = v.k;
+        var sx = function (x) { return v.x + (x - vr.x) * k; }, sy = function (y) { return v.y + (y - vr.y) * k; };
+        var over = svg('svg', { class: 'pgie-vover', 'aria-hidden': 'true' });
+
+        over.appendChild(svg('path', { d: 'M' + sx(d.a[0]) + ' ' + sy(d.a[1]) + 'L' + sx(d.b[0]) + ' ' + sy(d.b[1]), class: 'pgie-vpath pgie-scut' }));
+        this.selEl.insertBefore(over, this.selEl.firstChild);
+    };
+
+    Editor.prototype.scissorsPanel = function (body) {
+        body.appendChild(el('p', { class: 'pgie-note', text: t('scissorsNote') }));
+    };
+
     Editor.inits.push(function () {
         this.vdraft = null;
         this.nodeEdit = null;
@@ -518,4 +676,9 @@
     Editor.keys.unshift(Editor.prototype.vectorKey);
     Editor.escapes.push(Editor.prototype.vectorEscape);
     Editor.views.push(Editor.prototype.renderVector);
+
+    Editor.panels.scissors = Editor.prototype.scissorsPanel;
+    Editor.hints.scissors = 'hintScissors';
+    Editor.pointers.scissors = { down: Editor.prototype.scissorsDown, move: Editor.prototype.scissorsMove, up: Editor.prototype.scissorsUp };
+    Editor.views.push(Editor.prototype.renderScissors);
 }(window.PgImageEditor.parts));

@@ -317,3 +317,31 @@ function test_settings_accounting_card_refusals()
 	pg_assert_same(lang('The exemption code is three digits, as the tax authority lists it (for example 351).'), $refused['vat_exemption_code'], 'the save\'s own sentence');
 	pg_assert_same(array(), erp_settings_cards_refusals(array('late_fee_rate' => array('999'), 'late_fee_tax_rate' => ''), array('late_fee')), 'a list is read as empty, as the save reads it');
 }
+
+// A bad invoice series or overdue recipient is refused before the write,
+// not stored or dropped without a word; the two amounts are rounded.
+function test_settings_accounting_save_refuses_bad_series_and_recipients()
+{
+	$save = settings_accounting_test_source('includes/settings/accounting.save.php');
+	$stop = strpos($save, 'if ($liveform->check_form_errors()) {');
+
+	foreach (array("mark_error('erp_default_series'", "mark_error('erp_overdue_notify_recipients'") as $mark) {
+		pg_assert_true((strpos($save, $mark) !== false) && (strpos($save, $mark) < $stop), $mark . ' before the write');
+	}
+
+	pg_assert_contains("preg_match('/^[A-Z0-9]{0,10}\$/', \$erp_default_series_value)", $save);
+	pg_assert_contains("erp_default_series = '\" . escape(\$erp_default_series_value) . \"'", $save, 'stored as checked');
+	pg_assert_same(false, strpos($save, "(int) post_value('erp_auto_invoice_min_total')"), 'no truncated amount');
+	pg_assert_same(false, strpos($save, "(int) post_value('erp_notify_collection_min')"), 'no truncated amount');
+}
+
+// A minus sign is not dropped: "-2" was read as 2 and saved as a 2 % fee.
+function test_settings_accounting_card_refuses_a_negative_late_fee()
+{
+	$refused = erp_settings_cards_refusals(array('late_fee_rate' => '-2', 'late_fee_tax_rate' => '-18'), array('late_fee'));
+
+	pg_assert_same(array('late_fee_rate', 'late_fee_tax_rate'), array_keys($refused), 'both negatives refused');
+	pg_assert_same(array('late_fee_rate'), array_keys(erp_settings_cards_refusals(array('late_fee_rate' => '2%', 'late_fee_tax_rate' => ' 18 '), array('late_fee'))), 'only digits and separators');
+	pg_assert_same(1.5, erp_late_fee_percent_in(' 1,5 '));
+	pg_assert_same(-1.0, erp_late_fee_percent_in('-2'));
+}

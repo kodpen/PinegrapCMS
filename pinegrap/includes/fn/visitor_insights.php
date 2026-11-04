@@ -7,8 +7,9 @@
  * line, and the two sections' markup. The figures come from
  * includes/fn/page_vitals.php (page_vitals_hourly) and
  * includes/fn/ai_visibility.php (ai_fetch_daily, visitors); nothing here
- * queries a table itself. visitor_vitals.php and visitor_ai.php draw one
- * section each; the Visitors overview takes them in as its own sections.
+ * queries a table itself. The Visitors overview draws them as its speed and
+ * ai sections (includes/visitors/speed.php, ai.php); the former screens
+ * visitor_vitals.php and visitor_ai.php send their links there.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -58,6 +59,29 @@ function pg_visitor_insight_window($key, $now = 0)
     $from = date('Y-m-d', strtotime($to . ' 12:00:00 -' . ($periods[$key] - 1) . ' days'));
 
     return array('key' => $key, 'days' => $periods[$key], 'from' => $from, 'to' => $to);
+}
+
+/**
+ * The Visitors overview query that shows what an old Page Speed or AI
+ * Visibility link showed: its period (`p`, 30 days when absent or unknown,
+ * as those screens had it) and the filters in $rename, old name => the
+ * overview's name. Pure.
+ *
+ * @param array $request the old link's query
+ * @param array $rename  old parameter => overview parameter
+ * @return array query parameters for visitors.php
+ */
+function pg_visitor_insight_overview_query(array $request, array $rename = array())
+{
+    $query = array('p' => pg_visitor_insight_window(isset($request['p']) ? $request['p'] : '')['key']);
+
+    foreach ($rename as $old => $new) {
+        if (isset($request[$old]) && is_scalar($request[$old]) && ((string) $request[$old] !== '')) {
+            $query[$new] = (string) $request[$old];
+        }
+    }
+
+    return $query;
 }
 
 /**
@@ -263,7 +287,7 @@ function pg_visitor_insight_tiles(array $tiles)
         </div>';
     }
 
-    return '<div class="row g-12">' . $out . '</div>';
+    return '<div class="row g-7">' . $out . '</div>';
 }
 
 /**
@@ -514,7 +538,7 @@ function pg_visitor_ai_section(array $window, array $user)
     );
 
     if ($shop) {
-        $tiles[] = array('label' => lang('Orders completed'), 'text' => pg_format_number($totals['orders_completed'], 0), 'note' => strip_tags(prepare_amount($totals['order_total'] / 100)), 'tone' => '');
+        $tiles[] = array('label' => lang('Orders completed'), 'text' => pg_format_number($totals['orders_completed'], 0), 'note' => html_entity_decode(strip_tags(prepare_amount($totals['order_total'] / 100)), ENT_QUOTES, 'UTF-8'), 'tone' => '');
     }
 
     // The bots, each with what the site tells it.

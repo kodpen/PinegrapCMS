@@ -183,3 +183,16 @@ function test_mail_reputation_alert_is_registered()
 	pg_assert_same('pg_ops_alerts_check_mail_reputation', pg_ops_alert_sources()['mail_reputation']);
 	pg_assert_same(array('Bounces 6 % (limit 5 %)'), pg_mail_reputation_alert_parts(pg_mail_reputation_rates(1000, 60, 0)));
 }
+
+// email_campaigns.start_time is a DATETIME: the 30-day window is compared as
+// one, never as a bare Unix timestamp, which MySQL 8 refuses and which made
+// the SMTP Settings screen stop at "Query failed".
+function test_mail_reputation_counts_compare_campaign_start_as_datetime()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/mail_domain_health.php');
+	$start = strpos($source, 'function pg_mail_reputation_counts(');
+	$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+
+	pg_assert_contains('email_campaigns.start_time >= FROM_UNIXTIME(', $body);
+	pg_assert_same(false, strpos($body, "start_time >= '\" . \$since"), 'no timestamp string against the DATETIME column');
+}

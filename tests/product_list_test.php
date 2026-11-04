@@ -4,8 +4,8 @@
  *
  * Tests for the products list (includes/fn/product_list.php): the view
  * names, the columns each view shows and sorts by, the view's condition and
- * order, the search columns, an amount typed into the search box, the
- * headings and a row, with its quick edit cells.
+ * order, the search columns, an amount typed into the search box and a
+ * row, with its quick edit cells.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -137,23 +137,13 @@ function test_product_list_search_columns()
 	pg_assert_false(strpos($where['sql'], 'products.form_name') !== false, 'no product form column on this view');
 }
 
-function test_product_list_headings_match_the_row()
-{
-	$view = product_list_test_view('all_products');
-	$headings = pg_product_list_headings($view);
-	$row = pg_product_list_row(product_list_test_product(), $view, array('quick_edit' => pg_pb_quick_edit_columns(), 'more_images' => array(), 'zones' => array()));
-
-	pg_assert_same(substr_count($headings, '<th'), count($row['cells']), 'one heading per cell');
-	pg_assert_contains('Colour', $headings);
-}
-
 function test_product_list_row_cells()
 {
 	$view = product_list_test_view('all_products');
 	$row = pg_product_list_row(product_list_test_product(), $view, array('quick_edit' => pg_pb_quick_edit_columns(), 'more_images' => array(), 'zones' => array()));
 	$html = pg_list_row_html($row);
 
-	pg_assert_contains('name="products[]" value="12"', $html);
+	pg_assert_contains('data-pg-open href="edit_product.php?id=12"', $html, 'the name opens the product');
 	pg_assert_contains('Mug &lt;big&gt;', $html, 'escaped');
 	pg_assert_contains('Red &amp; blue', $html);
 	pg_assert_contains('data-pg-cell="name"', $html);
@@ -161,8 +151,7 @@ function test_product_list_row_cells()
 	pg_assert_contains('data-pg-edit="inventory_quantity"', $html, 'a tracked stock changes in place');
 	pg_assert_contains(lang('Quantity'), $html);
 
-	$data = pg_list_row_data($row);
-	pg_assert_true(count($data['DT_RowData']['pgAttrs']) >= 4, 'the quick edit attributes travel with the page');
+	pg_assert_same('enabled', $row['cells']['enabled']['attributes']['data-pg-edit'], 'the quick edit attributes ride on the cell');
 
 	$row = pg_product_list_row(product_list_test_product(array('inventory' => '0')), $view, array('quick_edit' => pg_pb_quick_edit_columns(), 'more_images' => array(), 'zones' => array()));
 	$html = pg_list_row_html($row);
@@ -179,12 +168,11 @@ function test_product_list_last_modified_without_a_user()
 
 	foreach (array('', null) as $user) {
 		$row = pg_product_list_row(product_list_test_product(array('user' => $user, 'timestamp' => $time)), $view, $context);
-		$last = end($row['cells']);
-		pg_assert_same($alone, $last['html'], 'the time alone');
+		pg_assert_same($alone, $row['cells']['last_modified']['html'], 'the time alone');
 	}
 
 	$row = pg_product_list_row(product_list_test_product(array('timestamp' => $time)), $view, $context);
-	$last = end($row['cells']);
+	$last = $row['cells']['last_modified'];
 	pg_assert_same($alone . ' ' . lang(array('string' => 'by {var:1}', 'vars' => array('ali'))), $last['html']);
 }
 
@@ -197,7 +185,7 @@ function test_product_list_zone_cells()
 
 	pg_assert_contains('EU &lt;1&gt;', $html);
 	pg_assert_contains('Asia,<br />US', $html);
-	pg_assert_same(substr_count(pg_product_list_headings($view), '<th'), count($row['cells']));
+	pg_assert_same(array_keys(pg_product_list_columns($view, array())), array_keys($row['cells']), 'one cell per column');
 }
 
 function test_product_list_sort_sql_needs_no_join()

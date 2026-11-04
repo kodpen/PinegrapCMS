@@ -363,6 +363,14 @@ if (!$_POST) {
 
     // if contact was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
+        // A contact a user account or an ERP account holds stays: the
+        // holder would point at nothing.
+        $refusals = pg_contact_delete_refusals(array($id));
+
+        if (isset($refusals[$id])) {
+            output_error(h(pg_contact_delete_refusal_text($refusals[$id])) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.', 409);
+        }
+
         $audit_before = pg_audit_fetch('contacts', $id);
 
         // delete contact

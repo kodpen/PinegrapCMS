@@ -54,6 +54,15 @@ function test_import_redirect_name()
 	pg_assert_same('', pg_import_redirect_name('https://example.com/'), 'the home page');
 }
 
+function test_import_redirect_is_own_address()
+{
+	pg_assert_true(pg_import_redirect_is_own_address(pg_import_redirect_name('https://old.example.com/pg-test-sayfa/'), 'pg-test-sayfa'), 'a root page imported under its old name');
+	pg_assert_true(pg_import_redirect_is_own_address('About', 'about'), 'letter case ignored');
+	pg_assert_true(!pg_import_redirect_is_own_address('about', 'about-2'), 'a page renamed for a taken name gets its redirect');
+	pg_assert_true(!pg_import_redirect_is_own_address('2020/01/about', 'about'), 'a nested address is not the page name');
+	pg_assert_true(!pg_import_redirect_is_own_address('', ''), 'the home page');
+}
+
 function test_import_redirect_record_url()
 {
 	pg_assert_same('/blog/hello-world', pg_import_redirect_record_url('blog', 'AB12CD', 'hello-world', true), 'pretty');

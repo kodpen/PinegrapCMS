@@ -151,3 +151,27 @@ function test_audit_list_changes_html()
 	$html = pg_audit_list_changes_html(pg_audit_view_changes('{"truncated":true,"fields":["body"]}', null));
 	pg_assert_contains(lang('Too large to keep'), $html);
 }
+
+function test_audit_list_is_a_driver_list()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+	$definition = pg_list_table_definition('view_audit_log');
+
+	pg_assert_same('includes/fn/audit_list.php', $definition['file']);
+	pg_assert_same('pg_audit_list_source', $definition['source']);
+	pg_assert_true(function_exists($definition['source']), 'the source function is in its file');
+	pg_assert_same(null, pg_audit_list_source(array('id' => 9, 'role' => 3), array()), 'a basic user may not open the list');
+
+	$columns = pg_list_table_columns(pg_audit_list_columns());
+	pg_assert_same(array_keys(pg_audit_list_sort()['sort_columns']), array_keys(pg_list_table_sort_columns($columns)), 'the sortable columns are the sort codes');
+
+	$line = array(
+		'id' => '9', 'created_at' => '1790000000', 'request_id' => '', 'source' => 'panel', 'user_id' => '3', 'username' => 'ann',
+		'ip' => '10.0.0.1', 'action' => 'update', 'entity_type' => 'page', 'entity_id' => '5', 'label' => 'Home',
+		'before_json' => null, 'after_json' => null,
+	);
+	$row = pg_audit_list_row($line, array(), array());
+	pg_assert_same('9', $row['id']);
+	pg_assert_same(array_keys($columns), array_keys($row['cells']), 'one cell per column');
+}

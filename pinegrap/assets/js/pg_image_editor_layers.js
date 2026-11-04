@@ -18,7 +18,7 @@
 (function (X) {
     'use strict';
 
-    var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, find = X.find, t = X.t, el = X.el, section = X.section, button = X.button;
+    var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, find = X.find, t = X.t, el = X.el, section = X.section, button = X.button, pct = X.pct;
 
     // The eight handles of a box and the turning handle. The corners come
     // after the edges, so on a small box their touch targets lie on top.
@@ -577,13 +577,13 @@
                 });
             };
             var opacity = Math.round(100 * ((picked[0].opacity === undefined) ? 1 : picked[0].opacity));
-            var value = el('span', { class: 'pgie-val', text: opacity + ' %' });
+            var value = el('span', { class: 'pgie-val', text: pct(opacity) });
             var slider = el('input', { type: 'range', class: 'pgie-range', min: '0', max: '100', step: '1', value: String(opacity), 'aria-label': t('opacity') });
 
             slider.addEventListener('input', function () {
                 var n = Number(slider.value);
 
-                value.textContent = n + ' %';
+                value.textContent = pct(n);
                 self.change(function (doc) {
                     picked.forEach(function (o) { find(doc, o.id).opacity = n / 100; });
                 }, 'opacity', true);

@@ -161,8 +161,12 @@ if ($_POST) {
         $liveform->mark_error('name', lang('Enter the customer\'s name.'));
     }
 
-    if (($email !== '') && (filter_var($email, FILTER_VALIDATE_EMAIL) === false)) {
-        $liveform->mark_error('email', lang('Enter a valid e-mail address.'));
+    // The same rule as a new booking: a valid address, and an address or a
+    // phone to reach the customer.
+    $contact_error = pg_booking_agenda_contact_error($email, $phone);
+
+    if ($contact_error !== '') {
+        $liveform->mark_error('email', $contact_error);
     }
 
     if ($liveform->check_form_errors()) {
@@ -196,15 +200,9 @@ if ($_POST) {
         go($back);
     }
 
-    // A cancel frees the slot in the same UPDATE (slot_at NULL); the status
-    // it moves from is part of the WHERE, so two screens cannot both move it.
-    $result = db_q(
-        "UPDATE bookings
-        SET status = ?, name = ?, email = ?, phone = ?, notes = ?, updated_at = ?" . ($cancel ? ", slot_at = NULL, hold_until = 0" : "") . "
-        WHERE id = ? AND status = ?",
-        array($status, $customer['name'], $customer['email'], $customer['phone'], $customer['notes'], $booking_now, $booking_id, (string) $booking['status']));
-
-    if (!$result || (mysqli_affected_rows(db::$con) !== 1)) {
+    // The status it moves from is part of the write, so two screens cannot
+    // both move it.
+    if (!pg_booking_agenda_status_write($booking, $status, $customer, $booking_now)) {
         $liveform->add_error(lang('The booking was changed meanwhile. Check it and save again.'));
         go($back);
     }
@@ -312,8 +310,51 @@ if ($booking_id === 0) {
                     </div>
                 </form>
                 <script>
-                    document.getElementById("booking_choice").addEventListener("change", function () { this.submit(); });
+                    document.getElementById("booking_choice").addEventListener("change", function () {
+                        // The reload draws the day again; the customer details
+                        // typed so far wait in this tab and are put back.
+                        var details = document.getElementById("booking_details"), draft = {};
+
+                        if (details) {
+                            ["name", "email", "phone", "notes", "status"].forEach(function (name) {
+                                if (details.elements[name]) {
+                                    draft[name] = details.elements[name].value;
+                                }
+                            });
+
+                            try {
+                                sessionStorage.setItem("pg_booking_draft", JSON.stringify(draft));
+                            } catch (e) {}
+                        }
+
+                        this.submit();
+                    });
                 </script>';
+
+    // Puts back the details the choice card's reload kept (read once).
+    $draft_script = '
+    <script>
+        (function () {
+            var details = document.getElementById("booking_details"), draft = null;
+
+            try {
+                draft = JSON.parse(sessionStorage.getItem("pg_booking_draft") || "null");
+                sessionStorage.removeItem("pg_booking_draft");
+            } catch (e) {}
+
+            if (!details || !draft || (typeof draft !== "object")) {
+                return;
+            }
+
+            Object.keys(draft).forEach(function (name) {
+                var field = details.elements[name];
+
+                if (field && (typeof draft[name] === "string") && ((field.value === "") || (name === "status"))) {
+                    field.value = draft[name];
+                }
+            });
+        })();
+    </script>';
 
     if ($slots === null) {
         $slot_field = '<p class="fg-secondary mb-5">' . h(lang('Choose a staff member and a service to see the free times.')) . '</p>';
@@ -350,7 +391,7 @@ if ($booking_id === 0) {
     ' . $liveform->output_errors() . '
     ' . $liveform->output_notices() . '
     ' . ($no_staff ? '<p class="fg-secondary">' . h(lang('There is no enabled service or staff member to book yet.')) . '</p>' : $choice_card . '
-    <form action="edit_booking.php" method="post">
+    <form action="edit_booking.php" method="post" id="booking_details">
         ' . get_token_field() . '
         <input type="hidden" name="service_id" value="' . (int) $choice_service . '">
         <input type="hidden" name="staff_id" value="' . (int) $choice_staff . '">
@@ -366,6 +407,7 @@ if ($booking_id === 0) {
                             <div class="col-12 md:col-6">' . $booking_field('email', lang('E-mail'), 'email', array('maxlength' => '191', 'autocomplete' => 'off')) . '</div>
                             <div class="col-12 md:col-6">' . $booking_field('phone', lang('Phone'), 'tel', array('maxlength' => '40', 'autocomplete' => 'off')) . '</div>
                         </div>
+                        <p class="form-text mb-5">' . h(lang('An e-mail address or a phone number is needed to reach the customer.')) . '</p>
                         ' . $booking_field('notes', lang('Notes'), 'textarea', array('rows' => '3')) . '
                     </div>
                 </div>
@@ -382,7 +424,7 @@ if ($booking_id === 0) {
             </div>
             ' . ($slots ? $booking_save_bar(lang('Create booking')) : '') . '
         </div>
-    </form>') . '
+    </form>' . $draft_script) . '
     ' . get_date_picker_format() . pg_fields_script() . '
 </main>' .
     output_footer();
@@ -427,7 +469,7 @@ $facts = array(
     lang('Time')    => h(pg_booking_agenda_time($booking['start_at'], true)) . ' – ' . h(pg_booking_agenda_time($booking['end_at'])),
     lang('Service') => h($service_name),
     lang('Staff')   => h($staff_name),
-    lang('Source')  => h((string) $booking['source']),
+    lang('Source')  => h(pg_booking_agenda_source_label($booking['source'])),
     lang('Created') => h(pg_booking_agenda_time($booking['created_at'], true)),
 );
 
@@ -437,8 +479,15 @@ foreach ($facts as $label => $value) {
     $facts_html .= '<dt class="col-5 fw-normal fg-secondary">' . h($label) . '</dt><dd class="col-7 text-break">' . $value . '</dd>';
 }
 
+// The reason is kept only by a cancel, so it shows only while Cancelled is
+// the chosen status.
 $cancel_field = in_array('cancelled', $status_options, true) && ($booking['status'] !== 'cancelled')
-    ? '<div id="booking_cancel_reason">' . $booking_field('cancel_reason', lang('Reason for cancelling'), 'textarea', array('rows' => '2', 'aria-describedby' => 'cancel_reason_help')) . '<p class="small fg-secondary mb-0" id="cancel_reason_help">' . h(lang('Kept in the notes when the status becomes Cancelled.')) . '</p></div>'
+    ? '<div id="booking_cancel_reason"' . (($liveform->get_field_value('status') === 'cancelled') ? '' : ' hidden') . '>' . $booking_field('cancel_reason', lang('Reason for cancelling'), 'textarea', array('rows' => '2', 'aria-describedby' => 'cancel_reason_help')) . '<p class="small fg-secondary mb-0" id="cancel_reason_help">' . h(lang('Kept in the notes when the status becomes Cancelled.')) . '</p></div>
+                            <script>
+                                document.getElementById("status").addEventListener("change", function () {
+                                    document.getElementById("booking_cancel_reason").hidden = (this.value !== "cancelled");
+                                });
+                            </script>'
     : '';
 
 echo
@@ -466,6 +515,7 @@ pg_page_shell(array(
                             <div class="col-12 md:col-6">' . $booking_field('email', lang('E-mail'), 'email', array('maxlength' => '191', 'autocomplete' => 'off')) . '</div>
                             <div class="col-12 md:col-6">' . $booking_field('phone', lang('Phone'), 'tel', array('maxlength' => '40', 'autocomplete' => 'off')) . '</div>
                         </div>
+                        <p class="form-text mb-5">' . h(lang('An e-mail address or a phone number is needed to reach the customer.')) . '</p>
                         ' . $booking_field('notes', lang('Notes'), 'textarea', array('rows' => '4')) . '
                     </div>
                 </div>

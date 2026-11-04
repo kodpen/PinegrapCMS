@@ -667,7 +667,7 @@ function get_billing_information($properties) {
                     </tr>
                     <tr>
                         <td>' . h(lang('VKN / TCKN')) . '</td>
-                        <td>' . $form->output_field(array('type'=>'text', 'name'=>'tax_number', 'maxlength'=>'11', 'class'=>'software_input_text')) . '</td>
+                        <td>' . $form->output_field(array('type'=>'text', 'name'=>'tax_number', 'maxlength'=>(string) pg_vat_tax_number_width(pg_erp_store_country()), 'class'=>'software_input_text')) . '</td>
                     </tr>
                     <tr>
                         <td>' . lang('Tax Office') . '</td>
@@ -755,7 +755,7 @@ function get_billing_information($properties) {
         $form->set('billing_email_address', 'maxlength', 100);
         $form->set('billing_email_address', 'required', true);
 
-        $form->set('tax_number', 'maxlength', 11);
+        $form->set('tax_number', 'maxlength', pg_vat_tax_number_width(pg_erp_store_country()));
         $form->set('tax_office', 'maxlength', 100);
 
         // If contact cannot be found or if contact is opted out,

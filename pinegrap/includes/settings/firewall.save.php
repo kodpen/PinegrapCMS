@@ -132,6 +132,33 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         return;
     }
 
+    // The firewall's numbers are refused when blank or out of range rather
+    // than clamped: the clamps below keep a stored value in range, but an
+    // emptied box read as 0 became the strictest bound (ten requests a
+    // minute for every visitor, a ban after one offence). Checked before the
+    // country block below writes anything.
+    if (function_exists('waf_table_has_column') && waf_table_has_column('config', 'waf_enabled')) {
+        foreach (array(
+            'waf_rate_limit_requests'  => array(lang('All Requests'), 10, 60000),
+            'waf_rate_limit_sensitive' => array(lang('Sign-in, Forms and Checkout'), 3, 60000),
+            'waf_rate_limit_api'       => array(lang('Live Chat and Store Pages'), 10, 60000),
+            'waf_inflight_limit'       => array(lang('Open at Once'), 0, 50),
+            'waf_auto_ban_threshold'   => array(lang('Ban After'), 1, 1000),
+            'waf_auto_ban_minutes'     => array(lang('Ban Duration'), 1, 43200),
+            'waf_auto_ban_max_minutes' => array(lang('Longest Ban'), 1, 525600),
+            'waf_log_retention_days'   => array(lang('Log Retention'), 1, 3650),
+            'waf_log_max_rows'         => array(lang('Log Size Limit'), 500, 5000000),
+        ) as $waf_number_field => $waf_number_rule) {
+            if (array_key_exists($waf_number_field, $_POST) && (pg_whole_number_in_range(post_value($waf_number_field), $waf_number_rule[1], $waf_number_rule[2]) === null)) {
+                $liveform->mark_error($waf_number_field, lang(array('string' => '{var:1} must be a whole number from {var:2} to {var:3}.', 'vars' => $waf_number_rule)));
+            }
+        }
+
+        if ($liveform->check_form_errors()) {
+            return;
+        }
+    }
+
     // ── Country restriction (2026.4.10) ─────────────────────────────────
     //
     // Checked before anything is written: a list with a code that names no

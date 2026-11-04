@@ -19,8 +19,9 @@ module: list_table
 - `pg_list_table_selected_ids()` reads the ids with the list's own WHERE (rights) and `pg_list_table_selection_where()`: ids `IN`, or the search less `NOT IN` exceptions and `created <= as_of`.
 
 ## Which lists are on it?
-- Pages, users and contacts: `ui/list-table-driver-lists.md`.
+- Pages, users, contacts, products, commissions and the mail queue: `ui/list-table-driver-lists.md`.
 - Quick edit of a list: `ui/list-table-quick-edit.md`.
+- A small list printed whole (browser mode): `ui/list-table-printed.md`.
 
 ## How does a screen hand its bulk actions over?
 - `pg_list_table_html()`'s fourth argument is the screen's bulk buttons, printed in the bar's `.pg-list-table-actions` (shown only while rows are selected).

@@ -23,7 +23,8 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - architect.md: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
-- coordinator-limits.md: Coordinator rules: model and effort, the quota guard before a worker starts, 4 to 10 workers by the 5-hour quota, a new worker for a decided draft PR, hand-over by a desktop session at depth 6
+- coordinator-context.md: Keeping a coordinator's context small (2026-11-04): what its first turn and each check-in read, tools/free_work.php for free work, what it never reads whole
+- coordinator-limits.md: Coordinator rules: model and effort, the quota guard before a worker starts, 4 to 10 workers by the 5-hour quota, a new worker for a decided draft PR, no hand-over at depth 7
 - coordinator-no-plans.md: What a coordinator gives its workers when no plan step is free: open issues first, then a module-by-module bug hunt, then a new design template
 - coordinator-quota.md: Coordinator worker count by the 5-hour quota (owner, 2026-11-02): 8 at a window's start, 4 to 10, retuned each hour against 20% a hour, read from the sessions' cost
 - coordinator-todo-list.md: Coordinator's to-do list (2026-10-27): one item per worker PR in the list shown in its own window, added when the draft is on GitHub, struck through once the PR is merged
@@ -52,7 +53,8 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-22.md: Decisions list, product part 22 (2026-11-01 evening on): the panel's own table driver replacing DataTables
 - decisions-made-product-23.md: Decisions list, product part 23 (2026-11-03 on): page cache copies under an experiment and audience conditions, designer page links by id outside widgets, the classic styles' bulk run
 - decisions-made-product-24.md: Decisions list, product part 24 (2026-11-01 on): Visitors overview, daily summary, channel rule, Search Console on pages, social likes and follows, image editor's new tools and video
-- decisions-made-product-25.md: Decisions list, product part 25 (2026-11-03 evening on): bookings on the Workspace calendar, reward points of a cancelled order, hand rows of a group filled by rules
+- decisions-made-product-25.md: Decisions list, product part 25 (2026-11-03 evening on): bookings on the Workspace calendar, reward points of a cancelled order, hand rows of a group filled by rules; the key reset warning
+- decisions-made-product-26.md: Decisions list, product part 26 (2026-11-04 on): the starter dumps stay deletable in the Backup Manager, with a confirmation that names the consequence
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
@@ -61,7 +63,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
-- decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): the search engines appended to the visitors referring-engine ENUM
+- decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): the search engines appended to the visitors referring-engine ENUM; the ActivityPub reactions table
 - decisions-made-schema-2.md: Decisions list, schema part 2, approved on 2026-10-28: e-mail tables, workflow tables, MCP preamble, secret widths, prompt version, discussion follow; rules in part 1, 2026-10-29 on in part 3
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1

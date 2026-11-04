@@ -24,7 +24,8 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 
 // Resource groups, in the order the permission screen shows them. 'read' or
 // 'write' set to '' means the resource does not offer that half at all:
-// inventory is write-only (stock is read through products), meta is read-only.
+// inventory is write-only (stock, its locations and levels per location are
+// read under products:read), meta is read-only.
 // offers:write covers the offer's own row - switched on or off, its message,
 // its dates - and its removal; building one cannot be done from outside: an
 // offer is a rule with a condition tree and a result set behind it, and the
@@ -61,6 +62,11 @@ function api_scope_groups() {
 		// starts, pauses or ends one; setting one up and publishing the
 		// winner's design stay in the panel.
 		'experiments' => array('label' => 'Experiments', 'read' => 'experiments:read', 'write' => 'experiments:write'),
+
+		// The appointment bookings of the staff agenda. Writing books a free
+		// time for a customer, moves a booking's status and cancels one; the
+		// services and the staff members' hours stay in the panel.
+		'bookings'  => array('label' => 'Bookings',   'read' => 'bookings:read',  'write' => 'bookings:write'),
 
 		// What visitors wrote under pages, records, products and events.
 		// Writing is moderation: publishing, holding, featuring, removing.
@@ -431,6 +437,22 @@ function api_owner_scopes($owner) {
 		// so handing it to a machine sits with the same roles. A designer
 		// reaches the accounts below it, as on the screen.
 		$scopes[] = 'users:read';
+
+	}
+
+	// The agenda opens to roles 0 to 2 and to a role-3 user who is an enabled
+	// staff member, who sees only their own bookings
+	// (pg_booking_agenda_user_scope()); the endpoints filter for that.
+	if (($role <= 2) || (($role === 3) && function_exists('pg_booking_ready') && pg_booking_ready())) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
+
+		if (pg_booking_agenda_user_scope(array('id' => isset($owner['id']) ? (int)$owner['id'] : 0, 'role' => $role)) !== false) {
+
+			$scopes[] = 'bookings:read';
+			$scopes[] = 'bookings:write';
+
+		}
 
 	}
 

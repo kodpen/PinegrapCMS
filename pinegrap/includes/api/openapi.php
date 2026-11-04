@@ -642,6 +642,8 @@ function api_openapi_objects()
         'ShortLink'    => 'api_short_link_schema',
         'Experiment'   => 'api_experiment_schema',
         'ExperimentVariant' => 'api_experiment_variant_schema',
+        'Booking'      => 'api_booking_schema',
+        'BookingSlot'  => 'api_booking_slot_schema',
         'StoreShippingMethod' => 'api_store_shipping_method_schema',
         'StoreZone'    => 'api_store_zone_schema',
         'StoreTaxZone' => 'api_store_tax_zone_schema',
@@ -667,6 +669,7 @@ function api_openapi_objects()
         'AuditLogEntry' => 'api_audit_log_schema',
         'Campaign'     => 'api_campaign_schema',
         'CampaignRecipient' => 'api_campaign_recipient_schema',
+        'CampaignProfile' => 'api_campaign_profile_schema',
         'ContactGroup' => 'api_contact_group_schema',
         'ContactGroupMember' => 'api_contact_group_member_schema',
         'KeyCode'      => 'api_key_code_schema',
@@ -677,6 +680,9 @@ function api_openapi_objects()
         'Webhook'      => 'api_webhook_schema',
         'Inventory'    => 'api_inventory_schema',
         'InventoryBatch' => 'api_inventory_batch_schema',
+        'StockLocation'  => 'api_stock_location_schema',
+        'StockLevel'     => 'api_stock_level_schema',
+        'StockTransfer'  => 'api_stock_transfer_schema',
         'PriceBatch'     => 'api_price_batch_schema',
         'PriceHistoryEntry' => 'api_price_history_entry_schema',
         'WishlistItem'      => 'api_wishlist_item_schema',
@@ -711,6 +717,11 @@ function api_openapi_objects()
         'Calendar'           => 'api_calendar_schema',
         'CalendarEvent'      => 'api_calendar_event_schema',
         'CalendarRecurrence' => 'api_calendar_recurrence_schema',
+        'CalendarLocation'   => 'api_calendar_location_schema',
+        'CalendarReservation' => 'api_calendar_reservation_schema',
+        'CalendarReservationCustomer' => 'api_calendar_reservation_customer_schema',
+        'SmsCampaign'        => 'api_sms_campaign_schema',
+        'SmsCampaignOutbox'  => 'api_sms_campaign_outbox_schema',
     );
 
     // A module declares the objects its own endpoints answer with, the same way

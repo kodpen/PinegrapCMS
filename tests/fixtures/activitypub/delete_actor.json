@@ -1,0 +1,16 @@
+{
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "id": "https://mastodon.example/users/alice#delete",
+    "type": "Delete",
+    "actor": "https://mastodon.example/users/alice",
+    "to": [
+        "https://www.w3.org/ns/activitystreams#Public"
+    ],
+    "object": "https://mastodon.example/users/alice",
+    "signature": {
+        "type": "RsaSignature2017",
+        "creator": "https://mastodon.example/users/alice#main-key",
+        "created": "2026-11-03T11:00:00Z",
+        "signatureValue": "AAAA"
+    }
+}

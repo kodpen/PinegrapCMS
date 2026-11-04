@@ -727,7 +727,9 @@
     var dialog = null;
     var askUp = false;
 
-    function ask(message, okLabel, danger, details) {
+    // options.info: a notice with nothing to cancel (a link already made)
+    // shows only its OK button.
+    function ask(message, okLabel, danger, details, options) {
         return new Promise(function (resolve) {
             if (!dialog) {
                 dialog = el('dialog', 'dialog ws-ask-modal pg-dialog-centered');
@@ -769,6 +771,7 @@
             ok.textContent = okLabel || t('ok');
             ok.className = 'btn btn-sm rounded-pill px-5 ' + (danger ? 'btn-outline theme-warning' : 'btn-solid theme-primary');
             cancel.textContent = t('cancel');
+            cancel.hidden = !!(options && options.info);
 
             var modal = pgUI.dialog.get(dialog);
             var answered = false;
@@ -3680,6 +3683,7 @@
             placeholder: options.placeholder || '',
             previews: !!options.previews,
             slashInserts: options.slashInserts,
+            removeLabel: options.removeLabel,
             headings: !!options.headings,
             pasteFiles: options.pasteFiles,
             onInput: function () {
@@ -5157,11 +5161,15 @@
 
     // The versions of a channel's conversation (includes/workspace/eras.php):
     // the current one, the earlier ones to read, and clearing it for staff.
-    function eraSection(channel, node) {
+    // ownDrawer: the section fills a drawer titled with the same words, so
+    // its own heading is left out.
+    function eraSection(channel, node, ownDrawer) {
         var box = el('div', 'mb-5 ws-era-section');
         var list = el('div', 'ws-era-list');
 
-        box.appendChild(el('div', 'form-label', t('era_list')));
+        if (!ownDrawer) {
+            box.appendChild(el('div', 'form-label', t('era_list')));
+        }
         list.appendChild(skeleton(2, 'ws-skeleton-sm'));
         box.appendChild(list);
 
@@ -5676,7 +5684,7 @@
         group.appendChild(copy);
         details.appendChild(group);
 
-        ask(t('guest_link_help'), t('guest_link_done'), false, details);
+        ask(t('guest_link_help'), t('guest_link_done'), false, details, { info: true });
     }
 
     function guestForm(onDone) {
@@ -7239,7 +7247,7 @@
             var body = clear(node.querySelector('.drawer-body'));
 
             node.querySelector('.drawer-footer').classList.add('d-none');
-            body.appendChild(eraSection(channel, node));
+            body.appendChild(eraSection(channel, node, true));
             showOffcanvas(node);
         },
 
@@ -8497,9 +8505,19 @@
                 tabList.push(['board', t('tab_board')]);
             }
 
+            var paneId = nextId('ws-pane-');
+
+            // Tab semantics in full: the chosen tab is selected and the only
+            // one in the Tab order, it names the pane below, and the arrow
+            // keys, Home and End move between the tabs.
             tabList.forEach(function (tab) {
-                var item = button(self.tab === tab[0] ? 'active' : '', tab[1]);
+                var on = self.tab === tab[0];
+                var item = button(on ? 'active' : '', tab[1]);
+                item.id = paneId + '-' + tab[0];
                 item.setAttribute('role', 'tab');
+                item.setAttribute('aria-selected', on ? 'true' : 'false');
+                item.setAttribute('aria-controls', paneId);
+                item.tabIndex = on ? 0 : -1;
                 item.setAttribute('data-ws-tab', tab[0]);
                 item.addEventListener('click', function () {
                     self.tab = tab[0];
@@ -8511,6 +8529,39 @@
                     }
                 });
                 tabs.appendChild(item);
+            });
+
+            tabs.addEventListener('keydown', function (event) {
+                var all = Array.prototype.slice.call(tabs.querySelectorAll('[role="tab"]'));
+                var at = all.indexOf(document.activeElement);
+                var to = -1;
+
+                if (at < 0) {
+                    return;
+                }
+
+                if (event.key === 'ArrowRight') {
+                    to = (at + 1) % all.length;
+                } else if (event.key === 'ArrowLeft') {
+                    to = (at - 1 + all.length) % all.length;
+                } else if (event.key === 'Home') {
+                    to = 0;
+                } else if (event.key === 'End') {
+                    to = all.length - 1;
+                }
+
+                if (to >= 0) {
+                    event.preventDefault();
+                    all[to].focus();
+                    all[to].click();
+
+                    // The redraw builds new tabs: the chosen one keeps focus.
+                    var chosen = self.tabsNode ? self.tabsNode.querySelector('[data-ws-tab="' + all[to].getAttribute('data-ws-tab') + '"]') : null;
+
+                    if (chosen) {
+                        chosen.focus();
+                    }
+                }
             });
 
             center.appendChild(tabs);
@@ -8541,6 +8592,9 @@
             }
 
             var pane = el('div', 'ws-pane ws-pane-' + self.tab);
+            pane.id = paneId;
+            pane.setAttribute('role', 'tabpanel');
+            pane.setAttribute('aria-labelledby', paneId + '-' + self.tab);
             center.appendChild(pane);
             self.pane = pane;
             messageKeys(pane);
@@ -8702,9 +8756,25 @@
 
             var menu = el('ul', 'menu pg-menu-end');
 
-            function item(label, iconName, handler, className) {
+            // Kept to the screen's height on a phone (.ws-head-menu).
+            menu.classList.add('ws-head-menu');
+
+            // checked (true/false) marks a choice or a switch: its state is
+            // said through aria-checked (role radio for one of a set,
+            // checkbox for an on/off switch) and drawn as a check icon.
+            function item(label, iconName, handler, className, checked, radio) {
                 var li = el('li', className || '');
                 var link = button('menu-item pg-link-body-emphasis', label, iconName);
+
+                if (typeof checked === 'boolean') {
+                    link.setAttribute('role', radio ? 'menuitemradio' : 'menuitemcheckbox');
+                    link.setAttribute('aria-checked', checked ? 'true' : 'false');
+
+                    if (checked) {
+                        link.appendChild(icon('bi-check2', 'ms-auto ps-2'));
+                    }
+                }
+
                 link.addEventListener('click', handler);
                 li.appendChild(link);
                 menu.appendChild(li);
@@ -8747,9 +8817,9 @@
 
             if (channel.joined) {
                 [['all', t('notify_all')], ['mentions', t('notify_mentions')], ['none', t('notify_none')]].forEach(function (option) {
-                    item(option[1] + (channel.notify === option[0] ? ' ✓' : ''), option[0] === 'none' ? 'bi-bell-slash' : 'bi-bell', function () {
+                    item(option[1], option[0] === 'none' ? 'bi-bell-slash' : 'bi-bell', function () {
                         api('ws_channel_notify', { channel_id: channel.id, notify: option[0] }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
-                    });
+                    }, '', channel.notify === option[0], true);
                 });
                 divider();
             }
@@ -8760,15 +8830,15 @@
             if (window.PGWsVoice && window.PGWsVoice.speakSupported() && (BOOT.claude || BOOT.ai || (BOOT.mcp || []).length)) {
                 var speaking = window.PGWsVoice.speakOn(CFG.api_url, CFG.me);
 
-                item(t('voice_speak') + (speaking ? ' ✓' : ''), speaking ? 'bi-volume-up' : 'bi-volume-mute', function () {
+                item(t('voice_speak'), speaking ? 'bi-volume-up' : 'bi-volume-mute', function () {
                     window.PGWsVoice.speakSet(CFG.api_url, CFG.me, !speaking);
                     toast(t(speaking ? 'voice_speak_off' : 'voice_speak_on'), 'info');
-                });
+                }, '', speaking);
                 divider();
             }
 
             if (BOOT.claude && channel.claude && channel.can_manage && !channel.archived) {
-                item(t('claude_allow') + (channel.claude.allowed ? ' ✓' : ''), 'bi-stars', function () {
+                item(t('claude_allow'), 'bi-stars', function () {
                     var allow = !channel.claude.allowed;
                     var asked = (allow && channel.kind === 'private') ? ask(t('claude_allow_private'), t('claude_allow'), false) : Promise.resolve(true);
 
@@ -8777,12 +8847,12 @@
                             api('ws_channel_claude', { channel_id: channel.id, allowed: allow ? 1 : 0 }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
                         }
                     });
-                });
+                }, '', !!channel.claude.allowed);
                 divider();
             }
 
             if (BOOT.ai && channel.ai && channel.can_manage && !channel.archived) {
-                item(t('ai_allow') + (channel.ai.allowed ? ' ✓' : ''), 'bi-cpu', function () {
+                item(t('ai_allow'), 'bi-cpu', function () {
                     var allow = !channel.ai.allowed;
                     var asked = (allow && channel.kind === 'private') ? ask(t('ai_allow_private'), t('ai_allow'), false) : Promise.resolve(true);
 
@@ -8791,7 +8861,7 @@
                             api('ws_channel_ai', { channel_id: channel.id, allowed: allow ? 1 : 0 }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
                         }
                     });
-                });
+                }, '', !!channel.ai.allowed);
                 divider();
             }
 
@@ -8799,7 +8869,7 @@
             // not public sends them out only once a manager agrees, told
             // which service hears them.
             if (channel.voice && channel.can_manage && !channel.archived) {
-                item(t('voice_allow') + (channel.voice.allowed ? ' ✓' : ''), 'bi-mic', function () {
+                item(t('voice_allow'), 'bi-mic', function () {
                     var allow = !channel.voice.allowed;
                     var asked = (allow && channel.kind !== 'public') ? ask(t('voice_allow_private', channel.voice.provider), t('voice_allow'), false) : Promise.resolve(true);
 
@@ -8808,7 +8878,7 @@
                             api('ws_channel_voice', { channel_id: channel.id, allowed: allow ? 1 : 0 }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
                         }
                     });
-                });
+                }, '', !!channel.voice.allowed);
                 divider();
             }
 
@@ -9386,6 +9456,20 @@
 
             if (menu) {
                 actions.replaceChild(self.channelMenu(), menu);
+            }
+
+            // The box names the channel; a rename in the channel settings
+            // reaches it here as well (a discussion's box names none).
+            if (self.input && !self.isThread) {
+                var placeholder = t('composer_placeholder', channel.name);
+
+                if (self.input.tagName === 'TEXTAREA') {
+                    self.input.placeholder = placeholder;
+                } else {
+                    self.input.setAttribute('data-placeholder', placeholder);
+                }
+
+                self.input.setAttribute('aria-label', placeholder);
             }
         },
 
@@ -18515,6 +18599,14 @@
                 child.classList.toggle('active', on);
                 child.setAttribute('aria-pressed', on ? 'true' : 'false');
             });
+
+            // The time view (PGWsTaskTime.myTime()) reads none of the task
+            // filters, so they leave the toolbar while it is shown.
+            [status, dept, priority, soon, searchGroup].forEach(function (control) {
+                if (control) {
+                    control.hidden = (name === 'time');
+                }
+            });
         }
 
         scopeList.forEach(function (scope) {
@@ -19825,8 +19917,14 @@
         peopleRow.appendChild(formRow(t('scope_people'), people));
         body.appendChild(peopleRow);
 
+        // A department item needs its department: no empty choice, and a
+        // lead who is no settings holder is offered the departments they lead.
         var deptRow = el('div');
-        var dept = select(departmentOptions(), event ? event.department_id : 0);
+        var deptChoices = departmentOptions().slice(1).filter(function (option) {
+            return rights.settings || rights.leads.indexOf(option[0]) !== -1
+                || (event && String(event.department_id) === String(option[0]));
+        });
+        var dept = select(deptChoices, event && event.department_id ? event.department_id : (rights.leads.length ? rights.leads[0] : (deptChoices.length ? deptChoices[0][0] : 0)));
         dept.id = nextId('ws-ev-dept-');
         deptRow.appendChild(formRow(t('department'), dept));
         body.appendChild(deptRow);
@@ -20006,13 +20104,18 @@
                         return;
                     }
 
+                    remove.disabled = true;
                     api('ws_event_delete', { event_id: event.id }).then(function () {
+                        remove.disabled = false;
                         hideOffcanvas(node);
 
                         if (onDone) {
                             onDone();
                         }
-                    }).catch(fail);
+                    }).catch(function (error) {
+                        remove.disabled = false;
+                        fail(error);
+                    });
                 });
             });
             footer.appendChild(remove);
@@ -20025,6 +20128,9 @@
         if (!event || event.can_edit) {
             var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('save'), 'bi-check2');
             save.addEventListener('click', function () {
+                // One click makes one item: a second click while the request
+                // runs would post another insert.
+                save.disabled = true;
                 api('ws_event_save', {
                     id: event ? event.id : 0,
                     kind: kind.value,
@@ -20041,13 +20147,17 @@
                     meeting_url: meeting ? meeting.value.trim() : undefined,
                     contact_id: (customer && customer.changed) ? customer.id : undefined
                 }).then(function () {
+                    save.disabled = false;
                     hideOffcanvas(node);
                     toast(t('plan_saved'), 'success');
 
                     if (onDone) {
                         onDone();
                     }
-                }).catch(fail);
+                }).catch(function (error) {
+                    save.disabled = false;
+                    fail(error);
+                });
             });
             footer.appendChild(save);
         }
@@ -24145,6 +24255,8 @@
                 previews: true,
                 // "/" lists the inserts of the box (PGWsEditor).
                 slashInserts: { insertLabel: t('insert_to_note') },
+                // A card's remove button speaks of the note, not a message.
+                removeLabel: t('block_remove_note'),
                 // Headings and rules, which a note draws and a message does not.
                 headings: true,
                 // A picture pasted into the note is attached, as a dropped one.

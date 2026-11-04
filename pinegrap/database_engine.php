@@ -561,7 +561,9 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
 
     $visitor_preview = pg_visitor_cleanup_preview(array('rows' => $visitor_figures['rows']) + $visitor_catalog);
     $visitor_last = pg_visitor_cleanup_last();
-    $visitor_through = $visitor_settings['summary'] ? pg_visitor_summary_through() : '';
+    // The run of summarized days ending at the most recent one: the days
+    // the overview and the API read from the summary.
+    $visitor_range = $visitor_settings['summary'] ? pg_visitor_summary_range() : null;
     $visitor_settings_link = '<a href="settings_privacy.php#pgset-analytics">' . h(lang('Change')) . '</a>';
 
     $visitor_alert = '';
@@ -746,8 +748,11 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
 
     if (!$visitor_settings['summary']) {
         $visitor_summary = lang('Off');
-    } elseif ($visitor_through !== '') {
-        $visitor_summary = lang(array('string' => 'On, through {var:1}', 'vars' => array(get_absolute_time(array('timestamp' => strtotime($visitor_through . ' 00:00:00'), 'type' => 'date', 'format' => 'plain_text')))));
+    } elseif (is_array($visitor_range)) {
+        $visitor_summary = lang(array('string' => 'On, {var:1} to {var:2}', 'vars' => array(
+            get_absolute_time(array('timestamp' => strtotime($visitor_range['first'] . ' 00:00:00'), 'type' => 'date', 'format' => 'plain_text')),
+            get_absolute_time(array('timestamp' => strtotime($visitor_range['last'] . ' 00:00:00'), 'type' => 'date', 'format' => 'plain_text')),
+        )));
     } else {
         $visitor_summary = lang('On, nothing added up yet');
     }

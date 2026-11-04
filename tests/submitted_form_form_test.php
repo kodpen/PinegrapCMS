@@ -103,6 +103,14 @@ function test_submitted_form_screens_use_shared_fields()
 	foreach (array('add_submitted_form.php', 'edit_submitted_form.php') as $file) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 
+		// The add screen checks and writes through the create path it shares
+		// with the external API (includes/fn/submitted_form_writes.php).
+		if ($file === 'add_submitted_form.php') {
+			pg_assert_contains('pg_submitted_form_create_check(', $source, $file . ' checks through the shared create path');
+			pg_assert_contains('pg_submitted_form_create(', $source, $file . ' writes through the shared create path');
+			$source .= (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_writes.php');
+		}
+
 		pg_assert_contains('includes/forms/submitted_form_form.php', $source, $file . ' loads the shared fields');
 		pg_assert_contains('pg_submitted_form_fields_markup(', $source, $file . ' prints the shared fields');
 		pg_assert_contains('pg_submitted_form_check_field(', $source, $file . ' checks with the shared rules');

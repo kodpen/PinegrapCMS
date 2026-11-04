@@ -1,0 +1,18 @@
+{
+    "subject": "acct:news@blog.example",
+    "aliases": [
+        "https://blog.example/@news"
+    ],
+    "links": [
+        {
+            "rel": "self",
+            "type": "application/activity+json",
+            "href": "https://blog.example/@news"
+        },
+        {
+            "rel": "http://webfinger.net/rel/profile-page",
+            "type": "text/html",
+            "href": "https://blog.example/"
+        }
+    ]
+}

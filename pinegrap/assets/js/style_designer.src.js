@@ -13987,7 +13987,7 @@ const StyleDesigner = (function () {
     }
 
     // In place of the URL input of a link outside a widget kept by page id
-    // (a Prototype arrow wrote it): the page it opens, which a rename does
+    // (a Prototype arrow or Bind Data wrote it): the page it opens, which a rename does
     // not change, and a button back to a typed address (the fallback the
     // site prints for a page that is gone).
     function _sdPageLinkNotice(node) {
@@ -39636,30 +39636,70 @@ const StyleDesigner = (function () {
 
     // Bind Data outside a widget: a text, a link's address or a picture
     // prints a value of the page's record (pg_page_record_bind_props()),
-    // offered when the page holds a detail widget. A binding already set
-    // stays listed, so it can be seen and cleared.
+    // offered when the page holds a detail widget. A link of its own drawn
+    // as <a> may instead open a page of the site kept by its id
+    // ('__page_link', designer/page-link-by-id.md), on every page. A
+    // binding already set stays listed, so it can be seen and cleared.
     function _sdPageRecordBindRows(node) {
         var bindable = _getBindableProps(node);
         if (!bindable.length) return '';
         var opts = _sdPageRecordValueOptions();
         var cur = (node.props && node.props._bindings) || {};
+        var linkable = !!(window.PGProtoHotspots && window.PGProtoHotspots.pageLinkable(node));
         var rows = '';
+        var pageRow = false;
         bindable.forEach(function (b) {
             var current = cur[b.prop] || '';
-            if (!opts.length && !current) return;
+            var withPage = (b.prop === 'href' && linkable);
+            if (!opts.length && !current && !withPage) return;
             var html = '<option value="">' + esc(_sdT('— No binding —')) + '</option>';
             var listed = false;
+            if (withPage) {
+                listed = (current === SW_PAGE_LINK_TOKEN);
+                html += '<option value="' + esc(SW_PAGE_LINK_TOKEN) + '"' + (listed ? ' selected' : '') + '>' + esc(_sdT('A page of this site')) + '</option>';
+            }
+            var recordOpts = '';
             opts.forEach(function (o) {
                 if (o.token === current) listed = true;
-                html += '<option value="' + esc(o.token) + '"' + (o.token === current ? ' selected' : '') + '>' + esc(o.label) + '</option>';
+                recordOpts += '<option value="' + esc(o.token) + '"' + (o.token === current ? ' selected' : '') + '>' + esc(o.label) + '</option>';
             });
+            html += (withPage && recordOpts) ? '<optgroup label="' + esc(_sdT('This page\'s record')) + '">' + recordOpts + '</optgroup>' : recordOpts;
             if (current && !listed) html += '<option value="' + esc(current) + '" selected>' + esc(current) + '</option>';
-            rows += row(b.label, '<select class="form-control form-control-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>');
+            var extra = (withPage && current === SW_PAGE_LINK_TOKEN) ? _sdPageLinkPageRow(node) : '';
+            if (extra) pageRow = true;
+            rows += row(b.label, '<select class="form-control form-control-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' + extra);
         });
         if (!rows) return '';
-        return sect('bi-link-45deg', _sdT('Show this page\'s record'), rows +
-            '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
-            esc(_sdT('The value of the record the page opens (a product, an event, a form record); empty when the page opens none.')) + '</div>');
+        var hint = opts.length
+            ? '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+              esc(_sdT('The value of the record the page opens (a product, an event, a form record); empty when the page opens none.')) + '</div>'
+            : '';
+        return sect('bi-link-45deg', (opts.length && !pageRow) ? _sdT('Show this page\'s record') : _sdT('Bind Data'), rows + hint);
+    }
+
+    // The page a link outside a widget opens (props._bindParams.href), under
+    // its Bind Data select: the design's tabs, then the site's pages. The
+    // typed address stays as the fallback the site prints for a page that
+    // is gone (pg_page_link_expand_html()).
+    function _sdPageLinkPageRow(node) {
+        var spec = _swPageLinkSpec(node.props && node.props._bindParams && node.props._bindParams.href);
+        if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
+        var note = function (text, warn) {
+            return '<div style="font-size:.66rem;margin-top:3px;line-height:1.4;color:' + (warn ? '#b45309' : '#888') + '">' +
+                       (warn ? '<span class="bi bi-exclamation-triangle me-1"></span>' : '') + esc(text) + '</div>';
+        };
+        var html = '<div class="sd-sw-plink mt-2">' +
+            '<select class="form-control form-control-sm sd-sw-plink-page" aria-label="' + esc(_sdT('Page to open')) + '">' +
+                _swPageOptions(spec.page_id ? String(spec.page_id) : '0', _allPagesCache, { none: _sdT('— Choose a page —') }) +
+            '</select>';
+        if (!spec.page_id) {
+            html += note(_sdT('Choose the page this link opens.'), false);
+        } else if (_swPageLinkPageGone(spec.page_id, (typeof _pages !== 'undefined' && _pages) ? _pages : [], _allPagesCache)) {
+            html += note(_sdT('This page is deleted or in the Recycle Bin, so the link opens the address typed under its URL. Choose another page.'), true);
+        } else {
+            html += note(_sdT('The link finds the page by its id, so renaming or moving the page keeps it.'), false);
+        }
+        return html + '</div>';
     }
 
     // Whether `token` is one the page decides (pg_page_fact_spec()).
@@ -45039,7 +45079,9 @@ const StyleDesigner = (function () {
             var bp = selectedNode.props;
             if (bp && value === SW_PAGE_LINK_TOKEN) {
                 if (!bp._bindParams || typeof bp._bindParams !== 'object' || Array.isArray(bp._bindParams)) bp._bindParams = {};
-                if (!bp._bindParams[propName]) bp._bindParams[propName] = { page_id: 0, params: [{ name: '', token: '' }] };
+                // Outside a widget there is no record to send values from.
+                var inWidget = !!(_isInsideSystemWidget(selectedNode) || _sdPartSidAt(selectedNode));
+                if (!bp._bindParams[propName]) bp._bindParams[propName] = { page_id: 0, params: inWidget ? [{ name: '', token: '' }] : [] };
             } else if (bp && value === SW_REF_TOKEN) {
                 if (!bp._bindParams || typeof bp._bindParams !== 'object' || Array.isArray(bp._bindParams)) bp._bindParams = {};
                 if (!bp._bindParams[propName]) bp._bindParams[propName] = { field: '', page_id: 0, show: '', kind: '' };
@@ -45064,6 +45106,7 @@ const StyleDesigner = (function () {
             p._bindParams.href = _swPageLinkSpec(spec);
             var sid = _isInsideSystemWidget(selectedNode);
             if (sid) _sharedDirty[sid] = true;
+            else _sdSharedMarkEdited(selectedNode);
             renderCanvas();
             if (repaint && typeof renderProperties === 'function') renderProperties();
         }

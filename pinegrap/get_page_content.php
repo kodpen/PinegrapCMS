@@ -1283,7 +1283,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // if Google Analytics is enabled and there is a Web Property ID, then add Google Analytics JavaScript.
         // Not in a background render (the SEO pass, the prototype frame): that is nobody's visit, and the
         // tag would report a page view with the address the render was asked by.
-        if ((GOOGLE_ANALYTICS == TRUE) && (GOOGLE_ANALYTICS_WEB_PROPERTY_ID != '') && !pg_seo_rendering()) {
+        // A stored ID that is not a Google tag ID prints no tag at all: it
+        // would break the script address and the inline script.
+        $google_analytics_tag_id = pg_ga_tag_id(GOOGLE_ANALYTICS_WEB_PROPERTY_ID);
+
+        if ((GOOGLE_ANALYTICS == TRUE) && ($google_analytics_tag_id !== '') && !pg_seo_rendering()) {
 
             $output_ecommerce_tracking_data = '';
 
@@ -1378,12 +1382,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             }
             $output_google_analytics =
                 '<!-- Google tag (gtag.js) -->' . "\n" .
-                '<script async src="https://www.googletagmanager.com/gtag/js?id=' . GOOGLE_ANALYTICS_WEB_PROPERTY_ID . '"></script>' . "\n" .
+                '<script async src="https://www.googletagmanager.com/gtag/js?id=' . h(rawurlencode($google_analytics_tag_id)) . '"></script>' . "\n" .
                 '<script>' . "\n" .
                 '    window.dataLayer = window.dataLayer || [];' . "\n" .
                 '    function gtag(){dataLayer.push(arguments);}' . "\n" .
                 '    gtag(\'js\', new Date());' . "\n" .
-                '    gtag(\'config\', \'' . GOOGLE_ANALYTICS_WEB_PROPERTY_ID . '\');' . "\n" .
+                '    gtag(\'config\', \'' . escape_javascript($google_analytics_tag_id) . '\');' . "\n" .
                     $output_ecommerce_tracking_data .
                 '</script>';
 

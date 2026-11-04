@@ -1,13 +1,19 @@
 ---
 name: translations-screen-editor-rows
-description: Translations screen (translations.php, assets/js/translations.js): browser-engine wait, row state sync, glossary duplicates, return view, CSV formula guard, translation box size and names
+description: Translations screen (translations.php, translations.js): engine wait, row state and count sync, scoped chips, glossary duplicates and refused saves, return view, CSV guard, box size
 ---
 
 ## What if the browser's Translator or AI model never gets ready?
 `Translator.create()` / `LanguageModel.create()` of a browser with the API but no service or language pack never settles. `guardCreate()` gives up after 30 s with no `downloadprogress` event (each event restarts the wait) and shows "The browser did not get its translator ready…". The progress line says "Preparing the browser translator…" while it waits, and "Stop" ends the wait without a question (`preparing.stop()`); nothing has been sent yet. A translator that arrives after the wait gave up is destroyed. (#5994, PR #6016)
 
 ## How does a row follow its state after a save?
-`rowState()` stores the state on the row (`data-state`), adds or removes the "keep as in the source" tick box (`.pg-tr-pick`, a `.pg-tr-pick-spacer` stands in for a reviewed row) and fires `pg-tr-picks-changed`, which re-counts the selection. The "Clear translations" counts (`data-all`, `data-machine` on `.pg-tr-clear`) move with each change of state, so the dialog names the current number. (#5999)
+`rowState()` stores the state on the row (`data-state`), adds or removes the "keep as in the source" tick box (`.pg-tr-pick`, a `.pg-tr-pick-spacer` stands in for a reviewed row) and fires `pg-tr-picks-changed`, which re-counts the selection. `countState()` moves every server-drawn count with each change of state: the chips (`.pg-tr-chip-count[data-state]`), "All pages" (`.pg-tr-all-done`), the Pages header (`.pg-tr-reviewed-total`), "Approve all" (`data-plain`/`data-flagged` on `.pg-tr-review-all-go`, read when the dialog opens; the toolbar button is always printed and hidden with `d-none` at 0) and "Clear translations" (`data-all`, `data-machine` on `.pg-tr-clear`). (#5999)
+
+## What do the chips count?
+The selected page's or group's texts (`pg_tr_language_stats($language, $owner_where)`), the whole site's otherwise. A scope with no text at all says "No text has been scanned yet", whatever the filter.
+
+## What happens after a refused glossary save?
+`glossary_save` stores the typed values in the liveform (`glossary_form` = 1) before going back; the screen prints them into the dialog with `data-reopen="1"` and the refused field `is-invalid`, and `translations.js` opens it again without the reset of its `show` handler.
 
 ## Can a glossary term be saved twice?
 No. `glossary_save` looks for the same term with `pg_tr_glossary_duplicate()`: compared without case unless both rows match case exactly; a term for one language against that language's rows and the all-languages ones, an all-languages term against every row; the edited row is skipped. A repeat is refused with "The term … is already in the glossary". The table has no unique key; the check is in code. (#5996)

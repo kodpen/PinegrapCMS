@@ -61,6 +61,7 @@ if ($_POST) {
 
 			$options = array();
 			$option_error = '';
+			$option_error_key = '';
 
 			foreach ($provider['options'] as $option_key => $option) {
 
@@ -74,6 +75,7 @@ if ($_POST) {
 				// and replaced by the default at connection time.
 				if (($option_error === '') && !pg_connect_option_valid($option, $options[$option_key])) {
 					$option_error = isset($option['invalid']) ? $option['invalid'] : $option['label'];
+					$option_error_key = $option_key;
 				}
 
 			}
@@ -81,13 +83,31 @@ if ($_POST) {
 			$client_id = (isset($_POST['client_id']) && is_string($_POST['client_id'])) ? trim($_POST['client_id']) : '';
 			$client_secret = (isset($_POST['client_secret']) && is_string($_POST['client_secret'])) ? trim($_POST['client_secret']) : '';
 
+			// What was typed, for the form after a refused save; without it the
+			// redirect below drew the stored values and everything typed was
+			// lost. The secret is never kept here.
+			$draft = array(
+				'provider'   => $provider_key,
+				'client_id'  => mb_substr($client_id, 0, 1000),
+				'options'    => $options,
+				'invalid'    => $option_error_key,
+				'enabled'    => !empty($_POST['enabled']),
+				'had_secret' => ($client_secret !== '')
+			);
+
 			if (mb_strlen($client_id) > 255) {
 
 				$liveform->add_error(lang('The client ID is too long.'));
 
+				$draft['invalid'] = 'client_id';
+
+				$_SESSION['software']['connections_draft'] = $draft;
+
 			} elseif ($option_error !== '') {
 
 				$liveform->add_error(h($option_error));
+
+				$_SESSION['software']['connections_draft'] = $draft;
 
 			} elseif (pg_connect_app_save($provider_key, $client_id, $client_secret, $options, !empty($_POST['enabled']), (int) $user['id'])) {
 
@@ -98,6 +118,8 @@ if ($_POST) {
 			} else {
 
 				$liveform->add_error(lang('This site has no encryption key, so it cannot keep the permissions of a connected account.'));
+
+				$_SESSION['software']['connections_draft'] = $draft;
 
 			}
 
@@ -180,6 +202,17 @@ if (is_array($flash)) {
 
 $can_seal = pg_connect_can_seal();
 
+// The values of a save that was refused, shown once in that provider's form.
+$draft = null;
+
+if (isset($_SESSION['software']['connections_draft']) && is_array($_SESSION['software']['connections_draft'])) {
+
+	$draft = $_SESSION['software']['connections_draft'];
+
+	unset($_SESSION['software']['connections_draft']);
+
+}
+
 $redirect_uri = pg_connect_redirect_uri();
 
 function connections_ago($timestamp) {
@@ -212,6 +245,8 @@ foreach ($providers as $provider_key => $provider) {
 
 	$app = pg_connect_app($provider_key);
 	$ready = pg_connect_app_ready($app);
+
+	$provider_draft = (is_array($draft) && ($draft['provider'] === $provider_key)) ? $draft : null;
 
 	if ($ready) {
 		$app_badge = '<span class="badge theme-success fw-normal">' . h(lang('Ready')) . '</span>';
@@ -276,13 +311,19 @@ foreach ($providers as $provider_key => $provider) {
 
 	foreach ($provider['options'] as $option_key => $option) {
 
-		$value = (is_array($app) && isset($app['options'][$option_key])) ? (string) $app['options'][$option_key] : (string) $option['default'];
+		if (is_array($provider_draft) && isset($provider_draft['options'][$option_key])) {
+			$value = (string) $provider_draft['options'][$option_key];
+		} else {
+			$value = (is_array($app) && isset($app['options'][$option_key])) ? (string) $app['options'][$option_key] : (string) $option['default'];
+		}
+
+		$option_bad = is_array($provider_draft) && ($provider_draft['invalid'] === $option_key);
 
 		$option_fields .= '
 			<div class="col-12 md:col-6">
 				<label for="option_' . h($provider_key . '_' . $option_key) . '" class="form-label">' . h($option['label']) . '</label>
-				<input type="text" class="form-control form-control-sm" id="option_' . h($provider_key . '_' . $option_key) . '"
-					name="option_' . h($option_key) . '" value="' . h($value) . '" maxlength="100" autocomplete="off">
+				<input type="text" class="form-control form-control-sm' . ($option_bad ? ' is-invalid' : '') . '" id="option_' . h($provider_key . '_' . $option_key) . '"
+					name="option_' . h($option_key) . '" value="' . h($value) . '" maxlength="100" autocomplete="off"' . ($option_bad ? ' aria-invalid="true"' : '') . '>
 				<div class="form-text">' . h($option['help']) . '</div>
 			</div>';
 
@@ -310,6 +351,12 @@ foreach ($providers as $provider_key => $provider) {
 		$hint = lang('Set up the application below first.');
 	}
 
+	$client_id_value = is_array($provider_draft) ? $provider_draft['client_id'] : (is_array($app) ? $app['client_id'] : '');
+
+	$client_id_bad = is_array($provider_draft) && ($provider_draft['invalid'] === 'client_id');
+
+	$enabled_checked = is_array($provider_draft) ? $provider_draft['enabled'] : (!is_array($app) || $app['enabled']);
+
 	$can_fall_back = ($provider_key === 'google') && is_array($app) && ($app['source'] === 'connect') && (pg_signin_google_app() !== null);
 
 	$app_form = '
@@ -331,20 +378,23 @@ foreach ($providers as $provider_key => $provider) {
 			<div class="row g-3">
 				<div class="col-12 md:col-6">
 					<label for="client_id_' . h($provider_key) . '" class="form-label">' . h(lang('Client ID')) . '</label>
-					<input type="text" class="form-control form-control-sm" id="client_id_' . h($provider_key) . '" name="client_id"
-						value="' . h(is_array($app) ? $app['client_id'] : '') . '" maxlength="255" autocomplete="off">
+					<input type="text" class="form-control form-control-sm' . ($client_id_bad ? ' is-invalid' : '') . '" id="client_id_' . h($provider_key) . '" name="client_id"
+						value="' . h($client_id_value) . '" maxlength="255" autocomplete="off"' . ($client_id_bad ? ' aria-invalid="true"' : '') . '>
 				</div>
 				<div class="col-12 md:col-6">
 					<label for="client_secret_' . h($provider_key) . '" class="form-label">' . h(lang('Client secret')) . '</label>
 					<input type="password" class="form-control form-control-sm" id="client_secret_' . h($provider_key) . '" name="client_secret"
 						value="" autocomplete="new-password"
 						placeholder="' . h($secret_stored ? lang('Stored. Leave empty to keep it.') : '') . '">
+					' . ((is_array($provider_draft) && $provider_draft['had_secret'])
+						? '<div class="form-text fg-warning">' . h(lang('The secret you entered was not saved. Enter it again.')) . '</div>'
+						: '') . '
 				</div>
 				' . $option_fields . '
 				<div class="col-12">
 					<div class="form-field">
 						<div class="switch"><input class="" type="checkbox" role="switch" name="enabled" value="1" id="enabled_' . h($provider_key) . '"'
-							. ((!is_array($app) || $app['enabled']) ? ' checked' : '') . '></div>
+							. ($enabled_checked ? ' checked' : '') . '></div>
 						<label class="" for="enabled_' . h($provider_key) . '">' . h(lang('Connections through this application are allowed')) . '</label>
 					</div>
 				</div>
@@ -376,7 +426,7 @@ foreach ($providers as $provider_key => $provider) {
 						data-provider="' . h($provider_key) . '" data-connection="0"' . (($ready && $can_seal) ? '' : ' disabled') . '>
 						<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $provider['label']))) . '</button>
 					' . (($hint === '') ? '' : '<div class="form-text">' . h($hint) . '</div>') . '
-					<details class="mt-7"' . ($ready ? '' : ' open') . '>
+					<details class="mt-7"' . (($ready && !is_array($provider_draft)) ? '' : ' open') . '>
 						<summary class="fw-semibold">' . h(lang('Application')) . '</summary>
 						' . $app_form . '
 					</details>

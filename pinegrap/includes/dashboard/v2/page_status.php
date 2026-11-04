@@ -114,7 +114,7 @@ function pg_dashboard_v2_status_chips($checks, $role)
 
     return $output . '<details class="pg-dash-status-more"><summary' . (($tone !== '') ? ' data-tone="' . $tone . '"' : '') . '>'
         . h(lang(array('string' => '+{var:1} more', 'vars' => count($folded)))) . '</summary>'
-        . pg_system_status_chips($folded, $role, 'system_status_more_') . '</details>';
+        . '<div class="pg-dash-status-more-list">' . pg_system_status_chips($folded, $role, 'system_status_more_') . '</div></details>';
 }
 
 /**

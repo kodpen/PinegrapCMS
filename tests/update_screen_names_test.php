@@ -73,16 +73,19 @@ function test_update_screen_step_text_below_the_bar()
 	pg_assert_contains('<div class="logbox form-text" role="status"></div>', update_screen_names_source('backups.php'), 'backup log line is a status');
 }
 
-function test_update_screen_ligatures_hidden()
+function test_update_screen_icons_hidden()
 {
 	$source = update_screen_names_source('software_update.php');
 
-	foreach (array('browser_updated', 'arrow_right_alt', 'sync') as $ligature) {
+	pg_assert_false(strpos($source, 'material-icons') !== false, 'no Material Icons ligatures');
+	foreach (array('bi-cloud-arrow-down', 'bi-arrow-right', 'bi-arrow-repeat') as $icon) {
 		pg_assert_true(
-			(bool) preg_match('/<span class="[^"]*material-icons[^"]*"[^>]*aria-hidden="true"[^>]*>' . $ligature . '<\/span>/', $source),
-			$ligature . ' ligature aria-hidden'
+			(bool) preg_match('/<i class="bi ' . $icon . '[^"]*" aria-hidden="true"><\/i>/', $source),
+			$icon . ' icon aria-hidden'
 		);
 	}
+	pg_assert_contains('id="update" class="btn btn-solid theme-primary"', $source, 'Update is the primary button');
+	pg_assert_false(strpos($source, 'fg-primary fw-bold h2 fg-success') !== false, 'one colour on the new version');
 }
 
 function test_backup_name_return_starts_the_backup()

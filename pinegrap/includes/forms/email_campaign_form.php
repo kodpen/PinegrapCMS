@@ -3,10 +3,11 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The e-mail campaign form parts shared by the create and the edit screens
- * (add_email_campaign.php, edit_email_campaign.php): the message card with
- * its Subject and Format rows, the sender card, the delivery schedule card
- * and the CAN-SPAM purpose card. A read-only flag prints the stored values
- * as text, for a completed campaign. The screens keep what differs: the
+ * (add_email_campaign.php, edit_email_campaign.php): the screen layout (form
+ * column, sticky status column, sticky save bar), the message card with its
+ * Subject and Format rows, the sender card, and the delivery schedule and
+ * CAN-SPAM purpose cards of the status column. A read-only flag prints the
+ * stored values as text, for a completed campaign. The screens keep what differs: the
  * format choice and body, the recipients, the status and progress boxes,
  * every query, the INSERT/UPDATE and the redirect.
  *
@@ -21,7 +22,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * One full-width card of the campaign form.
+ * One card of the campaign form, in a full-width column of the row it sits
+ * in (the form column's or the status column's).
  *
  * @param string $title  Translated, escaped card title
  * @param string $body   Markup inside the card body's row
@@ -31,16 +33,65 @@ function pg_email_campaign_card($title, $body)
 {
     return
         '<div class="col-12">
-            <div class="card my-7">
+            <div class="card mb-7">
                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . $title . '
                 </h2>
-                <div class="card-body">
+                <div class="card-body pt-0">
                     <div class="row">
                         ' . $body . '
                     </div>
                 </div>
             </div>
+        </div>';
+}
+
+/**
+ * The screen row: the form column with the cards the operator fills, the
+ * status column (written after it, so on a narrow screen the form comes
+ * first) with a sticky box of what is read, and the sticky save bar.
+ *
+ * @param string $form     Cards of the form column
+ * @param string $side     Cards of the status column; '' leaves it out
+ * @param string $buttons  Buttons of the save bar; '' leaves it out
+ *                         (a completed campaign is only read)
+ * @return string
+ */
+function pg_email_campaign_layout($form, $side, $buttons)
+{
+    $html =
+        '<div class="row">
+            <div class="col-12 ' . (($side !== '') ? 'lg:col-8 2xl:col-9 ' : '') . 'order-1">
+                <div class="row">
+                    ' . $form . '
+                </div>
+            </div>';
+
+    if ($side !== '') {
+        $html .= '
+            <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                <div class="position-sticky" style="top:3.3rem;">
+                    <div class="row">
+                        ' . $side . '
+                    </div>
+                </div>
+            </div>';
+    }
+
+    if ($buttons !== '') {
+        $html .= '
+            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                    <div class="container">
+                        <div class="btn-group flex-wrap justify-content-center">
+                            ' . $buttons . '
+                        </div>
+                    </div>
+                </nav>
+            </div>';
+    }
+
+    return $html . '
         </div>';
 }
 
@@ -149,21 +200,17 @@ function pg_email_campaign_from_card($values, $readonly = false)
 
     return pg_email_campaign_card(
         lang('E-Mail Message From'),
-        '<div class="col-12 sm:col-6 xl:col-12 my-3">
+        '<div class="col-12 md:col-4 my-3">
             ' . $label('from_name', lang('From Name')) . '
             ' . $fields['from_name'] . '
         </div>
-        <div class="col-12">
-            <div class="row">
-                <div class="col-12 sm:col-6 xl:col-4 my-3">
-                    ' . $label('from_email_address', lang('From E-mail Address')) . '
-                    ' . $fields['from_email_address'] . '
-                </div>
-                <div class="col-12 sm:col-6 xl:col-4 my-3">
-                    ' . $label('reply_email_address', lang('Reply to E-mail Address')) . '
-                    ' . $fields['reply_email_address'] . '
-                </div>
-            </div>
+        <div class="col-12 md:col-4 my-3">
+            ' . $label('from_email_address', lang('From E-mail Address')) . '
+            ' . $fields['from_email_address'] . '
+        </div>
+        <div class="col-12 md:col-4 my-3">
+            ' . $label('reply_email_address', lang('Reply to E-mail Address')) . '
+            ' . $fields['reply_email_address'] . '
         </div>');
 }
 
@@ -205,7 +252,7 @@ function pg_email_campaign_schedule_card($start_time, $readonly = false, $enable
 
     return pg_email_campaign_card(
         lang('E-Mail Message Delivery Schedule'),
-        '<div class="col-12 md:col-6 lg:col-4 my-3">
+        '<div class="col-12 my-3">
             ' . ($readonly ? '<div class="form-label">' . lang('Send at this Date & Time') . '</div>' : '<label class="form-label" for="start_time">' . lang('Send at this Date & Time') . '</label>') . '
             ' . $field . '
         </div>');
@@ -231,20 +278,22 @@ function pg_email_campaign_purpose_card($purpose, $readonly = false)
         $field =
             '<fieldset>
             <legend class="form-label fs-md">' . lang('Purpose') . '</legend>
-            <div class="form-field">
-                <input class="radio" type="radio" name="purpose" id="purpose_commercial" value="commercial"' . $commercial . '>
-                <label class="" for="purpose_commercial">' . lang('Commercial') . ' (' . lang('send email to opted-in contacts only. Example: \'We have an offer for you\'') . ')</label>
+            <div class="form-field mb-3">
+                <input class="radio" type="radio" name="purpose" id="purpose_commercial" value="commercial"' . $commercial . ' aria-describedby="purpose_commercial_help">
+                <label class="" for="purpose_commercial">' . lang('Commercial') . '</label>
+                <div class="form-text" id="purpose_commercial_help">' . lang('send email to opted-in contacts only. Example: \'We have an offer for you\'') . '</div>
             </div>
             <div class="form-field">
-                <input class="radio" type="radio" name="purpose" id="purpose_transactional" value="transactional"' . $transactional . '>
-                <label class="" for="purpose_transactional">' . lang('Transactional') . ' (' . lang('send email, regardless of opt-in. Example: \'Your order has been shipped\'') . ')</label>
+                <input class="radio" type="radio" name="purpose" id="purpose_transactional" value="transactional"' . $transactional . ' aria-describedby="purpose_transactional_help">
+                <label class="" for="purpose_transactional">' . lang('Transactional') . '</label>
+                <div class="form-text" id="purpose_transactional_help">' . lang('send email, regardless of opt-in. Example: \'Your order has been shipped\'') . ' ' . lang('Use transactional only for real transaction and relationship notices (service outage, terms change, delivery schedule); promotional text is sent as commercial.') . '</div>
             </div>
             </fieldset>';
     }
 
     return pg_email_campaign_card(
         lang('Purpose') . ' (' . lang('as defined by the CAN-SPAM Act') . ')',
-        '<div class="col-12 my-5">
+        '<div class="col-12 my-3">
             ' . $field . '
         </div>');
 }

@@ -223,6 +223,60 @@ function pg_experiment_sheet_live_page($page_id)
 }
 
 /**
+ * A page a "page" goal can point at: on the site (not a draft), not in the
+ * Recycle Bin; any page type, not only designed ones.
+ *
+ * @param int|string $page_id
+ * @return array|null page_id, page_name
+ */
+function pg_experiment_goal_page($page_id)
+{
+    $page_id = (int) $page_id;
+
+    if ($page_id <= 0) {
+        return null;
+    }
+
+    $page = db_item("SELECT page_id, page_name, page_folder FROM page WHERE page_id = '$page_id'" . pg_designer_not_binned_sql() . " LIMIT 1");
+
+    if (!is_array($page) || pg_page_is_draft($page['page_folder'])) {
+        return null;
+    }
+
+    return $page;
+}
+
+/**
+ * An experiment's goal as shown: the goal kind's label and, for a click, the
+ * goal name; for a page, that page's name while it is on the site, else its
+ * id.
+ *
+ * @param array $experiment goal_kind, goal_target
+ * @param array $goal_labels goal kind => label
+ * @return string not escaped
+ */
+function pg_experiment_goal_text(array $experiment, array $goal_labels)
+{
+    $kind = (string) ($experiment['goal_kind'] ?? '');
+    $target = (string) ($experiment['goal_target'] ?? '');
+    $goal = isset($goal_labels[$kind]) ? $goal_labels[$kind] : '';
+
+    if ($target === '') {
+        return $goal;
+    }
+
+    if ($kind === 'page') {
+        $page = pg_experiment_goal_page($target);
+
+        if ($page) {
+            $target = $page['page_name'];
+        }
+    }
+
+    return $goal . ' (' . $target . ')';
+}
+
+/**
  * The open experiment (set up, running or paused) a draft page is a variant
  * of, with its live page; null when it is not held. Such a draft is neither
  * published nor binned until the experiment ends.
@@ -470,12 +524,13 @@ function pg_experiment_sheet_variant_choices($live)
  * @param array $values  pg_experiment_sheet_clean() values
  * @param array $user    the signed-in user
  * @param int   $draft_page_id a chosen draft, 0 for a new copy
- * @return array ok, error, id, draft_page_id
+ * @return array ok, error, field (the form field the error belongs to),
+ *               id, draft_page_id
  */
 function pg_experiment_sheet_create($live, $values, $user, $draft_page_id = 0)
 {
-    $fail = function ($error) {
-        return array('ok' => false, 'error' => $error, 'id' => 0, 'draft_page_id' => 0);
+    $fail = function ($error, $field = 'name') {
+        return array('ok' => false, 'error' => $error, 'field' => $field, 'id' => 0, 'draft_page_id' => 0);
     };
 
     $live_id = (int) $live['page_id'];
@@ -484,8 +539,9 @@ function pg_experiment_sheet_create($live, $values, $user, $draft_page_id = 0)
         return $fail(lang('This page already has an experiment; end it before setting up another.'));
     }
 
-    if (($values['goal_kind'] === 'page') && !db_value("SELECT page_id FROM page WHERE page_id = '" . (int) $values['goal_target'] . "' LIMIT 1")) {
-        return $fail(lang('The goal page was not found.'));
+    // A draft or a binned page is never reached by a visitor, so it is no goal.
+    if (($values['goal_kind'] === 'page') && !pg_experiment_goal_page($values['goal_target'])) {
+        return $fail(lang('The goal page was not found.'), 'goal_target');
     }
 
     $draft_page_id = (int) $draft_page_id;
@@ -498,7 +554,7 @@ function pg_experiment_sheet_create($live, $values, $user, $draft_page_id = 0)
         }
 
         if (!$allowed) {
-            return $fail(lang('That draft cannot be a variant of this page.'));
+            return $fail(lang('That draft cannot be a variant of this page.'), 'draft_page_id');
         }
     } else {
         $folder = pg_page_draft_ready() ? (int) pg_page_draft_folder_id(true) : 0;
@@ -541,7 +597,7 @@ function pg_experiment_sheet_create($live, $values, $user, $draft_page_id = 0)
         ('$id', 0, 'a', '" . $weights['a'] . "'),
         ('$id', '$draft_page_id', 'b', '" . $weights['b'] . "')");
 
-    return array('ok' => true, 'error' => '', 'id' => $id, 'draft_page_id' => $draft_page_id);
+    return array('ok' => true, 'error' => '', 'field' => '', 'id' => $id, 'draft_page_id' => $draft_page_id);
 }
 
 /**

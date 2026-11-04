@@ -466,3 +466,33 @@ function test_consent_answer_endpoint_throttles_before_writing()
 	pg_assert_contains('USER_EMAIL_ADDRESS', $source, 'user from initialize_user()');
 	pg_assert_false(strpos($source, 'sessionusername') !== false, 'no lookup by user name');
 }
+
+function test_consent_ga_tag_id_takes_only_google_tag_ids()
+{
+	pg_assert_same('G-PG1234ABCD', pg_ga_tag_id(' G-PG1234ABCD '), 'trimmed');
+	pg_assert_same('UA-12345678-1', pg_ga_tag_id('UA-12345678-1'), 'the old form');
+	pg_assert_same('AW-123456789', pg_ga_tag_id('AW-123456789'));
+	pg_assert_same('GT-ABCD1234', pg_ga_tag_id('GT-ABCD1234'));
+	pg_assert_same('', pg_ga_tag_id('G-PG"T\'1'), 'a quote breaks the tag');
+	pg_assert_same('', pg_ga_tag_id('G-1</script>'));
+	pg_assert_same('', pg_ga_tag_id('GTM-ABCD12'), 'a Tag Manager container is no gtag ID');
+	pg_assert_same('', pg_ga_tag_id(''));
+	pg_assert_same('', pg_ga_tag_id(null));
+}
+
+function test_consent_ga_tag_and_analytics_link_are_printed_escaped()
+{
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
+	pg_assert_contains('$google_analytics_tag_id = pg_ga_tag_id(GOOGLE_ANALYTICS_WEB_PROPERTY_ID);', $page);
+	pg_assert_false(strpos($page, "' . GOOGLE_ANALYTICS_WEB_PROPERTY_ID . '") !== false, 'the stored ID is never printed raw');
+
+	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/privacy.save.php');
+	$write = strpos($save, 'db("UPDATE config');
+	foreach (array('google_analytics_web_property_id', 'stats_url', 'tracking_code_duration') as $name) {
+		$at = strpos($save, "mark_error('" . $name . "'");
+		pg_assert_true(($at !== false) && ($at < $write), $name . ' refused before the write');
+	}
+
+	$menu = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php');
+	pg_assert_contains('h(STATS_URL)', $menu);
+}

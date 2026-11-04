@@ -369,6 +369,42 @@ if (!$_POST) {
     // Where it was talked about in the workspace, and the tasks about it.
     $output_workspace_button = '';
 
+    // The fee of a designed form (includes/fn/form_payments.php): a Paid or
+    // Unpaid badge for staff, the order's link for those who may open
+    // orders, and, for an offline payment the order still waits on, the
+    // order screen's own Payment Received path from here.
+    $output_payment = '';
+    $form_payment = $submitted_forms_manager ? pg_form_payment_record($id) : null;
+
+    if ($form_payment) {
+        $payment_order = $form_payment['order'];
+        $may_open_orders = (($user['role'] < 3) || $user['manage_ecommerce']);
+
+        $output_payment = '<p class="p-0 m-0">' . lang('Payment') . ': '
+            . (($form_payment['state'] === 'paid')
+                ? '<span class="badge theme-success">' . lang('Paid') . '</span>'
+                : '<span class="badge theme-warning fg-black">' . lang('Unpaid') . '</span>');
+
+        if ($payment_order && $may_open_orders) {
+            $output_payment .= ' <a href="view_order.php?id=' . $payment_order['id'] . '">'
+                . ((($payment_order['order_number'] !== '') && ($payment_order['order_number'] !== '0'))
+                    ? h(lang(array('string' => 'Order #{var:1}', 'vars' => array($payment_order['order_number']))))
+                    : lang('Incomplete order'))
+                . '</a>';
+        }
+
+        $output_payment .= '</p>';
+
+        if ($payment_order && $may_open_orders && ($form_payment['state'] === 'unpaid') && pg_order_awaiting_payment($payment_order)) {
+            $output_payment .= '
+                                <form action="edit_submitted_form.php?id=' . $id . '" method="post" class="mt-2">
+                                    ' . get_token_field() . '
+                                    <input type="hidden" name="id" value="' . $id . '" />
+                                    <button type="submit" name="record_offline_payment" value="1" class="btn btn-outline theme-primary btn-sm" data-confirm-content="' . h(lang('Record that the payment for this order has arrived?')) . '"><i class="bi bi-cash-coin me-1"></i>' . lang('Record an offline payment') . '</button>
+                                </form>';
+        }
+    }
+
     if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
         require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
         $output_workspace_button = ws_record_button($user, 'form', $id, trim($form_name . ' ' . $reference_code));
@@ -409,6 +445,7 @@ if (!$_POST) {
                                 
                                 <p class="p-0 m-0">' . lang('Reference Code') . ': ' . $reference_code . '</p>
                                 <p class="p-0 m-0">' . lang('Submitted') . ': ' . get_relative_time(array('timestamp' => $submitted_timestamp)) . ' ' . $submitted_username . '</p>
+                                ' . $output_payment . '
                             </div>
                             <div class="col-12 md:col-auto">' . $output_workspace_button . '</div>
                         </div>
@@ -513,7 +550,34 @@ if (!$_POST) {
 // else form has been submitted
 } else {
     validate_token_field();
-    
+
+    // Staff record that an offline payment for the record's fee order
+    // arrived: the order screen's Payment Received (pg_order_mark_paid()),
+    // which marks the record paid and announces form.paid.
+    if (!empty($_POST['record_offline_payment'])) {
+        $form_payment = pg_form_payment_record($id);
+        $payment_order = $form_payment ? $form_payment['order'] : null;
+
+        if (!$submitted_forms_manager || !(($user['role'] < 3) || $user['manage_ecommerce'])) {
+            log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+            output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
+        if (!$payment_order || !pg_order_awaiting_payment($payment_order)) {
+            $liveform->mark_error('_error', lang('This order is not awaiting payment.'));
+        } else {
+            $audit_before = pg_audit_fetch('orders', $payment_order['id']);
+
+            pg_order_mark_paid($payment_order['id'], (int) $user['id']);
+
+            pg_audit_record('update', 'orders', $payment_order['id'], $audit_before);
+
+            $liveform->add_notice(lang('Payment recorded.'));
+        }
+
+        go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_submitted_form.php?id=' . $id);
+    }
+
     // if form was selected for deletion
     if (isset($_POST['delete_button'])) {
         // assume that the user does not have delete access until we find out otherwise
@@ -540,51 +604,18 @@ if (!$_POST) {
             output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
         
-        // get uploaded files for this form, so they can be deleted
-        $query = "SELECT
-                    files.id,
-                    files.name
-                 FROM form_data
-                 LEFT JOIN files ON form_data.file_id = files.id
-                 WHERE (form_data.form_id = ?) AND (form_data.file_id > 0)";
-        $result = db_q($query, array((string) $id)) or output_error('Query failed.');
-        
-        $files = array();
-        
-        while($row = mysqli_fetch_assoc($result)) {
-            $files[] = $row;
-        }
-        
-        // loop through all files so they can be deleted
-        foreach ($files as $file) {
-            // if file still exists, delete file
-            if ($file['id']) {
-                // delete file record
-                $query = "DELETE FROM files WHERE id = ?";
-                $result = db_q($query, array((string) $file['id'])) or output_error('Query failed.');
-                
-                // delete file
-                @unlink(FILE_DIRECTORY_PATH . '/' . $file['name']);
-                log_activity(lang(array('string'=>'file ({var:1}) was deleted because the submitted form (form name: {var:2}, reference code: {var:3}) for the file was deleted','vars'=>array($file['name'],$form_name,$reference_code) )), $_SESSION['sessionusername']);
-            }
-        }
-        
-        // delete form
-        $query = "DELETE FROM forms WHERE id = ?";
-        $result = db_q($query, array((string) $id)) or output_error('Query failed.');
-        
-        // delete form data
-        $query = "DELETE FROM form_data WHERE (form_id = ?) AND (form_id != '0')";
-        $result = db_q($query, array((string) $id)) or output_error('Query failed.');
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_writes.php');
 
-        // delete signature records for this submitted form
-        pg_signature_delete($id);
-        
-        // delete views for this submitted form that the form view directory feature uses
-        pg_sfv_delete_views('submitted_form_id', $id);
+        // The record with its files, signatures, views and comment thread.
+        $deleted_files = pg_submitted_form_delete($id);
 
-        // delete the record's comments, their attachments, watchers and counters
-        pg_comment_delete_record_thread($id);
+        if ($deleted_files === false) {
+            output_error(lang('Query failed.'));
+        }
+
+        foreach ($deleted_files as $deleted_file) {
+            log_activity(lang(array('string'=>'file ({var:1}) was deleted because the submitted form (form name: {var:2}, reference code: {var:3}) for the file was deleted','vars'=>array($deleted_file,$form_name,$reference_code) )), $_SESSION['sessionusername']);
+        }
 
         log_activity(lang(array('string'=>'submitted form (form name: {var:1}, reference code: {var:2}) was deleted','vars'=>array($form_name,$reference_code) )), $_SESSION['sessionusername']);
         

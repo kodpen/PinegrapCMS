@@ -1,16 +1,15 @@
 ---
 name: server-paged-lists
-description: DataTables lists paged on the server (submitted forms, products): data-pg-list-action, the JSON page action, search, counts, row cells, what select all and bulk buttons act on
-module: list_paging, submitted_form_list
+description: DataTables lists paged on the server (products, commissions, logs): data-pg-list-action, the JSON page action, search, counts, row cells, what select all and bulk buttons act on
+module: list_paging
 ---
 
 ## Which lists are paged on the server, and why?
-- The submitted forms list (`view_submitted_forms.php`, PR #2509, issue #2038). It checked `check_edit_access()` per row and printed 100, so search saw those 100 only. The folder rule is in the query; the filters (date range, custom form, advanced filters, `query`) come from the session through `pg_submitted_form_list_filter()`, which Export and Delete All Forms use too.
-- Pages (#6114), users (#2460, then #6325) and contacts (#2528, then #6347) moved to the list table driver (`ui/page-list-paging.md`, `ui/list-table-driver.md`). Products (#2655), commissions (#2675), Site Log, audit, firewall log: `ui/product-list-paging.md`, `ui/commission-list-paging.md`, `ui/site-log-paging.md`, `ui/audit-log-paging.md`, `ui/waf-log-paging.md`.
+- Pages (#6114), users (#2460, then #6325), contacts (#2528, then #6347), submitted forms (#2509, then #6366), commissions (#2675, then #6380) and the mail queue (#6380) moved to the list table driver (`ui/page-list-paging.md`, `ui/list-table-driver.md`, `ui/commission-list-paging.md`, `ui/mail-queue-paging.md`), and so did the Site Log, audit and firewall log (#6386: `ui/site-log-paging.md`, `ui/audit-log-paging.md`, `ui/waf-log-paging.md`). Products (#2655): `ui/product-list-paging.md`.
 
 ## How does such a screen work?
 - The screen draws the toolbar and headings only; its `table.chart` carries `data-pg-list-action` (the `api.php` action) and `data-pg-list-params` (JSON, e.g. the filter). `pgListServerOptions()` in `backend.src.js` turns DataTables to `serverSide`: each draw posts `{action, token, draw, start, length, search, ...params}`.
-- The action (`includes/panel/lists.php`, `any_role` + its own role check + `validate_token()`) builds the screen's view (`pg_submitted_form_list_filter()`), counts without and with the search, reads one page with `LIMIT` and answers `pg_list_rows_answer()`. A refusal or failed query answers JSON with a message, shown in the empty row.
+- The action (`includes/panel/lists.php`, `any_role` + its own role check + `validate_token()`) builds the screen's view, counts without and with the search, reads one page with `LIMIT` and answers `pg_list_rows_answer()`. A refusal or failed query answers JSON with a message, shown in the empty row.
 - Sort stays the heading links (`pg_list_state()`); the action reads it from the session and adds the id last so pages never overlap.
 
 ## What does the search box find?

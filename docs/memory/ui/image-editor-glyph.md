@@ -6,7 +6,7 @@ module: image_editor
 
 ## What does the Sticker tool add?
 - Under the stickers and "Picture from Files", two sections that open on demand (`pg_image_editor_glyph.js`, which wraps `Editor.panels.sticker`, so `pg_image_editor_sticker.js` is unchanged):
-  - "Icons": a search box over the Bootstrap Icons names and the first 120 matches (`M.iconSearch()`: names starting with the query first, a space read as a dash).
+  - "Icons": a search box over the Bootstrap Icons names (English: the box and an empty result say so) and the first 120 matches (`M.iconSearch()`: names starting with the query first, a space read as a dash).
   - "Emoji": a recent row (the last eight, `M.emojiRecent()`, browser storage `pgie-recent-emoji`) and `M.EMOJI` by category (eight categories of 32 to 40).
 - A press adds a square glyph a fifth of the picture's shorter side in the middle of the stage, selected. With glyphs selected, icons get a colour (an emoji keeps its own colours); duplicate, forward, backward and delete are the Sticker panel's own row.
 
@@ -17,7 +17,7 @@ module: image_editor
 
 ## How is a placed one changed?
 - With one unlocked sticker or glyph selected, its panel shows Change (`swapButton()`): the Sticker tool opens (a glyph's icon or emoji section open) with a note and Cancel; a pick in the grid, icons or emoji replaces that layer in one undo step (`swapGlyph()`, the hook in `addSticker()`/`addGlyph()`) instead of adding one (#6351). Another selection or tool ends it.
-- `M.swapGlyph(l, pick)` keeps box, turn, opacity, colour, motion and every other field; the old type's own fields go (kind, label, ink / set, code). The colour stays on an emoji, so emoji → icon brings it back; sticker → sticker keeps label and ink.
+- `M.swapGlyph(l, pick, oldText)` keeps turn, opacity, motion and every other field, and what the person changed: a label other than the old kind's text (`stickerKindText()`), a colour or ink other than its kind's in `M.STICKERS` (an icon's other than `#212529`); else the pick brings its own label, fill and ink, so the grid's pick is what appears (review of #6351). The pick keeps its own proportions (a sticker's `w`:`h`, 1:1 for a glyph), fitted inside the old box about its centre; same proportions keep the box. The old type's own fields go; the colour stays on an emoji.
 
 ## Where do the icon font and map come from?
 - The panel's own `assets/fonts/bootstrap-icons/` (font and `bootstrap-icons.json`, name => code point); `pg_image_editor_icon_urls()` puts both addresses, with the file's time, in the config as `icons`. No copy of the map in the bundle.

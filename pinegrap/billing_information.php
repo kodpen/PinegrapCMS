@@ -164,6 +164,11 @@ if ($liveform->get_field_value('tax_exempt')) {
     $tax_exempt = 0;
 }
 
+// An EU VAT id typed for a member state other than the site's is checked
+// against VIES: a confirmed one sets the reverse charge, a refused one stops
+// the form, and the order preview shows what was decided.
+$tax_exempt = pg_vat_checkout_apply($liveform, $tax_exempt, $_SESSION['ecommerce']['order_id'] ?? 0, new liveform('order_preview'));
+
 // A Turkish district is saved in its listed spelling.
 pg_place_liveform_fix($liveform, 'billing_');
 

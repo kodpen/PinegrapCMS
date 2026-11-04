@@ -99,10 +99,15 @@ function test_comment_links_mail_wiring()
 // list, where the notification leads) name the comment, escaped.
 function test_comment_links_panel_wiring()
 {
-	foreach (array('edit_comment.php', 'view_comments.php') as $file) {
-		$source = comment_links_test_source($file);
-		pg_assert_same(4, substr_count($source, 'href="\' . h(OUTPUT_PATH . get_page_name('), $file . ': four escaped links');
-		pg_assert_same(4, substr_count($source, 'pg_comment_view_query('), $file . ': each names the comment');
-		pg_assert_contains("pg_comment_view_query('?r=' . \$form_reference_code", $source, $file . ': a record\'s link keeps its ?r=');
-	}
+	$source = comment_links_test_source('edit_comment.php');
+	pg_assert_same(4, substr_count($source, 'href="\' . h(OUTPUT_PATH . get_page_name('), 'edit_comment.php: four escaped links');
+	pg_assert_same(4, substr_count($source, 'pg_comment_view_query('), 'edit_comment.php: each names the comment');
+	pg_assert_contains("pg_comment_view_query('?r=' . \$form_reference_code", $source, 'edit_comment.php: a record\'s link keeps its ?r=');
+
+	// The list builds the address four ways and escapes it in one link.
+	$source = comment_links_test_source('view_comments.php');
+	pg_assert_same(4, substr_count($source, '$comment_url = OUTPUT_PATH . get_page_name('), 'view_comments.php: four addresses');
+	pg_assert_same(4, substr_count($source, 'pg_comment_view_query('), 'view_comments.php: each names the comment');
+	pg_assert_contains('href="\' . h($comment_url . \'#c-\' . $comment[\'id\'])', $source, 'view_comments.php: the link is escaped');
+	pg_assert_contains("pg_comment_view_query('?r=' . \$comment['reference_code']", $source, 'view_comments.php: a record\'s link keeps its ?r=');
 }

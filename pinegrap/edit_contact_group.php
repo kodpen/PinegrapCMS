@@ -17,6 +17,26 @@
  */
 
 include('init.php');
+
+// The rule editor's pickers (pg_audience_editor.js) search here and answer
+// in JSON, a refusal too. Rules are a Manager's or above.
+if (($_GET['request'] ?? '') === 'pick') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: private, no-store');
+    header('X-Robots-Tag: noindex');
+
+    if (!USER_LOGGED_IN || !defined('USER_ROLE') || (USER_ROLE >= 3)) {
+        http_response_code(403);
+        echo json_encode(array('results' => array()));
+        exit();
+    }
+
+    $results = pg_audience_picker_search(is_string($_GET['kind'] ?? null) ? $_GET['kind'] : '', $_GET['q'] ?? '');
+
+    echo json_encode(array('results' => $results), JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
+    exit();
+}
+
 $user = validate_user();
 validate_contacts_access($user);
 
@@ -39,8 +59,18 @@ include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/contact_group_form.php');
 $liveform = new liveform('edit_contact_group', $_REQUEST['id']);
 
-// get number of contacts in this contact group
-$query = "SELECT COUNT(contact_id) FROM contacts_contact_groups_xref WHERE contact_group_id = ?";
+// The rule state of the group, once the upgrade has added the columns.
+$audience_ready = pg_audience_ready();
+$may_edit_rules = $audience_ready && ($user['role'] < 3);
+$group_rules = array('id' => $id, 'kind' => 'static', 'rules' => '', 'computed_at' => 0, 'compute_cursor' => 0);
+
+if ($audience_ready) {
+    $group_rules = db_item("SELECT id, kind, rules, computed_at, compute_cursor FROM contact_groups WHERE id = '" . $id . "'") ?: $group_rules;
+}
+
+// get number of contacts in this contact group; the members a group filled by
+// rules got from its rules do not hold its delete back, they are derived
+$query = "SELECT COUNT(contact_id) FROM contacts_contact_groups_xref WHERE contact_group_id = ?" . (($group_rules['kind'] === 'dynamic') ? " AND source <> 'rule'" : '');
 $result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 $number_of_contacts = $row[0];
@@ -64,8 +94,14 @@ if (!$_POST) {
         $liveform->assign_field_value('email_subscription', $row['email_subscription']);
         $liveform->assign_field_value('email_subscription_type', $row['email_subscription_type']);
         $liveform->assign_field_value('description', $row['description']);
+        $liveform->assign_field_value('kind', $group_rules['kind']);
+        $liveform->assign_field_value('rules', (string) $group_rules['rules']);
     }
     
+    // A static group's hand, form and product rows, reviewed when it is
+    // switched to rules.
+    $switch_review = ($may_edit_rules && ($group_rules['kind'] !== 'dynamic')) ? pg_audience_switch_counts($id) : null;
+
     // if there are no contacts in this contact group, allow delete
     if ($number_of_contacts == 0) {
         $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact group')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
@@ -99,6 +135,7 @@ if (!$_POST) {
                 <form name="form" action="edit_contact_group.php" method="post" >
                     ' . get_token_field() . '
                     ' . pg_contact_group_form_card($liveform) . '
+                    ' . ($audience_ready ? pg_contact_group_rules_card($liveform, $group_rules, $may_edit_rules, $switch_review) : '') . '
 
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
@@ -114,6 +151,7 @@ if (!$_POST) {
         </div>
     
 </main>' .
+    ($may_edit_rules ? pg_contact_group_rules_scripts() : '') .
     output_footer();
     
     $liveform->remove_form();
@@ -156,6 +194,11 @@ if (!$_POST) {
                 db_q("DELETE FROM contact_groups_sms_campaigns_xref WHERE contact_group_id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             }
 
+            // A recompute left half way keeps its state in a file.
+            if ($audience_ready) {
+                pg_audience_state_write($id, null);
+            }
+
             log_activity(lang(array('string'=>'contact group ({var:1}) was deleted','vars'=>$contact_group_name)), $_SESSION['sessionusername']);
             $liveform->remove_form();
             $liveform_view_contact_groups = new liveform('view_contact_groups');
@@ -179,6 +222,11 @@ if (!$_POST) {
     } else {
         $liveform->add_fields_to_session();
         pg_contact_group_form_validate_name($liveform, (string) ($_POST['id'] ?? ''));
+        $posted_rules = $may_edit_rules ? pg_audience_editor_posted($_POST) : null;
+
+        if ($posted_rules && ($posted_rules['kind'] === 'dynamic') && ($posted_rules['count'] === 0)) {
+            $liveform->mark_error('kind', lang('Add at least one condition, or turn off Fill this group by rules.'));
+        }
         
         // if there is an error, forward user back to edit contact group screen
         if ($liveform->check_form_errors() == true) {
@@ -198,6 +246,20 @@ if (!$_POST) {
                 last_modified_timestamp = UNIX_TIMESTAMP()
             WHERE id = ?";
         $result = db_q($query, array_merge(pg_contact_group_form_values($liveform), array((string) $user['id'], (string) ($_POST['id'] ?? '')))) or output_error('Query failed.');
+
+        // A group that becomes filled by rules, or whose rules change, is due
+        // at the next general job tick (computed_at 0); its hand rows stay.
+        if ($posted_rules) {
+            $due = (($posted_rules['kind'] === 'dynamic') && (($group_rules['kind'] !== 'dynamic') || pg_audience_rules_changed($group_rules['rules'], $posted_rules['rules'])));
+
+            db_q('UPDATE contact_groups SET kind = ?, rules = ?' . ($due ? ', computed_at = 0' : '') . ' WHERE id = ?', array($posted_rules['kind'], $posted_rules['rules'], $id)) or output_error('Query failed.');
+
+            // The switch review's choice for the rows the group had while
+            // static runs once the switch is saved; keep touches nothing.
+            if (($posted_rules['kind'] === 'dynamic') && ($group_rules['kind'] !== 'dynamic')) {
+                pg_audience_switch_apply($id, pg_audience_switch_action($_POST)) or output_error('Query failed.');
+            }
+        }
         log_activity(lang(array('string'=>'contact group (name: {var:1}) was modified','vars'=>$liveform->get_field_value('name') )), $_SESSION['sessionusername']);
         $liveform->remove_form();
         $liveform_view_contact_groups = new liveform('view_contact_groups');

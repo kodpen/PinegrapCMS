@@ -691,10 +691,6 @@ $(document).ready(function () {
                     }
 
                     break;
-                case 'y':
-                    //This Function Development purphose. add class body, this class add outlines all elements on body css.This function for development draw line
-                    show_draw_lines();
-                    break;
                 case 'q':
                     var notification_toggle = document.getElementById('notification_toggle');
                     if (notification_toggle && $('#notifications').length) {
@@ -2468,6 +2464,11 @@ $(document).ready(function () {
         var $clearBtn = $modal.find('.clear');
         var timer, currentQuery = '', currentOffset = 0, loading = false;
 
+        // Each search request gets a number; an answer whose number is no
+        // longer the latest belongs to an older query and is dropped. A new
+        // first page also aborts the request still running.
+        var searchSeq = 0, searchXhr = null;
+
         var cachedActions = null;
 
         // The palette runs inside the toolbar too, and that is an iframe laid
@@ -2519,12 +2520,18 @@ $(document).ready(function () {
             return window.pgFoldTR(s);
         }
 
+        // A key that starts with the query matches. A query that starts with
+        // a key matches only when the key is a whole word of it or at least
+        // four letters long: the short abbreviation keys ('ad', 'ip', 'kis')
+        // would otherwise match every longer word that begins with them
+        // ('adres', 'ipek', 'kisayol').
         function actionMatches(q, keys) {
             if (q.length < 1) return false;
             var qn = normalizeTR(q);
             for (var i = 0; i < keys.length; i++) {
                 var k = normalizeTR(keys[i]);
-                if (k.indexOf(qn) === 0 || qn.indexOf(k) === 0) return true;
+                if (k.indexOf(qn) === 0) return true;
+                if (qn.indexOf(k) === 0 && (k.length >= 4 || qn.length === k.length || qn.charAt(k.length) === ' ')) return true;
             }
             return false;
         }
@@ -2536,7 +2543,8 @@ $(document).ready(function () {
             'membership entrance': 'bi-door-open', 'shopping cart': 'bi-cart',
             'checkout': 'bi-credit-card', 'order receipt': 'bi-receipt',
             'email a friend': 'bi-envelope', 'forgot password': 'bi-key',
-            'custom form': 'bi-ui-checks'
+            'custom form': 'bi-ui-checks', 'standard': 'bi-file-earmark-text',
+            'catalog': 'bi-grid', 'calendar view': 'bi-calendar3'
         };
         var FILE_ICONS = {
             'css': 'bi-filetype-css', 'js': 'bi-filetype-js',
@@ -2555,7 +2563,7 @@ $(document).ready(function () {
         }
 
         var TYPE_META = {
-            page: { thumb: function (r) { return makeThumb(PAGE_ICONS[r.sub] || 'bi-file-earmark', 'fg-emphasis-primary', null); }, url: function (r) { return path + software_directory + '/edit_page.php?id=' + r.id; } },
+            page: { thumb: function (r) { return makeThumb(PAGE_ICONS[r.page_type] || 'bi-file-earmark','fg-emphasis-primary', null); }, url: function (r) { return path + software_directory + '/edit_page.php?id=' + r.id; } },
             form: { thumb: function (_r) { return makeThumb('bi-ui-checks', 'fg-emphasis-primary', null); }, url: function (r) { return path + software_directory + '/edit_page.php?id=' + r.id; } },
             product: { thumb: function (r) { return makeThumb('bi-box-seam', 'fg-emphasis-success', r.image || null); }, url: function (r) { return path + software_directory + '/edit_product.php?id=' + r.id; } },
             product_group: { thumb: function (_r) { return makeThumb('bi-boxes', 'fg-emphasis-info', null); }, url: function (r) { return path + software_directory + '/edit_product_group.php?id=' + r.id; } },
@@ -2576,10 +2584,19 @@ $(document).ready(function () {
         };
 
         $(document).on('keydown', function (e) {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            // Lower case: with Caps Lock or Shift the key reads 'K', and the
+            // browser's own Ctrl+K (address bar search) would run instead.
+            if ((e.ctrlKey || e.metaKey) && (String(e.key).toLowerCase() === 'k')) {
                 e.preventDefault();
                 pgUI.dialog[pgUI.dialog.isOpen($modal) ? 'hide' : 'show']($modal);
             }
+        });
+
+        // The box is a one-field form, so Enter would submit it to the
+        // current address (?query=…) and reload the screen. The results open
+        // from their own buttons; Enter does nothing here.
+        $modal.find('form.search_form').on('submit', function (e) {
+            e.preventDefault();
         });
 
         pgUI.dialog.on($modal, 'shown', function () {
@@ -2601,6 +2618,10 @@ $(document).ready(function () {
         $clearBtn.on('click', resetUI);
 
         function resetUI() {
+            // An answer still on its way is for text that is gone.
+            searchSeq++;
+            if (searchXhr) { searchXhr.abort(); searchXhr = null; }
+            loading = false;
             $input.val('');
             currentQuery = '';
             currentOffset = 0;
@@ -2664,7 +2685,11 @@ $(document).ready(function () {
         }
 
         function runSearch(query, offset) {
-            if (loading) return;
+            // Load More waits for the request running; a first page is the
+            // latest text typed and replaces whatever is running.
+            if (loading && offset > 0) return;
+            var seq = ++searchSeq;
+            if (searchXhr) { searchXhr.abort(); searchXhr = null; }
             loading = true;
             $clearBtn.removeClass('d-none');
             $emptyBox.addClass('d-none');
@@ -2684,12 +2709,14 @@ $(document).ready(function () {
                 $results.append('<div class="srch-load-more text-center py-3 fg-secondary" role="status"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span class="visually-hidden">' + t('Loading...') + '</span></div>');
             }
 
-            $.ajax({
+            searchXhr = $.ajax({
                 contentType: 'application/json',
                 url: 'api.php',
                 type: 'POST',
                 data: JSON.stringify({ action: 'backend_search', search: query, offset: offset }),
                 success: function (resp) {
+                    if (seq !== searchSeq) return;
+                    searchXhr = null;
                     loading = false;
                     $results.find('.srch-load-more').remove();
 
@@ -2809,6 +2836,9 @@ $(document).ready(function () {
                     }
                 },
                 error: function () {
+                    // An aborted or older request: a newer one owns the list.
+                    if (seq !== searchSeq) return;
+                    searchXhr = null;
                     loading = false;
                     $results.find('.srch-load-more').remove();
                     if (offset > 0) { loadMoreFailed(); } else {
@@ -3050,12 +3080,13 @@ function pgListServerOptions(options, $table) {
     });
 }
 
-// A button of a row that came from the server (a delete in the mail queue)
-// asks its data-confirm-content question here: the software-wide confirm
-// handler binds at DOM ready to the buttons on the page then, before these
-// rows exist.
+// A button of a row that came from the server asks its data-confirm-content
+// question here: the software-wide confirm handler binds at DOM ready to the
+// buttons on the page then, before these rows exist. A list table driver
+// row's button (a delete in the mail queue) is marked no-submit, so the rows
+// printed with the page are not asked twice.
 $(function () {
-    $(document).on('click', 'table.chart[data-pg-list-action] tbody button[data-confirm-content]', function (event) {
+    $(document).on('click', 'table.chart[data-pg-list-action] tbody button[data-confirm-content], .pg-list-table button.no-submit[data-confirm-content]', function (event) {
         if (!window.confirm($(this).attr('data-confirm-content'))) {
             event.preventDefault();
         }
@@ -3587,17 +3618,18 @@ function pg_shortcuts_init() {
 
     var dialog = document.getElementById('pg_shortcuts');
 
-    if (!dialog || !window.pgUI) {
-        return;
-    }
-
-    // The command key stands where Ctrl does on an Apple keyboard.
+    // The command key stands where Ctrl does on an Apple keyboard: in the
+    // sheet and in the Ctrl+K hints of the header and the search box.
     var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || '';
 
     if (/mac|iphone|ipad|ipod/i.test(platform)) {
-        dialog.querySelectorAll('kbd[data-pg-mod]').forEach(function (key) {
+        document.querySelectorAll('[data-pg-mod]').forEach(function (key) {
             key.textContent = '⌘';
         });
+    }
+
+    if (!dialog || !window.pgUI) {
+        return;
     }
 
     window.pgShowShortcuts = function () {
@@ -4756,11 +4788,6 @@ function init_email_preferences() {
 
 }
 
-//Development purphose. add draw lines to all elements
-function show_draw_lines() {
-    $('body').toggleClass('show-draw-lines');
-}
-
 function prepare_content_for_html(content) {
     var chars = new Array('&', '\u00e0', '\u00e1', '\u00e2', '\u00e3', '\u00e4', '\u00e5', '\u00e6', '\u00e7', '\u00e8', '\u00e9', '\u00ea', '\u00eb', '\u00ec', '\u00ed', '\u00ee', '\u00ef', '\u00f0', '\u00f1', '\u00f2', '\u00f3', '\u00f4', '\u00f5', '\u00f6', '\u00f8', '\u00f9', '\u00fa', '\u00fb', '\u00fc', '\u00fd', '\u00fe', '\u00ff', '\u00c0', '\u00c1', '\u00c2', '\u00c3', '\u00c4', '\u00c5', '\u00c6', '\u00c7', '\u00c8', '\u00c9', '\u00ca', '\u00cb', '\u00cc', '\u00cd', '\u00ce', '\u00cf', '\u00d0', '\u00d1', '\u00d2', '\u00d3', '\u00d4', '\u00d5', '\u00d6', '\u00d8', '\u00d9', '\u00da', '\u00db', '\u00dc', '\u00dd', '\u00de', '\u20ac', '\u0022', '\u00df', '\u003c', '\u003e', '\u00a2', '\u00a3', '\u00a4', '\u00a5', '\u00a6', '\u00a7', '\u00a8', '\u00a9', '\u00aa', '\u00ab', '\u00ac', '\u00ad', '\u00ae', '\u00af', '\u00b0', '\u00b1', '\u00b2', '\u00b3', '\u00b4', '\u00b5', '\u00b6', '\u00b7', '\u00b8', '\u00b9', '\u00ba', '\u00bb', '\u00bc', '\u00bd', '\u00be');
 
@@ -5021,20 +5048,20 @@ function init_product_attribute_options(properties) {
             id = option.id;
         }
 
+        // One row per option: the label field, the 'No Thanks' switch and
+        // the move and remove buttons on one line, wrapping on a phone.
         $('.option_list').append(
-            '<div class="col-12 lg:col-7 my-3 option option_' + current_id + '">\
-                <div class="p-3 border rounded-4">\
-                    <input type="hidden" name="option_id" value="' + id + '" class="option_id">\
-                    <div class="input-group">\
-                        <input type="text" name="option_label" maxlength="255" class="option_label form-control" aria-label="' + h(label['Option']) + '">\
-                        <button type="button" class="move move_up btn btn-solid theme-primary no-popover" aria-label="' + h(label['Move Up']) + '"><span class="material-icons" aria-hidden="true">north</span></button>\
-                        <button type="button" class="move move_down btn btn-solid theme-primary no-popover" aria-label="' + h(label['Move Down']) + '"><span class="material-icons" aria-hidden="true">south</span></button>\
-                        <button type="button" class="remove btn btn-solid theme-danger no-popover" aria-label="' + h(label['Remove']) + '"><span class="material-icons" aria-hidden="true">delete</span></button>\
-                    </div>\
-                    <div class="form-field form-text m-3">\
-                      <input class="check option_no_value" type="checkbox" id="option_no_value_' + current_id + '" name="option_no_value" value="1">\
-                      <label class="" for="option_no_value_' + current_id + '">' + label['\u0027No Thanks\u0027 Option'] + '</label>\
-                    </div>\
+            '<div class="option option_' + current_id + ' d-flex flex-wrap align-items-center gap-3 p-3 border rounded-4" role="listitem">\
+                <input type="hidden" name="option_id" value="' + id + '" class="option_id">\
+                <input type="text" name="option_label" maxlength="255" class="option_label form-control flex-grow-1 w-auto" style="flex-basis:14rem; min-width:0;" aria-label="' + h(label['Option']) + '">\
+                <div class="form-field mb-0">\
+                    <div class="switch"><input class="option_no_value" type="checkbox" id="option_no_value_' + current_id + '" name="option_no_value" value="1"></div>\
+                    <label class="" for="option_no_value_' + current_id + '">' + label['\u0027No Thanks\u0027 Option'] + '</label>\
+                </div>\
+                <div class="btn-group ms-auto">\
+                    <button type="button" class="move move_up btn btn-outline theme-secondary no-popover" aria-label="' + h(label['Move Up']) + '"><span class="material-icons" aria-hidden="true">north</span></button>\
+                    <button type="button" class="move move_down btn btn-outline theme-secondary no-popover" aria-label="' + h(label['Move Down']) + '"><span class="material-icons" aria-hidden="true">south</span></button>\
+                    <button type="button" class="remove btn btn-outline theme-danger no-popover" aria-label="' + h(label['Remove']) + '"><span class="material-icons" aria-hidden="true">delete</span></button>\
                 </div>\
             </div>');
 
@@ -5052,7 +5079,7 @@ function init_product_attribute_options(properties) {
         }
 
         $('.option_' + current_id + ' .move_up').click(function () {
-            var option = $(this).parent().parent().parent();
+            var option = $(this).closest('.option');
 
             option.after(option.prev());
 
@@ -5060,7 +5087,7 @@ function init_product_attribute_options(properties) {
         });
 
         $('.option_' + current_id + ' .move_down').click(function () {
-            var option = $(this).parent().parent().parent();
+            var option = $(this).closest('.option');
 
             option.before(option.next());
 
@@ -5068,12 +5095,29 @@ function init_product_attribute_options(properties) {
         });
 
         $('.option_' + current_id + ' .remove').click(function () {
-            $(this).parent().parent().parent().remove();
+            $(this).closest('.option').remove();
 
             update_move_buttons();
+            update_summary();
         });
 
+        $('.option_' + current_id + ' .option_label').on('input', update_summary);
+
         update_move_buttons();
+        update_summary();
+    }
+
+    // The Summary counts the options that have a label, as the save does.
+    function update_summary() {
+        var count = 0;
+
+        $('.option_label').each(function () {
+            if ($.trim($(this).val()) !== '') {
+                count++;
+            }
+        });
+
+        $('#product_attribute_summary_options').text(count);
     }
 
     // Prepare options when form is submitted.
@@ -11065,7 +11109,13 @@ function pgBindTitlePopovers(scope) {
 
     var $scope = $(scope || document);
 
-    $scope.find('[title]:not(.popover-click):not(.no-popover)' + _pgNoTitlePopover).each(function () {
+    // The image editor (.pgie-dialog, .pgie) has no Bootstrap layer: its
+    // controls keep their native titles, whenever the editor was opened.
+    function outsideEditor() {
+        return !this.closest('.pgie-dialog, .pgie');
+    }
+
+    $scope.find('[title]:not(.popover-click):not(.no-popover)' + _pgNoTitlePopover).filter(outsideEditor).each(function () {
         pgUI.popover.get(this, {
             trigger: 'hover',
             placement: 'auto',
@@ -11074,7 +11124,7 @@ function pgBindTitlePopovers(scope) {
         });
     });
 
-    $scope.find('.popover-click[title]:not(.no-popover)' + _pgNoTitlePopover).each(function () {
+    $scope.find('.popover-click[title]:not(.no-popover)' + _pgNoTitlePopover).filter(outsideEditor).each(function () {
         pgUI.popover.get(this, {
             trigger: 'click',
             placement: 'auto',
@@ -12819,6 +12869,32 @@ window.pgCodeEditorReady = function (markup, done) {
             return;
         }
 
+        // A ticked box that deletes something (Remove on a language) asks
+        // first; Cancel leaves the dialog as it is, nothing posted.
+        var asking = window.pgConfirmTicked ? window.pgConfirmTicked(form) : null;
+
+        if (asking) {
+            asking.then(function (yes) {
+                if (yes) {
+                    send(button);
+                }
+            });
+            return;
+        }
+
+        send(button);
+    }
+
+
+    /**
+     * @param {?{name: string, value: string}} [button] as save()
+     */
+    function send(button) {
+
+        if (!pane || working()) {
+            return;
+        }
+
         harden();
 
         // The card button that started this, by name. A serializer never
@@ -13290,6 +13366,215 @@ $(function () {
 
     $(window).on('hashchange', function () {
         pgSettingsModal.fromHash(window.location.hash);
+    });
+});
+
+
+/**
+ * The question a ticked box asks before its form is sent.
+ *
+ * A checkbox carrying data-pg-confirm-ticked holds the sentence to ask while it
+ * is ticked (Remove on a target language, which deletes its translations);
+ * data-pg-confirm-title and data-pg-confirm-ok give the dialog's title and
+ * button. Several ticked boxes are asked about in one dialog.
+ *
+ * @param {HTMLFormElement} form
+ * @return {?Promise<boolean>} null when nothing ticked asks anything
+ */
+window.pgConfirmTicked = function (form) {
+
+    var ticked = form ? form.querySelectorAll('input[type="checkbox"][data-pg-confirm-ticked]:checked:not(:disabled)') : [];
+
+    if (!ticked.length) {
+        return null;
+    }
+
+    var sentences = [];
+
+    for (var i = 0; i < ticked.length; i++) {
+        sentences.push(ticked[i].getAttribute('data-pg-confirm-ticked'));
+    }
+
+    if (typeof window.pgConfirm === 'function') {
+        return window.pgConfirm({
+            title: ticked[0].getAttribute('data-pg-confirm-title') || null,
+            message: sentences.join(' '),
+            confirmText: ticked[0].getAttribute('data-pg-confirm-ok') || null,
+            variant: 'danger'
+        });
+    }
+
+    return Promise.resolve(window.confirm(sentences.join(' ')));
+};
+
+
+/**
+ * A settings page after a save the server refused: what was typed is put back
+ * over the cards, which were drawn from storage, and the refused fields are
+ * marked with their sentence, the first one focused. The settings dialog never
+ * redraws a refused pane, so only the page needs this.
+ *
+ * @param {HTMLFormElement} form
+ * @param {{values: ?Object<string, string[]>, fields: Object<string, string>}} data
+ *     values by control name (pg_settings_typed_values()); null when the
+ *     typed values are gone, and the marks alone are shown
+ */
+window.pgSettingsRestore = function (form, data) {
+
+    if (!form || !data) {
+        return;
+    }
+
+    var values = data.values || null;
+    var has = function (object, key) { return Object.prototype.hasOwnProperty.call(object, key); };
+    var changed = [];
+
+    if (values) {
+
+        Array.prototype.forEach.call(form.elements, function (control) {
+
+            var name = control.name;
+            var type = String(control.type || '').toLowerCase();
+
+            if (!name || control.disabled || (control.tagName === 'BUTTON') || (control.tagName === 'FIELDSET')
+                || /^(hidden|password|file|submit|button|reset|image)$/.test(type)) {
+                return;
+            }
+
+            var posted = has(values, name) ? values[name] : null;
+
+            // An unticked box is not posted at all: its absence is its value.
+            if ((type === 'checkbox') || (type === 'radio')) {
+
+                var on = !!posted && (posted.indexOf(control.value) !== -1);
+
+                if (control.checked !== on) {
+                    control.checked = on;
+                    changed.push(control);
+                }
+
+                return;
+            }
+
+            if (posted === null) {
+                return;
+            }
+
+            if (control.tagName === 'SELECT') {
+
+                var moved = false;
+
+                Array.prototype.forEach.call(control.options, function (option) {
+
+                    var chosen = control.multiple
+                        ? (posted.indexOf(option.value) !== -1)
+                        : (option.value === posted[0]);
+
+                    if (option.selected !== chosen) {
+                        option.selected = chosen;
+                        moved = true;
+                    }
+                });
+
+                if (moved) {
+                    changed.push(control);
+                }
+
+                return;
+            }
+
+            // Several controls of one name take the posted values in order.
+            if (!posted.length) {
+                return;
+            }
+
+            var value = posted.shift();
+
+            if (control.value !== value) {
+                control.value = value;
+            }
+        });
+
+        // A box or a list that opens part of a card does so on change.
+        changed.forEach(function (control) {
+            $(control).trigger('change');
+        });
+    }
+
+    var fields = data.fields || {};
+    var esc = (window.CSS && CSS.escape) ? CSS.escape : function (text) { return String(text).replace(/["\\]/g, '\\$&'); };
+    var first = null;
+
+    Object.keys(fields).forEach(function (name) {
+
+        var found = form.querySelectorAll('[name="' + esc(name) + '"], [name="' + esc(name + '[]') + '"], [name^="' + esc(name + '[') + '"]');
+
+        for (var i = 0; i < found.length; i++) {
+
+            if (found[i].type === 'hidden') {
+                continue;
+            }
+
+            found[i].setAttribute('data-pg-set-marked', '');
+
+            if (typeof window.pgFieldInvalid === 'function') {
+                window.pgFieldInvalid(found[i], true, fields[name]);
+            }
+
+            if (!first && !found[i].disabled && found[i].getClientRects().length) {
+                first = found[i];
+            }
+
+            break;
+        }
+    });
+
+    // A marked field loses the mark once it is edited.
+    $(form).on('change input', '[data-pg-set-marked]', function () {
+        this.removeAttribute('data-pg-set-marked');
+        window.pgFieldInvalid(this, false);
+    });
+
+    if (first) {
+        first.focus();
+    }
+};
+
+
+// A settings page posts its form natively; a ticked box that asks first holds
+// the submit until the answer. The settings dialog asks in its own save().
+$(document).on('submit', 'form', function (event) {
+
+    var form = this;
+
+    if (form.closest('#pg_settings_modal') || form.hasAttribute('data-pg-confirmed')) {
+        form.removeAttribute('data-pg-confirmed');
+        return;
+    }
+
+    var asking = window.pgConfirmTicked(form);
+
+    if (!asking) {
+        return;
+    }
+
+    event.preventDefault();
+
+    var submitter = (event.originalEvent && event.originalEvent.submitter) || null;
+
+    asking.then(function (yes) {
+
+        if (!yes) {
+            return;
+        }
+
+        form.setAttribute('data-pg-confirmed', '');
+
+        if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit(submitter && submitter.form === form ? submitter : undefined);
+        } else {
+            form.submit();
+        }
     });
 });
 

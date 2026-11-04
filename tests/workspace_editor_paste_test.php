@@ -355,7 +355,7 @@ function test_workspace_editor_paste_wiring()
 	pg_assert_true(strpos($paste, '!plain && editor.pasteSmart(') !== false, 'Ctrl+Shift+V keeps plain paste');
 	pg_assert_true(strpos($paste, 'editor.options.pasteFiles') !== false, 'pictures only where the box takes them');
 	pg_assert_true(strpos($source, "surface.addEventListener('paste', function (event) {\n            paste(surface, event, singleLine);") !== false, 'surfaces paste through paste()');
-	pg_assert_true(strpos(workspace_editor_lists_test_method('setMarkup'), 'markupNodes(blocks, labels)') !== false, 'a stored text and a paste are read alike');
+	pg_assert_true(strpos(workspace_editor_lists_test_method('setMarkup'), 'markupNodes(blocks, labels, this.options.removeLabel)') !== false, 'a stored text and a paste are read alike');
 
 	$workspace = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
 

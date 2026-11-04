@@ -63,6 +63,44 @@ function pg_import_contact_values($data, $lengths)
 }
 
 /**
+ * The character lengths of the contacts columns, read once per request.
+ *
+ * @return array<string,int>
+ */
+function pg_import_contact_lengths()
+{
+    static $lengths = null;
+
+    if ($lengths === null) {
+        $lengths = pg_import_column_lengths(db_items("SHOW COLUMNS FROM contacts"));
+    }
+
+    return $lengths;
+}
+
+/**
+ * Why the writer skips a contact item, '' when it writes it: a row naming
+ * nobody, or an address an existing contact holds. The dry run asks it too.
+ *
+ * @param array $item
+ * @return string
+ */
+function pg_import_precheck_contact($item)
+{
+    $values = pg_import_contact_values((array) ($item['data'] ?? array()), pg_import_contact_lengths());
+
+    if (($values['email_address'] === '') && ($values['first_name'] === '') && ($values['last_name'] === '') && ($values['mobile_phone'] === '')) {
+        return lang('The row names nobody.');
+    }
+
+    if (($values['email_address'] !== '') && ((int) db_value("SELECT id FROM contacts WHERE email_address = '" . e($values['email_address']) . "' LIMIT 1") > 0)) {
+        return lang('A contact with this e-mail address exists already.');
+    }
+
+    return '';
+}
+
+/**
  * The contact group of a tag, made when no group has that name.
  *
  * @param string $name
@@ -93,22 +131,13 @@ function pg_import_contact_group($name, $user_id)
  */
 function pg_import_write_contact($item, $import)
 {
-    static $lengths = null;
-
-    if ($lengths === null) {
-        $lengths = pg_import_column_lengths(db_items("SHOW COLUMNS FROM contacts"));
-    }
-
     $data = (array) ($item['data'] ?? array());
-    $values = pg_import_contact_values($data, $lengths);
+    $values = pg_import_contact_values($data, pg_import_contact_lengths());
     $user_id = (int) ($import['user_id'] ?? 0);
+    $refusal = pg_import_precheck_contact($item);
 
-    if (($values['email_address'] === '') && ($values['first_name'] === '') && ($values['last_name'] === '') && ($values['mobile_phone'] === '')) {
-        return array('result' => 'skipped', 'id' => 0, 'reason' => lang('The row names nobody.'));
-    }
-
-    if (($values['email_address'] !== '') && ((int) db_value("SELECT id FROM contacts WHERE email_address = '" . e($values['email_address']) . "' LIMIT 1") > 0)) {
-        return array('result' => 'skipped', 'id' => 0, 'reason' => lang('A contact with this e-mail address exists already.'));
+    if ($refusal !== '') {
+        return array('result' => 'skipped', 'id' => 0, 'reason' => $refusal);
     }
 
     $opt_in = (!empty($data['opt_in']) && ($values['email_address'] !== '')) ? 1 : 0;

@@ -66,3 +66,18 @@ function test_common_region_form_screens_use_shared_form()
 	pg_assert_contains('disable_shortcut', $edit, 'the convert form keeps out of the save shortcut');
 	pg_assert_contains('pg_common_region_component($id, $user, $warnings)', $edit, 'edit keeps the conversion');
 }
+
+// A region made a shared component is not deleted while the component
+// exists: the delete branch refuses before the DELETE and names the
+// component, and the Delete button's confirmation says so (#5516).
+function test_common_region_delete_refused_while_its_component_exists()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_common_region.php');
+	$branch = strpos($source, "if ((\$_POST['submit_delete'] ?? '') == 'Delete') {");
+	$refusal = strpos($source, "'This common region is the shared component \"{var:1}\". Delete the component first; its content comes back here, then the region can be deleted.'");
+
+	pg_assert_true($branch !== false, 'delete branch');
+	pg_assert_true($refusal !== false && $refusal > $branch, 'refusal inside the branch');
+	pg_assert_true($refusal < strpos($source, 'DELETE FROM cregion'), 'before the DELETE');
+	pg_assert_contains("lang('This region is a shared component and cannot be deleted while the component exists. Delete the component first.')", $source, 'confirmation');
+}

@@ -44,7 +44,7 @@ $pg_settings_cards[] = '
                                                             <label for="tracking_code_duration" class="form-label">' . lang('Tracking Code Duration') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                             <label class="form-control form-adorn form-adorn-end">
                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
-                                                                <input type="text" required name="tracking_code_duration" id="tracking_code_duration" class="form-ghost" value="' . h($tracking_code_duration) . '" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="1" style="text-align: right;" min="1" max="365" />
+                                                                <input type="text" required name="tracking_code_duration" id="tracking_code_duration" class="form-ghost" value="' . h($tracking_code_duration) . '" size="7" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="1" style="text-align: right;" />
                                                             </label>
                                                         </div>
                                                         <div class="pg-f-md">
@@ -67,7 +67,7 @@ $pg_settings_cards[] = '
                                                                     </div>
                                                                     <div class="col-12 ">
                                                                         <label for="google_analytics_web_property_id" class="form-label">' . lang('Web Property ID') . '</label>
-                                                                        <input type="text" name="google_analytics_web_property_id" id="google_analytics_web_property_id" class="form-control" value="' . $google_analytics_web_property_id. '" maxlength="50"/>
+                                                                        <input type="text" name="google_analytics_web_property_id" id="google_analytics_web_property_id" class="form-control" value="' . h($google_analytics_web_property_id) . '" maxlength="50"/>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -99,8 +99,8 @@ $pg_settings_cards[] = '
                                         ' : '') . '<div class="col-12">
                                             <div class="form-field">
                                                 <div class="switch"><input value="1"' . ($visitor_summary ? ' checked="checked"' : '') . ' class="" type="checkbox" id="visitor_summary" name="visitor_summary"/></div>
-                                                <label class="" for="visitor_summary">' . lang('Keep a daily summary before records are removed') . '</label>
-                                                <div class="form-text">' . lang('Each day is added up by source, landing page, campaign, place and device first, so the visitor report and the API still count it. Turned off, those days are gone from the visitor report; the dashboard charts keep them either way.') . '</div>
+                                                <label class="" for="visitor_summary">' . lang('Keep a daily summary of every day') . '</label>
+                                                <div class="form-text">' . lang('Every day through yesterday is added up by source, landing page, campaign, place and device, whatever the period above, so the visitor overview reads it quickly and the visitor report and the API still count a day once its records are removed. Turned off, removed days are gone from the visitor report; the dashboard charts keep them either way.') . '</div>
                                                 <div class="form-text"><a href="database_engine.php#visitor-records">' . lang('The size of the table, and a cleanup you can start yourself, are on the Database Engine screen.') . '</a></div>
                                             </div>
                                         </div>' : '') . $google_analytics_figures . '

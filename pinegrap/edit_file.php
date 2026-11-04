@@ -437,7 +437,7 @@ if (!isset($_POST['name'])) {
             $image_library_available = (extension_loaded('imagick') || extension_loaded('gd'));
 
              if (!$optimized && $image_library_available) {
-                $optimize_button ='<a class="btn btn-link pg-link-secondary py-0 mb-3" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '( ' . h(lang(array('string' => '{var:1}%', 'vars' => calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file_name)))) . ' )</a>';
+                $optimize_button ='<a class="btn btn-link pg-link-secondary py-0 mb-3" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . ' (' . h(lang(array('string' => '{var:1}%', 'vars' => calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file_name)))) . ')</a>';
             }
 
             // The second half of the pair. Offered whatever the optimized flag
@@ -503,9 +503,16 @@ if (!isset($_POST['name'])) {
     $output_file_links = '';
 
     if ($on_disk) {
-        $output_file_links = '<a class="btn btn-link pg-link-secondary py-0 mb-3"  href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
+        $output_file_links = '<a class="btn btn-link pg-link-secondary py-0 mb-3"  href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Open in New Tab') . '</a>
             <a class="btn btn-link pg-link-secondary py-0 mb-3" download="' . h($file_name) . '" href="' . OUTPUT_PATH . h($file_name) . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>';
     }
+
+    // Delete moves the file to the Recycle Bin when the site has one; a file
+    // already in the bin, or a site without it, is deleted for good.
+    require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+    $output_delete_confirmation = (pg_recycle_ready() && !pg_recycle_is_inside($row['folder']))
+        ? lang('This file will be moved to the Recycle Bin.')
+        : lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('file'))));
 
     // What the File Manager's details say about the file and this screen did
     // not: whether an image is optimized, the last change with its exact
@@ -701,10 +708,10 @@ if (!isset($_POST['name'])) {
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-solid theme-primary "><span class="material-icons me-3">arrow_backsave</span><span class="pg-btn-label" >' . lang(array('string'=>'Save & Return') ) . '</span></button>
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                                <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-solid theme-secondary"><span class="material-icons me-3">control_point_duplicate</span><span class="pg-btn-label">' . lang('Duplicate') . '</span></button>
-                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('file')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-solid theme-primary "><i class="bi bi-box-arrow-left me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Save & Return') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-solid theme-secondary"><i class="bi bi-copy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Duplicate') . '</span></button>
+                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h($output_delete_confirmation) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -816,21 +823,52 @@ $liveform->remove_form('edit_file');
 
     // DELETE
     if (!empty($_POST['delete'])) {
+        include_once('liveform.class.php');
+        $location = pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files');
+        // The notice goes to the screen the redirect opens, so it is not kept
+        // for a File Manager opened later.
+        $notice_form = pg_redirect_notice_form($location);
+
+        // With the recycle bin installed the file goes there, the way the
+        // File Manager deletes it, and keeps its versions and bytes until the
+        // bin is emptied. A file already in the bin is deleted for good below.
+        require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+
+        if (pg_recycle_ready()) {
+            $recycled = pg_recycle_file((int) $file_id, $user);
+
+            if ($recycled['status'] == 'error') {
+                output_error(h($recycled['message']) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+            }
+
+            if ($recycled['status'] == 'binned') {
+                log_activity(lang(array('string' => 'file ({var:1}) was moved to the Recycle Bin', 'vars' => $row['name'])), $_SESSION['sessionusername']);
+
+                if ($notice_form !== '') {
+                    $liveform = new liveform($notice_form);
+                    $liveform->add_notice(lang('The file was moved to the Recycle Bin.'));
+                }
+
+                header('Location: ' . URL_SCHEME . HOSTNAME . $location);
+                exit();
+            }
+        }
+
         db_q("DELETE FROM files WHERE id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         pg_file_versions_delete_file((int) ($_POST['id'] ?? 0));
         db_q("DELETE FROM system_theme_css_rules WHERE file_id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         db("DELETE FROM preview_styles WHERE theme_id = '" . $file_id . "'");
         @unlink(FILE_DIRECTORY_PATH . '/' . $row['name']);
 
+        // A file deleted for good from inside the bin leaves no restore record.
+        if (function_exists('pg_recycle_forget')) {
+            pg_recycle_forget('file', (int) $file_id);
+        }
+
         pg_audit_record('delete', 'files', (int) $file_id, $audit_before);
 
         log_activity(lang(array('string'=>'file ({var:1}) was deleted','vars'=>$name)), $_SESSION['sessionusername']);
 
-        include_once('liveform.class.php');
-        $location = pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files');
-        // The notice goes to the screen the redirect opens, so it is not kept
-        // for a File Manager opened later.
-        $notice_form = pg_redirect_notice_form($location);
         if ($notice_form !== '') {
             $liveform = new liveform($notice_form);
             $liveform->add_notice(lang('The file was deleted successfully.'));

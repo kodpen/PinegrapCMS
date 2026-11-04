@@ -1891,6 +1891,7 @@ function get_system_status_checks()
         'Webhooks'                 => 'Webhook',
         'Storage Engine'           => 'Engine',
         'Visitor Records'          => 'Visitors',
+        'Visitor Summary'          => 'Summary',
         'Operations Alerts'        => 'Alerts',
         'Maintenance Mode'         => 'Maintenance',
         'Product Feeds'            => 'Feeds',
@@ -1929,6 +1930,7 @@ function get_system_status_checks()
         'Webhooks',
         'Storage Engine',
         'Visitor Records',
+        'Visitor Summary',
         'Operations Alerts',
         'Maintenance Mode',
         'Product Feeds',
@@ -2692,6 +2694,35 @@ function get_system_status_checks()
                 $visitor_size,
                 'database_engine.php#visitor-records'
             );
+        }
+
+        // The daily summary is written every day through yesterday; the
+        // overview and the API read it for every day before today. A last
+        // day more than two days back means the general job has stopped
+        // writing it. Reported and not scored, like the line above.
+        if ($visitor_settings['summary']) {
+            $visitor_range = pg_visitor_summary_range();
+            $visitor_last_day = is_array($visitor_range) ? $visitor_range['last'] : '';
+            $visitor_lag = pg_visitor_summary_lag($visitor_last_day, pg_visitor_oldest_day(), date('Y-m-d'));
+
+            if ($visitor_lag > PG_VISITOR_SUMMARY_LATE_DAYS) {
+                $output .= $makeIcon(
+                    'bi-calendar-x',
+                    'fg-warning',
+                    'Visitor Summary',
+                    ($visitor_last_day !== '')
+                        ? lang(array(
+                            'string' => 'The daily visitor summary was last written for {var:1}, {var:2} days back. The general job writes every day through yesterday; check that it runs.',
+                            'vars'   => array(
+                                get_absolute_time(array('timestamp' => strtotime($visitor_last_day . ' 00:00:00'), 'type' => 'date', 'format' => 'plain_text')),
+                                pg_format_number($visitor_lag, 0),
+                            ),
+                        ))
+                        : lang('The daily visitor summary has not been written yet. The general job writes every day through yesterday; check that it runs.'),
+                    lang(array('string' => '{var:1} days back', 'vars' => array(pg_format_number($visitor_lag, 0)))),
+                    'database_engine.php#visitor-records'
+                );
+            }
         }
     }
 

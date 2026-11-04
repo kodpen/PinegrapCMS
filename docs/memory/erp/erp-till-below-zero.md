@@ -16,3 +16,6 @@ description: A cash till (drawer, received-cheque portfolio) never goes below ze
 ## Who skips it?
 - Only the cheque module (`includes/erp/cheques.php`): its three postings pass `'allow_below_zero' => true`. The given-cheques till is below zero by design between the giving and the bank's payment (`erp-cheques.md`). The API files never pass the flag (pinned by the test).
 - Corrections stay free: a cancel's reversal (`erp_receipt_cancel()`, an expense's cancel) and a till's opening figure.
+
+## And a movement dated ahead?
+- Refused before this check by `erp_till_future_date_refusal()` (`erp-till-future-date.md`, #5581): the cached balance counts every date.

@@ -119,7 +119,8 @@ function test_api_campaigns_routes_reach_a_handler_under_the_campaigns_scope()
 	$found = 0;
 
 	foreach (api_schema() as $route) {
-		if (strpos($route['id'], 'campaigns.') !== 0) {
+		// Campaign profiles are counted by api_campaign_profiles_test.php.
+		if ((strpos($route['id'], 'campaigns.') !== 0) || (strpos($route['id'], 'campaigns.profiles.') === 0)) {
 			continue;
 		}
 
@@ -136,7 +137,7 @@ function test_api_campaigns_routes_reach_a_handler_under_the_campaigns_scope()
 		}
 	}
 
-	pg_assert_same(6, $found, 'list, get, recipients, update, delete and its POST alias');
+	pg_assert_same(7, $found, 'list, get, recipients, update, delete and its POST alias, the SMS list');
 }
 
 // The router takes the first route that matches.

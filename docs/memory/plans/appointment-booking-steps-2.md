@@ -12,7 +12,7 @@ description: Steps BK6-BK10 of plans/appointment-booking.md: Workspace calendar 
 - BK7 (S) My bookings and the manage page. After BK4 and BK5.
   - The account widgets (`designer/account-widget-forms.md`) gain "My bookings" (upcoming and past, reschedule and cancel within the policy); `booking_manage.php` (root) opens from the mail's signed link for a visitor without an account: the same two actions and the `.ics` download; both call the slot engine again for a reschedule. Memory: `designer/booking-widget.md` grows.
 
-- BK8 (S) API, MCP and webhooks. After BK3.
+- BK8 (S) API, MCP and webhooks. After BK3. Done in #6377 (`api/api-bookings.md`).
   - Resource `bookings` in `includes/api/resources/bookings.php` with the schema rows (`api/api-endpoint-rules.md`): list, get, create (staff-made), update status, cancel, plus `GET /bookings/slots?service=&staff=&day=`; scope `bookings:*` with its owner ceiling; `dry_run`; MCP tools follow the routes; the `booking.*` events of BK5 in the webhook catalogue. Memory: `api/api-bookings.md`.
 
 - BK9 (S) Deposits. After BK4 and `designer-form-logic.md` FL5.

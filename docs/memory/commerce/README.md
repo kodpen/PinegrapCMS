@@ -86,7 +86,8 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - currency-form-rules.md: What the currency create/edit screens refuse and how the currency list sorts
 - currency-names-display.md: Stored currency names shown through pg_currency_label() in the panel language; the currency list's rate with the panel's separators (#4430)
 - edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.
-- eu-vat-check.md: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; what SF6b still wires
+- eu-vat-check.md: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; where it is wired
+- eu-vat-checkout.md: The EU VAT check at checkout: when it runs, what each VIES answer does to tax_exempt and the three orders.vat_* columns, where the customer, the order screen, the API and the ERP invoice show it
 - exchange-rates-update.md: Update Exchange Rates (button and scheduled job) writes one Site Log line with the count, and a success notice only when a rate was written
 - express-order-field-labels.md: Express order widget's accessible names: labels follow the walker's shipping_<rid>_ renames, fallback aria-labels for the quantity, offer code and custom arrival date boxes (#4799)
 - express-order-notes-address-book.md: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the narrow-screen table classes and the three places to update.
@@ -269,6 +270,11 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - shipping-today.md: How shipping works today (checked 2026-10-20): tracking tables and write paths, the four meanings of "shipped", estimated dates, known gaps and reusable Turkish validation helpers
 - short-link-binned-destination.md: A short link whose page or file is in the Recycle Bin (list, CSV, redirect), and a name held by a short link in the bin (the form's message)
 - short-link-recycle-bin.md: How short links treat a product, product group, page or file in the Recycle Bin (lists, save checks on every entry point), where a deleted short link goes, and posted lists on the short link screens.
+- stock-locations-completion.md: Stock per location at sales, scans and the inventory API: the order's location, the checkout check, completion, barcode screens, the API location parameter, location keys on stock events
+- stock-locations-model.md: Stock per location: the three tables and two columns (11.0.162), the sum rule, the writer pg_stock_change()/pg_stock_set(), the no-locations path, seeding on the first location
+- stock-locations-moves.md: Stock per location, the operator's side: the Stock locations settings card, the stock history (view_stock_moves.php), the Transfer dialog, the product screen's last moves
+- stock-locations-pickup.md: Pickup at a location: a shipping method naming a stock location, no rate, offered only while the location holds the cart; the place on checkout, order screen, receipt, mails
+- stock-locations-screens.md: Stock per location on the panel: product screen boxes per location, the quick stock cells refused, the two bulk edits at one location, stock:<location> import and export columns
 - stock-quantity-column-bound.md: Panel stock writers refuse or skip a count past PG_INVENTORY_QUANTITY_MAX (the INT UNSIGNED top) instead of letting MySQL cut it (#4711)
 - store-credit-checkout.md: Store credit at checkout (PR #6234): open cards applied as applied_gift_cards rows before the totals, the "Use my store credit" box and per-order opt-out, the name on receipts
 - store-credit-model.md: Store credit as a gift card bound to a customer (2026.11.0, 11.0.159): gift_cards user_id/kind/reason/issued_by/expires_at, pg_credit_* writer and readers, pick order, points value, void, audit line

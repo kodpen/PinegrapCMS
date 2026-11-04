@@ -98,8 +98,8 @@ function test_ws_voice_push_and_search_are_wired()
 	};
 
 	pg_assert_same(2, substr_count($read('includes/workspace/notify.php'), 'ws_voice_excerpt($viewer, $message, 140)'), 'the mention and the read-receipt reminder');
-	pg_assert_contains("(body LIKE '%\" . \$like . \"%'\" . ws_voice_search_or(\$like) . \")\"", $read('includes/workspace/messages.php'), 'the message search');
-	pg_assert_contains("body LIKE '%\" . \$like . \"%'\" . ws_voice_search_or(\$like) . \")\"", $read('includes/workspace/palette.php'), 'the files group');
+	pg_assert_contains("(\" . ws_text_like_sql('body', \$query) . ws_voice_search_or(\$like) . \")\"", $read('includes/workspace/messages.php'), 'the message search');
+	pg_assert_contains("ws_text_like_sql('body', \$query) . ws_voice_search_or(\$like) . ')'", $read('includes/workspace/palette.php'), 'the files group');
 	pg_assert_contains('ws_voice_found_in_transcript($text, $heard[(int) $row[\'file_id\']], $query)', $read('includes/workspace/palette.php'), 'the answer shows the transcript');
 }
 

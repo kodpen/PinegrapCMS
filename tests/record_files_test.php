@@ -686,7 +686,7 @@ function test_record_files_get_file_call_site()
 	pg_assert_true($set !== false && $call < $set && $set < $deny, 'set right after the call');
 	$flag    = strpos($source, '$designed_attachment = false;');
 	$private = strpos($source, "if (\$designed_attachment) {\n    \$cache_control_type = 'private';\n}");
-	$header  = strpos($source, "header('Cache-Control: ' . (\$erp_document");
+	$header  = strpos($source, "header('Cache-Control: ' . ((\$erp_document");
 	pg_assert_true($flag !== false && $flag < $call, 'the flag starts false');
 	pg_assert_true($private !== false && $header !== false && $call < $private && $private < $header, 'private before the header');
 

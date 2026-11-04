@@ -70,6 +70,7 @@ function pg_dashboard_v2_cards()
     $built = array_merge($built, array('shop', 'salesmap', 'orders', 'offers', 'fx', 'ops'));
     $built[] = 'ai';
     $built = array_merge($built, array('pins', 'perf'));
+    $built[] = 'visitmap';
 
     $card = function ($title, $icon, $category, $width, $period, $gate) {
         return array(
@@ -88,7 +89,7 @@ function pg_dashboard_v2_cards()
         // General
         'ai'         => $card(lang('Assistant'), 'bi-stars', 'general', 'M', null, 'workspace'),
         'goals'      => $card(lang('My goals'), 'bi-bullseye', 'general', 'S', null, 'all'),
-        'pipeline'   => $card(lang('Pipeline'), 'bi-funnel', 'general', 'L', 2, 'all'),
+        'pipeline'   => $card(lang('Work line'), 'bi-funnel', 'general', 'L', 2, 'all'),
         'queue'      => $card(lang('Next up'), 'bi-list-ol', 'general', 'M', null, 'all'),
         'activity'   => $card(lang('Activity'), 'bi-activity', 'general', 'S', null, 'all'),
         'flows'      => $card(lang('Flows'), 'bi-diagram-3', 'general', 'S', null, 'workspace'),
