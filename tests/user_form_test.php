@@ -48,7 +48,7 @@ function test_user_form_screens_use_shared_parts()
 
 		pg_assert_contains('includes/forms/user_form.php', $source, $file . ' loads the shared parts');
 		pg_assert_contains('pg_user_form_rights_cards(', $source, $file . ' prints the shared rights cards');
-		pg_assert_contains('pg_user_form_save_access(', $source, $file . ' saves access the shared way');
+		pg_assert_contains('includes/fn/user_write.php', $source, $file . ' loads the shared writes');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 	}
 }
@@ -93,12 +93,13 @@ function test_user_form_module_columns_follow_drawn_rows()
 
 function test_user_form_edit_save_guards_module_columns()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_user.php');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php');
 
-	pg_assert_contains('pg_user_form_module_columns(', $source, 'edit_user.php picks the module columns by the drawn rows');
+	pg_assert_contains('pg_user_form_module_columns(', $source, 'pg_user_update() picks the module columns by the drawn rows');
+	pg_assert_same(2, substr_count($source, 'pg_user_form_save_access('), 'the create and the update save access the shared way');
 
 	foreach (array('user_password_hint', 'user_manage_forms', 'user_manage_calendars', 'user_publish_calendar_events', 'user_manage_ecommerce', 'user_view_card_data', 'manage_ecommerce_reports', 'manage_erp', 'manage_erp_cash', 'manage_erp_settings', 'user_set_offline_payment') as $column) {
-		pg_assert_false((bool) preg_match('/' . preg_quote($column, '/') . '\s*=\s*\'"\s*\.\s*(e|escape)\(/', $source), 'edit_user.php no longer writes ' . $column . ' from every post');
+		pg_assert_false((bool) preg_match('/' . preg_quote($column, '/') . '\s*=\s*\'"\s*\.\s*(e|escape)\(/', $source), 'pg_user_update() no longer writes ' . $column . ' from every post');
 	}
 
 	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/user_form.php');

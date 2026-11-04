@@ -40,7 +40,7 @@ function test_add_user_email_body_without_link()
 // notice of a notified user, and sends the link as a secret e-mail.
 function test_add_user_does_not_mail_the_password()
 {
-	$source = file_get_contents(PG_FUNCTIONS_DIR . '/add_user.php');
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/add_user.php') . file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php');
 
 	pg_assert_same(0, preg_match('/lang\(\'Password\'\)\s*\.\s*":\s*\$random_password/', $source), 'password line in the e-mail');
 	pg_assert_false(strpos($source, 'has been emailed to the user.\',\'vars\'=>h($random_password)') !== false, 'password in the notice');

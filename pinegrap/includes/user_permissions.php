@@ -225,9 +225,14 @@ function pg_user_permission_ws_values($user_id)
 }
 
 // The posted workspace rights as SQL, for the INSERT and the UPDATE of the
-// three screens. Empty when the columns are not there yet.
-function pg_user_permission_ws_sql($mode)
+// three screens. Empty when the columns are not there yet. $post is the
+// form's fields, $_POST when not given.
+function pg_user_permission_ws_sql($mode, $post = null)
 {
+	if ($post === null) {
+		$post = $_POST;
+	}
+
 	if (!function_exists('pg_user_has_ws_columns') || !pg_user_has_ws_columns()) {
 		return '';
 	}
@@ -236,7 +241,7 @@ function pg_user_permission_ws_sql($mode)
 	$posted = array();
 
 	foreach ($fields as $field) {
-		$posted[$field] = !empty($_POST[$field]) ? 1 : 0;
+		$posted[$field] = !empty($post[$field]) ? 1 : 0;
 	}
 
 	// The three rights mean nothing without the gate.
