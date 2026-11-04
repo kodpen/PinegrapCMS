@@ -42,6 +42,13 @@ if ($quote === null) {
 $self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_quote.php?id=' . $quote_id . $send_to_query;
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 
+// The actions of the lower cards land on their card: the message of such an
+// action is drawn inside that card, where the operator is, not at the page top.
+$go_card = function ($card) use ($self_url, $quote_id) {
+    $_SESSION['software']['erp_quote_msg_card'][$quote_id] = $card;
+    go($self_url . '#erp-' . $card);
+};
+
 if ($_POST) {
     validate_token_field();
 
@@ -119,14 +126,14 @@ if ($_POST) {
 
         if (!in_array(erp_quote_state($quote), array('open', 'expired', 'accepted'), true)) {
             $liveform->mark_error('_error', h(lang('Only an open or accepted quote can be signed.')));
-            go($self_url . '#erp-signature');
+            $go_card('signature');
         }
 
         $png = pg_signature_png_from_data_url((string) ($_POST['signature'] ?? ''));
 
         if ($png === false) {
             $liveform->mark_error('_error', h(lang('The signature could not be read. Sign again.')));
-            go($self_url . '#erp-signature');
+            $go_card('signature');
         }
 
         $stored = erp_signature_store('quote', $quote_id, $png, array(
@@ -138,7 +145,7 @@ if ($_POST) {
 
         if (!$stored['success']) {
             $liveform->mark_error('_error', h($stored['error']));
-            go($self_url . '#erp-signature');
+            $go_card('signature');
         }
 
         unset($_SESSION['software']['erp_quote_signer'][$quote_id]);
@@ -151,7 +158,7 @@ if ($_POST) {
 
         log_activity(lang(array('string' => 'erp quote ({var:1}) was signed by {var:2}', 'vars' => array($quote['full_number'], $stored['record']['signer_name']))), $_SESSION['sessionusername']);
         $liveform->add_notice(h(lang('The quote was signed and is accepted.')));
-        go($self_url . '#erp-signature');
+        $go_card('signature');
     }
 
     // A guest link the customer opens without an account to read and accept
@@ -161,18 +168,18 @@ if ($_POST) {
 
         if (!$issued['success']) {
             $liveform->mark_error('_error', h($issued['error']));
-            go($self_url . '#erp-guest-link');
+            $go_card('guest-link');
         }
 
         $_SESSION['software']['erp_quote_guest_link'][$quote_id] = erp_quote_link_url($issued['token']);
-        go($self_url . '#erp-guest-link');
+        $go_card('guest-link');
     }
 
     if ($action === 'guest_link_revoke') {
         erp_quote_link_revoke($quote_id);
         log_activity(lang(array('string' => 'erp quote ({var:1}) guest link was revoked', 'vars' => $quote['full_number'])), $_SESSION['sessionusername']);
         $liveform->add_notice(h(lang('The guest link no longer works.')));
-        go($self_url . '#erp-guest-link');
+        $go_card('guest-link');
     }
 
     if ($action === 'mail') {
@@ -187,7 +194,7 @@ if ($_POST) {
 
             if (!$issued['success']) {
                 $liveform->mark_error('_error', h($issued['error']));
-                go($self_url . '#erp-mail');
+                $go_card('mail');
             }
 
             $link_url = erp_quote_link_url($issued['token']);
@@ -206,18 +213,18 @@ if ($_POST) {
                 'message' => mb_substr((string) ($_POST['mail_message'] ?? ''), 0, 5000),
             );
             $liveform->mark_error('_error', h($sent['error']) . (($link_id > 0) ? ' ' . h(lang('No new guest link was made; the earlier guest link, if any, still works.')) : ''));
-            go($self_url . '#erp-mail');
+            $go_card('mail');
         }
 
         if ($link_id > 0) {
             erp_quote_link_revoke($quote_id, $link_id);
             erp_quote_link_log_issued((string) $quote['full_number']);
             $liveform->add_notice(h(lang('The quote was e-mailed with a new guest link. The earlier guest link no longer works.')));
-            go($self_url . '#erp-mail');
+            $go_card('mail');
         }
 
         $liveform->add_notice(h(lang('The quote was e-mailed.')));
-        go($self_url . '#erp-mail');
+        $go_card('mail');
     }
 
     go($self_url);
@@ -225,6 +232,20 @@ if ($_POST) {
 
 $state = erp_quote_state($quote);
 $statuses = erp_quote_statuses();
+
+// The card the last action landed on takes its messages (see $go_card); a
+// card no longer drawn leaves them at the top.
+$msg_card = (string) ($_SESSION['software']['erp_quote_msg_card'][$quote_id] ?? '');
+unset($_SESSION['software']['erp_quote_msg_card'][$quote_id]);
+$card_messages = ($msg_card !== '') ? $liveform->output_errors() . $liveform->output_notices() : '';
+$card_messages_shown = false;
+$card_slot = function ($card) use ($msg_card, $card_messages, &$card_messages_shown) {
+    if (($card !== $msg_card) || $card_messages_shown) {
+        return '';
+    }
+    $card_messages_shown = true;
+    return $card_messages;
+};
 
 // One signature per document: a quote signed once and opened again takes no
 // second one, so it gets no guest link either.
@@ -414,7 +435,7 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
         $output_mail = '
             <div class="card my-7" id="erp-mail">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('E-mail to the customer') . '</div>
-                <div class="card-body">' . $output_mail_form . '</div>'
+                <div class="card-body">' . $card_slot('mail') . $output_mail_form . '</div>'
                 . (($mail_rows !== '') ? '
                 <div class="card-body p-0 border-top table-responsive">
                     <table class="table table-sm mb-0">
@@ -445,6 +466,7 @@ if ($signature !== null) {
             <div class="card my-7" id="erp-signature">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Customer signature') . '</div>
                 <div class="card-body">
+                    ' . $card_slot('signature') . '
                     <div class="row g-5 align-items-center">
                         <div class="col-12 md:col-5">'
                             . (((string) $signature['file_name'] !== '' && pg_file_kept((string) $signature['file_name']))
@@ -471,6 +493,7 @@ if ($signature !== null) {
             <div class="card my-7" id="erp-signature">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Customer signature') . '</div>
                 <div class="card-body">
+                    ' . $card_slot('signature') . '
                     <form name="signature_form" action="' . $self_action . '" method="post" class="row g-5 disable_shortcut" autocomplete="off">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $quote_id . '" />
@@ -546,6 +569,7 @@ if (!$readonly && erp_quote_links_ready()) {
             <div class="card my-7" id="erp-guest-link">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Guest link') . '</div>
                 <div class="card-body">
+                    ' . $card_slot('guest-link') . '
                     <div class="form-text mt-0 mb-5">' . lang('The customer opens the quote with this link without an account, reads it and accepts it with a signature. It runs until the quote\'s valid until date.') . '</div>
                     ' . $guest_body . '
                     <div class="d-flex flex-wrap gap-1">' . $guest_buttons . '</div>
@@ -596,9 +620,9 @@ pg_page_shell([
 <main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
-            ' . $liveform->output_errors() . '
+            ' . (($msg_card === '') ? $liveform->output_errors() : ($card_messages_shown ? '' : $card_messages)) . '
             ' . $liveform->get_warnings() . '
-            ' . $liveform->output_notices() . '
+            ' . (($msg_card === '') ? $liveform->output_notices() : '') . '
 
             <div class="mb-3 small d-flex flex-wrap align-items-center column-gap-5 row-gap-1"><span>' . implode('</span><span>', $facts) . '</span></div>
 
