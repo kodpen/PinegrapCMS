@@ -670,9 +670,10 @@ function pg_mail_health_badge($state, $error_label = '')
  * The "Sending domain" card of SMTP Settings.
  *
  * @param array $health pg_mail_domain_health()
+ * @param bool $wrap_column true: wrapped in a .col-12 for a .row; false: the card alone
  * @return string HTML
  */
-function pg_mail_domain_health_card(array $health)
+function pg_mail_domain_health_card(array $health, $wrap_column = true)
 {
     $names = array(
         'spf'   => array('SPF', $health['domain']),
@@ -734,10 +735,9 @@ function pg_mail_domain_health_card(array $health)
                 <div class="mt-2">' . h($rate_text) . '</div>
             </li>';
 
-    return '
-        <div class="col-12">
-            <div class="card my-7" id="mail_domain_card">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Sending domain') . '</div>
+    $card = '
+            <div class="card mb-7" id="mail_domain_card">
+                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Sending domain') . '</h2>
                 <div class="card-body">
                     <p class="fg-secondary">' . h(lang(array(
                         'string' => 'The DNS records of {var:1} that tell mailbox providers the site may send for it. Changes to DNS can take hours to be seen.',
@@ -746,8 +746,13 @@ function pg_mail_domain_health_card(array $health)
                     <ul class="list-group">' . $rows . '
                     </ul>
                 </div>
-            </div>
-        </div>';
+            </div>';
+
+    // Inside a .row the card takes its own full-width column; a caller that
+    // places it in a column of its own (the status column) gets the card alone.
+    return $wrap_column ? '
+        <div class="col-12">' . $card . '
+        </div>' : $card;
 }
 
 /**
