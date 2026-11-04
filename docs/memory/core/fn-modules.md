@@ -182,6 +182,7 @@ description: Generated from the module field of the memory files: each includes/
 - `store_credit`: [[store-credit-checkout]], [[store-credit-model]]
 - `store_credit_points`: [[store-credit-points]], [[store-credit-points-take-back]]
 - `store_credit_refunds`: [[store-credit-refunds]]
+- `store_credit_staff`: [[store-credit-screens]]
 - `store_currencies`: [[api-store-currency-writes]]
 - `store_lookups`: [[api-store-lookups]]
 - `store_regions`: [[api-store-country-state-writes]]
