@@ -53,6 +53,7 @@ function pg_list_table_definitions()
         'view_log' => array('file' => 'includes/fn/site_log_list.php', 'source' => 'pg_site_log_list_source'),
         'view_audit_log' => array('file' => 'includes/fn/audit_list.php', 'source' => 'pg_audit_list_source'),
         'view_waf_log' => array('file' => 'includes/fn/waf_log_list.php', 'source' => 'pg_waf_log_list_source'),
+        'view_stock_moves' => array('file' => 'includes/fn/stock_moves.php', 'source' => 'pg_stock_move_list_source'),
     );
 }
 

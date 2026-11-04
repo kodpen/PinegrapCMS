@@ -110,6 +110,8 @@ function pg_panel_actions()
         // A role's default layout and its lock: administrators and
         // designers, so it keeps the general gate; the handler checks too.
         'dashboard_role_default' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_role_default', 'exempt' => false, 'token' => true, 'write' => true),
+        // Removing a role's default and its lock: the same gate.
+        'dashboard_role_default_remove' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_role_default_remove', 'exempt' => false, 'token' => true, 'write' => true),
         // The caller's own goals, pins or notes on the new dashboard, every
         // backend role; the handler checks the session, the token and the
         // role's lock.
