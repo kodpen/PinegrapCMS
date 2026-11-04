@@ -5459,6 +5459,35 @@ table.monthly_calendar .calendar-event a:hover {
   text-decoration: underline;
 }
 
+/* A removed instance of a repeating event (get_calendar()): struck through
+   and muted, so it no longer looks like a live one. */
+.calendar_event_exception,
+.calendar_event_exception a,
+table.monthly_calendar .calendar-event .calendar_event_exception a {
+  color: var(--pg-secondary-ink);
+  text-decoration: line-through;
+}
+
+/* Reservation dot before an event's name: open or closed, with its text in
+   a title and for screen readers. */
+.pg-cal-avail {
+  font-size: 130%;
+  font-weight: 700;
+  line-height: 1;
+  margin-inline-end: .25em;
+}
+.pg-cal-avail.is-open {
+  color: var(--pg-success-ink);
+}
+.pg-cal-avail.is-closed {
+  color: var(--pg-secondary-ink);
+}
+
+/* Weekly list: one card per day. */
+.pg-cal-day .card-body > p:last-child {
+  margin-bottom: 0;
+}
+
 table.chart th,
 table.chart td {
   white-space: nowrap;

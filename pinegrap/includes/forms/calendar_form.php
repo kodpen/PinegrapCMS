@@ -119,6 +119,7 @@ function pg_calendar_form_layout($cards, $buttons, $note = '')
 function pg_calendar_form_validate_name($liveform, $id)
 {
     $liveform->validate_required_field('name', lang('Name is required.'));
+    pg_calendar_form_check_lengths($liveform, array('name' => array(lang('Name'), 100)));
 
     if ($liveform->check_field_error('name') == true) {
         return;
