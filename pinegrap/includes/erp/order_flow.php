@@ -1053,6 +1053,34 @@ function erp_order_flow_run($order_id, $action, $user_id = 0)
 }
 
 /**
+ * A step as the read-only ERP accountant sees it: the state, the facts and
+ * the links that only read (the document, its PDF, its print), without the
+ * step's action, its "go to the form" button and the links into forms that
+ * write (add_*.php). erp_order_flow.php refuses every post of such a user,
+ * so a button would only lead to the refusal page.
+ *
+ * @param array $step  One of erp_order_flow_state()['steps']
+ * @return array
+ */
+function erp_order_flow_readonly_step($step)
+{
+    $step['action'] = '';
+    $step['disabled_action'] = '';
+    unset($step['goto']);
+
+    $links = array();
+    foreach ((array) ($step['links'] ?? array()) as $link) {
+        if (strpos((string) ($link['url'] ?? ''), 'add_') === 0) {
+            continue;
+        }
+        $links[] = $link;
+    }
+    $step['links'] = $links;
+
+    return $step;
+}
+
+/**
  * The order screen's documents card.
  *
  * @param int        $order_id
@@ -1088,11 +1116,18 @@ function erp_order_flow_card($order_id, $state = null)
         return '<button type="submit" form="' . $form_id . '" name="erp_step" value="' . h($action) . '"' . (($confirm !== '') ? ' data-confirm-content="' . h($confirm) . '"' : '') . ' class="btn btn-sm ' . ($primary ? 'btn-solid theme-primary rounded-pill px-5' : 'btn-outline theme-secondary') . '"><i class="bi ' . $words[1] . ' me-1" aria-hidden="true"></i>' . h($words[0]) . '</button>';
     };
 
+    // The read-only accountant sees where each document stands, never a
+    // button that writes.
+    $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
+
     $output_steps = '';
     $number = 0;
 
     foreach ($state['steps'] as $key => $step) {
         $number++;
+        if ($readonly) {
+            $step = erp_order_flow_readonly_step($step);
+        }
         // A step that warns (a tax number difference) still offers its action
         // but reads like a held one.
         $warn = !empty($step['warn']);

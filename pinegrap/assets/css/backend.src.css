@@ -17045,6 +17045,14 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
 .ws-cal-event-dot.ws-kind-visit {
   background: var(--pg-warning);
 }
+/* A booking from the agenda (includes/workspace/calendar.php). */
+.ws-cal-event.ws-kind-booking {
+  background: color-mix(in srgb, var(--pg-success) 14%, transparent);
+  color: var(--pg-success-fg-emphasis);
+}
+.ws-cal-event-dot.ws-kind-booking {
+  background: var(--pg-success);
+}
 .ws-cal-channel {
   color: var(--ws-accent);
   background: transparent;
@@ -22184,11 +22192,17 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   flex-wrap: wrap;
   gap: 0.25rem;
 }
-/* The columns menu and the details switch keep the bar's right end. */
+/* The columns menu and the details switch keep the bar's right end. On a
+   phone four labelled tools are wider than the bar: they wrap inside it
+   (min-width: 0 lets the strip shrink to the bar) instead of running past
+   the card's clipped edge. */
 .pg-list-table-tools {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 0.25rem;
+  min-width: 0;
   margin-inline-start: auto;
 }
 .pg-list-table-columns-menu {

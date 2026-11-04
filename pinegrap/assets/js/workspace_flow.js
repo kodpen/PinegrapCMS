@@ -44,6 +44,10 @@
  * me" with what they may do with it. A person shared at edit edits the graph
  * as its owner does, but the home channel and deleting stay the owner's.
  *
+ * window.PGWsFlow.embed(host, boot) draws one flow read-only in another
+ * place of the Workspace (a flow draft's card in a channel): the canvas
+ * without its chrome, one at a time (embed()).
+ *
  * assets/js/workspace.js starts it (window.PGWsFlow.start()) with the team
  * it has loaded and lends it its helpers through window.PGWsKit. Every text
  * comes from the #ws-config block (ws_flow_js_strings()); names and texts
@@ -309,7 +313,14 @@
         marks: null,
         // A flow Pinegrap AI just drafted from a sentence (sketchCard()):
         // { flow, notes }, null once hidden or another flow is shown.
-        sketch: null
+        sketch: null,
+        // The Flows screen started on this page (start()); while it runs no
+        // drawing is embedded elsewhere, as both would share this state.
+        screen: false,
+        // The drawing embedded elsewhere (embed()): its instance, null when
+        // none; tries holds each box's dry run by its id ({ said, failed }).
+        embed: null,
+        tries: null
     };
 
     var ui = {};
@@ -727,6 +738,12 @@
             return;
         }
 
+        if (state.embed) {
+            state.embed.destroy();
+        }
+
+        state.screen = true;
+
         CFG = K.cfg || {};
         FL = CFG.flows || {};
         BOOT = boot || {};
@@ -814,8 +831,51 @@
         ui.flows = el('section', 'wsf-flows d-none');
         ui.flows.setAttribute('aria-label', t('fl_nav'));
 
-        // The canvas: a viewport, the layer it moves and scales, and on the
-        // layer the arrows under the boxes.
+        layoutStage();
+        ui.outlineBox = el('div', 'wsf-outline d-none');
+        ui.outlineBox.setAttribute('role', 'region');
+        ui.outlineBox.setAttribute('aria-label', t('fl_outline'));
+        // A scheduled action drawn read-only (showAction()), in place of
+        // the canvas.
+        ui.scheduled = el('div', 'ws-pane ws-sa-view h-100 d-none');
+        ui.scheduled.setAttribute('role', 'region');
+        ui.scheduled.setAttribute('aria-label', t('sa_title'));
+        // The setup panel of a template just placed, over the canvas.
+        ui.setup = el('section', 'wsf-setup d-none');
+        ui.setup.setAttribute('aria-labelledby', 'wsf-setup-title');
+        ui.stage.appendChild(ui.setup);
+        ui.main.appendChild(ui.stage);
+        ui.main.appendChild(ui.outlineBox);
+        ui.main.appendChild(ui.scheduled);
+        // The ways to start a flow and the template gallery, in place of
+        // the canvas.
+        ui.gallery = el('div', 'wsf-gallery d-none');
+        ui.gallery.setAttribute('role', 'region');
+        ui.gallery.setAttribute('aria-label', t('fl_tpl_title'));
+        ui.main.appendChild(ui.gallery);
+
+        ui.app.appendChild(ui.palette);
+        ui.app.appendChild(ui.main);
+        ui.app.appendChild(ui.side);
+
+        root.appendChild(ui.bar);
+        root.appendChild(ui.conflictBox);
+        root.appendChild(ui.runBox);
+        root.appendChild(ui.problemBox);
+        root.appendChild(ui.marksBox);
+        root.appendChild(ui.sketchBox);
+        root.appendChild(ui.flows);
+        root.appendChild(ui.app);
+        root.appendChild(ui.live);
+
+        applyView();
+    }
+
+    // The stage the canvas is drawn on: a viewport, the layer it moves and
+    // scales, on the layer the arrows under the boxes, the empty-canvas
+    // line and the zoom buttons; the screen (layout()) and an embedded
+    // drawing (embed()) both build it here.
+    function layoutStage() {
         ui.viewport = el('div', 'pgc-viewport');
         ui.viewport.tabIndex = -1;
         ui.viewport.setAttribute('role', 'application');
@@ -860,43 +920,6 @@
         ui.stage.appendChild(ui.viewport);
         ui.stage.appendChild(ui.empty);
         ui.stage.appendChild(ui.zoom);
-        ui.outlineBox = el('div', 'wsf-outline d-none');
-        ui.outlineBox.setAttribute('role', 'region');
-        ui.outlineBox.setAttribute('aria-label', t('fl_outline'));
-        // A scheduled action drawn read-only (showAction()), in place of
-        // the canvas.
-        ui.scheduled = el('div', 'ws-pane ws-sa-view h-100 d-none');
-        ui.scheduled.setAttribute('role', 'region');
-        ui.scheduled.setAttribute('aria-label', t('sa_title'));
-        // The setup panel of a template just placed, over the canvas.
-        ui.setup = el('section', 'wsf-setup d-none');
-        ui.setup.setAttribute('aria-labelledby', 'wsf-setup-title');
-        ui.stage.appendChild(ui.setup);
-        ui.main.appendChild(ui.stage);
-        ui.main.appendChild(ui.outlineBox);
-        ui.main.appendChild(ui.scheduled);
-        // The ways to start a flow and the template gallery, in place of
-        // the canvas.
-        ui.gallery = el('div', 'wsf-gallery d-none');
-        ui.gallery.setAttribute('role', 'region');
-        ui.gallery.setAttribute('aria-label', t('fl_tpl_title'));
-        ui.main.appendChild(ui.gallery);
-
-        ui.app.appendChild(ui.palette);
-        ui.app.appendChild(ui.main);
-        ui.app.appendChild(ui.side);
-
-        root.appendChild(ui.bar);
-        root.appendChild(ui.conflictBox);
-        root.appendChild(ui.runBox);
-        root.appendChild(ui.problemBox);
-        root.appendChild(ui.marksBox);
-        root.appendChild(ui.sketchBox);
-        root.appendChild(ui.flows);
-        root.appendChild(ui.app);
-        root.appendChild(ui.live);
-
-        applyView();
     }
 
     // ── The list ───────────────────────────────────────────────────────
@@ -2863,6 +2886,7 @@
         box.querySelector('.wsf-node-meta').textContent = (title || missing) ? meta : '';
         box.setAttribute('aria-label', t(kindOf(node).name) + ': ' + (title || (missing ? t('fl_untitled_box') : '')) + '. ' + meta);
         paintMark(box, box.querySelector('.wsf-node-head'), node);
+        paintTry(box, node);
         paintRun(box, node);
     }
 
@@ -4071,6 +4095,10 @@
     // empty), a search field and the boxes to add in their groups. Only
     // whoever edits the flow has it.
     function drawPalette() {
+        if (state.embed) {
+            return;
+        }
+
         var shown = !!(state.edit && state.flow);
 
         K.clear(ui.palette);
@@ -4257,6 +4285,25 @@
         if (box.hasAttribute('aria-label')) {
             box.setAttribute('aria-label', box.getAttribute('aria-label') + ' ' + badge.title + '.');
         }
+    }
+
+    // A box's dry run in an embedded drawing (ws_flow_card_tries(), which
+    // writes nothing): what it would do, or why it would not run (red), in
+    // the line under its title, the line it replaces kept as that line's
+    // title. Without a dry run the line stays as the canvas draws it.
+    function paintTry(box, node) {
+        var tried = state.tries ? state.tries[node.id] : null;
+        var meta = box.querySelector('.wsf-node-meta');
+
+        meta.classList.toggle('fg-danger', !!(tried && tried.failed));
+
+        if (!tried || !tried.said) {
+            return;
+        }
+
+        meta.title = meta.textContent;
+        meta.textContent = tried.said;
+        box.setAttribute('aria-label', box.getAttribute('aria-label') + ' ' + tried.said);
     }
 
     // Over the canvas: what the patch added or changed, each box a button
@@ -5447,6 +5494,11 @@
 
     function drawSettings() {
         var selected = state.selected;
+
+        if (state.embed) {
+            embedSelected();
+            return;
+        }
 
         K.clear(ui.side);
 
@@ -11029,6 +11081,10 @@
     // Enter: the first field of what is selected; in a run, its task, or
     // else how it went.
     function focusField() {
+        if (state.embed) {
+            return;
+        }
+
         if (state.run) {
             state.refocus = 'step-task step';
             refocus();
@@ -11053,6 +11109,18 @@
         // A key between two taps on a box (C and its dialog) makes them two
         // clicks, not the double tap that opens the box's settings.
         state.tap = null;
+
+        // A drawing embedded elsewhere is read only: its keys are the
+        // core's (pan, zoom, fit), and Esc lets the box selected go.
+        if (state.embed) {
+            if ((key === 'Escape') && selected) {
+                select(null);
+                ui.viewport.focus({ preventScroll: true });
+                return true;
+            }
+
+            return false;
+        }
 
         if (((key === 'ArrowLeft') || (key === 'ArrowRight') || (key === 'ArrowUp') || (key === 'ArrowDown'))
             && selected && (selected.type === 'node') && state.edit && !event.ctrlKey && !event.metaKey) {
@@ -11140,5 +11208,259 @@
         });
     }
 
-    window.PGWsFlow = { start: start, showAction: showAction, runFlag: runFlag };
+    // ── Embedded read-only drawing ─────────────────────────────────────
+
+    // A flow drawn read-only in another place of the Workspace (a flow
+    // draft's card in a channel) by this canvas: the stage and its zoom
+    // buttons only, no toolbar, palette, side panel, outline or run bar,
+    // nothing saved, none of the screen's document keys; the boxes, arrows,
+    // meta lines, data rows and threads as the canvas draws them, the
+    // threads always shown, the view fitted to the flow. The state is the
+    // canvas's own, so one drawing lives at a time: a second embed() ends
+    // the first, whose host shows again what it showed before, and none is
+    // drawn while the Flows screen runs on the page. boot:
+    //   graph     the graph at its places ({ nodes, edges }); a node may
+    //             carry said and failed (its dry run) and mark
+    //   mark      [{ id, mark: 'added' | 'changed' }] (ws_flow_patch_marks())
+    //   tries     { <box id>: { said, failed } } (ws_flow_card_tries())
+    //   config    the drawing's config (ws_flow_js_config()'s part), when
+    //             the page's own has no flows
+    //   strings   texts beside the page's own
+    //   people    the team, for the boxes that name people
+    //   onSelect  called with the box picked (embedNode()), null for none
+    //   onClose   called once the drawing is gone
+    // Returns { destroy(), fit(), select(id) }, null when it cannot draw.
+    function embed(host, boot) {
+        var kit = window.PGWsKit;
+
+        if (!host || !kit || state.screen) {
+            return null;
+        }
+
+        if (state.embed) {
+            state.embed.destroy();
+        }
+
+        boot = boot || {};
+        K = kit;
+        CFG = K.cfg || {};
+        FL = boot.config || CFG.flows || {};
+        BOOT = { people: boot.people || [] };
+        el = K.el;
+        t = embedText(boot.strings);
+
+        var source = boot.graph || {};
+        var shown = Array.prototype.slice.call(host.childNodes);
+        var wrap = el('div', 'wsf-embed wsf-readonly');
+        var instance = {
+            picked: '',
+            onSelect: (typeof boot.onSelect === 'function') ? boot.onSelect : null,
+            destroy: function () {
+                if (state.embed !== instance) {
+                    return;
+                }
+
+                canvas.destroy();
+                wrap.remove();
+                shown.forEach(function (node) {
+                    host.appendChild(node);
+                });
+                state.embed = null;
+                state.graph = null;
+                state.tries = null;
+                state.marks = null;
+                state.selected = null;
+                Object.keys(ui).forEach(function (key) {
+                    delete ui[key];
+                });
+
+                if (typeof boot.onClose === 'function') {
+                    boot.onClose();
+                }
+            },
+            fit: function () {
+                if (state.embed === instance) {
+                    fit();
+                }
+            },
+            select: function (id) {
+                if (state.embed === instance) {
+                    select((id && nodeById(String(id))) ? { type: 'node', id: String(id) } : null, { reveal: true });
+                }
+            }
+        };
+
+        state.graph = graphOf(source);
+        state.tries = embedTries(source, boot.tries);
+        state.marks = embedMarks(source, boot.mark);
+        state.flow = null;
+        state.edit = false;
+        state.run = null;
+        state.stash = null;
+        state.problems = [];
+        state.warnings = [];
+        state.selected = null;
+        state.binding = null;
+        state.outline = false;
+        state.threads = true;
+        state.view = { x: 40, y: 40, k: 1 };
+        state.embed = instance;
+
+        Object.keys(ui).forEach(function (key) {
+            delete ui[key];
+        });
+
+        shown.forEach(function (node) {
+            node.remove();
+        });
+
+        // The arrowheads the screen sets on .wsf-app, which an embed is not.
+        wrap.style.position = 'relative';
+        wrap.style.height = '100%';
+        wrap.style.setProperty('--pgc-marker', 'url(#wsf-arrow)');
+        wrap.style.setProperty('--pgc-marker-on', 'url(#wsf-arrow-on)');
+        ui.root = wrap;
+        layoutStage();
+        ui.live = el('div', 'visually-hidden');
+        ui.live.setAttribute('aria-live', 'polite');
+        wrap.appendChild(ui.stage);
+        wrap.appendChild(ui.live);
+        host.appendChild(wrap);
+
+        // The wheel is the drawing's only while it has the focus (a click on
+        // it, Tab into it): until then it scrolls the page around it, so a
+        // channel scrolls past a card nobody opened. A press gives the focus.
+        wrap.addEventListener('wheel', function (event) {
+            if (!wrap.contains(document.activeElement)) {
+                event.stopPropagation();
+            }
+        }, { capture: true });
+        wrap.addEventListener('pointerdown', function () {
+            if (!wrap.contains(document.activeElement)) {
+                ui.viewport.focus({ preventScroll: true });
+            }
+        }, { capture: true });
+
+        bindCanvas();
+        applyView();
+        drawCanvas();
+        fit();
+
+        return instance;
+    }
+
+    // The page's texts, with the boot's beside them.
+    function embedText(strings) {
+        if (!strings) {
+            return K.t;
+        }
+
+        return function (key) {
+            if (!Object.prototype.hasOwnProperty.call(strings, key)) {
+                return K.t.apply(null, arguments);
+            }
+
+            var text = String(strings[key]);
+
+            Array.prototype.slice.call(arguments, 1).forEach(function (value, index) {
+                text = text.split('{' + (index + 1) + '}').join(String(value));
+            });
+
+            return text;
+        };
+    }
+
+    // Each box's dry run by its id: the boot's tries, else what its node
+    // carries.
+    function embedTries(source, given) {
+        var tries = {};
+        var keep = function (id, tried) {
+            if (tried && ((tried.said !== undefined && tried.said !== '') || tried.failed)) {
+                tries[String(id)] = { said: String(tried.said || ''), failed: !!tried.failed };
+            }
+        };
+
+        (source.nodes || []).forEach(function (node) {
+            if (node && (node.id !== undefined)) {
+                keep(node.id, node);
+            }
+        });
+
+        Object.keys(given || {}).forEach(function (id) {
+            keep(id, given[id]);
+        });
+
+        return tries;
+    }
+
+    // The boxes a patch added or changed, as marksOf() gives them on the
+    // screen; null when none.
+    function embedMarks(source, given) {
+        var marks = { change: 0, boxes: {}, order: [] };
+        var keep = function (id, mark) {
+            if ((mark !== 'added') && (mark !== 'changed')) {
+                return;
+            }
+
+            id = String(id);
+
+            if (!marks.boxes[id]) {
+                marks.order.push(id);
+            }
+
+            marks.boxes[id] = mark;
+        };
+
+        (source.nodes || []).forEach(function (node) {
+            if (node && (node.id !== undefined)) {
+                keep(node.id, node.mark);
+            }
+        });
+
+        (Array.isArray(given) ? given : []).forEach(function (item) {
+            if (item && (item.id !== undefined)) {
+                keep(item.id, item.mark);
+            }
+        });
+
+        return marks.order.length ? marks : null;
+    }
+
+    // The box picked, told to the embed's owner once per change of box.
+    function embedSelected() {
+        var instance = state.embed;
+        var selected = state.selected;
+        var node = (selected && (selected.type === 'node')) ? nodeById(selected.id) : null;
+        var id = node ? node.id : '';
+
+        if (instance.picked === id) {
+            return;
+        }
+
+        instance.picked = id;
+
+        if (instance.onSelect) {
+            instance.onSelect(node ? embedNode(node) : null);
+        }
+    }
+
+    // A box as the embed's owner hears of it: its graph fields, its name
+    // and kind as the canvas shows them, its mark and its dry run.
+    function embedNode(node) {
+        var tried = (state.tries && state.tries[node.id]) || null;
+
+        return {
+            id: node.id,
+            kind: node.kind,
+            label: node.label,
+            config: JSON.parse(JSON.stringify(node.config || {})),
+            name: nameOf(node),
+            kindName: t(kindOf(node).name),
+            mark: markOf(node.id),
+            said: tried ? tried.said : '',
+            failed: !!(tried && tried.failed)
+        };
+    }
+
+    window.PGWsFlow = { start: start, showAction: showAction, runFlag: runFlag, embed: embed };
 })();

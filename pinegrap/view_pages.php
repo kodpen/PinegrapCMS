@@ -19,19 +19,24 @@
 include('init.php');
 require_once(dirname(__FILE__) . '/seo.php');
 
-// A switch of the list changed in place (pg_list_edit_request() in
+// A cell of the list changed in place (pg_list_edit_request() in
 // includes/fn/output.php). Answered in JSON, before anything below draws the
-// screen; the write is Modify Selected's own (pg_page_quick_update()).
+// screen; the write follows the page screen's and Modify Selected's rules
+// (pg_page_quick_update()). The fields depend on the user's rights, so
+// they are read for the signed-in user; without one the request is
+// refused below.
 if (pg_list_edit_requested()) {
     require_once(dirname(__FILE__) . '/includes/fn/page_list.php');
 
-    $edit = pg_list_edit_request(pg_page_quick_edit_columns(), function ($user) {
+    $quick_user = (defined('USER_LOGGED_IN') && USER_LOGGED_IN) ? validate_user() : null;
+
+    $edit = pg_list_edit_request(pg_page_quick_edit_columns($quick_user), function ($user) {
         // The list's own gate (pg_page_list_source()); each write checks
         // the page's folder.
         return ((int) $user['role'] < 3) || (((int) $user['role'] == 3) && no_acl_check($user['id']));
     });
 
-    $saved = pg_page_quick_update($edit['user'], $edit['id'], $edit['field'], $edit['value']);
+    $saved = pg_page_quick_update($edit['user'], $edit['id'], $edit['field'], $edit['value'], (isset($_GET['filter']) && is_string($_GET['filter'])) ? $_GET['filter'] : '');
 
     pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
 }

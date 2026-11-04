@@ -72,7 +72,8 @@ switch ($ap_route) {
         break;
 
     case 'outbox':
-        pg_ap_json(pg_ap_outbox_collection($ap_site));
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub_outbox.php');
+        pg_ap_json(pg_ap_outbox_collection($ap_site, pg_ap_outbox_items(20)));
         break;
 
     default:

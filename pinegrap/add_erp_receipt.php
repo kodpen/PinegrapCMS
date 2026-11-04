@@ -86,7 +86,7 @@ if ($preset_refusal !== '') {
         'extra classes' => 'erp erp_cash',
         'icon' => 'erp',
         'heading' => $page_title,
-        'cancel' => array('enable' => 'true', 'url' => $invoice_url),
+        'cancel' => array('enable' => 'true', 'url' => $invoice_url, 'title' => lang('Back to the invoice')),
         'breadcrumb' => array(
             array('label' => lang('Cash and Bank'), 'url' => $list_url),
             array('label' => $page_title),
@@ -96,7 +96,6 @@ if ($preset_refusal !== '') {
     <div class="row">
         <div class="col-12">
             <div class="alert theme-warning my-7" role="alert">' . h($preset_refusal) . '</div>
-            <a class="btn btn-outline theme-secondary" href="' . h($invoice_url) . '">' . lang('Back to the invoice') . '</a>
         </div>
     </div>
 </main>
@@ -299,14 +298,14 @@ if ($preset_refusal !== '') {
                                     )) . '</div>'
                                     : $liveform->output_field(array(
                                         'type' => 'select', 'id' => 'account_id', 'name' => 'account_id',
-                                        'class' => 'form-control', 'data-pg-combobox' => '', 'options' => $account_options))
+                                        'class' => 'form-control', 'data-pg-combobox' => '', 'required' => 'required', 'options' => $account_options))
                                     . erp_account_quick_link('#account_id', $is_collection ? 'customer' : 'supplier')) . '
                             </div>
                             <div class="col-12 lg:col-4 my-3">
                                 <label for="cash_account_id" class="form-label">' . lang('Till or Bank Account') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'select', 'id' => 'cash_account_id', 'name' => 'cash_account_id',
-                                    'class' => 'form-control', 'options' => $till_options))
+                                    'class' => 'form-control', 'options' => $till_options, 'required' => 'required'))
                                 . erp_no_till_hint($till_count) . '
                             </div>
                             <div class="col-12 sm:col-6 lg:col-3 my-3">

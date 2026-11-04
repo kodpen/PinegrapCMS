@@ -359,6 +359,25 @@ function test_erp_typed_number_ok_refuses_signs_and_letters()
 	pg_assert_same(false, erp_typed_number_ok(array('1')));
 }
 
+// A typed unit price is a figure, perhaps with a pasted currency sign or
+// code around it: 'abc' or '12abc' is refused, not saved as 0 or 12.
+function test_erp_typed_price_ok_refuses_words()
+{
+	pg_assert_same(true, erp_typed_price_ok(''));
+	pg_assert_same(true, erp_typed_price_ok(' 1.234,56 '));
+	pg_assert_same(true, erp_typed_price_ok('₺1.234,56'));
+	pg_assert_same(true, erp_typed_price_ok('99,90 TRY'));
+	pg_assert_same(true, erp_typed_price_ok('$ 12.5'));
+	pg_assert_same(true, erp_typed_price_ok('-5'));
+	pg_assert_same(true, erp_typed_price_ok(1250));
+	pg_assert_same(false, erp_typed_price_ok('abc'));
+	pg_assert_same(false, erp_typed_price_ok('12abc'));
+	pg_assert_same(false, erp_typed_price_ok('1O0'));
+	pg_assert_same(false, erp_typed_price_ok('₺'));
+	pg_assert_same(false, erp_typed_price_ok('.,'));
+	pg_assert_same(false, erp_typed_price_ok(array('1')));
+}
+
 // A line whose quantity times price passes the cap is refused before it is
 // multiplied: past PHP_INT_MAX the cast wrapped into a random total.
 function test_erp_line_amount_fits_caps_the_product()

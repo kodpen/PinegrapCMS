@@ -75,6 +75,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-assistant-keys.md: Create on the Claude and Pinegrap AI cards, Claude's "Reset secret": the row made, scopes, config link, who sees it, one-time window, a key never given a secret
 - workspace-assistant-reach.md: Claude and Pinegrap AI read and answer a discussion or allowed private channel their app owner is not in through the person who asked (PR #1085)
 - workspace-attachment-uploads.md: How the Workspace screen sends channel and note attachments: a form part over XMLHttpRequest with a progress card and Cancel (#3745), the shared server check, base64 still taken, limits
+- workspace-bookings.md: Confirmed bookings on a staff member's Workspace calendar (#6305, #6302): one reader, Work Calendar and Today, sync item ws-booking-<id>, refused move
 - workspace-bulk-create.md: Bulk product drafts (bulk.php action create, PR #2266): one 'bulk' card of up to 200 rows, checks, row place saved before the write, events, card, where a person's own rows come from
 - workspace-bulk-sources.md: A person's own bulk product drafts (bulk_sources.php): several lines under /create product, /create product answering or sent with a channel spreadsheet, the table reader, ws_bulk_create_card()
 - workspace-calc-numbers.md: Figures inside a workspace sum (ws_calc_tokens(), ws_calc_inline(), #3398): read the site's way, leading %, English comma separates arguments, "=" line errors
@@ -137,6 +138,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flow-ai-start.md: New flow from a sentence (G1b #3119, #3266): ws_flow_ai_sketch() asks Pinegrap AI for a flow in propose_flow's shape, one retry, saved as a draft; the panel route and the gallery's AI card
 - workspace-flow-draft-card-window.md: The flow draft card as a read-only mini flow window (D8b #3032, V7a #3393): 128 × 60 px boxes, arrows and threads to the spec, the dry run as each box's third line, link and try per box
 - workspace-flow-draft-proposals.md: An application, or Claude in a channel answer, proposes a flow as a draft card ({type: flow}, A8): what is sent, checked, kept, how the card opens it, {type: scheduled}
+- workspace-flow-embed.md: PGWsFlow.embed(host, boot) in workspace_flow.js: the Flows canvas drawn read-only elsewhere (the flow draft card), one at a time; boot fields, focus-gated wheel, keys, onSelect, destroy
 - workspace-flows-anchors.md: Flow start boxes at a time, on an event, on a join (F4d, #2006, flow_anchors.php): the hidden anchor, the converted anchor (anchor column 11.0.88), publish sync, starts, write-back, lists
 - workspace-flows-api-filters.md: Flow list filters start, status, channel_id, updated_since and the start/start_text of GET /workspace/flows/{id} (A1, PR #2122); the Flows screen's start filter (C4, PR #2391)
 - workspace-flows-api-templates.md: Flow templates over the external API (A6, #2298): GET /workspace/flow-templates, POST /workspace/flows with template and answers, what is checked, what never happens (publish)

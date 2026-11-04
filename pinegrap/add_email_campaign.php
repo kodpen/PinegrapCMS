@@ -142,9 +142,9 @@ if (!$_POST) {
                 $output_contact_group_rows .=
                     '<tr>
                         <td id="contact_group_name_' . $id . '">' . pg_email_campaign_group_label($name, $counts['total'], $counts['opted_in']) . '</td>
-                        <td style="text-align: center"><div class="form-field  d-inline-grid me-5"><input class="radio" type="radio" name="contact_group_' . $id . '" value="ignored" aria-labelledby="contact_group_name_' . $id . ' contact_group_ignore" checked="checked" /></div></td>
-                        <td style="text-align: center"><div class="form-field  d-inline-grid me-5"><input class="radio" type="radio" name="contact_group_' . $id . '" value="included" aria-labelledby="contact_group_name_' . $id . ' contact_group_include" /></div></td>
-                        <td style="text-align: center"><div class="form-field  d-inline-grid me-5"><input class="radio" type="radio" name="contact_group_' . $id . '" value="excluded" aria-labelledby="contact_group_name_' . $id . ' contact_group_exclude" /></div></td>
+                        <td class="text-center"><div class="form-field d-inline-grid"><input class="radio" type="radio" name="contact_group_' . $id . '" value="ignored" aria-labelledby="contact_group_name_' . $id . ' contact_group_ignore" checked="checked" /></div></td>
+                        <td class="text-center"><div class="form-field d-inline-grid"><input class="radio" type="radio" name="contact_group_' . $id . '" value="included" aria-labelledby="contact_group_name_' . $id . ' contact_group_include" /></div></td>
+                        <td class="text-center"><div class="form-field d-inline-grid"><input class="radio" type="radio" name="contact_group_' . $id . '" value="excluded" aria-labelledby="contact_group_name_' . $id . ' contact_group_exclude" /></div></td>
                     </tr>';
             }
         }
@@ -154,15 +154,19 @@ if (!$_POST) {
     if ($output_contact_group_rows != '') {
         $output_contact_groups =
             '<div class="alert theme-primary"><p>' . lang('Send message to all Subscribers in my selected Contact Groups') . '</p></div>
-            <div style="margin-bottom: 1.5em">
+            <div class="mb-7">
                 <table class="table">
-                    <tr>
-                        <th>&nbsp;</th>
-                        <th id="contact_group_ignore" style="text-align: center">' . lang('Ignore') . '</th>
-                        <th id="contact_group_include" style="text-align: center">' . lang('Include') . '</th>
-                        <th id="contact_group_exclude" style="text-align: center">' . lang('Exclude') . '</th>
-                    </tr>
+                    <thead>
+                        <tr>
+                            <th scope="col"><span class="visually-hidden">' . lang('Contact Group') . '</span></th>
+                            <th id="contact_group_ignore" scope="col" class="text-center">' . lang('Ignore') . '</th>
+                            <th id="contact_group_include" scope="col" class="text-center">' . lang('Include') . '</th>
+                            <th id="contact_group_exclude" scope="col" class="text-center">' . lang('Exclude') . '</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                     ' . $output_contact_group_rows . '
+                    </tbody>
                 </table>
             </div>';
     } else {
@@ -260,6 +264,49 @@ if (!$_POST) {
                         '<button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>'
                     ) . '
                 </form>
+                <script>
+                (function () {
+                    // Each callout\'s arrow points at the control that opened
+                    // it (the radio\'s middle, the select\'s start) wherever the
+                    // controls sit at this width; a fixed offset pointed past
+                    // the Plain Text radio.
+                    var callouts = [
+                        [\'email_format_plain_text_row\', \'format_plain_text\', 0],
+                        [\'email_format_html_row\', \'format_html\', 0],
+                        [\'body_preview_row\', \'page_id\', 24]
+                    ];
+
+                    function place() {
+                        callouts.forEach(function (callout) {
+                            var box = document.getElementById(callout[0]);
+                            var control = document.getElementById(callout[1]);
+                            var arrow = box ? box.querySelector(\':scope > .popover-arrow\') : null;
+
+                            if (!arrow || !control || !box.offsetWidth) {
+                                return;
+                            }
+
+                            var c = control.getBoundingClientRect();
+                            var point = callout[2] ? c.left + callout[2] : c.left + c.width / 2;
+                            var left = point - box.getBoundingClientRect().left - box.clientLeft - arrow.offsetWidth / 2;
+
+                            left = Math.min(Math.max(0, left), box.clientWidth - arrow.offsetWidth);
+                            arrow.style.transform = \'translate(\' + Math.round(left) + \'px, 0px)\';
+                        });
+                    }
+
+                    // The select opens its callout through an animated
+                    // collapse, so it is placed again once that has run.
+                    document.addEventListener(\'change\', function (event) {
+                        if ((event.target.name === \'format\') || (event.target.id === \'page_id\')) {
+                            setTimeout(place, 0);
+                            setTimeout(place, 400);
+                        }
+                    });
+                    window.addEventListener(\'resize\', place);
+                    window.addEventListener(\'load\', place);
+                })();
+                </script>
 </main>' .
     output_footer();
     
@@ -273,6 +320,12 @@ if (!$_POST) {
     $_POST['format'] = pg_email_campaign_allowed_value('format', $_POST['format'] ?? null);
     $_POST['purpose'] = pg_email_campaign_allowed_value('purpose', $_POST['purpose'] ?? null);
     $_POST['page_id'] = (isset($_POST['page_id']) && is_scalar($_POST['page_id'])) ? (string) $_POST['page_id'] : '';
+
+    // The sender name and the body are text: one posted as an array
+    // (from_name[]=x) was stored as 'Array'. The sender name goes into the
+    // From header, so it is trimmed like the subject and the addresses.
+    $_POST['from_name'] = trim(pg_email_campaign_posted_text($_POST, 'from_name'));
+    $_POST['body'] = pg_email_campaign_posted_text($_POST, 'body');
 
     $field_errors = pg_email_campaign_field_errors(array(
         'subject' => $_POST['subject'] ?? '',
@@ -311,6 +364,13 @@ if (!$_POST) {
         $query = "SELECT page_folder FROM page WHERE page_id = ?";
         $result = db_q($query, array((string) ($_POST['page_id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
+
+        // A page that does not exist (a stale form, a hand-made post) stored
+        // a ready campaign with an empty body.
+        if (!$row) {
+            output_error(lang('Please select a page for the body of the campaign.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
         $folder_id = $row['page_folder'];
         
         // if the user does not have view access to the selected page's folder, then log activity and output error
@@ -357,10 +417,9 @@ if (!$_POST) {
 
     // else HTML was selected for the format, so prepare body and store in variable
     } else {
-        require_once(dirname(__FILE__) . '/get_page_content.php');
-
-        // get html for page
-        $body = get_page_content($_POST['page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true);
+        // The page as its recipients may read it: nothing of the sender's
+        // session (token, account widgets) goes into the e-mail.
+        $body = pg_email_campaign_page_body($_POST['page_id']);
         
         // find if there is a base tag in the HTML
         $base_in_html = preg_match('/<\s*base\s+[^>]*href\s*=\s*["\'](?:http:\/\/|https:\/\/|ftp:\/\/).*?["\']/is', $body);
@@ -480,7 +539,7 @@ if (!$_POST) {
     }
 
     $email_campaign_id = pg_email_campaign_insert(array(
-        'from_name'           => (string) ($_POST['from_name'] ?? ''),
+        'from_name'           => $_POST['from_name'],
         'from_email_address'  => $_POST['from_email_address'],
         'reply_email_address' => $_POST['reply_email_address'],
         'subject'             => $_POST['subject'],

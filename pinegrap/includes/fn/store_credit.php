@@ -477,6 +477,60 @@ function pg_credit_void($card_id, $reason = '')
 }
 
 /**
+ * Take up to $amount off a customer's credit card, with a note line giving
+ * the reason; a card brought to 0 is closed (never picked again). The
+ * balance is written over the one read, so an order spending the card
+ * meanwhile makes the write fail rather than be lost; the caller may read
+ * again and retry.
+ *
+ * @param int    $card_id
+ * @param int    $amount  minor units
+ * @param string $note    the note line
+ * @return int  what was taken off (0 when nothing was written)
+ */
+function pg_credit_reduce($card_id, $amount, $note)
+{
+    $card_id = (int) $card_id;
+    $amount = (int) $amount;
+
+    if (($card_id <= 0) || ($amount <= 0) || !pg_credit_ready()) {
+        return 0;
+    }
+
+    $card = db_item("SELECT id, code, user_id, kind, amount, balance, reason, issued_by, expires_at, notes FROM gift_cards WHERE id = " . $card_id);
+
+    if (!is_array($card) || ((int) $card['user_id'] <= 0) || ((int) $card['balance'] <= 0)) {
+        return 0;
+    }
+
+    $cut = min($amount, (int) $card['balance']);
+    $balance = (int) $card['balance'] - $cut;
+    $line = mb_substr(trim((string) $note), 0, PG_CREDIT_REASON_LENGTH);
+    $notes = trim((string) $card['notes']);
+    $notes = ($notes === '') ? $line : $notes . "\n" . $line;
+    $user = defined('USER_ID') ? (int) USER_ID : 0;
+
+    $written = db_q(
+        "UPDATE gift_cards SET balance = ?, notes = ?, last_modified_user_id = ?, last_modified_timestamp = ? WHERE id = ? AND balance = ?",
+        array($balance, $notes, $user, time(), $card_id, (int) $card['balance']));
+
+    if (!$written || (mysqli_affected_rows(db::$con) !== 1)) {
+        return 0;
+    }
+
+    $after = $card;
+    $after['balance'] = $balance;
+
+    if ($balance === 0) {
+        $after['void_reason'] = $line;
+    }
+
+    pg_audit(($balance === 0) ? 'revoke' : 'update', 'store_credit', $card_id, pg_credit_audit_fields($card), pg_credit_audit_fields($after), pg_credit_audit_label($card['code']));
+
+    return $cut;
+}
+
+/**
  * Which applied_gift_cards rows a customer's credit needs on an order. Ticked
  * ($use), every open card not applied yet is added (in the order given, which
  * is pg_credit_cards()'s spend order), an applied card whose balance moved is

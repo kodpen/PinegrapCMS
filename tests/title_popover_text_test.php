@@ -45,10 +45,10 @@ function test_title_popover_min_bundle_follows()
 
 function test_title_popover_view_fields_information_title_is_text()
 {
-	$source = file_get_contents(PG_FUNCTIONS_DIR . '/view_fields.php');
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/field_list.php');
 
-	pg_assert_true(strpos($source, "title=\"' . h(pg_liveform_message_text(\$label_or_information)) . '\"") !== false, 'information preview title is its text, entities resolved once');
-	pg_assert_true(strpos($source, 'h(strip_tags($label_or_information))') === false, 'no strip_tags() title left');
+	pg_assert_true(strpos($source, "title=\"' . h(pg_liveform_message_text(\$text)) . '\"") !== false, 'information preview title is its text, entities resolved once');
+	pg_assert_true(strpos($source, 'h(strip_tags(') === false, 'no strip_tags() title left');
 }
 
 function test_title_popover_image_picker_details_escaped()

@@ -38,7 +38,7 @@ function test_panel_refusal_email_campaign_popup_framed()
 	pg_assert_true($body !== '', 'output_error_in_popup() exists');
 	pg_assert_true(strpos($body, "output_header_secure(array('title'=>lang('Send E-mail Campaign'),'icon'=>'campaign'))") !== false, 'popup refusal opens the window frame');
 	pg_assert_true(strpos($body, 'alert theme-danger') !== false, 'popup refusal is a danger alert');
-	pg_assert_true(strpos($body, 'window.opener.location.reload(true); window.close();') !== false, 'popup refusal has the Close button');
+	pg_assert_true(strpos($body, 'onclick="pgSendClose(true)"') !== false, 'popup refusal has the Close button');
 	pg_assert_true(strpos($body, 'output_footer_secure()') !== false, 'popup refusal closes the frame');
 	pg_assert_true(strpos($body, '<div style="color: red">') === false, 'no bare red div');
 	pg_assert_true(strpos($body, 'exit') !== false, 'popup refusal stops the script');

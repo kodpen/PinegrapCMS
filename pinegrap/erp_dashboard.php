@@ -108,7 +108,7 @@ if (function_exists('erp_profit_report')) {
                 ($open_overdue > 0)
                     ? lang(array('string' => '{var:1} past their due date', 'vars' => $open_overdue))
                     : lang(array('string' => '{var:1} expense(s), any date', 'vars' => $expenses_open['count'])),
-                'bi-hourglass-split', 'erp_expenses.php?status=unpaid&period=dates&from=2000-01-01&to=' . date('Y-12-31'),
+                'bi-hourglass-split', 'erp_expenses.php?status=unpaid&period=all',
                 ($open_overdue > 0) ? 'fg-danger' : '');
     }
 }
@@ -303,9 +303,9 @@ if (erp_edoc_installed()) {
         $output_edoc_card = '
         <div class="col-12 ' . ($can_see_cash ? 'lg:col-4' : 'lg:col-6') . ' my-3">
             <div class="card h-100">
-                <div class="' . $card_header . ' d-flex align-items-center">
-                    <span>' . lang('e-Document') . '</span>
-                    <a href="erp_invoices.php?edoc=failed" class="ms-auto small text-decoration-none fw-normal text-lowercase"><i class="bi bi-arrow-right-short"></i>' . lang('Invoices') . '</a>
+                <div class="' . $card_header . ' d-flex align-items-center gap-3">
+                    <span class="min-w-0">' . lang('e-Document') . '</span>
+                    <a href="erp_invoices.php?edoc=failed" class="ms-auto small text-decoration-none fw-normal text-lowercase text-nowrap flex-shrink-0"><i class="bi bi-arrow-right-short" aria-hidden="true"></i>' . lang('Failed e-documents') . '</a>
                 </div>
                 <div class="card-body">
                     <div class="mb-5">' . $output_edoc_provider . '</div>
@@ -375,14 +375,17 @@ if ($can_see_cash) {
                                 . (((int) $movement['reversal_id'] > 0) ? ' <span class="badge theme-secondary">' . lang('Cancelled') . '</span>' : '') . '</td>
                             <td class="text-break" style="max-width:220px">' . (((int) $movement['account_id'] > 0)
                                 ? '<a href="edit_erp_account.php?id=' . (int) $movement['account_id'] . '" class="pg-link-body-emphasis">' . h((string) $movement['account_title']) . '</a>'
-                                : '<span class="fg-secondary">' . h($movement_description) . '</span>') . '</td>
-                            <td class="text-break fg-secondary" style="max-width:160px">' . h((string) $movement['till_name']) . '</td>
+                                : '<span class="fg-secondary">' . h($movement_description) . '</span>')
+                                // The till as a second line, not a column of its
+                                // own: on a phone a fifth column pushed the
+                                // amount out of the card.
+                                . (((string) $movement['till_name'] !== '') ? '<div class="small fg-secondary">' . h((string) $movement['till_name']) . '</div>' : '') . '</td>
                             <td class="text-end text-nowrap ' . (($movement_amount < 0) ? 'fg-danger' : 'fg-success') . '" data-sort="' . (int) $movement_amount . '">' . h(erp_money_out_currency($movement_amount, strtoupper(trim((string) $movement['currency'])))) . '</td>
                         </tr>';
     }
     if ($output_recent === '') {
         $output_recent = '
-                        <tr data-pg-sort-fixed><td colspan="5" class="fg-secondary">' . lang('There are no movements yet.') . '</td></tr>';
+                        <tr data-pg-sort-fixed><td colspan="4" class="fg-secondary">' . lang('There are no movements yet.') . '</td></tr>';
     }
 
     $today_url = 'erp_cashflow.php?from=' . $today . '&amp;to=' . $today;
@@ -390,9 +393,9 @@ if ($can_see_cash) {
     $output_movements_card = '
         <div class="col-12 ' . (($output_edoc_card !== '') ? 'lg:col-8' : '') . ' my-3">
             <div class="card h-100">
-                <div class="' . $card_header . ' d-flex align-items-center">
-                    <span>' . lang('Latest movements') . '</span>
-                    <a href="erp_cash.php" class="ms-auto small text-decoration-none fw-normal text-lowercase"><i class="bi bi-arrow-right-short"></i>' . lang('Cash and Bank') . '</a>
+                <div class="' . $card_header . ' d-flex align-items-center gap-3">
+                    <span class="min-w-0">' . lang('Latest movements') . '</span>
+                    <a href="erp_cash.php" class="ms-auto small text-decoration-none fw-normal text-lowercase text-nowrap flex-shrink-0"><i class="bi bi-arrow-right-short" aria-hidden="true"></i>' . lang('Cash and Bank') . '</a>
                 </div>
                 <div class="card-body">
                     <a href="' . $today_url . '" class="d-flex flex-wrap gap-7 mb-5 text-decoration-none pg-link-body-emphasis" title="' . h(lang('Transfers between your own tills are not counted.')) . '">
@@ -416,7 +419,6 @@ if ($can_see_cash) {
                                     <th class="fw-normal">' . lang('Date') . '</th>
                                     <th class="fw-normal">' . lang('Document') . '</th>
                                     <th class="fw-normal">' . lang('Account') . '</th>
-                                    <th class="fw-normal">' . lang('Till') . '</th>
                                     <th class="fw-normal text-end">' . lang('Amount') . '</th>
                                 </tr>
                             </thead>
@@ -452,7 +454,7 @@ echo pg_page_shell(array(
     // may use it (validate_ecommerce_access).
     . ((((int) $user['role'] < 3) || !empty($user['manage_ecommerce'])) ? '
     <div class="pg-toolbar" id="button_bar">
-        <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_order.php"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang(array('string' => 'Add {var:1}', 'vars' => array(lang('Order')))) . '</a>
+        <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_order.php"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang('Add Local Order') . '</a>
     </div>' : '') . '
     <div class="row">' . $output_cards . '
     </div>
@@ -461,9 +463,9 @@ echo pg_page_shell(array(
     <div class="row">
         ' . ($can_see_cash ? '<div class="col-12 lg:col-4 my-3">
             <div class="card h-100">
-                <div class="' . $card_header . ' d-flex align-items-center">
-                    <span>' . lang('Cash and Bank') . '</span>
-                    <a href="erp_cash.php" class="ms-auto small text-decoration-none fw-normal text-lowercase"><i class="bi bi-arrow-right-short"></i>' . lang('Cash and Bank') . '</a>
+                <div class="' . $card_header . ' d-flex align-items-center gap-3">
+                    <span class="min-w-0">' . lang('Cash and Bank') . '</span>
+                    <a href="erp_cash.php" class="ms-auto small text-decoration-none fw-normal text-lowercase text-nowrap flex-shrink-0"><i class="bi bi-arrow-right-short" aria-hidden="true"></i>' . lang('All tills') . '</a>
                 </div>
                 <div class="card-body">
                     <div class="h3 mb-5 ' . (($cash['total'] < 0) ? 'fg-danger' : '') . '">' . h(erp_money_out((int) $cash['total'])) . '</div>
@@ -476,9 +478,9 @@ echo pg_page_shell(array(
         </div>' : '') . '
         <div class="col-12 ' . ($can_see_cash ? 'lg:col-4' : 'lg:col-6') . ' my-3">
             <div class="card h-100">
-                <div class="' . $card_header . ' d-flex align-items-center">
-                    <span>' . lang('Receivables by age') . '</span>
-                    <a href="erp_aging.php?direction=sales" class="ms-auto small text-decoration-none fw-normal text-lowercase"><i class="bi bi-arrow-right-short"></i>' . lang('Aging report') . '</a>
+                <div class="' . $card_header . ' d-flex align-items-center gap-3">
+                    <span class="min-w-0">' . lang('Receivables by age') . '</span>
+                    <a href="erp_aging.php?direction=sales" class="ms-auto small text-decoration-none fw-normal text-lowercase text-nowrap flex-shrink-0"><i class="bi bi-arrow-right-short" aria-hidden="true"></i>' . lang('Aging report') . '</a>
                 </div>
                 <div class="card-body">
                     <div class="progress-stacked mb-5" style="height:1rem;">' . $output_bar . '
@@ -493,9 +495,9 @@ echo pg_page_shell(array(
         </div>
         <div class="col-12 ' . ($can_see_cash ? 'lg:col-4' : 'lg:col-6') . ' my-3">
             <div class="card h-100">
-                <div class="' . $card_header . ' d-flex align-items-center">
-                    <span>' . lang('Top overdue accounts') . '</span>
-                    <a href="erp_invoices.php?filter=overdue&amp;direction=sales" class="ms-auto small text-decoration-none fw-normal text-lowercase"><i class="bi bi-arrow-right-short"></i>' . lang('Overdue') . '</a>
+                <div class="' . $card_header . ' d-flex align-items-center gap-3">
+                    <span class="min-w-0">' . lang('Top overdue accounts') . '</span>
+                    <a href="erp_invoices.php?filter=overdue&amp;direction=sales" class="ms-auto small text-decoration-none fw-normal text-lowercase text-nowrap flex-shrink-0"><i class="bi bi-arrow-right-short" aria-hidden="true"></i>' . lang('Overdue') . '</a>
                 </div>
                 <div class="card-body">
                     <table class="table table-sm mb-0" data-pg-sort>

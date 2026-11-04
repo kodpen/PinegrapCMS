@@ -45,7 +45,7 @@ function erp_list_names_wrap_pins()
 			'<td class="text-break" style="max-width:200px">\' . h($till[\'name\']) . \' <span class="small">\' . h(lang(\'not added in\')) . \'</span></td>',
 			'<td class="text-break" style="max-width:220px"><a href="edit_erp_account.php?id=\' . (int) $account[\'id\']',
 			'<td class="text-break" style="max-width:220px">\' . (((int) $movement[\'account_id\'] > 0)',
-			'<td class="text-break fg-secondary" style="max-width:160px">\' . h((string) $movement[\'till_name\']) . \'</td>',
+			'<div class="small fg-secondary">\' . h((string) $movement[\'till_name\']) . \'</div>',
 		),
 		'erp_inbox.php' => array(
 			'<td style="max-width:280px" class="align-middle text-wrap text-break">',

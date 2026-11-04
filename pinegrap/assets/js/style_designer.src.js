@@ -39517,7 +39517,60 @@ const StyleDesigner = (function () {
         if (_isInsideSystemWidget(node)) return widgetOpts();
         var partSid = _sdPartSidAt(node);
         if (partSid) return _sdWithValueSid(partSid, widgetOpts);
-        return SD_PAGE_FACTS.map(function (f) { return { token: f[0], label: f[1] }; }).concat(_sdPageRecordOptions());
+        return SD_PAGE_FACTS.map(function (f) { return { token: f[0], label: f[1] }; })
+            .concat(_sdAudienceOptions(), _sdPageRecordOptions());
+    }
+
+    // The audience of the visit (pg_audience_tokens() and the group and
+    // experiment tokens of includes/fn/page_audience.php), each with the
+    // operators that fit it and, where the values are few, the values.
+    var SD_AUDIENCE_YESNO = ['not_empty', 'empty'];
+    var SD_AUDIENCE_IS = ['eq', 'neq'];
+    var SD_AUDIENCE_TEXT = ['eq', 'neq', 'contains', 'not_contains', 'starts', 'not_empty', 'empty'];
+    var SD_AUDIENCE_FACTS = [
+        ['__audience_returning',    _sdT('Audience: returning visitor'), SD_AUDIENCE_YESNO],
+        ['__audience_country',      _sdT('Audience: country (two-letter code)'), SD_AUDIENCE_IS],
+        ['__audience_device',       _sdT('Audience: device'), SD_AUDIENCE_IS],
+        ['__audience_utm_source',   _sdT('Audience: campaign source (UTM)'), SD_AUDIENCE_TEXT],
+        ['__audience_utm_campaign', _sdT('Audience: campaign name (UTM)'), SD_AUDIENCE_TEXT],
+        ['__audience_member',       _sdT('Audience: active member'), SD_AUDIENCE_YESNO]
+    ];
+
+    function _sdAudienceOptions() {
+        var meta = _cfMeta();
+        var out = SD_AUDIENCE_FACTS.map(function (f) {
+            var o = { token: f[0], label: f[1], ops: f[2] };
+            if (f[0] === '__audience_device') {
+                o.choices = [
+                    { label: _sdT('Phone'), value: 'phone' },
+                    { label: _sdT('Tablet'), value: 'tablet' },
+                    { label: _sdT('Desktop'), value: 'desktop' }
+                ];
+            }
+            return o;
+        });
+        (meta.contactGroups || []).forEach(function (g) {
+            var id = parseInt(g.id, 10);
+            if (id > 0) out.push({ token: '__audience_group_' + id, label: _sdT('Audience: in contact group {var:1}', [String(g.name)]), ops: SD_AUDIENCE_YESNO });
+        });
+        (meta.experiments || []).forEach(function (e) {
+            var id = parseInt(e.id, 10);
+            if (!(id > 0)) return;
+            out.push({
+                token: '__audience_experiment_' + id,
+                label: _sdT('Audience: version shown in experiment {var:1}', [String(e.name)]),
+                ops: SD_AUDIENCE_IS,
+                choices: (e.variants || []).map(function (k) { return { label: String(k).toUpperCase(), value: String(k) }; })
+            });
+        });
+        return out;
+    }
+
+    // Whether `token` names an audience fact (pg_audience_token_kind()).
+    function _sdAudienceToken(token) {
+        var t = String(token || '').toLowerCase();
+        return SD_AUDIENCE_FACTS.some(function (f) { return f[0] === t; })
+            || /^__audience_(group|experiment)_[1-9][0-9]{0,9}$/.test(t);
     }
 
     // The facts of the visit an element outside a widget may be shown by
@@ -39705,7 +39758,7 @@ const StyleDesigner = (function () {
     // Whether `token` is one the page decides (pg_page_fact_spec()).
     function _sdPageCondToken(token) {
         var t = String(token || '').toLowerCase();
-        return t === '__record_found' || t.indexOf('__record__') === 0
+        return t === '__record_found' || t.indexOf('__record__') === 0 || _sdAudienceToken(t)
             || SD_PAGE_FACTS.some(function (f) { return f[0] === t; });
     }
 
@@ -39790,7 +39843,7 @@ const StyleDesigner = (function () {
         var any = _sdCondJoin(node) === 'any';
         return rows.map(function (r, i) {
             var entry = _sdCondOp(r.op);
-            var fact = kind ? null : SD_PAGE_FACTS.concat(_sdPageRecordOptions().map(function (o) { return [o.token, o.label]; }))
+            var fact = kind ? null : SD_PAGE_FACTS.concat(_sdAudienceOptions().concat(_sdPageRecordOptions()).map(function (o) { return [o.token, o.label]; }))
                 .filter(function (f) { return f[0] === r.token; })[0];
             var parts = [fact ? fact[1] : _swBindLabel(kind, r.token), entry ? entry[1] : String(r.op), (entry && entry[2]) ? r.value : ''];
             if (!i) return _sdT('Only when: {var:1} {var:2} {var:3}', parts);
@@ -40019,12 +40072,15 @@ const StyleDesigner = (function () {
                 '<select class="form-control form-control-sm sd-sw-cond-token" data-cond-row="' + i + '" aria-label="' + esc(_sdT('Value to test')) + '">' + tokOpts + '</select>';
             if (cur) {
                 var opOpts = '';
+                // A choice field of the page's record compares with one of
+                // its options; a value typed before stays listed. An
+                // audience fact offers the operators that fit it, and the
+                // one chosen before.
+                var curOpt = options.filter(function (o) { return o.token === cur; })[0];
                 SW_COND_OPS.forEach(function (o) {
+                    if (curOpt && Array.isArray(curOpt.ops) && curOpt.ops.indexOf(o[0]) === -1 && !(entry && entry[0] === o[0])) return;
                     opOpts += '<option value="' + o[0] + '"' + (entry && entry[0] === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
                 });
-                // A choice field of the page's record compares with one of
-                // its options; a value typed before stays listed.
-                var curOpt = options.filter(function (o) { return o.token === cur; })[0];
                 var choices = (curOpt && Array.isArray(curOpt.choices) && curOpt.choices.length) ? curOpt.choices : null;
                 var valAttrs = ' data-cond-row="' + i + '" aria-label="' + esc(_sdT('Compared with')) + '"' + ((entry && entry[2]) ? '' : ' style="display:none"');
                 html += '<select class="form-control form-control-sm mt-1 sd-sw-cond-op" data-cond-row="' + i + '" aria-label="' + esc(_sdT('Condition')) + '">' + opOpts + '</select>';
@@ -45396,7 +45452,13 @@ const StyleDesigner = (function () {
                 var val = _sdCondEl('sd-sw-cond-value', i);
                 saveState();
                 _sdCondOpenRow = null;
-                _sdCondWrite(selectedNode, this.value, _sdCondNow(i).op, val ? val.value : '', i);
+                // A value with operators of its own (an audience fact) starts
+                // on its first one when the one chosen before does not fit.
+                var op = _sdCondNow(i).op;
+                var tok = this.value;
+                var opt = _sdCondTokenOptions(selectedNode).filter(function (o) { return o.token === tok; })[0];
+                if (opt && Array.isArray(opt.ops) && opt.ops.indexOf(op) === -1) op = opt.ops[0];
+                _sdCondWrite(selectedNode, tok, op, val ? val.value : '', i);
                 _sdCondRedraw();
             });
         });

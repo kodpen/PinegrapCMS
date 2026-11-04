@@ -33,7 +33,7 @@ function test_erp_input_keyboards_till_iban()
 {
 	$source = erp_input_keyboards_source('includes/erp/till_form.php');
 
-	pg_assert_contains("'class' => 'form-control', 'maxlength' => '34', 'autocomplete' => 'off',\n                        'spellcheck' => 'false', 'autocapitalize' => 'characters')", $source);
+	pg_assert_contains("'class' => 'form-control', 'maxlength' => '42', 'autocomplete' => 'off',\n                        'spellcheck' => 'false', 'autocapitalize' => 'characters')", $source);
 }
 
 function test_erp_input_keyboards_mail_recipient()

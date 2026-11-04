@@ -211,7 +211,17 @@ $view = function ($url) {
     return '<button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'' . h($url) . '\'"><i class="bi bi-eye" aria-hidden="true"></i></button>';
 };
 
-$check = function ($name, $id, $label) {
+// The read-only accountant reads the lists: no ticks, no bulk buttons and
+// no Read from the provider (the gate refuses their POST anyway).
+$readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
+
+$select_head = $readonly ? '' : '<th class="noVis"><input class="check" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all"></th>';
+
+$check = function ($name, $id, $label) use ($readonly) {
+    if ($readonly) {
+        return '';
+    }
+
     return '<td class="select-all align-middle text-start"><input class="check" type="checkbox" name="' . $name . '[]" value="' . (int) $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => $label))) . '" /></td>';
 };
 
@@ -260,7 +270,7 @@ switch ($tab) {
         break;
 
     case 'provider_only':
-        $head = '<th class="noVis"><input class="check" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all"></th>
+        $head = $select_head . '
                                 <th class="noVis">' . lang(array('string' => 'Action')) . '</th>
                                 <th>' . lang('Name') . '</th>
                                 <th>' . lang('City') . '</th>
@@ -298,7 +308,7 @@ switch ($tab) {
         break;
 
     case 'erp_only':
-        $head = '<th class="noVis"><input class="check" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all"></th>
+        $head = $select_head . '
                                 <th class="noVis">' . lang(array('string' => 'Action')) . '</th>
                                 <th>' . lang('Name') . '</th>
                                 <th>' . h(erp_tax_id_label()) . '</th>
@@ -325,7 +335,7 @@ switch ($tab) {
         break;
 
     case 'ignored':
-        $head = '<th class="noVis"><input class="check" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all"></th>
+        $head = $select_head . '
                                 <th class="noVis">' . lang(array('string' => 'Action')) . '</th>
                                 <th>' . lang('Name') . '</th>
                                 <th>' . h(erp_tax_id_label()) . '</th>
@@ -358,6 +368,10 @@ switch ($tab) {
                     <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_restore" class="btn btn-sm btn-outline theme-secondary disabled" disabled><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . lang('Bring back') . '</button>
                 </span>';
         break;
+}
+
+if ($readonly) {
+    $bulk = '';
 }
 
 if ($bulk !== '') {
@@ -393,13 +407,13 @@ if ($provider !== '') {
     $settings = erp_edoc_settings($provider);
     $read_at = (int) ($settings['accounts_read_at'] ?? 0);
 
-    $output_fetch = '
+    $output_fetch = ($readonly ? '' : '
                 <form action="erp_account_sync.php" method="post" class="d-inline-flex align-items-center gap-3">
                     ' . get_token_field() . '
                     <input type="hidden" name="erp_action" value="fetch" />
                     <input type="hidden" name="tab" value="' . h($tab) . '" />
                     <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 text-nowrap"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Read from {var:1}', 'vars' => $provider_label))) . '</button>
-                </form>
+                </form>') . '
                 ' . (($read_at > 0)
                     ? '<span class="small fg-secondary">' . lang(array('string' => 'Last read {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d H:i:s', $read_at), 'date and time'))) . '</span>'
                     : '<span class="small fg-secondary">' . lang('Not read yet.') . '</span>');

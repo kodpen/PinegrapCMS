@@ -7847,7 +7847,14 @@
                 row.appendChild(el('span', 'ws-home-event-bar'));
 
                 var text = el('span', 'ws-home-row-text');
-                text.appendChild(el('span', 'ws-home-row-title', item.title));
+                var title = el(item.url ? 'a' : 'span', 'ws-home-row-title', item.title);
+
+                // A booking opens on the agenda.
+                if (item.url) {
+                    title.href = item.url;
+                }
+
+                text.appendChild(title);
 
                 if (!item.all_day || item.layer) {
                     text.appendChild(el('small', 'fg-secondary', [item.all_day ? '' : item.time + '–' + item.until, item.layer].filter(Boolean).join(' · ')));
@@ -19516,8 +19523,16 @@
                         }).catch(fail);
                     }
 
-                    // The reader's own calendar has no plan item behind it to open.
-                    if (!event.readonly) {
+                    function openBooking() {
+                        window.location.href = event.url;
+                    }
+
+                    // The reader's own calendar has no plan item behind it to
+                    // open; a booking opens on the agenda.
+                    if (event.url) {
+                        row.addEventListener('click', openBooking);
+                        pressKeys(row, openBooking);
+                    } else if (!event.readonly) {
                         row.addEventListener('click', openPlanItem);
                         pressKeys(row, openPlanItem);
                     }

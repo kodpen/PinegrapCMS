@@ -869,3 +869,91 @@ function pg_booking_agenda_moves_now($booking, $now)
 
     return $moves;
 }
+
+/**
+ * A staff member's confirmed bookings between two moments, as their
+ * Workspace calendar shows them: the Work Calendar, Today and the calendar
+ * written to their Google or Outlook account all read them here. The
+ * booking row is the one source of a booking's time; no copy is written to
+ * ws_events.
+ *
+ * @param int $user_id the panel user the staff row belongs to
+ * @param int $from    unix
+ * @param int $until   unix
+ * @return array[] pg_booking_calendar_item_rows()'s rows
+ */
+function pg_booking_calendar_items($user_id, $from, $until)
+{
+    if (((int) $user_id <= 0) || !pg_booking_ready()) {
+        return array();
+    }
+
+    $rows = db_items(
+        "SELECT bookings.id, bookings.name, bookings.start_at, bookings.end_at, booking_services.name AS service_name
+        FROM bookings
+        INNER JOIN booking_staff ON booking_staff.id = bookings.staff_id
+        LEFT JOIN booking_services ON booking_services.id = bookings.service_id
+        WHERE booking_staff.user_id = '" . (int) $user_id . "'
+            AND bookings.status = 'confirmed'
+            AND bookings.start_at < '" . (int) $until . "'
+            AND bookings.end_at > '" . (int) $from . "'
+        ORDER BY bookings.start_at, bookings.id
+        LIMIT 500");
+
+    return pg_booking_calendar_item_rows((array) $rows);
+}
+
+/**
+ * The calendar's shape of booking rows: the title is the service and the
+ * customer, the address opens the booking on the agenda.
+ *
+ * @param array[] $rows id, name, start_at, end_at, service_name
+ * @return array[] id, starts_at, ends_at, title, service, customer, url
+ */
+function pg_booking_calendar_item_rows($rows)
+{
+    $items = array();
+
+    foreach ($rows as $row) {
+        $start = (int) $row['start_at'];
+        $end = max($start, (int) $row['end_at']);
+        $service = trim((string) ($row['service_name'] ?? ''));
+        $customer = trim((string) ($row['name'] ?? ''));
+
+        $items[] = array(
+            'id'        => (int) $row['id'],
+            'starts_at' => $start,
+            'ends_at'   => $end,
+            'title'     => implode(' · ', array_filter(array($service, $customer), 'strlen')) ?: lang('Booking'),
+            'service'   => $service,
+            'customer'  => $customer,
+            'url'       => 'edit_booking.php?id=' . (int) $row['id'],
+        );
+    }
+
+    return $items;
+}
+
+/**
+ * Tells a staff member that the move of a booking in their own Google or
+ * Outlook calendar was not kept: a booking's time changes only on the
+ * agenda and the manage page, and the event is written back. One bell line
+ * aimed at the person, naming the booking by its id.
+ *
+ * @param int   $user_id
+ * @param array $item pg_booking_calendar_item_rows()'s row
+ */
+function pg_booking_calendar_refused($user_id, $item)
+{
+    include_once(PG_FUNCTIONS_DIR . '/includes/notifications.php');
+
+    if (((int) $user_id <= 0) || !pg_notification_targets_available()) {
+        return;
+    }
+
+    $title = lang(array('string' => 'The move of booking #{var:1} in your calendar was not kept', 'vars' => (int) $item['id']));
+
+    db_q("INSERT INTO notifications (action, type, title, target_user_id, reference_id, user, readed, timestamp)
+        VALUES ('booking_refused', 'info', ?, ?, ?, '', '0', UNIX_TIMESTAMP())",
+        array(mb_substr($title, 0, 250), (int) $user_id, (int) $item['id']));
+}

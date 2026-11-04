@@ -34,6 +34,15 @@ if (!$_POST || ($order_id <= 0)) {
 
 validate_token_field();
 
+// An order deleted meanwhile (in another tab): its screen answers 404 and
+// never prints the message, which then showed on the next order opened.
+// Say it on the orders list instead.
+if (!db_value("SELECT id FROM orders WHERE id = '" . $order_id . "' LIMIT 1")) {
+    $liveform_orders = new liveform('view_orders');
+    $liveform_orders->mark_error('_error', h(lang('Order not found.')));
+    go(PATH . SOFTWARE_DIRECTORY . '/view_orders.php');
+}
+
 // A step talks to the provider at most a couple of times.
 @set_time_limit(120);
 

@@ -71,6 +71,16 @@ function test_short_link_form_screens_use_the_shared_form()
 	pg_assert_contains("pg_short_link_form_validate_name(\$liveform, \$liveform->get_field_value('id'))", (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_short_link.php'), 'edit');
 }
 
+function test_short_link_form_posted_answer()
+{
+	pg_assert_same(302, pg_short_link_form_posted_answer(0, 'blog/*', 302), 'a pattern keeps its stored 302 when 0 is posted');
+	pg_assert_same(301, pg_short_link_form_posted_answer(0, 'blog/*', 301), 'a pattern keeps its stored 301');
+	pg_assert_same(0, pg_short_link_form_posted_answer(0, 'blog/*', 0), 'nothing stored: the save makes it 301');
+	pg_assert_same(302, pg_short_link_form_posted_answer(302, 'blog/*', 301), 'a chosen answer wins');
+	pg_assert_same(0, pg_short_link_form_posted_answer(0, 'eski', 302), 'a plain name may show its destination');
+	pg_assert_same(null, pg_short_link_form_posted_answer(null, 'blog/*', 302), 'no field: the stored answer stays');
+}
+
 /**
  * A stand-in for the live form: the destination check reads values and
  * marks errors only.

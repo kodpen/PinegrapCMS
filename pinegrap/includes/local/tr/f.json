@@ -32,6 +32,7 @@
     "Failed": "Başarısız",
     "Failed Attempts": "Başarısız Deneme",
     "Failed at {var:1}": "{var:1} adımında başarısız",
+    "Failed e-documents": "Hatalı e-belgeler",
     "Failed e-mails in a day": "Bir günde gönderilemeyen e-posta",
     "Failed or rejected": "Hatalı ya da reddedildi",
     "Failed payment attempts: {var:1}": "Başarısız ödeme denemesi: {var:1}",

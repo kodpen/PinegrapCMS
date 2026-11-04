@@ -32,7 +32,7 @@ function test_list_names_wrap_folder_name()
 function test_list_names_wrap_folder_cells()
 {
 	$cells = array(
-		'includes/fn/page_list.php' => 'pg_list_cell(pg_folder_list_name($page[\'folder_name\'], $page[\'folder_access_control_type\']), \'align-middle text-start text-wrap \' . $page[\'folder_access_control_type\'])',
+		'includes/fn/page_list.php' => 'pg_list_cell(pg_folder_list_name($page[\'folder_name\'], $page[\'folder_access_control_type\']), \'align-middle text-start text-wrap \' . $page[\'folder_access_control_type\'], $quick(\'folder\', pg_page_quick_edit_value(\'folder\', $page)))',
 		'view_design_files.php' => '\'folder\' => pg_list_cell(pg_folder_list_name($file[\'folder_name\']), \'align-middle text-wrap\')',
 		'view_themes.php' => '\'folder\' => pg_list_cell(pg_folder_list_name($file[\'folder_name\']) . \'<span class="badge fw-light fg-reset d-inline">(\' . $output_access_control . \')</span>\', \'align-middle text-wrap \' . $folder_access_control_type)',
 	);
@@ -53,10 +53,10 @@ function test_list_names_wrap_text_cells()
 		pg_assert_false(strpos($source, 'title="\' . nl2br(h($file[\'description\'])) . \'"') !== false, $path . ': no hover-only title');
 	}
 
-	$fields = list_names_wrap_source('view_fields.php');
-	pg_assert_contains('$output_label_cell = \'<td class="text-wrap">' . $wrap . '\' . $label_or_information . \'</div></td>\';', $fields);
+	$fields = list_names_wrap_source('includes/fn/field_list.php');
+	pg_assert_contains('$label = \'' . $wrap . '\' . h($row[\'label\']) . \'</div>\';', $fields);
 	// Information text is rich text that can run to paragraphs: it keeps its cut preview.
-	pg_assert_contains('<td title="\' . h(pg_liveform_message_text($label_or_information)) . \'"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">\' . $label_or_information . \'</span></td>', $fields);
+	pg_assert_contains('<span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;" title="\' . h(pg_liveform_message_text($text)) . \'">\' . $text . \'</span>', $fields);
 
 	$shipping = list_names_wrap_source('view_shipping_methods.php');
 	// The name and message wrap with a floor width, so the table does not

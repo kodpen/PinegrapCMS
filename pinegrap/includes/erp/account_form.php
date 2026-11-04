@@ -73,13 +73,21 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
         $country_options['—'] = '';
     }
     // Named and ordered in the panel language (pg_geo_country_label()); two
-    // rows that share a label keep both options by adding the code.
+    // rows that share a label keep both options by adding the code. A code
+    // the table holds twice (an old and a new name of one country) is one
+    // option, the older row's: two options with one value made the edit
+    // screen mark both selected.
     $country_rows = array();
-    foreach ((array) db_items("SELECT code, name FROM countries WHERE code <> ''") as $country_row) {
-        $country_rows[] = array(
-            'code' => strtoupper((string) $country_row['code']),
+    foreach ((array) db_items("SELECT code, name FROM countries WHERE code <> '' ORDER BY id") as $country_row) {
+        $code = strtoupper((string) $country_row['code']);
+        if (isset($country_rows[$code])) {
+            continue;
+        }
+        $country_rows[$code] = array(
+            'code' => $code,
             'label' => pg_geo_country_label((string) $country_row['name'], (string) $country_row['code']));
     }
+    $country_rows = array_values($country_rows);
     foreach (pg_geo_sort_by_label($country_rows) as $country_row) {
         $label = h($country_row['label']);
         if (isset($country_options[$label])) {
@@ -140,7 +148,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         <label class="" for="overdue_notify_customer">' . lang('Write to this account when its invoices pass the threshold') . '</label>
                     </div>
                     <div class="form-text">' . h((defined('ERP_OVERDUE_NOTIFY_CUSTOMER') && ERP_OVERDUE_NOTIFY_CUSTOMER)
-                        ? lang('Goes to the e-mail address above. Switch it off for a customer who asked not to be written to.')
+                        ? lang('Goes to the account\'s e-mail address under Contact Information. Switch it off for a customer who asked not to be written to.')
                         : lang('Reminder e-mails to customers are switched off on the ERP settings card; this choice takes effect once they are on.')) . '</div>
                 </div>
             </div>' . ((function_exists('erp_mail_ready') && erp_mail_ready() && waf_table_has_column('erp_accounts', 'invoice_email')) ? '
@@ -148,9 +156,10 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                 <div class="col-12 lg:col-6 my-3">
                     <label for="invoice_email" class="form-label">' . lang('Invoice e-mail address') . '</label>
                     ' . $liveform->output_field(array(
-                        'type' => 'email', 'id' => 'invoice_email', 'name' => 'invoice_email',
-                        'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
-                    <div class="form-text">' . lang('Where invoices are e-mailed when that is not the address above, such as the customer\'s accounts department. Empty uses the address above.') . '</div>
+                        'type' => 'text', 'id' => 'invoice_email', 'name' => 'invoice_email',
+                        'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off',
+                        'inputmode' => 'email', 'spellcheck' => 'false', 'autocapitalize' => 'off')) . '
+                    <div class="form-text">' . lang('Where invoices are e-mailed when that is not the account\'s e-mail address, such as the customer\'s accounts department. Empty uses the address under Contact Information.') . '</div>
                 </div>
                 <div class="col-12 lg:col-6 my-3">
                     <div class="form-label">' . lang('Invoices by e-mail') . '</div>
@@ -195,7 +204,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                 </div>
                 <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="tax_number" class="form-label" data-label-tr="' . h(lang('VKN / TCKN')) . '" data-label-other="' . h(lang('Tax number')) . '">' . h(erp_tax_id_label($country)) . '</label>
-                    ' . ($taxpayer_lookup ? '<div class="input-group">' : '') . '
+                    ' . ($taxpayer_lookup ? '<div class="' . ($is_tr ? 'input-group' : '') . '" data-erp-tax-group>' : '') . '
                     ' . $liveform->output_field(array_merge(array(
                         'type' => 'text', 'id' => 'tax_number', 'name' => 'tax_number',
                         'class' => 'form-control', 'maxlength' => (string) erp_tax_number_width(),
@@ -280,6 +289,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
             </div>
         </div>
     </div>
+    ' . pg_places_suggest_script() . '
     <script>
     (function () {
         // Follows a change of country: the Turkish-only fields and words
@@ -295,6 +305,11 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
             });
             document.querySelectorAll("[data-erp-not-tr]").forEach(function (element) {
                 element.classList.toggle("d-none", tr);
+            });
+            // Without the Query button the number box stands alone: an
+            // input group would keep its right corners square.
+            document.querySelectorAll("[data-erp-tax-group]").forEach(function (element) {
+                element.classList.toggle("input-group", tr);
             });
             // The tax number and the city (İl for Turkey) say it in the
             // country\'s words.
@@ -363,7 +378,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         holder.innerHTML = data.state;
                         var fresh = holder.firstElementChild;
                         var old = document.querySelector("[data-erp-einvoice-state]");
-                        var group = button.closest(".input-group");
+                        var group = button.closest("[data-erp-tax-group]");
                         if (fresh && old) {
                             old.replaceWith(fresh);
                         } else if (fresh && group) {
@@ -426,7 +441,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         'type' => 'text', 'id' => 'opening_date', 'data-pg-date' => '', 'name' => 'opening_date',
                         'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                         'autocomplete' => 'off')) . '
-                    ' . get_date_picker_format() . pg_fields_script() . pg_places_suggest_script() . '                </div>
+                    ' . get_date_picker_format() . pg_fields_script() . '                </div>
                 <div class="col-12 lg:col-6 my-3">
                     <div class="form-text pt-7">' . lang('Recorded as a movement rather than written straight onto the balance, so it can be traced later like any other entry.') . '</div>
                 </div>
@@ -928,6 +943,102 @@ function erp_account_form_check_tax_number_taken($liveform, $country_code, $acco
             'vars' => array(h((string) $other['title'])),
         )));
     }
+}
+
+/**
+ * What a VIES answer about an account card's tax number means for the save:
+ * error stops the form on the tax number box; notice (confirmed) and
+ * warning (not confirmed) are shown on the next screen. Pure.
+ *
+ * A confirmed id and a VIES that cannot be reached never stop the save: the
+ * card is the accountant's record, and the service being down is no reason
+ * to lose what was typed. Whether an id VIES does not know (or one that is
+ * not shaped like a VAT id) is refused or only warned about is the caller's
+ * $refuse_invalid: a card may hold a national tax number that is no EU VAT id.
+ *
+ * @param array $check           an answer of pg_vat_check(), array() for none
+ * @param bool  $refuse_invalid  Refuse an unknown or malformed id instead of warning
+ * @return array{error:string,notice:string,warning:string}
+ */
+function erp_account_vat_outcome(array $check, $refuse_invalid)
+{
+    $outcome = array('error' => '', 'notice' => '', 'warning' => '');
+    $status = (string) ($check['status'] ?? '');
+
+    if ($status === 'valid') {
+        $name = trim((string) ($check['name'] ?? ''));
+        $outcome['notice'] = ($name !== '')
+            ? lang(array('string' => 'The EU VAT service (VIES) confirmed the tax number ({var:1}).', 'vars' => array(h($name))))
+            : lang('The EU VAT service (VIES) confirmed the tax number.');
+    } elseif ($status === 'unavailable') {
+        $outcome['warning'] = lang('The EU VAT service (VIES) could not be reached, so the tax number was saved unchecked.');
+    } elseif (($status === 'invalid') || ($status === 'malformed')) {
+        $text = ($status === 'malformed')
+            ? lang('This is not a valid EU VAT id for the account\'s country.')
+            : lang('The EU VAT service (VIES) does not know this tax number.');
+        $outcome[$refuse_invalid ? 'error' : 'warning'] = $text;
+    }
+
+    return $outcome;
+}
+
+/**
+ * Checks the card's tax number against VIES when it is an EU VAT id that
+ * matters across a border: the account's country and the store's are both
+ * member states and differ (pg_vat_checkout_applies(), as at checkout). A
+ * Turkish card, a card in the store's own country or one outside the EU
+ * never reaches VIES. On edit only a changed number is checked (compared
+ * without case and separators), so saving an untouched card makes no call.
+ *
+ * Runs after erp_account_form_check_formats(): a number already marked is
+ * not sent. An error is marked on the tax number box; the notice and the
+ * warning are returned for the screen the save goes to.
+ *
+ * @param liveform      $liveform
+ * @param string        $country_code    The account's country; the store's when empty
+ * @param string|null   $stored_number   The card's saved number on edit, null on create
+ * @param bool          $refuse_invalid  See erp_account_vat_outcome()
+ * @param callable|null $check           function ($number, $country): pg_vat_check()'s answer; VIES by default
+ * @param string|null   $store_country   The store's country; erp_default_country_code() by default
+ * @return array{notice:string,warning:string}
+ */
+function erp_account_form_check_vat($liveform, $country_code, $stored_number = null, $refuse_invalid = false, $check = null, $store_country = null)
+{
+    $said = array('notice' => '', 'warning' => '');
+    $number = trim((string) $liveform->get_field_value('tax_number'));
+
+    if (($number === '') || $liveform->check_field_error('tax_number')) {
+        return $said;
+    }
+
+    $country = erp_account_country($country_code);
+    $store = ($store_country === null) ? erp_default_country_code() : strtoupper(trim((string) $store_country));
+
+    if (!pg_vat_checkout_applies($number, $country, $store)) {
+        return $said;
+    }
+
+    $key = function ($value) {
+        return strtoupper((string) preg_replace('/[\s.\/_-]+/', '', (string) $value));
+    };
+
+    if (($stored_number !== null) && ($key($number) === $key($stored_number))) {
+        return $said;
+    }
+
+    if ($check === null) {
+        $check = function ($number, $country) {
+            return pg_vat_check($number, array('country' => $country));
+        };
+    }
+
+    $outcome = erp_account_vat_outcome((array) $check($number, $country), $refuse_invalid);
+
+    if ($outcome['error'] !== '') {
+        $liveform->mark_error('tax_number', $outcome['error']);
+    }
+
+    return array('notice' => $outcome['notice'], 'warning' => $outcome['warning']);
 }
 
 /**

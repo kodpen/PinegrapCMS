@@ -9,13 +9,13 @@ description: Coordinator worker count by the 5-hour quota (owner, 2026-11-02): 8
 ## What does the coordinator read?
 - `get_session` on itself: `rate_limit_info.status` and `resetsAt` (the window's end; its start is `resetsAt` − 5 hours). It gives no percentage.
 - Use U: the sum of `usage.cost_usd` of the account's sessions (`list_sessions mine`, `get_session` each: itself, its workers, the architect and merging session when on the account) spent in this window, over the window budget B. At the window's start it notes each running session's `cost_usd`; a session's spend is its cost now minus that note (all of it for a session started later).
-- B is measured, not guessed: the first time the status leaves `allowed`, the window's spend then is B. Until B is known the coordinator keeps 8 and goes by the status alone. B and the start notes go into its handover note.
+- B is measured, not guessed: the first time the status leaves `allowed`, the window's spend then is B. Until B is known the coordinator keeps 8. B and the start notes go into its handover note.
 
 ## How many workers?
 - At a window's start: 8.
 - Each hour of the window (from the hourly routine), U against the target H = hours since the window's start (a fraction is fine) × 20%: U above H+10: two fewer; H+5 to H+10: one fewer; within ±5: same; H−10 to H−5: one more; below H−10: two more. Never under 4 or over 10.
 - Fewer: running workers are not stopped; a finished worker is not replaced. More: at most one new worker a minute.
-- Status not `allowed` (warning): down to 4 at once, no new worker. Refused: no new worker until `resetsAt`.
+- A warning (`allowed_warning`) changes nothing: the hourly count goes on. Refused (`rejected`): no new worker until `resetsAt`.
 - Under 4 only for the reasons in `coordinator-limits.md` (queue limit, no free step).
 
 Related: docs/memory/workflow/coordinator-limits.md, docs/memory/workflow/coordinator.md

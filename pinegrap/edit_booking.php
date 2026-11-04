@@ -211,6 +211,14 @@ if ($_POST) {
     pg_booking_agenda_audit($cancel ? 'cancel' : 'update', $booking_id, $booking, $after);
     log_activity('booking #' . $booking_id . ' was ' . ($cancel ? 'cancelled' : 'modified'), 'ACTIVITY');
 
+    // A request confirmed or a booking cancelled here tells the customer and
+    // announces booking.confirmed / booking.cancelled.
+    $status_event = pg_booking_status_event((string) $booking['status'], $status);
+
+    if ($status_event !== '') {
+        pg_booking_changed($booking_id, $status_event);
+    }
+
     $liveform->remove_form();
     $notice = new liveform('edit_booking');
     $notice->add_notice($cancel ? lang('The booking has been cancelled.') : lang('The booking has been saved.'));

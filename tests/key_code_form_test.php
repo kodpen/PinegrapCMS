@@ -291,3 +291,23 @@ function test_key_code_form_quantity_is_a_whole_number()
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/add_key_code.php');
 	pg_assert_contains('pg_key_code_form_quantity(', $source, 'create screen reads the quantity through it');
 }
+
+function test_key_code_template_wide_layout()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/edit_key_code.php');
+	$form_column = strpos($src, 'col-12 lg:col-8 2xl:col-9 order-1');
+	$status_column = strpos($src, 'col-12 lg:col-4 2xl:col-3 order-2');
+	$save_bar = strpos($src, 'col-12 order-3 position-sticky');
+
+	pg_assert_true($form_column !== false, 'the form column');
+	pg_assert_true(($status_column !== false) && ($status_column > $form_column), 'the status column follows the form column in the source');
+	pg_assert_true(($save_bar !== false) && ($save_bar > $status_column), 'the sticky save bar comes last');
+	pg_assert_contains('style="top:3.3rem;"', $src, 'the status box sticks below the top bar');
+
+	$status = substr($src, $status_column, $save_bar - $status_column);
+	pg_assert_contains("'id' => 'enabled'", $status, 'Enabled sits in the status column');
+	pg_assert_contains("'id' => 'expiration_date'", $status, 'the expiration date sits in the status column');
+	pg_assert_contains("'id' => 'single_use'", $status, 'Single-Use sits in the status column');
+	pg_assert_contains("'id' => 'report_key_code'", $status, 'the report choice sits in the status column');
+	pg_assert_false(strpos($status, "'id' => 'notes'") !== false, 'the notes stay in the form column');
+}

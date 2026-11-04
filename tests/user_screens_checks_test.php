@@ -107,7 +107,9 @@ function test_new_user_notice_follows_the_send()
 function test_user_create_and_import_read_the_send()
 {
 	$add = (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_user.php');
-	pg_assert_contains('$sent = (bool) email(', $add, 'add_user.php reads what email() returned');
+	$write = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php');
+	pg_assert_contains('$sent = (bool) email(', $write, 'pg_user_new_account_mail() reads what email() returned');
+	pg_assert_contains('$sent = $mail[\'sent\'];', $add, 'add_user.php reads what the mail returned');
 	pg_assert_contains('pg_new_user_notice(', $add);
 
 	$import = (string) file_get_contents(PG_FUNCTIONS_DIR . '/import_users.php');
@@ -120,8 +122,9 @@ function test_user_without_contact_is_not_registered()
 {
 	pg_assert_same('(user.user_contact > 0)', pg_user_list_filter_rule('my_registered_users')[0]);
 
-	$add = (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_user.php');
-	pg_assert_false(strpos($add, "escape(\$_POST['contact_id'] ?? '')") !== false, 'no empty text in user_contact');
+	$write = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php');
+	pg_assert_contains("pg_user_contact_sql(\$fields['contact_id'] ?? '')", $write, 'user_contact through pg_user_contact_sql()');
+	pg_assert_false(strpos($write, "escape(\$fields['contact_id'] ?? '')") !== false, 'no empty text in user_contact');
 }
 
 // The default view has its own option, selected while it is shown, and its

@@ -575,6 +575,12 @@
                 self.edits.record([{ id: id, field: field, before: stored, after: (data.value !== undefined) ? data.value : value }]);
                 self.applyPending = { field: field, value: (data.value !== undefined) ? String(data.value) : value, row: rowId };
                 self.say(self.texts.saved);
+
+                // Something the save did beside the cell (a renamed page's
+                // old address sending visitors on), said once.
+                if (data.notice && (typeof window.pgToast === 'function')) {
+                    window.pgToast({ message: String(data.notice), variant: 'info', delay: 8000 });
+                }
             } else {
                 self.fieldNote(cell, String(data.message || self.texts.saveFailed));
                 self.say(String(data.message || self.texts.saveFailed));

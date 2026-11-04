@@ -13,7 +13,7 @@ module: experiments
 - The draft's own address answers nobody but staff: it stays in the private Drafts folder (`page-drafts.md`).
 
 ## How does the page cache keep it?
-- One copy per variant: the control under the address's key, every other variant under `pg_page_cache_variant_key($key, $experiment_id, $variant_key)` (`pg_page_cache_experiment_store()`). Each copy's meta line carries `exp` = id, control key, weights (`pg_page_cache_experiment_meta()`).
+- One copy per variant: the control under the address's key, every other variant under `pg_page_cache_variant_key($key, $experiment_id, $variant_key)` (`pg_page_cache_experiment_store()`). A page kept by country or device puts this under its audience copy's key, not the address's ([[audience-conditions]]). Each copy's meta line carries `exp` = id, control key, weights (`pg_page_cache_experiment_meta()`).
 - A page with a running experiment drawn for a request that joined none (a crawler, staff) is not stored, or it would answer for every variant.
 - Router (`pg_page_cache_lookup()`): the address's copy names the experiment at any age; `pg_page_cache_experiment_route()` reads the bucket or draws from the copy's weights (no query; `router_page_cache_module()` loads `experiments.php`), sends `pg_exp` (Secure from the request's scheme), and looks up the variant's copy, with the usual fresh/stale/lock rules. A crawler (`pg_page_cache_request_automated()`, the firewall's verdict) gets the control copy. No control copy on disk yet: a normal miss, and the render draws.
 - `pg_page_cache_apply()` strips Set-Cookie, then `pg_experiment_bucket_resend()` sends a bucket this request wrote (router or render) again (`pg_experiment_bucket_sent()`).

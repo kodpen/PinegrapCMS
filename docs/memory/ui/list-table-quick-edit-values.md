@@ -13,8 +13,13 @@ module: list_table_edit
 - The checks are pure (`pg_pb_quick_more_change()`); `pg_pb_quick_update()` writes them, stamps the change, logs, announces `product.updated`, tells a marketplace about the code and the weight too. The answer's cell is the list's own row read again (`pg_list_table_record_row()` with the session's view, then `pg_list_table_edit_answer()`), so the ID cell keeps its link.
 
 ## Pages: which cells change?
-- Searchable, comments and site map (`pg_page_quick_edit_columns()`), written by Modify Selected's rules (`pg_page_bulk_decide()`/`apply()`: tag cloud, SEO stale, audit). The site map switch is refused, with the reason, on a noindex page or a type the site map does not list. The folder's edit right is checked per page.
-- Remaining work: name (rename and redirect), folder, page style, page type, form name and form enabled.
+- `pg_page_quick_edit_columns($user)` (`list_table_edit.php`), built once per list in `pg_page_list_source()` (`$view['quick_edit']`): name, folder, the style of the device type shown (staff), form name and form enabled (custom form pages, users who may set that type), searchable, comments, site map. Without a user only the three switches.
+- Folder and style choices are the page screen's pickers: `pg_page_quick_folder_choices()` (no Workspace, no Recycle Bin, only folders the user may edit) and `select_style()`/`get_mobile_style_options()` read by `pg_page_quick_option_pairs()`. A visual editor page's style cell stays text and the write refuses it.
+- Folder, style and switches are written by Modify Selected's rules (`pg_page_quick_decide()` → `pg_page_bulk_decide()`/`apply()`): tag cloud, SEO stale; the destination folder needs edit rights and passes `pg_page_form_folder_errors()`. While another theme is previewed the style goes to `preview_styles`, as in Modify Selected.
+- The name: `pg_page_form_clean_name()`, `check_name_availability()`, SEO stale, and for staff the old address redirects (`pg_short_link_page_renamed()`, the page screen's box on by default). What became of the old address comes back as `notice`, which `pg_list_table_edit.js` shows as a toast.
+- Form name is unique among `custom_form_pages`; both form fields stamp the page.
+- The edit URL carries the view (`view_pages.php?filter=…`) so the answer re-reads the row in the same view (`pg_list_table_record_row()`); a page that left the view gets its cell from the stored value.
+- Remaining work: page type (its properties and the form designer redirect of `edit_page.php`).
 
 ## Which lists are not done yet?
 - Users, contacts, submitted forms, menus, short links, themes, containers, comments, styles, design files, and the commerce lists' columns outside their `pg_*_edit_columns()`.

@@ -150,6 +150,11 @@ function api_webhook_events() {
 		'customer.created'     => 'A customer record was created (not bulk imports)',
 		'customer.updated'     => 'A customer record was changed through the API',
 		'customer.deleted'     => 'A customer record was deleted through the API',
+		// Panel accounts opened, changed or closed by an application; the
+		// panel's own user screens do not announce.
+		'user.created'         => 'A panel user account was created through the API',
+		'user.updated'         => 'A panel user account was changed through the API',
+		'user.deleted'         => 'A panel user account was deleted through the API',
 		// Every row of the consent log a person gave (sign-up, account and
 		// unsubscribe pages, checkout, custom forms) or İYS sent back; a
 		// cookie answer names no customer, an import is a bulk path.

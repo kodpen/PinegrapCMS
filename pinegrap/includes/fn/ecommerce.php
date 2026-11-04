@@ -11689,6 +11689,12 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         log_activity($commission_line);
     }
 
+    // ── Take back the order's reward points ────────────────────────────
+    // Points already converted to store credit come off the newest points
+    // cards, so an order cannot be placed, its points converted and the
+    // order cancelled with the credit kept. Once, like the steps above.
+    pg_credit_points_order_cancelled($order);
+
     // ── Automatic refund (opt-in) ───────────────────────────────────────
     // Default OFF. When ECOMMERCE_ORDER_CANCEL_AUTO_REFUND === true and the
     // order's payment has a driver that can cancel (pg_payment_cancel_driver():

@@ -144,8 +144,7 @@ if (!$_POST) {
     // if the user selected to delete the ad
     if ($liveform->get_field_value('submit_delete') == 'Delete') {
         // delete ad
-        $query = "DELETE FROM ads WHERE id = ?";
-        $result = db_q($query, array((string) ($liveform->get_field_value('id')))) or output_error('Query failed.');
+        pg_ad_delete($id) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('ad'), $liveform->get_field_value('name') ) )), $_SESSION['sessionusername']);
 
@@ -169,7 +168,7 @@ if (!$_POST) {
     // else the user selected to save the ad region
     } else {
     
-        pg_ad_form_validate($liveform, $user, (string) $liveform->get_field_value('id'));
+        pg_ad_form_validate($liveform, $user, (string) $id);
         
         // if there is an error, forward user back to edit ad screen
         if ($liveform->check_form_errors() == true) {
@@ -178,19 +177,7 @@ if (!$_POST) {
         }
         
         // update ad
-        $query =
-            "UPDATE ads
-            SET
-                name = ?,
-                content = ?,
-                caption = ?,
-                ad_region_id = ?,
-                label = ?,
-                sort_order = ?,
-                last_modified_user_id = ?,
-                last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = ?";
-        $result = db_q($query, array_merge(pg_ad_form_values($liveform), array((string) $user['id'], (string) ($_POST['id'] ?? '')))) or output_error('Query failed.');
+        pg_ad_save($id, pg_ad_form_values($liveform), $user['id']) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('ad'), $liveform->get_field_value('name') ) )), $_SESSION['sessionusername']);
         // if there is a send to, then forward user to send to

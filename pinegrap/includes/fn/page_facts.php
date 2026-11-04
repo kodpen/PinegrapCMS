@@ -25,6 +25,8 @@
 // A page answer a cache may keep is drawn for a visitor who is signed out
 // with an empty cart (page_cache.php bypasses a signed-in session and one
 // holding an order), so a kept copy is right for everyone it is served to.
+// The audience facts (page_audience.php) say themselves how a page that
+// reads them may be kept.
 //
 // A value of the page's record bound to an element outside a widget is
 // printed: the stored body keeps a placeholder (pg_page_record_bind_props())
@@ -198,7 +200,7 @@ function pg_page_fact_spec($cond)
     $facts = array_merge(pg_page_fact_tokens(), pg_page_record_tokens());
     foreach ($cond['conds'] as $c) {
         $token = strtolower((string)$c['token']);
-        if (!in_array($token, $facts, true) && !pg_page_record_field_token($token)) return false;
+        if (!in_array($token, $facts, true) && !pg_page_record_field_token($token) && (pg_audience_token_kind($token) === '')) return false;
     }
     return true;
 }
@@ -270,14 +272,21 @@ function pg_page_facts_resolve($html, $values)
     return $html;
 }
 
+// Whether the page is drawn for no visit: an e-mail, a page drawn for the
+// search index or the SEO score.
+function pg_page_fact_background($email = false)
+{
+    return $email
+        || (function_exists('pg_seo_rendering') && pg_seo_rendering())
+        || (defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true);
+}
+
 // The facts of this visit (pg_page_fact_tokens()). An e-mail, a page drawn
 // for the search index or the SEO score belongs to no visit: signed out,
 // nothing in the cart.
 function pg_page_fact_values($email = false)
 {
-    $background = $email
-        || (function_exists('pg_seo_rendering') && pg_seo_rendering())
-        || (defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true);
+    $background = pg_page_fact_background($email);
     $signed_in = !$background && defined('USER_LOGGED_IN') && (USER_LOGGED_IN === true);
     $count = 0;
     $order_id = (!$background && isset($_SESSION['ecommerce']['order_id'])) ? (int)$_SESSION['ecommerce']['order_id'] : 0;
@@ -294,9 +303,13 @@ function pg_page_fact_values($email = false)
 
 // The page conditions of a drawn page decided for this visit, then the
 // record's values filled in; the facts are read only when the page holds a
-// condition.
+// condition, the audience values (page_audience.php) only those its
+// conditions name.
 function pg_page_facts_apply($html, $email = false)
 {
-    if (strpos($html, '<!--pg-pf:') !== false) $html = pg_page_facts_resolve($html, pg_page_fact_values($email));
+    $background = pg_page_fact_background($email);
+    if (strpos($html, '<!--pg-pf:') !== false) {
+        $html = pg_page_facts_resolve($html, pg_page_fact_values($email) + pg_audience_values_for($html, $background));
+    }
     return pg_page_record_fill($html, pg_page_record_values());
 }
