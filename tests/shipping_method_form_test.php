@@ -207,6 +207,63 @@ function test_shipping_method_excluded_dates()
 		'valid dates only, once each, sorted');
 }
 
+function test_shipping_method_excluded_date_errors()
+{
+	$valid = shipping_method_form_test_date(25, 12, 2026);
+	$impossible = shipping_method_form_test_date(31, 2, 2027);
+
+	pg_assert_same(array(), pg_shipping_method_excluded_date_errors(''), 'empty box');
+	pg_assert_same(array(), pg_shipping_method_excluded_date_errors(' , ,'), 'blank entries are ignored');
+	pg_assert_same(array(), pg_shipping_method_excluded_date_errors($valid . ',2027-06-30'), 'a date in the site order and an ISO date are kept');
+	pg_assert_same(array($impossible, 'abc'), pg_shipping_method_excluded_date_errors($valid . ', ' . $impossible . ',abc '), 'an impossible day and text are named, trimmed');
+	pg_assert_same(array('2026-12-25'), pg_shipping_method_excluded_dates($valid . ',' . $impossible), 'the same rule as the saved dates');
+
+	$errors = pg_shipping_method_form_errors(array('excluded_transit_dates' => 'abc<b>'));
+	pg_assert_true(isset($errors['excluded_transit_dates']), 'an entry that is not a date stops the save');
+	pg_assert_contains('abc&lt;b&gt;', $errors['excluded_transit_dates'], 'the entry is named, escaped');
+
+	$errors = pg_shipping_method_form_errors(array('excluded_transit_dates' => $valid));
+	pg_assert_false(isset($errors['excluded_transit_dates']), 'valid dates pass');
+}
+
+function test_shipping_method_service_choices()
+{
+	$none = array('usps' => false, 'ups' => false, 'fedex' => false);
+
+	pg_assert_same(array('groups' => array(), 'extra' => ''), pg_shipping_method_service_choices($none, null), 'no carrier, new method: nothing offered');
+	pg_assert_same(array('groups' => array(), 'extra' => ''), pg_shipping_method_service_choices($none, ''), 'no carrier, no service stored');
+
+	$choices = pg_shipping_method_service_choices($none, 'usps_ground');
+	pg_assert_same('usps_ground', $choices['extra'], 'a stored service of a carrier not set up is kept');
+
+	$choices = pg_shipping_method_service_choices(array('usps' => true, 'ups' => false, 'fedex' => false), 'usps_ground');
+	pg_assert_same(array('USPS'), array_keys($choices['groups']), 'only the carriers set up');
+	pg_assert_same(array('usps_express', 'usps_priority', 'usps_ground'), $choices['groups']['USPS'], 'its services');
+	pg_assert_same('', $choices['extra'], 'an offered service is not repeated');
+
+	$choices = pg_shipping_method_service_choices(array('usps' => true, 'ups' => false, 'fedex' => false), 'fedex_ground');
+	pg_assert_same('fedex_ground', $choices['extra'], 'a stored service of another carrier is kept');
+}
+
+// get_shipping_service_name() lives in the ecommerce module the runner loads.
+function test_shipping_method_service_field()
+{
+	$none = array('usps' => false, 'ups' => false, 'fedex' => false);
+
+	pg_assert_same('<input type="hidden" name="service" id="service" value="" />', pg_shipping_method_service_field($none, ''), 'no carrier and nothing stored: no empty picker, the blank service posts back');
+
+	$html = pg_shipping_method_service_field($none, 'usps_ground');
+	pg_assert_contains('<option value="usps_ground" selected="selected">', $html, 'the stored service is selected on the server');
+
+	$html = pg_shipping_method_service_field(array('usps' => false, 'ups' => true, 'fedex' => false), 'ups_ground');
+	pg_assert_contains('<optgroup label="UPS">', $html, 'the carrier group');
+	pg_assert_contains('<option value="ups_ground" selected="selected">', $html, 'selected inside its group');
+	pg_assert_false(strpos($html, '<script') !== false, 'no script picks the value');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/shipping_method_form.php');
+	pg_assert_false(strpos($source, '$("#service").val(') !== false, 'the inline selection script is gone');
+}
+
 function test_shipping_method_zone_options()
 {
 	$zones = array(

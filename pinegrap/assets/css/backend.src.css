@@ -8557,7 +8557,7 @@ html[data-bs-theme="dark"] .pg-next {
      baseline and pushes the 50px navbar row around.
    - The mascot (a muted loop over its still poster) and the inline wordmark
      carry explicit sizes from one variable, so the box is known before they
-     paint (no CLS) and the version pill never jumps.
+     paint (no CLS).
    - The wordmark's view box keeps room above the letters as large as the
      descenders below, so centring it centres the letters on the mascot.
    - Below md the header shows the mascot alone: a narrow place gets the
@@ -8607,12 +8607,11 @@ html[data-bs-theme="dark"] .pg-next {
 }
 
 /* Below md the lockup no longer fits beside the menu button and the right
-   hand cluster: the mascot stays as the square logo, the wordmark, the
-   version pill and the page heading give way, so the controls keep the row.
-   From md up nothing changes. */
+   hand cluster: the mascot stays as the square logo, the wordmark and the
+   page heading give way, so the controls keep the row. From md up nothing
+   changes. */
 @media (max-width: 767.98px) {
   #header .pinegrap-logo-word,
-  #header .pinegrap-version,
   #header .pg-navhead {
     display: none;
   }
@@ -8629,13 +8628,6 @@ html[data-bs-theme="dark"] .pg-next {
   #header .pg-brand-item {
     display: none;
   }
-}
-
-.pinegrap-version {
-  font-size: 0.65em;
-    position: absolute;
-    bottom: -7px;
-    left: 22px;
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -11765,30 +11757,27 @@ body.workspace .card .table {
   margin-top: 0;
 }
 /* The workspace screens run to the edges of the page (their main area has
-   no padding). The channel screen is one panel and fills it; the others keep
-   their toolbar across the whole width and give what is under it the
-   toolbar's own side padding, so the rounded cards do not meet the edge and
-   line up with the first button above them. The settings, MCP connections,
-   channel template, calendar subscription and tables screens put their columns straight into
-   .ws-shell-main, with no #ws-root around them: they give the main area
-   that padding themselves, so their columns keep their gutter. */
-body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables) #content.p-0 > .row,
-body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables) .ws-shell-main > .row {
+   no padding). The channel screen is one panel and fills it. Every other
+   screen sits in .ws-shell-main, which gives what it holds the side padding
+   of the panel's toolbar, so the rounded cards do not meet the edge of the
+   page and line up with the first button above them. The padding is on the
+   shared wrapper, never on a list of screens: a row in it keeps its own
+   gutter (its negative margins fall inside the padding), and a screen drawn
+   in #ws-root by its script gets the same edge as one drawn by the server.
+   The toolbar runs across the whole width over that padding. */
+body.workspace #content.p-0 > .row {
   --bs-gutter-x: 0;
 }
-body.workspace:not(.workspace_channels) #ws-root {
+body.workspace .ws-shell-main {
   padding: 0 .75rem .75rem;
 }
-body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables) .ws-shell-main {
-  padding: 0 .75rem .75rem;
-}
-body.workspace:not(.workspace_channels) #ws-root > .pg-toolbar,
-body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables) .ws-shell-main > #button_bar {
+body.workspace .ws-shell-main #ws-root > .pg-toolbar,
+body.workspace .ws-shell-main > #button_bar {
   max-width: none;
   margin-left: -.75rem;
   margin-right: -.75rem;
 }
-body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables) .ws-shell-main > #button_bar {
+body.workspace .ws-shell-main > #button_bar {
   padding: .5rem .75rem;
   border-bottom: 1px solid var(--pg-border-color-translucent);
 }

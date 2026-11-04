@@ -475,3 +475,44 @@ function pg_container_figure($value)
 
     return is_numeric($text) ? number_format(round((float) $text, 4), 4, '.', '') : '0';
 }
+
+/**
+ * Write a checked container (pg_container_form_validate()) over the stored
+ * one: the figures at the columns' four places, the cost in minor units,
+ * and who changed it when. Used by the edit screen and the list's quick
+ * edit (includes/fn/container_list_edit.php).
+ *
+ * @param liveform $liveform
+ * @param int      $container_id
+ * @param int      $user_id
+ * @return bool    whether the query ran
+ */
+function pg_container_form_save($liveform, $container_id, $user_id)
+{
+    $cost = (int) round(pg_parse_amount($liveform->get_field_value('cost')) * 100);
+
+    return (bool) db_q(
+        "UPDATE containers
+        SET
+            name = ?,
+            enabled = ?,
+            length = ?,
+            width = ?,
+            height = ?,
+            weight = ?,
+            cost = ?,
+            last_modified_user_id = ?,
+            last_modified_timestamp = UNIX_TIMESTAMP()
+        WHERE id = ?",
+        array(
+            (string) $liveform->get_field_value('name'),
+            $liveform->get_field_value('enabled') ? '1' : '0',
+            pg_container_figure($liveform->get_field_value('length')),
+            pg_container_figure($liveform->get_field_value('width')),
+            pg_container_figure($liveform->get_field_value('height')),
+            pg_container_figure($liveform->get_field_value('weight')),
+            (string) $cost,
+            (string) (int) $user_id,
+            (string) (int) $container_id,
+        ));
+}

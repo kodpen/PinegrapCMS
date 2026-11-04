@@ -149,20 +149,18 @@ if (!isset($_POST['name'])) {
 
     
 
-    $output_content_based_classes = 'md:col';
-    
+    // The preview (or the missing-file note) heads the status column.
     $output_thumbnail = '';
     $output_image_info = '';
     // Get file path
     $file_path = FILE_DIRECTORY_PATH . '/' . $file_name;
 
     if (!$on_disk) {
-        $output_thumbnail = '<div class="alert theme-warning">' . lang('The file is recorded here but is not on the disk.') . '</div>';
+        $output_thumbnail = '<div class="alert theme-warning my-7">' . lang('The file is recorded here but is not on the disk.') . '</div>';
 
     } elseif (mb_strtolower($row['type']) == 'pdf') {
         // PDF preview
         $output_thumbnail = '
-            <div class="col-12">
                 <div class="card my-7">
                     <div class="ratio ratio-16x9">
                         <embed 
@@ -171,14 +169,12 @@ if (!isset($_POST['name'])) {
                             title="' . h($file_name) . '" 
                             class="w-100 h-100" />
                     </div>
-                </div>
-            </div>';
+                </div>';
             
     } elseif (in_array(mb_strtolower($row['type']), ['mp4', 'webm'])) {
         // Video preview
         $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $file_name);
         $output_thumbnail = '
-            <div class="col-12">
                 <div class="card my-7 position-relative overflow-hidden" style="background-color:' . h($accent_color) . ';">
                     <div class="ratio ratio-16x9">
                         <video 
@@ -190,35 +186,29 @@ if (!isset($_POST['name'])) {
                             Your browser does not support the video tag.
                         </video>
                     </div>
-                </div>
-            </div>';
+                </div>';
             
  
     } elseif (in_array(mb_strtolower($row['type']), ['mp3','wav','ogg'])) {
         // Audio preview
         $output_thumbnail = '
-            <div class="col-12">
-                <div class="card my-7">
+                <div class="card my-7 p-3">
                     <audio controls class="w-100">
                         <source src="' . OUTPUT_PATH . $file_name . '" type="audio/' . mb_strtolower($row['type']) . '">
                         Your browser does not support the audio element.
                     </audio>
-                </div>
-            </div>';
+                </div>';
             
     } elseif (mb_strtolower($row['type']) == 'ico') {
         // ICO preview
         $output_thumbnail = '
-            <div class="col-auto">
-                <div class="card my-7 w-auto d-inline-flex p-5">
+                <div class="card my-7 p-5 align-items-center">
                     <img 
                         src="' . OUTPUT_PATH . $file_name . '" 
                         class="img-fluid" 
                         alt="" 
                         style="max-width:128px; height:auto;" />
-                   
-                </div>
-            </div>';
+                </div>';
     }
 
     // If file type is an image.
@@ -233,8 +223,6 @@ if (!isset($_POST['name'])) {
             (mb_strtolower($row['type']) == 'tif')
     )) {
 
-        $output_content_based_classes = 'md:col';
-        
         $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $file_name);
         // Set default values
         $image_width = '';
@@ -277,7 +265,7 @@ if (!isset($_POST['name'])) {
         // Call function to resize image if dimensions are valid
         if (is_numeric($image_width) && is_numeric($image_height)) {
             $thumbnail_dimensions = get_thumbnail_dimensions($image_width, $image_height, $max_dimension);
-            $output_image_info = ' | ' . pg_image_dimensions_label($image_width, $image_height);
+            $output_image_info = h(pg_image_dimensions_label($image_width, $image_height));
         }
 
        
@@ -285,12 +273,10 @@ if (!isset($_POST['name'])) {
         
 
         $output_thumbnail = '
-        <div class="col-12">
             <div class="card my-7 position-relative overflow-hidden" style="background-color:' . h($accent_color) . ';">
                 <a href="' . OUTPUT_PATH . h($file_name) . '" class="stretched-link" target="_blank" tabindex="-1" aria-hidden="true"></a>
                 <img style="width: auto; height: auto; max-width: 100%; max-height: 300px; position: relative; z-index: 1;" class="card-img object-fit-contain lazy" alt="" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . $data_src . '" />
-            </div>
-        </div>';
+            </div>';
 
     }
 
@@ -336,7 +322,6 @@ if (!isset($_POST['name'])) {
             break;
     }
     $output_file_content_row = '';
-    $output_no_file_editor_classes = 'md:col-6'; //default
 
 
     if (in_array($file_extension, $viewable_formats)) {
@@ -344,7 +329,6 @@ if (!isset($_POST['name'])) {
         $read_only = (in_array($file_extension, $editable_formats) == false);
         $edit_file_button_value = 'Edit ' . strtoupper($file_extension);
         $output_file_content_row = '
-        <div class="col-12 md:col-8">
             <div class="card my-7">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('File Content') . '
@@ -361,22 +345,17 @@ if (!isset($_POST['name'])) {
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>';
+            </div>';
         
         $edit_file_button_label = lang( array('string'=>'Edit {var:1}','vars'=>strtoupper($file_extension)) );
-        $output_no_file_editor_classes = 'md:col-12';
     }
 
 
     // SVG → raster conversion UI
     if ($on_disk && $file['type'] === 'svg') {
-        
-        $output_content_based_classes = 'md:col-4';
         $svg_w = (is_numeric($image_width)  && $image_width  > 0) ? (int)$image_width  : 0;
         $svg_h = (is_numeric($image_height) && $image_height > 0) ? (int)$image_height : 0;
         $output_convert_rows = '
-        <div class="col-12 ' . $output_no_file_editor_classes . '">
             <div class="card my-7">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Convert') . '
@@ -414,8 +393,7 @@ if (!isset($_POST['name'])) {
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>';
+            </div>';
     }
 
     // The block above only measures the types it draws a preview for, and the
@@ -478,8 +456,7 @@ if (!isset($_POST['name'])) {
             $image_buttons = $optimize_button . $resize_button . '<button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate Right') . '</button><button type="button" class="btn btn-link pg-link-secondary py-0 mb-3" data-pg-image-edit="' . h($file_name) . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</button>' . pg_image_editor_includes();
             if($file['type'] !== 'webp'){
                 $output_convert_rows = '
-                <div class="col-12 ' . $output_no_file_editor_classes . '">
-                    <div class="card my-7 ">
+                    <div class="card my-7">
                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                             ' . lang('Convert') . '
                         </div>
@@ -491,8 +468,7 @@ if (!isset($_POST['name'])) {
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>';
+                    </div>';
 
             }
 
@@ -514,40 +490,47 @@ if (!isset($_POST['name'])) {
         ? lang('This file will be moved to the Recycle Bin.')
         : lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('file'))));
 
-    // What the File Manager's details say about the file and this screen did
-    // not: whether an image is optimized, the last change with its exact
-    // time and who made it, and the address as text to copy.
-    $output_file_facts = '';
+    // Summary rows of the status column: what the File Manager's details say
+    // about the file (size, an image's dimensions and whether it is
+    // optimized, who may open it, the last change with its exact time and
+    // who made it, and the address as text to copy).
+    $summary_rows = array(lang('File Size') => h($output_file_size));
+
+    if ($output_image_info !== '') {
+        $summary_rows[lang('Dimensions')] = $output_image_info;
+    }
 
     if ($image_buttons !== '') {
-        $output_file_facts .= '<p class="p-0 m-0">' . ($optimized
-            ? '<i class="bi bi-check2-circle fg-success me-1"></i>' . lang('Optimized')
-            : lang('Not optimised')) . '</p>';
+        $summary_rows[lang('Optimized')] = $optimized
+            ? '<i class="bi bi-check2-circle fg-success me-1"></i>' . lang('Yes')
+            : lang('Not optimised');
     }
+
+    $summary_rows[lang('Access')] = '<span class="' . h(get_access_control_type($file_folder)) . '">' . h(get_access_control_type_name(get_access_control_type($file_folder))) . '</span>';
 
     if ((int) $row['timestamp'] > 0) {
         $editor_name = pg_user_display_name($row['user_first_name'], $row['user_last_name'], $row['user_username']);
-        $output_file_facts .= '<p class="p-0 m-0">' . lang('Last Modified') . ': '
-            . h(get_absolute_time(array('timestamp' => (int) $row['timestamp'], 'format' => 'plain_text', 'size' => 'short', 'year' => true)))
-            . ' · ' . get_relative_time(array('timestamp' => (int) $row['timestamp']))
-            . (($editor_name !== '') ? ' ' . h(lang(array('string' => 'by {var:1}', 'vars' => array($editor_name)))) : '') . '</p>';
+        $summary_rows[lang('Last Modified')] = h(get_absolute_time(array('timestamp' => (int) $row['timestamp'], 'format' => 'plain_text', 'size' => 'short', 'year' => true)))
+            . '<div class="fw-normal small">' . get_relative_time(array('timestamp' => (int) $row['timestamp']))
+            . (($editor_name !== '') ? ' ' . h(lang(array('string' => 'by {var:1}', 'vars' => array($editor_name)))) : '') . '</div>';
     }
 
     if ($on_disk) {
         $file_url = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . $file_name;
-        $output_file_facts .= '<p class="p-0 m-0 d-flex flex-wrap align-items-center justify-content-center md:justify-content-start gap-2">' . lang('Address') . ': '
-            . '<code class="text-break user-select-all" id="file_address">' . h($file_url) . '</code>'
-            . '<button type="button" class="btn btn-sm btn-text theme-secondary py-0 no-popover" data-pg-copy-address="' . h($file_url) . '" data-pg-copied="' . h(lang('Copied')) . '" title="' . h(lang('Copy address')) . '" aria-label="' . h(lang('Copy address')) . '"><i class="bi bi-copy"></i></button></p>';
+        $summary_rows[lang('Address')] = '<code class="text-break user-select-all fw-normal" id="file_address">' . h($file_url) . '</code>'
+            . '<button type="button" class="btn btn-sm btn-text theme-secondary py-0 no-popover" data-pg-copy-address="' . h($file_url) . '" data-pg-copied="' . h(lang('Copied')) . '" title="' . h(lang('Copy address')) . '" aria-label="' . h(lang('Copy address')) . '"><i class="bi bi-copy"></i></button>';
     }
 
     // "Where is it used?" asks the File Manager's own search (the
     // explorer_file_usage action) only when pressed: it reads every content
     // table, so nobody pays for it just by opening the file.
     $output_where_used = '
-                    <div class="mb-5" id="file_where_used">
-                        <button type="button" class="btn btn-sm btn-outline theme-secondary no-popover" data-pg-where-used="' . (int) $_GET['id'] . '"><i class="bi bi-diagram-3 me-1"></i>' . lang('Where is it used?') . '</button>
-                        <div class="mt-3 small" data-pg-where-used-result></div>
-                    </div>
+                            <div class="card my-7" id="file_where_used">
+                                <div class="card-body">
+                                    <button type="button" class="btn btn-sm btn-outline theme-secondary no-popover" data-pg-where-used="' . (int) $_GET['id'] . '"><i class="bi bi-diagram-3 me-1"></i>' . lang('Where is it used?') . '</button>
+                                    <div class="mt-3 small" data-pg-where-used-result></div>
+                                </div>
+                            </div>
     <script>
     (function () {
         var texts = ' . json_encode(array(
@@ -662,59 +645,36 @@ if (!isset($_POST['name'])) {
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '"><input type="hidden" name="from" value="' . h($from) . '">
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
 
-                    <div class="mb-3 text-center md:text-start">
-                        <p class="p-0 m-0">' . lang('File Size') . ': '. $output_file_size . $output_image_info . '</p>
-                        <p class="p-0 m-0 ' . h(get_access_control_type($file_folder)) . '">' . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($file_folder))) . '</p>
-                        ' . $output_file_facts . '
-                    </div>
                     ' . pg_screen_toolbar(array(
                         'secondary' => array($image_buttons, $output_file_links),
                     )) . '
-                    ' . $output_where_used . '
-                    <div class="row mb-3">
-                        <div class="col-12">
-                            ' . $output_thumbnail . '
-                        </div>
-                    </div>
-                    <div class="row justify-content-center">
-                        <div class="col-12 ' . $output_content_based_classes . '">
-                            <div class="row">
-                                <div class="col-12  ' . $output_no_file_editor_classes . '">
-                                    <div class="card my-7">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                            ' . lang('Main Informations') . '
+                    ' . pg_design_file_form_layout(
+                        '
+                            <div class="card my-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Main Informations') . '
+                                </h2>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-12 md:col-6 my-3">
+                                            <label for="name" class="form-label">' . lang('File Name') . '</label>
+                                            <input value="' . h($file_name) . '" type="text" name="name" id="name" class="form-control"/>
                                         </div>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-12 my-3">
-                                                    <label for="name" class="form-label">' . lang('File Name') . '</label>
-                                                    <input value="' . h($file_name) . '" type="text" name="name" id="name" class="form-control "/>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div> 
+                                    </div>
                                 </div>
-                                <div class="col-12   ' . $output_no_file_editor_classes . '">' .
-                                    pg_design_file_form_access_card(select_folder($row['folder']), array('design' => ($user['role'] <= 1), 'design_checked' => ($design == 1))) . '
-                                </div>
-                                <div class="col-12  ' . $output_no_file_editor_classes . '">' .
-                                    pg_design_file_form_description_card($row['description']) . '
-                                </div>
-                                ' . $output_convert_rows . '
-                            </div>
-                        </div>
-                        ' . $output_file_content_row . '
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-solid theme-primary "><i class="bi bi-box-arrow-left me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Save & Return') ) . '</span></button>
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                                <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-solid theme-secondary"><i class="bi bi-copy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Duplicate') . '</span></button>
-                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h($output_delete_confirmation) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                            </div>' . $output_file_content_row
+                            . pg_design_file_form_description_card($row['description'])
+                            . $output_convert_rows,
+                        $output_thumbnail
+                        . pg_design_file_form_summary_card('', $summary_rows)
+                        . pg_design_file_form_access_card(select_folder($row['folder']), array('design' => ($user['role'] <= 1), 'design_checked' => ($design == 1)))
+                        . $output_where_used,
+                        '
+                                        <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1 btn-solid theme-primary"><i class="bi bi-box-arrow-left me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save & Return') . '</span></button>
+                                        <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                        <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-solid theme-secondary"><i class="bi bi-copy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Duplicate') . '</span></button>
+                                        <button type="submit" name="delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h($output_delete_confirmation) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Delete') . '</span></button>'
+                    ) . '
                 </form>
             </div>
         </div>

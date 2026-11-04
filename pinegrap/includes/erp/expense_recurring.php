@@ -332,6 +332,90 @@ function erp_expense_recurrence_create($expense_id, $options, $user_id = 0)
 }
 
 /**
+ * What a changed expense hands to the active repeat of its family: the
+ * columns of erp_expense_recurrences whose value differs from the expense
+ * (category, supplier, tax number, description, tax_deductible, and the
+ * amount as the receipt printed it with its tax rate). How often it repeats,
+ * the day, the end and the till stay. In another currency the amount and the
+ * rate stay too: that is not a corrected amount, and a repeat written as paid
+ * pays from a till in its own currency.
+ *
+ * @param array      $expense     erp_expenses row as saved
+ * @param array|null $recurrence  erp_expense_recurrences row, or null
+ * @return array column => value; empty when there is nothing to write
+ */
+function erp_expense_recurrence_changes($expense, $recurrence)
+{
+    if (!is_array($recurrence) || ((string) ($recurrence['status'] ?? '') !== 'active')) {
+        return array();
+    }
+
+    $wanted = array(
+        'category_id' => (int) ($expense['category_id'] ?? 0),
+        'supplier' => (string) ($expense['supplier'] ?? ''),
+        'supplier_tax_number' => (string) ($expense['supplier_tax_number'] ?? ''),
+        'description' => (string) ($expense['description'] ?? ''),
+        'tax_deductible' => ((int) ($expense['tax_deductible'] ?? 0) === 1) ? 1 : 0,
+    );
+
+    if (strtoupper((string) ($expense['currency'] ?? '')) === strtoupper((string) ($recurrence['currency'] ?? ''))) {
+        $wanted['amount'] = (int) ($expense['total_amount'] ?? 0);
+        $wanted['tax_rate'] = (string) ($expense['tax_rate'] ?? '0');
+    }
+
+    $changes = array();
+
+    foreach ($wanted as $column => $value) {
+        $same = ($column === 'tax_rate')
+            ? ((float) ($recurrence[$column] ?? 0) === (float) $value)
+            : ((string) ($recurrence[$column] ?? '') === (string) $value);
+
+        if (!$same) {
+            $changes[$column] = $value;
+        }
+    }
+
+    return $changes;
+}
+
+/**
+ * Hand a changed expense's figures to the active repeat of its family
+ * (erp_expense_recurrence_of()), so the next ones it writes carry the
+ * correction; the expenses it wrote already stay. Called inside the
+ * expense's transaction.
+ *
+ * @param int $expense_id
+ * @return bool false when the update failed
+ */
+function erp_expense_recurrence_follow($expense_id)
+{
+    if (!erp_expense_recurring_ready()) {
+        return true;
+    }
+
+    $expense = erp_expense((int) $expense_id);
+
+    if ($expense === null) {
+        return true;
+    }
+
+    $recurrence = erp_expense_recurrence_of($expense);
+    $changes = erp_expense_recurrence_changes($expense, $recurrence);
+
+    if (empty($changes)) {
+        return true;
+    }
+
+    $sets = array();
+    foreach ($changes as $column => $value) {
+        $sets[] = $column . " = '" . escape((string) $value) . "'";
+    }
+    $sets[] = "updated_at = '" . time() . "'";
+
+    return erp_query("UPDATE erp_expense_recurrences SET " . implode(', ', $sets) . " WHERE id = '" . (int) $recurrence['id'] . "' AND status = 'active'") !== false;
+}
+
+/**
  * Stop a recurrence. The expenses it wrote stay as they are.
  *
  * @param int $id

@@ -18,12 +18,29 @@
 
 include('init.php');
 
-$user = validate_user();
-validate_ecommerce_access($user);
-
 include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/container_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/container_list_edit.php');
+
+$quick_edit = pg_container_quick_edit_columns();
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php), answered in JSON before the screen is drawn.
+// The rights are the container screen's (validate_ecommerce_access()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
+        return ((int) $user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_container_quick_update($edit['id'], $edit['field'], $edit['value'], $edit['user'], $quick_edit);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
+$user = validate_user();
+validate_ecommerce_access($user);
+
 $liveform = new liveform('view_containers');
 
 // The columns this list sorts by, in the order the table shows them.
@@ -60,70 +77,20 @@ $order_by = pg_list_order_by($sort_levels, array(
     'last_modified' => 'containers.last_modified_timestamp',
 ));
 
-$containers = db_items(
-    "SELECT
-        containers.id,
-        containers.name,
-        containers.enabled,
-        containers.length,
-        containers.width,
-        containers.height,
-        containers.weight,
-        containers.cost / 100 AS cost,
-        created_user.user_username AS created_username,
-        containers.created_timestamp,
-        last_modified_user.user_username AS last_modified_username,
-        containers.last_modified_timestamp
-    FROM containers
-    LEFT JOIN user AS created_user ON containers.created_user_id = created_user.user_id
-    LEFT JOIN user AS last_modified_user ON containers.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $order_by");
-
 // Every container is printed: the list table driver sorts and searches them
 // in the browser (browser mode) and keeps a heading's sort in the session.
-// The icon is hidden from screen readers; the word beside it says the state.
-$output_checkmark = '<i class="bi bi-check-circle" aria-hidden="true"></i><span class="visually-hidden">' . lang('Yes') . '</span>';
-$output_no = '<span class="visually-hidden">' . lang('No') . '</span>';
 $list_rows = array();
 
-// A measure cell: the value with its unit, empty when not set; sorted by
-// the number.
-$measure_cell = function ($value, $unit) {
-    return pg_list_cell(($value > 0) ? pg_container_format_measure($value) . ' ' . $unit : '', 'align-middle', array('data-pg-sort-value' => (float) $value));
-};
-
-foreach ($containers as $container) {
-    $list_rows[] = array(
-        'id' => $container['id'],
-        'cells' => array(
-            'name' => pg_list_cell('<a href="edit_container.php?id=' . (int) $container['id'] . '" data-pg-open>' . h($container['name']) . '</a>', 'align-middle ' . ($container['enabled'] ? 'status_enabled' : 'status_disabled')),
-            'enabled' => pg_list_cell($container['enabled'] ? $output_checkmark : $output_no, 'align-middle', array('data-pg-sort-value' => $container['enabled'] ? 1 : 0)),
-            'length' => $measure_cell($container['length'], lang('in')),
-            'width' => $measure_cell($container['width'], lang('in')),
-            'height' => $measure_cell($container['height'], lang('in')),
-            'weight' => $measure_cell($container['weight'], lang('lbs')),
-            'cost' => pg_list_cell(($container['cost'] > 0) ? pg_format_money($container['cost'], BASE_CURRENCY_SYMBOL) : '', 'align-middle', array('data-pg-sort-value' => (float) $container['cost'])),
-            'created' => pg_list_table_when_cell($container['created_timestamp'], $container['created_username'] ?? ''),
-            'last_modified' => pg_list_table_when_cell($container['last_modified_timestamp'], $container['last_modified_username'] ?? ''),
-        ),
-    );
+foreach ((array) db_items(pg_container_list_sql() . " ORDER BY " . $order_by) as $container) {
+    $list_rows[] = array('id' => $container['id'], 'cells' => pg_container_list_cells($container, $quick_edit));
 }
 
 $list = pg_list_table_printed(array(
     'list' => 'view_containers',
-    'columns' => array(
-        'name' => array('heading' => lang('Name')),
-        'enabled' => array('heading' => lang('Enabled'), 'kind' => 'check'),
-        'length' => array('heading' => lang('Length'), 'kind' => 'number'),
-        'width' => array('heading' => lang('Width'), 'kind' => 'number'),
-        'height' => array('heading' => lang('Height'), 'kind' => 'number'),
-        'weight' => array('heading' => lang('Weight'), 'kind' => 'number'),
-        'cost' => array('heading' => lang('Cost'), 'kind' => 'money'),
-        'created' => array('heading' => lang('Created'), 'kind' => 'date'),
-        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
-    ),
+    'columns' => pg_container_list_columns(true),
     'levels' => $sort_levels,
     'rows' => $list_rows,
+    'edit' => array('url' => 'view_containers.php', 'columns' => $quick_edit),
 ));
 
 echo

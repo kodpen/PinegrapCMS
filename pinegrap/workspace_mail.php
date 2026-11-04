@@ -33,12 +33,15 @@ $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
 
 echo pg_page_shell(array(
     'title'               => lang('E-mails'),
+    'extra classes'       => 'workspace workspace_mail',
     'icon'                => 'workspace',
     'heading'             => lang('E-mails'),
     'heading_description' => lang('The e-mail conversations of the channels you can read. Open one to answer it or to change its status and holder.'),
 )) . '
 
-<main id="content" class="container-fluid">
+<main id="content" class="container-fluid p-0">
+<div class="ws-shell">
+<div class="ws-shell-main">
     <div class="row"><div class="col-12">
         ' . ws_mail_list_filters_html($filters) . '
         ' . ws_mail_list_html($rows, $base, $now) . '
@@ -46,4 +49,6 @@ echo pg_page_shell(array(
             ? '<p class="small fg-secondary">' . h(lang(array('string' => 'The newest {var:1} are shown; narrow the list to see others.', 'vars' => WS_MAIL_LIST_MAX))) . '</p>'
             : '') . '
     </div></div>
+</div>
+</div>
 </main>' . output_footer();
