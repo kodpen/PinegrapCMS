@@ -401,7 +401,7 @@ function test_parasut_stale_ids_order_screen_offers_the_buttons_and_shows_the_no
 	parasut_stale_ids_test_has("lang('This order already has a shipment document in Paraşüt. Pressing again first asks Paraşüt for it and creates a new one only if it was deleted there. Continue?')", $source, 'the shipment confirm');
 
 	$start = strpos($source, "\$output_parasut_shipment_button = '';");
-	$end = ($start === false) ? false : strpos($source, '$output_parasut_buttons =', $start);
+	$end = ($start === false) ? false : strpos($source, '$output_parasut_menu_items = array_values(', $start);
 	pg_assert_true(($start !== false) && ($end !== false), 'the two buttons are found');
 	$block = (($start !== false) && ($end !== false)) ? substr($source, $start, $end - $start) : '';
 

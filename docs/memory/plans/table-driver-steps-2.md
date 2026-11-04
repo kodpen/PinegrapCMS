@@ -8,7 +8,7 @@ description: Steps of the table driver plan, part 2: the browser mode, the print
 
 2. TD10 (M) After TD9. Cut in two: TD10a (#6584) product attributes, cart quotes, returns, subscriptions, orders for a contact; TD10b (#6616) arrival dates, ship date adjustments, verified shipping addresses, order reports, duplicate products; the shipping report a plain report table. TD10 done. Commerce lists: `view_cart_quotes.php`, `view_returns.php`, `view_subscriptions.php`, `view_orders_for_contact.php`, `view_product_attributes.php`, `duplicate_products.php`, `view_arrival_dates.php`, `view_ship_date_adjustments.php`, `view_verified_shipping_addresses.php`, `view_shipping_report.php`, `view_order_reports.php`.
 
-3. TD11 (M) After TD9. Settings-type lists: `view_countries.php`, `view_states.php`, `view_zones.php`, `view_tax_zones.php`, `view_currencies.php`, `view_referral_sources.php`, `view_contact_groups.php`, `view_calendars.php`, `view_calendar_event_locations.php`, `includes/templates/view_auto_dialogs.php`.
+3. TD11 (M) After TD9. Done (#6646); notes in `ui/list-table-settings-lists.md`. Settings-type lists: `view_countries.php`, `view_states.php`, `view_zones.php`, `view_tax_zones.php`, `view_currencies.php`, `view_referral_sources.php`, `view_contact_groups.php`, `view_calendars.php`, `view_calendar_event_locations.php`, `includes/templates/view_auto_dialogs.php`.
 
 4. TD12 (M) After TD9. Campaign, report and system lists: `view_email_campaigns.php`, `view_email_campaign_profiles.php`, `view_email_campaign_history.php`, `view_sms_campaigns.php`, `view_visitor_reports.php`, `view_not_found_log.php`, `backups.php`, `cloudflare.php`, `database_engine.php`, `edit_gift_card.php`.
 

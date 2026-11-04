@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 $user = validate_user();
 validate_area_access($user, 'manager');
 
@@ -81,6 +82,56 @@ $auto_dialogs = db_items(
     LEFT JOIN user AS last_modified_user ON auto_dialogs.last_modified_user_id = last_modified_user.user_id
     ORDER BY $order_by");
 
+$home_page_name = db_value("SELECT page_name FROM page WHERE page_home = 'yes' ORDER BY page_timestamp DESC LIMIT 1");
+
+// Every auto dialog is printed: the list table driver sorts and searches
+// them in the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
+
+foreach ($auto_dialogs as $auto_dialog) {
+    $id = (int) $auto_dialog['id'];
+    $width = (int) $auto_dialog['width'];
+    $height = (int) $auto_dialog['height'];
+    $delay = (int) $auto_dialog['delay'];
+    $frequency = (int) $auto_dialog['frequency'];
+
+    $list_rows[] = array(
+        'id' => $id,
+        'cells' => array(
+            'name' => pg_list_cell('<a href="edit_auto_dialog.php?id=' . $id . '" class="' . ($auto_dialog['enabled'] ? 'status_enabled' : 'status_disabled') . '" data-pg-open>' . h($auto_dialog['name']) . '</a>'),
+            'enabled' => pg_list_table_check_cell(!empty($auto_dialog['enabled'])),
+            'url' => pg_list_cell(h($auto_dialog['url'])),
+            'width' => pg_list_cell($width ? h(pg_format_number($width, 0)) . 'px' : '', 'align-middle', array('data-pg-sort-value' => $width)),
+            'height' => pg_list_cell($height ? h(pg_format_number($height, 0)) . 'px' : '', 'align-middle', array('data-pg-sort-value' => $height)),
+            'delay' => pg_list_cell($delay ? lang(array('string' => '{var:1} second{suffix:1}', 'vars' => pg_format_number($delay, 0), 'suffix' => array(($delay > 1) ? 's' : ''))) : '', 'align-middle', array('data-pg-sort-value' => $delay)),
+            'frequency' => pg_list_cell($frequency ? lang(array('string' => '{var:1} hour{suffix:1}', 'vars' => pg_format_number($frequency, 0), 'suffix' => array(($frequency > 1) ? 's' : ''))) : '', 'align-middle', array('data-pg-sort-value' => $frequency)),
+            'page' => pg_list_cell(h($auto_dialog['page'])),
+            'created' => pg_list_table_when_cell($auto_dialog['created_timestamp'], (string) $auto_dialog['created_username']),
+            'last_modified' => pg_list_table_when_cell($auto_dialog['last_modified_timestamp'], (string) $auto_dialog['last_modified_username']),
+            'preview' => pg_list_cell('<a class="btn-data-control btn btn-outline theme-secondary border-2" href="' . h(PATH . encode_url_path($home_page_name) . '?preview_auto_dialog=' . $id) . '" target="_blank" title="' . h(lang('Preview')) . '" aria-label="' . h(lang('Preview')) . '"><i class="bi bi-link" aria-hidden="true"></i></a>', 'align-middle text-end'),
+        ),
+    );
+}
+
+$list = pg_list_table_printed(array(
+    'list' => 'view_auto_dialogs',
+    'columns' => array(
+        'name' => array('heading' => lang('Name')),
+        'enabled' => array('heading' => lang('Enabled'), 'kind' => 'check'),
+        'url' => array('heading' => lang('URL')),
+        'width' => array('heading' => lang('Width'), 'kind' => 'number'),
+        'height' => array('heading' => lang('Height'), 'kind' => 'number'),
+        'delay' => array('heading' => lang('Delay'), 'kind' => 'number'),
+        'frequency' => array('heading' => lang('Frequency'), 'kind' => 'number'),
+        'page' => array('heading' => lang('Only on Page')),
+        'created' => array('heading' => lang('Created'), 'kind' => 'date'),
+        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+        'preview' => array('heading' => lang('Preview'), 'kind' => 'actions'),
+    ),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+));
+
 echo pg_page_shell(
     array(
         'title'=> lang('Auto Dialogs'),
@@ -91,12 +142,8 @@ echo pg_page_shell(
     )
 );
 
-$home_page_name = db_value("SELECT page_name FROM page WHERE page_home = 'yes' ORDER BY page_timestamp DESC LIMIT 1");
-
 require('includes/templates/view_auto_dialogs.php');
 
-echo output_footer();
+echo pg_js_bundle_tags('assets/js/pg_list_table.min.js') . output_footer();
 
 $liveform->remove_form();
-
-?>
