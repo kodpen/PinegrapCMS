@@ -38,6 +38,9 @@ $out_of_stock_products_filter_selected = '';
 $liveform = new liveform('view_products');
 $user = validate_user();
 validate_ecommerce_access($user);
+
+// " AND (products.recycled = '0')", or '' before the upgrade that adds the bin.
+$live_products_sql = pg_catalog_bin_ready() ? " AND (products.recycled = '0')" : '';
 //   $liveform->mark_error("error yitle","error descrition");
 //   $liveform->add_warning("warning title");
 //   $liveform->add_notice("notice title");
@@ -236,6 +239,12 @@ if (!$_POST) {
             break;
     }
 
+    // A product in the Recycle Bin is neither listed nor counted, as on the
+    // Products screen: copying one would put a deleted product back on sale.
+    if ($live_products_sql !== '') {
+        $where .= (($where == '') ? 'WHERE ' : ' AND ') . "(products.recycled = '0')";
+    }
+
     // Headings of the columns the list can be sorted by, keyed by the code the
     // sort is kept as.
     $sort_labels = array(
@@ -336,420 +345,14 @@ if (!$_POST) {
     ));
 
 
-    // if user requested to export products, then export them
+    // The product export is the Products screen's (export_products_f.php),
+    // so an old link to an export here gets that one.
     if (($_GET['submit_data'] ?? '') == 'Export Products') {
-        // force download dialog
-        header("Content-type: text/csv; charset=utf-8");
-        header("Content-disposition: attachment; filename=products.csv");
-
-        $output_custom_field_1_heading = '';
-
-        // If the first custom product field is active, then output heading for it.
-        if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-            $output_custom_field_1_heading = '"' . escape_csv(ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL) . '",';
-        }
-
-        $output_custom_field_2_heading = '';
-
-        // If the second custom product field is active, then output heading for it.
-        if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-            $output_custom_field_2_heading = '"' . escape_csv(ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL) . '",';
-        }
-
-        $output_custom_field_3_heading = '';
-
-        // If the third custom product field is active, then output heading for it.
-        if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-            $output_custom_field_3_heading = '"' . escape_csv(ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL) . '",';
-        }
-
-        $output_custom_field_4_heading = '';
-
-        // If the fourth custom product field is active, then output heading for it.
-        if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-            $output_custom_field_4_heading = '"' . escape_csv(ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL) . '",';
-        }
-
-        // Get all of the submit form fields, so we can figure out all of the necessary columns.
-        $submit_form_fields = db_items(
-            "SELECT
-                product_submit_form_fields.product_id,
-                product_submit_form_fields.action,
-                product_submit_form_fields.value,
-                form_fields.name
-            FROM product_submit_form_fields
-            LEFT JOIN form_fields ON product_submit_form_fields.form_field_id = form_fields.id
-            ORDER BY
-                product_submit_form_fields.product_id,
-                product_submit_form_fields.action,
-                product_submit_form_fields.id");
-
-        $submit_form_create_fields = array();
-        $submit_form_update_fields = array();
-        $product_submit_form_fields = array();
-
-        foreach ($submit_form_fields as $submit_form_field) {
-            switch ($submit_form_field['action']) {
-                case 'create':
-                    if (in_array($submit_form_field['name'], $submit_form_create_fields) == false) {
-                        $submit_form_create_fields[] = $submit_form_field['name'];
-                    }
-
-                    break;
-                
-                case 'update':
-                    if (in_array($submit_form_field['name'], $submit_form_update_fields) == false) {
-                        $submit_form_update_fields[] = $submit_form_field['name'];
-                    }
-
-                    break;
-            }
-
-            $product_submit_form_fields[$submit_form_field['product_id']][$submit_form_field['action']][$submit_form_field['name']] = $submit_form_field['value'];
-        }
-
-        // output column headings for CSV data
-        echo
-            '"name",' .
-            '"enabled",' .
-            '"short_description",' .
-            '"full_description",' .
-            '"details",' .
-            '"code",' .
-            '"keywords",' .
-            '"image_name",' .
-            '"price",' .
-            '"taxable",' .
-            '"tax_rate",' .
-            '"selection_type",' .
-            '"default_quantity",' .
-            '"address_name",' .
-            '"title",' .
-            '"meta_description",' .
-            '"meta_keywords",' .
-            '"inventory",' .
-            '"inventory_quantity",' .
-            '"backorder",' .
-            '"out_of_stock_message",' .
-            '"required_product_id",' .
-            '"form",' .
-            '"form_name",' .
-            '"form_label_column_width",' .
-            '"form_quantity_type",' .
-            '"shippable",' .
-            '"weight",' .
-            '"primary_weight_points",' .
-            '"secondary_weight_points",' .
-            '"length",' .
-            '"width",' .
-            '"height",' .
-            '"container_required",' .
-            '"preparation_time",' .
-            '"free_shipping",' .
-            '"extra_shipping_cost",' .
-            '"commissionable",' .
-            '"commission_rate_limit",' .
-            '"order_receipt_message",' .
-            '"order_receipt_bcc_email_address",' .
-            '"email_page_id",' .
-            '"email_bcc_email_address",' .
-            '"recurring",' .
-            '"recurring_schedule_editable_by_customer",' .
-            '"recurring_days_before_start",' .
-            '"recurring_number_of_payments",' .
-            '"recurring_payment_period",' .
-            '"recurring_profile_disabled_perform_actions",' .
-            '"recurring_profile_disabled_expire_membership",' .
-            '"recurring_profile_disabled_revoke_private_access",' .
-            '"recurring_profile_disabled_email",' .
-            '"recurring_profile_disabled_email_subject",' .
-            '"recurring_profile_disabled_email_page_id",' .
-            '"recurring_sage_group_id",' .
-            '"contact_group_id",' .
-            '"membership_renewal",' .
-            '"grant_private_access",' .
-            '"private_folder_id",' .
-            '"private_days",' .
-            '"start_page_id",' .
-            '"reward_points",' .
-            '"gift_card",' .
-            '"gift_card_email_subject",' .
-            '"gift_card_email_format",' .
-            '"gift_card_email_body",' .
-            '"gift_card_email_page_id",' .
-            '"submit_form",' .
-            '"submit_form_custom_form_page_id",' .
-            '"submit_form_create",' .
-            '"submit_form_update",' .
-            '"submit_form_update_where_field",' .
-            '"submit_form_update_where_value",' .
-            '"submit_form_quantity_type",' .
-            '"add_comment",' .
-            '"add_comment_page_id",' .
-            '"add_comment_message",' .
-            '"add_comment_name",' .
-            '"add_comment_only_for_submit_form_update",' .
-            $output_custom_field_1_heading .
-            $output_custom_field_2_heading .
-            $output_custom_field_3_heading .
-            $output_custom_field_4_heading .
-            '"notes",' .
-            '"google_product_category",' .
-            '"gtin",' .
-            '"brand",' .
-            '"mpn"';
-
-        foreach ($submit_form_create_fields as $field) {
-            echo ',"sfc_' . escape_csv($field) . '"';
-        }
-
-        foreach ($submit_form_update_fields as $field) {
-            echo ',"sfu_' . escape_csv($field) . '"';
-        }
-
-        echo "\n";
-
-        // get all products in order to export them
-        $query =
-            'SELECT
-                id,
-                name,
-                enabled,
-                short_description,
-                full_description,
-                details,
-                code,
-                keywords,
-                image_name,
-                price,
-                taxable,
-
-                tax_rate,
-                selection_type,
-                default_quantity,
-                address_name,
-                title,
-                meta_description,
-                meta_keywords,
-                inventory,
-                inventory_quantity,
-                backorder,
-                out_of_stock_message,
-                required_product,
-                form,
-                form_name,
-                form_label_column_width,
-                form_quantity_type,
-                shippable,
-                weight,
-                primary_weight_points,
-                secondary_weight_points,
-                length,
-                width,
-                height,
-                container_required,
-                preparation_time,
-                free_shipping,
-                extra_shipping_cost,
-                commissionable,
-                commission_rate_limit,
-                order_receipt_message,
-                order_receipt_bcc_email_address,
-                email_page,
-                email_bcc,
-                recurring,
-                recurring_schedule_editable_by_customer,
-                start,
-                number_of_payments,
-                payment_period,
-                recurring_profile_disabled_perform_actions,
-                recurring_profile_disabled_expire_membership,
-                recurring_profile_disabled_revoke_private_access,
-                recurring_profile_disabled_email,
-                recurring_profile_disabled_email_subject,
-                recurring_profile_disabled_email_page_id,
-                sage_group_id,
-                contact_group_id,
-                membership_renewal,
-                grant_private_access,
-                private_folder,
-                private_days,
-                send_to_page,
-                reward_points,
-                gift_card,
-                gift_card_email_subject,
-                gift_card_email_format,
-                gift_card_email_body,
-                gift_card_email_page_id,
-                submit_form,
-                submit_form_custom_form_page_id,
-                submit_form_create,
-                submit_form_update,
-                submit_form_update_where_field,
-                submit_form_update_where_value,
-                submit_form_quantity_type,
-                add_comment,
-                add_comment_page_id,
-                add_comment_message,
-                add_comment_name,
-                add_comment_only_for_submit_form_update,
-                custom_field_1,
-                custom_field_2,
-                custom_field_3,
-                custom_field_4,
-                notes,
-                google_product_category,
-                gtin,
-                brand,
-                mpn
-            FROM products
-            ' . $where . '
-            ORDER BY ' . $order_by;
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        $products = mysqli_fetch_items($result);
-
-        // loop through the products in order to output CSV data
-        foreach ($products as $product) {
-            $output_custom_field_1 = '';
-
-            // If the first custom product field is active, then output value for it.
-            if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-                $output_custom_field_1 = '"' . escape_csv($product['custom_field_1']) . '",';
-            }
-
-            $output_custom_field_2 = '';
-
-            // If the second custom product field is active, then output value for it.
-            if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-                $output_custom_field_2 = '"' . escape_csv($product['custom_field_2']) . '",';
-            }
-
-            $output_custom_field_3 = '';
-
-            // If the third custom product field is active, then output value for it.
-            if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-                $output_custom_field_3 = '"' . escape_csv($product['custom_field_3']) . '",';
-            }
-
-            $output_custom_field_4 = '';
-
-            // If the fourth custom product field is active, then output value for it.
-            if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-                $output_custom_field_4 = '"' . escape_csv($product['custom_field_4']) . '",';
-            }
-
-            echo
-                '"' . escape_csv($product['name']) . '",' .
-                '"' . $product['enabled'] . '",' .
-                '"' . escape_csv($product['short_description']) . '",' .
-                '"' . escape_csv($product['full_description']) . '",' .
-                '"' . escape_csv($product['details']) . '",' .
-                '"' . escape_csv($product['code']) . '",' .
-                '"' . escape_csv($product['keywords']) . '",' .
-                '"' . escape_csv($product['image_name']) . '",' .
-                '"' . sprintf('%01.2lf', $product['price'] / 100) . '",' .
-                '"' . $product['taxable'] . '",' .
-                '"' . $product['tax_rate'] . '",' .
-                '"' . $product['selection_type'] . '",' .
-                '"' . $product['default_quantity'] . '",' .
-                '"' . escape_csv($product['address_name']) . '",' .
-                '"' . escape_csv($product['title']) . '",' .
-                '"' . escape_csv($product['meta_description']) . '",' .
-                '"' . escape_csv($product['meta_keywords']) . '",' .
-                '"' . $product['inventory'] . '",' .
-                '"' . $product['inventory_quantity'] . '",' .
-                '"' . $product['backorder'] . '",' .
-                '"' . escape_csv($product['out_of_stock_message']) . '",' .
-                '"' . $product['required_product'] . '",' .
-                '"' . $product['form'] . '",' .
-                '"' . escape_csv($product['form_name']) . '",' .
-                '"' . escape_csv($product['form_label_column_width']) . '",' .
-                '"' . $product['form_quantity_type'] . '",' .
-                '"' . $product['shippable'] . '",' .
-                '"' . $product['weight'] . '",' .
-                '"' . $product['primary_weight_points'] . '",' .
-                '"' . $product['secondary_weight_points'] . '",' .
-                '"' . $product['length'] . '",' .
-                '"' . $product['width'] . '",' .
-                '"' . $product['height'] . '",' .
-                '"' . $product['container_required'] . '",' .
-                '"' . $product['preparation_time'] . '",' .
-                '"' . $product['free_shipping'] . '",' .
-                '"' . sprintf('%01.2lf', $product['extra_shipping_cost'] / 100) . '",' .
-                '"' . $product['commissionable'] . '",' .
-                '"' . $product['commission_rate_limit'] . '",' .
-                '"' . escape_csv($product['order_receipt_message']) . '",' .
-                '"' . escape_csv($product['order_receipt_bcc_email_address']) . '",' .
-                '"' . $product['email_page'] . '",' .
-                '"' . escape_csv($product['email_bcc']) . '",' .
-                '"' . $product['recurring'] . '",' .
-                '"' . $product['recurring_schedule_editable_by_customer'] . '",' .
-                '"' . $product['start'] . '",' .
-                '"' . $product['number_of_payments'] . '",' .
-                '"' . $product['payment_period'] . '",' .
-                '"' . $product['recurring_profile_disabled_perform_actions'] . '",' .
-                '"' . $product['recurring_profile_disabled_expire_membership'] . '",' .
-                '"' . $product['recurring_profile_disabled_revoke_private_access'] . '",' .
-                '"' . $product['recurring_profile_disabled_email'] . '",' .
-                '"' . escape_csv($product['recurring_profile_disabled_email_subject']) . '",' .
-                '"' . $product['recurring_profile_disabled_email_page_id'] . '",' .
-                '"' . $product['sage_group_id'] . '",' .
-                '"' . $product['contact_group_id'] . '",' .
-                '"' . $product['membership_renewal'] . '",' .
-                '"' . $product['grant_private_access'] . '",' .
-                '"' . $product['private_folder'] . '",' .
-                '"' . $product['private_days'] . '",' .
-                '"' . $product['send_to_page'] . '",' .
-                '"' . $product['reward_points'] . '",' .
-                '"' . $product['gift_card'] . '",' .
-                '"' . escape_csv($product['gift_card_email_subject']) . '",' .
-                '"' . $product['gift_card_email_format'] . '",' .
-                '"' . escape_csv($product['gift_card_email_body']) . '",' .
-                '"' . $product['gift_card_email_page_id'] . '",' .
-                '"' . $product['submit_form'] . '",' .
-                '"' . $product['submit_form_custom_form_page_id'] . '",' .
-                '"' . $product['submit_form_create'] . '",' .
-                '"' . $product['submit_form_update'] . '",' .
-                '"' . $product['submit_form_update_where_field'] . '",' .
-                '"' . $product['submit_form_update_where_value'] . '",' .
-                '"' . $product['submit_form_quantity_type'] . '",' .
-                '"' . $product['add_comment'] . '",' .
-                '"' . $product['add_comment_page_id'] . '",' .
-                '"' . escape_csv($product['add_comment_message']) . '",' .
-                '"' . escape_csv($product['add_comment_name']) . '",' .
-                '"' . $product['add_comment_only_for_submit_form_update'] . '",' .
-                $output_custom_field_1 .
-                $output_custom_field_2 .
-                $output_custom_field_3 .
-                $output_custom_field_4 .
-                '"' . escape_csv($product['notes']) . '",' .
-                '"' . escape_csv($product['google_product_category']) . '",' .
-                '"' . escape_csv($product['gtin']) . '",' .
-                '"' . escape_csv($product['brand']) . '",' .
-                '"' . escape_csv($product['mpn']) . '"';
-
-            foreach ($submit_form_create_fields as $field) {
-                echo ',"' . escape_csv($product_submit_form_fields[$product['id']]['create'][$field]) . '"';
-            }
-
-            foreach ($submit_form_update_fields as $field) {
-                echo ',"' . escape_csv($product_submit_form_fields[$product['id']]['update'][$field]) . '"';
-            }
-
-            echo "\n";
-        }
-
-        // if at least 1 product was exported, then log activity
-        if (count($products) > 0) {
-            // add log message about products being exported
-            log_activity(lang(array('string' => '{var:1} product(s) were exported', 'vars' => count($products))), $_SESSION['sessionusername']);
-        }
-
-    // else the user did not select to export products, so just list products
+        go(PATH . SOFTWARE_DIRECTORY . '/view_products.php?submit_data=Export+Products');
     } else {
         // get total number of results for all screens, so that we can output links to different screens
         $query = "SELECT count(id) " .
-                 "FROM products";
+                 "FROM products WHERE 1 = 1" . $live_products_sql;
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         $number_of_results = $row[0];
@@ -766,7 +369,7 @@ if (!$_POST) {
         $output_filter_options .= '<option value="all_product_actions"' . $all_product_actions_filter_selected . '>' . lang('Actions After an Order') . ' (' . pg_format_number($all_products, 0) . ')</option>';
 
         // get the amount of shippable products
-        $query = "SELECT count(id) FROM products WHERE shippable = '1'";
+        $query = "SELECT count(id) FROM products WHERE shippable = '1'" . $live_products_sql;
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
 
@@ -774,7 +377,7 @@ if (!$_POST) {
         $output_filter_options .= '<option value="shippable_products"' . $shippable_product_filter_selected . '>' . lang(array('string'=>'Shippable Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
         // get the amount of recurring products
-        $query = "SELECT count(id) FROM products WHERE recurring = '1'";
+        $query = "SELECT count(id) FROM products WHERE recurring = '1'" . $live_products_sql;
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
 
@@ -782,7 +385,7 @@ if (!$_POST) {
         $output_filter_options .= '<option value="recurring_products"' . $recurring_product_filter_selected . '>' . lang(array('string'=>'Recurring Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
         // get the amount of donation products
-        $query = "SELECT count(id) FROM products WHERE selection_type = 'donation'";
+        $query = "SELECT count(id) FROM products WHERE selection_type = 'donation'" . $live_products_sql;
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
 
@@ -790,7 +393,7 @@ if (!$_POST) {
         $output_filter_options .= '<option value="donation_products"' . $donation_product_filter_selected . '>' . lang(array('string'=>'Donation Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
         // get the amount of grant access products
-        $query = "SELECT count(id) FROM products WHERE grant_private_access = '1' AND (private_folder != '0' OR send_to_page != '0')";
+        $query = "SELECT count(id) FROM products WHERE grant_private_access = '1' AND (private_folder != '0' OR send_to_page != '0')" . $live_products_sql;
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
 
@@ -798,7 +401,7 @@ if (!$_POST) {
         $output_filter_options .= '<option value="grant_access_products"' . $grant_access_product_filter_selected . '>' . lang(array('string'=>'Grant Access Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
         // get the amount of membership products
-        $query = "SELECT count(id) FROM products WHERE membership_renewal != '0'";
+        $query = "SELECT count(id) FROM products WHERE membership_renewal != '0'" . $live_products_sql;
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
 
@@ -806,7 +409,7 @@ if (!$_POST) {
         $output_filter_options .= '<option value="membership_products"' . $membership_product_filter_selected . '>' . lang(array('string'=>'Membership Products') ) . ' (' . pg_format_number($row[0], 0) . ')</option>';
 
         // get the amount of out of stock products
-        $query = "SELECT count(id) FROM products WHERE out_of_stock = '1'";
+        $query = "SELECT count(id) FROM products WHERE out_of_stock = '1'" . $live_products_sql;
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
 
@@ -1473,6 +1076,45 @@ if (!$_POST) {
             </tr>';
         }
 
+        // The site's own attribute options, one group per attribute: the
+        // chosen option replaces the copied product's option of that
+        // attribute. No field at all on a site without attribute options.
+        $output_option_field = '';
+        $attribute_options = db_items(
+            "SELECT
+                product_attribute_options.id,
+                product_attribute_options.label,
+                product_attribute_options.product_attribute_id,
+                product_attributes.name AS attribute_name,
+                product_attributes.label AS attribute_label
+            FROM product_attribute_options
+            INNER JOIN product_attributes ON product_attributes.id = product_attribute_options.product_attribute_id
+            ORDER BY product_attributes.name, product_attributes.id, product_attribute_options.sort_order, product_attribute_options.id");
+
+        if ($attribute_options) {
+            $output_option_groups = '';
+            $attribute_id = null;
+
+            foreach ($attribute_options as $attribute_option) {
+                if ($attribute_option['product_attribute_id'] !== $attribute_id) {
+                    $output_option_groups .= (($attribute_id !== null) ? '</optgroup>' : '')
+                        . '<optgroup label="' . h(($attribute_option['attribute_label'] !== '') ? $attribute_option['attribute_label'] : $attribute_option['attribute_name']) . '">';
+                    $attribute_id = $attribute_option['product_attribute_id'];
+                }
+
+                $output_option_groups .= '<option value="' . (int) $attribute_option['id'] . '">' . h($attribute_option['label']) . '</option>';
+            }
+
+            $output_option_field = '
+                                    <div class="col">
+                                        <label for="option_id">' . h(lang('Product Attribute')) . '</label>
+                                        <select class="form-control" id="option_id" name="option_id">
+                                            <option value="">' . h(lang('Do not change')) . '</option>
+                                            ' . $output_option_groups . '</optgroup>
+                                        </select>
+                                    </div>';
+        }
+
         $output = '
                     <div class="row">
                 <div class="col-12">
@@ -1544,21 +1186,7 @@ if (!$_POST) {
                                         <label for="newletter">' . h(lang('Word or Letter to Add')) . '</label>
                                         <input type="text" class="form-control" id="newletter" name="newletter" />
                                     </div>
-                                    <div class="col">
-                                    <label for="option_id">Assortment</label>
-                                        <select class="form-control" id="option_id" name="option_id">
-                                        <option value="">-Do not Change-</option>
-                                        <option value="21" >Assortment A</option>
-                                        <option value="134" >Assortment B</option>
-                                        <option value="23" >Assortment C</option>
-                                        <option value="22" >Assortment D</option>
-                                        <option value="130" >Assortment E</option>
-                                        <option value="131" >Assortment F</option>
-                                        <option value="132" >Assortment G</option>
-                                        <option value="133" >Assortment H</option>
-                                        <option value="93" >Assortment X</option>
-                                        <option value="135" >Assortment Y</option>
-                                    </select></div>
+                                    ' . $output_option_field . '
                                     <div class="col"><button type="submit" value="Duplicate Selected" class=" mt-7 btn btn-solid theme-secondary"><span class="material-icons me-3">edit</span>' . h(lang('Duplicate Selected')) . '</button></div>
                                 </div>
                                 
@@ -2315,7 +1943,16 @@ if (!$_POST) {
     
         return $new_product_id;
     }
-  
+
+    // The ticked products; a submit with none ticked goes back with an error
+    // instead of reporting a copy that was never made.
+    $products = (isset($_POST['products']) && is_array($_POST['products'])) ? $_POST['products'] : array();
+
+    if (!$products) {
+        $liveform->mark_error('products', lang('Please select at least one product.'));
+        go(PATH . SOFTWARE_DIRECTORY . '/duplicate_products.php');
+    }
+
     // The assortment is looked up once, before a single product is copied, so
     // only the id of an option that exists reaches the attribute INSERT; any
     // other value sends the user back with nothing written.
@@ -2336,14 +1973,42 @@ if (!$_POST) {
         }
     }
 
-    $products = $_POST['products'];
-    $new_product_id = '';
-    foreach($products as $product){
-        $new_product_id = duplicate_products($product, $_POST['lettertodelete'] ?? '', $_POST['newletter'] ?? '', $option);
+    $number_of_copies = 0;
+    $number_of_binned_products = 0;
+
+    foreach ($products as $product) {
+        // Only an existing product is copied. One in the Recycle Bin is not:
+        // the list does not show it, but a selection made before it was
+        // binned in another tab still posts it, and its copy would be live.
+        if (!is_scalar($product) || ((int) $product <= 0) || !db_value("SELECT id FROM products WHERE id = '" . (int) $product . "'")) {
+            continue;
+        }
+
+        if (pg_catalog_product_binned((int) $product)) {
+            $number_of_binned_products++;
+            continue;
+        }
+
+        duplicate_products((int) $product, $_POST['lettertodelete'] ?? '', $_POST['newletter'] ?? '', $option);
+        $number_of_copies++;
     }
-   
-    include_once('liveform.class.php');
-    $liveform_edit_product = new liveform('view_products');
-    $liveform_edit_product->add_notice(lang(array('string'=>'{var:1} has been duplicated.','vars'=>lang('products') )) );
+
+    if ($number_of_copies > 0) {
+        $liveform->add_notice(lang(array('string' => '{var:1} product(s) were duplicated.', 'vars' => array($number_of_copies))));
+    }
+
+    if ($number_of_binned_products > 0) {
+        $liveform->mark_error('products', lang(array('string' => '{var:1} product(s) were not duplicated because they are in the Recycle Bin.', 'vars' => array($number_of_binned_products))));
+    }
+
+    // Nothing copied: back to the selection, where the error shows.
+    if ($number_of_copies == 0) {
+        if ($number_of_binned_products == 0) {
+            $liveform->mark_error('products', lang('Please select at least one product.'));
+        }
+
+        go(PATH . SOFTWARE_DIRECTORY . '/duplicate_products.php');
+    }
+
     go(PATH . SOFTWARE_DIRECTORY . '/view_products.php');
 }
