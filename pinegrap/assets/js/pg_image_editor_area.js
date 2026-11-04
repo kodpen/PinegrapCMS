@@ -422,7 +422,7 @@
     // see-through, or the picture again under the area's own colour filter,
     // cut to its shape by a mask.
     function maskNode(l) {
-        var A = X.areaShapes, id = 'pgie-ar-' + (++serial), g = svg('g', {}), defs = svg('defs', {}), b = A.box(l), shape = A.node(l), content = null;
+        var A = X.areaShapes, id = 'pgie-ar-' + (++serial), g = svg('g', { opacity: (l.opacity === undefined) ? 1 : l.opacity }), defs = svg('defs', {}), b = A.box(l), shape = A.node(l), content = null;
         var mask = svg('mask', { id: id + '-m', maskUnits: 'userSpaceOnUse', x: b.x - 1, y: b.y - 1, width: b.w + 2, height: b.h + 2 });
         var whole = { x: b.x - 1, y: b.y - 1, width: b.w + 2, height: b.h + 2 };
 
@@ -719,6 +719,8 @@
             canvas.height = r.h;
             g = canvas.getContext('2d');
             g.setTransform(out.w / box.w, 0, 0, out.h / box.h, -box.x * out.w / box.w - r.x, -box.y * out.h / box.h - r.y);
+            // The layer's opacity weakens the area's effect.
+            g.globalAlpha = (l.opacity === undefined) ? 1 : l.opacity;
             X.areaShapes.paint(g, l, out.w / box.w);
             entry = { op: (l.type === 'erase') ? 'erase' : 'color', x: r.x, y: r.y, mask: canvas.toDataURL('image/png') };
 

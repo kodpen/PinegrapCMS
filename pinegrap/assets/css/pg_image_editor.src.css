@@ -1539,11 +1539,13 @@
 /* What the selection does: two buttons a row, the last one across. */
 .pgie-aacts {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
 .pgie .pgie-aacts .pgie-abtn {
+  width: auto;
+  min-width: 0;
   margin-top: 0;
   justify-content: center;
 }

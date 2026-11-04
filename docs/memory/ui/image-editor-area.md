@@ -1,11 +1,11 @@
 ---
 name: image-editor-area
-description: The image editor's Select area tool (E27a): shapes, magic wand, add and subtract, invert, feather, marching ants, doc.selection, the outline traced from pixels, Redact the selection
+description: The image editor's Select area tool (E27a): shapes, magic wand, add and subtract, invert, feather, marching ants, doc.selection, outline from pixels; the actions of E27b
 module: image_editor
 ---
 
 ## Where does it live?
-- Tool `area` ("Select area"), in the photo profile after Redact (not the canvas: it works on the picture). Part `area` (`pg_image_editor_area.js`, bundled after the redact part), labels in `pg_image_editor_strings_area()`, maths in the model's SELECTION section, tests in `tests/image_editor_area_test.php`. Step E27a (`plans/image-editor-steps-4.md`); E27b adds the engine's mask step and Erase, Keep only, Copy to a layer, Adjust inside.
+- Tool `area` ("Select area"), in the photo profile after Redact (not the canvas: it works on the picture). Part `area` (`pg_image_editor_area.js`, bundled after the redact part), labels in `pg_image_editor_strings_area()`, maths in the model's SELECTION section, tests in `tests/image_editor_area_test.php`. Steps E27a (#6611) and E27b (#6678, `plans/image-editor-steps-4.md`); the engine's mask step is `ui/image-editor-area-pixels.md`.
 
 ## How is a selection kept?
 - `doc.selection = { ops, invert, feather }`, saved with the document (the server keeps the JSON as it is) and undone like any change. An op is `{ op: 'add'|'sub', kind, ring }` for rect, ellipse (96 points), lasso and polygon (rings in the turned space, 0.01 px), or `{ op, kind: 'wand', at, tolerance, contiguous }`: a wand keeps only its seed, its outline is worked out from the picture as it opens.
@@ -20,6 +20,9 @@ module: image_editor
 
 ## What does Redact the selection do?
 - A redaction layer `shape: 'area'` (`areaLayer()`): the box of the outline and the rings in parts of it (`area`), so it moves, stretches and turns with its box (`areaPoints()`); `feather` from the selection. The stage blurs its mask by feather / 2 (SVG), the save's mask PNG by the same at the output scale (canvas filter), and the region grows by 1.5 × feather (`redactGrow()`); the server burns the soft mask in as any redaction (`image-editor-redact.md`). The tool switches to Redact with the area selected.
+
+## What does the panel do with a selection?
+- "With the selection": Erase, Keep only, Copy to a layer, Adjust inside, Redact; each needs an area (`ui/image-editor-area-pixels.md`).
 
 ## How was it checked?
 - Node tests: each shape, lasso thinning, add, subtract and invert, the wand's tolerance and contiguous fill, outlines of a block, a ring and pixels touching at a corner, a wand inside a selection, the redaction area moved, stretched and turned.
