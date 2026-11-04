@@ -4,6 +4,9 @@ description: Page experiment goals (PX3, #6230): form, order, click, page; count
 module: experiments
 ---
 
+## Why a rollup and no visitor rows?
+- Views and goals follow `high-volume-counter-rules.md`: one aggregated `experiment_hourly` row per hour and variant, never a row per visit; the visit's variant lives only in `pg_exp`.
+
 ## How is a goal counted?
 - `pg_experiment_goal($kind, $event)`: the visitor's buckets (`pg_exp`), the running experiments among them whose `goal_kind` is the kind (`pg_experiment_running_for_goals()`, one query plus variants), then `pg_experiment_goal_lines()` (pure): one line per experiment the event matches, for the variant the bucket names, unless counted today. Each line is one `INSERT … ON DUPLICATE KEY UPDATE goals = goals + 1` on the hour's row (`pg_experiment_count_goal()`, same key as the views).
 - Nothing without a bucket, for crawlers and scripts, or for signed-in staff; nothing when headers are already out (the mark could not be sent, so a goal never counts twice).
