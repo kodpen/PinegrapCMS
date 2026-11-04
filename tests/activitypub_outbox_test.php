@@ -195,3 +195,15 @@ function test_activitypub_outbox_delivery_outcome_and_update()
 	pg_assert_same(array('state' => 'sent', 'attempts' => 1, 'next_at' => 0), pg_ap_delivery_update('sent', 0, 1000));
 	pg_assert_same(array('state' => 'failed', 'attempts' => 1, 'next_at' => 0), pg_ap_delivery_update('failed', 0, 1000));
 }
+
+function test_activitypub_outbox_content_keeps_full_and_special_addresses()
+{
+	$site = activitypub_outbox_test_site();
+	$html = pg_ap_content_html('<p><a href="https://other.example/x">a</a> <a href="mailto:a@b.example">b</a> <a href="#top">c</a> <a href="//cdn.example/y">d</a></p>', $site);
+
+	pg_assert_true(strpos($html, 'href="https://other.example/x"') !== false, 'a full address stays');
+	pg_assert_true(strpos($html, 'href="mailto:a@b.example"') !== false, 'mailto stays');
+	pg_assert_true(strpos($html, 'href="#top"') !== false, 'a fragment stays');
+	pg_assert_true(strpos($html, 'href="//cdn.example/y"') !== false, 'a protocol-relative address stays');
+	pg_assert_same('', pg_ap_content_html('  ', $site));
+}

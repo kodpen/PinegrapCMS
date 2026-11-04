@@ -14,7 +14,7 @@ description: Steps AP1-AP4 of plans/activitypub.md: actor, WebFinger and signatu
 - AP2 (M) Inbox and followers. After AP1.
   - `ap_inbox.php` (root, URL-called): verifies the signature, then handles Follow (an `ap_followers` row and a queued Accept), Undo Follow, Delete (actor gone: the row removed), Like and Announce (counts on the object's record), Create(Note) with `inReplyTo` one of ours (handed to AP4), anything else answered 202 and logged; an own WAF rate bucket; a blocked actor or domain (AP5) refused at the signature step. Tests: each activity from the fixtures, a replayed one. Memory: `platform/activitypub-inbox.md`.
 
-- AP3 (M) Publishing and the outbox queue. After AP1 and question 2.
+- AP3 (M) Publishing and the outbox queue. `done` (#6465); a sweep in the general job, not per-write hooks (`platform/activitypub-outbox.md`).
   - `pg_ap_object_for_record($row)` and `pg_ap_object_for_page($page)` (Article: name, summary, content through `pg_sanitize_rich_text()` with absolute addresses, attachments from the record's pictures, url, published, attributedTo); the settings choose the forms and folders; `pg_announce()` listeners on record publish, page publish, edit and unpublish queue Create, Update or Delete into `ap_outbox`, one row per follower's shared inbox, sent by the general job with the mail queue's attempts and backoff (`pg_ap_deliver()` signs and posts); the actor's `outbox` collection lists the last 20. Tests: the object shapes, the fan-out by shared inbox, the backoff. Memory: `platform/activitypub-outbox.md`.
 
 - AP4 (M) Replies as comments. After AP2 and AP3.
