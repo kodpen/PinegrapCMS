@@ -18,7 +18,7 @@ description: The flow draft card as a read-only mini flow window (D8b #3032, V7a
 - `ws_flow_card_try_flow()` (pure) hands `ws_flow_box_try()` (unchanged, writes nothing): waiting new flow or scheduled sketch = in-memory row with the asker's rights; waiting patch none (F4e, the flow owner's); opened draft its flow where `can_try`. A refused try draws no line.
 
 ## Can a box be changed from the card?
-- No (owner, 2026-11-02, #4967): the canvas is the one place a flow is changed. "Edit here" (V7b, #3493) was removed in K4 of `plans/workspace-flow-card-canvas.md` with its actions `ws_flow_draft_box` / `ws_flow_draft_box_save`, `ws_flow_draft_box_*()` and `flowBoxForm()`.
+- No (owner, 2026-11-02, #4967): the canvas is the one place a flow is changed. "Edit here" (V7b, #3493) was removed (#6495) with its actions `ws_flow_draft_box` / `ws_flow_draft_box_save`, `ws_flow_draft_box_*()` and `flowBoxForm()`.
 
 ## Tests
 - tests/workspace_flow_draft_test.php (`test_ws_flow_card_*`). Not run in a browser.
