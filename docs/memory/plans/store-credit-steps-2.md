@@ -7,7 +7,7 @@ description: Steps SC5-SC7 of plans/store-credit.md: the staff and account scree
 - Sizes, tests and memory rules as in `store-credit-steps.md`; SC5 runs beside SC2-SC4 once question 2 is answered.
 
 - SC5 (M) Screens, mails and expiry, cut in three. After SC1 and question 2.
-  - SC5a (S) The customer's card (`edit_user.php`): a "Store credit" section with the balance, the cards, Issue (amount, reason, expiry), Void. Done in PR #SC5A_PR. Memory: `commerce/store-credit-screens.md`.
+  - SC5a (S) The customer's card (`edit_user.php`): a "Store credit" section with the balance, the cards, Issue (amount, reason, expiry), Void. Done in PR #6641. Memory: `commerce/store-credit-screens.md`.
   - SC5b (S) My Account "Store credit": the built-in templates and the designer widget (`designer/account-widget-forms.md`): balance, cards and what used them, the points conversion of SC3. Add to `store-credit-screens.md`.
   - SC5c (S) Mails `credit_issued` and `credit_expiring` as campaign profile actions with their fields; the general job expires cards on their date and sends the expiring notice 14 days ahead once (a `notified` bit, question 2: a migration step). Memory: `commerce/store-credit-mails.md`.
 
