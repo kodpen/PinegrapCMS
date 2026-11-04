@@ -232,3 +232,33 @@ function test_view_system_style_source_returns_to_the_style()
 	pg_assert_contains("PATH . SOFTWARE_DIRECTORY . '/' . \$edit_style_path", $source, 'Save & Return goes back to the style');
 	pg_assert_false(strpos($source, "'view_styles.php'") !== false, 'not to the list without designs');
 }
+
+function test_custom_style_form_wide_layout()
+{
+	$new = pg_custom_style_form_cards(pg_custom_style_form_defaults(), true);
+	$form = strpos($new, 'col-12 lg:col-8 2xl:col-9 order-1');
+	$status = strpos($new, 'col-12 lg:col-4 2xl:col-3 order-2');
+	pg_assert_true($form !== false && $status !== false, 'a form column and a status column');
+	pg_assert_true($form < $status, 'the status column comes after the form column');
+	pg_assert_true(strpos($new, 'id="code"') < $status, 'the code editor is in the form column');
+	pg_assert_true(strpos($new, 'id="layout_type"') > $status, 'the options are in the status column');
+	pg_assert_contains('position-sticky" style="top:3.3rem;"', $new, 'the status box sticks under the top bar');
+	pg_assert_false(strpos($new, lang('Summary')) !== false, 'no Summary on create');
+
+	$edit = pg_custom_style_form_cards(pg_custom_style_form_defaults(), false, '', pg_custom_style_form_edit_status_rows(2, 7, 'today <b>x</b>'));
+	pg_assert_contains(lang('Summary'), $edit, 'a Summary on edit');
+	pg_assert_contains('<dt class="fw-normal">' . h(lang('Folders')) . '</dt>', $edit, 'the folders row');
+	pg_assert_contains('>7</dd>', $edit, 'the page count');
+	pg_assert_contains('today <b>x</b></dd>', $edit, 'the last change as given');
+
+	$layout = pg_custom_style_form_layout('<!--cards-->', '<button>Go</button>');
+	pg_assert_true(strpos($layout, '<!--cards-->') < strpos($layout, 'col-12 order-3 position-sticky'), 'the save bar after the columns');
+	pg_assert_contains('<button>Go</button>', $layout, 'the buttons in the bar');
+
+	foreach (array('add_custom_style.php', 'edit_custom_style.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('pg_custom_style_form_layout(', $source, $file . ' uses the shared layout');
+	}
+	$edit_source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_custom_style.php');
+	pg_assert_contains('pg_custom_style_form_edit_status_rows($folders_using_style, $pages_using_style,', $edit_source, 'the edit screen fills the Summary');
+}
