@@ -6614,6 +6614,13 @@
         return (out.length > 2) ? areaRing(out) : null;
     }
 
+    // Whether a drag went at least slack from its press at any point of its
+    // path (pts), in the same units: a lasso closed on its first point ends
+    // where it began and is still a shape.
+    function areaDragged(at, pts, slack) {
+        return (pts || []).some(function (p) { return Math.hypot(p[0] - at[0], p[1] - at[1]) >= slack; });
+    }
+
     // The magic wand: 1 for each pixel of data (RGBA, w x h) whose channels
     // are all within the tolerance (0-100 of 255) of the seed pixel's at x,
     // y; with contiguous only those reached from the seed through such
@@ -6837,7 +6844,7 @@
     }
 
     var SELECTION = {
-        AREA_MAX_OPS: AREA_MAX_OPS, areaRect: areaRect, areaEllipse: areaEllipse, areaLasso: areaLasso, wandMask: wandMask,
+        AREA_MAX_OPS: AREA_MAX_OPS, areaDragged: areaDragged, areaRect: areaRect, areaEllipse: areaEllipse, areaLasso: areaLasso, wandMask: wandMask,
         maskRings: maskRings, mapRings: mapRings, selectionRings: selectionRings, areaLayer: areaLayer, areaPoints: areaPoints
     };
 

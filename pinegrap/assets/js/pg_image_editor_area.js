@@ -230,6 +230,7 @@
         }
 
         d.to = p;
+        d.far = d.far || M.areaDragged(d.at, [p], 3 / this.view.k);
 
         if (d.shape === 'lasso') {
             var last = d.pts[d.pts.length - 1];
@@ -251,7 +252,9 @@
             return;
         }
 
-        var moved = Math.hypot(d.to[0] - d.at[0], d.to[1] - d.at[1]) * this.view.k >= 3;
+        // How far the path went, not where it was let go: a lasso closed on
+        // its first point is a shape.
+        var moved = !!d.far;
 
         if (d.shape === 'wand') {
             this.areaAdd(d.op, { kind: 'wand', at: [Math.round(d.at[0] * 100) / 100, Math.round(d.at[1] * 100) / 100],

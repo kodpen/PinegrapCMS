@@ -53,6 +53,25 @@ function image_editor_area_node($script)
 	return ($code === 0) ? json_decode(implode("\n", $out), true) : array('error' => implode("\n", $out));
 }
 
+// A drag counts by how far its path went from the press, not where it was
+// let go: a lasso closed on its first point is a shape, not a click.
+function test_image_editor_area_dragged()
+{
+	$r = image_editor_area_node(
+		'var loop = [[10, 10], [60, 10], [60, 60], [10, 60], [10, 10]];' . "\n"
+		. 'console.log(JSON.stringify({ loop: M.areaDragged([10, 10], loop, 3), click: M.areaDragged([10, 10], [[10, 10], [11, 11], [10, 10]], 3), none: M.areaDragged([10, 10], [], 3) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(true, $r['loop'], 'a loop back to the press is a drag');
+	pg_assert_same(false, $r['click'], 'a pointer that stayed within the slack is a click');
+	pg_assert_same(false, $r['none'], 'no points: a click');
+}
+
 // A rectangle and an ellipse drawn between two corners, either way round.
 function test_image_editor_area_shapes()
 {
