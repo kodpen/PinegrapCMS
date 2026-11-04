@@ -1197,7 +1197,7 @@ function bs6_scope_kind($path)
 	$site_assets = array(
 		'assets/js/payment_hosted.js', 'assets/js/pg_ai_summary.js', 'assets/js/pg_consent.js', 'assets/js/pg_lightbox.js',
 		'assets/js/pg_search_highlight.js', 'assets/js/pg_civ_variants.js', 'assets/js/pg_scroller.js',
-		'assets/js/pg_theme_switcher.js', 'assets/css/pg_carousel_layout.css', 'assets/css/pg_consent.css',
+		'assets/js/pg_theme_switcher.js', 'assets/js/pg_booking.js', 'assets/css/pg_carousel_layout.css', 'assets/css/pg_consent.css',
 		'assets/css/pg_lightbox.css', 'assets/css/pg_datetime_site.css',
 	);
 	if (in_array($path, $site_assets, true) || preg_match('/^(frontend|chat_site)\.(src|min)\.js$/', $base) || preg_match('#^assets/js/chat_site#', $path)) {

@@ -32,7 +32,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_site_datetime_pattern()
 {
-    return '/\sdata-pg-(?:date|datetime|time|date-selects|date-bind)(?=[\s=>\/])/i';
+    return '/\sdata-pg-(?:date|datetime|time|date-selects|date-bind|booking)(?=[\s=>\/])/i';
 }
 
 /**
