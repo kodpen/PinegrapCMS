@@ -1512,7 +1512,8 @@ function waf_ai_ranges_row($provider)
 }
 
 /**
- * Verify a range-published bot claim against the stored prefix list.
+ * Verify a range-published bot claim against the stored prefix list and
+ * the token's fixed ranges (waf_ai_fixed_ranges()).
  *
  * Differs from the rDNS path in what absence of proof means. A missing PTR
  * record proves nothing, so rDNS fails open on it. A published range list is
@@ -1528,15 +1529,37 @@ function waf_ai_ranges_row($provider)
  * and skipping the cache means a refresh takes effect on the very next
  * request instead of up to seven days later.
  */
-function waf_verify_bot_ranges($ip, $provider)
+function waf_verify_bot_ranges($ip, $provider, $token = '')
+{
+    return waf_ranges_verdict($ip, waf_ai_ranges_row($provider), waf_ai_fixed_ranges($token), time());
+}
+
+/**
+ * The verdict of waf_verify_bot_ranges() from its inputs.
+ *
+ * The fixed prefixes are documented by the operator rather than fetched, so
+ * a match there proves the address with or without a stored list, and they
+ * never age; a miss is judged by the stored list alone.
+ *
+ * @param string     $ip    visitor address
+ * @param array|bool $data  waf_ai_ranges_row() answer: fetched_at, prefixes; false when none
+ * @param array      $fixed waf_ai_fixed_ranges() prefixes
+ * @param int        $now   current Unix time
+ * @return string 'verified', 'spoofed' or 'unknown'
+ */
+function waf_ranges_verdict($ip, $data, $fixed, $now)
 {
     if (!waf_is_ip($ip)) {
         return 'unknown';
     }
 
-    $data = waf_ai_ranges_row($provider);
+    foreach ($fixed as $cidr) {
+        if (waf_ip_in_cidr($ip, (string) $cidr)) {
+            return 'verified';
+        }
+    }
 
-    if ($data === false) {
+    if (!is_array($data) || empty($data['prefixes'])) {
         return 'unknown';
     }
 
@@ -1546,11 +1569,33 @@ function waf_verify_bot_ranges($ip, $provider)
         }
     }
 
-    if ($data['fetched_at'] < time() - 2592000) {
+    if ((int) $data['fetched_at'] < $now - 2592000) {
         return 'unknown';
     }
 
     return 'spoofed';
+}
+
+/**
+ * Egress ranges an AI operator documents but does not publish as JSON,
+ * checked in addition to the token's waf_bot_ranges list.
+ *
+ * Claude-User is also sent by the fetch tool of claude.ai, of Claude Code in
+ * the cloud and of the API, which leave from Anthropic's API egress
+ * (https://platform.claude.com/docs/en/api/ip-addresses), not from the
+ * crawler addresses of claude.com/crawling/bots.json. The crawlers
+ * (Claude-SearchBot) never use these ranges, so only Claude-User gets them.
+ *
+ * @param string $token waf_ai_bots() token
+ * @return array CIDR prefixes
+ */
+function waf_ai_fixed_ranges($token)
+{
+    if ($token === 'claude-user') {
+        return array('160.79.104.0/21', '153.61.208.0/20');
+    }
+
+    return array();
 }
 
 /**
@@ -1729,7 +1774,7 @@ function waf_verify_bot($ip, $token)
     $ai = waf_ai_bots();
 
     if (isset($ai[$token])) {
-        return waf_verify_bot_ranges($ip, $ai[$token]['ranges']);
+        return waf_verify_bot_ranges($ip, $ai[$token]['ranges'], $token);
     }
 
     $bots = waf_good_bots();
@@ -4981,6 +5026,13 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
             // Only a positive rDNS mismatch is acted on. No PTR record, a DNS
             // timeout or an unverifiable operator all fail open, so a resolver
             // outage cannot start returning 403 to Googlebot.
+            // robots.txt, ACME challenges, health.php and the OAuth client
+            // metadata skip the bot policy (see below), a forged name
+            // included: refusing robots.txt to a crawler achieves nothing.
+            if ($verdict === 'spoofed' && waf_request_skips_bot_policy()) {
+                return;
+            }
+
             if ($verdict === 'spoofed') {
                 waf_log_event($blocking ? 'block' : 'would-block', 'bot-spoof', 'bot', 10, 'USER_AGENT', $bot['name'] . ' (forged)');
                 waf_register_offence($ip, 10, $blocking);
@@ -5017,7 +5069,7 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
     // (waf_is_health_request()). The site's OAuth client metadata too: a
     // sign-in server refused here cannot register the site
     // (waf_is_client_metadata_request()).
-    if (waf_path_is_always_served() || waf_is_health_request() || waf_is_client_metadata_request()) {
+    if (waf_request_skips_bot_policy()) {
         return;
     }
 
@@ -5052,6 +5104,18 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
     if ($blocking) {
         waf_deny(403, waf_reference());
     }
+}
+
+/**
+ * Whether the request is one the bot policy never refuses: robots.txt and
+ * .well-known/ (waf_path_is_always_served()), health.php and the site's
+ * OAuth client metadata.
+ *
+ * @return bool
+ */
+function waf_request_skips_bot_policy()
+{
+    return waf_path_is_always_served() || waf_is_health_request() || waf_is_client_metadata_request();
 }
 
 /**

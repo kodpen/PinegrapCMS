@@ -75,7 +75,7 @@ function test_cloudflare_dns_table_escapes_name_and_content()
 
 	// A TXT record's text (or any record made outside this panel) may hold
 	// markup; the table cells print it as text.
-	pg_assert_contains('<td>\' . h(truncate($r[\'name\'], 50)) . \'</td>', $source, 'record name escaped');
-	pg_assert_contains('<td>\' . h(truncate($data_content, 50)) . \'</td>', $source, 'record content escaped');
-	pg_assert_true(strpos($source, '<td>\'.truncate(') === false, 'no raw truncate() cell left');
+	pg_assert_contains('pg_list_cell(h(truncate($r[\'name\'], 50))', $source, 'record name escaped');
+	pg_assert_contains('pg_list_cell(h(truncate($data_content, 50))', $source, 'record content escaped');
+	pg_assert_true(strpos($source, 'pg_list_cell(truncate(') === false, 'no raw truncate() cell left');
 }

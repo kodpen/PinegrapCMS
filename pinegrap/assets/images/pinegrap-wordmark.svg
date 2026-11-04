@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-152 -1 958 277" width="958" height="277" role="img" aria-label="Pinegrap">
+<title>Pinegrap</title>
+<defs>
+<linearGradient id="pgw-ink" gradientUnits="userSpaceOnUse" x1="-151" y1="0" x2="805" y2="0"><stop offset="0" stop-color="#3D5AFE"/><stop offset=".5" stop-color="#B44DFF"/><stop offset="1" stop-color="#FF3D72"/></linearGradient>
+</defs>
+<g fill="none" stroke="url(#pgw-ink)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+<path d="M-142 9V166"/>
+<circle cx="-86" cy="65" r="56"/>
+<path d="M12 54V146A20 20 0 0 0 52 146V98A44 44 0 0 1 140 98V146A20 20 0 0 0 180 146V110H292A56 56 0 0 0 180 110A56 56 0 0 0 276.3 148.9C293.9 130.7 325.9 126.3 333.9 124.5"/>
+<circle cx="388" cy="110" r="56"/>
+<path d="M444 54V236C444 262.6 421.5 266 416.5 266C394.5 266 388 245.8 388 240C388 232 389.6 223.9 408 215.7L454 195.2C463.4 191 488 175.9 488 146V89.5A35.5 35.5 0 0 1 523.5 54H588"/>
+<circle cx="588" cy="110" r="56"/>
+<path d="M644 54V146A20 20 0 0 0 684 146"/>
+<path d="M684 54V266"/>
+<circle cx="740" cy="110" r="56"/>
+</g>
+<circle cx="12" cy="12" r="12" fill="url(#pgw-ink)"/>
+</svg>
