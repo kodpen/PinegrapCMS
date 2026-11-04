@@ -1071,7 +1071,7 @@ function pg_list_table_printed_lists()
         'view_arrival_dates', 'view_ship_date_adjustments', 'view_verified_shipping_addresses', 'view_order_reports', 'duplicate_products',
         'view_countries', 'view_states', 'view_zones', 'view_tax_zones', 'view_currencies', 'view_referral_sources',
         'view_contact_groups', 'view_calendars', 'view_calendar_event_locations', 'view_auto_dialogs',
-        'view_email_campaigns', 'view_email_campaign_history', 'view_sms_campaigns', 'view_visitor_reports', 'view_not_found_log',
+        'view_email_campaigns', 'view_email_campaign_history', 'view_email_campaign_profiles', 'view_sms_campaigns', 'view_visitor_reports', 'view_not_found_log',
         'backups', 'cloudflare_dns', 'database_engine',
     );
 }
