@@ -24,14 +24,16 @@ function contact_screens_source($path)
 
 function test_contact_screens_organize_reads_checked_boxes()
 {
-	$source = contact_screens_source('organize_contacts.php');
+	// The Organize Selected dialog of the contacts list.
+	$source = contact_screens_source('view_contacts.php');
 
 	// With one group the form's named member is the checkbox itself and has
 	// no length, so a loop over .length drops the selection.
 	pg_assert_true(strpos($source, 'add_to_contact_groups.length') === false, 'organize: no loop over the add boxes by .length');
 	pg_assert_true(strpos($source, 'remove_from_contact_groups.length') === false, 'organize: no loop over the remove boxes by .length');
-	pg_assert_true(strpos($source, 'input[name="add_to_contact_groups"]:checked') !== false, 'organize: ticked add boxes read by selector');
-	pg_assert_true(strpos($source, 'input[name="remove_from_contact_groups"]:checked') !== false, 'organize: ticked remove boxes read by selector');
+	pg_assert_true(strpos($source, 'dialog.querySelectorAll(\\\'input[name="\\\' + name + \\\'"]:checked\\\')') !== false, 'organize: ticked boxes read by selector');
+	pg_assert_true(strpos($source, 'ticked(\\\'add_to_contact_groups\\\')') !== false, 'organize: ticked add boxes read');
+	pg_assert_true(strpos($source, 'ticked(\\\'remove_from_contact_groups\\\')') !== false, 'organize: ticked remove boxes read');
 }
 
 function test_contact_screens_description_not_capped()

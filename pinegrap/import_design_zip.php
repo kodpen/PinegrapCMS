@@ -55,7 +55,7 @@ $orig_name = (string)$_FILES['file']['name'];
 $tmp       = (string)$_FILES['file']['tmp_name'];
 $head      = @file_get_contents($tmp, false, null, 0, 4);
 if (strtolower(pathinfo($orig_name, PATHINFO_EXTENSION)) !== 'zip' && !(function_exists('pg_looks_like_zip') && pg_looks_like_zip($head))) {
-    $liveform->add_error(lang('Only .html, .htm and .zip files can be imported.'));
+    $liveform->add_error(lang('Only a .zip archive can be uploaded here.'));
     header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($back));
     exit();
 }

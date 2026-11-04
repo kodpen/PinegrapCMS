@@ -47,18 +47,18 @@ if ($contact_ids) {
     switch ($_POST['action'] ?? '') {
         // if contacts are being organized
         case 'organize':
-            if ($_POST['add_to_contact_groups']) {
+            if ($_POST['add_to_contact_groups'] ?? '') {
                 $add_to_contact_groups = explode(',', $_POST['add_to_contact_groups']);
             } else {
                 $add_to_contact_groups = array();
             }
-            
-            if ($_POST['remove_from_contact_groups']) {
+
+            if ($_POST['remove_from_contact_groups'] ?? '') {
                 $remove_from_contact_groups = explode(',', $_POST['remove_from_contact_groups']);
             } else {
                 $remove_from_contact_groups = array();
             }
-            
+
             // A group filled by rules is left to its rules: neither added to
             // nor taken from here.
             $add_split = pg_audience_hand_ids($add_to_contact_groups, pg_audience_dynamic_group_ids());
@@ -66,6 +66,13 @@ if ($contact_ids) {
             $add_to_contact_groups = $add_split['hand'];
             $remove_from_contact_groups = $remove_split['hand'];
             $refused_by_rule = $add_split['rule'] || $remove_split['rule'];
+
+            // Nothing chosen: nothing is changed or logged, and the list says why.
+            if (!$add_to_contact_groups && !$remove_from_contact_groups && !$refused_by_rule) {
+                $liveform_view_contacts = new liveform('view_contacts');
+                $liveform_view_contacts->add_notice(lang('No contact group was selected.'));
+                break;
+            }
 
             // Who actually moved, by group, announced once per group below.
             $moved = array();
@@ -123,11 +130,12 @@ if ($contact_ids) {
                             $moved[(int) $contact_group_id]['removed'][] = (int) $contact_id;
                         }
                     }
-
-                    $number_of_contacts++;
                 }
             }
-            
+
+            // Only the contacts whose groups really changed count.
+            $number_of_contacts = pg_contact_list_organized_count($moved);
+
             foreach ($moved as $contact_group_id => $contacts) {
                 pg_announce_contact_group_members(
                     $contact_group_id,

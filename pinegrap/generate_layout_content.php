@@ -16,13 +16,29 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
+// Required by generate_layout.php and the layout code after init.php; a
+// direct request has nothing to do here.
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
+
 function generate_layout_content($page_id) {
 
     $page_type = db_value("SELECT page_type FROM page WHERE page_id = '" . e($page_id) . "'");
 
     $template_name = str_replace(' ', '_', $page_type) . '.php';
 
-    $content = file_get_contents(dirname(__FILE__) . '/includes/templates/' . $template_name);
+    $template_path = dirname(__FILE__) . '/includes/templates/' . $template_name;
+
+    // A page type without a layout template (a standard page) has nothing
+    // to generate.
+    if (($page_type === null) || ($page_type === '') || !is_file($template_path)) {
+        return '';
+    }
+
+    $content = pg_layout_strip_template_header(file_get_contents($template_path));
 
     switch ($page_type) {
 
@@ -115,7 +131,7 @@ function replace_render($content) {
             continue;
         }
 
-        $render_content = @file_get_contents(dirname(__FILE__) . '/includes/templates/' . $template_name);
+        $render_content = pg_layout_strip_template_header(@file_get_contents(dirname(__FILE__) . '/includes/templates/' . $template_name));
 
         // If a template file could not be found for that template name,
         // then skip to the next render call.
