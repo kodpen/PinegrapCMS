@@ -901,6 +901,8 @@
     "When on, the link to the page being viewed is marked active automatically and active states set by hand are ignored. When off, the menu is served as designed.": "Açıkken, görüntülenen sayfaya giden bağlantı otomatik olarak aktif işaretlenir ve elle verilen aktif durumlar yok sayılır. Kapalıyken menü tasarlandığı gibi sunulur.",
     "When on, the user's own form submissions are listed inside the loop_area.": "Açıkken loop_area içinde kullanıcıya ait form gönderileri sıralanır.",
     "When on: the product is added to the cart, the page reloads and a \"Product added to the cart\" toast appears — with no redirect to the cart page.": "Açıksa: ürün sepete eklenir, sayfa yenilenir, \"Ürün sepete eklendi\" toast bildirimi çıkar — sepet sayfasına yönlendirilmez.",
+    "When ready, click 'Save & Continue' at the bottom of this screen to create the Custom Billing Form.": "Hazır olduğunuzda, Özel Fatura Formunu oluşturmak için bu ekranın altındaki 'Kaydet ve Devam Et' düğmesini tıklayın.",
+    "When ready, click 'Save & Continue' at the bottom of this screen to create the Custom Shipping Form.": "Hazır olduğunuzda, Özel Gönderi Formunu oluşturmak için bu ekranın altındaki 'Kaydet ve Devam Et' düğmesini tıklayın.",
     "When should it be posted?": "Ne zaman gönderilsin?",
     "When somebody joins": "Biri katıldığında",
     "When somebody joins a channel": "Biri bir kanala katıldığında",

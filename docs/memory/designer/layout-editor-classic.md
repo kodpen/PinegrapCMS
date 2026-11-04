@@ -21,3 +21,7 @@ module: layouts
 
 ## Tests?
 - `tests/designer_layout_retirement_test.php`: the URL choice (designed -> layout tab, other -> this screen, hosted too) and the screen's gates and wiring.
+
+## What does a generated layout start with?
+- The template markup only: `pg_layout_strip_template_header()` (`includes/fn/layouts.php`, pure) removes the leading Pinegrap header, note and `PG_INIT_LOADED` gate of `includes/templates/<type>.php` and of every nested `render()` template (`generate_layout_content.php`). Before, the copied code started with the developer header and the gate.
+- `generate_layout.php` refuses (404) a page type without a layout template, as `edit_page_layout.php` does; `generate_layout_content()` returns '' when the template file is missing. Test: `tests/layout_template_header_test.php`.
