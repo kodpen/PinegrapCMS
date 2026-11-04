@@ -9,12 +9,13 @@ description: The derived value box of a flow (kind value, T3, PR #2701): its all
 
 ## Which rules?
 - `ws_flow_derived_rules()` (rule => type): compare (number: 1 when it holds, else 0; `op` of `ws_flow_derived_operators()`, as a value condition compares: texts without case or Turkish i (`ws_fold()`), numbers by value, gt/gte/lt/lte only between numbers), join (text: a and b with a space, trimmed), add, subtract (number), round (number, `places`), date_format (text, `format` of `ws_flow_derived_formats()`), add_days (text, b a whole number, at most 3650).
-- Numbers by `ws_flow_derived_number()` (no trailing zeros, six places at most). Dates by `ws_flow_derived_date()`: `Y-m-d`, with `H:i(:s)`, or a Unix time in the site's zone; no words (no `strtotime()`); `gmmktime()`/`gmdate()` on the wall-clock parts.
+- Numbers by `ws_flow_derived_number()` (no trailing zeros, six places at most). Dates by `ws_flow_derived_date()`: `Y-m-d`, with `H:i(:s)`, or a Unix time in the site's zone; no free words (no `strtotime()`), only the date words below; `gmmktime()`/`gmdate()` on the wall-clock parts.
 - An input the rule cannot read gives an empty value, never an error.
 - Record field was dropped: it reads the database, so the box would not be pure.
 
 ## How does a run work it out?
 - `ws_flow_pure_values($graph, $values)`: the inputs filled raw by `ws_flow_derived_fill()` (the reader's own fill makes the value safe where it lands), from the run's values, the constants and derived boxes already worked out (passes in dependency order, any box order). A box in a loop of derived boxes gives ''.
+- Date words (FL3): `{{date}}` (`Y-m-d`), `{{time}}` (`H:i`) and `{{weekday}}` (`ws_recurrence_weekday_names()`) in the typed `a` and `b` are the moment `$now` (third argument, `time()` by default, so a test is fixed) in the site's zone, by `ws_flow_derived_words()`, filled before `ws_flow_derived_fill()`: a value holding such a word stays as it is. `Y-m-d` and `H:i`, not the scheduled texts' `d.m.Y`, so `date_format` and `add_days` read them. Why: a counter line needs today's date in a value without a second flow (`workflow/decisions-made-product-30.md`). The box try (`ws_flow_box_try()`) shows them; the value box's hint is `fl_values_hint_value`; the draft hint `value.a` and Claude's flow instructions name them.
 - Worked out each time a reader runs; no cache, no row.
 
 ## How long can a derived value be?
