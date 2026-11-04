@@ -221,7 +221,7 @@ foreach ($comments as $comment) {
             'featured' => pg_list_table_check_cell($comment['featured'] == '1'),
             'scheduled' => pg_list_cell(($output_date_and_time === '') ? '' : '<span class="badge theme-primary fw-light">' . $output_date_and_time . '</span>', 'align-middle', array('data-pg-sort-value' => ($output_date_and_time === '') ? '' : (string) $comment['publish_date_and_time'])),
             'publish_cancel' => pg_list_table_check_cell($comment['publish_cancel'] == '1'),
-            'message' => pg_list_cell((pg_comment_file_is_image($comment['file_name'] ?? '') ? '<img src="' . h(OUTPUT_PATH . encode_url_path($comment['file_name'])) . '" alt="' . h(lang('Photo')) . '" loading="lazy" class="img-thumbnail float-start me-2" style="width: 50px; height: 50px; object-fit: cover">' : '') . '<p>' . h(truncate($comment['message'], 84, $dots = "...")) . '</p>'),
+            'message' => pg_list_cell((pg_comment_file_is_image($comment['file_name'] ?? '') ? '<img src="' . h(OUTPUT_PATH . encode_url_path($comment['file_name'])) . '" alt="' . h(lang('Photo')) . '" loading="lazy" class="img-thumbnail float-start me-2" style="width: 50px; height: 50px; object-fit: cover">' : '') . '<p class="mb-0">' . h(truncate($comment['message'], 84, $dots = "...")) . '</p>'),
             'submitted' => pg_list_table_when_cell($comment['created_timestamp'], $comment['created_username'] ?? ''),
             'go' => pg_list_cell($output_reference_button),
         ),

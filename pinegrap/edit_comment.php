@@ -156,13 +156,12 @@ $liveform = new liveform('edit_comment', $_REQUEST['id']);
 // if the form has not been submitted
 if (!$_POST) {
 
-    // if the created username is not known, then set to [Unknown]
+    // A visitor who was not signed in has no username: the line shows only
+    // when the comment was added, as the Comments list does.
     $created_username = '';
-        
+
     if ($row['created_username']) {
         $created_username = ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($row['created_username']) ) ) );
-    }else{
-        $created_username = ' ' . lang(array('string'=>'by [{var:1}]','vars'=>lang('Unknown') ) );
     }
 
     // if edit comment screen has not been submitted already, pre-populate fields with data
