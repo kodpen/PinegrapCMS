@@ -7739,13 +7739,13 @@ function pg_pb_list_cells($product)
     if ((string) $product['inventory'] !== '1') {
         $stock = array(
             'html'  => '-',
-            'class' => 'align-middle text-center fg-success h5 fw-bolder',
+            'class' => 'align-middle fg-success',
             'title' => lang('Inventory tracking is not active for this product/service'),
         );
     } else {
         $stock = array(
             'html'  => (string) $quantity,
-            'class' => 'align-middle text-center h5 fw-bolder ' . (($quantity <= 0) ? 'fg-danger' : (($quantity < 10) ? 'fg-warning' : 'fg-success')),
+            'class' => 'align-middle ' . (($quantity <= 0) ? 'fg-danger' : (($quantity < 10) ? 'fg-warning' : 'fg-success')),
             'title' => '',
         );
     }

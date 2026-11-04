@@ -865,7 +865,7 @@ function pg_product_list_row($product, $view, $context)
                 break;
 
             case 'default_quantity':
-                $cells[$code] = pg_list_cell(h($product['default_quantity']), 'align-middle text-center');
+                $cells[$code] = pg_list_cell(h($product['default_quantity']), 'align-middle');
                 break;
 
             case 'shippable':
@@ -884,11 +884,11 @@ function pg_product_list_row($product, $view, $context)
                 break;
 
             case 'pwp':
-                $cells[$code] = pg_list_cell(h($product['primary_weight_points']), 'align-middle text-center');
+                $cells[$code] = pg_list_cell(h($product['primary_weight_points']), 'align-middle');
                 break;
 
             case 'swp':
-                $cells[$code] = pg_list_cell(h($product['secondary_weight_points']), 'align-middle text-center');
+                $cells[$code] = pg_list_cell(h($product['secondary_weight_points']), 'align-middle');
                 break;
 
             case 'dim':
@@ -906,7 +906,7 @@ function pg_product_list_row($product, $view, $context)
                 break;
 
             case 'prep':
-                $cells[$code] = pg_list_cell(h($product['preparation_time']), 'align-middle text-center');
+                $cells[$code] = pg_list_cell(h($product['preparation_time']), 'align-middle');
                 break;
 
             case 'free_ship':
@@ -932,7 +932,7 @@ function pg_product_list_row($product, $view, $context)
                 break;
 
             case 'number_of_payments':
-                $cells[$code] = pg_list_cell(h(((string) $product['number_of_payments'] !== '0') ? $product['number_of_payments'] : lang('Unlimited')), 'align-middle text-center');
+                $cells[$code] = pg_list_cell(h(((string) $product['number_of_payments'] !== '0') ? $product['number_of_payments'] : lang('Unlimited')), 'align-middle');
                 break;
 
             case 'payment_period':
@@ -976,7 +976,7 @@ function pg_product_list_row($product, $view, $context)
                 break;
 
             case 'impact':
-                $cells[$code] = pg_list_cell(pg_seo_render_impact($product), 'align-middle text-center');
+                $cells[$code] = pg_list_cell(pg_seo_render_impact($product), 'align-middle');
                 break;
 
             case 'last_modified':
