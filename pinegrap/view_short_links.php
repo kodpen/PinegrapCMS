@@ -238,7 +238,7 @@ $list = pg_list_table_printed(array(
     'columns' => array(
         'name' => array('heading' => lang('Name')),
         'destination_type' => array('heading' => lang('Destination Type')),
-        'destination' => array('heading' => lang('Destination')),
+        'destination' => array('heading' => lang('Destination'), 'sortable' => false),
         'created' => array('heading' => lang('Created'), 'kind' => 'date'),
         'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
         'visit' => array('heading' => lang('Visit'), 'kind' => 'actions'),
@@ -254,7 +254,7 @@ pg_page_shell(
         'extra classes'=>'page',
         'icon'=>'page', 
         'heading'=>lang('Short Links'),
-        'heading_description' => lang('All shortcut aliases, that I have access to, for Pages, Product Groups, Products, and URLs.'),
+        'heading_description' => lang('Short addresses for pages, product groups, products, files and URLs.'),
         
     )
 ) . '

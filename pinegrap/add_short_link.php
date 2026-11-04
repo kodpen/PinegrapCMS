@@ -96,7 +96,7 @@ if (!$_POST) {
             'extra classes'=>'page',
             'icon'=>'page',
             'heading'=>lang('Create Short Link'),
-            'heading_description' => lang('Create a shortcut alias for a Page, Product Group, Product, or URL.'),
+            'heading_description' => lang('Create a short address for a page, product group, product, file or URL.'),
             'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('view_short_links.php')),
             'breadcrumb' => array(
                 array('label' => lang('Short Links'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_short_links.php'),
