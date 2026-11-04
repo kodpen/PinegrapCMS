@@ -12,7 +12,7 @@ description: Steps AP5-AP8 of plans/activitypub.md: moderation and blocks, the F
 - AP6 (S) The Fediverse screen. `done` (#6597); screen and rules in `ui/fediverse-settings.md`.
   - Settings › Fediverse (`includes/settings/`): the switch, handle (checked against the people's names), name, summary, avatar, what is published, the followers list, the delivery log with failures and "Try again", a "Look me up" check that fetches the site's own WebFinger through the public address; pages print `<link rel="alternate" type="application/activity+json">`. Memory: `ui/fediverse-settings.md`.
 
-- AP7 (S) API and personal data. After AP4-AP6.
+- AP7 (S) API and personal data. `done` (#6633); endpoints and the privacy screens in `api/api-fediverse.md`.
   - Read-only API `GET /fediverse/followers` and `/fediverse/deliveries` with a scope (`api/api-endpoint-rules.md`); the personal data export lists a contact's remote comments by address, erasure removes them. Memory: `api/api-fediverse.md`.
 
 - AP8 (S) Close-out. After AP1-AP7.

@@ -145,6 +145,7 @@
     "Fediverse": "Fediverse",
     "Fediverse (ActivityPub): the site can be followed from Mastodon and other Fediverse services. It stays off until it is switched on.": "Fediverse (ActivityPub): site Mastodon ve diğer Fediverse servislerinden takip edilebilir. Açılana kadar kapalı kalır.",
     "Fediverse account": "Fediverse hesabı",
+    "Fediverse comments": "Fediverse yorumları",
     "Fediverse {var:1} was blocked": "Fediverse {var:1} engellendi",
     "Fee": "Ücret",
     "Fee Models": "Ücret Modelleri",

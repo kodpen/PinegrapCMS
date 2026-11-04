@@ -19,7 +19,7 @@ description: privacy_erase.php (PR #1706): erasing one person after a dry run; w
 
 ## What stays, what goes?
 - Kept, personal fields replaced: orders, ship_tos, order_documents (IP and user agent; the text stays), order_returns, gift_cards (bought: sender name and message; received: the address), ERP accounts and their invoices (issued too) / quotes / waybills, comments, consent_log (id-only rows: token first), ws_approval_guests, cart_quotes, audit_log. Reasons: `workflow/decisions-made-product.md`.
-- Deleted: uploads (row, disk), form_data, form_signatures, forms, `record_revisions`, watchers, wishlist, stock_notify, campaign recipients, mail and SMS queue, `mail_bounces`, site chats, address_book, push, passkeys, identities, two-step, auth_tokens (API devices too), opt_in, group memberships, contacts, user (rights as `delete_users.php`).
+- Deleted: a typed Fediverse address's comments (`api/api-fediverse.md`), uploads (row, disk), form_data, form_signatures, forms, `record_revisions`, watchers, wishlist, stock_notify, campaign recipients, mail and SMS queue, `mail_bounces`, site chats, address_book, push, passkeys, identities, two-step, auth_tokens (API devices too), opt_in, group memberships, contacts, user (rights as `delete_users.php`).
 
 ## Who may erase whom?
 - The export's rule (`pg_privacy_export_allowed()`), also applied to users whose `user_email` is one of the person's addresses but not tied to them; they are checked, not erased. Nobody erases their own account (status `self`).
@@ -32,6 +32,6 @@ description: privacy_erase.php (PR #1706): erasing one person after a dry run; w
 - Paraşüt's copies, Workspace customer channels, the site log, `visitors`; an erased staff member's own workflow tables.
 
 ## Sandbox (2026-10)?
-- MariaDB 10.11: only the person's rows and files changed, no dry-run write, a cashier's counter sales and the walk-in account stayed, a manager refused on the admin.
+- MariaDB 10.11: only the person's rows changed, no dry-run write, counter sales stayed, a manager refused.
 
 Related: docs/memory/core/personal-data-export.md, docs/memory/core/consent-log-and-audit-trail.md, docs/memory/core/audit-trail-writers.md

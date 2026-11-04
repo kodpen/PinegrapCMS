@@ -36,7 +36,7 @@ if (!pg_audit_ready()) {
 include_once('liveform.class.php');
 $liveform = new liveform('privacy_erase');
 
-$privacy_erase_input = array('email' => '', 'user_id' => 0, 'contact_id' => 0);
+$privacy_erase_input = array('email' => '', 'user_id' => 0, 'contact_id' => 0, 'fediverse' => '');
 $privacy_erase_apply = false;
 $privacy_erase_email_ok = true;
 
@@ -46,9 +46,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $privacy_erase_input['email'] = is_string($_POST['email'] ?? null) ? trim($_POST['email']) : '';
     $privacy_erase_input['user_id'] = is_scalar($_POST['user_id'] ?? null) ? (int) $_POST['user_id'] : 0;
     $privacy_erase_input['contact_id'] = is_scalar($_POST['contact_id'] ?? null) ? (int) $_POST['contact_id'] : 0;
+    $privacy_erase_input['fediverse'] = is_string($_POST['fediverse'] ?? null) ? trim($_POST['fediverse']) : '';
 
     if (($privacy_erase_input['email'] !== '') && (pg_privacy_normalize_email($privacy_erase_input['email']) === '')) {
         $liveform->mark_error('email', lang('Enter one e-mail address.'));
+        $privacy_erase_email_ok = false;
+    }
+
+    if (($privacy_erase_input['fediverse'] !== '') && (pg_privacy_normalize_actor($privacy_erase_input['fediverse']) === '')) {
+        $liveform->mark_error('fediverse', lang('Enter the account\'s address, such as https://mastodon.example/users/name.'));
         $privacy_erase_email_ok = false;
     }
 
@@ -83,6 +89,7 @@ if ($privacy_erase_done) {
 }
 
 $liveform->assign_field_value('email', $privacy_erase_done ? '' : $privacy_erase_input['email']);
+$liveform->assign_field_value('fediverse', $privacy_erase_done ? '' : $privacy_erase_input['fediverse']);
 
 $privacy_erase_body = '';
 $privacy_erase_side = '';
@@ -166,6 +173,12 @@ if (is_array($privacy_erase_result) && in_array($privacy_erase_result['status'],
         $privacy_erase_emails .= '<div class="text-break">' . h($privacy_erase_email) . '</div>';
     }
 
+    $privacy_erase_actors = '';
+
+    foreach ((isset($privacy_erase_found['person']['actors']) ? $privacy_erase_found['person']['actors'] : array()) as $privacy_erase_actor) {
+        $privacy_erase_actors .= '<div class="text-break">' . h($privacy_erase_actor) . '</div>';
+    }
+
     $privacy_erase_hidden = '';
 
     foreach ($privacy_erase_input as $privacy_erase_key => $privacy_erase_value) {
@@ -193,6 +206,7 @@ if (is_array($privacy_erase_result) && in_array($privacy_erase_result['status'],
                     <div class="card-body">
                         <div class="small fg-secondary">' . h(lang('E-mail Address')) . '</div>
                         <div class="mb-5">' . (($privacy_erase_emails !== '') ? $privacy_erase_emails : '<span class="fg-secondary">' . h(lang('None')) . '</span>') . '</div>
+                        ' . (($privacy_erase_actors !== '') ? '<div class="small fg-secondary">' . h(lang('Fediverse account')) . '</div><div class="mb-5">' . $privacy_erase_actors . '</div>' : '') . '
                         ' . (($privacy_erase_people !== '') ? '<ul class="list-unstyled mb-5">' . $privacy_erase_people . '</ul>' : '') . '
                         ' . $privacy_erase_form . '
                     </div>
@@ -210,7 +224,11 @@ $privacy_erase_search = '
                         ' . get_token_field() . '
                         <div class="col-12 md:col-8 xl:col-6">
                             <label for="email" class="form-label">' . h(lang('E-mail Address')) . '</label>
-                            ' . $liveform->output_field(array('type' => 'email', 'id' => 'email', 'name' => 'email', 'class' => 'form-control', 'maxlength' => '254', 'autocomplete' => 'off', 'required' => 'true')) . '
+                            ' . $liveform->output_field(array('type' => 'email', 'id' => 'email', 'name' => 'email', 'class' => 'form-control', 'maxlength' => '254', 'autocomplete' => 'off')) . '
+                        </div>
+                        <div class="col-12 md:col-8 xl:col-6">
+                            <label for="fediverse" class="form-label">' . h(lang('Fediverse account')) . '</label>
+                            ' . $liveform->output_field(array('type' => 'url', 'id' => 'fediverse', 'name' => 'fediverse', 'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off', 'spellcheck' => 'false', 'placeholder' => 'https://mastodon.example/users/name')) . '
                         </div>
                         <div class="col-12 md:col-auto">
                             <button type="submit" class="btn btn-solid theme-primary rounded-pill px-5"><i class="bi bi-search me-1" aria-hidden="true"></i>' . h(lang('Find')) . '</button>

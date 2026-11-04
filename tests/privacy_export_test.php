@@ -71,19 +71,32 @@ function test_privacy_export_passkeys_leave_the_credential_out()
 function test_privacy_export_seed()
 {
 	pg_assert_same(
-		array('emails' => array('ali@example.com'), 'user_ids' => array(7), 'contact_ids' => array(12)),
-		pg_privacy_export_seed(array('email' => ' Ali@Example.com ', 'user_id' => '7', 'contact_id' => 12)),
-		'all three'
+		array('emails' => array('ali@example.com'), 'user_ids' => array(7), 'contact_ids' => array(12), 'actors' => array('https://mastodon.example/users/ali')),
+		pg_privacy_export_seed(array('email' => ' Ali@Example.com ', 'user_id' => '7', 'contact_id' => 12, 'fediverse' => ' https://mastodon.example/users/ali#main-key ')),
+		'all four'
 	);
 
 	pg_assert_same(
-		array('emails' => array(), 'user_ids' => array(), 'contact_ids' => array()),
-		pg_privacy_export_seed(array('email' => 'not an address', 'user_id' => '-3', 'contact_id' => array(5))),
+		array('emails' => array(), 'user_ids' => array(), 'contact_ids' => array(), 'actors' => array()),
+		pg_privacy_export_seed(array('email' => 'not an address', 'user_id' => '-3', 'contact_id' => array(5), 'fediverse' => '@ali@mastodon.example')),
 		'nothing usable'
 	);
 
 	pg_assert_true(pg_privacy_export_is_empty(pg_privacy_export_seed(array())), 'empty input');
 	pg_assert_false(pg_privacy_export_is_empty(pg_privacy_export_seed(array('contact_id' => 1))), 'a contact is enough');
+	pg_assert_false(pg_privacy_export_is_empty(pg_privacy_export_seed(array('fediverse' => 'https://mastodon.example/users/ali'))), 'a Fediverse account is enough');
+}
+
+// A Fediverse account as comments.remote_actor holds it.
+function test_privacy_export_normalize_actor()
+{
+	pg_assert_same('https://mastodon.example/users/ali', pg_privacy_normalize_actor(' https://mastodon.example/users/ali#main-key'));
+	pg_assert_same('http://social.example/@ali', pg_privacy_normalize_actor('http://social.example/@ali'));
+	pg_assert_same('', pg_privacy_normalize_actor('@ali@mastodon.example'), 'a handle is not an address');
+	pg_assert_same('', pg_privacy_normalize_actor('ftp://mastodon.example/users/ali'));
+	pg_assert_same('', pg_privacy_normalize_actor('https://user@mastodon.example/'), 'no credentials');
+	pg_assert_same('', pg_privacy_normalize_actor('https://mastodon.example/' . str_repeat('a', 255)));
+	pg_assert_same('', pg_privacy_normalize_actor(array('https://mastodon.example/users/ali')));
 }
 
 // Users bring their contact and address, contacts their address; ids sorted,
