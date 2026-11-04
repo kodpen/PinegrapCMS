@@ -86,6 +86,44 @@ function test_dashboard_v2_share_texts_and_config()
 	pg_assert_same('Default for the Manager role · locked', pg_dashboard_v2_share_done(2, true), 'manager locked');
 
 	pg_assert_same(null, pg_dashboard_v2_share_config(array('role' => 2)), 'manager: no section');
-	$config = pg_dashboard_v2_share_config(array('role' => 1));
+	$config = pg_dashboard_v2_share_config(array('role' => 1), array(array('role' => '2', 'locked' => '1')));
 	pg_assert_same(array(9, 0, 1, 2, 3), array_map(function ($pair) { return $pair[0]; }, $config['roles']), 'role order');
+	pg_assert_same(array('has_default' => true, 'locked' => true), $config['defaults'][2], 'config carries each role\'s state');
+	pg_assert_same(array('has_default' => false, 'locked' => false), $config['defaults'][9], 'no default for everyone');
+}
+
+// Each role's default and lock, from the user_id 0 rows; every role is
+// listed, a row for an unknown role is ignored.
+function test_dashboard_v2_share_states()
+{
+	$states = pg_dashboard_v2_share_states(array(
+		array('role' => '9', 'locked' => '0'),
+		array('role' => '3', 'locked' => '1'),
+		array('role' => '7', 'locked' => '1'),
+	));
+
+	pg_assert_same(array(9, 0, 1, 2, 3), array_keys($states), 'every role, in order');
+	pg_assert_same(array('has_default' => true, 'locked' => false), $states[9], 'everyone: unlocked default');
+	pg_assert_same(array('has_default' => true, 'locked' => true), $states[3], 'user: locked default');
+	pg_assert_same(array('has_default' => false, 'locked' => false), $states[0], 'administrator: none');
+	pg_assert_same(5, count(pg_dashboard_v2_share_states(null)), 'no rows: every role without a default');
+}
+
+// Once a role's default row is removed the person's own saved layout and
+// look come back, and a person who saved none falls back to the everyone
+// row or to nothing.
+function test_dashboard_v2_share_effective_after_remove()
+{
+	$own = array('enabled' => 1, 'layout' => '{"a":1}', 'look' => '{"s":1}');
+	$locked = array('layout' => '{"d":1}', 'look' => '{"dl":1}', 'locked' => 1);
+
+	pg_assert_same('{"d":1}', pg_dashboard_v2_row_effective($own, $locked)['layout'], 'locked before removal');
+	pg_assert_same($own, pg_dashboard_v2_row_effective($own, null), 'own layout and look back after removal');
+
+	$everyone = array('layout' => '{"e":1}', 'look' => '', 'locked' => 0);
+	pg_assert_same('{"e":1}', pg_dashboard_v2_row_effective(null, $everyone)['layout'], 'role row gone: everyone row fills');
+	pg_assert_same(null, pg_dashboard_v2_row_effective(null, null), 'no rows left: nothing');
+
+	pg_assert_same('Default removed for everyone', pg_dashboard_v2_share_removed(9), 'removed: everyone');
+	pg_assert_same('Default removed for the Manager role', pg_dashboard_v2_share_removed(2), 'removed: manager');
 }

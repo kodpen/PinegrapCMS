@@ -703,6 +703,7 @@
     "Remove anything private from screenshots and logs before you attach them.": "Ekran görüntülerini ve günlük dosyalarını eklemeden önce kişisel olan her şeyi çıkarın.",
     "Remove camera details": "Kamera bilgilerini sil",
     "Remove condition": "Koşulu kaldır",
+    "Remove default": "Varsayılanı kaldır",
     "Remove everything this import made?": "Bu içe aktarmanın oluşturduğu her şey kaldırılsın mı?",
     "Remove filter: {var:1}": "Filtreyi kaldır: {var:1}",
     "Remove from Contact Groups": "Rehber Gruplarından Kaldır",
