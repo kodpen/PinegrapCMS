@@ -484,7 +484,10 @@ function pg_visitors_section_content(array $period, array $user)
         return pg_visitors_section('content', lang('Content'), pg_visitors_empty());
     }
 
-    $body = '<div class="pg-visitors-content-lists">' . $lists . pg_visitors_content_landing_table($landing_rows, $compare, $ecommerce) . '</div>';
+    // The landing pages under the lists, not in their grid: a list alone
+    // then takes the whole width.
+    $body = (($lists !== '') ? '<div class="pg-visitors-content-lists">' . $lists . '</div>' : '')
+        . pg_visitors_content_landing_table($landing_rows, $compare, $ecommerce);
 
     return pg_visitors_section('content', lang('Content'), $body);
 }

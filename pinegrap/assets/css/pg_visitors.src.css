@@ -557,8 +557,8 @@
     gap: 1.75rem 2rem;
   }
 
-  .pg-visitors-content-landing {
-    grid-column: 1 / -1;
+  .pg-visitors-content-lists + .pg-visitors-content-landing {
+    margin-top: 1.75rem;
   }
 
   /* ── Section: site_search ───────────────────────────────────────────── */
