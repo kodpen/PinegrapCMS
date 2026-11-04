@@ -170,7 +170,7 @@ if (!$_POST) {
             'extra classes'=>'page',
             'icon'=>'page', 
             'heading'=>lang('Edit Short Link'),
-            'heading_description' => lang('Update this shortcut alias for a Page, Product Group, Product, or URL.'),
+            'heading_description' => lang('Update this short address for a page, product group, product, file or URL.'),
             'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('view_short_links.php'))
         ,
             'breadcrumb' => array(array('label' => lang('Short Links'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_short_links.php'), array('label' => lang('Edit Short Link'))),
@@ -196,8 +196,8 @@ if (!$_POST) {
                     'product_id' => $liveform->get_field_value('product_id'),
                     'file_id' => $short_link['file_id']))),
             '
-                                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                        <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . (pg_short_link_recycle_ready() ? lang('This short link will be moved to the Recycle Bin.') : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('short link'))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>'
+                                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . (pg_short_link_recycle_ready() ? lang('This short link will be moved to the Recycle Bin.') : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('short link'))))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>'
         ) . '
     </form>
 </main>' .

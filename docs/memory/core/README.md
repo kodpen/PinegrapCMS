@@ -78,6 +78,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - dom-node-html.md: pg_dom_html() instead of $document->saveHTML($node): one DOM node's HTML the same on every PHP version (7.1-7.2 pretty-printed it), its callers and its test
 - dompdf-embedding.md: How dompdf and its chain are embedded in includes/dompdf/: versions, custom autoloader, runtime write location, HTML/charset handling for PDFs.
 - edit-submitted-form-id.md: edit_submitted_form.php reads, saves and deletes only the id it checked ($id from $_REQUEST, whole number), never $_POST['id'] or $_GET['id']
+- email-campaign-html-body.md: How an HTML campaign body is drawn from a page: an e-mail render with no session token and signed-out account widgets, the token cut as a guard, and no hard wrap of mail bodies
 - email-campaign-schedule-label.md: The schedule label on My Campaign Profiles built from two whole keys, the send time as {var:4} at the end
 - email-campaign-send.md: Send now and the campaign job share includes/fn/email_campaign_send.php: mail properties with purpose, refused deliveries stored as attempts, finish counts only deliveries
 - error-path-missing-methods.md: liveform has add_error() for form-level messages vs mark_error() per field; never call a method that does not exist on error branches (PHP 8 gives a blank HTTP 500).
@@ -167,5 +168,6 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - two-step-sign-in-expiry.md: Second step (mfa.php) and device-limit question that waited past 10 minutes: the reason on the origin sign-in screen, account name and send_to kept (PR #3309)
 - two-step-sign-in.md: Two-step sign-in (TOTP + recovery codes, 2026.4.8 step 8.40): where the gate sits in every sign-in path, storage, API and ShipWorks behaviour, recovery, encryption key risk
 - user-disabled.md: Disabled users (2026.11.0, 11.0.160): user.user_disabled_at, the helpers every sign-in path asks, the gates, the Account enabled switch and its guards (#6186)
+- user-write.md: Creating, saving and deleting a panel account goes through includes/fn/user_write.php, shared by add_user.php, edit_user.php, delete_users.php and the coming /users API writes
 - vanilla-calendar-library.md: The vendored vanilla-calendar-pro (assets/lib/vanilla-calendar-pro/, 3.4.0, unmodified) behind the one date-and-time control: why, how it loads once, how to update it
 - webauthn-verifier.md: WebAuthn (passkey) verifier in includes/webauthn/ (PR #594): API, what it accepts and refuses, error codes, record fields, W3C test vectors, what a caller must do

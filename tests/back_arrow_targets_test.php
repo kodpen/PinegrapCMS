@@ -166,6 +166,7 @@ function test_back_arrow_names_its_destination()
 		'find_and_replace.php' => "lang('Find & Replace')",
 		'workspace_calendar_feed.php' => "lang('Work Calendar')",
 		'product_builder.php' => "lang('All Products')",
+		'erp_receipt.php' => '$receipt[\'cash_account_name\']',
 	);
 
 	foreach ($screens as $file => $title) {
@@ -176,6 +177,12 @@ function test_back_arrow_names_its_destination()
 			pg_assert_contains("'title' => " . $title, $line, $file . ': the arrow names where it goes');
 		}
 	}
+
+	// The receipt form's refusal page goes back to the invoice it refused;
+	// the form itself drops what was typed, so its arrow stays "Cancel".
+	$receipt_form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_erp_receipt.php');
+	pg_assert_contains('\'url\' => $invoice_url, \'title\' => lang(\'Back to the invoice\')', $receipt_form, 'add_erp_receipt.php: the refusal arrow names the invoice');
+	pg_assert_false(strpos($receipt_form, "lang('Back to the invoice') . '</a>") !== false, 'add_erp_receipt.php: no back-to-invoice button beside the arrow');
 
 	$wtables = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_wtables.php');
 	pg_assert_contains("'url' => \$self_url, 'title' => lang('All tables')", $wtables, 'workspace_wtables.php: the arrow names the table list');

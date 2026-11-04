@@ -188,6 +188,29 @@ function erp_till_outflow_row_refusal($till, $amount)
 }
 
 /**
+ * Why a till cannot be made a cash till, or ''.
+ *
+ * A cash till never holds less than nothing (erp_till_outflow_row_refusal()),
+ * so a bank, POS or credit card till that is below zero cannot be switched
+ * to kind cash: the drawer would read negative and refuse every outflow.
+ * A till that is already a cash till keeps its kind whatever its balance.
+ *
+ * @param string $stored_kind  The kind the till has now.
+ * @param string $kind         The kind asked for.
+ * @param int    $balance      Minor units: the opening figure to be saved
+ *                             plus every movement.
+ * @return string
+ */
+function erp_till_kind_refusal($stored_kind, $kind, $balance)
+{
+    if (((string) $kind !== 'cash') || ((string) $stored_kind === 'cash') || ((int) $balance >= 0)) {
+        return '';
+    }
+
+    return lang('A till below zero cannot be made a cash till.');
+}
+
+/**
  * Why a till movement cannot take this date, or ''.
  *
  * The till ledger holds money that moved: a receipt dated next year counted

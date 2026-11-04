@@ -59,6 +59,13 @@ if ($_POST) {
     $action = (string) ($_POST['erp_action'] ?? '');
 
     if ($action === 'cancel') {
+        // A second cancel (two tabs, a resent form) is refused in the
+        // direction's own words: the shared refusal calls a payment a receipt.
+        if ($is_cancelled) {
+            $liveform->mark_error('_error', $is_collection ? lang('That receipt has already been cancelled.') : lang('That payment has already been cancelled.'));
+            go($self_url);
+        }
+
         $result = erp_receipt_cancel($cash_id, (string) ($_POST['reason'] ?? ''), (int) $user['id']);
 
         if ($result['success']) {
@@ -420,7 +427,7 @@ pg_page_shell([
     'icon' => 'erp',
     'heading' => $title . ' #' . $cash_id,
     'heading_description' => lang('The movement, the invoices it closed, and the corrections it allows.'),
-    'cancel' => array('enable' => 'true', 'url' => 'edit_erp_till.php?id=' . (int) $receipt['cash_account_id']),
+    'cancel' => array('enable' => 'true', 'url' => 'edit_erp_till.php?id=' . (int) $receipt['cash_account_id'], 'title' => $receipt['cash_account_name']),
     'breadcrumb' => array(
         array('label' => lang('Cash and Bank'), 'url' => $list_url),
         array('label' => $receipt['cash_account_name'], 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_till.php?id=' . (int) $receipt['cash_account_id']),

@@ -724,6 +724,8 @@ function api_openapi_objects()
         'CalendarReservationCustomer' => 'api_calendar_reservation_customer_schema',
         'SmsCampaign'        => 'api_sms_campaign_schema',
         'SmsCampaignOutbox'  => 'api_sms_campaign_outbox_schema',
+        'DesignAd'           => 'api_design_ad_schema',
+        'DesignAdRegion'     => 'api_design_ad_region_schema',
     );
 
     // A module declares the objects its own endpoints answer with, the same way

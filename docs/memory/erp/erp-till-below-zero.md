@@ -19,3 +19,7 @@ description: A cash till (drawer, received-cheque portfolio) never goes below ze
 
 ## And a movement dated ahead?
 - Refused before this check by `erp_till_future_date_refusal()` (`erp-till-future-date.md`, #5581): the cached balance counts every date.
+
+## And a kind change on the till form?
+- `edit_erp_till.php` refuses switching a bank, POS or credit card till to `cash` while its balance (the posted opening figure plus every movement) is below zero: `erp_till_kind_refusal()` in `includes/erp/cash.php`, error on the Type field. A till already `cash` keeps its kind; the opening figure stays a free correction.
+- The same form refuses an opening figure that is not a number (`erp_till_opening_refusal()`) and an IBAN failing the ISO 13616 mod-97 check (`erp_till_iban_refusal()`); the IBAN is stored upper case without spaces (`includes/erp/till_form.php`).

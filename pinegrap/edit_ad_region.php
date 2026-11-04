@@ -46,16 +46,11 @@ include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/ad_region_form.php');
 $liveform = new liveform('edit_ad_region');
 
-// assume that there are no ads assigned to this ad region until we find out otherwise
-$ads_assigned_to_this_ad_region = false;
+// an ad region that still has ads is not deleted
+$ads_assigned_to_this_ad_region = pg_ad_region_has_ads($id);
 
-// determine if there are ads assigned to this ad region
-$query = "SELECT id FROM ads WHERE ad_region_id = ? LIMIT 1";
-$result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
-
-// if there is a result, then there are ads assigned to this ad region, so remember that
-if (mysqli_num_rows($result) > 0) {
-    $ads_assigned_to_this_ad_region = true;
+if ($ads_assigned_to_this_ad_region === null) {
+    output_error('Query failed.');
 }
 
 // if the form has not just been submitted
@@ -198,13 +193,8 @@ if (!$_POST) {
             exit();
         }        
         
-        // delete ad region
-        $query = "DELETE FROM ad_regions WHERE id = ?";
-        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
-        
-        // delete users_ad_regions_xref records
-        $query = "DELETE FROM users_ad_regions_xref WHERE ad_region_id = ?";
-        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
+        // delete ad region and the users' access to it
+        pg_ad_region_delete($id) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('ad region'), $liveform->get_field_value('name')) )), $_SESSION['sessionusername']);
         
@@ -226,53 +216,35 @@ if (!$_POST) {
         
     // else the user selected to save the ad region
     } else {
-        $sql_name = "";
-        $name_values = array();
         $name = '';
-        
+
         // if the user is a designer or above, then validate name field and prepare to update it
         if ($user['role'] <= 1) {
-            pg_ad_region_form_validate_name($liveform, (string) $liveform->get_field_value('id'));
+            pg_ad_region_form_validate_name($liveform, (string) $id);
         }
 
         pg_ad_region_form_validate_behavior($liveform);
 
         // if there is an error, forward user back to edit ad region screen
         if ($liveform->check_form_errors() == true) {
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_ad_region.php?id=' . $liveform->get_field_value('id') . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_ad_region.php?id=' . $id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
             exit();
         }
 
+        // a manager keeps the stored name: only designers rename a region
         if ($user['role'] <= 1) {
-            $sql_name = "name = ?,";
-            $name_values = array((string) $liveform->get_field_value('name'));
-            
             $name = $liveform->get_field_value('name');
-            
-        // else the user is a manager, so get ad region name for log message
+            $new_name = (string) $name;
         } else {
-            $query = "SELECT name FROM ad_regions WHERE id = ?";
-            $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
+            $result = db_q("SELECT name FROM ad_regions WHERE id = ?", array($id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $name = $row['name'];
+            $new_name = null;
         }
-        
+
         // update ad region
-        $query =
-            "UPDATE ad_regions
-            SET
-                $sql_name
-                display_type = ?,
-                transition_type = ?,
-                transition_duration = ?,
-                slideshow = ?,
-                slideshow_interval = ?,
-                slideshow_continuous = ?,
-                last_modified_user_id = ?,
-                last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = ?";
-        $result = db_q($query, array_merge($name_values, pg_ad_region_form_values($liveform), array((string) $user['id'], (string) $liveform->get_field_value('id')))) or output_error('Query failed.');
-        
+        pg_ad_region_save($id, $new_name, pg_ad_region_form_values($liveform), $user['id']) or output_error('Query failed.');
+
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('ad region'), $name) )), $_SESSION['sessionusername']);
         
         // if there is a send to, then forward user to send to
