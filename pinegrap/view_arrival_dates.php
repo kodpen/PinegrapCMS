@@ -108,7 +108,7 @@ while ($row = mysqli_fetch_array($result)) {
         'cells' => array(
             'name' => pg_list_cell('<a href="' . h($output_link_url) . '" class="' . $output_status_class . '" data-pg-open>' . h($name) . '</a>' . $output_state),
             'arrival_date' => pg_list_cell(h($arrival_date), 'align-middle text-nowrap', array('data-pg-sort-value' => (int) str_replace('-', '', (string) $row['arrival_date']))),
-            'status' => pg_list_cell('<span class="badge fg-white fw-light ' . (($status == 'enabled') ? 'bg-success' : 'bg-danger') . '">' . h(lang(ucwords($status))) . '</span>'),
+            'status' => pg_list_cell('<span class="badge fg-white fw-light ' . (($status == 'enabled') ? 'theme-success' : 'theme-danger') . '">' . h(lang(ucwords($status))) . '</span>'),
             'start_date' => pg_list_cell(h($start_date), 'align-middle text-nowrap', array('data-pg-sort-value' => (int) str_replace('-', '', (string) $row['start_date']))),
             'end_date' => pg_list_cell(h($end_date), 'align-middle text-nowrap', array('data-pg-sort-value' => (int) str_replace('-', '', (string) $row['end_date']))),
             'last_modified' => pg_list_table_when_cell($timestamp, (string) $username),

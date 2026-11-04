@@ -827,7 +827,7 @@ if (!$_POST) {
                         <input type="hidden" name="edit_tax_rate_method">
                         <input type="hidden" name="edit_tax_rate_value">
                         <input type="hidden" name="edit_inventory_quantity">
-                        <div class="row g-3 align-items-end mb-5">
+                        <div class="row g-5 align-items-end mb-12">
                             <div class="col-12">
                                 <p class="mb-0">' . h(lang('The new letter replaces the 1 character removed from the ID and Short Description fields.')) . '</p>
                             </div>

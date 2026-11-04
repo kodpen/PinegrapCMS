@@ -185,7 +185,7 @@ $list = pg_list_table_printed(array(
 ));
 
 // The state filter sits in the toolbar beside the search box.
-$output_state_filter = '<form id="state_filter" action="view_verified_shipping_addresses.php" method="get" class="d-inline-flex align-items-center gap-2">
+$output_state_filter = '<form id="state_filter" action="view_verified_shipping_addresses.php" method="get" class="d-inline-flex align-items-center gap-3">
         <label for="state_id" class="small fg-secondary">' . lang('State') . '</label>
         <select id="state_id" name="state_id" class="form-control form-control-sm w-auto max-w-100" onchange="document.getElementById(\'state_filter\').submit()">
             <option value="[All]"' . (($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '') == '[All]' ? ' selected="selected"' : '') . '>[' . lang('All') . '] (' . pg_format_number($all_verified_shipping_addresses, 0) . ')</option>
