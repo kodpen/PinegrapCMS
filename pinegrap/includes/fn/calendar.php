@@ -197,9 +197,9 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                 if ($user) {
                     $output_date_selection = '
                     <div class="btn-group my-3">
-                        <a href="?date=' . h($decrease_date) . '&amp;calendar_id=' . h($calendar_id) . '&amp;view=' . h($view) . '&amp;status=' . h($status) . '" class="btn btn-outline theme-primary previous" aria-label="' . h(lang('Previous month')) . '">&lt;</a> 
+                        <a href="?date=' . h($decrease_date) . '&amp;calendar_id=' . h($calendar_id) . '&amp;view=' . h($view) . '&amp;status=' . h($status) . '" class="btn btn-outline theme-primary previous" aria-label="' . h(lang('Previous month')) . '"><span class="bi bi-chevron-left" aria-hidden="true"></span></a>
                         <a href="?date" class="btn btn-outline theme-primary this_month">' . lang('This Month') . '</a>
-                        <a href="?date=' . h($increase_date) . '&amp;calendar_id=' . h($calendar_id) . '&amp;view=' . h($view) . '&amp;status=' . h($status) . '" class="btn btn-outline theme-primary next" aria-label="' . h(lang('Next month')) . '">&gt;</a>
+                        <a href="?date=' . h($increase_date) . '&amp;calendar_id=' . h($calendar_id) . '&amp;view=' . h($view) . '&amp;status=' . h($status) . '" class="btn btn-outline theme-primary next" aria-label="' . h(lang('Next month')) . '"><span class="bi bi-chevron-right" aria-hidden="true"></span></a>
                     </div>
                     <span class="fw-bolder">' . h(lang(date('F', $start_timestamp))) . ' ' . h(date('Y', $start_timestamp)) . '</span>';
                 } else {
@@ -248,7 +248,7 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                 // If we are in softwares backend, then prepare items that only appear in the backend
                 if ($user) {
                     $output_date_selection = '
-                    <span style="font-weight: bold; vertical-align: middle;">
+                    <span class="d-block fw-bold mb-2">
                         ' . get_absolute_time(array(
                             'timestamp' => $week_start_time,
                             'type' => 'date',
@@ -258,11 +258,11 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                             'type' => 'date',
                             'size' => 'long'
                         )) . '
-                    </span><br/>
+                    </span>
                     <div class="btn-group">
-                        <a href="?date=' . h($decrease_date) . '&amp;calendar_id=' . h($calendar_id) . '&amp;view=' . h($view) . '&amp;status=' . h($status) . '" class="btn btn-outline theme-primary" aria-label="' . h(lang('Previous week')) . '">&lt;</a> 
+                        <a href="?date=' . h($decrease_date) . '&amp;calendar_id=' . h($calendar_id) . '&amp;view=' . h($view) . '&amp;status=' . h($status) . '" class="btn btn-outline theme-primary" aria-label="' . h(lang('Previous week')) . '"><span class="bi bi-chevron-left" aria-hidden="true"></span></a>
                         <a href="?date" class="btn btn-outline theme-primary this_week">' . lang('This Week') . '</a>
-                        <a href="?date=' . h($increase_date) . '&amp;calendar_id=' . h($calendar_id) . '&amp;view=' . h($view) . '&amp;status=' . h($status) . '" class="btn btn-outline theme-primary" aria-label="' . h(lang('Next week')) . '">&gt;</a> 
+                        <a href="?date=' . h($increase_date) . '&amp;calendar_id=' . h($calendar_id) . '&amp;view=' . h($view) . '&amp;status=' . h($status) . '" class="btn btn-outline theme-primary" aria-label="' . h(lang('Next week')) . '"><span class="bi bi-chevron-right" aria-hidden="true"></span></a>
                     </div> ';
                 } else {
                     // else this is for a front-end view
@@ -358,22 +358,22 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                 $output_update_calendar_view_form = '
                     <div class="card-header">
                         <div class="calendar_view row my-3">
-                            <div class="col-12 md:col-12 lg:col-6 text-center lg:text-start">
+                            <div class="col-12 md:col-12 lg:col-5 text-center lg:text-start">
                                 ' . $output_date_selection . '
                             </div>
-                            <div class="col-12 md:col-12 lg:col-6 text-center lg:text-start">
+                            <div class="col-12 md:col-12 lg:col-7 text-center lg:text-start">
                                 <form id="form" method="get" class="row justify-content-end">
                                     <input type="hidden" name="date" value="' . h($date) . '">
-                                    <div class="col-12 md:col-4 lg:col-3 align-self-center">
+                                    <div class="col-12 md:col-6 lg:col-5 align-self-center">
                                         ' . $output_calendar_pick_list . '
                                     </div>
-                                    <div class="col-12 md:col-4 lg:col-3 align-self-center">
+                                    <div class="col-6 md:col-3 lg:col-3 align-self-center">
                                         <select name="view" class="form-control my-1" aria-label="' . h(lang('View')) . '" onchange="submit_form(\'form\')">
                                             <option value="monthly"' . $output_view_monthly_selected . '>' . lang('Monthly') . '</option>
                                             <option value="weekly"' . $output_view_weekly_selected . '>' . lang('Weekly') . '</option>
                                         </select>
                                     </div>
-                                    <div class="col-12 md:col-4 lg:col-6 align-self-center">
+                                    <div class="col-6 md:col-3 lg:col-4 align-self-center">
                                         <div class="input-group">
                                             <div class="input-group-text my-1">' . lang('Status') . ':</div>
                                             <select name="status" class="form-control my-1" aria-label="' . h(lang('Status')) . '" onchange="submit_form(\'form\')"><option value=""' . $all_selected . '>-' . lang('All') . '-</option><option value="published"' . $published_selected . '>' . lang('Published') . '</option><option value="not_published"' . $not_published_selected . '>*' . lang('Not Published') . '</option></select>
@@ -853,10 +853,10 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                             // or the product is allowed to be backordered
                             // then this calendar event is available, so output available icon
                             if ((strtotime($calendar_event['end_date_and_time']) >= time()) && (($calendar_event['limit_reservations'] == 0) || ($calendar_event['number_of_remaining_spots'] > 0)) && (($calendar_event['inventory'] == 0) || ($calendar_event['inventory_quantity'] > 0) || ($calendar_event['backorder'] == 1))) {
-                                $output_availability_icon = '<span style="color: green; font-weight: bold; font-size: 130%; margin-right: .25em">&#9679;</span>';
+                                $output_availability_icon = pg_calendar_availability_icon(true, $user);
                                 // else this calendar event is not available, so output unavailable icon
                             } else {
-                                $output_availability_icon = '<span style="color: lightgrey; font-weight: bold; font-size: 130%; margin-right: .25em">&#9679;</span>';
+                                $output_availability_icon = pg_calendar_availability_icon(false, $user);
                             }
                         }
                         $output_link = $output_availability_icon . '<a href="' . h(escape_url($link)) . '?id=' . h($event['id']) . h($recurring_query_string) . '">' . h($event['name']) . '</a>';
@@ -924,7 +924,7 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                         $output_today_class = '';
                     }
                     // start cell
-                    $output_calendar_data .= '<td class="' . $output_today_class . '"><div style="text-align: right;" class="calendar-day-wrapper">' . $output_day_number . '</div>';
+                    $output_calendar_data .= '<td class="' . $output_today_class . '"><div ' . ($user ? 'class="calendar-day-wrapper text-end"' : 'style="text-align: right;" class="calendar-day-wrapper"') . '>' . $output_day_number . '</div>';
                     // if there are events for this day
                     if (isset($days[$i]) && $days[$i]) {
 
@@ -962,7 +962,7 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                             if ($user) {
                                 // If this event is an exception, then prepare to output strikethrough tag and remove exception link
                                 if ($event['hidden_exception'] == '1') {
-                                    $start_strikethrough_tag = '<span class="calendar_event_exception">';
+                                    $start_strikethrough_tag = '<span class="calendar_event_exception"><span class="visually-hidden">' . h(lang('Removed')) . ': </span>';
                                     $end_strikethrough_tag = '</span>';
                                     // If the calendar event is not published, or the user is greater than a basic user, or the user has publish rights, then prepare to output exception link
                                     if (($event['published'] == 0) || ($user['role'] < 3) || ($user['publish_calendar_events'] == true)) {
@@ -1002,10 +1002,10 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                                 // or the product is allowed to be backordered
                                 // then this calendar event is available, so output available icon
                                 if ((strtotime($calendar_event['end_date_and_time']) >= time()) && (($calendar_event['limit_reservations'] == 0) || ($calendar_event['number_of_remaining_spots'] > 0)) && (($calendar_event['inventory'] == 0) || ($calendar_event['inventory_quantity'] > 0) || ($calendar_event['backorder'] == 1))) {
-                                    $output_availability_icon = '<span style="color: green; font-weight: bold; font-size: 130%; margin-right: .25em">&#9679;</span>';
+                                    $output_availability_icon = pg_calendar_availability_icon(true, $user);
                                     // else this calendar event is not available, so output unavailable icon
                                 } else {
-                                    $output_availability_icon = '<span style="color: lightgrey; font-weight: bold; font-size: 130%; margin-right: .25em">&#9679;</span>';
+                                    $output_availability_icon = pg_calendar_availability_icon(false, $user);
                                 }
                             }
                             // If there is a page to link and the user has access to the link, then prepare to output the event name with a link
@@ -1108,15 +1108,21 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                 foreach ($events as $key => $event) {
                     // if event start date is not equal to previous event start date, then open new container for this day
                     if (!isset($events[$key - 1]) || ($event['event_start_date'] != $events[$key - 1]['event_start_date'])) {
-                        $output_calendar_data .= '<fieldset style="margin-bottom: 15px"' . $output_fieldset_class . '>
+                        $output_day_title = get_absolute_time(array(
+                            'timestamp' => strtotime($event['event_start_date']),
+                            'type' => 'date',
+                            'size' => 'long'
+                        ));
 
-                                    <legend' . $output_legend_class . '>' . get_absolute_time(array(
-                                'timestamp' => strtotime($event['event_start_date']),
-                                'type' => 'date',
-                                'size' => 'long'
-                            )) . '</legend>
+                        if ($user) {
+                            $output_calendar_data .= '<section class="card pg-cal-day mb-3"><h3 class="card-header h6 mb-0">' . $output_day_title . '</h3><div class="card-body">';
+                        } else {
+                            $output_calendar_data .= '<fieldset style="margin-bottom: 15px"' . $output_fieldset_class . '>
+
+                                    <legend' . $output_legend_class . '>' . $output_day_title . '</legend>
 
                                     <div style="margin: 10px">';
+                        }
                     }
                     // Initialize variables
                     $start_strikethrough_tag = '';
@@ -1144,7 +1150,7 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                     if ($user) {
                         // If this event is an exception, then prepare to output strikethrough tag and remove exception link
                         if ($event['hidden_exception'] == '1') {
-                            $start_strikethrough_tag = '<span class="calendar_event_exception">';
+                            $start_strikethrough_tag = '<span class="calendar_event_exception"><span class="visually-hidden">' . h(lang('Removed')) . ': </span>';
                             $end_strikethrough_tag = '</span>';
                             // If the calendar event is not published, or the user is greater than a basic user, or the user has publish rights, then prepare to output exception link
                             if (($event['published'] == 0) || ($user['role'] < 3) || ($user['publish_calendar_events'] == true)) {
@@ -1190,10 +1196,10 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                         // or the product is allowed to be backordered
                         // then this calendar event is available, so output available icon
                         if ((strtotime($calendar_event['end_date_and_time']) >= time()) && (($calendar_event['limit_reservations'] == 0) || ($calendar_event['number_of_remaining_spots'] > 0)) && (($calendar_event['inventory'] == 0) || ($calendar_event['inventory_quantity'] > 0) || ($calendar_event['backorder'] == 1))) {
-                            $output_availability_icon = '<span style="color: green; font-weight: bold; font-size: 130%; margin-right: .25em">&#9679;</span>';
+                            $output_availability_icon = pg_calendar_availability_icon(true, $user);
                             // else this calendar event is not available, so output unavailable icon
                         } else {
-                            $output_availability_icon = '<span style="color: lightgrey; font-weight: bold; font-size: 130%; margin-right: .25em">&#9679;</span>';
+                            $output_availability_icon = pg_calendar_availability_icon(false, $user);
                         }
                     }
                     // If there is a page to link and the user has access to the link, then prepare to output the event name with a link
@@ -1225,7 +1231,7 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                             </p>';
                     // if next event start date is not equal to current event start date, then close container for this day
                     if (!isset($events[$key + 1]) || ($events[$key + 1]['event_start_date'] != $event['event_start_date'])) {
-                        $output_calendar_data .= '   </div>
+                        $output_calendar_data .= $user ? '</div></section>' : '   </div>
 
                                 </fieldset>';
                     }
@@ -2089,6 +2095,26 @@ function get_calendar_event_options($properties)
         }
     }
     return $calendar_event_options;
+}
+
+/**
+ * The reservation dot before an event's name. The site keeps its coloured
+ * dot; the panel gets classes styled on its tokens and a text for the title
+ * and screen readers, since the colour alone told nobody what it meant.
+ *
+ * @param bool        $available  reservations can be made
+ * @param array|false $user       the panel user, false on the site
+ * @return string
+ */
+function pg_calendar_availability_icon($available, $user)
+{
+    if (!$user) {
+        return '<span style="color: ' . ($available ? 'green' : 'lightgrey') . '; font-weight: bold; font-size: 130%; margin-right: .25em">&#9679;</span>';
+    }
+
+    $label = $available ? lang('Reservations open') : lang('Reservations closed');
+
+    return '<span class="pg-cal-avail ' . ($available ? 'is-open' : 'is-closed') . '" title="' . h($label) . '"><span aria-hidden="true">&#9679;</span><span class="visually-hidden">' . h($label) . '</span></span>';
 }
 
 /**
