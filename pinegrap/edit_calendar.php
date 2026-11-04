@@ -48,9 +48,10 @@ if ($number_of_calendar_events === null) {
 if (!$_POST) {
     // get calendar data
     $query =
-        "SELECT name
+        "SELECT calendars.name, calendars.last_modified_timestamp, user.user_username
         FROM calendars
-        WHERE id = ?";
+        LEFT JOIN user ON calendars.last_modified_user_id = user.user_id
+        WHERE calendars.id = ?";
     $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
@@ -70,8 +71,15 @@ if (!$_POST) {
         // An explanation, not a question: a confirm() here asked OK/Cancel
         // and neither did anything.
         $output_delete_button = '<button type="button" value="Delete" class="btn my-1 btn-solid theme-danger no-submit" disabled aria-describedby="calendar_delete_note"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
-        $output_delete_note = '<div class="form-text text-center" id="calendar_delete_note">' . lang('Please delete or remove all calendar events from this calendar before deleting this calendar.') . '</div>';
+        $output_delete_note = '
+                                    <div class="form-text text-center" id="calendar_delete_note">' . lang('Please delete or remove all calendar events from this calendar before deleting this calendar.') . '</div>';
     }
+
+    // Summary rows of the status column: the events on the calendar, linked
+    // to its view, then when and by whom it was last saved.
+    $output_status =
+        pg_calendar_form_status_row(lang('Events'), '<a href="calendars.php?calendar_id=' . $id . '">' . number_format($number_of_calendar_events) . '</a>', false)
+        . pg_calendar_form_status_row(lang('Last Modified'), get_relative_time(array('timestamp' => (int) $row['last_modified_timestamp'])) . ((string) $row['user_username'] !== '' ? ' ' . h($row['user_username']) : ''));
 
     echo 
     
@@ -99,17 +107,13 @@ if (!$_POST) {
                 <form name="form" action="edit_calendar.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
-                    ' . pg_calendar_form_card($liveform) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                            
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                ' . $output_delete_button . '
-                            </div>
-                            ' . $output_delete_note . '
-                        </div>
-                    </nav>
+                    ' . pg_calendar_form_layout(
+                        pg_calendar_form_cards($liveform, $output_status),
+                        '
+                                        <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        ' . $output_delete_button,
+                        $output_delete_note
+                    ) . '
                 </form>
             </div>
         </div>
