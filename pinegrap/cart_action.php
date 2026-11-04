@@ -538,8 +538,10 @@ if (!empty($_POST['quick_add']) && $oid > 0 && function_exists('add_order_item')
                     break;
 
                 case 'quantity':
-                    $qa_qty = (int)preg_replace('/[^\d]/', '', (string)(isset($_POST['quick_add_quantity']) ? $_POST['quick_add_quantity'] : ''));
-                    if ($qa_qty > 0) {
+                    // A whole number only, as the cart rows read it: stripping
+                    // every non-digit turned '1.5' into 15 and '-3' into 3.
+                    $qa_qty = pg_cart_posted_quantity(isset($_POST['quick_add_quantity']) ? $_POST['quick_add_quantity'] : '');
+                    if (($qa_qty !== null) && ($qa_qty > 0)) {
                         add_order_item($qa_pid, $qa_qty, 0, $qa_ship_to, $qa_add_name);
                         $qa_added = true;
                     } else {

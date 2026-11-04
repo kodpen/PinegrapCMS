@@ -50,3 +50,14 @@ function test_cart_action_reads_quantity_through_the_helper()
 	pg_assert_contains('if ($q === null) continue;', $source, 'kept line skipped');
 	pg_assert_true(strpos($source, '$q   = (int)$q;') === false, 'no (int) read left');
 }
+
+// The cart widget's quick add reads its quantity the same way: '1.5', '-3'
+// or '1e3' were stripped to their digits (15, 3, 13) and added, with no
+// upper bound.
+function test_cart_action_quick_add_reads_quantity_through_the_helper()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/cart_action.php');
+
+	pg_assert_contains("\$qa_qty = pg_cart_posted_quantity(isset(\$_POST['quick_add_quantity']) ? \$_POST['quick_add_quantity'] : '');", $source, 'quick add uses the helper');
+	pg_assert_true(strpos($source, "preg_replace('/[^\\d]/', '', (string)(isset(\$_POST['quick_add_quantity'])") === false, 'no digit stripping left');
+}
