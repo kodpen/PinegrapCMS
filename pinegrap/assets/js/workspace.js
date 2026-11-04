@@ -569,7 +569,7 @@
         box.setAttribute('role', 'status');
 
         var row = el('div', 'd-flex');
-        var text = el('div', 'toast-body', message);
+        var text = el('div', 'toast-body flex-grow-1', message);
 
         // A way to what was just done: the note kept, the channel made.
         if (action && action.href) {
@@ -580,7 +580,7 @@
 
         row.appendChild(text);
 
-        var close = button('btn-close me-3 m-auto', '', '', t('close'));
+        var close = button('btn-close ms-2 me-3 my-auto flex-shrink-0', '', '', t('close'));
         close.setAttribute('data-bs-dismiss', 'toast');
         row.appendChild(close);
         box.appendChild(row);

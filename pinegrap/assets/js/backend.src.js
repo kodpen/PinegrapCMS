@@ -10070,11 +10070,11 @@ function pg_poll_while_visible(poll, ms) {
         el.setAttribute('aria-atomic', 'true');
         el.innerHTML =
             '<div class="d-flex">' +
-                '<div class="toast-body">' +
+                '<div class="toast-body flex-grow-1">' +
                     '<i class="bi ' + iconMap[variant] + ' me-3" aria-hidden="true"></i>' +
                     escapeHtml(message) +
                 '</div>' +
-                '<button type="button" class="btn-close me-3 m-auto" data-bs-dismiss="toast" aria-label="' + escapeHtml(lang('Close')) + '"></button>' +
+                '<button type="button" class="btn-close ms-2 me-3 my-auto flex-shrink-0" data-bs-dismiss="toast" aria-label="' + escapeHtml(lang('Close')) + '"></button>' +
             '</div>';
         container.appendChild(el);
 
