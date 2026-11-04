@@ -2536,6 +2536,39 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Fediverse ---------------------------------------------------- */
+
+		array(
+			'id'      => 'fediverse.followers',
+			'method'  => 'GET',
+			'path'    => '/fediverse/followers',
+			'scope'   => 'fediverse:read',
+			'handler' => 'api_fediverse_followers_list',
+			'returns' => array('list' => 'FediverseFollower'),
+			'summary' => 'Fediverse followers',
+			'description' => 'The accounts on Mastodon and other Fediverse services that follow the site, newest first, cursor paged, as Settings › Fediverse lists them: actor is the account\'s address, server its host, name and avatar as its server last sent them (null when it sent none). Read only. 503 service_unavailable before the 2026.11.0 database update.',
+			'params'  => array(
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'fediverse.deliveries',
+			'method'  => 'GET',
+			'path'    => '/fediverse/deliveries',
+			'scope'   => 'fediverse:read',
+			'handler' => 'api_fediverse_deliveries_list',
+			'returns' => array('list' => 'FediverseDelivery'),
+			'summary' => 'Fediverse deliveries',
+			'description' => 'What the site sent, or is sending, to its followers\' servers, newest first, cursor paged: one row per activity and inbox (a shared inbox once for all its followers). type is Create, Update, Delete or Accept (null for an activity this list cannot read), object the page or record address it is about. state is queued (next_attempt_at says when), sent or failed: a delivery is tried six times over about a day, and a refusal that will not change (a 4xx other than 408 and 429) fails at once. Sent and failed rows are removed 30 days after they were made. Trying a failed one again is done on the settings screen. Read only. 503 service_unavailable before the 2026.11.0 database update.',
+			'params'  => array(
+				array('name' => 'state',  'in' => 'query', 'type' => 'enum', 'values' => array('queued', 'sent', 'failed'), 'description' => 'Only the deliveries in this state.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
 		/* ----- Audit trail -------------------------------------------------- */
 
 		array(

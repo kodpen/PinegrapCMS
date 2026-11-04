@@ -753,6 +753,7 @@
     "Enter the Places API key and the Place ID to test them.": "Denemek için Places API anahtarını ve Yer Kimliğini girin.",
     "Enter the Test or Live Secret Key": "Test veya Canlı Gizli Anahtarı girin",
     "Enter the access token.": "Erişim jetonunu girin.",
+    "Enter the account's address, such as https://mastodon.example/users/name.": "Hesabın adresini girin, örneğin https://mastodon.example/users/name.",
     "Enter the amount as a number.": "Tutarı sayı olarak girin.",
     "Enter the amount of at least one part.": "En az bir parçanın tutarını girin.",
     "Enter the amount to refund, such as 120 or 120.50.": "İade edilecek tutarı 120 ya da 120,50 gibi yazın.",

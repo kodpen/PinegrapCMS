@@ -73,6 +73,7 @@ require_once($pg_api_directory . '/resources/gift_cards.php');
 require_once($pg_api_directory . '/resources/commissions.php');
 require_once($pg_api_directory . '/resources/visitors.php');
 require_once($pg_api_directory . '/resources/site_log.php');
+require_once($pg_api_directory . '/resources/fediverse.php');
 require_once($pg_api_directory . '/resources/audit_log.php');
 require_once($pg_api_directory . '/resources/campaigns.php');
 require_once($pg_api_directory . '/resources/campaign_profiles.php');

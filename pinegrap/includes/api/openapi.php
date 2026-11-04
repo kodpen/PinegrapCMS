@@ -668,6 +668,8 @@ function api_openapi_objects()
         'SearchReport' => 'api_search_report_schema',
         'PagesReport' => 'api_pages_report_schema',
         'SiteLogEntry' => 'api_site_log_schema',
+        'FediverseFollower' => 'api_fediverse_follower_schema',
+        'FediverseDelivery' => 'api_fediverse_delivery_schema',
         'AuditLogEntry' => 'api_audit_log_schema',
         'Campaign'     => 'api_campaign_schema',
         'CampaignRecipient' => 'api_campaign_recipient_schema',

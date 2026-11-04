@@ -35,7 +35,7 @@ if (!pg_audit_ready()) {
 include_once('liveform.class.php');
 $liveform = new liveform('privacy_export');
 
-$privacy_export_input = array('email' => '', 'user_id' => 0, 'contact_id' => 0);
+$privacy_export_input = array('email' => '', 'user_id' => 0, 'contact_id' => 0, 'fediverse' => '');
 $privacy_export_format = '';
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
@@ -44,6 +44,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $privacy_export_input['email'] = is_string($_POST['email'] ?? null) ? trim($_POST['email']) : '';
     $privacy_export_input['user_id'] = is_scalar($_POST['user_id'] ?? null) ? (int) $_POST['user_id'] : 0;
     $privacy_export_input['contact_id'] = is_scalar($_POST['contact_id'] ?? null) ? (int) $_POST['contact_id'] : 0;
+    $privacy_export_input['fediverse'] = is_string($_POST['fediverse'] ?? null) ? trim($_POST['fediverse']) : '';
 
     $privacy_export_download = is_string($_POST['download'] ?? null) ? $_POST['download'] : '';
 
@@ -53,6 +54,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     if (($privacy_export_input['email'] !== '') && (pg_privacy_normalize_email($privacy_export_input['email']) === '')) {
         $liveform->mark_error('email', lang('Enter one e-mail address.'));
+    }
+
+    if (($privacy_export_input['fediverse'] !== '') && (pg_privacy_normalize_actor($privacy_export_input['fediverse']) === '')) {
+        $liveform->mark_error('fediverse', lang('Enter the account\'s address, such as https://mastodon.example/users/name.'));
     }
 } else {
     $privacy_export_input['user_id'] = is_scalar($_GET['user_id'] ?? null) ? (int) $_GET['user_id'] : 0;
@@ -99,6 +104,7 @@ if (($privacy_export_format !== '') && is_array($privacy_export_result) && ($pri
 }
 
 $liveform->assign_field_value('email', $privacy_export_input['email']);
+$liveform->assign_field_value('fediverse', $privacy_export_input['fediverse']);
 
 // The person as found, and what the site keeps about them.
 $privacy_export_body = '';
@@ -181,6 +187,12 @@ if (is_array($privacy_export_result) && ($privacy_export_result['status'] === 'r
         $privacy_export_emails .= '<div class="text-break">' . h($privacy_export_email) . '</div>';
     }
 
+    $privacy_export_actors = '';
+
+    foreach ((isset($privacy_export_found['person']['actors']) ? $privacy_export_found['person']['actors'] : array()) as $privacy_export_actor) {
+        $privacy_export_actors .= '<div class="text-break">' . h($privacy_export_actor) . '</div>';
+    }
+
     $privacy_export_hidden = '';
 
     foreach ($privacy_export_input as $privacy_export_key => $privacy_export_value) {
@@ -196,6 +208,7 @@ if (is_array($privacy_export_result) && ($privacy_export_result['status'] === 'r
                     <div class="card-body">
                         <div class="small fg-secondary">' . h(lang('E-mail Address')) . '</div>
                         <div class="mb-5">' . (($privacy_export_emails !== '') ? $privacy_export_emails : '<span class="fg-secondary">' . h(lang('None')) . '</span>') . '</div>
+                        ' . (($privacy_export_actors !== '') ? '<div class="small fg-secondary">' . h(lang('Fediverse account')) . '</div><div class="mb-5">' . $privacy_export_actors . '</div>' : '') . '
                         ' . (($privacy_export_people !== '') ? '<ul class="list-unstyled mb-5">' . $privacy_export_people . '</ul>' : '') . '
                         <form action="privacy_export.php" method="post" class="disable_shortcut d-flex flex-wrap gap-3">
                             ' . get_token_field() . $privacy_export_hidden . '
@@ -218,7 +231,11 @@ $privacy_export_search = '
                         ' . get_token_field() . '
                         <div class="col-12 md:col-8 xl:col-6">
                             <label for="email" class="form-label">' . h(lang('E-mail Address')) . '</label>
-                            ' . $liveform->output_field(array('type' => 'email', 'id' => 'email', 'name' => 'email', 'class' => 'form-control', 'maxlength' => '254', 'autocomplete' => 'off', 'required' => 'true')) . '
+                            ' . $liveform->output_field(array('type' => 'email', 'id' => 'email', 'name' => 'email', 'class' => 'form-control', 'maxlength' => '254', 'autocomplete' => 'off')) . '
+                        </div>
+                        <div class="col-12 md:col-8 xl:col-6">
+                            <label for="fediverse" class="form-label">' . h(lang('Fediverse account')) . '</label>
+                            ' . $liveform->output_field(array('type' => 'url', 'id' => 'fediverse', 'name' => 'fediverse', 'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off', 'spellcheck' => 'false', 'placeholder' => 'https://mastodon.example/users/name')) . '
                         </div>
                         <div class="col-12 md:col-auto">
                             <button type="submit" class="btn btn-solid theme-primary rounded-pill px-5"><i class="bi bi-search me-1" aria-hidden="true"></i>' . h(lang('Find')) . '</button>
