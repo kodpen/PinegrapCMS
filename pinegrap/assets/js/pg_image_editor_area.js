@@ -3,7 +3,8 @@
  *
  * Image editor: area selection on the picture: rectangle, ellipse, lasso,
  * polygon and magic wand, added (Shift) or taken away (Alt), inverted and
- * feathered, shown as marching ants.
+ * feathered, shown as marching ants; and what it does to pixels: Erase,
+ * Keep only, Copy to a layer, Adjust inside and Redact.
  *
  * A part of window.PgImageEditor, bundled after pg_image_editor_redact.js
  * (pg_js_bundles()); it hangs its code on the editor through
@@ -13,7 +14,9 @@
  * SELECTION section), so it opens again with the document; a wand keeps
  * its seed and its outline is worked out from the picture. Redact the
  * selection makes a redaction area of its outline (pg_image_editor_redact.js),
- * whose mask the save sends as any other.
+ * whose mask the save sends as any other; Erase and Adjust inside are layers
+ * of the outline too, whose masks the server's mask step draws
+ * (includes/image_engine.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -24,7 +27,7 @@
 (function (X) {
     'use strict';
 
-    var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, t = X.t, el = X.el, button = X.button, section = X.section, tile = X.tile;
+    var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, find = X.find, t = X.t, el = X.el, button = X.button, section = X.section, tile = X.tile;
 
     X.icons.area = 'M4 4h3M10 4h4M17 4h3v3M20 10v4M20 17v3h-3M14 20h-4M7 20H4v-3M4 14v-4M4 7V4';
     X.icons.areaRect = 'M4 6h16v12H4z';
@@ -37,6 +40,9 @@
 
     // The wand reads the picture at most this long a side.
     var WAND_SIDE = 1024;
+
+    // A copy to a layer is at most this long a side.
+    var COPY_SIDE = 4096;
 
     // A press closer than this to the polygon's first corner closes it, in
     // screen pixels.
@@ -396,6 +402,372 @@
         return el('label', { class: 'pgie-check' }, [input, el('span', { text: label })]);
     }
 
+    // ---- what the selection does to pixels (E27b) ----
+    // Erase and Adjust inside are layers of the selection's outline, as a
+    // redaction of it is: they move, stretch, hide and undo as layers. They
+    // paint nothing into the overlay; a save sends a mask of each and the
+    // server erases or colours under it (the engine's mask step, before the
+    // redaction).
+
+    var serial = 0;
+
+    function isMaskLayer(l) {
+        return (l.type === 'erase') || (l.type === 'adjust');
+    }
+
+    // The colour step of an Adjust inside layer, null for none.
+    function areaColor(l) {
+        return M.colorMatrix(M.colorValues({ adjust: l.adjust || {}, filter: l.filter || 'none' }));
+    }
+
+    // An erased or adjusted area on the stage: a fill, a checkerboard for
+    // see-through, or the picture again under the area's own colour filter,
+    // cut to its shape by a mask.
+    function maskNode(l) {
+        var A = X.areaShapes, id = 'pgie-ar-' + (++serial), g = svg('g', { opacity: (l.opacity === undefined) ? 1 : l.opacity }), defs = svg('defs', {}), b = A.box(l), shape = A.node(l), content = null;
+        var mask = svg('mask', { id: id + '-m', maskUnits: 'userSpaceOnUse', x: b.x - 1, y: b.y - 1, width: b.w + 2, height: b.h + 2 });
+        var whole = { x: b.x - 1, y: b.y - 1, width: b.w + 2, height: b.h + 2 };
+
+        if (l.feather) {
+            var soft = svg('filter', { id: id + '-s', filterUnits: 'userSpaceOnUse', x: b.x - 1, y: b.y - 1, width: b.w + 2, height: b.h + 2 });
+
+            soft.appendChild(svg('feGaussianBlur', { stdDeviation: l.feather / 2 }));
+            defs.appendChild(soft);
+            shape.setAttribute('filter', 'url(#' + id + '-s)');
+        }
+
+        mask.appendChild(shape);
+        defs.appendChild(mask);
+        g.appendChild(defs);
+
+        if ((l.type === 'erase') && l.fill) {
+            content = svg('rect', Object.assign({ fill: l.fill }, whole));
+        } else if (l.type === 'erase') {
+            // See-through as the canvas shows it: grey and white squares.
+            var size = this.doc.source ? Math.max(4, Math.round(Math.max(this.doc.source.width, this.doc.source.height) / 80)) : 8;
+            var pattern = svg('pattern', { id: id + '-p', patternUnits: 'userSpaceOnUse', width: size * 2, height: size * 2 });
+
+            pattern.appendChild(svg('rect', { width: size * 2, height: size * 2, fill: '#fff' }));
+            pattern.appendChild(svg('path', { d: 'M0 0h' + size + 'v' + size + 'h' + size + 'v' + size + 'h-' + size + 'v-' + size + 'h-' + size + 'z', fill: '#d0d3d9' }));
+            defs.appendChild(pattern);
+            content = svg('rect', Object.assign({ fill: 'url(#' + id + '-p)' }, whole));
+        } else if (this.img && this.doc.source && areaColor(l)) {
+            var c = areaColor(l), filter = svg('filter', { id: id + '-f', 'color-interpolation-filters': 'sRGB', x: 0, y: 0, width: '100%', height: '100%' });
+            var funcs = svg('feComponentTransfer', {}), m = M.placedMatrix(this.doc);
+            var image = svg('image', {
+                href: this.img.src, x: 0, y: 0, width: this.doc.source.width, height: this.doc.source.height, preserveAspectRatio: 'none',
+                transform: 'matrix(' + m.map(function (n) { return Math.round(n * 1e6) / 1e6; }).join(' ') + ')'
+            });
+            var colour = svg('g', { filter: 'url(#' + this.fxId + ')' });
+
+            filter.appendChild(svg('feColorMatrix', { type: 'matrix', values: c.matrix.join(' ') }));
+            ['feFuncR', 'feFuncG', 'feFuncB'].forEach(function (f) { funcs.appendChild(svg(f, { type: 'gamma', amplitude: 1, exponent: c.gamma, offset: 0 })); });
+            filter.appendChild(funcs);
+            defs.appendChild(filter);
+            colour.appendChild(image);
+            content = svg('g', { filter: 'url(#' + id + '-f)' });
+            content.appendChild(colour);
+        }
+
+        if (content) {
+            var cut = svg('g', { mask: 'url(#' + id + '-m)' });
+
+            cut.appendChild(content);
+            g.appendChild(cut);
+        }
+
+        return g;
+    }
+
+    // Whether the file is a JPEG, which keeps no see-through pixels.
+    Editor.prototype.areaJpeg = function () {
+        return M.fileFormat((this.file && this.file.name) || this.opts.fileName || '') === 'jpeg';
+    };
+
+    // An erased area's panel: see-through or a fill colour.
+    Editor.prototype.erasePanel = function (body, layers) {
+        var self = this, l = layers[0], filled = !!l.fill;
+        var set = function (fill) {
+            self.change(function (doc) {
+                var it = find(doc, l.id);
+
+                if (fill) {
+                    it.fill = fill;
+                } else {
+                    delete it.fill;
+                }
+            }, 'erase-fill', true);
+        };
+
+        body.appendChild(check(t('eraseFill'), filled, function (on) {
+            set(on ? '#ffffff' : null);
+            self.history.key = null;
+            self.render();
+        }));
+
+        if (filled) {
+            var colour = el('input', { type: 'color', class: 'pgie-color', value: l.fill, 'aria-label': t('eraseColour') });
+
+            colour.addEventListener('input', function () { set(colour.value); });
+            colour.addEventListener('change', function () { self.history.key = null; });
+            body.appendChild(section(t('eraseColour'), colour));
+        } else if (this.areaJpeg()) {
+            body.appendChild(el('p', { class: 'pgie-note', text: t('eraseJpegNote') }));
+        }
+    };
+
+    Editor.layerTypes.erase = {
+        node: maskNode,
+        name: function () { return t('layer_erase'); },
+        panel: function (body, layers) {
+            if (layers.length === 1) {
+                this.erasePanel(body, layers);
+            }
+        }
+    };
+
+    Editor.layerTypes.adjust = {
+        node: maskNode,
+        name: function () { return t('layer_adjust'); },
+        panel: function (body, layers) {
+            if ((layers.length === 1) && this.doc.source) {
+                this.adjustPanel(body);
+            }
+        }
+    };
+
+    // The sliders change an Adjust inside layer while it alone is selected.
+    Editor.prototype.adjustTarget = function (doc) {
+        var l = ((this.tool === 'select') && (this.sel.length === 1)) ? find(doc, this.sel[0]) : null;
+
+        return (l && (l.type === 'adjust')) ? l : doc;
+    };
+
+    // A layer of the selection's outline (or of rings), feathered as the
+    // selection is, pushed onto doc; its id, or null for no area. extra
+    // holds the layer's own fields.
+    function pushArea(doc, type, extra, rings) {
+        var geo = M.areaLayer(rings), feather = doc.selection ? (doc.selection.feather || 0) : 0;
+
+        if (!geo) {
+            return null;
+        }
+
+        var l = Object.assign({ type: type }, geo, extra || {});
+
+        if (feather) {
+            l.feather = feather;
+        }
+
+        l.id = M.newId(doc);
+        doc.layers.push(l);
+
+        return l.id;
+    }
+
+    Editor.prototype.areaMake = function (type, extra) {
+        var rings = this.areaRings(), id = null;
+
+        if (rings.length) {
+            this.change(function (doc) { id = pushArea(doc, type, extra, rings); });
+            this.history.key = null;
+        }
+
+        return id;
+    };
+
+    // Show a new layer's panel with the Select tool.
+    Editor.prototype.areaShow = function (id) {
+        this.sel = id ? [id] : [];
+        this.tool = 'select';
+        this.sheetOpen = true;
+        this.layersOpen = false;
+        this.render();
+    };
+
+    Editor.prototype.areaErase = function () {
+        this.areaShow(this.areaMake('erase'));
+    };
+
+    Editor.prototype.areaAdjust = function () {
+        this.areaShow(this.areaMake('adjust', { adjust: {}, filter: 'none' }));
+    };
+
+    // Keep only: the picture cropped to the selection's box and the rest of
+    // the box erased. A straightened picture or one on a canvas keeps its
+    // crop (a new crop would move it under its layers): only the rest goes.
+    Editor.prototype.areaKeep = function () {
+        var rings = this.areaRings(), geo = M.areaLayer(rings), g = this.doc.geometry;
+
+        if (!geo) {
+            return;
+        }
+
+        var crop = !this.doc.canvas && !g.straighten, c = M.cropBox(this.doc), frame = M.pictureBox(this.doc), id = null;
+
+        if (crop) {
+            var x = Math.max(c.x, geo.x), y = Math.max(c.y, geo.y);
+
+            frame = { x: x, y: y, w: Math.max(1, Math.min(c.x + c.w, geo.x + geo.w) - x), h: Math.max(1, Math.min(c.y + c.h, geo.y + geo.h) - y) };
+        }
+
+        var rest = M.areaRest(rings, frame);
+
+        this.change(function (doc) {
+            var o = doc.geometry.output;
+
+            if (crop) {
+                if (o) {
+                    doc.geometry.output = { w: Math.max(1, Math.round(o.w * frame.w / c.w)), h: Math.max(1, Math.round(o.h * frame.h / c.h)) };
+                }
+
+                doc.geometry.crop = { x: frame.x, y: frame.y, w: frame.w, h: frame.h };
+            }
+
+            // A rectangle cropped to leaves nothing to erase.
+            id = (M.ringsArea(rest) >= 1) ? pushArea(doc, 'erase', null, rest) : null;
+            delete doc.selection;
+        });
+        this.history.key = null;
+
+        if (crop) {
+            this.renderMeta();
+            this.fit();
+        }
+
+        this.areaShow(id);
+    };
+
+    // Copy to a layer: the picture inside the selection, with its colour
+    // step, as a picture layer in place (a PNG the save keeps as a file).
+    // Redacted and erased areas stay out of the copy.
+    Editor.prototype.areaCopy = function () {
+        var self = this, rings = this.areaRings(), geo = M.areaLayer(rings), img = this.img, src = this.doc.source;
+
+        if (!geo || !img || !src) {
+            return;
+        }
+
+        var m = M.placedMatrix(this.doc), unit = Math.sqrt(Math.abs(m[0] * m[3] - m[1] * m[2])) || 1;
+        var k = Math.min((img.naturalWidth / src.width) / unit, COPY_SIDE / Math.max(geo.w, geo.h));
+        var canvas = document.createElement('canvas'), g = canvas.getContext('2d'), url = null;
+        var at = function () { g.setTransform(k, 0, 0, k, -geo.x * k, -geo.y * k); };
+
+        canvas.width = Math.max(1, Math.ceil(geo.w * k));
+        canvas.height = Math.max(1, Math.ceil(geo.h * k));
+
+        try {
+            at();
+            g.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
+            g.drawImage(img, 0, 0, src.width, src.height);
+            g.setTransform(1, 0, 0, 1, 0, 0);
+
+            var c = M.colorMatrix(M.colorValues(this.doc));
+
+            if (c) {
+                var data = g.getImageData(0, 0, canvas.width, canvas.height);
+
+                M.applyColor(data.data, c);
+                g.putImageData(data, 0, 0);
+            }
+
+            g.globalCompositeOperation = 'destination-in';
+            g.save();
+            at();
+            X.areaShapes.paint(g, Object.assign({ feather: this.doc.selection ? (this.doc.selection.feather || 0) : 0 }, geo), k);
+            g.restore();
+            g.globalCompositeOperation = 'destination-out';
+            this.doc.layers.forEach(function (l) {
+                if (!l.hidden && ((l.type === 'redact') || ((l.type === 'erase') && !l.fill))) {
+                    g.save();
+                    at();
+                    X.areaShapes.paint(g, l, k);
+                    g.restore();
+                }
+            });
+            url = canvas.toDataURL('image/png');
+        } catch (err) {
+            // A picture from another site cannot be read back.
+            url = null;
+        }
+
+        if (!url) {
+            this.areaCopyFailed = true;
+            this.render();
+            return;
+        }
+
+        this.areaCopyFailed = false;
+        this.addLayers([{ type: 'image', src: url, fileName: t('areaCutName') + '.png', x: geo.x, y: geo.y, w: geo.w, h: geo.h, rot: 0, opacity: 1 }], 0);
+        this.areaShow(this.sel[0]);
+        self.history.key = null;
+    };
+
+    // One mask per visible Erase or Adjust inside layer, drawn at the output
+    // size over its own box, in the layers' order.
+    Editor.prototype.areaMasks = function () {
+        var box = M.pictureBox(this.doc), out = M.outputSize(this.doc), list = [];
+
+        this.doc.layers.forEach(function (l) {
+            var r = (isMaskLayer(l) && !l.hidden && ((l.type === 'erase') || areaColor(l))) ? M.redactRegion(l, box, out.w, out.h) : null;
+
+            if (!r) {
+                return;
+            }
+
+            var canvas = document.createElement('canvas'), g, entry;
+
+            canvas.width = r.w;
+            canvas.height = r.h;
+            g = canvas.getContext('2d');
+            g.setTransform(out.w / box.w, 0, 0, out.h / box.h, -box.x * out.w / box.w - r.x, -box.y * out.h / box.h - r.y);
+            // The layer's opacity weakens the area's effect.
+            g.globalAlpha = (l.opacity === undefined) ? 1 : l.opacity;
+            X.areaShapes.paint(g, l, out.w / box.w);
+            entry = { op: (l.type === 'erase') ? 'erase' : 'color', x: r.x, y: r.y, mask: canvas.toDataURL('image/png') };
+
+            if (l.type === 'erase') {
+                if (l.fill) {
+                    entry.fill = l.fill;
+                }
+            } else {
+                entry.adjust = l.adjust || {};
+                entry.filter = l.filter || 'none';
+            }
+
+            list.push(entry);
+        });
+
+        return list;
+    };
+
+    // Whether a see-through erase is visible.
+    Editor.prototype.areaSeeThrough = function () {
+        return this.doc.layers.some(function (l) { return (l.type === 'erase') && !l.hidden && !l.fill; });
+    };
+
+    // The masks go with every save that draws the picture; a JPEG with a
+    // see-through erase is written as a PNG copy beside it (the export part,
+    // bundled later, replaces the format when its panel chose one).
+    Editor.saveHooks.push(function (body, mode) {
+        if ((mode !== 'replace') && (mode !== 'copy') && (mode !== 'url')) {
+            return;
+        }
+
+        var masks = this.areaMasks();
+
+        if (masks.length) {
+            body.masks = masks;
+        }
+
+        if ((mode !== 'url') && this.areaJpeg() && this.areaSeeThrough()) {
+            body.export = { format: 'png' };
+            body.mode = 'copy';
+            delete body.pictures;
+        }
+    });
+
+
     Editor.prototype.areaPanel = function (body) {
         var self = this, d = this.areaDefaults, sel = this.doc.selection, has = this.areaSelected();
         var kinds = el('div', { class: 'pgie-tiles pgie-akinds', role: 'group', 'aria-label': t('areaShape') });
@@ -451,10 +823,24 @@
         clear.disabled = !sel;
         body.appendChild(el('div', { class: 'pgie-arow' }, [invert, clear]));
 
-        var redact = button('pgie-btn pgie-abtn', t('areaRedact'), null, function () { self.areaRedact(); }, true);
+        var acts = el('div', { class: 'pgie-aacts', role: 'group', 'aria-label': t('areaWith') });
+        var act = function (label, fn, off) {
+            var b = button('pgie-btn pgie-abtn', label, null, fn, true);
 
-        redact.disabled = !has || !this.newRedaction;
-        body.appendChild(redact);
+            b.disabled = !has || !!off;
+            acts.appendChild(b);
+        };
+
+        act(t('areaErase'), function () { self.areaErase(); });
+        act(t('areaKeep'), function () { self.areaKeep(); });
+        act(t('areaCopy'), function () { self.areaCopy(); });
+        act(t('areaAdjust'), function () { self.areaAdjust(); });
+        act(t('areaRedact'), function () { self.areaRedact(); }, !this.newRedaction);
+        body.appendChild(section(t('areaWith'), acts));
+
+        if (this.areaCopyFailed) {
+            body.appendChild(el('p', { class: 'pgie-note pgie-warn', text: t('areaCopyNote') }));
+        }
     };
 
     Editor.panels.area = Editor.prototype.areaPanel;
