@@ -2242,9 +2242,12 @@
     // sets the scale, the ratio kept): the canvas and the layers stay, the
     // redaction areas, which belong to the picture's pixels, go with it.
     function placePicture(doc, r) {
-        var d = clone(doc), c = cropBox(doc), p0 = picturePlace(doc);
-        var k = clamp(r.w / c.w, 1 / c.w, SIZE_MAX / c.w);
-        var place = { x: r.x - c.x * k, y: r.y - c.y * k, k: Math.round(k * 1e6) / 1e6, locked: p0.locked };
+        var d = clone(doc), c = cropBox(doc), p0 = picturePlace(doc), b = canvasBox(doc);
+        var k = clamp(r.w / c.w, 1 / c.w, SIZE_MAX / c.w), w = c.w * k, h = c.h * k;
+
+        // Some of it stays on the canvas, as the save's extend step asks.
+        var x = clamp(r.x, b.x + 1 - w, b.x + b.w - 1), y = clamp(r.y, b.y + 1 - h, b.y + b.h - 1);
+        var place = { x: Math.round((x - c.x * k) * 1000) / 1000, y: Math.round((y - c.y * k) * 1000) / 1000, k: Math.round(k * 1e6) / 1e6, locked: p0.locked };
 
         d.canvas = d.canvas || { l: 0, t: 0, r: 0, b: 0, background: '#ffffff' };
         d.canvas.picture = place;

@@ -219,7 +219,7 @@
         }
 
         var layout = M.saveLayout(doc), size = M.outputSize(doc), m = M.docMotion(doc);
-        var r = layout ? { x: layout.x, y: layout.y, w: size.w, h: size.h } : { x: 0, y: 0, w: size.w, h: size.h };
+        var r = layout ? { x: layout.x, y: layout.y, w: layout.pw || size.w, h: layout.ph || size.h } : { x: 0, y: 0, w: size.w, h: size.h };
 
         if (layout && (layout.fill !== 'transparent')) {
             g.fillStyle = layout.fill;

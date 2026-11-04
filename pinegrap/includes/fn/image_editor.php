@@ -2429,6 +2429,9 @@ function pg_image_editor_strings_artboard()
         'hintImage'         => lang('Choose an image, or drop or paste one onto the canvas.'),
         'imagePick'         => lang('Choose an image from this computer'),
         'imageNote'         => lang('You can also drop an image onto the canvas or paste one.'),
+        'pictureFree'       => lang('Move and resize the picture on the canvas'),
+        'pictureDelete'     => lang('Delete the picture'),
+        'pictureTitle'      => lang('Picture'),
     );
 }
 
@@ -2627,8 +2630,13 @@ function pg_image_editor_save_canvas($request, $board, $mode, $user)
             return $file['refusal'];
         }
 
-        // A canvas is a PNG; a replace writes a PNG over a PNG only.
-        if (($mode === 'replace') && (!$file['replace'] || ($file['type'] !== IMAGETYPE_PNG))) {
+        // A canvas is a PNG; a replace writes a PNG over a PNG only. A photo
+        // whose picture was deleted (a canvas now) goes beside it as a copy.
+        if (($mode === 'replace') && $file['replace'] && ($file['type'] !== IMAGETYPE_PNG)) {
+            $mode = 'copy';
+        }
+
+        if (($mode === 'replace') && !$file['replace']) {
             return pg_image_editor_refusal(lang('Access denied'), 403);
         }
 
