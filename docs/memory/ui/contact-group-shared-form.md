@@ -5,7 +5,7 @@ description: The contact group create and edit screens share includes/forms/cont
 
 ## Where is the contact group form?
 - `includes/forms/contact_group_form.php` (gate `PG_FUNCTIONS_DIR`, PR #2604). `add_contact_group.php` and `edit_contact_group.php` stay at the root as thin wrappers and `require_once` it.
-- `pg_contact_group_form_cards($liveform, $form)` prints the form column (Main Informations: the name; E-mail Subscription: the switch with its Open/Closed type and the description shown on My Account pages; then edit's rule card) and the sticky status column (`edit-screen-wide-layout.md`, #PR); `pg_contact_group_form_layout($cards, $buttons)` adds the sticky save bar.
+- `pg_contact_group_form_cards($liveform, $form)` prints the form column (Main Informations: the name; E-mail Subscription: the switch with its Open/Closed type and the description shown on My Account pages; then edit's rule card) and the sticky status column (`edit-screen-wide-layout.md`, #6568); `pg_contact_group_form_layout($cards, $buttons)` adds the sticky save bar.
 - The Summary shows the subscription (Enabled/Disabled) and its type, live; edit adds `pg_contact_group_form_members_status($member_count, $kind)`: every member (rule-added too, unlike Delete's count) and, once `pg_audience_ready()`, Filled By (Rules / By Hand).
 - `$form['required']` adds `required` to the name input; both screens pass `true`. Edit had none, so an emptied name cost a round trip to the server's refusal; its Delete button carries `formnovalidate`, so a group whose name was cleared can still be deleted.
 
