@@ -565,6 +565,22 @@
             d.geometry.output = { w: d.geometry.output.h, h: d.geometry.output.w };
         }
 
+        // A picture placed on its canvas turns alone around its middle: the
+        // canvas and the layers stay, the redaction areas go with it.
+        if (doc.canvas && doc.canvas.picture) {
+            var p0 = pictureBox(doc), c1 = cropBox(d), k = d.canvas.picture.k || 1, a0 = placeMatrix(doc);
+
+            d.canvas.picture.x = p0.x + p0.w / 2 - (c1.x + c1.w / 2) * k;
+            d.canvas.picture.y = p0.y + p0.h / 2 - (c1.y + c1.h / 2) * k;
+
+            var mv = mul(placeMatrix(d), mul(map, inv(a0)));
+
+            d.layers = d.layers.map(function (l) { return (l.type === 'redact') ? mapLayer(l, function (x, y) { return apply(mv, x, y); }) : l; });
+            keepCanvas(doc, d);
+
+            return d;
+        }
+
         d.layers = d.layers.map(function (l) { return mapLayer(l, fn); });
 
         return d;
@@ -2042,7 +2058,7 @@
     // the rotated space's units; null when the canvas is the crop box. What
     // the picture does not cover takes the background.
     function canvasBox(doc) {
-        var c = cropBox(doc), m = doc.canvas;
+        var c = pictureBox(doc), m = doc.canvas;
 
         return m ? { x: c.x - m.l, y: c.y - m.t, w: c.w + m.l + m.r, h: c.h + m.t + m.b } : c;
     }
@@ -2094,14 +2110,21 @@
             return null;
         }
 
-        var b = saveBox(doc), c = cropBox(doc), out = outputSize(doc), sx = out.w / c.w, sy = out.h / c.h;
+        var b = saveBox(doc), c = cropBox(doc), p = pictureBox(doc), out = outputSize(doc), sx = out.w / c.w, sy = out.h / c.h;
         var fill = doc.canvas ? doc.canvas.background : doc.frame.color;
-
-        return {
+        var r = {
             w: Math.round(clamp(b.w * sx, 1, SIZE_MAX)), h: Math.round(clamp(b.h * sy, 1, SIZE_MAX)),
-            x: Math.round((c.x - b.x) * sx), y: Math.round((c.y - b.y) * sy),
+            x: Math.round((p.x - b.x) * sx), y: Math.round((p.y - b.y) * sy),
             fill: /^#[0-9a-f]{6}$/i.test(fill || '') ? fill : 'transparent'
         };
+
+        // A picture resized on its canvas is laid at that size (pw, ph).
+        if (picturePlace(doc).k !== 1) {
+            r.pw = Math.round(clamp(p.w * sx, 1, SIZE_MAX));
+            r.ph = Math.round(clamp(p.h * sy, 1, SIZE_MAX));
+        }
+
+        return r;
     }
 
     // The crop shape over box as an SVG path: the box, the box with rounded
@@ -2137,15 +2160,149 @@
     // doc with its picture's canvas moved to r (in the canvas box's units,
     // as boardDrag() gives it): whole units on each side, at least SIZE_MIN
     // and at most SIZE_MAX across. The layers stay: they lie in the rotated
-    // space, not on the canvas. A canvas back on the crop box with a white
-    // background is none.
+    // space, not on the canvas. A canvas back on the picture with a white
+    // background and no place of the picture is none.
     function applyCanvas(doc, r) {
-        var d = clone(doc), c = cropBox(doc), b = canvasBox(doc);
+        var d = clone(doc), b = canvasBox(doc);
         var x = b.x + Math.round(r.x), y = b.y + Math.round(r.y), w = boardSide(r.w), h = boardSide(r.h);
-        var m = { l: c.x - x, t: c.y - y, r: x + w - c.x - c.w, b: y + h - c.y - c.h, background: doc.canvas ? doc.canvas.background : '#ffffff' };
+
+        d.canvas = canvasAround(doc, { x: x, y: y, w: w, h: h });
+
+        return d;
+    }
+
+    // doc.canvas holding the canvas box b around the picture's place.
+    function canvasAround(doc, b) {
+        var c = pictureBox(doc), m = { l: c.x - b.x, t: c.y - b.y, r: b.x + b.w - c.x - c.w, b: b.y + b.h - c.y - c.h, background: doc.canvas ? doc.canvas.background : '#ffffff' };
 
         ['l', 't', 'r', 'b'].forEach(function (k) { m[k] = Math.round(m[k] * 1000) / 1000; });
-        d.canvas = (!m.l && !m.t && !m.r && !m.b && (m.background === '#ffffff')) ? null : m;
+
+        if (doc.canvas && doc.canvas.picture) {
+            m.picture = clone(doc.canvas.picture);
+        }
+
+        return (!m.l && !m.t && !m.r && !m.b && (m.background === '#ffffff') && !m.picture) ? null : m;
+    }
+
+    // -- the picture as the bottom layer --
+
+    // doc.canvas.picture = { x, y, k, locked }: the picture on its canvas,
+    // the crop box scaled by k and moved by x, y in the rotated space's
+    // units (the layers'); without it the picture lies on its crop box.
+    // Unlocked (locked false) it is moved, resized and deleted like a layer.
+    function picturePlace(doc) {
+        var p = doc.canvas && doc.canvas.picture;
+
+        return p ? { x: Number(p.x) || 0, y: Number(p.y) || 0, k: Number(p.k) || 1, locked: p.locked !== false } : { x: 0, y: 0, k: 1, locked: true };
+    }
+
+    // From the crop box's space to the canvas: the picture's place.
+    function placeMatrix(doc) {
+        var p = picturePlace(doc);
+
+        return mul(translate(p.x, p.y), scale(p.k));
+    }
+
+    // The picture's box on its canvas, in the layers' units.
+    function pictureBox(doc) {
+        var c = cropBox(doc), p = picturePlace(doc);
+
+        return { x: c.x * p.k + p.x, y: c.y * p.k + p.y, w: c.w * p.k, h: c.h * p.k };
+    }
+
+    // From the picture's pixels to the canvas.
+    function placedMatrix(doc) {
+        return mul(placeMatrix(doc), pictureMatrix(doc));
+    }
+
+    // Whether the picture is unlocked: a photo whose canvas lets it move.
+    function pictureFree(doc) {
+        return !!doc.source && !doc.artboard && !picturePlace(doc).locked;
+    }
+
+    // The canvas of before kept around the picture of doc, in place: after a
+    // crop, a turn or a move of a placed picture the canvas stays.
+    function keepCanvas(before, doc) {
+        if (!doc.canvas || !doc.canvas.picture || doc.artboard || !before.source || sameDocument(pictureBox(before), pictureBox(doc))) {
+            return doc;
+        }
+
+        doc.canvas = canvasAround(doc, canvasBox(before));
+
+        return doc;
+    }
+
+    // doc with its picture unlocked (a canvas made on the picture when it
+    // had none) or locked again where it is.
+    function lockPicture(doc, locked) {
+        var d = clone(doc);
+
+        d.canvas = d.canvas || { l: 0, t: 0, r: 0, b: 0, background: '#ffffff' };
+        d.canvas.picture = d.canvas.picture || { x: 0, y: 0, k: 1 };
+        d.canvas.picture.locked = !!locked;
+
+        return d;
+    }
+
+    // doc with its picture placed on box r (the layers' units, its width
+    // sets the scale, the ratio kept): the canvas and the layers stay, the
+    // redaction areas, which belong to the picture's pixels, go with it.
+    function placePicture(doc, r) {
+        var d = clone(doc), c = cropBox(doc), p0 = picturePlace(doc), b = canvasBox(doc);
+        var k = clamp(r.w / c.w, 1 / c.w, SIZE_MAX / c.w), w = c.w * k, h = c.h * k;
+
+        // Some of it stays on the canvas, as the save's extend step asks.
+        var x = clamp(r.x, b.x + 1 - w, b.x + b.w - 1), y = clamp(r.y, b.y + 1 - h, b.y + b.h - 1);
+        var place = { x: Math.round((x - c.x * k) * 1000) / 1000, y: Math.round((y - c.y * k) * 1000) / 1000, k: Math.round(k * 1e6) / 1e6, locked: p0.locked };
+
+        d.canvas = d.canvas || { l: 0, t: 0, r: 0, b: 0, background: '#ffffff' };
+        d.canvas.picture = place;
+
+        var mv = mul(placeMatrix(d), inv(placeMatrix(doc))), s = place.k / p0.k;
+
+        d.layers = d.layers.map(function (l) {
+            if (l.type !== 'redact') {
+                return l;
+            }
+
+            var n = mapLayer(l, function (x, y) { return apply(mv, x, y); }), cx = n.x + n.w / 2, cy = n.y + n.h / 2;
+
+            n.w *= s;
+            n.h *= s;
+            n.x = cx - n.w / 2;
+            n.y = cy - n.h / 2;
+
+            if (n.size) {
+                n.size *= s;
+            }
+
+            return n;
+        });
+
+        return keepCanvas(doc, d);
+    }
+
+    // doc without its picture: the canvas with its fill and the layers
+    // become an artboard of the canvas's size (in the layers' units), the
+    // layers moved onto it; the picture's own (redaction areas,
+    // adjustments, an outward frame) go with the picture.
+    function dropPicture(doc) {
+        var d = clone(doc), b = canvasBox(doc), dx = b.x, dy = b.y, bg = doc.canvas ? doc.canvas.background : '#ffffff';
+
+        d.artboard = { width: boardSide(b.w), height: boardSide(b.h), background: (typeof bg === 'string') ? bg : '#ffffff' };
+        d.source = null;
+        d.canvas = null;
+        d.geometry = { rot: 0, flipX: false, flipY: false, straighten: 0, crop: null, cropShape: 'rect', output: null };
+        d.adjust = {};
+        d.filter = 'none';
+
+        if (d.frame) {
+            delete d.frame.outside;
+        }
+
+        d.layers = d.layers.filter(function (l) { return l.type !== 'redact'; }).map(function (l) {
+            return mapLayer(l, function (x, y) { return [x - dx, y - dy]; });
+        });
 
         return d;
     }
@@ -2154,7 +2311,9 @@
         BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
         boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard,
         canvasBox: canvasBox, FRAME_OUT: FRAME_OUT, frameOutward: frameOutward, framePads: framePads, saveBox: saveBox,
-        saveLayout: saveLayout, cropShapePath: cropShapePath, saveSize: saveSize, applyCanvas: applyCanvas
+        saveLayout: saveLayout, cropShapePath: cropShapePath, saveSize: saveSize, applyCanvas: applyCanvas,
+        picturePlace: picturePlace, placeMatrix: placeMatrix, pictureBox: pictureBox, placedMatrix: placedMatrix, pictureFree: pictureFree,
+        keepCanvas: keepCanvas, lockPicture: lockPicture, placePicture: placePicture, dropPicture: dropPicture
     };
 
     // -- export (pg_image_editor_export.js) --

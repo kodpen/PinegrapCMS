@@ -329,6 +329,7 @@
     "Delete the failed updates of {var:1}? The stock and price changes in them are not sent again.": "{var:1} hesabının başarısız güncellemeleri silinsin mi? İçlerindeki stok ve fiyat değişiklikleri yeniden gönderilmez.",
     "Delete the flow": "Akışı sil",
     "Delete the flow {var:1}? Nobody can open or run it any more.": "{var:1} akışı silinsin mi? Artık kimse onu açamaz ya da çalıştıramaz.",
+    "Delete the picture": "Görseli sil",
     "Delete the reviewed translations as well": "Gözden geçirilmiş çevirileri de sil",
     "Delete the row": "Satırı sil",
     "Delete the saved reply {var:1}?": "{var:1} kayıtlı yanıtı silinsin mi?",
