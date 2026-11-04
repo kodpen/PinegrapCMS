@@ -59,6 +59,23 @@ function pg_sms_campaign_statuses()
 }
 
 /**
+ * One row of the SMS campaign screen's status column (inside a card's
+ * .row): the label left, the value right, a line under it. Pure.
+ *
+ * @param string $label  The label, plain text
+ * @param string $value  The value, already HTML
+ * @return string  HTML
+ */
+function pg_sms_campaign_status_row($label, $value)
+{
+    return '
+                        <div class="col-12 d-flex justify-content-between gap-3 py-2 border-bottom">
+                            <span>' . h($label) . '</span>
+                            <span class="fw-bold text-end text-break">' . $value . '</span>
+                        </div>';
+}
+
+/**
  * The queue reference of one campaign message: what makes a second run of
  * the same campaign find the message already queued.
  *
