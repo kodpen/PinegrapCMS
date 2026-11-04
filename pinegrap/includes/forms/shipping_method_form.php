@@ -327,16 +327,10 @@ function pg_shipping_method_excluded_dates($text)
 {
     $dates = array();
 
-    foreach (explode(',', is_scalar($text) ? (string) $text : '') as $date) {
-        $date = prepare_form_data_for_input(trim($date), 'date');
+    foreach (explode(',', is_scalar($text) ? (string) $text : '') as $entry) {
+        $date = pg_shipping_method_excluded_date_column($entry);
 
-        // An empty entry has no month or day and is dropped.
-        $parts = explode('-', (string) $date);
-        $year = $parts[0];
-        $month = $parts[1] ?? '';
-        $day = $parts[2] ?? '';
-
-        if (is_numeric($month) && is_numeric($day) && is_numeric($year) && checkdate($month, $day, $year)) {
+        if ($date !== null) {
             $dates[] = $date;
         }
     }
@@ -345,6 +339,134 @@ function pg_shipping_method_excluded_dates($text)
     sort($dates);
 
     return $dates;
+}
+
+/**
+ * One entry of the excluded dates box in storage format (Y-m-d), or null
+ * when it is not a real date in the site's order or ISO.
+ *
+ * @param string $entry
+ * @return string|null
+ */
+function pg_shipping_method_excluded_date_column($entry)
+{
+    $date = (string) prepare_form_data_for_input(trim((string) $entry), 'date');
+
+    $parts = explode('-', $date);
+    $year = $parts[0];
+    $month = $parts[1] ?? '';
+    $day = $parts[2] ?? '';
+
+    if (ctype_digit($month) && ctype_digit($day) && ctype_digit($year) && checkdate((int) $month, (int) $day, (int) $year)) {
+        return $date;
+    }
+
+    return null;
+}
+
+/**
+ * The entries of the excluded dates box that are not a date: the ones
+ * pg_shipping_method_excluded_dates() would drop, blank entries aside.
+ * They stop the save, or a holiday the operator typed was lost without a
+ * word and shipping planned on it.
+ *
+ * @param mixed $text  The posted box
+ * @return string[]  The entries as typed, trimmed
+ */
+function pg_shipping_method_excluded_date_errors($text)
+{
+    $invalid = array();
+
+    foreach (explode(',', is_scalar($text) ? (string) $text : '') as $entry) {
+        $entry = trim($entry);
+
+        if (($entry !== '') && (pg_shipping_method_excluded_date_column($entry) === null)) {
+            $invalid[] = $entry;
+        }
+    }
+
+    return $invalid;
+}
+
+/**
+ * The service picker's choices: the services of the carriers that are set
+ * up, grouped by carrier, and a stored service none of them offers (its
+ * carrier was switched off later, or the API set it). That one is offered
+ * on its own so a plain save posts it back instead of clearing it.
+ *
+ * @param array       $ready   carrier ('usps', 'ups', 'fedex') => whether it is set up
+ * @param string|null $stored  The method's service, null for a new method
+ * @return array  'groups' => label => services, 'extra' => service or ''
+ */
+function pg_shipping_method_service_choices($ready, $stored)
+{
+    $labels = array('usps' => 'USPS', 'ups' => 'UPS', 'fedex' => 'FedEx');
+    $groups = array();
+    $offered = array();
+
+    foreach (pg_shipping_method_services() as $service) {
+        $carrier = substr($service, 0, strpos($service, '_'));
+
+        if (!empty($ready[$carrier])) {
+            $groups[$labels[$carrier]][] = $service;
+            $offered[] = $service;
+        }
+    }
+
+    $stored = (string) $stored;
+
+    return array(
+        'groups' => $groups,
+        'extra' => (($stored !== '') && !in_array($stored, $offered, true)) ? $stored : '',
+    );
+}
+
+/**
+ * The Service field of the form. The stored service is selected on the
+ * server. With no carrier set up and no service stored, the field is left
+ * out and the service posts as blank, as it is stored.
+ *
+ * @param array       $ready   carrier => whether it is set up
+ * @param string|null $stored  The method's service, null for a new method
+ * @return string  HTML
+ */
+function pg_shipping_method_service_field($ready, $stored)
+{
+    $choices = pg_shipping_method_service_choices($ready, $stored);
+
+    if (!$choices['groups'] && ($choices['extra'] === '')) {
+        return '<input type="hidden" name="service" id="service" value="" />';
+    }
+
+    $stored = (string) $stored;
+
+    $option = function ($service, $text) use ($stored) {
+        return '<option value="' . h($service) . '"' . (($service === $stored) ? ' selected="selected"' : '') . '>' . h($text) . '</option>';
+    };
+
+    $options = '<option value=""></option>';
+
+    if ($choices['extra'] !== '') {
+        $name = get_shipping_service_name($choices['extra']);
+
+        $options .= $option($choices['extra'], lang(array('string' => '{var:1} (not set up)', 'vars' => ($name !== '') ? $name : $choices['extra'])));
+    }
+
+    foreach ($choices['groups'] as $label => $services) {
+        $options .= '<optgroup label="' . h($label) . '">';
+
+        foreach ($services as $service) {
+            $options .= $option($service, get_shipping_service_name($service));
+        }
+
+        $options .= '</optgroup>';
+    }
+
+    return '<div class="col-12 md:col-6 my-3">
+                                            <label for="service" class="form-label">' . lang('Service') . '</label>
+                                            <select id="service" name="service" class="form-control">' . $options . '</select>
+                                            <div class="form-text">' . lang('Service for Real-Time Rate & Delivery') . '</div>
+                                        </div>';
 }
 
 /**
@@ -486,6 +608,12 @@ function pg_shipping_method_form_errors($post)
         }
     }
 
+    $invalid_dates = pg_shipping_method_excluded_date_errors($post['excluded_transit_dates'] ?? '');
+
+    if ($invalid_dates) {
+        $errors['excluded_transit_dates'] = lang(array('string' => 'Please enter a valid date for {var:1}', 'vars' => lang('Excluded Dates') . ': ' . implode(', ', array_map('h', $invalid_dates)))) . ' (' . get_date_format_help() . ')';
+    }
+
     return $errors;
 }
 
@@ -502,7 +630,10 @@ function pg_shipping_method_form_columns($post)
     $errors = pg_shipping_method_form_errors($post);
 
     if ($errors) {
-        output_error(implode('. ', $errors) . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        // Some messages end with their own period: one period per message.
+        output_error(implode('. ', array_map(function ($message) {
+            return rtrim($message, '.');
+        }, $errors)) . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
     $text = function ($name) use ($post) {
@@ -620,12 +751,12 @@ function pg_shipping_method_form_cards($values, $zone_options)
         'sun' => lang('Sunday'),
     );
 
-    $output_service_value = '';
-
-    if ($values['service'] !== null) {
-        $output_service_value = '
-                                            <script>$("#service").val("' . escape_javascript($values['service']) . '")</script>';
-    }
+    // A method set up with the retired Web Tools user ID keeps its service.
+    $output_service = pg_shipping_method_service_field(array(
+        'usps' => USPS_USER_ID || pg_carrier_api_ready('usps'),
+        'ups' => (bool) UPS,
+        'fedex' => (bool) FEDEX,
+    ), $values['service']);
 
     // Pickup at a location, only on a site that keeps stock per location.
     $output_pickup = '';
@@ -762,11 +893,7 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                         <div class="col-12 md:col-6 my-3">
                                             ' . pg_carrier_number_field($value('carrier_vkn')) . '
                                         </div>
-                                        <div class="col-12 md:col-6 my-3">
-                                            <label for="service" class="form-label">' . lang('Service') . '</label>
-                                            ' . render(array('template' => 'shipping_method_service.php')) . $output_service_value . '
-                                            <div class="form-text">' . lang('Service for Real-Time Rate & Delivery') . '</div>
-                                        </div>' . $output_pickup . '
+                                        ' . $output_service . $output_pickup . '
                                     </div>
                                 </div>
                             </div>
@@ -941,10 +1068,11 @@ function pg_shipping_method_form_cards($values, $zone_options)
 
 /**
  * What a shipping method delete takes with it: its ship date adjustments,
- * and the offer actions that discount shipping on it.
+ * the offer actions that discount shipping on it, and the arrival dates'
+ * shipping cut-offs for it (pg_shipping_method_delete() removes them).
  *
  * @param int $shipping_method_id
- * @return array list of (adjustments, offer actions)
+ * @return array list of (adjustments, offer actions, cut-offs)
  */
 function pg_shipping_method_form_delete_counts($shipping_method_id)
 {
@@ -958,6 +1086,7 @@ function pg_shipping_method_form_delete_counts($shipping_method_id)
     return array(
         $first(db_q("SELECT COUNT(*) FROM ship_date_adjustments WHERE shipping_method_id = ?", array($shipping_method_id))),
         $first(db_q("SELECT COUNT(DISTINCT offer_action_id) FROM offer_actions_shipping_methods_xref WHERE shipping_method_id = ?", array($shipping_method_id))),
+        $first(db_q("SELECT COUNT(*) FROM shipping_cutoffs WHERE shipping_method_id = ?", array($shipping_method_id))),
     );
 }
 
@@ -966,9 +1095,34 @@ function pg_shipping_method_form_delete_counts($shipping_method_id)
  *
  * @param int $adjustments   ship date adjustments deleted with the method
  * @param int $offer_actions offer actions that stop discounting shipping on it
+ * @param int $cutoffs       arrival dates' shipping cut-offs deleted with it
  * @return array list of lang() arguments, one per sentence
  */
-function pg_shipping_method_form_delete_confirm($adjustments, $offer_actions)
+function pg_shipping_method_form_delete_confirm($adjustments, $offer_actions, $cutoffs = 0)
+{
+    $sentences = pg_shipping_method_form_delete_main_sentence($adjustments, $offer_actions);
+    $cutoffs = (int) $cutoffs;
+
+    if ($cutoffs > 0) {
+        $sentences[] = array(
+            'string' => 'WARNING: The shipping cut-off{suffix:1} for this shipping method on {var:1} arrival date{suffix:1} will be permanently deleted too.',
+            'vars' => array($cutoffs),
+            'suffix' => array($cutoffs == 1 ? '' : 's'),
+        );
+    }
+
+    return $sentences;
+}
+
+/**
+ * The first sentence of the Delete confirmation: the method with its ship
+ * date adjustments and the offer actions that discount shipping on it.
+ *
+ * @param int $adjustments
+ * @param int $offer_actions
+ * @return array list of lang() arguments
+ */
+function pg_shipping_method_form_delete_main_sentence($adjustments, $offer_actions)
 {
     $adjustments = (int) $adjustments;
     $offer_actions = (int) $offer_actions;

@@ -132,22 +132,7 @@ if (!$_POST) {
             go($_SERVER['PHP_SELF'] . '?id=' . $liveform->get_field_value('id'));
         }
 
-        // Convert cost to cents.
-        $cost = (int) round(pg_parse_amount($liveform->get_field_value('cost')) * 100);
-
-        db(
-            "UPDATE containers
-            SET
-                name = '" . escape($liveform->get_field_value('name')) . "',
-                enabled = '" . escape($liveform->get_field_value('enabled')) . "',
-                length = '" . escape(pg_container_figure($liveform->get_field_value('length'))) . "',
-                width = '" . escape(pg_container_figure($liveform->get_field_value('width'))) . "',
-                height = '" . escape(pg_container_figure($liveform->get_field_value('height'))) . "',
-                weight = '" . escape(pg_container_figure($liveform->get_field_value('weight'))) . "',
-                cost = '" . escape($cost) . "',
-                last_modified_user_id = '" . USER_ID . "',
-                last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($liveform->get_field_value('id')) . "'");
+        pg_container_form_save($liveform, $liveform->get_field_value('id'), USER_ID);
 
         log_activity(lang(array('string' => 'container ({var:1}) was modified', 'vars' => array($liveform->get_field_value('name')))), $_SESSION['sessionusername']);
 

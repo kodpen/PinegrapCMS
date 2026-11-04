@@ -1,6 +1,6 @@
 ---
 name: list-table-campaign-system-lists
-description: E-mail and SMS campaigns, visitor reports, the 404 log, backups, Cloudflare DNS records and the database tables on the list table driver (TD12a); the gift card redemption history as a plain ledger
+description: E-mail campaigns and campaign profiles, SMS campaigns, visitor reports, the 404 log, backups, DNS records and database tables on the list table driver; gift card redemptions a plain ledger
 module: email_campaign_list
 ---
 
@@ -20,7 +20,7 @@ module: email_campaign_list
 ## What stays as it was?
 - The 404 log keeps its server search box and Who asked filter (they find addresses past the 1,000 rows read); it has no driver search box.
 - The gift card redemption history (`edit_gift_card.php`) is a ledger: newest first, each row with the balance it left. It is a plain `table table-hover` in a `table-responsive`, no sorting; the order number links to the order.
-- `view_email_campaign_profiles.php` moves in TD12b (after #6659).
+- `view_email_campaign_profiles.php` (TD12b): printed whole, list `view_email_campaign_profiles`; the name opens the profile (a disabled one in the danger colour), Action Item and Schedule do not sort. Its select boxes were disabled and its form posted to the campaign delete endpoint; there is no bulk delete for profiles, so the list has no selection.
 
 Tests: `tests/campaign_system_lists_td12_test.php`.
 

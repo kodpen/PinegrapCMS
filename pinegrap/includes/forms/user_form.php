@@ -52,6 +52,42 @@ function pg_user_form_rights_cards($permission_rows)
 }
 
 /**
+ * The wide edit screen layout (ui/edit-screen-wide-layout.md): the form
+ * column, the status column after it and the sticky save bar. $sticky_status
+ * pins the status column's box below the top bar; a box taller than the
+ * window would hide its bottom, so a tall one scrolls with the page.
+ *
+ * @param string $form_html  The cards the operator fills
+ * @param string $status_html  The cards that are read
+ * @param string $buttons_html  The save bar's buttons
+ * @param bool $sticky_status
+ * @return string
+ */
+function pg_user_form_layout($form_html, $status_html, $buttons_html, $sticky_status = true)
+{
+    // 3.3rem: the fixed control panel header covers the top of the window.
+    $box = $sticky_status ? '<div class="position-sticky" style="top:3.3rem;">' : '<div>';
+
+    return '
+                    <div class="row">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">' . $form_html . '
+                        </div>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            ' . $box . $status_html . '
+                            </div>
+                        </div>
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">' . $buttons_html . '
+                                    </div>
+                                </div>
+                            </nav>
+                        </div>
+                    </div>';
+}
+
+/**
  * The edit screen's "Reset Password & Send Link" link. The confirmation's texts go
  * into the handler as one JSON object and the handler through h(), so an
  * apostrophe or a quote in any language's wording cannot end a JavaScript

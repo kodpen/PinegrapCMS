@@ -453,7 +453,11 @@ if (!$_POST) {
         $may_disable = pg_user_form_may_disable($id, USER_ID);
 
         $output_account_enabled_field =
-            '<div class="col-12">
+            '<div class="card mb-5">
+            <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Status') . '</span>
+            </div>
+            <div class="card-body">
                 ' . ($may_disable ? '<input type="hidden" name="account_enabled_drawn" value="1" />' : '') . '
                 <div class="form-field">
                     <div class="switch"><input type="checkbox"' . ($account_enabled ? ' checked="checked"' : '') . ($may_disable ? '' : ' disabled="disabled"') . ' id="account_enabled" name="account_enabled" value="1"/></div>
@@ -462,6 +466,7 @@ if (!$_POST) {
                 <div class="form-text">' . ($may_disable
                     ? lang('A disabled account cannot sign in by any means; its content stays.')
                     : lang('You cannot disable your own account or the last enabled administrator.')) . '</div>
+            </div>
             </div>';
     }
 
@@ -1209,8 +1214,7 @@ if (!$_POST) {
                     ' . $output_hidden_role . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
                     <input type="hidden" name="current_url" value="' . h(get_request_uri()) . '" />
-                    <div class="row g-5">
-                        <div class="col-12 xl:col-8">
+                    ' . pg_user_form_layout('
 
                             <div class="card mb-5">
                                 <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
@@ -1243,7 +1247,6 @@ if (!$_POST) {
                                             <select class="form-control" name="home_page" id="home_page"><option value="0">[' . lang('None') . ']</option>' . select_page($home) . '</select>
                                             <div class="form-text">' . lang('Opened after signing in.') . '</div>
                                         </div>
-                                        ' . $output_account_enabled_field . '
                                     </div>
 
                                     <hr class="border-subtle-secondary opacity-50 my-5">
@@ -1270,26 +1273,19 @@ if (!$_POST) {
                                 </div>
                             </div>
 
-                            ' . pg_user_form_rights_cards($permission_ui['rows']) . '
-                        </div>
-
-                        <div class="col-12 xl:col-4">
+                            ' . pg_user_form_rights_cards($permission_ui['rows']), '
+                            ' . $output_account_enabled_field . '
                             ' . $output_contact_card . '
                             ' . $output_sign_in_card . '
-                            ' . $output_activity_card . '
-                        </div>
-                    </div>
+                            ' . $output_activity_card, '
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="bi bi-floppy me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                ' . $output_delete_button,
+                        // The contact, sign-in and activity cards together are
+                        // taller than the window: pinned, their bottom would
+                        // never come into view.
+                        false) . '
 
                     ' . $permission_ui['panels'] . '
-
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="bi bi-floppy me-3"></span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                ' . $output_delete_button . '
-                            </div>
-                        </div>
-                    </nav>
                 </form>
                 ' . $output_sessions_panel . '
                 ' . (pg_credit_staff_allowed($user) ? pg_credit_staff_panel_html($id, isset($_REQUEST['send_to']) && is_string($_REQUEST['send_to']) ? $_REQUEST['send_to'] : '', time()) : '') . '
