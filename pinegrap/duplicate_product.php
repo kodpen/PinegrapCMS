@@ -30,6 +30,12 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM products WHERE id = '" . 
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
+// A product in the Recycle Bin is not copied: the copy came out as a live
+// product, in the binned one's groups, made from one the operator threw away.
+if (pg_catalog_product_binned($id)) {
+    output_error(lang('This product is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+}
+
 $new_product_id = duplicate_product($_GET['id']);
 
 $old_product_name = db_value("SELECT name FROM products WHERE id = '" . escape($_GET['id']) . "'");

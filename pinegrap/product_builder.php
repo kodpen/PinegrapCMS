@@ -236,19 +236,51 @@ function pg_pb_variant_set_clash($attributes, $set_attributes, $siblings)
 
 
 /**
+ * Whether an edit screen post unticked every attribute option. No option
+ * ticked posts an empty variants_json list, which is also what a post sent
+ * without the screen's script would carry, so the script marks a post whose
+ * ticks it read with pg_pb_attributes_posted; only then does the empty list
+ * mean "no attribute". Without the mark the stored attributes stay.
+ *
+ * @param array $post
+ * @return bool
+ */
+function pg_pb_attributes_cleared($post)
+{
+    return !empty($post['pg_pb_attributes_posted'])
+        && isset($post['variants_json']) && is_string($post['variants_json'])
+        && (trim($post['variants_json']) === '[]');
+}
+
+
+/**
  * The sentence refusing an edited set member's attribute choice, or '' when
  * the product is in no variant set or the choice fits it
- * (pg_pb_variant_set_clash()).
+ * (pg_pb_variant_set_clash()). A member whose every option was unticked is
+ * refused too: it would stay in the set with no combination to be picked by.
  *
  * @param int   $product_id
  * @param array $variants  Decoded variants_json of the edit screen
+ * @param bool  $cleared   pg_pb_attributes_cleared() of the post
  * @return string
  */
-function pg_pb_variant_set_problem($product_id, $variants)
+function pg_pb_variant_set_problem($product_id, $variants, $cleared = FALSE)
 {
     $product_id = (int) $product_id;
 
-    if (!$product_id || (count($variants) !== 1) || empty($variants[0]['attributes'])) {
+    if (!$product_id) {
+        return '';
+    }
+
+    if ($cleared && !$variants) {
+        if (pg_pb_variant_group_id($product_id) && pg_pb_product_attribute_rows($product_id)) {
+            return lang('This product is a variant in a variant set: choose one option of each of its attributes.');
+        }
+
+        return '';
+    }
+
+    if ((count($variants) !== 1) || empty($variants[0]['attributes'])) {
         return '';
     }
 
@@ -508,6 +540,29 @@ function pg_pb_decimal_from_input($value)
 }
 
 /**
+ * A weight or dimension typed on the product screen as its column stores
+ * it: pounds and inches, converted from kilograms and centimetres when the
+ * screen's metric switch is on (the legacy screen's factors). The columns
+ * are decimal(12,4), so the converted figure keeps four places: rounded to
+ * two, 0.11 kg was stored as 0.24 lb and read back as 0.1089 kg.
+ *
+ * @param mixed  $value
+ * @param string $field   'weight', 'length', 'width' or 'height'
+ * @param bool   $metric  The metric switch
+ * @return float
+ */
+function pg_pb_measure_from_input($value, $field, $metric)
+{
+    $number = pg_pb_decimal_from_input(is_scalar($value) ? $value : '');
+
+    if ($metric) {
+        $number = round($number * (($field === 'weight') ? 2.20462262185 : 0.39370078740158), 4);
+    }
+
+    return $number;
+}
+
+/**
  * A whole number typed into one of the product screen's count boxes
  * (payments, days, points, quantities), read strictly: digits, optionally
  * grouped by threes with the panel's thousands separator ("1.200" in
@@ -635,6 +690,32 @@ function pg_pb_number_fields_problem($post, $thousands = ',')
         if (isset($post[$field]) && is_scalar($post[$field]) && preg_match('/^\s*-/u', (string) $post[$field])
             && preg_match('/[1-9]/', (string) $post[$field])) {
             return lang(array('string' => '{var:1} cannot be negative.', 'vars' => array(lang($label))));
+        }
+    }
+
+    // Weight and dimensions: digits and separators only (their reader drops
+    // anything else, so "1e5" was stored as 15 and "abc" as 0), and no more
+    // than their decimal(12,4) columns hold once stored as pounds and inches
+    // (a larger figure was cut to the column's top).
+    $metric = !empty($post['convert_to_metric_system']);
+
+    foreach (array('weight' => 'Weight', 'length' => 'Length', 'width' => 'Width', 'height' => 'Height') as $field => $label) {
+        if (!array_key_exists($field, $post)) {
+            continue;
+        }
+
+        $value = is_scalar($post[$field]) ? trim(str_replace(array("\u{00A0}", "\u{202F}"), ' ', (string) $post[$field])) : false;
+
+        if ($value === '') {
+            continue;
+        }
+
+        if (($value === false) || !preg_match('/^-?\s*[0-9.,\s]*[0-9][0-9.,\s]*$/', $value)) {
+            return lang(array('string' => '{var:1} must be a number.', 'vars' => array(lang($label))));
+        }
+
+        if (pg_pb_measure_from_input($value, $field, $metric) > 99999999.9999) {
+            return lang(array('string' => '{var:1} is too large.', 'vars' => array(lang($label))));
         }
     }
 
@@ -869,24 +950,14 @@ function pg_pb_managed_product_columns()
  */
 function pg_pb_common_from_post()
 {
-    // Weight and dimensions are stored in pounds and inches. The operator may
-    // have typed metric, in which case convert on the way in — same factors the
-    // legacy screen uses. The columns are decimal(12,4), so the converted figure
-    // keeps four places: rounded to two, 0.11 kg was stored as 0.24 lb and read
-    // back as 0.1089 kg.
+    // Weight and dimensions are stored in pounds and inches; the operator may
+    // have typed metric (pg_pb_measure_from_input()).
     $metric = !empty($_POST['convert_to_metric_system']);
 
-    $weight = pg_pb_decimal_from_input(isset($_POST['weight']) ? $_POST['weight'] : 0);
-    $length = pg_pb_decimal_from_input(isset($_POST['length']) ? $_POST['length'] : 0);
-    $width  = pg_pb_decimal_from_input(isset($_POST['width'])  ? $_POST['width']  : 0);
-    $height = pg_pb_decimal_from_input(isset($_POST['height']) ? $_POST['height'] : 0);
-
-    if ($metric) {
-        $weight = round($weight * 2.20462262185, 4);
-        $length = round($length * 0.39370078740158, 4);
-        $width  = round($width  * 0.39370078740158, 4);
-        $height = round($height * 0.39370078740158, 4);
-    }
+    $weight = pg_pb_measure_from_input(isset($_POST['weight']) ? $_POST['weight'] : 0, 'weight', $metric);
+    $length = pg_pb_measure_from_input(isset($_POST['length']) ? $_POST['length'] : 0, 'length', $metric);
+    $width  = pg_pb_measure_from_input(isset($_POST['width'])  ? $_POST['width']  : 0, 'width', $metric);
+    $height = pg_pb_measure_from_input(isset($_POST['height']) ? $_POST['height'] : 0, 'height', $metric);
 
     $post = function ($key, $default = '') {
         return isset($_POST[$key]) ? $_POST[$key] : $default;
@@ -2814,9 +2885,9 @@ function pg_pb_render_attribute_card($attribute, $selected_option_ids = array(),
             <div class="card-body py-3 px-5">
 
                 <div class="d-flex align-items-center gap-3 mb-3">
-                    <span class="fw-semibold">' . h($attribute['name']) . '</span>
+                    <span class="fw-semibold text-break min-w-0">' . h($attribute['name']) . '</span>
                     <span class="badge theme-primary pg-pb-attr-count d-none">0</span>
-                    <div class="ms-auto d-flex align-items-center gap-1">
+                    <div class="ms-auto d-flex align-items-center gap-1 flex-shrink-0">
                         ' . ($single_choice
                             /* A product carries one option per attribute, so
                                "select all" would be a one-click way to describe
@@ -3498,6 +3569,15 @@ function pg_pb_render_styles()
             /* Wireframe previews. Grey bars, not a copy of the storefront —
                see pg_pb_render_preview(). Sized to the side column: the point is
                "what will a visitor see roughly", not a rendering. */
+            /* Attribute name tokens under the SKU and description
+               templates. A .btn does not wrap, so a long attribute name made
+               one pill wider than its column and the page scrolled sideways. */
+            .pg-pb-token {
+                white-space: normal;
+                max-width: 100%;
+                overflow-wrap: anywhere;
+                text-align: start;
+            }
             .pg-pb-wf-caption {
                 font-size: .7rem;
                 text-transform: uppercase;
@@ -4975,28 +5055,28 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     '<div class="col-6 lg:col-3 my-1">
                                                         <label for="weight" class="form-label">' . lang('Weight') . '</label>
                                                         <div class="input-group">
-                                                            <input value="' . h($v('weight', '0')) . '" type="text" name="weight" id="weight" class="form-control" inputmode="decimal" style="text-align:right;" />
+                                                            <input value="' . h($v('weight', '0')) . '" type="text" name="weight" id="weight" class="form-control" inputmode="decimal" maxlength="20" style="text-align:right;" />
                                                             <label class="input-group-text unit" for="weight">' . lang('lbs') . '</label>
                                                         </div>
                                                     </div>
                                                     <div class="col-6 lg:col-3 my-1">
                                                         <label for="length" class="form-label">' . lang('Length') . '</label>
                                                         <div class="input-group">
-                                                            <input value="' . h($v('length', '0')) . '" type="text" name="length" id="length" class="form-control" inputmode="decimal" style="text-align:right;" />
+                                                            <input value="' . h($v('length', '0')) . '" type="text" name="length" id="length" class="form-control" inputmode="decimal" maxlength="20" style="text-align:right;" />
                                                             <label class="input-group-text unit" for="length">' . lang('in') . '</label>
                                                         </div>
                                                     </div>
                                                     <div class="col-6 lg:col-3 my-1">
                                                         <label for="width" class="form-label">' . lang('Width') . '</label>
                                                         <div class="input-group">
-                                                            <input value="' . h($v('width', '0')) . '" type="text" name="width" id="width" class="form-control" inputmode="decimal" style="text-align:right;" />
+                                                            <input value="' . h($v('width', '0')) . '" type="text" name="width" id="width" class="form-control" inputmode="decimal" maxlength="20" style="text-align:right;" />
                                                             <label class="input-group-text unit" for="width">' . lang('in') . '</label>
                                                         </div>
                                                     </div>
                                                     <div class="col-6 lg:col-3 my-1">
                                                         <label for="height" class="form-label">' . lang('Height') . '</label>
                                                         <div class="input-group">
-                                                            <input value="' . h($v('height', '0')) . '" type="text" name="height" id="height" class="form-control" inputmode="decimal" style="text-align:right;" />
+                                                            <input value="' . h($v('height', '0')) . '" type="text" name="height" id="height" class="form-control" inputmode="decimal" maxlength="20" style="text-align:right;" />
                                                             <label class="input-group-text unit" for="height">' . lang('in') . '</label>
                                                         </div>
                                                     </div>
@@ -5400,12 +5480,19 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             column, so answering it means reading every catalog page and walking
             the group tree for each.
         */
-        ? '<nav class="navigation mb-5" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-link pg-link-secondary" href="duplicate_product.php?id=' . h($pg_product_id) . get_token_query_string_field() . '"><i class="bi bi-copy me-1"></i>' . lang('Duplicate') . '</a>
-                ' . (($v('product_form') or $v('pg_pb_has_form_fields'))
-                    ? '<a class="btn btn-sm btn-link pg-link-secondary" href="view_fields.php?product_id=' . h($pg_product_id) . '"><i class="bi bi-ui-checks me-1"></i>' . lang('Product Form') . '</a>'
-                    : '') . '
-            </nav>'
+        // The screen's one toolbar. A product in the Recycle Bin is not
+        // duplicated (duplicate_product.php refuses it): the copy would be a
+        // live product made from one the operator threw away.
+        ? pg_screen_toolbar(array(
+            'secondary' => array(
+                ($pg_recycled
+                    ? ''
+                    : '<a class="btn btn-sm btn-text theme-secondary" href="duplicate_product.php?id=' . h($pg_product_id) . get_token_query_string_field() . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>'),
+                (($v('product_form') or $v('pg_pb_has_form_fields'))
+                    ? '<a class="btn btn-sm btn-text theme-secondary" href="view_fields.php?product_id=' . h($pg_product_id) . '"><i class="bi bi-ui-checks me-1" aria-hidden="true"></i>' . lang('Product Form') . '</a>'
+                    : ''),
+            ),
+        ))
         : '') . '
 
     <div class="row">
@@ -5426,6 +5513,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
              operator came from travels with the form. -->
         <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '" />
         <input type="hidden" id="variants_json" name="variants_json" value="" />
+        <input type="hidden" id="pg_pb_attributes_posted" name="pg_pb_attributes_posted" value="" />
         <input type="hidden" id="attributes_meta_json" name="attributes_meta_json" value="" />
         <input type="hidden" id="variant_price_rules" name="variant_price_rules" value="" />
         ' . ($ai_marks_ready ? pg_ai_fields_input('product', $ai_marks) : '') . '
@@ -6256,7 +6344,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                 <span class="bi ' . (($pg_mode === 'edit') ? 'bi-check-circle' : 'bi-plus-circle') . ' me-3"></span><span class="pg-btn-label">' . (($pg_mode === 'edit') ? lang(array('string' => 'Save')) : lang(array('string' => 'Create'))) . '</span>
                             </button>
                             ' . (($pg_mode === 'edit')
-                                ? '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" formnovalidate data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product')))) : lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product'))))) . '"><span class="bi bi-trash me-3"></span><span class="pg-btn-label">' . lang(array('string' => 'Delete')) . '</span></button>'
+                                // Saves and comes back to this product
+                                // (edit_product.php), where Save goes on to the list.
+                                ? '<button type="submit" name="submit_save_and_stay" value="1" class="btn my-1 btn-outline theme-success"><span class="bi bi-arrow-repeat me-3" aria-hidden="true"></span><span class="pg-btn-label">' . lang('Save and Keep Editing') . '</span></button>'
+                                . '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" formnovalidate data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product')))) : lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product'))))) . '"><span class="bi bi-trash me-3"></span><span class="pg-btn-label">' . lang(array('string' => 'Delete')) . '</span></button>'
                                 : '')) . '
                         </div>
                     </div>
@@ -6810,16 +6901,16 @@ function pg_pb_update_product($product_id)
     // Attributes. The edit screen allows one option per attribute — see the
     // note on singleOptionPerAttribute — so what comes back is this product's
     // own description, not a matrix. Rewritten wholesale: unticking an
-    // attribute has to remove it.
+    // attribute has to remove it, the last one too (pg_pb_attributes_cleared()).
     $variants = pg_pb_decode_variants(isset($_POST['variants_json']) ? $_POST['variants_json'] : '');
 
-    if ($variants) {
+    if ($variants || pg_pb_attributes_cleared($_POST)) {
 
         db("DELETE FROM products_attributes_xref WHERE product_id = '" . e($product_id) . "'");
 
         $sort_order = 0;
 
-        foreach ($variants[0]['attributes'] as $attribute) {
+        foreach (($variants ? $variants[0]['attributes'] : array()) as $attribute) {
             pg_pb_insert_row('products_attributes_xref', array(
                 'product_id'   => $product_id,
                 'attribute_id' => $attribute['attribute_id'],
@@ -7259,7 +7350,7 @@ function pg_pb_validate_product_post($user, $product_id = 0)
 
     // A variant set member edited on its own keeps a combination of its own.
     if ($product_id) {
-        $variant_problem = pg_pb_variant_set_problem($product_id, pg_pb_decode_variants(isset($_POST['variants_json']) ? $_POST['variants_json'] : ''));
+        $variant_problem = pg_pb_variant_set_problem($product_id, pg_pb_decode_variants(isset($_POST['variants_json']) ? $_POST['variants_json'] : ''), pg_pb_attributes_cleared($_POST));
 
         if ($variant_problem !== '') {
             output_error(h($variant_problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
