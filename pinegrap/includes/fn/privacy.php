@@ -961,6 +961,17 @@ function pg_privacy_erase_tables()
         'watchers'                     => array('find' => array('user_id' => 'user_ids', 'email_address' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'wishlist_items'               => array('find' => $user, 'action' => 'delete', 'fields' => array()),
         'stock_notify'                 => array('find' => array('user_id' => 'user_ids', 'email_address' => 'emails'), 'action' => 'delete', 'fields' => array()),
+        // A booking stays on the staff agenda without naming the person; a
+        // live one still to come is cancelled first, so its slot opens
+        // (_pg_privacy_erase_apply_bookings()).
+        'bookings' => array('find' => array('user_id' => 'user_ids', 'email' => 'emails'), 'action' => 'anonymise', 'fields' => array(
+            'name'         => '{name}',
+            'email'        => '{token}',
+            'phone'        => '',
+            'notes'        => '',
+            'manage_token' => '',
+            'user_id'      => 0,
+        )),
         'email_recipients'             => array('find' => array('contact_id' => 'contact_ids', 'email_address' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'mail_outbox'                  => array('find' => array('recipient' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'mail_bounces'                 => array('find' => array('address' => 'emails'), 'action' => 'delete', 'fields' => array()),
@@ -1070,6 +1081,7 @@ function pg_privacy_erase_labels()
         'watchers'                     => lang('Watched items'),
         'wishlist_items'               => lang('Favourites'),
         'stock_notify'                 => lang('Back-in-stock requests'),
+        'bookings'                     => lang('Appointment bookings'),
         'email_recipients'             => lang('E-mail campaigns'),
         'mail_outbox'                  => lang('E-mail messages'),
         'mail_bounces'                 => lang('E-mail bounces and complaints'),
@@ -1803,6 +1815,21 @@ function _pg_privacy_erase_write($table, $where, array $fields, $name)
 
         db("UPDATE `" . $table . "` SET " . pg_privacy_erase_set($fields, $name, pg_privacy_erase_token($value)) . " WHERE " . $where . " AND (`" . $column . "`" . $same . ")");
     }
+}
+
+/**
+ * The person's live bookings still to come are cancelled first, the way the
+ * agenda cancels one (status and slot in one UPDATE, so the slot opens
+ * again), without the mails: the person is being erased. Then the personal
+ * columns of all their bookings are replaced.
+ */
+function _pg_privacy_erase_apply_bookings($where, array $fields, array $scope, $name)
+{
+    $now = time();
+
+    db("UPDATE bookings SET status = 'cancelled', slot_at = NULL, updated_at = '" . $now . "' WHERE (" . $where . ") AND " . pg_booking_erase_cancel_where($now));
+
+    _pg_privacy_erase_write('bookings', $where, $fields, $name);
 }
 
 /**

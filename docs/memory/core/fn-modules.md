@@ -33,6 +33,7 @@ description: Generated from the module field of the memory files: each includes/
 - `booking_deposits`: [[booking-deposits]]
 - `booking_manage`: [[booking-manage]]
 - `booking_messages`: [[booking-messages]]
+- `booking_retention`: [[booking-retention]]
 - `booking_settings`: [[booking-settings]]
 - `bookings`: [[bookings-decisions]], [[bookings-model]]
 - `bundles`: [[product-bundles]], [[product-bundles-storefront]]

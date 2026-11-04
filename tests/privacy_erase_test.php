@@ -78,7 +78,7 @@ function test_privacy_erase_tables_are_pinned()
 			'comments' => 'anonymise', 'remote_comments' => 'delete', 'consent_log' => 'anonymise', 'ws_approval_guests' => 'anonymise', 'ws_events' => 'anonymise', 'cart_quotes' => 'anonymise',
 			'audit_log' => 'anonymise', 'record_revisions' => 'delete', 'files' => 'delete', 'form_data_cells' => 'anonymise',
 			'form_data' => 'delete', 'form_signatures' => 'delete', 'forms' => 'delete',
-			'watchers' => 'delete', 'wishlist_items' => 'delete', 'stock_notify' => 'delete',
+			'watchers' => 'delete', 'wishlist_items' => 'delete', 'stock_notify' => 'delete', 'bookings' => 'anonymise',
 			'email_recipients' => 'delete', 'mail_outbox' => 'delete', 'mail_bounces' => 'delete', 'sms_outbox' => 'delete',
 			'chat_messages' => 'delete', 'chat_conversations' => 'delete', 'address_book' => 'delete',
 			'push_subscriptions' => 'delete', 'user_passkeys' => 'delete', 'user_identities' => 'delete',
@@ -134,6 +134,7 @@ function test_privacy_erase_tables_are_pinned()
 			'audit_log' => array('label' => ''),
 			'form_data_cells' => array('data' => ''),
 			'ws_wtable_cells' => array('cells' => ''),
+			'bookings' => array('name' => '{name}', 'email' => '{token}', 'phone' => '', 'notes' => '', 'manage_token' => '', 'user_id' => 0),
 	);
 
 	ksort($expected);
@@ -181,6 +182,7 @@ function test_privacy_erase_find_columns_are_pinned()
 			'watchers' => array('user_id' => 'user_ids', 'email_address' => 'emails'),
 			'wishlist_items' => $user,
 			'stock_notify' => array('user_id' => 'user_ids', 'email_address' => 'emails'),
+			'bookings' => array('user_id' => 'user_ids', 'email' => 'emails'),
 			'email_recipients' => array('contact_id' => 'contact_ids', 'email_address' => 'emails'),
 			'mail_outbox' => array('recipient' => 'emails'),
 			'mail_bounces' => array('address' => 'emails'),

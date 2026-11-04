@@ -15,5 +15,5 @@ module: bookings
 ## Where is each part?
 - Model and slot engine [[bookings-model]]; settings `ui/booking-settings.md`; agenda `ui/booking-agenda.md`; widget `designer/booking-widget.md`, `designer/booking-widget-confirm.md`; mails, SMS, reminders [[booking-messages]]; manage page and My bookings [[booking-manage]]; API `api/api-bookings.md`; Workspace record and events `workspace/workspace-booking-record.md`.
 
-## What was decided but is not built?
-- #5032 keeps cancelled rows 400 days and has the privacy erasure cover bookings; neither a prune nor the export and erasure of bookings exists yet: `plans/booking-retention.md`.
+## How long are bookings kept?
+- Cancelled rows 400 days; the privacy export and erasure cover bookings (#5032): [[booking-retention]].
