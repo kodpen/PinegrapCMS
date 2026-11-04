@@ -99,3 +99,13 @@ function test_featured_new_items_summary_counts()
 		'no items, all zero'
 	);
 }
+
+function test_featured_new_items_wide_layout()
+{
+	$source = featured_new_items_source();
+
+	pg_assert_contains('<div class="col-12 lg:col-8 2xl:col-9 order-1">', $source, 'the table sits in the form column');
+	pg_assert_contains('<div class="col-12 lg:col-4 2xl:col-3 order-2">', $source, 'the status column follows it');
+	pg_assert_contains('pg_featured_new_summary_counts($items)', $source, 'the Summary reads the listed rows');
+	pg_assert_contains('<div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">', $source, 'the save bar sticks');
+}

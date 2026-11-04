@@ -100,6 +100,37 @@ if (!$_POST) {
             </tr>';
     }
 
+    // The status column: what the stored rows hold, read before any change.
+    $counts = pg_featured_new_summary_counts($items);
+    $summary_rows = array(
+        lang('Product Groups') => pg_format_number($counts['product_groups'], 0),
+        lang('Products') => pg_format_number($counts['products'], 0),
+        lang('Featured') => pg_format_number($counts['featured'], 0),
+        lang('New on Date') => pg_format_number($counts['new'], 0),
+        lang('Disabled') => pg_format_number($counts['disabled'], 0),
+    );
+    $output_summary_rows = '';
+    $number = 0;
+    foreach ($summary_rows as $label => $value) {
+        $number++;
+        $output_summary_rows .= '
+                                            <div class="d-flex justify-content-between gap-3 py-2' . (($number < count($summary_rows)) ? ' border-bottom' : '') . '">
+                                                <dt class="fw-normal">' . h($label) . '</dt>
+                                                <dd class="mb-0 fw-bold text-end">' . $value . '</dd>
+                                            </div>';
+    }
+    $output_summary = '
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Summary') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <dl class="mb-0">' . $output_summary_rows . '
+                                        </dl>
+                                        <p class="form-text mb-0 mt-3">' . lang('An item with a Featured Order appears among the featured items; one with a New on Date appears among the new items from that date on. Disabled items are shown in red.') . '</p>
+                                    </div>
+                                </div>';
+
     // output product group tree screen; the rows are a plain table, not a DataTable
     // (table.chart): paging, search and column visibility take the rows and columns
     // they hide out of the form, and the save clears every item whose boxes were not posted
@@ -116,43 +147,50 @@ if (!$_POST) {
             array('label' => lang('Edit Featured & New Items')),
         ),
     ]) . '<main id="content" class="container-fluid">' . get_date_picker_format() . '
-            <div class="row">
-            <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-               
-                
-                <form name="form"  action="edit_featured_and_new_items.php" method="post"> 
-                    <div class="card my-7">
-                        <div class="card-body p-0 position-relative">
-                            ' . get_token_field() . '
-                            <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>' . lang('Item') . '</th>
-                                        <th>' . lang('Featured Order') . '</th>
-                                        <th>' . lang('New on Date') . '</th>
-                                    </tr>
-                                </thead>
-                                <tbody>' . $output_item_rows . '</tbody>
-                            </table>
+                <form name="form"  action="edit_featured_and_new_items.php" method="post">
+                    ' . get_token_field() . '
+                    <div class="row">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Items') . '
+                                </h2>
+                                <div class="card-body p-0 position-relative">
+                                    <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>' . lang('Item') . '</th>
+                                                <th>' . lang('Featured Order') . '</th>
+                                                <th>' . lang('New on Date') . '</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>' . $output_item_rows . '</tbody>
+                                    </table>
+                                    </div>
+                                </div>
                             </div>
+                        </div>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">' . $output_summary . '
+                            </div>
+                        </div>
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">
+                                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                    </div>
+                                </div>
+                            </nav>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
                     <input type="hidden" name="max_input_vars_test" value="true">
                 </form>
-            </div>
-        </div>
-    
 </main>' .
     output_footer();
         
