@@ -23,9 +23,10 @@ module: site_search_stats
 - 400 days (`PG_SITE_SEARCH_DAYS`): `job.php` runs `pg_site_search_sweep()` once a day (`data/temp/site_search_sweep.json`), `DELETE … WHERE day < ? LIMIT 5000` within 5 seconds.
 
 ## Where is the report?
-- `visitor_search.php` (Visitors menu, once the table is there; gate `validate_visitors_access()`), until the Visitors overview (`plans/visitors-overview.md`) can take it as a section. Period 7/30/90/365 days ending today (`pg_site_search_period_start()`, stepped by days).
-- Tiles: searches, terms, no results, result clicks, clicks per search (`pg_site_search_click_rate()`, can pass 100%: several results of one search may be clicked). Tables: top 100 terms by searches, top 100 terms that found nothing (`pg_site_search_terms_sql()`; rows summed, `GROUP BY term`).
+- The Site Search section of the Visitors overview, `visitors.php#site_search` (`includes/visitors/site_search.php`, V17 #6475), over the overview's period: `pg_site_search_figures($from, $to)` reads, `pg_site_search_report($figures, $may_tune)` draws (pure). Both SQL statements bind the first and the last day (`day >= ? AND day <= ?`). Nothing is drawn until `pg_site_search_stats_ready()`.
+- Tiles: searches, terms, no results, result clicks, clicks per search (`pg_site_search_click_rate()`, can pass 100%: several results of one search may be clicked; '-' with no search). Tables: top 100 terms by searches, top 100 terms that found nothing (`pg_site_search_terms_sql()`; rows summed, `GROUP BY term`).
 - A manager (role < 3) gets a promote button per zero-result term: `settings_features.php?search_promote=<term>#pgset-search-tuning`, where the card adds a `term => ` line (`pg_search_promoted_add_line()`) for the operator to finish and save.
+- `visitor_search.php` only answers a 301: its `days` (7/30/90/365, default 30) become `p=7d|30d|90d`, a year a custom range ending today (`pg_site_search_overview_query()`).
 
 ## Where are synonyms and promoted results?
 - `designer/search-synonyms-promoted.md`.
