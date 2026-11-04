@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-27
-description: Decisions list, product part 27 (2026-11-04 midday on): the image editor's Fotoğraf and Vektör rail groups, Import, SVG as one layer, a context menu; group triggers once per joined contact
+description: Decisions list, product part 27 (2026-11-04 midday on): image editor rail groups, Import, SVG layer, context menu; group-join triggers; no Delete for a store credit card on the gift card screen
 ---
 
 ## Where are the rules and the earlier parts?
@@ -12,3 +12,6 @@ description: Decisions list, product part 27 (2026-11-04 midday on): the image e
 ## Contact group filled by rules: "joined a group" starts flows and campaign profiles once per contact (#6599, owner, 2026-11-04)
 - Decided (owner; contact groups filled by rules, `core/audiences-overview.md`): both triggers the plan named are added, and each runs once per contact who joined. Flows get the event `contact_group.joined` (outputs `contact_id`, `group_id`, `group_name`; filtered by group, dynamic groups named with their kind in the pick list); campaign profiles get the action `contact_group_joined` with a group picker, one mail per joined contact under the purpose rules of every profile mail. Both fire from the one seam every door and the recompute pass through (`pg_announce_contact_group_members()`), so a hand edit, a form, a product sale and a rule pass behave alike; the first pass after a switch to dynamic fires for every matching contact, as ticking them by hand would. A large change queues one workspace event row per contact and drains through the existing event run. Running sites change nothing until a profile or flow picks the trigger. Reason: a group filled by rules is useful only when something listens to it, and a run per change cannot name the contacts (`{{trigger.*}}` takes scalar values only). Refused: the Flow event alone, one run per change, dropping the triggers from the plan.
 - Architect: the ENUM append is in `decisions-made-schema-10.md`; `contact_group.members_changed` stays the webhook event, unchanged in name and payload.
+
+## May a store credit card be deleted from the gift card screen? (#6688)
+- Owner (2026-11-04): no. On Edit Gift Card a card with `gift_cards.user_id` > 0 has no Delete button; a note in its place says the credit is voided on the customer's screen (`edit_user.php#store_credit`), and a posted `submit_delete` for such a card is refused on the server. Ordinary gift cards (`user_id` = 0) are deleted as before. Reason: Delete removed the row with only a Site Log line, so the customer's credit vanished with no `pg_audit()` line and the redemption history (`applied_gift_cards`), the customer's list and the audit trail's link broke; `pg_credit_void()` keeps the row, writes the note and the audit line and is guarded against a concurrent spend. Refused: deleting with an audit line (records the loss, does not prevent it).
