@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-27
-description: Decisions list, product part 27 (2026-11-04 midday on): the image editor's Fotoğraf and Vektör rail groups, Import, SVG as one layer, a context menu; group triggers once per joined contact
+description: Decisions list, product part 27 (2026-11-04 midday on): image editor rail groups, Import, SVG as one layer, a context menu; the new logo; group triggers once per joined contact
 ---
 
 ## Where are the rules and the earlier parts?
@@ -12,3 +12,6 @@ description: Decisions list, product part 27 (2026-11-04 midday on): the image e
 ## Contact group filled by rules: "joined a group" starts flows and campaign profiles once per contact (#6599, owner, 2026-11-04)
 - Decided (owner; contact groups filled by rules, `core/audiences-overview.md`): both triggers the plan named are added, and each runs once per contact who joined. Flows get the event `contact_group.joined` (outputs `contact_id`, `group_id`, `group_name`; filtered by group, dynamic groups named with their kind in the pick list); campaign profiles get the action `contact_group_joined` with a group picker, one mail per joined contact under the purpose rules of every profile mail. Both fire from the one seam every door and the recompute pass through (`pg_announce_contact_group_members()`), so a hand edit, a form, a product sale and a rule pass behave alike; the first pass after a switch to dynamic fires for every matching contact, as ticking them by hand would. A large change queues one workspace event row per contact and drains through the existing event run. Running sites change nothing until a profile or flow picks the trigger. Reason: a group filled by rules is useful only when something listens to it, and a run per change cannot name the contacts (`{{trigger.*}}` takes scalar values only). Refused: the Flow event alone, one run per change, dropping the triggers from the plan.
 - Architect: the ENUM append is in `decisions-made-schema-10.md`; `contact_group.members_changed` stays the webhook event, unchanged in name and payload.
+
+## The new logo everywhere (owner, 2026-11-04)
+- The squirrel in its space window and the single-line Pinegrap wordmark replace every old logo. A narrow place shows the square mascot, a wide place the full logo, whatever it showed before. The panel's own screens (header, loading curtain, installer, theme designer) play the mascot's loop, with the still frame for reduced motion, a data saver, a small device or a refused play; icons and files are still. The SVGs of the mascot, the wordmark and both together stay in `assets/images`. The previous image editor's logo goes (`clean_up.php`). Why: one recognisable brand, and the very old "PineGrap™" icons kept showing. Details: `ui/brand-logo.md`.
