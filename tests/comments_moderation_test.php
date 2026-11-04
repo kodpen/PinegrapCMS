@@ -94,19 +94,27 @@ function test_comments_moderation_paths()
 	$edit = (string) file_get_contents($root . '/edit_comment.php');
 	$call = 'pg_comment_refresh_record_info($page_id, $item_type, $item_id)';
 
-	pg_assert_same(2, substr_count($edit, $call), 'edit_comment.php rebuilds on delete and on save');
+	// A delete rebuilds on the screen; a save rebuilds in the shared
+	// pg_comment_form_after_save() (includes/forms/comment_form.php), after
+	// the UPDATE.
+	pg_assert_same(1, substr_count($edit, $call), 'edit_comment.php rebuilds on delete');
 
 	$delete = strpos($edit, 'DELETE FROM comments WHERE id');
-	$update = strpos($edit, 'UPDATE comments');
-	$mail = strpos($edit, 'send_comment_email_to_custom_form_submitter(');
 	$first = strpos($edit, $call);
-	$second = ($first !== false) ? strpos($edit, $call, $first + 1) : false;
-	$found = ($delete !== false) && ($update !== false) && ($mail !== false) && ($first !== false) && ($second !== false);
+	$save = strpos($edit, 'pg_comment_form_save(');
+	$after = strpos($edit, 'pg_comment_form_after_save($row, $new_published)');
 
-	pg_assert_true($found && ($delete < $first) && ($first < $update), 'after the delete');
-	pg_assert_true($found && ($update < $second) && ($second < $mail), 'after the update and before the e-mails');
-	pg_assert_true(strpos($edit, 'pg_comment_submitter_mail_due($item_type, $item_id, $comments_submitter_email_page_id, $created_user_id, $submitter_user_id)') !== false, 'the submitter e-mail follows the writer rule');
+	pg_assert_true(($delete !== false) && ($first !== false) && ($delete < $first), 'after the delete');
+	pg_assert_true(($save !== false) && ($after !== false) && ($save < $after), 'the save sets off its rebuild and e-mails after the UPDATE');
 	pg_assert_true(strpos($edit, 'forms.user_id AS submitter_user_id') !== false, 'the record submitter is read with the comment');
+
+	$form = (string) file_get_contents($root . '/includes/forms/comment_form.php');
+	$form_refresh = strpos($form, "pg_comment_refresh_record_info(\$comment['page_id'], \$comment['item_type'], \$comment['item_id'])");
+	$form_mail = strpos($form, 'send_comment_email_to_custom_form_submitter(');
+
+	pg_assert_true(($form_refresh !== false) && ($form_mail !== false) && ($form_refresh < $form_mail), 'the rebuild comes before the e-mails');
+	pg_assert_true(strpos($form, "pg_comment_submitter_mail_due(\$comment['item_type'], \$comment['item_id'], \$comment['comments_submitter_email_page_id'], (int) \$comment['created_user_id'], (int) \$comment['submitter_user_id'])") !== false, 'the submitter e-mail follows the writer rule');
+	pg_assert_true(strpos((string) file_get_contents($root . '/includes/fn/comment_list_edit.php'), 'forms.user_id AS submitter_user_id') !== false, 'the list reads the record submitter too');
 	pg_assert_false(strpos($edit, "'form item view'") !== false, 'edit_comment.php does not ask the page type');
 	pg_assert_false(strpos($edit, 'INSERT INTO submitted_form_info') !== false, 'and keeps no counter copy of its own');
 

@@ -74,9 +74,12 @@ function test_comment_recycle_bin_counts_use_fragment()
 function test_comment_recycle_bin_screens_mark_comment()
 {
 	foreach (array('view_comments.php', 'edit_comment.php') as $file) {
-		$source = comment_recycle_bin_test_source($file);
-		pg_assert_contains('pg_recycle_bin_folder_ids()', $source, $file);
-		pg_assert_contains("lang('In the Recycle Bin')", $source, $file);
+		pg_assert_contains('pg_recycle_bin_folder_ids()', comment_recycle_bin_test_source($file), $file);
+	}
+
+	// The list's cells are drawn by includes/fn/comment_list_edit.php.
+	foreach (array('includes/fn/comment_list_edit.php', 'edit_comment.php') as $file) {
+		pg_assert_contains("lang('In the Recycle Bin')", comment_recycle_bin_test_source($file), $file);
 	}
 
 	pg_assert_contains('pg_comment_page_label(get_page_name($page_id), $page_id)', comment_recycle_bin_test_source('edit_comment.php'));

@@ -130,7 +130,7 @@ function test_comment_links_panel_wiring()
 	pg_assert_contains('pg_comment_site_path(get_page_name($page_id), $row)', $source, 'edit_comment.php: the shared address');
 	pg_assert_contains('href="\' . h(OUTPUT_PATH . $comment_path . \'#c-\' . $comment_id)', $source, 'edit_comment.php: the link is escaped');
 
-	$source = comment_links_test_source('view_comments.php');
-	pg_assert_contains("pg_comment_site_path(get_page_name(\$comment['page_id']), \$comment)", $source, 'view_comments.php: the shared address');
-	pg_assert_contains('href="\' . h($comment_url . \'#c-\' . $comment[\'id\'])', $source, 'view_comments.php: the link is escaped');
+	$source = comment_links_test_source('includes/fn/comment_list_edit.php');
+	pg_assert_contains("pg_comment_site_path((string) (\$comment['page_name'] ?? ''), \$comment)", $source, 'Comments list: the shared address');
+	pg_assert_contains('href="\' . h(OUTPUT_PATH . $path . \'#c-\' . $id)', $source, 'Comments list: the link is escaped');
 }
