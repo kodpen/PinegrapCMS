@@ -109,6 +109,4 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions in visitor_stats_daily, added only when a real report needs one
 - workspace-agent-handles.md: Plan (2026-10-21): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
-- workspace-flow-card-canvas-steps.md: Steps K1-K5 of plans/workspace-flow-card-canvas.md: the embed, the server side, the card, Edit here removed, the other drawings; claim as [plan:workspace-flow-card-canvas] K<n>
-- workspace-flow-card-canvas.md: Plan (owner 2026-11-02, decided #4967): the flow draft card shows the real Flows canvas read-only; changes only by opening the flow; Edit here goes; steps K1-K5
 - workspace-menu-layout.md: Plan (owner decision 2026-10-30) for a tidier Workspace list in the main menu: search, places, one Channels section, discussions, Tools tiles; channel screen unchanged

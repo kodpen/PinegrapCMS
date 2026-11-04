@@ -17715,9 +17715,6 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   outline: 2px solid rgb(var(--ws-accent-rgb));
   outline-offset: 2px;
 }
-.ws-fd-box.is-still {
-  cursor: inherit;
-}
 .ws-fd-window.is-loading .ws-fd-stage {
   opacity: .6;
   cursor: progress;
@@ -17783,9 +17780,6 @@ html[data-bs-theme="dark"] .ws-fd-tone-number-2 { --ws-fd-tone: #4d8fe8; }
 html[data-bs-theme="dark"] .ws-fd-tone-text-0 { --ws-fd-tone: #e9b44c; }
 html[data-bs-theme="dark"] .ws-fd-tone-text-1 { --ws-fd-tone: #f5cf7d; }
 html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
-.ws-fd-box {
-  cursor: pointer;
-}
 .ws-fd-box rect {
   fill: var(--pg-bg-body);
   stroke: var(--pg-border-color);
@@ -17799,14 +17793,6 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   stroke: var(--pg-info);
   stroke-dasharray: 5 3;
   fill: var(--pg-info-bg-subtle);
-}
-.ws-fd-box.is-picked rect,
-.ws-fd-box:focus-visible rect {
-  stroke: rgb(var(--ws-accent-rgb));
-  stroke-width: 2.5;
-}
-.ws-fd-box:focus {
-  outline: none;
 }
 .ws-fd-name {
   fill: var(--pg-fg-body);

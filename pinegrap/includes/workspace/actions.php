@@ -727,7 +727,7 @@ function ws_handle_action($action, $request)
             if (!empty($request['sketch'])) {
                 $result = ws_scheduled_flow_sketch($viewer, $channel_id, ws_scheduled_flow_fill($request));
 
-                return $result['ok'] ? ws_action_ok(array('graph' => $result['graph'], 'start' => $result['start'])) : ws_action_error($result['error']);
+                return $result['ok'] ? ws_action_ok(array('graph' => $result['graph'], 'view' => $result['view'], 'start' => $result['start'])) : ws_action_error($result['error']);
             }
 
             $result = ws_scheduled_flow_new($viewer, $channel_id, ws_scheduled_flow_fill($request) + array(
