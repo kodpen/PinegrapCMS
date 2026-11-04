@@ -117,7 +117,7 @@ $booking_deposit_fields = function ($name, $id, $service) use ($booking_separato
                                 </div>
                                 <div class="pg-f-md">
                                     <label for="' . $id . '_deposit_product" class="form-label">' . lang('Deposit product') . '</label>
-                                    <select name="' . $name . '[deposit_product]" id="' . $id . '_deposit_product" class="form-select">' . $options . '</select>
+                                    <select name="' . $name . '[deposit_product]" id="' . $id . '_deposit_product" class="form-control">' . $options . '</select>
                                     <div class="form-text">' . lang('The deposit is paid in advance as a one-line order of this product. A deposit of 0 asks for none.') . '</div>
                                 </div>';
 };
