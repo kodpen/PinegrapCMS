@@ -176,6 +176,15 @@ function test_contact_form_refusal()
 	}
 
 	pg_assert_same(lang('The commission rate cannot be negative.'), pg_contact_form_refusal(array('affiliate_commission_rate' => ' -7,5')), 'a negative rate');
+
+	// A rate above 100 would credit the affiliate more than the order.
+	foreach (array('100', '100,00', '100.00', '99,99', '') as $good) {
+		pg_assert_same('', pg_contact_form_refusal(array('affiliate_commission_rate' => $good)), 'rate ' . $good);
+	}
+
+	foreach (array('150', '100,01', '100.5', '999.99') as $bad) {
+		pg_assert_same(lang('The commission rate cannot be more than 100.'), pg_contact_form_refusal(array('affiliate_commission_rate' => $bad)), 'rate ' . $bad);
+	}
 }
 
 // A role 3 user keeps the contact in a group they may edit, on create and

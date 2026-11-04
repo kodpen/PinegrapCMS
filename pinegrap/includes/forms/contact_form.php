@@ -85,8 +85,10 @@ function pg_contact_form_columns($post, $user_id)
 /**
  * Why a posted contact cannot be saved, '' when it can: a membership
  * expiration date that is no date (dotted, impossible or with a two-digit
- * year was stored as a lifetime membership or the year 0027), or a negative
- * commission rate (its minus was dropped, so -7,5 was saved as 7.50).
+ * year was stored as a lifetime membership or the year 0027), a negative
+ * commission rate (its minus was dropped, so -7,5 was saved as 7.50) or one
+ * above 100 (the column holds up to 999.99, which would credit the affiliate
+ * more than the order is worth).
  *
  * @param array $post
  * @return string
@@ -99,8 +101,14 @@ function pg_contact_form_refusal($post)
         return lang('The membership expiration date is not valid.');
     }
 
-    if (strpos(trim(pg_contact_form_posted($post, 'affiliate_commission_rate')), '-') === 0) {
+    $rate = trim(pg_contact_form_posted($post, 'affiliate_commission_rate'));
+
+    if (strpos($rate, '-') === 0) {
         return lang('The commission rate cannot be negative.');
+    }
+
+    if (($rate !== '') && ((float) pg_parse_commission_rate($rate) > 100)) {
+        return lang('The commission rate cannot be more than 100.');
     }
 
     return '';
@@ -538,7 +546,7 @@ function pg_contact_form_affiliate_card($values)
                             <label for="affiliate_commission_rate" class="form-label">' . lang('Commission Rate') . '</label>
                             <label class="form-control form-adorn form-adorn-end">
                                 <span class="form-adorn-text" aria-hidden="true">%</span>
-                                <input value="' . h(pg_contact_form_commission_rate_value($values['affiliate_commission_rate'] ?? '')) . '" type="text" name="affiliate_commission_rate" id="affiliate_commission_rate" class="form-ghost" size="6" maxlength="6" inputmode="decimal" data-inputmask-alias="decimal" data-inputmask-allowminus="false" data-inputmask-placeholder="0" style="text-align: right;">
+                                <input value="' . h(pg_contact_form_commission_rate_value($values['affiliate_commission_rate'] ?? '')) . '" type="text" name="affiliate_commission_rate" id="affiliate_commission_rate" class="form-ghost" size="6" maxlength="6" inputmode="decimal" data-inputmask-alias="decimal" data-inputmask-allowminus="false" data-inputmask-max="100" data-inputmask-placeholder="0" style="text-align: right;">
                             </label>
                             <div class="form-text text-end">' . lang(array('string'=>'leave blank for default: {var:1}%','vars'=>pg_format_number(AFFILIATE_DEFAULT_COMMISSION_RATE, 2))) . '</div>
                         </div>
