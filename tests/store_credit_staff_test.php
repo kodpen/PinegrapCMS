@@ -75,3 +75,32 @@ function test_store_credit_staff_rights_are_the_commerce_ones()
 	pg_assert_false(pg_credit_staff_allowed(array('role' => 3, 'manage_ecommerce' => 0)), 'user without');
 	pg_assert_false(pg_credit_staff_allowed(array()), 'nobody');
 }
+
+/**
+ * The gift card screen names whose credit a bound card is: it used to call
+ * it "created manually" with no customer, kind, reason or expiry.
+ */
+function test_store_credit_staff_gift_card_info()
+{
+	$expires = mktime(0, 0, 0, 12, 1, 2026);
+	$html = pg_credit_staff_gift_card_info_html(array('kind' => 'refund', 'reason' => 'Late <b>delivery</b>', 'expires_at' => $expires), '<a href="edit_user.php?id=7">ayse</a>');
+
+	pg_assert_contains(lang('Store Credit'), $html, 'the heading');
+	pg_assert_contains('<a href="edit_user.php?id=7">ayse</a>', $html, 'the customer as given');
+	pg_assert_contains(h(lang('Refund')), $html, 'the kind');
+	pg_assert_contains('Late &lt;b&gt;delivery&lt;/b&gt;', $html, 'the reason, escaped');
+	pg_assert_contains('2026-11-30', $html, 'the last day is the day before the end');
+
+	$open = pg_credit_staff_gift_card_info_html(array('kind' => 'manual', 'reason' => '', 'expires_at' => 0), '#9');
+	pg_assert_contains(h(lang('Never')), $open, 'no end');
+	pg_assert_contains(h(lang('Issued by staff')), $open, 'the staff kind');
+	pg_assert_false(strpos($open, h(lang('Reason')) . ':') !== false, 'no empty reason row');
+
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_gift_card.php');
+	pg_assert_contains('pg_credit_staff_gift_card_info_html(', $edit, 'the gift card screen draws it');
+	pg_assert_contains("pg_audit('update', 'store_credit'", $edit, 'a balance edit of credit is audited');
+
+	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_gift_cards.php');
+	pg_assert_contains("pg_list_status_word(lang('Store credit'))", $list, 'the list marks credit under the code');
+	pg_assert_contains("'<span hidden>' . h(\$gift_card['code']) . '</span>'", $list, 'the search finds the code without dashes');
+}

@@ -137,6 +137,52 @@ function pg_credit_staff_card_state(array $card, $now)
 }
 
 /**
+ * The Store Credit card of the gift card screen's status column (pure):
+ * whose credit a card bound to a customer is, where it came from, why and
+ * its last day. Without it the screen called such a card "created manually"
+ * and named no customer.
+ *
+ * @param array  $card   gift_cards row: kind, reason, expires_at
+ * @param string $owner  the customer as HTML, a link when the viewer may
+ *                       open the account
+ * @return string HTML
+ */
+function pg_credit_staff_gift_card_info_html(array $card, $owner)
+{
+    $expires = (int) ($card['expires_at'] ?? 0);
+    $reason = (string) ($card['reason'] ?? '');
+
+    $rows = array(
+        array(lang('Customer'), (string) $owner),
+        array(lang('Source'), h(pg_credit_staff_kind_label($card['kind'] ?? ''))),
+    );
+
+    if ($reason !== '') {
+        $rows[] = array(lang('Reason'), nl2br(h($reason)));
+    }
+
+    $rows[] = array(lang('Last day'), ($expires > 0) ? h(pg_credit_expiration_date($expires)) : h(lang('Never')));
+
+    $output_rows = '';
+
+    foreach ($rows as $row) {
+        $output_rows .= '
+                        <div class="row">
+                            <span class="col fg-secondary">' . h($row[0]) . ':</span>
+                            <span class="col text-end text-break">' . $row[1] . '</span>
+                        </div>';
+    }
+
+    return '<div class="card mb-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                        ' . h(lang('Store Credit')) . '
+                    </h2>
+                    <div class="card-body">' . $output_rows . '
+                    </div>
+                </div>';
+}
+
+/**
  * The customer's bound cards, newest first, open or not.
  *
  * @param int $user_id
