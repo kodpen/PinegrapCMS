@@ -100,7 +100,7 @@ function test_tax_zone_form_screens_refuse_a_blank_name()
 	foreach (array('add_tax_zone.php', 'edit_tax_zone.php') as $file) {
 		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 		pg_assert_contains('pg_tax_zone_form_name_error($values[\'name\'])', $source, $file . ' checks the name');
-		pg_assert_contains('pg_tax_zone_form_cards($values, $choices[\'countries\'], $choices[\'states\'], $errors)', $source, $file . ' draws the message');
+		pg_assert_contains('pg_tax_zone_form_cards($values, $choices[\'countries\'], $choices[\'states\'], $errors', $source, $file . ' draws the message');
 		pg_assert_same(0, substr_count($source, "(string) (\$_POST['name'] ?? ''), \$tax_rate"), $file . ' writes the trimmed name, not the posted one');
 	}
 
@@ -111,6 +111,31 @@ function test_tax_zone_form_screens_refuse_a_blank_name()
 	pg_assert_contains('class="form-control is-invalid" required aria-invalid="true" aria-describedby="name-error" />', $html, 'the name box is marked');
 	pg_assert_contains('<div id="name-error" class="invalid-feedback d-block">Enter a name.</div>', $html, 'the message under the name');
 	pg_assert_contains('id="tax_rate" required value="18" class="form-control"', $html, 'the typed rate is kept');
+}
+
+// The screens are laid out as a form column, a sticky status column with a
+// Summary that follows the fields and a sticky save bar.
+function test_tax_zone_form_wide_layout()
+{
+	$html = pg_tax_zone_form_cards(array('name' => 'EU <b>', 'tax_rate' => '8.250'), '<option value="1" selected="selected">A</option><option value="2" selected="selected">B</option>', '<option value="3">C</option>');
+	pg_assert_contains('<div class="col-12 lg:col-8 2xl:col-9 order-1">', $html, 'the form column');
+	pg_assert_contains('<div class="col-12 lg:col-4 2xl:col-3 order-2">', $html, 'the status column');
+	pg_assert_contains('<span id="tax_zone_summary_name">EU &lt;b&gt;</span>', $html, 'the Summary names the zone, escaped');
+	pg_assert_contains('<span id="tax_zone_summary_rate">8.25</span>%', $html, 'the Summary shows the rate');
+	pg_assert_contains('<span id="tax_zone_summary_countries">2</span>', $html, 'the Summary counts the picked countries');
+	pg_assert_contains('<span id="tax_zone_summary_states">0</span>', $html, 'the Summary counts the picked states');
+
+	$with_rows = pg_tax_zone_form_cards(null, '', '', array(), pg_tax_zone_form_status_row('Last Modified', 'now'));
+	pg_assert_contains('<dt class="fw-normal">Last Modified</dt>', $with_rows, 'the screen adds its own Summary rows');
+
+	$layout = pg_tax_zone_form_layout('CARDS', '<button>X</button>');
+	pg_assert_contains('<div class="row">CARDS', $layout, 'the columns go into the row');
+	pg_assert_contains('position-sticky" style="bottom:0; z-index:3;"', $layout, 'the save bar sticks to the bottom');
+	pg_assert_contains('justify-content-center"><button>X</button>', $layout, 'the buttons go into the bar');
+
+	foreach (array('add_tax_zone.php', 'edit_tax_zone.php') as $file) {
+		pg_assert_contains('pg_tax_zone_form_layout(', file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ' uses the shared layout');
+	}
 }
 
 // The States or Provinces list printed the stored English country name and

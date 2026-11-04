@@ -1,11 +1,14 @@
 ---
 name: tax-zone-shared-form
-description: The tax zone screens share includes/forms/tax_zone_form.php: cards, options, links; a blank name is refused and redrawn; states under the country's shown name (PR #4883)
+description: The tax zone screens share includes/forms/tax_zone_form.php: wide layout with a Summary, options, links; a blank name is refused and redrawn; states under the country's shown name
 ---
 
 ## What is shared?
-- `includes/forms/tax_zone_form.php` (loaded with `require_once(PG_FUNCTIONS_DIR . …)` after `init.php`): `pg_tax_zone_form_cards($values, $country_options, $state_options, $errors = array())` (options, countries, states cards; `$values` null on create, the name box always `required` with a placeholder), `pg_tax_zone_form_choices($tax_zone_id = 0, $selected = null)` (country and state options, a zone's own links or the posted ids selected), `pg_tax_zone_form_post_values()`, `pg_tax_zone_form_name_error()` and `pg_tax_zone_form_save_links($tax_zone_id, $_POST)` (the posted country and state links inserted). PR #2587.
+- `includes/forms/tax_zone_form.php` (loaded with `require_once(PG_FUNCTIONS_DIR . …)` after `init.php`): `pg_tax_zone_form_cards($values, $country_options, $state_options, $errors = array(), $status_rows = '')` (the form column with the Options, Countries and States cards; `$values` null on create, the name box always `required` with a placeholder; and the sticky status column), `pg_tax_zone_form_status_row()`, `pg_tax_zone_form_layout($cards, $buttons)` (the row with the sticky save bar), `pg_tax_zone_form_choices($tax_zone_id = 0, $selected = null)` (country and state options, a zone's own links or the posted ids selected), `pg_tax_zone_form_post_values()`, `pg_tax_zone_form_name_error()` and `pg_tax_zone_form_save_links($tax_zone_id, $_POST)` (the posted country and state links inserted). PR #2587.
 - A screen keeps its gates (`validate_user()`, `validate_ecommerce_access()`), the edit screen's not-found guard and record load, the form tag, buttons (edit adds Delete), the edit screen's hidden `id`, the INSERT / UPDATE, the edit screen's link delete before a save or a delete, the log line and the redirect.
+
+## How is the screen laid out?
+- The product_builder pattern (`ui/edit-screen-wide-layout.md`, B11): form column, sticky status column, sticky save bar. The Summary shows the name, the rate (as `format_tax_rate()` prints it) and the number of picked countries and states, and follows the fields as they change (the selects through jQuery `change`, `ui/pg-field-wrappers.md`); edit adds Last Modified (`tax_zones.timestamp` and `user`). Edit's Delete is `formnovalidate`, so an emptied name or rate box does not block it in the browser.
 
 ## Is a blank name refused?
 - Yes (#4713, PR #4883), as on the shipping zone form (`zone-shared-form.md`): `pg_tax_zone_form_name_error()` refuses an empty or spaces-only name; the screens read the post through `pg_tax_zone_form_post_values()` (name trimmed, rate as typed) and draw the form again with what was typed, the posted countries and states selected and "Enter a name." under the name; nothing is written. Edit's delete is never held back. The trimmed name is what is stored. Before, a nameless zone was written and listed as an empty row of All Tax Zones.
