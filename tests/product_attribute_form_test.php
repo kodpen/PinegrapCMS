@@ -59,6 +59,20 @@ function test_product_attribute_form_duplicate_label()
 	pg_assert_same('S', pg_product_attribute_form_duplicate_label(array(array('label' => 'S'), array('label' => 'S'))), 'the same label is found');
 	pg_assert_same('kırmızı', pg_product_attribute_form_duplicate_label(array(array('label' => 'Kırmızı'), array('label' => 'kırmızı'))), 'case is ignored');
 	pg_assert_same('ÇİÇEK', pg_product_attribute_form_duplicate_label(array(array('label' => 'çiçek'), array('label' => 'ÇİÇEK'))), 'case is ignored beyond ASCII');
+	pg_assert_same('KIRMIZI', pg_product_attribute_form_duplicate_label(array(array('label' => 'Kırmızı'), array('label' => 'KIRMIZI'))), 'a Turkish dotless capital I is ı');
+	pg_assert_same('ivory', pg_product_attribute_form_duplicate_label(array(array('label' => 'IVORY'), array('label' => 'ivory'))), 'an English capital I is still i');
+	pg_assert_same('', pg_product_attribute_form_duplicate_label(array(array('label' => 'Kirmizi'), array('label' => 'Kırmızı'))), 'i and ı are different letters');
+}
+
+function test_product_attribute_form_label_taken()
+{
+	$existing = array('Kırmızı "q"', 'Mavi', 'IVORY');
+
+	pg_assert_same(true, pg_product_attribute_form_label_taken('KIRMIZI "Q"', $existing), 'Turkish capitals');
+	pg_assert_same(true, pg_product_attribute_form_label_taken('MAVİ', $existing), 'dotted capital');
+	pg_assert_same(true, pg_product_attribute_form_label_taken('ivory', $existing), 'English capitals');
+	pg_assert_same(false, pg_product_attribute_form_label_taken('Yeşil', $existing), 'a new label');
+	pg_assert_same(false, pg_product_attribute_form_label_taken('Kırmızı', array()), 'no options yet');
 }
 
 function test_product_attribute_edit_screen_scopes_options()
