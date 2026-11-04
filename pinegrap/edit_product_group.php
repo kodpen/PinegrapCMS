@@ -214,7 +214,7 @@ if (!$_POST) {
                 <td class="chart_label  align-middle ' . $status_class . '">' . h($item['name']) . (($item['enabled'] == 1) ? '' : pg_list_status_word(lang('Disabled'))) . '</td>
                 <td class="align-middle ' . $status_class . '">' . h($item['short_description']) . '</td>
                 <td class="align-middle text-end">' . $price . '</td>
-                <td class="align-middle "><input class="form-control text-end" type="text" name="sort_order_' . $item['type'] . '_' . $item['id'] . '" size="5" value="' . $item['sort_order'] . '" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" aria-label="' . h(lang('Sort Order') . ': ' . $item['name']) . '" style="text-align: right;width:60px;" /></td>
+                <td class="align-middle "><input class="form-control text-end" type="text" name="sort_order_' . $item['type'] . '_' . $item['id'] . '" size="5" value="' . $item['sort_order'] . '" maxlength="5" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-min="0" data-inputmask-max="65535" data-inputmask-placeholder="0" aria-label="' . h(lang('Sort Order') . ': ' . $item['name']) . '" style="text-align: right;width:60px;" /></td>
                 <td></td>
             </tr>';
     }
@@ -689,14 +689,16 @@ if (!$_POST) {
         }
     // else product group was not selected for delete
     } else {
-        // if the name is blank, then mark error and forward user back to previous screen
-        if ($_POST['name'] == '') {
-            $liveform->mark_error('name', lang('Name is required.'));
+        // A blank name, an over-long name or short description or a sort order
+        // that is no whole number sends the user back to the form.
+        if (pg_product_group_form_mark_problems($liveform, pg_product_group_form_post_problems($_POST), lang('Name is required.'))) {
             
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_product_group.php?id=' . $_POST['id']);
             exit();
         }
         
+        $_POST['name'] = trim((string) $_POST['name']);
+
         // If parent_id is blank, require it when selectable groups exist
         if (!$_POST['parent_id']) {
             $available_parent_options = get_product_group_options(0, 0, $_POST['id'], 0, array(), FALSE, 'text', false, true, false);
@@ -874,7 +876,7 @@ if (!$_POST) {
                     "UPDATE product_groups SET 
                         sort_order = ? 
                     WHERE id = ?";
-                $result2 = db_q($query, array((string) $_POST['sort_order_product_group_' . $row['id']], (string) $row['id'])) or output_error('Query failed');
+                $result2 = db_q($query, array((string) (int) pg_product_group_form_sort_order($_POST['sort_order_product_group_' . $row['id']]), (string) $row['id'])) or output_error('Query failed');
             }
         }
         

@@ -4366,6 +4366,7 @@
     "The shipping method could not be found.": "Nakliye yöntemi bulunamadı.",
     "The shop": "Mağaza",
     "The shop ships to several recipients per order": "Mağaza bir siparişte birden çok alıcıya gönderiyor",
+    "The short description can be at most {var:1} characters long.": "Kısa açıklama en fazla {var:1} karakter olabilir.",
     "The short link has been created.": "Kısa bağlantı oluşturuldu.",
     "The short link has been created. Now give it the name people will type.": "Kısa bağlantı oluşturuldu. Şimdi ona insanların yazacağı adı verin.",
     "The short link has been deleted.": "Kısa bağlantı silindi.",
