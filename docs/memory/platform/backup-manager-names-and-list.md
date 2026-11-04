@@ -12,6 +12,8 @@ module: backup
 ## Which names are refused?
 - `pg_backup_name_reserved()`: `english_default`, `turkish_default` (the starter sites), `pg_backup_is_auto_name()` names, and `pre_upgrade_` / `pre-update-` prefixes, without case. Every `software_backup` step refuses them, so no request can clear a starter site's files.
 
+- A typed name that reduces to nothing (`!!!`, `../..`, Cyrillic only) is refused by `create_backup_folder` with "The backup name is not valid."; only an empty field gets the host-date name. Before, such a name silently became the host-date backup.
+
 ## What happens when the name already exists?
 - `create_backup_folder` answers `status: confirm` with the question; `software_backup_runSteps()` (`backend.src.js`) asks through `pgConfirm()` and sends the step again with `overwrite: true`. Updating a backup under its name stays possible (`backup-folder-download-zip.md`), only no longer silent.
 
