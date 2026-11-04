@@ -1498,6 +1498,7 @@
     "Previous page name": "Önceki sayfanın adı",
     "Previous period": "Önceki dönem",
     "Previous period URL": "Önceki dönem adresi",
+    "Previous period: {var:1}": "Önceki dönem: {var:1}",
     "Previous scene": "Önceki sahne",
     "Previous slide": "Önceki slayt",
     "Previous status": "Önceki durum",

@@ -366,7 +366,7 @@ function pg_visitors_alerts_list(array $alerts, array $period)
             <li class="pg-visitors-alert is-' . h($alert['rule']) . '">
                 <i class="bi ' . $icon . '" aria-hidden="true"></i>
                 <span class="pg-visitors-alert-text">' . h(pg_visitors_alerts_text($alert)) . '</span>
-                <a class="pg-visitors-alert-link" href="visitors.php?' . h($query) . '#' . h($section) . '">' . h($sections[$section]) . '</a>
+                <a class="pg-visitors-alert-link" href="visitors.php?' . h($query) . '#' . h(pg_visitors_anchor($section)) . '">' . h($sections[$section]) . '</a>
             </li>';
     }
 

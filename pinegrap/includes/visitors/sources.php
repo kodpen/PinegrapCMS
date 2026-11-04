@@ -70,6 +70,18 @@ function pg_visitors_sources_lists($affiliate)
 }
 
 /**
+ * Whether a top list is one of the campaign tags and codes, folded under
+ * "Campaigns and codes". Pure.
+ *
+ * @param string $dimension a key of pg_visitors_sources_lists()
+ * @return bool
+ */
+function pg_visitors_sources_is_campaign($dimension)
+{
+    return in_array($dimension, array('utm_source', 'utm_medium', 'utm_campaign', 'tracking_code', 'affiliate_code'), true);
+}
+
+/**
  * Visits by lower-cased value, as pg_visitor_merge_rows() groups them. Pure.
  *
  * @param array $rows list of array('value', 'visits')
@@ -234,25 +246,8 @@ function pg_visitors_sources_stack(array $rows, array $labels)
 }
 
 /**
- * The change cell of a list: the change against the earlier figure, or a
- * dash when the period is not compared.
- *
- * @param int      $now
- * @param int|null $before
- * @return array pg_visitors_table() cell
- */
-function pg_visitors_sources_change_cell($now, $before)
-{
-    if ($before === null) {
-        return array('html' => '–');
-    }
-
-    return array('html' => pg_visitors_change($now, $before), 'sort' => $now - $before);
-}
-
-/**
  * The channel list: a swatch matching the bar, the name, visits, share and,
- * when compared, the earlier visits and the change.
+ * when compared, the change (the earlier visits on hover).
  *
  * @param array $rows    pg_visitors_sources_channel_rows()
  * @param array $labels  pg_visitors_sources_channel_labels()
@@ -264,8 +259,7 @@ function pg_visitors_sources_channel_table(array $rows, array $labels, $compare)
     $headings = array(lang('Channel'), array('label' => lang('Visits'), 'end' => true), array('label' => lang('Share'), 'end' => true));
 
     if ($compare) {
-        $headings[] = array('label' => lang('Previous period'), 'end' => true);
-        $headings[] = array('label' => lang('Change'), 'end' => true);
+        $headings[] = pg_visitors_change_heading();
     }
 
     $body = array();
@@ -281,8 +275,7 @@ function pg_visitors_sources_channel_table(array $rows, array $labels, $compare)
         );
 
         if ($compare) {
-            $cells[] = array('html' => h(pg_format_number((int) $row['before'], 0)), 'sort' => (int) $row['before']);
-            $cells[] = pg_visitors_sources_change_cell($row['visits'], $row['before']);
+            $cells[] = pg_visitors_change_cell($row['visits'], ($row['before'] !== null) ? (int) $row['before'] : null);
         }
 
         $body[] = $cells;
@@ -293,20 +286,25 @@ function pg_visitors_sources_channel_table(array $rows, array $labels, $compare)
 
 /**
  * One top list as a small table: the value, visits and, when compared, the
- * earlier visits and the change.
+ * change (the earlier visits on hover). The first rows show; the rest wait
+ * behind "Show all".
  *
  * @param string $title
  * @param array  $rows    pg_visitors_sources_top_rows()
  * @param bool   $compare
- * @return string HTML
+ * @return string HTML; '' for a list with no row
  */
 function pg_visitors_sources_top_table($title, array $rows, $compare)
 {
+    // An empty list says nothing a reader needs: it is left out.
+    if (!$rows) {
+        return '';
+    }
+
     $headings = array(lang('Value'), array('label' => lang('Visits'), 'end' => true));
 
     if ($compare) {
-        $headings[] = array('label' => lang('Previous period'), 'end' => true);
-        $headings[] = array('label' => lang('Change'), 'end' => true);
+        $headings[] = pg_visitors_change_heading();
     }
 
     $body = array();
@@ -318,18 +316,17 @@ function pg_visitors_sources_top_table($title, array $rows, $compare)
         );
 
         if ($compare) {
-            $cells[] = array('html' => h(pg_format_number((int) $row['before'], 0)), 'sort' => (int) $row['before']);
-            $cells[] = pg_visitors_sources_change_cell($row['visits'], $row['before']);
+            $cells[] = pg_visitors_change_cell($row['visits'], ($row['before'] !== null) ? (int) $row['before'] : null);
         }
 
         $body[] = $cells;
     }
 
-    return '
-        <div class="pg-visitors-sources-list">
-            <h3 class="pg-visitors-sources-list-title">' . h($title) . '</h3>
-            ' . pg_visitors_table($headings, $body, array('caption' => $title)) . '
-        </div>';
+    return pg_visitors_block($title, pg_visitors_table($headings, $body, array(
+        'caption'    => $title,
+        'limit'      => PG_VISITORS_LIST_ROWS,
+        'hide_first' => true,
+    )), 'pg-visitors-sources-list');
 }
 
 /**
@@ -381,6 +378,8 @@ function pg_visitors_section_sources(array $period, array $user)
     }
 
     $lists = '';
+    $campaign_lists = '';
+    $campaign_count = 0;
     $affiliate = defined('AFFILIATE_PROGRAM') && AFFILIATE_PROGRAM;
 
     foreach (pg_visitors_sources_lists($affiliate) as $dimension => $title) {
@@ -393,7 +392,25 @@ function pg_visitors_section_sources(array $period, array $user)
             PG_VISITORS_SOURCES_TOP
         );
 
-        $lists .= pg_visitors_sources_top_table($title, $rows, $compare);
+        $table = pg_visitors_sources_top_table($title, $rows, $compare);
+
+        // The campaign tags and codes are folded under one heading: most
+        // visits carry none, and six small lists of them crowded the
+        // section's sites and searches.
+        if (pg_visitors_sources_is_campaign($dimension)) {
+            $campaign_lists .= $table;
+            $campaign_count += ($table !== '') ? 1 : 0;
+        } else {
+            $lists .= $table;
+        }
+    }
+
+    if ($campaign_count > 0) {
+        $lists .= '
+            <details class="pg-visitors-group">
+                <summary><i class="bi bi-chevron-right pg-visitors-group-chevron" aria-hidden="true"></i>' . h(lang('Campaigns and codes')) . ' <span class="pg-visitors-group-count">' . h(pg_format_number($campaign_count, 0)) . '</span></summary>
+                <div class="pg-visitors-sources-lists">' . $campaign_lists . '</div>
+            </details>';
     }
 
     $days = pg_visitors_sources_days_text($channels);
@@ -401,7 +418,7 @@ function pg_visitors_section_sources(array $period, array $user)
     $body = '
         <div class="pg-visitors-sources-split">' . $split . '</div>
         <div class="pg-visitors-sources-lists">' . $lists . '</div>
-        ' . ($days !== '' ? '<p class="pg-visitors-sources-days">' . h($days) . '</p>' : '');
+        ' . ($days !== '' ? '<p class="pg-visitors-note">' . h($days) . '</p>' : '');
 
     return pg_visitors_section('sources', lang('Sources'), $body);
 }

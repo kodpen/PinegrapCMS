@@ -346,22 +346,17 @@ function pg_visitors_section_google(array $period, array $user)
     };
 
     $block = function ($title, $text, $table) {
-        return '
-            <div class="pg-visitors-google-block">
-                <h3 class="pg-visitors-google-heading">' . h($title) . '</h3>
-                ' . ($text !== '' ? '<p class="pg-visitors-google-hint">' . h($text) . '</p>' : '') . '
-                ' . $table . '
-            </div>';
+        return pg_visitors_block($title, ($text !== '' ? '<p class="pg-visitors-google-hint">' . h($text) . '</p>' : '') . $table, 'pg-visitors-google-block');
     };
 
     $body = $tiles . '
         <p class="pg-visitors-google-note">' . h($note) . '</p>
         ' . $chart . '
         <div class="pg-visitors-google-grid">
-            ' . $block(lang('Top searches'), '', pg_visitors_table(array_merge(array(lang('Search query')), $figure_headings), $query_rows, array('caption' => lang('Top searches'), 'id' => 'google_queries'))) . '
-            ' . $block(lang('Top pages'), '', pg_visitors_table(array_merge(array(lang('Page')), $figure_headings), $page_rows, array('caption' => lang('Top pages'), 'id' => 'google_pages'))) . '
-            ' . $block(lang('Shown often, rarely clicked'), lang('Searches shown more often than most whose click rate is under half the site\'s: a better title and description can win the click.'), pg_visitors_table(array_merge(array(lang('Search query')), $figure_headings), $chance_rows($chances['low_ctr']), array('caption' => lang('Shown often, rarely clicked'), 'id' => 'google_low_ctr'))) . '
-            ' . $block(lang('Close to the first page'), lang('Searches at an average position from 8 to 20: a little more work can move the page up.'), pg_visitors_table(array_merge(array(lang('Search query')), $figure_headings), $chance_rows($chances['near']), array('caption' => lang('Close to the first page'), 'id' => 'google_near'))) . '
+            ' . $block(lang('Top searches'), '', pg_visitors_table(array_merge(array(lang('Search query')), $figure_headings), $query_rows, array('caption' => lang('Top searches'), 'id' => 'google_queries', 'limit' => PG_VISITORS_LIST_ROWS))) . '
+            ' . $block(lang('Top pages'), '', pg_visitors_table(array_merge(array(lang('Page')), $figure_headings), $page_rows, array('caption' => lang('Top pages'), 'id' => 'google_pages', 'limit' => PG_VISITORS_LIST_ROWS))) . '
+            ' . $block(lang('Shown often, rarely clicked'), lang('Searches shown more often than most whose click rate is under half the site\'s: a better title and description can win the click.'), pg_visitors_table(array_merge(array(lang('Search query')), $figure_headings), $chance_rows($chances['low_ctr']), array('caption' => lang('Shown often, rarely clicked'), 'id' => 'google_low_ctr', 'limit' => PG_VISITORS_LIST_ROWS))) . '
+            ' . $block(lang('Close to the first page'), lang('Searches at an average position from 8 to 20: a little more work can move the page up.'), pg_visitors_table(array_merge(array(lang('Search query')), $figure_headings), $chance_rows($chances['near']), array('caption' => lang('Close to the first page'), 'id' => 'google_near', 'limit' => PG_VISITORS_LIST_ROWS))) . '
         </div>
         <p class="pg-visitors-google-hint">' . h(lang('Searches Google keeps anonymous for privacy are in the totals but not in the list of searches, so the list adds up to less.')) . '</p>';
 

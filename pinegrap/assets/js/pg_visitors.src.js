@@ -79,7 +79,45 @@
         });
     }
 
+    // ── Long lists ────────────────────────────────────────────────────────
+
+    // A table drawn with a limit (pg_visitors_table()) shows its first rows;
+    // its button shows the rest and folds them away again.
+    function moreButtons() {
+        document.addEventListener('click', function (event) {
+            var button = event.target.closest ? event.target.closest('[data-pg-more]') : null;
+
+            if (!button) {
+                return;
+            }
+
+            var table = document.getElementById(button.getAttribute('data-pg-more'));
+
+            if (!table) {
+                return;
+            }
+
+            if (!button.hasAttribute('data-pg-all')) {
+                button.setAttribute('data-pg-all', button.textContent);
+            }
+
+            var open = table.classList.toggle('is-collapsed') === false;
+
+            button.setAttribute('aria-expanded', open ? 'true' : 'false');
+            button.textContent = open ? button.getAttribute('data-pg-fewer') : button.getAttribute('data-pg-all');
+        });
+    }
+
     // ── Charts ────────────────────────────────────────────────────────────
+
+    // A colour of the theme with some transparency, for an area under a line.
+    function translucent(colour, alpha) {
+        var parts = String(colour).match(/[\d.]+/g);
+
+        return (parts && parts.length >= 3)
+            ? 'rgba(' + parts[0] + ', ' + parts[1] + ', ' + parts[2] + ', ' + alpha + ')'
+            : colour;
+    }
 
     function inks() {
         var probe = document.createElement('span');
@@ -129,6 +167,10 @@
             }
 
             var right = false;
+            var line = (data.type === 'line');
+            // A dot on every day of a month is noise: points show on hover
+            // only, unless the line has a handful of them.
+            var points = (data.labels.length <= 14) ? 2 : 0;
             var datasets = data.series.map(function (series, index) {
                 var colour = colours.series[index % colours.series.length];
 
@@ -139,10 +181,15 @@
                     data: series.data,
                     yAxisID: series.axis,
                     borderColor: colour,
-                    backgroundColor: colour,
-                    borderDash: series.dashed ? [6, 4] : [],
-                    pointStyle: series.dashed ? 'rectRot' : 'circle',
-                    pointRadius: 2,
+                    // The first line of a chart sits on a light area of its
+                    // own colour; the others, and the earlier period, do not.
+                    backgroundColor: (line && (index === 0) && !series.dashed) ? translucent(colour, 0.12) : colour,
+                    fill: (line && (index === 0) && !series.dashed) ? 'origin' : false,
+                    borderWidth: series.dashed ? 1.5 : 2,
+                    borderDash: series.dashed ? [5, 4] : [],
+                    pointStyle: 'circle',
+                    pointRadius: points,
+                    pointHoverRadius: 4,
                     tension: 0.3,
                     spanGaps: false
                 };
@@ -153,8 +200,9 @@
                     position: position,
                     display: shown,
                     beginAtZero: true,
-                    grid: { color: colours.grid, drawOnChartArea: position === 'left' },
-                    ticks: { color: colours.text, callback: function (value) { return format(value); } }
+                    border: { display: false },
+                    grid: { color: colours.grid, drawOnChartArea: position === 'left', drawTicks: false },
+                    ticks: { color: colours.text, padding: 8, maxTicksLimit: 5, callback: function (value) { return format(value); } }
                 };
             };
 
@@ -166,7 +214,7 @@
                     animation: false,
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
-                        legend: { display: datasets.length > 1, position: 'bottom', labels: { color: colours.text, usePointStyle: true } },
+                        legend: { display: datasets.length > 1, position: 'bottom', align: 'start', labels: { color: colours.text, usePointStyle: true, boxWidth: 8, boxHeight: 8, padding: 16 } },
                         tooltip: {
                             callbacks: {
                                 label: function (ctx) { return ctx.dataset.label + ': ' + format(ctx.parsed.y); },
@@ -179,7 +227,9 @@
                         }
                     },
                     scales: {
-                        x: { ticks: { color: colours.text }, grid: { color: colours.grid } },
+                        // Level day labels, as many as fit: thirty slanted
+                        // dates were the busiest part of the screen.
+                        x: { border: { display: false }, grid: { display: false }, ticks: { color: colours.text, maxRotation: 0, autoSkip: true, autoSkipPadding: 24 } },
                         left: axis('left', true),
                         right: axis('right', right)
                     }
@@ -208,6 +258,7 @@
 
     function start() {
         periodBar();
+        moreButtons();
 
         if (document.querySelector('canvas[data-pg-chart]')) {
             draw();
