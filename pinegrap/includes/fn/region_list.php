@@ -387,6 +387,24 @@ function pg_region_list_preview($text)
 }
 
 /**
+ * A preview of stored rich text (a common region): its text without the
+ * markup, entities decoded and whitespace collapsed, then its first 50
+ * characters escaped. A block tag ends a word, so paragraphs do not run
+ * together.
+ *
+ * @param string|null $html
+ * @return string
+ */
+function pg_region_list_text_preview($html)
+{
+    $html = preg_replace('#<(/?(?:p|div|h[1-6]|li|br|tr|td|th|ul|ol|table|blockquote)\b)#i', ' <$1', (string) $html);
+    $text = html_entity_decode(strip_tags((string) $html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $text = trim((string) preg_replace('/[\s\x{00A0}]+/u', ' ', $text));
+
+    return pg_region_list_preview($text);
+}
+
+/**
  * A login region row's cells.
  *
  * @param array $row        login_regions row with created_username and last_modified_username
@@ -604,7 +622,9 @@ function pg_content_region_list_cells($kind, array $row, array $quick_edit)
         $cells['type'] = pg_region_list_cell(($row['type'] === 'designer') ? h(lang('Designer Region')) : h(lang('Common Region')), $type_edit, 'type', $id, $row['type']);
     }
 
-    $cells[($kind === 'dynamic') ? 'code' : 'content'] = pg_list_cell(h(mb_substr((string) $row['preview'], 0, 50)));
+    // A common region holds rich text and previews its text; a designer or
+    // dynamic region holds code and previews the code.
+    $cells[($kind === 'dynamic') ? 'code' : 'content'] = pg_list_cell((($kind !== 'dynamic') && ($row['type'] === 'common')) ? pg_region_list_text_preview($row['preview']) : h(mb_substr((string) $row['preview'], 0, 50)));
     $cells['last_modified'] = pg_list_table_when_cell($row['timestamp'], (string) ($row['username'] ?? ''));
 
     return $cells;
