@@ -107,11 +107,11 @@ if (!$_POST) {
 
     // if there are no contacts in this contact group, allow delete
     if ($number_of_contacts == 0) {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact group')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact group')))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
         
     // else there is at least one contact in this contact group, so disable delete button
     } else {
-        $output_delete_button = '<span class="d-inline-block" title="' . h(lang('Please delete or remove all contacts from this contact group before deleting this contact group.')) . '"><button type="button" class="btn my-1  btn-solid theme-danger " disabled aria-describedby="delete_blocked_reason"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button></span><span id="delete_blocked_reason" class="visually-hidden">' . h(lang('Please delete or remove all contacts from this contact group before deleting this contact group.')) . '</span>';
+        $output_delete_button = '<span class="d-inline-block" title="' . h(lang('Please delete or remove all contacts from this contact group before deleting this contact group.')) . '"><button type="button" class="btn my-1  btn-solid theme-danger " disabled aria-describedby="delete_blocked_reason"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button></span><span id="delete_blocked_reason" class="visually-hidden">' . h(lang('Please delete or remove all contacts from this contact group before deleting this contact group.')) . '</span>';
     }
 
     print
@@ -143,7 +143,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                         </div>

@@ -111,3 +111,30 @@ function test_contact_screens_landmarks_translated()
 		pg_assert_true(strpos($source, 'aria-label="data edit buttons') === false, $path . ': data edit buttons translated');
 	}
 }
+
+// The Material Icons ligature beside a label is hidden from screen readers,
+// so Save is not read as "save Kaydet"; a plain span carries no href.
+function test_contact_screens_icon_ligatures_hidden()
+{
+	foreach (array('edit_contact.php', 'edit_contact_group.php', 'includes/forms/contact_form.php') as $file) {
+		$source = contact_screens_source($file);
+
+		pg_assert_true((bool) preg_match_all('/<span class="material-icons[^"]*"[^>]*>/', $source, $spans), $file . ': ligatures found');
+		foreach ($spans[0] as $tag) {
+			pg_assert_true(strpos($tag, 'aria-hidden="true"') !== false, $file . ': ligature hidden: ' . $tag);
+		}
+
+		pg_assert_false((bool) preg_match('/<span [^>]*href=/', $source), $file . ': no href on a span');
+	}
+}
+
+// A save opened without a send to (the hidden field posts it empty) ends on
+// the contacts list and announces itself there.
+function test_contact_screens_edit_contact_saved_notice_without_send_to()
+{
+	$source = contact_screens_source('edit_contact.php');
+
+	pg_assert_contains("\$send_to = (isset(\$_REQUEST['send_to']) && is_string(\$_REQUEST['send_to'])) ? \$_REQUEST['send_to'] : '';", $source, 'send to read as a string');
+	pg_assert_contains("if ((\$send_to === '') || (mb_strpos(\$send_to, 'view_contacts.php') !== false)) {", $source, 'empty send to counts as the list');
+	pg_assert_false(strpos($source, "(isset(\$_REQUEST['send_to']) == FALSE) ||") !== false, 'the empty field no longer hides the notice');
+}

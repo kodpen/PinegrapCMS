@@ -257,7 +257,7 @@ function pg_contact_form_picture_card($is_new, $image_html)
                                         <div id="software_image_picker_container" ondblclick="' . $picker . '" class="user-select-none sortable-list img-list bg-1 rounded-4 p-3 mx-0 mt-0 row g-7">' . $image_html . '</div>
                                     </div>
                                     <div class="card-footer border-0 bg-transparent">
-                                        <button type="button" class="btn"  onclick="' . $picker . '"><span class="material-icons me-3">image_search</span>' . lang('Change Image') . '</button>
+                                        <button type="button" class="btn"  onclick="' . $picker . '"><span class="material-icons me-3" aria-hidden="true">image_search</span>' . lang('Change Image') . '</button>
                                     </div>
                                 </div>';
 }
