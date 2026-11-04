@@ -862,6 +862,20 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
         }
     }
 
+    // The preview address of every page the body picker offers, by page id,
+    // built as the source above: the option labels carry marks such as
+    // [ARCHIVED], and the placeholder has no page, so it blanks the preview
+    // instead of loading a missing address.
+    $page_id_options = get_page_options('', '', 'view', true, $keep_pages['page_id'] ?? 0);
+    $page_preview_urls = array();
+    $page_option_ids = array_filter(array_map('intval', array_values($page_id_options)));
+
+    if ($page_option_ids) {
+        foreach (db_items("SELECT page_id, page_name FROM page WHERE page_id IN (" . implode(',', $page_option_ids) . ")") as $page_row) {
+            $page_preview_urls[$page_row['page_id']] = OUTPUT_PATH . encode_url_path($page_row['page_name']) . '?edit=no&email=true';
+        }
+    }
+
     $action_options = array(
         '-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Action')) )) . '-' => '',
         lang('Auto Campaign Sent') => 'email_campaign_sent',
@@ -1025,7 +1039,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                                 <div class="col-12 sm:col-8 my-1">
                                                     <label class="form-label" for="page_id">' . lang('Page') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                     ' . $page_gone_notice . '
-                                                    ' . $liveform->output_field(array('type'=>'select', 'id'=>'page_id', 'name'=>'page_id', 'class'=>'form-control collapse-if-selected', 'required'=>($liveform->get_field_value('format') == 'html' ? 'required' : ''), 'options'=>get_page_options('', '', 'view', true, $keep_pages['page_id'] ?? 0), 'data-bs-target'=>'#body_preview_row', 'onchange'=>'document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';')) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'id'=>'page_id', 'name'=>'page_id', 'class'=>'form-control collapse-if-selected', 'required'=>($liveform->get_field_value('format') == 'html' ? 'required' : ''), 'options'=>$page_id_options, 'data-bs-target'=>'#body_preview_row', 'onchange'=>'var f = document.getElementById(\'body_preview_iframe\'), u = JSON.parse(f.getAttribute(\'data-page-urls\'))[this.value]; f.src = u ? u : \'about:blank\';')) . '
                                                 </div>
                                                 <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="body_preview_row">
                                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
@@ -1033,7 +1047,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                                         <div class="row">
                                                             <div class="col-12 my-1">
                                                                 <div style="margin-bottom: 1em">' . lang('Body Preview') . '</div>
-                                                                <iframe id="body_preview_iframe" title="' . h(lang('Body Preview')) . '" src="' . $output_body_preview_iframe_source . '" style="min-width:250px;width: 100%;max-width:100%;min-height:300px; height: 500px;resize: both;overflow: auto;"></iframe>
+                                                                <iframe id="body_preview_iframe" title="' . h(lang('Body Preview')) . '" src="' . $output_body_preview_iframe_source . '" data-page-urls="' . h(json_encode($page_preview_urls, JSON_FORCE_OBJECT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) . '" style="min-width:250px;width: 100%;max-width:100%;min-height:300px; height: 500px;resize: both;overflow: auto;"></iframe>
                                                             </div>
                                                         </div>
                                                     </div>

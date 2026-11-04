@@ -215,6 +215,16 @@ function test_email_campaign_profile_form_checks_text_lengths()
 	pg_assert_contains('pg_email_campaign_profile_text_problems(', substr($source, $start), 'the form checks the text column lengths');
 }
 
+function test_email_campaign_profile_body_preview_by_page_id()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/email_campaign_profile_form.php');
+
+	pg_assert_false(strpos($source, 'firstChild.nodeValue') !== false, 'the preview address is not built from the option label');
+	pg_assert_contains('data-page-urls="', $source, 'the preview frame carries the address of each page by id');
+	pg_assert_contains("f.src = u ? u : \\'about:blank\\';", $source, 'the placeholder blanks the preview instead of loading a missing address');
+	pg_assert_contains('encode_url_path($page_row[\'page_name\'])', $source, 'the address is encoded as the server-side source is');
+}
+
 function test_email_campaign_profile_screens_use_shared_form()
 {
 	foreach (array('add_email_campaign_profile.php', 'edit_email_campaign_profile.php') as $file) {
