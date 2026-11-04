@@ -145,7 +145,7 @@ function get_order_receipt_in_plain_text($order_id)
             $arrival_date_id = $row['arrival_date_id'];
             $shipping_method_id = $row['shipping_method_id'];
             $shipping_method_name = $row['shipping_method_name'];
-            $shipping_method_description = $row['shipping_method_description'];
+            $shipping_method_description = pg_stock_pickup_describe($row['shipping_method_id'], $row['shipping_method_description']);
             $shipping_cost = $row['shipping_cost'] / 100;
             $original_shipping_cost = $row['original_shipping_cost'] / 100;
             $ship_to_offer_id = $row['offer_id'];

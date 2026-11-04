@@ -163,6 +163,7 @@ description: Generated from the module field of the memory files: each includes/
 - `stock_locations`: [[stock-locations-model]]
 - `stock_moves`: [[stock-locations-moves]]
 - `stock_notify`: [[back-in-stock-notices]]
+- `stock_pickup`: [[stock-locations-pickup]]
 - `stock_sales`: [[stock-locations-completion]]
 - `store_credit`: [[store-credit-checkout]], [[store-credit-model]]
 - `store_currencies`: [[api-store-currency-writes]]
