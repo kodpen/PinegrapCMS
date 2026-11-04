@@ -26,6 +26,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 
 ## Files
 
+- contact-group-joined-event.md: Flow event contact_group.joined: one ws_events_in row per contact added to a group, from pg_announce_contact_group_members(); payload, group filter kept as status, outputs
 - mail-api.md: Workspace e-mail conversations in the external API and MCP (api_mail.php, G7): routes, which are tools, who may answer, errors, the workspace.mail.received webhook, a mail message's mail object
 - mail-card.md: How a mail is drawn in a Workspace channel (ws_mail_card_html(), sender like a guest) and the Mailboxes card of Workspace settings with the .eml upload (mail_settings.php)
 - mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP chosen (#2444) and when a push endpoint (G9) would come, the eleven answers and their files, defaults, scope, PRs, what stays unverified
@@ -138,7 +139,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flow-ai-hints.md: What Pinegrap AI is told beyond the box catalogue when it drafts a flow, what is read for it (a lone retry, next after a step, a post meant as a question), and the hints a retry carries
 - workspace-flow-ai-start.md: New flow from a sentence (G1b #3119, #3266): ws_flow_ai_sketch() asks Pinegrap AI for a flow in propose_flow's shape, one retry, saved as a draft; the panel route and the gallery's AI card
 - workspace-flow-card-embed-server.md: Server side of the flow card's read-only canvas (K2): ws_flow_draft_view at real places with marks and dry runs; ws_flow_embed_config, labels only, for any Workspace reader
-- workspace-flow-draft-card-window.md: The flow draft card as a read-only mini flow window (D8b #3032, V7a #3393): 128 × 60 px boxes, arrows and threads to the spec, the dry run as each box's third line, link and try per box
+- workspace-flow-draft-card-window.md: The flow draft card (D8b #3032, V7a #3393, K3 #6630): a still picture at rest, a click or Enter opens the read-only Flows canvas in a 20 rem pane; the strip below with link and try
 - workspace-flow-draft-proposals.md: An application, or Claude in a channel answer, proposes a flow as a draft card ({type: flow}, A8): what is sent, checked, kept, how the card opens it, {type: scheduled}
 - workspace-flow-embed.md: PGWsFlow.embed(host, boot) in workspace_flow.js: the Flows canvas drawn read-only elsewhere (the flow draft card), one at a time; boot fields, focus-gated wheel, keys, onSelect, destroy
 - workspace-flows-anchors.md: Flow start boxes at a time, on an event, on a join (F4d, #2006, flow_anchors.php): the hidden anchor, the converted anchor (anchor column 11.0.88), publish sync, starts, write-back, lists

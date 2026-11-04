@@ -5857,6 +5857,7 @@ function change_email_campaign_profile_action() {
     $('#custom_form_page_id_row').removeClass('show');
     $('#email_campaign_profile_id_row').removeClass('show');
     $('#product_id_row').removeClass('show');
+    $('#contact_group_id_row').removeClass('show');
     $('#schedule_period').removeClass('show');
     $('#schedule_base').removeClass('show');
     $('#standard_schedule_period_and_base').removeClass('show');
@@ -5871,7 +5872,8 @@ function change_email_campaign_profile_action() {
         calendar_event_reserved: 'calendar_event_id',
         custom_form_submitted: 'custom_form_page_id',
         email_campaign_sent: 'email_campaign_profile_id',
-        product_ordered: 'product_id'
+        product_ordered: 'product_id',
+        contact_group_joined: 'contact_group_id'
     };
 
     $.each(item_fields, function (item_action, field_id) {
@@ -5902,6 +5904,11 @@ function change_email_campaign_profile_action() {
 
         case 'product_ordered':
             $('#product_id_row').addClass('show');
+            $('#standard_schedule_period_and_base').addClass('show');
+            break;
+
+        case 'contact_group_joined':
+            $('#contact_group_id_row').addClass('show');
             $('#standard_schedule_period_and_base').addClass('show');
             break;
 
@@ -6474,486 +6481,511 @@ function init_shipping_method_service() {
 
 
 
-function change_page_type(page_type) {
+// Shows or hides a row of the page form (includes/forms/page_form.php,
+// edit_page.php). The rows are hidden with d-none, never an inline display,
+// which would beat the class. A row the screen does not print is skipped.
+function pg_page_row(id, shown) {
+    var row = document.getElementById(id);
 
-    if (check_if_page_type_supports_layout(page_type)) {
-        $('#layout_type_row').fadeIn();
+    if (row) {
+        row.classList.toggle('d-none', !shown);
+    }
+}
 
-    } else {
-        $('#layout_type_row').fadeOut();
+// The page type picker and Edit Page's comments switch. Called once by the
+// screen after its form; the picker draws the chosen type's rows at once.
+function bindPageTypePicker() {
+    var picker = document.getElementById('page_type');
+    var comments = document.getElementById('comments');
+
+    if (picker) {
+        picker.addEventListener('change', function () {
+            change_page_type(picker.value);
+        });
+        change_page_type(picker.value);
     }
 
+    if (comments) {
+        comments.addEventListener('change', show_or_hide_comments);
+    }
+}
+
+function change_page_type(page_type) {
+
+    pg_page_row('layout_type_row', check_if_page_type_supports_layout(page_type));
+
+    // The type the page was saved with, for the "Save & Continue" check below.
+    var picker = document.getElementById('page_type');
+    var original_page_type = picker ? picker.getAttribute('data-original-type') : '';
+
     // hide all objects
-    document.getElementById('email_a_friend_submit_button_label_row').style.display = 'none';
-    document.getElementById('email_a_friend_next_page_id_row').style.display = 'none';
-    document.getElementById('folder_view_pages_row').style.display = 'none';
-    document.getElementById('folder_view_files_row').style.display = 'none';
-    document.getElementById('photo_gallery_number_of_columns_row').style.display = 'none';
-    document.getElementById('photo_gallery_thumbnail_max_size_row').style.display = 'none';
-    document.getElementById('update_address_book_address_type_row').style.display = 'none';
-    document.getElementById('update_address_book_address_type_page_id_row').style.display = 'none';
+    pg_page_row('email_a_friend_submit_button_label_row', false);
+    pg_page_row('email_a_friend_next_page_id_row', false);
+    pg_page_row('folder_view_pages_row', false);
+    pg_page_row('folder_view_files_row', false);
+    pg_page_row('photo_gallery_number_of_columns_row', false);
+    pg_page_row('photo_gallery_thumbnail_max_size_row', false);
+    pg_page_row('update_address_book_address_type_row', false);
 
     // if e-commerce is on
     if (document.getElementById('order_form_product_layout_row_1')) {
-        document.getElementById('catalog_product_group_id_row').style.display = 'none';
-        document.getElementById('catalog_menu_row').style.display = 'none';
-        document.getElementById('catalog_search_row').style.display = 'none';
-        document.getElementById('catalog_number_of_featured_items_row').style.display = 'none';
-        document.getElementById('catalog_number_of_new_items_row').style.display = 'none';
-        document.getElementById('catalog_number_of_columns_row').style.display = 'none';
-        document.getElementById('catalog_image_width_row').style.display = 'none';
-        document.getElementById('catalog_image_height_row').style.display = 'none';
-        document.getElementById('catalog_back_button_label_row').style.display = 'none';
-        document.getElementById('catalog_catalog_detail_page_id_row').style.display = 'none';
-        document.getElementById('catalog_detail_allow_customer_to_add_product_to_order_row').style.display = 'none';
-        document.getElementById('catalog_detail_back_button_label_row').style.display = 'none';
-        document.getElementById('express_order_shopping_cart_label_row').style.display = 'none';
-        document.getElementById('express_order_quick_add_label_row').style.display = 'none';
-        document.getElementById('express_order_quick_add_product_group_id_row').style.display = 'none';
-        document.getElementById('express_order_product_description_type_row').style.display = 'none';
-        document.getElementById('express_order_shipping_form_row').style.display = 'none';
-        document.getElementById('express_order_special_offer_code_label_row').style.display = 'none';
-        document.getElementById('express_order_special_offer_code_message_row').style.display = 'none';
-        document.getElementById('express_order_custom_field_1_label_row').style.display = 'none';
-        document.getElementById('express_order_custom_field_2_label_row').style.display = 'none';
-        document.getElementById('express_order_po_number_row').style.display = 'none';
-        document.getElementById('express_order_form_row').style.display = 'none';
-        document.getElementById('express_order_form_notice').style.display = 'none';
-        document.getElementById('express_order_form_name_row').style.display = 'none';
-        document.getElementById('express_order_form_label_column_width_row').style.display = 'none';
-        document.getElementById('express_order_card_verification_number_page_id_row').style.display = 'none';
+        pg_page_row('catalog_product_group_id_row', false);
+        pg_page_row('catalog_menu_row', false);
+        pg_page_row('catalog_search_row', false);
+        pg_page_row('catalog_number_of_featured_items_row', false);
+        pg_page_row('catalog_number_of_new_items_row', false);
+        pg_page_row('catalog_number_of_columns_row', false);
+        pg_page_row('catalog_image_width_row', false);
+        pg_page_row('catalog_image_height_row', false);
+        pg_page_row('catalog_back_button_label_row', false);
+        pg_page_row('catalog_catalog_detail_page_id_row', false);
+        pg_page_row('catalog_detail_allow_customer_to_add_product_to_order_row', false);
+        pg_page_row('catalog_detail_back_button_label_row', false);
+        pg_page_row('express_order_shopping_cart_label_row', false);
+        pg_page_row('express_order_quick_add_label_row', false);
+        pg_page_row('express_order_quick_add_product_group_id_row', false);
+        pg_page_row('express_order_product_description_type_row', false);
+        pg_page_row('express_order_shipping_form_row', false);
+        pg_page_row('express_order_special_offer_code_label_row', false);
+        pg_page_row('express_order_special_offer_code_message_row', false);
+        pg_page_row('express_order_custom_field_1_label_row', false);
+        pg_page_row('express_order_custom_field_2_label_row', false);
+        pg_page_row('express_order_po_number_row', false);
+        pg_page_row('express_order_form_row', false);
+        pg_page_row('express_order_form_notice', false);
+        pg_page_row('express_order_form_name_row', false);
+        pg_page_row('express_order_form_label_column_width_row', false);
+        pg_page_row('express_order_card_verification_number_page_id_row', false);
 
         if (document.getElementById('express_order_offline_payment_always_allowed_row')) {
-            document.getElementById('express_order_offline_payment_always_allowed_row').style.display = 'none';
-            document.getElementById('express_order_offline_payment_label_row').style.display = 'none';
+            pg_page_row('express_order_offline_payment_always_allowed_row', false);
+            pg_page_row('express_order_offline_payment_label_row', false);
         }
 
-        document.getElementById('express_order_terms_page_id_row').style.display = 'none';
-        document.getElementById('express_order_update_button_label_row').style.display = 'none';
-        document.getElementById('express_order_purchase_now_button_label_row').style.display = 'none';
-        document.getElementById('express_order_auto_registration_row').style.display = 'none';
+        pg_page_row('express_order_terms_page_id_row', false);
+        pg_page_row('express_order_update_button_label_row', false);
+        pg_page_row('express_order_purchase_now_button_label_row', false);
+        pg_page_row('express_order_auto_registration_row', false);
 
         // If hook code rows exists (i.e. user is a designer or administrator and hooks are enabled),
         // then hide hook code rows by default.
         if (document.getElementById('express_order_pre_save_hook_code_row')) {
-            document.getElementById('express_order_pre_save_hook_code_row').style.display = 'none';
-            document.getElementById('express_order_post_save_hook_code_row').style.display = 'none';
+            pg_page_row('express_order_pre_save_hook_code_row', false);
+            pg_page_row('express_order_post_save_hook_code_row', false);
         }
-        document.getElementById('express_order_order_receipt_email_row').style.display = 'none';
-        document.getElementById('express_order_next_page_id_row').style.display = 'none';
-        document.getElementById('order_form_product_layout_row_1').style.display = 'none';
-        document.getElementById('order_form_product_group_id_row').style.display = 'none';
-        document.getElementById('order_form_product_layout_row_1').style.display = 'none';
-        document.getElementById('order_form_product_layout_row_2').style.display = 'none';
-        document.getElementById('order_form_add_button_row').style.display = 'none';
-        document.getElementById('order_form_skip_button_row').style.display = 'none';
+        pg_page_row('express_order_order_receipt_email_row', false);
+        pg_page_row('express_order_next_page_id_row', false);
+        pg_page_row('order_form_product_layout_row_1', false);
+        pg_page_row('order_form_product_group_id_row', false);
+        pg_page_row('order_form_product_layout_row_1', false);
+        pg_page_row('order_form_product_layout_row_2', false);
+        pg_page_row('order_form_add_button_row', false);
+        pg_page_row('order_form_skip_button_row', false);
 
         // If search folder row exists (i.e. advanced search is enabled), then hide it.
         if (document.getElementById('search_results_search_folder_id_row')) {
-            document.getElementById('search_results_search_folder_id_row').style.display = 'none';
+            pg_page_row('search_results_search_folder_id_row', false);
         }
 
         // if the ecommerce search results rows exist (i.e. if user has more than a user role), then hide them
         if (document.getElementById('search_results_search_catalog_items_row')) {
-            document.getElementById('search_results_search_catalog_items_row').style.display = 'none';
+            pg_page_row('search_results_search_catalog_items_row', false);
         }
 
-        document.getElementById('shopping_cart_shopping_cart_label_row').style.display = 'none';
-        document.getElementById('shopping_cart_quick_add_label_row').style.display = 'none';
-        document.getElementById('shopping_cart_quick_add_product_group_id_row').style.display = 'none';
-        document.getElementById('shopping_cart_product_description_type_row').style.display = 'none';
-        document.getElementById('shopping_cart_special_offer_code_label_row').style.display = 'none';
-        document.getElementById('shopping_cart_special_offer_code_message_row').style.display = 'none';
-        document.getElementById('shopping_cart_update_button_label_row').style.display = 'none';
-        document.getElementById('shopping_cart_checkout_button_label_row').style.display = 'none';
+        pg_page_row('shopping_cart_shopping_cart_label_row', false);
+        pg_page_row('shopping_cart_quick_add_label_row', false);
+        pg_page_row('shopping_cart_quick_add_product_group_id_row', false);
+        pg_page_row('shopping_cart_product_description_type_row', false);
+        pg_page_row('shopping_cart_special_offer_code_label_row', false);
+        pg_page_row('shopping_cart_special_offer_code_message_row', false);
+        pg_page_row('shopping_cart_update_button_label_row', false);
+        pg_page_row('shopping_cart_checkout_button_label_row', false);
 
         // If hook code row exists (i.e. user is a designer or administrator and hooks are enabled),
         // then hide hook code row by default.
         if (document.getElementById('shopping_cart_hook_code_row')) {
-            document.getElementById('shopping_cart_hook_code_row').style.display = 'none';
+            pg_page_row('shopping_cart_hook_code_row', false);
         }
 
-        document.getElementById('shopping_cart_next_page_id_with_shipping_row').style.display = 'none';
-        document.getElementById('shopping_cart_next_page_id_without_shipping_row').style.display = 'none';
-        document.getElementById('shipping_address_and_arrival_address_type_row').style.display = 'none';
-        document.getElementById('shipping_address_and_arrival_form_row').style.display = 'none';
-        document.getElementById('shipping_address_and_arrival_form_notice').style.display = 'none';
-        document.getElementById('shipping_address_and_arrival_form_name_row').style.display = 'none';
-        document.getElementById('shipping_address_and_arrival_form_label_column_width_row').style.display = 'none';
-        document.getElementById('shipping_address_and_arrival_submit_button_row').style.display = 'none';
-        document.getElementById('shipping_method_product_description_type_row').style.display = 'none';
-        document.getElementById('shipping_method_submit_button_row').style.display = 'none';
-        document.getElementById('billing_information_custom_field_1_label_row').style.display = 'none';
-        document.getElementById('billing_information_custom_field_2_label_row').style.display = 'none';
-        document.getElementById('billing_information_po_number_row').style.display = 'none';
-        document.getElementById('billing_information_form_row').style.display = 'none';
-        document.getElementById('billing_information_form_notice').style.display = 'none';
-        document.getElementById('billing_information_form_name_row').style.display = 'none';
-        document.getElementById('billing_information_form_label_column_width_row').style.display = 'none';
-        document.getElementById('billing_information_submit_button_label_row').style.display = 'none';
-        document.getElementById('billing_information_next_page_id_row').style.display = 'none';
-        document.getElementById('order_preview_product_description_type_row').style.display = 'none';
-        document.getElementById('order_preview_card_verification_number_page_id_row').style.display = 'none';
+        pg_page_row('shopping_cart_next_page_id_with_shipping_row', false);
+        pg_page_row('shopping_cart_next_page_id_without_shipping_row', false);
+        pg_page_row('shipping_address_and_arrival_address_type_row', false);
+        pg_page_row('shipping_address_and_arrival_form_row', false);
+        pg_page_row('shipping_address_and_arrival_form_notice', false);
+        pg_page_row('shipping_address_and_arrival_form_name_row', false);
+        pg_page_row('shipping_address_and_arrival_form_label_column_width_row', false);
+        pg_page_row('shipping_address_and_arrival_submit_button_row', false);
+        pg_page_row('shipping_method_product_description_type_row', false);
+        pg_page_row('shipping_method_submit_button_row', false);
+        pg_page_row('billing_information_custom_field_1_label_row', false);
+        pg_page_row('billing_information_custom_field_2_label_row', false);
+        pg_page_row('billing_information_po_number_row', false);
+        pg_page_row('billing_information_form_row', false);
+        pg_page_row('billing_information_form_notice', false);
+        pg_page_row('billing_information_form_name_row', false);
+        pg_page_row('billing_information_form_label_column_width_row', false);
+        pg_page_row('billing_information_submit_button_label_row', false);
+        pg_page_row('billing_information_next_page_id_row', false);
+        pg_page_row('order_preview_product_description_type_row', false);
+        pg_page_row('order_preview_card_verification_number_page_id_row', false);
 
         if (document.getElementById('order_preview_offline_payment_always_allowed_row')) {
-            document.getElementById('order_preview_offline_payment_always_allowed_row').style.display = 'none';
-            document.getElementById('order_preview_offline_payment_label_row').style.display = 'none';
+            pg_page_row('order_preview_offline_payment_always_allowed_row', false);
+            pg_page_row('order_preview_offline_payment_label_row', false);
         }
 
-        document.getElementById('order_preview_terms_page_id_row').style.display = 'none';
-        document.getElementById('order_preview_submit_button_label_row').style.display = 'none';
-        document.getElementById('order_preview_auto_registration_row').style.display = 'none';
+        pg_page_row('order_preview_terms_page_id_row', false);
+        pg_page_row('order_preview_submit_button_label_row', false);
+        pg_page_row('order_preview_auto_registration_row', false);
 
         // If hook code rows exists (i.e. user is a designer or administrator and hooks are enabled),
         // then hide hook code rows by default.
         if (document.getElementById('order_preview_pre_save_hook_code_row')) {
-            document.getElementById('order_preview_pre_save_hook_code_row').style.display = 'none';
-            document.getElementById('order_preview_post_save_hook_code_row').style.display = 'none';
+            pg_page_row('order_preview_pre_save_hook_code_row', false);
+            pg_page_row('order_preview_post_save_hook_code_row', false);
         }
 
-        document.getElementById('order_preview_order_receipt_email_row').style.display = 'none';
-        document.getElementById('order_preview_next_page_id_row').style.display = 'none';
-        document.getElementById('order_receipt_product_description_type_row').style.display = 'none';
+        pg_page_row('order_preview_order_receipt_email_row', false);
+        pg_page_row('order_preview_next_page_id_row', false);
+        pg_page_row('order_receipt_product_description_type_row', false);
     }
 
     // if forms is on
     if (document.getElementById('custom_form_form_name_row')) {
-        document.getElementById('custom_form_form_name_row').style.display = 'none';
-        document.getElementById('custom_form_enabled_row').style.display = 'none';
-        document.getElementById('custom_form_quiz_row').style.display = 'none';
-        document.getElementById('custom_form_label_column_width_row').style.display = 'none';
-        document.getElementById('custom_form_watcher_page_id_row').style.display = 'none';
-        document.getElementById('custom_form_save_row').style.display = 'none';
-        document.getElementById('custom_form_submit_button_label_row').style.display = 'none';
-        document.getElementById('custom_form_auto_registration_row').style.display = 'none';
+        pg_page_row('custom_form_form_name_row', false);
+        pg_page_row('custom_form_enabled_row', false);
+        pg_page_row('custom_form_quiz_row', false);
+        pg_page_row('custom_form_label_column_width_row', false);
+        pg_page_row('custom_form_watcher_page_id_row', false);
+        pg_page_row('custom_form_save_row', false);
+        pg_page_row('custom_form_submit_button_label_row', false);
+        pg_page_row('custom_form_auto_registration_row', false);
 
         // If hook code row exists (i.e. user is a designer or administrator and hooks are enabled),
         // then hide hook code row by default.
         if (document.getElementById('custom_form_hook_code_row')) {
-            document.getElementById('custom_form_hook_code_row').style.display = 'none';
+            pg_page_row('custom_form_hook_code_row', false);
         }
 
-        document.getElementById('custom_form_submitter_email_row').style.display = 'none';
-        document.getElementById('custom_form_administrator_email_row').style.display = 'none';
-        document.getElementById('custom_form_contact_group_id_row').style.display = 'none';
-        document.getElementById('custom_form_membership_row').style.display = 'none';
-        document.getElementById('custom_form_private_row').style.display = 'none';
+        pg_page_row('custom_form_submitter_email_row', false);
+        pg_page_row('custom_form_administrator_email_row', false);
+        pg_page_row('custom_form_contact_group_id_row', false);
+        pg_page_row('custom_form_membership_row', false);
+        pg_page_row('custom_form_private_row', false);
 
         // If grant offer rows exist (i.e. commerce is enabled and user has access to commerce),
         // then hide grant offer rows.
         if (document.getElementById('custom_form_offer_row')) {
-            document.getElementById('custom_form_offer_row').style.display = 'none';
+            pg_page_row('custom_form_offer_row', false);
         }
 
-        document.getElementById('custom_form_confirmation_type_row').style.display = 'none';
-        document.getElementById('custom_form_return_type_row').style.display = 'none';
-        document.getElementById('custom_form_pretty_urls_row').style.display = 'none';
-        document.getElementById('custom_form_confirmation_continue_button_label_row').style.display = 'none';
-        document.getElementById('custom_form_confirmation_next_page_id_row').style.display = 'none';
-        document.getElementById('form_list_view_custom_form_page_id_row').style.display = 'none';
-        document.getElementById('form_list_view_form_item_view_page_id_row').style.display = 'none';
-        document.getElementById('form_list_view_viewer_filter_row').style.display = 'none';
-        document.getElementById('form_item_view_custom_form_page_id_row').style.display = 'none';
-        document.getElementById('form_item_view_submitter_security_row').style.display = 'none';
-        document.getElementById('form_item_view_submitted_form_editable_by_registered_user_row').style.display = 'none';
-        document.getElementById('form_item_view_submitted_form_editable_by_submitter_row').style.display = 'none';
+        pg_page_row('custom_form_confirmation_type_row', false);
+        pg_page_row('custom_form_return_type_row', false);
+        pg_page_row('custom_form_pretty_urls_row', false);
+        pg_page_row('custom_form_confirmation_continue_button_label_row', false);
+        pg_page_row('custom_form_confirmation_next_page_id_row', false);
+        pg_page_row('form_list_view_custom_form_page_id_row', false);
+        pg_page_row('form_list_view_form_item_view_page_id_row', false);
+        pg_page_row('form_list_view_viewer_filter_row', false);
+        pg_page_row('form_item_view_custom_form_page_id_row', false);
+        pg_page_row('form_item_view_submitter_security_row', false);
+        pg_page_row('form_item_view_submitted_form_editable_by_registered_user_row', false);
+        pg_page_row('form_item_view_submitted_form_editable_by_submitter_row', false);
 
         // If hook code row exists (i.e. user is a designer or administrator and hooks are enabled),
         // then hide hook code row by default.
         if (document.getElementById('form_item_view_hook_code_row')) {
-            document.getElementById('form_item_view_hook_code_row').style.display = 'none';
+            pg_page_row('form_item_view_hook_code_row', false);
         }
 
-        document.getElementById('form_view_directory_form_list_views_row').style.display = 'none';
-        document.getElementById('form_view_directory_summary_row').style.display = 'none';
-        document.getElementById('form_view_directory_form_list_view_heading_row').style.display = 'none';
-        document.getElementById('form_view_directory_subject_heading_row').style.display = 'none';
-        document.getElementById('form_view_directory_number_of_submitted_forms_heading_row').style.display = 'none';
+        pg_page_row('form_view_directory_form_list_views_row', false);
+        pg_page_row('form_view_directory_summary_row', false);
+        pg_page_row('form_view_directory_form_list_view_heading_row', false);
+        pg_page_row('form_view_directory_subject_heading_row', false);
+        pg_page_row('form_view_directory_number_of_submitted_forms_heading_row', false);
     }
 
     // if calendars is on
     if (document.getElementById('calendar_view_default_view_row')) {
-        document.getElementById('calendar_view_calendars_row').style.display = 'none';
-        document.getElementById('calendar_view_default_view_row').style.display = 'none';
-        document.getElementById('calendar_view_calendar_event_view_page_id_row').style.display = 'none';
-        document.getElementById('calendar_event_view_calendars_row').style.display = 'none';
-        document.getElementById('calendar_view_number_of_upcoming_events_row').style.display = 'none';
-        document.getElementById('calendar_event_view_notes_row').style.display = 'none';
-        document.getElementById('calendar_event_view_back_button_label_row').style.display = 'none';
+        pg_page_row('calendar_view_calendars_row', false);
+        pg_page_row('calendar_view_default_view_row', false);
+        pg_page_row('calendar_view_calendar_event_view_page_id_row', false);
+        pg_page_row('calendar_event_view_calendars_row', false);
+        pg_page_row('calendar_view_number_of_upcoming_events_row', false);
+        pg_page_row('calendar_event_view_notes_row', false);
+        pg_page_row('calendar_event_view_back_button_label_row', false);
     }
 
     // if affiliate program is on
     if (document.getElementById('affiliate_sign_up_form_terms_page_id_row')) {
-        document.getElementById('affiliate_sign_up_form_terms_page_id_row').style.display = 'none';
-        document.getElementById('affiliate_sign_up_form_submit_button_label_row').style.display = 'none';
-        document.getElementById('affiliate_sign_up_form_next_page_id_row').style.display = 'none';
+        pg_page_row('affiliate_sign_up_form_terms_page_id_row', false);
+        pg_page_row('affiliate_sign_up_form_submit_button_label_row', false);
+        pg_page_row('affiliate_sign_up_form_next_page_id_row', false);
     }
 
     // show needed objects
     switch (page_type) {
 
         case 'email a friend':
-            document.getElementById('email_a_friend_submit_button_label_row').style.display = '';
-            document.getElementById('email_a_friend_next_page_id_row').style.display = '';
+            pg_page_row('email_a_friend_submit_button_label_row', true);
+            pg_page_row('email_a_friend_next_page_id_row', true);
             break;
 
         case 'folder view':
-            document.getElementById('folder_view_pages_row').style.display = '';
-            document.getElementById('folder_view_files_row').style.display = '';
+            pg_page_row('folder_view_pages_row', true);
+            pg_page_row('folder_view_files_row', true);
             break;
 
         case 'photo gallery':
-            document.getElementById('photo_gallery_number_of_columns_row').style.display = '';
-            document.getElementById('photo_gallery_thumbnail_max_size_row').style.display = '';
+            pg_page_row('photo_gallery_number_of_columns_row', true);
+            pg_page_row('photo_gallery_thumbnail_max_size_row', true);
             break;
 
         case 'update address book':
-            document.getElementById('update_address_book_address_type_row').style.display = '';
+            pg_page_row('update_address_book_address_type_row', true);
             break;
 
         case 'custom form':
-            document.getElementById('custom_form_form_name_row').style.display = '';
-            document.getElementById('custom_form_enabled_row').style.display = '';
-            document.getElementById('custom_form_quiz_row').style.display = '';
+            pg_page_row('custom_form_form_name_row', true);
+            pg_page_row('custom_form_enabled_row', true);
+            pg_page_row('custom_form_quiz_row', true);
 
-            document.getElementById('custom_form_label_column_width_row').style.display = '';
-            document.getElementById('custom_form_watcher_page_id_row').style.display = '';
-            document.getElementById('custom_form_save_row').style.display = '';
-            document.getElementById('custom_form_submit_button_label_row').style.display = '';
-            document.getElementById('custom_form_auto_registration_row').style.display = '';
+            pg_page_row('custom_form_label_column_width_row', true);
+            pg_page_row('custom_form_watcher_page_id_row', true);
+            pg_page_row('custom_form_save_row', true);
+            pg_page_row('custom_form_submit_button_label_row', true);
+            pg_page_row('custom_form_auto_registration_row', true);
 
             // If hook code row exists (i.e. user is a designer or administrator and hooks are enabled),
             // then show row.
             if (document.getElementById('custom_form_hook_code_row')) {
-                document.getElementById('custom_form_hook_code_row').style.display = '';
+                pg_page_row('custom_form_hook_code_row', true);
             }
 
-            document.getElementById('custom_form_submitter_email_row').style.display = '';
-            document.getElementById('custom_form_administrator_email_row').style.display = '';
+            pg_page_row('custom_form_submitter_email_row', true);
+            pg_page_row('custom_form_administrator_email_row', true);
 
 
-            document.getElementById('custom_form_contact_group_id_row').style.display = '';
-            document.getElementById('custom_form_membership_row').style.display = '';
+            pg_page_row('custom_form_contact_group_id_row', true);
+            pg_page_row('custom_form_membership_row', true);
 
 
 
-            document.getElementById('custom_form_private_row').style.display = '';
+            pg_page_row('custom_form_private_row', true);
 
 
 
             // If grant offer rows exist (i.e. commerce is enabled and user has access to commerce),
             // then show them.
             if (document.getElementById('custom_form_offer_row')) {
-                document.getElementById('custom_form_offer_row').style.display = '';
+                pg_page_row('custom_form_offer_row', true);
             }
 
-            document.getElementById('custom_form_confirmation_type_row').style.display = '';
+            pg_page_row('custom_form_confirmation_type_row', true);
 
-            show_or_hide_custom_form_confirmation_type();
 
-            document.getElementById('custom_form_return_type_row').style.display = '';
+            pg_page_row('custom_form_return_type_row', true);
 
-            show_or_hide_custom_form_return_type();
 
-            document.getElementById('custom_form_pretty_urls_row').style.display = '';
+            pg_page_row('custom_form_pretty_urls_row', true);
 
             break;
 
         case 'custom form confirmation':
-            document.getElementById('custom_form_confirmation_continue_button_label_row').style.display = '';
-            document.getElementById('custom_form_confirmation_next_page_id_row').style.display = '';
+            pg_page_row('custom_form_confirmation_continue_button_label_row', true);
+            pg_page_row('custom_form_confirmation_next_page_id_row', true);
             break;
 
         case 'form list view':
-            document.getElementById('form_list_view_custom_form_page_id_row').style.display = '';
-            document.getElementById('form_list_view_form_item_view_page_id_row').style.display = '';
-            document.getElementById('form_list_view_viewer_filter_row').style.display = '';
+            pg_page_row('form_list_view_custom_form_page_id_row', true);
+            pg_page_row('form_list_view_form_item_view_page_id_row', true);
+            pg_page_row('form_list_view_viewer_filter_row', true);
             break;
 
         case 'form item view':
-            document.getElementById('form_item_view_custom_form_page_id_row').style.display = '';
-            document.getElementById('form_item_view_submitter_security_row').style.display = '';
-            document.getElementById('form_item_view_submitted_form_editable_by_registered_user_row').style.display = '';
-            document.getElementById('form_item_view_submitted_form_editable_by_submitter_row').style.display = '';
+            pg_page_row('form_item_view_custom_form_page_id_row', true);
+            pg_page_row('form_item_view_submitter_security_row', true);
+            pg_page_row('form_item_view_submitted_form_editable_by_registered_user_row', true);
+            pg_page_row('form_item_view_submitted_form_editable_by_submitter_row', true);
             // If hook code row exists (i.e. user is a designer or administrator and hooks are enabled),
             // then show row.
             if (document.getElementById('form_item_view_hook_code_row')) {
-                document.getElementById('form_item_view_hook_code_row').style.display = '';
+                pg_page_row('form_item_view_hook_code_row', true);
             }
 
             break;
 
         case 'form view directory':
-            document.getElementById('form_view_directory_form_list_views_row').style.display = '';
-            document.getElementById('form_view_directory_summary_row').style.display = '';
-            document.getElementById('form_view_directory_form_list_view_heading_row').style.display = '';
-            document.getElementById('form_view_directory_subject_heading_row').style.display = '';
-            document.getElementById('form_view_directory_number_of_submitted_forms_heading_row').style.display = '';
+            pg_page_row('form_view_directory_form_list_views_row', true);
+            pg_page_row('form_view_directory_summary_row', true);
+            pg_page_row('form_view_directory_form_list_view_heading_row', true);
+            pg_page_row('form_view_directory_subject_heading_row', true);
+            pg_page_row('form_view_directory_number_of_submitted_forms_heading_row', true);
             break;
 
         case 'calendar view':
-            document.getElementById('calendar_view_calendars_row').style.display = '';
-            document.getElementById('calendar_view_default_view_row').style.display = '';
-            document.getElementById('calendar_view_calendar_event_view_page_id_row').style.display = '';
+            pg_page_row('calendar_view_calendars_row', true);
+            pg_page_row('calendar_view_default_view_row', true);
+            pg_page_row('calendar_view_calendar_event_view_page_id_row', true);
 
             show_or_hide_calendar_view_number_of_upcoming_events();
             break;
 
         case 'calendar event view':
-            document.getElementById('calendar_event_view_calendars_row').style.display = '';
-            document.getElementById('calendar_event_view_notes_row').style.display = '';
-            document.getElementById('calendar_event_view_back_button_label_row').style.display = '';
+            pg_page_row('calendar_event_view_calendars_row', true);
+            pg_page_row('calendar_event_view_notes_row', true);
+            pg_page_row('calendar_event_view_back_button_label_row', true);
             break;
 
         case 'catalog':
-            document.getElementById('catalog_product_group_id_row').style.display = '';
-            document.getElementById('catalog_menu_row').style.display = '';
-            document.getElementById('catalog_search_row').style.display = '';
-            document.getElementById('catalog_number_of_featured_items_row').style.display = '';
-            document.getElementById('catalog_number_of_new_items_row').style.display = '';
-            document.getElementById('catalog_number_of_columns_row').style.display = '';
-            document.getElementById('catalog_image_width_row').style.display = '';
-            document.getElementById('catalog_image_height_row').style.display = '';
-            document.getElementById('catalog_back_button_label_row').style.display = '';
-            document.getElementById('catalog_catalog_detail_page_id_row').style.display = '';
+            pg_page_row('catalog_product_group_id_row', true);
+            pg_page_row('catalog_menu_row', true);
+            pg_page_row('catalog_search_row', true);
+            pg_page_row('catalog_number_of_featured_items_row', true);
+            pg_page_row('catalog_number_of_new_items_row', true);
+            pg_page_row('catalog_number_of_columns_row', true);
+            pg_page_row('catalog_image_width_row', true);
+            pg_page_row('catalog_image_height_row', true);
+            pg_page_row('catalog_back_button_label_row', true);
+            pg_page_row('catalog_catalog_detail_page_id_row', true);
             break;
 
         case 'catalog detail':
-            document.getElementById('catalog_detail_allow_customer_to_add_product_to_order_row').style.display = '';
-            document.getElementById('catalog_detail_back_button_label_row').style.display = '';
+            pg_page_row('catalog_detail_allow_customer_to_add_product_to_order_row', true);
+            pg_page_row('catalog_detail_back_button_label_row', true);
             break;
 
         case 'express order':
-            document.getElementById('express_order_shopping_cart_label_row').style.display = '';
-            document.getElementById('express_order_quick_add_label_row').style.display = '';
-            document.getElementById('express_order_quick_add_product_group_id_row').style.display = '';
-            document.getElementById('express_order_product_description_type_row').style.display = '';
-            document.getElementById('express_order_shipping_form_row').style.display = '';
-            document.getElementById('express_order_special_offer_code_label_row').style.display = '';
-            document.getElementById('express_order_special_offer_code_message_row').style.display = '';
-            document.getElementById('express_order_custom_field_1_label_row').style.display = '';
-            document.getElementById('express_order_custom_field_2_label_row').style.display = '';
-            document.getElementById('express_order_po_number_row').style.display = '';
-            document.getElementById('express_order_form_row').style.display = '';
+            pg_page_row('express_order_shopping_cart_label_row', true);
+            pg_page_row('express_order_quick_add_label_row', true);
+            pg_page_row('express_order_quick_add_product_group_id_row', true);
+            pg_page_row('express_order_product_description_type_row', true);
+            pg_page_row('express_order_shipping_form_row', true);
+            pg_page_row('express_order_special_offer_code_label_row', true);
+            pg_page_row('express_order_special_offer_code_message_row', true);
+            pg_page_row('express_order_custom_field_1_label_row', true);
+            pg_page_row('express_order_custom_field_2_label_row', true);
+            pg_page_row('express_order_po_number_row', true);
+            pg_page_row('express_order_form_row', true);
             show_or_hide_express_order_custom_billing_form();
-            document.getElementById('express_order_card_verification_number_page_id_row').style.display = '';
+            pg_page_row('express_order_card_verification_number_page_id_row', true);
 
             if (document.getElementById('express_order_offline_payment_always_allowed_row')) {
-                document.getElementById('express_order_offline_payment_always_allowed_row').style.display = '';
-                document.getElementById('express_order_offline_payment_label_row').style.display = '';
+                pg_page_row('express_order_offline_payment_always_allowed_row', true);
+                pg_page_row('express_order_offline_payment_label_row', true);
             }
 
-            document.getElementById('express_order_terms_page_id_row').style.display = '';
-            document.getElementById('express_order_update_button_label_row').style.display = '';
-            document.getElementById('express_order_purchase_now_button_label_row').style.display = '';
-            document.getElementById('express_order_auto_registration_row').style.display = '';
+            pg_page_row('express_order_terms_page_id_row', true);
+            pg_page_row('express_order_update_button_label_row', true);
+            pg_page_row('express_order_purchase_now_button_label_row', true);
+            pg_page_row('express_order_auto_registration_row', true);
 
             // If hook code rows exists (i.e. user is a designer or administrator and hooks are enabled),
             // then show rows.
             if (document.getElementById('express_order_pre_save_hook_code_row')) {
-                document.getElementById('express_order_pre_save_hook_code_row').style.display = '';
-                document.getElementById('express_order_post_save_hook_code_row').style.display = '';
+                pg_page_row('express_order_pre_save_hook_code_row', true);
+                pg_page_row('express_order_post_save_hook_code_row', true);
             }
 
-            document.getElementById('express_order_order_receipt_email_row').style.display = '';
-            document.getElementById('express_order_next_page_id_row').style.display = '';
+            pg_page_row('express_order_order_receipt_email_row', true);
+            pg_page_row('express_order_next_page_id_row', true);
             break;
 
         case 'order form':
-            document.getElementById('order_form_product_group_id_row').style.display = '';
-            document.getElementById('order_form_product_layout_row_1').style.display = '';
-            document.getElementById('order_form_product_layout_row_2').style.display = '';
-            document.getElementById('order_form_add_button_row').style.display = '';
-            document.getElementById('order_form_skip_button_row').style.display = '';
+            pg_page_row('order_form_product_group_id_row', true);
+            pg_page_row('order_form_product_layout_row_1', true);
+            pg_page_row('order_form_product_layout_row_2', true);
+            pg_page_row('order_form_add_button_row', true);
+            pg_page_row('order_form_skip_button_row', true);
             break;
 
         case 'search results':
             // If search folder row exists (i.e. advanced search is enabled), then show it.
             if (document.getElementById('search_results_search_folder_id_row')) {
-                document.getElementById('search_results_search_folder_id_row').style.display = '';
+                pg_page_row('search_results_search_folder_id_row', true);
             }
 
             // if e-commerce is on, then show e-commerce fields for search results
             if (document.getElementById('search_results_search_catalog_items_row')) {
-                document.getElementById('search_results_search_catalog_items_row').style.display = '';
+                pg_page_row('search_results_search_catalog_items_row', true);
             }
             break;
 
         case 'shopping cart':
-            document.getElementById('shopping_cart_shopping_cart_label_row').style.display = '';
-            document.getElementById('shopping_cart_quick_add_label_row').style.display = '';
-            document.getElementById('shopping_cart_quick_add_product_group_id_row').style.display = '';
-            document.getElementById('shopping_cart_product_description_type_row').style.display = '';
-            document.getElementById('shopping_cart_special_offer_code_label_row').style.display = '';
-            document.getElementById('shopping_cart_special_offer_code_message_row').style.display = '';
-            document.getElementById('shopping_cart_update_button_label_row').style.display = '';
-            document.getElementById('shopping_cart_checkout_button_label_row').style.display = '';
+            pg_page_row('shopping_cart_shopping_cart_label_row', true);
+            pg_page_row('shopping_cart_quick_add_label_row', true);
+            pg_page_row('shopping_cart_quick_add_product_group_id_row', true);
+            pg_page_row('shopping_cart_product_description_type_row', true);
+            pg_page_row('shopping_cart_special_offer_code_label_row', true);
+            pg_page_row('shopping_cart_special_offer_code_message_row', true);
+            pg_page_row('shopping_cart_update_button_label_row', true);
+            pg_page_row('shopping_cart_checkout_button_label_row', true);
 
             // If hook code row exists (i.e. user is a designer or administrator and hooks are enabled),
             // then show row.
             if (document.getElementById('shopping_cart_hook_code_row')) {
-                document.getElementById('shopping_cart_hook_code_row').style.display = '';
+                pg_page_row('shopping_cart_hook_code_row', true);
             }
 
-            document.getElementById('shopping_cart_next_page_id_with_shipping_row').style.display = '';
-            document.getElementById('shopping_cart_next_page_id_without_shipping_row').style.display = '';
+            pg_page_row('shopping_cart_next_page_id_with_shipping_row', true);
+            pg_page_row('shopping_cart_next_page_id_without_shipping_row', true);
             break;
 
         case 'shipping address and arrival':
-            document.getElementById('shipping_address_and_arrival_address_type_row').style.display = '';
-            document.getElementById('shipping_address_and_arrival_form_row').style.display = '';
+            pg_page_row('shipping_address_and_arrival_address_type_row', true);
+            pg_page_row('shipping_address_and_arrival_form_row', true);
             show_or_hide_custom_shipping_form();
-            document.getElementById('shipping_address_and_arrival_submit_button_row').style.display = '';
+            pg_page_row('shipping_address_and_arrival_submit_button_row', true);
             break;
 
         case 'shipping method':
-            document.getElementById('shipping_method_product_description_type_row').style.display = '';
-            document.getElementById('shipping_method_submit_button_row').style.display = '';
+            pg_page_row('shipping_method_product_description_type_row', true);
+            pg_page_row('shipping_method_submit_button_row', true);
             break;
 
         case 'billing information':
-            document.getElementById('billing_information_custom_field_1_label_row').style.display = '';
-            document.getElementById('billing_information_custom_field_2_label_row').style.display = '';
-            document.getElementById('billing_information_po_number_row').style.display = '';
-            document.getElementById('billing_information_form_row').style.display = '';
+            pg_page_row('billing_information_custom_field_1_label_row', true);
+            pg_page_row('billing_information_custom_field_2_label_row', true);
+            pg_page_row('billing_information_po_number_row', true);
+            pg_page_row('billing_information_form_row', true);
             show_or_hide_billing_information_custom_billing_form();
-            document.getElementById('billing_information_submit_button_label_row').style.display = '';
-            document.getElementById('billing_information_next_page_id_row').style.display = '';
+            pg_page_row('billing_information_submit_button_label_row', true);
+            pg_page_row('billing_information_next_page_id_row', true);
             break;
 
         case 'order preview':
-            document.getElementById('order_preview_product_description_type_row').style.display = '';
-            document.getElementById('order_preview_card_verification_number_page_id_row').style.display = '';
+            pg_page_row('order_preview_product_description_type_row', true);
+            pg_page_row('order_preview_card_verification_number_page_id_row', true);
 
             if (document.getElementById('order_preview_offline_payment_always_allowed_row')) {
-                document.getElementById('order_preview_offline_payment_always_allowed_row').style.display = '';
-                document.getElementById('order_preview_offline_payment_label_row').style.display = '';
+                pg_page_row('order_preview_offline_payment_always_allowed_row', true);
+                pg_page_row('order_preview_offline_payment_label_row', true);
             }
 
-            document.getElementById('order_preview_terms_page_id_row').style.display = '';
-            document.getElementById('order_preview_submit_button_label_row').style.display = '';
-            document.getElementById('order_preview_auto_registration_row').style.display = '';
+            pg_page_row('order_preview_terms_page_id_row', true);
+            pg_page_row('order_preview_submit_button_label_row', true);
+            pg_page_row('order_preview_auto_registration_row', true);
 
             // If hook code rows exists (i.e. user is a designer or administrator and hooks are enabled),
             // then show rows.
             if (document.getElementById('order_preview_pre_save_hook_code_row')) {
-                document.getElementById('order_preview_pre_save_hook_code_row').style.display = '';
-                document.getElementById('order_preview_post_save_hook_code_row').style.display = '';
+                pg_page_row('order_preview_pre_save_hook_code_row', true);
+                pg_page_row('order_preview_post_save_hook_code_row', true);
             }
 
-            document.getElementById('order_preview_order_receipt_email_row').style.display = '';
+            pg_page_row('order_preview_order_receipt_email_row', true);
 
-            document.getElementById('order_preview_next_page_id_row').style.display = '';
+            pg_page_row('order_preview_next_page_id_row', true);
             break;
 
         case 'order receipt':
-            document.getElementById('order_receipt_product_description_type_row').style.display = '';
+            pg_page_row('order_receipt_product_description_type_row', true);
             break;
 
         case 'affiliate sign up form':
-            document.getElementById('affiliate_sign_up_form_terms_page_id_row').style.display = '';
-            document.getElementById('affiliate_sign_up_form_submit_button_label_row').style.display = '';
-            document.getElementById('affiliate_sign_up_form_next_page_id_row').style.display = '';
+            pg_page_row('affiliate_sign_up_form_terms_page_id_row', true);
+            pg_page_row('affiliate_sign_up_form_submit_button_label_row', true);
+            pg_page_row('affiliate_sign_up_form_next_page_id_row', true);
             break;
     }
 
@@ -6976,9 +7008,9 @@ function change_page_type(page_type) {
         (page_type == 'search results')
     ) {
 
-        document.getElementById('sitemap_row').style.display = '';
+        pg_page_row('sitemap_row', true);
     } else {
-        document.getElementById('sitemap_row').style.display = 'none';
+        pg_page_row('sitemap_row', false);
     }
     // Page types that do not support any options, we dont output options row.
     if (
@@ -7027,23 +7059,23 @@ function change_page_type(page_type) {
 
 function show_or_hide_billing_information_custom_billing_form() {
     if (document.getElementById('billing_information_form').checked == true) {
-        document.getElementById('billing_information_form_name_row').style.display = '';
-        document.getElementById('billing_information_form_label_column_width_row').style.display = '';
+        pg_page_row('billing_information_form_name_row', true);
+        pg_page_row('billing_information_form_label_column_width_row', true);
 
     } else {
-        document.getElementById('billing_information_form_name_row').style.display = 'none';
-        document.getElementById('billing_information_form_label_column_width_row').style.display = 'none';
+        pg_page_row('billing_information_form_name_row', false);
+        pg_page_row('billing_information_form_label_column_width_row', false);
     }
 
     // if the form is enabled and the form was not originally enabled, then show notice and update the submit button to contain "Save & Continue"
     if ((document.getElementById('billing_information_form').checked == true) && (original_billing_information_form != 1)) {
-        document.getElementById('billing_information_form_notice').style.display = '';
+        pg_page_row('billing_information_form_notice', true);
         $("#create_button").val("Save & Continue");
         $("#create_button .pg-btn-label").text(lang("Save & Continue"));
 
         // else the form is disabled or the form was already enabled, so do not show notice and update the submit button to contain "Save"
     } else {
-        document.getElementById('billing_information_form_notice').style.display = 'none';
+        pg_page_row('billing_information_form_notice', false);
         $("#create_button").val("Save");
         $("#create_button .pg-btn-label").text(lang("Save"));
     }
@@ -7057,13 +7089,13 @@ function toggle_express_order_custom_shipping_form() {
         document.getElementById('express_order_shipping_form').checked &&
         original_express_order_shipping_form != 1
     ) {
-        document.getElementById('express_order_shipping_form_notice').style.display = '';
+        pg_page_row('express_order_shipping_form_notice', true);
         $("#create_button").val("Save & Continue");
         $("#create_button .pg-btn-label").text(lang("Save & Continue"));
         // Otherwise the form is disabled or the form was already enabled, so do not show notice and
         // update the submit button to contain "Save"
     } else {
-        document.getElementById('express_order_shipping_form_notice').style.display = 'none';
+        pg_page_row('express_order_shipping_form_notice', false);
         $("#create_button").val("Save");
         $("#create_button .pg-btn-label").text(lang("Save"));
     }
@@ -7071,22 +7103,22 @@ function toggle_express_order_custom_shipping_form() {
 
 function show_or_hide_express_order_custom_billing_form() {
     if (document.getElementById('express_order_form').checked == true) {
-        document.getElementById('express_order_form_name_row').style.display = '';
-        document.getElementById('express_order_form_label_column_width_row').style.display = '';
+        pg_page_row('express_order_form_name_row', true);
+        pg_page_row('express_order_form_label_column_width_row', true);
     } else {
-        document.getElementById('express_order_form_name_row').style.display = 'none';
-        document.getElementById('express_order_form_label_column_width_row').style.display = 'none';
+        pg_page_row('express_order_form_name_row', false);
+        pg_page_row('express_order_form_label_column_width_row', false);
     }
 
     // if the form is enabled and the form was not originally enabled, then show notice and update the submit button to contain "Save & Continue"
     if ((document.getElementById('express_order_form').checked == true) && (original_express_order_form != 1)) {
-        document.getElementById('express_order_form_notice').style.display = '';
+        pg_page_row('express_order_form_notice', true);
         $("#create_button").val("Save & Continue");
         $("#create_button .pg-btn-label").text(lang("Save & Continue"));
 
         // else the form is disabled or the form was already enabled, so do not show notice and update the submit button to contain "Save"
     } else {
-        document.getElementById('express_order_form_notice').style.display = 'none';
+        pg_page_row('express_order_form_notice', false);
         $("#create_button").val("Save");
         $("#create_button .pg-btn-label").text(lang("Save"));
         // we check if its checked before
@@ -7096,21 +7128,21 @@ function show_or_hide_express_order_custom_billing_form() {
 
 function show_or_hide_custom_shipping_form() {
     if (document.getElementById('shipping_address_and_arrival_form').checked == true) {
-        document.getElementById('shipping_address_and_arrival_form_name_row').style.display = '';
-        document.getElementById('shipping_address_and_arrival_form_label_column_width_row').style.display = '';
+        pg_page_row('shipping_address_and_arrival_form_name_row', true);
+        pg_page_row('shipping_address_and_arrival_form_label_column_width_row', true);
     } else {
-        document.getElementById('shipping_address_and_arrival_form_name_row').style.display = 'none';
-        document.getElementById('shipping_address_and_arrival_form_label_column_width_row').style.display = 'none';
+        pg_page_row('shipping_address_and_arrival_form_name_row', false);
+        pg_page_row('shipping_address_and_arrival_form_label_column_width_row', false);
     }
 
     // if the form is enabled and the form was not originally enabled, then show notice and update the submit button to contain "Save & Continue"
     if ((document.getElementById('shipping_address_and_arrival_form').checked == true) && (original_shipping_address_and_arrival_form != 1)) {
-        document.getElementById('shipping_address_and_arrival_form_notice').style.display = '';
+        pg_page_row('shipping_address_and_arrival_form_notice', true);
         $("#create_button").val("Save & Continue");
         $("#create_button .pg-btn-label").text(lang("Save & Continue"));
         // else the form is disabled or the form was already enabled, so do not show notice and update the submit button to contain "Save"
     } else {
-        document.getElementById('shipping_address_and_arrival_form_notice').style.display = 'none';
+        pg_page_row('shipping_address_and_arrival_form_notice', false);
         $("#create_button").val("Save");
         $("#create_button .pg-btn-label").text(lang("Save"));
     }
@@ -7131,71 +7163,46 @@ function show_or_hide_custom() {
 function show_or_hide_comments() {
     // if comments is checked then prepare to show rows
     if (document.getElementById('comments').checked == true) {
-        document.getElementById('comments_administrator_email_row').style.display = '';
+        pg_page_row('comments_administrator_email_row', true);
 
         show_or_hide_form_item_view_comment_fields();
 
-        document.getElementById('comments_watcher_email_row').style.display = '';
+        pg_page_row('comments_watcher_email_row', true);
 
         // else hide all rows
     } else {
-        document.getElementById('comments_administrator_email_row').style.display = 'none';
-        document.getElementById('comments_administrator_email_conditional_administrators_row').style.display = 'none';
-        document.getElementById('comments_submitter_email_row').style.display = 'none';
-        document.getElementById('comments_watcher_email_row').style.display = 'none';
-        document.getElementById('comments_watchers_managed_by_submitter_row').style.display = 'none';
+        pg_page_row('comments_administrator_email_row', false);
+        pg_page_row('comments_administrator_email_conditional_administrators_row', false);
+        pg_page_row('comments_submitter_email_row', false);
+        pg_page_row('comments_watcher_email_row', false);
+        pg_page_row('comments_watchers_managed_by_submitter_row', false);
     }
 }
 
 function show_or_hide_form_item_view_comment_fields() {
     // get page type
-    var page_type = document.getElementById('page_type').options[document.getElementById('page_type').selectedIndex].value;
+    // Without the picker (a user who may not set the type) the stored type.
+    var picker = document.getElementById('page_type');
+    var page_type = picker ? picker.value : document.getElementById('comments').getAttribute('data-page-type');
 
     // if comments are enabled and the page type is form item view then show rows
     if ((document.getElementById('comments').checked == true) && (page_type == 'form item view')) {
-        document.getElementById('comments_administrator_email_conditional_administrators_row').style.display = '';
-        document.getElementById('comments_submitter_email_row').style.display = '';
-        document.getElementById('comments_watchers_managed_by_submitter_row').style.display = '';
+        pg_page_row('comments_administrator_email_conditional_administrators_row', true);
+        pg_page_row('comments_submitter_email_row', true);
+        pg_page_row('comments_watchers_managed_by_submitter_row', true);
 
         // else hide rows
     } else {
-        document.getElementById('comments_administrator_email_conditional_administrators_row').style.display = 'none';
-        document.getElementById('comments_submitter_email_row').style.display = 'none';
-        document.getElementById('comments_watchers_managed_by_submitter_row').style.display = 'none';
-    }
-}
-
-function show_or_hide_custom_form_confirmation_type() {
-    // Start off by hiding all rows under the confirmation type field until we determine which should be shown.
-    // If the message option is selected, then show the message row
-    if (document.getElementById('custom_form_confirmation_type_message').checked == true) {
-
-        // If the rich-text editor has not been loaded already for the message field, then load it.
-        if ((typeof tinyMCE !== 'undefined') && (tinyMCE.getInstanceById('custom_form_confirmation_message') == null)) {
-            tinyMCE.execCommand('mceAddControl', false, 'custom_form_confirmation_message');
-        }
-    }
-}
-
-function show_or_hide_custom_form_return_type() {
-    // If the message option is selected, then show the message row
-    if (document.getElementById('custom_form_return_type_message').checked == true) {
-
-        // If the rich-text editor has not been loaded already for the message field, then load it.
-        if ((typeof tinyMCE !== 'undefined') && (tinyMCE.getInstanceById('custom_form_return_message') == null)) {
-            tinyMCE.execCommand('mceAddControl', false, 'custom_form_return_message');
-        }
+        pg_page_row('comments_administrator_email_conditional_administrators_row', false);
+        pg_page_row('comments_submitter_email_row', false);
+        pg_page_row('comments_watchers_managed_by_submitter_row', false);
     }
 }
 
 function show_or_hide_calendar_view_number_of_upcoming_events() {
-    if ((document.getElementById('calendar_view_default_view').options[document.getElementById('calendar_view_default_view').selectedIndex].value == 'upcoming') &&
-        (document.getElementById('calendar_view_number_of_upcoming_events_row').style.display == 'none')) {
-        document.getElementById('calendar_view_number_of_upcoming_events_row').style.display = '';
+    var view = document.getElementById('calendar_view_default_view');
 
-    } else {
-        document.getElementById('calendar_view_number_of_upcoming_events_row').style.display = 'none';
-    }
+    pg_page_row('calendar_view_number_of_upcoming_events_row', view.value == 'upcoming');
 }
 
 function change_order_by(number) {

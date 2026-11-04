@@ -1188,7 +1188,7 @@
 
 .pgie-kinds {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   margin-bottom: 16px;
 }
@@ -1464,6 +1464,76 @@
   border-radius: 10px;
   background: color-mix(in srgb, #f9a825 14%, transparent);
   color: var(--pgie-tx);
+}
+
+/* -- Area selection (pg_image_editor_area.js) -- */
+
+/* Marching ants: a light line under a dark dashed one that moves, so the
+   edge shows on any picture. */
+.pgie-ants-under,
+.pgie-ants {
+  fill: none;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.pgie-ants-under {
+  stroke: #fff;
+}
+
+.pgie-ants {
+  stroke: #1a1c1e;
+  stroke-dasharray: 4 4;
+  animation: pgie-ants 0.6s linear infinite;
+}
+
+@keyframes pgie-ants {
+  to {
+    stroke-dashoffset: -8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgie-ants {
+    animation: none;
+  }
+}
+
+.pgie-acorner {
+  fill: #fff;
+  stroke: #1a1c1e;
+  stroke-width: 1.5;
+}
+
+.pgie-akinds {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pgie .pgie-akinds .pgie-tile.on {
+  border-color: var(--pgie-sel);
+  background: var(--pgie-pw);
+  color: var(--pgie-ink);
+}
+
+.pgie-arow {
+  display: flex;
+  gap: 8px;
+}
+
+.pgie .pgie-arow .pgie-btn {
+  flex: 1 1 0;
+  justify-content: center;
+}
+
+.pgie .pgie-arow .pgie-btn:disabled,
+.pgie .pgie-abtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.pgie .pgie-abtn {
+  width: 100%;
+  margin-top: 12px;
 }
 
 /* -- Versions (pg_image_editor_versions.js) -- */

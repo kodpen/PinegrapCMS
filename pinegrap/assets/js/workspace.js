@@ -11155,12 +11155,18 @@
             });
         },
 
-        // A flow draft's card drawn as a small flow window
-        // (ws_flow_draft_card_graph_read()): its boxes where the canvas puts
-        // them, the threads between, outbound boxes and a patch's boxes
-        // marked. A box picked shows below with its link to the canvas and
-        // its try once the draft is a flow; nothing is changed here, a flow
-        // is changed on the canvas. The graph is read once a page.
+        // A flow draft's card: at rest a picture of the flow
+        // (ws_flow_draft_card_graph_read(), flowWindowDraw() without
+        // per-box tools), so the channel stays light and its wheel scrolls
+        // the channel. A click or Enter on it opens the Flows canvas itself
+        // read-only in its place (PGWsFlow.embed(), the view of
+        // ws_flow_draft_view): panned and zoomed freely, every box as the
+        // canvas draws it. The box picked shows in the strip below with its
+        // link to the canvas and its try. One card is open at a time (the
+        // canvas keeps one drawing); Close, or another card opening, brings
+        // the picture back. Nothing is changed here: a flow is changed on the
+        // canvas. The picture is read once a page per card state; an open
+        // card reads its view again each time the card is drawn anew.
         flowWindow: function (change) {
             var self = this;
             var wrap = el('div', 'ws-fd-window');
@@ -11177,7 +11183,43 @@
 
                 self.flowGraphs[key].then(function (graph) {
                     clear(wrap);
-                    self.flowWindowDraw(wrap, graph, null);
+
+                    if (!graph || !graph.nodes.length) {
+                        return;
+                    }
+
+                    var stage = el('div', 'ws-fd-stage');
+
+                    self.flowWindowDraw(stage, graph, false);
+                    wrap.appendChild(stage);
+
+                    // A patch's removed boxes; the waiting card lists them
+                    // among its changes already.
+                    if (graph.flow_id && graph.removed.length) {
+                        wrap.appendChild(el('div', 'ws-draft-meta', t('fd_removed', graph.removed.join(', '))));
+                    }
+
+                    var pane = stage.querySelector('.ws-fd-pane');
+
+                    pane.setAttribute('tabindex', '0');
+                    pane.setAttribute('role', 'button');
+                    pane.setAttribute('title', t('fd_open'));
+                    pane.setAttribute('aria-label', t('fd_open'));
+                    pane.addEventListener('click', function () {
+                        self.flowCardOpen(change, wrap, stage, graph);
+                    });
+                    pane.addEventListener('keydown', function (event) {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            self.flowCardOpen(change, wrap, stage, graph);
+                        }
+                    });
+
+                    // The card open before it was drawn anew (a sync)
+                    // opens again with what the flow is now.
+                    if (self.flowOpen && (self.flowOpen.id === change.id)) {
+                        self.flowCardOpen(change, wrap, stage, graph);
+                    }
                 }).catch(function (error) {
                     delete self.flowGraphs[key];
                     clear(wrap);
@@ -11190,14 +11232,234 @@
             return wrap;
         },
 
-        // onPick, when given, is told the box picked instead of the detail
-        // below (the mini window of Add › Scheduled flow shows its form).
+        // The canvas's two scripts (pg_graph_canvas.js, workspace_flow.js)
+        // and the lists its drawing reads (ws_flow_embed_config), fetched
+        // once a page on the first card opened; the Flows screen has its
+        // scripts on the page already.
+        flowEmbedKit: function () {
+            var self = this;
+
+            if (!self.flowKit) {
+                var scripts = window.PGWsFlow ? [] : (CFG.flow_scripts || []);
+                var loaded = scripts.reduce(function (before, src) {
+                    return before.then(function () {
+                        return new Promise(function (resolve, reject) {
+                            var node = document.createElement('script');
+
+                            node.src = src;
+                            node.async = false;
+                            node.onload = resolve;
+                            node.onerror = function () {
+                                reject(new Error(t('error_generic')));
+                            };
+                            document.head.appendChild(node);
+                        });
+                    });
+                }, Promise.resolve());
+
+                self.flowKit = Promise.all([loaded, api('ws_flow_embed_config', {})]).then(function (done) {
+                    if (!window.PGWsFlow || !window.PGWsFlow.embed) {
+                        throw new Error(t('error_generic'));
+                    }
+
+                    return done[1].config;
+                });
+                self.flowKit.catch(function () {
+                    self.flowKit = null;
+                });
+            }
+
+            return self.flowKit;
+        },
+
+        // Opens a card's canvas in place of its picture (flowWindow()):
+        // the view is read again, the canvas drawn in a 20 rem pane
+        // (Larger doubles it), the bar above it and the strip below.
+        flowCardOpen: function (change, wrap, stage, graph) {
+            var self = this;
+            var open = { id: change.id, large: !!(self.flowOpen && (self.flowOpen.id === change.id) && self.flowOpen.large), instance: null };
+            var byId = {};
+
+            graph.nodes.forEach(function (node) {
+                byId[node.id] = node;
+            });
+
+            // Another card's canvas closes first; this one shows it is busy.
+            if (self.flowOpen && self.flowOpen.instance) {
+                self.flowOpen.instance.destroy();
+            }
+
+            self.flowOpen = open;
+            wrap.classList.add('is-loading');
+            wrap.setAttribute('aria-busy', 'true');
+
+            Promise.all([self.flowEmbedKit(), api('ws_flow_draft_view', { change_id: change.id })]).then(function (done) {
+                var view = done[1].view;
+
+                wrap.classList.remove('is-loading');
+                wrap.removeAttribute('aria-busy');
+
+                // Closed, or another card opened, while this one was read.
+                if ((self.flowOpen !== open) || !wrap.isConnected) {
+                    return;
+                }
+
+                var bar = el('div', 'ws-fd-bar');
+                var larger = button('btn btn-sm btn-text', '');
+                var close = button('btn btn-sm btn-text', t('close'), 'bi-x-lg');
+                var detail = el('div', 'ws-fd-detail ws-draft-meta', t('fd_box_pick'));
+
+                detail.setAttribute('aria-live', 'polite');
+                bar.appendChild(larger);
+                bar.appendChild(close);
+
+                // Larger doubles the pane; the drawing is fitted again.
+                function size() {
+                    stage.classList.toggle('is-large', open.large);
+                    clear(larger);
+                    larger.appendChild(icon(open.large ? 'bi-arrows-angle-contract' : 'bi-arrows-angle-expand', 'me-1'));
+                    larger.appendChild(document.createTextNode(t(open.large ? 'fd_smaller' : 'fd_larger')));
+                    larger.setAttribute('aria-pressed', open.large ? 'true' : 'false');
+                }
+
+                larger.addEventListener('click', function () {
+                    open.large = !open.large;
+                    size();
+
+                    if (open.instance) {
+                        open.instance.fit();
+                    }
+                });
+
+                stage.classList.add('is-open');
+                wrap.insertBefore(bar, stage);
+                stage.after(detail);
+                size();
+
+                open.instance = window.PGWsFlow.embed(stage, {
+                    graph: view.graph,
+                    mark: view.mark,
+                    tries: view.tries,
+                    config: done[0],
+                    people: (BOOT && BOOT.people) || [],
+                    onSelect: function (node) {
+                        self.flowCardBox(detail, node, byId[node ? node.id : ''], view);
+                    },
+                    onClose: function () {
+                        stage.classList.remove('is-open', 'is-large');
+                        bar.remove();
+                        detail.remove();
+
+                        if (self.flowOpen === open) {
+                            self.flowOpen = null;
+                        }
+                    }
+                });
+
+                // The Flows screen runs on this page: its canvas is the one
+                // drawing, the card keeps its picture.
+                if (!open.instance) {
+                    stage.classList.remove('is-open', 'is-large');
+                    bar.remove();
+                    detail.remove();
+                    self.flowOpen = null;
+                    return;
+                }
+
+                close.addEventListener('click', function () {
+                    var pane;
+
+                    open.instance.destroy();
+                    pane = stage.querySelector('.ws-fd-pane');
+
+                    if (pane) {
+                        pane.focus({ preventScroll: true });
+                    }
+                });
+            }).catch(function (error) {
+                wrap.classList.remove('is-loading');
+                wrap.removeAttribute('aria-busy');
+
+                if (self.flowOpen === open) {
+                    self.flowOpen = null;
+                }
+
+                fail(error);
+            });
+        },
+
+        // The strip under an open card's canvas: the box picked (the
+        // embed's node, the picture's for outbound and try), its link to
+        // the canvas and, for a flow the person may try, its try.
+        flowCardBox: function (detail, node, drawn, view) {
+            clear(detail);
+
+            if (!node) {
+                detail.appendChild(document.createTextNode(t('fd_box_pick')));
+                return;
+            }
+
+            detail.appendChild(el('b', '', node.name));
+
+            if (node.name !== node.kindName) {
+                detail.appendChild(document.createTextNode(' · ' + node.kindName));
+            }
+
+            if (drawn && drawn.outbound) {
+                detail.appendChild(document.createTextNode(' · ' + t('fd_outbound')));
+            }
+
+            if (node.mark) {
+                detail.appendChild(document.createTextNode(' · ' + t(node.mark === 'added' ? 'fd_added' : 'fd_changed')));
+            }
+
+            var tools = el('div', 'ws-fd-tools');
+
+            if (view.flow_id) {
+                var link = el('a', '', t('fd_box_open'));
+                link.href = CFG.urls.flows + '?flow=' + view.flow_id + '&box=' + encodeURIComponent(node.id);
+                tools.appendChild(link);
+            }
+
+            if (view.flow_id && view.can_try && drawn && drawn['try']) {
+                var answer = el('div', 'ws-fd-try');
+                var go = button('btn btn-sm btn-text theme-primary', t('fd_box_try'), 'bi-play');
+
+                go.addEventListener('click', function () {
+                    go.disabled = true;
+
+                    api('ws_flow_box_try', { flow_id: view.flow_id, node_id: node.id }).then(function (data) {
+                        var tried = data['try'] || {};
+
+                        go.disabled = false;
+                        clear(answer);
+                        answer.appendChild(el('div', '', tried.refusal ? t('fd_try_refusal', tried.refusal) : (tried.said || '')));
+
+                        (tried.next || []).forEach(function (moment) {
+                            answer.appendChild(el('div', '', moment));
+                        });
+                    }).catch(function (error) {
+                        go.disabled = false;
+                        fail(error);
+                    });
+                });
+
+                tools.appendChild(go);
+                detail.appendChild(tools);
+                detail.appendChild(answer);
+            } else if (tools.childNodes.length) {
+                detail.appendChild(tools);
+            }
+        },
+
+        // onPick, when given, is told the box picked (the mini window of
+        // Add › Scheduled flow shows its form); without it the picture is
+        // still (a flow draft's card at rest, flowWindow()).
         // Drawn to the visual spec in px (ws_flow_card_graph()): boxes
         // 128 × 60 with the kind's icon and name, the kind and the box's dry
         // run as its third line; control arrows 2 px with a filled head;
         // data threads 1 px in their type's tone, placed by the server.
         flowWindowDraw: function (wrap, graph, onPick) {
-            var self = this;
             var NS = 'http://www.w3.org/2000/svg';
             var W = 128;
             var H = 60;
@@ -11231,9 +11493,6 @@
                 role: 'group',
                 'aria-label': t('fd_window')
             });
-            var detail = el('div', 'ws-fd-detail ws-draft-meta', t('fd_box_pick'));
-
-            detail.setAttribute('aria-live', 'polite');
 
             graph.nodes.forEach(function (node) {
                 byId[node.id] = node;
@@ -11282,78 +11541,21 @@
 
                 picked = group;
                 group.classList.add('is-picked');
-
-                if (onPick) {
-                    onPick(node);
-                    return;
-                }
-
-                clear(detail);
-                detail.appendChild(el('b', '', node.name));
-
-                if (node.name !== node.label) {
-                    detail.appendChild(document.createTextNode(' · ' + node.label));
-                }
-
-                if (node.outbound) {
-                    detail.appendChild(document.createTextNode(' · ' + t('fd_outbound')));
-                }
-
-                if (node.mark) {
-                    detail.appendChild(document.createTextNode(' · ' + t(node.mark === 'added' ? 'fd_added' : 'fd_changed')));
-                }
-
-                var tools = el('div', 'ws-fd-tools');
-
-                if (graph.flow_id) {
-                    var link = el('a', '', t('fd_box_open'));
-                    link.href = CFG.urls.flows + '?flow=' + graph.flow_id + '&box=' + encodeURIComponent(node.id);
-                    tools.appendChild(link);
-                }
-
-                if (graph.flow_id && graph.can_try && node['try']) {
-                    var answer = el('div', 'ws-fd-try');
-                    var go = button('btn btn-sm btn-text theme-primary', t('fd_box_try'), 'bi-play');
-
-                    go.addEventListener('click', function () {
-                        go.disabled = true;
-
-                        api('ws_flow_box_try', { flow_id: graph.flow_id, node_id: node.id }).then(function (data) {
-                            var tried = data['try'] || {};
-
-                            go.disabled = false;
-                            clear(answer);
-                            answer.appendChild(el('div', '', tried.refusal ? t('fd_try_refusal', tried.refusal) : (tried.said || '')));
-
-                            (tried.next || []).forEach(function (moment) {
-                                answer.appendChild(el('div', '', moment));
-                            });
-                        }).catch(function (error) {
-                            go.disabled = false;
-                            fail(error);
-                        });
-                    });
-
-                    tools.appendChild(go);
-                    detail.appendChild(tools);
-                    detail.appendChild(answer);
-                } else if (tools.childNodes.length) {
-                    detail.appendChild(tools);
-                }
+                onPick(node);
             }
 
             graph.nodes.forEach(function (node) {
                 // An untitled box is named by its kind: the kind is not said
                 // twice.
                 var named = (node.name !== node.label) ? node.name + ', ' + node.label : node.name;
-                var group = make('g', {
+                var group = make('g', onPick ? {
                     'class': 'ws-fd-box' + (node.outbound ? ' is-outbound' : '') + (node.mark ? ' is-' + node.mark : ''),
                     tabindex: 0,
                     role: 'button',
                     'aria-label': named + (node.outbound ? ', ' + t('fd_outbound') : '')
                         + (node.mark ? ', ' + t(node.mark === 'added' ? 'fd_added' : 'fd_changed') : '')
                         + (node.said ? ', ' + node.said : '')
-                });
+                } : { 'class': 'ws-fd-box is-still' + (node.outbound ? ' is-outbound' : '') + (node.mark ? ' is-' + node.mark : '') });
                 var cut = function (text, most) {
                     return text.length > most ? text.slice(0, most - 1) + '…' : text;
                 };
@@ -11383,15 +11585,19 @@
                 }
 
                 groups[node.id] = group;
-                group.addEventListener('click', function () {
-                    show(node, group);
-                });
-                group.addEventListener('keydown', function (event) {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
+
+                if (onPick) {
+                    group.addEventListener('click', function () {
                         show(node, group);
-                    }
-                });
+                    });
+                    group.addEventListener('keydown', function (event) {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            show(node, group);
+                        }
+                    });
+                }
+
                 drawing.appendChild(group);
             });
 
@@ -11401,16 +11607,6 @@
 
             pane.appendChild(drawing);
             wrap.appendChild(pane);
-
-            // A patch's removed boxes; the waiting card lists them among
-            // its changes already.
-            if (graph.flow_id && graph.removed.length) {
-                wrap.appendChild(el('div', 'ws-draft-meta', t('fd_removed', graph.removed.join(', '))));
-            }
-
-            if (!onPick) {
-                wrap.appendChild(detail);
-            }
         },
 
         changesNode: function (message) {

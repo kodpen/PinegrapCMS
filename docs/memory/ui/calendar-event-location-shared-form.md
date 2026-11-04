@@ -5,11 +5,12 @@ description: The calendar event location create and edit screens share includes/
 
 ## Where is the calendar event location form?
 - `includes/forms/calendar_event_location_form.php` (gate `PG_FUNCTIONS_DIR`). `add_calendar_event_location.php` and `edit_calendar_event_location.php` stay at the root as thin wrappers and `require_once` it.
-- `pg_calendar_event_location_form_card($liveform)` prints the Options card (the location name).
+- `pg_calendar_event_location_form_cards($liveform, $status_rows)` prints the form column (Options card with the name) and the sticky status column: a Summary of the name (follows typing), then the screen's rows from `pg_calendar_event_location_form_status_row()`. Create adds Events "None yet"; edit adds the events booking the location and Last Modified (one SELECT with a COUNT subquery and the user join, read on every visit; only the name assignment waits on `field_in_session('name')`).
+- `pg_calendar_event_location_form_layout($cards, $buttons)` wraps them in the row with the sticky save bar (`ui/edit-screen-wide-layout.md`).
 - `pg_calendar_event_location_form_name_in_use($name, $id)` (`null` on create, the posted id on edit) checks the name through `db_q()`; the screen marks the error and redirects.
 
 ## What stays in the screens?
 - The gates differ and stay as they were: create calls `validate_calendars_access()`, edit only refuses role 3 (both refuse role 3).
 - Create: the required check, the INSERT, the log line and notice.
-- Edit: the not-found guard, the record load (skipped while the liveform holds a typed `name`, so a refused rename, blank or already in use, comes back showing what was typed; `remove_form()` after the page clears it), delete (with the event xref rows), the required check, the UPDATE.
+- Edit: the not-found guard, the record load (the name not assigned while the liveform holds a typed `name`, so a refused rename, blank or already in use, comes back showing what was typed; `remove_form()` after the page clears it), delete (with the event xref rows), the required check, the UPDATE.
 - Tests: `tests/calendar_event_location_form_test.php`, `tests/calendar_event_location_refused_name_test.php`; `db_q_small_functions_test.php` and `db_q_regions_styles_menus_test.php` count the `db_q()` calls of the screens and the form.

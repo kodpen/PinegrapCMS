@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'fonts', 'glyph', 'warp', 'outline', 'builder');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'fonts', 'glyph', 'warp', 'outline', 'builder');
 }
 
 /**
@@ -114,6 +114,7 @@ function pg_image_editor_strings_core()
         'tool_scissors'  => lang('Scissors'),
         'tool_warp'      => lang('Warp'),
         'tool_builder'   => lang('Shape builder'),
+        'tool_area'      => lang('Select area'),
         'tool_artboard'  => lang('Canvas'),
         'tool_image'     => lang('Image'),
         'tool_export'    => lang('Export'),
@@ -4761,5 +4762,39 @@ function pg_image_editor_strings_builder()
         'builderDrag'    => lang('Dragging across regions'),
         'builderMerge'   => lang('Merge'),
         'builderRemove'  => lang('Remove'),
+    );
+}
+
+// -- Area selection (pg_image_editor_area.js) --
+
+/**
+ * The Select area part's labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_area()
+{
+    return array(
+        'hintArea'        => lang('Drag on the picture to select an area. Shift adds to the selection, Alt takes away from it.'),
+        'areaIntro'       => lang('Draw a shape on the picture, or click it with the magic wand, to select an area.'),
+        'areaShape'       => lang('Shape'),
+        'areaRect'        => lang('Rectangle'),
+        'areaEllipse'     => lang('Ellipse'),
+        'areaLasso'       => lang('Lasso'),
+        'areaPolygon'     => lang('Polygon'),
+        'areaWand'        => lang('Magic wand'),
+        'areaMode'        => lang('Selection'),
+        'areaNew'         => lang('New'),
+        'areaAdd'         => lang('Add'),
+        'areaSub'         => lang('Subtract'),
+        'areaTolerance'   => lang('Tolerance'),
+        'areaContiguous'  => lang('Contiguous'),
+        'areaFeather'     => lang('Feather'),
+        'areaInvert'      => lang('Invert'),
+        'areaClear'       => lang('Deselect'),
+        'areaRedact'      => lang('Redact the selection'),
+        'areaPolygonNote' => lang('Click to add corners; double-click, or click the first corner, to close the shape.'),
+        'areaWandNote'    => lang('The magic wand cannot read this picture.'),
+        'areaLimit'       => lang('The selection has as many shapes as it can hold; invert or deselect it to go on.'),
     );
 }

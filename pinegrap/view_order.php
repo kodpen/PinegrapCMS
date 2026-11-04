@@ -2339,8 +2339,10 @@ if (!$_POST) {
     }
 
 
-	// Get Payment Gateway for button bar output
-	$output_gateway_buttons = '';
+	// The payment provider's panel is a row of the toolbar's three-dots menu;
+	// the refund stays on the bar.
+	$output_gateway_menu_item = '';
+	$output_refund_button = '';
     $output_payment_mode = '';
 	if(ECOMMERCE_PAYMENT_GATEWAY == 'Iyzipay'){
         // if test or live mode for iyzipay gateway. 
@@ -2352,7 +2354,7 @@ if (!$_POST) {
         // The payment provider's own merchant panel, at this order's
         // transaction when one is known, in a tab of its own.
         $gateway_url = 'https://' . $output_payment_mode . '.iyzipay.com/' . ($transaction_id ? 'transactions/' . rawurlencode($transaction_id) : 'dashboard');
-        $output_gateway_buttons = '<a class="btn btn-sm btn-text theme-secondary" href="' . h($gateway_url) . '" target="_blank" rel="noopener noreferrer" title="' . h(ECOMMERCE_PAYMENT_GATEWAY) . '"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => '{var:1} panel', 'vars' => ECOMMERCE_PAYMENT_GATEWAY))) . '</a>';
+        $output_gateway_menu_item = '<a class="menu-item pg-link-body-emphasis" href="' . h($gateway_url) . '" target="_blank" rel="noopener noreferrer" title="' . h(ECOMMERCE_PAYMENT_GATEWAY) . '"><i class="bi bi-box-arrow-up-right me-3" aria-hidden="true"></i>' . h(lang(array('string' => '{var:1} panel', 'vars' => ECOMMERCE_PAYMENT_GATEWAY))) . '</a>';
 
 	}
 
@@ -2371,7 +2373,7 @@ if (!$_POST) {
         && ($refund_remaining_cents > 0);
 
     if ($refund_offered) {
-        $output_gateway_buttons .= '<button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#payment-refund-modal"><i class="bi bi-arrow-return-left me-1"></i>' . lang('Refund') . '</button>';
+        $output_refund_button = '<button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#payment-refund-modal"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . lang('Refund') . '</button>';
     }
 
     // With the ERP on, a card refund is chosen by line and quantity instead of
@@ -2676,7 +2678,9 @@ if (!$_POST) {
 
 
     // Build Parasut action buttons if API integration is enabled and credentials are set.
-    $output_parasut_buttons      = '';
+    // Paraşüt's buttons are rows of the toolbar's three-dots menu: menu rows
+    // carry no colour, so the badges tell the document's state.
+    $output_parasut_menu_items   = array();
     $output_parasut_forms        = '';
     $output_parasut_status_rows  = '';
     if (parasut_order_buttons_on()) {
@@ -2789,7 +2793,6 @@ if (!$_POST) {
         // Paraşüt holds the first, and creates one only if it was deleted there.
         $output_parasut_shipment_button = '';
         if ($has_shippable) {
-            $shipment_btn_class = $parasut_shipment_id ? 'theme-success' : ($is_mixed ? 'theme-warning' : 'theme-secondary');
             $shipment_btn_title = ($parasut_shipment_id !== '')
                 ? h(lang('This order already has a shipment document in Paraşüt.'))
                 : ($is_mixed ? h(lang('E-Shipment (only shippable items will be included)')) : 'Paraşüt ' . h(lang('E-Shipment')));
@@ -2798,8 +2801,8 @@ if (!$_POST) {
                 title="' . $shipment_btn_title . '"';
             $output_parasut_shipment_button = '
             <button type="button"
-                class="btn btn-sm btn-text ' . $shipment_btn_class . '"' . $shipment_btn_action . '>
-                <i class="bi bi-truck me-1"></i>' . lang('E-Shipment') . $shipment_mixed_icon . $output_parasut_shipment_badge . '
+                class="menu-item pg-link-body-emphasis"' . $shipment_btn_action . '>
+                <i class="bi bi-truck me-3" aria-hidden="true"></i>Paraşüt ' . lang('E-Shipment') . $shipment_mixed_icon . $output_parasut_shipment_badge . '
             </button>';
         }
 
@@ -2820,18 +2823,15 @@ if (!$_POST) {
         $output_parasut_invoice_button = ($parasut_erp_invoice['state'] === 'none')
             ? '
             <button type="button"
-                class="btn btn-sm btn-text ' . ($parasut_invoice_sent ? ($parasut_exported ? 'theme-success' : 'theme-warning') : ($parasut_invoice_unsure ? 'theme-warning' : 'theme-secondary')) . '"' . $output_parasut_invoice_action . '>
-                <i class="bi bi-receipt me-1"></i>' . lang('Create Invoice') . $output_parasut_invoice_badge . '
+                class="menu-item pg-link-body-emphasis"' . $output_parasut_invoice_action . '>
+                <i class="bi bi-receipt me-3" aria-hidden="true"></i>Paraşüt ' . lang('Create Invoice') . $output_parasut_invoice_badge . '
             </button>'
             : '';
 
-        $output_parasut_buttons = '
-        <div class="btn-group btn-group-sm flex-wrap">' . $output_parasut_invoice_button . '
-            ' . $output_parasut_shipment_button . '
-        </div>';
+        $output_parasut_menu_items = array_values(array_filter(array($output_parasut_invoice_button, $output_parasut_shipment_button)));
 
         if ($parasut_in_erp || !$parasut_billable) {
-            $output_parasut_buttons = '';
+            $output_parasut_menu_items = array();
             $output_parasut_forms = '';
         }
     }
@@ -2840,7 +2840,8 @@ if (!$_POST) {
     // document when one exists, a button to issue it otherwise. A counter sale
     // with no customer is billed to the account named on the settings card, so
     // it qualifies through erp_account_id rather than a contact.
-    $output_erp_buttons = '';
+    // Rows of the toolbar's three-dots menu.
+    $output_erp_menu_items = array();
     if (defined('ERP_ENABLED') && ERP_ENABLED && (((int) $user['role'] < 3) || !empty($user['manage_erp'])) && waf_table_has_column('orders', 'erp_invoice_id')) {
         $erp_order = db_item("SELECT status, contact_id, erp_invoice_id, erp_account_id FROM orders WHERE id = '" . (int) $_GET['id'] . "' LIMIT 1");
         // The ERP's read-only right (the accountant's) sees the documents but
@@ -2856,31 +2857,25 @@ if (!$_POST) {
         if ($erp_order && in_array((string) $erp_order['status'], array('complete', 'exported'), true) && waf_table_has_column('erp_waybills', 'order_id')) {
             $erp_waybill = db_item("SELECT id, full_number FROM erp_waybills WHERE order_id = '" . (int) $_GET['id'] . "' AND status <> 'cancelled' ORDER BY id ASC LIMIT 1");
             if ($erp_waybill) {
-                $output_erp_waybill = '
-                <a class="btn btn-sm btn-text theme-success" href="edit_erp_waybill.php?id=' . (int) $erp_waybill['id'] . '" title="' . lang('Delivery Note') . '"><i class="bi bi-truck me-1"></i>' . h($erp_waybill['full_number']) . '</a>';
+                $output_erp_waybill = '<a class="menu-item pg-link-body-emphasis" href="edit_erp_waybill.php?id=' . (int) $erp_waybill['id'] . '" title="' . lang('Delivery Note') . '"><i class="bi bi-truck me-3" aria-hidden="true"></i>' . h($erp_waybill['full_number']) . '</a>';
             } elseif ($erp_writes && (((int) $erp_order['contact_id'] > 0) || ((int) $erp_order['erp_account_id'] > 0))) {
-                $output_erp_waybill = '
-                <a class="btn btn-sm btn-text theme-secondary" href="add_erp_waybill.php?order_id=' . (int) $_GET['id'] . '" title="' . lang('Delivery Note') . '"><i class="bi bi-truck me-1"></i>' . lang('Issue the Delivery Note') . '</a>';
+                $output_erp_waybill = '<a class="menu-item pg-link-body-emphasis" href="add_erp_waybill.php?order_id=' . (int) $_GET['id'] . '" title="' . lang('Delivery Note') . '"><i class="bi bi-truck me-3" aria-hidden="true"></i>' . lang('Issue the Delivery Note') . '</a>';
             }
         }
 
         if ($erp_invoice) {
-            $output_erp_buttons = '
-            <div class="btn-group btn-group-sm flex-wrap">
-                <a class="btn btn-sm btn-text theme-success" href="edit_erp_invoice.php?id=' . (int) $erp_invoice['id'] . '" title="' . lang('Invoice') . '"><i class="bi bi-receipt me-1"></i>' . h($erp_invoice['full_number']) . '</a>' . $output_erp_waybill . '
-            </div>';
+            $output_erp_menu_items = array('<a class="menu-item pg-link-body-emphasis" href="edit_erp_invoice.php?id=' . (int) $erp_invoice['id'] . '" title="' . lang('Invoice') . '"><i class="bi bi-receipt me-3" aria-hidden="true"></i>' . h($erp_invoice['full_number']) . '</a>', $output_erp_waybill);
         } elseif ($erp_writes && $erp_order && in_array((string) $erp_order['status'], array('complete', 'exported'), true)) {
             if (((int) $erp_order['contact_id'] > 0) || ((int) $erp_order['erp_account_id'] > 0)) {
-                $output_erp_buttons = '
-            <form method="post" action="add_erp_invoice.php" class="d-inline disable_shortcut">
+                $output_erp_menu_items = array('
+            <form method="post" action="add_erp_invoice.php" class="d-contents disable_shortcut">
                 ' . get_token_field() . '
                 <input type="hidden" name="order_id" value="' . (int) $_GET['id'] . '" />
                 <input type="hidden" name="from_order_screen" value="1" />
-                <button type="submit" name="submit_create" value="Create" class="btn btn-sm btn-text theme-secondary" data-confirm-content="' . h(lang('An invoice is issued for this order from the ERP, with a number from the sales series. Continue?')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Issue the Invoice') . '</button>
-            </form>' . $output_erp_waybill;
+                <button type="submit" name="submit_create" value="Create" class="menu-item pg-link-body-emphasis" data-confirm-content="' . h(lang('An invoice is issued for this order from the ERP, with a number from the sales series. Continue?')) . '"><i class="bi bi-receipt me-3" aria-hidden="true"></i>' . lang('Issue the Invoice') . '</button>
+            </form>', $output_erp_waybill);
             } else {
-                $output_erp_buttons = '
-            <span class="btn btn-sm btn-text theme-secondary disabled" title="' . h(lang('No walk-in sales account is named on the ERP settings card, so this sale cannot be invoiced unless a customer is picked.')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Issue the Invoice') . '</span>';
+                $output_erp_menu_items = array('<span class="menu-item disabled" aria-disabled="true" title="' . h(lang('No walk-in sales account is named on the ERP settings card, so this sale cannot be invoiced unless a customer is picked.')) . '"><i class="bi bi-receipt me-3" aria-hidden="true"></i>' . lang('Issue the Invoice') . '</span>');
             }
         }
     }
@@ -2895,7 +2890,7 @@ if (!$_POST) {
         require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_flow.php');
         $output_erp_documents = erp_order_flow_card((int) $_GET['id']);
         if ($output_erp_documents !== '') {
-            $output_erp_buttons = '';
+            $output_erp_menu_items = array();
         }
     }
 
@@ -2903,12 +2898,28 @@ if (!$_POST) {
     $output_workspace_button = '';
     if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
         require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
-        $workspace_button = ws_record_button($user, 'order', (int) $_GET['id'], lang('Order') . ' ' . $order_number, 'btn btn-sm btn-text theme-secondary');
-        if ($workspace_button !== '') {
-            $output_workspace_button = '
-            <div class="btn-group btn-group-sm flex-wrap">' . $workspace_button . '</div>';
-        }
+        $output_workspace_button = ws_record_button($user, 'order', (int) $_GET['id'], lang('Order') . ' ' . $order_number, 'menu-item pg-link-body-emphasis');
     }
+
+    // The bar keeps the everyday work (Mark as paid, Refund, Print, Cancel
+    // Order); the payment provider's panel, the integrations and the
+    // workspace go into the three-dots menu, so the bar never holds more
+    // than four buttons beside the primary one.
+    $toolbar_more = array_values(array_filter(array_merge(
+        array($output_gateway_menu_item),
+        $output_parasut_menu_items,
+        $output_erp_menu_items,
+        array($output_workspace_button)
+    ), 'strlen'));
+    $output_toolbar_more = $toolbar_more
+        ? '<div class="pg-menu-wrap">
+                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-display="static" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                <ul class="menu pg-menu-end">
+                    <li>' . implode('</li>
+                    <li>', $toolbar_more) . '</li>
+                </ul>
+            </div>'
+        : '';
 
     echo
 
@@ -2936,13 +2947,11 @@ if (!$_POST) {
                 ' . pg_screen_toolbar(array(
                     'primary' => $output_mark_paid_button,
                     'secondary' => array(
-                        $output_gateway_buttons,
-                        $output_cancel_button,
-                        $output_parasut_buttons,
-                        $output_erp_buttons,
-                        $output_workspace_button,
+                        $output_refund_button,
                         '<button type="button" class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Print Order')) . '" aria-label="' . h(lang('Print Order')) . '" onclick="window.open(\'print_order.php?id=' . (int)$_GET['id'] . '\', \'\', \'width=794, height=1123, resizable=1, scrollbars=1\'); return false;"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print') . '</button>',
+                        $output_cancel_button,
                     ),
+                    'overflow' => $output_toolbar_more,
                 ), array('class' => 'pg-print-none')) . '
                 ' . $output_erp_documents . '
                 <form method="post">

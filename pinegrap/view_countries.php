@@ -17,13 +17,13 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
-// only ever appended to further below, so it has to start out empty
-$output_rows = '';
+// Every country is printed: the list table driver sorts and searches them
+// in the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
 $user = validate_user();
 validate_ecommerce_access($user);
-
-$number_of_results = 0;
 
 // The columns this list sorts by, in the order the table shows them.
 // pg_list_state() keeps the choice in the session as a code, so it survives
@@ -91,43 +91,32 @@ if ((($sort_levels[0]['sort'] ?? '') === 'name') && $country_rows) {
 }
 
 foreach ($country_rows as $row) {
-    $id = $row['id'];
-    $name = h($row['label']);
-    $code = h($row['code']);
-    $zip_code_required = $row['zip_code_required'];
-    $transit_adjustment_days = $row['transit_adjustment_days'];
-    $default_selected = $row['default_selected'];
-    $username = $row['user'];
-    $timestamp = $row['timestamp'];
-
-    $zip_code_required_check_mark = '';
-
-    if ($zip_code_required) {
-        $zip_code_required_check_mark = '<span class="material-icons">task_alt</span>';
-    }
-
-    if ($row['default_selected']) {
-        $default_selected = '<span class="material-icons">task_alt</span>';
-    } else {
-        $default_selected = '';
-    }
-    $output_link_url = 'edit_country.php?id=' . $id;
-    
-    $number_of_results++;
-    
-    $output_rows .= '
-        <tr>
-            <td class="align-middle text-start action-buttons">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-            </td>
-            <td class="align-middle chart_label">' . $name . '</td>
-            <td class="align-middle">' . $code . '</td>
-            <td style="text-align: center">' . $zip_code_required_check_mark . '</td>
-            <td style="text-align: right;">' . $transit_adjustment_days . '</td>
-            <td style="text-align: center">' . $default_selected . '</td>
-            <td class="align-middle">' . pg_list_when($timestamp, $username) . '</td>
-        </tr>';
+    $list_rows[] = array(
+        'id' => (int) $row['id'],
+        'cells' => array(
+            'name' => pg_list_cell('<a href="edit_country.php?id=' . (int) $row['id'] . '" data-pg-open>' . h($row['label']) . '</a>'),
+            'code' => pg_list_cell(h($row['code'])),
+            'zip_code_required' => pg_list_table_check_cell(!empty($row['zip_code_required'])),
+            'transit_adjustment' => pg_list_cell(h($row['transit_adjustment_days']), 'align-middle', array('data-pg-sort-value' => (int) $row['transit_adjustment_days'])),
+            'default' => pg_list_table_check_cell(!empty($row['default_selected'])),
+            'last_modified' => pg_list_table_when_cell($row['timestamp'], (string) $row['user']),
+        ),
+    );
 }
+
+$list = pg_list_table_printed(array(
+    'list' => 'view_countries',
+    'columns' => array(
+        'name' => array('heading' => lang('Name')),
+        'code' => array('heading' => lang('Code')),
+        'zip_code_required' => array('heading' => lang('Zip Code Required'), 'kind' => 'check'),
+        'transit_adjustment' => array('heading' => lang('Extra Delivery Days'), 'kind' => 'number'),
+        'default' => array('heading' => lang('Default'), 'kind' => 'check'),
+        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+    ),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+));
 
 echo
     pg_page_shell([
@@ -139,31 +128,14 @@ echo
     ]) . '
 <main id="content" class="container-fluid">
     <div class="row">
-            <div class="col-12">
-                ' . pg_screen_toolbar(array(
-                    'primary' => array('label' => lang('Create'), 'url' => 'add_country.php', 'icon' => 'bi-plus-circle'),
-                    'search'  => pg_list_sort_menu('view_countries.php', $sort_columns, $sort_levels, $sort_default),
-                )) . '
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative">
-                        <table class="chart table-hover table" style="width:100%;display:none">
-                            <thead>
-                                <tr>
-                                    <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                    <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                    <th>' . get_column_heading(lang('Code'), $sort_levels, '', '', 'code') . '</th>
-                                    <th style="text-align: center">' . get_column_heading(lang('Zip Code Required'), $sort_levels, '', '', 'zip_code_required') . '</th>
-                                    <th style="text-align: right;">' . get_column_heading(lang('Extra Delivery Days'), $sort_levels, '', '', 'transit_adjustment') . '</th>
-                                    <th style="text-align: center">' . get_column_heading(lang('Default'), $sort_levels, '', '', 'default') . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>' . $output_rows . '</tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+        <div class="col-12">
+            ' . pg_screen_toolbar(array(
+                'primary' => array('label' => lang('Create'), 'url' => 'add_country.php', 'icon' => 'bi-plus-circle'),
+                'search'  => array(pg_list_table_search_box('view_countries'), pg_list_sort_menu('view_countries.php', $sort_columns, $sort_levels, $sort_default)),
+            )) . '
+            ' . pg_list_table_html($list['source'], $list['page'], lang('All Countries')) . '
         </div>
-    
-</main>' .
+    </div>
+</main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();

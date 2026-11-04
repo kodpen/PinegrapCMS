@@ -1095,6 +1095,9 @@ function ws_flow_draft_js_strings()
         'fd_box_try'       => lang('Try this box'),
         'fd_box_pick'      => lang('Pick a box to see it here.'),
         'fd_try_refusal'   => ws_js_template('It would not run: {var:1}', 1),
+        'fd_open'          => lang('Open the flow'),
+        'fd_larger'        => lang('Larger'),
+        'fd_smaller'       => lang('Smaller'),
     );
 }
 

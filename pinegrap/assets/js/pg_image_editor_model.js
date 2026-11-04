@@ -150,7 +150,7 @@
     // ---- tools ----
 
     var PROFILES = {
-        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'builder', 'motion'],
+        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'area', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'builder', 'motion'],
         canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'vector', 'scissors', 'warp', 'builder', 'frame', 'motion'],
         annotate: ['arrow', 'rect', 'text', 'pen', 'redact'],
         optimise: ['export']
@@ -158,7 +158,7 @@
 
     // Tools a caller may name: the rail's and the marking tools of the mini
     // bar (one draw kind each).
-    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'builder', 'artboard', 'image', 'export', 'motion',
+    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'area', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'builder', 'artboard', 'image', 'export', 'motion',
         'arrow', 'line', 'rect', 'ellipse', 'pen'];
 
     // The tools of one call: the caller's list (known names, first mention
@@ -1882,11 +1882,17 @@
             return (l.trace || []).map(function (p) { return apply(m, p[0] * l.w, p[1] * l.h); });
         },
 
+        // How far a feathered area's soft edge reaches past its outline:
+        // three sigma of a blur of half the feather.
+        redactGrow: function (l) {
+            return ((l.shape === 'area') && l.feather) ? 1.5 * l.feather : 0;
+        },
+
         // The output pixels an area covers: its corners (a brush grown by
         // half its width) carried by the crop box to w x h, whole pixels,
         // inside the output; null when it lies outside.
         redactRegion: function (l, box, w, h) {
-            var sx = w / box.w, sy = h / box.h, grow = (l.shape === 'brush') ? (l.size || 0) / 2 : 0;
+            var sx = w / box.w, sy = h / box.h, grow = (l.shape === 'brush') ? (l.size || 0) / 2 : REDACT.redactGrow(l);
             var pts = (l.shape === 'brush') ? REDACT.brushPoints(l) : corners(l);
             var xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
             var x0 = Math.max(0, Math.floor((Math.min.apply(null, xs) - grow - box.x) * sx));
@@ -6819,6 +6825,312 @@
         builderMerge: builderMerge, builderStack: builderStack, ringKnots: ringKnots, ringsPath: ringsPath
     };
 
+    // -- area selection (pg_image_editor_area.js) --
+
+    // A selection is kept in the document as doc.selection: { ops, invert,
+    // feather }. Each op adds (op 'add') or takes away ('sub') a shape:
+    // kind rect, ellipse, lasso or polygon with its ring in the turned
+    // space, or kind wand with the seed point (at, turned space),
+    // tolerance (0-100) and contiguous. A wand's outline is worked out from
+    // the picture each time the document opens, so only its seed is kept.
+
+    var AREA_MAX_POINTS = 4000, AREA_MAX_OPS = 40;
+
+    function areaRound(v) {
+        return Math.round(v * 100) / 100;
+    }
+
+    // A ring as clipRings() gives one: wound as an outer ring, null when it
+    // has no area.
+    function areaRing(r) {
+        var out = nestRings([r.map(function (p) { return [areaRound(p[0]), areaRound(p[1])]; })]);
+
+        return out.length ? out[0] : null;
+    }
+
+    // The rectangle between two corners.
+    function areaRect(a, b) {
+        var x0 = Math.min(a[0], b[0]), y0 = Math.min(a[1], b[1]), x1 = Math.max(a[0], b[0]), y1 = Math.max(a[1], b[1]);
+
+        return ((x1 - x0 < 0.5) || (y1 - y0 < 0.5)) ? null : areaRing([[x0, y0], [x1, y0], [x1, y1], [x0, y1]]);
+    }
+
+    // The ellipse in the rectangle between two corners, as 96 points.
+    function areaEllipse(a, b) {
+        var x0 = Math.min(a[0], b[0]), y0 = Math.min(a[1], b[1]), rx = Math.abs(b[0] - a[0]) / 2, ry = Math.abs(b[1] - a[1]) / 2, pts = [], i;
+
+        if ((rx < 0.25) || (ry < 0.25)) {
+            return null;
+        }
+
+        for (i = 0; i < 96; i++) {
+            pts.push([x0 + rx + rx * Math.cos(i * Math.PI / 48), y0 + ry + ry * Math.sin(i * Math.PI / 48)]);
+        }
+
+        return areaRing(pts);
+    }
+
+    // The ring a lasso or a polygon went round: points closer than step to
+    // the last one kept are dropped, a long trace is thinned to
+    // AREA_MAX_POINTS; null below three points or without area.
+    function areaLasso(pts, step) {
+        var out = [];
+
+        (pts || []).forEach(function (p) {
+            var last = out[out.length - 1];
+
+            if (!last || (Math.hypot(p[0] - last[0], p[1] - last[1]) >= (step || 0))) {
+                out.push([p[0], p[1]]);
+            }
+        });
+
+        if ((out.length > 2) && (Math.hypot(out[0][0] - out[out.length - 1][0], out[0][1] - out[out.length - 1][1]) < (step || 0))) {
+            out.pop();
+        }
+
+        if (out.length > AREA_MAX_POINTS) {
+            var every = out.length / AREA_MAX_POINTS;
+
+            out = out.filter(function (p, i) { return Math.floor(i / every) !== Math.floor((i - 1) / every); });
+        }
+
+        return (out.length > 2) ? areaRing(out) : null;
+    }
+
+    // Whether a drag went at least slack from its press at any point of its
+    // path (pts), in the same units: a lasso closed on its first point ends
+    // where it began and is still a shape.
+    function areaDragged(at, pts, slack) {
+        return (pts || []).some(function (p) { return Math.hypot(p[0] - at[0], p[1] - at[1]) >= slack; });
+    }
+
+    // The magic wand: 1 for each pixel of data (RGBA, w x h) whose channels
+    // are all within the tolerance (0-100 of 255) of the seed pixel's at x,
+    // y; with contiguous only those reached from the seed through such
+    // pixels (four neighbours). A seed off the picture takes nothing.
+    function wandMask(data, w, h, x, y, tolerance, contiguous) {
+        var mask = new Uint8Array(w * h), sx = Math.floor(x), sy = Math.floor(y), limit = clamp(Number(tolerance) || 0, 0, 100) * 2.55;
+
+        if ((sx < 0) || (sy < 0) || (sx >= w) || (sy >= h)) {
+            return mask;
+        }
+
+        var o = (sy * w + sx) * 4, r = data[o], g = data[o + 1], b = data[o + 2], a = data[o + 3];
+        var like = function (i) {
+            var q = i * 4;
+
+            return (Math.abs(data[q] - r) <= limit) && (Math.abs(data[q + 1] - g) <= limit)
+                && (Math.abs(data[q + 2] - b) <= limit) && (Math.abs(data[q + 3] - a) <= limit);
+        };
+        var i;
+
+        if (!contiguous) {
+            for (i = 0; i < w * h; i++) {
+                mask[i] = like(i) ? 1 : 0;
+            }
+
+            return mask;
+        }
+
+        var seen = new Uint8Array(w * h), stack = new Int32Array(w * h), top = 0;
+
+        stack[top++] = sy * w + sx;
+        seen[sy * w + sx] = 1;
+
+        while (top) {
+            i = stack[--top];
+
+            if (!like(i)) {
+                continue;
+            }
+
+            mask[i] = 1;
+
+            var px = i % w, py = (i - px) / w;
+
+            [[px > 0, i - 1], [px < w - 1, i + 1], [py > 0, i - w], [py < h - 1, i + w]].forEach(function (n) {
+                if (n[0] && !seen[n[1]]) {
+                    seen[n[1]] = 1;
+                    stack[top++] = n[1];
+                }
+            });
+        }
+
+        return mask;
+    }
+
+    // The outline of a mask's pixels (w x h, 1 in) as rings in pixel units
+    // on the pixels' edges, holes included, wound as clipRings() gives them.
+    // Each edge between a pixel in and one out is walked with the pixel on
+    // its right; where two pixels touch only at a corner the walk turns
+    // right, so every ring is simple. Straight runs are one edge.
+    function maskRings(mask, w, h) {
+        var W = w + 1, outA = new Int32Array(W * (h + 1)).fill(-1), outB = new Int32Array(W * (h + 1)).fill(-1), rings = [], x, y;
+        var on = function (px, py) { return (px >= 0) && (py >= 0) && (px < w) && (py < h) && !!mask[py * w + px]; };
+        var add = function (from, to) {
+            if (outA[from] < 0) {
+                outA[from] = to;
+            } else {
+                outB[from] = to;
+            }
+        };
+
+        for (y = 0; y < h; y++) {
+            for (x = 0; x < w; x++) {
+                if (!on(x, y)) {
+                    continue;
+                }
+
+                if (!on(x, y - 1)) {
+                    add(y * W + x, y * W + x + 1);
+                }
+
+                if (!on(x + 1, y)) {
+                    add(y * W + x + 1, (y + 1) * W + x + 1);
+                }
+
+                if (!on(x, y + 1)) {
+                    add((y + 1) * W + x + 1, (y + 1) * W + x);
+                }
+
+                if (!on(x - 1, y)) {
+                    add((y + 1) * W + x, y * W + x);
+                }
+            }
+        }
+
+        var dir = function (a, b) { return [(b % W) - (a % W), Math.floor(b / W) - Math.floor(a / W)]; };
+        var take = function (v, d) {
+            var a = outA[v], b = outB[v], pick;
+
+            if (b < 0) {
+                pick = a;
+                outA[v] = -1;
+            } else if (a < 0) {
+                pick = b;
+                outB[v] = -1;
+            } else {
+                // Two ways on at a corner: the right turn (screen axes).
+                var da = dir(v, a), turnA = d[0] * da[1] - d[1] * da[0];
+
+                if (turnA > 0) {
+                    pick = a;
+                    outA[v] = -1;
+                } else {
+                    pick = b;
+                    outB[v] = -1;
+                }
+            }
+
+            return pick;
+        };
+        var v0;
+
+        for (v0 = 0; v0 < W * (h + 1); v0++) {
+            while (outA[v0] >= 0 || outB[v0] >= 0) {
+                var pts = [], v = v0, d = null, start = null, next, nd, guard = 0;
+
+                do {
+                    next = take(v, d || [0, 0]);
+
+                    if (next < 0) {
+                        break;
+                    }
+
+                    nd = dir(v, next);
+                    start = start || nd;
+
+                    // A corner only where the way turns.
+                    if (!d || (nd[0] !== d[0]) || (nd[1] !== d[1])) {
+                        pts.push([v % W, Math.floor(v / W)]);
+                    }
+
+                    d = nd;
+                    v = next;
+                } while ((v !== v0) && (++guard < 4 * W * (h + 1)));
+
+                // Back at the start on the way it left: no corner there.
+                if (d && start && (d[0] === start[0]) && (d[1] === start[1])) {
+                    pts.shift();
+                }
+
+                if (pts.length > 2) {
+                    rings.push(pts);
+                }
+            }
+        }
+
+        return nestRings(rings);
+    }
+
+    // Rings carried by the matrix m.
+    function mapRings(rings, m) {
+        return rings.map(function (r) { return r.map(function (p) { return apply(m, p[0], p[1]); }); });
+    }
+
+    // The selection's area as rings in the turned space: its shapes folded
+    // in order (a wand's rings from wands[i], skipped until worked out),
+    // inverted within frame { x, y, w, h } when sel.invert.
+    function selectionRings(sel, wands, frame) {
+        var acc = [];
+
+        if (!sel) {
+            return acc;
+        }
+
+        (sel.ops || []).slice(0, AREA_MAX_OPS).forEach(function (o, i) {
+            var rings = (o.kind === 'wand') ? (wands && wands[i]) : (o.ring ? [o.ring] : null);
+
+            if (!rings || !rings.length) {
+                return;
+            }
+
+            if (o.op === 'sub') {
+                acc = acc.length ? clipRings(acc, rings, 'difference') : [];
+            } else {
+                acc = acc.length ? clipRings(acc, rings, 'union') : nestRings(rings);
+            }
+        });
+
+        if (sel.invert && frame) {
+            var all = [[frame.x, frame.y], [frame.x + frame.w, frame.y], [frame.x + frame.w, frame.y + frame.h], [frame.x, frame.y + frame.h]];
+
+            acc = acc.length ? clipRings(nestRings([all]), acc, 'difference') : nestRings([all]);
+        }
+
+        return acc;
+    }
+
+    // A redaction area of the selection's rings: their box (rot 0) and the
+    // rings in parts of it, so the area moves, stretches and turns with its
+    // box; null for no rings.
+    function areaLayer(rings) {
+        if (!rings || !rings.length) {
+            return null;
+        }
+
+        var b = ringsBox(rings), w = Math.max(1, b[2] - b[0]), h = Math.max(1, b[3] - b[1]);
+        var part = function (v) { return Math.round(v * 1e5) / 1e5; };
+
+        return {
+            x: b[0], y: b[1], w: w, h: h, rot: 0, shape: 'area',
+            area: rings.map(function (r) { return r.map(function (p) { return [part((p[0] - b[0]) / w), part((p[1] - b[1]) / h)]; }); })
+        };
+    }
+
+    // An area redaction's rings in the turned space, its box turned as a
+    // brush's is.
+    function areaPoints(l) {
+        var m = mul(translate(l.x + l.w / 2, l.y + l.h / 2), mul(rotate(l.rot || 0), translate(-l.w / 2, -l.h / 2)));
+
+        return (l.area || []).map(function (r) { return r.map(function (p) { return apply(m, p[0] * l.w, p[1] * l.h); }); });
+    }
+
+    var SELECTION = {
+        AREA_MAX_OPS: AREA_MAX_OPS, areaDragged: areaDragged, areaRect: areaRect, areaEllipse: areaEllipse, areaLasso: areaLasso, wandMask: wandMask,
+        maskRings: maskRings, mapRings: mapRings, selectionRings: selectionRings, areaLayer: areaLayer, areaPoints: areaPoints
+    };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -6835,7 +7147,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, SCENES, PRESENT, OUTLINE, BUILDER].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

@@ -268,6 +268,11 @@ if (!$_POST) {
         // a value the form refuses is not written either.
         $reason = pg_email_campaign_profile_values_problem($values, ECOMMERCE && USER_MANAGE_ECOMMERCE);
 
+        // Before the upgrade adds the group action it would be stored as ''.
+        if (($reason === '') && in_array($action, pg_email_campaign_profile_group_actions(), true) && !pg_email_campaign_profile_group_action_ready()) {
+            $reason = lang('The contact group action waits for the database update that adds it.');
+        }
+
         if ($reason === '') {
             $reason = pg_email_campaign_profile_access_problem($values);
         }

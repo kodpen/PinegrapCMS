@@ -59,6 +59,14 @@ if (!$_POST || $errors) {
         $choices = pg_tax_zone_form_choices($id);
     }
 
+    // The last change, under the Summary.
+    $last_change = db_item(
+        "SELECT tax_zones.timestamp, user.user_username
+        FROM tax_zones
+        LEFT JOIN user ON user.user_id = tax_zones.user
+        WHERE tax_zones.id = '" . $id . "'");
+    $status_rows = pg_tax_zone_form_status_row(lang('Last Modified'), get_relative_time(array('timestamp' => (int) ($last_change['timestamp'] ?? 0))) . ((string) ($last_change['user_username'] ?? '') !== '' ? ' ' . h($last_change['user_username']) : ''));
+
     $output =
         pg_page_shell([
             'title'=> lang('Edit Tax Zone'),
@@ -77,15 +85,11 @@ if (!$_POST || $errors) {
                     <form name="form" action="edit_tax_zone.php" method="post">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $id . '">
-                        ' . pg_tax_zone_form_cards($values, $choices['countries'], $choices['states'], $errors) . '
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class="btn-group flex-wrap justify-content-center">
-                                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('tax zone')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
-                                </div>
-                            </div>
-                        </nav>
+                        ' . pg_tax_zone_form_layout(
+                            pg_tax_zone_form_cards($values, $choices['countries'], $choices['states'], $errors, $status_rows),
+                            '
+                                        <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" formnovalidate data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('tax zone')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>') . '
                     </form>
                 </div>
             </div>
