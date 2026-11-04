@@ -1117,8 +1117,9 @@ function create_auto_email_campaigns($properties)
 				</body>';
             $body = preg_replace('/<\/body>/i', $footer, $body);
         }
-        // Wrap long lines (RFC 821).
-        $body = wordwrap($body, 900, "\n", 1);
+        // No hard wrap: email() sends through PHPMailer, which encodes a line
+        // over 998 characters as quoted-printable; a cut wrap split words,
+        // URLs, multibyte characters and inline scripts.
         // If there are mail-merge fields, then replace in body.
         if ($fields) {
             $body = replace_variables(array(

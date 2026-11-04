@@ -250,6 +250,11 @@ function _pg_acct_software_path()
 
 function _pg_acct_signed_in()
 {
+    // A page drawn as an e-mail body is read by its recipients, not by the
+    // visitor whose request draws it (a campaign is drawn in the sender's
+    // panel request): it shows nobody's account, address book or links.
+    $ctx = function_exists('pg_sw_render_context') ? pg_sw_render_context() : array();
+    if (!empty($ctx['email'])) return false;
     if (defined('USER_LOGGED_IN')) return USER_LOGGED_IN === true;
     return function_exists('pg_session_signed_in') && pg_session_signed_in();
 }

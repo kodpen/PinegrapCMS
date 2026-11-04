@@ -110,7 +110,7 @@ function test_email_campaign_shared_form_headings()
 	pg_assert_false(strpos(pg_email_campaign_format_row(lang('HTML'), true), '<label') !== false, 'a fixed format names no missing field');
 
 	$purpose = pg_email_campaign_purpose_card('commercial');
-	pg_assert_contains('<legend class="form-label fs-md">' . lang('Purpose') . '</legend>', $purpose, 'the purpose radios have a legend');
+	pg_assert_contains('<legend class="visually-hidden">' . lang('Purpose') . '</legend>', $purpose, 'the purpose radios have a legend, read only by screen readers under the card title');
 	pg_assert_false(strpos(pg_email_campaign_purpose_card('commercial', true), '<label') !== false, 'the read-only purpose names no missing field');
 }
 

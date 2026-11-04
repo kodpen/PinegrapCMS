@@ -161,7 +161,7 @@ if (!$_POST) {
         
         $output_bcc_email_address = '<div class="row"><div class="col-12 md:col-auto"><input value="' . h($bcc_email_address) . '" type="text" class="form-control text-end" id="bcc_email_address" aria-label="' . h(lang('BCC E-mail Address')) . '" name="bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"></div></div>';
 
-        $output_buttons = '<button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>';
+        $output_buttons = '<button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="bi bi-save me-3" aria-hidden="true"></span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>';
         $output_form_end = '</form>';
         
     // else the e-mail campaign is complete, so prepare information for viewing
@@ -396,8 +396,7 @@ if (!$_POST) {
             'icon'=>'campaign', 
             'heading'=> $output_heading,
             'heading_description' => $output_subheading,
-            'cancel'=>array('enable'=>'true','url'=>'view_email_campaigns.php')
-        ,
+            'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaigns.php')),
             'breadcrumb' => array(array('label' => lang('My Campaigns'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaigns.php'), array('label' => $output_heading)),
         )
     ) . '
@@ -444,6 +443,14 @@ if (!$_POST) {
 // else form has been submitted
 } else {
     validate_token_field();
+
+    // The sender name, body and return address are text: one posted as an
+    // array (from_name[]=x) ended in a fatal error, a missing send_to in
+    // warnings. The sender name goes into the From header, so it is trimmed
+    // like the subject and the addresses.
+    $_POST['from_name'] = trim(pg_email_campaign_posted_text($_POST, 'from_name'));
+    $_POST['body'] = pg_email_campaign_posted_text($_POST, 'body');
+    $_POST['send_to'] = pg_email_campaign_posted_text($_POST, 'send_to');
     
     // check if the e-mail campaign is complete
     $query =
@@ -501,7 +508,7 @@ if (!$_POST) {
 
     // if the format is plain text, then allow the body to be updated
     if ($format == 'plain_text') {
-        $sql_body = "body = '" . escape($_POST['body'] ?? '') . "',";
+        $sql_body = "body = '" . escape($_POST['body']) . "',";
     }
 
     $sql_bcc_email_address = "";
@@ -525,7 +532,7 @@ if (!$_POST) {
             status = '" . escape($new_status) . "',
             subject = '" . escape(trim((string) $_POST['subject'])) . "',
             " . $sql_body . "
-            from_name = '" . escape($_POST['from_name'] ?? '') . "',
+            from_name = '" . escape($_POST['from_name']) . "',
             from_email_address = '" . escape(trim((string) $_POST['from_email_address'])) . "',
             reply_email_address = '" . escape(trim((string) ($_POST['reply_email_address'] ?? ''))) . "',
             " . $sql_bcc_email_address . "
@@ -550,7 +557,7 @@ if (!$_POST) {
 
     // If there is a send to set, then forward user to send to.
     if ($_POST['send_to'] != '') {
-        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($_POST['send_to']));
         
     // Otherwise there is not a send to set, so forward user to view e-mail campaigns screen.
     } else {

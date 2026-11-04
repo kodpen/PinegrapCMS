@@ -115,7 +115,7 @@ function test_email_campaign_form_side_cards_fit_the_column()
 
 	$html = pg_email_campaign_purpose_card('commercial');
 	pg_assert_contains('<label class="" for="purpose_commercial">' . lang('Commercial') . '</label>', $html, 'short radio label');
-	pg_assert_contains('<div class="form-text" id="purpose_commercial_help">' . lang('send email to opted-in contacts only. Example: \'We have an offer for you\'') . '</div>', $html, 'the example under the radio');
+	pg_assert_contains('<div class="form-text" id="purpose_commercial_help">' . lang('Send e-mail to opted-in contacts only. Example: \'We have an offer for you\'') . '</div>', $html, 'the example under the radio');
 	pg_assert_contains('aria-describedby="purpose_commercial_help"', $html, 'the radio is described by its example');
 }
 
