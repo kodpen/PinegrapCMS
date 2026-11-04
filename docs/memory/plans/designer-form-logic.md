@@ -19,4 +19,4 @@ description: Plan (owner 2026-11-02): designed forms get Shown-when rules, steps
 3. Owner: an unpaid record is saved, listed with an "Unpaid" badge, no confirmation mail until paid.
 
 ## Where does it start?
-- FL5b done (#6467), FL6b done (#6406); FL7 is next, FL8 last. Read `designer/README.md` key rules, `designer/custom-form-field-rules.md`, `custom-form-model.md`, `custom-form-render.md`, `designer-form-palette-and-fields.md`, `commerce/subscriptions-renewal.md`, `includes/payments/driver.php`. Steps: `designer-form-logic-steps.md`, `-steps-2.md`.
+- FL5b done (#6467), FL6b done (#6406), FL7 done (#6494); FL8 (close-out) is last. Read `designer/README.md` key rules, `designer/custom-form-field-rules.md`, `custom-form-model.md`, `custom-form-render.md`, `designer-form-palette-and-fields.md`, `commerce/subscriptions-renewal.md`, `includes/payments/driver.php`. Steps: `designer-form-logic-steps.md`, `-steps-2.md`.

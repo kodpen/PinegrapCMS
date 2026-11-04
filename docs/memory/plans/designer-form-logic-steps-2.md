@@ -18,6 +18,7 @@ description: Steps FL5-FL8 of plans/designer-form-logic.md: the payment step on 
 
 - FL7 (S) Templates. After FL5.
   - The Events template's registration takes an optional fee, the Cafe's catering request a deposit, the Courses' enrolment a fee: hidden fee products in the install dumps (question 2), the settings sheet values, `min_date` and `shown_when` where the Cafe and Clinic forms already branch. Installed sites get no data step. Memory: the templates' `designer/design-template-*.md` files.
+  - Done in #6494 (`designer/design-template-form-fees.md`).
 
 - FL8 (S) Close-out. After FL1-FL7.
   - PR body names `[NEW] Added conditional fields, multi-step forms and a payment step to the visual designer's forms`; decisions to `designer/`; the three plan files and the line in `feature-plans-2026-11.md` deleted; `php tools/memory_index.php`.
