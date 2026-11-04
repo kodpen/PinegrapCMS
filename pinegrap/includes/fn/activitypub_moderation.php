@@ -236,7 +236,20 @@ function pg_ap_forget_comments($actor_id)
         return 0;
     }
 
-    $result = db_q("SELECT id, page_id, item_type, item_id FROM comments WHERE remote_actor = ?", array($actor_id));
+    return pg_ap_remove_comments("remote_actor = ?", array($actor_id));
+}
+
+/**
+ * Removes the comments a condition selects, their notifications, and
+ * rebuilds the counters of the records they were on.
+ *
+ * @param string $where  a condition on comments with ? placeholders
+ * @param array  $params its values
+ * @return int how many comments were removed
+ */
+function pg_ap_remove_comments($where, $params)
+{
+    $result = db_q("SELECT id, page_id, item_type, item_id FROM comments WHERE " . $where, $params);
 
     if (!$result) {
         return 0;
@@ -254,7 +267,7 @@ function pg_ap_forget_comments($actor_id)
         return 0;
     }
 
-    db_q("DELETE FROM comments WHERE remote_actor = ?", array($actor_id));
+    db_q("DELETE FROM comments WHERE id IN (" . implode(',', $ids) . ")");
     db_q("DELETE FROM notifications WHERE comment_id IN (" . implode(',', $ids) . ")");
 
     foreach ($threads as $row) {
