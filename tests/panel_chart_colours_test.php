@@ -56,8 +56,12 @@ function test_panel_chart_colours_view_orders()
 	$source = panel_chart_colours_source('view_orders.php');
 
 	pg_assert_false(strpos($source, '--bs-secondary-color') !== false, 'view_orders.php reads an undefined variable for the chart ink');
-	pg_assert_contains('probe.style.color = "var(--pg-fg-2)";', $source, 'view_orders.php probes the panel ink');
-	pg_assert_contains('var ink = getComputedStyle(probe).color;', $source, 'view_orders.php reads the computed ink');
+	// Every colour, the ink included, is a --pg-* token resolved through
+	// one probe span: a token can hold light-dark() text.
+	pg_assert_contains('probe.style.color = "var(" + name + ", " + fallback + ")";', $source, 'view_orders.php probes each colour');
+	pg_assert_contains('return getComputedStyle(probe).color || fallback;', $source, 'view_orders.php reads the computed colour');
+	pg_assert_contains('var ink = color("--pg-fg-2", ', $source, 'view_orders.php resolves the panel ink');
+	pg_assert_false(strpos($source, 'color("--bs-') !== false, 'view_orders.php reads no Bootstrap 5 colour name for the charts');
 	pg_assert_same(2, substr_count($source, 'ticks: { color: ink'), 'view_orders.php: both bar scales have ink');
 	pg_assert_contains('legend: { position: "right", labels: { color: ink', $source, 'view_orders.php legend ink');
 	pg_assert_false(

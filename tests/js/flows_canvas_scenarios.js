@@ -1067,7 +1067,7 @@ module.exports = [
     },
 
     {
-        name: 'New flow makes an empty draft and puts its name in the field',
+        name: 'New flow makes an empty draft and puts its name in the field; left untouched, it is not kept',
         run: async (h) => {
             await h.open();
             await h.click({ text: h.t('fl_new'), within: BAR });
@@ -1084,7 +1084,8 @@ module.exports = [
             await h.click('#ws-view-back');
             await h.waitFor('the flow list shown', () => !!document.querySelector('#ws-root .wsf-nothing'), 3000);
             await h.settle();
-            h.same('first in the list', (await listNames(h))[0], h.t('fl_untitled'));
+            h.same('the untouched blank flow deleted on the way', h.store.callsOf('ws_flow_bin').map((call) => call.data.flow_id), [20]);
+            h.ok('not in the list', (await listNames(h)).indexOf(h.t('fl_untitled')) === -1, await listNames(h));
         }
     },
 

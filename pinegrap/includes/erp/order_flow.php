@@ -663,7 +663,7 @@ function erp_order_flow_reverse_steps($order, $invoice, $account, $provider_labe
         }
     } elseif ($refunded > $returned) {
         $step['goto'] = array('label' => lang('Issue the return invoice'), 'url' => $return_url, 'icon' => 'bi-arrow-counterclockwise');
-        $step['reason'] = lang(array('string' => '{var:1} was refunded to the card, and return invoices cover {var:2}. Choose the lines that came back.', 'vars' => array(erp_money_out($refunded), erp_money_out($returned))));
+        $step['reason'] = lang(array('string' => '{var:1} was refunded, and return invoices cover {var:2}. Choose the lines that came back.', 'vars' => array(erp_money_out($refunded), erp_money_out($returned))));
     } else {
         $step['state'] = 'done';
         $step['title'] = lang('The refunds are covered by return invoices');

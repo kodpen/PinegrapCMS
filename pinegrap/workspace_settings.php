@@ -36,25 +36,6 @@ $liveform = new liveform('workspace_settings');
 $self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_settings.php';
 
 /**
- * Hours as typed ("7,5", "8") in minutes, inside a range.
- *
- * @param mixed $value
- * @param int   $min
- * @param int   $max
- * @return int  0 when nothing usable was typed
- */
-function ws_settings_minutes($value, $min, $max)
-{
-    $text = str_replace(',', '.', trim((string) $value));
-
-    if (($text === '') || !is_numeric($text)) {
-        return 0;
-    }
-
-    return max($min, min($max, (int) round(((float) $text) * 60)));
-}
-
-/**
  * The ticked weekdays (1 = Monday) as the bit mask the board reads.
  *
  * @param mixed $days
@@ -82,9 +63,10 @@ function ws_settings_mask($days)
  * @param int    $mask
  * @param string $id_prefix
  * @param string $label  the group's accessible name, "Working days" when empty
+ * @param bool   $disabled  shown but not changeable
  * @return string
  */
-function ws_settings_days_html($name, $mask, $id_prefix, $label = '')
+function ws_settings_days_html($name, $mask, $id_prefix, $label = '', $disabled = false)
 {
     $output = '<div class="btn-group btn-group-sm ws-days" role="group" aria-label="' . h(($label !== '') ? $label : lang('Working days')) . '">';
 
@@ -92,7 +74,7 @@ function ws_settings_days_html($name, $mask, $id_prefix, $label = '')
         $id = $id_prefix . '_' . $day;
 
         $output .= '<input type="checkbox" class="btn-check" name="' . h($name) . '[]" value="' . $day . '" id="' . h($id) . '" autocomplete="off"'
-            . (($mask & (1 << ($day - 1))) ? ' checked' : '') . '>'
+            . (($mask & (1 << ($day - 1))) ? ' checked' : '') . ($disabled ? ' disabled' : '') . '>'
             . '<label class="btn btn-outline theme-secondary" for="' . h($id) . '">' . h($label) . '</label>';
     }
 
@@ -140,13 +122,17 @@ if ($_POST) {
     // One posted as a list (name[]=x) saved a department called "Array", and
     // department_id[]=x or template_id[]=x was read as record 1. Nothing is
     // written, so every setting stays as it was.
+    // tests/workspace_settings_lists_test.php checks every list a card draws
+    // (a field named x[]) against this one.
     $ws_settings_lists = pg_request_unexpected_lists($_POST, array(
-        'workdays' => 1,
-        'members'  => 1,
-        'leads'    => 1,
-        'primary'  => 1,
-        'people'   => 3,
-        'mcp_tool' => 1,
+        'workdays'      => 1,
+        'members'       => 1,
+        'leads'         => 1,
+        'primary'       => 1,
+        'people'        => 3,
+        'mcp_tool'      => 1,
+        'route_match'   => 1,
+        'route_channel' => 1,
     ));
 
     foreach ((is_array($_POST['people'] ?? null) ? $_POST['people'] : array()) as $person_id => $row) {
@@ -170,6 +156,21 @@ if ($_POST) {
             $day = ws_settings_minutes($_POST['day_hours'] ?? '', 30, 1440);
             $mask = ws_settings_mask($_POST['workdays'] ?? array());
             $default = ws_settings_minutes($_POST['default_task_hours'] ?? '', 5, 2400);
+            $anchor = '#ws-defaults';
+
+            // Unreadable or out-of-range hours are refused, not turned into
+            // something else.
+            if ($day === null) {
+                $liveform->add_error(lang(array('string' => '{var:1}: enter the hours as a number from 0 to {var:2}.', 'vars' => array(h(lang('Hours in a working day')), 24))));
+            }
+
+            if ($default === null) {
+                $liveform->add_error(lang(array('string' => '{var:1}: enter the hours as a number from 0 to {var:2}.', 'vars' => array(h(lang('A task with no estimate counts as (hours)')), 40))));
+            }
+
+            if (($day === null) || ($default === null)) {
+                break;
+            }
 
             db("UPDATE config SET
                 ws_day_minutes = '" . (($day > 0) ? $day : 480) . "',
@@ -178,7 +179,6 @@ if ($_POST) {
 
             log_activity(lang('the workspace defaults were changed'), $username);
             $liveform->add_notice(lang('The defaults were saved.'));
-            $anchor = '#ws-defaults';
             break;
 
         case 'department':
@@ -214,10 +214,11 @@ if ($_POST) {
             }
 
             // Members, their leads and whose own department this is. Only people
-            // in the team are taken.
-            $members = array_values(array_intersect(array_map('intval', (array) ($_POST['members'] ?? array())), $team_ids));
+            // in the team are taken. A lead or somebody whose own department
+            // this is belongs to it, ticked as a member or not.
             $leads = array_map('intval', (array) ($_POST['leads'] ?? array()));
             $primary = array_map('intval', (array) ($_POST['primary'] ?? array()));
+            $members = array_values(array_unique(array_intersect(array_merge(array_map('intval', (array) ($_POST['members'] ?? array())), $leads, $primary), $team_ids)));
 
             db("DELETE FROM ws_department_members WHERE department_id = '" . $department_id . "'");
 
@@ -296,7 +297,8 @@ if ($_POST) {
 
         case 'people':
             $rows = (array) ($_POST['people'] ?? array());
-            $saved = 0;
+            $writes = array();
+            $anchor = '#ws-people';
 
             foreach ($rows as $person_id => $row) {
                 $person_id = (int) $person_id;
@@ -305,9 +307,22 @@ if ($_POST) {
                     continue;
                 }
 
+                // A row of a higher rank is drawn read-only; one posted anyway
+                // is left as it is.
+                if (!ws_settings_may_edit_person($viewer['role'], $candidates[$person_id]['role'])) {
+                    continue;
+                }
+
                 $title = mb_substr(trim((string) ($row['title'] ?? '')), 0, 100);
                 $day = ws_settings_minutes($row['day_hours'] ?? '', 0, 1440);
                 $mask = ws_settings_mask($row['workdays'] ?? array());
+
+                // Unreadable or out-of-range hours stop the whole save, so
+                // nothing is turned into the default unasked.
+                if ($day === null) {
+                    $liveform->add_error(lang(array('string' => '{var:1}: enter the hours as a number from 0 to {var:2}.', 'vars' => array(h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Hours a day'), $candidates[$person_id]['name'])))), 24))));
+                    continue;
+                }
 
                 // A value equal to the default is stored as "the default", so
                 // the person follows it when the default changes later.
@@ -323,21 +338,28 @@ if ($_POST) {
                 // screen they are standing on.
                 $excluded = ($person_id !== (int) $viewer['id']) && !empty($row['excluded']);
 
+                $writes[$person_id] = "('" . $person_id . "', '" . e($title) . "', '" . $day . "', '" . $mask . "', '" . ($excluded ? 1 : 0) . "', '" . time() . "')";
+            }
+
+            if ($liveform->check_form_errors()) {
+                break;
+            }
+
+            foreach ($writes as $values) {
                 db("INSERT INTO ws_profiles (user_id, title, day_minutes, workdays, excluded, updated_at)
-                    VALUES ('" . $person_id . "', '" . e($title) . "', '" . $day . "', '" . $mask . "', '" . ($excluded ? 1 : 0) . "', '" . time() . "')
+                    VALUES " . $values . "
                     ON DUPLICATE KEY UPDATE
                         title = VALUES(title),
                         day_minutes = VALUES(day_minutes),
                         workdays = VALUES(workdays),
                         excluded = VALUES(excluded),
                         updated_at = VALUES(updated_at)");
-
-                $saved++;
             }
+
+            $saved = count($writes);
 
             log_activity(lang('the workspace people settings were changed'), $username);
             $liveform->add_notice(lang(array('string' => 'Saved for {var:1} people.', 'vars' => $saved)));
-            $anchor = '#ws-people';
             break;
 
         // The working calendar: days off by hand and from calendar
@@ -423,6 +445,12 @@ if ($_POST) {
             break;
     }
 
+    // A refused card form gets what was typed back, and the page shows the
+    // error inside that form (ws_settings_refused_script()).
+    if ($liveform->check_form_errors()) {
+        $_SESSION['software']['ws_settings_refused'] = ws_settings_refused_fields($_POST);
+    }
+
     go($self_url . $anchor);
 }
 
@@ -439,6 +467,155 @@ unset($_SESSION['software']['ws_assistant_credentials']);
 
 if ($assistant_credentials !== null) {
     header('Cache-Control: no-store');
+}
+
+// What a refused card form posted, read once.
+$refused_fields = $_SESSION['software']['ws_settings_refused'] ?? null;
+unset($_SESSION['software']['ws_settings_refused']);
+
+/**
+ * The page's own script: a refused card form is filled again with what was
+ * typed (ws_settings_refused_fields()), opened if it sits in a closed part,
+ * and the error moves from the top of the page into that form, or into the
+ * card the page was sent back to; and a department row's Team lead or Own
+ * department tick ticks In the department too, as the save counts them.
+ *
+ * @param array|null $fields
+ * @return string HTML
+ */
+function ws_settings_refused_script($fields)
+{
+    $json = is_array($fields) ? json_encode($fields, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) : 'null';
+
+    $script = <<<'JS'
+(function () {
+    var holder = document.getElementById('ws-settings-refused');
+    var fields = null;
+    var form = null;
+
+    try {
+        fields = holder ? JSON.parse(holder.textContent) : null;
+    } catch (error) {
+        fields = null;
+    }
+
+    // The form the refused save came from: the same action and, for a
+    // department, mailbox or calendar, the same record. A one-button row
+    // form has nothing to fill.
+    if (fields && fields.ws_action) {
+        document.querySelectorAll('#content form').forEach(function (candidate) {
+            var action = candidate.querySelector('input[type="hidden"][name="ws_action"]');
+
+            if (form || !action || (action.value !== fields.ws_action) || candidate.classList.contains('d-inline')) {
+                return;
+            }
+
+            var same = ['box_id', 'department_id', 'feed_id'].every(function (key) {
+                var input = candidate.querySelector('input[type="hidden"][name="' + key + '"]');
+
+                return !input || !(key in fields) || (input.value === fields[key]);
+            });
+
+            if (same) {
+                form = candidate;
+            }
+        });
+    }
+
+    if (form) {
+        var seen = {};
+
+        Array.prototype.forEach.call(form.elements, function (field) {
+            var name = field.name;
+            var list = /\[\]$/.test(name || '');
+            var value = fields[name];
+
+            if (!name || field.disabled || /^(hidden|file|password|submit|button|reset)$/.test(field.type)) {
+                return;
+            }
+
+            // An unticked box is not posted at all.
+            if ((field.type === 'checkbox') || (field.type === 'radio')) {
+                field.checked = list ? (Array.isArray(value) && (value.indexOf(field.value) !== -1)) : (value === field.value);
+                return;
+            }
+
+            if (list) {
+                seen[name] = seen[name] || 0;
+                value = Array.isArray(value) ? value[seen[name]] : undefined;
+                seen[name]++;
+            }
+
+            if (typeof value === 'string') {
+                field.value = value;
+
+                // Fields that hang on a choice follow it (the mailbox form).
+                if (field.tagName === 'SELECT') {
+                    field.dispatchEvent(new Event('change', {bubbles: true}));
+                }
+            }
+        });
+
+        var collapse = form.closest('.collapse');
+
+        if (collapse) {
+            collapse.classList.add('show');
+
+            document.querySelectorAll('[data-bs-target="#' + collapse.id + '"]').forEach(function (toggle) {
+                toggle.setAttribute('aria-expanded', 'true');
+            });
+        }
+    }
+
+    // The error, printed at the top of the page, goes where the save was
+    // made: the browser comes back scrolled to that card.
+    var alert = document.querySelector('#content .software_error');
+    var place = form;
+
+    if (!place && (location.hash.length > 1)) {
+        place = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    }
+
+    if (alert && place) {
+        var body = place.classList.contains('card') ? place.querySelector('.card-body') : null;
+
+        if (body) {
+            body.insertBefore(alert, body.firstChild);
+        } else if (place === form) {
+            form.insertBefore(alert, form.firstChild);
+        } else {
+            place.parentNode.insertBefore(alert, place);
+        }
+
+        window.addEventListener('load', function () {
+            alert.scrollIntoView({block: 'center'});
+        });
+    }
+
+    document.addEventListener('change', function (event) {
+        var box = event.target;
+        var row = (box.matches && box.matches('.ws-dept-form input[type="checkbox"]')) ? box.closest('tr') : null;
+        var member = row ? row.querySelector('input[name="members[]"]') : null;
+
+        if (!member) {
+            return;
+        }
+
+        if (box !== member) {
+            member.checked = member.checked || box.checked;
+            return;
+        }
+
+        if (!member.checked) {
+            row.querySelectorAll('input[name="leads[]"], input[name="primary[]"]').forEach(function (other) {
+                other.checked = false;
+            });
+        }
+    });
+})();
+JS;
+
+    return '<script type="application/json" id="ws-settings-refused">' . $json . '</script>' . "\n<script>\n" . $script . "\n</script>";
 }
 
 // ── Output ────────────────────────────────────────────────────────────
@@ -581,6 +758,10 @@ foreach ($candidates as $person) {
         }
     }
 
+    // A higher rank's row is shown, not changed (ws_settings_may_edit_person()).
+    $locked = !ws_settings_may_edit_person($viewer['role'], $person['role']);
+    $locked_attr = $locked ? ' disabled' : '';
+
     $output_people .= '
         <tr' . ($person['excluded'] ? ' class="opacity-50"' : '') . '>
             <td>
@@ -592,14 +773,14 @@ foreach ($candidates as $person) {
                     </div>
                 </div>
             </td>
-            <td><input class="form-control form-control-sm" type="text" name="people[' . $person_id . '][title]" maxlength="100" value="' . h($person['title']) . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Job title'), $person['name'])))) . '"></td>
-            <td style="width:6rem"><input class="form-control form-control-sm" type="text" inputmode="decimal" name="people[' . $person_id . '][day_hours]" value="' . h(ws_settings_hours($day)) . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Hours a day'), $person['name'])))) . '"></td>
-            <td>' . ws_settings_days_html('people[' . $person_id . '][workdays]', $mask, 'ws_p' . $person_id, lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Working days'), $person['name'])))) . '</td>
+            <td><input class="form-control form-control-sm" type="text" name="people[' . $person_id . '][title]" maxlength="100" value="' . h($person['title']) . '"' . $locked_attr . ' aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Job title'), $person['name'])))) . '"></td>
+            <td style="width:6rem"><input class="form-control form-control-sm" type="text" inputmode="decimal" name="people[' . $person_id . '][day_hours]" value="' . h(ws_settings_hours($day)) . '"' . $locked_attr . ' aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Hours a day'), $person['name'])))) . '"></td>
+            <td>' . ws_settings_days_html('people[' . $person_id . '][workdays]', $mask, 'ws_p' . $person_id, lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Working days'), $person['name']))), $locked) . '</td>
             <td class="text-center">
                 <div class="form-field d-inline-block mb-0">
                     <div class="switch"><input class="" type="checkbox" name="people[' . $person_id . '][excluded]" value="1" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Not in the team'), $person['name'])))) . '"'
                         . ($person['excluded'] ? ' checked' : '')
-                        . (($person_id === (int) $viewer['id']) ? ' disabled' : '') . '></div>
+                        . ((($person_id === (int) $viewer['id']) || $locked) ? ' disabled' : '') . '></div>
                 </div>
             </td>
         </tr>';
@@ -721,6 +902,7 @@ pg_page_shell([
 </div>
 </div>
 </main>' .
+ws_settings_refused_script($refused_fields) .
 output_footer();
 
 $liveform->remove_form();
