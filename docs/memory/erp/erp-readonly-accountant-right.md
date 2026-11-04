@@ -24,4 +24,7 @@ description: The ERP read-only right for an accountant (user.manage_erp_readonly
 - Reads stay: tags and summaries need only `erp`; Claude's record route asks with `ws_change_reader()`. Also gated: the invoice draft from a channel's time (`ws_task_time_can_invoice()`) and the quote copy link (`ws_screen_config()`).
 - Before the fix a read-only accountant changed or created ERP accounts from the Workspace drawer or a change card. Test: `tests/workspace_erp_readonly_test.php`.
 
+## What does the order screen's documents card show the accountant?
+- `erp_order_flow_card()` passes each step through `erp_order_flow_readonly_step()`: no action, greyed action or goto button, no `add_*.php` link; View, PDF and print stay. Before, every button ended on `erp_order_flow.php`'s refusal page.
+
 Related: docs/memory/erp/erp-module-basics.md, docs/memory/core/permission-columns.md
