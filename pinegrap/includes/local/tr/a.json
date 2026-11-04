@@ -4156,6 +4156,7 @@
     "about {var:1}": "yaklaşık {var:1}",
     "about {var:1} contacts": "yaklaşık {var:1} kişi",
     "about-me": "hakkimda",
+    "abroad {var:1}%": "yurt dışı %{var:1}",
     "abroad, remote, video call, language": "yurt dışı, uzaktan, görüntülü görüşme, dil",
     "access denied (email or username invalid: {var:1})": "erişim reddedildi (e-posta veya kullanıcı adı geçersiz: {var:1})",
     "access denied (passkey not accepted: {var:1})": "erişim reddedildi (geçiş anahtarı kabul edilmedi: {var:1})",
