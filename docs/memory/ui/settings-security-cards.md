@@ -8,7 +8,7 @@ module: encryption_key
 - #3858: Security became "Accounts and sign-in", Firewall "Firewall and HTTPS". The keys `security` and `firewall` stay, so old links and `settings_security.php` / `settings_firewall.php` work as before.
 
 ## Where is the encryption key?
-- The Encryption Key card (`pgset-encryption`, post `ecommerce_reset_encryption_key`) came from Ecommerce › Payment Methods; `security.save.php` writes config.php, then `pg_reseal_run()` seals again what `pg_reseal_registry()` lists (today the card numbers and the gateway secrets; `platform/encryption-key-reseal-registry.md`). It is always drawn now, not only with Enable Commerce and Credit/Debit Card on: two-step verification needs the key, and the MFA hint links the card.
+- The Encryption Key card (`pgset-encryption`, post `ecommerce_reset_encryption_key`) came from Ecommerce › Payment Methods; `security.save.php` writes config.php, then, last in the save, `pg_reseal_run()` seals again what `pg_reseal_registry()` lists. It is always drawn now, not only with Enable Commerce and Credit/Debit Card on: two-step verification needs the key, and the MFA hint links the card.
 
 ## What does the card say before a key reset?
 - `prep.php` counts the non-empty sealed values per area (`pg_encryption_key_reset_counts()` over `pg_encryption_key_reset_source()`, `includes/fn/encryption_key.php`): connect_accounts + connect_apps `secret`, `marketplace_accounts.credentials`, `erp_edoc_providers.credentials_enc`, config `parasut_credentials_enc`, `backup_remote_settings`, the `product_feeds` formats' `token_secret`, `oauth_google_client_secret`, `user_mfa` keys with `enabled_at > 0`, and `api_devices` whose refresh token still runs (area `devices`). A missing table or column counts as nothing.

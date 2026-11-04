@@ -180,5 +180,195 @@ function test_reseal_registry_shape()
 	}
 
 	pg_assert_same(pg_gateway_secret_fields(), $gateway);
-	pg_assert_same(array('cards', 'gateway'), array_keys(pg_reseal_empty_counts($registry)));
+	$areas = array_keys(pg_reseal_empty_counts($registry));
+
+	pg_assert_same(array('cards', 'gateway'), array_slice($areas, 0, 2));
+
+	// Every area the card warns about before a reset is one the re-seal covers.
+	foreach (array_keys(pg_encryption_key_reset_counts(array('connect_accounts' => 1, 'marketplace_accounts' => 1, 'edoc_providers' => 1, 'mfa_keys' => 1, 'config' => array('parasut_credentials_enc' => 'x', 'backup_remote_settings' => 'x', 'oauth_google_client_secret' => 'x', 'product_feeds' => '{"formats":{"g":{"token_secret":"x"}}}')))) as $area) {
+		pg_assert_true(in_array($area, $areas, true), $area);
+	}
+}
+
+// The registry entry of a table and column, or null.
+function reseal_test_entry($table, $column)
+{
+	foreach (pg_reseal_registry() as $entry) {
+		if (($entry['table'] === $table) && ($entry['column'] === $column)) {
+			return $entry;
+		}
+	}
+
+	return null;
+}
+
+// Every module that seals with the site's key has its entry, and every table
+// and column an entry names is one a migration step creates.
+function test_reseal_registry_module_entries()
+{
+	$expected = array(
+		'connect_apps.secret', 'connect_accounts.secret', 'marketplace_accounts.credentials',
+		'erp_edoc_providers.credentials_enc', 'config.parasut_credentials_enc', 'config.backup_remote_settings',
+		'config.product_feeds', 'config.oauth_google_client_secret', 'user_mfa.totp_secret', 'user_mfa.pending_secret',
+		'subscriptions.card_ref', 'config.translation_google_key', 'ws_mcp_servers.secret', 'ws_calendar_feeds.token_secret',
+		'ws_mail_boxes.settings', 'config.ws_claude_token', 'config_text.value',
+	);
+	$found = array();
+
+	foreach (pg_reseal_registry() as $entry) {
+		$found[] = $entry['table'] . '.' . $entry['column'];
+	}
+
+	foreach ($expected as $name) {
+		pg_assert_true(in_array($name, $found, true), $name);
+	}
+
+	$migrations = '';
+
+	foreach (glob(PG_FUNCTIONS_DIR . '/includes/migrations/*.php') as $file) {
+		$migrations .= file_get_contents($file);
+	}
+
+	foreach (pg_reseal_registry() as $entry) {
+		if ($entry['table'] === 'orders') {
+			continue;
+		}
+
+		$columns = array($entry['column']);
+
+		if (!empty($entry['iv_column'])) {
+			$columns[] = $entry['iv_column'];
+		}
+
+		foreach ($columns as $column) {
+			$created = (bool) preg_match('/(install_create_table\(\'' . preg_quote($entry['table'], '/') . '\'[^;]*\n\s*' . preg_quote($column, '/') . '\s|install_add_column\(\'' . preg_quote($entry['table'], '/') . '\', \'' . preg_quote($column, '/') . '\')/s', $migrations);
+			$config = ($entry['table'] === 'config') || ($entry['table'] === 'config_text');
+
+			pg_assert_true($created || $config, $entry['table'] . '.' . $column);
+		}
+	}
+}
+
+// Product feed tokens sit inside the JSON: the one sealed with the old key is
+// re-sealed, one under another key is skipped, an empty one is not counted;
+// the column keeps its unescaped slashes.
+function test_reseal_product_feed_tokens()
+{
+	$entry = reseal_test_entry('config', 'product_feeds');
+	list($c1, $i1) = encrypt_string_with_iv('tok-google', 'old-key');
+	list($c2, $i2) = encrypt_string_with_iv('tok-meta', 'other-key');
+	$stored = json_encode(array('formats' => array(
+		'google' => array('token_hash' => 'h1', 'token_secret' => $c1 . ':' . $i1, 'url' => 'a/b'),
+		'meta'   => array('token_hash' => 'h2', 'token_secret' => $c2 . ':' . $i2),
+		'csv'    => array('token_hash' => '', 'token_secret' => ''),
+	)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+	$result = pg_reseal_value($entry, $stored, '', 'old-key', 'new-key');
+	$data = json_decode($result['value'], true);
+	$google = explode(':', $data['formats']['google']['token_secret'], 2);
+
+	pg_assert_same('done', $result['status']);
+	pg_assert_same(array('done' => 1, 'skipped' => 1, 'failed' => 0), $result['counts']);
+	pg_assert_same('tok-google', decode_ssl_keys($google[0], $google[1], 'new-key'));
+	pg_assert_same($c2 . ':' . $i2, $data['formats']['meta']['token_secret']);
+	pg_assert_same('h1', $data['formats']['google']['token_hash']);
+	pg_assert_contains('"a/b"', $result['value']);
+}
+
+// A JSON column with nothing that opens is skipped and keeps its text; one
+// that is not JSON too.
+function test_reseal_json_fields_nothing_opens()
+{
+	$entry = reseal_test_entry('ws_mail_boxes', 'settings');
+	$stored = json_encode(array('host' => 'imap.example.com', 'secret' => pg_connect_seal(array('password' => 'p'), 'other-key')));
+
+	foreach (array($stored, 'not json') as $value) {
+		$result = pg_reseal_value($entry, $value, '', 'old-key', 'new-key');
+
+		pg_assert_same('skipped', $result['status']);
+		pg_assert_same($value, $result['value']);
+	}
+}
+
+// The mailbox password and the ActivityPub private key are pg_connect_seal()
+// values inside JSON.
+function test_reseal_connect_fields()
+{
+	$mailbox = json_encode(array('host' => 'imap.example.com', 'secret' => pg_connect_seal(array('password' => 'p'), 'old-key')));
+	$result = pg_reseal_value(reseal_test_entry('ws_mail_boxes', 'settings'), $mailbox, '', 'old-key', 'new-key');
+	$data = json_decode($result['value'], true);
+
+	pg_assert_same('done', $result['status']);
+	pg_assert_same('imap.example.com', $data['host']);
+	pg_assert_same(array('password' => 'p'), pg_connect_unseal($data['secret'], 'new-key'));
+
+	$ap_entry = null;
+
+	foreach (pg_reseal_registry() as $entry) {
+		if (($entry['table'] === 'config_text') && (strpos($entry['where'], "'ap_keys'") !== false)) {
+			$ap_entry = $entry;
+		}
+	}
+
+	pg_assert_true(is_array($ap_entry), 'ap_keys entry');
+
+	$keys = json_encode(array('public' => 'PUBLIC', 'private' => pg_connect_seal(array('pem' => 'PRIVATE'), 'old-key')));
+	$result = pg_reseal_value($ap_entry, $keys, '', 'old-key', 'new-key');
+	$data = json_decode($result['value'], true);
+
+	pg_assert_same('PUBLIC', $data['public']);
+	pg_assert_same(array('pem' => 'PRIVATE'), pg_connect_unseal($data['private'], 'new-key'));
+}
+
+// A re-sealed card reference keeps the shape the subscriptions module asks
+// for, and its WHERE picks only that shape.
+function test_reseal_subscription_card_ref()
+{
+	$entry = reseal_test_entry('subscriptions', 'card_ref');
+	list($cipher, $iv) = encrypt_string_with_iv('cus_123/card_456', 'old-key');
+
+	$result = pg_reseal_value($entry, $cipher . ':' . $iv, '', 'old-key', 'new-key');
+
+	pg_assert_same('done', $result['status']);
+	pg_assert_true(pg_subscription_card_ref_is_sealed($result['value']));
+	pg_assert_contains("LIKE '%:%=='", $entry['where']);
+	pg_assert_same('skipped', pg_reseal_value($entry, 'cus_plain_token', '', 'old-key', 'new-key')['status']);
+}
+
+// A two-step key (base32 text) and the Google client secret, whose IV has its
+// own column.
+function test_reseal_mfa_and_google_entries()
+{
+	$mfa = reseal_test_entry('user_mfa', 'totp_secret');
+	list($cipher, $iv) = encrypt_string_with_iv('JBSWY3DPEHPK3PXP', 'old-key');
+	$result = pg_reseal_value($mfa, $cipher . ':' . $iv, '', 'old-key', 'new-key');
+	$parts = explode(':', $result['value'], 2);
+
+	pg_assert_same('user_id', $mfa['key']);
+	pg_assert_same('JBSWY3DPEHPK3PXP', decode_ssl_keys($parts[0], $parts[1], 'new-key'));
+
+	$google = reseal_test_entry('config', 'oauth_google_client_secret');
+	list($cipher, $iv) = encrypt_string_with_iv('GOCSPX-abc', 'old-key');
+	$result = pg_reseal_value($google, $cipher, $iv, 'old-key', 'new-key');
+
+	pg_assert_same('oauth_google_secret_iv', $google['iv_column']);
+	pg_assert_same('GOCSPX-abc', decode_ssl_keys($result['value'], $result['iv'], 'new-key'));
+}
+
+// The key reset runs last in the Accounts and sign-in save, after every write
+// that seals a value with the constant (the old key in that request).
+function test_reseal_runs_after_the_sealing_writes()
+{
+	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/security.save.php');
+	$reset = strpos($save, 'pg_reseal_run(');
+
+	pg_assert_true($reset !== false);
+
+	foreach (array('pg_captcha_settings_save(', 'pg_connect_app_save(', 'encrypt_string_with_iv(', 'generate_encryption_key()') as $call) {
+		pg_assert_true(strpos($save, $call) !== false, $call);
+	}
+
+	foreach (array('pg_captcha_settings_save(', 'pg_connect_app_save(', 'encrypt_string_with_iv(') as $call) {
+		pg_assert_true(strpos($save, $call) < strpos($save, 'generate_encryption_key()'), $call . ' runs before the key changes');
+	}
 }
