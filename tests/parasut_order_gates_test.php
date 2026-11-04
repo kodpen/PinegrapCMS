@@ -409,7 +409,7 @@ function test_parasut_order_gates_order_screen()
 	pg_assert_true(($contact !== false) && ($identity !== false) && ($status < $contact) && ($status < $identity), 'and refused first');
 
 	pg_assert_true(parasut_order_gates_test_at("\$parasut_billable = (parasut_order_status_refusal(\$status, 'invoice') === '');", $source) !== false, 'the screen asks the status');
-	pg_assert_true(parasut_order_gates_test_at("if (\$parasut_in_erp || !\$parasut_billable) {\n            \$output_parasut_buttons = '';\n            \$output_parasut_forms = '';", $source) !== false, 'no buttons or forms for another status');
+	pg_assert_true(parasut_order_gates_test_at("if (\$parasut_in_erp || !\$parasut_billable) {\n            \$output_parasut_menu_items = array();\n            \$output_parasut_forms = '';", $source) !== false, 'no buttons or forms for another status');
 
 	pg_assert_true(parasut_order_gates_test_at("\$parasut_erp_invoice = parasut_order_erp_invoice((int) \$_GET['id']);", $source) !== false, 'the ERP invoice is read');
 	pg_assert_true(parasut_order_gates_test_at("\$output_parasut_invoice_button = (\$parasut_erp_invoice['state'] === 'none')", $source) !== false, 'Create Invoice only without one');
