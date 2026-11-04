@@ -33,6 +33,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - accessibility-statement.md: Accessibility statement (system widget accessibility_statement, view_accessibility.php?statement=1): settings card, conformance verdict from the nightly report, known limitations, W3C structure
 - activitypub-actor.md: The Fediverse actor: settings and keys in config_text, the addresses router.php hands to activitypub.php, the documents, HTTP Signatures (window, key cache, rotation).
 - activitypub-comments.md: Fediverse replies as comments: which inReplyTo addresses find a thread, how a note becomes a comments row, moderation and mails, a Delete of the note, a site reply sent back as a Note.
+- activitypub-decisions.md: Why the Fediverse (ActivityPub) feature is shaped as it is: off by default, one actor, no library, what is published, remote replies as comments, WAF rules, the decided tables; where each part lives
 - activitypub-inbox.md: The ActivityPub inbox: the checks a delivery passes, what each activity does to ap_followers, ap_reactions and ap_outbox, the AP4 hooks, the log and the inbox's WAF bucket.
 - activitypub-moderation.md: Fediverse blocks (ap_blocks) by actor or domain: what a block removes, how values are stored, the comment screen's buttons, the erasure path shared with a Delete of the actor.
 - activitypub-outbox.md: ActivityPub publishing: what counts as published, the general job's sweep that queues Create/Update/Delete into ap_outbox, the log and delivery rows, signing, retries, the outbox collection.

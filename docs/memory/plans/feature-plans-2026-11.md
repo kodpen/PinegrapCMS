@@ -12,7 +12,6 @@ description: The eleven feature plans approved 2026-11-02: index and order, how 
 4. `appointment-booking.md` (BK1-BK10): services, staff hours, slots, a booking widget.
 6. `audiences.md` (AU1-AU6): rule-driven contact groups.
 8. `store-credit.md` (SC1-SC7): spendable points, refunds to credit, auto-applied balance.
-9. `activitypub.md` (AP1-AP8): the site as a Fediverse actor.
 
 ## How does a coordinator hold a plan?
 - It claims nothing itself and writes no code (`workflow/coordinator.md`). It gives its workers only step lines that say `free` or whose "After" steps are merged, at most five at once and never two on the same files; the steps file says which run side by side.
