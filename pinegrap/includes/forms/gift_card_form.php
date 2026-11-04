@@ -264,3 +264,21 @@ function pg_gift_card_form_amount_fits($amount)
 {
     return round((float) $amount * 100) <= PG_GIFT_CARD_AMOUNT_MAX;
 }
+
+/**
+ * Why a card cannot be deleted from the gift card screen, or ''. Store credit
+ * (a card bound to a customer, gift_cards.user_id > 0) is voided on the
+ * customer's screen (pg_credit_void()), which keeps the row, its redemption
+ * history and its audit trail; deleting it would lose the credit unrecorded.
+ *
+ * @param array $gift_card  the edit screen's row (credit_user_id)
+ * @return string
+ */
+function pg_gift_card_form_delete_refusal($gift_card)
+{
+    if ((int) ($gift_card['credit_user_id'] ?? 0) > 0) {
+        return lang('Store credit is not deleted: void it on the customer\'s Store credit card.');
+    }
+
+    return '';
+}

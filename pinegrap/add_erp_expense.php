@@ -352,6 +352,14 @@ if (!$_POST) {
                 </div>';
     }
 
+    // A change reaches the active repeat (erp_expense_recurrence_follow()).
+    $repeating = is_array($existing) ? erp_expense_recurrence_of($existing) : null;
+
+    if (is_array($repeating) && ((string) $repeating['status'] === 'active')) {
+        $output_repeat = '
+                <div class="alert theme-info my-7">' . lang('This expense repeats: the active repeat takes these values too (supplier, category, description, amount, tax). The expenses it wrote already stay as they are.') . '</div>';
+    }
+
     $output_file = '';
     $kept = is_array($existing) ? erp_archive_file('expense', $id) : null;
 
