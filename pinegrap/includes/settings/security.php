@@ -482,9 +482,11 @@ $pg_settings_cards[] = '
 
 // ── Encryption Key ──
 // The key in config.php that seals stored card numbers, the payment gateway
-// secrets and the two-step verification keys. The switch keeps its post name;
-// security.save.php makes the key and seals the card numbers and gateway
-// secrets again with it.
+// secrets, connected accounts, integration credentials and the two-step
+// verification keys. The switch keeps its post name; security.save.php makes
+// the key and seals only the card numbers and gateway secrets again with it,
+// so the card lists what else a reset leaves unreadable (prep.php) and asks
+// for a confirmation the save requires.
 $pg_settings_cards[] = '
     <div id="pgset-encryption" class="pg-set-card">
         <div class="card">
@@ -497,9 +499,9 @@ $pg_settings_cards[] = '
                                             <div class="form-field">
                                                 <div class="switch"><input value="1"' . $ecommerce_reset_encryption_key_disabled . ' class="" type="checkbox" id="ecommerce_reset_encryption_key" name="ecommerce_reset_encryption_key"/></div>
                                                 <label class="" for="ecommerce_reset_encryption_key">' . lang('Reset Encryption Key') . '</label>
-                                                <div class="form-text">' . lang('Makes a new key in config.php. Card numbers kept with orders and the payment gateway secrets are encrypted again with it; two-step verification needs a key.') . $ecommerce_reset_encryption_key_disabled_message . '</div>
+                                                <div class="form-text">' . lang('Makes a new key in config.php. Only card numbers kept with orders and the payment gateway secrets are encrypted again with it; every other value sealed with the old key becomes unreadable and has to be entered again. Two-step verification needs a key.') . $ecommerce_reset_encryption_key_disabled_message . '</div>
                                             </div>
-                                        </div>
+                                        </div>' . $ecommerce_reset_encryption_key_losses . '
                 </div>
             </div>
         </div>

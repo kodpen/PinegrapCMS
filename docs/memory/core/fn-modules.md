@@ -78,6 +78,7 @@ description: Generated from the module field of the memory files: each includes/
 - `imap_client`: [[mail-imap-client]]
 - `importers`: [[import-framework]], [[import-media]], [[import-records]], [[import-redirects]], [[import-shopify]], [[import-woocommerce]]
 - `innodb`: [[innodb-conversion-marker]], [[panel-script-number-format]]
+- `key_reset`: [[settings-security-cards]]
 - `lang`: [[lang-loader]], [[lang-placeholders]]
 - `lang_files`: [[lang-file-writes]], [[lang-files]]
 - `language_redirect`: [[language-redirect-matching]]

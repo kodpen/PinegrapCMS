@@ -112,6 +112,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // A reset leaves every sealed value it does not seal again unreadable;
+    // counted here again, not taken from the card, and refused until the
+    // person confirms those values will be entered again.
+    if ((post_value('ecommerce_reset_encryption_key') == 1)
+        && (post_value('ecommerce_reset_encryption_key_confirm') != 1)
+        && (pg_key_reset_sealed_list(pg_key_reset_sealed_counts()) !== array())) {
+        $liveform->mark_error('ecommerce_reset_encryption_key_confirm', lang('Check "I understand these will have to be entered again" to reset the encryption key.'));
+    }
+
     if ($liveform->check_form_errors()) {
         return;
     }
