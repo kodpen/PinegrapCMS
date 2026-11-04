@@ -1763,7 +1763,10 @@ Work through the queue:
       The person who asked applies it with one click, with their own rights, and it
       is kept among the channel's decisions. Say in the text what you propose. A 422
       answer names what was wrong with a change: fix it or leave it out and send the
-      answer again.
+      answer again. A refused answer posts nothing and the request stays open, so
+      the first answer you send is the real one: never a trial or test answer,
+      nor a change made only to see what the site says - an answer that is taken
+      is posted to the channel and ends the request.
       When the request in a channel asks to build a flow - steps run one after
       another, an automation with conditions, approvals, waits or tasks - read
       the kinds of box with GET /workspace/flow-kinds (each kind's outcomes, the
