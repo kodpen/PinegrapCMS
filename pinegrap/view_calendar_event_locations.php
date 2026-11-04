@@ -109,6 +109,10 @@ pg_page_shell(
         'icon'=>'calendar', 
         'heading'=> lang('Event Locations'),
         'heading_description' => lang('All event locations shared by all calendars.'),
+        'breadcrumb' => array(
+            array('label' => lang('Calendars'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendars.php'),
+            array('label' => lang('Event Locations')),
+        ),
     )
 ) . '
 <main id="content" class="container-fluid">

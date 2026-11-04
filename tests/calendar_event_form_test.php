@@ -232,3 +232,45 @@ function test_calendar_event_edit_screen_clears_the_saved_form_before_send_to()
 	pg_assert_true($clear !== false, 'the form leaves the session on save');
 	pg_assert_true($clear < strpos($source, 'pg_safe_redirect_path($send_to)'), 'before the send_to redirect');
 }
+
+function test_calendar_text_too_long_counts_characters_not_bytes()
+{
+	pg_assert_false(pg_calendar_text_too_long(str_repeat('ş', 100), 100), '100 Turkish letters fit a 100 character column');
+	pg_assert_true(pg_calendar_text_too_long(str_repeat('a', 101), 100), 'one character too many');
+	pg_assert_false(pg_calendar_text_too_long('', 100));
+	pg_assert_false(pg_calendar_text_too_long(null, 100), 'a field that was not posted');
+	pg_assert_true(pg_calendar_text_too_long(array('x'), 100), 'an array is never a text');
+}
+
+function test_calendar_forms_refuse_texts_longer_than_their_columns()
+{
+	$event = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/calendar_event_form.php');
+
+	pg_assert_contains("'name' => array(lang('Name'), 100)", $event);
+	pg_assert_contains("'short_description' => array(lang('Short Description'), 255)", $event);
+	pg_assert_contains("'reserve_button_label' => array(lang('Reserve Button Label'), 50)", $event);
+
+	foreach (array('includes/forms/calendar_form.php', 'add_calendar_event_location.php', 'edit_calendar_event_location.php') as $file) {
+		pg_assert_contains("pg_calendar_form_check_lengths(\$liveform, array('name' => array(lang('Name'), 100)));", (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file);
+	}
+}
+
+function test_calendar_event_form_accepts_only_the_repeat_types_it_expands()
+{
+	$event = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/calendar_event_form.php');
+
+	// An unknown type was stored as '' and drew the event on its start day
+	// once per repeat.
+	pg_assert_contains("array('day', 'week', 'month', 'year'), true)", $event);
+	pg_assert_contains("array('day_of_the_month', 'day_of_the_week'), true)", $event);
+}
+
+function test_calendar_event_all_day_off_restores_a_full_date_and_time()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+
+	// Switching all day off left the date-only text in the store, and the
+	// save was refused while the box showed a date and time.
+	pg_assert_contains("field.setAttribute('data-calendar-time', value.slice(11));", $script);
+	pg_assert_contains("pgDateTimeField.set(field, date + ' ' + (field.getAttribute('data-calendar-time') || pair[1]));", $script);
+}

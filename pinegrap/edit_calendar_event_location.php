@@ -76,7 +76,7 @@ if (!$_POST) {
             'heading_description' => lang('View or rename this common event location.'),
             'cancel'=>array('enable'=>'true','url'=>'view_calendar_event_locations.php'),
         
-            'breadcrumb' => array(array('label' => lang('All Event Locations'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendar_event_locations.php'), array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Event Location'))))),
+            'breadcrumb' => array(array('label' => lang('Event Locations'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendar_event_locations.php'), array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Event Location'))))),
         )
     ) . '
 <main id="content" class="container-fluid">
@@ -132,7 +132,8 @@ if (!$_POST) {
         $liveform->add_fields_to_session();
         
         $liveform->validate_required_field('name', lang('Name is required.'));
-        
+        pg_calendar_form_check_lengths($liveform, array('name' => array(lang('Name'), 100)));
+
         // if there is an error, forward user back to edit calendar event location screen
         if ($liveform->check_form_errors() == true) {
             header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_calendar_event_location.php?id=' . $_POST['id']);

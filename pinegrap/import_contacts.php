@@ -64,6 +64,16 @@ if (!$_POST) {
        
     }
     
+    // One Summary row of the status column: a label (plain text), its value
+    // (HTML) and, unless it is the last row, the line under it.
+    $status_row = function ($label, $value, $last) {
+        return '
+                                        <div class="d-flex justify-content-between gap-3 py-2' . ($last ? '' : ' border-bottom') . '">
+                                            <dt class="fw-normal">' . h($label) . '</dt>
+                                            <dd class="mb-0 fw-bold text-end text-break">' . $value . '</dd>
+                                        </div>';
+    };
+
     print
     pg_page_shell(
         array(
@@ -78,65 +88,105 @@ if (!$_POST) {
         )
     ) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                
-                <form name="form" action="import_contacts.php" method="post" class="product_form" enctype="multipart/form-data">
-                    ' . get_token_field() . '
-                    <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Import CSV') . '
+    <div class="row">
+        <div class="col-12">
+            <form name="form" action="import_contacts.php" method="post" class="product_form" enctype="multipart/form-data">
+                ' . get_token_field() . '
+                <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
+                <!-- Edit screen layout of product_builder.php: the form column, the sticky status column (Summary), the sticky save bar. -->
+                <div class="row">
+                    <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                        <div class="card mb-7">
+                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                ' . lang('Import CSV') . '
+                            </h2>
+                            <div class="card-body pt-0">
+                                <div class="my-3">
+                                    <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
+                                    <input name="file" id="file" type="file" class="form-control" accept=".csv,.txt,text/csv" aria-describedby="file_help" required />
+                                    <div id="file_help" class="form-text">' . h(lang('The first row of the file names the columns. A file exported from the contacts list can be imported as it is.')) . ' ' . h(lang('Recognised headings include First Name, Last Name, Email, Company, Job Title, Mobile Phone, Business Phone, Address, City, Zip Code, Country, Description and the column names of the export.')) . '</div>
+                                    ' . pg_upload_limit_hint() . '
                                 </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 my-3">
-                                            <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
-                                            <input name="file" id="file" type="file" size="60" class="form-control w-auto" accept=".csv,.txt,text/csv" aria-describedby="file_help" required />
-                                            <div id="file_help" class="form-text">' . h(lang('The first row of the file names the columns. A file exported from the contacts list can be imported as it is.')) . ' ' . h(lang('Recognised headings include First Name, Last Name, Email, Company, Job Title, Mobile Phone, Business Phone, Address, City, Zip Code, Country, Description and the column names of the export.')) . '</div>
-                                            ' . pg_upload_limit_hint() . '
-                                        </div>
-                                        <div class="col-12 my-5" role="radiogroup" aria-labelledby="import_mode_label">
-                                            <div class="form-label" id="import_mode_label">'. lang('Import Mode') . '</div>
-                                            <div class="form-field">
-                                                <input value="import_all_contacts" class="radio" type="radio" id="import_all_contacts" name="import_mode" checked>
-                                                <label class="" for="import_all_contacts">'. lang('Import all contacts') . '</label>
-                                            </div>
-                                            <div class="form-field">
-                                                <input value="only_import_unique_contacts" class="radio" type="radio" id="only_import_unique_contacts" name="import_mode">
-                                                <label class="" for="only_import_unique_contacts">'. lang('Only import contacts with unique email addresses') . '</label>
-                                            </div>
-                                        </div>
+                                <div class="my-5" role="radiogroup" aria-labelledby="import_mode_label">
+                                    <div class="form-label" id="import_mode_label">' . lang('Import Mode') . '</div>
+                                    <div class="form-field">
+                                        <input value="import_all_contacts" class="radio" type="radio" id="import_all_contacts" name="import_mode" checked>
+                                        <label for="import_all_contacts">' . lang('Import all contacts') . '</label>
                                     </div>
-                                </div>       
-                            </div> 
-                        </div> 
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Select Contact Groups to Import into') . '
+                                    <div class="form-field">
+                                        <input value="only_import_unique_contacts" class="radio" type="radio" id="only_import_unique_contacts" name="import_mode">
+                                        <label for="only_import_unique_contacts">' . lang('Only import contacts with unique email addresses') . '</label>
+                                    </div>
                                 </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        ' . $output_contact_groups . '
-                                    </div>
+                            </div>
+                        </div>
+                        <div class="card mb-7">
+                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                ' . lang('Select Contact Groups to Import into') . '
+                            </h2>
+                            <div class="card-body pt-0">
+                                <div class="row">
+                                    ' . $output_contact_groups . '
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" name="submit_import" value="Import" class="btn my-1  btn-solid theme-success " ><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Contacts') ) . '</span></button>
+                    <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                        <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                        <div class="position-sticky" style="top:3.3rem;">
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Summary') . '
+                                </h2>
+                                <div class="card-body pt-0">
+                                    <dl class="mb-0">'
+        . $status_row(lang('Contacts'), h(number_format((int) db_value("SELECT COUNT(*) FROM contacts"))), false)
+        . $status_row(lang('Contact Groups'), '<span id="contact_import_summary_groups">0</span> / ' . h(number_format(count($contact_groups))), false)
+        . $status_row(lang('File'), '<span id="contact_import_summary_file">' . h(lang('None')) . '</span>', true) . '
+                                    </dl>
+                                </div>
                             </div>
                         </div>
-                    </nav>
-                </form>
-            </div>
+                    </div>
+                    <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                        <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                            <div class="container">
+                                <div class="btn-group flex-wrap justify-content-center">
+                                    <button type="submit" name="submit_import" value="Import" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">file_upload</span><span class="pg-btn-label">' . lang('Import Contacts') . '</span></button>
+                                </div>
+                            </div>
+                        </nav>
+                    </div>
+                </div>
+            </form>
+            <script>
+                // The Summary names the chosen file and counts the ticked groups.
+                (function () {
+                    var box = document.getElementById("file");
+                    var file = document.getElementById("contact_import_summary_file");
+                    var groups = document.getElementById("contact_import_summary_groups");
+                    var none = file.textContent;
+                    box.addEventListener("change", function () {
+                        file.textContent = (box.files && box.files.length) ? box.files[0].name : none;
+                    });
+                    var ticks = document.querySelectorAll("input[name^=\\"contact_group_\\"]");
+                    var count = function () {
+                        var n = 0;
+                        for (var i = 0; i < ticks.length; i++) {
+                            if (ticks[i].checked) {
+                                n++;
+                            }
+                        }
+                        groups.textContent = n;
+                    };
+                    for (var i = 0; i < ticks.length; i++) {
+                        ticks[i].addEventListener("change", count);
+                    }
+                    count();
+                })();
+            </script>
         </div>
-    
+    </div>
 </main>' .
     output_footer();
 
