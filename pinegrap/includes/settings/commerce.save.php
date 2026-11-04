@@ -38,6 +38,37 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     }
 
 
+    // Stock locations (2026.11.0, includes/fn/stock_moves.php): checked here,
+    // before anything on this screen is written, and stored after the card's
+    // columns. Only when the card's fields were posted and the tables exist.
+    $stock_locations_plan = null;
+
+    if (array_key_exists('stock_location_card', $_POST)) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_moves.php');
+    }
+
+    if (array_key_exists('stock_location_card', $_POST) && pg_stock_ready()) {
+        $stock_locations_plan = pg_stock_locations_save_plan(array(
+            'name'        => isset($_POST['stock_location_name']) ? $_POST['stock_location_name'] : array(),
+            'address'     => isset($_POST['stock_location_address']) ? $_POST['stock_location_address'] : array(),
+            'order'       => isset($_POST['stock_location_order']) ? $_POST['stock_location_order'] : array(),
+            'enabled'     => isset($_POST['stock_location_enabled']) ? $_POST['stock_location_enabled'] : array(),
+            'default'     => post_value('stock_location_default'),
+            'new_name'    => post_value('stock_location_new_name'),
+            'new_address' => post_value('stock_location_new_address'),
+        ), pg_stock_locations());
+
+        foreach ($stock_locations_plan['errors'] as $stock_locations_field => $stock_locations_error) {
+            $liveform->mark_error($stock_locations_field, ($stock_locations_error === 'default_disabled')
+                ? lang('The default location cannot be turned off. Make another location the default first.')
+                : lang('Enter a name of at most 100 characters.'));
+        }
+
+        if ($stock_locations_plan['errors']) {
+            return;
+        }
+    }
+
     // Reference price rule (11.0.49). The card is drawn only once the column
     // exists; an unknown value is stored as the default rule.
     $sql_reference_price_rule = '';
@@ -364,5 +395,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             } else {
                 $liveform->add_notice(h($merchant_message[1]));
             }
+        }
+    }
+
+    // Stock locations, checked above.
+    if ($stock_locations_plan !== null) {
+        if (!pg_stock_locations_save($stock_locations_plan)) {
+            $liveform->add_warning(lang('The stock locations could not all be saved.'));
         }
     }
