@@ -11,6 +11,7 @@ description: Outgoing webhook queue (includes/api/outbound/webhooks.php): which 
 - Dispatcher (`api_webhook_dispatch()`, general job and `api_webhook_job.php`): picks a due row, claims it with `UPDATE … next_attempt_at = now + 120 WHERE id = … AND next_attempt_at = <the value it read>` and skips the row unless exactly one row changed, so two overlapping runs do not deliver one row twice.
 - Delivered: deleted, the subscription goes `active`.
 - Failed: backoff ladder, six attempts (`api_http_should_retry()`: only 0/408/429/5xx retry); out of attempts or a non-retryable answer gives `next_attempt_at = 0` with `attempts > 0` (given up) and the subscription becomes `failing`.
+- The activity log line for a given-up delivery (`api_webhook_given_up_note()`) names the address as scheme and host only (`pg_ops_alert_mask_url()`): the log is read by managers and by API apps with `site_log:read`, and Slack, Discord and Zapier carry the secret in the path. It used to log the full URL. Test: `webhook_queue_test.php`.
 - Retry (panel Events tab "Send again", `POST /webhooks/{id}/retry`): subscription `active`, every row back to `attempts = 0`, `next_attempt_at = now`, held and given-up alike.
 - Rows at `next_attempt_at = 0` (held or given up) older than a week are swept.
 
