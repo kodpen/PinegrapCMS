@@ -516,11 +516,12 @@ if (pg_image_derivative_sweep_due(pg_image_derivative_directory())) {
     }
 }
 
-// WebP at a picture's own address behind a CDN or proxy nobody confirmed
+// WebP at a picture's own address behind a CDN or proxy
 // (includes/fn/image_vary_check.php): the token-free self-test through the
-// site's own address, once after the switch is turned on or the confirmation
-// taken back, then daily while unconfirmed. It sets the confirmation when the
-// edge keeps a copy per format, and sends the original when the edge keeps
+// site's own address, once after the switch or the confirmation changes,
+// then daily while the switch is on, confirmed or not. It sets the
+// confirmation only when both copies come back out of the edge's cache,
+// takes it back when they do not, and sends the original when the edge keeps
 // even private answers. A tick with nothing due reads one small file.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_vary_check.php');
 pg_image_vary_test_daily();
