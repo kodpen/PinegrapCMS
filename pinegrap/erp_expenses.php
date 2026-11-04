@@ -44,6 +44,9 @@ if (preg_match('/^year-(\d{4})$/', $period_choice, $parts)) {
     if ($period['error'] !== '') {
         $liveform->add_warning(h($period['error']));
     }
+} elseif ($period_choice === 'all') {
+    $span = $ready ? db_item("SELECT MIN(expense_date) AS first, MAX(expense_date) AS last FROM erp_expenses WHERE expense_date > '0000-00-00'") : null;
+    $period = erp_expense_all_period((string) ($span['first'] ?? ''), (string) ($span['last'] ?? ''), date('Y-m-d'));
 } else {
     $period = erp_profit_period(array('range' => 'month', 'month' => $period_choice));
     $period_choice = substr($period['from'], 0, 7);
@@ -259,6 +262,7 @@ for ($i = 0; $i < 18; $i++) {
 foreach (array((int) date('Y'), (int) date('Y') - 1) as $year) {
     $output_periods .= '<option value="year-' . $year . '"' . (($period_choice === 'year-' . $year) ? ' selected' : '') . '>' . h(lang(array('string' => 'Year {var:1}', 'vars' => $year))) . '</option>';
 }
+$output_periods .= '<option value="all"' . (($period_choice === 'all') ? ' selected' : '') . '>' . lang('All dates') . '</option>';
 $output_periods .= '<option value="dates"' . (($period_choice === 'dates') ? ' selected' : '') . '>' . lang('From - to') . '</option>';
 
 $output_category_options = '<option value="0">' . lang('All categories') . '</option>';
