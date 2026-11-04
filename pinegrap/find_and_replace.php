@@ -487,136 +487,129 @@ if (!$_POST) {
         'heading_description' => lang('Enter the text that you want to mass-find and replace throughout many types of items in the system.'),
     ]) . '
 <main id="content" class="container-fluid">
+    ' . $liveform->output_errors() . '
+    ' . $liveform->output_notices() . '
+    <form method="post">
+        ' . get_token_field() . '
         <div class="row">
-            <div class="col-12">
-                ' . $liveform->output_errors() . '
-                ' . $liveform->output_notices() . '
-                
-                <form method="post">
-                    ' . get_token_field() . '
-                    <div class="alert theme-warning">
-                        <h5>' . lang('Warning') . '</h5>
-                        <p class="mb-0">' . lang('This feature can be dangerous. You can accidentally lose a large amount of content. Make sure to have someone create a backup of your database first. Use at your own risk.') . '</p>
+            <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                <div class="row">
+                    <div class="col-12 xl:col-6">
+                        <div class="card mb-7">
+                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <label for="find" class="mb-0">' . lang('Find') . '</label>
+                            </h2>
+                            <div class="card-body pt-0">
+                                ' . $liveform->output_field([
+                                    'type'  => 'textarea',
+                                    'id'    => 'find',
+                                    'name'  => 'find',
+                                    'rows'  => '10',
+                                    'class' => 'form-control font-monospace',
+                                    'required' => 'required',
+                                ]) . '
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 xl:col-6">
+                        <div class="card mb-7">
+                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <label for="replace" class="mb-0">' . lang('Replace') . '</label>
+                            </h2>
+                            <div class="card-body pt-0">
+                                ' . $liveform->output_field([
+                                    'type'  => 'textarea',
+                                    'id'    => 'replace',
+                                    'name'  => 'replace',
+                                    'rows'  => '10',
+                                    'class' => 'form-control font-monospace',
+                                    'aria-describedby' => 'replace_help',
+                                ]) . '
+                                <div class="form-text fg-secondary small mt-3" id="replace_help">' . lang('Leave empty to delete found text. Back-references ($1, $2) are supported when regular expressions are on.') . '</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card mb-7">
+                    <button type="button" class="card-header bg-reset fg-reset border-0 w-100 text-start d-flex justify-content-between align-items-center"
+                        data-bs-toggle="collapse" data-bs-target="#scope_panel" aria-controls="scope_panel" aria-expanded="true">
+                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Scope') . '</span>
+                        <span class="material-icons" aria-hidden="true">expand_more</span>
+                    </button>
+                    <div class="collapse show" id="scope_panel">
+                        <div class="card-body pt-0">
+                            <div class="mb-5">
+                                <button type="button"
+                                    onclick="document.querySelectorAll(\'#scope_checkboxes input\').forEach(c=>c.checked=true)"
+                                    class="btn btn-sm btn-outline theme-secondary me-1">' . lang('Select all') . '</button>
+                                <button type="button"
+                                    onclick="document.querySelectorAll(\'#scope_checkboxes input\').forEach(c=>c.checked=false)"
+                                    class="btn btn-sm btn-outline theme-secondary">' . lang('Deselect all') . '</button>
+                            </div>
+                            <div id="scope_checkboxes">
+                                ' . $scope_html . '
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                <div class="position-sticky" style="top:3.3rem;">
+                    <div class="card mb-7">
+                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            ' . lang('Options') . '
+                        </h2>
+                        <div class="card-body pt-0">
+                            <div class="form-field mb-3">
+                                <div class="switch">' . $liveform->output_field([
+                                    'type'  => 'checkbox',
+                                    'id'    => 'case_sensitive',
+                                    'name'  => 'case_sensitive',
+                                    'value' => '1',
+                                    'class' => 'no-bs',
+                                ]) . '</div>
+                                <label class="" for="case_sensitive">' . lang('Case sensitive') . '</label>
+                            </div>
+                            <div class="form-field">
+                                <div class="switch">' . $liveform->output_field([
+                                    'type'  => 'checkbox',
+                                    'id'    => 'use_regex',
+                                    'name'  => 'use_regex',
+                                    'value' => '1',
+                                    'class' => 'no-bs',
+                                ]) . '</div>
+                                <label class="" for="use_regex">' . lang('Use regular expression') . '</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert theme-warning mb-7">
+                        <h2 class="h5">' . lang('Warning') . '</h2>
+                        <p>' . lang('This feature can be dangerous. You can accidentally lose a large amount of content. Make sure to have someone create a backup of your database first. Use at your own risk.') . '</p>
                         <p class="mb-0">' . h(lang(['string' => 'This screen changes these types of items: {var:1}.', 'vars' => implode(', ', $scope_labels)])) . '</p>
                     </div>
-                    <div class="row">
-
-                        <div class="col-12 lg:col-6">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Find') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 my-3">
-                                            <label for="find" class="visually-hidden">' . lang('Find') . '</label>
-                                            ' . $liveform->output_field([
-                                                'type'  => 'textarea',
-                                                'id'    => 'find',
-                                                'name'  => 'find',
-                                                'rows'  => '10',
-                                                'class' => 'form-control font-monospace',
-                                                'required' => 'required',
-                                            ]) . '
-                                        </div>
-                                        <div class="col-12 my-3">
-                                            <div class="form-field mb-3">
-                                                <div class="switch">' . $liveform->output_field([
-                                                    'type'  => 'checkbox',
-                                                    'id'    => 'case_sensitive',
-                                                    'name'  => 'case_sensitive',
-                                                    'value' => '1',
-                                                    'class' => 'no-bs',
-                                                ]) . '</div>
-                                                <label class="" for="case_sensitive">' . lang('Case sensitive') . '</label>
-                                            </div>
-                                            <div class="form-field">
-                                                <div class="switch">' . $liveform->output_field([
-                                                    'type'  => 'checkbox',
-                                                    'id'    => 'use_regex',
-                                                    'name'  => 'use_regex',
-                                                    'value' => '1',
-                                                    'class' => 'no-bs',
-                                                ]) . '</div>
-                                                <label class="" for="use_regex">' . lang('Use regular expression') . '</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                </div>
+            </div>
+            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                    <div class="container">
+                        <div class="btn-group flex-wrap justify-content-center">
+                            <button type="submit" name="submit_button" value="Find"
+                                class="btn my-1 btn-outline theme-primary">
+                                <span class="material-icons me-3" aria-hidden="true">search</span>
+                                <span class="pg-btn-label">' . lang('Find') . '</span>
+                            </button>
+                            <button type="submit" name="submit_button" value="Find &amp; Replace"
+                                class="btn my-1 btn-solid theme-success" data-confirm-content="' . h($replace_confirm) . '">
+                                <span class="material-icons me-3" aria-hidden="true">find_replace</span>
+                                <span class="pg-btn-label">' . lang(array('string'=>'Find & Replace')) . '</span>
+                            </button>
                         </div>
-
-                        <div class="col-12 lg:col-6">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Replace') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 my-3">
-                                            <label for="replace" class="visually-hidden">' . lang('Replace') . '</label>
-                                            ' . $liveform->output_field([
-                                                'type'  => 'textarea',
-                                                'id'    => 'replace',
-                                                'name'  => 'replace',
-                                                'rows'  => '10',
-                                                'class' => 'form-control font-monospace',
-                                            ]) . '
-                                        </div>
-                                        <div class="col-12 my-3">
-                                            <div class="form-text fg-secondary small">' . lang('Leave empty to delete found text. Back-references ($1, $2) are supported when regular expressions are on.') . '</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-12">
-                            <div class="card mb-7">
-                                <button type="button" class="card-header bg-reset fg-reset border-0 w-100 text-start d-flex justify-content-between align-items-center"
-                                    data-bs-toggle="collapse" data-bs-target="#scope_panel" aria-controls="scope_panel" aria-expanded="true">
-                                    <span class="text-uppercase h6 fg-primary fw-bold mb-0">' . lang('Scope') . '</span>
-                                    <span class="material-icons" aria-hidden="true">expand_more</span>
-                                </button>
-                                <div class="collapse show" id="scope_panel">
-                                    <div class="card-body">
-                                        <div class="mb-5">
-                                            <button type="button"
-                                                onclick="document.querySelectorAll(\'#scope_checkboxes input\').forEach(c=>c.checked=true)"
-                                                class="btn btn-sm btn-outline theme-secondary me-1">' . lang('Select all') . '</button>
-                                            <button type="button"
-                                                onclick="document.querySelectorAll(\'#scope_checkboxes input\').forEach(c=>c.checked=false)"
-                                                class="btn btn-sm btn-outline theme-secondary">' . lang('Deselect all') . '</button>
-                                        </div>
-                                        <div id="scope_checkboxes">
-                                            ' . $scope_html . '
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                     </div>
-
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;">
-                        <div class="container">
-                            <div class="btn-group flex-wrap justify-content-center">
-                                <button type="submit" name="submit_button" value="Find"
-                                    class="btn my-1 btn-outline theme-primary">
-                                    <span class="material-icons me-3" aria-hidden="true">search</span>
-                                    <span class="pg-btn-label">' . lang('Find') . '</span>
-                                </button>
-                                <button type="submit" name="submit_button" value="Find &amp; Replace"
-                                    class="btn my-1 btn-solid theme-success" data-confirm-content="' . h($replace_confirm) . '">
-                                    <span class="material-icons me-3" aria-hidden="true">find_replace</span>
-                                    <span class="pg-btn-label">' . lang(array('string'=>'Find & Replace')) . '</span>
-                                </button>
-                            </div>
-                        </div>
-                    </nav>
-                </form>
+                </nav>
             </div>
         </div>
+    </form>
 </main>' .
     output_footer();
 

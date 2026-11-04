@@ -394,6 +394,8 @@
     "Scanning the next product starts a new sale.": "Sonraki ürünü okuttuğunuzda yeni satış başlar.",
     "Scanning the pages…": "Sayfalar taranıyor…",
     "Scanning the pages… {var} of {var2}": "Sayfalar taranıyor… {var}/{var2}",
+    "Scans": "Okumalar",
+    "Scans made on this screen since it was opened.": "Bu ekran açıldığından beri yapılan okumalar.",
     "Scene {n}": "Sahne {n}",
     "Scene {n} of {count}": "Sahne {n} / {count}",
     "Scenes": "Sahneler",
