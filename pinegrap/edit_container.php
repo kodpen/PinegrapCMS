@@ -41,9 +41,11 @@ $container = db_item(
         width,
         height,
         weight,
-        cost
+        cost,
+        last_modified_user_id,
+        last_modified_timestamp
     FROM containers
-    WHERE id = '" . escape($_REQUEST['id']) . "'");
+    WHERE id = '" . $id . "'");
 
 // If the form has not been submitted, then output it.
 if (!$_POST) {
@@ -69,6 +71,10 @@ if (!$_POST) {
         }
     }
 
+    // The last change, under the Summary.
+    $last_user = (string) db_value("SELECT user_username FROM user WHERE user_id = '" . (int) $container['last_modified_user_id'] . "'");
+    $status_rows = pg_container_form_status_row(lang('Last Modified'), get_relative_time(array('timestamp' => (int) $container['last_modified_timestamp'])) . ($last_user !== '' ? ' ' . h($last_user) : ''));
+
     echo
         pg_page_shell([
             'title'=> lang('Edit Container'),
@@ -81,27 +87,19 @@ if (!$_POST) {
             'breadcrumb' => array(array('label' => lang('All Containers'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_containers.php'), array('label' => lang('Edit Container'))),
         ]) . '
 <main id="content" class="container-fluid">
-                    <div class="row">
+            <div class="row">
                 <div class="col-12">
                     ' . $liveform->output_errors() . '
-                    
                     <form action="edit_container.php" method="post">
                         ' . get_token_field() . '
-                        <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
-                        ' . pg_container_form_card($liveform) . '
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class="btn-group flex-wrap justify-content-center">
-                                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('container')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
-                                </div>
-                            </div>
-                        </nav>
+                        <input type="hidden" name="id" value="' . h($id) . '" />
+                        ' . pg_container_form_layout(pg_container_form_cards($liveform, $status_rows), '
+                                        <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('container')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>') . '
                     </form>
                     ' . pg_container_form_script() . '
                 </div>
             </div>
-        
 </main>' .
         output_footer();
 

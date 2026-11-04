@@ -107,7 +107,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - contact-shared-form.md: The contact create and edit screens share includes/forms/contact_form.php: what it holds, what stays in the screens
 - contact-user-list-view-kept.md: Contacts and Users lists keep their view (filter) through Export, Delete All, Merge, Advanced Filters, Create and Import
 - contacts-organize-dialog.md: Organize Selected on the Contacts list is an in-page pgUI dialog (no popup), offers only groups filled by hand, counts only contacts whose groups changed
-- container-shared-form.md: add_container.php and edit_container.php draw and check the container form through includes/forms/container_form.php; limits, unit conversion, required boxes, the list's figures
+- container-shared-form.md: add_container.php and edit_container.php draw and check the container form through includes/forms/container_form.php; wide layout, limits, unit conversion, required boxes, the list's figures
 - copy-buttons.md: Hand-written panel Copy buttons: label kept, icon swapped, polite status beside the button, clipboard API only in a secure context, execCommand decides; which screens follow it
 - country-shared-form.md: add_country.php and edit_country.php draw the country options card and read its posted values through includes/forms/country_form.php; what each screen keeps
 - css-has-whole-document-restyle.md: Chromium restyles the whole document on every DOM insertion while a rule styles every child of a :has() element; the settings card rewrite, the Bootstrap 6 dist rewrite, the guard test
