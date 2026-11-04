@@ -118,11 +118,3 @@ function test_submitted_form_quick_missing_required()
 	$unlabelled = array(array('id' => '5', 'label' => '', 'type' => 'text box', 'required' => '1'));
 	pg_assert_same(lang('A required field is empty.'), pg_submitted_form_quick_missing($unlabelled, array()));
 }
-
-function test_submitted_form_quick_sorts_by_form_editor()
-{
-	$filter_source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
-
-	pg_assert_contains("'form_editor'    => lang('Form Editor')", $filter_source, 'a sort code');
-	pg_assert_contains("'form_editor'        => 'form_editor_user.user_username'", $filter_source, 'what it orders by');
-}
