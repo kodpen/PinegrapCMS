@@ -3675,3 +3675,91 @@
     bottom: auto;
   }
 }
+
+/* -- Context menu (pg_image_editor_menu.js) -- */
+
+/* Placed at the press by the script (left, top), kept inside the window;
+   a long menu scrolls. */
+.pgie-menu.pgie-ctx {
+  position: fixed;
+  top: 0;
+  right: auto;
+  left: 0;
+  z-index: 40;
+  min-width: 200px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
+  color: var(--pgie-tx);
+}
+
+.pgie-ctx button {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  color: inherit;
+  font-size: 13px;
+}
+
+.pgie-ctx button:focus-visible {
+  outline: 2px solid var(--pgie-sel);
+  outline-offset: -2px;
+  background: var(--pgie-hover);
+}
+
+.pgie-ctx button[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.pgie-ctx button[aria-disabled="true"]:hover {
+  background: transparent;
+}
+
+.pgie-ctx .pgie-ctx-danger {
+  color: var(--pgie-danger);
+}
+
+/* A submenu's opener ends in an arrow; the open one stays lit. */
+.pgie-ctx .pgie-ctxopen::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-inline-start: auto;
+  border-top: 1.5px solid currentColor;
+  border-right: 1.5px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.pgie-ctx .pgie-ctxopen[aria-expanded="true"] {
+  background: var(--pgie-hover);
+}
+
+/* A group's modes: the one shown is ticked. */
+.pgie-ctx [role="menuitemradio"]::before {
+  content: "";
+  width: 10px;
+  height: 5px;
+  border-bottom: 1.5px solid transparent;
+  border-left: 1.5px solid transparent;
+  transform: translateY(-2px) rotate(-45deg);
+}
+
+.pgie-ctx [role="menuitemradio"][aria-checked="true"]::before {
+  border-color: currentColor;
+}
+
+.pgie-ctxsep {
+  flex: none;
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--pgie-line);
+}
+
+@media (pointer: coarse) {
+  .pgie-ctx button {
+    height: 44px;
+  }
+}

@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'fonts', 'glyph', 'warp', 'outline', 'builder', 'actions');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'fonts', 'glyph', 'warp', 'outline', 'builder', 'actions', 'menu');
 }
 
 /**
@@ -4909,6 +4909,26 @@ function pg_image_editor_strings_actions()
     return array(
         'actBar'     => lang('Selection actions'),
         'actOptions' => lang('Options'),
+    );
+}
+
+// -- Context menu (pg_image_editor_menu.js) --
+
+/**
+ * The context menu's own labels; its other items use the labels of the
+ * parts that own them (Duplicate, Bring to front, Combine shapes…).
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_menu()
+{
+    return array(
+        'ctxMenu'       => lang('Commands'),
+        'ctxCut'        => lang('Cut'),
+        'ctxCopy'       => lang('Copy'),
+        'ctxPaste'      => lang('Paste'),
+        'ctxExpandWarp' => lang('Expand warp'),
+        'ctxImportFile' => lang('Import from this computer'),
     );
 }
 
