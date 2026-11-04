@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
 $user = validate_user();
 
@@ -86,39 +87,31 @@ while ($row = mysqli_fetch_assoc($result)) {
     $order_reports[] = $row;
 }
 
-$output_rows = '';
+// Every order report is printed: the list table driver sorts and searches
+// them in the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
 
-// if there is at least one result to display
-if ($order_reports) {
-
-    foreach ($order_reports as $order_report) {
-
-        $output_link_url = 'view_order_report.php?id=' . $order_report['id'];
-
-        $created_username = '';
-            
-        if ($order_report['created_username']) {
-            $created_username = lang(array('string'=>'by {var:1}','vars'=>array( h($order_report['created_username']) ) ) );
-        }
-        
-        $last_modified_username = '';
-        
-        if ($order_report['last_modified_username']) {
-            $last_modified_username = lang(array('string'=>'by {var:1}','vars'=>array( h($order_report['last_modified_username']) ) ) );
-        }
-        
-        $output_rows .=
-            '<tr>
-                <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('View') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-eye"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="bi bi-trash"></i></button>-->
-                </td>
-                <td class="chart_label align-middle">' . h($order_report['name']) . '</td>
-                <td class="align-middle">' . get_relative_time(array('timestamp' => $order_report['created_timestamp'])) . ' ' . $created_username . '</td>
-                <td class="align-middle">' . get_relative_time(array('timestamp' => $order_report['last_modified_timestamp'])) . ' ' . $last_modified_username . '</td>
-            </tr>';
-    }
+foreach ($order_reports as $order_report) {
+    $list_rows[] = array(
+        'id' => (int) $order_report['id'],
+        'cells' => array(
+            'name' => pg_list_cell('<a href="view_order_report.php?id=' . (int) $order_report['id'] . '" data-pg-open>' . h($order_report['name']) . '</a>'),
+            'created' => pg_list_table_when_cell($order_report['created_timestamp'], (string) $order_report['created_username']),
+            'last_modified' => pg_list_table_when_cell($order_report['last_modified_timestamp'], (string) $order_report['last_modified_username']),
+        ),
+    );
 }
+
+$list = pg_list_table_printed(array(
+    'list' => 'view_order_reports',
+    'columns' => array(
+        'name' => array('heading' => lang('Name')),
+        'created' => array('heading' => lang('Created'), 'kind' => 'date'),
+        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+    ),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+));
 
 echo
     pg_page_shell(
@@ -140,27 +133,13 @@ echo
            
             ' . pg_screen_toolbar(array(
                 'primary' => array('label' => lang('Create'), 'url' => 'view_order_report.php', 'icon' => 'bi-plus-circle'),
-                'search'  => pg_list_sort_menu('view_order_reports.php', $sort_columns, $sort_levels, $sort_default),
+                'search'  => array(pg_list_table_search_box('view_order_reports'), pg_list_sort_menu('view_order_reports.php', $sort_columns, $sort_levels, $sort_default)),
             )) . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table " style="width:100%;display:none">
-                        <thead>
-                            <tr>
-                                <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>' . $output_rows . '</tbody>
-                    </table>
-                </div>
-            </div>
+            ' . pg_list_table_html($list['source'], $list['page'], lang('All Order Reports')) . '
         </div>
     </div>
 </main>
-' .
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();
 
 $liveform->remove_form();

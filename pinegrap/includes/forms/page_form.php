@@ -40,7 +40,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                            page and fill from one template when opened
  *                            (select_page()); for the screens that print
  *                            every type's fields at once
- * @return array  'selector'   the page type card,
+ * @return array  'selector'   the page type card (no column around it),
  *                'properties' the System Options card,
  *                'wysiwyg'    the rich-text editor code for its message fields
  */
@@ -2709,9 +2709,9 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             </div>';
     }
     
+    // A card for the screen's status column, which holds the stickiness.
     $output_page_type_selector = 
-        '<div class="col-12 md:col-4 lg:col-3 xl:col-2">
-            <div class="card my-7 position-sticky" style="top:56px;">
+        '<div class="card mb-7">
                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Page Type') . '
                 </h2>
@@ -2729,8 +2729,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>';
+            </div>';
 
     $output_page_type_properties =
         '<a name="interactive_page_feature"></a>

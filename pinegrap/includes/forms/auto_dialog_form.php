@@ -53,18 +53,13 @@ function pg_auto_dialog_form_validate($liveform, $id)
     }
 
     if (!$liveform->check_field_error('name')) {
-        $query = "SELECT COUNT(*) FROM auto_dialogs WHERE (name = ?)";
-        $values = array((string) $liveform->get_field_value('name'));
+        $taken = pg_auto_dialog_name_in_use((string) $liveform->get_field_value('name'), ($id === null) ? null : (int) $id);
 
-        if ($id !== null) {
-            $query .= " AND (id != ?)";
-            $values[] = (string) $id;
+        if ($taken === null) {
+            output_error('Query failed.');
         }
 
-        $result = db_q($query, $values) or output_error('Query failed.');
-        $row = mysqli_fetch_row($result);
-
-        if ((int) $row[0] != 0) {
+        if ($taken) {
             $liveform->mark_error('name', lang('Sorry, the name that you entered is already in use, so please enter a different name.'));
         }
     }

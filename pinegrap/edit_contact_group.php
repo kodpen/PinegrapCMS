@@ -101,17 +101,20 @@ if (!$_POST) {
         $liveform->assign_field_value('rules', (string) $group_rules['rules']);
     }
     
+    // Every member, the rule-added ones included, for the Summary.
+    $member_count = (int) db_value("SELECT COUNT(*) FROM contacts_contact_groups_xref WHERE contact_group_id = '" . (int) $id . "'");
+
     // A static group's hand, form and product rows, reviewed when it is
     // switched to rules.
     $switch_review = ($may_edit_rules && ($group_rules['kind'] !== 'dynamic')) ? pg_audience_switch_counts($id) : null;
 
     // if there are no contacts in this contact group, allow delete
     if ($number_of_contacts == 0) {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact group')))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact group')))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>';
         
     // else there is at least one contact in this contact group, so disable delete button
     } else {
-        $output_delete_button = '<span class="d-inline-block" title="' . h(lang('Please delete or remove all contacts from this contact group before deleting this contact group.')) . '"><button type="button" class="btn my-1  btn-solid theme-danger " disabled aria-describedby="delete_blocked_reason"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button></span><span id="delete_blocked_reason" class="visually-hidden">' . h(lang('Please delete or remove all contacts from this contact group before deleting this contact group.')) . '</span>';
+        $output_delete_button = '<span class="d-inline-block" title="' . h(lang('Please delete or remove all contacts from this contact group before deleting this contact group.')) . '"><button type="button" class="btn my-1 btn-solid theme-danger" disabled aria-describedby="delete_blocked_reason"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button></span><span id="delete_blocked_reason" class="visually-hidden">' . h(lang('Please delete or remove all contacts from this contact group before deleting this contact group.')) . '</span>';
     }
 
     print
@@ -137,17 +140,15 @@ if (!$_POST) {
                 
                 <form name="form" action="edit_contact_group.php" method="post" >
                     ' . get_token_field() . '
-                    ' . pg_contact_group_form_card($liveform, true) . '
-                    ' . ($audience_ready ? pg_contact_group_rules_card($liveform, $group_rules, $may_edit_rules, $switch_review) : '') . '
-
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                ' . $output_delete_button . '
-                            </div>
-                        </div>
-                    </nav>
+                    ' . pg_contact_group_form_layout(
+                        pg_contact_group_form_cards($liveform, array(
+                            'required' => true,
+                            'cards' => ($audience_ready ? pg_contact_group_rules_card($liveform, $group_rules, $may_edit_rules, $switch_review) : ''),
+                            'status' => pg_contact_group_form_members_status($member_count, $audience_ready ? (string) $group_rules['kind'] : null),
+                        )),
+                        '
+                                        <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        ' . $output_delete_button) . '
                     <input type="hidden" name="id" value="' . $id . '">
                 </form>
             </div>

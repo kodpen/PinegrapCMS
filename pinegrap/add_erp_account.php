@@ -107,10 +107,14 @@ if (!$_POST) {
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
+        </div>
+    </div>
 
-            <form name="form" action="add_erp_account.php" method="post">
-                ' . get_token_field() . '
-                ' . erp_account_form_cards($liveform, true, false, $linked_contact) . '
+    <form name="form" action="add_erp_account.php" method="post">
+        ' . get_token_field() . '
+        <div class="row">
+            <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                ' . erp_account_form_cards($liveform, true, false, $linked_contact, null, false) . '
                 <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
@@ -118,9 +122,15 @@ if (!$_POST) {
                         </div>
                     </div>
                 </nav>
-            </form>
+            </div>
+
+            <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                <div class="position-sticky" style="top:3.3rem;">
+                    ' . erp_account_form_notes_card($liveform) . '
+                </div>
+            </div>
         </div>
-    </div>
+    </form>
 </main>' .
     output_footer();
 

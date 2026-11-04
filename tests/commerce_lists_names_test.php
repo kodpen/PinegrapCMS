@@ -28,7 +28,7 @@ function test_commerce_lists_names_state_filter_label()
 {
 	$source = commerce_lists_names_source('view_verified_shipping_addresses.php');
 
-	pg_assert_contains('<label for="state_id" class="fw-semibold">', $source);
+	pg_assert_contains('<label for="state_id"', $source, 'the state filter has its label');
 	pg_assert_contains('<select id="state_id" name="state_id"', $source);
 }
 

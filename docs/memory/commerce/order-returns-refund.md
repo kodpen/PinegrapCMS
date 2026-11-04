@@ -5,6 +5,7 @@ description: Refund of a received return (PR #936): driver or recorded, suggeste
 
 ## How is a return refunded?
 - `view_return.php` draws the Payment Refund card only on `received`; post `action=refund` → `pg_return_refund($id, amount, method, reference)`.
+- `credit`: store-credit-refunds.md.
 - `driver`: the order's own driver (`pg_payment_refund_driver()`) under the order screen's conditions (`transaction_id`, not cancelled/incomplete, money left); `pg_payment_call(…, 'refund', [orders row, minor units, order_items rows])`, its `log` lines written, a refusal shows the service's words. `manual`: money given back another way (bank transfer, cash), optional reference; 0 marks the return refunded when the order screen already paid it back.
 - Amount: `pg_return_amount_cents()` (dot or comma, two decimals), more than 0 for a driver, never above `total - refunded_amount`.
 

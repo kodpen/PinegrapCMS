@@ -805,7 +805,7 @@ function api_schema() {
 			'handler' => 'api_orders_returns',
 			'returns' => array('list' => 'OrderReturn'),
 			'summary' => 'The return requests of an order',
-			'description' => 'Every return request of the order, newest first, each with the order lines it sends back (order_item_id is the id of a line in GET /orders/{id}), its status and when each status was reached. status is requested, approved, rejected, shipped (the goods are on their way back), received, refunded or closed; source says who asked: customer (My Account), panel or api. refund is null until the return is refunded, and on a site not yet updated to the version that keeps it; a closed return keeps it. It holds the amount (minor units, null when unknown), the method (driver: through the payment service; manual: made another way and recorded; null when unknown: an older refund that could not be found again), the reference (null when none) and unclear (the payment service gave no clear answer, and also while it is being asked). order.return.refunded carries the same amount, method (as refund_method) and unclear, but no reference. withdrawal says whether the request came in time, as the panel shows it: the day the delivery arrived (or is taken to have arrived, delivered_estimated), the last day of the withdrawal period and requested_in_time; it is read from the delivery as it is known today, so a delivery date learned later can change it, and it is null when no date is known for the delivery. One page, as an order has few returns; an order with none, or a site not yet updated to the version that keeps returns, has an empty list.',
+			'description' => 'Every return request of the order, newest first, each with the order lines it sends back (order_item_id is the id of a line in GET /orders/{id}), its status and when each status was reached. status is requested, approved, rejected, shipped (the goods are on their way back), received, refunded or closed; source says who asked: customer (My Account), panel or api. refund is null until the return is refunded, and on a site not yet updated to the version that keeps it; a closed return keeps it. It holds the amount (minor units, null when unknown), the method (driver: through the payment service; manual: made another way and recorded; credit: given as store credit, the reference is the id of its card; null when unknown: an older refund that could not be found again), the reference (null when none) and unclear (the payment service gave no clear answer, and also while it is being asked). order.return.refunded carries the same amount, method (as refund_method) and unclear, but no reference. withdrawal says whether the request came in time, as the panel shows it: the day the delivery arrived (or is taken to have arrived, delivered_estimated), the last day of the withdrawal period and requested_in_time; it is read from the delivery as it is known today, so a delivery date learned later can change it, and it is null when no date is known for the delivery. One page, as an order has few returns; an order with none, or a site not yet updated to the version that keeps returns, has an empty list.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -5314,6 +5314,209 @@ function api_schema() {
 			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
 			'summary' => 'Delete an ad region, addressed as a POST',
 			'description' => 'The same delete as DELETE /design/ad-regions/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		/* ----- Auto dialogs and common regions (includes/api/resources/design_dialogs_regions.php) */
+
+		array(
+			'id'      => 'design.auto_dialogs.list',
+			'method'  => 'GET',
+			'path'    => '/design/auto-dialogs',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_auto_dialogs_list',
+			'returns' => array('list' => 'DesignAutoDialog'),
+			'summary' => 'Auto dialogs',
+			'description' => 'The dialogs that open by themselves for visitors, as the auto dialogs screen lists them, oldest first, cursor paged. A dialog shows url; width and height are pixels (0: sized by the content), delay is seconds after the page opens (0: at once), frequency is hours before it opens again for the same visitor (0: only once), page limits it to one page by name (empty: every page). Only an enabled dialog opens for visitors.',
+			'params'  => array(
+				array('name' => 'enabled', 'in' => 'query', 'type' => 'bool', 'description' => 'Only the enabled, or only the disabled, dialogs.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'design.auto_dialogs.get',
+			'method'  => 'GET',
+			'path'    => '/design/auto-dialogs/{id}',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_auto_dialogs_get',
+			'returns' => 'DesignAutoDialog',
+			'summary' => 'One auto dialog',
+			'description' => 'The same fields as the list, for one auto dialog.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.auto_dialogs.create',
+			'method'  => 'POST',
+			'path'    => '/design/auto-dialogs',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_auto_dialogs_create',
+			'dry_run' => true,
+			'returns' => 'DesignAutoDialog',
+			'status'  => 201,
+			'summary' => 'Create an auto dialog',
+			'description' => 'Adds an auto dialog, as the create auto dialog screen does. Like there it starts disabled unless enabled is sent: preview it on the site with ?preview_auto_dialog={id}, then enable it. Name and URL are required; no other auto dialog may have the name (409 name_taken).',
+			'params'  => array(
+				array('name' => 'name',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The dialog\'s name, which no other auto dialog has.'),
+				array('name' => 'url',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true, 'description' => 'The address the dialog shows.'),
+				array('name' => 'enabled',   'in' => 'body', 'type' => 'bool', 'description' => 'It opens for visitors. false when left out.'),
+				array('name' => 'width',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
+				array('name' => 'height',    'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
+				array('name' => 'delay',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 2147483, 'nullable' => true, 'description' => 'Seconds after the page opens; 0 or null for at once.'),
+				array('name' => 'frequency', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999999, 'nullable' => true, 'description' => 'Hours before it opens again for the same visitor; 0 or null for only once.'),
+				array('name' => 'page',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'The name of the only page it opens on; empty for every page.')
+			)
+		),
+
+		array(
+			'id'      => 'design.auto_dialogs.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/design/auto-dialogs/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_auto_dialogs_update',
+			'dry_run' => true,
+			'returns' => 'DesignAutoDialog',
+			'summary' => 'Change an auto dialog',
+			'description' => 'Only the fields sent change, with the screen\'s checks (422). A name another auto dialog has is 409 name_taken. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The dialog\'s name, which no other auto dialog has.'),
+				array('name' => 'url',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The address the dialog shows.'),
+				array('name' => 'enabled',   'in' => 'body', 'type' => 'bool', 'description' => 'It opens for visitors.'),
+				array('name' => 'width',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
+				array('name' => 'height',    'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
+				array('name' => 'delay',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 2147483, 'nullable' => true, 'description' => 'Seconds after the page opens; 0 or null for at once.'),
+				array('name' => 'frequency', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999999, 'nullable' => true, 'description' => 'Hours before it opens again for the same visitor; 0 or null for only once.'),
+				array('name' => 'page',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'The name of the only page it opens on; empty or null for every page.')
+			)
+		),
+
+		array(
+			'id'      => 'design.auto_dialogs.delete',
+			'method'  => 'DELETE',
+			'path'    => '/design/auto-dialogs/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_auto_dialogs_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an auto dialog',
+			'description' => 'Deletes the auto dialog outright, as the edit auto dialog screen does. Cannot be undone; to stop it opening and keep it, send enabled false instead.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.auto_dialogs.delete_post',
+			'method'  => 'POST',
+			'path'    => '/design/auto-dialogs/{id}/delete',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_auto_dialogs_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an auto dialog, addressed as a POST',
+			'description' => 'The same delete as DELETE /design/auto-dialogs/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.common_regions.list',
+			'method'  => 'GET',
+			'path'    => '/design/common-regions',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_common_regions_list',
+			'returns' => array('list' => 'DesignCommonRegion'),
+			'summary' => 'Common regions',
+			'description' => 'The common regions: shared content a page style places with its tag and managers edit on any page. Oldest first, cursor paged; designer regions are not listed. content is HTML with the site\'s own links as absolute addresses. A region with a shared_component_id is drawn by that shared component, edited in the visual designer; its content is the one kept from before and comes back if the component is deleted.',
+			'params'  => array(
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'design.common_regions.get',
+			'method'  => 'GET',
+			'path'    => '/design/common-regions/{id}',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_common_regions_get',
+			'returns' => 'DesignCommonRegion',
+			'summary' => 'One common region',
+			'description' => 'The same fields as the list, for one common region. A designer region is 404.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.common_regions.create',
+			'method'  => 'POST',
+			'path'    => '/design/common-regions',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_common_regions_create',
+			'dry_run' => true,
+			'returns' => 'DesignCommonRegion',
+			'status'  => 201,
+			'summary' => 'Create a common region',
+			'description' => 'Adds a common region, as the create common region screen does; place it in a page style with its tag. The name is required, at most 100 characters (422), and no other common or designer region may have it (409 name_taken).',
+			'params'  => array(
+				array('name' => 'name',    'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The name page styles place the region by (<cregion>name</cregion>), no other region\'s.'),
+				array('name' => 'content', 'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'The region as HTML, stored as the screen\'s rich text editor stores it.')
+			)
+		),
+
+		array(
+			'id'      => 'design.common_regions.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/design/common-regions/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_common_regions_update',
+			'dry_run' => true,
+			'returns' => 'DesignCommonRegion',
+			'summary' => 'Change a common region',
+			'description' => 'Only the fields sent change. A name another region has is 409 name_taken; a rename leaves the tags already in page styles behind, so change them too. A region drawn by its shared component takes a rename but no content (409 region_is_shared_component): edit the component in the visual designer. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',    'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The name page styles place the region by (<cregion>name</cregion>), no other region\'s. A rename has to be made in the page styles too.'),
+				array('name' => 'content', 'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'The region as HTML, stored as the screen\'s rich text editor stores it.')
+			)
+		),
+
+		array(
+			'id'      => 'design.common_regions.delete',
+			'method'  => 'DELETE',
+			'path'    => '/design/common-regions/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_common_regions_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a common region',
+			'description' => 'Deletes the common region and the user accounts\' access to it, as the edit common region screen does; its tag then draws nothing. 409 region_is_shared_component while a shared component draws it: delete the component first (its content comes back), then the region. Cannot be undone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.common_regions.delete_post',
+			'method'  => 'POST',
+			'path'    => '/design/common-regions/{id}/delete',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_common_regions_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a common region, addressed as a POST',
+			'description' => 'The same delete as DELETE /design/common-regions/{id}, for clients that cannot send DELETE.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
