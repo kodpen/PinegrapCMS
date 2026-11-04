@@ -68,6 +68,11 @@ function add_to_cart($request) {
 
         $message = lang('Sorry, that product could not be added. The product might no longer exist or might have recently been disabled.');
 
+        // A gift card line over its unit limit is refused with its own error.
+        if (pg_gift_card_quantity_refusal_take()) {
+            $message = pg_gift_card_line_quantity_error();
+        }
+
         if ($form) {
             $form->mark_error('', $message);
         }
