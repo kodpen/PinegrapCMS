@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
 $user = validate_user();
 validate_ecommerce_access($user);
@@ -67,7 +68,9 @@ $ship_date_adjustments = db_items(
     LEFT JOIN user AS last_modified_user ON ship_date_adjustments.last_modified_user_id = last_modified_user.user_id
     ORDER BY $order_by");
 
-$output_rows = '';
+// Every adjustment is printed: the list table driver sorts and searches
+// them in the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
 
 foreach ($ship_date_adjustments as $item) {
 
@@ -87,31 +90,30 @@ foreach ($ship_date_adjustments as $item) {
         $output_adjustment = lang(array('string' => '{var:1} day{suffix} later', 'vars' => array($days), 'suffix' => $suffix));
     }
 
-    $created_username = '';
-
-    if ($item['created_username'] != '') {
-        $created_username = ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($item['created_username']))));
-    }
-
-    $last_modified_username = '';
-
-    if ($item['last_modified_username'] != '') {
-        $last_modified_username = ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($item['last_modified_username']))));
-    }
-
-    $output_rows .=
-        '<tr>
-            <td></td>
-            <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_ship_date_adjustment.php?id=' . $item['id'] . '\'"><i class="bi bi-pencil"></i></button>
-            </td>
-            <td class="chart_label align-middle">' . h($item['zip_code_prefix']) . '</td>
-            <td class="align-middle">' . $output_shipping_method . '</td>
-            <td class="align-middle">' . $output_adjustment . '</td>
-            <td class="align-middle">' . get_relative_time(array('timestamp' => $item['created_timestamp'])) . $created_username . '</td>
-            <td class="align-middle">' . get_relative_time(array('timestamp' => $item['last_modified_timestamp'])) . $last_modified_username . '</td>
-        </tr>';
+    $list_rows[] = array(
+        'id' => (int) $item['id'],
+        'cells' => array(
+            'zip_code_prefix' => pg_list_cell('<a href="edit_ship_date_adjustment.php?id=' . (int) $item['id'] . '" data-pg-open>' . h($item['zip_code_prefix']) . '</a>'),
+            'shipping_method' => pg_list_cell($output_shipping_method),
+            'adjustment' => pg_list_cell($output_adjustment, 'align-middle', array('data-pg-sort-value' => (int) $item['adjustment'])),
+            'created' => pg_list_table_when_cell($item['created_timestamp'], (string) $item['created_username']),
+            'last_modified' => pg_list_table_when_cell($item['last_modified_timestamp'], (string) $item['last_modified_username']),
+        ),
+    );
 }
+
+$list = pg_list_table_printed(array(
+    'list' => 'view_ship_date_adjustments',
+    'columns' => array(
+        'zip_code_prefix' => array('heading' => lang('Zip Code Prefix')),
+        'shipping_method' => array('heading' => lang('Shipping Method')),
+        'adjustment' => array('heading' => lang('Adjustment')),
+        'created' => array('heading' => lang('Created'), 'kind' => 'date'),
+        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+    ),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+));
 
 echo
     pg_page_shell([
@@ -130,30 +132,14 @@ echo
 
                 ' . pg_screen_toolbar(array(
                     'primary' => array('label' => lang('Create'), 'url' => 'add_ship_date_adjustment.php', 'icon' => 'bi-plus-circle'),
-                    'search'  => pg_list_sort_menu('view_ship_date_adjustments.php', $sort_columns, $sort_levels, $sort_default),
+                    'search'  => array(pg_list_table_search_box('view_ship_date_adjustments'), pg_list_sort_menu('view_ship_date_adjustments.php', $sort_columns, $sort_levels, $sort_default)),
                 )) . '
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative">
-                        <table class="chart table-hover table" style="width:100%;display:none">
-                            <thead>
-                                <tr>
-                                    <th class="noVis"></th>
-                                    <th class="noVis">' . lang('Action') . '</th>
-                                    <th>' . get_column_heading(lang('Zip Code Prefix'), $sort_levels, '', '', 'zip_code_prefix') . '</th>
-                                    <th>' . get_column_heading(lang('Shipping Method'), $sort_levels, '', '', 'shipping_method') . '</th>
-                                    <th>' . get_column_heading(lang('Adjustment'), $sort_levels, '', '', 'adjustment') . '</th>
-                                    <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>' . $output_rows . '</tbody>
-                        </table>
-                    </div>
-                </div>
+                ' . pg_list_table_html($list['source'], $list['page'], lang('All Ship Date Adjustments')) . '
             </div>
         </div>
     
-</main>' .
+</main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
     output_footer();
 
 $liveform->remove_form();
