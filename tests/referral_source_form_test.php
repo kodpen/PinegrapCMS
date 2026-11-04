@@ -149,3 +149,36 @@ function test_referral_source_screens_check_others_and_notice()
 	pg_assert_contains("'sort_order'", $list, 'the list sorts by sort order');
 	pg_assert_contains('output_notices()', $list, 'the list prints the notices');
 }
+
+function test_referral_source_form_wide_layout()
+{
+	$card = pg_referral_source_form_card(null);
+	pg_assert_contains('col-12 lg:col-8 2xl:col-9 order-1', $card, 'the card sits in the form column');
+
+	$status = pg_referral_source_form_status(array('name' => 'Friend <A>', 'code' => 'F&A', 'sort_order' => ''), pg_referral_source_form_status_row('Extra', 'x'));
+	pg_assert_contains('col-12 lg:col-4 2xl:col-3 order-2', $status, 'the Summary sits in the status column');
+	pg_assert_contains('class="position-sticky" style="top:3.3rem;"', $status, 'the status box sticks below the top bar');
+	pg_assert_contains('<span id="referral_source_summary_name">Friend &lt;A&gt;</span>', $status, 'the name is shown, escaped');
+	pg_assert_contains('<span id="referral_source_summary_code">F&amp;A</span>', $status, 'the code is shown, escaped');
+	pg_assert_contains('<span id="referral_source_summary_sort_order">0</span>', $status, 'an empty sort order reads 0, as stored');
+	pg_assert_contains('<dt class="fw-normal">Extra</dt>', $status, 'the screen row follows');
+
+	$create = pg_referral_source_form_status(null);
+	pg_assert_contains('<span id="referral_source_summary_name"></span>', $create, 'create starts with an empty name');
+	pg_assert_true(strpos($create, 'border-bottom">' . "\n" . '                                                <dt class="fw-normal">' . h(lang('Sort Order'))) === false, 'the last row draws no line under it');
+
+	$layout = pg_referral_source_form_layout($card . $create, '<button>Go</button>');
+	pg_assert_true(strpos($layout, 'order-1') < strpos($layout, 'order-2'), 'the status column comes after the form column, for narrow screens');
+	pg_assert_contains('col-12 order-3 position-sticky" style="bottom:0; z-index:3;"', $layout, 'the save bar sticks on its own column');
+	pg_assert_contains('<button>Go</button>', $layout, 'the buttons sit in the bar');
+}
+
+function test_referral_source_screens_use_wide_layout()
+{
+	pg_assert_contains("pg_referral_source_form_status(null, pg_referral_source_form_status_row(lang('Other Referral Sources')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_referral_source.php'), 'create shows the other sources count');
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_referral_source.php');
+	pg_assert_contains("pg_referral_source_form_status(\$values, pg_referral_source_form_status_row(lang('Last Modified')", $edit, 'edit shows the last change');
+	foreach (array('add_referral_source.php', 'edit_referral_source.php') as $file) {
+		pg_assert_contains('pg_referral_source_form_layout(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ' draws the shared save bar');
+	}
+}

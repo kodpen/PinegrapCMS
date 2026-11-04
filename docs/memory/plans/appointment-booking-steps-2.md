@@ -9,13 +9,14 @@ description: Steps BK6-BK10 of plans/appointment-booking.md: Workspace calendar 
 - BK6 (S) Workspace calendar. Done in #6305 (decided in #6302, option B: read from `bookings`, no `ws_events` row; `workspace/workspace-bookings.md`). The agenda's status changes call `pg_booking_changed()`.
 - BK6b (S) The four `booking.*` events in `ws_events_catalog()` (record kind `booking`, its right, `workspace_flows_parity_table()`). After BK6.
 
-- BK7 (S) My bookings and the manage page. After BK4 and BK5.
+- BK7 (S) My bookings and the manage page. Done in #6607 (`commerce/booking-manage.md`).
   - The account widgets (`designer/account-widget-forms.md`) gain "My bookings" (upcoming and past, reschedule and cancel within the policy); `booking_manage.php` (root) opens from the mail's signed link for a visitor without an account: the same two actions and the `.ics` download; both call the slot engine again for a reschedule. Memory: `designer/booking-widget.md` grows.
 
 - BK8 (S) API, MCP and webhooks. After BK3. Done in #6377 (`api/api-bookings.md`).
   - Resource `bookings` in `includes/api/resources/bookings.php` with the schema rows (`api/api-endpoint-rules.md`): list, get, create (staff-made), update status, cancel, plus `GET /bookings/slots?service=&staff=&day=`; scope `bookings:*` with its owner ceiling; `dry_run`; MCP tools follow the routes; the `booking.*` events of BK5 in the webhook catalogue. Memory: `api/api-bookings.md`.
 
 - BK9 (S) Deposits. After BK4 and the forms' payment step (FL5, merged: `designer/custom-form-payment-step.md`).
+  - Decided in #6632 (`workflow/decisions-made-schema-10.md`): `booking_services.deposit` (minor units) and `deposit_product_id`, `bookings.order_id` (indexed) and `paid_at`, the form-fee shape; the booking is marked paid once from `pg_order_complete()` / `pg_order_mark_paid()` as `pg_form_payment_mark_paid()` does, and confirms then; the service form in Settings › Bookings gets the deposit and the product picker.
   - A service with a price may ask for a deposit at the details step: the widget hands the amount to the form payment step (the fee product named in the service), the booking confirms on `pg_order_complete()`, else stays requested and the hold expires; "paid on arrival" marks nothing. Memory: `commerce/bookings-model.md` grows.
 
 - BK10 (S) Templates and close-out. After BK1-BK9.

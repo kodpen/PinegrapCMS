@@ -207,3 +207,25 @@ function test_image_editor_builder_regions()
 	pg_assert_same(array(array(50, 0), array(0, 100), array(100, 100)), $r['mirrored'], 'a mirrored triangle');
 	pg_assert_same(null, $r['open'], 'an open path is not an area');
 }
+
+// A shape builder click: on the overlap of two squares it unites them whole
+// in the top one's style; on a region of one square it changes nothing; a
+// third square elsewhere stays out of it.
+function test_image_editor_builder_click_unites_the_stack()
+{
+	$r = image_editor_builder_node(
+		'var items = [it(1, sq(0, 0, 100, 100)), it(2, sq(50, 0, 100, 100)), it(3, sq(400, 0, 50, 50))], regions = M.builderRegions(items);' . "\n"
+		. 'var mid = regions[M.regionAt(regions, [75, 50])], left = regions[M.regionAt(regions, [25, 50])];' . "\n"
+		. 'var stacked = M.builderStack(items, mid), alone = M.builderStack(items, left);' . "\n"
+		. 'console.log(JSON.stringify({ stacked: [stacked.ids, sum(stacked.pieces)], alone: alone, none: M.builderStack(items, null) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(array(1, 2), array(array(2, 1, 15000))), $r['stacked'], 'a click on the overlap unites both squares in the top one\'s style');
+	pg_assert_same(array('ids' => array(), 'pieces' => array()), $r['alone'], 'a click on one square\'s own region leaves it whole');
+	pg_assert_same(array('ids' => array(), 'pieces' => array()), $r['none'], 'a click outside every region does nothing');
+}

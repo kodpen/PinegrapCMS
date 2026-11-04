@@ -193,13 +193,8 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
             exit();
         }
 
-        $query = "DELETE FROM cregion "
-                ."WHERE cregion_id = ?";
-        $result = db_q($query, array((string) $id)) or output_error('Query failed');
-        
-        // delete users_common_regions_xref records
-        $query = "DELETE FROM users_common_regions_xref WHERE common_region_id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        // The region and the users' access to it.
+        pg_cregion_delete($id) or output_error('Query failed');
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('common region'), $_POST['name']) )), $_SESSION['sessionusername']);
         $notice = lang(array('string'=>'{var:1} was deleted successfully','vars'=>lang('Common Region') ));
@@ -228,20 +223,12 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
         // draws it.
         if ($component_id) {
             $cregion_designer_type = 'no';
-            $sql_content = "";
+            $new_content = null;
         } else {
-            $sql_content = "cregion_content = '" . escape(prepare_rich_text_editor_content_for_input($content)) . "', ";
+            $new_content = (string) prepare_rich_text_editor_content_for_input($content);
         }
 
-        $query = "UPDATE cregion "
-                ."SET cregion_name = '" . escape($name) . "', "
-                    .$sql_content
-                    ."cregion_designer_type = '$cregion_designer_type', "
-                    ."cregion_user = '" . $user['id'] . "', "
-                    ."cregion_timestamp = UNIX_TIMESTAMP() "
-                ."WHERE cregion_id = '" . escape($_POST['id'] ?? '') . "'";
-        // update region
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+        pg_cregion_save($id, $name, $new_content, $cregion_designer_type, (int) $user['id']) or output_error('Query failed');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('common region'), $name) )), $_SESSION['sessionusername']);
         $notice = lang(array('string'=>'{var:1} was edited successfully','vars'=>lang('Common Region') ));
 

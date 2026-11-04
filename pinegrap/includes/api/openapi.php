@@ -726,6 +726,8 @@ function api_openapi_objects()
         'SmsCampaignOutbox'  => 'api_sms_campaign_outbox_schema',
         'DesignAd'           => 'api_design_ad_schema',
         'DesignAdRegion'     => 'api_design_ad_region_schema',
+        'DesignAutoDialog'   => 'api_design_auto_dialog_schema',
+        'DesignCommonRegion' => 'api_design_common_region_schema',
     );
 
     // A module declares the objects its own endpoints answer with, the same way

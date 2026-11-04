@@ -32,9 +32,14 @@ if (!defined('PG_ERP_ENTRY')) {
  *                                in that currency.
  * @param array|null $contact  The linked contact as erp_contact_summary()
  *                                reads it, or null for none
+ * @param array|null $account  The stored account (edit screen), for the
+ *                                e-Invoice state under the tax number
+ * @param bool     $with_notes  Close with the Notes card. The create screen
+ *                                draws it in its status column instead
+ *                                (erp_account_form_notes_card()).
  * @return string  HTML
  */
-function erp_account_form_cards($liveform, $with_opening = false, $currency_locked = false, $contact = null, $account = null)
+function erp_account_form_cards($liveform, $with_opening = false, $currency_locked = false, $contact = null, $account = null, $with_notes = true)
 {
     $kind_options = array();
     $kind_options[lang('Customer')] = 'customer';
@@ -452,23 +457,32 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
 
     $output .= erp_account_form_contact_card($liveform, $contact);
 
-    $output .= '
+    if ($with_notes) {
+        $output .= erp_account_form_notes_card($liveform);
+    }
+
+    return $output;
+}
+
+/**
+ * The Notes card: one free text box, short enough for a status column.
+ *
+ * @param liveform $liveform
+ * @return string  HTML
+ */
+function erp_account_form_notes_card($liveform)
+{
+    return '
     <div class="card my-7">
         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
             ' . lang('Notes') . '
         </div>
         <div class="card-body">
-            <div class="row">
-                <div class="col-12 my-3">
-                    ' . $liveform->output_field(array(
-                        'type' => 'textarea', 'id' => 'notes', 'name' => 'notes', 'aria-label' => lang('Notes'),
-                        'class' => 'form-control', 'rows' => '3')) . '
-                </div>
-            </div>
+            ' . $liveform->output_field(array(
+                'type' => 'textarea', 'id' => 'notes', 'name' => 'notes', 'aria-label' => lang('Notes'),
+                'class' => 'form-control', 'rows' => '3')) . '
         </div>
     </div>';
-
-    return $output;
 }
 
 /**

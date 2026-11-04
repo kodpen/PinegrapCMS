@@ -57,7 +57,8 @@ function api_scope_groups() {
 		// layout a person published before (a revision), and share a design's
 		// drafts as a prototype by a link (never as an MCP tool). Ads and ad
 		// regions are the exception: they are written directly and go live at
-		// once (/design/ads, /design/ad-regions), as on their panel screens.
+		// once (/design/ads, /design/ad-regions), as are auto dialogs and common
+		// regions (/design/auto-dialogs, /design/common-regions).
 		'design'    => array('label' => 'Page design', 'read' => 'design:read',   'write' => 'design:write'),
 
 		// A/B experiments of the designed pages and their results. Writing

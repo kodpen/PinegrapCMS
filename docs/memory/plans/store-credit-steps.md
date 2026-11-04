@@ -18,5 +18,5 @@ description: Steps SC1-SC4 of plans/store-credit.md: the customer-bound card mod
 - SC3 (S) Points to credit, and an order's points taken back on cancel and refund. Done in PR #6256.
   - Settings › Ecommerce › Gift Cards & Rewards: "Points are worth" (points per unit of money) and the smallest conversion; My Account: the points balance, "Convert N points" (one UPDATE with a `WHERE user_reward_points >= ?` guard, then `pg_credit_issue()` kind `points`; refused when the guard misses); the reward goal untouched. Memory: `commerce/store-credit-points.md`.
 
-- SC4 (M) Refunds to credit. After SC1.
+- SC4 (M) Refunds to credit. Done in PR #6602 (the API refund keeps driver and manual).
   - The return refund screen (`order-returns-refund.md`) and the order cancel refund get the choice "Store credit" with an optional bonus percentage (a setting, default 0); the refund is written as today with `refund_method = credit` and the card id in `order_returns.refund_*` (`order-returns-refund-columns.md`), the ERP hand-off unchanged (a refund is a refund), the mail names the credit. Tests on the amount with and without the bonus. Memory: `commerce/store-credit-refunds.md`.

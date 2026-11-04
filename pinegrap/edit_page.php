@@ -176,7 +176,7 @@ if (!$_POST) {
     
     // Get page type
     if ($page_type != '') {
-        $output_subnav_page_type = ' | ' . lang('Page Type') . ': ' . h(get_page_type_name($page_type));
+        $output_subnav_page_type = '<li>' . lang('Page Type') . ': ' . h(get_page_type_name($page_type)) . '</li>';
     }
     
     $output_subnav_short_link = '';
@@ -193,10 +193,10 @@ if (!$_POST) {
     $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $short_link = mysqli_fetch_assoc($result);
 
-    // if there is a short link, then prepare to output description in sub-navigation area
+    // if there is a short link, then prepare to output description in the summary card
     // ($short_link is null when the page has no short link)
     if (!empty($short_link['name'])) {
-        $output_subnav_short_link = ' | ' . lang('Short Link') . ': ' . h($short_link['name']);
+        $output_subnav_short_link = '<li>' . lang('Short Link') . ': ' . h($short_link['name']) . '</li>';
     }
     
     $output_subnav_home = '';
@@ -205,7 +205,7 @@ if (!$_POST) {
     $output_subnav_next_page = '';
     $output_subnav_skip_page = '';
     
-    // if this is a home page, then prepare to output description in sub-navigation area
+    // if this is a home page, then prepare to output description in the summary card
     if ($page_home == 'yes') {
         $output_subnav_home = '<span class="badge material-icons fg-primary align-middle">home</span>';
     }
@@ -213,13 +213,13 @@ if (!$_POST) {
     $output_subnav_search = '';
     $output_subnav_search_keywords = '';
     
-    // if search is enabled, then prepare to output description in sub-navigation area
+    // if search is enabled, then prepare to output description in the summary card
     if ($page_search == 1) {
-        $output_subnav_search = ' | ' . lang('Searchable');
+        $output_subnav_search = '<li>' . lang('Searchable') . '</li>';
         
-        // if there are search keywords, then prepare to output description in sub-navigation area
+        // if there are search keywords, then prepare to output description in the summary card
         if ($page_search_keywords != '') {
-            $output_subnav_search_keywords = ' | ' . lang('Keyword') . ': ' . h($page_search_keywords);
+            $output_subnav_search_keywords = '<li>' . lang('Keyword') . ': ' . h($page_search_keywords) . '</li>';
         }
     }
     
@@ -246,20 +246,20 @@ if (!$_POST) {
             $next_page_name = get_page_name(($page_type_properties['next_page_id'] ?? ''));
             // Next page is blank then output none.
             if ($next_page_name == '') {
-                $output_subnav_next_page = ' | ' . lang('Next Page') . ': ' . lang('None');
+                $output_subnav_next_page = '<li>' . lang('Next Page') . ': ' . lang('None') . '</li>';
             // else output name
             } else {
-                $output_subnav_next_page = ' | ' . lang('Next Page') . ': ' . pg_page_subnav_link($next_page_name);
+                $output_subnav_next_page = '<li>' . lang('Next Page') . ': ' . pg_page_subnav_link($next_page_name) . '</li>';
             }
         } else if((isset($page_type_properties['add_button_next_page_id']) && (($page_type_properties['add_button_next_page_id'] ?? '') != 0))) {
             // Get the next page name and output the next page. 
             $next_page_name = get_page_name(($page_type_properties['add_button_next_page_id'] ?? ''));
             // Next page is blank then output none.
             if ($next_page_name == '') {
-                $output_subnav_next_page = ' | ' . lang('Next Page') . ': ' . lang('None');
+                $output_subnav_next_page = '<li>' . lang('Next Page') . ': ' . lang('None') . '</li>';
             // else output name
             } else {
-                $output_subnav_next_page = ' | ' . lang('Next Page') . ': ' . pg_page_subnav_link($next_page_name);
+                $output_subnav_next_page = '<li>' . lang('Next Page') . ': ' . pg_page_subnav_link($next_page_name) . '</li>';
             }
         } else {
             // If no next page set the variable to blank.
@@ -269,7 +269,7 @@ if (!$_POST) {
         if((isset($page_type_properties['skip_button_next_page_id']) && (($page_type_properties['skip_button_next_page_id'] ?? '') != 0))) {
             // Get the next page name and output the next page.
             $skip_page_name = get_page_name(($page_type_properties['skip_button_next_page_id'] ?? ''));
-            $output_subnav_skip_page = ' | ' . lang('Skip Page') . ': ' . pg_page_subnav_link($skip_page_name);
+            $output_subnav_skip_page = '<li>' . lang('Skip Page') . ': ' . pg_page_subnav_link($skip_page_name) . '</li>';
         } else {
             // If no next page set the variable to blank.
             $output_subnav_skip_page = '';
@@ -795,13 +795,26 @@ if (!$_POST) {
     $ai_title_marker = $ai_marks_ready ? pg_ai_fields_marker('page_title', 'title', in_array('page_title', $ai_marks, true)) : '';
     $ai_description_marker = $ai_marks_ready ? pg_ai_fields_marker('page_meta_description', 'meta_description', in_array('page_meta_description', $ai_marks, true)) : '';
 
-    // The page's facts (access, type, short link, search, next pages) sit in
-    // the bar's grow slot, so the bar is drawn even when the page has no edit
-    // buttons or the user may not set its type.
+    // Empty, and not drawn, when the page has no edit buttons or the user may
+    // not set its type.
     $output_button_bar = pg_screen_toolbar(array(
         'secondary' => $output_button_bar_buttons,
-        'grow' => '<p class="mb-0">' . $output_subnav_home . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($page_folder))) . $output_subnav_page_type . $output_subnav_short_link . $output_subnav_search . $output_subnav_search_keywords . $output_subnav_next_page . $output_subnav_skip_page . '</p>',
     ));
+
+    // The page's facts (access, type, short link, search, next pages) and
+    // its SEO score, read beside the form in the status column.
+    $output_summary_card =
+        '<div class="card mb-7">
+            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex align-items-center gap-3">
+                ' . lang('Summary') . '<span class="ms-auto" data-pg-seo-badge="page:' . (int) $page_id . '">' . pg_seo_render_badge($seo_row) . '</span>
+            </h2>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0 d-grid gap-2" style="overflow-wrap:anywhere">
+                    <li>' . $output_subnav_home . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($page_folder))) . '</li>
+                    ' . $output_subnav_page_type . $output_subnav_short_link . $output_subnav_search . $output_subnav_search_keywords . $output_subnav_next_page . $output_subnav_skip_page . '
+                </ul>
+            </div>
+        </div>';
 
     print
     pg_page_shell(
@@ -839,11 +852,11 @@ if (!$_POST) {
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                     ' . ($ai_marks_ready ? pg_ai_fields_input('page', $ai_marks) : '') . '
                     <div class="row">
-                        ' . $output_page_type_selector . '
-                        <div class="col-12 md:col" style="min-width:0">
+                        <!-- Form column first: below lg the columns stack in source order. -->
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
                             <div class="row">
                                 <div class="col-12">
-                                    <div class="card my-7 position-sticky" style="top:56px;">
+                                    <div class="card my-7">
                                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Main Informations') . '
                                         </div>
@@ -894,7 +907,7 @@ if (!$_POST) {
                                 <div class="col-12">
                                     <div class="card my-7">
                                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                            ' . lang('Search Engine Optimization') . '<span class="float-end" data-pg-seo-badge="page:' . (int) $page_id . '">' . pg_seo_render_badge($seo_row) . '</span>
+                                            ' . lang('Search Engine Optimization') . '
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
@@ -1100,15 +1113,25 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                ' . $output_delete_button . '
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem keeps the box below the fixed top bar. -->
+                            <div class="position-sticky mt-7" style="top:3.3rem;">
+                                ' . $output_page_type_selector . '
+                                ' . $output_summary_card . '
                             </div>
                         </div>
-                    </nav>
+                        <!-- Sticky on its own column: the row is as tall as the form. -->
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class=" btn-group flex-wrap justify-content-center">
+                                        <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                        ' . $output_delete_button . '
+                                    </div>
+                                </div>
+                            </nav>
+                        </div>
+                    </div>
                 </form>
             </div>
         </div>

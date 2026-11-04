@@ -799,6 +799,16 @@
         return null;
     }
 
+    // The ids of the visible, unlocked layers whose turned box meets box
+    // { x, y, w, h } (a selection box dragged over the stage), bottom to top.
+    function layersInBox(doc, box) {
+        return doc.layers.filter(function (l) {
+            var b = (!l.hidden && !l.locked) ? bounds([l]) : null;
+
+            return !!b && (b.x <= box.x + box.w) && (b.x + b.w >= box.x) && (b.y <= box.y + box.h) && (b.y + b.h >= box.y);
+        }).map(function (l) { return l.id; });
+    }
+
     // Whether x, y lies inside a layer's box by more than margin on every
     // side, in the layer's own turned frame.
     function insideBox(l, x, y, margin) {
@@ -6350,6 +6360,20 @@
         return { ids: ids, pieces: pieces };
     }
 
+    // A shape builder click, merging (one region touched): the shapes
+    // stacked over that region (items [{ id, rings }] bottom to top) united
+    // whole in the style of the top one, as builderMerge() gives it; nothing
+    // for a region of one shape, which a click leaves as it is.
+    function builderStack(items, region) {
+        var stack = region ? items.filter(function (it) { return region.members.indexOf(it.id) >= 0; }) : [];
+
+        if (stack.length < 2) {
+            return { ids: [], pieces: [] };
+        }
+
+        return { ids: stack.map(function (it) { return it.id; }), pieces: pathfinder('unite', stack) };
+    }
+
     // ---- back to curves ----
 
     // A closed polygon's knots: straight runs between corners (turns over
@@ -6533,7 +6557,7 @@
     var BUILDER = {
         flattenRing: flattenRing, layerRings: layerRings, ringArea: ringArea, ringsArea: ringsArea, clipRings: clipRings,
         ringIslands: ringIslands, insideRings: insideRings, pathfinder: pathfinder, builderRegions: builderRegions, regionAt: regionAt,
-        builderMerge: builderMerge, ringKnots: ringKnots, ringsPath: ringsPath
+        builderMerge: builderMerge, builderStack: builderStack, ringKnots: ringKnots, ringsPath: ringsPath
     };
 
     var api = {
@@ -6545,7 +6569,7 @@
         moveCrop: moveCrop, mapLayer: mapLayer, reorient: reorient, turnDocument: turnDocument, flipDocument: flipDocument,
         outputSize: outputSize, ADJUST: ADJUST, FILTERS: FILTERS, FILTER_NAMES: FILTER_NAMES, colorValues: colorValues,
         colorMatrix: colorMatrix, applyColor: applyColor, vignetteStops: vignetteStops, sharpenKernel: sharpenKernel,
-        newId: newId, corners: corners, bounds: bounds, local: local, hitLayer: hitLayer, insideBox: insideBox, resizeBox: resizeBox, angleTo: angleTo,
+        newId: newId, corners: corners, bounds: bounds, local: local, hitLayer: hitLayer, layersInBox: layersInBox, insideBox: insideBox, resizeBox: resizeBox, angleTo: angleTo,
         align: align, distribute: distribute, snapBox: snapBox, reorder: reorder,
         ownsKey: ownsKey, focusMatch: focusMatch, panelTitle: panelTitle
     };

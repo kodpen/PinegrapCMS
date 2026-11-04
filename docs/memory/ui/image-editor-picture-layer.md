@@ -15,7 +15,7 @@ module: image_editor
 
 ## How is it used?
 - Layers list (rail button and Select's panel with nothing selected): a last row "Arka plan" (`boardBackground`) with its lock; a press selects it when unlocked. The Canvas panel on a photo has the checkbox `pictureFree`.
-- Select, picture unlocked: a press on the picture where no layer lies selects and moves it (snapping as a layer, Alt free); four corner handles resize it, the ratio kept; arrows nudge, Delete deletes, Escape drops the selection. Its panel: lock, delete. Each drag, nudge, lock or delete is one undo step.
+- Select, picture unlocked: a press on the picture where no layer lies selects and moves it (snapping as a layer, Alt free); four corner handles resize it, the ratio kept; arrows nudge, Delete deletes, Escape drops the selection. Its panel is titled Arka plan as its row and shows the file's name, then lock and delete (before #6613 it read Katmanlar › Görsel, nameless). Each drag, nudge, lock or delete is one undo step.
 - Delete: `M.dropPicture()` turns the document into an artboard of the canvas (its fill, the layers moved onto it, no redaction areas, adjustments or outward frame); `syncKind()` hides the picture, gives the canvas profile's rail, and gives the photo's back on undo (`restore()` calls it).
 
 ## How is it saved?

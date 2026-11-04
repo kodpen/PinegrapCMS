@@ -32,7 +32,7 @@ description: External API (integration.php): find what the panel can do that the
 - X11 Form submissions write, `GET /forms/{id}/fields`: PR #6424.
 - X12 `/design/` CRUD, `design:*`, no events:
   - X12a ads, ad regions: PR #6383 (`api/api-design-ads.md`).
-  - X12b auto dialogs, common regions; a converted common region refuses delete as its screen does (#5516).
+  - X12b auto dialogs, common regions: PR #6615 (`api/api-design-dialogs-regions.md`).
 
 ## What is not a step?
 - Redirects: short links with `redirect_code` and `*` patterns, covered. Saved reports and the back-in-stock list wait for a client. Settings, firewall, sessions, backups, updates: no endpoint (#5238, `api/api-settings-no-endpoint.md`).
