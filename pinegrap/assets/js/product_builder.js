@@ -3289,12 +3289,22 @@
     });
 
     /* The product price is the base of every rule, so the rows follow it while
-       there are rules. Without rules it keeps seeding new rows only, as
-       before. */
+       there are rules. Without rules the rows nobody typed a price into follow
+       it as well, the way SKU and short description follow #name: a Unit
+       Price typed after the options were ticked otherwise left every row at
+       0.00 and the set was created at that price. */
     $('#price').on('input change', function () {
+
         if (activeRules) {
             refreshRulePrices();
+            return;
         }
+
+        $('#pg_pb_matrix .pg-pb-variant').not('[data-price-manual="1"]')
+            .removeAttr('data-price-auto')
+            .find('.pg-pb-v-price').val(matrixPrice($(this).val()));
+
+        updatePreview();
     });
 
     /* ---------------------------------------------------------- first run */
