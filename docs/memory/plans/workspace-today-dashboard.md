@@ -22,7 +22,7 @@ description: Plan: the Workspace Today page (?view=home) drawn as new-dashboard 
 
 - W2 — Waiting for you, Today and overdue. Files: workspace.js (`homeWaiting`, `homeDue`, `homeCount`), workspace_approvals.js, workspace_acks.js (`homeRows`), ws_today.src.css "Waiting", "Due". After W1; parallel with W3–W5.
 
-- W3 — Calendar · today. Files: workspace.js (`homeCalendar`), ws_today.src.css "Calendar". After W1; parallel with W2, W4, W5.
+- W3 (done, #6739) — Calendar · today. Files: workspace.js (`homeCalendar`), ws_today.src.css "Calendar". After W1; parallel with W2, W4, W5.
 
 - W4 — What happened in the channels, Latest decisions. Files: workspace.js (`homeDigest`, `homeDecisions`), ws_today.src.css "Digest", "Decisions". After W1; parallel with W2, W3, W5.
 
