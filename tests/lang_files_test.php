@@ -61,6 +61,24 @@ function test_lang_files_encode_keeps_order()
 	pg_assert_same("{\n    \"Save\": \"Kaydet\",\n    \"Bold\": \"Kalın\"\n}\n", pg_lang_file_encode(array('Save' => 'Kaydet', 'Bold' => 'Kalın'), false));
 }
 
+// Text that is not UTF-8 (a value typed in a Latin-1 console) has no JSON
+// form: the encoder answers false and the writer refuses it, instead of
+// writing an empty shard that drops every other key of that letter.
+function test_lang_files_encode_refuses_invalid_utf8()
+{
+	pg_assert_same(false, pg_lang_file_encode(array('Apple' => 'Elma', 'Avocado' => "caf\xe9")), 'a value');
+	pg_assert_same(false, pg_lang_file_encode(array("caf\xe9" => 'x'), false), 'a key');
+
+	$path = sys_get_temp_dir() . '/pg_lang_write_' . getmypid() . '.json';
+	file_put_contents($path, "{\n    \"Apple\": \"Elma\"\n}\n");
+
+	pg_assert_false(pg_lang_write_file($path, false), 'nothing to write');
+	pg_assert_same("{\n    \"Apple\": \"Elma\"\n}\n", (string) file_get_contents($path), 'the file is kept');
+	pg_assert_same(array(), glob($path . '.tmp-*'), 'no temporary file left');
+
+	@unlink($path);
+}
+
 // The Turkish wording ships as shards only: every shard in its exact form
 // with each key in its own shard, and no single tr.json beside the folder.
 function test_lang_files_turkish_shards()
@@ -315,4 +333,120 @@ function test_lang_files_map_cache()
 	@rmdir($local . '/xx');
 	@rmdir($local);
 	@rmdir($temp);
+}
+
+// A stream wrapper over a real folder whose folder stat has no write bit for
+// anyone (mode 0555), as PHP on Windows reports a folder with the read-only
+// attribute OneDrive and Explorer set; files in it are read and written
+// through to the real folder. pglangro://<real folder path>.
+class pg_lang_files_test_readonly_folder
+{
+	public $context;
+
+	private $handle;
+
+	private static function real($path)
+	{
+		return substr((string) $path, strlen('pglangro://'));
+	}
+
+	public function url_stat($path, $flags)
+	{
+		$real = self::real($path);
+
+		if (is_dir($real)) {
+			return array('mode' => 040555, 'nlink' => 2);
+		}
+
+		$stat = @stat($real);
+
+		return is_array($stat) ? $stat : false;
+	}
+
+	public function stream_open($path, $mode, $options, &$opened)
+	{
+		$this->handle = @fopen(self::real($path), $mode);
+
+		return $this->handle !== false;
+	}
+
+	public function stream_write($data)
+	{
+		return fwrite($this->handle, $data);
+	}
+
+	public function stream_read($count)
+	{
+		return fread($this->handle, $count);
+	}
+
+	public function stream_eof()
+	{
+		return feof($this->handle);
+	}
+
+	public function stream_stat()
+	{
+		return fstat($this->handle);
+	}
+
+	public function stream_close()
+	{
+		fclose($this->handle);
+	}
+
+	public function stream_set_option($option, $arg1, $arg2)
+	{
+		return false;
+	}
+
+	public function stream_lock($operation)
+	{
+		return flock($this->handle, $operation);
+	}
+
+	public function rename($from, $to)
+	{
+		return rename(self::real($from), self::real($to));
+	}
+
+	public function unlink($path)
+	{
+		return unlink(self::real($path));
+	}
+}
+
+// A folder is_writable() calls closed but that takes a file still gets the
+// compiled cache: the write answers, not is_writable().
+function test_lang_files_cache_write_readonly_attribute_folder()
+{
+	$dir = sys_get_temp_dir() . '/pg_lang_cache_ro_' . getmypid();
+	@mkdir($dir);
+	stream_wrapper_register('pglangro', 'pg_lang_files_test_readonly_folder');
+
+	try {
+		pg_assert_false(is_writable('pglangro://' . $dir), 'the folder reads as closed');
+		pg_assert_true(pg_lang_cache_write('pglangro://' . $dir . '/lang_xx.php', 'sig', array('Save' => 'Kaydet')), 'written');
+	} finally {
+		stream_wrapper_unregister('pglangro');
+	}
+
+	$data = include $dir . '/lang_xx.php';
+	pg_assert_same(array('signature' => 'sig', 'map' => array('Save' => 'Kaydet')), $data, 'the cache file');
+
+	@unlink($dir . '/lang_xx.php');
+	@rmdir($dir);
+}
+
+// A language file already there is replaced, and no temporary file is left.
+function test_lang_files_write_file_replaces_existing()
+{
+	$file = sys_get_temp_dir() . '/pg_lang_write_' . getmypid() . '.json';
+	file_put_contents($file, 'old');
+
+	pg_assert_true(pg_lang_write_file($file, 'new'), 'written');
+	pg_assert_same('new', file_get_contents($file), 'replaced');
+	pg_assert_same(array(), glob($file . '.tmp-*'), 'no temporary file left');
+
+	@unlink($file);
 }

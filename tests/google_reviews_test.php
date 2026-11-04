@@ -159,3 +159,29 @@ function test_google_reviews_registered()
 	pg_assert_contains("google_reviews:    SW_GOOGLE_REVIEWS_TOKEN_GROUPS", $js, 'has a token palette');
 	pg_assert_contains("tag_cloud_region: 1, google_reviews: 1 };", $js, 'draws no Messages block');
 }
+
+// Pruning the kept languages: a language whose last read failed keeps its
+// try time and its logged mark, so reading another language does not let it
+// ask Google (and log) again on the next page; a language with neither a
+// usable answer nor a try within the ceiling is dropped.
+function test_google_reviews_cache_prune()
+{
+	$now = 1800000000;
+	$place = array('name' => 'Cafe', 'rating' => 4.5, 'count' => 10, 'maps_url' => '', 'reviews' => array());
+
+	$cache = array(
+		'en' => array('fetched_at' => $now, 'tried_at' => $now, 'logged' => false, 'place' => $place),
+		'tr' => array('tried_at' => $now - 60, 'logged' => true),
+		'de' => array('tried_at' => $now - PG_GREV_KEEP - 1, 'logged' => true),
+		'fr' => array('fetched_at' => $now - PG_GREV_KEEP - 1, 'tried_at' => $now - PG_GREV_KEEP - 1, 'place' => $place),
+	);
+
+	$kept = pg_grev_cache_prune($cache, 'en', $now);
+
+	pg_assert_same(array('en', 'tr'), array_keys($kept), 'failing tr kept, stale de and fr dropped');
+	pg_assert_true(!pg_grev_due($kept['tr'], $now), 'tr waits for its retry window');
+	pg_assert_true($kept['tr']['logged'], 'tr failure not logged again');
+
+	$only = pg_grev_cache_prune(array('de' => $cache['de']), 'de', $now);
+	pg_assert_same(array('de'), array_keys($only), 'the language just read is always kept');
+}

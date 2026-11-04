@@ -82,11 +82,16 @@ function settings_search_test_terms($sources, $code)
 }
 
 // The palette's own test (actionMatches() in backend.src.js): a term that
-// starts with the query, or a query that starts with the term.
+// starts with the query, or a query that starts with the term when the term
+// has four letters or more or is a whole word of the query.
 function settings_search_test_palette_hits($query, $terms)
 {
 	foreach ($terms as $term) {
-		if ((strpos($term, $query) === 0) || (strpos($query, $term) === 0)) {
+		if (strpos($term, $query) === 0) {
+			return true;
+		}
+
+		if ((strpos($query, $term) === 0) && ((mb_strlen($term, 'UTF-8') >= 4) || ($query === $term) || (substr($query, strlen($term), 1) === ' '))) {
 			return true;
 		}
 	}
@@ -118,6 +123,7 @@ function test_settings_search_every_category_names_its_group()
 		'firewall'    => 'security',
 		'commerce'    => 'selling',
 		'accounting'  => 'selling',
+		'bookings'    => 'selling',
 		'api'         => 'running',
 		'maintenance' => 'running',
 	), settings_search_test_registry_groups(), 'each category under its heading, in today\'s order');

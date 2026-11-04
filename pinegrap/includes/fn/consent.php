@@ -61,6 +61,22 @@ function pg_consent_enabled()
 }
 
 /**
+ * The Google tag ID of the site's gtag script (G-, GT-, AW-, DC- or the old
+ * UA- form), trimmed; '' when the value is anything else. The ID is printed
+ * into a script address and an inline script, so nothing but letters, digits
+ * and dashes passes.
+ *
+ * @param  mixed $value
+ * @return string
+ */
+function pg_ga_tag_id($value)
+{
+    $value = trim((string) $value);
+
+    return preg_match('/^(G|GT|AW|DC|UA)-[A-Z0-9-]{4,30}$/iD', $value) ? $value : '';
+}
+
+/**
  * The optional categories and the letter each one has in the cookie value.
  * The notice's script carries the same map.
  *
@@ -461,6 +477,10 @@ function pg_consent_catalogue($content)
         $catalogue['necessary'][] = array(PG_WISHLIST_COOKIE, true, lang('Remembers the products you saved to your favourites before signing in.'));
     }
 
+    // A page experiment keeps the variant a visitor was shown
+    // (pg_experiment_bucket_write()); written only while one runs.
+    $catalogue['necessary'][] = array('pg_exp', true, lang('Keeps showing you the same version of a page while the site compares two versions of it.'));
+
     $tracking = defined('VISITOR_TRACKING') && VISITOR_TRACKING;
 
     if ($tracking) {
@@ -678,6 +698,7 @@ function pg_consent_ui_keys()
     return array(
         'Keeps your visit together: the cart, signing in and the steps of a form.',
         'Keeps you signed in.',
+        'Keeps showing you the same version of a page while the site compares two versions of it.',
         'Remembers whether you chose to stay signed in.',
         'Remembers the desktop or mobile view you picked.',
         'Remembers your cookie choices.',

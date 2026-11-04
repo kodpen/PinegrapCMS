@@ -105,8 +105,12 @@ function pg_imap_connect($host, $port, $options = array())
         'peer_name'         => $host,
     );
 
-    if (defined('CURL_CA_BUNDLE') && (CURL_CA_BUNDLE !== '') && is_file(CURL_CA_BUNDLE)) {
-        $ssl['cafile'] = CURL_CA_BUNDLE;
+    // The store the site chose for every outbound connection
+    // (pg_ca_bundle_effective()); '' leaves OpenSSL's own.
+    $ca_file = pg_ca_bundle_effective();
+
+    if ($ca_file !== '') {
+        $ssl['cafile'] = $ca_file;
     }
 
     $address = filter_var($check['ip'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) ? '[' . $check['ip'] . ']' : $check['ip'];
@@ -1010,14 +1014,14 @@ function pg_imap_login_xoauth2(&$session, $user, $token)
     $initial = in_array('SASL-IR', $session['capabilities'], true);
 
     if (!pg_imap_write($session, $tag . ' AUTHENTICATE XOAUTH2' . ($initial ? ' ' . $response : '') . "\r\n")) {
-        return pg_imap_broken($session);
+        return false;
     }
 
     $reply = pg_imap_read_response($session, $tag, true);
 
     if ($reply['continue'] && !$initial) {
         if (!pg_imap_write($session, $response . "\r\n")) {
-            return pg_imap_broken($session);
+            return false;
         }
 
         $reply = pg_imap_read_response($session, $tag, true);
@@ -1026,7 +1030,7 @@ function pg_imap_login_xoauth2(&$session, $user, $token)
     // The server's reason for refusing, then the tagged NO.
     if ($reply['continue']) {
         if (!pg_imap_write($session, "\r\n")) {
-            return pg_imap_broken($session);
+            return false;
         }
 
         $reply = pg_imap_read_response($session, $tag, false);

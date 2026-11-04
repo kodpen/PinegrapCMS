@@ -477,8 +477,9 @@ function pg_llms_txt_content($site, $pages, $extra, $sitemap_url, $pages_heading
         $lines[] = '';
 
         foreach ($pages as $page) {
-            // Brackets would end the link text early.
-            $title = str_replace(array('[', ']'), array('\\[', '\\]'), pg_llms_txt_line($page['title'], 150));
+            // Brackets would end the link text early; a backslash, first, so
+            // that one at the end cannot escape the closing bracket.
+            $title = str_replace(array('\\', '[', ']'), array('\\\\', '\\[', '\\]'), pg_llms_txt_line($page['title'], 150));
             $page_description = pg_llms_txt_line($page['description'], 300);
 
             $lines[] = '- [' . $title . '](' . $page['url'] . ')' . (($page_description !== '') ? ': ' . $page_description : '');

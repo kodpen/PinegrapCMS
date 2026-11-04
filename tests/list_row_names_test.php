@@ -37,6 +37,12 @@ function list_row_names_source($path)
 	return file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
 }
 
+// The edit button of a row on the list table driver, named after the row.
+function list_row_names_edit($name)
+{
+	return 'aria-label="' . h(lang(array('string' => 'Edit {var:1}', 'vars' => $name))) . '"';
+}
+
 function list_row_names_select($name)
 {
 	return 'aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($name)))) . '"';
@@ -67,7 +73,7 @@ function test_list_row_names_product_row()
 		$html .= $cell['html'];
 	}
 
-	pg_assert_contains(list_row_names_select('MUG <1>'), $row['cells'][0]['html'], 'the row box names the product');
+	pg_assert_contains('>MUG &lt;1&gt;</a>', $row['cells']['id']['html'], 'the row\'s link names the product');
 	pg_assert_contains('class="pg-seo-open d-block text-decoration-none" aria-label="' . h(lang('SEO score has not been calculated yet.')) . '"', $html, 'the SEO link names the score');
 }
 
@@ -84,27 +90,27 @@ function test_list_row_names_submitted_form_row()
 		'contact_id' => null, 'contact_name' => null, 'submitted_username' => 'sam',
 		'submitted_timestamp' => time(), 'last_modified_username' => 'ed', 'last_modified_timestamp' => time(),
 	), false);
-	pg_assert_contains(list_row_names_select('Form <b> R&1'), $row['cells'][0]['html'], 'form name and reference code');
+	pg_assert_contains(list_row_names_edit('Form <b> R&1'), $row['cells']['actions']['html'], 'form name and reference code');
 
 	$row = pg_submitted_form_list_row(array(
 		'id' => '3', 'complete' => '0', 'form_name' => 'F', 'reference_code' => '',
 		'contact_id' => null, 'contact_name' => null, 'submitted_username' => '',
 		'submitted_timestamp' => time(), 'last_modified_username' => '', 'last_modified_timestamp' => time(),
 	), false);
-	pg_assert_contains(list_row_names_select('F'), $row['cells'][0]['html'], 'no reference code, no trailing space');
+	pg_assert_contains(list_row_names_edit('F'), $row['cells']['actions']['html'], 'no reference code, no trailing space');
 }
 
 function test_list_row_names_order_row()
 {
 	$source = list_row_names_source('view_orders.php');
-	pg_assert_contains('name="orders[]" value="\' . $id . \'" aria-label="\' . h(lang(array(\'string\' => \'Select {var:1}\', \'vars\' => array($output_row_name)))) . \'"', $source);
+	pg_assert_contains("urlencode(PATH . SOFTWARE_DIRECTORY . '/view_orders.php'), h(\$output_row_name))", $source, 'the row is named by its link');
 	pg_assert_contains("\$output_row_name = (trim((string) \$order_number) !== '') ? \$order_number : trim(\$billing_first_name . ' ' . \$billing_last_name);", $source);
 	pg_assert_contains("\$output_row_name = '#' . \$id;", $source);
 }
 
 function test_list_row_names_page_seo_links()
 {
-	$source = list_row_names_source('view_pages.php');
+	$source = list_row_names_source('includes/fn/page_list.php');
 	pg_assert_same(2, substr_count($source, 'aria-label="\' . h(pg_seo_link_name($page)) . \'"'), 'name-cell bar and SEO column badge');
 }
 
@@ -118,7 +124,7 @@ function test_list_row_names_folder_access_mark()
 
 	pg_assert_same('', pg_folder_access_mark('nonsense'));
 
-	foreach (array('view_pages.php' => '$page') as $path => $var) {
+	foreach (array('includes/fn/page_list.php' => '$page') as $path => $var) {
 		pg_assert_contains('pg_folder_list_name(' . $var . '[\'folder_name\'], ' . $var . '[\'folder_access_control_type\'])', list_row_names_source($path), $path);
 	}
 }

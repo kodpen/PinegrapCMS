@@ -62,6 +62,7 @@ function pg_privacy_export_sections()
         'campaigns'          => lang('E-mail campaigns'),
         'consents'           => lang('Consents'),
         'mail'               => lang('E-mail messages'),
+        'mail_bounces'       => lang('E-mail bounces and complaints'),
         'sms'                => lang('Text messages'),
         'chats'              => lang('Site chat'),
         'erp_accounts'       => lang('Current accounts'),
@@ -843,12 +844,18 @@ function pg_privacy_export_collect(array $found)
         $sections['refunds'] = _pg_privacy_export_select("SELECT * FROM order_refunds WHERE " . _pg_privacy_export_in('order_id', $order_ids) . " ORDER BY id", $order_ids);
     }
 
-    // Gift cards bought in the person's orders or sent to them; the code is a
-    // bearer secret, so only its end is written.
-    $gift_where = _pg_privacy_export_any(array(
+    // Gift cards bought in the person's orders or sent to them, and their
+    // store credit; the code is a bearer secret, so only its end is written.
+    $gift_parts = array(
         _pg_privacy_export_in('order_id', $order_ids),
         _pg_privacy_export_in('recipient_email_address', $emails),
-    ));
+    );
+
+    if (function_exists('pg_credit_ready') && pg_credit_ready()) {
+        $gift_parts[] = _pg_privacy_export_in('user_id', $user_ids);
+    }
+
+    $gift_where = _pg_privacy_export_any($gift_parts);
 
     $sections['gift_cards'] = _pg_privacy_export_select("SELECT * FROM gift_cards WHERE " . $gift_where . " ORDER BY id", ($gift_where !== '') ? array(1) : array());
 
@@ -997,6 +1004,12 @@ function pg_privacy_export_collect(array $found)
     // Messages sent to the person, without what the message itself carried.
     if (pg_schema_has('mail_outbox', 'recipient')) {
         $sections['mail'] = _pg_privacy_export_select("SELECT id, created_at, send_after, status, attempts, sent_at, mail_type, recipient, subject FROM mail_outbox WHERE " . _pg_privacy_export_in('recipient', $emails) . " ORDER BY id", $emails);
+    }
+
+    // The bounce record of the person's addresses: whether mail to them is
+    // stopped and why (includes/fn/mail_bounces.php).
+    if (pg_schema_has('mail_bounces', 'suppressed')) {
+        $sections['mail_bounces'] = _pg_privacy_export_select("SELECT id, address, kind, source, soft_count, first_at, last_at, message_id, campaign_id, suppressed, cleared_at FROM mail_bounces WHERE " . _pg_privacy_export_in('address', $emails) . " ORDER BY id", $emails);
     }
 
     if (pg_schema_has('sms_outbox', 'recipient')) {

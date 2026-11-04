@@ -97,9 +97,16 @@ if (!isset($_POST['name'])) {
             files.size,
             files.design,
             files.optimized,
-            folder.folder_archived
+            files.timestamp,
+            folder.folder_name,
+            folder.folder_archived,
+            user.user_username,
+            contacts.first_name AS user_first_name,
+            contacts.last_name AS user_last_name
         FROM files 
         LEFT JOIN folder ON files.folder = folder.folder_id
+        LEFT JOIN user ON files.user = user.user_id
+        LEFT JOIN contacts ON contacts.id = user.user_contact
         WHERE files.id = ?";
     $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_array($result);
@@ -270,7 +277,7 @@ if (!isset($_POST['name'])) {
         // Call function to resize image if dimensions are valid
         if (is_numeric($image_width) && is_numeric($image_height)) {
             $thumbnail_dimensions = get_thumbnail_dimensions($image_width, $image_height, $max_dimension);
-            $output_image_info = ' | ' . $image_width . 'px - ' . $image_height . 'px';
+            $output_image_info = ' | ' . pg_image_dimensions_label($image_width, $image_height);
         }
 
        
@@ -430,7 +437,7 @@ if (!isset($_POST['name'])) {
             $image_library_available = (extension_loaded('imagick') || extension_loaded('gd'));
 
              if (!$optimized && $image_library_available) {
-                $optimize_button ='<a class="btn btn-link pg-link-secondary py-0 mb-3" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '( ' . h(lang(array('string' => '{var:1}%', 'vars' => calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file_name)))) . ' )</a>';
+                $optimize_button ='<a class="btn btn-link pg-link-secondary py-0 mb-3" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . ' (' . h(lang(array('string' => '{var:1}%', 'vars' => calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file_name)))) . ')</a>';
             }
 
             // The second half of the pair. Offered whatever the optimized flag
@@ -468,7 +475,7 @@ if (!isset($_POST['name'])) {
                     <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '">
                 </form>';
 
-            $image_buttons = $optimize_button . $resize_button . '<button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate right') . '</button><button type="button" class="btn btn-link pg-link-secondary py-0 mb-3" data-pg-image-edit="' . h($file_name) . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</button>' . pg_image_editor_includes();
+            $image_buttons = $optimize_button . $resize_button . '<button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate Right') . '</button><button type="button" class="btn btn-link pg-link-secondary py-0 mb-3" data-pg-image-edit="' . h($file_name) . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</button>' . pg_image_editor_includes();
             if($file['type'] !== 'webp'){
                 $output_convert_rows = '
                 <div class="col-12 ' . $output_no_file_editor_classes . '">
@@ -496,9 +503,131 @@ if (!isset($_POST['name'])) {
     $output_file_links = '';
 
     if ($on_disk) {
-        $output_file_links = '<a class="btn btn-link pg-link-secondary py-0 mb-3"  href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
+        $output_file_links = '<a class="btn btn-link pg-link-secondary py-0 mb-3"  href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Open in New Tab') . '</a>
             <a class="btn btn-link pg-link-secondary py-0 mb-3" download="' . h($file_name) . '" href="' . OUTPUT_PATH . h($file_name) . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>';
     }
+
+    // Delete moves the file to the Recycle Bin when the site has one; a file
+    // already in the bin, or a site without it, is deleted for good.
+    require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+    $output_delete_confirmation = (pg_recycle_ready() && !pg_recycle_is_inside($row['folder']))
+        ? lang('This file will be moved to the Recycle Bin.')
+        : lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('file'))));
+
+    // What the File Manager's details say about the file and this screen did
+    // not: whether an image is optimized, the last change with its exact
+    // time and who made it, and the address as text to copy.
+    $output_file_facts = '';
+
+    if ($image_buttons !== '') {
+        $output_file_facts .= '<p class="p-0 m-0">' . ($optimized
+            ? '<i class="bi bi-check2-circle fg-success me-1"></i>' . lang('Optimized')
+            : lang('Not optimised')) . '</p>';
+    }
+
+    if ((int) $row['timestamp'] > 0) {
+        $editor_name = pg_user_display_name($row['user_first_name'], $row['user_last_name'], $row['user_username']);
+        $output_file_facts .= '<p class="p-0 m-0">' . lang('Last Modified') . ': '
+            . h(get_absolute_time(array('timestamp' => (int) $row['timestamp'], 'format' => 'plain_text', 'size' => 'short', 'year' => true)))
+            . ' · ' . get_relative_time(array('timestamp' => (int) $row['timestamp']))
+            . (($editor_name !== '') ? ' ' . h(lang(array('string' => 'by {var:1}', 'vars' => array($editor_name)))) : '') . '</p>';
+    }
+
+    if ($on_disk) {
+        $file_url = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . $file_name;
+        $output_file_facts .= '<p class="p-0 m-0 d-flex flex-wrap align-items-center justify-content-center md:justify-content-start gap-2">' . lang('Address') . ': '
+            . '<code class="text-break user-select-all" id="file_address">' . h($file_url) . '</code>'
+            . '<button type="button" class="btn btn-sm btn-text theme-secondary py-0 no-popover" data-pg-copy-address="' . h($file_url) . '" data-pg-copied="' . h(lang('Copied')) . '" title="' . h(lang('Copy address')) . '" aria-label="' . h(lang('Copy address')) . '"><i class="bi bi-copy"></i></button></p>';
+    }
+
+    // "Where is it used?" asks the File Manager's own search (the
+    // explorer_file_usage action) only when pressed: it reads every content
+    // table, so nobody pays for it just by opening the file.
+    $output_where_used = '
+                    <div class="mb-5" id="file_where_used">
+                        <button type="button" class="btn btn-sm btn-outline theme-secondary no-popover" data-pg-where-used="' . (int) $_GET['id'] . '"><i class="bi bi-diagram-3 me-1"></i>' . lang('Where is it used?') . '</button>
+                        <div class="mt-3 small" data-pg-where-used-result></div>
+                    </div>
+    <script>
+    (function () {
+        var texts = ' . json_encode(array(
+            'looking' => lang('Looking through the site...'),
+            'none' => lang('Nothing on the site refers to this file.'),
+            'count' => lang('Referred to in {var:1} place(s)'),
+            'more' => lang('Only the first of them are listed.'),
+            'failed' => lang('The request failed. Please try again.'),
+        ), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) . ';
+
+        function esc(value) {
+            var node = document.createElement("span");
+            node.textContent = (value === undefined || value === null) ? "" : String(value);
+            return node.innerHTML;
+        }
+
+        document.addEventListener("click", function (event) {
+            var copy = event.target.closest("[data-pg-copy-address]");
+
+            if (copy && navigator.clipboard) {
+                navigator.clipboard.writeText(copy.getAttribute("data-pg-copy-address")).then(function () {
+                    copy.setAttribute("title", copy.getAttribute("data-pg-copied"));
+                });
+                return;
+            }
+
+            var button = event.target.closest("[data-pg-where-used]");
+
+            if (!button) { return; }
+
+            var box = button.parentNode.querySelector("[data-pg-where-used-result]");
+
+            button.disabled = true;
+            box.innerHTML = "<span class=\"spinner-border spinner-border-sm me-3\"></span>" + esc(texts.looking);
+
+            $.ajax({
+                url: "api.php",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({ action: "file_explorer", token: software_token, type: "explorer_file_usage", file_id: button.getAttribute("data-pg-where-used") }),
+                success: function (response) {
+                    response = response || {};
+
+                    if (response.status !== "success") {
+                        box.innerHTML = "<span class=\"fg-danger\">" + esc(response.message || texts.failed) + "</span>";
+                        return;
+                    }
+
+                    if (!response.total) {
+                        box.innerHTML = "<span class=\"fg-secondary\"><i class=\"bi bi-check2 me-1\"></i>" + esc(texts.none) + "</span>";
+                        return;
+                    }
+
+                    var html = "<div class=\"fw-bold mb-1\">" + esc(texts.count.replace("{var:1}", response.total)) + "</div>";
+
+                    (response.groups || []).forEach(function (group) {
+                        html += "<div class=\"text-uppercase fg-secondary mt-3\">" + esc(group.label) + "</div>";
+
+                        (group.items || []).forEach(function (entry) {
+                            var label = esc(entry.name) + (entry.note ? (" <span class=\"fg-secondary\">· " + esc(entry.note) + "</span>") : "");
+                            html += "<div class=\"text-truncate\">" + (entry.url ? ("<a href=\"" + esc(entry.url) + "\">" + label + "</a>") : label) + "</div>";
+                        });
+                    });
+
+                    if (response.truncated) {
+                        html += "<div class=\"form-text mt-1\">" + esc(texts.more) + "</div>";
+                    }
+
+                    box.innerHTML = html;
+                },
+                error: function () {
+                    box.innerHTML = "<span class=\"fg-danger\">" + esc(texts.failed) + "</span>";
+                },
+                complete: function () {
+                    button.disabled = false;
+                }
+            });
+        });
+    })();
+    </script>';
 
     $output =
     pg_page_shell(
@@ -513,10 +642,13 @@ if (!isset($_POST['name'])) {
                 'title'=>lang('Return to Files'),
                 'url'=>$back_url
             ),
-            'breadcrumb' => array(
+            // The file's folder sits between the two, so one click goes back
+            // to where the file lives.
+            'breadcrumb' => array_values(array_filter(array(
                 array('label' => lang('File Manager'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php')),
+                ((string) $row['folder_name'] !== '') ? array('label' => (string) $row['folder_name'], 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?folder=' . (int) $file_folder) : null,
                 array('label' => $file_name),
-            ),
+            ))),
         )
     ) . '
 <main id="content" class="container-fluid">
@@ -533,10 +665,12 @@ if (!isset($_POST['name'])) {
                     <div class="mb-3 text-center md:text-start">
                         <p class="p-0 m-0">' . lang('File Size') . ': '. $output_file_size . $output_image_info . '</p>
                         <p class="p-0 m-0 ' . h(get_access_control_type($file_folder)) . '">' . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($file_folder))) . '</p>
+                        ' . $output_file_facts . '
                     </div>
                     ' . pg_screen_toolbar(array(
                         'secondary' => array($image_buttons, $output_file_links),
                     )) . '
+                    ' . $output_where_used . '
                     <div class="row mb-3">
                         <div class="col-12">
                             ' . $output_thumbnail . '
@@ -574,10 +708,10 @@ if (!isset($_POST['name'])) {
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-solid theme-primary "><span class="material-icons me-3">arrow_backsave</span><span class="pg-btn-label" >' . lang(array('string'=>'Save & Return') ) . '</span></button>
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                                <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-solid theme-secondary"><span class="material-icons me-3">control_point_duplicate</span><span class="pg-btn-label">' . lang('Duplicate') . '</span></button>
-                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('file')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-solid theme-primary "><i class="bi bi-box-arrow-left me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Save & Return') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-solid theme-secondary"><i class="bi bi-copy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Duplicate') . '</span></button>
+                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h($output_delete_confirmation) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -689,21 +823,57 @@ $liveform->remove_form('edit_file');
 
     // DELETE
     if (!empty($_POST['delete'])) {
+        include_once('liveform.class.php');
+        $location = pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files');
+        // The notice goes to the screen the redirect opens, so it is not kept
+        // for a File Manager opened later.
+        $notice_form = pg_redirect_notice_form($location);
+
+        // With the recycle bin installed the file goes there, the way the
+        // File Manager deletes it, and keeps its versions and bytes until the
+        // bin is emptied. A file already in the bin is deleted for good below.
+        require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+
+        if (pg_recycle_ready()) {
+            $recycled = pg_recycle_file((int) $file_id, $user);
+
+            if ($recycled['status'] == 'error') {
+                output_error(h($recycled['message']) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+            }
+
+            if ($recycled['status'] == 'binned') {
+                log_activity(lang(array('string' => 'file ({var:1}) was moved to the Recycle Bin', 'vars' => $row['name'])), $_SESSION['sessionusername']);
+
+                if ($notice_form !== '') {
+                    $liveform = new liveform($notice_form);
+                    $liveform->add_notice(lang('The file was moved to the Recycle Bin.'));
+                }
+
+                header('Location: ' . URL_SCHEME . HOSTNAME . $location);
+                exit();
+            }
+        }
+
         db_q("DELETE FROM files WHERE id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         pg_file_versions_delete_file((int) ($_POST['id'] ?? 0));
         db_q("DELETE FROM system_theme_css_rules WHERE file_id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         db("DELETE FROM preview_styles WHERE theme_id = '" . $file_id . "'");
         @unlink(FILE_DIRECTORY_PATH . '/' . $row['name']);
 
+        // A file deleted for good from inside the bin leaves no restore record.
+        if (function_exists('pg_recycle_forget')) {
+            pg_recycle_forget('file', (int) $file_id);
+        }
+
         pg_audit_record('delete', 'files', (int) $file_id, $audit_before);
 
         log_activity(lang(array('string'=>'file ({var:1}) was deleted','vars'=>$name)), $_SESSION['sessionusername']);
 
-        include_once('liveform.class.php');
-        // The File Manager prints the notices left for it (view_folders.php).
-        $liveform = new liveform('view_folders');
-        $liveform->add_notice(lang('The file was deleted successfully.'));
-        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files'));
+        if ($notice_form !== '') {
+            $liveform = new liveform($notice_form);
+            $liveform->add_notice(lang('The file was deleted successfully.'));
+        }
+        header('Location: ' . URL_SCHEME . HOSTNAME . $location);
         exit();
     }
 
@@ -1068,9 +1238,15 @@ $liveform->remove_form('edit_file');
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode(pg_send_to_url('')));
             exit();
         } elseif (!empty($_POST['submit_save_and_return']) && ($_POST['submit_save_and_return'] ?? '') === 'Save & Return') {
-            $liveform = new liveform('view_folders');
-            $liveform->add_notice(lang('The file was edited successfully.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files'));
+            $location = pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files');
+            // The notice goes to the screen the redirect opens (the File
+            // Manager, or the screen send_to names).
+            $notice_form = pg_redirect_notice_form($location);
+            if ($notice_form !== '') {
+                $liveform = new liveform($notice_form);
+                $liveform->add_notice(lang('The file was edited successfully.'));
+            }
+            header('Location: ' . URL_SCHEME . HOSTNAME . $location);
             exit();
         }
     }

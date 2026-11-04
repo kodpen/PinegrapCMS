@@ -26,4 +26,4 @@ module: subscription_renewal
 ## Tested?
 - `tests/subscriptions_renewal_test.php` (amount, 14 days, one period later, decrease, once, applied on/after the date, line figures, mail action and fields), `tests/subscription_mails_test.php` (step twice on an in-memory schema, label, the form offers the action and lists its eight fields, saved with `action_item_id` 0). Not run on a database.
 
-Related: commerce/subscriptions-renewal.md, commerce/subscriptions-mails.md, plans/subscriptions-iyzico-stripe.md
+Related: commerce/subscriptions-renewal.md, commerce/subscriptions-mails.md, commerce/subscriptions-decisions.md

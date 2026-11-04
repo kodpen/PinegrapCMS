@@ -26,4 +26,4 @@ module: subscription_renewal
 ## Tested?
 - `tests/subscription_mails_test.php` (step run twice on an in-memory schema, the action copied, form, link fields), `tests/subscriptions_renewal_test.php` (mapping, fields, link state, one mail per event). Not run on a dev database or with a live service.
 
-Related: commerce/subscriptions-renewal.md, commerce/shipment-mail-fields.md, plans/subscriptions-iyzico-stripe.md
+Related: commerce/subscriptions-renewal.md, commerce/shipment-mail-fields.md, commerce/subscriptions-decisions.md

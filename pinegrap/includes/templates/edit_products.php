@@ -26,6 +26,25 @@ if (!defined('PG_INIT_LOADED')) {
 	}
 
 	function edit_products() {
+		// The window has no real submit, so the browser never checks the
+		// boxes' own limits: the tax rate box (0..100) is asked here, and a
+		// stock process without a figure is stopped before anything is sent.
+		if (document.getElementById("tax_rate_method").value == "set") {
+			var tax_rate_box = document.getElementById("tax_rate_value");
+			tax_rate_box.required = true;
+			var tax_rate_valid = tax_rate_box.reportValidity();
+			tax_rate_box.required = false;
+			if (!tax_rate_valid) {
+				return;
+			}
+		}
+		if ((document.getElementById("inventory_quantity_process").value != "") && (document.getElementById("inventory_quantity").value == "")) {
+			var quantity_box = document.getElementById("inventory_quantity");
+			quantity_box.setCustomValidity(<?=json_encode(lang('Enter an inventory quantity.'))?>);
+			quantity_box.reportValidity();
+			quantity_box.setCustomValidity("");
+			return;
+		}
 		// If the user selected an option for the enabled field then update field in the form.
 		if(document.getElementById("enabled").value != "") {
 			opener.document.form.edit_enabled.value = document.getElementById("enabled").value;
@@ -49,6 +68,21 @@ if (!defined('PG_INIT_LOADED')) {
 		// If the user selected an option for the inventory_quantity field then update field in the form.
 		if(document.getElementById("inventory_quantity").value != "") {
 			opener.document.form.edit_inventory_quantity.value = document.getElementById("inventory_quantity").value;
+		}
+		// The location a quantity change goes to, on a site that keeps stock
+		// per location. The lists that open this window have no field for it,
+		// so it is added to their form here.
+		var location_select = document.getElementById("inventory_location");
+		if (location_select && (document.getElementById("inventory_quantity_process").value != "")) {
+			var opener_form = opener.document.form;
+			var location_field = opener_form.elements.namedItem("edit_inventory_location");
+			if (!location_field) {
+				location_field = opener.document.createElement("input");
+				location_field.type = "hidden";
+				location_field.name = "edit_inventory_location";
+				opener_form.appendChild(location_field);
+			}
+			location_field.value = location_select.value;
 		}
 		// The tax rate carries two fields: what to do, and the rate it needs when
 		// the answer is "set". Clearing needs no rate, so the value only travels
@@ -88,6 +122,19 @@ if (!defined('PG_INIT_LOADED')) {
 		opener.document.form.submit();
 		window.close();
 	}
+
+	// A zone is either allowed or disallowed: ticking it in one card clears
+	// it in the other.
+	document.addEventListener("change", function (event) {
+		var box = event.target;
+		if (!box.checked || ((box.name != "allowed_zones") && (box.name != "disallowed_zones"))) {
+			return;
+		}
+		var other = document.getElementById(((box.name == "allowed_zones") ? "disallowed_zone_" : "allowed_zone_") + box.value);
+		if (other) {
+			other.checked = false;
+		}
+	});
 </script>
 
 <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
@@ -233,6 +280,16 @@ if (!defined('PG_INIT_LOADED')) {
                                 <button class="btn material-icons plus border border-start-0" type="button" aria-label="<?=h(lang('Increase'))?>">add</button>
 							</div>
 						</div>
+						<?php if ($stock_locations): ?>
+						<div class="row mt-3">
+							<label for="inventory_location" class="form-label"><?=h(lang('Location'))?></label>
+							<select id="inventory_location" class="form-control">
+								<?php foreach ($stock_locations as $stock_location): ?>
+								<option value="<?=(int) $stock_location['id']?>"><?=h($stock_location['name'])?></option>
+								<?php endforeach; ?>
+							</select>
+						</div>
+						<?php endif; ?>
 					</div>
 				</div>
 			</div>

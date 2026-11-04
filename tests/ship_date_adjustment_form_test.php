@@ -58,3 +58,22 @@ function test_ship_date_adjustment_form_screens_use_shared_form()
 		pg_assert_false(strpos($source, 'zip_code_prefix" id="zip_code_prefix"') !== false, $file . ' keeps no copy of the card');
 	}
 }
+
+function test_ship_date_adjustment_form_days_and_type()
+{
+	pg_assert_true(pg_ship_date_adjustment_form_days_valid('2'), 'a whole number');
+	pg_assert_true(pg_ship_date_adjustment_form_days_valid('100'), 'three digits');
+	pg_assert_false(pg_ship_date_adjustment_form_days_valid('1.5'), 'a decimal was rounded to 2 days');
+	pg_assert_false(pg_ship_date_adjustment_form_days_valid('1e2'), 'an exponent was saved as 100 days');
+	pg_assert_false(pg_ship_date_adjustment_form_days_valid('0'), 'zero');
+	pg_assert_false(pg_ship_date_adjustment_form_days_valid('-3'), 'negative');
+	pg_assert_false(pg_ship_date_adjustment_form_days_valid(''), 'blank');
+	pg_assert_false(pg_ship_date_adjustment_form_days_valid(array('2')), 'a list');
+
+	pg_assert_true(pg_ship_date_adjustment_form_type_valid('earlier'), 'earlier');
+	pg_assert_true(pg_ship_date_adjustment_form_type_valid('later'), 'later');
+	pg_assert_false(pg_ship_date_adjustment_form_type_valid('sideways'), 'any other direction was saved as later');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/ship_date_adjustment_form.php');
+	pg_assert_contains('SELECT COUNT(*) FROM shipping_methods WHERE id = ?', $source, 'the method has to exist');
+}

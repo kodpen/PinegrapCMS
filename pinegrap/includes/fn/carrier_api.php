@@ -986,8 +986,9 @@ function pg_fedex_rate_request($shipper, $recipient, $ship_date, $weight, $accou
                 array('weight' => array(
                     'units' => 'LB',
                     // A product without a weight would be refused; the weight
-                    // hardly moves the transit time.
-                    'value' => ($weight > 0) ? round((float) $weight, 2) : 1,
+                    // hardly moves the transit time. A weight under 0.005 lb
+                    // would round to 0, refused the same way.
+                    'value' => ($weight > 0) ? max(0.01, round((float) $weight, 2)) : 1,
                 )),
             ),
         ),

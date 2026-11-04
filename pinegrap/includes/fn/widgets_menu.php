@@ -125,11 +125,14 @@ function _render_system_widget_menu_region($tree_json, $widget_id, $cfg = array(
     // that drew such a list keeps them.
     pg_sw_list_publish('menu', array('menu.children' => $by_parent));
 
+    // A header and an offcanvas menu may both carry it.
+    $placed = ++$placement;
+    $again  = pg_sw_widget_drawn_before($widget_id) ? $placed : 0;
     $loop_rendered = '';
     if ($loop_template !== '') {
         foreach ($top as $row) {
             $row_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, pg_sw_escape_token_values($row)));
-            $loop_rendered .= pg_sw_uniquify_row_ids($row_html, $widget_id, (int)$row['__menu_item_id']);
+            $loop_rendered .= pg_sw_uniquify_loop_row_ids($row_html, $widget_id, (int)$row['__menu_item_id'], $again);
         }
     }
 
@@ -138,8 +141,7 @@ function _render_system_widget_menu_region($tree_json, $widget_id, $cfg = array(
         // The key a sub-item list reads outside the main loop: the top level.
         '__menu_item_id' => '0',
     ));
-    // A header and an offcanvas menu may both carry it.
-    $static_html = pg_sw_uniquify_row_ids(pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, $static_values)), $widget_id, 1000 + (++$placement));
+    $static_html = pg_sw_uniquify_row_ids(pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, $static_values)), $widget_id, 1000 + $placed);
     $html = str_replace(' target=""', '', str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html));
 
     if ($menu_id > 0 && $mode !== 'background' && pg_mw_can_edit_menu($menu_id)) {

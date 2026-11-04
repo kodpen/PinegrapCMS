@@ -43,19 +43,21 @@ if (!defined('REQUEST_URL')) {
 }
 
 // If this script is being run from a web browser (i.e. not a cron job),
-// then record login info from session for authentication later, and then unset session,
-// so that the rest of the script does not run as this user, so that content for pages and etc.
-// that will be stored in search index is generic and not specific to this user.
-// Also, verify that user has access to run this.
+// then record login info from session for authentication later, and then
+// save and close the session, so that the rest of the script does not run as
+// this user (content stored in the search index is generic, not specific to
+// this user) and so that the manager's other panel requests do not wait on the
+// session lock while pages are drawn. Closing writes the session as it was,
+// so the user stays signed in. Also, verify that user has access to run this.
+$search_index_token = '';
+
 if (isset($_SERVER['HTTP_HOST']) == true) {
     $username = $_SESSION['sessionusername'] ?? '';
     $userid = $_SESSION['sessionuserid'] ?? '';
+    $search_index_token = (string) ($_SESSION['software']['token'] ?? '');
 
-    // This command allows us to purely unset the session variables,
-    // without destroying the actual saved session data.  This is important,
-    // because when a user is done running this script, we don't want them
-    // to be logged out of the system.
-    unset($_SESSION);
+    session_write_close();
+    $_SESSION = array();
 
     // Try to find a user with the same login info and has a role of manager or above.
     // The session id is trusted; just confirm it is a manager-or-above account.
@@ -68,15 +70,25 @@ if (isset($_SERVER['HTTP_HOST']) == true) {
         log_activity(lang('access denied to update search index'), $username);
         output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
+
+    // A run from the panel is a POST with the form token; a link opened from
+    // another site must not start a crawl. The general job, when a browser
+    // opens job.php, dispatches this script without either.
+    if (!defined('PG_CRON_DISPATCH')
+        && !pg_search_index_web_request_valid($_SERVER['REQUEST_METHOD'] ?? '', $_POST['token'] ?? '', $search_index_token)) {
+        output_error(lang('Your session expired. Reload the page and try again.'));
+    }
 }
 
 // One run at a time, whoever starts it: the panel button and a crontab entry
 // take the job's lock in cron_runs as the general job's dispatcher does (it
 // has taken it already for a dispatched run, and releases it itself). Two
-// runs side by side wrote the same rows twice and fought in the sweep.
+// runs side by side wrote the same rows twice and fought in the sweep. A
+// panel window request takes the job's few minutes; a command-line run, the
+// whole pass, takes hours (pg_search_index_claim_seconds()).
 if (!defined('PG_CRON_DISPATCH')) {
 
-    if (!pg_cron_claim('update_search_index')) {
+    if (!pg_cron_claim('update_search_index', pg_search_index_claim_seconds(isset($_SERVER['HTTP_HOST'])))) {
 
         if (isset($_SERVER['HTTP_HOST'])) {
             output_error(lang('The search index is already being updated. Try again when that run has finished.'));
@@ -263,9 +275,16 @@ $search_index_item = function ($key) use (&$search_index_state, &$search_index_o
         return 'stop';
     }
 
-    $begin = pg_search_index_begin($search_index_state, $key);
+    // The part marker matters only for the item the cursor names as under
+    // way; it is removed once read, so it names a part only once.
+    $marker = (($search_index_state['current'] !== '') && ($search_index_state['current'] === (string) $key)) ? pg_search_index_marker_read() : null;
+    $begin = pg_search_index_begin($search_index_state, $key, $marker);
     $search_index_state = $begin['state'];
     $search_index_save();
+
+    if ($marker !== null) {
+        pg_search_index_marker_write(null);
+    }
 
     if ($begin['skip']) {
         $search_index_run['item'] = '';
@@ -274,6 +293,66 @@ $search_index_item = function ($key) use (&$search_index_state, &$search_index_o
 
     $search_index_open = (string) $key;
     return 'run';
+};
+
+// Parts inside an item: a page's own render, then each calendar event, then
+// each classic record; a record list host's records, list by list in widget
+// order, records by id. A part's key is its address. Called before each
+// part: 'run', 'done' (this pass already wrote it: its address is in the
+// carry, or for a page's own render the item has a checkpoint) or 'skip' (a
+// tick ended inside it: it keeps its row and is named). Before a part is
+// read, only a small marker naming it is written; the cursor with its carry,
+// which is large on a big site, is written at pauses and every few seconds,
+// so the carry always matches the place it is saved with. A delta run keeps
+// no cursor and reads every part.
+$search_index_checkpoint = microtime(true);
+
+$search_index_part = function ($part, $written) use (&$search_index_state, $search_index_delta) {
+    if ($search_index_delta !== null) {
+        return $written ? 'done' : 'run';
+    }
+
+    $step = pg_search_index_part_step($search_index_state, $part, $written);
+
+    if ($step === 'run') {
+        pg_search_index_marker_write(array(
+            'started' => $search_index_state['started'],
+            'stage'   => $search_index_state['stage'],
+            'item'    => $search_index_state['current'],
+            'part'    => (string) $part,
+        ));
+    }
+
+    return $step;
+};
+
+// Called after each part that was read or skipped: the item's checkpoint
+// moves to it, and when the time is up the tick pauses the item here and the
+// next one resumes after it. True when paused.
+$search_index_part_end = function ($part) use (&$search_index_state, &$search_index_open, &$search_index_stopped,
+    &$search_index_checkpoint, $search_index_deadline, $search_index_save, $search_index_delta) {
+    if ($search_index_delta !== null) {
+        return false;
+    }
+
+    pg_search_index_marker_write(null);
+    $search_index_state = pg_search_index_part_done($search_index_state, $part);
+
+    if (($search_index_deadline > 0) && (microtime(true) >= $search_index_deadline)) {
+        $search_index_state = pg_search_index_pause($search_index_state);
+        $search_index_open = '';
+        $search_index_stopped = true;
+        $search_index_save();
+
+        return true;
+    }
+
+    if (microtime(true) - $search_index_checkpoint >= 5) {
+        $search_index_save();
+        $search_index_checkpoint = microtime(true);
+    }
+
+    return false;
 };
 
 // Called after a stage's loop: the last item is finished and, unless the
@@ -342,6 +421,12 @@ foreach ($pages as $page) {
     }
 
     if ($search_index_step === 'skip') {
+        // Its row, events and classic records carry its id: kept, as its
+        // render was never reached.
+        $search_index_keep = pg_search_index_keep_pages_sql(array($page['id']), $timestamp);
+        if ($search_index_keep !== '') {
+            db($search_index_keep);
+        }
         pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($page['name'], '', lang('A run ended while reading it'), 200, lang('Page')));
         continue;
     }
@@ -366,7 +451,10 @@ foreach ($pages as $page) {
             }
         }
 
-        if ($designer_lists) {
+        // A resumed item has listed its host already.
+        $last_host = end($designer_hosts);
+
+        if ($designer_lists && !(is_array($last_host) && ((int) ($last_host['page']['id'] ?? 0) === (int) $page['id']))) {
             $designer_hosts[] = array('page' => $page, 'lists' => $designer_lists);
         }
 
@@ -375,12 +463,27 @@ foreach ($pages as $page) {
         }
     }
 
+    // The page's own render is its first part: a checkpoint means it is
+    // written.
+    $search_index_part_step = $search_index_part($url, $search_index_state['part'] !== '');
+
+    if ($search_index_part_step === 'skip') {
+        pg_search_index_keep_item($url, $timestamp);
+        pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($page['name'], '', lang('A run ended while reading it'), 200, lang('Page')));
+    }
+
     // Get HTML version of page. A page that cannot be drawn keeps its last
     // indexed text; its calendar events or records below are still read.
-    $search_index_run['item'] = $page['name'];
-    $render = pg_search_index_render($page['id']);
+    $render = array('content' => null, 'error' => '');
 
-    if ($render['content'] === null) {
+    if ($search_index_part_step === 'run') {
+        $search_index_run['item'] = $page['name'];
+        $render = pg_search_index_render($page['id']);
+    }
+
+    if ($search_index_part_step !== 'run') {
+        // Written by an earlier tick of this pass, or skipped above.
+    } elseif ($render['content'] === null) {
         pg_search_index_keep_item($url, $timestamp);
         pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($page['name'], '', $render['error'], 200, lang('Page')));
     } else {
@@ -488,6 +591,10 @@ foreach ($pages as $page) {
             </li>';
     }
 
+    if (($search_index_part_step !== 'done') && $search_index_part_end($url)) {
+        break;
+    }
+
     // Do additional things depending on the type of page.
     switch ($page['type']) {
         case 'calendar view':
@@ -544,7 +651,8 @@ foreach ($pages as $page) {
                         $sql_calendar_condition .= "(calendar_events_calendars_xref.calendar_id = '" . $calendar_id . "')";
                     }
                     
-                    // Get all calendar events for this calendar view page.
+                    // Get all calendar events for this calendar view page,
+                    // in a fixed order: each is a part of the page's item.
                     $calendar_events = db_items(
                         "SELECT
                             DISTINCT(calendar_events.id),
@@ -554,7 +662,8 @@ foreach ($pages as $page) {
                         LEFT JOIN calendar_events ON calendar_events_calendars_xref.calendar_event_id = calendar_events.id
                         WHERE
                             (calendar_events.published = '1')
-                            AND ($sql_calendar_condition)");
+                            AND ($sql_calendar_condition)
+                        ORDER BY calendar_events.id ASC");
                     
                     // If there is at least one calendar event, then prepare search items.
                     if (count($calendar_events) > 0) {
@@ -568,7 +677,21 @@ foreach ($pages as $page) {
                             // If this URL has not already been added, then add search item.
                             // Multiple calendar views can link to the same calendar event on the same calendar event view,
                             // so that is why this check is necessary.
-                            if (in_array($url, $calendar_event_view_urls) == false) {
+                            $search_index_part_step = $search_index_part($url, in_array($url, $calendar_event_view_urls));
+
+                            if ($search_index_part_step === 'skip') {
+                                pg_search_index_keep_item($url, $timestamp);
+                                pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($calendar_event_view_page_name, (string) $calendar_event['id'], lang('A run ended while reading it'), 200, lang('Event')));
+                                $calendar_event_view_urls[] = $url;
+
+                                if ($search_index_part_end($url)) {
+                                    break;
+                                }
+
+                                continue;
+                            }
+
+                            if ($search_index_part_step === 'run') {
                                 // Get HTML version of page. An event that cannot be
                                 // drawn keeps its last indexed text.
                                 $search_index_run['item'] = $url;
@@ -578,6 +701,11 @@ foreach ($pages as $page) {
                                     pg_search_index_keep_item($url, $timestamp);
                                     pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($calendar_event_view_page_name, (string) $calendar_event['id'], $render['error'], 200, lang('Event')));
                                     $calendar_event_view_urls[] = $url;
+
+                                    if ($search_index_part_end($url)) {
+                                        break;
+                                    }
+
                                     continue;
                                 }
 
@@ -674,6 +802,10 @@ foreach ($pages as $page) {
                                             <span class="badge badge-subtle theme-secondary border flex-shrink-0" style="font-size:0.5625rem">' . lang('Event') . '</span>
                                         </div>
                                     </li>';
+
+                                if ($search_index_part_end($url)) {
+                                    break;
+                                }
                             }
                         }
                     }
@@ -951,7 +1083,8 @@ foreach ($pages as $page) {
                     $sql_join
                     WHERE
                         (forms.page_id = '$custom_form_page_id')
-                        $sql_where");
+                        $sql_where
+                    ORDER BY forms.id ASC");
 
                 // If there is at least one submitted form, then prepare search items for them.
                 if (count($submitted_forms) > 0) {
@@ -982,7 +1115,21 @@ foreach ($pages as $page) {
                         // If this URL has not already been added, then add search item.
                         // Multiple form list views can link to the same submitted form on the same form item view,
                         // so that is why this check is necessary.
-                        if (in_array($url, $form_item_view_urls) == false) {
+                        $search_index_part_step = $search_index_part($url, in_array($url, $form_item_view_urls));
+
+                        if ($search_index_part_step === 'skip') {
+                            pg_search_index_keep_item($url, $timestamp);
+                            pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($form_item_view_page_name, (string) $submitted_form['reference_code'], lang('A run ended while reading it'), 200, lang('Record')));
+                            $form_item_view_urls[] = $url;
+
+                            if ($search_index_part_end($url)) {
+                                break;
+                            }
+
+                            continue;
+                        }
+
+                        if ($search_index_part_step === 'run') {
                             // Get HTML version of page. A record that cannot be
                             // drawn keeps its last indexed text.
                             $search_index_run['item'] = $url;
@@ -992,6 +1139,11 @@ foreach ($pages as $page) {
                                 pg_search_index_keep_item($url, $timestamp);
                                 pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($form_item_view_page_name, (string) $submitted_form['reference_code'], $render['error'], 200, lang('Record')));
                                 $form_item_view_urls[] = $url;
+
+                                if ($search_index_part_end($url)) {
+                                    break;
+                                }
+
                                 continue;
                             }
 
@@ -1133,12 +1285,21 @@ foreach ($pages as $page) {
                                         <span class="badge badge-subtle theme-secondary border flex-shrink-0" style="font-size:0.5625rem">' . lang('Form') . '</span>
                                     </div>
                                 </li>';
+
+                            if ($search_index_part_end($url)) {
+                                break;
+                            }
                         }
                     }
                 }
             }
 
             break;
+    }
+
+    // Out of time inside the item: it is paused at its last finished part.
+    if ($search_index_stopped) {
+        break;
     }
 }
 
@@ -1210,6 +1371,12 @@ foreach ((($search_index_state['stage'] === 'designer') && !$search_index_stoppe
     }
 
     if ($search_index_step === 'skip') {
+        // Its records carry their lists' detail pages: kept, as the tick
+        // ended outside any of them (in a list's queries).
+        $search_index_keep = pg_search_index_keep_pages_sql(pg_search_index_host_pages($designer_host), $timestamp);
+        if ($search_index_keep !== '') {
+            db($search_index_keep);
+        }
         pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note((string) ($designer_host['page']['name'] ?? ''), '', lang('A run ended while reading it'), 200, lang('Page')));
         continue;
     }
@@ -1217,6 +1384,11 @@ foreach ((($search_index_state['stage'] === 'designer') && !$search_index_stoppe
     $host_page = $designer_host['page'];
 
     foreach ($designer_host['lists'] as $list_cfg) {
+        // Out of time after the last record of the list before.
+        if ($search_index_stopped) {
+            break;
+        }
+
         $form_page_id = pg_sw_form_widget_form_page_id($list_cfg);
         $detail_page_id = isset($list_cfg['detail_page_id']) ? (int) $list_cfg['detail_page_id'] : 0;
 
@@ -1302,6 +1474,11 @@ foreach ((($search_index_state['stage'] === 'designer') && !$search_index_stoppe
         $pretty = pg_sw_form_pretty_urls($form_page_id);
 
         foreach ((array) $records as $record) {
+            // Out of time after the record before: the host is paused there.
+            if ($search_index_stopped) {
+                break;
+            }
+
             // A delta run draws only the records changed since their row.
             if (($search_index_delta !== null) && !isset($search_index_delta['records'][(string) $record['reference_code']])) {
                 continue;
@@ -1313,11 +1490,21 @@ foreach ((($search_index_state['stage'] === 'designer') && !$search_index_stoppe
                 continue;
             }
 
+            $search_index_part_step = $search_index_part($url, array_key_exists($url, $designer_record_urls));
+
+            if ($search_index_part_step === 'skip') {
+                pg_search_index_keep_item($url, $timestamp);
+                pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($detail_page['page_name'], $record['reference_code'], lang('A run ended while reading it'), 200, lang('Record')));
+                $designer_record_urls[$url] = null;
+                $search_index_part_end($url);
+                continue;
+            }
+
             // Several lists can reach the same record. It is drawn once; a
             // list on an open page (or on a page in the record page's own
             // folder) widens the folder an earlier list on a closed page
             // filed it under to the record page's.
-            if (array_key_exists($url, $designer_record_urls)) {
+            if ($search_index_part_step === 'done') {
                 if (
                     ($designer_record_urls[$url] !== null)
                     && ($designer_record_urls[$url] !== $folder_id)
@@ -1402,6 +1589,9 @@ foreach ((($search_index_state['stage'] === 'designer') && !$search_index_stoppe
 
                 $designer_record_urls[$url] = $folder_id;
             } catch (Throwable $throwable) {
+                // Its last indexed text stays until a run reads it again,
+                // as for a page, an event or a classic record.
+                pg_search_index_keep_item($url, $timestamp);
                 pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($detail_page['page_name'], $record['reference_code'], $throwable->getMessage(), 200, lang('Record')));
 
                 continue;
@@ -1420,6 +1610,10 @@ foreach ((($search_index_state['stage'] === 'designer') && !$search_index_stoppe
                 } else {
                     unset($_GET['r']);
                 }
+
+                // Every way out of the record ends its part; out of time,
+                // the next record stops the loop.
+                $search_index_part_end($url);
             }
 
             echo
@@ -1434,6 +1628,11 @@ foreach ((($search_index_state['stage'] === 'designer') && !$search_index_stoppe
                     </div>
                 </li>';
         }
+    }
+
+    // Out of time inside the host: it is paused at its last finished record.
+    if ($search_index_stopped) {
+        break;
     }
 }
 
@@ -1468,6 +1667,7 @@ foreach ($files as $file) {
     }
 
     if ($search_index_step === 'skip') {
+        pg_search_index_keep_item(encode_url_path($file['name']), $timestamp);
         pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($file['name'], '', lang('A run ended while reading it'), 200, lang('File')));
         continue;
     }
@@ -1484,15 +1684,27 @@ foreach ($files as $file) {
 
         // A file the converter cannot read keeps its last indexed text.
         try {
+            // The bytes of a file in the object store are read from its
+            // cached copy; one that cannot be had keeps its last text.
+            $file_path = FILE_DIRECTORY_PATH . '/' . $file['name'];
+
+            if (in_array(mb_strtolower($file['type']), array('doc', 'docx', 'pdf', 'ppt', 'pptx', 'txt', 'xls', 'xlsx'), true)) {
+                $file_path = pg_file_reader_path($file['name']);
+
+                if ($file_path === '') {
+                    throw new RuntimeException(lang('The file could not be read.'));
+                }
+            }
+
             // Get the content in different ways depending on the type of file.
             // We only get content for certain file types.
             switch (mb_strtolower($file['type'])) {
                 case 'doc':
-                    $content = convert_doc_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = convert_doc_to_text($file_path);
                     break;
 
                 case 'docx':
-                    $content = convert_docx_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = convert_docx_to_text($file_path);
                     break;
 
                 case 'pdf':
@@ -1528,28 +1740,28 @@ foreach ($files as $file) {
 
                     // If a pdftotext path has been found, then convert PDF to text.
                     if (($pdftotext_path != '') && function_exists('shell_exec')) {
-                        $content = (string) shell_exec($pdftotext_path . ' ' . escapeshellarg(FILE_DIRECTORY_PATH . '/' . $file['name']) . ' -');
+                        $content = (string) shell_exec($pdftotext_path . ' ' . escapeshellarg($file_path) . ' -');
                     }
                     break;
 
                 case 'ppt':
-                    $content = convert_ppt_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = convert_ppt_to_text($file_path);
                     break;
 
                 case 'pptx':
-                    $content = convert_pptx_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = convert_pptx_to_text($file_path);
                     break;
 
                 case 'txt':
-                    $content = @file_get_contents(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = @file_get_contents($file_path);
                     break;
 
                 case 'xls':
-                    $content = convert_xls_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = convert_xls_to_text($file_path);
                     break;
 
                 case 'xlsx':
-                    $content = convert_xlsx_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = convert_xlsx_to_text($file_path);
                     break;
             }
         } catch (Throwable $throwable) {
@@ -1695,7 +1907,12 @@ if (!$search_index_done) {
         'vars' => array(pg_search_index_stage_label($search_index_state['stage']))));
 
     if (isset($_SERVER['HTTP_HOST']) && !defined('PG_CRON_DISPATCH')) {
-        $finish_continue = '<script>setTimeout(function () { window.location.replace(' . json_encode(PATH . SOFTWARE_DIRECTORY . '/update_search_index.php?continue=1') . '); }, 300);</script>';
+        // A POST with the form token, as the request that started it.
+        $finish_continue = '<form id="search_index_continue" method="post" action="' . h(PATH . SOFTWARE_DIRECTORY . '/update_search_index.php') . '">'
+            . '<input type="hidden" name="token" value="' . h($search_index_token) . '">'
+            . '<input type="hidden" name="continue" value="1">'
+            . '</form>'
+            . '<script>setTimeout(function () { document.getElementById("search_index_continue").submit(); }, 300);</script>';
     }
 } elseif ($index_failures > 0) {
     $finish_icon = 'bi-exclamation-triangle-fill fg-warning';

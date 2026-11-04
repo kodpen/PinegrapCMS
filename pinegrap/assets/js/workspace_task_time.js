@@ -352,7 +352,11 @@
         var header = h.el('div', 'card-header d-flex justify-content-between align-items-center');
         var body = h.el('div', 'card-body');
 
-        header.appendChild(h.el('span', 'text-uppercase h5 fg-primary fw-bold mb-0', h.t('tt_card')));
+        // The Workspace card title: as the overview cards draw theirs.
+        var heading = h.el('h3', 'h6 mb-0');
+        heading.appendChild(h.icon('bi-stopwatch', 'me-1'));
+        heading.appendChild(document.createTextNode(h.t('tt_card')));
+        header.appendChild(heading);
         card.appendChild(header);
         card.appendChild(body);
 

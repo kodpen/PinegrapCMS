@@ -25,6 +25,7 @@ include('init.php');
 pg_upload_refuse_discarded_body();
 include_once('liveform.class.php');
 include_once('includes/user_permissions.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/user_form.php');
 $liveform = new liveform('import_users');
 $liveform_view_users = new liveform('view_users');
 $user = validate_user();
@@ -105,6 +106,10 @@ if (!$_POST) {
     // card of their own).
     $contact_groups = db_items("SELECT id, name FROM contact_groups ORDER BY name");
 
+    // A group filled by rules may be given to an account, but no contact is
+    // imported into it.
+    $dynamic_contact_groups = pg_audience_dynamic_group_ids();
+
     $output_contact_groups = '';
     $output_contact_groups_for_contact = '';
 
@@ -113,6 +118,10 @@ if (!$_POST) {
         foreach ($contact_groups as $contact_group) {
 
             $output_contact_groups .= '<div class="form-field"><input type="checkbox" name="contact_group_' . $contact_group['id'] . '" id="contact_group_' . $contact_group['id'] . '" value="1" class="check multiselect-checkbox" /><label class="" for="contact_group_' . $contact_group['id'] . '">' . h($contact_group['name']) . '</label></div>';
+
+            if (in_array((int) $contact_group['id'], $dynamic_contact_groups, true)) {
+                continue;
+            }
 
             $output_contact_groups_for_contact .= '
             <div class="col-12 md:col-4 my-1">
@@ -282,16 +291,13 @@ if (!$_POST) {
 } else {
     validate_token_field();
     
-    // The role arrives as text. Cast it before the ceiling check so a
-    // non-numeric value cannot slip past the comparison and reach the SQL,
-    // where a lenient server would store it as 0 (administrator).
-    if (isset($_POST['role'])) {
-        $_POST['role'] = (int) $_POST['role'];
+    // Only a whole number from 0 to 3 is a role: text such as 'abc' would
+    // cast to 0 (administrator). A form that sends no role imports users.
+    $_POST['role'] = pg_user_form_role($_POST['role'] ?? null, 3);
 
-        if (in_array($_POST['role'], array(0, 1, 2, 3), true) == false) {
-            log_activity(lang('access denied because user does not have access to create a user with the requested role'), $_SESSION['sessionusername']);
-            output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
+    if ($_POST['role'] === null) {
+        log_activity(lang('access denied because user does not have access to create a user with the requested role'), $_SESSION['sessionusername']);
+        output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
     // if editor is not an administrator and the editor's role is less than or equal to the role that the editor is trying to set, then output error
@@ -299,6 +305,10 @@ if (!$_POST) {
         log_activity(lang('access denied because user does not have access to create a user with the requested role'), $_SESSION['sessionusername']);
         output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
+
+    // A checked private folder whose date is not one stops here, before
+    // anything is written; a date already gone is named after the import.
+    $past_expiry_folders = pg_user_form_check_expiry_dates($_POST);
     
     // if no file was uploaded
     if (empty($_FILES['file']['name'])) {
@@ -349,15 +359,26 @@ if (!$_POST) {
 
     // Headings the import does not know, named in the result.
     $unknown_headings = array();
-    
-    // foreach column field name
+
     foreach ($column_names as $key => $value) {
-        // if the column is invalid, remove from column list
         if ($value === FALSE) {
-            unset($column_names[$key]);
             $unknown_headings[] = $columns[$key];
         }
-        
+    }
+
+    // One file column per contact field: a later heading for the same field
+    // ('Email Address' after 'email') is left out and named in the result,
+    // as the contact insert would name the column twice and fail after the
+    // user was written.
+    $unique_columns = pg_import_unique_columns($column_names);
+    $column_names = $unique_columns['columns'];
+    $repeated_headings = array();
+
+    foreach ($unique_columns['repeated'] as $key) {
+        $repeated_headings[] = $columns[$key];
+    }
+
+    foreach ($column_names as $key => $value) {
         // if column is email_address, then store key location for email_address
         if ($value == 'email_address') {
             $email_address_key = $key;
@@ -517,7 +538,7 @@ if (!$_POST) {
 
     $contact_column_list .= 'user, timestamp';
 
-    $contact_groups = db_items("SELECT id FROM contact_groups");
+    $contact_groups = db_items("SELECT id FROM contact_groups WHERE " . pg_audience_hand_sql());
 
     $contact_groups_for_contact = array();
 
@@ -529,6 +550,9 @@ if (!$_POST) {
     }
 
     $imported_users = 0;
+
+    // The users whose "New Account" e-mail could not be sent.
+    $unsent_users = array();
 
     // Rows skipped because an earlier row of the file took their e-mail
     // address or user name, as array(line, reason).
@@ -727,48 +751,10 @@ if (!$_POST) {
         while($row = mysqli_fetch_array($result))
         {
             $folder_id = $row['folder_id'];
-            $sql_expiration_date = "";
-            
-            // if the user was given edit rights to this folder, then set rights value to 2
-            if (($_POST['edit_' . $folder_id] ?? '') == 1) {
-                $rights = 2;
-                
-            // else if the user was given view rights to this folder, then deal with that.
-            } elseif (($_POST['view_' . $folder_id] ?? '') == 1) {
-                // Remove spaces from beginning and end of date.
-                $expiration_date = trim($_POST['view_' . $folder_id . '_expiration_date'] ?? '');
+            $folder_rights = pg_user_form_folder_rights($_POST, $folder_id);
+            $rights = $folder_rights['rights'];
+            $sql_expiration_date = $folder_rights['expiration_date'];
 
-                // If an expiration date was entered, then validate it.
-                if ($expiration_date != '') {
-                    // Convert date to storage format.
-                    $expiration_date = prepare_form_data_for_input($expiration_date, 'date');
-                    
-                    // Split date into parts.
-                    $expiration_date_parts = explode('-', $expiration_date);
-                    $year = $expiration_date_parts[0];
-                    $month = $expiration_date_parts[1];
-                    $day = $expiration_date_parts[2];
-                    
-                    // If the expiration date is valid, then give user access and set expiration date in SQL.
-                    if ((is_numeric($month) == true) && (is_numeric($day) == true) && (is_numeric($year) == true) && (checkdate($month, $day, $year) == true)) {
-                        $rights = 1;
-                        $sql_expiration_date = $expiration_date;
-                        
-                    // Otherwise the expiration date is not valid, so do not give user access and do not set expiration date in SQL.
-                    } else {
-                        $rights = 0;
-                    }
-
-                // Otherwise an expiration date was not entered, so just give user access.
-                } else {
-                    $rights = 1;
-                }
-                
-            // else the user was was given no rights to this folder, so set rights value to 0
-            } else {
-                $rights = 0;
-            }
-            
             $result2 = db_q("INSERT INTO aclfolder (aclfolder_user, aclfolder_folder, aclfolder_rights, expiration_date) VALUES (?, ?, ?, ?)", array((string) $user_id, (string) $folder_id, (string) $rights, (string) $sql_expiration_date)) or output_error('Query failed');
         }
 
@@ -984,13 +970,17 @@ if (!$_POST) {
             // delivery-failed notice.
             $set_password_url = pg_set_password_link_issue($user_id) ? pg_set_password_link($user_id) : '';
 
-            email(array(
+            $sent = (bool) email(array(
                 'to' => $email_address,
                 'from_name' => ORGANIZATION_NAME,
                 'from_email_address' => EMAIL_ADDRESS,
                 'subject' => lang('New Account'),
                 'body' => pg_new_user_email_body($email_address, $set_password_url, $login),
                 'secret' => true));
+
+            if (!$sent) {
+                $unsent_users[] = $username;
+            }
 
         }
         
@@ -1004,6 +994,18 @@ if (!$_POST) {
 
     if (pg_csv_headings_text($unknown_headings) !== '') {
         $liveform_view_users->add_warning(h(lang(array('string' => 'These columns were not recognised and were left out: {var:1}', 'vars' => array(pg_csv_headings_text($unknown_headings))))));
+    }
+
+    if (pg_csv_headings_text($repeated_headings) !== '') {
+        $liveform_view_users->add_warning(h(lang(array('string' => 'These columns fill the same field as an earlier column and were left out: {var:1}', 'vars' => array(pg_csv_headings_text($repeated_headings))))));
+    }
+
+    if ($unsent_users) {
+        $liveform_view_users->add_warning(h(lang(array('string' => 'The e-mail could not be sent to these users, who can set a password with "Forgot password" on the sign-in page: {var:1}', 'vars' => array(implode(', ', $unsent_users))))));
+    }
+
+    if ($past_expiry_folders) {
+        $liveform_view_users->add_warning(pg_user_form_past_expiry_warning($past_expiry_folders));
     }
 
     // The first rows skipped, each with its line and reason.

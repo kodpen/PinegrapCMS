@@ -17,13 +17,12 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
 $user = validate_user();
 validate_area_access($user, 'designer');
 
 $liveform = new liveform('view_design_files');
-
-$output_clear_button = '';
 
 // The columns this list sorts by, in the order the table shows them.
 // pg_list_state() keeps the choice in the session as a code, so it survives
@@ -47,25 +46,14 @@ $sort_levels = $list_state['sorts'];
 // reach pg_list_order_by(), and it writes nothing but these.
 $order_by = pg_list_order_by($sort_levels, array(
     'name'          => 'name',
-    'type'          => 'type',
+    // The extension of the name: files.type is cut to four characters.
+    'type'          => "LOWER(IF(LOCATE('.', files.name) > 0, SUBSTRING_INDEX(files.name, '.', -1), ''))",
     'size'          => 'size',
     'optimized'     => 'optimized',
     'folder'        => 'folder_name',
     'description'   => 'description',
     'last_modified' => 'timestamp',
 ));
-
-// get all stylesheet files
-$query =
-    "SELECT
-        COUNT(files.id)
-    FROM files
-    WHERE
-        (design = '1')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-$row = mysqli_fetch_row($result);
-$all_design_files = $row[0];
-
 
 // get all files
 $query =
@@ -85,7 +73,7 @@ $query =
     FROM files
     LEFT JOIN folder ON files.folder = folder.folder_id
     LEFT JOIN user ON files.user = user.user_id
-    WHERE (files.design = '1')
+    WHERE (files.design = '1')" . pg_design_files_bin_where() . "
     ORDER BY $order_by";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -93,7 +81,10 @@ $files = array();
 while ($row = mysqli_fetch_assoc($result)) {
     $files[] = $row;
 }
-$output_rows = '';
+// Set once a row is an image: the image editor's configuration is printed
+// once after the list, never inside a cell, where the list search would
+// match it.
+$has_image = false;
 
 // Threshold for the optimization percentage: past it the percentages are not
 // computed, since each one decodes and recompresses an image.
@@ -101,113 +92,88 @@ $unoptimized_image_types = ['jpg','jpeg','png','gif','bmp','tiff','tif','webp'];
 $unoptimized_count = 0;
 if ($files) {
     foreach ($files as $f) {
-        if (!$f['optimized'] && in_array(mb_strtolower($f['type']), $unoptimized_image_types)) {
+        if (!$f['optimized'] && in_array(pg_file_name_extension($f['name']), $unoptimized_image_types)) {
             $unoptimized_count++;
         }
     }
 }
 $show_optimize_percent = ($unoptimized_count <= 30);
 
-// if there is at least one result to display
-if ($files) {
+// Every design file is printed: the list table driver sorts and searches
+// them in the browser (browser mode) and keeps a heading's sort in the
+// session. Modify Selected and Delete Selected post the selected ids as
+// files[] (edit_files.php).
+$list_rows = array();
+$image_types = array('bmp', 'gif', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'webp');
 
-    foreach ($files as $file) {
-        $optimized = '';
+foreach ($files as $file) {
+    $file_type = pg_file_name_extension($file['name']);
+    $is_image = in_array($file_type, $image_types, true);
+    $output_optimize_button = '';
+    $output_edit_image_button = '';
 
-        if ($file['optimized']) {
-            $optimized = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
-        }
-        $file_type ='';
-        $output_edit_image_button = '';
-        $output_optimize_button = '';
-        
-
-        $file_type = mb_strtolower($file['type']);
-        if (    ($file_type == 'jpg')
-                or ($file_type == 'jpeg')
-                or ($file_type == 'png')
-                or ($file_type == 'gif')
-                or ($file_type == 'bmp')
-                or ($file_type == 'tiff')
-                or ($file_type == 'webp')
-            ){
-                if (!$optimized &&(extension_loaded('imagick') || extension_loaded('gd'))) {
-
-                    $optimize_percent_html = $show_optimize_percent
-                        ? '<span class="ps-1 pe-3 fs-smaller">' . h(lang(array('string' => '{var:1}%', 'vars' => calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file['name'])))) . '</span>'
-                        : '';
-                    $output_optimize_button = '<button type="button" class="m-1 btn-data-control btn btn-outline theme-success border-2 " title="' . lang('Optimize this image') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/optimize.php?id=' . h($file['id']) . get_token_query_string_field() . '\'"><i class="bi bi-fast-forward-circle" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Optimize this image')) . '</span>' . $optimize_percent_html . '</button>';
-                }
-                $output_edit_image_button = '<button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " title="' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '" data-pg-image-edit="' . h($file['name']) . '"><i class="bi bi-brush"></i></button>' . pg_image_editor_includes();
+    if ($is_image && ($file_type !== 'tif')) {
+        if (!$file['optimized'] && (extension_loaded('imagick') || extension_loaded('gd'))) {
+            $optimize_percent_html = $show_optimize_percent
+                ? '<span class="ps-1 fs-smaller">' . h(lang(array('string' => '{var:1}%', 'vars' => calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file['name'])))) . '</span>'
+                : '';
+            $output_optimize_button = '<a class="btn btn-sm btn-text theme-success" title="' . h(lang('Optimize this image')) . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/optimize.php?id=' . h($file['id']) . get_token_query_string_field() . h('&send_to=' . urlencode(PATH . SOFTWARE_DIRECTORY . '/view_design_files.php')) . '"><i class="bi bi-fast-forward-circle" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Optimize this image')) . '</span>' . $optimize_percent_html . '</a>';
         }
 
-
-        $output_edit_buttons = '
-        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit File') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_design_file.php?id=' . $file['id'] . '&send_to=' . h(escape_javascript(urlencode(REQUEST_URL))) . '\'"><i class="bi bi-pencil"></i></button>' . $output_optimize_button . $output_edit_image_button;
-
-        $archived_row_style = '';
-        
-        // if the file is inside of a archived folder, then set the table row's class to archived
-        if ($file['folder_archived'] == '1') {
-            $archived_row_style = ' style="font-style: italic;"';
-        }
-
-        // Convert file size to a user friendly output.
-        $file['size'] = convert_bytes_to_string($file['size'], 'auto');
-
-        
-        // If the file is an image.
-        if ((mb_strtolower($file['type']) == 'bmp') || (mb_strtolower($file['type']) == 'gif') || (mb_strtolower($file['type']) == 'jpg') || (mb_strtolower($file['type']) == 'jpeg') || (mb_strtolower($file['type']) == 'png') || (mb_strtolower($file['type']) == 'tif') || (mb_strtolower($file['type']) == 'tiff') || (mb_strtolower($file['type']) == 'webp')) {
-
-            // Get the dimensions of the image.
-            $image_size = @getimagesize(FILE_DIRECTORY_PATH . '/' . $file['name']);
-            $image_width = $image_size[0];
-            $image_height = $image_size[1];
-
-            // Output the image dimensions to the table.
-            $output_image_dimensions = lang('width') . ': ' . $image_width . ' px ' . lang('height') . ': ' . $image_height . ' px';
-
-            // Set the maximum dimension size for the image.
-            $max_dimension = 75;
-
-            // Call function to resize image.
-            $thumbnail_dimensions = get_thumbnail_dimensions($image_width, $image_height, $max_dimension);
-
-            // Output thumnail.
-            $output_thumbnail ='<img style="width: 50px;height:50px;object-fit:cover;" title="' . $output_image_dimensions . '" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(PATH . encode_url_path($file['name'])) . '" />';
-
-        } else {
-
-            $output_thumbnail = '';
-            $output_image_dimensions = '';
-        }
-
-    
-
-        $last_modified_username = '';
-            
-        if ($file['user_username']) {
-            $last_modified_username = lang(array('string'=>'by {var:1}','vars'=>array( h($file['user_username']) ) ) );
-        }
-
-        $output_rows .=
-            '<tr' . $archived_row_style . '>
-                <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="files[]" value="' . $file['id'] . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($file['name'])))) . '" /></td>
-                <td class="align-middle text-start action-buttons">
-                    ' . $output_edit_buttons . '
-                    <a class="m-1 btn-data-control btn btn-outline theme-warning border-2 " title="' . lang('Download') . '" download="' . h($file['name']) . '" href="' . OUTPUT_PATH. h($file['name']) . '" ><i class="bi bi-file-earmark-arrow-down"></i></a>
-                </td>
-                <td class="align-middle text-center">' . $output_thumbnail . '</td>
-                <td class="align-middle chart_label" title="' . h($file['name']) . '">' . h($file['name']) . '</td>
-                <td class="align-middle">' . h($file['type']) . '</td>
-                <td class="align-middle">' . h($file['size']) . '</td>
-                <td class="align-middle text-center">' . $optimized . '</td>
-                <td class="align-middle text-start text-wrap">' . pg_folder_list_name($file['folder_name']) . '</td>
-                <td class="align-middle text-wrap"><div class="text-wrap text-break" style="max-width:20rem;">' . nl2br(h($file['description'])) . '</div></td>
-                <td class="align-middle">' . get_relative_time(array('timestamp' => $file['timestamp'])) . ' ' . $last_modified_username . '</td>
-            </tr>';
+        $output_edit_image_button = '<button type="button" class="btn btn-sm btn-text theme-secondary" title="' . h(lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor'))))) . '" aria-label="' . h(lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor'))))) . '" data-pg-image-edit="' . h($file['name']) . '"><i class="bi bi-brush" aria-hidden="true"></i></button>';
+        $has_image = true;
     }
+
+    $output_thumbnail = '';
+
+    if ($is_image) {
+        // The dimensions in the File Manager's format ("20 × 10 px");
+        // nothing for a file that is not a readable image.
+        $image_size = @getimagesize(FILE_DIRECTORY_PATH . '/' . $file['name']);
+        $output_image_dimensions = ($image_size !== false) ? pg_image_dimensions_label($image_size[0], $image_size[1]) : '';
+        $output_thumbnail = '<img style="width: 50px;height:50px;object-fit:cover;" title="' . h($output_image_dimensions) . '" alt="" class="img-fluid img-thumbnail" data-pg-thumb="' . h(pg_image_panel_thumb_url(PATH . encode_url_path($file['name']))) . '" />';
+    }
+
+    $list_rows[] = array(
+        'id' => $file['id'],
+        // A file inside an archived folder is shown in italics.
+        'class' => ($file['folder_archived'] == '1') ? 'fst-italic' : '',
+        'cells' => array(
+            'name' => pg_list_cell('<a href="edit_design_file.php?id=' . (int) $file['id'] . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '" data-pg-open title="' . h($file['name']) . '">' . h($file['name']) . '</a>'),
+            'thumbnail' => pg_list_cell($output_thumbnail),
+            'type' => pg_list_cell(h($file_type)),
+            'size' => pg_list_cell(h(convert_bytes_to_string($file['size'], 'auto')), 'align-middle', array('data-pg-sort-value' => (int) $file['size'])),
+            'optimized' => pg_list_table_check_cell($file['optimized']),
+            'folder' => pg_list_cell(pg_folder_list_name($file['folder_name']), 'align-middle text-wrap'),
+            'description' => pg_list_cell('<div class="text-wrap text-break" style="max-width:20rem;">' . nl2br(h($file['description'])) . '</div>'),
+            'last_modified' => pg_list_table_when_cell($file['timestamp'], $file['user_username'] ?? ''),
+            'actions' => pg_list_cell($output_optimize_button . $output_edit_image_button
+                . '<a class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Download')) . '" aria-label="' . h(lang('Download')) . '" download="' . h($file['name']) . '" href="' . OUTPUT_PATH . h($file['name']) . '"><i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i></a>'),
+        ),
+    );
 }
+
+$list = pg_list_table_printed(array(
+    'list' => 'view_design_files',
+    'columns' => array(
+        'name' => array('heading' => lang('Name')),
+        'thumbnail' => array('heading' => lang('Thumbnail'), 'kind' => 'image'),
+        'type' => array('heading' => lang('Type')),
+        'size' => array('heading' => lang('Size'), 'kind' => 'number'),
+        'optimized' => array('heading' => lang('Optimized'), 'kind' => 'check'),
+        'folder' => array('heading' => lang('Folder')),
+        'description' => array('heading' => lang('Description')),
+        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+        'actions' => array('heading' => lang('Action'), 'kind' => 'actions'),
+    ),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+    'ids_field' => 'files[]',
+));
+
+$output_bulk_buttons =
+    '<button type="button" value="Modify Selected" class="btn btn-sm btn-solid theme-primary" onclick="window.open(\'edit_files.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'edit\',\'product\')"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Modify Selected') . '</button>'
+    . '<button type="button" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . h(lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('files'))))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang('Delete Selected') . '</button>';
 
 print
 pg_page_shell(
@@ -224,6 +190,7 @@ pg_page_shell(
     ' . pg_screen_toolbar(array(
         'primary' => array('label' => lang('Upload File'), 'url' => 'add_design_file.php?send_to=' . urlencode(REQUEST_URL), 'icon' => 'bi-upload'),
         'grow'    => '<span class="small fg-secondary">' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(pg_files_disk_usage(), 2)) . '</span>',
+        'search'  => pg_list_table_search_box('view_design_files'),
         'view'    => pg_list_sort_menu('view_design_files.php', $sort_columns, $sort_levels, $sort_default),
     )) . '
     <div class="row">
@@ -231,51 +198,21 @@ pg_page_shell(
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <form name="form"  action="edit_files.php" method="post"> 
-                        ' . get_token_field() . '
-                        <input type="hidden" name="action" />
-                        <input type="hidden" name="move_to_folder" />
-                        <input type="hidden" name="edit_design" />
-                        <input type="hidden" name="optimize">
-                        <input type="hidden" name="from" value="view_design_files" />
-                        <input type="hidden" name="send_to" value="' . h(get_request_uri()) . '" />
-                        <table class="chart table-hover table " style="width:100%;display:none">
-                            <thead>
-                                <tr>
-                                    <th class="noVis">
-                                        <div class="form-field">
-                                            <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
-                                        </div>
-                                    </th>
-                                    <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                    <th>' . lang('Thumbnail') . '</th>
-                                    <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                    <th>' . get_column_heading(lang('Type'), $sort_levels, '', '', 'type') . '</th>
-                                    <th>' . get_column_heading(lang('Size'), $sort_levels, '', '', 'size') . '</th>
-                                    <th class="text-center">' . get_column_heading(lang('Optimized'), $sort_levels, '', '', 'optimized') . '</th>
-                                    <th>' . get_column_heading(lang('Folder'), $sort_levels, '', '', 'folder') . '</th>
-                                    <th>' . get_column_heading(lang('Description'), $sort_levels, '', '', 'description') . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>' . $output_rows . '</tbody>
-                        </table>
-                        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                    <button type="button" value="Modify Selected" class=" btn mb-1 mt-1 btn-solid theme-primary disabled" onclick="window.open(\'edit_files.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'edit\',\'product\')"><span class="material-icons me-3">edit</span>' . lang(array('string'=>'Modify Selected') ) . '</button>
-                                    <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('files')))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
-                                </div>
-                            </div>
-                        </nav>
-                    </form>
-                </div>
-            </div>
+            <form name="form" action="edit_files.php" method="post">
+                ' . get_token_field() . '
+                <input type="hidden" name="action" />
+                <input type="hidden" name="move_to_folder" />
+                <input type="hidden" name="edit_design" />
+                <input type="hidden" name="optimize">
+                <input type="hidden" name="from" value="view_design_files" />
+                <input type="hidden" name="send_to" value="' . h(get_request_uri()) . '" />
+                ' . pg_list_table_html($list['source'], $list['page'], lang('All Design Files'), $output_bulk_buttons) . '
+            </form>
         </div>
     </div>
+    ' . ($has_image ? pg_image_editor_includes() : '') . '
 </main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 ' .
 output_footer();
 

@@ -623,11 +623,19 @@ function pg_image_engine_no_gain($bytes_after, $bytes_before, $format_conversion
  *                         gamma; Imagick only, reason no_color under GD),
  *                         sharpen, vignette, redact (areas burned in:
  *                         mode pixel, blur or solid, block, sigma, the box
- *                         x, y, w, h and its mask PNG's path), overlay (a
- *                         PNG's path),
+ *                         x, y, w, h and its mask PNG's path), extend (the
+ *                         canvas: w, h, the picture's x, y on it, fill
+ *                         array(r, g, b) or null for transparent), overlay
+ *                         (a PNG's path, the canvas's size),
  *                         first_frame (an animated picture gives its first
  *                         frame instead of being refused), type (the
- *                         IMAGETYPE_* to write, the read one by default).
+ *                         IMAGETYPE_* to write, the read one by default),
+ *                         edge (the longest edge of the result, never
+ *                         enlarged), colors (a PNG reduced to that many
+ *                         colours; Imagick only), progressive (false writes
+ *                         a baseline JPEG), srgb (a non-sRGB picture
+ *                         converted to sRGB; Imagick with lcms only,
+ *                         pg_image_imagick_converts()).
  *                         Applied to the upright picture before encoding
  *                         (pg_image_edit_imagick(), pg_image_edit_gd()); no
  *                         resize or rotate on top, and the result is written
@@ -968,6 +976,35 @@ function pg_process_image_file($file_path, $options = array())
 
 
 /**
+ * The jpeg:size hint Imagick reads a JPEG with when it is to be shrunk:
+ * libjpeg then decodes at 1/2, 1/4 or 1/8 of the size, as long as the result
+ * stays at least this large, instead of the whole frame. A 24-megapixel photo
+ * made into a 320 px thumbnail decodes at an eighth of the memory and time.
+ *
+ * Twice the target's longest edge on both sides, so the resize that follows
+ * still has pixels to spare whichever way the EXIF orientation turns it.
+ *
+ * @param int  $type          IMAGETYPE_* of the source
+ * @param bool $resize        whether the picture is shrunk
+ * @param int  $target_width
+ * @param int  $target_height
+ * @return string '' when no hint applies, else WxH
+ */
+function pg_image_jpeg_size_hint($type, $resize, $target_width, $target_height)
+{
+    $longest = max((int) $target_width, (int) $target_height);
+
+    if (!$resize || ((int) $type !== IMAGETYPE_JPEG) || ($longest < 1)) {
+        return '';
+    }
+
+    $side = 2 * $longest;
+
+    return $side . 'x' . $side;
+}
+
+
+/**
  * The Imagick half of pg_process_image_file(). Returns the encoded bytes.
  *
  * @return string|false
@@ -982,6 +1019,15 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
 
     try {
         $image = new Imagick();
+
+        // An edit works on the full frame; a plain shrink of a JPEG may be
+        // decoded smaller (pg_image_jpeg_size_hint()).
+        $size_hint = $edit ? '' : pg_image_jpeg_size_hint($type, $resize, $target_width, $target_height);
+
+        if ($size_hint !== '') {
+            $image->setOption('jpeg:size', $size_hint);
+        }
+
         $image->readImage(empty($edit['first_frame']) ? $file_path : ($file_path . '[0]'));
 
         // Rotate the pixels to match the EXIF orientation and then drop the
@@ -1008,6 +1054,17 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
             $icc = isset($profiles['icc']) ? (string) $profiles['icc'] : '';
         }
 
+        // The image editor's export may ask for sRGB pixels instead of the
+        // kept profile: converted through lcms, so nothing is put back.
+        if (($icc !== '') && !empty($edit['srgb']) && !pg_image_icc_is_srgb($icc) && pg_image_imagick_converts() && (pg_image_srgb_icc() !== '')) {
+            try {
+                $image->profileImage('icc', pg_image_srgb_icc());
+                $icc = '';
+            } catch (\Exception $exception) {
+                // Kept as it was: the profile still describes the pixels.
+            }
+        }
+
         $image->stripImage();
 
         if (($icc !== '') && !pg_image_icc_is_srgb($icc)) {
@@ -1026,6 +1083,16 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
             $image->clear();
             $image->destroy();
             return false;
+        }
+
+        // The export's longest edge, after the overlay: the result as a
+        // whole is scaled.
+        if ($edit && !empty($edit['edge'])) {
+            list($edge_width, $edge_height) = pg_image_scaled_dimensions($image->getImageWidth(), $image->getImageHeight(), (int) $edit['edge']);
+
+            if (($edge_width !== $image->getImageWidth()) || ($edge_height !== $image->getImageHeight())) {
+                $image->resizeImage($edge_width, $edge_height, Imagick::FILTER_LANCZOS, 1);
+            }
         }
 
         if ($resize) {
@@ -1070,8 +1137,9 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
         } elseif ($write_type == IMAGETYPE_JPEG) {
             $image->setImageCompression(Imagick::COMPRESSION_JPEG);
             // Progressive: the picture appears at low detail and sharpens,
-            // instead of filling in one band at a time.
-            $image->setInterlaceScheme(Imagick::INTERLACE_PLANE);
+            // instead of filling in one band at a time. The image editor's
+            // export may ask for a baseline one.
+            $image->setInterlaceScheme((isset($edit['progressive']) && !$edit['progressive']) ? Imagick::INTERLACE_NO : Imagick::INTERLACE_PLANE);
             $image->setImageCompressionQuality($quality);
 
         } elseif ($write_type == IMAGETYPE_PNG) {
@@ -1080,6 +1148,12 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
             $image->setImageCompression(Imagick::COMPRESSION_ZIP);
             $image->setOption('png:compression-level', '9');
             $image->setOption('png:compression-filter', '5');
+
+            // The image editor's colour reduction: a palette PNG, alpha
+            // kept, no dithering (flat graphics stay flat).
+            if (!empty($edit['colors'])) {
+                $image->quantizeImage((int) $edit['colors'], Imagick::COLORSPACE_SRGB, 0, false, false);
+            }
 
         } elseif (defined('IMAGETYPE_WEBP') && ($write_type == IMAGETYPE_WEBP)) {
             $image->setImageCompressionQuality($quality);
@@ -1216,6 +1290,14 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
         if (!empty($edit['shape']) && ($edit['shape'] !== 'rect')) {
             $gif_transparent = true;
         }
+
+        if (!empty($edit['edge'])) {
+            $image = pg_image_edit_gd_edge($image, (int) $edit['edge']);
+
+            if (!$image) {
+                return false;
+            }
+        }
     }
 
     if ($resize) {
@@ -1326,7 +1408,7 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
     switch ($write_type) {
 
         case IMAGETYPE_JPEG:
-            imageinterlace($image, true);
+            imageinterlace($image, !isset($edit['progressive']) || (bool) $edit['progressive']);
             $written = imagejpeg($image, null, $quality);
             break;
 
@@ -1482,9 +1564,12 @@ function pg_image_edit_work_size($width, $height, $edit)
     $bw = $plan['scale'] * ($plan['rw'] * cos($a) + $plan['rh'] * sin($a));
     $bh = $plan['scale'] * ($plan['rw'] * sin($a) + $plan['rh'] * cos($a));
 
+    $ew = !empty($edit['extend']) ? (int) $edit['extend']['w'] : 0;
+    $eh = !empty($edit['extend']) ? (int) $edit['extend']['h'] : 0;
+
     return array(
-        (int) ceil(max($plan['rw'], $bw, $plan['out_w'])),
-        (int) ceil(max($plan['rh'], $bh, $plan['out_h'])));
+        (int) ceil(max($plan['rw'], $bw, $plan['out_w'], $ew)),
+        (int) ceil(max($plan['rh'], $bh, $plan['out_h'], $eh)));
 }
 
 /**
@@ -1509,7 +1594,9 @@ function pg_image_edit_source_box($x, $y, $crop, $width, $height)
  * preview draws it (pictureMatrix() of the model): the quarter turn, the flips
  * of the turned picture, the straightening scaled to keep the crop covered,
  * the crop, the output size, the overlay, the crop shape. The shape comes
- * last because the preview clips the layers to it too.
+ * last because the preview clips the layers to it too, unless the canvas
+ * reaches past the picture (extend): then it cuts the picture before the
+ * canvas, whose fill shows in the cut corners, and leaves the layers whole.
  *
  * @param Imagick $image upright, sRGB
  * @param array   $edit  the recipe of pg_image_edit_validate()
@@ -1611,6 +1698,36 @@ function pg_image_edit_imagick($image, $edit, $alpha)
         pg_image_edit_redact_imagick($image, $edit['redact']);
     }
 
+    $shape = isset($edit['shape']) ? (string) $edit['shape'] : 'rect';
+    $shaped = ($shape === 'rounded') || ($shape === 'circle');
+
+    if (!empty($edit['extend'])) {
+        $e = $edit['extend'];
+        $fill = $e['fill'] ? $e['fill'] : ($alpha ? null : array(255, 255, 255));
+        $color = $fill ? new ImagickPixel(sprintf('rgb(%d,%d,%d)', $fill[0], $fill[1], $fill[2])) : null;
+
+        // The shape is the picture's: cut before the canvas grows around it.
+        if ($shaped) {
+            pg_image_edit_imagick_shape($image, $shape);
+        }
+
+        // The picture placed at x, y on a w x h canvas: what lies outside it
+        // takes the fill, what lies off the canvas is trimmed.
+        $image->setImageAlphaChannel(Imagick::ALPHACHANNEL_SET);
+        $image->setImageBackgroundColor($color ? $color : $none);
+        $image->extentImage($e['w'], $e['h'], -$e['x'], -$e['y']);
+        $image->setImagePage(0, 0, 0, 0);
+
+        // The corners the shape cut take the fill too, as GD's canvas does.
+        if ($shaped && $color) {
+            $under = new Imagick();
+            $under->newImage($e['w'], $e['h'], $color);
+            $image->compositeImage($under, Imagick::COMPOSITE_DSTOVER, 0, 0);
+            $under->clear();
+            $under->destroy();
+        }
+    }
+
     if (!empty($edit['overlay'])) {
         $overlay = new Imagick($edit['overlay']);
         $image->compositeImage($overlay, Imagick::COMPOSITE_OVER, 0, 0);
@@ -1618,16 +1735,41 @@ function pg_image_edit_imagick($image, $edit, $alpha)
         $overlay->destroy();
     }
 
-    $shape = isset($edit['shape']) ? (string) $edit['shape'] : 'rect';
-
-    if (($shape !== 'rounded') && ($shape !== 'circle')) {
+    if (!$shaped || !empty($edit['extend'])) {
         return true;
     }
 
+    // Without a canvas around the picture the shape cuts the whole result,
+    // the layers too, as the preview clips them.
+    pg_image_edit_imagick_shape($image, $shape);
+
+    // No alpha in the written format: the cut corners are white.
+    if (!$alpha) {
+        $white = new Imagick();
+        $white->newImage($image->getImageWidth(), $image->getImageHeight(), new ImagickPixel('white'));
+        $image->compositeImage($white, Imagick::COMPOSITE_DSTOVER, 0, 0);
+        $white->clear();
+        $white->destroy();
+    }
+
+    return true;
+}
+
+/**
+ * The crop shape on an Imagick picture, in place: what lies outside the
+ * ellipse (circle) or the box with rounded corners (12 % of the shorter side,
+ * as the preview draws it) becomes transparent.
+ *
+ * @param Imagick $image
+ * @param string  $shape rounded or circle
+ * @return void
+ */
+function pg_image_edit_imagick_shape($image, $shape)
+{
     // Drawing coordinates name pixel centres, so the edges of a w x h
     // picture lie at -0.5 and w - 0.5.
-    $w = $plan['out_w'];
-    $h = $plan['out_h'];
+    $w = $image->getImageWidth();
+    $h = $image->getImageHeight();
     $mask = new Imagick();
     $mask->newImage($w, $h, new ImagickPixel('transparent'), 'png');
     $draw = new ImagickDraw();
@@ -1645,17 +1787,6 @@ function pg_image_edit_imagick($image, $edit, $alpha)
     $image->compositeImage($mask, Imagick::COMPOSITE_DSTIN, 0, 0);
     $mask->clear();
     $mask->destroy();
-
-    // No alpha in the written format: the cut corners are white.
-    if (!$alpha) {
-        $white = new Imagick();
-        $white->newImage($w, $h, new ImagickPixel('white'));
-        $image->compositeImage($white, Imagick::COMPOSITE_DSTOVER, 0, 0);
-        $white->clear();
-        $white->destroy();
-    }
-
-    return true;
 }
 
 // A transparent truecolor GD canvas that keeps its alpha when written. The
@@ -1773,6 +1904,23 @@ function pg_image_edit_gd($image, $edit, $alpha)
         return false;
     }
 
+    $shape = isset($edit['shape']) ? (string) $edit['shape'] : 'rect';
+    $shaped = ($shape === 'rounded') || ($shape === 'circle');
+
+    if (!empty($edit['extend'])) {
+        // The shape is the picture's: its cut corners transparent, so the
+        // canvas fill shows in them once the picture is laid on it.
+        if ($shaped) {
+            pg_image_edit_gd_shape($out, $shape, true);
+        }
+
+        $out = pg_image_edit_gd_extend($out, $edit['extend'], $alpha);
+
+        if (!$out) {
+            return false;
+        }
+    }
+
     if (!empty($edit['overlay'])) {
         $overlay = @imagecreatefrompng($edit['overlay']);
 
@@ -1782,18 +1930,109 @@ function pg_image_edit_gd($image, $edit, $alpha)
         }
 
         imagealphablending($out, true);
-        imagecopyresampled($out, $overlay, 0, 0, 0, 0, $plan['out_w'], $plan['out_h'], imagesx($overlay), imagesy($overlay));
+        imagecopyresampled($out, $overlay, 0, 0, 0, 0, imagesx($out), imagesy($out), imagesx($overlay), imagesy($overlay));
         imagealphablending($out, false);
         pg_image_destroy($overlay);
     }
 
-    $shape = isset($edit['shape']) ? (string) $edit['shape'] : 'rect';
-
-    if (($shape === 'rounded') || ($shape === 'circle')) {
+    // Without a canvas around the picture the shape cuts the whole result,
+    // the layers too, as the preview clips them.
+    if ($shaped && empty($edit['extend'])) {
         pg_image_edit_gd_shape($out, $shape, $alpha);
     }
 
     return $out;
+}
+
+/**
+ * The export's longest edge under GD: the result scaled down, its alpha
+ * kept; never enlarged. The picture given is destroyed when scaled.
+ *
+ * @param resource|GdImage $image
+ * @param int              $edge
+ * @return resource|GdImage|false
+ */
+function pg_image_edit_gd_edge($image, $edge)
+{
+    $width = imagesx($image);
+    $height = imagesy($image);
+
+    list($target_width, $target_height) = pg_image_scaled_dimensions($width, $height, $edge);
+
+    if (($target_width === $width) && ($target_height === $height)) {
+        return $image;
+    }
+
+    $scaled = pg_image_edit_gd_canvas($target_width, $target_height);
+
+    if (!$scaled) {
+        pg_image_destroy($image);
+        return false;
+    }
+
+    imagecopyresampled($scaled, $image, 0, 0, 0, 0, $target_width, $target_height, $width, $height);
+    pg_image_destroy($image);
+
+    return $scaled;
+}
+
+
+/**
+ * The canvas step under GD: the picture placed at x, y on a w x h canvas of
+ * the fill (transparent when null; white for a format without alpha), the
+ * part off the canvas trimmed. The picture given is destroyed.
+ *
+ * @param resource|GdImage $image
+ * @param array            $extend w, h, x, y, fill (array(r, g, b) or null)
+ * @param bool             $alpha  the written format keeps transparency
+ * @return resource|GdImage|false
+ */
+function pg_image_edit_gd_extend($image, $extend, $alpha)
+{
+    $canvas = pg_image_edit_gd_canvas($extend['w'], $extend['h']);
+
+    if (!$canvas) {
+        pg_image_destroy($image);
+        return false;
+    }
+
+    $fill = $extend['fill'] ? $extend['fill'] : ($alpha ? null : array(255, 255, 255));
+
+    if ($fill) {
+        imagefilledrectangle($canvas, 0, 0, imagesx($canvas) - 1, imagesy($canvas) - 1, imagecolorallocatealpha($canvas, $fill[0], $fill[1], $fill[2], 0));
+        imagealphablending($canvas, true);
+    }
+
+    // Clipped by hand: the part of the picture that lands on the canvas.
+    list($dx, $dy, $sx, $sy, $w, $h) = pg_image_edit_extend_box($extend, imagesx($image), imagesy($image));
+
+    if (($w > 0) && ($h > 0)) {
+        imagecopy($canvas, $image, $dx, $dy, $sx, $sy, $w, $h);
+    }
+
+    imagealphablending($canvas, false);
+    pg_image_destroy($image);
+
+    return $canvas;
+}
+
+/**
+ * Where a picture of $width x $height lands on the canvas of $extend: the
+ * canvas point, the picture point and the size of the part on it (0 when
+ * none is). Pure.
+ *
+ * @return array dx, dy, sx, sy, w, h
+ */
+function pg_image_edit_extend_box($extend, $width, $height)
+{
+    $dx = max(0, (int) $extend['x']);
+    $dy = max(0, (int) $extend['y']);
+    $sx = $dx - (int) $extend['x'];
+    $sy = $dy - (int) $extend['y'];
+
+    return array($dx, $dy, $sx, $sy,
+        max(0, min($width - $sx, (int) $extend['w'] - $dx)),
+        max(0, min($height - $sy, (int) $extend['h'] - $dy)));
 }
 
 /**
@@ -2313,7 +2552,67 @@ function pg_image_apply_gd_orientation($image, $file_path)
  */
 function pg_image_derivative_widths()
 {
-    return array(480, 960, 1440, 1920);
+    return array(320, 480, 960, 1440, 1920);
+}
+
+
+/**
+ * The widths the pages' srcset offers: every derivative width but the 320
+ * rung, which is there for panel lists (File Manager tiles, the product
+ * table, the image pickers: pg_image_panel_thumb_url()) and left the pages'
+ * markup as it was.
+ *
+ * @return array
+ */
+function pg_image_derivative_page_widths()
+{
+    return array_values(array_filter(pg_image_derivative_widths(), function ($width) {
+        return $width >= 480;
+    }));
+}
+
+
+/**
+ * The address a panel list draws a picture's thumbnail from: its 320 px
+ * derivative, as WebP for a JPEG or PNG, instead of the original a list used
+ * to load for every tile. A GIF (it may move), a vector or an address that
+ * already asks for a width or format stays as it is. The JavaScript twin is
+ * thumbUrl() in view_folders.php.
+ *
+ * @param string $url the picture's address, with or without a query
+ * @return string
+ */
+function pg_image_panel_thumb_url($url)
+{
+    $url = (string) $url;
+    $fragment = '';
+    $hash = strpos($url, '#');
+
+    if ($hash !== false) {
+        $fragment = substr($url, $hash);
+        $url = substr($url, 0, $hash);
+    }
+
+    $question = strpos($url, '?');
+    $path = ($question === false) ? $url : substr($url, 0, $question);
+    $query = ($question === false) ? '' : substr($url, $question + 1);
+
+    if (preg_match('/(^|&)(w|f)=/i', $query)) {
+        return $url . $fragment;
+    }
+
+    $dot = strrpos($path, '.');
+    $extension = ($dot === false) ? '' : strtolower(substr($path, $dot + 1));
+
+    if (in_array($extension, array('jpg', 'jpeg', 'jpe', 'png'), true)) {
+        $add = 'w=320&f=webp';
+    } elseif ($extension === 'webp') {
+        $add = 'w=320';
+    } else {
+        return $url . $fragment;
+    }
+
+    return $url . (($question === false) ? '?' : '&') . $add . $fragment;
 }
 
 
@@ -2498,10 +2797,19 @@ function pg_image_derivative_format($requested, $source_extension, $writable)
  * JPEG (image_resize_quality). AVIF holds up lower on its own scale than the
  * other two, hence its lower floor.
  *
- * @param array|null $row image_derivative_formats (bits: 1 WebP, 2 AVIF),
+ * The same column carries the plain-address switches (bit 4: a JPEG or PNG
+ * is answered with WebP at its own address, held only with bit 1, as a
+ * format switched off is never sent; bit 8: the CDN in front keeps a copy
+ * per format). get_file.php reads them through
+ * pg_image_same_address_settings() (includes/image_negotiation.php), which
+ * applies the same rule.
+ *
+ * @param array|null $row image_derivative_formats (bits: 1 WebP, 2 AVIF,
+ *                        4 own address, 8 CDN confirmed),
  *                        image_quality_webp, image_quality_avif,
  *                        image_resize_quality
- * @return array formats (webp, avif => bool), quality (webp, avif, source)
+ * @return array formats (webp, avif => bool), quality (webp, avif, source),
+ *               same_address (on, cdn => bool)
  */
 function pg_image_delivery_settings($row)
 {
@@ -2526,7 +2834,33 @@ function pg_image_delivery_settings($row)
         'quality' => array(
             'webp'   => $value('image_quality_webp', 80, 40),
             'avif'   => $value('image_quality_avif', 50, 20),
-            'source' => $value('image_resize_quality', 82, 40)));
+            'source' => $value('image_resize_quality', 82, 40)),
+        'same_address' => array(
+            'on'  => (($bits & 5) === 5),
+            'cdn' => (($bits & 8) === 8)));
+}
+
+
+/**
+ * config.image_derivative_formats as stored for these settings: the bits of
+ * pg_image_delivery_settings() put back together, so a save that changes one
+ * switch keeps the others and drops what the clamp refused.
+ *
+ * @param array|null $settings pg_image_delivery_settings(); null for the defaults
+ * @return int
+ */
+function pg_image_delivery_bits($settings)
+{
+    if (!is_array($settings) || !isset($settings['formats'])) {
+        $settings = pg_image_delivery_settings(null);
+    }
+
+    $same = isset($settings['same_address']) ? $settings['same_address'] : array();
+
+    return (!empty($settings['formats']['webp']) ? 1 : 0)
+        | (!empty($settings['formats']['avif']) ? 2 : 0)
+        | (!empty($same['on']) && !empty($settings['formats']['webp']) ? 4 : 0)
+        | (!empty($same['cdn']) ? 8 : 0);
 }
 
 
@@ -4169,4 +4503,253 @@ function pg_image_derivative($file_id, $source_path, $request, $directory, $sett
     $made['made'] = true;
 
     return $made;
+}
+
+
+/**
+ * The camera details of an Exif TIFF block, as a new block: make, model,
+ * software, dates, artist and copyright from IFD0, the exposure, the lens
+ * and the date taken from the Exif IFD. Nothing else is carried: no GPS
+ * IFD (the location), no IFD1 (its thumbnail shows the unedited picture),
+ * no maker note (a vendor block that may hold anything), no orientation
+ * (the pixels are written upright). Values keep their byte order. Pure.
+ *
+ * @param string $tiff the block after "Exif\0\0"
+ * @return string the new block; '' when none of these tags is there or the
+ *                block cannot be read
+ */
+function pg_image_exif_camera($tiff)
+{
+    $keep_ifd0 = array(0x010F, 0x0110, 0x0131, 0x0132, 0x013B, 0x8298);
+    $keep_exif = array(0x829A, 0x829D, 0x8822, 0x8827, 0x8830, 0x8832, 0x9000, 0x9003, 0x9004, 0x9010, 0x9011, 0x9012,
+        0x9201, 0x9202, 0x9203, 0x9204, 0x9205, 0x9207, 0x9208, 0x9209, 0x920A, 0xA402, 0xA403, 0xA404, 0xA405, 0xA406,
+        0xA432, 0xA433, 0xA434);
+
+    $tiff = (string) $tiff;
+    $order = substr($tiff, 0, 2);
+
+    if (($order !== 'II') && ($order !== 'MM')) {
+        return '';
+    }
+
+    $big = ($order === 'MM');
+    $ifd0 = pg_image_exif_ifd($tiff, pg_image_exif_long(substr($tiff, 4, 4), $big), $big);
+
+    if ($ifd0 === false) {
+        return '';
+    }
+
+    $exif = array();
+
+    if (isset($ifd0[0x8769]) && (strlen($ifd0[0x8769]['value']) === 4)) {
+        $exif = pg_image_exif_ifd($tiff, pg_image_exif_long($ifd0[0x8769]['value'], $big), $big);
+        $exif = ($exif === false) ? array() : array_intersect_key($exif, array_flip($keep_exif));
+    }
+
+    $ifd0 = array_intersect_key($ifd0, array_flip($keep_ifd0));
+
+    if (!$ifd0 && !$exif) {
+        return '';
+    }
+
+    $short = $big ? 'n' : 'v';
+    $long = $big ? 'N' : 'V';
+
+    // IFD0 (its entries and the Exif pointer), then the Exif IFD, then the
+    // values longer than four bytes.
+    $first_size = 2 + 12 * (count($ifd0) + ($exif ? 1 : 0)) + 4;
+    $exif_offset = 8 + $first_size;
+    $data_offset = $exif_offset + ($exif ? 2 + 12 * count($exif) + 4 : 0);
+
+    if ($exif) {
+        $ifd0[0x8769] = array('type' => 4, 'count' => 1, 'value' => pack($long, $exif_offset));
+    }
+
+    $data = '';
+    $blocks = '';
+
+    foreach (array($ifd0, $exif) as $entries) {
+        if (!$entries) {
+            continue;
+        }
+
+        ksort($entries);
+        $block = pack($short, count($entries));
+
+        foreach ($entries as $tag => $entry) {
+            $value = $entry['value'];
+
+            if (strlen($value) > 4) {
+                $pointer = pack($long, $data_offset + strlen($data));
+                $data .= $value . ((strlen($value) % 2) ? "\x00" : '');
+                $value = $pointer;
+            }
+
+            $block .= pack($short, $tag) . pack($short, $entry['type']) . pack($long, $entry['count']) . str_pad($value, 4, "\x00");
+        }
+
+        $blocks .= $block . pack($long, 0);
+    }
+
+    return $order . pack($short, 42) . pack($long, 8) . $blocks . $data;
+}
+
+// A four-byte unsigned value of an Exif block. Pure.
+function pg_image_exif_long($bytes, $big)
+{
+    if (strlen($bytes) !== 4) {
+        return -1;
+    }
+
+    $value = unpack($big ? 'N' : 'V', $bytes);
+
+    return $value[1];
+}
+
+/**
+ * The entries of one IFD of an Exif block: tag => type, count and the value's
+ * bytes (read through the offset when longer than four). Pure.
+ *
+ * @return array|false false when the IFD lies outside the block
+ */
+function pg_image_exif_ifd($tiff, $offset, $big)
+{
+    $sizes = array(1 => 1, 2 => 1, 3 => 2, 4 => 4, 5 => 8, 6 => 1, 7 => 1, 8 => 2, 9 => 4, 10 => 8, 11 => 4, 12 => 8);
+    $length = strlen($tiff);
+
+    // A negative offset is a value over 2 GB read on 32-bit PHP.
+    if (($offset < 8) || ($offset + 2 > $length)) {
+        return false;
+    }
+
+    $count = unpack($big ? 'n' : 'v', substr($tiff, $offset, 2));
+    $count = $count[1];
+
+    if ($offset + 2 + 12 * $count > $length) {
+        return false;
+    }
+
+    $entries = array();
+
+    for ($i = 0; $i < $count; $i++) {
+        $entry = substr($tiff, $offset + 2 + 12 * $i, 12);
+        $head = unpack($big ? 'ntag/ntype' : 'vtag/vtype', substr($entry, 0, 4));
+        $items = pg_image_exif_long(substr($entry, 4, 4), $big);
+
+        if (!isset($sizes[$head['type']]) || ($items < 0) || ($items > 65535)) {
+            continue;
+        }
+
+        $bytes = $sizes[$head['type']] * $items;
+
+        if ($bytes <= 4) {
+            $value = substr($entry, 8, $bytes);
+        } else {
+            $at = pg_image_exif_long(substr($entry, 8, 4), $big);
+
+            if (($at < 8) || ($at + $bytes > $length)) {
+                continue;
+            }
+
+            $value = substr($tiff, $at, $bytes);
+        }
+
+        $entries[$head['tag']] = array('type' => $head['type'], 'count' => $items, 'value' => $value);
+    }
+
+    return $entries;
+}
+
+/**
+ * A JPEG with $tiff as its Exif APP1 segment, after a JFIF APP0 when there is
+ * one; an Exif segment already there is dropped. Pure.
+ *
+ * @param string $jpeg
+ * @param string $tiff an Exif TIFF block (pg_image_exif_camera())
+ * @return string|false false when the bytes are not a JPEG whose leading
+ *                      segments can be walked, or the block does not fit
+ */
+function pg_image_jpeg_embed_exif($jpeg, $tiff)
+{
+    $jpeg = (string) $jpeg;
+    $segment = "Exif\x00\x00" . (string) $tiff;
+    $length = strlen($jpeg);
+
+    if (($tiff === '') || (strlen($segment) > 65533) || (substr($jpeg, 0, 2) !== "\xFF\xD8")) {
+        return false;
+    }
+
+    $jfif = '';
+    $rest = '';
+    $offset = 2;
+
+    while (true) {
+
+        if (($offset + 4 > $length) || ($jpeg[$offset] !== "\xFF")) {
+            return false;
+        }
+
+        $marker = ord($jpeg[$offset + 1]);
+
+        if (($marker < 0xE0) || ($marker > 0xEF)) {
+            break;
+        }
+
+        $size = unpack('n', substr($jpeg, $offset + 2, 2));
+        $size = $size[1];
+
+        if (($size < 2) || ($offset + 2 + $size > $length)) {
+            return false;
+        }
+
+        $current = substr($jpeg, $offset, 2 + $size);
+
+        if (($marker === 0xE0) && ($offset === 2)) {
+            $jfif = $current;
+        } elseif (($marker !== 0xE1) || (substr($current, 4, 6) !== "Exif\x00\x00")) {
+            $rest .= $current;
+        }
+
+        $offset += 2 + $size;
+    }
+
+    return "\xFF\xD8" . $jfif . "\xFF\xE1" . pack('n', 2 + strlen($segment)) . $segment . $rest . substr($jpeg, $offset);
+}
+
+
+// The sRGB profile a picture is converted to: the one the bundled dompdf
+// ships; '' when it is missing.
+function pg_image_srgb_icc()
+{
+    static $icc = null;
+
+    if ($icc === null) {
+        $path = PG_FUNCTIONS_DIR . '/includes/dompdf/vendor/dompdf/dompdf/lib/res/sRGB2014.icc';
+        $icc = is_readable($path) ? (string) @file_get_contents($path) : '';
+    }
+
+    return $icc;
+}
+
+// Whether Imagick converts between colour profiles: ImageMagick built with
+// lcms. Without it profileImage() only attaches the profile, and the pixels
+// would be read in the wrong colours.
+function pg_image_imagick_converts()
+{
+    static $converts = null;
+
+    if ($converts === null) {
+        $converts = false;
+
+        if (class_exists('Imagick') && method_exists('Imagick', 'getConfigureOptions')) {
+            try {
+                $options = Imagick::getConfigureOptions('DELEGATES');
+                $converts = isset($options['DELEGATES']) && (stripos((string) $options['DELEGATES'], 'lcms') !== false);
+            } catch (\Exception $exception) {
+                $converts = false;
+            }
+        }
+    }
+
+    return $converts;
 }

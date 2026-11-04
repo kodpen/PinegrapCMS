@@ -180,7 +180,7 @@ function test_panel_id_gate_file_editors_check_name_and_type()
 
 		pg_assert_true($gate !== false, $screen . ' reads the record as a design file');
 		pg_assert_contains("|| ({$variable} !== basename({$variable}))", $source, $screen . ' plain name');
-		pg_assert_contains("|| (strpos({$variable}, '..') !== false)", $source, $screen . ' no ..');
+		pg_assert_contains("pg_design_file_name_unsafe({$variable})", $source, $screen . ' no path outside the folder');
 		pg_assert_contains("pathinfo({$variable}, PATHINFO_EXTENSION)", $source, $screen . ' extension');
 		pg_assert_contains($extension, $source, $screen . ' extension list');
 		pg_assert_true(($not_found !== false) && ($gate < $not_found), $screen . ' stops on "Record not found."');
@@ -222,7 +222,7 @@ function test_panel_id_gate_file_editors_check_name_and_type()
 
 	pg_assert_true($gate !== false, 'edit_design_file reads the record as a design file');
 	pg_assert_contains("|| (\$stored_name !== basename(\$stored_name))", $source, 'edit_design_file plain name');
-	pg_assert_contains("|| (strpos(\$stored_name, '..') !== false)", $source, 'edit_design_file no ..');
+	pg_assert_contains("pg_design_file_name_unsafe(\$stored_name)", $source, 'edit_design_file no path outside the folder');
 	pg_assert_true(($not_found !== false) && ($gate < $not_found), 'edit_design_file stops on "Record not found."');
 	pg_assert_true($not_found < strpos($source, 'validate_token_field();'), 'edit_design_file gate runs before the POST branch');
 	pg_assert_contains("validate_token_field();\n\n    // Delete and rename act on the record and the stored name the gate\n    // above checked.\n    \$_POST['id'] = \$id;", $source, 'edit_design_file POST uses the gated id');
@@ -256,4 +256,19 @@ function test_panel_id_gate_edit_user_checks_handler_id()
 	pg_assert_contains('$requested_user_id = $_POST ? ($_POST[\'id\'] ?? \'\') : ($_GET[\'id\'] ?? \'\');', $source, 'edit_user id source');
 	pg_assert_contains('is_scalar($requested_user_id) ? (int) $requested_user_id : 0', $source, 'edit_user id gate');
 	pg_assert_same(false, strpos($source, "\$_REQUEST['id']"), 'edit_user reads no $_REQUEST id');
+}
+
+// edit_contact.php checks the contact-group access of a role 3 user on the id
+// its handlers act on: the access check read $_REQUEST['id'] while the delete
+// and the save wrote $_POST['id'], so a cookie "id" naming one of the user's
+// own contacts let them delete or overwrite any other contact.
+function test_panel_id_gate_edit_contact_checks_handler_id()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/edit_contact.php');
+
+	pg_assert_contains('$requested_contact_id = $_POST ? ($_POST[\'id\'] ?? \'\') : ($_GET[\'id\'] ?? \'\');', $source, 'edit_contact id source');
+	pg_assert_contains('is_scalar($requested_contact_id) ? (int) $requested_contact_id : 0', $source, 'edit_contact id gate');
+	pg_assert_contains('validate_contact_access($user, $id)', $source, 'edit_contact access on the gated id');
+	pg_assert_same(false, strpos($source, "\$_REQUEST['id']"), 'edit_contact reads no $_REQUEST id');
+	pg_assert_same(1, substr_count($source, "\$_POST['id']"), 'edit_contact writes no other id than the gated one');
 }

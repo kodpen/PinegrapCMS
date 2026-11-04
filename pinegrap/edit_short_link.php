@@ -139,6 +139,9 @@ if (!$_POST) {
     // not on the Host header. A name may hold letters outside ASCII, so it is
     // percent-encoded.
     $short_link_qr_url = URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path($short_link['name']);
+    // The QR code carries the encoded address; the line under it is read by a
+    // person, so it keeps the name's own letters.
+    $short_link_qr_text = URL_SCHEME . HOSTNAME_SETTING . PATH . $short_link['name'];
     $short_link_qr_options = array('label' => lang('QR code for the short link'), 'class' => 'd-block mx-auto');
     $short_link_qr = $short_link_is_pattern ? '' : pg_qr_svg($short_link_qr_url, 160, $short_link_qr_options);
     $output_short_link_qr_card = '';
@@ -147,18 +150,17 @@ if (!$_POST) {
         $short_link_qr_file = pg_ascii_file_name((string) $short_link['name']);
 
         $output_short_link_qr_card =
-            '<div class="col-12 md:col-6 xl:col-4">
-                <div class="card my-7">
-                    <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('QR Code')) . '</span>
-                        <a class="btn btn-sm btn-outline theme-secondary" download="' . h((($short_link_qr_file !== '') ? $short_link_qr_file : 'short-link') . '-qr.svg') . '" href="' . h(pg_qr_svg_data_uri($short_link_qr_url, 0, $short_link_qr_options)) . '"><i class="bi bi-download me-1" aria-hidden="true"></i>' . h(lang('Download SVG')) . '</a>
-                    </div>
-                    <div class="card-body text-center">
-                        <div class="d-inline-block border rounded-4 p-3 bg-white">' . $short_link_qr . '</div>
-                        <p class="small fg-secondary mt-3 mb-0 text-break">' . h($short_link_qr_url) . '</p>
-                    </div>
-                </div>
-            </div>';
+            '
+                                <div class="card mb-7">
+                                <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('QR Code')) . '</span>
+                                    <a class="btn btn-sm btn-outline theme-secondary" download="' . h((($short_link_qr_file !== '') ? $short_link_qr_file : 'short-link') . '-qr.svg') . '" href="' . h(pg_qr_svg_data_uri($short_link_qr_url, 0, $short_link_qr_options)) . '"><i class="bi bi-download me-1" aria-hidden="true"></i>' . h(lang('Download SVG')) . '</a>
+                                </div>
+                                <div class="card-body text-center">
+                                    <div class="d-inline-block border rounded-4 p-3 bg-white">' . $short_link_qr . '</div>
+                                    <p class="small fg-secondary mt-3 mb-0 text-break">' . h($short_link_qr_text) . '</p>
+                                </div>
+                                </div>';
     }
 
     print
@@ -175,37 +177,29 @@ if (!$_POST) {
         )
     )  . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                ' . $liveform->output_errors() . '
-                ' . $liveform->output_notices() . '
-                ' . pg_screen_toolbar(array(
+    ' . $liveform->output_errors() . '
+    ' . $liveform->output_notices() . '
+    ' . pg_screen_toolbar(array(
                     'secondary' => ($short_link_is_pattern ? '' : '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . h(encode_url_path($short_link['name'])) . '" target="_blank"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . lang('Visit') . '</a>'),
                 )) . '
-                <form name="form" action="edit_short_link.php" method="post">
-                    ' . get_token_field() . '
-                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$_GET['id'])) . '
-                    <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '">
-                    ' . pg_short_link_form_cards($liveform, array(
-                        'extra_rows' => pg_short_link_form_redirect_code_row($liveform),
-                        'after_main' => $output_short_link_qr_card,
-                        'keep' => array(
-                            'page_id' => $short_link['page_id'],
-                            'product_group_id' => $liveform->get_field_value('product_group_id'),
-                            'product_id' => $liveform->get_field_value('product_id'),
-                            'file_id' => $short_link['file_id']))) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . (pg_short_link_recycle_ready() ? lang('This short link will be moved to the Recycle Bin.') : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('short link'))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
-                </form>
-            </div>
-        </div>
-    
+    <form name="form" action="edit_short_link.php" method="post">
+        ' . get_token_field() . '
+        ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$_GET['id'])) . '
+        <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '">
+        ' . pg_short_link_form_layout(
+            pg_short_link_form_cards($liveform, array(
+                'extra_rows' => pg_short_link_form_redirect_code_row($liveform),
+                'status' => $output_short_link_qr_card,
+                'keep' => array(
+                    'page_id' => $short_link['page_id'],
+                    'product_group_id' => $liveform->get_field_value('product_group_id'),
+                    'product_id' => $liveform->get_field_value('product_id'),
+                    'file_id' => $short_link['file_id']))),
+            '
+                                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . (pg_short_link_recycle_ready() ? lang('This short link will be moved to the Recycle Bin.') : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('short link'))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>'
+        ) . '
+    </form>
 </main>' .
     output_footer();
 

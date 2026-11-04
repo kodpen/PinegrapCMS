@@ -11,6 +11,10 @@
  * panel's chat window (assets/js/chat_backend.src.js). Both pass their own texts
  * (pg_voice_text_strings(), includes/fn/voice_text.php).
  *
+ * transcribe() writes out the sender's own recording before it is posted,
+ * where the site has no transcription service (workspace.js, voiceSend()):
+ * that text goes with the upload and is kept as the machine transcript.
+ *
  * Served minified as assets/js/pg_voice_text.min.js (pg_js_bundles(),
  * includes/fn/output.php), before workspace.min.js on the workspace screens
  * (includes/workspace/screen.php) and beside the chat window's script;
@@ -38,6 +42,9 @@
     // Languages the model is asked to write, tried in order: the screen's,
     // then English, which the model writes everywhere it hears audio.
     var plan = null;
+    // What the browser said of the chosen options: 'available' once the
+    // model is on the device, else 'downloadable' or 'downloading'.
+    var planAnswer = '';
 
     function api() {
         return (typeof window.LanguageModel !== 'undefined')
@@ -93,7 +100,12 @@
                 var asked = options(output);
 
                 return window.LanguageModel.availability(asked).then(function (answer) {
-                    return (answer && (answer !== 'unavailable')) ? asked : null;
+                    if (answer && (answer !== 'unavailable')) {
+                        planAnswer = String(answer);
+                        return asked;
+                    }
+
+                    return null;
                 }, function () {
                     return null;
                 });
@@ -103,16 +115,34 @@
         return plan;
     }
 
-    // The recording as sound the model takes: decoded by the browser's own
-    // audio engine (WebM, Ogg or MP4, whatever it plays), one channel.
-    function decode(url, signal) {
-        return window.fetch(url, { credentials: 'same-origin', signal: signal }).then(function (response) {
+    // Resolves to true when the model hears audio and is already on the
+    // device: sending a recording never starts a download of the model.
+    function downloaded(locale) {
+        return ready(locale).then(function (chosen) {
+            return !!chosen && (planAnswer === 'available');
+        });
+    }
+
+    // The bytes of a recording: a file's address, fetched with the page's
+    // cookies, or a recording still in the page (a Blob).
+    function bytesOf(source, signal) {
+        if (typeof source !== 'string') {
+            return (source && source.arrayBuffer) ? source.arrayBuffer() : new window.Response(source).arrayBuffer();
+        }
+
+        return window.fetch(source, { credentials: 'same-origin', signal: signal }).then(function (response) {
             if (!response.ok) {
                 throw new Error('fetch');
             }
 
             return response.arrayBuffer();
-        }).then(function (bytes) {
+        });
+    }
+
+    // The recording as sound the model takes: decoded by the browser's own
+    // audio engine (WebM, Ogg or MP4, whatever it plays), one channel.
+    function decode(source, signal) {
+        return Promise.resolve(bytesOf(source, signal)).then(function (bytes) {
             var Ctx = audioContext();
             var context = new Ctx();
 
@@ -169,6 +199,82 @@
                 copy.destroy();
                 throw error;
             });
+        });
+    }
+
+    // Writes a recording out with the chosen options. The model is created
+    // first, before anything is awaited, so a click's gesture still counts
+    // where it has to be downloaded. progress() hears { download: share }
+    // while it downloads, then { done: share, text: words so far } after
+    // each piece. Resolves to the words ('' when nobody spoke); the session
+    // is let go either way.
+    function run(chosen, source, progress, abort) {
+        var created = window.LanguageModel.create({
+            expectedInputs: chosen.expectedInputs,
+            expectedOutputs: chosen.expectedOutputs,
+            signal: abort.signal,
+            monitor: function (monitor) {
+                monitor.addEventListener('downloadprogress', function (event) {
+                    progress({ download: event.loaded || 0 });
+                });
+            }
+        });
+        var release = function () {
+            created.then(function (session) {
+                session.destroy();
+            }, function () {});
+        };
+
+        return Promise.all([created, decode(source, abort.signal)]).then(function (both) {
+            var session = both[0];
+            var list = pieces(both[1]);
+            var index = 0;
+            var text = '';
+
+            progress({ done: 0, pieces: list.length, text: '' });
+
+            var next = function () {
+                if (index >= list.length) {
+                    return text;
+                }
+
+                return hear(session, list[index], abort.signal).then(function (words) {
+                    index++;
+
+                    if (words) {
+                        text += (text ? ' ' : '') + words;
+                    }
+
+                    progress({ done: index / list.length, pieces: list.length, text: text });
+
+                    return next();
+                });
+            };
+
+            return next();
+        }).then(function (text) {
+            release();
+            return text;
+        }, function (error) {
+            abort.abort();
+            release();
+            throw error || new Error('failed');
+        });
+    }
+
+    // Writes out a recording (a Blob, or a file's address) in the language
+    // the locale names, with progress() as for run(). Rejects where the
+    // browser's model does not hear audio; abort (an AbortController) stops
+    // it.
+    function transcribe(source, locale, progress, abort) {
+        var stop = abort || new window.AbortController();
+
+        return ready(locale).then(function (chosen) {
+            if (!chosen) {
+                throw new Error('unavailable');
+            }
+
+            return run(chosen, source, progress || function () {}, stop);
         });
     }
 
@@ -298,22 +404,33 @@
                 return;
             }
 
-            // A model still to download needs the click itself, so it is
-            // created before anything else is awaited.
+            // A model still to download needs the click itself, so run()
+            // creates it before anything else is awaited.
             var abort = new window.AbortController();
-            var created = window.LanguageModel.create({
-                expectedInputs: chosen.expectedInputs,
-                expectedOutputs: chosen.expectedOutputs,
-                signal: abort.signal,
-                monitor: function (monitor) {
-                    monitor.addEventListener('downloadprogress', function (event) {
-                        say(texts('voice_text_download'));
-                        meter.setAttribute('aria-label', texts('voice_text_download'));
-                        meter.hidden = false;
-                        meter.value = event.loaded || 0;
-                    });
+            var work = run(chosen, url, function (step) {
+                if (typeof step.download !== 'undefined') {
+                    say(texts('voice_text_download'));
+                    meter.setAttribute('aria-label', texts('voice_text_download'));
+                    meter.hidden = false;
+                    meter.value = step.download;
+                    return;
                 }
-            });
+
+                if (step.done === 0) {
+                    meter.hidden = step.pieces < 2;
+                    meter.value = 0;
+                    meter.setAttribute('aria-label', texts('voice_text_working'));
+                    say(texts('voice_text_working'));
+                    return;
+                }
+
+                meter.value = step.done;
+
+                if (step.text) {
+                    result.textContent = step.text;
+                    result.hidden = false;
+                }
+            }, abort);
 
             var focused = (document.activeElement === button);
 
@@ -331,44 +448,10 @@
 
             button.hidden = true;
 
-            Promise.all([created, decode(url, abort.signal)]).then(function (both) {
-                var session = both[0];
-                var list = pieces(both[1]);
-                var index = 0;
-
-                meter.hidden = list.length < 2;
-                meter.value = 0;
-                meter.setAttribute('aria-label', texts('voice_text_working'));
-                say(texts('voice_text_working'));
-
-                var next = function () {
-                    if (index >= list.length) {
-                        return null;
-                    }
-
-                    return hear(session, list[index], abort.signal).then(function (words) {
-                        index++;
-                        meter.value = index / list.length;
-
-                        if (words) {
-                            result.textContent += (result.textContent ? ' ' : '') + words;
-                            result.hidden = false;
-                        }
-
-                        return next();
-                    });
-                };
-
-                return next();
-            }).then(function () {
+            work.then(function () {
                 finish(null);
             }, function (error) {
-                abort.abort();
                 finish(error || new Error('failed'));
-            }).then(function () {
-                created.then(function (session) {
-                    session.destroy();
-                }, function () {});
             });
         });
 
@@ -377,6 +460,8 @@
 
     window.PGVoiceText = {
         ready: ready,
+        downloaded: downloaded,
+        transcribe: transcribe,
         control: control,
         language: language
     };

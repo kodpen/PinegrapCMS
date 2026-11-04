@@ -635,6 +635,89 @@ function _pg_offer_cents($value)
     return (int) round(pg_parse_amount($value) * 100);
 }
 
+// The largest amount (minor units) or count an offer field takes. The amount
+// columns are INT UNSIGNED and the condition counts INT; MySQL outside strict
+// mode cuts a larger value to the column's limit without an error, so the
+// value saved would differ from the value typed. One bound for both, the
+// same as a product price's.
+if (!defined('PG_OFFER_MAX_NUMBER')) {
+    define('PG_OFFER_MAX_NUMBER', 2147483647);
+}
+
+function _pg_offer_amount_max_error()
+{
+    return lang(array('string' => 'An amount can be at most {var:1}.', 'vars' => _pg_offer_money(PG_OFFER_MAX_NUMBER)));
+}
+
+function _pg_offer_number_max_error()
+{
+    return lang(array('string' => 'A number can be at most {var:1}.', 'vars' => PG_OFFER_MAX_NUMBER));
+}
+
+// A typed percentage as a whole number, or null when it has a fraction
+// ("12,5"): the percentage columns are whole, and rounding would give a
+// larger discount than the one typed. Far-off values are held at +-1000,
+// which the caller refuses as over 100.
+function _pg_offer_percent($value)
+{
+    if (is_int($value)) {
+        return $value;
+    }
+    $value = str_replace(array(' ', ','), array('', '.'), (string) $value);
+    if ($value === '') {
+        return 0;
+    }
+    if (!is_numeric($value)) {
+        return null;
+    }
+    $number = (float) $value;
+    if ($number != floor($number)) {
+        return null;
+    }
+    return (int) max(-1000, min(1000, $number));
+}
+
+// The rungs of a tiered order discount, lowest amount first, and the message
+// for the first rung that cannot be saved ('' when all can). A rung is never
+// dropped: two rungs at the same amount would make the winner depend on the
+// sort, so they are refused instead.
+function _pg_offer_clean_tiers($tiers_in)
+{
+    $tiers = array();
+    $error = '';
+    foreach ((array) $tiers_in as $tier_in) {
+        if (!is_array($tier_in)) {
+            continue;
+        }
+        $min = isset($tier_in['min']) ? _pg_offer_cents($tier_in['min']) : 0;
+        $percent = isset($tier_in['percent']) ? _pg_offer_percent($tier_in['percent']) : 0;
+        if ($min < 0) {
+            $min = 0;
+        }
+        if ($error === '') {
+            if ($min > PG_OFFER_MAX_NUMBER) {
+                $error = _pg_offer_amount_max_error();
+            } elseif ($percent === null) {
+                $error = lang('Please enter a whole-number percentage.');
+            } elseif (($percent <= 0) || ($percent > 100)) {
+                $error = lang('Please enter a percentage between 1 and 100 for every tier.');
+            }
+        }
+        $tiers[] = array('min' => $min, 'percent' => (int) $percent);
+    }
+    usort($tiers, function ($a, $b) {
+        return ($a['min'] == $b['min']) ? 0 : (($a['min'] < $b['min']) ? -1 : 1);
+    });
+    $seen_min = array();
+    foreach ($tiers as $tier) {
+        if (isset($seen_min[$tier['min']]) && ($error === '')) {
+            $error = lang('Two tiers cannot start at the same amount.');
+        }
+        $seen_min[$tier['min']] = true;
+    }
+    return array($tiers, $error);
+}
+
 // Validates a save request and normalises it. Returns array(errors, clean).
 // Nothing is written while this runs; the caller writes only when errors is
 // empty. Error keys name the row the message belongs to
@@ -724,6 +807,8 @@ function _pg_offer_validate($payload)
             $condition['amount'] = isset($condition_in['amount']) ? _pg_offer_cents($condition_in['amount']) : 0;
             if ($condition['amount'] <= 0) {
                 $errors[$key . '.amount'] = lang('Please enter a subtotal.');
+            } elseif ($condition['amount'] > PG_OFFER_MAX_NUMBER) {
+                $errors[$key . '.amount'] = _pg_offer_amount_max_error();
             }
         } elseif ($type == 'products') {
             $ids = (isset($condition_in['product_ids']) && is_array($condition_in['product_ids'])) ? array_values(array_unique(array_filter(array_map('intval', $condition_in['product_ids'])))) : array();
@@ -733,6 +818,8 @@ function _pg_offer_validate($payload)
                 $errors[$key . '.product_ids'] = lang('Please select at least one product.');
             } elseif ($condition['quantity'] < 1) {
                 $errors[$key . '.quantity'] = lang('Please enter a quantity of at least 1.');
+            } elseif ($condition['quantity'] > PG_OFFER_MAX_NUMBER) {
+                $errors[$key . '.quantity'] = _pg_offer_number_max_error();
             }
         } elseif ($type == 'product group') {
             $ids = (isset($condition_in['group_ids']) && is_array($condition_in['group_ids'])) ? array_values(array_unique(array_filter(array_map('intval', $condition_in['group_ids'])))) : array();
@@ -742,11 +829,15 @@ function _pg_offer_validate($payload)
                 $errors[$key . '.group_ids'] = lang('Please select at least one product group.');
             } elseif ($condition['quantity'] < 1) {
                 $errors[$key . '.quantity'] = lang('Please enter a quantity of at least 1.');
+            } elseif ($condition['quantity'] > PG_OFFER_MAX_NUMBER) {
+                $errors[$key . '.quantity'] = _pg_offer_number_max_error();
             }
         } elseif ($type == 'cart quantity') {
             $condition['quantity'] = isset($condition_in['quantity']) ? (int) $condition_in['quantity'] : 0;
             if ($condition['quantity'] < 1) {
                 $errors[$key . '.quantity'] = lang('Please enter a quantity of at least 1.');
+            } elseif ($condition['quantity'] > PG_OFFER_MAX_NUMBER) {
+                $errors[$key . '.quantity'] = _pg_offer_number_max_error();
             }
         } elseif ($type == 'usage limit') {
             $condition['total_limit'] = isset($condition_in['total_limit']) ? max(0, (int) $condition_in['total_limit']) : 0;
@@ -755,6 +846,10 @@ function _pg_offer_validate($payload)
             // mistake rather than as "no limit".
             if (($condition['total_limit'] < 1) && ($condition['customer_limit'] < 1)) {
                 $errors[$key . '.total_limit'] = lang('Please enter at least one limit.');
+            } elseif ($condition['total_limit'] > PG_OFFER_MAX_NUMBER) {
+                $errors[$key . '.total_limit'] = _pg_offer_number_max_error();
+            } elseif ($condition['customer_limit'] > PG_OFFER_MAX_NUMBER) {
+                $errors[$key . '.customer_limit'] = _pg_offer_number_max_error();
             }
         } elseif ($type == 'new customer') {
             $modes = _pg_offer_new_customer_modes();
@@ -811,36 +906,10 @@ function _pg_offer_validate($payload)
         // the schema can hold it.
         if (($type == 'discount order') && ($unit == 'percent') && _pg_offer_conditions_table()
             && isset($action_in['tiers']) && is_array($action_in['tiers'])) {
-            $tiers = array();
-            foreach ($action_in['tiers'] as $tier_in) {
-                if (!is_array($tier_in)) {
-                    continue;
-                }
-                $min = isset($tier_in['min']) ? _pg_offer_cents($tier_in['min']) : 0;
-                $percent = isset($tier_in['percent']) ? (int) round((float) str_replace(',', '.', (string) $tier_in['percent'])) : 0;
-                if ($min < 0) {
-                    $min = 0;
-                }
-                if (($percent <= 0) || ($percent > 100)) {
-                    continue;
-                }
-                $tiers[] = array('min' => $min, 'percent' => $percent);
+            list($action['tiers'], $tier_error) = _pg_offer_clean_tiers($action_in['tiers']);
+            if ($tier_error !== '') {
+                $errors[$key] = $tier_error;
             }
-            usort($tiers, function ($a, $b) {
-                return ($a['min'] == $b['min']) ? 0 : (($a['min'] < $b['min']) ? -1 : 1);
-            });
-            // Two rungs at the same amount would make the winner depend on the
-            // sort, so the later one is dropped.
-            $seen_min = array();
-            $unique = array();
-            foreach ($tiers as $tier) {
-                if (isset($seen_min[$tier['min']])) {
-                    continue;
-                }
-                $seen_min[$tier['min']] = true;
-                $unique[] = $tier;
-            }
-            $action['tiers'] = $unique;
         }
         // A group target needs the table's new column; without the upgrade the
         // row cannot be stored, so the action falls back to a product.
@@ -862,9 +931,15 @@ function _pg_offer_validate($payload)
         }
         if ($unit == 'amount') {
             $action['value'] = isset($action_in['value']) ? _pg_offer_cents($action_in['value']) : 0;
+            if ($action['value'] > PG_OFFER_MAX_NUMBER) {
+                $errors[$key . '.value'] = _pg_offer_amount_max_error();
+            }
         } else {
-            $action['value'] = isset($action_in['value']) ? (int) round((float) str_replace(',', '.', (string) $action_in['value'])) : 0;
-            if ($action['value'] > 100) {
+            $percent = isset($action_in['value']) ? _pg_offer_percent($action_in['value']) : 0;
+            $action['value'] = (int) $percent;
+            if ($percent === null) {
+                $errors[$key . '.value'] = lang('Please enter a whole-number percentage.');
+            } elseif ($action['value'] > 100) {
                 $errors[$key . '.value'] = lang('A percentage cannot be more than 100.');
             }
         }
@@ -902,6 +977,8 @@ function _pg_offer_validate($payload)
         if ($type == 'add product') {
             if ($action['quantity'] < 1) {
                 $action['quantity'] = 1;
+            } elseif ($action['quantity'] > PG_OFFER_MAX_NUMBER) {
+                $errors[$key . '.quantity'] = _pg_offer_number_max_error();
             }
         } else {
             $action['quantity'] = 0;
@@ -995,8 +1072,13 @@ function _pg_offer_action_users($action_id, $except_offer_id)
 // request that dies half way leaves at most an unused rule or action row
 // (the cleanup action removes those) and never an offer pointing at a rule
 // that does not exist. Returns the offer id.
-function _pg_offer_save($clean, $user)
+//
+// $username and $activity work as for _pg_offer_delete(): the screen leaves
+// them out and the session names the operator; the API passes the account
+// that owns the application and its own activity line.
+function _pg_offer_save($clean, $user, $username = null, $activity = null)
 {
+    $who = ($username === null) ? ($_SESSION['sessionusername'] ?? '') : (string) $username;
     $offer = $clean['offer'];
     $offer_id = $offer['id'];
     $is_new = ($offer_id <= 0);
@@ -1092,17 +1174,20 @@ function _pg_offer_save($clean, $user)
     // rewritten wholesale here.
     _pg_offer_conditions_write($offer_id, $clean['conditions'], $clean['actions']);
 
-    if ($is_new) {
-        log_activity(lang(array('string' => 'offer ({var:1}) was created', 'vars' => $offer['code'])), $_SESSION['sessionusername']);
+    if ($activity !== null) {
+        log_activity($activity, $who);
+    } elseif ($is_new) {
+        log_activity(lang(array('string' => 'offer ({var:1}) was created', 'vars' => $offer['code'])), $who);
     } else {
-        log_activity(lang(array('string' => 'offer ({var:1}) was modified', 'vars' => $offer['code'])), $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => 'offer ({var:1}) was modified', 'vars' => $offer['code'])), $who);
     }
     $audit_after = _pg_offer_audit_state($offer_id);
     if ($moved_key_codes > 0) {
-        log_activity(lang(array('string' => '{var:1} key code(s) moved from offer code {var:2} to {var:3}', 'vars' => array($moved_key_codes, $old_code, $offer['code']))), $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => '{var:1} key code(s) moved from offer code {var:2} to {var:3}', 'vars' => array($moved_key_codes, $old_code, $offer['code']))), $who);
         $audit_after['key_codes_moved'] = $moved_key_codes;
     }
     pg_audit($is_new ? 'create' : 'update', 'offer', $offer_id, $audit_before, $audit_after, $offer['code']);
+    pg_announce($is_new ? 'offer.created' : 'offer.updated', array('id' => (int) $offer_id, 'code' => (string) $offer['code'], 'enabled' => (bool) $offer['enabled']));
     return $offer_id;
 }
 
@@ -1431,6 +1516,7 @@ function _pg_offer_delete($offer_id, $username = null, $activity = null)
             ? lang(array('string' => 'offer ({var:1}) was deleted', 'vars' => $offer['code']))
             : $activity,
         ($username === null) ? ($_SESSION['sessionusername'] ?? '') : $username);
+    pg_announce('offer.deleted', array('id' => (int) $offer_id, 'code' => (string) $offer['code']));
     return true;
 }
 
@@ -1630,10 +1716,14 @@ function _pg_offer_condition_chip($condition, $products)
     if ($condition['type'] == 'usage limit') {
         $customer = isset($condition['customer_limit']) ? (int) $condition['customer_limit'] : 0;
         $total = isset($condition['total_limit']) ? (int) $condition['total_limit'] : 0;
-        if ($customer > 0) {
-            return lang(array('string' => '{var:1}× per customer', 'vars' => $customer));
+        $parts = array();
+        if ($total > 0) {
+            $parts[] = lang(array('string' => 'max {var:1} use(s)', 'vars' => $total));
         }
-        return lang(array('string' => 'max {var:1} use(s)', 'vars' => $total));
+        if ($customer > 0) {
+            $parts[] = lang(array('string' => '{var:1}× per customer', 'vars' => $customer));
+        }
+        return implode(' · ', $parts);
     }
     if ($condition['type'] == 'product group') {
         $names = array();
@@ -1683,9 +1773,18 @@ function _pg_offer_action_chip($action, $products)
             }
             return _pg_offer_product_label($action['product_id'], $products) . ' ' . (($action['unit'] == 'amount') ? '−' : '') . _pg_offer_value_text($action);
         case 'add product':
-            return max(1, (int) $action['quantity']) . ' × ' . _pg_offer_product_label($action['product_id'], $products) . ' ' . lang('gift');
+            // "gift" only when the product is free, as in _pg_offer_action_text().
+            $chip = max(1, (int) $action['quantity']) . ' × ' . _pg_offer_product_label($action['product_id'], $products) . ' ';
+            if (($action['unit'] == 'percent') && ($action['value'] >= 100)) {
+                return $chip . lang('gift');
+            }
+            if ($action['value'] <= 0) {
+                return $chip . lang('full price');
+            }
+            return $chip . (($action['unit'] == 'amount') ? '−' : '') . _pg_offer_value_text($action);
         case 'discount shipping':
-            return lang('Shipping') . ' ' . _pg_offer_percent_text($action['value']);
+            // Its own key: the shared 'Shipping' reads "Nakliye", the editor says "Kargo".
+            return lang(array('string' => 'Shipping {var:1}', 'vars' => _pg_offer_percent_text($action['value'])));
     }
     return '';
 }
@@ -2053,6 +2152,7 @@ function pg_offer_editor_handle($request)
                 WHERE id = '" . e($offer_id) . "'");
             log_activity(lang(array('string' => 'offer ({var:1}) was modified', 'vars' => $offer['code'])), $_SESSION['sessionusername']);
             pg_audit('update', 'offer', $offer_id, $audit_before, _pg_offer_audit_state($offer_id), $offer['code']);
+            pg_announce('offer.updated', array('id' => (int) $offer_id, 'code' => (string) $offer['code'], 'enabled' => ($status == 'enabled')));
             $offer = db_item("SELECT * FROM offers WHERE id = '" . e($offer_id) . "'");
             $offer_status = _pg_offer_status($offer);
             respond(array(

@@ -74,6 +74,7 @@ function pg_merchant_state_parse($stored)
         'check_error'    => '',
         'issues'         => pg_merchant_issue_summary(array()),
         'supplement'     => '',
+        'feed_label'     => '',
     );
 
     if (!is_array($stored)) {
@@ -112,6 +113,10 @@ function pg_merchant_state_parse($stored)
     if (isset($stored['supplement']) && is_string($stored['supplement'])
         && preg_match('#^accounts/\d{1,20}/dataSources/\d{1,20}$#', $stored['supplement'])) {
         $state['supplement'] = $stored['supplement'];
+    }
+
+    if (isset($stored['feed_label']) && is_string($stored['feed_label']) && preg_match('/^[A-Z0-9-]{1,20}$/', $stored['feed_label'])) {
+        $state['feed_label'] = $stored['feed_label'];
     }
 
     return $state;
@@ -193,6 +198,24 @@ function pg_merchant_help_url($url)
 function pg_merchant_feed_label($country)
 {
     return substr(preg_replace('/[^A-Z0-9-]/', '', strtoupper((string) $country)), 0, 20);
+}
+
+// The feed label of a data source in a Merchant API answer, or '' when the
+// answer has none (or one Google would not have given).
+function pg_merchant_source_feed_label($source)
+{
+    $label = isset($source['primaryProductDataSource']['feedLabel']) ? $source['primaryProductDataSource']['feedLabel'] : '';
+
+    return (is_string($label) && preg_match('/^[A-Z0-9-]{1,20}$/', $label)) ? $label : '';
+}
+
+// The feed label the supplemental source and the pushes use: the registered
+// feed source's, since Google keeps a data source's label as it was created
+// and a product pushed under another label is not the feed's product; the
+// target country while no label was read yet.
+function pg_merchant_push_label($state)
+{
+    return ($state['feed_label'] !== '') ? $state['feed_label'] : $state['country'];
 }
 
 // The body of accounts.dataSources.create for the feed: a primary product
@@ -779,6 +802,13 @@ function pg_merchant_register()
 
         if ($found['same_url']) {
             $call = array('ok' => true, 'data' => array('name' => $found['name']), 'error' => '');
+
+            foreach ($list['items'] as $source) {
+                if (is_array($source) && isset($source['name']) && ($source['name'] === $found['name'])) {
+                    $call['data'] = $source;
+                }
+            }
+
             $action = 'kept';
         } elseif ($found['name'] !== '') {
             $call = pg_merchant_call($connection['id'], 'PATCH', '/datasources/v1/' . $found['name'] . '?updateMask=fileInput.fetchSettings.fetchUri',
@@ -809,6 +839,7 @@ function pg_merchant_register()
         'data_source'    => isset($call['data']['name']) ? (string) $call['data']['name'] : $state['data_source'],
         'registered_at'  => time(),
         'register_error' => '',
+        'feed_label'     => pg_merchant_source_feed_label($call['data']),
     ));
 
     // The supplemental source the per-product push writes to, registered
@@ -895,7 +926,7 @@ function pg_merchant_supplement_ensure($connection_id, $state)
 
     if ($name === '') {
         $call = pg_merchant_call($connection_id, 'POST', '/datasources/v1/accounts/' . $state['account'] . '/dataSources',
-            pg_merchant_supplement_body($language, $state['country'], lang('Website price and stock updates')));
+            pg_merchant_supplement_body($language, pg_merchant_push_label($state), lang('Website price and stock updates')));
         $name = isset($call['data']['name']) ? (string) $call['data']['name'] : '';
 
         if (!$call['ok'] || !preg_match('#^accounts/\d{1,20}/dataSources/\d{1,20}$#', $name)) {
@@ -942,7 +973,7 @@ function pg_merchant_save_from_screen($input)
         pg_merchant_state_save(array(
             'account' => '', 'account_name' => '', 'data_source' => '', 'registered_at' => 0, 'register_error' => '',
             'checked_at' => 0, 'check_error' => '', 'issues' => pg_merchant_issue_summary(array()),
-            'supplement' => '',
+            'supplement' => '', 'feed_label' => '',
         ));
 
         if (function_exists('pg_merchant_account_remove')) {
@@ -976,7 +1007,7 @@ function pg_merchant_save_from_screen($input)
         pg_merchant_state_save(array(
             'connection_id' => $connection['id'], 'account' => $chosen, 'account_name' => $offered['accounts'][$chosen],
             'data_source' => '', 'registered_at' => 0, 'register_error' => '', 'checked_at' => 0, 'check_error' => '',
-            'issues' => pg_merchant_issue_summary(array()), 'supplement' => '',
+            'issues' => pg_merchant_issue_summary(array()), 'supplement' => '', 'feed_label' => '',
         ));
         $register = true;
         $input['check'] = true;

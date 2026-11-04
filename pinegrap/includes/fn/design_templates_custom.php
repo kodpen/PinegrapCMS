@@ -324,8 +324,8 @@ function _pg_dtc_tokenize_props($props, $ctx, $depth = 0)
 /**
  * A page, widget or shared component tree made portable.
  *
- * The editor's own state on a node (_id, _expanded, _sharedDirty) is
- * dropped; the editor gives the nodes their ids again when the template is
+ * The editor's own state on a node (_id, _expanded, _sharedDirty) and the
+ * team's notes on it (props._notes, _notes_by, _notes_at) are dropped; the editor gives the nodes their ids again when the template is
  * opened. A shared_ref is pointed at the template's entry for the row it
  * places: props.templateWidget ($ctx['widgets_by_sid'], row id => key) or
  * props.templateShared ($ctx['shared_by_sid']); one placing a row that is
@@ -354,6 +354,10 @@ function pg_dtc_tokenize_tree($node, $ctx, &$dropped = 0, $depth = 0)
     }
 
     if (isset($node['props']) && is_array($node['props'])) {
+        // The team's notes on a node (designer_collab.php) belong to this
+        // site's editors: their text, author name and time stay out of a
+        // document that is carried to other sites.
+        unset($node['props']['_notes'], $node['props']['_notes_by'], $node['props']['_notes_at']);
         $node['props'] = _pg_dtc_tokenize_props($node['props'], $ctx);
     }
     if (isset($node['children']) && is_array($node['children'])) {
@@ -639,7 +643,49 @@ function pg_design_template_from_style($style_id, $meta, $user)
     if (!is_array($user) || empty($user['id']) || !isset($user['role']) || (int)$user['role'] > 1) {
         return array('ok' => false, 'error' => lang('You do not have access to add a design.'));
     }
-    if (!pg_design_template_custom_ready() || !pg_multi_page_design_ready()) {
+    if (!pg_design_template_custom_ready()) {
+        return array('ok' => false, 'error' => lang('The database has not been upgraded yet. Run the software update first.'));
+    }
+    $built = pg_design_template_build($style_id, $meta);
+    if (empty($built['ok'])) return $built;
+    $tpl = $built['template'];
+    $name = (string)$tpl['name'];
+
+    $saved = pg_design_template_custom_save(array('template' => $tpl, 'source_style_id' => (int)$style_id), $user);
+    if (empty($saved['ok'])) return $saved;
+
+    log_activity(lang(array('string' => 'design template ({var:1}) was created', 'vars' => array($name))),
+        isset($user['username']) ? (string)$user['username'] : '');
+
+    return array(
+        'ok'          => true,
+        'template'    => $tpl,
+        'row_id'      => (int)$saved['row_id'],
+        'template_id' => (string)$saved['template_id'],
+        'dropped'     => (int)$built['dropped'],
+    );
+}
+
+/**
+ * A visual design as a template array, written nowhere: the export behind
+ * pg_design_template_from_style() and the Migration screen's get_designs
+ * answer (includes/fn/site_migration.php). The caller checks who asks.
+ *
+ * $meta: 'name' (the design's name when empty), 'description'.
+ * $opts: 'skip_folders' (folder id => true): pages in these folders are
+ *        left out (the Migration leaves the Drafts and Workspace folders
+ *        behind; the Recycle Bin is never read);
+ *        'explicit_trees' (bool): a widget still holding the empty
+ *        placeholder keeps it as its tree instead of 'starter', so the
+ *        template installs without the editor.
+ *
+ * Returns array('ok' => true, 'template' => array, 'dropped' => number of
+ * placements of deleted components left out) or array('ok' => false,
+ * 'error' => text).
+ */
+function pg_design_template_build($style_id, $meta, $opts = array())
+{
+    if (!pg_multi_page_design_ready()) {
         return array('ok' => false, 'error' => lang('The database has not been upgraded yet. Run the software update first.'));
     }
     $style_id = (int)$style_id;
@@ -648,6 +694,9 @@ function pg_design_template_from_style($style_id, $meta, $user)
         : null;
     if (!is_array($style)) return array('ok' => false, 'error' => lang('The design could not be found.'));
 
+    $opts = is_array($opts) ? $opts : array();
+    $skip_folders = (isset($opts['skip_folders']) && is_array($opts['skip_folders'])) ? $opts['skip_folders'] : array();
+    $explicit_trees = !empty($opts['explicit_trees']);
     $meta = is_array($meta) ? $meta : array();
     $name = trim((string)(isset($meta['name']) ? $meta['name'] : ''));
     if ($name === '') $name = (string)$style['style_name'];
@@ -657,6 +706,7 @@ function pg_design_template_from_style($style_id, $meta, $user)
     // The pages, each with its tree; the home page takes its key first.
     $pages = array();
     foreach (pg_designer_load_pages($style_id, (string)$style['style_name']) as $p) {
+        if (isset($skip_folders[(int)$p['page_folder']])) continue;
         $tree = json_decode((string)$p['tree_json'], true);
         if (!is_array($tree)) continue;
         $p['tree'] = $tree;
@@ -804,7 +854,7 @@ function pg_design_template_from_style($style_id, $meta, $user)
             );
             if (in_array($kind, $shop_widget_kinds, true)) $w['requires'] = 'ecommerce';
             $w['config'] = pg_dtc_tokenize_config($r['config'], $ctx);
-            $w['tree'] = pg_dtc_is_starter_tree($tree) ? 'starter' : $tree;
+            $w['tree'] = (!$explicit_trees && pg_dtc_is_starter_tree($tree)) ? 'starter' : $tree;
             if (is_array($w['tree'])) pg_designer_tree_objects($w['tree']);
             $widgets[$ctx['widgets_by_sid'][$sid]] = $w;
         } else {
@@ -870,17 +920,5 @@ function pg_design_template_from_style($style_id, $meta, $user)
         ),
     );
 
-    $saved = pg_design_template_custom_save(array('template' => $tpl, 'source_style_id' => $style_id), $user);
-    if (empty($saved['ok'])) return $saved;
-
-    log_activity(lang(array('string' => 'design template ({var:1}) was created', 'vars' => array($name))),
-        isset($user['username']) ? (string)$user['username'] : '');
-
-    return array(
-        'ok'          => true,
-        'template'    => $tpl,
-        'row_id'      => (int)$saved['row_id'],
-        'template_id' => (string)$saved['template_id'],
-        'dropped'     => $dropped,
-    );
+    return array('ok' => true, 'template' => $tpl, 'dropped' => $dropped);
 }

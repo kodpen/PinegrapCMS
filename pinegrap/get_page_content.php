@@ -111,6 +111,20 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // database, in which case this stays '' and style_code is used as before.
     $page_tree_code = isset($row['page_tree_code']) ? (string)$row['page_tree_code'] : '';
 
+    // A page experiment's variant swaps in its draft's body only: the title,
+    // meta tags, structured data and address above stay the live page's.
+    $page_body_id = function_exists('pg_experiment_body_page_id') ? pg_experiment_body_page_id((int) $page_id) : (int) $page_id;
+
+    if ($page_body_id !== (int) $page_id) {
+        $variant_code = pg_experiment_variant_code($page_body_id);
+
+        if ($variant_code !== '') {
+            $page_tree_code = $variant_code;
+        } else {
+            $page_body_id = (int) $page_id;
+        }
+    }
+
     // Remember the requested device type, because we might change this below
     // if a mobile style does not exist.  We want to remember the requested device type,
     // because we still want to output the appropriate mobile switch.
@@ -159,7 +173,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // translations: from page_translations while the source body is
     // unchanged, drawn now otherwise. The page's own body stays as it is.
     if (defined('FRONTEND_LANGUAGE') && ($page_tree_code !== '')) {
-        $page_tree_code = pg_tr_page_body($page_id, $page_tree_code, $style_name, (string) ($row['additional_body_classes'] ?? ''));
+        $page_tree_code = pg_tr_page_body($page_body_id, $page_tree_code, $style_name, (string) ($row['additional_body_classes'] ?? ''));
     }
 
     // The page's own generated layout wins when it has one; the style's code
@@ -519,6 +533,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // record the sender passed with it (a form's confirmation: form_id; an
     // order receipt: order_id), which on an e-mail page no URL carries.
     if (function_exists('pg_sw_item_missing')) pg_sw_item_missing(false);
+    // Whether a widget read the address segment; a page drawn meanwhile (an
+    // e-mail, another page) keeps the answer of the one drawn around it.
+    $pg_segment_read_prev = function_exists('pg_sw_segment_read') ? pg_sw_segment_read(false) : false;
     // An e-mail drawn while a page is drawn adds nothing and clears nothing.
     if (function_exists('pg_sw_url_filter_state') && !$email) pg_sw_url_filter_state(false);
     if (function_exists('pg_sw_list_page_requests') && !$email) pg_sw_list_page_requests(false);
@@ -555,6 +572,29 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             pg_sw_item_missing(true);
         }
     }
+
+    // Links kept by page id (in the page tree and in shared components, drawn
+    // above) point at the page's current address, so a rename reaches them;
+    // a page missing or in the bin keeps the typed href. Before the language
+    // pass, which adds its prefix to them.
+    if (stripos($content, 'data-pg-page-link=') !== false && function_exists('pg_page_link_expand')) {
+        $content = pg_page_link_expand($content);
+    }
+
+    // An address segment after the page name that nothing on the page read
+    // (/about/xyz, a classic system-layout page included) is not there: a 404
+    // with noindex that goes into the 404 log, as a missing record or product
+    // answers. Only for the page this request asked for (a classic form list
+    // address shows its item view page under another name), never in an
+    // e-mail or edit mode.
+    if (!$email && ($mode != 'edit') && function_exists('pg_sw_unread_segment_missing')
+        && !defined('PRETTY_URL_PATH')
+        && ((int)$page_id === _pg_sw_current_page_id())
+        && pg_sw_unread_segment_missing(pg_sw_request_segment(), pg_sw_segment_read(), $page_type)
+    ) {
+        pg_sw_item_missing(true);
+    }
+    if ($pg_segment_read_prev) pg_sw_segment_read(true);
 
     // A part of a detail widget the page does not draw shows nothing
     // (widgets_parts_anywhere.php).
@@ -1235,7 +1275,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // if Google Analytics is enabled and there is a Web Property ID, then add Google Analytics JavaScript.
         // Not in a background render (the SEO pass, the prototype frame): that is nobody's visit, and the
         // tag would report a page view with the address the render was asked by.
-        if ((GOOGLE_ANALYTICS == TRUE) && (GOOGLE_ANALYTICS_WEB_PROPERTY_ID != '') && !pg_seo_rendering()) {
+        // A stored ID that is not a Google tag ID prints no tag at all: it
+        // would break the script address and the inline script.
+        $google_analytics_tag_id = pg_ga_tag_id(GOOGLE_ANALYTICS_WEB_PROPERTY_ID);
+
+        if ((GOOGLE_ANALYTICS == TRUE) && ($google_analytics_tag_id !== '') && !pg_seo_rendering()) {
 
             $output_ecommerce_tracking_data = '';
 
@@ -1330,12 +1374,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             }
             $output_google_analytics =
                 '<!-- Google tag (gtag.js) -->' . "\n" .
-                '<script async src="https://www.googletagmanager.com/gtag/js?id=' . GOOGLE_ANALYTICS_WEB_PROPERTY_ID . '"></script>' . "\n" .
+                '<script async src="https://www.googletagmanager.com/gtag/js?id=' . h(rawurlencode($google_analytics_tag_id)) . '"></script>' . "\n" .
                 '<script>' . "\n" .
                 '    window.dataLayer = window.dataLayer || [];' . "\n" .
                 '    function gtag(){dataLayer.push(arguments);}' . "\n" .
                 '    gtag(\'js\', new Date());' . "\n" .
-                '    gtag(\'config\', \'' . GOOGLE_ANALYTICS_WEB_PROPERTY_ID . '\');' . "\n" .
+                '    gtag(\'config\', \'' . escape_javascript($google_analytics_tag_id) . '\');' . "\n" .
                     $output_ecommerce_tracking_data .
                 '</script>';
 
@@ -2233,8 +2277,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         // picture and og:type=product, like its legacy twin.
                         $pg_og_sw_product_image_name = (string) ($_pg_sw_product['image_name'] ?? '');
                         $_pg_sw_canonical_url = is_array($pg_sw_item) ? $canonical_url : URL_SCHEME . HOSTNAME_SETTING . $_pg_sw_canonical_path;
+                        $_pg_sw_product_id = isset($_pg_sw_product['id']) ? $_pg_sw_product['id'] : 0;
+                        // A product's answered questions, while the page's
+                        // questions widget shows them.
                         $_pg_sw_jsonld = _pg_build_product_jsonld($_pg_sw_product, $_pg_sw_canonical_url,
-                            pg_comment_product_view_rating_shown($page_id, isset($_pg_sw_product['id']) ? $_pg_sw_product['id'] : 0));
+                            pg_comment_product_view_rating_shown($page_id, $_pg_sw_product_id),
+                            pg_product_question_markup_shown($page_id, $_pg_sw_product_id) ? pg_product_question_jsonld($page_id, $_pg_sw_product_id) : array());
                         $content = preg_replace(
                             '/<\/head>/i',
                             pg_regex_replacement("\n<!-- Start Structured Data -->\n<script type=\"application/ld+json\">" . json_encode($_pg_sw_jsonld, JSON_UNESCAPED_UNICODE) . "</script>\n<!-- End Structured Data -->\n") . '</head>',

@@ -83,6 +83,18 @@
         } }, [el('span', { text: t('details') }), icon('chev')]));
     };
 
+    // One adjustment set to n; at 0 it leaves the document, so a slider moved
+    // and brought back matches the opening document (settleDirty()).
+    Editor.prototype.setAdjust = function (key, n, step) {
+        this.change(function (doc) {
+            if (n) {
+                doc.adjust[key] = n;
+            } else {
+                delete doc.adjust[key];
+            }
+        }, step, true);
+    };
+
     // A slider of one adjustment; a double click sets it back to 0.
     Editor.prototype.adjustSlider = function (d) {
         var self = this, key = d[0], value = Number(this.doc.adjust[key]) || 0;
@@ -91,7 +103,7 @@
         var slider = el('input', { type: 'range', class: 'pgie-range', min: String(d[1]), max: String(d[2]), step: '1', value: String(value), 'aria-label': t('adj_' + key) });
         var set = function (n, step) {
             label.textContent = shown(n);
-            self.change(function (doc) { doc.adjust[key] = n; }, step, true);
+            self.setAdjust(key, n, step);
         };
 
         slider.addEventListener('input', function () { set(Number(slider.value), 'adjust-' + key); });

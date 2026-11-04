@@ -22,7 +22,7 @@ if (!defined('PG_TEST_RUNNER')) {
 function test_submitted_form_delete_comments_every_path()
 {
 	$paths = array(
-		'edit_submitted_form.php' => "pg_comment_delete_record_thread(\$_POST['id'] ?? 0);",
+		'edit_submitted_form.php' => 'pg_comment_delete_record_thread($id);',
 		'delete_submitted_forms.php' => 'pg_comment_delete_record_thread($form_id);',
 		'view_submitted_forms.php' => "pg_comment_delete_record_thread(\$form['id']);",
 	);

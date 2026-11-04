@@ -67,30 +67,25 @@ if (!$_POST) {
 } else {
     validate_token_field();
     
-    // create referral source
-    $query = "INSERT INTO referral_sources (
-                name,
-                code,
-                sort_order,
-                user,
-                timestamp)
-            VALUES (
-                ?,
-                ?,
-                ?,
-                ?,
-                UNIX_TIMESTAMP())";
     $values = pg_referral_source_form_values($_POST);
-    $error = pg_referral_source_form_error($values);
+    $others = pg_store_referral_source_others(null);
+    if ($others === false) {
+        output_error('Query failed.');
+    }
+    $error = pg_referral_source_form_error($values, $others);
     if ($error !== '') {
         output_error($error . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
-    $result = db_q($query, array($values['name'], $values['code'], $values['sort_order'], (int) $user['id'])) or output_error('Query failed.');
+    $referral_source_id = pg_store_referral_source_save(0, $values, $user['id']);
+    if ($referral_source_id <= 0) {
+        output_error('Query failed.');
+    }
 
-    $referral_source_id = mysqli_insert_id(db::$con);
+    log_activity(lang(array('string'=>'referral source ({var:1}) was created','vars'=>array($values['name']) )) , $_SESSION['sessionusername']);
 
-    log_activity(lang(array('string'=>'referral source ({var:1}) was created','vars'=>array($_POST['name']) )) , $_SESSION['sessionusername']);
-
+    include_once('liveform.class.php');
+    $liveform_view = new liveform('view_referral_sources');
+    $liveform_view->add_notice(lang('The referral source has been created.'));
 
     // forward user to view referral sources page
     header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/view_referral_sources.php');

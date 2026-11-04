@@ -113,6 +113,13 @@ function ws_flow_draft_proposal_input($change)
             $graph[$part] = $sent[$part];
         }
 
+        // Boxes sent all in one place - none given, as an assistant writes
+        // them, or the same x and y - are laid out from the start, as Pinegrap
+        // AI's are; boxes with places of their own keep them.
+        if (ws_flow_draft_unplaced($graph['nodes'])) {
+            $graph = ws_flow_auto_layout(ws_flow_graph_normalize($graph), array());
+        }
+
         $data['graph'] = $graph;
     }
 
@@ -125,6 +132,25 @@ function ws_flow_draft_proposal_input($change)
         'home'  => max(0, (int) ($sent['channel_id'] ?? 0)),
         'notes' => ($reason !== '') ? array($reason) : array(),
     );
+}
+
+/**
+ * Are these boxes all in one place, with more than one of them (pure)? A box
+ * with no x or y stands at 0, 0.
+ *
+ * @param array $nodes the boxes, as sent
+ * @return bool
+ */
+function ws_flow_draft_unplaced($nodes)
+{
+    $places = array();
+
+    foreach ((array) $nodes as $node) {
+        $node = is_array($node) ? $node : array();
+        $places[ws_flow_coord($node['x'] ?? 0) . ',' . ws_flow_coord($node['y'] ?? 0)] = true;
+    }
+
+    return (count((array) $nodes) > 1) && (count($places) === 1);
 }
 
 /**
@@ -1240,12 +1266,117 @@ function ws_flow_ai_setting_keys($catalogue)
 }
 
 /**
- * The catalogue as the model reads it, one line per kind of box: whether it
- * starts the flow, the outcomes an arrow leaves it on, the values later boxes
- * read, the settings filled with values and every setting with its type or
- * its words (pure).
+ * The shape of a condition box's rule, as the model may write it: a value
+ * of an earlier box compared, the days of the week, the hours or a working
+ * day (ws_flow_condition_normalize()). A count or a record rule needs what
+ * only the canvas offers (the counts the person may read, a record's id),
+ * so neither is described. Pure.
  *
- * @param array[] $catalogue ws_flow_kind_catalogue()
+ * @return string
+ */
+function ws_flow_ai_rule_shape()
+{
+    $operators = function_exists('ws_flow_condition_value_operators') ? ws_flow_condition_value_operators() : array('eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'contains', 'empty', 'not_empty');
+
+    return '{"type":"value","ref":"{{node.ID.VALUE}} or {{trigger.FIELD}}","op":"' . implode('|', $operators) . '","value":"..."}, '
+        . '{"type":"weekdays","days":[1-7]}, {"type":"hours","from":"HH:MM","to":"HH:MM"} or {"type":"workday"}; a count or a record is chosen on the canvas';
+}
+
+/**
+ * The catalogue with the hints the model needs where a kind's name or a
+ * setting's type says too little (pure): a Started by hand box's subject is
+ * one of the kinds of record the Workspace knows, or left out; a condition's
+ * rule has the shape of ws_flow_ai_rule_shape(); a step's retry and
+ * retry_after go together; an approval box is also the box that puts a
+ * yes-or-no question, and a post box asks nothing. A hinted setting carries
+ * 'hint' (the words after its type) and the subject setting 'subjects' (the
+ * kinds), read by ws_flow_ai_problem_hints(); a hinted kind carries 'hint'
+ * (the words after its label). The catalogue is otherwise as it was.
+ *
+ * @param array[]  $catalogue ws_flow_kind_catalogue()
+ * @param string[] $subjects  the kinds of record a run may be about (ws_scheduled_record_types() keys)
+ * @return array[]
+ */
+function ws_flow_ai_catalogue_hints($catalogue, $subjects)
+{
+    $subjects = array_values(array_map('strval', (array) $subjects));
+    $hints = array(
+        'manual.subject' => array(
+            'hint'     => (empty($subjects) ? 'left out' : 'one of ' . implode(', ', $subjects) . '; the kind of record a run is about, left out') . ' when the flow is about no record in particular',
+            'subjects' => $subjects,
+        ),
+        'condition.rule' => array('hint' => ws_flow_ai_rule_shape()),
+        'approval.approvers' => array('hint' => 'user ids from the list of people, the ones who answer; the person who asked when the request says I or me'),
+    );
+    // The same two settings on every step box.
+    $any = array(
+        'retry'       => array('hint' => 'how many times a failed box tries again; left out for none'),
+        'retry_after' => array('hint' => 'the minutes it waits before it tries again; needed with retry'),
+    );
+    $kinds = array(
+        'approval' => 'also any yes-or-no question put to people in a channel: title is the question, approved is yes and rejected is no',
+        'post'     => 'only says something in a channel; it never waits for an answer',
+    );
+
+    foreach ($catalogue as $at => $kind) {
+        if (isset($kinds[$kind['kind']])) {
+            $catalogue[$at]['hint'] = $kinds[$kind['kind']];
+        }
+
+        foreach ((array) $kind['settings'] as $index => $setting) {
+            $key = $kind['kind'] . '.' . $setting['key'];
+            $hint = $hints[$key] ?? $any[$setting['key']] ?? null;
+
+            if ($hint !== null) {
+                $catalogue[$at]['settings'][$index] = $hint + $setting;
+            }
+        }
+    }
+
+    return $catalogue;
+}
+
+/**
+ * The catalogue Pinegrap AI drafts from: ws_flow_kind_catalogue() with the
+ * hints of ws_flow_ai_catalogue_hints(), the kinds of record read from the
+ * site.
+ *
+ * @return array[]
+ */
+function ws_flow_ai_catalogue()
+{
+    $subjects = function_exists('ws_scheduled_record_types') ? array_keys(ws_scheduled_record_types()) : array();
+
+    return ws_flow_ai_catalogue_hints(ws_flow_kind_catalogue(), $subjects);
+}
+
+/**
+ * The kinds of box that start a flow, from the catalogue (pure).
+ *
+ * @param array[] $catalogue
+ * @return string[]
+ */
+function ws_flow_ai_start_kinds($catalogue)
+{
+    $kinds = array();
+
+    foreach ($catalogue as $kind) {
+        if (!empty($kind['starts'])) {
+            $kinds[] = (string) $kind['kind'];
+        }
+    }
+
+    return $kinds;
+}
+
+/**
+ * The catalogue as the model reads it, one line per kind of box: its hint
+ * after its label when it has one, whether it starts the flow, the outcomes
+ * an arrow leaves it on, the values later boxes read, the settings filled
+ * with values and every setting with its type or its words, and its hint
+ * after the type when it has one (pure).
+ *
+ * @param array[] $catalogue ws_flow_kind_catalogue(), or with its hints
  * @return string
  */
 function ws_flow_ai_catalogue_text($catalogue)
@@ -1257,7 +1388,8 @@ function ws_flow_ai_catalogue_text($catalogue)
 
         foreach ((array) $kind['settings'] as $setting) {
             $type = ($setting['type'] === 'list') ? 'list of ' . $setting['of'] : (string) $setting['type'];
-            $settings[] = $setting['key'] . ' (' . (($setting['values'] !== null) ? implode('|', $setting['values']) : $type) . ')';
+            $hint = isset($setting['hint']) ? ': ' . $setting['hint'] : '';
+            $settings[] = $setting['key'] . ' (' . (($setting['values'] !== null) ? implode('|', $setting['values']) : $type) . $hint . ')';
         }
 
         $outputs = array_map(function ($output) {
@@ -1270,7 +1402,7 @@ function ws_flow_ai_catalogue_text($catalogue)
             $outcomes[] = 'always';
         }
 
-        $lines[] = '- ' . $kind['kind'] . ' "' . $kind['label'] . '"' . (!empty($kind['starts']) ? ', starts the flow' : '')
+        $lines[] = '- ' . $kind['kind'] . ' "' . $kind['label'] . '"' . (isset($kind['hint']) ? ' (' . $kind['hint'] . ')' : '') . (!empty($kind['starts']) ? ', starts the flow' : '')
             . '; arrows leave on: ' . (empty($outcomes) ? 'none' : implode(', ', $outcomes))
             . (empty($outputs) ? '' : '; values: ' . implode(', ', $outputs))
             . (empty($kind['texts']) ? '' : '; {{...}} filled in: ' . implode(', ', (array) $kind['texts']))
@@ -1278,6 +1410,128 @@ function ws_flow_ai_catalogue_text($catalogue)
     }
 
     return implode("\n", $lines);
+}
+
+/**
+ * Which box asks and which only checks, for the model (pure): a box that
+ * starts the flow is never a step, a yes-or-no question put to people is an
+ * approval box, a post box only says something, a condition box compares a
+ * value without asking anyone.
+ *
+ * @param array[] $catalogue ws_flow_kind_catalogue()
+ * @return string
+ */
+function ws_flow_ai_box_choice_text($catalogue)
+{
+    return 'A box that starts the flow (' . implode(', ', ws_flow_ai_start_kinds($catalogue)) . ') asks nothing and no arrow leads into it. '
+        . 'A question people answer with yes or no in a channel is an approval box, whose arrows leave on approved and rejected; '
+        . 'a post box only says something and waits for no answer; '
+        . 'a condition box only compares a value an earlier box gives, and asks nobody.';
+}
+
+/**
+ * What fixes the problems a drafted graph has, as far as they come from
+ * what the catalogue says too little about (pure): the kinds of record a
+ * Started by hand box may be about when its subject is none of them, the
+ * rule's shape when a condition box has none, the approval box when a box
+ * that starts the flow was put in as a step (a second start box, or an
+ * arrow into one), a box's own outcomes when an arrow leaves it on another,
+ * and retry_after when a box tries again with no minutes to wait. Sent back
+ * to the model with ws_flow_ai_problem_texts().
+ *
+ * @param array   $graph     ws_flow_graph_normalize()
+ * @param array[] $catalogue ws_flow_ai_catalogue_hints()
+ * @return string[]
+ */
+function ws_flow_ai_problem_hints($graph, $catalogue)
+{
+    $graph = ws_flow_graph_normalize($graph);
+    $starts = ws_flow_ai_start_kinds($catalogue);
+    $subjects = array();
+
+    foreach ($catalogue as $kind) {
+        if ($kind['kind'] !== 'manual') {
+            continue;
+        }
+
+        foreach ((array) $kind['settings'] as $setting) {
+            if (($setting['key'] === 'subject') && isset($setting['subjects'])) {
+                $subjects = (array) $setting['subjects'];
+            }
+        }
+    }
+
+    $invented = false;
+    $no_rule = false;
+    $starting = 0;
+    $by_id = array();
+
+    foreach ($graph['nodes'] as $node) {
+        $by_id[(string) $node['id']] = $node;
+
+        if (in_array($node['kind'], $starts, true)) {
+            $starting++;
+        }
+
+        if (($node['kind'] === 'manual') && ($node['config']['subject'] !== '') && !in_array($node['config']['subject'], $subjects, true)) {
+            $invented = true;
+        }
+
+        if (($node['kind'] === 'condition') && ((string) ($node['config']['rule']['type'] ?? '') === '')) {
+            $no_rule = true;
+        }
+    }
+
+    $into_start = false;
+    $kinds = ws_flow_kinds();
+    $names = ws_flow_box_names($graph['nodes']);
+    $outcomes = array();
+
+    foreach ($graph['edges'] as $edge) {
+        if (isset($by_id[(string) $edge['to']]) && in_array($by_id[(string) $edge['to']]['kind'], $starts, true)) {
+            $into_start = true;
+        }
+
+        $from = $by_id[(string) $edge['from']] ?? null;
+
+        // An arrow on an outcome its box does not have: the box's own ones.
+        if (($from !== null) && isset($kinds[$from['kind']]) && !in_array($edge['on'], ws_flow_arrow_outcomes($kinds[$from['kind']]), true)) {
+            $own = ws_flow_arrow_outcomes($kinds[$from['kind']]);
+            $outcomes[(string) $from['id']] = ($names[(string) $from['id']] ?? $from['id']) . ' (' . $from['kind'] . ') on ' . (empty($own) ? 'none' : implode(', ', $own));
+        }
+    }
+
+    $lone_retry = false;
+
+    foreach ($graph['nodes'] as $node) {
+        if (((int) ($node['config']['retry'] ?? 0) > 0) && (($node['config']['retry_after'] ?? '') === '')) {
+            $lone_retry = true;
+        }
+    }
+
+    $hints = array();
+
+    if ($invented) {
+        $hints[] = 'The subject of a Started by hand box is one of: ' . implode(', ', $subjects) . '; it is left out when the flow is about no record in particular.';
+    }
+
+    if ($no_rule) {
+        $hints[] = 'A condition box\'s rule is an object: ' . ws_flow_ai_rule_shape() . '.';
+    }
+
+    if (($starting > 1) || $into_start) {
+        $hints[] = ws_flow_ai_box_choice_text($catalogue);
+    }
+
+    if (!empty($outcomes)) {
+        $hints[] = 'An arrow leaves a box only on its own outcomes: ' . implode('; ', $outcomes) . '.';
+    }
+
+    if ($lone_retry) {
+        $hints[] = 'A box that tries again after a failure needs retry_after, the minutes it waits first; leave retry and retry_after out when the request does not ask for it.';
+    }
+
+    return $hints;
 }
 
 /**
@@ -1319,6 +1573,7 @@ function ws_flow_ai_tool($catalogue)
         . 'Nothing runs and nothing is saved: it waits under your answer as a draft, and the person who asked opens it on the Flows canvas and publishes it. '
         . 'A new flow: name, boxes and arrows, exactly one box that starts it. A flow that exists: flow_id (find it with read_flow) and changes, never the whole flow. '
         . 'A text setting may take {{node.ID.VALUE}} (a value of an earlier box) or {{trigger.FIELD}} (what started the run). Places on the canvas are set for you. '
+        . ws_flow_ai_box_choice_text($catalogue) . ' '
         . "Kinds of box:\n" . ws_flow_ai_catalogue_text($catalogue);
 
     return array('type' => 'function', 'function' => array(
@@ -1401,14 +1656,120 @@ function ws_flow_ai_edge($arrow)
 }
 
 /**
+ * A box's settings without a retry the model gave no minutes for (pure):
+ * retry and retry_after go together (ws_flow_retry_problems()), and a box
+ * added on the canvas tries nothing again, so a retry sent alone is left out
+ * rather than kept as a problem to fix.
+ *
+ * @param array $settings the settings of one box, as ws_flow_ai_node() kept them
+ * @return array
+ */
+function ws_flow_ai_settings_trim($settings)
+{
+    $after = $settings['retry_after'] ?? '';
+
+    if (array_key_exists('retry', $settings) && (is_bool($after) || !is_numeric($after))) {
+        unset($settings['retry'], $settings['retry_after']);
+    }
+
+    return $settings;
+}
+
+/**
+ * An arrow the model sent on next from a box that does not start the flow,
+ * as an arrow sent with no outcome (pure): next is the start boxes' only
+ * outcome, and the model also writes it for "then" after a step. With none,
+ * the graph takes the box's first outcome (ws_flow_graph_normalize()), as
+ * the canvas does for a new arrow. Any other outcome is kept as sent.
+ *
+ * @param array  $edge ws_flow_ai_edge()
+ * @param string $kind the kind of the box it leaves ('' when there is none)
+ * @return array
+ */
+function ws_flow_ai_edge_outcome($edge, $kind)
+{
+    $kinds = ws_flow_kinds();
+
+    if (($edge['on'] === 'next') && isset($kinds[$kind]) && empty($kinds[$kind]['trigger'])) {
+        $edge['on'] = '';
+    }
+
+    return $edge;
+}
+
+/**
+ * A box the model meant as a question, made the box that asks it (pure): a
+ * post or check-in box with an arrow leaving it on yes, no, approved or
+ * rejected says something and waits for no answer, so it has none of those
+ * outcomes and nothing would wait for the answer. It becomes an approval box
+ * in its own channel (the request's when it had none), its message the
+ * question, the person who asked the one who answers; its arrows on yes,
+ * done or next leave on approved, on no on rejected. Any other box, and a
+ * post with no such arrow, stays as sent.
+ *
+ * @param array $graph   ws_flow_graph_normalize()
+ * @param array $context asker (user id), channel (the request's channel id)
+ * @return array the graph
+ */
+function ws_flow_ai_question_boxes($graph, $context)
+{
+    $asker = (int) ($context['asker'] ?? 0);
+    $channel = (int) ($context['channel'] ?? 0);
+
+    if ($asker <= 0) {
+        return $graph;
+    }
+
+    $asks = array();
+
+    foreach ($graph['edges'] as $edge) {
+        if (in_array($edge['on'], array('yes', 'no', 'approved', 'rejected'), true)) {
+            $asks[(string) $edge['from']] = true;
+        }
+    }
+
+    foreach ($graph['nodes'] as $index => $node) {
+        if (!isset($asks[(string) $node['id']]) || !in_array($node['kind'], array('post', 'checkin'), true)) {
+            continue;
+        }
+
+        $question = ($node['kind'] === 'post') ? (string) $node['config']['body'] : (string) $node['config']['question'];
+        $in = (int) $node['config']['channel_id'];
+
+        $graph['nodes'][$index]['kind'] = 'approval';
+        $graph['nodes'][$index]['config'] = ws_flow_config_normalize('approval', array(
+            'channel_id' => ($in > 0) ? $in : $channel,
+            'title'      => ($question !== '') ? $question : (string) $node['label'],
+            'approvers'  => array($asker),
+        ));
+
+        foreach ($graph['edges'] as $at => $edge) {
+            if ((string) $edge['from'] !== (string) $node['id']) {
+                continue;
+            }
+
+            if (in_array($edge['on'], array('yes', 'done', 'next'), true)) {
+                $graph['edges'][$at]['on'] = 'approved';
+            } elseif ($edge['on'] === 'no') {
+                $graph['edges'][$at]['on'] = 'rejected';
+            }
+        }
+    }
+
+    return $graph;
+}
+
+/**
  * A new flow the model sent as boxes and arrows, as a graph laid out on the
  * canvas (pure). The graph's own check is made afterwards.
  *
- * @param array $args boxes, arrows
- * @param array $keys ws_flow_ai_setting_keys()
+ * @param array $args    boxes, arrows
+ * @param array $keys    ws_flow_ai_setting_keys()
+ * @param array $context asker, channel: a post meant as a question is read
+ *                       for them (ws_flow_ai_question_boxes()); none, as sent
  * @return array ok, error, graph
  */
-function ws_flow_ai_graph($args, $keys)
+function ws_flow_ai_graph($args, $keys, $context = array())
 {
     $boxes = $args['boxes'] ?? null;
     $arrows = $args['arrows'] ?? array();
@@ -1423,6 +1784,8 @@ function ws_flow_ai_graph($args, $keys)
 
     $graph = ws_flow_graph_empty();
 
+    $kind_of = array();
+
     foreach (array_values($boxes) as $index => $box) {
         $made = ws_flow_ai_node($box, $keys, 'boxes[' . $index . ']: ');
 
@@ -1430,14 +1793,17 @@ function ws_flow_ai_graph($args, $keys)
             return array('ok' => false, 'error' => $made['error'], 'graph' => null);
         }
 
+        $made['node']['config'] = ws_flow_ai_settings_trim($made['node']['config']);
         $graph['nodes'][] = $made['node'];
+        $kind_of[$made['node']['id']] = $made['node']['kind'];
     }
 
     foreach (is_array($arrows) ? array_values($arrows) : array() as $arrow) {
-        $graph['edges'][] = ws_flow_ai_edge($arrow);
+        $edge = ws_flow_ai_edge($arrow);
+        $graph['edges'][] = ws_flow_ai_edge_outcome($edge, $kind_of[$edge['from']] ?? '');
     }
 
-    return array('ok' => true, 'error' => '', 'graph' => ws_flow_auto_layout(ws_flow_graph_normalize($graph), array()));
+    return array('ok' => true, 'error' => '', 'graph' => ws_flow_auto_layout(ws_flow_ai_question_boxes(ws_flow_graph_normalize($graph), $context), array()));
 }
 
 /**
@@ -1499,6 +1865,8 @@ function ws_flow_patch_apply($graph, $ops, $keys)
                 return $fail($made['error']);
             }
 
+            $made['node']['config'] = ws_flow_ai_settings_trim($made['node']['config']);
+
             $id = $made['node']['id'];
 
             if (!ws_flow_node_id_valid($id) || ($index_of($id) >= 0)) {
@@ -1517,6 +1885,8 @@ function ws_flow_patch_apply($graph, $ops, $keys)
             if (($index_of($edge['from']) < 0) || ($index_of($edge['to']) < 0)) {
                 return $fail($where . 'from and to are ids of boxes in the flow.');
             }
+
+            $edge = ws_flow_ai_edge_outcome($edge, (string) $graph['nodes'][$index_of($edge['from'])]['kind']);
 
             if (!in_array($edge, $graph['edges'], true)) {
                 $graph['edges'][] = $edge;
@@ -1799,7 +2169,8 @@ function ws_flow_ai_propose($row, &$state, $args)
         return array('error' => 'At most ' . WS_FLOW_AI_PER_ANSWER . ' flows are drafted for one request. Answer with those.');
     }
 
-    $keys = ws_flow_ai_setting_keys(ws_flow_kind_catalogue());
+    $catalogue = ws_flow_ai_catalogue();
+    $keys = ws_flow_ai_setting_keys($catalogue);
     $reason = trim(mb_substr(preg_replace('/\s+/u', ' ', is_scalar($args['reason'] ?? null) ? (string) $args['reason'] : ''), 0, 500));
     $flow = null;
     $patch = null;
@@ -1827,7 +2198,7 @@ function ws_flow_ai_propose($row, &$state, $args)
             return array('error' => 'changes are for a flow that exists (flow_id). A new flow is sent as name, boxes and arrows.');
         }
 
-        $made = ws_flow_ai_graph($args, $keys);
+        $made = ws_flow_ai_graph($args, $keys, array('asker' => (int) $asker['id'], 'channel' => (int) $row['channel_id']));
 
         if (!$made['ok']) {
             return array('error' => $made['error']);
@@ -1841,7 +2212,7 @@ function ws_flow_ai_propose($row, &$state, $args)
     if (!empty($problems) && ((int) ($state['flow_tries'] ?? 0) < 1)) {
         $state['flow_tries'] = (int) ($state['flow_tries'] ?? 0) + 1;
 
-        return array('error' => 'Not drafted yet; it could not be published like this: ' . implode(' ', $problems) . ' Fix that and call propose_flow again with all of it.');
+        return array('error' => 'Not drafted yet; it could not be published like this: ' . implode(' ', array_merge($problems, ws_flow_ai_problem_hints($graph, $catalogue))) . ' Fix that and call propose_flow again with all of it.');
     }
 
     if ($flow === null) {
@@ -2209,9 +2580,10 @@ function ws_flow_ai_sketch_parse($content)
  * @param array    $keys     ws_flow_ai_setting_keys()
  * @param string   $fallback the name when the model gave none
  * @param callable $problems graph => texts, ws_flow_ai_problem_texts()
+ * @param array    $context  asker, channel (ws_flow_ai_graph())
  * @return array ok, error (for the model), name, graph, problems, reason
  */
-function ws_flow_ai_sketch_read($content, $keys, $fallback, $problems = 'ws_flow_ai_problem_texts')
+function ws_flow_ai_sketch_read($content, $keys, $fallback, $problems = 'ws_flow_ai_problem_texts', $context = array())
 {
     $fail = function ($error) {
         return array('ok' => false, 'error' => $error, 'name' => '', 'graph' => null, 'problems' => array(), 'reason' => '');
@@ -2226,7 +2598,7 @@ function ws_flow_ai_sketch_read($content, $keys, $fallback, $problems = 'ws_flow
         return $fail('This is a new flow: send name, boxes and arrows, no flow_id or changes.');
     }
 
-    $made = ws_flow_ai_graph($args, $keys);
+    $made = ws_flow_ai_graph($args, $keys, $context);
 
     if (!$made['ok']) {
         return $fail($made['error']);
@@ -2254,13 +2626,14 @@ function ws_flow_ai_sketch_read($content, $keys, $fallback, $problems = 'ws_flow
  * its problems are named ($ask makes the call; a pure $problems keeps it off the database).
  *
  * @param string   $sentence  ws_flow_ai_sketch_sentence()
- * @param array[]  $catalogue ws_flow_kind_catalogue()
+ * @param array[]  $catalogue ws_flow_ai_catalogue()
  * @param string   $language
  * @param callable $ask       messages => pg_ai_chat()'s answer (ok, text, error)
  * @param callable $problems  graph => texts, ws_flow_ai_problem_texts()
+ * @param array    $context   asker, channel (ws_flow_ai_graph())
  * @return array ok, error (for the person), name, graph, problems, reason, tries
  */
-function ws_flow_ai_sketch_draft($sentence, $catalogue, $language, $ask, $problems = 'ws_flow_ai_problem_texts')
+function ws_flow_ai_sketch_draft($sentence, $catalogue, $language, $ask, $problems = 'ws_flow_ai_problem_texts', $context = array())
 {
     $keys = ws_flow_ai_setting_keys($catalogue);
     $messages = ws_flow_ai_sketch_messages($sentence, $catalogue, $language);
@@ -2273,7 +2646,7 @@ function ws_flow_ai_sketch_draft($sentence, $catalogue, $language, $ask, $proble
             return array('ok' => false, 'error' => (string) ($reply['error'] ?? ''), 'tries' => $try);
         }
 
-        $read = ws_flow_ai_sketch_read((string) $reply['text'], $keys, $sentence, $problems);
+        $read = ws_flow_ai_sketch_read((string) $reply['text'], $keys, $sentence, $problems, $context);
 
         if ($read['ok'] && empty($read['problems'])) {
             break;
@@ -2284,7 +2657,7 @@ function ws_flow_ai_sketch_draft($sentence, $catalogue, $language, $ask, $proble
         }
 
         $wrong = $read['ok']
-            ? 'It could not be published like this: ' . implode(' ', $read['problems']) . ' Fix that.'
+            ? 'It could not be published like this: ' . implode(' ', array_merge($read['problems'], ws_flow_ai_problem_hints($read['graph'], $catalogue))) . ' Fix that.'
             : $read['error'];
         $messages[] = array('role' => 'assistant', 'content' => (string) $reply['text']);
         $messages[] = array('role' => 'user', 'content' => $wrong . ' Answer again with the whole flow as one JSON object.');
@@ -2334,7 +2707,7 @@ function ws_flow_ai_sketch($viewer, $sentence, $channel_id = 0, $ask = null)
         };
     }
 
-    $draft = ws_flow_ai_sketch_draft($sentence, ws_flow_kind_catalogue(), ws_ai_request_language($sentence), $ask);
+    $draft = ws_flow_ai_sketch_draft($sentence, ws_flow_ai_catalogue(), ws_ai_request_language($sentence), $ask, 'ws_flow_ai_problem_texts', array('asker' => (int) $viewer['id'], 'channel' => (int) $channel_id));
 
     if (!$draft['ok']) {
         return $fail($draft['error']);

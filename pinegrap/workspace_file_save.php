@@ -27,6 +27,9 @@
  *     { token, doc, picture, name? } -> { status, mode: 'new', id, name, url }
  *   workspace_file_save.php?message=<id>   with doc.artboard: as above, the
  *     canvas drawn again replacing or answering the message's picture
+ *   A canvas's pictures from this computer (pictures [{id, data, name}])
+ *   are kept as files in its file's folder, their layers pointed at them,
+ *   and answered as pictures (layer id => {id, url}).
  *   workspace_file_save.php?message=<id>   { token, action: 'canvas' }
  *     -> { status, doc }: the canvas document the message's picture was
  *     drawn from, or null
@@ -121,9 +124,9 @@ if (isset($_GET['note'])) {
         ws_file_save_refuse($result['error']);
     }
 
-    ws_canvas_keep($result['id'], $doc_object, $viewer['id']);
+    $kept = ws_canvas_keep($result['id'], $doc_object, $viewer['id'], $request['pictures'] ?? null);
 
-    echo encode_json(array('status' => 'success', 'mode' => 'new', 'id' => (int) $result['id'], 'name' => $result['name'], 'url' => $result['url']));
+    echo encode_json(array('status' => 'success', 'mode' => 'new', 'id' => (int) $result['id'], 'name' => $result['name'], 'url' => $result['url'], 'pictures' => $kept['pictures']));
     exit();
 }
 
@@ -148,10 +151,7 @@ if (isset($_GET['channel'])) {
     }
 
     $saved = ws_message((int) $result['message_id']);
-
-    if ($saved) {
-        ws_canvas_keep((int) $saved['file_id'], $doc_object, $viewer['id']);
-    }
+    $kept = $saved ? ws_canvas_keep((int) $saved['file_id'], $doc_object, $viewer['id'], $request['pictures'] ?? null) : array('pictures' => (object) array());
 
     $stored = $saved ? (string) db_value("SELECT name FROM files WHERE id = '" . (int) $saved['file_id'] . "'") : '';
 
@@ -161,6 +161,7 @@ if (isset($_GET['channel'])) {
         'name'       => $saved ? (string) $saved['file_name'] : '',
         'url'        => ($stored !== '') ? PATH . encode_url_path($stored) : '',
         'message_id' => (int) $result['message_id'],
+        'pictures'   => $kept['pictures'],
     ));
     exit();
 }
@@ -186,9 +187,13 @@ if ($canvas) {
     $picture['extension'] = 'png';
 } else {
     $stored_name = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'");
-    $picture = pg_image_editor_render(FILE_DIRECTORY_PATH . '/' . $stored_name, $request);
+    // The editor reads the picture it was opened on, which may be a copy of
+    // a file in the object store; the result is posted as a new file.
+    $picture = pg_image_editor_render(pg_file_reader_path($stored_name), $request);
 }
 
+// The pictures from this computer, kept as files once the canvas is written.
+$pictures = $request['pictures'] ?? null;
 unset($request);
 
 if ($picture['error'] !== '') {
@@ -196,6 +201,8 @@ if ($picture['error'] !== '') {
 }
 
 $extension = $picture['extension'];
+// A canvas has no redaction to burn in.
+$redacted = !empty($picture['redacted']);
 $mime = array('jpg' => 'jpeg', 'png' => 'png', 'webp' => 'webp', 'gif' => 'gif');
 $data = 'data:image/' . $mime[$extension] . ';base64,' . base64_encode($picture['data']);
 unset($picture);
@@ -204,7 +211,7 @@ $name = ws_file_edit_name($message['file_name'], $extension);
 $as = (($_GET['as'] ?? '') === 'replace') ? 'replace' : 'send';
 
 if ($as === 'replace') {
-    $result = ws_message_file_replace($viewer, $message, $channel, $name, $data);
+    $result = ws_message_file_replace($viewer, $message, $channel, $name, $data, $redacted);
     $message_id = (int) $message['id'];
 } else {
     $result = ws_message_file_send($viewer, $message, $channel, $name, $data);
@@ -218,9 +225,7 @@ if (!$result['ok']) {
 $saved = ws_message($message_id);
 $stored = $saved ? (string) db_value("SELECT name FROM files WHERE id = '" . (int) $saved['file_id'] . "'") : '';
 
-if ($canvas && $saved) {
-    ws_canvas_keep((int) $saved['file_id'], $doc_object, $viewer['id']);
-}
+$kept = ($canvas && $saved) ? ws_canvas_keep((int) $saved['file_id'], $doc_object, $viewer['id'], $pictures) : array('pictures' => (object) array());
 
 echo encode_json(array(
     'status'     => 'success',
@@ -228,4 +233,5 @@ echo encode_json(array(
     'name'       => $saved ? (string) $saved['file_name'] : $name,
     'url'        => ($stored !== '') ? PATH . encode_url_path($stored) : '',
     'message_id' => $message_id,
+    'pictures'   => $kept['pictures'],
 ));

@@ -44,7 +44,7 @@ $query =
     LEFT JOIN page on forms.page_id = page.page_id
     LEFT JOIN custom_form_pages ON forms.page_id = custom_form_pages.page_id
     WHERE forms.id = ?";
-$result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
+$result = db_q($query, array((string) $id)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 // The id comes straight from the query string, so it can point at a form that
@@ -138,7 +138,7 @@ $pretty_urls = check_if_pretty_urls_are_enabled($custom_form_page_id);
 
 include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/submitted_form_form.php');
-$liveform = new liveform('edit_submitted_form', $_REQUEST['id']);
+$liveform = new liveform('edit_submitted_form', $id);
 
 // An attachment over post_max_size makes PHP throw the whole request away.
 // The id and the screen to return to ride in the form's address, so the
@@ -178,7 +178,7 @@ if (!$_POST) {
         LEFT JOIN user as submitted_user ON forms.user_id = submitted_user.user_id
         LEFT JOIN user as last_modified_user ON forms.last_modified_user_id = last_modified_user.user_id
         WHERE forms.id = ?";
-    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+    $result = db_q($query, array((string) $id)) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     // Same as above: a stale id gives null here, and the 17 reads that follow
@@ -271,7 +271,7 @@ if (!$_POST) {
     
     // Whether the form is filled from the stored item (no posted values
     // waiting from a save that came back with errors).
-    $prefill = (isset($_SESSION['software']['liveforms']['edit_submitted_form'][$_GET['id']]) == false);
+    $prefill = (isset($_SESSION['software']['liveforms']['edit_submitted_form'][$id]) == false);
 
     // if edit submitted form screen has not been submitted already, pre-populate fields with form data
     if ($prefill) {
@@ -288,7 +288,7 @@ if (!$_POST) {
                     AND (form_fields.type != 'file upload')
                     AND (form_fields.type != 'signature')
                  GROUP BY form_data.form_field_id";
-        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+        $result = db_q($query, array((string) $id)) or output_error('Query failed.');
 
         $fields = array();
 
@@ -304,7 +304,7 @@ if (!$_POST) {
                          FROM form_data
                          WHERE (form_id = ?) AND (form_field_id = ?)
                          ORDER BY id";
-                $result = db_q($query, array((string) $_GET['id'], (string) $field['form_field_id'])) or output_error('Query failed.');
+                $result = db_q($query, array((string) $id, (string) $field['form_field_id'])) or output_error('Query failed.');
                 
                 $field['data'] = array();
                 
@@ -337,10 +337,10 @@ if (!$_POST) {
     $history_notes = array();
 
     if ($history_enabled && !empty($_GET['revision']) && is_scalar($_GET['revision'])) {
-        $history_revision = pg_record_revision_get($_GET['id'], (int) $_GET['revision']);
+        $history_revision = pg_record_revision_get($id, (int) $_GET['revision']);
 
         if ($history_revision) {
-            $history_notes = pg_record_revision_load($liveform, $_GET['id'], $page_id, $history_revision, $prefill);
+            $history_notes = pg_record_revision_load($liveform, $id, $page_id, $history_revision, $prefill);
         }
     }
 
@@ -351,7 +351,7 @@ if (!$_POST) {
         || ((check_edit_access($folder_id) == true) && ($user['manage_forms'] == TRUE))
     );
 
-    $form_markup = pg_submitted_form_fields_markup($liveform, $user, $custom_form_page_id, $office_use_only_access, (string) $_GET['id']);
+    $form_markup = pg_submitted_form_fields_markup($liveform, $user, $custom_form_page_id, $office_use_only_access, (string) $id);
 
     // If the form is incomplete then show certain buttons.
     if (!$complete) {
@@ -369,9 +369,45 @@ if (!$_POST) {
     // Where it was talked about in the workspace, and the tasks about it.
     $output_workspace_button = '';
 
+    // The fee of a designed form (includes/fn/form_payments.php): a Paid or
+    // Unpaid badge for staff, the order's link for those who may open
+    // orders, and, for an offline payment the order still waits on, the
+    // order screen's own Payment Received path from here.
+    $output_payment = '';
+    $form_payment = $submitted_forms_manager ? pg_form_payment_record($id) : null;
+
+    if ($form_payment) {
+        $payment_order = $form_payment['order'];
+        $may_open_orders = (($user['role'] < 3) || $user['manage_ecommerce']);
+
+        $output_payment = '<p class="p-0 m-0">' . lang('Payment') . ': '
+            . (($form_payment['state'] === 'paid')
+                ? '<span class="badge theme-success">' . lang('Paid') . '</span>'
+                : '<span class="badge theme-warning fg-black">' . lang('Unpaid') . '</span>');
+
+        if ($payment_order && $may_open_orders) {
+            $output_payment .= ' <a href="view_order.php?id=' . $payment_order['id'] . '">'
+                . ((($payment_order['order_number'] !== '') && ($payment_order['order_number'] !== '0'))
+                    ? h(lang(array('string' => 'Order #{var:1}', 'vars' => array($payment_order['order_number']))))
+                    : lang('Incomplete order'))
+                . '</a>';
+        }
+
+        $output_payment .= '</p>';
+
+        if ($payment_order && $may_open_orders && ($form_payment['state'] === 'unpaid') && pg_order_awaiting_payment($payment_order)) {
+            $output_payment .= '
+                                <form action="edit_submitted_form.php?id=' . $id . '" method="post" class="mt-2">
+                                    ' . get_token_field() . '
+                                    <input type="hidden" name="id" value="' . $id . '" />
+                                    <button type="submit" name="record_offline_payment" value="1" class="btn btn-outline theme-primary btn-sm" data-confirm-content="' . h(lang('Record that the payment for this order has arrived?')) . '"><i class="bi bi-cash-coin me-1"></i>' . lang('Record an offline payment') . '</button>
+                                </form>';
+        }
+    }
+
     if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
         require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
-        $output_workspace_button = ws_record_button($user, 'form', (int) $_GET['id'], trim($form_name . ' ' . $reference_code));
+        $output_workspace_button = ws_record_button($user, 'form', $id, trim($form_name . ' ' . $reference_code));
     }
 
     // The page a site's Edit button opened this screen from
@@ -409,13 +445,14 @@ if (!$_POST) {
                                 
                                 <p class="p-0 m-0">' . lang('Reference Code') . ': ' . $reference_code . '</p>
                                 <p class="p-0 m-0">' . lang('Submitted') . ': ' . get_relative_time(array('timestamp' => $submitted_timestamp)) . ' ' . $submitted_username . '</p>
+                                ' . $output_payment . '
                             </div>
                             <div class="col-12 md:col-auto">' . $output_workspace_button . '</div>
                         </div>
                     </div>
                     <form' . $form_markup['enctype'] . ' name="form" action="edit_submitted_form.php?id=' . $id . (($send_to !== '') ? '&amp;send_to=' . h(urlencode($send_to)) : '') . '" method="post">
                         ' . get_token_field() . '
-                        <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
+                        <input type="hidden" name="id" value="' . $id . '" />
                         ' . (($send_to !== '') ? '<input type="hidden" name="send_to" value="' . h($send_to) . '" />' : '') . '
                         ' . ($history_revision ? '<input type="hidden" name="restore_revision" value="' . (int) $history_revision['revision_no'] . '" />' : '') . '
                         <div class="row">
@@ -500,7 +537,7 @@ if (!$_POST) {
                             </div>
                         </nav>
                     </form>
-                    ' . ($history_enabled ? '<div class="col-12">' . pg_record_revision_history_markup($_GET['id'], $page_id, (is_scalar($_GET['compare'] ?? null) ? (int) $_GET['compare'] : 0), $send_to) . '</div>' : '') . '
+                    ' . ($history_enabled ? '<div class="col-12">' . pg_record_revision_history_markup($id, $page_id, (is_scalar($_GET['compare'] ?? null) ? (int) $_GET['compare'] : 0), $send_to) . '</div>' : '') . '
                 </div>
             </div>
         </div>
@@ -513,7 +550,34 @@ if (!$_POST) {
 // else form has been submitted
 } else {
     validate_token_field();
-    
+
+    // Staff record that an offline payment for the record's fee order
+    // arrived: the order screen's Payment Received (pg_order_mark_paid()),
+    // which marks the record paid and announces form.paid.
+    if (!empty($_POST['record_offline_payment'])) {
+        $form_payment = pg_form_payment_record($id);
+        $payment_order = $form_payment ? $form_payment['order'] : null;
+
+        if (!$submitted_forms_manager || !(($user['role'] < 3) || $user['manage_ecommerce'])) {
+            log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+            output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
+        if (!$payment_order || !pg_order_awaiting_payment($payment_order)) {
+            $liveform->mark_error('_error', lang('This order is not awaiting payment.'));
+        } else {
+            $audit_before = pg_audit_fetch('orders', $payment_order['id']);
+
+            pg_order_mark_paid($payment_order['id'], (int) $user['id']);
+
+            pg_audit_record('update', 'orders', $payment_order['id'], $audit_before);
+
+            $liveform->add_notice(lang('Payment recorded.'));
+        }
+
+        go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_submitted_form.php?id=' . $id);
+    }
+
     // if form was selected for deletion
     if (isset($_POST['delete_button'])) {
         // assume that the user does not have delete access until we find out otherwise
@@ -547,7 +611,7 @@ if (!$_POST) {
                  FROM form_data
                  LEFT JOIN files ON form_data.file_id = files.id
                  WHERE (form_data.form_id = ?) AND (form_data.file_id > 0)";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        $result = db_q($query, array((string) $id)) or output_error('Query failed.');
         
         $files = array();
         
@@ -571,20 +635,20 @@ if (!$_POST) {
         
         // delete form
         $query = "DELETE FROM forms WHERE id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        $result = db_q($query, array((string) $id)) or output_error('Query failed.');
         
         // delete form data
         $query = "DELETE FROM form_data WHERE (form_id = ?) AND (form_id != '0')";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        $result = db_q($query, array((string) $id)) or output_error('Query failed.');
 
         // delete signature records for this submitted form
-        pg_signature_delete($_POST['id'] ?? 0);
+        pg_signature_delete($id);
         
         // delete views for this submitted form that the form view directory feature uses
-        pg_sfv_delete_views('submitted_form_id', $_POST['id']);
+        pg_sfv_delete_views('submitted_form_id', $id);
 
         // delete the record's comments, their attachments, watchers and counters
-        pg_comment_delete_record_thread($_POST['id'] ?? 0);
+        pg_comment_delete_record_thread($id);
 
         log_activity(lang(array('string'=>'submitted form (form name: {var:1}, reference code: {var:2}) was deleted','vars'=>array($form_name,$reference_code) )), $_SESSION['sessionusername']);
         
@@ -660,7 +724,7 @@ if (!$_POST) {
         $query = "SELECT page_id
                  FROM forms
                  WHERE forms.id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        $result = db_q($query, array((string) $id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
         $page_id = $row['page_id'];
@@ -709,7 +773,7 @@ if (!$_POST) {
                             FROM form_data
                             LEFT JOIN files on form_data.file_id = files.id
                             WHERE
-                                (form_data.form_id = '" . escape($_POST['id'] ?? '') . "')
+                                (form_data.form_id = '" . $id . "')
                                 AND (form_data.form_field_id = '" . $field['id'] . "')");
 
                         // If there is not an existing file, then add error.
@@ -739,7 +803,7 @@ if (!$_POST) {
                 }
             }
 
-            pg_submitted_form_check_field($liveform, $field, $page_id, $pretty_urls, (string) ($_POST['id'] ?? ''));
+            pg_submitted_form_check_field($liveform, $field, $page_id, $pretty_urls, (string) $id);
         }
 
         // If hooks are enabled and visitor is editing this form from a form item view page,
@@ -770,14 +834,14 @@ if (!$_POST) {
 
             // The item as it was, for its revision (collection items only;
             // includes/fn/record_revisions.php).
-            $revision_before = pg_record_revision_before($_POST['id'] ?? 0);
+            $revision_before = pg_record_revision_before($id);
 
             // A revision loaded from the History section: only the panel's
             // own users load one, and only a revision of this item counts.
             $restore_revision = null;
 
             if ($submitted_forms_manager && $revision_before && !empty($_POST['restore_revision']) && is_scalar($_POST['restore_revision'])) {
-                $restore_revision = pg_record_revision_get($_POST['id'] ?? 0, (int) $_POST['restore_revision']);
+                $restore_revision = pg_record_revision_get($id, (int) $_POST['restore_revision']);
             }
 
             // File fields this save uploaded to or emptied itself: a restore
@@ -791,7 +855,7 @@ if (!$_POST) {
                         $sql_form_editor
                         last_modified_user_id = '" . $user['id'] . "',
                         last_modified_timestamp = UNIX_TIMESTAMP()
-                     WHERE id = '" . escape($_POST['id'] ?? '') . "'";
+                     WHERE id = '" . $id . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
             // Loop through all fields in order to save data for each one.
@@ -819,7 +883,7 @@ if (!$_POST) {
                                     FROM form_data
                                     LEFT JOIN files on form_data.file_id = files.id
                                     WHERE
-                                        (form_data.form_id = '" . escape($_POST['id'] ?? '') . "')
+                                        (form_data.form_id = '" . $id . "')
                                         AND (form_data.form_field_id = '" . $field['id'] . "')");
 
                                 // If there is an existing file, then delete it. A submission
@@ -837,7 +901,7 @@ if (!$_POST) {
                                 db(
                                     "DELETE FROM form_data
                                     WHERE
-                                        (form_id = '" . escape($_POST['id'] ?? '') . "')
+                                        (form_id = '" . $id . "')
                                         AND (form_id != '0')
                                         AND (form_field_id = '" . $field['id'] . "')");
 
@@ -857,7 +921,7 @@ if (!$_POST) {
                                         file_id,
                                         name)
                                     VALUES (
-                                        '" . escape($_POST['id'] ?? '') . "',
+                                        '" . $id . "',
                                         '" . $field['id'] . "',
                                         '" . $file_id . "',
                                         '" . escape($field['name']) . "')");
@@ -877,7 +941,7 @@ if (!$_POST) {
                                     FROM form_data
                                     LEFT JOIN files on form_data.file_id = files.id
                                     WHERE
-                                        (form_data.form_id = '" . escape($_POST['id'] ?? '') . "')
+                                        (form_data.form_id = '" . $id . "')
                                         AND (form_data.form_field_id = '" . $field['id'] . "')");
 
                                 // If there is an existing file, then delete it. A submission
@@ -895,7 +959,7 @@ if (!$_POST) {
                                 db(
                                     "DELETE FROM form_data
                                     WHERE
-                                        (form_id = '" . escape($_POST['id'] ?? '') . "')
+                                        (form_id = '" . $id . "')
                                         AND (form_id != '0')
                                         AND (form_field_id = '" . $field['id'] . "')");
 
@@ -908,7 +972,7 @@ if (!$_POST) {
                                         form_field_id,
                                         name)
                                     VALUES (
-                                        '" . escape($_POST['id'] ?? '') . "',
+                                        '" . $id . "',
                                         '" . $field['id'] . "',
                                         '" . escape($field['name']) . "')");
                             }
@@ -921,24 +985,24 @@ if (!$_POST) {
                             // delete existing values for this field
                             $query = "DELETE FROM form_data
                                      WHERE (form_id = ?) AND (form_id != '0') AND (form_field_id = ?)";
-                            $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $field['id'])) or output_error('Query failed.');
+                            $result = db_q($query, array((string) $id, (string) $field['id'])) or output_error('Query failed.');
                             
-                            pg_submitted_form_save_value($liveform, $_POST['id'] ?? '', $field);
+                            pg_submitted_form_save_value($liveform, $id, $field);
                         }
                     }
                 }
             }
 
             if ($restore_revision) {
-                pg_record_revision_restore_files($_POST['id'] ?? 0, $page_id, $restore_revision, $files_changed);
+                pg_record_revision_restore_files($id, $page_id, $restore_revision, $files_changed);
             }
 
             // If pretty URLs are enabled, then update address name.
             if ($pretty_urls == true) {
-                $new_address_name = update_submitted_form_address_name($_POST['id']);
+                $new_address_name = update_submitted_form_address_name($id);
             }
 
-            pg_record_revision_after($_POST['id'] ?? 0, $revision_before, $restore_revision ? 'restore' : 'edit', $user['id']);
+            pg_record_revision_after($id, $revision_before, $restore_revision ? 'restore' : 'edit', $user['id']);
 
             // If the form was incomplete before and has now been completed,
             // then check if custom form actions should be completed (e.g. email alerts).
@@ -947,7 +1011,7 @@ if (!$_POST) {
                 // This logic lives in functions.php so that add_submitted_form.php
                 // can reuse it.  The true argument preserves the original behavior
                 // of only acting on custom forms that have save-for-later enabled.
-                pg_send_custom_form_notifications($custom_form_page_id, $_POST['id'], $contact_id, true);
+                pg_send_custom_form_notifications($custom_form_page_id, $id, $contact_id, true);
             }
             
             log_activity(lang(array('string'=>'submitted form (form name: {var:1}, reference code: {var:2}) was modified','vars'=>array($form_name,$reference_code))), $_SESSION['sessionusername']);
@@ -1033,7 +1097,7 @@ if (!$_POST) {
                 if ($send_to === '/__none__') $send_to = '';
                 // A loaded revision stays loaded, so its save is still a restore.
                 $restore_no = (is_scalar($_POST['restore_revision'] ?? null) && (int) $_POST['restore_revision'] > 0) ? (int) $_POST['restore_revision'] : 0;
-                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_submitted_form.php?id=' . (int) $_POST['id'] . (($send_to !== '') ? '&send_to=' . urlencode($send_to) : '') . (($restore_no > 0) ? '&revision=' . $restore_no : ''));
+                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_submitted_form.php?id=' . $id . (($send_to !== '') ? '&send_to=' . urlencode($send_to) : '') . (($restore_no > 0) ? '&revision=' . $restore_no : ''));
             }
         }
     }

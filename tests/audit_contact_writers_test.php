@@ -96,10 +96,12 @@ function test_audit_view_contacts_mass_delete_is_recorded()
 	pg_assert_true(($chunk < $read) && ($read < $delete) && ($delete < $record), 'read before the deletes, record after them');
 }
 
-// Approve Affiliate reads the contact before its update and records the update after it.
+// The affiliate approval (pg_affiliate_approve(), shared by Approve Affiliate
+// and the external API) reads the contact before its update and records the
+// update after it.
 function test_audit_approve_affiliate_is_recorded()
 {
-	$source = audit_contact_writers_test_source('approve_affiliate.php');
+	$source = audit_contact_writers_test_source('includes/fn/contacts.php');
 	$read = strpos($source, "\$audit_before = pg_audit_fetch('contacts', \$contact_id);");
 	$update = strpos($source, "affiliate_approved = '1'");
 	$record = strpos($source, "pg_audit_record('update', 'contacts', \$contact_id, \$audit_before);");

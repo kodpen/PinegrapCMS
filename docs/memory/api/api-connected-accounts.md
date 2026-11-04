@@ -22,3 +22,7 @@ description: The site as an OAuth client (connected accounts, includes/fn/connec
 - Never read a refresh token. Renewal is locked per connection (`GET_LOCK`), and `invalid_grant` marks the account `reauth`.
 - Tokens a server fetches for itself (Paraşüt, carriers' `client_credentials`): `pg_connect_service_get/put/delete($key)`, sealed in `connect_accounts` as provider `service`. Never a plain file or a `config` column.
 - Worked examples (mail, backups, response headers): `api-connected-accounts-usage.md`.
+
+## How are an application's options and the Google fallback kept?
+- An option may carry a `pattern` and an `invalid` text in its provider file (Microsoft `tenant`: `pg_connect_tenant_pattern()`). `connections.php` refuses a value that does not fit, and a stored one makes `pg_connect_app()` say `options_valid => false`, so `pg_connect_app_ready()` is false and the card names the problem; `pg_connect_endpoint()` answers `''` for it. An empty tenant is still `common`; a typo never is (issue #5987: a typo opened a directory-only application to every account).
+- Google without a `connect_apps` row uses the Sign in with Google application (`pg_signin_google_app()`). Its secret shows as stored on the form, and `pg_connect_app_save()` copies it into Google's first row when the client ID is the same and no secret is typed (#5988: saving the form unchanged stored an empty secret and stopped Gmail, Drive). "Use the Sign in with Google application" (`pg_connect_app_remove('google')`) deletes the row; accounts stay.

@@ -88,10 +88,16 @@ function _pg_comments_widget_page_key($page_id)
  * page gets false and prints nothing, and an id that names no page claims
  * nothing.
  *
- * @param mixed $page_id
+ * A widget that shows a product's questions claims the page's questions
+ * ('questions'), apart from its comments: a product page places one widget
+ * for the reviews and one for the questions. Only the comments claim stands
+ * the classic block down (pg_comments_widget_drawn()).
+ *
+ * @param mixed  $page_id
+ * @param string $part 'comments' or 'questions'
  * @return bool
  */
-function pg_comments_widget_claim($page_id)
+function pg_comments_widget_claim($page_id, $part = 'comments')
 {
     $id = _pg_comments_widget_page_key($page_id);
 
@@ -100,12 +106,13 @@ function pg_comments_widget_claim($page_id)
     }
 
     $pages = pg_comments_widget_pages();
+    $key = ($part === 'questions') ? 'questions:' . $id : $id;
 
-    if (isset($pages[$id])) {
+    if (isset($pages[$key])) {
         return false;
     }
 
-    $pages[$id] = true;
+    $pages[$key] = true;
     pg_comments_widget_pages($pages);
 
     return true;
@@ -1189,9 +1196,16 @@ function pg_comments_component_census($ids)
             $cfg = json_decode((string) $row['system_region_config'], true);
             $census = pg_comments_tree_census(json_decode((string) $row['tree_json'], true));
             // The kind, so a list of recent comments ('comments_recent') is
-            // not counted as a second thread.
+            // not counted as a second thread, nor a widget that shows a
+            // product's questions ('comments_questions'), which claims apart.
+            $kind = pg_sw_widget_kind($cfg);
+
+            if (($kind === 'comments') && (pg_product_question_widget_shows($cfg) === 'questions')) {
+                $kind = 'comments_questions';
+            }
+
             $out[$id] = array(
-                'type' => pg_sw_widget_kind($cfg),
+                'type' => $kind,
                 'census' => $census,
             );
 
@@ -1223,7 +1237,8 @@ function pg_comments_component_census($ids)
  *   component that holds a comments widget count that widget once: the
  *   number is an approximation that errs on the low side.
  * - blocks: the fixed comments blocks of the page and of the components it
- *   reaches.
+ *   reaches, except a Catalog Detail's own when a comments widget sits on
+ *   the page itself: the Catalog Detail drops that block's frame then.
  * - nested_record: a form_item_view widget below the top level
  *   (pg_comments_nested_record_decision()).
  * - top_record: a form_item_view widget placed on the page itself, the one
@@ -1285,10 +1300,15 @@ function pg_comments_page_census_facts($top, $components)
         $queue[] = array($id, 0);
     }
 
+    // A Catalog Detail leaves its own fixed block out while a comments
+    // widget placed on the page itself shows the thread
+    // (_pg_civ_comments_block_will_draw()), so that block is not counted.
+    $civ_drops_block = ($widgets > 0);
+
     for ($i = 0; $i < count($queue); $i++) {
         list($id, $depth) = $queue[$i];
 
-        if (isset($components[$id]['census'])) {
+        if (isset($components[$id]['census']) && !($civ_drops_block && $type($id) === 'catalog_item_view')) {
             $blocks += $blocks_of($components[$id]['census']);
         }
 
@@ -1531,9 +1551,11 @@ function _pg_comments_binding_disabled($node, $state)
  * @param mixed $item_type
  * @param mixed $item_id
  * @param mixed $parent_id
+ * @param string $kind     'question' on a widget that shows a product's
+ *                         questions (add_comment.php decides the kind)
  * @return string
  */
-function pg_comments_form_hidden_html($token_field, $send_to, $page_id, $item_type, $item_id, $parent_id)
+function pg_comments_form_hidden_html($token_field, $send_to, $page_id, $item_type, $item_id, $parent_id, $kind = '')
 {
     $int = function ($value) {
         return (is_scalar($value) && !is_bool($value)) ? max(0, (int) $value) : 0;
@@ -1547,7 +1569,8 @@ function pg_comments_form_hidden_html($token_field, $send_to, $page_id, $item_ty
         . '<input type="hidden" name="page_id" value="' . $int($page_id) . '">'
         . '<input type="hidden" name="item_id" value="' . $int($item_id) . '">'
         . '<input type="hidden" name="item_type" value="' . $text($item_type) . '">'
-        . '<input type="hidden" name="parent_id" value="' . $int($parent_id) . '">';
+        . '<input type="hidden" name="parent_id" value="' . $int($parent_id) . '">'
+        . (($kind === 'question') ? '<input type="hidden" name="kind" value="question">' : '');
 }
 
 /**
@@ -4523,7 +4546,12 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     // Claimed before any other refusal: the widget owns the page's thread
     // even when it then prints nothing (comments off, a record the visitor
     // may not see, a record widget below the top level).
-    if (!pg_comments_widget_claim($page_id)) {
+    // A widget set to show a product's questions
+    // (includes/fn/product_questions.php) claims them apart from the
+    // comments, so the reviews widget beside it still draws.
+    $questions = (pg_product_question_widget_shows($cfg) === 'questions');
+
+    if (!($questions ? pg_comments_widget_claim($page_id, 'questions') : pg_comments_widget_claim($page_id))) {
         return '';
     }
 
@@ -4576,9 +4604,24 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         $read_thread = null;
     }
 
+    // Questions are asked about a product only, once 11.0.148 has run; they
+    // take no file and no stars, and are counted as questions.
+    if ($questions) {
+        if (!pg_product_questions_ready() || !pg_review_gate_applies($post_type, $post_id)) {
+            return '';
+        }
+
+        $settings['rating'] = false;
+        $settings['label'] = lang('Question');
+    }
+
     // A product's reviews take a file by the photo review setting alone, as
     // add_comment.php does (includes/fn/reviews.php).
     $settings['attachments'] = pg_comment_attachments_allowed($settings['attachments'], pg_review_gate_applies($post_type, $post_id), pg_review_photos_on());
+
+    if ($questions) {
+        $settings['attachments'] = false;
+    }
 
     // Who reads it. The search index stores what a visitor who is not signed
     // in reads; a background render (the editor's Preview, the SEO pass)
@@ -4613,7 +4656,20 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         $view = (isset($_GET['comments']) && is_string($_GET['comments'])) ? $_GET['comments'] : null;
     }
 
-    $read = pg_comments_rows($page_id, $read_thread, $viewer, array('featured' => $options['featured'], 'view' => $view, 'parent_id' => true, 'thread_key' => true));
+    // Questions are drawn with their answers under them, never filtered or
+    // pinned by featured.
+    if ($questions) {
+        $options['layout'] = 'threaded';
+        $options['featured'] = 'none';
+    }
+
+    $read_options = array('featured' => $options['featured'], 'view' => $view, 'parent_id' => true, 'thread_key' => true);
+
+    if ($questions) {
+        $read_options['kind'] = 'questions';
+    }
+
+    $read = pg_comments_rows($page_id, $read_thread, $viewer, $read_options);
 
     // A product's reviews come newest first and are never pinned or filtered
     // by featured, whatever the widget's order and featured settings say:
@@ -4644,7 +4700,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     // visitor's own draws no form anyway.
     $review_refusal = '';
 
-    if ($allow_new && $audience['session'] && !$is_staff && pg_review_gate_applies($post_type, $post_id)) {
+    if (!$questions && $allow_new && $audience['session'] && !$is_staff && pg_review_gate_applies($post_type, $post_id)) {
         $review_refusal = (string) pg_review_eligibility($signed_in ? $user_id : 0, $post_type, $post_id)['refusal'];
     }
 
@@ -4701,6 +4757,11 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     // comment the visitor cannot see never reaches the form. Before 11.0.31
     // nobody answers a comment.
     $can_reply = $can_comment && pg_comment_replies_ready();
+
+    // Under questions only staff answer, and only a question.
+    if ($questions) {
+        $can_reply = $can_reply && $is_staff;
+    }
 
     if ($in_session) {
         $reply_value = $field('parent_id');
@@ -4813,7 +4874,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         // A comment may be answered when the post would take it: in the
         // thread the form posts to (a page's read holds every comment on the
         // page, whatever its item) and visible to the visitor.
-        if ($can_reply) {
+        if ($can_reply && (!$questions || (_pg_comments_row_text($entry['row'], 'kind') === 'question'))) {
             $check = pg_comment_parent_ok($entry['id'], array(
                 'id' => $entry['id'],
                 'page_id' => $page_id,
@@ -4969,7 +5030,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         'can_comment' => $can_comment,
         'action_url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_comment.php',
         'hidden_html' => $can_comment
-            ? pg_comments_form_hidden_html($token, get_request_uri(), $page_id, $post_type, $post_id, ($reply_parent !== null) ? (int) $reply_parent['id'] : 0)
+            ? pg_comments_form_hidden_html($token, get_request_uri(), $page_id, $post_type, $post_id, ($reply_parent !== null) ? (int) $reply_parent['id'] : 0, $questions ? 'question' : '')
             : '',
         'multipart' => $settings['attachments'],
         'label_slot' => 'pg_comment_form_label',

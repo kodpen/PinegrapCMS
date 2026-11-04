@@ -31,6 +31,10 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM style WHERE style_id = '"
 }
 
 include_once('liveform.class.php');
+
+// send_to goes into the form and back out through urlencode(): one value.
+pg_request_single_values(array('send_to'));
+
 $liveform = new liveform('view_system_style_source', ($_REQUEST['id'] ?? ''));
 $liveform->assign_field_value('id', ($_REQUEST['id'] ?? ''));
 $liveform->assign_field_value('send_to', ($_REQUEST['send_to'] ?? ''));
@@ -53,6 +57,11 @@ $code = $style['code'];
 $last_modified_timestamp = $style['last_modified_timestamp'];
 $last_modified_username = $style['last_modified_username'];
 
+// The screen is only reached by its URL; without a send_to it returns to
+// the style's own edit screen, not to the site's home page or to the style
+// list (which leaves visual designs out).
+$edit_style_path = 'edit_system_style.php?id=' . $id;
+
 // if the form was not just submitted, then output the form
 if (!$_POST) {
 
@@ -74,7 +83,7 @@ if (!$_POST) {
 
     print
         pg_page_shell([
-            'title'=> lang('View Source'),
+            'title'=> h($name) . ' | ' . lang('View Source'),
             'extra classes'=>'design',
             'icon'=>'design',
             'heading'=>lang('View Source'),
@@ -89,7 +98,7 @@ if (!$_POST) {
 
                     <div class="row mb-3 flex-wrap">
                         <div class="col-12 text-center md:text-start">
-                            
+                            <p class="fw-semibold text-break mb-1">' . h($name) . '</p>
                             <p class="fg-secondary small">' . get_relative_time(array('timestamp' => $last_modified_timestamp)) . ' ' . $output_last_modified . '</p>
                         </div>
                     </div>
@@ -108,7 +117,7 @@ if (!$_POST) {
                                 <div class="d-flex flex-wrap gap-3 mt-5">
                                     <button type="submit" name="submit_save_and_return" value="Save &amp; Return" class="btn btn-solid theme-primary">' . lang('Save & Return') . '</button>
                                     <button type="submit" name="submit_save" value="Save" class="btn btn-outline theme-secondary">' . lang('Save') . '</button>
-                                    <button type="button" class="btn btn-outline theme-secondary" onclick="window.location.href=\'' . h(escape_javascript(pg_safe_back_url($liveform->get_field_value('send_to'), 'view_styles.php'))) . '\'">' . lang('Cancel') . '</button>
+                                    <button type="button" class="btn btn-outline theme-secondary" onclick="window.location.href=\'' . h(escape_javascript(pg_safe_back_url($liveform->get_field_value('send_to'), $edit_style_path))) . '\'">' . lang('Cancel') . '</button>
                                 </div>
                             </form>
                         </div>
@@ -165,7 +174,9 @@ if (!$_POST) {
         $liveform_edit_system_style = new liveform('edit_system_style', $liveform->get_field_value('id'));
         $liveform_edit_system_style->add_notice($notice);
 
-        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')));
+        $send_to = (string) $liveform->get_field_value('send_to');
+
+        header('Location: ' . URL_SCHEME . HOSTNAME . (($send_to !== '') ? pg_safe_redirect_path($send_to) : PATH . SOFTWARE_DIRECTORY . '/' . $edit_style_path));
 
         $liveform->remove_form();
     }

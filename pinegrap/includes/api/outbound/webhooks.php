@@ -77,11 +77,38 @@ function api_webhook_events() {
 		// retry_count follow, never the card. Announced once per written
 		// event, whoever made the move: the renewal job, a payment service's
 		// message, the customer in My Account, staff on the panel or the API.
+		// A bounce or a spam complaint recorded for an address
+		// (includes/fn/mail_bounces.php, pg_mail_bounce_record()). address,
+		// kind (hard, soft, complaint), source, suppressed (whether mail to
+		// the address is now stopped), message_id and campaign_id. A manual
+		// block from the panel is not announced.
+		'mail.bounced'     => 'A message to an address bounced; suppressed says whether mail to it is now stopped',
+		'mail.complained'  => 'A recipient marked a message as spam: mail to the address is stopped and its e-mail marketing consent withdrawn',
+		// A booking (includes/fn/booking_messages.php, pg_booking_changed()).
+		// id is the booking's; service_id, staff_id, user_id, name, email,
+		// start_at, end_at (UTC), status and source follow, never the manage
+		// link. A visitor's hold is not announced, nor a reminder.
+		'booking.created'     => 'A booking was made: a request, or a booking confirmed at once (booking.confirmed follows then); a visitor\'s hold of a slot is not announced',
+		'booking.confirmed'   => 'A booking was confirmed, at once or after it was requested',
+		'booking.rescheduled' => 'A booking was moved to another time; start_at and end_at are the new times',
+		'booking.cancelled'   => 'A booking was cancelled, by the customer or by staff',
 		'subscription.renewed'   => 'A subscription was charged for its next period; order_id names the renewal order',
 		'subscription.failed'    => 'A subscription\'s renewal was refused or waits for the customer to confirm the payment; status ended when the last retry failed (the end itself is not announced again)',
 		'subscription.cancelled' => 'A subscription was cancelled; it runs until next_charge_at and is not charged again (its end that day is not announced)',
 		'subscription.paused'    => 'A subscription was paused: nothing is charged until it is resumed',
 		'subscription.resumed'   => 'A paused subscription was resumed and is charged again from next_charge_at',
+		// An affiliate commission's status (includes/fn/commission_list.php,
+		// pg_commission_status_save()): id is the commission's; reference_code,
+		// status, previous_status, affiliate_code, order_id and amount follow.
+		// Announced where a person or an application moves it; an order's
+		// cancellation voiding its commissions, and a restore giving them
+		// back, are not (order.cancelled is), nor is a new commission.
+		'commission.status_changed' => 'A commission was moved to another status on the commissions screen or through the API (not the voiding by an order\'s cancellation or its restore; a new commission is not announced)',
+		// An affiliate approved (includes/fn/contacts.php, pg_affiliate_approve()
+		// and the contact form's tick): id is the contact's; affiliate_code and
+		// affiliate_name follow. An automatic approval on the sign-up form is
+		// not announced; customer.created is.
+		'affiliate.approved'        => 'A contact was approved as an affiliate from the approval link, on the contact form or through the API (not the sign-up form\'s automatic approval)',
 		'product.created'      => 'A new product was added',
 		'product.updated'      => 'A product was changed',
 		// Moving a product to the Recycle Bin through the API announces this
@@ -131,15 +158,59 @@ function api_webhook_events() {
 		// and a contact's own deletion; the description says so.
 		'contact_group.members_changed' => 'Contacts were put into or taken out of a contact group through the API or the contact screens (not forms, the checkout, e-mail preferences or imports)',
 		'page.created'         => 'A page was created (not duplicated or imported pages)',
+		// Page experiments (pg_experiment_sheet_move()): the panel and the
+		// API alike. id, page_id, name and goal_kind follow; an end names
+		// winner_variant_id (0 without a winner). A resume after a pause is
+		// not a start.
+		'experiment.started'   => 'A page experiment was started for the first time',
+		'experiment.ended'     => 'A page experiment was ended, with or without a winner',
 		'page.updated'         => 'A page was changed through the API',
 		'product_group.created' => 'A product group was created through the API or the Workspace',
 		'product_group.updated' => 'A product group was changed',
 		'product_group.deleted' => 'A product group was deleted or moved to the Recycle Bin through the API',
+		// Shipping zones and tax zones (includes/fn/store_zones.php): announced
+		// from the shared write functions, so the zone screens and the API
+		// alike. id and name follow.
+		'zone.created'         => 'A shipping zone was created',
+		'zone.updated'         => 'A shipping zone was changed: its name, rates, countries or states',
+		'zone.deleted'         => 'A shipping zone was deleted',
+		'tax_zone.created'     => 'A tax zone was created',
+		'tax_zone.updated'     => 'A tax zone was changed: its name, rate, countries or states',
+		'tax_zone.deleted'     => 'A tax zone was deleted',
+		// Shipping methods (includes/fn/shipping_methods.php): announced from
+		// the shared write functions, so the screens and the API alike.
+		'shipping_method.created' => 'A shipping method was created',
+		'shipping_method.updated' => 'A shipping method was changed',
+		'shipping_method.deleted' => 'A shipping method was deleted',
+		// Currencies (includes/fn/store_currencies.php): announced from the
+		// shared write functions, so the currency screens, the rate refresh
+		// (button and scheduled job) and the API alike. id, code,
+		// exchange_rate and base follow; a deletion carries id and code.
+		'currency.created'     => 'A currency was created',
+		'currency.updated'     => 'A currency was changed, or the rate refresh moved its exchange rate',
+		'currency.deleted'     => 'A currency was deleted',
+		// Offers (edit_offer_f.php): announced from the offer editor's save and
+		// delete, its on/off switch, the Workspace and the API alike. id, code
+		// and enabled follow; a deletion carries id and code.
+		'offer.created'        => 'An offer was created or duplicated',
+		'offer.updated'        => 'An offer was changed or switched on or off',
+		'offer.deleted'        => 'An offer was deleted',
 		// Uploads from the panel's file screen and writes through the API alike.
 		// A design or theme import brings its own files in bulk and stays quiet,
 		// for the same reason the contact import does.
 		'file.created'         => 'A file was uploaded (not design or theme imports)',
-		'form.submitted'       => 'A visitor submitted a form'
+		'form.submitted'       => 'A visitor submitted a form',
+		// The order's completion when the payment service confirmed it, or the
+		// payment staff recorded for an offline one.
+		'form.paid'            => 'The fee of a designed form\'s record was paid',
+		// An order line that reserved a calendar event, once its order is
+		// placed (includes/fn/order_completion.php,
+		// pg_order_complete_line_reservation()): id is the event's;
+		// recurrence_number, quantity, order_item_id, order_id, order_number
+		// and contact_id follow. GET /calendars/events/{id}/reservations lists
+		// them. A cancellation does not give the spots back and is not
+		// announced here (order.cancelled is).
+		'calendar_event.reserved' => 'A placed order reserved spots on a calendar event (a cart that is not ordered yet is not announced)'
 	);
 
 	// A module announces its own events from its own file. The core list wins a
@@ -433,6 +504,15 @@ function api_webhook_max_attempts() {
 // Send one queued row. Answers true when it is done with - delivered, or given
 // up on - and false when it is waiting for another attempt.
 function api_webhook_deliver($row) {
+
+	// A chat notification (Slack, Teams, Telegram): its target is a sealed
+	// entry, not a subscription, and its body is sent as built, without the
+	// envelope or a signature (includes/fn/notify_channels.php).
+	if ((int)$row['webhook_id'] === 0) {
+
+		return function_exists('pg_notify_deliver') ? pg_notify_deliver($row) : true;
+
+	}
 
 	$hook = db_item("SELECT api_webhooks.id, api_webhooks.app_id, api_webhooks.url,
 			api_webhooks.secret, api_webhooks.status, api_apps.status AS app_status

@@ -45,7 +45,7 @@ function erp_stock_minimums_ready()
 /**
  * The products that track stock, with their minimum.
  *
- * @param array $filters  search (string), show ('all' | 'set' | 'low'), limit
+ * @param array $filters  search (string), show ('all' | 'set' | 'low': on sale only), limit
  * @return array
  */
 function erp_stock_minimum_rows($filters = array())
@@ -67,7 +67,9 @@ function erp_stock_minimum_rows($filters = array())
     if ($show === 'set') {
         $where[] = "m.min_quantity > 0";
     } elseif ($show === 'low') {
-        $where[] = "m.min_quantity > 0 AND p.inventory_quantity <= m.min_quantity";
+        // The same products erp_stock_low_count() counts: one off sale is not
+        // bought again, so it is not low.
+        $where[] = "m.min_quantity > 0 AND p.enabled = '1' AND p.inventory_quantity <= m.min_quantity";
     }
 
     $limit = max(1, min(2000, (int) ($filters['limit'] ?? 500)));

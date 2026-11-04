@@ -55,7 +55,7 @@ function test_erp_receipt_screen_allocation_closed_for_bounced_cheque()
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/erp_receipt.php');
 
 	pg_assert_contains('erp_cheque_allocation_refusal($receipt_cheque)', $screen, 'the screen asks');
-	pg_assert_contains('if (!$no_allocation && ($unallocated > 0))', $screen, 'the allocation form stays closed');
+	pg_assert_contains('if (!$readonly && !$no_allocation && ($unallocated > 0))', $screen, 'the allocation form stays closed');
 	pg_assert_contains('$money($no_allocation ? 0 : $unallocated)', $screen, 'nothing reads as unallocated');
 	pg_assert_true(strpos($screen, '$receipt_cheque =') < strpos($screen, '$output_allocations ='), 'the cheque is found before the allocations are drawn');
 }

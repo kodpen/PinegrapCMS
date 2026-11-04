@@ -18,6 +18,10 @@
 
 include('init.php');
 
+// A value sent as an array counts as not given: as an array key it is a fatal
+// error in unset().
+pg_request_single_values(array('file_id', 'send_to'));
+
 // clear the session
 unset($_SESSION['software']['theme_designer'][$_GET['file_id'] ?? '']);
 

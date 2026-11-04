@@ -1,0 +1,41 @@
+Return-Path: <>
+X-Original-To: bounces+{TOKEN}@example.com
+From: MAILER-DAEMON@yahoo.com
+To: bounces+{TOKEN}@example.com
+Subject: Failure Notice
+Date: Mon, 2 Nov 2026 18:30:44 +0000
+Message-ID: <1604341844.123456@yahoo.com>
+MIME-Version: 1.0
+Content-Type: multipart/report; report-type=delivery-status; boundary="=_yahoo_dsn_01"
+
+--=_yahoo_dsn_01
+Content-Type: text/plain; charset=us-ascii
+
+Sorry, we were unable to deliver your message to the following address.
+
+<full.box@yahoo.com>:
+452: 4.2.2 Over quota
+
+--=_yahoo_dsn_01
+Content-Type: message/delivery-status
+
+Reporting-MTA: dns; mta1234.mail.ir2.yahoo.com
+Arrival-Date: Mon, 2 Nov 2026 18:30:40 +0000
+
+Final-Recipient: rfc822; full.box@yahoo.com
+Action: failed
+Status: 4.2.2
+Diagnostic-Code: smtp; 452 4.2.2 Over quota
+
+--=_yahoo_dsn_01
+Content-Type: message/rfc822
+
+Return-Path: <bounces+{TOKEN}@example.com>
+From: shop@example.com
+To: full.box@yahoo.com
+Subject: Your invoice
+Message-ID: <inv-77@example.com>
+
+Your invoice is attached.
+
+--=_yahoo_dsn_01--

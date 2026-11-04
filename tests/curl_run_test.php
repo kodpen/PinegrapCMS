@@ -351,7 +351,7 @@ function test_curl_run_take_reports_a_failed_write()
 function test_curl_tls_hint_text()
 {
 	$cause = ' The certificate could not be verified: this server is most likely missing an up-to-date CA bundle.';
-	$advice = ' Point CURL_CA_BUNDLE at a cacert.pem in data/config.php, or as a last resort set ALLOW_INSECURE_UPDATE_TLS to true there.';
+	$advice = ' Open System Status on the dashboard: its CA store row probes the server\'s own certificate store and switches outbound connections to the bundled data/cacert.pem when that store fails.';
 
 	pg_assert_same('', pg_curl_tls_hint_text(28, true), 'not a certificate error');
 	pg_assert_same($cause, pg_curl_tls_hint_text(60, false));

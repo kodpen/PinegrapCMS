@@ -521,9 +521,11 @@ function get_menu_content($menu_id, $parent_id = 0, $current_menu_item_id = 0, $
             // if this is not an accordion menu or a sub-menu does not exist and there is a link, then prepare link
             if ((($menu['effect'] != 'Accordion') || ($sub_menu_exists == false)) && (($menu_item['link_page_name'] != '') || ($menu_item['link_url'] != ''))) {
                 // if there is a link page name, then prepare link to page
+                // A page name may hold ?, # or % (only spaces and & are
+                // replaced when a page is saved), so it is encoded as a path.
                 if ($menu_item['link_page_name']) {
-                    $output_link_href = OUTPUT_PATH . h($menu_item['link_page_name']);
-                    pg_speculation_note(array(PATH . $menu_item['link_page_name']));
+                    $output_link_href = OUTPUT_PATH . h(encode_url_path($menu_item['link_page_name']));
+                    pg_speculation_note(array(PATH . encode_url_path($menu_item['link_page_name'])));
                     // else there is not a link page name, so prepare link to URL
                 } else {
                     $output_link_href = h($menu_item['link_url']);
@@ -627,7 +629,7 @@ function get_menu_item_options($menu_id, $exception_menu_item_id = 0, $parent_id
 
             AND (parent_id = ?)
 
-        ORDER BY sort_order";
+        ORDER BY sort_order, id";
     $result = db_q($query, array((string) $menu_id, (string) $exception_menu_item_id, (string) $parent_id)) or output_error(lang('Query failed.'));
     $menu_items = array();
     // loop through menu items in order to build array
@@ -884,6 +886,48 @@ function pg_form_info_picker_format($picker_kinds)
     }
 
     return '';
+}
+
+/**
+ * The row shown under a product form's reference code field: the label of the
+ * submitted form's title field and that form's title, both escaped as text.
+ * No title, no row.
+ */
+function pg_form_reference_title_row($row_class, $hidden_style, $label_width_style, $title_label, $title)
+{
+    if ($title === '') {
+        return '';
+    }
+
+    return '<tr' . $row_class . $hidden_style . '>
+
+            <td style="' . $label_width_style . '">' . h($title_label) . '</td>
+
+            <td>' . h($title) . '</td>
+
+        </tr>';
+}
+
+/**
+ * A page row read for a submitted custom billing or shipping form, with the
+ * keys its callers read always present. The express order shipping form row
+ * selects only the id (that form has no name or label width of its own), and a
+ * missing row or a LEFT JOIN without a page comes back as null.
+ *
+ * @param array|null $row
+ * @return array
+ */
+function pg_submitted_form_page($row)
+{
+    $row = is_array($row) ? $row : array();
+
+    foreach (array('id', 'type', 'form_name', 'form_label_column_width') as $key) {
+        if (!isset($row[$key])) {
+            $row[$key] = '';
+        }
+    }
+
+    return $row;
 }
 
 // get form info (i.e. field content, wysiwyg fields, file upload exists)
@@ -1286,15 +1330,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
 
                         ORDER BY sort_order");
                     $title = get_submitted_form_title($submitted_form['id']);
-                    if ($title != '') {
-                        $output_title_row = '<tr' . $row_class . $output_hidden_style . '>
-
-                                <td style="' . $output_label_column_width . '">' . $title_label . '</td>
-
-                                <td>' . h($title) . '</td>
-
-                            </tr>';
-                    }
+                    $output_title_row = pg_form_reference_title_row($row_class, $output_hidden_style, $output_label_column_width, (string) $title_label, (string) $title);
                 }
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
@@ -1854,7 +1890,7 @@ function get_submitted_form_content_with_form_fields($properties)
         return '';
     }
     // Get page info for the field of data.
-    $page = db_item("SELECT
+    $page = pg_submitted_form_page(db_item("SELECT
 
             page.page_id AS id,
 
@@ -1864,7 +1900,7 @@ function get_submitted_form_content_with_form_fields($properties)
 
         LEFT JOIN page ON form_fields.page_id = page.page_id
 
-        WHERE form_fields.id = '$field_id'");
+        WHERE form_fields.id = '$field_id'"));
     // If a page was not found for some reason or the page type does not support a custom form,
     // then return empty string.
     if (($page['id'] == '') || (($page['type'] != 'express order') && ($page['type'] != 'billing information') && ($page['type'] != 'shipping address and arrival'))) {
@@ -1876,7 +1912,7 @@ function get_submitted_form_content_with_form_fields($properties)
     // The properties for a custom shipping form on express order are unique, because
     // shipping and billing forms can appear on express order, so get values in unique way
     if ($page_type == 'express order' and $type == 'custom_shipping_form') {
-        $page = db_item("SELECT page_id AS id
+        $page = pg_submitted_form_page(db_item("SELECT page_id AS id
 
             FROM $page_type_table_name
 
@@ -1884,9 +1920,9 @@ function get_submitted_form_content_with_form_fields($properties)
 
                 (page_id = '" . $page['id'] . "')
 
-                AND (shipping_form = '1')");
+                AND (shipping_form = '1')"));
     } else {
-        $page = db_item("SELECT
+        $page = pg_submitted_form_page(db_item("SELECT
 
                 page_id AS id,
 
@@ -1900,7 +1936,7 @@ function get_submitted_form_content_with_form_fields($properties)
 
                 (page_id = '" . $page['id'] . "')
 
-                AND (form = '1')");
+                AND (form = '1')"));
     }
     // If page type properties could not be found, or the page does not have a form
     // enabled anymore, then return empty string.
@@ -2108,7 +2144,7 @@ function get_form_review_info($properties)
         case 'custom_billing_form':
         case 'custom_shipping_form':
             // Get page info for the field of data.
-            $page = db_item("SELECT
+            $page = pg_submitted_form_page(db_item("SELECT
 
                     page.page_id AS id,
 
@@ -2118,7 +2154,7 @@ function get_form_review_info($properties)
 
                 LEFT JOIN page ON form_fields.page_id = page.page_id
 
-                WHERE form_fields.id = '$field_id'");
+                WHERE form_fields.id = '$field_id'"));
             // If a page was not found for some reason or the page type does not support a custom form,
             // then return false.
             if (($page['id'] == '') || (($page['type'] != 'express order') && ($page['type'] != 'billing information') && ($page['type'] != 'shipping address and arrival'))) {
@@ -2130,7 +2166,7 @@ function get_form_review_info($properties)
             // The properties for a custom shipping form on express order are unique, because
             // shipping and billing forms can appear on express order, so get values in unique way
             if ($page_type == 'express order' and $type == 'custom_shipping_form') {
-                $page = db_item("SELECT page_id AS id
+                $page = pg_submitted_form_page(db_item("SELECT page_id AS id
 
                     FROM $page_type_table_name
 
@@ -2138,9 +2174,9 @@ function get_form_review_info($properties)
 
                         (page_id = '" . $page['id'] . "')
 
-                        AND (shipping_form = '1')");
+                        AND (shipping_form = '1')"));
             } else {
-                $page = db_item("SELECT
+                $page = pg_submitted_form_page(db_item("SELECT
 
                         page_id AS id,
 
@@ -2152,7 +2188,7 @@ function get_form_review_info($properties)
 
                         (page_id = '" . $page['id'] . "')
 
-                        AND (form = '1')");
+                        AND (form = '1')"));
             }
             // If page type properties could not be found, or the page does not have a form
             // enabled anymore, then return false.
@@ -2392,8 +2428,10 @@ function send_user_to_login_home()
 // get the charset from HTML content
 function get_charset($content)
 {
-    // look for the charset in a meta tag
-    preg_match("/<meta[^>]*http-equiv[^>]*charset=(.*)[\"|']/i", $content, $matches);
+    // Look for the charset in a meta tag. The name is a token (RFC 2978), so
+    // the match stops at the closing quote: the rest of the line, further
+    // tags included, would otherwise land in the message's CharSet header.
+    preg_match('/<meta[^>]*http-equiv[^>]*charset=\s*["\']?\s*([A-Za-z0-9!#$%&+\-^_`{}~.:]+)/i', $content, $matches);
     // if the charset was found, then return the charset
     if (isset($matches[1]) == true) {
         return mb_strtolower(trim($matches[1]));
@@ -2954,27 +2992,33 @@ function get_query_string_for_page_url($page_type, $item_id, $item_type)
     }
     return $query_string;
 }
-function get_duplicate_catalog_item_address_name_number($address_name, $number = 1)
+// The first n for which "<address name>[n]" is free in both tables. $excluded
+// (pg_catalog_address_excluded_ids()) skips the item being saved, so its own
+// "[n]" counts as free and a save does not move it to the next number.
+function get_duplicate_catalog_item_address_name_number($address_name, $number = 1, $excluded = null)
 {
+    if (!is_array($excluded)) {
+        $excluded = pg_catalog_address_excluded_ids(0);
+    }
     // assume that the address name does not already exist until we find out otherwise
     $address_name_exists = false;
     // check products table to see if there is already a product with an address name that matches the one we want to use
-    $query = "SELECT id FROM products where address_name = ?";
-    $result = db_q($query, array($address_name . '[' . $number . ']')) or output_error(lang('Query failed.'));
+    $query = "SELECT id FROM products where address_name = ? AND id != ?";
+    $result = db_q($query, array($address_name . '[' . $number . ']', $excluded['products'])) or output_error(lang('Query failed.'));
     // if there is a result, then there is already a product with that address name
     if (mysqli_num_rows($result) > 0) {
         $address_name_exists = true;
     }
     // check product groups table to see if there is already a product group with an address name that matches the one we want to use
-    $query = "SELECT id FROM product_groups where address_name = ?";
-    $result = db_q($query, array($address_name . '[' . $number . ']')) or output_error(lang('Query failed.'));
+    $query = "SELECT id FROM product_groups where address_name = ? AND id != ?";
+    $result = db_q($query, array($address_name . '[' . $number . ']', $excluded['product_groups'])) or output_error(lang('Query failed.'));
     // if there is a result, then there is already a product group with that address name
     if (mysqli_num_rows($result) > 0) {
         $address_name_exists = true;
     }
     // if the address name already exists, then use recursion to try to get a different address name
     if ($address_name_exists == true) {
-        return get_duplicate_catalog_item_address_name_number($address_name, $number + 1);
+        return get_duplicate_catalog_item_address_name_number($address_name, $number + 1, $excluded);
     } else {
         return $number;
     }
@@ -3038,12 +3082,77 @@ function pg_transliterate_ascii_table()
     return $table;
 }
 
-function prepare_catalog_item_address_name($address_name, $item_id = '')
+/**
+ * The id each table's clash check skips for an item being saved: its own row,
+ * in its own table only. A product and a product group share no id space, so
+ * product 5 must still see product group 5's address name. An unnamed type
+ * skips the id in both tables, as callers that do not pass one always did.
+ * Pure.
+ *
+ * @param int|string $item_id   '' or 0 for a new item
+ * @param string     $item_type 'product', 'product_group' or ''
+ * @return array products, product_groups (ids as strings, '0' for none)
+ */
+function pg_catalog_address_excluded_ids($item_id, $item_type = '')
 {
-    // if item id is blank then set to zero.
-    if ($item_id == '') {
-        $item_id = '0';
+    $id = (string) (int) $item_id;
+
+    return array(
+        'products'       => (($item_type === '') || ($item_type === 'product')) ? $id : '0',
+        'product_groups' => (($item_type === '') || ($item_type === 'product_group')) ? $id : '0',
+    );
+}
+
+/**
+ * The path segment a catalog name becomes, before it is made unique: the
+ * letters spelled in ASCII, anything else an underscore, no runs or ends of
+ * them, 'item' when nothing is left. Pure.
+ *
+ * @param string $address_name
+ * @return string
+ */
+function pg_catalog_address_slug($address_name)
+{
+    $address_name = trim($address_name);
+    $address_name = pg_transliterate_to_ascii($address_name);
+
+    // Everything that is not allowed becomes an underscore rather than
+    // disappearing, so two different names cannot collapse into one.
+    $address_name = preg_replace('/[^A-Za-z0-9\[\]_-]/', '_', $address_name);
+
+    // A run of separators reads as one, and neither end should start or finish
+    // on one.
+    $address_name = preg_replace('/_{2,}/', '_', $address_name);
+    $address_name = trim($address_name, '_');
+
+    // address_name is varchar(255). The name is cut here, before the
+    // uniqueness check, leaving room for a "[n]" suffix: cut later by the
+    // column, two long names and their suffixes would end up the same.
+    if (strlen($address_name) > 245) {
+        $address_name = trim(substr($address_name, 0, 245), '_');
     }
+
+    // An address written entirely in a script this cannot transliterate -
+    // Arabic, Greek, Chinese - reduces to nothing. An empty path segment is
+    // not an address, so fall back to a placeholder and let the duplicate
+    // numbering make each one unique.
+    if ($address_name === '') {
+        $address_name = 'item';
+    }
+
+    return $address_name;
+}
+
+/**
+ * @param string     $address_name
+ * @param int|string $item_id   the item being saved, '' for a new one
+ * @param string     $item_type 'product' or 'product_group' when $item_id is
+ *                              given (pg_catalog_address_excluded_ids())
+ * @return string
+ */
+function prepare_catalog_item_address_name($address_name, $item_id = '', $item_type = '')
+{
+    $excluded = pg_catalog_address_excluded_ids($item_id, $item_type);
     // Prepare the address name for the database.
     //
     // This value becomes a path segment: /katalog/<address name>. Anything
@@ -3061,47 +3170,52 @@ function prepare_catalog_item_address_name($address_name, $item_id = '')
     // appends "[1]" to make a duplicate unique, and this function runs again
     // over an address that already carries one. Hyphen and underscore stay
     // because they are the ordinary word separators in an address.
-    $address_name = trim($address_name);
-    $address_name = pg_transliterate_to_ascii($address_name);
-
-    // Everything that is not allowed becomes an underscore rather than
-    // disappearing, so two different names cannot collapse into one.
-    $address_name = preg_replace('/[^A-Za-z0-9\[\]_-]/', '_', $address_name);
-
-    // A run of separators reads as one, and neither end should start or finish
-    // on one.
-    $address_name = preg_replace('/_{2,}/', '_', $address_name);
-    $address_name = trim($address_name, '_');
-
-    // An address written entirely in a script this cannot transliterate -
-    // Arabic, Greek, Chinese - reduces to nothing. An empty path segment is
-    // not an address, so fall back to a placeholder and let the duplicate
-    // numbering below make each one unique.
-    if ($address_name === '') {
-        $address_name = 'item';
-    }
+    $address_name = pg_catalog_address_slug($address_name);
     // assume that the address name does not already exist until we find out otherwise
     $address_name_exists = false;
     // check products table to see if there is already a product with an address name that matches the one we want to use
     $query = "SELECT id FROM products where address_name = ? AND id != ?";
-    $result = db_q($query, array((string) $address_name, (string) $item_id)) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $address_name, $excluded['products'])) or output_error(lang('Query failed.'));
     // if there is a result, then there is already a product with that address name
     if (mysqli_num_rows($result) > 0) {
         $address_name_exists = true;
     }
     // check product groups table to see if there is already a product group with an address name that matches the one we want to use
     $query = "SELECT id FROM product_groups where address_name = ? AND id != ?";
-    $result = db_q($query, array((string) $address_name, (string) $item_id)) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $address_name, $excluded['product_groups'])) or output_error(lang('Query failed.'));
     // if there is a result, then there is already a product group with that address name
     if (mysqli_num_rows($result) > 0) {
         $address_name_exists = true;
     }
     // if the address name already exists then create a unique address name
     if ($address_name_exists == true) {
-        $address_name .= '[' . get_duplicate_catalog_item_address_name_number($address_name) . ']';
+        $address_name .= '[' . get_duplicate_catalog_item_address_name_number($address_name, 1, $excluded) . ']';
     }
     return $address_name;
 }
+/**
+ * The catalog item address in a page parameter ("urun-detay/masa-lambasi"):
+ * the part after the first slash; '' when there is no slash, nothing after
+ * it, or the parameter is not a string (page[]=…). Pure.
+ *
+ * @param mixed $page_parameter $_GET['page']
+ * @return string
+ */
+function pg_catalog_address_from_page_parameter($page_parameter)
+{
+    if (!is_string($page_parameter)) {
+        return '';
+    }
+
+    $slash = strpos($page_parameter, '/');
+
+    if ($slash === false) {
+        return '';
+    }
+
+    return (string) substr($page_parameter, $slash + 1);
+}
+
 function get_catalog_item_from_url($forget = false)
 {
     // Memoised per request. The render path calls this between two and five
@@ -3125,9 +3239,7 @@ function get_catalog_item_from_url($forget = false)
         return $cached;
     }
 
-    // get the address name
-    $page_parameter = isset($_GET['page']) ? $_GET['page'] : '';
-    $address_name = mb_substr(mb_substr($page_parameter, mb_strpos($page_parameter, '/')), 1);
+    $address_name = pg_catalog_address_from_page_parameter(isset($_GET['page']) ? $_GET['page'] : '');
     $item_id = '';
     $item_image_name = '';
     $item_type = '';
@@ -3157,9 +3269,16 @@ function get_catalog_item_from_url($forget = false)
         FROM product_groups
 
         WHERE address_name = ?";
-    $result = db_q($query, array((string) $address_name)) or output_error(lang('Query failed.'));
+    // An empty address shows no item: a lookup would find any row whose
+    // address name is blank.
+    $result = false;
+
+    if ($address_name !== '') {
+        $result = db_q($query, array($address_name)) or output_error(lang('Query failed.'));
+    }
+
     // if a product group was found, then set its information
-    if (mysqli_num_rows($result) > 0) {
+    if ($result && (mysqli_num_rows($result) > 0)) {
         $row = mysqli_fetch_assoc($result);
         $item_id = $row['id'];
         $item_image_name = $row['image_name'];
@@ -3170,7 +3289,7 @@ function get_catalog_item_from_url($forget = false)
         $item_full_description = $row['full_description'];
         $item_address_name = $row['address_name'];
         // else a product group was not found, so check for a product
-    } else {
+    } elseif ($address_name !== '') {
         $query = "SELECT
                 id,
                 name,
@@ -3190,7 +3309,7 @@ function get_catalog_item_from_url($forget = false)
             FROM products
 
             WHERE address_name = ?";
-        $result = db_q($query, array((string) $address_name)) or output_error(lang('Query failed.'));
+        $result = db_q($query, array($address_name)) or output_error(lang('Query failed.'));
         // if a product was found, then set its information
         if (mysqli_num_rows($result) > 0) {
             $row = mysqli_fetch_assoc($result);
@@ -3473,7 +3592,7 @@ function add_edit_button_for_images($object_type = '', $object_id = 0, $content 
             // (pg_image_editor_includes()); a copy is put in this content.
             $image_content .= '<a id="software_edit_button_for_' . h($image_id) . '" href="#" data-pg-image-edit="' . h($image_name) . '" data-pg-image-object="' . h($object_type) . '" data-pg-image-object-id="' . h($object_id) . '" data-pg-image-column="' . h($column_to_update) . '" style="background: #7a7a7a63;cursor:pointer;border: 1px dashed #fff;height:auto;position: absolute; left: 0px; top: 0px; display: none; padding: .5em; margin: 0; text-decoration: none; z-index: 9;border-bottom-right-radius: 5px !important;" title="' . lang(array('string' => 'Edit Image ({var:1}) with Software Image Editor', 'vars' => h($image_name))) . '" onmouseover="software_show_or_hide_image_edit_button(\'' . h(escape_javascript($image_id)) . '\', event);" onmouseout="software_show_or_hide_image_edit_button(\'' . h(escape_javascript($image_id)) . '\', event);"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_image_editor.png" width="50" height="auto" alt="' . lang('Software Image Editor') . '"></a>';
             // output the image we created above with a link around it
-            $content = preg_replace('/' . escape_regex($match[0]) . '/i', $image_content, $content, 1);
+            $content = preg_replace('/' . escape_regex($match[0]) . '/i', pg_regex_replacement($image_content), $content, 1);
         }
     }
     return $content;
@@ -3502,6 +3621,30 @@ function get_unique_image_id($image_name, $number = 0)
 }
 function update_image_in_content($content, $original_image_name, $new_image_name)
 {
+    return pg_update_image_in_content($content, $original_image_name, $new_image_name, function ($name) {
+        $size = @getimagesize(FILE_DIRECTORY_PATH . '/' . $name);
+
+        return is_array($size) ? array((int) $size[0], (int) $size[1]) : null;
+    });
+}
+
+/**
+ * update_image_in_content() with the image size read through $image_size
+ * (file name => array(width, height), or null when it cannot be read), so
+ * the tag rewrite itself has no file system. Pure apart from that callable.
+ *
+ * Every tag of the image is replaced as written: the rest of the content and
+ * the tag's other attributes ("$5 off" in an alt text) are never read as
+ * back references.
+ *
+ * @param string   $content
+ * @param string   $original_image_name
+ * @param string   $new_image_name
+ * @param callable $image_size
+ * @return string
+ */
+function pg_update_image_in_content($content, $original_image_name, $new_image_name, $image_size)
+{
     // if there are image tags in the content that are in the files directory, then find the image that needs to be updated and update it's attributes
     if (preg_match_all('/<img.*?src="(.*?)".*?>/i', $content, $matches) != 0) {
         // split image tags and names into their own arrays
@@ -3528,14 +3671,19 @@ function update_image_in_content($content, $original_image_name, $new_image_name
                 // If the orignal file name is different than the current file name,
                 // then update the src, title and alt attributes in the image tag.
                 if ($original_image_name != $new_image_name) {
-                    $image_content = preg_replace('/src=".*?"/i', 'src="{path}' . h($new_image_name) . '"', $image_content);
-                    $image_content = preg_replace('/alt=".*?"/i', 'alt="' . h($new_image_name) . '"', $image_content);
-                    $image_content = preg_replace('/title=".*?"/i', 'title="' . h($new_image_name) . '"', $image_content);
+                    $image_content = preg_replace('/src=".*?"/i', pg_regex_replacement('src="{path}' . h($new_image_name) . '"'), $image_content);
+                    $image_content = preg_replace('/alt=".*?"/i', pg_regex_replacement('alt="' . h($new_image_name) . '"'), $image_content);
+                    $image_content = preg_replace('/title=".*?"/i', pg_regex_replacement('title="' . h($new_image_name) . '"'), $image_content);
                 }
-                // Get the dimensions of the new image
-                $image_size = getimagesize(FILE_DIRECTORY_PATH . '/' . $new_image_name);
-                $image_width = $image_size[0];
-                $image_height = $image_size[1];
+                // Get the dimensions of the new image; a file whose size
+                // cannot be read keeps the tag's own dimensions.
+                $dimensions = call_user_func($image_size, $new_image_name);
+                if (!is_array($dimensions)) {
+                    $content = str_replace($image_tags[$key], $image_content, $content);
+                    continue;
+                }
+                $image_width = (int) $dimensions[0];
+                $image_height = (int) $dimensions[1];
                 // Update the width and height attributes in the image tag.
                 // The standard image plugin for CKEditor uses style="width: 100px; height: 100px;"
                 // instead of width="100" height="100", so we have added support for that
@@ -3547,7 +3695,7 @@ function update_image_in_content($content, $original_image_name, $new_image_name
                 $image_content = preg_replace('/height=".*?"/i', 'height="' . $image_height . '"', $image_content);
                 $image_content = preg_replace('/height:.*?px/i', 'height: ' . $image_height . 'px', $image_content);
                 // return the updated image tag
-                $content = preg_replace('/' . escape_regex($image_tags[$key]) . '/i', $image_content, $content);
+                $content = str_replace($image_tags[$key], $image_content, $content);
             }
         }
     }

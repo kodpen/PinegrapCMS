@@ -164,3 +164,18 @@ function pg_dashboard_v2_change($now, $before)
 
     return array('pct' => 0, 'tone' => '', 'text' => lang('no change'));
 }
+
+/**
+ * An amount in minor units as plain text in the base currency. The store's
+ * symbol is kept as an HTML entity (&#8378;) for markup; a card's texts are
+ * written with textContent, so the entity is turned into its character.
+ *
+ * @param int|float $minor
+ * @return string
+ */
+function pg_dashboard_v2_money($minor)
+{
+    $symbol = defined('BASE_CURRENCY_SYMBOL') ? html_entity_decode((string) BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8') : '';
+
+    return pg_format_money(round((float) $minor) / 100, $symbol);
+}

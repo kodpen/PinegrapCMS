@@ -2183,6 +2183,14 @@ function ws_change_check($viewer, $type, $action, $record, $values)
                     return lang('A cancelled order does not ship.');
                 }
 
+                foreach ((array) $values['tracking_numbers'] as $number) {
+                    $refusal = is_scalar($number) ? pg_tracking_number_refusal(trim((string) $number)) : '';
+
+                    if ($refusal !== '') {
+                        return $refusal;
+                    }
+                }
+
                 $addresses = (int) db_value("SELECT COUNT(*) FROM ship_tos WHERE order_id = '" . (int) $record['id'] . "'");
 
                 if ($addresses === 0) {
@@ -2482,9 +2490,11 @@ function ws_change_delete_blocked($type, $record)
  * @param bool  $for_proposal an application's proposal (proposals.php):
  *                            nobody asked, so a refusal speaks of the person
  *                            it is proposed to, not of an answer
+ * @param bool  $drafts       an answer that may hold a flow draft (Claude's in
+ *                            a channel), as a proposal may
  * @return array ok, error, rows (type, action, record_id, fields, reason, snapshot)
  */
-function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0, $for_proposal = false)
+function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0, $for_proposal = false, $drafts = false)
 {
     $out = array('ok' => true, 'error' => '', 'rows' => array());
 
@@ -2534,10 +2544,11 @@ function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0, $f
             continue;
         }
 
-        // A flow an application proposes (flow_draft.php): a draft the
-        // person opens as a new flow of their own and publishes there. A
-        // task's drawer has no canvas to open it on.
-        if (($type === 'flow') && $for_proposal && function_exists('ws_flow_draft_proposal_row')) {
+        // A flow an application proposes, or Claude drafts in its answer in a
+        // channel (flow_draft.php): a draft the person opens as a new flow of
+        // their own and publishes there. A task's drawer has no canvas to
+        // open it on.
+        if (($type === 'flow') && ($for_proposal || $drafts) && function_exists('ws_flow_draft_proposal_row')) {
             if ((int) $task_id > 0) {
                 return $refuse(lang('A flow is proposed in a channel, not on a task.'));
             }
@@ -5561,6 +5572,9 @@ function ws_change_write_offer($viewer, $action, $record, $values)
         WHERE id = '" . $id . "' LIMIT 1");
 
     ws_change_log(lang(array('string' => 'Offer ({var:1}) was changed in the Workspace, on Claude\'s proposal.', 'vars' => (string) $record['code'])));
+
+    $enabled = (string) db_value("SELECT status FROM offers WHERE id = '" . $id . "'");
+    pg_announce('offer.updated', array('id' => $id, 'code' => (string) $record['code'], 'enabled' => ($enabled === 'enabled')));
 
     return array('ok' => true, 'error' => '', 'id' => $id);
 }

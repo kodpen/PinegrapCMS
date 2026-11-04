@@ -214,7 +214,8 @@ function submit_order($type) {
     $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
     
     // if contact is not already in contact group, then add contact to Orders contact group
-    if (mysqli_num_rows($result) == 0) {
+    // (unless the group is filled by rules)
+    if ((mysqli_num_rows($result) == 0) && !pg_audience_group_is_dynamic($contact_group_id)) {
         $query =
             "INSERT INTO contacts_contact_groups_xref (
                 contact_id,
@@ -278,6 +279,15 @@ function submit_order($type) {
 
             $gift_card_plural_suffix = '';
             
+            // A card applied twice to the order (two page views racing to
+            // apply the same credit or code) counts once: each row adds its
+            // full balance below, so a repeat would cover the order with
+            // money the card does not hold.
+            foreach (pg_gift_card_applied_repeats($applied_gift_cards) as $key) {
+                db_q("DELETE FROM applied_gift_cards WHERE id = ?", array((int) $applied_gift_cards[$key]['id']));
+                unset($applied_gift_cards[$key]);
+            }
+
             // if the number of applied gift cards is greater than 1, then prepare plural suffix
             if (count($applied_gift_cards) > 1) {
                 $gift_card_plural_suffix = 's';
@@ -293,10 +303,18 @@ function submit_order($type) {
                         "SELECT
                             id,
                             balance,
-                            expiration_date
+                            expiration_date"
+                        . pg_credit_owner_select_sql() . "
                         FROM gift_cards
                         WHERE id = '" . $applied_gift_card['gift_card_id']  . "'")
                         ?: array('id' => ''); // the card was deleted after it was applied
+
+                    // A customer's store credit pays only that customer's order:
+                    // signed out or signed in as someone else, it is dropped as
+                    // a card that is not there.
+                    if (($gift_card['id'] != '') && !pg_credit_card_usable_by($gift_card['user_id'], pg_credit_checkout_user())) {
+                        $gift_card = array('id' => '');
+                    }
 
                     // If a gift card no longer exists, then output error.
                     if ($gift_card['id'] == '') {
@@ -543,6 +561,11 @@ function submit_order($type) {
             } else {
                 $tax_exempt = 0;
             }
+
+            // An EU VAT id typed for a member state other than the site's is
+            // checked against VIES. When the answer changes the tax, the total
+            // check below sends the customer back to the new total.
+            $tax_exempt = pg_vat_checkout_apply($liveform, $tax_exempt, $_SESSION['ecommerce']['order_id'] ?? 0);
             
             // get old address verified value from the database
             $query = "SELECT billing_address_verified FROM orders WHERE id = ?";
@@ -3164,14 +3187,19 @@ function submit_order($type) {
                 // else mode is paypal_express_checkout_return, so prepare to send DoExpressCheckoutPayment request to PayPal
                 } else {
 
+                    // PayPal returns one token and one payer id; an array or a missing
+                    // one counts as empty, and PayPal answers that with its own error.
+                    $paypal_express_checkout_token = (isset($_GET['token']) && is_string($_GET['token'])) ? $_GET['token'] : '';
+                    $paypal_express_checkout_payer_id = (isset($_GET['PayerID']) && is_string($_GET['PayerID'])) ? $_GET['PayerID'] : '';
+
                     $post_data =
                         'METHOD=DoExpressCheckoutPayment&' .
                         'VERSION=85.0&' .
                         'USER=' . urlencode(ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_API_USERNAME) . '&' .
                         'PWD=' . urlencode(ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_API_PASSWORD) . '&' .
                         'SIGNATURE=' . urlencode(ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_API_SIGNATURE) . '&' .
-                        'TOKEN=' . urlencode($_GET['token']) . '&' .
-                        'PAYERID=' . urlencode($_GET['PayerID']) . '&' .
+                        'TOKEN=' . urlencode($paypal_express_checkout_token) . '&' .
+                        'PAYERID=' . urlencode($paypal_express_checkout_payer_id) . '&' .
                         'PAYMENTREQUEST_0_PAYMENTACTION=' . $paypal_express_checkout_paymentaction . '&' .
                         'BUTTONSOURCE=Camelback_Cart_EC&' .
                         $paypal_express_checkout_shipping .

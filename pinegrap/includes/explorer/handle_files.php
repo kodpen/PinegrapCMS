@@ -43,6 +43,8 @@ function pg_explorer_handle_paste($type, $request, $user)
     $copied = 0;
     $errors = array();
     $created = array();
+    // Items whose copy took another name than the original: [old, new].
+    $renamed = array();
 
     foreach ($items as $item) {
 
@@ -58,7 +60,7 @@ function pg_explorer_handle_paste($type, $request, $user)
             case 'file':
 
                 $file = db_item(
-                    "SELECT id, name, folder, description, design, optimized, image_width, image_height, optimization_percent
+                    "SELECT id, name, folder, description, design, attachment, optimized, image_width, image_height, optimization_percent
                     FROM files
                     WHERE id = '" . e($item_id) . "'");
 
@@ -78,13 +80,17 @@ function pg_explorer_handle_paste($type, $request, $user)
                     break;
                 }
 
-                $source_path = FILE_DIRECTORY_PATH . '/' . $file['name'];
+                // A stored file is copied from its cached copy; the copy is
+                // a new local file the move job sends on.
+                $source_path = pg_file_reader_path($file['name']);
 
-                if (file_exists($source_path) == false) {
+                if (($source_path === '') || (file_exists($source_path) == false)) {
                     $errors[] = lang(array('string' => 'The file does not exist on the file system ({var:1}).', 'vars' => $file['name']));
                     break;
                 }
 
+                // A submitted form's upload stays one in the copy
+                // (pg_explorer_copy_folder() does the same).
                 $new_name = get_unique_name(array('name' => prepare_file_name($file['name']), 'type' => 'file'));
                 $new_path = FILE_DIRECTORY_PATH . '/' . $new_name;
 
@@ -103,6 +109,7 @@ function pg_explorer_handle_paste($type, $request, $user)
                         type,
                         size,
                         design,
+                        attachment,
                         optimized,
                         image_width,
                         image_height,
@@ -116,6 +123,7 @@ function pg_explorer_handle_paste($type, $request, $user)
                         '" . e($file_extension) . "',
                         '" . e(filesize($new_path)) . "',
                         '" . e($file['design']) . "',
+                        '" . (int) $file['attachment'] . "',
                         '" . e($file['optimized']) . "',
                         " . (($file['image_width'] !== null && $file['image_width'] !== '') ? "'" . e($file['image_width']) . "'" : "NULL") . ",
                         " . (($file['image_height'] !== null && $file['image_height'] !== '') ? "'" . e($file['image_height']) . "'" : "NULL") . ",
@@ -123,7 +131,10 @@ function pg_explorer_handle_paste($type, $request, $user)
                         '" . e($user['id']) . "',
                         UNIX_TIMESTAMP())");
 
-                $created[] = array('kind' => 'file', 'id' => (int) mysqli_insert_id(db::$con));
+                $created[] = array('kind' => 'file', 'id' => (int) mysqli_insert_id(db::$con), 'name' => $new_name);
+                if ($new_name !== $file['name']) {
+                    $renamed[] = array($file['name'], $new_name);
+                }
 
                 pg_audit_record('create', 'files', $created[count($created) - 1]['id']);
 
@@ -148,7 +159,18 @@ function pg_explorer_handle_paste($type, $request, $user)
                     break;
                 }
 
+                $created_before = count($created);
                 $copied += pg_explorer_copy_folder($item_id, $target_id, $user, $errors, $created);
+
+                // The copied folder is the first row the copy added.
+                if (isset($created[$created_before]) && ($created[$created_before]['kind'] === 'folder')) {
+                    $old_folder_name = (string) db_value("SELECT folder_name FROM folder WHERE folder_id = '" . e($item_id) . "'");
+                    $new_folder_name = (string) db_value("SELECT folder_name FROM folder WHERE folder_id = '" . e($created[$created_before]['id']) . "'");
+                    $created[$created_before]['name'] = $new_folder_name;
+                    if ($new_folder_name !== $old_folder_name) {
+                        $renamed[] = array($old_folder_name, $new_folder_name);
+                    }
+                }
                 break;
 
             case 'page':
@@ -182,7 +204,11 @@ function pg_explorer_handle_paste($type, $request, $user)
                     $copied++;
 
                     if (isset($response['page']['id'])) {
-                        $created[] = array('kind' => 'page', 'id' => (int) $response['page']['id']);
+                        $new_page_name = (string) ($response['page']['name'] ?? '');
+                        $created[] = array('kind' => 'page', 'id' => (int) $response['page']['id'], 'name' => $new_page_name);
+                        if (($new_page_name !== '') && ($new_page_name !== $page['name'])) {
+                            $renamed[] = array($page['name'], $new_page_name);
+                        }
                     }
                 } else {
                     $errors[] = isset($response['message']) ? $response['message'] : lang('Sorry, the page could not be found.');
@@ -197,9 +223,10 @@ function pg_explorer_handle_paste($type, $request, $user)
         'copied' => $copied,
         'created' => $created,
         'errors' => $errors,
+        'renamed' => $renamed,
         'message' => (count($errors) > 0)
             ? implode(' ', $errors)
-            : lang(array('string' => '{var:1} item(s) were pasted.', 'vars' => $copied))));
+            : pg_explorer_paste_message($copied, $renamed, !empty($request['duplicate']))));
 }
 
 // Delete a set of files outright, with their theme css rules and preview

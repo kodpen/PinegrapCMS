@@ -55,13 +55,28 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 define('WS_AI_ENDPOINT', 'https://ai.pinegrap.com/v1');
 
 /**
- * How long one model call may take, in seconds. A host whose web server lets
- * a request wait longer may raise it with PG_AI_CALL_TIMEOUT in
- * data/config.php.
+ * How long one model call may take, in seconds (pure): 500, or what
+ * PG_AI_CALL_TIMEOUT in data/config.php sets, from 20 to 600. A flow of
+ * ten boxes or more takes the model longer than a minute to write; a call
+ * that waits keeps going when the browser stops waiting for it
+ * (ignore_user_abort() in ws_ai_kick()), but a web server that cuts a
+ * request off sooner still ends it there.
+ *
+ * @param mixed $configured PG_AI_CALL_TIMEOUT, null when it is not set
+ * @return int seconds
  */
-define('WS_AI_CALL_TIMEOUT', (defined('PG_AI_CALL_TIMEOUT') && ((int) PG_AI_CALL_TIMEOUT >= 20)) ? min(600, (int) PG_AI_CALL_TIMEOUT) : 55);
+function ws_ai_call_timeout_for($configured)
+{
+    if (is_numeric($configured) && ((int) $configured >= 20)) {
+        return min(600, (int) $configured);
+    }
 
-/** How long a call may take when no web server can cut it off (the scheduled job). */
+    return 500;
+}
+
+define('WS_AI_CALL_TIMEOUT', ws_ai_call_timeout_for(defined('PG_AI_CALL_TIMEOUT') ? PG_AI_CALL_TIMEOUT : null));
+
+/** The least a call may take when no web server can cut it off (the scheduled job). */
 define('WS_AI_CALL_TIMEOUT_JOB', 240);
 
 /**
@@ -393,7 +408,7 @@ function ws_ai_http_error($response)
     }
 
     if (in_array((int) $response['errno'], array(35, 51, 53, 54, 58, 59, 60, 64, 66, 77, 80, 82, 83), true)) {
-        return lang(array('string' => 'The secure connection to Pinegrap AI failed ({var:1}). CURL_CA_BUNDLE in data/config.php may have to point at a root certificate list (data/cacert.pem).', 'vars' => mb_substr((int) $response['errno'] . ': ' . (string) $response['error'], 0, 150)));
+        return lang(array('string' => 'The secure connection to Pinegrap AI failed ({var:1}). The CA store row of System Status on the dashboard says which certificate store is in use and whether it verifies.', 'vars' => mb_substr((int) $response['errno'] . ': ' . (string) $response['error'], 0, 150)));
     }
 
     $error = trim((string) $response['error']);
@@ -1843,7 +1858,7 @@ function ws_ai_claims_done($text)
  */
 function ws_ai_tool_names()
 {
-    return array('answer', 'fail', 'read_channel', 'read_task', 'search_records', 'read_record', 'propose_task', 'propose_change', 'propose_bulk_change', 'propose_scheduled_action', 'propose_flow', 'read_flow', 'add_task_note', 'read_page', 'page_set', 'page_replace', 'page_insert', 'page_remove', 'page_css', 'page_rewrite');
+    return array('answer', 'fail', 'read_channel', 'read_task', 'search_records', 'read_record', 'propose_task', 'propose_change', 'propose_bulk_change', 'propose_scheduled_action', 'propose_flow', 'read_flow', 'add_task_note', 'send_voice_message', 'read_page', 'page_set', 'page_replace', 'page_insert', 'page_remove', 'page_css', 'page_rewrite');
 }
 
 /**
@@ -2454,6 +2469,12 @@ function ws_ai_deliver($row, $text, $proposals)
         return array('ok' => false, 'error' => 'text: ' . $sent['error']);
     }
 
+    // An answer to a recording is heard back: its sound is made and kept on
+    // the same message where the speech service is set (voice.php).
+    if (function_exists('ws_voice_answer_spoken')) {
+        ws_voice_answer_spoken($channel, (int) $sent['message_id'], (int) $row['message_id'], $text, (int) $row['requested_by']);
+    }
+
     foreach ($drafts['rows'] as $draft) {
         db("INSERT INTO ws_ai_drafts (request_id, channel_id, message_id, title, description, assignees, due_date, priority, created_at)
             VALUES (
@@ -2871,8 +2892,8 @@ function ws_ai_text($viewer, $body, $refs = null, $limit = 0)
 /**
  * A message as the model reads it (ws_ai_text()), with its recording's
  * transcript once written out (ws_voice_with_transcript()); a recording
- * with none says so (ws_voice_heard()), so the answer does not guess
- * at what was said.
+ * with none says so and why (ws_voice_heard(), ws_voice_unheard_reason()),
+ * so the answer does not guess at what was said.
  *
  * @param array $viewer
  * @param array $row   ws_messages row
@@ -2883,11 +2904,15 @@ function ws_ai_heard_text($viewer, $row, $limit = 0)
 {
     $text = ws_ai_text($viewer, (string) $row['body'], null, $limit);
 
-    if (!function_exists('ws_voice_transcript_of')) {
+    if (!function_exists('ws_voice_state_of') || !ws_voice_is_recording((string) ($row['file_name'] ?? ''))) {
         return $text;
     }
 
-    return ws_voice_heard($text, ws_voice_transcript_of($row), (string) ($row['file_name'] ?? ''), $limit);
+    $state = ws_voice_state_of($row);
+    $transcript = ($state && ($state['status'] === 'done')) ? $state['transcript'] : '';
+    $reason = ws_voice_unheard_reason(ws_channel((int) $row['channel_id']), $row, $state);
+
+    return ws_voice_heard($text, $transcript, (string) ($row['file_name'] ?? ''), $limit, $reason);
 }
 
 /**
@@ -3652,9 +3677,16 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
         }
 
         $request_text = ws_ai_heard_text($asker, $message, 4000);
+        // A recording nobody heard: the reason and where the setting is,
+        // as the site's own line after the request (voice.php).
+        $unheard = function_exists('ws_voice_unheard_reason') ? ws_voice_unheard_reason($channel, $message) : '';
 
         $parts[] = 'The request (message ' . (int) $message['id'] . '):';
         $parts[] = pg_ai_data_block('request', $request_text);
+
+        if ($unheard !== '') {
+            $parts[] = ws_voice_unheard_line($unheard);
+        }
     }
 
     $text = array_merge(ws_ai_briefing_head($asker, $agent), array(''), $parts);
@@ -3854,7 +3886,7 @@ function ws_ai_tools($row)
         // A flow, drafted from the boxes the catalogue offers (flow_draft.php),
         // waits under the answer to be opened on the canvas.
         if (function_exists('ws_flow_ai_offered') && ws_flow_ai_offered($row, $asker)) {
-            $tools[] = ws_flow_ai_tool(ws_flow_kind_catalogue());
+            $tools[] = ws_flow_ai_tool(ws_flow_ai_catalogue());
             $tools[] = $tool('read_flow', 'Read a flow the person who asked reaches, with its boxes and arrows (id), or find flows by a word of their name (query).', array(
                 'id'    => array('type' => 'integer'),
                 'query' => array('type' => 'string'),
@@ -3899,6 +3931,15 @@ function ws_ai_tools($row)
             'task_id' => array('type' => 'integer'),
             'text'    => array('type' => 'string'),
         ), array('task_id', 'text'));
+
+        // A voice message from a text, where the site has a speech service
+        // and the channel does not keep its recordings (voice.php).
+        if (!$note && !$task && function_exists('ws_voice_speech_ready') && ws_voice_speech_ready()) {
+            $tools[] = $tool('send_voice_message', 'Post a voice message answering the request, only when the request asks in so many words for a voice message: the site speaks the text with its speech service. Plain sentences in the language of the request, no tags, no Markdown. Still call answer at the end.', array(
+                'text'  => array('type' => 'string', 'description' => 'What is said; kept as the voice message\'s transcript.'),
+                'voice' => array('type' => 'string', 'description' => 'A voice of the service in place of the site\'s, only when the request names one.'),
+            ), array('text'));
+        }
 
         if ($asker && ws_design_ai() && pg_design_ai_tools_allowed($row, $asker)) {
             $tools = array_merge($tools, pg_design_ai_tools());
@@ -4099,6 +4140,27 @@ function ws_ai_tool_run($row, &$state, $name, $args)
             $result = ws_task_note_add($owner, $task, ws_tokens_normalise($text), (int) ws_ai_config()['app_id']);
 
             return empty($result['ok']) ? array('error' => (string) ($result['error'] ?? 'The note could not be added.')) : array('ok' => true);
+
+        case 'send_voice_message':
+            if ($note || $task || !function_exists('ws_voice_message_send')) {
+                return array('error' => 'Not from a note or a task.');
+            }
+
+            $channel = ws_ai_request_channel($row, $asker);
+            $app = ws_ai_app();
+            $writer = ($channel && $app) ? ws_assistant_writer(ws_ai_owner(), $asker, $channel) : null;
+
+            if (!$channel || !$writer) {
+                return array('error' => 'The voice message cannot be posted there.');
+            }
+
+            $sent = ws_voice_message_send($writer, $channel, (string) ($args['text'] ?? ''), array(
+                'app_id'    => (int) $app['id'],
+                'parent_id' => (int) $row['message_id'],
+                'voice'     => (string) ($args['voice'] ?? ''),
+            ));
+
+            return empty($sent['ok']) ? array('error' => (string) $sent['error']) : array('ok' => true, 'message_id' => (int) $sent['message_id']);
     }
 
     return array('error' => 'There is no tool named ' . $name . '.');

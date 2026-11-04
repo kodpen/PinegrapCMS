@@ -16,4 +16,7 @@ description: Forms that carry a file beside typed fields (ERP expense, bank stat
 - `pg_submitted_form_check_field()` marks a file upload field from its `$_FILES` error code (`pg_submitted_form_upload_refusal()`), so no forms row is written for an oversize file.
 - `pg_submitted_form_store_upload()` returns 0 without copying or inserting when the file is not a whole upload or `copy()` fails; the screens write a form_data row with file_id 0, the same as an empty box. Before, `copy('')` threw ValueError on PHP 8 after the forms row was in (half-saved record), and on PHP 7 a size-0 files row pointed at nothing.
 
+## Does a copy in the File Manager keep a form upload private?
+- Yes: a pasted file and a copied folder (`includes/explorer/handle_files.php`, `pg_explorer_copy_folder()`) copy `files.attachment`, so `get_file.php` refuses the copy to visitors without edit access. Before, the copy was a plain row: copying the upload folder published every CV under a new name. The folder view lists no attachment either (`pg_fv_files_sql()`, #6027).
+
 Related: [[upload-limits-and-empty-post]]

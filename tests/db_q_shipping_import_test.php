@@ -129,14 +129,14 @@ function db_q_shipping_import_test_calls($path)
 function db_q_shipping_import_test_files()
 {
 	return array(
-		'edit_shipping_method.php' => 9,
+		'edit_shipping_method.php' => 2,
 		'includes/forms/shipping_method_form.php' => 3,
 		'shipping_method.php' => 7,
 		'shipping.php' => 6,
-		'edit_zone.php' => 9,
+		'edit_zone.php' => 1,
 		'includes/forms/zone_form.php' => 2,
-		'edit_arrival_date.php' => 6,
-		'includes/forms/arrival_date_form.php' => 1,
+		'edit_arrival_date.php' => 0,
+		'includes/forms/arrival_date_form.php' => 0,
 		'view_commissions.php' => 4,
 		'includes/settings/commerce.save.php' => 1,
 		'import_products.php' => 6,

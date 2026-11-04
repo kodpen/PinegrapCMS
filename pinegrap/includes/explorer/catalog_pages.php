@@ -351,6 +351,10 @@ function pg_catalog_copy_group($group_id, $target_id, $user, $depth = 0, &$creat
             VALUES ('" . e($new_id) . "', '" . e((int) $attribute['attribute_id']) . "', '" . e((int) $attribute['sort_order']) . "', '" . e((int) $attribute['default_option_id']) . "')");
     }
 
+    // The form settings, price rules and form template of a variant set; the
+    // products are the same, so their fields stay linked to the original.
+    pg_variant_set_copy((int) $group_id, (int) $new_id);
+
     // Copied under the copy rather than the original.
     foreach ((array) $children as $child) {
         $copied += pg_catalog_copy_group((int) $child['id'], $new_id, $user, $depth + 1, $created);

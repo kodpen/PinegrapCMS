@@ -41,6 +41,89 @@ function pg_explorer_folder_access_expiration_date($rights, $expiration_date)
     return $sql_expiration_date;
 }
 
+// The rights rows a save writes, from the rows the panel sent: only valid
+// entries (a positive user id, rights 0, 1 or 2), the last entry of a user
+// winning, each with the expiration date it stores. Rights 0 means the row
+// is deleted, not stored as a zero.
+function pg_explorer_folder_access_entries($entries)
+{
+    $result = array();
+
+    foreach ((is_array($entries) ? $entries : array()) as $entry) {
+
+        if (!is_array($entry)) {
+            continue;
+        }
+
+        $target_user_id = (int) (isset($entry['user_id']) ? $entry['user_id'] : 0);
+        $rights = (isset($entry['rights']) && is_scalar($entry['rights'])) ? (int) $entry['rights'] : -1;
+        $expiration_date = (isset($entry['expiration_date']) && is_scalar($entry['expiration_date'])) ? trim((string) $entry['expiration_date']) : '';
+
+        if (($target_user_id <= 0) || !in_array($rights, array(0, 1, 2), true)) {
+            continue;
+        }
+
+        $result[$target_user_id] = array(
+            'rights' => $rights,
+            'expiration_date' => pg_explorer_folder_access_expiration_date($rights, $expiration_date));
+    }
+
+    return $result;
+}
+
+// The basic users (role 3) whose name, username or e-mail address contains
+// $term, for the access panels' Add a user box: at most $limit, by username.
+// Every customer and member account has role 3, so the panels list only the
+// users who hold a right and find the others through this.
+function pg_explorer_access_user_search_rows($term, $limit = 20)
+{
+    $term = trim((string) $term);
+
+    if ($term === '') {
+        return array();
+    }
+
+    $pattern = pg_list_like_pattern($term);
+
+    $result = db_q(
+        "SELECT user.user_id, user.user_username, contacts.first_name, contacts.last_name
+        FROM user
+        LEFT JOIN contacts ON contacts.id = user.user_contact
+        WHERE (user.user_role = '3')
+            AND ((user.user_username LIKE ?) OR (user.user_email LIKE ?) OR (contacts.first_name LIKE ?) OR (contacts.last_name LIKE ?))
+        ORDER BY user.user_username
+        LIMIT " . max(1, min(50, (int) $limit)),
+        array($pattern, $pattern, $pattern, $pattern));
+
+    $rows = array();
+
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $rows[] = array(
+                'id' => (int) $row['user_id'],
+                'username' => (string) $row['user_username'],
+                'name' => pg_user_display_name($row['first_name'], $row['last_name'], $row['user_username']));
+        }
+    }
+
+    return $rows;
+}
+
+// The Add a user box of the access panels: managers and above only.
+function pg_explorer_handle_access_user_search($type, $request, $user)
+{
+    if ($user['role'] > 2) {
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    $term = (isset($request['term']) && is_scalar($request['term'])) ? (string) $request['term'] : '';
+
+    respond(array(
+        'status' => 'success',
+        'request' => $type,
+        'users' => pg_explorer_access_user_search_rows($term)));
+}
+
 // The folder access panel: the folder's own and effective access type,
 // where an inherited type comes from, and for a manager each basic user's
 // direct and inherited rights.
@@ -58,23 +141,25 @@ function pg_explorer_handle_folder_access_get($type, $request, $user)
         respond(array('status' => 'error', 'message' => lang('Access denied')));
     }
 
-    // Where the effective type comes from when this folder inherits.
+    // What Default (inherit) would give this folder and from which parent,
+    // whatever the folder has now: the panel shows it while Default is
+    // selected, before the save as well.
     $map = pg_explorer_folder_map();
     $inherited_from = '';
+    $inherited_type = '';
     $current = (int) $folder['folder_parent'];
     $guard = array();
 
-    if ((string) $folder['folder_access_control_type'] == '') {
-        while (($current > 0) && isset($map[$current]) && (isset($guard[$current]) == false)) {
-            $guard[$current] = true;
+    while (($current > 0) && isset($map[$current]) && (isset($guard[$current]) == false)) {
+        $guard[$current] = true;
 
-            if ((string) $map[$current]['folder_access_control_type'] != '') {
-                $inherited_from = $map[$current]['folder_name'];
-                break;
-            }
-
-            $current = (int) $map[$current]['folder_parent'];
+        if ((string) $map[$current]['folder_access_control_type'] != '') {
+            $inherited_from = $map[$current]['folder_name'];
+            $inherited_type = (string) $map[$current]['folder_access_control_type'];
+            break;
         }
+
+        $current = (int) $map[$current]['folder_parent'];
     }
 
     $response = array(
@@ -85,7 +170,8 @@ function pg_explorer_handle_folder_access_get($type, $request, $user)
             'name' => $folder['folder_name'],
             'own_access_control_type' => (string) $folder['folder_access_control_type'],
             'access_control_type' => get_access_control_type($folder_id),
-            'inherited_from' => $inherited_from),
+            'inherited_from' => $inherited_from,
+            'inherited_type' => $inherited_type),
         'can_manage_users' => ($user['role'] <= 2),
         'users' => array());
 
@@ -128,11 +214,18 @@ function pg_explorer_handle_folder_access_get($type, $request, $user)
             }
         }
 
-        $users = db_items(
-            "SELECT user_id, user_username
-            FROM user
-            WHERE user_role = '3'
-            ORDER BY user_username");
+        // Only the users who hold a right here or above: the others are
+        // found through the Add a user box (customers and members are role 3
+        // too, so a store would list thousands).
+        $listed_ids = array_unique(array_merge(array_keys($direct_rights), array_keys($inherited_rights)));
+
+        $users = (count($listed_ids) > 0)
+            ? db_items(
+                "SELECT user_id, user_username
+                FROM user
+                WHERE (user_role = '3') AND (user_id IN (" . implode(',', array_map('intval', $listed_ids)) . "))
+                ORDER BY user_username")
+            : array();
 
         if ($users) {
             foreach ($users as $row) {
@@ -195,40 +288,26 @@ function pg_explorer_handle_folder_access_set($type, $request, $user)
             respond(array('status' => 'error', 'message' => lang('Access denied')));
         }
 
-        foreach ($request['user_rights'] as $entry) {
+        // The panel sends only the rows it changed.
+        $entries = pg_explorer_folder_access_entries($request['user_rights']);
 
-            $target_user_id = (int) (isset($entry['user_id']) ? $entry['user_id'] : 0);
-            $rights = (int) (isset($entry['rights']) ? $entry['rights'] : 0);
-            $expiration_date = trim(isset($entry['expiration_date']) ? $entry['expiration_date'] : '');
+        // Only basic users are governed by folder rights, checked in one query.
+        $basic_ids = (count($entries) > 0)
+            ? db_values("SELECT user_id FROM user WHERE (user_role = '3') AND (user_id IN (" . implode(',', array_map('intval', array_keys($entries))) . "))")
+            : array();
 
-            if (($target_user_id <= 0) || (in_array($rights, array(0, 1, 2), true) == false)) {
-                continue;
-            }
+        foreach ((array) $basic_ids as $target_user_id) {
 
-            // Only basic users are governed by folder rights.
-            $target_role = db_value("SELECT user_role FROM user WHERE user_id = '" . e($target_user_id) . "'");
+            $entry = $entries[(int) $target_user_id];
 
-            if ($target_role === false || (int) $target_role != 3) {
-                continue;
-            }
+            // One row per user and folder: the old one goes, a right comes
+            // back as a new row, and None leaves none.
+            db("DELETE FROM aclfolder WHERE (aclfolder_user = '" . e($target_user_id) . "') AND (aclfolder_folder = '" . e($folder_id) . "')");
 
-            $sql_expiration_date = pg_explorer_folder_access_expiration_date($rights, $expiration_date);
-
-            $existing = db_value(
-                "SELECT COUNT(*)
-                FROM aclfolder
-                WHERE (aclfolder_user = '" . e($target_user_id) . "') AND (aclfolder_folder = '" . e($folder_id) . "')");
-
-            if ($existing > 0) {
-                db(
-                    "UPDATE aclfolder SET
-                        aclfolder_rights = '" . e($rights) . "',
-                        expiration_date = '" . e($sql_expiration_date) . "'
-                    WHERE (aclfolder_user = '" . e($target_user_id) . "') AND (aclfolder_folder = '" . e($folder_id) . "')");
-            } else {
+            if ($entry['rights'] > 0) {
                 db(
                     "INSERT INTO aclfolder (aclfolder_user, aclfolder_folder, aclfolder_rights, expiration_date)
-                    VALUES ('" . e($target_user_id) . "', '" . e($folder_id) . "', '" . e($rights) . "', '" . e($sql_expiration_date) . "')");
+                    VALUES ('" . e($target_user_id) . "', '" . e($folder_id) . "', '" . e($entry['rights']) . "', '" . e($entry['expiration_date']) . "')");
             }
         }
 

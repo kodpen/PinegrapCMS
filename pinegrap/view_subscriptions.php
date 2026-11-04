@@ -37,6 +37,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = is_scalar($_POST['action'] ?? null) ? (string) $_POST['action'] : '';
     $result = pg_subscription_operator_action($user, $subscription_id, $action);
 
+    // A row that is gone has no page to show the error on: the list shows
+    // it and clears it, so it never waits for a later visit.
+    if ($result['result'] === 'not_found') {
+        $subscription_id = 0;
+    }
+
     if ($result['result'] === 'done') {
         $notices = array(
             'pause'  => lang('The subscription was paused. Nothing is charged until it is resumed.'),
@@ -90,7 +96,7 @@ if ($subscription_id > 0) {
     $record = pg_subscription_operator_record($subscription_id);
 
     if ($record === null) {
-        output_error(lang('The subscription was not found.') . ' <a href="view_subscriptions.php">' . h(lang('All subscriptions')) . '</a>');
+        output_error(lang('The subscription was not found.') . ' <a href="view_subscriptions.php">' . h(lang('All subscriptions')) . '</a>', 404);
     }
 
     $row = $record['row'];
@@ -162,7 +168,7 @@ if ($subscription_id > 0) {
     $output_events = '';
 
     foreach ($record['events'] as $event) {
-        $label = pg_subscription_customer_event_label((string) $event['kind']);
+        $label = pg_subscription_operator_event_label((string) $event['kind']);
         $output_events .= '
                             <tr>
                                 <td class="text-nowrap">' . h(get_absolute_time(array('timestamp' => (int) $event['created_at'], 'format' => 'plain_text'))) . '</td>
@@ -224,7 +230,7 @@ if ($subscription_id > 0) {
                         <thead>
                             <tr>
                                 <th>' . h(lang('Date')) . '</th>
-                                <th>' . h(lang('Event')) . '</th>
+                                <th>' . h(lang('Event type')) . '</th>
                                 <th>' . h(lang('Order')) . '</th>
                                 <th class="text-end">' . h(lang('Amount')) . '</th>
                                 <th>' . h(lang('Details')) . '</th>
@@ -285,10 +291,10 @@ if ($subscription_id > 0) {
                 <div class="pg-toolbar-grow"></div>
                 <form action="view_subscriptions.php" method="get" class="d-flex flex-wrap align-items-center gap-1 row-gap-3" role="search">
                     <select name="status" class="form-control form-control-sm w-auto" aria-label="' . h(lang('Status')) . '">' . $output_status_options . '</select>
-                    <span class="d-inline-flex flex-wrap align-items-center gap-1 row-gap-3 max-w-100">
-                        <input type="date" data-pg-date name="next_from" value="' . h($filter['next_from']) . '" class="form-control form-control-sm w-auto" aria-label="' . h(lang('Next charge from')) . '" title="' . h(lang('Next charge from')) . '">
+                    <span class="d-inline-flex flex-nowrap align-items-center gap-1 max-w-100">
+                        <input type="date" data-pg-date name="next_from" value="' . h($filter['next_from']) . '" class="form-control form-control-sm w-auto flex-fill min-w-0" aria-label="' . h(lang('Next charge from')) . '" title="' . h(lang('Next charge from')) . '">
                         <span class="fg-secondary">&ndash;</span>
-                        <input type="date" data-pg-date name="next_to" value="' . h($filter['next_to']) . '" class="form-control form-control-sm w-auto" aria-label="' . h(lang('Next charge to')) . '" title="' . h(lang('Next charge to')) . '">
+                        <input type="date" data-pg-date name="next_to" value="' . h($filter['next_to']) . '" class="form-control form-control-sm w-auto flex-fill min-w-0" aria-label="' . h(lang('Next charge to')) . '" title="' . h(lang('Next charge to')) . '">
                     </span>
                     <input type="search" name="q" value="' . h($filter['q']) . '" maxlength="100" class="form-control form-control-sm w-auto" placeholder="' . h(lang('Customer name or e-mail')) . '" aria-label="' . h(lang('Customer name or e-mail')) . '">
                     <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-12"><i class="bi bi-funnel me-1" aria-hidden="true"></i>' . h(lang('Filter')) . '</button>

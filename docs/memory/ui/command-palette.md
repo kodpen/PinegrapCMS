@@ -4,7 +4,7 @@ description: Panel search box (Ctrl+K): where the chips come from, how text is m
 ---
 
 ## Where do the chips come from?
-- `pg_panel_backend_search()` (`includes/panel/search.php`) answers with `actions`: label, icon, url and `keys`. The empty query returns the actions only; `backend.src.js` caches them when the box opens and matches the typed text against `keys` with `actionMatches()` (prefix either way, folded by `normalizeTR()` → `window.pgFoldTR()`). Gates: `command-palette-chips.md`.
+- `pg_panel_backend_search()` (`includes/panel/search.php`) answers with `actions`: label, icon, url and `keys`. The empty query returns the actions only; `backend.src.js` caches them when the box opens and matches the typed text against `keys` with `actionMatches()` (rule in `command-palette-chips.md`, folded by `normalizeTR()` → `window.pgFoldTR()`). Gates: `command-palette-chips.md`.
 
 ## How are the results ranked?
 - By `pg_panel_search_score()`, 20 at a time, in one fixed order so Load More never repeats or hides a result: `command-palette-ranking.md`.

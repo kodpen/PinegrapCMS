@@ -526,7 +526,14 @@ function test_designer_page_link_values_missing_page_and_bare()
 // A sentinel no renderer expanded prints '#', never a token swept to href="".
 function test_designer_page_link_apply_bindings_sentinel()
 {
-	$props = _apply_bindings(array('href' => '/typed', '_bindings' => array('href' => '__page_link', 'text' => 'title')));
+	// Inside a widget; outside one the typed href is the fallback
+	// (page_link_by_id_test.php).
+	pg_sw_finish_open(array('sid' => 3, 'kind' => 'form_item_view'));
+	try {
+		$props = _apply_bindings(array('href' => '/typed', '_bindings' => array('href' => '__page_link', 'text' => 'title')));
+	} finally {
+		pg_sw_finish_close();
+	}
 	pg_assert_same('#', $props['href']);
 	pg_assert_same('^^title^^', $props['text']);
 	pg_assert_same(array(array('name' => 'data-pg-bind', 'value' => 'text:title')), $props['_attrs'], 'no data-pg-bind pair for the href');
@@ -661,4 +668,17 @@ function test_designer_page_link_editor_wiring()
 		$body = substr($js, $palette[1], strpos($js, '];', $palette[1]) - $palette[1]);
 		pg_assert_false(strpos($body, '__page_link') !== false || strpos($body, 'SW_PAGE_LINK_TOKEN') !== false, $palettes[1][$i][0]);
 	}
+}
+
+// A record's address sent to another page is the whole address, so a
+// moderator can paste it into a browser (#4878); the path when the whole
+// address is unknown or longer than a URL filter reads (100 characters).
+function test_designer_page_link_record_value()
+{
+	pg_assert_same('', pg_sw_page_link_record_value('', 'https://example.com/'), 'no record');
+	pg_assert_same('', pg_sw_page_link_record_value('#', 'https://example.com/#'), 'no record address');
+	pg_assert_same('https://example.com/topic?r=ABC', pg_sw_page_link_record_value('/topic?r=ABC', 'https://example.com/topic?r=ABC'), 'the whole address');
+	pg_assert_same('/topic?r=ABC', pg_sw_page_link_record_value('/topic?r=ABC', ''), 'the path without a site address');
+	$long = 'https://example.com/' . str_repeat('a', 90);
+	pg_assert_same('/' . str_repeat('a', 90), pg_sw_page_link_record_value('/' . str_repeat('a', 90), $long), 'the path when the whole address is too long to send');
 }

@@ -1401,6 +1401,20 @@ function pg_seo_impact_select($score_column, $checked_column)
         return "NULL AS seo_impact, '0' AS seo_views";
     }
 
+    return pg_seo_impact_sql($score_column, $checked_column) . " AS seo_impact,
+        COALESCE(seo_traffic.views, 0) AS seo_views";
+}
+
+// The impact figure of pg_seo_impact_select() as an expression without its
+// alias, so a list can sort by it and compare it in WHERE (keyset paging).
+// It reads the seo_traffic join of pg_seo_traffic_join(); without the
+// traffic table it is NULL.
+function pg_seo_impact_sql($score_column, $checked_column)
+{
+    if (!pg_seo_traffic_ready()) {
+        return 'NULL';
+    }
+
     // Two conditions, and both produce "we cannot say" rather than a number.
     //
     // seo_checked_at, not the score itself: a record that has never been
@@ -1415,8 +1429,7 @@ function pg_seo_impact_select($score_column, $checked_column)
     return
         "IF((" . $checked_column . " > 0) AND (COALESCE(seo_traffic.views, 0) > 0),
             ROUND((100 - " . $score_column . ") * LOG10(1 + seo_traffic.views)),
-            NULL) AS seo_impact,
-        COALESCE(seo_traffic.views, 0) AS seo_views";
+            NULL)";
 }
 
 // The same figure as pg_seo_impact_select(), in PHP.
@@ -2703,7 +2716,9 @@ function pg_seo_render_checklist($row, $type = '', $id = 0)
     $bar_class = ($color['class'] !== '') ? ' bg-' . $color['class'] : '';
     $bar_style = 'width:' . $score . '%' . (($color['style'] !== '') ? ';background-color:' . $color['style'] : '');
     $text_class = ($color['class'] !== '') ? ' fg-' . $color['class'] : '';
-    $text_style = ($color['style'] !== '') ? ' style="color:' . $color['style'] . '"' : '';
+    // The fill colour reads 2.4:1 as text on the light ground; the band's
+    // text shade is the one pg_seo_render_bar() uses for its figure.
+    $text_style = ($color['ink'] !== '') ? ' style="color:' . $color['ink'] . '"' : '';
 
     // Speed rows are kept apart from the rest. They describe how the page is
     // delivered rather than what is written on it, and they are measured from
@@ -2928,6 +2943,18 @@ function pg_seo_render_run_script()
                 } else {
                     wrap.innerHTML = html;
                 }
+
+                // The other places that show the score of this record: the card
+                // heading badge, the bar and badge of the list row.
+                Array.prototype.forEach.call(holder.querySelectorAll("template[data-pg-seo-fresh]"), function (template) {
+                    var kind = template.getAttribute("data-pg-seo-fresh");
+                    var key = template.getAttribute("data-pg-seo-key");
+                    Array.prototype.forEach.call(document.querySelectorAll("[data-pg-seo-" + kind + "]"), function (target) {
+                        if (target.getAttribute("data-pg-seo-" + kind) === key) {
+                            target.innerHTML = template.innerHTML;
+                        }
+                    });
+                });
             })
             .catch(function (error) {
                 Array.prototype.forEach.call(buttons, function (button) { button.disabled = false; });
@@ -2950,6 +2977,22 @@ function pg_seo_render_run_script()
         return ' . json_encode(lang('Something went wrong. Please try again.')) . ';
     }
     </script>';
+}
+
+// The record's badge and list bar after a refresh, as inert templates beside
+// the checklist. The run buttons' handler copies each into the elements whose
+// data-pg-seo-badge / data-pg-seo-bar names the same "type:id" key.
+function pg_seo_render_fresh_indicators($row, $type, $id)
+{
+    if (!in_array($type, array('page', 'product', 'product_group'), true) || !(int) $id) {
+        return '';
+    }
+
+    $key = $type . ':' . (int) $id;
+
+    return
+        '<template data-pg-seo-fresh="badge" data-pg-seo-key="' . h($key) . '">' . pg_seo_render_badge($row) . '</template>'
+        . '<template data-pg-seo-fresh="bar" data-pg-seo-key="' . h($key) . '">' . pg_seo_render_bar($row) . '</template>';
 }
 
 // One group line in the detail panel: name, thin bar, score and the weight

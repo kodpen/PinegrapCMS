@@ -662,3 +662,25 @@ function test_short_link_redirects_numbered_name_keeps_to_the_column()
 	pg_assert_same(str_repeat('ü', 97) . '[1]', pg_short_link_numbered_name(str_repeat('ü', 99), 1, 100), 'characters, not bytes (100 before the step)');
 	pg_assert_same('', pg_short_link_numbered_name('abc', 1, 3), 'no room for any of the name');
 }
+
+function test_short_link_redirects_binned_destination_reads_its_original_name()
+{
+	pg_assert_same('hedef', pg_short_link_binned_original(array('destination_type' => 'page', 'page_id' => 12, 'page_name' => 'pgbin_12_hedef')), 'a parked page');
+	pg_assert_same('belge.pdf', pg_short_link_binned_original(array('destination_type' => 'file', 'file_id' => 7, 'file_name' => 'pgbin_7_belge.pdf')), 'a parked file');
+	pg_assert_same('magaza', pg_short_link_binned_original(array('destination_type' => 'product', 'page_id' => 3, 'page_name' => 'pgbin_3_magaza')), 'the catalog page of a product');
+	pg_assert_same('', pg_short_link_binned_original(array('destination_type' => 'page', 'page_id' => 13, 'page_name' => 'pgbin_12_hedef')), 'another row\'s prefix');
+	pg_assert_same('', pg_short_link_binned_original(array('destination_type' => 'page', 'page_id' => 12, 'page_name' => 'pgbin_12_')), 'no name after the prefix');
+	pg_assert_same('', pg_short_link_binned_original(array('destination_type' => 'page', 'page_id' => 12, 'page_name' => 'hedef')), 'a live page');
+	pg_assert_same('', pg_short_link_binned_original(array('destination_type' => 'url', 'url' => 'pgbin_1_x')), 'a url link');
+}
+
+function test_short_link_redirects_binned_destination_gets_no_location_and_exports_its_name()
+{
+	$page = array('destination_type' => 'page', 'page_id' => 12, 'page_name' => 'pgbin_12_hedef', 'tracking_code' => '');
+	pg_assert_same('', pg_short_link_location($page, array(), '', 'https://example.com', '/'), 'no redirect to the parked address');
+	pg_assert_same('/hedef', pg_short_link_csv_target($page, '/'), 'exported under its own name');
+
+	$file = array('destination_type' => 'file', 'file_id' => 7, 'file_name' => 'pgbin_7_belge.pdf');
+	pg_assert_same('', pg_short_link_location($file, array(), '', 'https://example.com', '/'), 'no redirect to a parked file');
+	pg_assert_same('/sub/belge.pdf', pg_short_link_csv_target($file, '/sub/'), 'a file under its own name');
+}

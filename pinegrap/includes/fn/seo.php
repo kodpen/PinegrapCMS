@@ -1373,9 +1373,11 @@ function pg_record_widget_form_page_id($cfg)
  * (pg_record_share_image_uses_default()): forms shown by a classic form item
  * view page or a designed form item view widget, with no RSS media field and
  * no share image field. Named for the SEO settings card; empty before the
- * 11.0.18 column is there.
+ * 11.0.18 column is there. Forms in the Recycle Bin are left out (there is
+ * nothing to fix on them), and same-named forms are told apart as the
+ * custom form pickers do (pg_submitted_form_list_labels()).
  *
- * @return array custom form page id => form name
+ * @return array custom form page id => form label, not escaped
  */
 function pg_record_forms_sharing_default_image()
 {
@@ -1401,17 +1403,18 @@ function pg_record_forms_sharing_default_image()
 
     unset($form_page_ids[0]);
 
+    $bin_folders = function_exists('pg_recycle_bin_folder_ids') ? array_flip(pg_recycle_bin_folder_ids()) : array();
     $forms = array();
 
     foreach (array_keys($form_page_ids) as $form_page_id) {
         $form = db_item(
-            "SELECT custom_form_pages.form_name, custom_form_pages.share_image_field_id, page.page_name
+            "SELECT custom_form_pages.form_name, custom_form_pages.share_image_field_id, page.page_name, page.page_folder
             FROM custom_form_pages
             LEFT JOIN page ON page.page_id = custom_form_pages.page_id
             WHERE custom_form_pages.page_id = '" . (int) $form_page_id . "'
             LIMIT 1");
 
-        if (!is_array($form)) {
+        if (!is_array($form) || isset($bin_folders[(int) $form['page_folder']])) {
             continue;
         }
 
@@ -1420,14 +1423,55 @@ function pg_record_forms_sharing_default_image()
             WHERE page_id = '" . (int) $form_page_id . "'");
 
         if (pg_record_share_image_uses_default($form['share_image_field_id'], $fields)) {
-            $name = trim((string) $form['form_name']);
-            $forms[$form_page_id] = ($name !== '') ? $name : (string) $form['page_name'];
+            $forms[] = array(
+                'id' => $form_page_id,
+                'form_name' => trim((string) $form['form_name']),
+                'page_name' => (string) $form['page_name'],
+                'binned' => false);
         }
     }
 
-    natcasesort($forms);
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
 
-    return $forms;
+    $labels = array();
+    $seen = array();
+
+    foreach (pg_submitted_form_list_labels($forms) as $form) {
+        $label = $form['name'];
+
+        // Two forms whose form and page names are both equal get their id.
+        if (isset($seen[mb_strtolower($label, 'UTF-8')])) {
+            $label .= ' (#' . $form['id'] . ')';
+        }
+
+        $seen[mb_strtolower($form['name'], 'UTF-8')] = true;
+        $labels[$form['id']] = $label;
+    }
+
+    natcasesort($labels);
+
+    return $labels;
+}
+
+/**
+ * The forms named in the Default Share Image warning: the first few labels,
+ * then how many more, so a site with dozens of form pages does not get a
+ * warning as long as the card.
+ *
+ * @param array $labels pg_record_forms_sharing_default_image()'s answer
+ * @param int   $limit  labels written out
+ * @return string not escaped
+ */
+function pg_record_forms_sharing_default_image_text($labels, $limit = 5)
+{
+    $labels = array_values((array) $labels);
+    $text = implode(', ', array_slice($labels, 0, $limit));
+
+    if (count($labels) > $limit) {
+        $text .= ' ' . lang(array('string' => 'and {var:1} more', 'vars' => array(count($labels) - $limit)));
+    }
+
+    return $text;
 }
 
 /**
@@ -3332,6 +3376,170 @@ function pg_request_is_automated()
     return function_exists('waf_is_pinegrap_client') && waf_is_pinegrap_client();
 }
 
+/**
+ * Whether this request is the panel's own preview of a page: the File
+ * Manager's preview pane and Quick look load the page with pg_preview=1.
+ * Such a draw opens no visitor record and counts no page view, or an operator
+ * looking through pages would raise their views and SEO impact (#5218).
+ *
+ * The marker counts only for a signed-in panel user; a visitor who adds it is
+ * counted as usual. The query string also keeps the page cache out of it, so
+ * no beacon counts it either.
+ *
+ * Pure: no query.
+ *
+ * @param  array $get        request parameters ($_GET)
+ * @param  bool  $signed_in  a panel user is signed in
+ * @return bool
+ */
+function pg_request_is_panel_preview(array $get, $signed_in)
+{
+    return ($signed_in === true)
+        && isset($get['pg_preview'])
+        && is_string($get['pg_preview'])
+        && ($get['pg_preview'] === '1');
+}
+
+/**
+ * The search engines a referring host is recognised by, in the order they
+ * are tried: host pattern (matched on the lower-cased host without a
+ * trailing dot), the name stored in visitors.referring_search_engine and the
+ * query parameter that carries the search terms. Pure.
+ *
+ * The names are values of the column's ENUM: a new engine is appended to it
+ * by a schema step and listed in pg_visitor_search_engines_added() until
+ * every site has run that step.
+ *
+ * @return array list of array('pattern' => regex, 'name' => string, 'key' => string)
+ */
+function pg_visitor_search_engines()
+{
+    return array(
+        // Google by host: every country domain (google.com.tr, google.de),
+        // with or without www.
+        array('pattern' => '/(^|\.)google\./', 'name' => 'Google', 'key' => 'q'),
+        array('pattern' => '/(^|\.)bing\.com$/', 'name' => 'Bing', 'key' => 'q'),
+        array('pattern' => '/(^|\.)(yandex\.[a-z.]+|ya\.ru)$/', 'name' => 'Yandex', 'key' => 'text'),
+        array('pattern' => '/(^|\.)duckduckgo\.com$/', 'name' => 'DuckDuckGo', 'key' => 'q'),
+        array('pattern' => '/(^|\.)ecosia\.org$/', 'name' => 'Ecosia', 'key' => 'q'),
+        array('pattern' => '/^search\.brave\.com$/', 'name' => 'Brave Search', 'key' => 'q'),
+        array('pattern' => '/(^|\.)qwant\.com$/', 'name' => 'Qwant', 'key' => 'q'),
+        array('pattern' => '/(^|\.)startpage\.(com|nl)$/', 'name' => 'Startpage', 'key' => 'query'),
+        array('pattern' => '/(^|\.)baidu\.com$/', 'name' => 'Baidu', 'key' => 'wd'),
+        array('pattern' => '/^(m\.)?search\.naver\.com$/', 'name' => 'Naver', 'key' => 'query'),
+        array('pattern' => '/^search\.seznam\.cz$/', 'name' => 'Seznam', 'key' => 'q'),
+        array('pattern' => '/^(.+\.)?search\.yahoo\./', 'name' => 'Yahoo!', 'key' => 'p'),
+        array('pattern' => '/search\.msn\./', 'name' => 'MSN', 'key' => 'q'),
+        array('pattern' => '/^(search|aolsearch)\.aol\.com$/', 'name' => 'AOL', 'key' => 'query'),
+        array('pattern' => '/(^|\.)ask\.com$/', 'name' => 'Ask.com', 'key' => 'q'),
+        array('pattern' => '/^www\.ask\.co\.uk$/', 'name' => 'Ask.com', 'key' => 'ask'),
+        array('pattern' => '/^search\.earthlink\.net$/', 'name' => 'EarthLink', 'key' => 'q'),
+        array('pattern' => '/^www\.netscape\.com$/', 'name' => 'Netscape', 'key' => 's'),
+        array('pattern' => '/^(search|searcht)\.netscape\.com$/', 'name' => 'Netscape', 'key' => 'query'),
+        array('pattern' => '/^www\.alltheweb\.com$/', 'name' => 'AlltheWeb', 'key' => 'q'),
+        array('pattern' => '/^msxml\.excite\.com$/', 'name' => 'Excite', 'key' => 'qkw'),
+        array('pattern' => '/^www\.metacrawler\.com$/', 'name' => 'MetaCrawler', 'key' => 'qkw'),
+        array('pattern' => '/^dpxml\.webcrawler\.com$/', 'name' => 'WebCrawler', 'key' => 'qkw'),
+        array('pattern' => '/^search\.lycos\.com$/', 'name' => 'Lycos', 'key' => 'query'),
+        array('pattern' => '/^www\.hotbot\.com$/', 'name' => 'HotBot', 'key' => 'query'),
+        array('pattern' => '/^search\.mamma\.com$/', 'name' => 'Mamma.com', 'key' => 'query'),
+        array('pattern' => '/^search\.cometsystems\.com$/', 'name' => 'Comet Web Search', 'key' => 'qry'),
+        array('pattern' => '/^www\.overture\.com$/', 'name' => 'Overture', 'key' => 'Keywords'),
+        array('pattern' => '/^www\.looksmart\.com$/', 'name' => 'LookSmart', 'key' => 'key'),
+        array('pattern' => '/^search\.looksmart\.com$/', 'name' => 'LookSmart', 'key' => 'qt'),
+        array('pattern' => '/^search\.viewpoint\.com$/', 'name' => 'Viewpoint', 'key' => 'k'),
+        array('pattern' => '/^search\.dmoz\.org$/', 'name' => 'Open Directory Project', 'key' => 'search'),
+    );
+}
+
+/**
+ * The engine names appended to the referring_search_engine ENUM by schema
+ * step 11.0.166. Until a site has run it the column refuses them, so
+ * init_tracking() stores one only once the column lists it. Pure.
+ *
+ * @return array
+ */
+function pg_visitor_search_engines_added()
+{
+    return array('Yandex', 'DuckDuckGo', 'Ecosia', 'Brave Search', 'Qwant', 'Startpage', 'Baidu', 'Naver', 'Seznam');
+}
+
+/**
+ * The search engine a referring host belongs to. An AI assistant's host is
+ * never a search engine, even under a search engine's domain
+ * (gemini.google.com). Pure.
+ *
+ * @param string $host
+ * @return array|null array('name' => string, 'key' => query parameter), null for none
+ */
+function pg_visitor_search_engine($host)
+{
+    $host = rtrim(strtolower(trim((string) $host)), '.');
+
+    if ($host === '') {
+        return null;
+    }
+
+    if (function_exists('pg_visitor_ai_assistant') && (pg_visitor_ai_assistant($host) !== '')) {
+        return null;
+    }
+
+    foreach (pg_visitor_search_engines() as $engine) {
+        if (preg_match($engine['pattern'], $host) === 1) {
+            return array('name' => $engine['name'], 'key' => $engine['key']);
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Whether visits.referring_search_engine accepts an engine name: the names
+ * of the old list always, an appended one once the schema step has run. The
+ * column's type is read once per request, and only for an appended name.
+ *
+ * @param string $name
+ * @return bool
+ */
+function pg_visitor_search_engine_storable($name)
+{
+    static $type = null;
+
+    if (!in_array($name, pg_visitor_search_engines_added(), true)) {
+        return true;
+    }
+
+    if ($type === null) {
+        $row = db_item("SHOW COLUMNS FROM visitors WHERE Field = 'referring_search_engine'");
+        $type = (is_array($row) && isset($row['Type'])) ? (string) $row['Type'] : '';
+    }
+
+    return pg_visitor_enum_lists($type, $name);
+}
+
+/**
+ * Whether a column type is a plain string type or an ENUM that lists the
+ * value. Pure.
+ *
+ * @param string $type  SHOW COLUMNS Type
+ * @param string $value
+ * @return bool
+ */
+function pg_visitor_enum_lists($type, $value)
+{
+    $type = trim((string) $type);
+
+    if ($type === '') {
+        return false;
+    }
+
+    if (stripos($type, 'enum(') !== 0) {
+        return (stripos($type, 'char') !== false) || (stripos($type, 'text') !== false);
+    }
+
+    return strpos($type, "'" . str_replace("'", "''", (string) $value) . "'") !== false;
+}
+
 // The visitor's row in visitors for this request: opened or found again, with
 // the tracking, affiliate and campaign codes and the referring site. Called
 // by get_page.php for a page it draws and by page_view.php for a page the
@@ -3506,120 +3714,11 @@ function init_tracking()
 				// The host and not the whole address: flask.com, or another
 				// site's address that merely contains "www.google", is no search engine.
 				$delimiter = '';
-				if (preg_match('/www\.google.*/i', $referring_host_name))
+				$engine = pg_visitor_search_engine($referring_host_name);
+				if (($engine !== null) && pg_visitor_search_engine_storable($engine['name']))
 				{
-					$referring_search_engine = 'Google';
-					$delimiter = 'q';
-				}
-				elseif (preg_match('/search\.msn.*/i', $referring_host_name))
-				{
-					$referring_search_engine = 'MSN';
-					$delimiter = 'q';
-				}
-				elseif (preg_match('/search\.yahoo.*/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Yahoo!';
-					$delimiter = 'p';
-				}
-				elseif (preg_match('/www\.bing\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Bing';
-					$delimiter = 'q';
-				}
-				elseif (preg_match('/(search\.aol\.com)|(aolsearch\.aol\.com)/i', $referring_host_name))
-				{
-					$referring_search_engine = 'AOL';
-					$delimiter = 'query';
-				}
-				elseif (preg_match('/(^|\.)ask\.com$/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Ask.com';
-					$delimiter = 'q';
-				}
-				elseif (preg_match('/www\.ask\.co\.uk/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Ask.com';
-					$delimiter = 'ask';
-				}
-				elseif (preg_match('/search\.earthlink\.net/i', $referring_host_name))
-				{
-					$referring_search_engine = 'EarthLink';
-					$delimiter = 'q';
-				}
-				elseif (preg_match('/www\.netscape\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Netscape';
-					$delimiter = 's';
-				}
-				elseif (preg_match('/(search\.netscape\.com)|(searcht\.netscape\.com)/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Netscape';
-					$delimiter = 'query';
-				}
-				elseif (preg_match('/www\.alltheweb\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'AlltheWeb';
-					$delimiter = 'q';
-				}
-				elseif (preg_match('/msxml\.excite\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Excite';
-					$delimiter = 'qkw';
-				}
-				elseif (preg_match('/www\.metacrawler\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'MetaCrawler';
-					$delimiter = 'qkw';
-				}
-				elseif (preg_match('/dpxml\.webcrawler\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'WebCrawler';
-					$delimiter = 'qkw';
-				}
-				elseif (preg_match('/search\.lycos\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Lycos';
-					$delimiter = 'query';
-				}
-				elseif (preg_match('/www\.hotbot\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'HotBot';
-					$delimiter = 'query';
-				}
-				elseif (preg_match('/search\.mamma\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Mamma.com';
-					$delimiter = 'query';
-				}
-				elseif (preg_match('/search\.cometsystems\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Comet Web Search';
-					$delimiter = 'qry';
-				}
-				elseif (preg_match('/www\.overture\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Overture';
-					$delimiter = 'Keywords';
-				}
-				elseif (preg_match('/www\.looksmart\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'LookSmart';
-					$delimiter = 'key';
-				}
-				elseif (preg_match('/search\.looksmart\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'LookSmart';
-					$delimiter = 'qt';
-				}
-				elseif (preg_match('/search\.viewpoint\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Viewpoint';
-					$delimiter = 'k';
-				}
-				elseif (preg_match('/search\.dmoz\.org/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Open Directory Project';
-					$delimiter = 'search';
+					$referring_search_engine = $engine['name'];
+					$delimiter = $engine['key'];
 				}
 				// if a delimiter was found, get search terms. Search engines
 				// mostly send their bare address now (https://www.google.com/),
@@ -5532,7 +5631,10 @@ function pg_seo_pages_summary($rows)
             }
         }
 
-        if ((int) ($row['seo_checked_at'] ?? 0) == 0) {
+        // Never scored, or marked stale by a change since the last score:
+        // the rows the "SEO Score Not Calculated" filter lists.
+        if (((int) ($row['seo_checked_at'] ?? 0) == 0)
+            || (isset($row['seo_analysis_current']) && ((string) $row['seo_analysis_current'] === '0'))) {
             $summary['not_calculated']++;
         }
 

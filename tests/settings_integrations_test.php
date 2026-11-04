@@ -103,6 +103,18 @@ function test_settings_integrations_google_reviews_save_moved()
 	pg_assert_true($keep > $write, 'saved after the API columns');
 }
 
+// An emptied or mistyped Log Retention box is refused before the write, not
+// stored as 1 day, which let the next purge empty the API log.
+function test_settings_integrations_log_retention_refused_not_clamped()
+{
+	$save = settings_integrations_test_source('includes/settings/api.save.php');
+	$mark = strpos($save, "\$liveform->mark_error('api_log_retention_days'");
+
+	pg_assert_true(($mark !== false) && ($mark < strpos($save, 'if ($liveform->check_form_errors())')), 'refused before anything is written');
+	pg_assert_contains('!ctype_digit($api_log_retention_text)', $save);
+	pg_assert_same(false, strpos($save, "max(1, min((int) post_value('api_log_retention_days')"), 'no silent clamp to 1');
+}
+
 function test_settings_integrations_links_follow_each_screen_gate()
 {
 	$manager = settings_integrations_test_urls(pg_settings_integration_links(array('id' => 1, 'role' => 2), array('ecommerce' => true, 'workspace_settings' => false)));

@@ -8,7 +8,9 @@
   captions are set in the data rather than written here: label.invoice_no is
   the order number, label.invoice_date its date, label.due_date the expected
   delivery (invoice.due_date, empty when none was agreed) and label.bill_to
-  names the supplier. The template carries no words of its own, so a
+  names the supplier. A cancelled order prints label.cancelled under the
+  title (invoice.is_cancelled); each quantity is followed by its unit's
+  name (unit_name). The template carries no words of its own, so a
   translation change reaches the document without an edit here.
 -->
 <html lang="{{language}}">
@@ -26,6 +28,7 @@
     .seller .name { font-size: 12pt; font-weight: bold; margin-bottom: 3px; }
     .doc { text-align: right; }
     .doc .title { font-size: 15pt; font-weight: bold; letter-spacing: 1px; color: #333; }
+    .doc .cancelled { font-size: 11pt; font-weight: bold; color: #b00020; letter-spacing: 2px; }
     .doc table { width: auto; margin-left: auto; margin-top: 6px; }
     .doc td { padding: 2px 0 2px 12px; font-size: 9pt; white-space: nowrap; }
     .doc td.k { color: #666; }
@@ -70,6 +73,7 @@
         </td>
         <td class="doc">
             <div class="title">{{invoice.title}}</div>
+            {{#invoice.is_cancelled}}<div class="cancelled">{{label.cancelled}}</div>{{/invoice.is_cancelled}}
             <table>
                 <tr><td class="k">{{label.invoice_no}}</td><td class="v">{{invoice.full_number}}</td></tr>
                 <tr><td class="k">{{label.invoice_date}}</td><td class="v">{{invoice.issue_date}}</td></tr>
@@ -107,10 +111,10 @@
         <tr>
             <th class="c" style="width:4%">#</th>
             <th>{{label.description}}</th>
-            <th class="n" style="width:9%">{{label.quantity}}</th>
-            <th class="n" style="width:13%">{{label.unit_price}}</th>
+            <th class="n" style="width:11%">{{label.quantity}}</th>
+            <th class="n" style="width:12%">{{label.unit_price}}</th>
             <th class="n" style="width:11%">{{label.discount}}</th>
-            <th class="n" style="width:13%">{{label.taxable_amount}}</th>
+            <th class="n" style="width:12%">{{label.taxable_amount}}</th>
             <th class="n" style="width:7%">{{label.vat}}</th>
             <th class="n" style="width:12%">{{label.vat_amount}}</th>
             <th class="n" style="width:13%">{{label.total}}</th>
@@ -121,7 +125,7 @@
         <tr>
             <td class="c">{{no}}</td>
             <td>{{description}}{{#withholding}}<div class="muted">{{withholding}}</div>{{/withholding}}</td>
-            <td class="n">{{quantity}}</td>
+            <td class="n">{{quantity}}{{#unit_name}} {{unit_name}}{{/unit_name}}</td>
             <td class="n">{{unit_price}}</td>
             <td class="n">{{#has_discount}}&minus;{{discount}}{{/has_discount}}</td>
             <td class="n">{{base}}</td>

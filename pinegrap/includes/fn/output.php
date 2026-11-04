@@ -107,6 +107,8 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Hold, move and reposition' => lang('Hold, move and reposition'),
         'Pin' => lang('Pin'),
         'Remove' => lang('Remove'),
+        'Field to set' => lang('Field to set'),
+        'New value' => lang('New value'),
         'Close' => lang('Close'),
         'Unpin' => lang('Unpin'),
         'Mark as unread' => lang('Mark as unread'),
@@ -159,6 +161,13 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Current Date' => lang('Current Date'),
         'Current Date & Time' => lang('Current Date & Time'),
         'Day(s) Ago' => lang('Day(s) Ago'),
+        'day(s)' => lang('day(s)'),
+        'Field' => lang('Field'),
+        'Operator' => lang('Operator'),
+        'Value' => lang('Value'),
+        'Dynamic Value' => lang('Dynamic Value'),
+        'Filter {var:1}' => lang('Filter {var:1}'),
+        'Delete filter' => lang('Delete filter'),
         'Current Time' => lang('Current Time'),
         'Viewer' => lang('Viewer'),
         'Viewer\'s E-mail Address' => lang('Viewer\'s E-mail Address'),
@@ -280,14 +289,13 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery_datatables_checkbox.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/lazy.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/multiselect-checkbox/jquery-multiselect-checkbox.min.js"></script>
-    <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/json2/json.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/jquery.inputmask.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/bindings/inputmask.binding.js"></script>
     <script>window.pgCodeEditorConfig = ' . pg_code_editor_json(pg_code_editor_urls()) . ';</script>
     <link rel="stylesheet" type="text/css" href="' . h(CONTROL_PANEL_STYLESHEET_URL) . '" />
     ' . $assistant_snippet . '
     ' . pg_js_bundle_tags('assets/js/backend.min.js', false) . '
-    <style>' . CUSTOM_CSS . '</style>';
+    <style>' . pg_style_tag_css(CUSTOM_CSS) . '</style>';
 
 
 }
@@ -349,35 +357,36 @@ PGLOGOSVG;
 
 
 /**
- * The loading curtain.
+ * The loading curtain and the leaving bar.
  *
- * Two jobs, one element. Arriving: an admin screen assembles itself in the
- * browser — the grid settles, the sidebar snaps into place, tables take their
- * widths — and for a moment the page is a half-built layout sliding sideways,
- * which reads as a fault rather than as loading. Leaving: the curtain goes
- * back up the instant a link is clicked, so the wait for the next screen
- * happens behind it instead of on a frozen copy of the old one. Between the
- * two the panel stops flashing between pages at all.
+ * Arriving: an admin screen assembles itself in the browser — the grid
+ * settles, the sidebar snaps into place, tables take their widths — and on a
+ * slow page that half-built layout sliding sideways reads as a fault. The
+ * curtain stays transparent for its first 120 ms and fades in over 100 ms, so
+ * a screen that is ready by then shows nothing at all; a slower one is
+ * covered until the document is ready and the curtain fades out in 100 ms.
+ * A screen still building after that (the visual editor) sets
+ * window.pgPreloaderHold and calls window.pgPreloaderDone() once painted;
+ * only that curtain shows the mark in the middle. A list screen (table.chart)
+ * is held the same way without the mark until DataTables has drawn its table.
  *
- * It is the page's own background colour with a progress bar across the top,
- * not a picture: this is on every screen, dozens of times an hour, and
- * anything with a personality of its own becomes tiring by the third visit.
- * The bar is what says "working"; the rest is deliberately nothing.
+ * Leaving: no curtain. The old page stays visible; once a navigation has
+ * been under way for 150 ms a thin bar runs across the top and the pointer
+ * turns to "progress", and they stay until the page is gone (pagehide). No
+ * timer or interaction takes them down while the navigation runs. A
+ * navigation that never happens shows nothing: a cancelled confirm() never
+ * navigates, a cancelled "unsaved changes" prompt is read back from the
+ * beforeunload event, and an answer that turns out to be a download (it
+ * carries the pg_download cookie, pg_download_marker_hook()) clears the bar.
  *
  * Deliberately self-contained — markup, style hook and script arrive
  * together, right after <body>, so the curtain is up before any stylesheet or
- * script further down has had to load. Nothing else on the page can be relied
- * on at that point, so nothing else is.
- *
- * Four ways out, because a curtain that sticks makes the panel unusable: the
- * document being ready (the normal one), any interaction after a navigation
- * that did not happen (a cancelled "unsaved changes" prompt), a safety
- * timeout, and a CSS animation that hides the element after ten seconds even
- * if this script never ran at all.
+ * script further down has had to load. If this script never runs, a CSS
+ * animation hides the curtain after ten seconds.
  *
  * toolbar.php is excluded — it is the strip inside the frontend edit frame,
- * a few controls in a thin bar, and a curtain over the site being edited
- * would be the opposite of reassuring.
+ * and a curtain over the site being edited would be the opposite of
+ * reassuring.
  */
 function pg_preloader_markup()
 {
@@ -386,19 +395,25 @@ function pg_preloader_markup()
         return '';
     }
 
-    // The mark in the middle. On a private-label install there is no mark to
-    // show — the whole point of that mode is that the software does not name
-    // itself — so those screens get the three dots and nothing else.
+    // The mark in the middle, drawn only by a held curtain (CSS). On a
+    // private-label install there is no mark to show — the whole point of
+    // that mode is that the software does not name itself — so those
+    // screens get the three dots and nothing else.
     $mark = '';
     if (!defined('PRIVATE_LABEL') or !PRIVATE_LABEL) {
         $mark = '<span class="pg-preloader-logo">' . pg_logo_svg('-pl') . '</span>';
     }
 
-    $markup = '<div id="pg-preloader" class="pg-preloader" aria-hidden="true">'
+    $session_url = (defined('OUTPUT_PATH') && defined('OUTPUT_SOFTWARE_DIRECTORY'))
+        ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/session_state.php' : '';
+
+    $markup = '<div id="pg-preloader" class="pg-preloader" aria-hidden="true" data-pg-session="' . h($session_url) . '" data-pg-view="' . h(pg_session_view_key()) . '">'
             . '<div class="pg-preloader-bar"><i></i></div>'
             . '<div class="pg-preloader-mark">' . $mark
             . '<div class="pg-preloader-dots"><i></i><i></i><i></i></div>'
             . '</div></div>'
+            . '<div class="pg-leave-bar" aria-hidden="true"><i></i></div>'
+            . '<style>html.pg-session-check body{visibility:hidden}</style>'
             . '<noscript><style>#pg-preloader{display:none !important;}</style></noscript>';
 
     return $markup . <<<'PGPRELOADER'
@@ -407,98 +422,347 @@ function pg_preloader_markup()
     (function () {
         var host = document.getElementById('pg-preloader');
         if (!host) return;
+        var root = document.documentElement;
         var timer = 0;
 
         function hide() {
             clearTimeout(timer);
-            // The CSS failsafe hides the curtain after ten seconds in case
-            // this script never ran. Getting here proves it did — and leaving
-            // the animation armed would let it fire `forwards` on a page left
-            // open, after which the curtain could never be raised again on
-            // the way out.
+            if (host.classList.contains('is-done')) return;
+            // The arrival fade-in and the CSS failsafe are animations; taking
+            // them off would snap the curtain to its resting opacity, so the
+            // opacity it has reached is pinned first and then faded out from.
+            // Getting here also proves the script ran, so the failsafe goes.
+            host.style.opacity = getComputedStyle(host).opacity;
             host.style.animation = 'none';
+            void host.offsetWidth;
+            host.style.opacity = '';
             host.classList.add('is-done');
         }
-        function show() {
-            clearTimeout(timer);
-            host.classList.remove('is-done');
+
+        // A list screen prints its table.chart hidden and shows it only
+        // once DataTables has drawn it (backend.src.js), so its curtain
+        // waits for that pgPreloaderDone() instead of lifting over an empty
+        // card. Read on DOM ready: the table is not parsed yet up here. No
+        // is-hold: an everyday list never draws the mark.
+        function arrived() {
+            if (document.querySelector('table.chart') && window.jQuery && jQuery.fn && jQuery.fn.DataTable) {
+                return;
+            }
+            hide();
         }
 
         window.pgPreloaderDone = hide;
-        window.pgPreloaderShow = show;
 
-        // A screen that keeps building after the document is ready — the
-        // visual editor is the one — sets pgPreloaderHold and calls
-        // pgPreloaderDone() itself once it has actually painted.
-        if (!window.pgPreloaderHold) {
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', hide);
-            } else {
-                hide();
-            }
+        if (window.pgPreloaderHold) {
+            host.classList.add('is-hold');
+        } else if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', arrived);
+        } else {
+            arrived();
         }
-        setTimeout(hide, 9000);
+        timer = setTimeout(hide, 9000);
+
+        /* ── On the way out ──────────────────────────────────────────── */
+        var wait = 0, poll = 0, started = 0, unload = null, skipUntil = 0;
+        var cookie = /(?:^|;\s*)pg_download=/;
+
+        function dropMarker() {
+            if (cookie.test(document.cookie)) {
+                document.cookie = 'pg_download=; Max-Age=0; Path=/; SameSite=Lax';
+                return true;
+            }
+            return false;
+        }
+        function settle() {
+            clearTimeout(wait);
+            clearInterval(poll);
+            wait = poll = 0;
+            root.classList.remove('pg-is-leaving');
+        }
+        // An "unsaved changes" prompt was asked for by the beforeunload of
+        // this navigation. Read after the event, when every listener has run.
+        function prompted() {
+            if (!unload || unload.at < started - 50) return false;
+            var e = unload.e;
+            return e.defaultPrevented || (typeof e.returnValue === 'string' && e.returnValue !== '');
+        }
+        function leaving(e) {
+            settle();
+            started = Date.now();
+            dropMarker();
+            wait = setTimeout(function () {
+                wait = 0;
+                if ((e && e.defaultPrevented) || prompted()) return;
+                root.classList.add('pg-is-leaving');
+                poll = setInterval(function () { if (dropMarker()) settle(); }, 400);
+            }, 150);
+        }
+
+        var nav = window.navigation;
+        var hasNav = !!(nav && typeof nav.addEventListener === 'function' && 'NavigateEvent' in window);
+
+        window.addEventListener('beforeunload', function (e) {
+            unload = { e: e, at: Date.now() };
+            // Without the Navigation API this is the one signal every way of
+            // leaving gives: a link, a form, location.href, history.go().
+            if (!hasNav && !wait && !root.classList.contains('pg-is-leaving') && Date.now() > skipUntil) {
+                leaving(null);
+            }
+            // Runs once a prompt is answered; a cancelled one stays here.
+            setTimeout(function () { if (prompted()) settle(); }, 0);
+        });
+
+        // A page reached through Back or Forward may come from the
+        // back/forward cache (persisted) or from the HTTP cache (a
+        // back_forward navigation), and the session that drew it may have
+        // ended or been replaced by another user's since. It stays hidden
+        // until session_state.php answers with this page's view key
+        // (pg_session_view_key()); any other answer, or none, loads it
+        // again and the server decides what to show. A reload is not a
+        // back_forward navigation, so a failing check cannot loop.
+        function historyVisit() {
+            try {
+                var n = performance.getEntriesByType('navigation')[0];
+                return !!(n && n.type === 'back_forward');
+            } catch (err) { return false; }
+        }
+        function checkSession() {
+            var at = host.getAttribute('data-pg-session');
+            // Empty when the screen drew without an open session: then a
+            // signed-in session is all that can be asked for.
+            var want = host.getAttribute('data-pg-view') || '';
+            if (!at || !window.fetch) { root.classList.remove('pg-session-check'); return; }
+            root.classList.add('pg-session-check');
+            fetch(at, { credentials: 'same-origin', cache: 'no-store', headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (d) {
+                    if (d && d.signed_in === true && (want === '' || d.view === want)) root.classList.remove('pg-session-check');
+                    else location.reload();
+                })
+                .catch(function () { location.reload(); });
+        }
+        if (historyVisit()) root.classList.add('pg-session-check');
 
         // Coming back through the browser's back button hands us the page
-        // exactly as it was — curtain and all, if it was up when we left.
-        window.addEventListener('pageshow', function (e) { if (e.persisted) hide(); });
+        // exactly as it was, bar and all.
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) { settle(); hide(); }
+            if (e.persisted || historyVisit()) checkSession();
+        });
 
-        /* ── On the way out ──────────────────────────────────────────────
-         * Raised again the moment a navigation is asked for. The one thing
-         * it must not do is stay up when the navigation never happens — an
-         * unsaved-changes prompt that the operator cancels, a handler that
-         * calls preventDefault. So it comes down again on the first sign
-         * that somebody is still here, and on a timer regardless.
-         */
-        function leaving() {
-            show();
-            timer = setTimeout(hide, 6000);
-            ['pointerdown', 'keydown', 'wheel'].forEach(function (evt) {
-                document.addEventListener(evt, hide, { once: true, capture: true });
+        if (hasNav) {
+            // Every navigation of this window, however it was started; links
+            // that open elsewhere, cancelled clicks and in-page answers never
+            // reach it.
+            nav.addEventListener('navigate', function (e) {
+                if (e.hashChange || e.downloadRequest != null) return;
+                if (e.destination && e.destination.sameDocument) return;
+                var url;
+                try { url = new URL(e.destination.url); } catch (err) { return; }
+                if (url.origin !== location.origin) return;
+                var src = e.sourceElement;
+                if (src && src.closest && src.closest('[data-pg-no-curtain]')) return;
+                if (src && src.form && src.form.hasAttribute('data-pg-no-curtain')) return;
+                leaving(e);
             });
+            return;
         }
 
+        // Without the Navigation API, beforeunload starts the bar; these say
+        // which clicks and submits must not.
+        function skip() { skipUntil = Date.now() + 1000; }
         document.addEventListener('click', function (e) {
-            if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
             var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
             if (!a) return;
-            if (a.target && a.target !== '_self') return;
-            if (a.hasAttribute('download') || a.hasAttribute('data-bs-toggle')) return;
-            // A main menu row that opens its panel stays on the page; its
-            // address is only for a new tab (backend.src.js, initMenuPanels()).
-            if (a.hasAttribute('data-pg-menu-panel')) return;
-            // A link a script answers on this page (the Workspace list on
-            // the channel screen opens a channel in place): this listener
-            // runs first, so it cannot wait for that script's preventDefault.
-            if (a.hasAttribute('data-pg-no-curtain')) return;
-            // A link the settings dialog answers is not a navigation, and a
-            // curtain over a page that stays put has to be waited out. Asked
-            // of the dialog rather than matched here, so there is one list of
-            // the addresses it claims.
-            if (window.pgSettingsModal && window.pgSettingsModal.asked(a)) return;
+            if (a.hasAttribute('data-pg-no-curtain')) return skip();
             var href = a.getAttribute('href') || '';
-            if (!href || href.charAt(0) === '#') return;
-            if (/^(javascript|mailto|tel|sms|data):/i.test(href)) return;
-            // A link to this page with only the fragment changed is not a
-            // navigation; neither is one that leaves this origin, where the
-            // curtain would be covering a page we no longer control.
+            if (/^(javascript|mailto|tel|sms|data):/i.test(href)) return skip();
             var url;
-            try { url = new URL(a.href, location.href); } catch (err) { return; }
-            if (url.origin !== location.origin) return;
-            if (url.href.split('#')[0] === location.href.split('#')[0]) return;
-            leaving();
+            try { url = new URL(a.href, location.href); } catch (err) { return skip(); }
+            if (url.origin !== location.origin) skip();
         }, true);
-
         document.addEventListener('submit', function (e) {
             var f = e.target;
-            if (e.defaultPrevented || !f || f.tagName !== 'FORM') return;
-            if (f.target && f.target !== '_self') return;   // posting into a frame
-            if (f.hasAttribute('data-pg-no-curtain')) return;
-            leaving();
+            if (f && f.hasAttribute && f.hasAttribute('data-pg-no-curtain')) skip();
         }, true);
     })();
     </script>
 PGPRELOADER;
+}
+
+/**
+ * Panel screens that show a secret and so never enter the browser's caches,
+ * the back/forward cache included: API keys and secrets, connected-account
+ * tokens, an account's sign-in factors and recovery, key codes, and bearer
+ * links (calendar feed, accountant access, one-time file and short links,
+ * cart quote and quote guest links, the MCP value shown once). Screens
+ * outside output_header() (sign-in, password reset and set, two-factor
+ * setup, passkeys, account security) keep PHP's session default, which is
+ * no-store already.
+ *
+ * @return string[] script file names
+ */
+function pg_panel_no_store_screens()
+{
+    return array(
+        'api_settings.php',
+        'connections.php',
+        'connected_apps.php',
+        'edit_user.php',
+        'view_key_codes.php',
+        'add_key_code.php',
+        'edit_key_code.php',
+        'import_key_codes.php',
+        'workspace_calendar_feed.php',
+        'workspace_mcp.php',
+        'erp_accountant.php',
+        'edit_erp_quote.php',
+        'view_short_links.php',
+        'view_folders.php',
+        'view_cart_quotes.php',
+    );
+}
+
+/**
+ * The view key of a page drawn for the signed-in user of this session: a
+ * hash of a random value kept in the session and the user's id. A panel page
+ * carries it (pg_preloader_markup()) and session_state.php answers with the
+ * current one, so a page brought back by Back or Forward after a sign-out,
+ * or after another user signed in in the same browser, no longer matches.
+ * Empty without a signed-in user.
+ *
+ * @return string
+ */
+function pg_session_view_key()
+{
+    if (session_status() !== PHP_SESSION_ACTIVE || empty($_SESSION['sessionuserid'])) {
+        return '';
+    }
+    if (empty($_SESSION['software']['view_nonce']) || !is_string($_SESSION['software']['view_nonce'])) {
+        $_SESSION['software']['view_nonce'] = bin2hex(random_bytes(16));
+    }
+    return pg_session_view_key_for($_SESSION['software']['view_nonce'], $_SESSION['sessionuserid']);
+}
+
+/**
+ * @param string     $nonce   the session's random value
+ * @param int|string $user_id
+ * @return string 32 hex characters, or empty without either
+ */
+function pg_session_view_key_for($nonce, $user_id)
+{
+    $nonce = (string) $nonce;
+    $user_id = (int) $user_id;
+    if ($nonce === '' || $user_id <= 0) {
+        return '';
+    }
+    return substr(hash('sha256', $nonce . '|' . $user_id), 0, 32);
+}
+
+/**
+ * Sends Clear-Site-Data: "cache" on an answer that ends a session, so the
+ * browser drops this origin's HTTP cache and back/forward cache entries and
+ * Back on a shared computer does not show a panel screen again. Browsers
+ * honour it over HTTPS only; elsewhere the pageshow session check
+ * (pg_preloader_markup()) is what remains.
+ */
+function pg_session_end_clear_cache()
+{
+    if (!headers_sent()) {
+        header('Clear-Site-Data: "cache"');
+    }
+}
+
+/**
+ * The Cache-Control a panel screen's HTML is sent with: private, no-cache
+ * (revalidated on every ordinary visit, but allowed into the back/forward
+ * cache), or private, no-store for a screen in pg_panel_no_store_screens().
+ *
+ * @param string $script the screen's path or file name
+ * @return string
+ */
+function pg_panel_cache_control($script)
+{
+    $script = strtolower(basename((string) $script));
+    if (in_array($script, pg_panel_no_store_screens(), true)) {
+        return 'private, no-store';
+    }
+    return 'private, no-cache';
+}
+
+/**
+ * Whether the Cache-Control about to be sent is still the session's own
+ * (PHP's nocache limiter) or missing; a screen that chose its own
+ * (device_pairing.php sends no-store) keeps it.
+ *
+ * @param array $headers header lines (headers_list())
+ * @return bool
+ */
+function pg_panel_cache_is_session_default(array $headers)
+{
+    foreach ($headers as $line) {
+        if (preg_match('/^\s*cache-control\s*:\s*(.*)$/i', (string) $line, $m)) {
+            // Older PHP versions add ", post-check=0, pre-check=0".
+            return strpos(strtolower(trim($m[1])), 'no-store, no-cache, must-revalidate') === 0;
+        }
+    }
+    return true;
+}
+
+/**
+ * output_header(): replaces the session's no-store headers (PHP's
+ * session.cache_limiter = nocache) for panel HTML, so Back and Forward
+ * restore a panel screen at once. A page shown by Back or Forward stays
+ * hidden until session_state.php confirms the session and user that drew
+ * it (pg_preloader_markup(), pg_session_view_key()).
+ */
+function pg_panel_cache_headers()
+{
+    if (headers_sent() || !pg_panel_cache_is_session_default(headers_list())) {
+        return;
+    }
+    header('Cache-Control: ' . pg_panel_cache_control(isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : ''));
+    header_remove('Pragma');
+    header_remove('Expires');
+}
+
+/**
+ * Whether an answer about to be sent is a file download, from the headers
+ * PHP is going to send (headers_list()).
+ *
+ * @param array $headers header lines
+ * @return bool
+ */
+function pg_download_marker_needed(array $headers)
+{
+    foreach ($headers as $line) {
+        if (preg_match('/^\s*content-disposition\s*:\s*attachment\b/i', (string) $line)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Header callback: a download answer carries a short-lived pg_download
+ * cookie. The page that asked for it is still on screen with its leaving bar
+ * running (pg_preloader_markup()); the bar sees the cookie and stops.
+ */
+function pg_download_marker_hook()
+{
+    if (pg_download_marker_needed(headers_list())) {
+        header('Set-Cookie: pg_download=1; Max-Age=60; Path=/; SameSite=Lax', false);
+    }
+}
+
+/**
+ * init.php: registers pg_download_marker_hook() for this request.
+ */
+function pg_download_marker_watch()
+{
+    if (function_exists('pg_header_callback_add')) {
+        pg_header_callback_add('pg_download_marker_hook');
+    }
 }
 
 
@@ -783,12 +1047,15 @@ function pg_period_unit($range, $first_day = null)
  *                           for day, week, month and year
  * @param string $range_html the range as text, already escaped
  * @param string $class      extra classes for the group (' d-none' hides it)
+ * @param array  $query      more values every link carries, e.g. the view of a
+ *                           screen that reads it only from the address
+ *                           (view_contacts.php's filter)
  * @return string
  */
-function pg_period_nav($url, $range, $periods, $range_html, $class = '')
+function pg_period_nav($url, $range, $periods, $range_html, $class = '', $query = array())
 {
-    $link = function ($to) use ($url) {
-        return $url . '?' . http_build_query(array(
+    $link = function ($to) use ($url, $query) {
+        return $url . '?' . http_build_query($query + array(
             'start_month' => $to['start_month'], 'start_day' => $to['start_day'], 'start_year' => $to['start_year'],
             'stop_month' => $to['stop_month'], 'stop_day' => $to['stop_day'], 'stop_year' => $to['stop_year'],
         ));
@@ -1724,6 +1991,7 @@ function pg_css_bundles()
         'assets/css/backend.min.css' => 'assets/css/backend.src.css',
         'assets/css/pg_image_editor.min.css' => 'assets/css/pg_image_editor.src.css',
         'assets/css/pg_dash.min.css' => 'assets/css/pg_dash.src.css',
+        'assets/css/pg_visitors.min.css' => 'assets/css/pg_visitors.src.css',
     );
 }
 
@@ -1745,6 +2013,20 @@ function pg_output_email_off_close()
     return '<!--/email_off-->';
 }
 
+// The screen's name in front of the <title>, ending in " - "; '' for none.
+// Escaped: a title can carry text from outside, such as the name an OAuth
+// client registered for itself on the consent screen, and a "</title>" in
+// it would end the element and open markup. Entities already written in a
+// translated title (&amp;) are kept as they are.
+function pg_output_page_title($title)
+{
+    if (!is_string($title) || ($title === '')) {
+        return '';
+    }
+
+    return htmlspecialchars($title, ENT_QUOTES, 'UTF-8', false) . ' - ';
+}
+
 function output_header_secure($properties = false)
 {
     // Messages printed from here on are panel markup (liveform::panel_output()).
@@ -1752,10 +2034,7 @@ function output_header_secure($properties = false)
         define('PG_PANEL_OUTPUT', true);
     }
 
-    $software_page_title = '';
-    if (isset($properties['title'])) {
-        $software_page_title = $properties['title'] . ' - ';
-    }
+    $software_page_title = pg_output_page_title(is_array($properties) && isset($properties['title']) ? $properties['title'] : '');
 
     $software_title = '';
     if (!defined('PRIVATE_LABEL') or !PRIVATE_LABEL) {
@@ -1822,6 +2101,8 @@ function output_header($properties = false)
         define('PG_PANEL_OUTPUT', true);
     }
 
+    pg_panel_cache_headers();
+
     //output
     $output = '';
     //user
@@ -1859,10 +2140,7 @@ function output_header($properties = false)
         $output_body_class = $properties['extra classes'];
     }
 
-    $software_page_title = '';
-    if (isset($properties['title'])) {
-        $software_page_title = $properties['title'] . ' - ';
-    }
+    $software_page_title = pg_output_page_title(is_array($properties) && isset($properties['title']) ? $properties['title'] : '');
 
     if (defined('ADVANCED_VISUAL_EFFECTS') && ADVANCED_VISUAL_EFFECTS == 1) {
         $output_body_class .= ' advanced-visuals';
@@ -2270,7 +2548,7 @@ function output_header($properties = false)
                     <button type="button" class="pg-searchbar-field no-popover" data-bs-toggle="dialog" data-bs-target="#SearchBox" aria-label="' . lang('Search') . '">
                         <span class="bi bi-search pg-searchbar-icon" aria-hidden="true"></span>
                         <span class="pg-searchbar-text">' . lang('Search...') . '</span>
-                        <span class="pg-searchbar-kbd" aria-hidden="true">Ctrl+K</span>
+                        <span class="pg-searchbar-kbd" aria-hidden="true"><span data-pg-mod>Ctrl</span>+K</span>
                     </button>
                 </div>';
     }
@@ -2350,8 +2628,9 @@ function output_header($properties = false)
                 ' . $output_help_button . '
                 ' . $output_settings_button . '
                 <ul class="navbar-nav">
-                    <li class="nav-item pg-menu-wrap no-arrow no-popover" title="' . lang('Notifications') . ' (Ctrl+Q | ⌘+Q)">
+                    <li class="nav-item pg-menu-wrap no-arrow no-popover" title="' . lang('Notifications') . ' (Ctrl+Q)">
                         <button type="button" id="notification_toggle" class="nav-link nav-link-sm no-popover pg-menu-caret" data-bs-toggle="menu" data-bs-display="static" data-bs-target="#notifications" data-bs-auto-close="outside" aria-expanded="false">
+                            <span class="visually-hidden">' . h(lang('Notifications')) . '</span>
                             <span class="has-notification-icon bi bi-bell"></span>
                         </button>
                         <div id="notifications" class="menu shadow p-0 bg-body backdrop mt-nav-link-sm border-dropdown-menu position-fixed end-0 top-0" tabindex="-1" aria-labelledby="notification_toggle" aria-hidden="true">
@@ -2375,6 +2654,10 @@ function output_header($properties = false)
                             'strings' => array(
                                 'title' => lang('Notification'),
                                 'body' => lang('There is something new in your panel.'),
+                                // The worker's offline notice (offline.html).
+                                'offline_title' => lang('You are offline'),
+                                'offline_body' => lang('The panel cannot be reached right now. Check the connection and try again.'),
+                                'offline_retry' => lang('Retry'),
                                 'on' => lang('Turn off'),
                                 'off' => lang('Turn on'),
                                 'working' => lang('Please wait') . '...',
@@ -2396,7 +2679,7 @@ function output_header($properties = false)
             </nav>
         </div>
         ' . $output_software_sidebar . $output_settings_modal . '
-        <dialog class="dialog dialog-lg dialog-scrollable pg-dialog-centered shadow" id="SearchBox" aria-labelledby="SearchBoxLabel">
+        <dialog class="dialog dialog-lg dialog-scrollable pg-dialog-centered shadow" id="SearchBox" aria-label="' . h(lang('Search')) . '">
               <div class="dialog-header border-0 px-5 py-3 gap-3 ">
                 <span class="bi bi-search fs-lg fg-secondary flex-shrink-0"></span>
                 <form class="search_form disable_shortcut d-flex align-items-center flex-grow-1 position-relative" role="search">
@@ -2404,7 +2687,7 @@ function output_header($properties = false)
                     <input type="text" id="query" class="query form-control border-0 shadow-none no-popover fs-lg px-1" name="query" placeholder="' . lang('Search...') . '" value="" autocomplete="off">
                     <button type="button" class="clear btn btn-sm btn-link fg-secondary no-popover d-none position-absolute end-0 bi bi-x-lg" title="' . lang('Reset') . '"></button>
                 </form>
-                <span class="fg-secondary small flex-shrink-0 d-none md:d-inline opacity-50 user-select-none">Ctrl+K</span>
+                <span class="fg-secondary small flex-shrink-0 d-none md:d-inline opacity-50 user-select-none" aria-hidden="true"><span data-pg-mod>Ctrl</span>+K</span>
                 <button type="button" class="btn-close ms-1 flex-shrink-0" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
               </div>
               <div class="dialog-body px-5 py-5" style="min-height:200px;max-height:65vh;overflow-y:auto;">
@@ -2600,7 +2883,9 @@ function pg_account_menu($user, $options = array())
                             <li><hr class="menu-divider"></li>';
 
     // ── The account's own places ────────────────────────────────────────
-    $output .= $row(get_page_type_url('my account'), 'bi-person', lang('My Account'), $parent_target);
+    // The account page is found only when the link is followed: the lookup
+    // can scan every designed page's tree (my_account_link.php).
+    $output .= $row($software_url . '/my_account_link.php', 'bi-person', lang('My Account'), $parent_target);
 
     // Connected applications (connected_apps.php), offered while the site has
     // an OAuth application switched on: that is when a person can have one.
@@ -2648,6 +2933,12 @@ function pg_account_menu($user, $options = array())
         }
     }
 
+    // Install the panel as an application. Hidden until the browser says it
+    // can be installed (beforeinstallprompt, backend.src.js); a private label
+    // does not name the software.
+    $output .= '
+                            <li id="pg_install_app" class="d-none"><a class="menu-item" href="#" role="button" data-pg-install><i class="bi bi-download" aria-hidden="true"></i><span class="pg-um-text">' . ($private_label ? lang('Install as an app') : lang('Install Pinegrap')) . '</span></a></li>';
+
     // ── Help and support ────────────────────────────────────────────────
     $help = '';
 
@@ -2674,7 +2965,8 @@ function pg_account_menu($user, $options = array())
             ? 'https://forms.office.com/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAAN__hpULwNUN05TSEo4UENETFJFMzhXQTVHTlhFVDVIOS4u'
             : 'https://forms.office.com/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAAN__hpULwNUMDE3UktZR01OQkg4V0JBNTc4U1RXWFExOC4u';
 
-        $help .= str_replace('<a ', '<a id="feedback_link" onclick="window.open(this.href, \'PinegrapFeedback\', \'resizable=yes,status=yes,location=no,toolbar=no,menubar=no,fullscreen=no,scrollbars=yes,dependent=no\'); return false;" ', $row($feedback_url, 'bi-chat-square-heart', lang('Feedback'), '', true));
+        // A new tab like the other outside rows, not a popup window.
+        $help .= str_replace('<a ', '<a id="feedback_link" ', $row($feedback_url, 'bi-chat-square-heart', lang('Feedback'), $new_tab, true));
     } else {
         // A private label brings its own links in place of the software's.
         for ($i = 1; $i <= 5; $i++) {
@@ -2837,7 +3129,9 @@ function pg_menu_mode_button($state)
  * Not a row of the account menu any more: nobody found them there. The ?
  * key opens the dialog from anywhere outside a text field, and so does the
  * chip the search box offers for "shortcut" (backend.src.js). A <kbd> marked
- * data-pg-mod reads Ctrl and turns into the command key on an Apple device.
+ * data-pg-mod reads Ctrl and turns into the command key on an Apple device;
+ * a row whose third item is false keeps Ctrl there too (Ctrl+Q: Command+Q
+ * quits the browser on a Mac before the page sees it).
  *
  * @return string
  */
@@ -2847,7 +3141,7 @@ function pg_shortcuts_dialog()
         lang('While on the Panel') => array(
             array(array('Ctrl', 'K'), lang('Show/Hide Search Box')),
             array(array('Ctrl', 'S'), lang('Submit Form/Save')),
-            array(array('Ctrl', 'Q'), lang('Toggle Notifications')),
+            array(array('Ctrl', 'Q'), lang('Toggle Notifications'), false),
             array(array('Ctrl', 'D'), lang('Change menu view')),
             array(array('F1'), lang('Help for this screen')),
             array(array('?'), lang('Keyboard Shortcuts'))),
@@ -2868,7 +3162,7 @@ function pg_shortcuts_dialog()
             $keys = '';
 
             foreach ($shortcut[0] as $key) {
-                $keys .= '<kbd' . (($key === 'Ctrl') ? ' data-pg-mod' : '') . '>' . h($key) . '</kbd>';
+                $keys .= '<kbd' . ((($key === 'Ctrl') && (($shortcut[2] ?? true) !== false)) ? ' data-pg-mod' : '') . '>' . h($key) . '</kbd>';
             }
 
             $body .= '
@@ -3210,30 +3504,32 @@ function pg_menu_icon($name, $color_class = '')
                 '</g>';
             break;
 
-        case 'settings':
-            // A gear of eight teeth, the hub in the accent colour.
-            $gear = 'M10.30 4.90 L10.50 2.52 L13.50 2.52 L13.70 4.90 L15.81 5.78 L17.64 4.23 L19.77 6.36 L18.22 8.19 L19.10 10.30 L21.48 10.50 L21.48 13.50 L19.10 13.70 L18.22 15.81 L19.77 17.64 L17.64 19.77 L15.81 18.22 L13.70 19.10 L13.50 21.48 L10.50 21.48 L10.30 19.10 L8.19 18.22 L6.36 19.77 L4.23 17.64 L5.78 15.81 L4.90 13.70 L2.52 13.50 L2.52 10.50 L4.90 10.30 L5.78 8.19 L4.23 6.36 L6.36 4.23 L8.19 5.78Z';
-            $body =
-                '<g class="pg-mi-gear">' .
-                '<path' . $d . ' d="' . $gear . '"/>' .
-                '<path d="' . $gear . '"/>' .
-                '</g>' .
-                '<g class="pg-mi-a">' .
-                '<circle' . $a . ' cx="12" cy="12" r="3.2"/>' .
-                '<circle cx="12" cy="12" r="3.2" stroke-width="1.5"/>' .
-                '</g>';
-            break;
-
         case 'tools':
-            // A toolbox, its latch in the accent colour.
-            $box = 'M3 9.5A2.5 2.5 0 0 1 5.5 7h13A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z';
+            // A toolbox: the box with its latch (accent) on the front, and the
+            // lid with its handle over it. A screwdriver and a spanner
+            // (accent) wait inside, hidden at rest because the box and the
+            // lid are opaque (.pg-mi-solid, backend.src.css); on hover the lid
+            // swings open on its right hinge and the two tools come up out of
+            // the box.
+            $lid = 'M3 12V9.5A2.5 2.5 0 0 1 5.5 7h13A2.5 2.5 0 0 1 21 9.5V12z';
+            $box = 'M3 12h18v5.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z';
             $body =
-                '<path' . $d . ' d="' . $box . '"/>' .
+                '<g class="pg-mi-a pg-mi-kit">' .
+                '<rect' . $a . ' x="5.9" y="8.6" width="2.2" height="3.2" rx=".8"/>' .
+                '<rect x="5.9" y="8.6" width="2.2" height="3.2" rx=".8" stroke-width="1.3"/>' .
+                '<path d="M7 11.8V15M10.6 11.4V15" stroke-width="1.5"/>' .
+                '<circle cx="10.6" cy="10" r="1.4" stroke-width="1.4"/>' .
+                '</g>' .
+                '<path class="pg-mi-2 pg-mi-solid"' . $tint . ' d="' . $box . '"/>' .
                 '<path d="' . $box . '"/>' .
-                '<path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 13h7M14 13h7"/>' .
-                '<g class="pg-mi-a">' .
-                '<rect' . $a . ' x="10" y="11" width="4" height="4" rx="1"/>' .
-                '<rect x="10" y="11" width="4" height="4" rx="1" stroke-width="1.5"/>' .
+                '<g class="pg-mi-lid">' .
+                '<path class="pg-mi-2 pg-mi-solid"' . $tint . ' d="' . $lid . '"/>' .
+                '<path d="' . $lid . '"/>' .
+                '<path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"/>' .
+                '</g>' .
+                '<g class="pg-mi-a pg-mi-latch">' .
+                '<rect class="pg-mi-at pg-mi-solid"' . $tint . ' x="10" y="12.6" width="4" height="3.2" rx="1"/>' .
+                '<rect x="10" y="12.6" width="4" height="3.2" rx="1" stroke-width="1.5"/>' .
                 '</g>';
             break;
 
@@ -3249,8 +3545,8 @@ function output_menu($properties = false)
     // get user informations.
     global $user;
     $menu_items = array();
-    // Panels drawn without a row of their own: the second level of Site
-    // Settings and of System tools.
+    // Panels drawn without a row of their own: the second level of System
+    // tools.
     $menu_panels_nested = '';
     // What follows the rows and panels: the Workspace list's data and script.
     $menu_tail = '';
@@ -3310,11 +3606,22 @@ function output_menu($properties = false)
         if ($user['role'] >= 2) {
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-magic bi-me-2\'>' . lang('Visual Page Editor') . '</a>';
         }
+        // PAGES > Translations. translations.php admits managers
+        // (validate_area_access($user, 'manager')); roles 0-1 have it in the
+        // Visual Page Editor row (21), so this entry is the manager's way to it.
+        if ((int) $user['role'] === 2) {
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-translate bi-me-2\'>' . lang('Translations') . '</a>';
+        }
         // PAGES > Search and audits (search_audits.php: the search index and
         // the SEO, structure and accessibility passes, managers and up)
         if ($user['role'] < 3) {
             $menu_items[2]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/search_audits.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-activity bi-me-2\'>' . lang('Search and audits') . '</a>';
+            // PAGES > Import from another platform (import.php, managers and
+            // up), once the upgrade that adds its tables has run.
+            if (pg_schema_has('imports')) {
+                $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/import.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-arrow-in-down bi-me-2\'>' . lang('Import from another platform') . '</a>';
+            }
         }
         // PAGES > Short Links (short links sit outside the folder-based rights, so the screens are gated at manager level and users do not get the entries)
         if ($user['role'] < 3) {
@@ -3360,6 +3667,16 @@ function output_menu($properties = false)
             $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendar_event_locations.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-geo-alt bi-me-2\'>' . lang('Event Locations') . '</a>';
             $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_calendar_event_location.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Calendar Event Location'))) . '</a>';
         }
+        // CALENDARS > Bookings: once a booking service exists, for those the
+        // agenda opens to (includes/fn/booking_agenda.php).
+        if (pg_booking_ready() && ((int) db_value("SELECT COUNT(*) FROM booking_services") > 0)) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
+
+            if (pg_booking_agenda_user_scope($user) !== false) {
+                $menu_items[4]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
+                $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_bookings.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar-check bi-me-2\'>' . lang('Bookings') . '</a>';
+            }
+        }
     }
 
     if ((FORMS === true) && (($user['role'] < 3) || ($user['manage_forms'] == true))) {
@@ -3378,12 +3695,31 @@ function output_menu($properties = false)
     if (($user['role'] < 3) || ($user['manage_visitors'] == true)) {
         // VISITORS
         $menu_items[6]['id'] = 6;
-        $menu_items[6]['href'] = 'view_visitor_reports.php';
+        $menu_items[6]['href'] = 'visitors.php';
         $menu_items[6]['menu_icon'] = 'statistics';
         $menu_items[6]['color_class'] = 'statistics-color';
         $menu_items[6]['title'] = 'Visitors';
         $menu_items[6]['context'] = true;
-        $menu_items[6]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_reports.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-clipboard2-data bi-me-2\'>' . lang('Visitors') . '</a>';
+        // VISITORS > Overview, then its sections as anchors. Site Search, Page
+        // Speed and AI Visibility stay links to their own screens, under the
+        // same ready checks, until their sections are there.
+        $menu_items[6]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitors.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-speedometer bi-me-2\'>' . lang('Overview') . '</a>';
+        $visitor_screens = array(
+            'site_search' => array('visitor_search.php', 'bi-search', pg_site_search_stats_ready()),
+            'speed'       => array('visitor_vitals.php', 'bi-speedometer2', pg_vitals_ready()),
+            'ai'          => array('visitor_ai.php', 'bi-robot', pg_ai_visibility_ready()),
+        );
+        foreach (pg_visitors_sections() as $visitor_section => $visitor_section_label) {
+            if (pg_visitors_section_exists($visitor_section) && (!isset($visitor_screens[$visitor_section]) || $visitor_screens[$visitor_section][2])) {
+                $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitors.php#' . $visitor_section . '\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-dot bi-me-2\'>' . h($visitor_section_label) . '</a>';
+            } elseif (isset($visitor_screens[$visitor_section]) && $visitor_screens[$visitor_section][2]) {
+                $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $visitor_screens[$visitor_section][0] . '\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ' . $visitor_screens[$visitor_section][1] . ' bi-me-2\'>' . h($visitor_section_label) . '</a>';
+            }
+        }
+
+        // VISITORS > Saved reports
+        $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
+        $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_reports.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-clipboard2-data bi-me-2\'>' . lang('Saved reports') . '</a>';
         $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Visitor Report'))) . '</a>';
         if (ECOMMERCE === true and USER_MANAGE_ECOMMERCE_REPORTS) {
             // ECOMMERCE > Order Reports
@@ -3397,15 +3733,17 @@ function output_menu($properties = false)
             $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart bi-me-2\'>' . lang('Shipping Report') . '</a>';
         }
 
-        // VISITORS > Google Search Console
+
+        // VISITORS > Search Console settings
         $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-        $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/search_console.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-google bi-me-2\'>' . lang('Google Search Console') . '</a>';
+        $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/search_console.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-google bi-me-2\'>' . lang('Search Console settings') . '</a>';
 
         // VISITORS > Analystics
         // if an external web stats link is supplied in the settings, then prepare link to web stats
-        if ((defined('STATS_URL') == true) && (STATS_URL != '')) {
+        // Only a web address is linked, escaped: the setting is free text.
+        if ((defined('STATS_URL') == true) && preg_match('#^https?://#i', (string) STATS_URL)) {
             $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[6]['data-bs-content'] .= '<a href=\'' . STATS_URL . '\' target=\'_blank\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-arrow-up-right bi-me-2\'>' . lang('Website Analytics') . '</a>';
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . h(STATS_URL) . '\' target=\'_blank\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-arrow-up-right bi-me-2\'>' . lang('Website Analytics') . '</a>';
         }
     }
 
@@ -3524,10 +3862,11 @@ function output_menu($properties = false)
             $menu_items[11]['color_class'] = 'ecommerce-color';
             $menu_items[11]['title'] = 'Products';
             $menu_items[11]['context'] = true;
-            $menu_items[11]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php\'' . $output_parent_target . ' data-pg-menu-label=\'' . h(lang('Products')) . '\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-seam bi-me-2\'>' . lang('All Products') . '</a>';
+            // One All Products entry, on the full list: the bare address
+            // reopens the filter last used (Out of Stock, say) under that name.
+            $menu_items[11]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=all_products\'' . $output_parent_target . ' data-pg-menu-label=\'' . h(lang('Products')) . '\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-seam bi-me-2\'>' . lang('All Products') . '</a>';
             $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_product.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Product'))) . '</a>';
             $menu_items[11]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=all_products\'' . $output_parent_target . ' data-pg-menu-label=\'' . h(lang('Products')) . '\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-seam bi-me-2\'>' . lang('All Products') . '</a>';
             $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=out_of_stock_products\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart-x bi-me-2\'>' . lang('All Out of Stock Products') . '</a>';
 
             // ECOMMERCE > Barcode
@@ -3745,6 +4084,9 @@ function output_menu($properties = false)
         // the site's other languages (includes/translate/).
         $menu_items[21]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
         $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-translate bi-me-2\'>' . lang('Translations') . '</a>';
+        // VISUAL PAGE EDITOR > Experiments: the A/B experiments of designed
+        // pages and their results (experiments.php, designers).
+        $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/experiments.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart-line bi-me-2\'>' . lang('Experiments') . '</a>';
 
         // DESIGN > Menus and DESIGN > Regions. Neither is a row of the menu:
         // both are reached from the panel of Page Styles, below.
@@ -3788,7 +4130,7 @@ function output_menu($properties = false)
 
     // ERP. Slot 22: the numbers are what an operator pins in
     // user.selected_appmenu_items_array, so they are never reused and never
-    // shuffled. Slot 20 is the empty one left behind by Site Settings.
+    // shuffled. Slot 20, the Site Settings row, is retired.
     if (defined('ERP_ENABLED') && ERP_ENABLED && (($user['role'] < 3) || USER_MANAGE_ERP)) {
 
         $menu_items[22]['id'] = 22;
@@ -3933,37 +4275,32 @@ function output_menu($properties = false)
         }
     }
 
-    // SITE SETTINGS. Slot 20, last in the menu. The gear in the header opens
-    // the settings over the current screen (the modal); this row leads to
-    // their pages instead (settings_<category>.php), for whoever wants a
-    // whole screen. Its panel lists the categories of the modal's sidebar,
-    // from the same function and under the same gate
-    // (pg_settings_modal_markup(): role <= 2), each opening its sections
-    // (pg_menu_settings_entries()).
-    if ($user['role'] <= 2) {
-        $menu_settings = pg_menu_settings_entries($user, $output_parent_target);
+    // Slot 20, the Site Settings row, is retired: the settings open from the
+    // gear in the header (the modal), and their pages from links inside
+    // screens.
 
-        $menu_items[20]['id'] = 20;
-        $menu_items[20]['href'] = $menu_settings['href'];
-        $menu_items[20]['menu_icon'] = 'settings';
-        $menu_items[20]['color_class'] = 'settings-color';
-        $menu_items[20]['title'] = 'Site Settings';
-        $menu_items[20]['context'] = true;
-        $menu_items[20]['data-bs-content'] = $menu_settings['entries'];
-        $menu_items[20]['row_attributes'] = ' data-pg-settings-page';
-        $menu_panels_nested .= $menu_settings['panels'];
-    }
-
-    // SYSTEM TOOLS. Slot 25: 3, 13, 18 and 19 are retired and 22 to 24 are
-    // taken, and operators pin rows by their slot
+    // SYSTEM TOOLS. Slot 25: 3, 13, 18, 19 and 20 are retired and 22 to 24
+    // are taken, and operators pin rows by their slot
     // (user.selected_appmenu_items_array), so no slot is ever reused. The
     // screens beside Site Settings, under system_tools.php's own gate: the
     // screen first, then each group of pg_settings_tool_groups() opening a
     // panel of its screens, every one under its own gate.
-    $menu_tools_groups = ($user['role'] <= 2) ? pg_settings_tool_groups($user) : array();
+    // The groups live in the settings registry, which is not one of the
+    // function modules and loads only behind PG_SETTINGS_MENU.
+    $menu_tools_groups = array();
+
+    if ($user['role'] <= 2) {
+        if (!defined('PG_SETTINGS_MENU')) {
+            define('PG_SETTINGS_MENU', true);
+        }
+
+        include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+        $menu_tools_groups = pg_settings_tool_groups($user);
+    }
 
     if ($user['role'] <= 2 && pg_settings_tool_count($menu_tools_groups) > 0) {
-        $menu_tools = pg_menu_tools_markup($menu_tools_groups, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $output_parent_target);
+        $menu_tools = pg_menu_tools_markup($menu_tools_groups, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $output_parent_target, pg_menu_tone('settings-color'));
 
         $menu_items[25]['id'] = 25;
         $menu_items[25]['href'] = 'system_tools.php';
@@ -4001,6 +4338,7 @@ function output_menu($properties = false)
         case 'edit_form_item_view.php':
         case 'update_search_index.php':
         case 'search_audits.php':
+        case 'import.php':
         case 'toolbar.php':
         case 'generate_layout.php':
         case 'view_short_links.php':
@@ -4024,6 +4362,8 @@ function output_menu($properties = false)
         case 'view_calendar_event_locations.php':
         case 'add_calendar_event_location.php':
         case 'edit_calendar_event_location.php':
+        case 'view_bookings.php':
+        case 'edit_booking.php':
             $active_menu = 4;
             break;
         case 'view_submitted_forms.php':
@@ -4032,10 +4372,14 @@ function output_menu($properties = false)
         case 'import_submitted_forms.php':
             $active_menu = 5;
             break;
+        case 'visitors.php':
         case 'view_visitor_reports.php':
         case 'view_visitor_report.php':
         case 'view_visitor.php':
         case 'search_console.php':
+        case 'visitor_search.php':
+        case 'visitor_vitals.php':
+        case 'visitor_ai.php':
             $active_menu = 6;
             break;
         case 'view_contacts.php':
@@ -4256,6 +4600,7 @@ function output_menu($properties = false)
         case 'edit_javascript.php':
         case 'import_design.php':
         case 'import_zip.php':
+        case 'legacy_to_designer.php':
         case 'migration.php':
         case 'find_and_replace.php':
         case 'mass_edit.php':
@@ -4296,23 +4641,16 @@ function output_menu($properties = false)
             }
             break;
 
-        // The pages of Site Settings and the screens its category panels
-        // list (pg_settings_category_screens()).
-        case 'settings_general.php':
-        case 'settings_appearance.php':
-        case 'settings_features.php':
-        case 'settings_seo.php':
-        case 'settings_contact.php':
-        case 'settings_security.php':
-        case 'settings_firewall.php':
-        case 'settings_commerce.php':
-        case 'settings_api.php':
-        case 'settings_accounting.php':
-        case 'settings_privacy.php':
-        case 'settings_maintenance.php':
-        case 'settings_languages.php':
+        // The pages of Site Settings (settings_<category>.php) have no row
+        // since slot 20 was retired, so they mark none.
+        case 'experiments.php':
+        case 'page_experiments.php':
+            $active_menu = 21;
+            break;
         case 'translations.php':
-            $active_menu = 20;
+            // A manager reaches it from the Pages panel; row 21 is built for
+            // role < 2 only.
+            $active_menu = ($user['role'] < 2) ? 21 : 2;
             break;
 
         // System tools and the screens of its group panels
@@ -4420,9 +4758,16 @@ function output_menu($properties = false)
 
             // A row that opens another row's panel draws none of its own.
             if ($menu_panel_id === 'menu_panel_' . (int) $options['id']) {
-                $output_menu_panels .= pg_menu_panel($menu_panel_id, 'menu_item_' . $options['id'], lang($options['title']), $menu_panel_entries);
+                $output_menu_panels .= pg_menu_panel($menu_panel_id, 'menu_item_' . $options['id'], lang($options['title']), $menu_panel_entries, pg_menu_tone(isset($options['color_class']) ? $options['color_class'] : ''));
                 $menu_panels_drawn[(int) $options['id']] = true;
             }
+        }
+
+        // A row without a panel is the page itself when active (the
+        // Dashboard); a panel row's current entry is marked by
+        // markMenuCurrent() (backend.src.js).
+        if (($active_menu_class !== '') && ($menu_panel_id === '')) {
+            $output_menu_row_panel .= ' aria-current="page"';
         }
 
         // no-popover: the row keeps the browser's own title hint, which names
@@ -4522,7 +4867,8 @@ function pg_menu_categories()
         // The ERP has its own switch and rights, and runs without the store.
         'accounting' => array('label' => 'Accounting', 'slots' => array(22)),
         'marketing'  => array('label' => 'Marketing', 'slots' => array(6, 7, 9, 16)),
-        'system'     => array('label' => 'System', 'slots' => array(8, 20, 25)),
+        // Slot 20, the retired Site Settings row, is listed no more.
+        'system'     => array('label' => 'System', 'slots' => array(8, 25)),
     );
 }
 
@@ -4596,94 +4942,6 @@ function pg_menu_heading($key, $label)
 }
 
 /**
- * The entries of the Site Settings row, and the second-level panels they open.
- *
- * The same list as the sidebar of the settings modal, from the same function
- * and so under the same gate (pg_settings_modal_markup()): every category of
- * pg_settings_categories(). The screens beside them have their own row
- * (pg_menu_tools_markup()).
- *
- * @param array  $user          the row validate_user() returned
- * @param string $parent_target ' target=\'_parent\'' in the front-end toolbar
- * @return array see pg_menu_settings_markup()
- */
-function pg_menu_settings_entries($user, $parent_target)
-{
-    if (!defined('PG_SETTINGS_MENU')) {
-        define('PG_SETTINGS_MENU', true);
-    }
-
-    include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
-
-    $categories = pg_settings_categories();
-    $screens = pg_settings_category_screens($user);
-
-    foreach ($categories as $key => $category) {
-        $categories[$key]['url'] = pg_settings_url($key);
-        $categories[$key]['screens'] = isset($screens[$key]) ? $screens[$key] : array();
-    }
-
-    return pg_menu_settings_markup($categories, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $parent_target);
-}
-
-/**
- * The Site Settings row's entries and second-level panels, from its lists.
- *
- * Each category opens a panel with its page, its sections and, under a
- * divider, the screens that go with it (pg_settings_category_screens()). The
- * category pages are the page path of the settings (settings_<category>.php),
- * so every link to them carries data-pg-settings-page, which tells
- * pgSettingsModal not to answer it with the modal (backend.src.js).
- *
- * @param array  $categories    key => label, icon, url, sections (id => label),
- *                              screens (optional: label, icon, url)
- * @param string $base          the panel folder's address, ending in /
- * @param string $parent_target ' target=\'_parent\'' in the front-end toolbar
- * @return array href (the first category's page), entries (first level),
- *               panels (the second level, as markup)
- */
-function pg_menu_settings_markup($categories, $base, $parent_target)
-{
-    $class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ';
-    $chevron = '<i class=\'bi bi-chevron-right pg-menu-chevron\' aria-hidden=\'true\'></i>';
-
-    $href = '';
-    $entries = '';
-    $panels = '';
-
-    foreach ($categories as $key => $category) {
-
-        $page = $category['url'];
-        $entry_id = 'menu_entry_20_' . $key;
-        $panel_id = 'menu_panel_20_' . $key;
-
-        if ($href === '') {
-            $href = $page;
-        }
-
-        $entries .= '<a id=\'' . $entry_id . '\' href=\'' . h($base . $page) . '\'' . $parent_target . ' class=\'' . $class . h($category['icon']) . ' bi-me-2 pg-menu-parent\' data-pg-settings-page data-pg-menu-panel=\'' . $panel_id . '\' aria-controls=\'' . $panel_id . '\' aria-expanded=\'false\'>' . h($category['label']) . $chevron . '</a>';
-
-        $sections = '<a href=\'' . h($base . $page) . '\'' . $parent_target . ' class=\'' . $class . h($category['icon']) . ' bi-me-2\' data-pg-settings-page>' . h($category['label']) . '</a>';
-
-        foreach ($category['sections'] as $section => $label) {
-            $sections .= '<a href=\'' . h($base . $page . '#' . $section) . '\'' . $parent_target . ' class=\'' . $class . 'bi-dot bi-me-2\' data-pg-settings-page>' . h($label) . '</a>';
-        }
-
-        if (!empty($category['screens'])) {
-            $sections .= '<hr class=\'divider my-3\' />';
-
-            foreach ($category['screens'] as $screen) {
-                $sections .= '<a href=\'' . h($base . $screen['url']) . '\'' . $parent_target . ' class=\'' . $class . h($screen['icon']) . ' bi-me-2\'>' . h($screen['label']) . '</a>';
-            }
-        }
-
-        $panels .= pg_menu_panel($panel_id, $entry_id, $category['label'], $sections);
-    }
-
-    return array('href' => $href, 'entries' => $entries, 'panels' => $panels);
-}
-
-/**
  * The System tools row's entries and second-level panels.
  *
  * First the System tools screen itself, then one entry per group of
@@ -4694,10 +4952,12 @@ function pg_menu_settings_markup($categories, $base, $parent_target)
  * @param array  $groups        label, icon, items (label, icon, url, target, confirm)
  * @param string $base          the panel folder's address, ending in /
  * @param string $parent_target ' target=\'_parent\'' in the front-end toolbar
+ * @param string $tone          the row's module (pg_menu_tone()), for the
+ *                              group panels' icons
  * @return array entries (first level), panels (the second level, as markup);
  *               both empty when no group has a screen
  */
-function pg_menu_tools_markup($groups, $base, $parent_target)
+function pg_menu_tools_markup($groups, $base, $parent_target, $tone = '')
 {
     $class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ';
     $chevron = '<i class=\'bi bi-chevron-right pg-menu-chevron\' aria-hidden=\'true\'></i>';
@@ -4728,7 +4988,7 @@ function pg_menu_tools_markup($groups, $base, $parent_target)
 
         $entries .= '<a id=\'' . $entry_id . '\' href=\'' . h($base . $first['url']) . '\'' . $parent_target . ' class=\'' . $class . h($group['icon']) . ' bi-me-2 pg-menu-parent\' data-pg-menu-panel=\'' . $panel_id . '\' aria-controls=\'' . $panel_id . '\' aria-expanded=\'false\'>' . h($group['label']) . $chevron . '</a>';
 
-        $panels .= pg_menu_panel($panel_id, $entry_id, $group['label'], $items);
+        $panels .= pg_menu_panel($panel_id, $entry_id, $group['label'], $items, $tone);
     }
 
     if ($entries === '') {
@@ -4829,16 +5089,6 @@ function pg_menu_row_panel_id($options, $entries, $drawn)
 }
 
 /**
- * One panel of the main menu: what a row with several entries opens inside
- * the menu in place of the rows, headed by the way back and the row's name.
- *
- * @param string $panel_id id of the panel (menu_panel_<row id>)
- * @param string $row_id   id of the row that opens it
- * @param string $title    the row's name, translated
- * @param string $entries  the row's entries, as output_menu() built them
- * @return string
- */
-/**
  * The red count pill of a menu row or of a panel entry.
  *
  * Zero or less draws nothing: an empty pill would read as "something".
@@ -4860,9 +5110,47 @@ function pg_menu_count_badge($count, $title = '')
     return '<span class="pg-menu-badge badge rounded-pill theme-danger"' . (($title !== '') ? ' title="' . h($title) . '"' : '') . '>' . (($count > 99) ? '99+' : (string) $count) . '</span>';
 }
 
-function pg_menu_panel($panel_id, $row_id, $title, $entries)
+/**
+ * The module a colour class names: 'pages' for 'pages-color'.
+ *
+ * A panel carries it as data-pg-menu-tone, which backend.src.css turns into
+ * the module's two shades for its entries' icons, so they are two-coloured
+ * like the row that opens the panel.
+ *
+ * @param string $color_class a row's color_class (<module>-color)
+ * @return string the module name, or '' when the class is not one
+ */
+function pg_menu_tone($color_class)
 {
-    return '<div id="' . $panel_id . '" class="pg-menu-panel" data-pg-menu-row="' . $row_id . '" role="group" aria-labelledby="' . $panel_id . '_title">'
+    if (preg_match('/^([a-z]+)-color$/', (string) $color_class, $match)) {
+        return $match[1];
+    }
+
+    return '';
+}
+
+/**
+ * One panel of the main menu: what a row with several entries opens inside
+ * the menu in place of the rows, headed by the way back and the row's name.
+ *
+ * @param string $panel_id id of the panel (menu_panel_<row id>)
+ * @param string $row_id   id of the row that opens it
+ * @param string $title    the row's name, translated
+ * @param string $entries  the row's entries, as output_menu() built them
+ * @param string $tone     the row's module (pg_menu_tone()), which colours
+ *                         the entries' icons; '' leaves them plain
+ * @return string
+ */
+function pg_menu_panel($panel_id, $row_id, $title, $entries, $tone = '')
+{
+    $tone = preg_match('/^[a-z]+$/', (string) $tone) ? ' data-pg-menu-tone="' . $tone . '"' : '';
+
+    // The entries wrap onto a second line in the panel instead of ending in
+    // an ellipsis (backend.src.css): the text-truncate utility output_menu()
+    // gives them would win over the panel's rule from its later layer.
+    $entries = str_replace(' text-truncate ', ' ', (string) $entries);
+
+    return '<div id="' . $panel_id . '" class="pg-menu-panel" data-pg-menu-row="' . $row_id . '"' . $tone . ' role="group" aria-labelledby="' . $panel_id . '_title">'
         . '<div class="pg-menu-panel-head">'
         . '<button type="button" class="pg-menu-back no-popover" data-pg-menu-back aria-label="' . h(lang('Back')) . '" title="' . h(lang('Back')) . '"><i class="bi bi-arrow-left" aria-hidden="true"></i></button>'
         . '<span id="' . $panel_id . '_title" class="pg-menu-panel-title">' . h($title) . '</span>'
@@ -5261,14 +5549,15 @@ function license_check($properties = false)
                     $curl_error = $answer['error'];
                 } else {
                     // Fallback: file_get_contents with stream context if allow_url_fopen is enabled
-                    // The certificate is verified here as well, against the same CA bundle
-                    // pg_curl_tls() uses when one is configured.
+                    // The certificate is verified here as well, against the store
+                    // pg_curl_tls() uses (pg_ca_bundle_effective()).
                     $ssl_options = array(
                         'verify_peer' => true,
                         'verify_peer_name' => true
                     );
-                    if (defined('CURL_CA_BUNDLE') && CURL_CA_BUNDLE !== '' && is_file(CURL_CA_BUNDLE)) {
-                        $ssl_options['cafile'] = CURL_CA_BUNDLE;
+                    $ca_file = pg_ca_bundle_effective();
+                    if ($ca_file !== '') {
+                        $ssl_options['cafile'] = $ca_file;
                     }
                     $context = stream_context_create(array(
                         'http' => array(
@@ -5475,20 +5764,22 @@ function license_check($properties = false)
                     <div class="fg-danger small">' . lang('Expired') . ': ' . h(pg_license_expiry_text($expiration_dt)) . '</div>
                 </div>';
             } else {
-                // technical error — show diagnostic for managers+
+                // A technical error shows its diagnostic to managers and up.
+                // A key the server answered for (no_match, suspended, seats
+                // full...) has its own notice and no diagnostic.
                 $bar_diag_html = '';
-                if (isset($user['role']) && (int) $user['role'] <= 2 && ($diag['errno'] || $diag['response'] || $diag['error'])) {
+                if (isset($user['role']) && (int) $user['role'] <= 2 && (pg_license_error_notice($error_code) === '') && ($diag['errno'] || $diag['response'] || $diag['error'])) {
                     $diag_lines = array();
                     if ($diag['errno'])
                         $diag_lines[] = 'cURL errno: ' . (int) $diag['errno'];
                     if ($diag['error'])
                         $diag_lines[] = 'cURL error: ' . h($diag['error']);
                     if ($diag['response'])
-                        $diag_lines[] = 'Response: ' . h($diag['response']);
+                        $diag_lines[] = h(lang('Response')) . ': ' . h($diag['response']);
                     $bar_diag_html = '
-                    <details class="px-3 pb-1" style="font-size:.65rem">
-                        <summary class="fg-secondary" style="cursor:pointer">Diagnostic</summary>
-                        <pre class="text-start fg-danger bg-2 rounded-4 p-1 mt-1 mb-0" style="white-space:pre-wrap;word-break:break-all;font-size:.65rem">' . implode("\n", $diag_lines) . '</pre>
+                    <details class="pg-lic-diag px-3 pb-1">
+                        <summary class="fg-secondary">' . h(lang('Diagnostic')) . '</summary>
+                        <pre class="text-start fg-danger bg-2 rounded-4 p-1 mt-1 mb-0">' . implode("\n", $diag_lines) . '</pre>
                     </details>';
                 }
                 $bar_body = '
@@ -5785,19 +6076,11 @@ function pg_page_facts($page_id, $style_id, $user, $send_to = null)
         }
 
         if ($next_page_id !== NULL) {
-            $next_page_name = get_page_name($next_page_id);
-
-            if ($next_page_name == '') {
-                $facts[] = array('label' => lang('Next Page'), 'text' => '[' . lang('Not Set') . ']');
-            } else {
-                $facts[] = array('label' => lang('Next Page'), 'text' => $next_page_name, 'url' => OUTPUT_PATH . $next_page_name);
-            }
+            $facts[] = pg_page_fact_page(lang('Next Page'), get_page_name($next_page_id), OUTPUT_PATH);
         }
 
         if (isset($page_type_properties['skip_button_next_page_id']) && ($page_type_properties['skip_button_next_page_id'] != 0)) {
-            $skip_page_name = get_page_name($page_type_properties['skip_button_next_page_id']);
-
-            $facts[] = array('label' => lang('Skip Page'), 'text' => $skip_page_name, 'url' => OUTPUT_PATH . $skip_page_name);
+            $facts[] = pg_page_fact_page(lang('Skip Page'), get_page_name($page_type_properties['skip_button_next_page_id']), OUTPUT_PATH);
         }
     }
 
@@ -5919,6 +6202,28 @@ function pg_page_facts($page_id, $style_id, $user, $send_to = null)
     }
 
     return $facts;
+}
+
+/**
+ * A page panel fact naming another page: its name, linked to the page. The
+ * name is encoded for the path, since a page name may hold "#", "?" or "%".
+ * A page that is not set or no longer exists reads "[Not Set]" with no link.
+ * Pure.
+ *
+ * @param string      $label
+ * @param string|null $page_name get_page_name() of the page, '' when none
+ * @param string      $path      site path the page names sit under
+ * @return array label / text / url
+ */
+function pg_page_fact_page($label, $page_name, $path)
+{
+    $page_name = (string) $page_name;
+
+    if ($page_name === '') {
+        return array('label' => $label, 'text' => '[' . lang('Not Set') . ']');
+    }
+
+    return array('label' => $label, 'text' => $page_name, 'url' => $path . encode_url_path($page_name));
 }
 
 /**
@@ -6949,6 +7254,14 @@ function pg_js_bundles()
         // The graph canvas core (window.PGGraphCanvas), printed before the
         // scripts that draw on it: the flow canvas first.
         'assets/js/pg_graph_canvas.min.js'         => array('assets/js/pg_graph_canvas.js'),
+        // The link resolver's browser twin (window.PGLinkResolve,
+        // includes/fn/link_resolve.php).
+        'assets/js/pg_link_resolve.min.js'         => array('assets/js/pg_link_resolve.js'),
+        // The list table driver (window.PGListTable, includes/fn/list_table.php),
+        // printed by the screens whose list it draws.
+        'assets/js/pg_list_table.min.js'           => array('assets/js/pg_list_table.js', 'assets/js/pg_list_table_edit.js'),
+        // The Prototype view's hotspot collector (window.PGProtoHotspots).
+        'assets/js/pg_proto_hotspots.min.js'       => array('assets/js/pg_proto_hotspots.js'),
         'assets/js/workspace_flow.min.js'          => array('assets/js/workspace_flow.js'),
         'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_guest.js'),
         // The Workspace list of the main menu, on every panel page of the
@@ -6959,12 +7272,19 @@ function pg_js_bundles()
         // first open): the pure model, the core modal, then each tool's file,
         // which hangs its code on the core.
         'assets/js/pg_image_editor.min.js'         => array(
-            'assets/js/pg_image_editor_model.js', 'assets/js/pg_image_editor.js',
+            'assets/js/pg_google_fonts.js', 'assets/js/pg_image_editor_model.js', 'assets/js/pg_image_editor.js',
             'assets/js/pg_image_editor_crop.js', 'assets/js/pg_image_editor_adjust.js', 'assets/js/pg_image_editor_layers.js',
             'assets/js/pg_image_editor_draw.js', 'assets/js/pg_image_editor_text.js', 'assets/js/pg_image_editor_sticker.js',
             'assets/js/pg_image_editor_redact.js', 'assets/js/pg_image_editor_versions.js', 'assets/js/pg_image_editor_artboard.js',
-            'assets/js/pg_image_editor_export.js', 'assets/js/pg_image_editor_vector.js'),
+            'assets/js/pg_image_editor_export.js', 'assets/js/pg_image_editor_vector.js', 'assets/js/pg_image_editor_svg.js',
+            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_fonts.js',
+            'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_warp.js'),
+        // The image editor's animation encoder, started as a worker (or on the
+        // page) by pg_image_editor_render.js.
+        'assets/js/pg_image_editor_encode.min.js'  => array('assets/js/pg_image_editor_encode.js'),
         'assets/js/pg_fx.min.js'                   => array('assets/js/pg_fx.src.js'),
+        // The real-user speed beacon of public pages (includes/fn/page_vitals.php).
+        'assets/js/pg_vitals.min.js'               => array('assets/js/pg_vitals.src.js'),
         // "Convert to text" under a voice message, loaded before
         // workspace.min.js and beside the chat window's script.
         'assets/js/pg_voice_text.min.js'           => array('assets/js/pg_voice_text.js'),
@@ -6975,12 +7295,14 @@ function pg_js_bundles()
         'assets/js/explorer_side.min.js'           => array('assets/js/explorer_side.js'),
         // The visual designer. Loaded without defer, before the inline
         // script that starts it and the scripts that extend it.
-        'assets/js/style_designer.min.js'          => array('assets/js/style_designer.src.js'),
+        'assets/js/style_designer.min.js'          => array('assets/js/pg_google_fonts.js', 'assets/js/style_designer.src.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
         // card frame first, then each card group's renderers.
-        'assets/js/pg_dash.min.js'                => array('assets/js/pg_dash.js', 'assets/js/pg_dash_cards_visitors.js', 'assets/js/pg_dash_cards_content.js', 'assets/js/pg_dash_cards_security.js', 'assets/js/pg_dash_cards_team.js', 'assets/js/pg_dash_cards_work.js', 'assets/js/pg_dash_edit.js', 'assets/js/pg_dash_panel.js'),
+        'assets/js/pg_dash.min.js'                => array('assets/js/pg_dash.js', 'assets/js/pg_dash_cards_visitors.js', 'assets/js/pg_dash_cards_content.js', 'assets/js/pg_dash_cards_security.js', 'assets/js/pg_dash_cards_team.js', 'assets/js/pg_dash_cards_work.js', 'assets/js/pg_dash_edit.js', 'assets/js/pg_dash_panel.js', 'assets/js/pg_dash_cards_personal.js', 'assets/js/pg_dash_cards_shop.js', 'assets/js/pg_dash_cards_assistant.js', 'assets/js/pg_dash_brief.js'),
+        // The Visitors overview (visitors.php): its period bar and charts.
+        'assets/js/pg_visitors.min.js'            => array('assets/js/pg_visitors.src.js'),
     );
 }
 

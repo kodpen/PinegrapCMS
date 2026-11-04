@@ -64,49 +64,22 @@ if (!$_POST) {
 
 } else {
     validate_token_field();
-    
 
-    // create arrival date
-    $query =
-        "INSERT INTO arrival_dates (
-            name,
-            description,
-            code,
-            arrival_date,
-            status,
-            start_date,
-            end_date,
-            default_selected,
-            sort_order,
-            custom,
-            custom_maximum_arrival_date,
-            user,
-            timestamp)
-        VALUES (
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            UNIX_TIMESTAMP())";
-    $result = db_q($query, pg_arrival_date_form_values($_POST, $user['id'])) or output_error('Query failed.');
+    // Nothing is written while a field is wrong; the browser's back
+    // button returns to the form as it was typed.
+    $errors = pg_arrival_date_form_errors($_POST);
 
-    $arrival_date_id = mysqli_insert_id(db::$con);
-
-    // if default selected was checked, then turn value off for all other arrival dates
-    if (($_POST['default_selected'] ?? '') == 1) {
-        // update arrival date
-        $query = "UPDATE arrival_dates SET default_selected = 0 WHERE id != ?";
-        $result = db_q($query, array((int) $arrival_date_id)) or output_error('Query failed.');
+    if ($errors) {
+        output_error(implode(' ', array_map('h', $errors)) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
-    
+
+
+    // Create the arrival date; one saved as the default takes the switch
+    // off every other one.
+    $arrival_date_id = pg_store_arrival_date_save(0, pg_arrival_date_form_values($_POST, $user['id']));
+    if ($arrival_date_id <= 0) {
+        output_error('Query failed.');
+    }
     // Cut-offs without a shipping method, with a method used twice or with a
     // time outside the dates are left out.
     $shipping_cutoff_error = pg_arrival_date_form_save_cutoffs($arrival_date_id, $_POST);

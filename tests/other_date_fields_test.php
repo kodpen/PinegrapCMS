@@ -63,7 +63,7 @@ function test_other_date_fields_folder_access_expiry()
 {
 	$source = other_date_fields_test_source('view_folders.php');
 
-	pg_assert_contains('<input type="date" data-pg-date class="form-control form-control-sm access-expiration"', $source, 'the expiry is hooked');
-	pg_assert_contains("select.closest('tr').querySelector('.access-expiration-wrap')", $source, 'the rights select shows and hides the wrapper');
+	pg_assert_contains('<input type="date" data-pg-date id="\' + dateId + \'" class="form-control form-control-sm access-expiration"', $source, 'the expiry is hooked');
+	pg_assert_contains("select.closest('.access-user').querySelector('.access-expiration-wrap').hidden", $source, 'the rights select shows and hides the wrapper');
 	pg_assert_contains('window.pgFields.init(body)', $source, 'the rows are drawn once in the document');
 }

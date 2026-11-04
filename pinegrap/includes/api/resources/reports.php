@@ -268,3 +268,108 @@ function api_sales_report_schema() {
 	);
 
 }
+
+// Page speed as visitors' browsers measured it (includes/fn/page_vitals.php):
+// the site, each day and the slowest pages of a window, from the hourly
+// rollup.
+function api_reports_vitals($params) {
+
+	if (!pg_vitals_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('The database has not been upgraded yet. Run the software update first.'));
+
+	}
+
+	$window = api_visitors_window($params, 400);
+
+	$device = isset($params['device']) ? (string)$params['device'] : '';
+
+	$order = isset($params['order']) ? (string)$params['order'] : 'lcp';
+
+	$limit = isset($params['limit']) ? (int)$params['limit'] : 10;
+
+	$days = array();
+
+	foreach (pg_vitals_trend($window['first'], $window['last'], $device) as $day) {
+
+		$days[] = array('day' => $day['day']) + api_vitals_figures_present($day);
+
+	}
+
+	$pages = array();
+
+	foreach (pg_vitals_pages($window['first'], $window['last'], $order, $limit, $device) as $page) {
+
+		$pages[] = array(
+			'page_id'   => $page['page_id'],
+			'page_name' => ($page['page_name'] !== '') ? $page['page_name'] : null
+		) + api_vitals_figures_present($page);
+
+	}
+
+	api_ok(array(
+		'from'   => $window['first'],
+		'to'     => $window['last'],
+		'device' => ($device !== '') ? $device : null,
+		'order'  => $order,
+		'site'   => api_vitals_figures_present(pg_vitals_site($window['first'], $window['last'], $device)),
+		'days'   => $days,
+		'pages'  => $pages
+	));
+
+}
+
+// The figures of pg_vitals_figures(), as the API gives them.
+function api_vitals_figures_present($figures) {
+
+	$out = array('views' => (int)$figures['views']);
+
+	foreach (array('lcp', 'inp', 'cls') as $metric) {
+
+		$out[$metric] = array(
+			'samples'     => (int)$figures[$metric]['samples'],
+			'p75'         => $figures[$metric]['p75'],
+			'mean'        => $figures[$metric]['mean'],
+			'good_share'  => $figures[$metric]['good_share'],
+			'needs_share' => $figures[$metric]['needs_share'],
+			'poor_share'  => $figures[$metric]['poor_share']
+		);
+
+	}
+
+	return $out;
+
+}
+
+// What api_vitals_figures_present() returns.
+function api_vitals_figures_schema() {
+
+	$figure = array(
+		'samples'     => 'integer',
+		'p75'         => 'integer?',
+		'mean'        => 'integer?',
+		'good_share'  => 'number?',
+		'needs_share' => 'number?',
+		'poor_share'  => 'number?'
+	);
+
+	return array('views' => 'integer', 'lcp' => $figure, 'inp' => $figure, 'cls' => $figure);
+
+}
+
+// What api_reports_vitals() returns.
+function api_vitals_report_schema() {
+
+	$figures = api_vitals_figures_schema();
+
+	return array(
+		'from'   => 'string',
+		'to'     => 'string',
+		'device' => 'string?',
+		'order'  => 'string',
+		'site'   => $figures,
+		'days'   => array(array('day' => 'string') + $figures),
+		'pages'  => array(array('page_id' => 'integer', 'page_name' => 'string?') + $figures)
+	);
+
+}

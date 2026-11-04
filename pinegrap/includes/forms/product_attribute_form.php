@@ -21,41 +21,143 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 /**
  * The options the options card starts with: the posted or stored JSON
- * list, or two empty options when there is none.
+ * list, or two empty options when there is none. The list is decoded and
+ * encoded again with only id, label and no value, and with <, >, &, ' and
+ * " written as \u escapes, so a posted label that holds </script> cannot
+ * close the script it is printed in.
  *
  * @param string $options  JSON list of options
  * @return string  JavaScript array literal
  */
 function pg_product_attribute_form_output_options($options)
 {
-    if (($options != '') && ($options != '[]')) {
-        return $options;
+    $decoded = json_decode((string) $options, true);
+    $output = array();
+
+    if (is_array($decoded)) {
+        foreach ($decoded as $option) {
+            if (!is_array($option)) {
+                continue;
+            }
+
+            $output[] = array(
+                'id' => isset($option['id']) && is_scalar($option['id']) ? (string) $option['id'] : '',
+                'label' => isset($option['label']) && is_scalar($option['label']) ? (string) $option['label'] : '',
+                'no_value' => !empty($option['no_value']) ? '1' : '',
+            );
+        }
     }
 
-    return '[{label: ""},{label: ""}]';
+    if (!$output) {
+        return '[{label: ""},{label: ""}]';
+    }
+
+    return json_encode($output, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
 }
 
 /**
- * The Main Informations card (name, label) and the Options card with the
- * option list script.
+ * The posted options ready to save: labels trimmed, rows without a label
+ * dropped (the form starts with two empty rows and filling only one is
+ * normal), the id an integer (0 for a new option), no value '1' or ''.
+ *
+ * @param mixed $options  Decoded options list
+ * @return array
+ */
+function pg_product_attribute_form_clean_options($options)
+{
+    $clean = array();
+
+    if (!is_array($options)) {
+        return $clean;
+    }
+
+    foreach ($options as $option) {
+        if (!is_array($option)) {
+            continue;
+        }
+
+        $label = isset($option['label']) && is_scalar($option['label']) ? trim((string) $option['label']) : '';
+
+        if ($label === '') {
+            continue;
+        }
+
+        $clean[] = array(
+            'id' => isset($option['id']) && is_scalar($option['id']) ? (int) $option['id'] : 0,
+            'label' => $label,
+            'no_value' => !empty($option['no_value']) ? '1' : '',
+        );
+    }
+
+    return $clean;
+}
+
+/**
+ * The first label given to a second option, compared without case: two
+ * options with one label cannot be told apart in the variant picker.
+ *
+ * @param array $options  Cleaned options
+ * @return string  The repeated label, '' when every label differs
+ */
+function pg_product_attribute_form_duplicate_label($options)
+{
+    $seen = array();
+
+    foreach ($options as $option) {
+        $label = (string) $option['label'];
+        // mb_strtolower() turns the Turkish dotted capital into i plus a
+        // combining dot, so it is mapped to a plain i first.
+        $key = str_replace('İ', 'i', $label);
+        $key = function_exists('mb_strtolower') ? mb_strtolower($key, 'UTF-8') : strtolower($key);
+
+        if (isset($seen[$key])) {
+            return $label;
+        }
+
+        $seen[$key] = true;
+    }
+
+    return '';
+}
+
+/**
+ * The form column (Main Informations card with name and label, Options card
+ * with the option list script) and the status column: a sticky Summary of
+ * the option count and, on the edit screen, how many products and product
+ * groups use the attribute.
  *
  * @param liveform $liveform
+ * @param array|null $usage  list of (products, product groups) on edit, null on create
  * @return string
  */
-function pg_product_attribute_form_cards($liveform)
+function pg_product_attribute_form_cards($liveform, $usage = null)
 {
     $output_options = pg_product_attribute_form_output_options($liveform->get_field_value('options'));
+    $option_count = count(pg_product_attribute_form_clean_options(json_decode((string) $liveform->get_field_value('options'), true)));
+
+    $output_usage = '';
+
+    if (is_array($usage)) {
+        $output_usage = '
+                                            <div class="d-flex justify-content-between py-2 border-top">
+                                                <dt class="fw-normal">' . lang('Products') . '</dt>
+                                                <dd class="mb-0 fw-bold">' . (int) $usage[0] . '</dd>
+                                            </div>
+                                            <div class="d-flex justify-content-between py-2 border-top">
+                                                <dt class="fw-normal">' . lang('Product Groups') . '</dt>
+                                                <dd class="mb-0 fw-bold">' . (int) $usage[1] . '</dd>
+                                            </div>';
+    }
 
     return '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Main Informations') . '
                                 </h2>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 sm:col-4 my-3">
+                                <div class="card-body pt-0">
+                                    <div class="row g-5">
+                                        <div class="col-12 md:col-5">
                                             <label for="name" class="form-label">' . lang('Name') . '</label>
                                             ' . $liveform->output_field(array(
                                                 'type' => 'text',
@@ -66,7 +168,7 @@ function pg_product_attribute_form_cards($liveform)
                                                 'maxlength' => '100',
                                                 'required' => 'required')) . '
                                         </div>
-                                        <div class="col-12 sm:col-8 my-3">
+                                        <div class="col-12 md:col-7">
                                             <label for="label" class="form-label">' . lang('Label') . '</label>
                                             ' . $liveform->output_field(array(
                                                 'type' => 'text',
@@ -79,48 +181,81 @@ function pg_product_attribute_form_cards($liveform)
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Options') . '
+                                    ' . lang('Attribute Options') . '
                                 </h2>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 mt-1 mb-3">
-                                            <label class="form-label" >' . lang('Attribute Options') . '</label>
-                                            <div class="options">
-                                                <div class="option_list row" ></div>
-                                                <button type="button" class="add_option btn btn-solid theme-primary mt-3"><span class="bi bi-plus-circle me-3"></span>' . lang('Add Option') . '</button>
-                                            </div>
-                                            <script>
-                                                init_product_attribute_options({
-                                                    options: ' . $output_options . ',
-                                                    labels:{
-                                                        "\'No Thanks\' Option":"' . lang('\'No Thanks\' Option') . '",
-                                                        "Option":"' . lang('Option') . '",
-                                                        "Move Up":"' . lang('Move Up') . '",
-                                                        "Move Down":"' . lang('Move Down') . '",
-                                                        "Remove":"' . lang('Remove') . '"
-                                                    }
-                                                });
-                                            </script>
-                                        </div>
+                                <div class="card-body pt-0">
+                                    <div class="options">
+                                        <div class="option_list d-flex flex-column gap-3" role="list" aria-label="' . h(lang('Attribute Options')) . '"></div>
+                                        <button type="button" class="add_option btn btn-outline theme-primary mt-5"><span class="bi bi-plus-circle me-3" aria-hidden="true"></span>' . lang('Add Option') . '</button>
+                                    </div>
+                                    <script>
+                                        init_product_attribute_options({
+                                            options: ' . $output_options . ',
+                                            labels:{
+                                                "\'No Thanks\' Option":"' . lang('\'No Thanks\' Option') . '",
+                                                "Option":"' . lang('Option') . '",
+                                                "Move Up":"' . lang('Move Up') . '",
+                                                "Move Down":"' . lang('Move Down') . '",
+                                                "Remove":"' . lang('Remove') . '"
+                                            }
+                                        });
+                                    </script>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Summary') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <dl class="mb-0">
+                                            <div class="d-flex justify-content-between py-2">
+                                                <dt class="fw-normal">' . lang('Options') . '</dt>
+                                                <dd class="mb-0 fw-bold" id="product_attribute_summary_options">' . $option_count . '</dd>
+                                            </div>' . $output_usage . '
+                                        </dl>
                                     </div>
                                 </div>
                             </div>
+                        </div>';
+}
+
+/**
+ * The screen row: the columns (pg_product_attribute_form_cards()) and the
+ * sticky save bar with the given buttons.
+ *
+ * @param string $cards   pg_product_attribute_form_cards()
+ * @param string $buttons The buttons inside the bar's group
+ * @return string
+ */
+function pg_product_attribute_form_layout($cards, $buttons)
+{
+    return '
+                    <div class="row">' . $cards . '
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">' . $buttons . '
+                                    </div>
+                                </div>
+                            </nav>
                         </div>
                     </div>';
 }
 
 /**
- * Checks the posted name is free and at least one option was added; errors
- * are marked on the form. The required check stays in the screens, which
+ * Checks the posted name is free, at least one option has a label and no
+ * label is given twice; errors are marked on the form. The required check stays in the screens, which
  * word it differently.
  *
  * @param liveform $liveform
  * @param string|null $id  Edited attribute's id, null on create
- * @return array  The posted options
+ * @return array  The posted options, cleaned (pg_product_attribute_form_clean_options())
  */
 function pg_product_attribute_form_check($liveform, $id)
 {
@@ -141,10 +276,16 @@ function pg_product_attribute_form_check($liveform, $id)
         }
     }
 
-    $options = decode_json($liveform->get_field_value('options'));
+    $options = pg_product_attribute_form_clean_options(json_decode((string) $liveform->get_field_value('options'), true));
 
     if (count($options) == 0) {
         $liveform->mark_error('', lang('Please add an option.'));
+    } else {
+        $duplicate = pg_product_attribute_form_duplicate_label($options);
+
+        if ($duplicate !== '') {
+            $liveform->mark_error('', lang(array('string' => 'The option {var:1} is entered more than once.', 'vars' => array(h($duplicate)))));
+        }
     }
 
     return $options;

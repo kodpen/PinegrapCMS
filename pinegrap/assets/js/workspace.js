@@ -609,6 +609,23 @@
     // the browser's back-forward cache.
     var uploadsRunning = 0;
 
+    // Whether this browser's own model hears audio and is on the device
+    // (PGVoiceText.downloaded()): null until asked, then false or true. A
+    // recording is then written out here before it is posted where the
+    // site has no transcription service (channel.voice_browser).
+    var voiceModel = null;
+
+    function voiceModelHere() {
+        if ((voiceModel === null) && window.PGVoiceText && window.PGVoiceText.downloaded) {
+            voiceModel = false;
+            window.PGVoiceText.downloaded(CFG.locale || '').then(function (yes) {
+                voiceModel = !!yes;
+            }, function () {});
+        }
+
+        return voiceModel === true;
+    }
+
     function uploadLeaveGuard(event) {
         event.preventDefault();
         event.returnValue = t('upload_leave');
@@ -710,7 +727,9 @@
     var dialog = null;
     var askUp = false;
 
-    function ask(message, okLabel, danger, details) {
+    // options.info: a notice with nothing to cancel (a link already made)
+    // shows only its OK button.
+    function ask(message, okLabel, danger, details, options) {
         return new Promise(function (resolve) {
             if (!dialog) {
                 dialog = el('dialog', 'dialog ws-ask-modal pg-dialog-centered');
@@ -752,6 +771,7 @@
             ok.textContent = okLabel || t('ok');
             ok.className = 'btn btn-sm rounded-pill px-5 ' + (danger ? 'btn-outline theme-warning' : 'btn-solid theme-primary');
             cancel.textContent = t('cancel');
+            cancel.hidden = !!(options && options.info);
 
             var modal = pgUI.dialog.get(dialog);
             var answered = false;
@@ -2452,6 +2472,34 @@
         return toggle;
     }
 
+    // The panel heading over the screen (output_header()'s .pg-navhead) for
+    // the view on show: Today, the scheduled lists or the channels. The
+    // popover attributes of the heading repeat both lines, so they follow.
+    function screenHeading(key) {
+        var entry = (CFG.headings || {})[key];
+        var head = document.querySelector('.pg-navhead');
+
+        if (!entry || !head) {
+            return;
+        }
+
+        var title = head.querySelector('.pg-navhead-title');
+        var desc = head.querySelector('.pg-navhead-desc');
+
+        if (title) {
+            title.textContent = entry.heading;
+        }
+
+        if (desc) {
+            desc.textContent = entry.description;
+        }
+
+        if (head.hasAttribute('data-bs-title')) {
+            head.setAttribute('data-bs-title', entry.heading);
+            head.setAttribute('data-bs-content', entry.description);
+        }
+    }
+
     // The main menu's current entry and its row's hint follow an address
     // changed without a page load.
     function menuAddressChanged() {
@@ -3635,6 +3683,7 @@
             placeholder: options.placeholder || '',
             previews: !!options.previews,
             slashInserts: options.slashInserts,
+            removeLabel: options.removeLabel,
             headings: !!options.headings,
             pasteFiles: options.pasteFiles,
             onInput: function () {
@@ -5112,11 +5161,15 @@
 
     // The versions of a channel's conversation (includes/workspace/eras.php):
     // the current one, the earlier ones to read, and clearing it for staff.
-    function eraSection(channel, node) {
+    // ownDrawer: the section fills a drawer titled with the same words, so
+    // its own heading is left out.
+    function eraSection(channel, node, ownDrawer) {
         var box = el('div', 'mb-5 ws-era-section');
         var list = el('div', 'ws-era-list');
 
-        box.appendChild(el('div', 'form-label', t('era_list')));
+        if (!ownDrawer) {
+            box.appendChild(el('div', 'form-label', t('era_list')));
+        }
         list.appendChild(skeleton(2, 'ws-skeleton-sm'));
         box.appendChild(list);
 
@@ -5631,7 +5684,7 @@
         group.appendChild(copy);
         details.appendChild(group);
 
-        ask(t('guest_link_help'), t('guest_link_done'), false, details);
+        ask(t('guest_link_help'), t('guest_link_done'), false, details, { info: true });
     }
 
     function guestForm(onDone) {
@@ -6026,9 +6079,13 @@
                 });
             }
 
-            // What the rail of the other screens links to.
+            // An address kept from when the list had an Inbox entry opens the
+            // bell, the one inbox, on Workspace; the workspace's own list only
+            // where the page has no bell.
             if (query.inbox) {
-                openInbox(function () { self.sync(); });
+                if (!((typeof window.pgBellOpen === 'function') && window.pgBellOpen('workspace'))) {
+                    openInbox(function () { self.sync(); });
+                }
             } else if (query.panel === 'archived') {
                 self.showArchived();
             } else if ((query.panel === 'audit') && BOOT.me.rights.staff) {
@@ -6099,7 +6156,6 @@
                 manage: manage,
                 nav: {
                     home: function () { self.showHome(true); },
-                    inbox: function () { openInbox(function () { self.sync(); }); },
                     scheduled: function () { self.showScheduled(true); },
                     archived: function () { self.showArchived(); },
                     audit: function () { self.showAudit(); }
@@ -6114,13 +6170,6 @@
                         window.PGWsPalette.open();
                     }
                 },
-                // The workspace's own tour (includes/workspace/tour.php): it
-                // points at the tiles of the Tools section; a place behind
-                // More is opened by the tour itself (PGWsSide.openFor()).
-                tour: (window.PgTour && window.PG_TOUR && window.PG_TOUR.key) ? function () {
-                    window.PGWsSide.openSections(['tools']);
-                    window.PgTour.start(window.PG_TOUR.key);
-                } : null,
                 pin: function (channel, pinned) { self.pinChannel(channel, pinned); },
                 decorateChannel: function (link, channel, box, sortable) {
                     if (sortable) {
@@ -7198,7 +7247,7 @@
             var body = clear(node.querySelector('.drawer-body'));
 
             node.querySelector('.drawer-footer').classList.add('d-none');
-            body.appendChild(eraSection(channel, node));
+            body.appendChild(eraSection(channel, node, true));
             showOffcanvas(node);
         },
 
@@ -7331,6 +7380,7 @@
             self.channel = null;
             self.view = 'scheduled';
             self.drawSide();
+            screenHeading(staff ? 'scheduled_actions' : 'scheduled_messages');
 
             var center = clear(self.center);
             var head = el('div', 'ws-head');
@@ -7403,6 +7453,7 @@
             self.channel = null;
             self.view = 'home';
             self.drawSide();
+            screenHeading('home');
 
             var center = clear(self.center);
             var head = el('div', 'ws-head');
@@ -7735,7 +7786,7 @@
                 head.appendChild(el('span', 'ws-home-row-title', task.title));
 
                 if (hot) {
-                    head.appendChild(el('span', 'ws-home-priority ws-home-priority-' + task.priority, (BOOT.priorities || {})[task.priority] || task.priority));
+                    head.appendChild(el('span', 'ws-priority ws-priority-' + task.priority, (BOOT.priorities || {})[task.priority] || task.priority));
                 }
 
                 text.appendChild(head);
@@ -8087,6 +8138,7 @@
                 }
 
                 self.view = 'channel';
+                screenHeading('channel');
                 self.channel = data.channel;
                 self.era = data.era || null;
                 self.messages = data.messages;
@@ -8348,10 +8400,10 @@
 
             // Header, one line: the channel's sign and name, how its work
             // stands, its department and its customer; then its people,
-            // search, its info, a new task and its menu. The purpose is in
-            // the info (showMembers()) and on the name's tooltip. On a phone
-            // the line keeps the way back, the name and the menu, which then
-            // holds the rest.
+            // search, its info, a new task, the workspace's tour and its
+            // menu. The purpose is in the info (showMembers()) and on the
+            // name's tooltip. On a phone the line keeps the way back, the
+            // name and the menu, which then holds the rest.
             var head = el('div', 'ws-head ws-head-channel');
             head.appendChild(channelsToggle());
 
@@ -8361,49 +8413,7 @@
                 head.setAttribute('data-ws-colored', '1');
             }
 
-            var title = el('div', 'ws-head-title ws-head-row');
-            var h = el('h2');
-            var tile = el('span', 'ws-head-icon');
-            tile.setAttribute('aria-hidden', 'true');
-            tile.appendChild(channelIcon(channel));
-            h.appendChild(tile);
-            h.appendChild(el('span', 'ws-head-name', channel.name));
-
-            if (channel.topic) {
-                h.title = channel.topic;
-            }
-
-            title.appendChild(h);
-
-            var tags = el('div', 'ws-head-tags');
-
-            // How the work stands, from the latest status update
-            // (workspace_status.js).
-            var statusPill = window.PGWsStatus ? window.PGWsStatus.pill(channel, self, featureHelpers()) : null;
-
-            if (statusPill) {
-                tags.appendChild(statusPill);
-            }
-
-            if (channel.department) {
-                var departmentBadge = tags.appendChild(el('span', 'badge ws-head-tag', channel.department.name));
-                departmentBadge.style.background = channel.department.color;
-                departmentBadge.style.color = readableInk(channel.department.color);
-            }
-
-            // The customer, and beside it the records tied to it.
-            var customer = self.customerNode(channel);
-
-            if (customer) {
-                customer.classList.add('ws-head-tag');
-                tags.appendChild(customer);
-            }
-
-            if (tags.firstChild) {
-                title.appendChild(tags);
-            }
-
-            head.appendChild(title);
+            head.appendChild(self.headTitle(channel));
 
             var actions = el('div', 'ws-head-actions');
             var faces = button('btn btn-sm btn-text theme-secondary ws-head-faces ws-head-wide', '', '', t('members'));
@@ -8425,6 +8435,15 @@
             var addTask = button('btn btn-sm btn-text theme-secondary ws-head-wide', '', 'bi-check2-square', t('new_task'));
             addTask.addEventListener('click', function () { self.newChannelTask(); });
             actions.appendChild(addTask);
+
+            // The tour shows the workspace around this screen, so it is
+            // played again from here; its last step points at this button.
+            if (self.tourReady()) {
+                var tour = button('btn btn-sm btn-text theme-secondary ws-head-wide', '', 'bi-signpost-split', t('tour_start'));
+                tour.setAttribute('data-ws-tour', '1');
+                tour.addEventListener('click', function () { self.startTour(); });
+                actions.appendChild(tour);
+            }
 
             actions.appendChild(self.channelMenu());
             head.appendChild(actions);
@@ -8486,9 +8505,19 @@
                 tabList.push(['board', t('tab_board')]);
             }
 
+            var paneId = nextId('ws-pane-');
+
+            // Tab semantics in full: the chosen tab is selected and the only
+            // one in the Tab order, it names the pane below, and the arrow
+            // keys, Home and End move between the tabs.
             tabList.forEach(function (tab) {
-                var item = button(self.tab === tab[0] ? 'active' : '', tab[1]);
+                var on = self.tab === tab[0];
+                var item = button(on ? 'active' : '', tab[1]);
+                item.id = paneId + '-' + tab[0];
                 item.setAttribute('role', 'tab');
+                item.setAttribute('aria-selected', on ? 'true' : 'false');
+                item.setAttribute('aria-controls', paneId);
+                item.tabIndex = on ? 0 : -1;
                 item.setAttribute('data-ws-tab', tab[0]);
                 item.addEventListener('click', function () {
                     self.tab = tab[0];
@@ -8500,6 +8529,39 @@
                     }
                 });
                 tabs.appendChild(item);
+            });
+
+            tabs.addEventListener('keydown', function (event) {
+                var all = Array.prototype.slice.call(tabs.querySelectorAll('[role="tab"]'));
+                var at = all.indexOf(document.activeElement);
+                var to = -1;
+
+                if (at < 0) {
+                    return;
+                }
+
+                if (event.key === 'ArrowRight') {
+                    to = (at + 1) % all.length;
+                } else if (event.key === 'ArrowLeft') {
+                    to = (at - 1 + all.length) % all.length;
+                } else if (event.key === 'Home') {
+                    to = 0;
+                } else if (event.key === 'End') {
+                    to = all.length - 1;
+                }
+
+                if (to >= 0) {
+                    event.preventDefault();
+                    all[to].focus();
+                    all[to].click();
+
+                    // The redraw builds new tabs: the chosen one keeps focus.
+                    var chosen = self.tabsNode ? self.tabsNode.querySelector('[data-ws-tab="' + all[to].getAttribute('data-ws-tab') + '"]') : null;
+
+                    if (chosen) {
+                        chosen.focus();
+                    }
+                }
             });
 
             center.appendChild(tabs);
@@ -8530,6 +8592,9 @@
             }
 
             var pane = el('div', 'ws-pane ws-pane-' + self.tab);
+            pane.id = paneId;
+            pane.setAttribute('role', 'tabpanel');
+            pane.setAttribute('aria-labelledby', paneId + '-' + self.tab);
             center.appendChild(pane);
             self.pane = pane;
             messageKeys(pane);
@@ -8663,6 +8728,23 @@
             }
         },
 
+        // Whether the workspace's own tour (includes/workspace/tour.php) is
+        // on this page to be played again.
+        tourReady: function () {
+            return !!(window.PgTour && window.PG_TOUR && window.PG_TOUR.key);
+        },
+
+        // Plays the tour again. It points at the tiles of the Tools section,
+        // so that section is opened first; a place behind More is opened by
+        // the tour itself (PGWsSide.openFor()).
+        startTour: function () {
+            if (window.PGWsSide) {
+                window.PGWsSide.openSections(['tools']);
+            }
+
+            window.PgTour.start(window.PG_TOUR.key);
+        },
+
         channelMenu: function () {
             var self = this;
             var channel = self.channel;
@@ -8674,9 +8756,25 @@
 
             var menu = el('ul', 'menu pg-menu-end');
 
-            function item(label, iconName, handler, className) {
+            // Kept to the screen's height on a phone (.ws-head-menu).
+            menu.classList.add('ws-head-menu');
+
+            // checked (true/false) marks a choice or a switch: its state is
+            // said through aria-checked (role radio for one of a set,
+            // checkbox for an on/off switch) and drawn as a check icon.
+            function item(label, iconName, handler, className, checked, radio) {
                 var li = el('li', className || '');
                 var link = button('menu-item pg-link-body-emphasis', label, iconName);
+
+                if (typeof checked === 'boolean') {
+                    link.setAttribute('role', radio ? 'menuitemradio' : 'menuitemcheckbox');
+                    link.setAttribute('aria-checked', checked ? 'true' : 'false');
+
+                    if (checked) {
+                        link.appendChild(icon('bi-check2', 'ms-auto ps-2'));
+                    }
+                }
+
                 link.addEventListener('click', handler);
                 li.appendChild(link);
                 menu.appendChild(li);
@@ -8689,16 +8787,22 @@
             }
 
             // On a phone the header keeps only the name: the channel's info,
-            // people and search beside it on a wider screen come first here
-            // (a new task is the Tasks tab's button and the / command).
+            // people, search and the tour beside it on a wider screen come
+            // first here (a new task is the Tasks tab's button and the /
+            // command).
             item(t('channel_info'), 'bi-info-circle', function () { self.showMembers(); }, 'ws-head-narrow');
             item(t('members') + ' (' + channel.members.length + ')', 'bi-people', function () { self.showMembers(); }, 'ws-head-narrow');
             item(t('channel_search'), 'bi-search', function () { self.searchChannel(); }, 'ws-head-narrow');
+
+            if (self.tourReady()) {
+                item(t('tour_start'), 'bi-signpost-split', function () { self.startTour(); }, 'ws-head-narrow');
+            }
+
             divider('ws-head-narrow');
 
             if (channel.can_manage) {
                 item(t('edit_channel'), 'bi-pencil', function () {
-                    channelForm(channel, {}, function (id) { self.reloadChannels(id); });
+                    channelForm(channel, {}, function () { self.refreshInfo(); });
                 });
             }
 
@@ -8713,9 +8817,9 @@
 
             if (channel.joined) {
                 [['all', t('notify_all')], ['mentions', t('notify_mentions')], ['none', t('notify_none')]].forEach(function (option) {
-                    item(option[1] + (channel.notify === option[0] ? ' ✓' : ''), option[0] === 'none' ? 'bi-bell-slash' : 'bi-bell', function () {
+                    item(option[1], option[0] === 'none' ? 'bi-bell-slash' : 'bi-bell', function () {
                         api('ws_channel_notify', { channel_id: channel.id, notify: option[0] }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
-                    });
+                    }, '', channel.notify === option[0], true);
                 });
                 divider();
             }
@@ -8726,15 +8830,15 @@
             if (window.PGWsVoice && window.PGWsVoice.speakSupported() && (BOOT.claude || BOOT.ai || (BOOT.mcp || []).length)) {
                 var speaking = window.PGWsVoice.speakOn(CFG.api_url, CFG.me);
 
-                item(t('voice_speak') + (speaking ? ' ✓' : ''), speaking ? 'bi-volume-up' : 'bi-volume-mute', function () {
+                item(t('voice_speak'), speaking ? 'bi-volume-up' : 'bi-volume-mute', function () {
                     window.PGWsVoice.speakSet(CFG.api_url, CFG.me, !speaking);
                     toast(t(speaking ? 'voice_speak_off' : 'voice_speak_on'), 'info');
-                });
+                }, '', speaking);
                 divider();
             }
 
             if (BOOT.claude && channel.claude && channel.can_manage && !channel.archived) {
-                item(t('claude_allow') + (channel.claude.allowed ? ' ✓' : ''), 'bi-stars', function () {
+                item(t('claude_allow'), 'bi-stars', function () {
                     var allow = !channel.claude.allowed;
                     var asked = (allow && channel.kind === 'private') ? ask(t('claude_allow_private'), t('claude_allow'), false) : Promise.resolve(true);
 
@@ -8743,12 +8847,12 @@
                             api('ws_channel_claude', { channel_id: channel.id, allowed: allow ? 1 : 0 }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
                         }
                     });
-                });
+                }, '', !!channel.claude.allowed);
                 divider();
             }
 
             if (BOOT.ai && channel.ai && channel.can_manage && !channel.archived) {
-                item(t('ai_allow') + (channel.ai.allowed ? ' ✓' : ''), 'bi-cpu', function () {
+                item(t('ai_allow'), 'bi-cpu', function () {
                     var allow = !channel.ai.allowed;
                     var asked = (allow && channel.kind === 'private') ? ask(t('ai_allow_private'), t('ai_allow'), false) : Promise.resolve(true);
 
@@ -8757,7 +8861,7 @@
                             api('ws_channel_ai', { channel_id: channel.id, allowed: allow ? 1 : 0 }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
                         }
                     });
-                });
+                }, '', !!channel.ai.allowed);
                 divider();
             }
 
@@ -8765,7 +8869,7 @@
             // not public sends them out only once a manager agrees, told
             // which service hears them.
             if (channel.voice && channel.can_manage && !channel.archived) {
-                item(t('voice_allow') + (channel.voice.allowed ? ' ✓' : ''), 'bi-mic', function () {
+                item(t('voice_allow'), 'bi-mic', function () {
                     var allow = !channel.voice.allowed;
                     var asked = (allow && channel.kind !== 'public') ? ask(t('voice_allow_private', channel.voice.provider), t('voice_allow'), false) : Promise.resolve(true);
 
@@ -8774,7 +8878,7 @@
                             api('ws_channel_voice', { channel_id: channel.id, allowed: allow ? 1 : 0 }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
                         }
                     });
-                });
+                }, '', !!channel.voice.allowed);
                 divider();
             }
 
@@ -9180,7 +9284,7 @@
                 var settings = button('btn btn-sm btn-outline theme-secondary rounded-pill w-100 ws-info-settings', t('edit_channel'), 'bi-gear');
 
                 settings.addEventListener('click', function () {
-                    channelForm(channel, {}, function (id) { self.reloadChannels(id); });
+                    channelForm(channel, {}, function () { self.refreshInfo(); });
                 });
                 body.appendChild(settings);
             }
@@ -9264,8 +9368,58 @@
             });
         },
 
-        // The header's people and menu, read from the channel as it is now
-        // (refreshInfo()); the rest of the header does not change there.
+        // The header's sign, name and tags (how the work stands, the
+        // department, the customer), drawn by drawCenter() and anew by
+        // refreshHead() after the channel's settings are saved.
+        headTitle: function (channel) {
+            var self = this;
+            var title = el('div', 'ws-head-title ws-head-row');
+            var h = el('h2');
+            var tile = el('span', 'ws-head-icon');
+            tile.setAttribute('aria-hidden', 'true');
+            tile.appendChild(channelIcon(channel));
+            h.appendChild(tile);
+            h.appendChild(el('span', 'ws-head-name', channel.name));
+
+            if (channel.topic) {
+                h.title = channel.topic;
+            }
+
+            title.appendChild(h);
+
+            var tags = el('div', 'ws-head-tags');
+
+            // How the work stands, from the latest status update
+            // (workspace_status.js).
+            var statusPill = window.PGWsStatus ? window.PGWsStatus.pill(channel, self, featureHelpers()) : null;
+
+            if (statusPill) {
+                tags.appendChild(statusPill);
+            }
+
+            if (channel.department) {
+                var departmentBadge = tags.appendChild(el('span', 'badge ws-head-tag', channel.department.name));
+                departmentBadge.style.background = channel.department.color;
+                departmentBadge.style.color = readableInk(channel.department.color);
+            }
+
+            // The customer, and beside it the records tied to it.
+            var customer = self.customerNode(channel);
+
+            if (customer) {
+                customer.classList.add('ws-head-tag');
+                tags.appendChild(customer);
+            }
+
+            if (tags.firstChild) {
+                title.appendChild(tags);
+            }
+
+            return title;
+        },
+
+        // The header read from the channel as it is now (refreshInfo()): its
+        // colour, title, people and menu.
         refreshHead: function () {
             var self = app;
             var channel = self.channel;
@@ -9273,6 +9427,21 @@
 
             if (!actions || !channel) {
                 return;
+            }
+
+            var head = actions.closest('.ws-head-channel');
+            var title = head.querySelector(':scope > .ws-head-title');
+
+            if (channel.hex) {
+                head.style.setProperty('--ws-ch', channel.hex);
+                head.setAttribute('data-ws-colored', '1');
+            } else {
+                head.style.removeProperty('--ws-ch');
+                head.removeAttribute('data-ws-colored');
+            }
+
+            if (title) {
+                head.replaceChild(self.headTitle(channel), title);
             }
 
             var faces = actions.querySelector('.ws-head-faces');
@@ -9287,6 +9456,20 @@
 
             if (menu) {
                 actions.replaceChild(self.channelMenu(), menu);
+            }
+
+            // The box names the channel; a rename in the channel settings
+            // reaches it here as well (a discussion's box names none).
+            if (self.input && !self.isThread) {
+                var placeholder = t('composer_placeholder', channel.name);
+
+                if (self.input.tagName === 'TEXTAREA') {
+                    self.input.placeholder = placeholder;
+                } else {
+                    self.input.setAttribute('data-placeholder', placeholder);
+                }
+
+                self.input.setAttribute('aria-label', placeholder);
             }
         },
 
@@ -13253,8 +13436,11 @@
 
             // Formatting, tags as chips and tables, lists and code as cards
             // (assets/js/workspace_editor.js); a plain box without it.
+            // A discussion's box does not name its title as a channel.
+            var placeholder = self.isThread ? t('thread_composer_placeholder') : t('composer_placeholder', self.channel.name);
+
             self.rich = window.PGWsEditor ? window.PGWsEditor.create({
-                placeholder: t('composer_placeholder', self.channel.name),
+                placeholder: placeholder,
                 onKeydown: keys,
                 onEnter: function () { self.send(); }
             }) : null;
@@ -13263,7 +13449,7 @@
 
             if (!self.rich) {
                 input.rows = 1;
-                input.placeholder = t('composer_placeholder', self.channel.name);
+                input.placeholder = placeholder;
                 input.setAttribute('aria-label', input.placeholder);
             }
 
@@ -13775,7 +13961,7 @@
         // The microphone in place of Send while the box is empty or holds
         // only tags (voiceTags()). Not while a message is changed; beside a
         // reply bar it answers that message (voiceSend()), but not several
-        // at once, nor an MCP agent (voiceAnswers()).
+        // at once (voiceAnswers()).
         voiceSwap: function () {
             var mic = this.voiceMic;
 
@@ -13789,6 +13975,12 @@
 
             mic.classList.toggle('d-none', !show);
             this.sendNode.classList.toggle('d-none', show);
+
+            // Asked once, before the first recording, so the recorder knows
+            // whether this browser writes it out (voiceUnheard()).
+            if (show && this.channel.voice_browser) {
+                voiceModelHere();
+            }
         },
 
         // The box's text while it holds nothing but tags (a person, @ai,
@@ -13806,19 +13998,23 @@
             return (rest.replace(/[\s\u00a0\u200b]/g, '') === '') ? text.trim() : '';
         },
 
-        // Whether a recording may answer this message. An answer to Claude
-        // or Pinegrap AI asks it once the recording is written out
-        // (includes/workspace/voice.php, ws_voice_ask()); an MCP agent reads
-        // only the words, so a recording does not stand in for them.
+        // Whether a recording may answer this message: any one message. An
+        // answer to Claude, Pinegrap AI or an MCP agent asks it once the
+        // recording is written out (includes/workspace/voice.php,
+        // ws_voice_ask()); the agent reads the transcript as the others do
+        // (ws_mcp_agent_heard()).
         // An assistant's answer to the viewer's own message, come in while the
         // conversation is open and in sight, read aloud for a person who
-        // switched it on in this browser (the channel menu). Code blocks,
-        // buttons and change cards are left out of what is read.
+        // switched it on in this browser (the channel menu). An answer to the
+        // viewer's own recording is heard whatever the switch says: the sound
+        // the site made with its speech service is played, else this browser
+        // reads the words. Code blocks, buttons and change cards are left out
+        // of what is read.
         speakAnswer: function (message, node) {
             var voice = window.PGWsVoice;
             var sender = message.sender || {};
 
-            if (!voice || !voice.speakSupported() || !voice.speakOn(CFG.api_url, CFG.me) || document.hidden || !node
+            if (!voice || document.hidden || !node
                 || (message.sender_kind !== 'app') || !(sender.claude || sender.ai || sender.mcp) || !message.parent_id) {
                 return;
             }
@@ -13827,6 +14023,25 @@
             var body = node.querySelector('.ws-msg-body');
 
             if (!parent || !parent.mine || !body) {
+                return;
+            }
+
+            var asked = this.answersRecording(parent);
+
+            if (asked && message.file && (message.file.kind === 'audio')) {
+                var audio = node.querySelector('audio');
+                var playing = (audio && audio.play) ? audio.play() : null;
+
+                // A browser that allows no sound without a gesture refuses
+                // quietly; the player stays for a click.
+                if (playing && playing.catch) {
+                    playing.catch(function () {});
+                }
+
+                return;
+            }
+
+            if (!voice.speakSupported() || (!asked && !voice.speakOn(CFG.api_url, CFG.me))) {
                 return;
             }
 
@@ -13840,9 +14055,15 @@
         },
 
         voiceAnswers: function (message) {
-            var sender = (message && message.sender) || {};
+            return !!message;
+        },
 
-            return !sender.mcp;
+        // Whether a message is a recording (or a spoken answer, named the
+        // same): an answer to it is heard back.
+        answersRecording: function (message) {
+            var file = (message && message.file) || null;
+
+            return !!(file && (file.kind === 'audio') && window.PGWsVoice && window.PGWsVoice.isVoice(file.name));
         },
 
         // Whether a sound in the conversation gets the microphone that
@@ -13851,6 +14072,37 @@
         voiceReplyOffered: function (message) {
             return !!(window.PGWsVoice && window.PGWsVoice.supported()) && (this.tab === 'messages') && !this.era
                 && !!this.channel && !!this.channel.can_post && !message.deleted && this.voiceAnswers(message);
+        },
+
+        // Why the assistants would not hear a recording made here, for the
+        // recorder's hint: the channel's voice_unheard (off: transcripts are
+        // switched off on the site; skipped: this channel keeps its
+        // recordings), only where an assistant could be asked. Role 0 gets
+        // the settings card's link, a manager of a switchable channel the
+        // menu's entry; null when the recording is written out by a
+        // service. Where this browser writes it out instead
+        // (voiceWritesOut()), the hint says so.
+        voiceUnheard: function () {
+            var channel = this.channel;
+            var reason = channel ? (channel.voice_unheard || '') : '';
+
+            if (!reason || !(channel.claude || channel.ai || (BOOT.mcp || []).length)) {
+                return null;
+            }
+
+            if (this.voiceWritesOut()) {
+                return { text: t('voice_browser_hint'), link: null, note: '' };
+            }
+
+            var hint = { text: t(reason === 'off' ? 'voice_unheard_off' : 'voice_unheard_skipped'), link: null, note: '' };
+
+            if ((reason === 'off') && (parseInt(CFG.me_role, 10) === 0) && CFG.urls && CFG.urls.settings) {
+                hint.link = { url: CFG.urls.settings + '#ws-voice', text: t('voice_unheard_settings') };
+            } else if ((reason === 'skipped') && channel.voice && channel.can_manage && !channel.archived) {
+                hint.note = t('voice_unheard_menu');
+            }
+
+            return hint;
         },
 
         // Records into the writing box (the microphone in place of Send, or
@@ -13865,6 +14117,7 @@
 
             window.PGWsVoice.start({
                 box: box,
+                unheard: self.voiceUnheard(),
                 send: function (file, measure) { self.voiceSend(file, measure); },
                 done: function () {
                     self.voiceSwap();
@@ -13897,21 +14150,72 @@
             self.voiceRecord();
         },
 
+        // Does this browser write a recording made here out before it is
+        // posted? Where the site has no transcription service and the
+        // channel allows transcripts (channel.voice_browser), with the
+        // browser's model already on the device.
+        voiceWritesOut: function () {
+            return !!(this.channel && this.channel.voice_browser) && voiceModelHere();
+        },
+
         // A recording leaves as a file of its own: words in the box stay
         // there, tags alone go with it (voiceTags()) and leave the box. It
         // answers the message the reply bar shows when it is sent; the bar
         // closes once it is posted. measure: the length and waveform the
         // recorder heard, kept for the player; its transcript is asked for
         // at once (kickVoice()), and an assistant it asks answers after it.
+        // Where this browser writes it out (voiceWritesOut()), that comes
+        // first and the text goes with it; a failure or Cancel posts it
+        // without, as before.
         voiceSend: function (file, measure) {
             var self = this;
             var parent = (self.reply && self.voiceAnswers(self.reply)) ? self.reply : null;
             var tags = self.voiceTags();
+            var channel = self.channel;
+
+            if (!self.voiceWritesOut()) {
+                self.voicePost(file, measure, parent, tags, channel, '');
+                return;
+            }
+
+            var abort = new window.AbortController();
+            var posted = false;
+            var post = function (text) {
+                if (!posted) {
+                    posted = true;
+                    card.remove();
+                    self.voicePost(file, measure, parent, tags, channel, text);
+                }
+            };
+            var card = uploadCard(t('voice_browser_working'), file.name, function () {
+                abort.abort();
+                post('');
+            });
+
+            card.progress(0, 0);
+
+            window.PGVoiceText.transcribe(file, CFG.locale || '', function (step) {
+                if (typeof step.done === 'number') {
+                    card.progress(Math.round(step.done * 100), 100);
+                }
+            }, abort).then(function (text) {
+                post(text || '');
+            }, function () {
+                post('');
+            });
+        },
+
+        // Posts a recording into the channel it was made in, with the text
+        // this browser wrote ('' for none).
+        voicePost: function (file, measure, parent, tags, channel, transcript) {
+            var self = this;
 
             self.uploadFiles([file], {
                 body: tags,
+                channel: channel,
                 parent_id: parent ? parent.id : 0,
                 voice: measure || null,
+                transcript: transcript,
                 sent: function () {
                     if (parent && (self.reply === parent)) {
                         self.reply = null;
@@ -14779,17 +15083,20 @@
         // refuses here too, and says so. options (a recording, voiceSend()):
         // body sent instead of the box's text, which then stays in the box;
         // parent_id, the message the files answer; voice, a recording's
-        // duration_ms and peaks; sent(), once any is posted.
+        // duration_ms and peaks; transcript, the text this browser wrote of
+        // it; channel, the one it was made in when not the one shown now;
+        // sent(), once any is posted.
         uploadFiles: function (files, options) {
             var self = this;
             var settings = options || {};
+            var channel = settings.channel || self.channel;
             var queue = (files || []).slice();
             var total = queue.length;
             var done = 0;
             var ownBody = (typeof settings.body === 'string');
             var body = ownBody ? settings.body : (self.input ? self.tokens(self.inputText()) : '');
 
-            if (!total || !self.channel || !self.channel.can_post) {
+            if (!total || !channel || !channel.can_post) {
                 return;
             }
 
@@ -14819,12 +15126,13 @@
                     request.xhr.abort();
                 });
                 var request = apiUpload('ws_attach', {
-                    channel_id: self.channel.id,
+                    channel_id: channel.id,
                     name: name,
                     body: body,
                     parent_id: settings.parent_id || 0,
                     voice_duration_ms: settings.voice ? Math.round(settings.voice.duration_ms || 0) : 0,
-                    voice_peaks: settings.voice ? (settings.voice.peaks || '') : ''
+                    voice_peaks: settings.voice ? (settings.voice.peaks || '') : '',
+                    voice_transcript: settings.transcript || ''
                 }, file, name, function (loaded, sent) {
                     card.progress(loaded, sent);
                 });
@@ -16144,7 +16452,10 @@
                 var withFile = data.messages.filter(function (message) { return !!message.file; });
                 var images = withFile.filter(function (message) { return message.file.image; });
                 var videos = withFile.filter(function (message) { return message.file.kind === 'video'; });
-                var others = withFile.filter(function (message) { return !message.file.image && message.file.kind !== 'video'; });
+                // Voice messages and other sound files under their own title,
+                // not among the documents.
+                var audios = withFile.filter(function (message) { return !message.file.image && message.file.kind === 'audio'; });
+                var others = withFile.filter(function (message) { return !message.file.image && message.file.kind !== 'video' && message.file.kind !== 'audio'; });
 
                 if (!withFile.length) {
                     var empty = el('div', 'ws-empty');
@@ -16251,11 +16562,16 @@
                     pane.appendChild(reel);
                 }
 
-                if (others.length) {
-                    pane.appendChild(el('div', 'ws-section-title', t('documents') + ' · ' + others.length));
+                // A titled list of file rows: the sounds, then the documents.
+                var fileRows = function (title, rows) {
+                    if (!rows.length) {
+                        return;
+                    }
+
+                    pane.appendChild(el('div', 'ws-section-title', title + ' · ' + rows.length));
                     var list = el('div', 'ws-file-list');
 
-                    others.forEach(function (message) {
+                    rows.forEach(function (message) {
                         var row = el('div', 'ws-file-row');
                         var link = el('a', 'ws-file-link');
                         link.href = message.file.url;
@@ -16264,7 +16580,10 @@
                         link.appendChild(el('span', 'ws-file-ext', message.file.ext));
                         link.appendChild(el('span', 'text-truncate', message.file.name));
                         row.appendChild(link);
-                        row.appendChild(el('small', 'fg-secondary ws-grow', (message.sender ? message.sender.name + ' · ' : '') + message.time));
+                        // Sender and time on one line, cut short when the row is narrow.
+                        var meta = el('small', 'fg-secondary ws-grow ws-file-meta', (message.sender ? message.sender.name + ' · ' : '') + message.time);
+                        meta.title = meta.textContent;
+                        row.appendChild(meta);
 
                         if (message.file.kind === 'pdf' || message.file.kind === 'audio' || message.file.office) {
                             var look = button('btn btn-sm btn-text theme-secondary', '', message.file.kind === 'audio' ? 'bi-play-circle' : 'bi-eye', t('preview'));
@@ -16292,7 +16611,10 @@
                     });
 
                     pane.appendChild(list);
-                }
+                };
+
+                fileRows(t('voice_and_audio'), audios);
+                fileRows(t('documents'), others);
             }).catch(fail);
         },
 
@@ -18166,7 +18488,9 @@
             }
 
             if (task.priority === 'urgent' || task.priority === 'high') {
-                row.appendChild(el('span', 'badge theme-danger', BOOT.priorities[task.priority]));
+                // The same badge as the Today card: high in the warning
+                // colour, urgent in the danger colour.
+                row.appendChild(el('span', 'ws-priority ws-priority-' + task.priority, BOOT.priorities[task.priority]));
             }
 
             row.appendChild(avatarStack('', task.assignees, 4));
@@ -18274,6 +18598,14 @@
 
                 child.classList.toggle('active', on);
                 child.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+
+            // The time view (PGWsTaskTime.myTime()) reads none of the task
+            // filters, so they leave the toolbar while it is shown.
+            [status, dept, priority, soon, searchGroup].forEach(function (control) {
+                if (control) {
+                    control.hidden = (name === 'time');
+                }
             });
         }
 
@@ -19413,8 +19745,10 @@
                     var text = el('div', 'ws-grow');
                     text.appendChild(el('small', '', item[1]));
                     text.appendChild(el('b', '', item[0].person.name));
+                    // The count under the name, so a narrow side column
+                    // leaves the whole name its width.
+                    text.appendChild(el('small', 'ws-extreme-count', t('task_count', item[0].total)));
                     row.appendChild(text);
-                    row.appendChild(el('span', 'ws-extreme-count', t('task_count', item[0].total)));
                     row.addEventListener('click', function () {
                         state.person_id = item[0].person.id;
                         load();
@@ -19583,8 +19917,14 @@
         peopleRow.appendChild(formRow(t('scope_people'), people));
         body.appendChild(peopleRow);
 
+        // A department item needs its department: no empty choice, and a
+        // lead who is no settings holder is offered the departments they lead.
         var deptRow = el('div');
-        var dept = select(departmentOptions(), event ? event.department_id : 0);
+        var deptChoices = departmentOptions().slice(1).filter(function (option) {
+            return rights.settings || rights.leads.indexOf(option[0]) !== -1
+                || (event && String(event.department_id) === String(option[0]));
+        });
+        var dept = select(deptChoices, event && event.department_id ? event.department_id : (rights.leads.length ? rights.leads[0] : (deptChoices.length ? deptChoices[0][0] : 0)));
         dept.id = nextId('ws-ev-dept-');
         deptRow.appendChild(formRow(t('department'), dept));
         body.appendChild(deptRow);
@@ -19764,13 +20104,18 @@
                         return;
                     }
 
+                    remove.disabled = true;
                     api('ws_event_delete', { event_id: event.id }).then(function () {
+                        remove.disabled = false;
                         hideOffcanvas(node);
 
                         if (onDone) {
                             onDone();
                         }
-                    }).catch(fail);
+                    }).catch(function (error) {
+                        remove.disabled = false;
+                        fail(error);
+                    });
                 });
             });
             footer.appendChild(remove);
@@ -19783,6 +20128,9 @@
         if (!event || event.can_edit) {
             var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('save'), 'bi-check2');
             save.addEventListener('click', function () {
+                // One click makes one item: a second click while the request
+                // runs would post another insert.
+                save.disabled = true;
                 api('ws_event_save', {
                     id: event ? event.id : 0,
                     kind: kind.value,
@@ -19799,13 +20147,17 @@
                     meeting_url: meeting ? meeting.value.trim() : undefined,
                     contact_id: (customer && customer.changed) ? customer.id : undefined
                 }).then(function () {
+                    save.disabled = false;
                     hideOffcanvas(node);
                     toast(t('plan_saved'), 'success');
 
                     if (onDone) {
                         onDone();
                     }
-                }).catch(fail);
+                }).catch(function (error) {
+                    save.disabled = false;
+                    fail(error);
+                });
             });
             footer.appendChild(save);
         }
@@ -21176,8 +21528,8 @@
 
         var bar = el('nav', 'pg-toolbar navigation mb-5');
         var layout = el('div', 'row g-7 ws-nb');
-        var listCol = el('div', 'lg:col-4 xl:col-3 ws-nb-list-col');
-        var paneCol = el('div', 'lg:col-8 xl:col-9 ws-nb-pane-col');
+        var listCol = el('div', 'lg:col-5 xl:col-4 ws-nb-list-col');
+        var paneCol = el('div', 'lg:col-7 xl:col-8 ws-nb-pane-col');
         var list = el('div', 'ws-nb-list');
         var pane = el('div', 'ws-nb-pane');
 
@@ -21390,7 +21742,6 @@
                     top.appendChild(pinMark);
                 }
 
-                top.appendChild(el('span', 'ws-nb-item-time', note.updated));
 
                 var more = menuButton(button('ws-nb-item-more', '', 'bi-three-dots', t('more')));
                 more.addEventListener('click', function (event) {
@@ -21406,7 +21757,10 @@
                     item.appendChild(el('div', 'ws-nb-item-excerpt', note.excerpt));
                 }
 
+                // The time sits on the line under the title, so a narrow list
+                // column leaves the whole head row to the note's name.
                 var meta = el('div', 'ws-nb-item-meta');
+                meta.appendChild(el('span', 'ws-nb-item-time', note.updated));
 
                 if ((note['with'] || []).length || (note['in'] || []).length || note.access !== 'owner') {
                     meta.appendChild(noteFaces(note, 4));
@@ -21427,9 +21781,7 @@
                     meta.appendChild(claudeTag);
                 }
 
-                if (meta.childNodes.length) {
-                    item.appendChild(meta);
-                }
+                item.appendChild(meta);
 
                 function openThis() {
                     if (!current || current.id !== note.id) {
@@ -21834,6 +22186,10 @@
             var box = el('div', 'ws-nb-placeholder');
             box.appendChild(icon('bi-journal-richtext'));
             box.appendChild(el('div', '', t('notes_pick')));
+
+            var start = button('btn btn-sm btn-outline theme-primary rounded-pill px-5', t('notes_new'), 'bi-plus-lg');
+            start.addEventListener('click', function () { startNew(); });
+            box.appendChild(start);
             pane.appendChild(box);
             root.classList.remove('ws-nb-open');
         }
@@ -23899,6 +24255,8 @@
                 previews: true,
                 // "/" lists the inserts of the box (PGWsEditor).
                 slashInserts: { insertLabel: t('insert_to_note') },
+                // A card's remove button speaks of the note, not a message.
+                removeLabel: t('block_remove_note'),
                 // Headings and rules, which a note draws and a message does not.
                 headings: true,
                 // A picture pasted into the note is attached, as a dropped one.
@@ -24497,15 +24855,14 @@
             }, true);
         }
 
-        // The main menu's Workspace list (workspace_side.js) opens the inbox
-        // and the search box on this screen at once, before the start-up
-        // below is back: the inbox needs nothing it brings. The channel
-        // screen hands in the rest once it has started (app.sideHooks()).
+        // The main menu's Workspace list (workspace_side.js) opens the search
+        // box on this screen at once, before the start-up below is back, as
+        // the box needs nothing from it. The channel screen hands in the rest
+        // once it has started (app.sideHooks()).
         var inline = (CFG.mode !== 'record' && window.PGWsSide) ? window.PGWsSide.inline() : null;
 
         if ((CFG.mode !== 'record') && window.PGWsSide) {
             window.PGWsSide.attach({
-                nav: { inbox: function () { openInbox(function () {}); } },
                 palette: function () {
                     if (window.PGWsPalette) {
                         window.PGWsPalette.open();

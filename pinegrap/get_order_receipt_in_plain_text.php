@@ -191,7 +191,9 @@ function get_order_receipt_in_plain_text($order_id)
                     products.form,
                     products.form_name,
                     products.form_label_column_width,
-                    products.form_quantity_type
+                    products.form_quantity_type,
+                    products.inventory,
+                    products.inventory_quantity" . pg_preorder_select_sql('products', pg_product_preorder_ready()) . "
                 FROM order_items
                 LEFT JOIN products ON order_items.product_id = products.id
                 WHERE
@@ -244,6 +246,14 @@ function get_order_receipt_in_plain_text($order_id)
                     $calendar_event = get_calendar_event($calendar_event_id, $recurrence_number);
                     
                     $short_description .= ' - ' . $calendar_event['name'] . ' - ' . $calendar_event['date_and_time_range'];
+                }
+
+                // "Pre-order, ships from <date>" while the product's pre-order
+                // runs (includes/fn/preorder.php).
+                $preorder_label = pg_preorder_label($order_item, pg_preorder_today());
+
+                if ($preorder_label !== '') {
+                    $short_description .= ' - ' . $preorder_label;
                 }
 
                 $total_price = $product_price * $quantity;
@@ -826,6 +836,7 @@ function get_order_receipt_in_plain_text($order_id)
         // get applied gift cards in order to output them
         $query =
             "SELECT
+                id,
                 code,
                 new_balance,
                 givex
@@ -1146,12 +1157,11 @@ function get_order_receipt_in_plain_text($order_id)
             '-------------------------' . "\n";
         
         // loop through applied gift cards in order to prepare to output them
+        // A customer's store credit is named as such, not by a code they never saw.
+        $store_credit_ids = pg_credit_applied_ids($order_id);
+
         foreach ($applied_gift_cards as $applied_gift_card) {
-            if ($applied_gift_card['givex'] == 0) {
-                $protected_gift_card_code = protect_gift_card_code($applied_gift_card['code']);
-            } else {
-                $protected_gift_card_code = protect_givex_gift_card_code($applied_gift_card['code']);
-            }
+            $protected_gift_card_code = pg_credit_applied_name($applied_gift_card, $store_credit_ids);
             
             $output_applied_gift_cards .= '- ' . $protected_gift_card_code . ' (' . lang('Remaining Balance') . ': ' . prepare_price_for_output($applied_gift_card['new_balance'], FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . ')' . "\n";
         }

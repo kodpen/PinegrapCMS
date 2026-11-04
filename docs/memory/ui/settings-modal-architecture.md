@@ -1,6 +1,6 @@
 ---
 name: settings-modal-architecture
-description: Site Settings dialog: file map, the 13 categories under 4 headings, where moved cards went, moving a card, adding a category.
+description: Site Settings dialog: file map, the 14 categories under 4 headings, where moved cards went, moving a card, adding a category.
 ---
 
 ## Why is Site Settings a dialog and not a screen?
@@ -16,13 +16,13 @@ includes/settings/search.php     search index (settings-modal-navigation.md)
 includes/settings/prep.php       GET preparation (every category runs all of it)
 includes/settings/<cat>.php      cards -> $pg_settings_cards (+ modals, scripts)
 includes/settings/<cat>.save.php the columns that category writes
-settings_<cat>.php + screen.php  page path (no JavaScript; main menu's Site Settings row)
+settings_<cat>.php + screen.php  page path (no JavaScript; links keep it as their address)
 system_tools.php                 the tools that leave the dialog (settings-system-tools.md)
 assets/js/backend.src.js         pgSettingsModal, window.pgOpenSettings(), pgInitInjected()
 ```
 
 ## Which categories exist, and in what order?
-- Site: `general`, `appearance`, `features`, `seo` (SEO), `privacy` (Visitors and privacy), `languages`, `contact` (Communication). Security: `security` (Accounts and sign-in), `firewall` (Firewall and HTTPS). Selling: `commerce` (Ecommerce), `accounting`. Running the site: `api` (Integrations), `maintenance` (Updates and maintenance), then the System tools row. Headings: `settings-list-headings.md`.
+- Site: `general`, `appearance`, `features`, `seo` (SEO), `privacy` (Visitors and privacy), `languages`, `contact` (Communication). Security: `security` (Accounts and sign-in), `firewall` (Firewall and HTTPS). Selling: `commerce` (Ecommerce), `accounting`, `bookings` (`booking-settings.md`). Running the site: `api` (Integrations), `maintenance` (Updates and maintenance), then the System tools row. Headings: `settings-list-headings.md`.
 - Keys stay when a label changes, so `#settings/<key>/…` and `settings_<key>.php` links keep working; `tests/settings_deep_links_test.php` fails on a link to a card its category does not list.
 
 ## Where did the moved cards go?

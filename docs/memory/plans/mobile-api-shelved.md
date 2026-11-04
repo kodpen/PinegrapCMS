@@ -1,6 +1,6 @@
 ---
 name: mobile-api-shelved
-description: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what M1–M6 built, what M7 (native push) and M8 add, decisions, how its needs arrive
+description: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 ---
 
 ## What is the status?
@@ -16,12 +16,7 @@ description: Team-device API work for the closed-source Pinegrap Mobile app (res
 ## What exists for team devices?
 - Device session ("Team devices" app): `/auth/login` (password, `otp`, login lock), `/auth/refresh`, `/auth/logout`, `/auth/me`, `/auth/devices`; token 1 h, refresh 30 days; devices close on password change and "sign out everywhere" (`includes/api/devices.php`). OAuth 2.1 with PKCE also gives device rows.
 - Notifications `GET /notifications`, unread count, read / unread; web push carries no text.
-- M1 #369: writes from a device session are the person's own (rate limit, auto-join); OAuth connections still write as the application. Follow-up #373: `@Claude` / `@ai` / MCP aliases work from devices.
-- M2 #371, #375: edit, delete, hide, mark read, `changed_since`; own-words endpoints only from a Team devices session.
-- M3 #374, #376, #380, #385: `GET /workspace/sync` (one call, ETag, marks the person as on screen), notifications count, channel state, pins.
-- M4 #377, #379, #383: `GET /workspace/inbox`, read marks, deletions (schema 10.88).
-- M5 #378, #382: upload to a channel, download by token with `?size=` previews and `Range`.
-- M6 #381, #386, #387: channel notify level, polls, thread join / leave, personal pin / order.
+- Done: M1 #369 #373, M2 #371 #375, M3 #374 #376 #380 #385, M4 #377 #379 #383, M5 #378 #382, M6 #381 #386 #387 (`api/api-device-sessions.md`, `workspace/workspace-api-callers.md`, `workspace/workspace-api-sync-inbox.md`).
 
 ## What would M7 and M8 add?
 - M7 native push (needs answers 1, 3, 4): `POST /push/devices` {provider fcm | apns, token, bundle_id}, delete; the push queue sends one signed request to a Kodpen push broker (`push.pinegrap.com`) with token, provider, badge, no text; the app fetches `GET /notifications?unread=true` itself. New table (`user_id`, `device_id`, `provider`, `token`, `bundle_id`, timestamps, last error), a free label of the open version.

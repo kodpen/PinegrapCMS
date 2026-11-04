@@ -5,7 +5,7 @@
  * The audit trail: who changed what, when and from where, with each changed
  * field before and after (audit_log, written by pg_audit()). Lines are
  * filtered by date, source, user, action, record type, record and request,
- * listed one page at a time by the audit_log_list_rows action
+ * listed by the list table driver one batch at a time
  * (includes/fn/audit_list.php), sorted by the headings and searched on the
  * server, and handed out as a CSV file with the same filters. Each export is
  * itself a line in the trail.
@@ -29,12 +29,20 @@ if (!pg_audit_ready()) {
     output_error(lang('The database has not been upgraded yet. Run the software update first.'));
 }
 
-// The picker posts its own date text; the filters read ISO.
+// The picker posts its own date text; the filters read ISO. The site's
+// order is read with any separator people type, the Turkish "01.10.2026"
+// included. A date that cannot be read stays in its box with a warning and
+// filters nothing, instead of vanishing while every line is listed.
 $audit_view_input = $_GET;
+$audit_view_bad_dates = array();
 
 foreach (array('from', 'to') as $audit_view_key) {
     $audit_view_date = (isset($_GET[$audit_view_key]) && is_string($_GET[$audit_view_key])) ? trim($_GET[$audit_view_key]) : '';
-    $audit_view_input[$audit_view_key] = (($audit_view_date !== '') && validate_date($audit_view_date)) ? prepare_form_data_for_input($audit_view_date, 'date') : '';
+    $audit_view_input[$audit_view_key] = ($audit_view_date !== '') ? pg_date_input_iso($audit_view_date) : '';
+
+    if (($audit_view_date !== '') && ($audit_view_input[$audit_view_key] === '')) {
+        $audit_view_bad_dates[$audit_view_key] = mb_substr($audit_view_date, 0, 40, 'UTF-8');
+    }
 }
 
 $audit_view_filters = pg_audit_view_filters($audit_view_input);
@@ -93,29 +101,33 @@ if (isset($_GET['export']) && ($_GET['export'] === 'csv')) {
 
 $audit_view_query = pg_audit_view_query($audit_view_filters);
 
-// The lines come from the audit_log_list_rows action one page at a time
-// (includes/fn/audit_list.php), sorted by the headings' kept sort.
+// The list table driver prints the first lines (includes/fn/audit_list.php);
+// the next ones come from its list_table_rows action as the list scrolls,
+// sorted by the kept sort.
 $audit_view_sort = pg_audit_list_sort();
 $audit_view_kept = pg_audit_list_link_query($audit_view_query);
-$audit_view_heading_query = $audit_view_kept ? h('&' . http_build_query($audit_view_kept)) : '';
+$audit_view_source = pg_audit_list_source($user, array('filters' => $audit_view_query));
 
-$audit_view_heading = function ($code) use ($audit_view_sort, $audit_view_heading_query) {
-    return get_column_heading($audit_view_sort['sort_columns'][$code], $audit_view_sort['sort_levels'], '', $audit_view_heading_query, $code);
-};
+if ($audit_view_source === null) {
+    output_error(lang('Access denied'));
+}
+
+$audit_view_page = pg_list_table_page($audit_view_source, array(), null);
+
+if ($audit_view_page === false) {
+    output_error(lang('Query failed.'));
+}
 
 // The choices of the type and action filters: what the trail holds, plus the
-// value already chosen.
+// value already chosen, ordered by the name shown.
 $audit_view_select = function ($name, $kind, $column) use ($audit_view_filters) {
-    $words = array_map('strval', (array) db_values("SELECT DISTINCT " . $column . " FROM audit_log WHERE " . $column . " <> '' ORDER BY " . $column));
-
-    if (($audit_view_filters[$name] !== '') && !in_array($audit_view_filters[$name], $words, true)) {
-        $words[] = $audit_view_filters[$name];
-    }
+    $words = (array) db_values("SELECT DISTINCT " . $column . " FROM audit_log WHERE " . $column . " <> ''");
 
     $options = '<option value="">' . h(lang('All')) . '</option>';
 
-    foreach ($words as $word) {
-        $options .= '<option value="' . h($word) . '"' . (($audit_view_filters[$name] === $word) ? ' selected' : '') . '>' . h(pg_audit_view_label($kind, $word)) . '</option>';
+    foreach (pg_audit_view_filter_options($kind, $words, $audit_view_filters[$name]) as $word => $label) {
+        $word = (string) $word;
+        $options .= '<option value="' . h($word) . '"' . (($audit_view_filters[$name] === $word) ? ' selected' : '') . '>' . h($label) . '</option>';
     }
 
     return '<select class="form-control form-control-sm" id="audit_' . $name . '" name="' . $name . '">' . $options . '</select>';
@@ -127,8 +139,21 @@ foreach (pg_audit_sources() as $audit_view_source) {
     $audit_view_sources .= '<option value="' . $audit_view_source . '"' . (($audit_view_filters['source'] === $audit_view_source) ? ' selected' : '') . '>' . h(pg_audit_view_label('source', $audit_view_source)) . '</option>';
 }
 
-$audit_view_date_value = function ($key) use ($audit_view_filters) {
+$audit_view_date_value = function ($key) use ($audit_view_filters, $audit_view_bad_dates) {
+    if (isset($audit_view_bad_dates[$key])) {
+        return $audit_view_bad_dates[$key];
+    }
+
     return ($audit_view_filters[$key] !== '') ? prepare_form_data_for_output($audit_view_filters[$key], 'date', false) : '';
+};
+
+// A date box that could not be read: marked invalid, the warning under it.
+$audit_view_date_field = function ($key, $label) use ($audit_view_date_value, $audit_view_bad_dates) {
+    $bad = isset($audit_view_bad_dates[$key]);
+
+    return '<label for="audit_' . $key . '" class="form-label small mb-1">' . h($label) . '</label>
+                            <input type="text" class="form-control form-control-sm' . ($bad ? ' is-invalid' : '') . '" id="audit_' . $key . '" name="' . $key . '" value="' . h($audit_view_date_value($key)) . '" autocomplete="off" data-pg-date' . ($bad ? ' aria-invalid="true" aria-describedby="audit_' . $key . '_error"' : '') . '>'
+        . ($bad ? '<div class="invalid-feedback d-block" id="audit_' . $key . '_error">' . h(lang('Enter a valid date.')) . '</div>' : '');
 };
 
 // Filters kept by the form that are not among its fields.
@@ -155,7 +180,7 @@ if ($audit_view_filters['request'] !== '') {
 // attribute, so one submit carries the fields and the search together.
 $audit_view_toolbar = pg_screen_toolbar(array(
     'primary'   => '<button type="submit" form="audit_view_filter" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-funnel me-1" aria-hidden="true"></i>' . h(lang('Filter')) . '</button>',
-    'secondary' => $audit_view_query ? '<a href="view_audit_log.php" class="btn btn-sm btn-text theme-secondary">' . h(lang('Clear filters')) . '</a>' : '',
+    'secondary' => ($audit_view_query || $audit_view_bad_dates) ? '<a href="view_audit_log.php" class="btn btn-sm btn-text theme-secondary">' . h(lang('Clear filters')) . '</a>' : '',
     'grow'      => $audit_view_narrowed,
     'search'    => '<label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
                         <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
@@ -169,12 +194,10 @@ $audit_view_toolbar = pg_screen_toolbar(array(
                     ' . $audit_view_hidden . '
                     <div class="row g-3 align-items-end">
                         <div class="col-6 md:col-4 xl:col-2">
-                            <label for="audit_from" class="form-label small mb-1">' . h(lang('Start')) . '</label>
-                            <input type="text" class="form-control form-control-sm" id="audit_from" name="from" value="' . h($audit_view_date_value('from')) . '" autocomplete="off" data-pg-date>
+                            ' . $audit_view_date_field('from', lang('Start')) . '
                         </div>
                         <div class="col-6 md:col-4 xl:col-2">
-                            <label for="audit_to" class="form-label small mb-1">' . h(lang('End')) . '</label>
-                            <input type="text" class="form-control form-control-sm" id="audit_to" name="to" value="' . h($audit_view_date_value('to')) . '" autocomplete="off" data-pg-date>
+                            ' . $audit_view_date_field('to', lang('End')) . '
                         </div>
                         <div class="col-6 md:col-4 xl:col-2">
                             <label for="audit_type" class="form-label small mb-1">' . h(lang('Type')) . '</label>
@@ -210,26 +233,23 @@ pg_page_shell(array(
     ' . $audit_view_toolbar . '
     <div class="row">
         <div class="col-12">
-            <div class="card mb-5">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table align-top" style="width:100%;display:none" data-pg-list-action="audit_log_list_rows" data-pg-list-params="' . h(encode_json(array('filters' => (object) $audit_view_query))) . '" data-pg-audit-failed="' . h(lang('Query failed.')) . '" data-pg-audit-loading="' . h(lang('Loading...')) . '">
-                        <thead>
-                            <tr>
-                                <th>' . $audit_view_heading('date') . '</th>
-                                <th>' . $audit_view_heading('who') . '</th>
-                                <th>' . $audit_view_heading('action') . '</th>
-                                <th>' . $audit_view_heading('record') . '</th>
-                                <th>' . h(lang('Changes')) . '</th>
-                                <th>' . $audit_view_heading('ip') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
+            <div class="d-flex justify-content-end mb-3">
+                <label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
+                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="search" class="form-ghost" data-pg-list-search="view_audit_log" placeholder="' . h(lang('Search')) . '" aria-label="' . h(lang('Search')) . '">
+                </label>
+            </div>
+            <div class="mb-5" data-pg-audit-failed="' . h(lang('Query failed.')) . '" data-pg-audit-loading="' . h(lang('Loading...')) . '">
+                ' . pg_list_table_html($audit_view_source, $audit_view_page, lang('Audit trail')) . '
             </div>
             <p class="small fg-secondary mb-12">' . h(lang(array('string' => 'A CSV export holds at most {var:1} lines, newest first, and is recorded in the trail.', 'vars' => array(pg_format_number($audit_view_limits['export'], 0))))) . '</p>
         </div>
     </div>
+    <style>@layer custom {
+        /* A long record name wraps anywhere and the cell is capped, so the
+           IP column stays in view. */
+        .pg-audit-record { white-space: normal; overflow-wrap: anywhere; max-width: 24rem; }
+    }</style>
     <script>
         // The changed fields of a line are read when its fold is first opened
         // (audit_log_changes). The toggle event does not bubble, so it is
@@ -244,10 +264,10 @@ pg_page_shell(array(
             fold.setAttribute("data-pg-audit-read", "1");
 
             var body = fold.querySelector(".pg-audit-changes-body");
-            var table = fold.closest("table");
-            var failed = (table && table.getAttribute("data-pg-audit-failed")) || "";
+            var texts = fold.closest("[data-pg-audit-failed]");
+            var failed = (texts && texts.getAttribute("data-pg-audit-failed")) || "";
 
-            body.textContent = (table && table.getAttribute("data-pg-audit-loading")) || "";
+            body.textContent = (texts && texts.getAttribute("data-pg-audit-loading")) || "";
             body.setAttribute("aria-busy", "true");
 
             window.jQuery.ajax({
@@ -272,5 +292,5 @@ pg_page_shell(array(
         }, true);
     </script>
 </main>
-' .
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();

@@ -19,6 +19,36 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 // The folder_archived value a request asks for: '1' only for an exact "1",
 // an empty string (not archived) for anything else.
+// The style options of the settings drawer with the Default option naming
+// the style the folder would take from its parents, as the details panel
+// does (pg_explorer_style_info()). The root has no parent and keeps the
+// plain label.
+function pg_explorer_folder_style_default_label($options, $folder, $device)
+{
+    if ((int) $folder['folder_parent'] <= 0) {
+        return $options;
+    }
+
+    $info = pg_explorer_style_info(0, (int) $folder['folder_parent'], $device);
+
+    if ((string) $info['name'] === '') {
+        return $options;
+    }
+
+    return pg_explorer_replace_first(
+        '>' . h(lang('Default (from the parent folder)')) . '<',
+        '>' . h(lang(array('string' => 'Default: {var:1} (from the parent folder)', 'vars' => array($info['name'])))) . '<',
+        (string) $options);
+}
+
+// $subject with the first $search replaced by $replace.
+function pg_explorer_replace_first($search, $replace, $subject)
+{
+    $at = strpos($subject, $search);
+
+    return ($at === false) ? $subject : (substr($subject, 0, $at) . $replace . substr($subject, $at + strlen($search)));
+}
+
 function pg_explorer_folder_archived_value($request)
 {
     return ((isset($request['archived']) ? (string) $request['archived'] : '') == '1') ? '1' : '';
@@ -35,7 +65,11 @@ function pg_explorer_folder_settings_order_archive($folder, $request)
         return array((int) $folder['folder_order'], ($folder['folder_archived'] == '1') ? '1' : '');
     }
 
-    return array((int) (isset($request['order']) ? $request['order'] : 0), pg_explorer_folder_archived_value($request));
+    // The drawer's range (-9999 to 9999): a value past the INT column was
+    // cut by the database without a word.
+    $order = max(-9999, min(9999, (int) (isset($request['order']) ? $request['order'] : 0)));
+
+    return array($order, pg_explorer_folder_archived_value($request));
 }
 
 // Asked for when the upload window opens rather than baked into the
@@ -112,8 +146,8 @@ function pg_explorer_handle_folder_settings_get($type, $request, $user)
 
     if ($user['role'] < 3) {
         $styles = array(
-            'desktop' => select_style($folder['folder_style']),
-            'mobile' => get_mobile_style_options($folder['mobile_style_id']));
+            'desktop' => pg_explorer_folder_style_default_label(select_style($folder['folder_style'], 'Default (from the parent folder)'), $folder, 'desktop'),
+            'mobile' => pg_explorer_folder_style_default_label(get_mobile_style_options($folder['mobile_style_id'], 'Default (from the parent folder)'), $folder, 'mobile'));
     }
 
     respond(array(
@@ -170,8 +204,19 @@ function pg_explorer_handle_folder_settings_set($type, $request, $user)
 
     log_activity(lang(array('string' => 'folder ({var:1}) was modified', 'vars' => array($folder['folder_name']))), $_SESSION['sessionusername']);
 
+    $message = lang('The folder was edited successfully.');
+
+    // Archiving closes the pages directly in the folder to visitors
+    // (get_page.php answers 410), so the save says how many that was.
+    if (($archived === '1') && ($folder['folder_archived'] != '1')) {
+        $closed = (int) db_value("SELECT COUNT(*) FROM page WHERE page_folder = '" . e($folder_id) . "'");
+        if ($closed > 0) {
+            $message .= ' ' . lang(array('string' => '{var:1} page(s) in it are now closed to visitors.', 'vars' => $closed));
+        }
+    }
+
     respond(array(
         'status' => 'success',
         'request' => $type,
-        'message' => lang('The folder was edited successfully.')));
+        'message' => $message));
 }

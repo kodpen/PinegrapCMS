@@ -51,7 +51,7 @@ function test_contact_list_names_labels_point_at_their_field()
 {
 	$source = contact_list_names_test_source();
 
-	pg_assert_contains('<label for="expiration_date" class="form-label">\' . lang(\'Expiration Date\')', $source);
+	pg_assert_contains('<label for="expiration_date" class="form-label">\' . lang(\'Membership Expiration Date\')', $source);
 	pg_assert_same(1, substr_count($source, '<label for="member_id"'), 'Member ID has one label');
 	pg_assert_true(strpos($source, '$output_opt_status = lang(\'Opt-In\');') === false, 'My Subscribers shows the status in a box the label names');
 	pg_assert_contains('id="opt_in_status" name="fake_opt_in_status"', $source);
@@ -75,34 +75,33 @@ function test_contact_list_names_silent_icon_words()
 
 	pg_assert_true(strpos($source, 'aria-label="Button Bar"') === false);
 	pg_assert_true(strpos($source, 'aria-label="data edit buttons ') === false);
+	pg_assert_contains('pg_list_table_html($list_source, $list_page, lang($heading), $output_bulk_buttons)', $source, 'the selected-row buttons sit in the selection bar');
 	pg_assert_contains('aria-label="\' . h(lang(\'Button Bar\')) . \'"', $source);
-	pg_assert_contains('aria-label="\' . h(lang(\'data edit buttons\')) . \'"', $source);
 }
 
-function test_contact_list_names_row_check_box()
+function test_contact_list_names_row_edit_link()
 {
 	$label = function ($name) {
-		return 'aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => $name))) . '"';
+		return 'aria-label="' . h(lang(array('string' => 'Edit {var:1}', 'vars' => $name))) . '"';
 	};
 
 	$row = pg_contact_list_row(contact_list_names_test_contact(array('first_name' => '<b>Ali</b>', 'last_name' => 'Veli', 'company' => 'Acme', 'email_address' => 'a@x')), array('role' => 0), 'default', '', '');
-	pg_assert_contains($label('<b>Ali</b> Veli'), $row['cells'][0]['html'], 'the name first');
-	pg_assert_same(1, substr_count($row['cells'][0]['html'], 'class='), 'one class attribute');
+	pg_assert_contains($label('<b>Ali</b> Veli'), $row['cells']['picture']['html'], 'the name first');
 
 	$row = pg_contact_list_row(contact_list_names_test_contact(array('company' => 'Acme', 'email_address' => 'a@x')), array('role' => 0), 'default', '', '');
-	pg_assert_contains($label('Acme'), $row['cells'][0]['html'], 'then the company');
+	pg_assert_contains($label('Acme'), $row['cells']['picture']['html'], 'then the company');
 
 	$row = pg_contact_list_row(contact_list_names_test_contact(array('email_address' => 'a@x')), array('role' => 0), 'default', '', '');
-	pg_assert_contains($label('a@x'), $row['cells'][0]['html'], 'then the e-mail address');
+	pg_assert_contains($label('a@x'), $row['cells']['picture']['html'], 'then the e-mail address');
 }
 
 function test_contact_list_names_opt_in_mark()
 {
 	$row = pg_contact_list_row(contact_list_names_test_contact(array('email_address' => 'a@x')), array('role' => 0), 'default', '', '');
 
-	pg_assert_contains('<span class="material-icons" aria-hidden="true">task_alt</span>', $row['cells'][9]['html']);
-	pg_assert_contains('<span class="visually-hidden">' . h(lang('Yes')) . '</span>', $row['cells'][9]['html']);
+	pg_assert_contains('<span class="material-icons" aria-hidden="true">task_alt</span>', $row['cells']['opt_in']['html']);
+	pg_assert_contains('<span class="visually-hidden">' . h(lang('Yes')) . '</span>', $row['cells']['opt_in']['html']);
 
 	$row = pg_contact_list_row(contact_list_names_test_contact(array('opt_in' => '0')), array('role' => 0), 'default', '', '');
-	pg_assert_same('', $row['cells'][9]['html']);
+	pg_assert_same('', $row['cells']['opt_in']['html']);
 }

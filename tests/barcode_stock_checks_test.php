@@ -122,3 +122,32 @@ function test_barcode_stock_screens_resolve_through_the_shared_lookup()
 	pg_assert_contains('FROM products', $lookup, 'product codes');
 	pg_assert_contains('pg_barcode_scan_choice(', $lookup, 'the two answers settled in one place');
 }
+
+function test_barcode_stock_screens_say_what_they_search()
+{
+	foreach (array('barcode_increase_inventory.php', 'barcode_decrease_inventory.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+
+		pg_assert_contains("\$barcode = trim((string) (\$request['barcode'] ?? ''));", $source, $file . ': code trimmed');
+		pg_assert_contains("lang('The quantity must be a whole number from 1 to 1,000,000.')", $source, $file . ': quantity rule named');
+		pg_assert_contains("lang('No product found with this barcode or product code.')", $source, $file . ': not found');
+		pg_assert_contains("lang('Product Code')", $source, $file . ': column');
+		pg_assert_same(false, strpos($source, 'barcode/sku/id'), $file . ': no id promised');
+		pg_assert_same(false, strpos($source, 'do not use the keyboard'), $file . ': no keyboard warning');
+	}
+
+	pg_assert_contains('$code = is_scalar($code) ? trim((string) $code) : \'\';', barcode_stock_checks_test_body('includes/fn/ecommerce.php', 'pg_barcode_scan_product'), 'lookup trims');
+}
+
+// A scan on a product with stock tracking off still writes the count, and
+// the success line and the table row say tracking is off (#5788).
+function test_barcode_stock_screens_warn_on_an_untracked_product()
+{
+	foreach (array('barcode_increase_inventory.php', 'barcode_decrease_inventory.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+
+		pg_assert_contains("lang('Stock tracking is off for this product; the count is used when tracking is turned on.')", $source, $file . ': warning text');
+		pg_assert_contains('String(response.data.inventory) !== "1"', $source, $file . ': read from the answer');
+		pg_assert_contains("'inventory' => \$inventory,", $source, $file . ': answer carries the flag');
+	}
+}

@@ -46,6 +46,11 @@ function pg_announce($event, $data = array())
         pg_stock_notify_heard($event, (array) $data);
     }
 
+    // Chosen Workspace events to the Slack, Teams and Telegram targets.
+    if (function_exists('pg_notify_announced')) {
+        pg_notify_announced($event, (array) $data);
+    }
+
     if (!function_exists('api_webhook_enqueue')) {
 
         $file = PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php';

@@ -99,6 +99,32 @@ function pg_geo_db_tried_recently()
 }
 
 /**
+ * Takes the refresh lock in $dir: one refresh at a time, as the general job
+ * and the settings screen's button may meet. A lock file that cannot be
+ * opened means the folder cannot be written, not that another request holds
+ * it.
+ *
+ * @param string $dir
+ * @return array status (ok | busy | failed), handle (the open lock file for
+ *               ok, else null)
+ */
+function pg_geo_db_refresh_lock($dir)
+{
+    $lock = @fopen($dir . '/refresh.lock', 'c');
+
+    if (!$lock) {
+        return array('status' => 'failed', 'handle' => null);
+    }
+
+    if (!flock($lock, LOCK_EX | LOCK_NB)) {
+        fclose($lock);
+        return array('status' => 'busy', 'handle' => null);
+    }
+
+    return array('status' => 'ok', 'handle' => $lock);
+}
+
+/**
  * Fetches the newest list and builds the database from it.
  *
  * @param bool $force true from the settings screen's button: no twelve-hour
@@ -114,16 +140,17 @@ function pg_geo_db_refresh($force = false)
         return array('status' => 'failed', 'version' => '', 'reason' => lang('The folder data/geo could not be created.'));
     }
 
-    // One refresh at a time: the general job and the button may meet.
-    $lock = @fopen($dir . '/refresh.lock', 'c');
+    $locked = pg_geo_db_refresh_lock($dir);
 
-    if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) {
-        if ($lock) {
-            fclose($lock);
-        }
+    if ($locked['status'] === 'failed') {
+        return array('status' => 'failed', 'version' => '', 'reason' => lang('The folder data/geo is not writable.'));
+    }
 
+    if ($locked['status'] === 'busy') {
         return array('status' => 'busy', 'version' => '', 'reason' => '');
     }
+
+    $lock = $locked['handle'];
 
     @file_put_contents($dir . '/attempt.txt', (string) time());
 
@@ -678,8 +705,9 @@ function pg_geo_country_name($code)
 }
 
 /**
- * A stored country as the panel and the site name it: the stored (English)
- * name through lang() when the shards know it ("Turkey" becomes "Türkiye"),
+ * A stored country as the panel and the site name it: a name the
+ * administrator edited (pg_geo_country_name_unedited() false) as stored;
+ * otherwise the stored (English) name through lang() when the shards know it ("Turkey" becomes "Türkiye"),
  * else the name intl gives for its ISO code in the current language
  * (pg_geo_country_name(): "Aland Islands" becomes "Åland Adaları"), else the
  * stored name. The stored name and code stay what they are: zones, orders
@@ -693,6 +721,12 @@ function pg_geo_country_label($name, $code = '')
 {
     $name = trim((string) $name);
     $code = strtoupper(trim((string) $code));
+
+    // A name the administrator changed on Edit Country is what they want
+    // shown and searched (#2657: a wrong country is corrected there).
+    if (($name !== '') && preg_match('/^[A-Z]{2}$/', $code) && !pg_geo_country_name_unedited($name, $code)) {
+        return $name;
+    }
 
     if ($name !== '') {
         $translated = (string) lang($name);
@@ -715,6 +749,76 @@ function pg_geo_country_label($name, $code = '')
     }
 
     return $name;
+}
+
+/**
+ * Whether a stored country name is one a site ships or intl gives for its
+ * code, not one an administrator typed: the shipped English name, a known
+ * alias, its translation in the current language (pg_sales_map_iso_code()),
+ * or intl's English or Turkish name. Compared without case, accents, spaces
+ * or punctuation, so the old "Turkey" and the new "Türkiye" seeds both count.
+ *
+ * @param string $name countries.name
+ * @param string $code countries.code
+ * @return bool true for a blank name; false without a two-letter code
+ */
+function pg_geo_country_name_unedited($name, $code)
+{
+    $name = trim((string) $name);
+    $code = strtoupper(trim((string) $code));
+
+    if ($name === '') {
+        return true;
+    }
+
+    if (!preg_match('/^[A-Z]{2}$/', $code)) {
+        return false;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
+
+    if (pg_sales_map_iso_code($name) === $code) {
+        return true;
+    }
+
+    $key = pg_sales_map_normalize($name);
+
+    if (class_exists('Locale')) {
+        foreach (array('en', 'tr') as $locale) {
+            $intl = Locale::getDisplayRegion('und_' . $code, $locale);
+
+            if (is_string($intl) && ($intl !== $code) && (pg_sales_map_normalize($intl) === $key)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Rows whose 'label' another row also has (without case) get " (CODE)"
+ * after it, so a list or picker tells them apart; the others stay.
+ *
+ * @param array $rows each with 'label' and 'code'
+ * @return array
+ */
+function pg_geo_label_disambiguate(array $rows)
+{
+    $counts = array();
+
+    foreach ($rows as $row) {
+        $key = mb_strtolower((string) $row['label'], 'UTF-8');
+        $counts[$key] = ($counts[$key] ?? 0) + 1;
+    }
+
+    foreach ($rows as $i => $row) {
+        if (($counts[mb_strtolower((string) $row['label'], 'UTF-8')] > 1) && ((string) $row['code'] !== '')) {
+            $rows[$i]['label'] = $row['label'] . ' (' . strtoupper((string) $row['code']) . ')';
+        }
+    }
+
+    return $rows;
 }
 
 /**
@@ -834,4 +938,43 @@ function pg_geo_sort_by_label(array $rows, $label_key = 'label')
     return array_map(function ($pair) {
         return $pair[1];
     }, $keyed);
+}
+
+/**
+ * The labels of a state pick list: "Country: State" with the country named
+ * in the current language (pg_geo_country_label()) while states of more
+ * than one country exist, else the state name alone. With countries the
+ * rows follow the shown country name (pg_geo_sort_by_label()), so the list
+ * reads in the order it shows; states of one country keep the order of
+ * $states. A state with no country row keeps its bare name.
+ *
+ * @param array $states         rows of id, name, country_name, country_code
+ * @param bool  $foreign_states whether states of a non-default country exist
+ * @return array list of array('id', 'label'), labels as plain text
+ */
+function pg_geo_state_option_labels(array $states, $foreign_states)
+{
+    $options = array();
+
+    foreach ($states as $state) {
+        $name = (string) ($state['name'] ?? '');
+        $country = (string) ($state['country_name'] ?? '');
+        $country_label = ($foreign_states && (($country !== '') || (($state['country_code'] ?? '') !== '')))
+            ? pg_geo_country_label($country, (string) ($state['country_code'] ?? ''))
+            : '';
+
+        $options[] = array(
+            'id' => (string) ($state['id'] ?? ''),
+            'label' => ($country_label !== '') ? $country_label . ': ' . $name : $name,
+            'country_label' => $country_label,
+        );
+    }
+
+    if ($foreign_states) {
+        $options = pg_geo_sort_by_label($options, 'country_label');
+    }
+
+    return array_map(function ($option) {
+        return array('id' => $option['id'], 'label' => $option['label']);
+    }, $options);
 }

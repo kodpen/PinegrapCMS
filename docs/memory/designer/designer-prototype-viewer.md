@@ -6,7 +6,7 @@ module: link_resolve, prototype
 
 ## What does the viewer show?
 - A design's drafts (`pg_proto_page_set()`: Drafts folder, scheduled until live, none binned) in tab order, as saved. Opened from a draft tab's menu ("Preview as prototype", `_pgPrototypeUrl()`: saved tabs of this design; '' for role 3) or `prototype.php?page=<id>` / `?style=<id>`; another page starts at the first draft with a notice.
-- The bar (name, pages, previous/next, hotspots, close) is the viewer's.
+- The bar: name, pages, previous/next, hotspots, close.
 
 ## Who may open it?
 - Person: roles 0-2, `validate_user()`, `validate_area_access($user, 'manager')`. Share link: `prototype.php?link=<token>`, anyone or the team, maybe a password (designer-prototype-share-links.md). get_page.php's private gate is untouched.
@@ -21,12 +21,12 @@ module: link_resolve, prototype
 - No. A background render prints no Analytics tag (get_page_content.php, the SEO pass too). The frame answers the cookie notice with no (`pg_proto_consent_refused()`, also in the shim's jar) and hides it: held tags stay held. The design's scripts run as for a visitor.
 
 ## What do links do?
-- `pg_proto_link_target()`: prototype (a draft of the design: `prototype.php?page=`, target _top, `sub`, `r`, `anchor` = fragment; a plain click posts to the viewer); anchor (fragment of this view); site (live page, file, item, `/de/...`: new tab); draft (another design's, or an item under it) and broken (unknown, binned, an item under one): no href, `data-pg-proto`, title; external, mailto, tel: new tab; bare anchors, toggles, javascript: kept. A bare `?query` keeps the view's page and item, takes its own `r` and fragment (catalog paging); other query values drop. Hotspots outline `data-pg-proto` links. `pg_proto_rewrite_links()` skips script, style, textarea, comments; tags read as a browser does (`pg_proto_tag_pattern()`: an `<a>` in an attribute is text). Only the page's names are read (`pg_link_maps_for_items()`).
+- `pg_proto_link_target()`: prototype (a draft of the design: `prototype.php?page=`, target _top, `sub`, `r`, `anchor` = fragment; a plain click posts to the viewer); anchor (fragment of this view); site (live page, file, item, `/de/...`: new tab); draft (another design's, or an item under it) and broken (unknown, binned, an item under one): no href, `data-pg-proto`, title; external, mailto, tel: new tab; bare anchors, toggles, javascript: kept. A bare `?query` keeps the view's page and item, takes its own `r` and fragment (catalog paging); other query values drop. Hotspots outline `data-pg-proto` links. `pg_proto_rewrite_links()` skips script, style, textarea, comments; tags read as a browser does (`pg_proto_tag_pattern()`: an `<a>` in an attribute is text; unquoted values keep `=`, #4990). Only the page's names are read (`pg_link_maps_for_items()`).
 
 ## How are forms, cart and sign-in inert?
 - Sandbox: scripts, escaping popups, top navigation on a click; no allow-forms or allow-same-origin: nothing sends, no site cookie reaches the page. Costs: same-host fonts sans CORS fall back; cookies and Web Storage in memory per view (shim), IndexedDB refuses; URL filters off; feeds see the Drafts folder; script-drawn links open a new tab.
 
 ## Where is the link resolver?
-- `includes/fn/link_resolve.php`: `pg_link_parse()`, `pg_link_resolve_item()`, `pg_link_resolve()` (pure; `class` says what 'external' was), `pg_seo_link_maps()`, `pg_seo_form_address_names()`. `pg_seo_resolve_link()` delegates (tests/link_resolve_test.php).
+- `includes/fn/link_resolve.php`: `pg_link_parse()`, `pg_link_resolve_item()`, `pg_link_resolve()` (pure; `class` says what 'external' was), `pg_seo_link_maps()`, `pg_seo_form_address_names()`. `pg_seo_resolve_link()` delegates.
 
 Related: designer/page-drafts.md, designer/designer-live-preview.md

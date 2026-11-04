@@ -185,12 +185,158 @@ function pg_visitor_device_sql($column)
 }
 
 /**
- * The paid / organic channel of a visit as SQL: 'pay_per_click' when the
- * tracking code carries the pay-per-click flag of the SEO settings,
- * 'organic' when a search engine referred it, otherwise ''.
+ * The paid / organic split of a visit the saved visitor reports group by
+ * (pay_per_click_organic) as SQL: 'pay_per_click' when the tracking code
+ * carries the pay-per-click flag of the SEO settings, 'organic' when a
+ * search engine referred it, otherwise ''.
  *
  * With no flag set nothing counts as paid: an empty pattern would match
- * every visit (the API counts it the same way).
+ * every visit.
+ *
+ * @param string $prefix Table name or alias with its dot, or ''
+ * @return string
+ */
+function pg_visitor_paid_organic_sql($prefix = '')
+{
+    $flag = defined('PAY_PER_CLICK_FLAG') ? trim((string) PAY_PER_CLICK_FLAG) : '';
+
+    return "CASE"
+        . (($flag !== '') ? " WHEN (" . $prefix . "tracking_code LIKE '%" . e(escape_like($flag)) . "%') THEN 'pay_per_click'" : '')
+        . " WHEN (" . $prefix . "referring_search_engine <> '') THEN 'organic' ELSE '' END";
+}
+
+/**
+ * The social networks a referring host is counted as social by: domains
+ * matched on the host's last two labels (m.facebook.com, l.instagram.com).
+ * Pure.
+ *
+ * @return array
+ */
+function pg_visitor_social_hosts()
+{
+    return array(
+        'facebook.com', 'fb.com', 'fb.me',
+        'instagram.com',
+        'x.com', 'twitter.com', 't.co',
+        'linkedin.com', 'lnkd.in',
+        'youtube.com', 'youtu.be',
+        'tiktok.com',
+        'pinterest.com', 'pin.it',
+        'reddit.com',
+        'whatsapp.com', 'wa.me',
+        'telegram.org', 't.me',
+    );
+}
+
+/**
+ * The utm_medium values of each channel the medium decides. Pure.
+ *
+ * @return array channel => list of lower-case mediums
+ */
+function pg_visitor_channel_mediums()
+{
+    return array(
+        'paid' => array('cpc', 'ppc', 'paid', 'paid_social'),
+        'email' => array('email', 'newsletter'),
+        'social' => array('social'),
+    );
+}
+
+/**
+ * The channel names in the order the rule tries them. Pure.
+ *
+ * @return array
+ */
+function pg_visitor_channels()
+{
+    return array('paid', 'email', 'ai', 'organic', 'social', 'referral', 'direct');
+}
+
+/**
+ * The channel of one visit, the rule pg_visitor_channel_sql() runs in the
+ * database: the first that matches of paid, email, ai, organic, social,
+ * referral, direct. Pure.
+ *
+ * @param array  $visit tracking_code, utm_medium, referring_host_name, referring_search_engine
+ * @param string $flag  The pay-per-click flag of the SEO settings
+ * @return string
+ */
+function pg_visitor_channel($visit, $flag = '')
+{
+    $flag = trim((string) $flag);
+    $code = isset($visit['tracking_code']) ? (string) $visit['tracking_code'] : '';
+    $medium = isset($visit['utm_medium']) ? strtolower(trim((string) $visit['utm_medium'])) : '';
+    $host = isset($visit['referring_host_name']) ? strtolower(trim((string) $visit['referring_host_name'])) : '';
+    $engine = isset($visit['referring_search_engine']) ? (string) $visit['referring_search_engine'] : '';
+    $mediums = pg_visitor_channel_mediums();
+
+    if ((($flag !== '') && (stripos($code, $flag) !== false)) || in_array($medium, $mediums['paid'], true)) {
+        return 'paid';
+    }
+
+    if (in_array($medium, $mediums['email'], true)) {
+        return 'email';
+    }
+
+    if (($host !== '') && in_array($host, pg_visitor_channel_ai_hosts(), true)) {
+        return 'ai';
+    }
+
+    if ($engine !== '') {
+        return 'organic';
+    }
+
+    $labels = explode('.', $host);
+    $last_two = implode('.', array_slice($labels, -2));
+
+    if (in_array($medium, $mediums['social'], true) || (($host !== '') && in_array($last_two, pg_visitor_social_hosts(), true))) {
+        return 'social';
+    }
+
+    return ($host !== '') ? 'referral' : 'direct';
+}
+
+/**
+ * The AI assistants' hosts with their www. forms (ai_visibility.php), empty
+ * when that module is not loaded.
+ *
+ * @return array
+ */
+function pg_visitor_channel_ai_hosts()
+{
+    return function_exists('pg_visitor_ai_host_list') ? pg_visitor_ai_host_list() : array();
+}
+
+/**
+ * A list of fixed strings (host names, mediums written in this file, never
+ * request input) as a quoted SQL IN () list. Quoted without the connection,
+ * so the SQL can be built before one is open. Pure.
+ *
+ * @param array $values
+ * @return string
+ */
+function pg_visitor_sql_list($values)
+{
+    $out = array();
+
+    foreach ((array) $values as $value) {
+        $out[] = "'" . str_replace(array('\\', "'"), array('\\\\', "''"), (string) $value) . "'";
+    }
+
+    return implode(', ', $out);
+}
+
+/**
+ * The channel of a visit as SQL over a `visitors` row, the rule
+ * pg_visitor_channel() applies: paid (the tracking code carries the
+ * pay-per-click flag, or a paid utm_medium), email, ai (an AI assistant's
+ * host), organic (a search engine referred it), social (utm_medium social
+ * or a social network's host), referral (any other host), direct.
+ *
+ * With no flag set only the medium makes a visit paid: an empty pattern
+ * would match every visit. The host is stored as the referrer gave it, www.
+ * included: the AI list carries both forms, the social match reads the last
+ * two labels.
  *
  * @param string $prefix Table name or alias with its dot, or ''
  * @return string
@@ -198,10 +344,28 @@ function pg_visitor_device_sql($column)
 function pg_visitor_channel_sql($prefix = '')
 {
     $flag = defined('PAY_PER_CLICK_FLAG') ? trim((string) PAY_PER_CLICK_FLAG) : '';
+    $mediums = pg_visitor_channel_mediums();
+    $medium = "LOWER(TRIM(" . $prefix . "utm_medium))";
+    $host = "LOWER(" . $prefix . "referring_host_name)";
+
+    $paid = $medium . " IN (" . pg_visitor_sql_list($mediums['paid']) . ")";
+
+    if ($flag !== '') {
+        $paid = "(" . $prefix . "tracking_code LIKE '%" . e(escape_like($flag)) . "%') OR " . $paid;
+    }
+
+    $ai_hosts = pg_visitor_channel_ai_hosts();
+    $ai = (count($ai_hosts) > 0) ? " WHEN (" . $host . " IN (" . pg_visitor_sql_list($ai_hosts) . ")) THEN 'ai'" : '';
 
     return "CASE"
-        . (($flag !== '') ? " WHEN (" . $prefix . "tracking_code LIKE '%" . e(escape_like($flag)) . "%') THEN 'pay_per_click'" : '')
-        . " WHEN (" . $prefix . "referring_search_engine <> '') THEN 'organic' ELSE '' END";
+        . " WHEN (" . $paid . ") THEN 'paid'"
+        . " WHEN (" . $medium . " IN (" . pg_visitor_sql_list($mediums['email']) . ")) THEN 'email'"
+        . $ai
+        . " WHEN (" . $prefix . "referring_search_engine <> '') THEN 'organic'"
+        . " WHEN (" . $medium . " IN (" . pg_visitor_sql_list($mediums['social']) . ")"
+        . " OR SUBSTRING_INDEX(" . $host . ", '.', -2) IN (" . pg_visitor_sql_list(pg_visitor_social_hosts()) . ")) THEN 'social'"
+        . " WHEN (" . $prefix . "referring_host_name <> '') THEN 'referral'"
+        . " ELSE 'direct' END";
 }
 
 /**
@@ -225,7 +389,8 @@ function pg_visitor_summary_dimensions()
         'referring_host_name' => 'referring_host_name',
         'referring_search_engine' => 'referring_search_engine',
         'referring_search_terms' => 'referring_search_terms',
-        'pay_per_click_organic' => pg_visitor_channel_sql(),
+        'pay_per_click_organic' => pg_visitor_paid_organic_sql(),
+        'channel' => pg_visitor_channel_sql(),
         'landing_page_name' => 'landing_page_name',
         'first_visit' => 'first_visit',
         'tracking_code' => 'tracking_code',
@@ -342,8 +507,7 @@ function pg_visitor_summary_through()
 }
 
 /**
- * Where the raw rows take over from the summary: midnight of the day after
- * the last summarized day, or 0 when nothing is summarized.
+ * Where the raw rows take over from the summary: pg_visitor_rows_from().
  *
  * A report adds the summary for the days before this moment to the rows from
  * this moment on, and must leave out any raw row before it: the summary
@@ -354,13 +518,218 @@ function pg_visitor_summary_through()
  */
 function pg_visitor_summary_raw_from()
 {
-    $through = pg_visitor_summary_through();
+    return pg_visitor_rows_from();
+}
 
-    if ($through === '') {
+/**
+ * The first moment from which the raw visitor rows are complete: the
+ * retention boundary, or midnight of an earlier day while the summary has
+ * not yet reached the days before the boundary (those rows are still there,
+ * since only summarized days are removed). 0 with records kept without a
+ * limit.
+ *
+ * The summary is written for every day, so it also covers days after this
+ * moment; a screen that filters or lists single visits reads it only before.
+ *
+ * @return int
+ */
+function pg_visitor_rows_from()
+{
+    $settings = pg_visitor_retention_settings();
+
+    if (($settings === false) || ($settings['days'] <= 0)) {
         return 0;
     }
 
-    return (int) strtotime('+1 day', strtotime($through . ' 00:00:00'));
+    $cutoff = pg_visitor_retention_cutoff($settings['days'], time());
+
+    if (!$settings['summary']) {
+        return $cutoff;
+    }
+
+    $cutoff_day = date('Y-m-d', $cutoff);
+    $oldest_day = pg_visitor_oldest_day();
+
+    $summarized = ($oldest_day !== '') ? pg_visitor_summarized_days($oldest_day, $cutoff_day) : array();
+
+    return min($cutoff, (int) strtotime(pg_visitor_summary_covered_until($summarized, $oldest_day, $cutoff_day) . ' 00:00:00'));
+}
+
+/**
+ * The day of the oldest visitor row, Y-m-d by the site's clock, '' when the
+ * table is empty.
+ *
+ * @return string
+ */
+function pg_visitor_oldest_day()
+{
+    $oldest = db_value("SELECT MIN(start_timestamp) FROM visitors");
+
+    return (($oldest === null) || ($oldest === '') || ((int) $oldest <= 0)) ? '' : date('Y-m-d', (int) $oldest);
+}
+
+/**
+ * The days from $from to $to (both Y-m-d, both included) whose summary is
+ * complete, that is whose totals row is there.
+ *
+ * @param string $from
+ * @param string $to
+ * @return array Y-m-d strings
+ */
+function pg_visitor_summarized_days($from, $to)
+{
+    $days = db_values(
+        "SELECT stat_date FROM visitor_stats_daily
+        WHERE (dimension = '') AND (stat_date >= '" . e($from) . "') AND (stat_date <= '" . e($to) . "')");
+
+    return array_map('strval', (array) $days);
+}
+
+/**
+ * A calendar day $offset days from $day, both Y-m-d. Counted on UTC noon so
+ * that a daylight saving change in the site's zone never skips or repeats a
+ * day.
+ *
+ * @param string $day
+ * @param int    $offset
+ * @return string
+ */
+function pg_visitor_day_add($day, $offset)
+{
+    return gmdate('Y-m-d', (int) strtotime($day . ' 12:00:00 UTC') + ((int) $offset * 86400));
+}
+
+/**
+ * Days the summary may be behind before System Status reports it: the job
+ * writes yesterday on its first run of the day, so one day back is normal
+ * and two is a run that has not come yet.
+ */
+if (!defined('PG_VISITOR_SUMMARY_LATE_DAYS')) {
+    define('PG_VISITOR_SUMMARY_LATE_DAYS', 2);
+}
+
+/**
+ * How many days back the summary's last day is from $today.
+ *
+ * With nothing summarized it counts from the day before the oldest visit,
+ * so a job that never ran shows as late once there are days to write; with
+ * no visit there is nothing to write and the answer is 0.
+ *
+ * @param string $last       Last summarized day (Y-m-d), '' for none
+ * @param string $oldest_day Day of the oldest visitor row, '' for none
+ * @param string $today      Y-m-d
+ * @return int
+ */
+function pg_visitor_summary_lag($last, $oldest_day, $today)
+{
+    if ($last === '') {
+        if ($oldest_day === '') {
+            return 0;
+        }
+
+        $last = pg_visitor_day_add($oldest_day, -1);
+    }
+
+    // Noon UTC on both sides keeps a clock change out of the count.
+    $days = (int) round(((int) strtotime($today . ' 12:00:00 UTC') - (int) strtotime($last . ' 12:00:00 UTC')) / 86400);
+
+    return max(0, $days);
+}
+
+/**
+ * The days a run of the summary writes, in the order it writes them.
+ *
+ * Yesterday and the day before come first: written again when $rewrite_recent
+ * (an order completed after midnight on a visit begun before it changes
+ * them), otherwise only if missing. Then the days the removal waits for,
+ * oldest first: the days before the retention boundary not summarized yet.
+ * Then every other day not summarized, backwards from yesterday to the
+ * oldest visit. Days before the oldest visit have no rows to count.
+ *
+ * @param array  $summarized     Y-m-d of the days already summarized
+ * @param string $oldest_day     Day of the oldest visitor row, '' for none
+ * @param string $yesterday      Y-m-d
+ * @param string $cutoff_day     Day of the retention boundary, '' for none
+ * @param bool   $rewrite_recent Whether the last two days are written again
+ * @return array Y-m-d strings
+ */
+function pg_visitor_summary_days_due($summarized, $oldest_day, $yesterday, $cutoff_day, $rewrite_recent)
+{
+    $out = array();
+
+    if (($oldest_day === '') || ($oldest_day > $yesterday)) {
+        return $out;
+    }
+
+    $done = array_flip(array_map('strval', (array) $summarized));
+
+    foreach (array($yesterday, pg_visitor_day_add($yesterday, -1)) as $day) {
+        if (($day >= $oldest_day) && ($rewrite_recent || !isset($done[$day]))) {
+            $out[] = $day;
+        }
+    }
+
+    $recent_end = pg_visitor_day_add($yesterday, -2);
+
+    if ($cutoff_day !== '') {
+        for ($day = $oldest_day; ($day < $cutoff_day) && ($day <= $recent_end); $day = pg_visitor_day_add($day, 1)) {
+            if (!isset($done[$day])) {
+                $out[] = $day;
+            }
+        }
+    }
+
+    $floor = (($cutoff_day !== '') && ($cutoff_day > $oldest_day)) ? $cutoff_day : $oldest_day;
+
+    for ($day = $recent_end; $day >= $floor; $day = pg_visitor_day_add($day, -1)) {
+        if (!isset($done[$day])) {
+            $out[] = $day;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The first day from the oldest visit on that is not summarized, at most the
+ * day of the retention boundary: every row before its midnight is counted in
+ * the summary, so the removal may go up to there.
+ *
+ * @param array  $summarized Y-m-d of the days summarized
+ * @param string $oldest_day Day of the oldest visitor row, '' for none
+ * @param string $cutoff_day Day of the retention boundary
+ * @return string Y-m-d
+ */
+function pg_visitor_summary_covered_until($summarized, $oldest_day, $cutoff_day)
+{
+    if (($oldest_day === '') || ($oldest_day >= $cutoff_day)) {
+        return $cutoff_day;
+    }
+
+    $done = array_flip(array_map('strval', (array) $summarized));
+
+    for ($day = $oldest_day; $day < $cutoff_day; $day = pg_visitor_day_add($day, 1)) {
+        if (!isset($done[$day])) {
+            return $day;
+        }
+    }
+
+    return $cutoff_day;
+}
+
+/**
+ * Whether a run writes yesterday and the day before again: on the first run
+ * of a day, then at most once an hour.
+ *
+ * @param array  $last      pg_visitor_cleanup_last()
+ * @param string $yesterday Y-m-d
+ * @param int    $now
+ * @return bool
+ */
+function pg_visitor_summary_recent_due($last, $yesterday, $now)
+{
+    return !isset($last['recent_day']) || ((string) $last['recent_day'] !== $yesterday)
+        || !isset($last['recent_at']) || ((int) $last['recent_at'] <= ((int) $now - 3600));
 }
 
 /**
@@ -381,11 +750,13 @@ function pg_visitor_summary_raw_from()
  */
 function pg_visitor_summary_report_rows($from, $to, $groupings)
 {
-    $through = pg_visitor_summary_through();
+    $rows_from = pg_visitor_rows_from();
 
-    if ($through === '') {
+    if ($rows_from <= 0) {
         return array();
     }
+
+    $through = date('Y-m-d', $rows_from - 1);
 
     $dates = array('year' => '%Y', 'month' => '%m', 'day' => '%d');
     $dimensions = pg_visitor_summary_dimensions();
@@ -486,7 +857,18 @@ function pg_visitor_summarize_day($date)
     // import) is read through the index instead.
     $span = db_item("SELECT COUNT(*) AS n, MIN(id) AS lo, MAX(id) AS hi FROM visitors WHERE " . $range);
 
-    if (!is_array($span) || ((int) $span['n'] === 0)) {
+    $figures = pg_visitor_summary_figures();
+
+    $insert = "INSERT INTO visitor_stats_daily (stat_date, dimension, dim_value, is_rest, " . implode(', ', $figures) . ") VALUES ";
+
+    if (!is_array($span)) {
+        return 0;
+    }
+
+    // A day without visits still gets its totals row, all zeros, so that it
+    // counts as summarized and is not looked at again.
+    if ((int) $span['n'] === 0) {
+        db($insert . "('" . e($date) . "', '', '', 0" . str_repeat(', 0', count($figures)) . ")");
         return 0;
     }
 
@@ -502,10 +884,6 @@ function pg_visitor_summarize_day($date)
     if (!is_array($total) || ((int) $total['visits'] === 0)) {
         return 0;
     }
-
-    $figures = pg_visitor_summary_figures();
-
-    $insert = "INSERT INTO visitor_stats_daily (stat_date, dimension, dim_value, is_rest, " . implode(', ', $figures) . ") VALUES ";
 
     $values = function ($dimension, $line) use ($date, $figures) {
         $sql = "('" . e($date) . "', '" . e($dimension) . "', '" . e(mb_substr((string) $line['value'], 0, 255)) . "', " . (int) $line['rest'];
@@ -578,7 +956,8 @@ function pg_visitor_cleanup_marker()
  * What the last run left behind, from the marker file.
  *
  * @return array('checked_at' => int, 'backlog' => bool, 'deleted' => int,
- *               'summarized' => int, 'seconds' => float)
+ *               'summarized' => int, 'seconds' => float,
+ *               'recent_day' => string, 'recent_at' => int)
  */
 function pg_visitor_cleanup_last()
 {
@@ -594,6 +973,8 @@ function pg_visitor_cleanup_last()
         'deleted' => isset($last['deleted']) ? (int) $last['deleted'] : 0,
         'summarized' => isset($last['summarized']) ? (int) $last['summarized'] : 0,
         'seconds' => isset($last['seconds']) ? (float) $last['seconds'] : 0.0,
+        'recent_day' => isset($last['recent_day']) ? (string) $last['recent_day'] : '',
+        'recent_at' => isset($last['recent_at']) ? (int) $last['recent_at'] : 0,
     );
 }
 
@@ -616,7 +997,8 @@ function pg_visitor_cleanup_reset()
  * Every tick while rows are waiting (a run ran out of time with work left),
  * otherwise once an hour: once the table is down to its period, all an hour
  * adds is the rows that crossed the boundary since. Also with records kept
- * without a limit, as long as their IP addresses go after a period.
+ * without a limit, as long as the daily summary is on or their IP addresses
+ * go after a period.
  *
  * @return bool
  */
@@ -624,7 +1006,7 @@ function pg_visitor_cleanup_due()
 {
     $settings = pg_visitor_retention_settings();
 
-    if (($settings === false) || (($settings['days'] <= 0) && ($settings['ip_days'] <= 0))) {
+    if (($settings === false) || (($settings['days'] <= 0) && ($settings['ip_days'] <= 0) && !$settings['summary'])) {
         return false;
     }
 
@@ -634,13 +1016,16 @@ function pg_visitor_cleanup_due()
 }
 
 /**
- * Remove the visitor rows older than the retention period, summarizing each
- * day first when the summary is on.
+ * Write the daily summary of every day through yesterday when it is on, and
+ * remove the visitor rows older than the retention period.
  *
  * Written to be stopped at any point and picked up again:
  *
  * - The summary goes a day at a time and a day is marked done only by its
- *   last row, so a run cut off in the middle writes that day again.
+ *   last row, so a run cut off in the middle writes that day again. Its
+ *   order is pg_visitor_summary_days_due(): yesterday and the day before
+ *   (written again on the first run of a day and then hourly), the days the
+ *   removal waits for, then backwards to the oldest visit.
  * - Rows are removed in chunks of $chunk by primary key, each chunk its own
  *   short statement and its own transaction. A visit being written meanwhile
  *   is a row at the far end of the key and is never waited on; nothing locks
@@ -695,7 +1080,7 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
     $result['summary'] = $settings['summary'];
     $result['ip_days'] = $settings['ip_days'];
 
-    if (($settings['days'] <= 0) && ($settings['ip_days'] <= 0)) {
+    if (($settings['days'] <= 0) && ($settings['ip_days'] <= 0) && !$settings['summary']) {
         $result['state'] = 'off';
         return $result;
     }
@@ -758,40 +1143,48 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
     // -- The summary ---------------------------------------------------------
     $delete_before = $cutoff;
     $summary_complete = true;
+    $last = pg_visitor_cleanup_last();
+    $recent_day = $last['recent_day'];
+    $recent_at = $last['recent_at'];
 
-    if ($settings['summary'] && ($cutoff > 0)) {
+    if ($settings['summary']) {
 
-        $through = pg_visitor_summary_through();
-        $summary_complete = false;
+        $today = date('Y-m-d');
+        $yesterday = pg_visitor_day_add($today, -1);
+        $cutoff_day = ($cutoff > 0) ? date('Y-m-d', $cutoff) : '';
+        $oldest_day = pg_visitor_oldest_day();
 
-        while (microtime(true) < $summary_deadline) {
+        $summarized = ($oldest_day !== '') ? pg_visitor_summarized_days($oldest_day, $yesterday) : array();
+        $rewrite_recent = pg_visitor_summary_recent_due($last, $yesterday, time());
 
-            $from = ($through !== '') ? (int) strtotime('+1 day', strtotime($through . ' 00:00:00')) : 1;
+        $due = pg_visitor_summary_days_due($summarized, $oldest_day, $yesterday, $cutoff_day, $rewrite_recent);
+        $written = 0;
+        $recent_count = count(array_intersect(array_slice($due, 0, 2), array($yesterday, pg_visitor_day_add($yesterday, -1))));
 
-            // The next day that has rows, so a gap of empty days costs one
-            // read and not one per day.
-            $next = db_value(
-                "SELECT MIN(start_timestamp)
-                FROM visitors
-                WHERE (start_timestamp >= " . (int) $from . ") AND (start_timestamp < " . (int) $cutoff . ")");
+        foreach ($due as $day) {
 
-            if (($next === null) || ($next === '') || ((int) $next <= 0)) {
-                $summary_complete = true;
+            if (microtime(true) >= $summary_deadline) {
                 break;
             }
 
-            $day = date('Y-m-d', (int) $next);
-
             pg_visitor_summarize_day($day);
 
-            $through = $day;
+            $summarized[] = $day;
+            $written++;
             $result['summarized']++;
+
+            // Both recent days written: the next rewrite is an hour away.
+            if ($rewrite_recent && ($written === $recent_count)) {
+                $recent_day = $yesterday;
+                $recent_at = time();
+            }
         }
 
-        // Only what the summary already holds goes. When it has caught up to
-        // the boundary, that is everything before it.
-        if (!$summary_complete) {
-            $delete_before = ($through !== '') ? min($cutoff, (int) strtotime('+1 day', strtotime($through . ' 00:00:00'))) : 0;
+        $summary_complete = ($written === count($due));
+
+        // Only what the summary already holds goes.
+        if ($cutoff > 0) {
+            $delete_before = min($cutoff, (int) strtotime(pg_visitor_summary_covered_until($summarized, $oldest_day, $cutoff_day) . ' 00:00:00'));
         }
     }
 
@@ -897,6 +1290,8 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
         'months' => $result['months'],
         'ip_cleared' => $result['ip_cleared'],
         'seconds' => $result['seconds'],
+        'recent_day' => $recent_day,
+        'recent_at' => $recent_at,
     )));
 
     return $result;

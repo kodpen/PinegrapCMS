@@ -31,11 +31,15 @@ $page = db_item(
         page_name AS name,
         page_folder AS folder_id,
         page_style AS style_id,
-        mobile_style_id AS mobile_style_id
+        mobile_style_id AS mobile_style_id,
+        page_type
     FROM page
     WHERE page_id = '" . e($_REQUEST['page_id'] ?? '') . "'");
-if (!$page) {
-    output_error(lang('Sorry, the page could not be found.'));
+
+// Only a form list view page has a form list view to edit: any other page
+// has no form_list_view_pages row, and a save would write one for it.
+if (!$page || $page['page_type'] !== 'form list view') {
+    output_error(lang('Sorry, the page could not be found.'), 404);
 }
 
 // validate user's access
@@ -57,6 +61,11 @@ $query = "SELECT
             AND (form_list_view_pages.collection = 'a')";
 $result = db_q($query, array((string) $_REQUEST['page_id'])) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
+
+// A form list view saved before its first edit has no row yet.
+if (!$row) {
+    $row = array('custom_form_page_id' => '', 'page_folder' => '', 'form_name' => null);
+}
 
 $custom_form_page_id = $row['custom_form_page_id'];
 $custom_form_folder_id = $row['page_folder'];
@@ -158,31 +167,32 @@ if (!$_POST) {
         $first_edit = false;
     }
 
-    $row = mysqli_fetch_assoc($result);
+    // A first edit has no row: every setting starts empty.
+    $row = mysqli_fetch_assoc($result) ?: array();
 
-    $custom_form_page_id = $row['custom_form_page_id'];
-    $header = $row['header'];
-    $layout = $row['layout'];
-    $footer = $row['footer'];
-    $order_by_1_standard_field = $row['order_by_1_standard_field'];
-    $order_by_1_form_field_id = $row['order_by_1_form_field_id'];
-    $order_by_1_type = $row['order_by_1_type'];
-    $order_by_2_standard_field = $row['order_by_2_standard_field'];
-    $order_by_2_form_field_id = $row['order_by_2_form_field_id'];
-    $order_by_2_type = $row['order_by_2_type'];
-    $order_by_3_standard_field = $row['order_by_3_standard_field'];
-    $order_by_3_form_field_id = $row['order_by_3_form_field_id'];
-    $order_by_3_type = $row['order_by_3_type'];
-    $maximum_number_of_results = $row['maximum_number_of_results'];
-    $maximum_number_of_results_per_page = $row['maximum_number_of_results_per_page'];
-    $search = $row['search'];
-    $search_label = $row['search_label'];
-    $search_advanced = $row['search_advanced'];
-    $search_advanced_show_by_default = $row['search_advanced_show_by_default'];
-    $search_advanced_layout = $row['search_advanced_layout'];
-    $browse = $row['browse'];
-    $browse_show_by_default_form_field_id = $row['browse_show_by_default_form_field_id'];
-    $show_results_by_default = $row['show_results_by_default'];
+    $custom_form_page_id = $row['custom_form_page_id'] ?? '';
+    $header = $row['header'] ?? '';
+    $layout = $row['layout'] ?? '';
+    $footer = $row['footer'] ?? '';
+    $order_by_1_standard_field = $row['order_by_1_standard_field'] ?? '';
+    $order_by_1_form_field_id = $row['order_by_1_form_field_id'] ?? '';
+    $order_by_1_type = $row['order_by_1_type'] ?? '';
+    $order_by_2_standard_field = $row['order_by_2_standard_field'] ?? '';
+    $order_by_2_form_field_id = $row['order_by_2_form_field_id'] ?? '';
+    $order_by_2_type = $row['order_by_2_type'] ?? '';
+    $order_by_3_standard_field = $row['order_by_3_standard_field'] ?? '';
+    $order_by_3_form_field_id = $row['order_by_3_form_field_id'] ?? '';
+    $order_by_3_type = $row['order_by_3_type'] ?? '';
+    $maximum_number_of_results = $row['maximum_number_of_results'] ?? '';
+    $maximum_number_of_results_per_page = $row['maximum_number_of_results_per_page'] ?? '';
+    $search = $row['search'] ?? '';
+    $search_label = $row['search_label'] ?? '';
+    $search_advanced = $row['search_advanced'] ?? '';
+    $search_advanced_show_by_default = $row['search_advanced_show_by_default'] ?? '';
+    $search_advanced_layout = $row['search_advanced_layout'] ?? '';
+    $browse = $row['browse'] ?? '';
+    $browse_show_by_default_form_field_id = $row['browse_show_by_default_form_field_id'] ?? '';
+    $show_results_by_default = $row['show_results_by_default'] ?? '';
 
     // If the style is set to collection b, then get page type properties for that collection.
     if ($collection == 'b') {
@@ -396,7 +406,7 @@ if (!$_POST) {
             'field_options[' . $count . '] = new Array();
             field_options[' . $count . ']["name"] = "' . escape_javascript($field_option['name']) . '";
             field_options[' . $count . ']["value"] = "' . escape_javascript($field_option['value']) . '";
-            field_options[' . $count . ']["type"] = "' . escape_javascript($field_option['type']) . '";' . "\n";
+            field_options[' . $count . ']["type"] = "' . escape_javascript($field_option['type'] ?? '') . '";' . "\n";
 
         // if there are value options, then add value options to javascript array
         if (isset($field_option['value_options']) == true) {
@@ -979,6 +989,38 @@ if (!$_POST) {
 } else {
     validate_token_field();
 
+    // Every order-by and filter field is checked before anything is written:
+    // the standard field columns are ENUMs, and a value outside them was
+    // saved as '' without a word.
+    $standard_fields = get_standard_fields_for_view();
+    $form_field_ids = db_values("SELECT id FROM form_fields WHERE page_id = '" . e($custom_form_page_id) . "'");
+
+    if (!is_array($form_field_ids)) {
+        $form_field_ids = array();
+    }
+
+    $field_error = '';
+
+    foreach (array(1, 2, 3) as $number) {
+        if (!pg_form_list_view_field_allowed($_POST['order_by_' . $number] ?? '', $standard_fields, $form_field_ids, $number == 1)) {
+            $field_error = lang('An order by field is not one this view can sort by. Please choose another field.');
+        }
+    }
+
+    for ($i = 1; $i <= (int) ($_POST['last_filter_number'] ?? 0); $i++) {
+        if ((($_POST['filter_' . $i . '_operator'] ?? '') != '')
+            && !pg_form_list_view_field_allowed($_POST['filter_' . $i . '_field'] ?? '', $standard_fields, $form_field_ids)) {
+            $field_error = lang('A filter field is not one this view can filter by. Please choose another field.');
+        }
+    }
+
+    if ($field_error != '') {
+        $form = new liveform('edit_form_list_view');
+        $form->mark_error('', $field_error);
+
+        go(PATH . SOFTWARE_DIRECTORY . '/edit_form_list_view.php?page_id=' . urlencode((string) $page['id']) . '&send_to=' . urlencode((string) ($_POST['send_to'] ?? '')));
+    }
+
     // if value of order by selection is numeric then a custom form field was selected (not a standard field)
     if (is_numeric($_POST['order_by_1']) == true) {
         $order_by_1_standard_field = '';
@@ -1169,7 +1211,7 @@ if (!$_POST) {
                     ?,
                     ?,
                     ?)";
-            $result = db_q($query, array((string) ($_POST['page_id'] ?? ''), (string) $field['id'], (string) $number_of_columns, (string) $_POST['browse_field_' . $field['id'] . '_sort_order'], (string) $_POST['browse_field_' . $field['id'] . '_shortcut'], (string) $_POST['browse_field_' . $field['id'] . '_date_format'])) or output_error('Query failed.');
+            $result = db_q($query, array((string) ($_POST['page_id'] ?? ''), (string) $field['id'], (string) $number_of_columns, (string) ($_POST['browse_field_' . $field['id'] . '_sort_order'] ?? ''), (string) ($_POST['browse_field_' . $field['id'] . '_shortcut'] ?? ''), (string) ($_POST['browse_field_' . $field['id'] . '_date_format'] ?? ''))) or output_error('Query failed.');
         }
     }
 

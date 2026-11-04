@@ -23,7 +23,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
   
     $current_indexnow_key = db("SELECT indexnow_key FROM config");
-    $current_indexnow_key = ($current_indexnow_key !== null) ? $current_indexnow_key : '';
+    // Trimmed like the new key: a key once stored with spaces around it is
+    // then recognised, and its file removed, when the key changes.
+    $current_indexnow_key = ($current_indexnow_key !== null) ? trim($current_indexnow_key) : '';
     $new_indexnow_key     = isset($_POST['indexnow_key']) ? trim($_POST['indexnow_key']) : '';
 
     // The key becomes a file name under the public files directory
@@ -90,6 +92,42 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     if (($site_custom_jsonld_input !== '') && (json_decode($site_custom_jsonld_input) === null)) {
         $liveform->mark_error('custom_jsonld', lang('The site-wide JSON-LD is not valid JSON, so the settings were not saved. Please correct it and try again.'));
         return;
+    }
+
+    // The merchant fields of the Structured Data card are refused rather than
+    // changed when they cannot be read: a country that is not a two-letter
+    // code used to be blanked, which drops every shipping and return block
+    // site-wide, and a return window that is not a number became 0, which
+    // tells search engines that no product may be returned.
+    if ($seo_jsonld_ready && array_key_exists('merchant_transit_days_min', $_POST)) {
+        $merchant_country_check = trim((string) post_value('merchant_country'));
+
+        if (($merchant_country_check !== '') && !preg_match('/^[A-Za-z]{2}$/D', $merchant_country_check)) {
+            $liveform->mark_error('merchant_country', lang('The merchant country must be a two-letter country code, for example TR or DE.'));
+        }
+
+        $merchant_return_days_check = trim((string) post_value('merchant_return_days'));
+
+        if (($merchant_return_days_check !== '') && !preg_match('/^\d{1,4}$/D', $merchant_return_days_check)) {
+            $liveform->mark_error('merchant_return_days', lang('The return window must be a whole number of days, 0 for no returns, or empty.'));
+        }
+
+        $merchant_transit_min_check = pg_whole_number_in_range(post_value('merchant_transit_days_min'), 0, 60);
+        $merchant_transit_max_check = pg_whole_number_in_range(post_value('merchant_transit_days_max'), 0, 60);
+
+        if ($merchant_transit_min_check === null) {
+            $liveform->mark_error('merchant_transit_days_min', lang(array('string' => '{var:1} must be a whole number from {var:2} to {var:3}.', 'vars' => array(lang('Transit Time Min (days)'), 0, 60))));
+        }
+
+        if ($merchant_transit_max_check === null) {
+            $liveform->mark_error('merchant_transit_days_max', lang(array('string' => '{var:1} must be a whole number from {var:2} to {var:3}.', 'vars' => array(lang('Transit Time Max (days)'), 0, 60))));
+        } elseif (($merchant_transit_min_check !== null) && ($merchant_transit_max_check < $merchant_transit_min_check)) {
+            $liveform->mark_error('merchant_transit_days_max', lang('The longest transit time cannot be shorter than the shortest.'));
+        }
+
+        if ($liveform->check_form_errors()) {
+            return;
+        }
     }
 
     // If old key exists and changed, delete old file and its DB record. A
@@ -284,7 +322,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             $sql_ai_crawler_fields
             $sql_seo_switch_fields
             strutured_data = '" . escape(post_value('strutured_data')) . "',
-            indexnow_key = '" . escape(post_value('indexnow_key')) . "',
+            indexnow_key = '" . escape($new_indexnow_key) . "',
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
 

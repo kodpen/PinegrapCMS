@@ -38,7 +38,10 @@ function subscriptions_operator_test_io(array &$store, array &$calls, $shared = 
 		'read' => function ($id) use (&$store) {
 			return ((int) $id === (int) $store['id']) ? $store : null;
 		},
-		'set_status' => function ($id, $to, $detail) use (&$store, &$calls) {
+		'set_status' => function ($id, $to, $detail, $from = '') use (&$store, &$calls) {
+			if (((string) $from !== '') && ((string) $store['status'] !== (string) $from)) {
+				return false;
+			}
 			$fields = pg_subscription_transition_fields($store, $to, 1000);
 			if ($fields === null) {
 				return false;
@@ -236,6 +239,12 @@ function test_subscription_operator_where()
 	pg_assert_true(strpos($where, "LIKE '%o\\'Neil\\\\_5\\\\%%'") !== false, 'quoted and LIKE-escaped: ' . $where);
 	pg_assert_true(strpos($where, 'o.billing_email_address LIKE') !== false);
 	pg_assert_true(strpos($where, 'u.user_username LIKE') !== false);
+
+	// A backslash is LIKE's escape character: typed into the search it is a
+	// plain character, never an escape of the next one ("C:\temp" is not
+	// "C:temp"). In the SQL literal it reads as four backslashes.
+	$where = pg_subscription_operator_where(pg_subscription_operator_filter(array('q' => 'C:\\temp')));
+	pg_assert_true(strpos($where, "LIKE '%C:\\\\\\\\temp%'") !== false, 'the backslash escaped for LIKE: ' . $where);
 }
 
 function test_subscription_operator_order_puts_running_rows_first()
@@ -315,4 +324,23 @@ function test_subscription_operator_event_detail_in_the_panel_language()
 
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_subscriptions.php');
 	pg_assert_true(strpos($screen, "h(pg_subscription_operator_event_detail((string) \$event['kind'], (string) \$event['detail']))") !== false, 'the history prints the label');
+}
+
+function test_subscription_operator_event_label_speaks_to_staff()
+{
+	pg_assert_same(lang('Payment awaits the customer\'s confirmation'), pg_subscription_operator_event_label('confirm_needed'), 'a 3D Secure renewal names the customer');
+	pg_assert_true(pg_subscription_operator_event_label('confirm_needed') !== pg_subscription_customer_event_label('confirm_needed'), 'not the words written to the customer');
+	pg_assert_same(pg_subscription_customer_event_label('renewed'), pg_subscription_operator_event_label('renewed'), 'other kinds as the customer reads them');
+	pg_assert_same('', pg_subscription_operator_event_label('no_such_kind'));
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_subscriptions.php');
+	pg_assert_true(strpos($screen, "pg_subscription_operator_event_label((string) \$event['kind'])") !== false, 'the history uses the staff words');
+	pg_assert_true(strpos($screen, "lang('Event type')") !== false, 'the history column has its own key, not the calendar\'s Event');
+}
+
+function test_subscription_operator_missing_row_answers_404_and_shows_its_error_at_once()
+{
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_subscriptions.php');
+	pg_assert_true(strpos($screen, "lang('All subscriptions')) . '</a>', 404);") !== false, 'a missing row answers 404');
+	pg_assert_true((bool) preg_match("/if \\(\\\$result\\['result'\\] === 'not_found'\\) \\{\\s*\\\$subscription_id = 0;/", $screen), 'a move on a missing row goes back to the list, which shows and clears the error');
 }

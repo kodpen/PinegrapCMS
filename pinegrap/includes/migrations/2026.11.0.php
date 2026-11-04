@@ -133,6 +133,28 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_form_field_product_group(); // 11.0.141
 	upgrade_2026_11_0_image_upload_cap();        // 11.0.142
 	upgrade_2026_11_0_dashboard_layout();        // 11.0.143
+	upgrade_2026_11_0_ws_file_edit_redacted();   // 11.0.144
+	upgrade_2026_11_0_claude_daily_summary();    // 11.0.145
+	upgrade_2026_11_0_mail_bounces();            // 11.0.146
+	upgrade_2026_11_0_site_search_daily();      // 11.0.147
+	upgrade_2026_11_0_product_questions();       // 11.0.148
+	upgrade_2026_11_0_page_vitals_hourly();      // 11.0.149
+	upgrade_2026_11_0_ai_fetch_daily();          // 11.0.150
+	upgrade_2026_11_0_product_preorder();        // 11.0.151
+	upgrade_2026_11_0_file_storage();            // 11.0.152
+	upgrade_2026_11_0_page_experiments();        // 11.0.153
+	upgrade_2026_11_0_contact_group_rules();     // 11.0.155
+	upgrade_2026_11_0_imports();                 // 11.0.156
+	upgrade_2026_11_0_bookings();                // 11.0.157
+	upgrade_2026_11_0_form_fee();                // 11.0.158
+	upgrade_2026_11_0_store_credit();            // 11.0.159
+	upgrade_2026_11_0_user_disabled();           // 11.0.160
+	upgrade_2026_11_0_booking_campaigns();       // 11.0.161
+	upgrade_2026_11_0_stock_locations();         // 11.0.162
+	upgrade_2026_11_0_activitypub();             // 11.0.163
+	upgrade_2026_11_0_form_list_view_address();  // 11.0.164
+	upgrade_2026_11_0_order_vat_id();            // 11.0.165
+	upgrade_2026_11_0_search_engines();          // 11.0.166
 
 }
 
@@ -4294,5 +4316,844 @@ function upgrade_2026_11_0_dashboard_layout() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('New dashboard: a switch at the top of the dashboard lets each person try the new design; their choice, layout and sign-in times are kept per person.');
+
+}
+
+// A Workspace picture replaced with a redaction burnt in: its earlier
+// version shows what the redaction covers, so ws_file_history() lists it for
+// the person who made the edit alone. Existing rows stay 0, listed as before.
+function upgrade_2026_11_0_ws_file_edit_redacted() {
+
+	install_add_column('ws_file_edits', 'redacted', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: when a picture is replaced with redacted areas, its earlier version is listed in the message history only for the person who edited it.');
+
+}
+
+// The Assistant card's daily summary (2026.11.0, 11.0.145;
+// includes/dashboard/v2/cards/ai.php, includes/workspace/claude.php). At the
+// chosen hour the hourly job queues one summary request; the routine answers
+// it as a message in the chosen channel, and the card reads the latest
+// answered summary request's reply_message_id, so no column holds the
+// message: config's row has no room to spare (tests/innodb_test.php).
+// 255 = off, the default, so an upgrade spends no run until someone turns it
+// on.
+function upgrade_2026_11_0_claude_daily_summary() {
+
+	install_add_column('config', 'ws_claude_summary_hour', "TINYINT UNSIGNED NOT NULL DEFAULT 255");
+	install_add_column('config', 'ws_claude_summary_channel_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Assistant card: Claude can write a daily summary into a channel at a chosen hour; off until switched on under the Claude in the channels card.');
+
+}
+
+// The bounce record and the send gate (2026.11.0, 11.0.146;
+// includes/fn/mail_bounces.php). One row per address with its current
+// state: kind of the last record, soft bounces counted from first_at, the
+// message it came from, and suppressed, which the mail queue and campaigns
+// read before every send. mail_outbox.status gains 'suppressed', the queue's
+// outcome for a message the gate stopped; it is widened first, because the
+// gate only runs once the table exists. Nothing is suppressed on a running
+// site until a bounce is recorded.
+function upgrade_2026_11_0_mail_bounces() {
+
+	$status = install_column_info('mail_outbox', 'status');
+
+	if ($status) {
+
+		if (strpos((string) $status['Type'], "'suppressed'") !== false) {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'mail_outbox.status suppressed')));
+
+		} else {
+
+			preg_match_all("/'((?:[^']|'')*)'/", (string) $status['Type'], $matches);
+
+			$values = $matches[1];
+			$values[] = 'suppressed';
+
+			$definition = "ENUM('" . implode("','", $values) . "')"
+				. ((($status['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+				. (($status['Default'] !== null) ? " DEFAULT '" . e((string) $status['Default']) . "'" : '');
+
+			install_modify_column('mail_outbox', 'status', $definition);
+
+		}
+
+	}
+
+	install_create_table('mail_bounces', "CREATE TABLE mail_bounces (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		address     VARCHAR(191) NOT NULL DEFAULT '',
+		kind        ENUM('hard','soft','complaint','manual') NOT NULL DEFAULT 'hard',
+		source      VARCHAR(40) NOT NULL DEFAULT '',
+		soft_count  SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		first_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		last_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		message_id  VARCHAR(255) NOT NULL DEFAULT '',
+		campaign_id INT UNSIGNED NOT NULL DEFAULT 0,
+		suppressed  TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		cleared_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_address (address)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('E-mail: an address that bounces hard, is reported as spam or bounces softly three times in 30 days gets no more mail; the mail queue shows such messages as suppressed and campaigns count the skipped addresses.');
+
+}
+
+// The site search rollup (2026.11.0, 11.0.147; includes/fn/site_search_stats.php).
+// One row per day and search term, aggregated at write time: id is the SHA-1
+// of "day|term", raised by one INSERT ... ON DUPLICATE KEY UPDATE per search
+// (a visit counts a term once a day), so a busy search box adds no row per
+// request. searches counts the searches, zero_results those that found
+// nothing, clicks the result clicks. idx_day serves the report's top terms of
+// a period. The general job removes days older than 400.
+function upgrade_2026_11_0_site_search_daily() {
+
+	install_create_table('site_search_daily', "CREATE TABLE site_search_daily (
+		id            CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		day           DATE NOT NULL,
+		term          VARCHAR(191) NOT NULL DEFAULT '',
+		searches      INT UNSIGNED NOT NULL DEFAULT 0,
+		zero_results  INT UNSIGNED NOT NULL DEFAULT 0,
+		clicks        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_day (day, searches)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Site search: each day\'s searches are now counted by term, with the searches that found nothing and the clicks on their results. Days older than 400 are removed.');
+
+}
+
+// The real-user page speed rollup (2026.11.0, 11.0.149; includes/fn/page_vitals.php).
+// One row per hour, page and width class (desktop, mobile, tablet), aggregated
+// at write time: id is the SHA-1 of "day|hour|page_id|device", raised by one
+// INSERT ... ON DUPLICATE KEY UPDATE per beacon. views counts the beacons; for
+// each of LCP, INP (milliseconds) and CLS (× 1000) the sum of the measured
+// values and how many fell into the good, needs-work and poor buckets. A
+// figure a beacon did not measure adds to none of its columns. idx_day_page
+// serves the reports of a period and of a page. Nothing about a visitor is
+// kept; the general job removes days older than 400.
+function upgrade_2026_11_0_page_vitals_hourly() {
+
+	install_create_table('page_vitals_hourly', "CREATE TABLE page_vitals_hourly (
+		id          CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		day         DATE NOT NULL,
+		hour        TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		page_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		device      ENUM('desktop','mobile','tablet') NOT NULL DEFAULT 'desktop',
+		views       INT UNSIGNED NOT NULL DEFAULT 0,
+		lcp_sum     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		inp_sum     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		cls_sum     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		lcp_good    INT UNSIGNED NOT NULL DEFAULT 0,
+		lcp_needs   INT UNSIGNED NOT NULL DEFAULT 0,
+		lcp_poor    INT UNSIGNED NOT NULL DEFAULT 0,
+		inp_good    INT UNSIGNED NOT NULL DEFAULT 0,
+		inp_needs   INT UNSIGNED NOT NULL DEFAULT 0,
+		inp_poor    INT UNSIGNED NOT NULL DEFAULT 0,
+		cls_good    INT UNSIGNED NOT NULL DEFAULT 0,
+		cls_needs   INT UNSIGNED NOT NULL DEFAULT 0,
+		cls_poor    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_day_page (day, page_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Page speed: visitors\' browsers now report how fast each page loads, reacts and stays steady (LCP, INP, CLS), counted per page and hour with nothing about the visitor kept.');
+
+}
+
+// Product questions (2026.11.0, 11.0.148; includes/fn/product_questions.php).
+// A question about a product is a comment of kind 'question' on the product's
+// thread, the staff answer a comment of kind 'answer' whose answer_of names
+// the question (and whose parent_id names it too, so the threaded widget
+// draws it under the question). Every comment written before this step is
+// kind 'comment'. idx_answer_of finds a question's answer; the unanswered
+// count reads kind with the thread index.
+//
+// As 11.0.31 for the same table: the columns are added in place where the
+// server can; on a copying server neither the columns nor the index is
+// started once this pass's budget is spent (install_pass_spent()), they wait
+// for the next pass.
+function upgrade_2026_11_0_product_questions() {
+
+	$columns = array(
+		'kind'      => "ENUM('comment','question','answer') NOT NULL DEFAULT 'comment'",
+		'answer_of' => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('comments', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			if (install_pass_spent()) {
+
+				install_pause(lang(array('string' => 'comments: product questions are being added; {var:1} follows in the next pass', 'vars' => $column)));
+
+			}
+
+			install_add_column('comments', $column, $definition);
+
+		}
+
+	}
+
+	if (install_pass_spent() && !install_index_exists('comments', 'idx_answer_of')) {
+
+		install_pause(lang(array('string' => 'comments: product questions are being added; {var:1} follows in the next pass', 'vars' => 'idx_answer_of')));
+
+	}
+
+	install_add_index('comments', 'idx_answer_of', "INDEX idx_answer_of (answer_of)");
+
+	install_note('Comments: visitors can ask a question about a product and staff can answer it; every comment written before this version stays a comment.');
+
+}
+
+// The AI fetch counter (2026.11.0, 11.0.150; waf_ai_fetch_flush() in
+// waf.php). One row per day, bot and page, aggregated at write time: id is
+// the SHA-1 of "day|bot|page_id", raised by one INSERT ... ON DUPLICATE KEY
+// UPDATE per request the firewall let through from an AI user fetcher or
+// search indexer. bot is the catalogue name (ChatGPT-User) for a fetcher the
+// published ranges proved, 'unverified' for a claim they did not, always on
+// page 0; page_id is 0 for anything that is not a page. idx_day_bot serves the
+// fetches per bot and day. Derived data: a wrong bucket is truncated and the
+// next days fill again.
+function upgrade_2026_11_0_ai_fetch_daily() {
+
+	install_create_table('ai_fetch_daily', "CREATE TABLE ai_fetch_daily (
+		id       CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		day      DATE NOT NULL,
+		bot      VARCHAR(40) NOT NULL DEFAULT '',
+		page_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		fetches  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_day_bot (day, bot)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('AI crawlers: each day\'s fetches by AI assistants and AI search indexers are now counted per page.');
+
+}
+
+// Pre-order of a product (2026.11.0, 11.0.151; includes/fn/preorder.php).
+//
+// preorder marks a product sold before its stock arrives, preorder_date the
+// day it ships from. 0 and NULL mean no pre-order, so the two columns change
+// nothing on existing rows.
+function upgrade_2026_11_0_product_preorder() {
+
+	install_add_column('products', 'preorder', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('products', 'preorder_date', "DATE NULL DEFAULT NULL");
+
+	install_note('Products: a product can be sold on pre-order until the date its stock is expected; the catalog, the cart and the order mails show the date it ships from.');
+
+}
+
+// Where a file's bytes are (2026.11.0, 11.0.152; includes/fn/file_storage.php).
+// storage 'local' is data/files on the web server, 's3' the object store of
+// Site Settings, Storage, under the key in storage_key. Every row is local
+// after this step; the general job moves files only once the switch is on.
+// No index: the move job walks the primary key, and a count by storage is a
+// settings screen's read.
+//
+// As 11.0.148: in place where the server can; on a copying server a column
+// is not started once this pass's budget is spent.
+function upgrade_2026_11_0_file_storage() {
+
+	$columns = array(
+		'storage'     => "ENUM('local','s3') NOT NULL DEFAULT 'local'",
+		'storage_key' => "VARCHAR(255) NOT NULL DEFAULT ''",
+	);
+
+	if (!install_add_columns_instant('files', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			if (install_pass_spent()) {
+
+				install_pause(lang(array('string' => 'files: the storage place of files is being added; {var:1} follows in the next pass', 'vars' => $column)));
+
+			}
+
+			install_add_column('files', $column, $definition);
+
+		}
+
+	}
+
+	install_note('Files: each file records whether its bytes are on the web server or in the object store; every existing file stays on the web server.');
+
+}
+
+// Page experiments (2026.11.0, 11.0.153; includes/fn/experiments.php). An
+// experiment names a live designed page, a goal and a status (draft, running,
+// paused, ended); idx_page finds a page's running one. Its variants are the
+// live page itself (draft_page_id 0) and draft pages, each with a short key
+// kept in the visitor's pg_exp cookie and a weight for the draw; idx_key
+// keeps a key once per experiment. experiment_hourly is the rollup of views
+// and goals per hour and variant, aggregated at write time: id is the SHA-1
+// of "day|hour|experiment|variant", raised by one INSERT ... ON DUPLICATE
+// KEY UPDATE per event, never a row per visitor.
+function upgrade_2026_11_0_page_experiments() {
+
+	install_create_table('experiments', "CREATE TABLE experiments (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		page_id           INT UNSIGNED NOT NULL DEFAULT 0,
+		name              VARCHAR(100) NOT NULL DEFAULT '',
+		status            ENUM('draft','running','paused','ended') NOT NULL DEFAULT 'draft',
+		goal_kind         ENUM('form','order','click','page') NOT NULL DEFAULT 'form',
+		goal_target       VARCHAR(255) NOT NULL DEFAULT '',
+		started_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		ended_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		winner_variant_id INT UNSIGNED NOT NULL DEFAULT 0,
+		created_user_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_page (page_id, status)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('experiment_variants', "CREATE TABLE experiment_variants (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		experiment_id INT UNSIGNED NOT NULL DEFAULT 0,
+		draft_page_id INT UNSIGNED NOT NULL DEFAULT 0,
+		variant_key   VARCHAR(8) NOT NULL DEFAULT '',
+		weight        TINYINT UNSIGNED NOT NULL DEFAULT 50,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_key (experiment_id, variant_key)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('experiment_hourly', "CREATE TABLE experiment_hourly (
+		id            CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		day           DATE NOT NULL,
+		hour          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		experiment_id INT UNSIGNED NOT NULL DEFAULT 0,
+		variant_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		views         INT UNSIGNED NOT NULL DEFAULT 0,
+		goals         INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_exp_day (experiment_id, day)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Page experiments: a designed page can now be compared with a draft variant; the tables for experiments, their variants and the hourly views and goals are in place.');
+
+}
+
+// Contact groups filled by rules (2026.11.0, 11.0.155; includes/fn/audiences.php).
+// A group of kind 'dynamic' keeps its rules as JSON in rules; the general job
+// recomputes it at most once an hour (computed_at) and walks a big one in
+// pages of contact ids (compute_cursor). contacts_contact_groups_xref.source
+// says who put a contact in a group: every row written before this step is
+// 'hand', so a recompute, which removes only 'rule' rows, never touches a
+// hand-kept member. idx_group_source serves that removal.
+//
+// The xref table may be large: as 11.0.148, its column is added in place
+// where the server can; on a copying server neither the column nor the
+// index is started once this pass's budget is spent.
+function upgrade_2026_11_0_contact_group_rules() {
+
+	install_add_column('contact_groups', 'kind', "ENUM('static','dynamic') NOT NULL DEFAULT 'static'");
+	install_add_column('contact_groups', 'rules', "TEXT NULL");
+	install_add_column('contact_groups', 'computed_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('contact_groups', 'compute_cursor', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	$columns = array(
+		'source' => "ENUM('hand','form','product','rule') NOT NULL DEFAULT 'hand'",
+	);
+
+	if (!install_add_columns_instant('contacts_contact_groups_xref', $columns)) {
+
+		if (install_pass_spent()) {
+
+			install_pause(lang(array('string' => 'contact groups: who added each member is being recorded; {var:1} follows in the next pass', 'vars' => 'source')));
+
+		}
+
+		install_add_column('contacts_contact_groups_xref', 'source', $columns['source']);
+
+	}
+
+	if (install_pass_spent() && !install_index_exists('contacts_contact_groups_xref', 'idx_group_source')) {
+
+		install_pause(lang(array('string' => 'contact groups: who added each member is being recorded; {var:1} follows in the next pass', 'vars' => 'idx_group_source')));
+
+	}
+
+	install_add_index('contacts_contact_groups_xref', 'idx_group_source', "INDEX idx_group_source (contact_group_id, source)");
+
+	install_note('Contact groups: a group can be filled by rules; every member added so far stays as added by hand.');
+
+}
+
+// The content import framework (2026.11.0, 11.0.156; includes/fn/importers.php).
+// imports holds one row per run of an uploaded export: its kind, the mapping
+// chosen on import.php, the counts and the report. import_items lists every
+// row a run made by writer kind and source key: idx_source lets a resumed or
+// repeated run skip a source key already written, idx_item finds the import
+// of a row, and the 30-day undo walks a run's rows. No column is added to the
+// tables the rows are written to.
+function upgrade_2026_11_0_imports() {
+
+	install_create_table('imports', "CREATE TABLE imports (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		kind        ENUM('wordpress','woocommerce','shopify') NOT NULL DEFAULT 'wordpress',
+		file_name   VARCHAR(255) NOT NULL DEFAULT '',
+		status      ENUM('uploaded','dry_run','running','done','failed','undone') NOT NULL DEFAULT 'uploaded',
+		mapping     TEXT NULL,
+		counts      TEXT NULL,
+		`cursor`    VARCHAR(255) NOT NULL DEFAULT '',
+		report      MEDIUMTEXT NULL,
+		user_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		started_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		finished_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('import_items', "CREATE TABLE import_items (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		import_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		kind        ENUM('record','page','file','comment','contact','product','redirect') NOT NULL DEFAULT 'record',
+		item_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		source_key  VARCHAR(191) NOT NULL DEFAULT '',
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_source (import_id, kind, source_key),
+		KEY idx_item (kind, item_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Import: exports of WordPress, WooCommerce and Shopify can be brought in from a file; every run keeps the list of what it made, so it can be undone for 30 days.');
+
+}
+
+// Disabled users and imported authors (2026.11.0, 11.0.160; includes/fn/auth.php,
+// includes/import/write_user.php). user.user_disabled_at is 0 for an enabled
+// account, else the moment it was disabled: such an account matches no
+// credential (password, reset link, provider, passkey, API key) and a live
+// session ends at its next request. A stamp, not a flag, so "since when"
+// costs nothing. Every account on a running site stays enabled.
+// import_items.kind gains 'user' for the authors a WordPress import makes,
+// so the undo can remove one that nobody has taken over.
+function upgrade_2026_11_0_user_disabled() {
+
+	install_add_column('user', 'user_disabled_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	// Widened only when the value is missing, so a second run rebuilds nothing.
+	$info = install_column_info('import_items', 'kind');
+
+	if (is_array($info) && (strpos((string) $info['Type'], "'user'") === false)) {
+		install_modify_column('import_items', 'kind', "ENUM('record','page','file','comment','contact','product','redirect','user') NOT NULL DEFAULT 'record'");
+	} else {
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'import_items.kind user')));
+	}
+
+	install_note('Users: an account can be disabled on the user screen; a disabled account cannot sign in. Every existing account stays enabled.');
+
+}
+
+// Appointment bookings (2026.11.0, 11.0.157; includes/fn/bookings.php).
+// booking_services are what can be booked (length and buffers in minutes,
+// price in minor units), booking_staff the panel users who take bookings with
+// their weekly hours and dated exceptions as JSON, bookings the appointments
+// with their times in UTC. slot_at is a copy of start_at on every row but a
+// cancelled one, where it is NULL; the unique key on (staff_id, slot_at)
+// refuses a second live row for one slot (NULLs never collide, so a cancelled
+// booking gives its slot back and keeps its real time in start_at). A
+// visitor's hold is a 'held' row until hold_until, and a second visitor's
+// INSERT on the same slot is the "just taken" answer.
+// manage_token is the sha256 of the manage link's token, never the token.
+// New tables only; nothing reads them until a service is created.
+function upgrade_2026_11_0_bookings() {
+
+	install_create_table('booking_services', "CREATE TABLE booking_services (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name            VARCHAR(100) NOT NULL DEFAULT '',
+		description     VARCHAR(255) NOT NULL DEFAULT '',
+		length_minutes  SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		buffer_before   SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		buffer_after    SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		price           INT UNSIGNED NOT NULL DEFAULT 0,
+		capacity        TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		enabled         TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		sort_order      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('booking_staff', "CREATE TABLE booking_staff (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		service_ids  TEXT NULL,
+		hours        TEXT NULL,
+		exceptions   TEXT NULL,
+		enabled      TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('bookings', "CREATE TABLE bookings (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		service_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		staff_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		name          VARCHAR(100) NOT NULL DEFAULT '',
+		email         VARCHAR(191) NOT NULL DEFAULT '',
+		phone         VARCHAR(40) NOT NULL DEFAULT '',
+		start_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		end_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		slot_at       INT UNSIGNED NULL DEFAULT NULL,
+		status        ENUM('held','requested','confirmed','cancelled','no_show','done') NOT NULL DEFAULT 'held',
+		source        VARCHAR(20) NOT NULL DEFAULT 'site',
+		manage_token  CHAR(64) NOT NULL DEFAULT '',
+		hold_until    INT UNSIGNED NOT NULL DEFAULT 0,
+		notes         TEXT NULL,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_staff_slot (staff_id, slot_at),
+		KEY idx_start (start_at),
+		KEY idx_user (user_id),
+		KEY idx_email (email)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Bookings: the tables of appointment services, the staff who take them and the bookings are in place; nothing changes until a service is created.');
+
+}
+
+// The fee of a designed form (2026.11.0, 11.0.158; includes/fn/form_payments.php).
+// custom_form_pages.payment holds the form's payment setting as JSON in the
+// pg_form_fee_settings_clean() shape; NULL or '' is a form without a fee.
+// A record of a form with a fee points at its one-line order through
+// forms.order_id; the order carries nothing. forms.paid_at is the time the
+// order was completed, 0 while unpaid. idx_order_id serves the completion's
+// lookup of the record by its order; the Unpaid list filter reads page_id
+// first and needs no index of its own. Every existing row keeps 0 / NULL:
+// no form had a fee before this step.
+function upgrade_2026_11_0_form_fee() {
+
+	install_add_column('custom_form_pages', 'payment', "TEXT NULL");
+	install_add_column('forms', 'order_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('forms', 'paid_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('forms', 'idx_order_id', "INDEX idx_order_id (order_id)");
+
+	install_note('Forms: a form made in the visual designer can ask for a fee, charged as a one-line order of a product; every existing form stays free.');
+
+}
+
+// Store credit (2026.11.0, 11.0.159; includes/fn/store_credit.php): a gift
+// card bound to a customer. Every existing card keeps user_id 0 and kind
+// 'gift', so it stays a plain gift card. expires_at is the moment the card
+// stops (unix time, 0 = never); expiration_date is still what the checkout
+// reads, and the writer fills both.
+function upgrade_2026_11_0_store_credit() {
+
+	install_add_column('gift_cards', 'user_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('gift_cards', 'kind', "ENUM('gift','points','refund','manual') NOT NULL DEFAULT 'gift'");
+	install_add_column('gift_cards', 'reason', "VARCHAR(255) NOT NULL DEFAULT ''");
+	install_add_column('gift_cards', 'issued_by', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('gift_cards', 'expires_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('gift_cards', 'idx_user', "INDEX idx_user (user_id)");
+
+	install_note('Gift cards: a card can belong to a customer as store credit, with where it came from, why it was issued and when it expires.');
+
+}
+
+// The booking e-mails (2026.11.0, 11.0.161; includes/fn/booking_messages.php).
+// Campaign profiles of four new actions mail a booking's customer when it is
+// confirmed, before it starts, when it is moved and when it is cancelled. A
+// campaign made from such a profile copies the action into
+// email_campaigns.action, so both lists are widened, as
+// upgrade_2026_11_0_subscription_price_notice() does: the list is read first
+// and only appended to, each value once, the null rule and the default kept.
+function upgrade_2026_11_0_booking_campaigns() {
+
+	$actions = array('booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled');
+
+	foreach (array('email_campaign_profiles', 'email_campaigns') as $table) {
+
+		$action = install_column_info($table, 'action');
+
+		if (!$action) {
+
+			continue;
+
+		}
+
+		preg_match_all("/'((?:[^']|'')*)'/", (string) $action['Type'], $matches);
+
+		$values = $matches[1];
+		$added = false;
+
+		foreach ($actions as $value) {
+
+			if (!in_array($value, $values, true)) {
+
+				$values[] = $value;
+				$added = true;
+
+			}
+
+		}
+
+		if (!$added) {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => $table . '.action booking_*')));
+
+			continue;
+
+		}
+
+		$definition = "ENUM('" . implode("','", $values) . "')"
+			. ((($action['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+			. (($action['Default'] !== null) ? " DEFAULT '" . e((string) $action['Default']) . "'" : '');
+
+		install_modify_column($table, 'action', $definition);
+
+	}
+
+	install_note('E-mail campaigns: automatic e-mails gain the booking confirmed, booking reminder, booking rescheduled and booking cancelled actions. Nothing is sent until such a profile is created.');
+
+}
+
+// Stock per location (2026.11.0, 11.0.162; includes/fn/stock_locations.php).
+// stock_locations are the places units are kept (warehouse, shop,
+// consignment); product_stock holds a product's quantity at one location,
+// one row per pair; stock_moves records every change made through the
+// writer (signed delta, quantity left at the location, reason, reference,
+// who). products.inventory_quantity stays and is kept as the sum of a
+// product's rows by the writer, so every reader of the total is unchanged.
+// shipping_methods.stock_location_id and orders.stock_location_id name the
+// location an order ships from (0 = the default). New tables and columns
+// only; no data moves: rows appear when the operator adds the first location.
+function upgrade_2026_11_0_stock_locations() {
+
+	install_create_table('stock_locations', "CREATE TABLE stock_locations (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name        VARCHAR(100) NOT NULL DEFAULT '',
+		address     TEXT NULL,
+		enabled     TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		is_default  TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		sort_order  SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('product_stock', "CREATE TABLE product_stock (
+		product_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		location_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		quantity     INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (product_id, location_id),
+		KEY idx_location (location_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('stock_moves', "CREATE TABLE stock_moves (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		product_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		location_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		delta           INT NOT NULL DEFAULT 0,
+		quantity_after  INT UNSIGNED NOT NULL DEFAULT 0,
+		reason          VARCHAR(32) NOT NULL DEFAULT '',
+		ref             VARCHAR(64) NOT NULL DEFAULT '',
+		note            VARCHAR(255) NOT NULL DEFAULT '',
+		user_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_product (product_id, created_at),
+		KEY idx_location (location_id, created_at),
+		KEY idx_created (created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('shipping_methods', 'stock_location_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('orders', 'stock_location_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Stock locations: the tables for stock kept per location and its history are in place; nothing changes until a location is added.');
+
+}
+
+// The site as a Fediverse actor (2026.11.0, 11.0.163; includes/fn/activitypub.php).
+// ap_followers holds one row per remote actor that follows the site, with
+// its inbox and shared inbox; ap_outbox the activities queued for delivery,
+// one row per inbox, retried with backoff by the general job; ap_blocks the
+// actors and domains whose requests are refused. A reply from the Fediverse
+// is a comment: comments.remote_actor and remote_id name its sender and its
+// note, so a repeated delivery or a Delete finds it; local comments keep ''.
+// The actor's settings and key pair are not config columns (the stock
+// config row has no room left, data/config-table-no-varchar.md) but two
+// config_text rows written by the code: ap_settings (JSON) and ap_keys (the
+// private key sealed with the site's key). Everything stays off until
+// ap_settings switches it on.
+function upgrade_2026_11_0_activitypub() {
+
+	install_create_table('ap_followers', "CREATE TABLE ap_followers (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		actor_id     VARCHAR(255) NOT NULL DEFAULT '',
+		inbox        VARCHAR(255) NOT NULL DEFAULT '',
+		shared_inbox VARCHAR(255) NOT NULL DEFAULT '',
+		name         VARCHAR(100) NOT NULL DEFAULT '',
+		avatar       VARCHAR(255) NOT NULL DEFAULT '',
+		followed_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_actor (actor_id(191))
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ap_outbox', "CREATE TABLE ap_outbox (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		activity_id VARCHAR(255) NOT NULL DEFAULT '',
+		inbox       VARCHAR(255) NOT NULL DEFAULT '',
+		body        MEDIUMTEXT NULL,
+		attempts    TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		next_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		state       ENUM('queued','sent','failed') NOT NULL DEFAULT 'queued',
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_due (state, next_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ap_blocks', "CREATE TABLE ap_blocks (
+		id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		kind       ENUM('actor','domain') NOT NULL DEFAULT 'actor',
+		value      VARCHAR(255) NOT NULL DEFAULT '',
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_block (kind, value(191))
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	// Instantly where the server can, so a site with many comments does not
+	// wait for a copy of the table; copied otherwise.
+	$remote = array(
+		'remote_actor' => "VARCHAR(255) NOT NULL DEFAULT ''",
+		'remote_id'    => "VARCHAR(255) NOT NULL DEFAULT ''",
+	);
+
+	if (!install_add_columns_instant('comments', $remote)) {
+
+		foreach ($remote as $column => $definition) {
+
+			install_add_column('comments', $column, $definition);
+
+		}
+
+	}
+
+	install_add_index('comments', 'idx_remote', "INDEX idx_remote (remote_id(191))");
+
+	install_note('Fediverse (ActivityPub): the site can be followed from Mastodon and other Fediverse services. It stays off until it is switched on.');
+
+}
+
+// The form list view sorts and filters by a submission's address name
+// (2026.11.0, 11.0.164; get_standard_fields_for_view() in includes/fn/forms.php),
+// but its order-by and filter field columns are ENUMs that never listed
+// 'address_name', so a view set to it was saved with ''. Each list is read
+// first and only appended to, the null rule and the default kept, so a value
+// another step added stays ('random' in order_by_1 included) and a second run
+// finds the value and changes nothing.
+function upgrade_2026_11_0_form_list_view_address() {
+
+	$columns = array(
+		array('form_list_view_pages', 'order_by_1_standard_field'),
+		array('form_list_view_pages', 'order_by_2_standard_field'),
+		array('form_list_view_pages', 'order_by_3_standard_field'),
+		array('form_list_view_filters', 'standard_field'),
+	);
+
+	foreach ($columns as $column) {
+
+		list($table, $name) = $column;
+
+		$info = install_column_info($table, $name);
+
+		if (!$info) {
+
+			continue;
+
+		}
+
+		preg_match_all("/'((?:[^']|'')*)'/", (string) $info['Type'], $matches);
+
+		$values = $matches[1];
+
+		if (in_array('address_name', $values, true)) {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => $table . '.' . $name . ' address_name')));
+
+			continue;
+
+		}
+
+		$values[] = 'address_name';
+
+		$definition = "ENUM('" . implode("','", $values) . "')"
+			. ((($info['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+			. (($info['Default'] !== null) ? " DEFAULT '" . e((string) $info['Default']) . "'" : '');
+
+		install_modify_column($table, $name, $definition);
+
+	}
+
+	install_note('Form list views: the order-by and filter fields can hold the address name. Existing views do not change.');
+
+}
+
+// EU VAT id on the order (2026.11.0, 11.0.165; includes/fn/vat_checkout.php).
+// vat_id is the VAT id VIES confirmed when the order took the reverse charge,
+// vat_checked_at the time of that check, vat_request_id the VIES consultation
+// number; all empty (0) on an order that was not checked. Written at checkout
+// only, never from the contact card. New columns only; no data moves.
+function upgrade_2026_11_0_order_vat_id() {
+
+	install_add_column('orders', 'vat_id', "VARCHAR(20) NOT NULL DEFAULT ''");
+	install_add_column('orders', 'vat_checked_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('orders', 'vat_request_id', "VARCHAR(32) NOT NULL DEFAULT ''");
+
+	install_note('Orders: an EU VAT id confirmed at checkout, the time of the check and its VIES consultation number are kept on the order. Existing orders are unchanged.');
+
+}
+
+// Today's search engines appended to visitors.referring_search_engine:
+// Yandex was counted as a referral and the rest as plain referring sites.
+// The type is read first and only missing names are appended, after the
+// last value, so the column keeps one byte per row and the table is not
+// rewritten; a value a later release added stays.
+function upgrade_2026_11_0_search_engines() {
+
+	$info = install_column_info('visitors', 'referring_search_engine');
+
+	if (!is_array($info)) {
+		return install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => 'visitors.referring_search_engine')));
+	}
+
+	$type = trim((string)$info['Type']);
+
+	if (preg_match('/^enum\(.*\)$/is', $type) !== 1) {
+		return install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'visitors.referring_search_engine')));
+	}
+
+	$add = array();
+
+	foreach (array('Yandex', 'DuckDuckGo', 'Ecosia', 'Brave Search', 'Qwant', 'Startpage', 'Baidu', 'Naver', 'Seznam') as $name) {
+
+		if (strpos($type, "'" . $name . "'") === false) {
+			$add[] = "'" . $name . "'";
+		}
+
+	}
+
+	if (count($add) === 0) {
+		return install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'visitors.referring_search_engine')));
+	}
+
+	// The column's own collation is kept: another one would rewrite the table.
+	$collation = (string)db_value("SELECT COLLATION_NAME FROM information_schema.COLUMNS
+		WHERE (TABLE_SCHEMA = DATABASE()) AND (TABLE_NAME = 'visitors') AND (COLUMN_NAME = 'referring_search_engine')");
+
+	$collate = (preg_match('/^[A-Za-z0-9_]+$/', $collation) === 1) ? " COLLATE " . $collation : '';
+
+	return install_modify_column('visitors', 'referring_search_engine', preg_replace('/\)$/', ',' . implode(',', $add) . ')', $type) . $collate . " NOT NULL DEFAULT ''");
 
 }

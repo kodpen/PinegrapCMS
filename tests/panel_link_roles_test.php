@@ -60,7 +60,7 @@ function test_create_user_is_a_real_link()
 	$source = panel_link_roles_source('edit_contact.php');
 
 	pg_assert_false(strpos($source, 'href="#!"') !== false, 'Create an User navigates from a script');
-	pg_assert_true(strpos($source, "'<a class=\"alert-link\" href=\"' . h(PATH . SOFTWARE_DIRECTORY . '/add_user.php?contact_id=' . \$_GET['id']) . '\">'") !== false, 'Create an User has a real href');
+	pg_assert_true(strpos($source, "<a class=\"alert-link\" href=\"' . h(PATH . SOFTWARE_DIRECTORY . '/add_user.php?contact_id=' . \$id) . '\">'") !== false, 'Create a user for this contact has a real href');
 }
 
 // A button whose only text is a figure is named by that figure; a hidden

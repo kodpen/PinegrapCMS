@@ -85,6 +85,10 @@ if (isset($id) == true) {
 // bare '*' that a screen reader reads as "star".
 $output_yes_mark = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
 
+// The order columns (percentages, totals, the average) mean nothing on a
+// site without e-commerce, so the table and the export leave them out.
+$output_order_cells = (ECOMMERCE == true);
+
 // get session index in order to store different session values for this screen depending on the report that is being edited
 $session_index = 0;
 
@@ -98,17 +102,32 @@ if (!$_POST) {
     $output_edit_button = '';
     $output_edit_form_style = '';
     
+    // A save that came back with an error (the name already in use) shows
+    // the form open again with what was entered.
+    $returned_with_error = ($liveform->check_form_errors() == true);
+
     // if the visitor report is being viewed
     if (isset($_GET['id']) == true) {
         // nav#button_bar: Edit hides it by id, Cancel Edit shows it again.
         $output_edit_button = pg_screen_toolbar(array(
             'primary' => '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" id="edit_button" onclick="var edit_form = document.getElementById(\'edit_form\'); edit_form.style.display = \'block\'; document.getElementById(\'button_bar\').style.display = \'none\'; var first_field = edit_form.querySelector(\'input:not([type=hidden]), select, textarea\'); if (first_field) {first_field.focus();}"><i class="bi bi-pencil me-2" aria-hidden="true"></i>' . lang('Edit') . '</button>',
         ));
-        $output_edit_form_style = '; display: none';
+        if (!$returned_with_error) {
+            $output_edit_form_style = '; display: none';
+        }
+
+        // The tab and the breadcrumb name the report as stored, not a name
+        // typed into the form that may have failed to save.
+        $output_visitor_report_name = (string) db_value("SELECT name FROM visitor_reports WHERE id = '" . (int) $_GET['id'] . "'");
     }
     
+    // The hidden last_filter_number is posted with every save, so it is in
+    // the session only when the form came back from a save. The Save button
+    // is submit_save; submit_button is only the Delete button.
+    $form_submitted = $liveform->field_in_session('last_filter_number');
+
     // if a visitor report is being created and this screen has not already been submitted, then set default values for form fields
-    if ((isset($_GET['id']) == false) && ($liveform->field_in_session('submit_button') == false)) {
+    if ((isset($_GET['id']) == false) && !$form_submitted) {
         // set default values for summarize by fields
         $liveform->assign_field_value('summarize_by_1', 'year');
         $liveform->assign_field_value('summarize_by_2', 'month');
@@ -132,7 +151,6 @@ if (!$_POST) {
         $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
-        $output_visitor_report_name = $row['name'];
         $liveform->assign_field_value('name', $row['name']);
         $liveform->assign_field_value('detail', $row['detail']);
         $liveform->assign_field_value('summarize_by_1', $row['summarize_by_1']);
@@ -141,15 +159,6 @@ if (!$_POST) {
         $liveform->assign_field_value('order_by_2', $row['order_by_2']);
         $liveform->assign_field_value('summarize_by_3', $row['summarize_by_3']);
         $liveform->assign_field_value('order_by_3', $row['order_by_3']);
-    }
-    
-    // if a visitor report is being created, then prepare screen name
-    if (isset($_GET['id']) == false) {
-        $output_screen_name = 'Create Visitor Report';
-        
-    // else a visitor report is being viewed, so prepare screen name
-    } else {
-        $output_screen_name = 'View Visitor Report: <strong>' . $liveform->get_field_value('name') . '</strong>';
     }
     
     $output_hidden_id_field = '';
@@ -232,7 +241,7 @@ if (!$_POST) {
     $filters = array();
     
     // if a visitor report is being created or a form has been submitted, then get filters from liveform
-    if ((isset($_GET['id']) == false) || ($liveform->field_in_session('submit_button') == true)) {
+    if ((isset($_GET['id']) == false) || $form_submitted) {
         // loop through all filters in order to add them to array
         for ($i = 1; $i <= $liveform->get_field_value('last_filter_number'); $i++) {
             // if filter exists and an operator was selected for this filter, then add filter to array
@@ -403,7 +412,7 @@ if (!$_POST) {
     $pay_per_click_organic_options = array();
     $pay_per_click_organic_options[] = array('name' => lang('Pay Per Click'), 'value' => 'pay_per_click');
     $pay_per_click_organic_options[] = array('name' => lang('Organic'), 'value' => 'organic');
-    $pay_per_click_organic_options[] = array('name' => lang('Neither'), 'value' => 'neither');
+    $pay_per_click_organic_options[] = array('name' => lang('Neither (no paid or search visit)'), 'value' => 'neither');
     
     $field_options[] = array('name' => lang('Pay Per Click / Organic'), 'value' => 'pay_per_click_organic', 'value_options' => $pay_per_click_organic_options);
     
@@ -434,33 +443,33 @@ if (!$_POST) {
     $field_options[] = array('name' => lang('Page Views'), 'value' => 'page_views');
     
     $custom_form_submitted_options = array();
-    $custom_form_submitted_options[] = array('name' => lang('Submitted'), 'value' => '1');
-    $custom_form_submitted_options[] = array('name' => lang('Not Submitted'), 'value' => '0');
+    $custom_form_submitted_options[] = array('name' => lang('Form submitted'), 'value' => '1');
+    $custom_form_submitted_options[] = array('name' => lang('Form not submitted'), 'value' => '0');
     
     $field_options[] = array('name' => lang('Custom Form Submitted'), 'value' => 'custom_form_submitted', 'value_options' => $custom_form_submitted_options);
     $field_options[] = array('name' => lang('Custom Form'), 'value' => 'custom_form_name');
     
     $order_created_options = array();
-    $order_created_options[] = array('name' => lang('Created'), 'value' => '1');
-    $order_created_options[] = array('name' => lang('Not Created'), 'value' => '0');
+    $order_created_options[] = array('name' => lang('Order created'), 'value' => '1');
+    $order_created_options[] = array('name' => lang('Order not created'), 'value' => '0');
     
     $field_options[] = array('name' => lang('Order Created'), 'value' => 'order_created', 'value_options' => $order_created_options);
     
     $order_retrieved_options = array();
-    $order_retrieved_options[] = array('name' => lang('Retrieved'), 'value' => '1');
-    $order_retrieved_options[] = array('name' => lang('Not Retrieved'), 'value' => '0');
+    $order_retrieved_options[] = array('name' => lang('Order retrieved'), 'value' => '1');
+    $order_retrieved_options[] = array('name' => lang('Order not retrieved'), 'value' => '0');
     
     $field_options[] = array('name' => lang('Order Retrieved'), 'value' => 'order_retrieved', 'value_options' => $order_retrieved_options);
     
     $order_checked_out_options = array();
-    $order_checked_out_options[] = array('name' => lang('Checked Out'), 'value' => '1');
-    $order_checked_out_options[] = array('name' => lang('Not Checked Out'), 'value' => '0');
+    $order_checked_out_options[] = array('name' => lang('Order checked out'), 'value' => '1');
+    $order_checked_out_options[] = array('name' => lang('Order not checked out'), 'value' => '0');
     
     $field_options[] = array('name' => lang('Order Checked Out'), 'value' => 'order_checked_out', 'value_options' => $order_checked_out_options);
     
     $order_completed_options = array();
-    $order_completed_options[] = array('name' => lang('Completed'), 'value' => '1');
-    $order_completed_options[] = array('name' => lang('Not Completed'), 'value' => '0');
+    $order_completed_options[] = array('name' => lang('Order completed'), 'value' => '1');
+    $order_completed_options[] = array('name' => lang('Order not completed'), 'value' => '0');
     
     $field_options[] = array('name' => lang('Order Completed'), 'value' => 'order_completed', 'value_options' => $order_completed_options);
     $field_options[] = array('name' => '', 'value' => '</optgroup>');
@@ -524,170 +533,73 @@ if (!$_POST) {
     
     $output_date_changer = '';
 
-    // if there are no date filters, then prepare to output date changer
+    // if there are no date filters, then prepare to output the period presets
     if ($date_filter_exists == false) {
-        // if the date has not been set in the session yet (or an older session
-        // still holds a non-numeric value), populate start and stop days with default, which is the past week
-        if ((isset($_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_month']) == false)
-            || !ctype_digit((string) $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_year'])) {
-            $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_month'] = date('m', time() - 2678400);
-            $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_day'] = date('d', time() - 2678400);
-            $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_year'] = date('Y', time() - 2678400);
-            
-            $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['stop_month'] = date('m');
-            $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['stop_day'] = date('d');
-            $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['stop_year'] = date('Y');
-            
-        // else if the date has been passed in the query string, then set date in session
-        } elseif (isset($_GET['start_month']) == true) {
-            // The date changer links send zero-padded integers, but the query
-            // string can carry anything. The year math and mktime() calls below
-            // reject strings on PHP 8, and a value that reached the session would
-            // break the report on every later request, so only a real calendar
-            // range is stored; anything else keeps the previous range. A part
-            // sent as an array (?start_year[]=x) counts as not given: (int) made
-            // it 1, a valid year, so the range jumped to the year 0001 and stayed.
-            $requested_range = array();
-            foreach (array('start_month', 'start_day', 'start_year', 'stop_month', 'stop_day', 'stop_year') as $date_part) {
-                $requested_range[$date_part] = is_scalar($_GET[$date_part] ?? null) ? (int) $_GET[$date_part] : 0;
-            }
-            if (checkdate($requested_range['start_month'], $requested_range['start_day'], $requested_range['start_year'])
-                && checkdate($requested_range['stop_month'], $requested_range['stop_day'], $requested_range['stop_year'])) {
-                foreach ($requested_range as $date_part => $value) {
-                    $_SESSION['software']['statistics']['view_visitor_report'][$session_index][$date_part] = sprintf(substr($date_part, -4) == 'year' ? '%04d' : '%02d', $value);
-                }
-            }
+        $report_now = time();
+        $requested_range = pg_visitor_report_requested_range($_GET, $report_now);
+        $stored_range = isset($_SESSION['software']['statistics']['view_visitor_report'][$session_index])
+            ? $_SESSION['software']['statistics']['view_visitor_report'][$session_index]
+            : array();
+
+        // A preset, a custom range or a saved start_* / stop_* address sets
+        // the range; without one the last range stays, or the last 30 days.
+        // A range that no longer reads as dates (an older session) is reset.
+        if ($requested_range !== null) {
+            $stored_range = array_merge($stored_range, $requested_range);
+        } elseif (pg_visitor_report_requested_range($stored_range, $report_now) === null) {
+            $stored_range = array_merge($stored_range, pg_visitor_report_preset_range('30d', $report_now));
         }
-        
-        $decrease_year['start_month'] = '01';
-        $decrease_year['start_day'] = '01';
-        $decrease_year['start_year'] = $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_year'] - 1;
-        $decrease_year['stop_month'] = '12';
-        $decrease_year['stop_day'] = '31';
-        $decrease_year['stop_year'] = $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_year'] - 1;
 
-        $current_year['start_month'] = '01';
-        $current_year['start_day'] = '01';
-        $current_year['start_year'] = date('Y');
-        $current_year['stop_month'] = '12';
-        $current_year['stop_day'] = '31';
-        $current_year['stop_year'] = date('Y');
+        $_SESSION['software']['statistics']['view_visitor_report'][$session_index] = $stored_range;
 
-        $increase_year['start_month'] = '01';
-        $increase_year['start_day'] = '01';
-        $increase_year['start_year'] = $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_year'] + 1;
-        $increase_year['stop_month'] = '12';
-        $increase_year['stop_day'] = '31';
-        $increase_year['stop_year'] = $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_year'] + 1;
-
-        // The arrows of the month unit step from the last month on screen
-        // (pg_list_period_month_steps()).
-        $month_steps = pg_list_period_month_steps($_SESSION['software']['statistics']['view_visitor_report'][$session_index]);
-        $decrease_month = $month_steps['previous'];
-
-        $current_month['new_month'] = date('m');
-        $current_month['new_year'] = date('Y');
-        $current_month['start_month'] = $current_month['new_month'];
-        $current_month['start_day'] = '01';
-        $current_month['start_year'] = $current_month['new_year'];
-        $current_month['stop_month'] = $current_month['new_month'];
-        $current_month['stop_day'] = date('t');
-        $current_month['stop_year'] = $current_month['new_year'];
-
-        $increase_month = $month_steps['next'];
-
-        // The week starts on the panel language's first day (Monday in Turkish).
-        $week_steps = pg_list_period_week_steps($_SESSION['software']['statistics']['view_visitor_report'][$session_index]);
-        $decrease_week = $week_steps['previous'];
-        $current_week = $week_steps['current'];
-        $increase_week = $week_steps['next'];
-
-        $decrease_day['new_time'] = mktime(0, 0, 0, $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_month'], $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_day'] - 1, $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_year']);
-        $decrease_day['new_month'] = date('m', $decrease_day['new_time']);
-        $decrease_day['new_day'] = date('d', $decrease_day['new_time']);
-        $decrease_day['new_year'] = date('Y', $decrease_day['new_time']);
-        $decrease_day['start_month'] = $decrease_day['new_month'];
-        $decrease_day['start_day'] = $decrease_day['new_day'];
-        $decrease_day['start_year'] = $decrease_day['new_year'];
-        $decrease_day['stop_month'] = $decrease_day['new_month'];
-        $decrease_day['stop_day'] = $decrease_day['new_day'];
-        $decrease_day['stop_year'] = $decrease_day['new_year'];
-        
-        $current_day['new_month'] = date('m');
-        $current_day['new_day'] = date('d');
-        $current_day['new_year'] = date('Y');
-        $current_day['start_month'] = $current_day['new_month'];
-        $current_day['start_day'] = $current_day['new_day'];
-        $current_day['start_year'] = $current_day['new_year'];
-        $current_day['stop_month'] = $current_day['new_month'];
-        $current_day['stop_day'] = $current_day['new_day'];
-        $current_day['stop_year'] = $current_day['new_year'];
-        
-        $increase_day['new_time'] = mktime(0, 0, 0, $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_month'], $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_day'] + 1, $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_year']);
-        $increase_day['new_month'] = date('m', $increase_day['new_time']);
-        $increase_day['new_day'] = date('d', $increase_day['new_time']);
-        $increase_day['new_year'] = date('Y', $increase_day['new_time']);
-        $increase_day['start_month'] = $increase_day['new_month'];
-        $increase_day['start_day'] = $increase_day['new_day'];
-        $increase_day['start_year'] = $increase_day['new_year'];
-        $increase_day['stop_month'] = $increase_day['new_month'];
-        $increase_day['stop_day'] = $increase_day['new_day'];
-        $increase_day['stop_year'] = $increase_day['new_year'];
-        
         // get timestamps for start and stop dates
-        $start_timestamp = mktime(0, 0, 0, $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_month'], $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_day'], $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_year']);
-        $stop_timestamp = mktime(23, 59, 59, $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['stop_month'], $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['stop_day'], $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['stop_year']);
-        
-        // prepare query string with id if necessary
-        $output_date_changer_query_string_id = '';
+        $start_timestamp = mktime(0, 0, 0, $stored_range['start_month'], $stored_range['start_day'], $stored_range['start_year']);
+        $stop_timestamp = mktime(23, 59, 59, $stored_range['stop_month'], $stored_range['stop_day'], $stored_range['stop_year']);
 
-        // if an id is set, then prepare query string with id
-        if (isset($id) == true) {
-            $output_date_changer_query_string_id = '&id=' . $id;
-        }
-        
         $start_date = get_absolute_time(array('timestamp' => $start_timestamp, 'type' => 'date'));
         $stop_date = get_absolute_time(array('timestamp' => $stop_timestamp, 'type' => 'date'));
-        
+
         $output_date_range = $start_date;
-        
+
         // if the stop date is different from the start date, then add stop date to date range
         if ($stop_date != $start_date) {
             $output_date_range .= ' - ' . $stop_date;
         }
-        
-        // One group per unit: previous period, the current one, next period.
-        // The pieces carry a v6 variant, as the group, join and size rules
-        // only select [class*=btn-] children.
-        $date_changer_link = function ($range) use ($output_date_changer_query_string_id) {
-            return 'view_visitor_report.php?start_month=' . $range['start_month'] . '&start_day=' . $range['start_day'] . '&start_year=' . $range['start_year'] . '&stop_month=' . $range['stop_month'] . '&stop_day=' . $range['stop_day'] . '&stop_year=' . $range['stop_year'] . $output_date_changer_query_string_id;
-        };
 
-        $output_date_changer_groups = '';
+        // Every preset link keeps the report id; the active one is marked.
+        $active_preset = pg_visitor_report_active_preset($stored_range, $report_now);
+        $preset_labels = array(
+            'today'      => lang('Today'),
+            'yesterday'  => lang('Yesterday'),
+            '7d'         => lang(array('string' => 'Last {var:1} days', 'vars' => array(7))),
+            '30d'        => lang(array('string' => 'Last {var:1} days', 'vars' => array(30))),
+            '90d'        => lang(array('string' => 'Last {var:1} days', 'vars' => array(90))),
+            'month'      => lang('This month'),
+            'last_month' => lang('Last month'),
+        );
+        $output_presets = '';
 
-        foreach (array(
-            array(lang('Year'), $decrease_year, $current_year, $increase_year),
-            array(lang('Month'), $decrease_month, $current_month, $increase_month),
-            array(lang('Week'), $decrease_week, $current_week, $increase_week),
-            array(lang('Day'), $decrease_day, $current_day, $increase_day),
-        ) as $date_changer_unit) {
-            $output_date_changer_groups .= '
-            <div class="btn-group btn-group-sm col-auto py-0 px-1 my-1" role="group" aria-label="' . h($date_changer_unit[0]) . '">
-                <a class="btn btn-outline theme-secondary" href="' . h($date_changer_link($date_changer_unit[1])) . '" title="' . h(lang('Previous')) . '" aria-label="' . h(lang('Previous')) . '"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
-                <a class="btn btn-outline theme-secondary" href="' . h($date_changer_link($date_changer_unit[2])) . '">' . h($date_changer_unit[0]) . '</a>
-                <a class="btn btn-outline theme-secondary" href="' . h($date_changer_link($date_changer_unit[3])) . '" title="' . h(lang('Next')) . '" aria-label="' . h(lang('Next')) . '"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
-            </div>';
+        foreach (pg_visitor_report_preset_keys() as $preset_key) {
+            $preset_query = array('p' => $preset_key);
+
+            if (isset($id) == true) {
+                $preset_query['id'] = $id;
+            }
+
+            $preset_current = ($preset_key === $active_preset);
+            $output_presets .= '<a class="btn ' . ($preset_current ? 'btn-solid theme-primary' : 'btn-outline theme-secondary') . '" href="view_visitor_report.php?' . h(http_build_query($preset_query)) . '"' . ($preset_current ? ' aria-current="true"' : '') . '>' . h($preset_labels[$preset_key]) . '</a>';
         }
 
         $output_date_changer = '
-        <div class="row justify-content-center md:justify-content-end">' . $output_date_changer_groups . '
+        <div class="d-flex flex-wrap justify-content-center md:justify-content-end">
+            <div class="btn-group btn-group-sm flex-wrap my-1" role="group" aria-label="' . h(lang('Date Range')) . '">' . $output_presets . '</div>
         </div>
         <p class="text-center md:text-end p-0 m-0">
-            <span class="badge fg-body fw-light border-2">    ' . $output_date_range . '</span>
+            <span class="badge fg-body fw-light border-2">' . h($output_date_range) . '</span>
         </p>';
 
     }
-    
+
     // The window the days are read in the site's own time for
     // (includes/fn/site_time_sql.php): the date changer's range, or with a
     // date filter every visit kept, from the oldest one through now.
@@ -709,49 +621,29 @@ if (!$_POST) {
     // loop through all filters in order to prepare SQL
     foreach ($filters as $filter) {
         // get operand 1 and field type when necessary
-        $operand_1 = '';
-        $field_type = '';
-        
-        switch ($filter['field']) {
-            case 'date': $operand_1 = pg_site_time_sql('visitors.start_timestamp', '%Y-%m-%d', $site_time_from, $site_time_to); $field_type = 'date'; break;
-            case 'site_search_terms': $operand_1 = 'visitors.site_search_terms'; break;
-            case 'currency_code': $operand_1 = 'visitors.currency_code'; break;
-            case 'http_referer': $operand_1 = pg_visitor_text_sql('http_referer'); break;
-            case 'referring_host_name': $operand_1 = 'visitors.referring_host_name'; break;
-            case 'referring_search_engine': $operand_1 = 'visitors.referring_search_engine'; break;
-            case 'referring_search_terms': $operand_1 = 'visitors.referring_search_terms'; break;
-            case 'pay_per_click_organic': $operand_1 = 'CASE WHEN (visitors.tracking_code LIKE "%' . escape(escape_like(PAY_PER_CLICK_FLAG)) . '%") THEN "pay_per_click" WHEN (visitors.referring_search_engine != "") THEN "organic" ELSE "neither" END'; break;
-            case 'first_visit': $operand_1 = 'visitors.first_visit'; break;
-            case 'landing_page_name': $operand_1 = 'visitors.landing_page_name'; break;
-            case 'tracking_code': $operand_1 = 'visitors.tracking_code'; break;
-            case 'affiliate_code': $operand_1 = 'visitors.affiliate_code'; break;
+        // A filter with an empty or unknown field (saved before the save
+        // checked it) adds nothing, so the report still opens.
+        $operand_1 = pg_visitor_report_filter_column($filter['field'], $site_time_from, $site_time_to);
 
-            case 'utm_source': $operand_1 = 'visitors.utm_source'; break;
-            case 'utm_medium': $operand_1 = 'visitors.utm_medium'; break;
-            case 'utm_campaign': $operand_1 = 'visitors.utm_campaign'; break;
-            case 'utm_term': $operand_1 = 'visitors.utm_term'; break;
-            case 'utm_content': $operand_1 = 'visitors.utm_content'; break;
-            
-            case 'page_views': $operand_1 = 'visitors.page_views'; break;
-            case 'custom_form_submitted': $operand_1 = 'visitors.custom_form_submitted'; break;
-            case 'custom_form_name': $operand_1 = 'visitors.custom_form_name'; break;
-            case 'order_created': $operand_1 = 'visitors.order_created'; break;
-            case 'order_retrieved': $operand_1 = 'visitors.order_retrieved'; break;
-            case 'order_checked_out': $operand_1 = 'visitors.order_checked_out'; break;
-            case 'order_completed': $operand_1 = 'visitors.order_completed'; break;
-            case 'city': $operand_1 = 'visitors.city'; break;
-            case 'state': $operand_1 = 'visitors.state'; break;
-            case 'zip_code': $operand_1 = 'visitors.zip_code'; break;
-            case 'country': $operand_1 = 'visitors.country'; break;
-            // 0 once the general job took the address out after its period
-            // (includes/fn/visitor_ip.php), or for an IPv6 visit: empty, as
-            // on the order report, rather than 0.0.0.0.
-            case 'ip_address': $operand_1 = 'CASE WHEN (visitors.ip_address = 0) THEN "" ELSE INET_NTOA(visitors.ip_address) END'; break;
+        if ($operand_1 === '') {
+            continue;
         }
+
+        $field_type = ($filter['field'] == 'date') ? 'date' : '';
         
         // if a basic value was entered, use that value
         if ($filter['value'] != '') {
-            $operand_2 = prepare_form_data_for_input($filter['value'], $field_type);
+            // A date is read in the panel's own forms (21.10.2026 included);
+            // a stored value that does not read as one keeps the old path.
+            $operand_2 = '';
+
+            if ($field_type == 'date') {
+                $operand_2 = pg_date_input_iso($filter['value']);
+            }
+
+            if ($operand_2 === '') {
+                $operand_2 = prepare_form_data_for_input($filter['value'], $field_type);
+            }
             
         // else a dynamic value was entered, so use dynamic value
         } else {
@@ -794,7 +686,10 @@ if (!$_POST) {
     // that reaches back past the period still has its totals. The summary
     // answers the date changer's window with year / month / day and at most
     // one other grouping; a filter, or a grouping the summary does not hold,
-    // reads the rows alone and says the older days are missing.
+    // reads the rows alone and says the older days are missing. The first
+    // raw day is where the rows are complete (pg_visitor_rows_from()): the
+    // summary holds the later days too, but this screen filters and lists
+    // single visits, so it reads the rows wherever they are all there.
     $summary_groupings = array();
 
     for ($i = 1; $i <= 3; $i++) {
@@ -806,7 +701,7 @@ if (!$_POST) {
 
     $summary_rows = array();
     $summary_notice = '';
-    $summary_raw_from = pg_visitor_summary_raw_from();
+    $summary_raw_from = pg_visitor_rows_from();
 
     if (($summary_raw_from > 0) && ($date_filter_exists == false) && ($start_timestamp < $summary_raw_from)) {
 
@@ -1006,7 +901,7 @@ if (!$_POST) {
 
         if (!isset($group_index[$key_1])) {
             $group_index[$key_1] = count($results);
-            $results[$group_index[$key_1]] = array('name' => $name_1) + array_fill_keys(array_keys($totals), 0);
+            $results[$group_index[$key_1]] = array('name' => $name_1, 'visitors' => array()) + array_fill_keys(array_keys($totals), 0);
         }
         $k1 = $group_index[$key_1];
 
@@ -1022,7 +917,7 @@ if (!$_POST) {
 
         if (!isset($group_index[$key_2])) {
             $group_index[$key_2] = isset($results[$k1]['results']) ? count($results[$k1]['results']) : 0;
-            $results[$k1]['results'][$group_index[$key_2]] = array('name' => $name_2) + array_fill_keys(array_keys($totals), 0);
+            $results[$k1]['results'][$group_index[$key_2]] = array('name' => $name_2, 'visitors' => array()) + array_fill_keys(array_keys($totals), 0);
         }
         $k2 = $group_index[$key_2];
 
@@ -1037,7 +932,7 @@ if (!$_POST) {
 
         if (!isset($group_index[$key_3])) {
             $group_index[$key_3] = isset($results[$k1]['results'][$k2]['results']) ? count($results[$k1]['results'][$k2]['results']) : 0;
-            $results[$k1]['results'][$k2]['results'][$group_index[$key_3]] = array('name' => $name_3) + array_fill_keys(array_keys($totals), 0);
+            $results[$k1]['results'][$k2]['results'][$group_index[$key_3]] = array('name' => $name_3, 'visitors' => array()) + array_fill_keys(array_keys($totals), 0);
         }
         $k3 = $group_index[$key_3];
 
@@ -1087,7 +982,7 @@ if (!$_POST) {
             $export_summarize_bys[$i] = $summarize_by;
             $export_headers[] = isset($summarize_by_labels[$summarize_by]) ? $summarize_by_labels[$summarize_by] : $summarize_by;
         }
-        fputcsv($out, array_merge($export_headers, array(
+        fputcsv($out, array_merge($export_headers, pg_visitor_report_export_columns(array(
             lang('Visitor Number'),
             lang('Date'),
             lang('Page Views'),
@@ -1097,7 +992,7 @@ if (!$_POST) {
             lang('Order Checked Out'),
             lang('Order Completed'),
             lang('Order Total'),
-        )), ',', '"', '\\');
+        ), $output_order_cells)), ',', '"', '\\');
 
         $query =
             "SELECT
@@ -1137,7 +1032,7 @@ if (!$_POST) {
                 $line[] = pg_csv_formula_guard($cell);
             }
 
-            fputcsv($out, array_merge($line, array(
+            fputcsv($out, array_merge($line, pg_visitor_report_export_columns(array(
                 $row['id'],
                 get_absolute_time(array('timestamp' => $row['start_timestamp'], 'type' => 'date and time', 'timezone_type' => 'site', 'format' => 'plain_text')),
                 $row['page_views'],
@@ -1147,7 +1042,7 @@ if (!$_POST) {
                 $row['order_checked_out'],
                 $row['order_completed'],
                 number_format($row['order_total'] / 100, 2, '.', ''),
-            )), ',', '"', '\\');
+            ), $output_order_cells)), ',', '"', '\\');
 
             // Push each batch down the wire rather than letting it pile up in
             // PHP's output buffer, which would recreate the memory problem in
@@ -1270,7 +1165,7 @@ if (!$_POST) {
             <td>&nbsp;</td>';
     }
     
-    // Check to see if the order report name is empty, and add new order report header if it is.
+    // A new report is named "[new visitor report]".
     if ($output_visitor_report_name == '') {
         $output_visitor_report_name = '[' . lang('new visitor report') . ']';
     }
@@ -1278,14 +1173,14 @@ if (!$_POST) {
     print
     pg_page_shell(
         array(
-            'title'=> lang('Visitor Report'),
+            'title'=> lang('Visitor Report') . ': ' . h($output_visitor_report_name),
             'extra classes'=>'visitor',
             'icon'=>'visitor', 
             'heading'=> lang('Visitor Report'),
             'heading_description' => lang('View or update this real-time visitor report.'),
             'cancel'=>array('enable'=>'true','url'=>'view_visitor_reports.php')
         ,
-            'breadcrumb' => array(array('label' => lang('All Visitor Reports'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_reports.php'), array('label' => lang('Visitor Report'))),
+            'breadcrumb' => array(array('label' => lang('Overview'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitors.php'), array('label' => lang('Saved visitor reports'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_reports.php'), array('label' => h($output_visitor_report_name))),
         )
     ) . '
 <main id="content" class="container-fluid">
@@ -1359,7 +1254,7 @@ if (!$_POST) {
                                             window.onload = initialize_filters;
                                         </script>
                                         <div>
-                                            <button type="button" onclick="create_filter()" class="button btn btn-solid theme-primary">' . lang('Add Filter') . '</button>
+                                            <button type="button" onclick="create_filter()" class="button btn btn-solid theme-primary">' . lang('Add Filter') . '</button>' . get_date_picker_format() . pg_fields_script() . '
                                         </div>
                                         <div class="table-responsive">
                                             <table id="filter_table" class="chart_no_hover table">
@@ -1418,13 +1313,15 @@ if (!$_POST) {
                                     <th class="text-end text-nowrap">' . lang('Page View') . '</th>
                                     <th class="text-end text-nowrap">' . lang('Page Views') . ' %</th>
                                     <th class="text-end text-nowrap">' . lang('Custom Form Submitted') . ' %</th>
+                                    ' . ($output_order_cells ? '
                                     <th class="text-end text-nowrap">' . lang('Order Created') . ' %</th>
                                     <th class="text-end text-nowrap">' . lang('Order Retrieved') . ' %</th>
                                     <th class="text-end text-nowrap">' . lang('Order Checked Out') . ' %</th>
                                     <th class="text-end text-nowrap">' . lang('Order Completed') . ' %</th>
                                     <th class="text-end text-nowrap">' . lang('Order Total') . '</th>
                                     <th class="text-end text-nowrap">' . lang('Order Total') . ' %</th>
-                                    <th class="text-end text-nowrap">' . lang('Average Order Total') . '</th>
+                                    <th class="text-end text-nowrap">' . lang('Average Order Amount') . '</th>
+                                    ' : '') . '
                                 </tr>
                             </thead>
                             <tbody>';
@@ -1466,6 +1363,7 @@ if (!$_POST) {
                     <td class="align-middle text-end">' . pg_format_number($summarize_by_1_result['page_views'], 0) . '</td>
                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($page_views_percentage, 2)))) . '</td>
                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($custom_form_submitted_percentage, 2)))) . '</td>
+                    ' . ($output_order_cells ? '
                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_created_percentage, 2)))) . '</td>
                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_retrieved_percentage, 2)))) . '</td>
                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_checked_out_percentage, 2)))) . '</td>
@@ -1473,6 +1371,7 @@ if (!$_POST) {
                     <td class="align-middle text-end">' . prepare_amount($summarize_by_1_result['order_total'] / 100) . '</td>
                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_total_percentage, 2)))) . '</td>
                     <td class="align-middle text-end">' . prepare_amount($average_order_total / 100) . '</td>
+                    ' : '') . '
                 </tr>';
             
             // if there is at least 2 summarize bys
@@ -1515,6 +1414,7 @@ if (!$_POST) {
                             <td class="align-middle text-end">' . pg_format_number($summarize_by_2_result['page_views'], 0) . '</td>
                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($page_views_percentage, 2)))) . '</td>
                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($custom_form_submitted_percentage, 2)))) . '</td>
+                            ' . ($output_order_cells ? '
                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_created_percentage, 2)))) . '</td>
                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_retrieved_percentage, 2)))) . '</td>
                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_checked_out_percentage, 2)))) . '</td>
@@ -1522,6 +1422,7 @@ if (!$_POST) {
                             <td class="align-middle text-end">' . prepare_amount($summarize_by_2_result['order_total'] / 100) . '</td>
                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_total_percentage, 2)))) . '</td>
                             <td class="align-middle text-end">' . prepare_amount($average_order_total / 100) . '</td>
+                            ' : '') . '
                         </tr>';
                     
                     // if there are 3 summarize bys
@@ -1563,6 +1464,7 @@ if (!$_POST) {
                                     <td class="align-middle text-end">' . pg_format_number($summarize_by_3_result['page_views'], 0) . '</td>
                                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($page_views_percentage, 2)))) . '</td>
                                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($custom_form_submitted_percentage, 2)))) . '</td>
+                                    ' . ($output_order_cells ? '
                                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_created_percentage, 2)))) . '</td>
                                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_retrieved_percentage, 2)))) . '</td>
                                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_checked_out_percentage, 2)))) . '</td>
@@ -1570,6 +1472,7 @@ if (!$_POST) {
                                     <td class="align-middle text-end">' . prepare_amount($summarize_by_3_result['order_total'] / 100) . '</td>
                                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_total_percentage, 2)))) . '</td>
                                     <td class="align-middle text-end">' . prepare_amount($average_order_total / 100) . '</td>
+                                    ' : '') . '
                                 </tr>';
                             
                             if ($liveform->get_field_value('detail') == 1) {
@@ -1596,6 +1499,7 @@ if (!$_POST) {
                                             <td class="align-middle text-end">' . pg_format_number($visitor['page_views'], 0) . '</td>
                                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($page_views_percentage, 2)))) . '</td>
                                             <td class="align-middle text-end">' . $output_custom_form_submitted . '</td>
+                                            ' . ($output_order_cells ? '
                                             <td class="align-middle text-end">' . $output_order_created . '</td>
                                             <td class="align-middle text-end">' . $output_order_retrieved . '</td>
                                             <td class="align-middle text-end">' . $output_order_checked_out . '</td>
@@ -1603,6 +1507,7 @@ if (!$_POST) {
                                             <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
                                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_total_percentage, 2)))) . '</td>
                                             <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
+                                            ' : '') . '
                                         </tr>';
                                 }
                             }
@@ -1634,6 +1539,7 @@ if (!$_POST) {
                                         <td class="align-middle text-end">' . pg_format_number($visitor['page_views'], 0) . '</td>
                                         <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($page_views_percentage, 2)))) . '</td>
                                         <td class="align-middle text-end">' . $output_custom_form_submitted . '</td>
+                                        ' . ($output_order_cells ? '
                                         <td class="align-middle text-end">' . $output_order_created . '</td>
                                         <td class="align-middle text-end">' . $output_order_retrieved . '</td>
                                         <td class="align-middle text-end">' . $output_order_checked_out . '</td>
@@ -1641,6 +1547,7 @@ if (!$_POST) {
                                         <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
                                         <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_total_percentage, 2)))) . '</td>
                                         <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
+                                        ' : '') . '
                                     </tr>';
                             }
                         }
@@ -1673,6 +1580,7 @@ if (!$_POST) {
                                 <td class="align-middle text-end">' . pg_format_number($visitor['page_views'], 0) . '</td>
                                 <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($page_views_percentage, 2)))) . '</td>
                                 <td class="align-middle text-end">' . $output_custom_form_submitted . '</td>
+                                ' . ($output_order_cells ? '
                                 <td class="align-middle text-end">' . $output_order_created . '</td>
                                 <td class="align-middle text-end">' . $output_order_retrieved . '</td>
                                 <td class="align-middle text-end">' . $output_order_checked_out . '</td>
@@ -1680,6 +1588,7 @@ if (!$_POST) {
                                 <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
                                 <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_total_percentage, 2)))) . '</td>
                                 <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
+                                ' : '') . '
                             </tr>';
                     }
                 }
@@ -1712,6 +1621,7 @@ if (!$_POST) {
                         <td class="align-middle text-end">' . pg_format_number($visitor['page_views'], 0) . '</td>
                         <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($page_views_percentage, 2)))) . '</td>
                         <td class="align-middle text-end">' . $output_custom_form_submitted . '</td>
+                        ' . ($output_order_cells ? '
                         <td class="align-middle text-end">' . $output_order_created . '</td>
                         <td class="align-middle text-end">' . $output_order_retrieved . '</td>
                         <td class="align-middle text-end">' . $output_order_checked_out . '</td>
@@ -1719,6 +1629,7 @@ if (!$_POST) {
                         <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
                         <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_total_percentage, 2)))) . '</td>
                         <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
+                        ' : '') . '
                     </tr>';
             }
         }
@@ -1801,6 +1712,7 @@ if (!$_POST) {
                             <td class="align-middle text-end">' . pg_format_number($grand_page_views, 0) . '</td>
                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number(100, 2)))) . '</td>
                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($grand_custom_form_submitted_percentage, 2)))) . '</td>
+                            ' . ($output_order_cells ? '
                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($grand_order_created_percentage, 2)))) . '</td>
                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($grand_order_retrieved_percentage, 2)))) . '</td>
                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($grand_order_checked_out_percentage, 2)))) . '</td>
@@ -1808,6 +1720,7 @@ if (!$_POST) {
                             <td class="align-middle text-end">' . prepare_amount($grand_order_total / 100) . '</td>
                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number(100, 2)))) . '</td>
                             <td class="align-middle text-end">' . prepare_amount($grand_average_order_total / 100) . '</td>
+                            ' : '') . '
                         </tr>
                     </tbody>
                 </table>
@@ -1868,6 +1781,41 @@ if (!$_POST) {
             exit();
         }
         
+        // A filter with no known field would be stored and stop the report
+        // from opening; an unreadable date or a day count that is not a whole
+        // number would be stored as a filter that passes every visit (or
+        // counts from today). The form goes back with the error.
+        for ($i = 1; $i <= $liveform->get_field_value('last_filter_number'); $i++) {
+            if ($liveform->get_field_value('filter_' . $i . '_operator') == '') {
+                continue;
+            }
+
+            if (pg_visitor_report_filter_column($liveform->get_field_value('filter_' . $i . '_field')) === '') {
+                $liveform->mark_error('filter_' . $i . '_field', lang('Please select a field for each filter.'));
+                continue;
+            }
+
+            if ($liveform->get_field_value('filter_' . $i . '_field') != 'date') {
+                continue;
+            }
+
+            $filter_value = $liveform->get_field_value('filter_' . $i . '_value');
+
+            if ($filter_value != '') {
+                if (pg_date_input_iso($filter_value) === '') {
+                    $liveform->mark_error('filter_' . $i . '_value', lang('Please enter a valid date.'));
+                }
+            } elseif (($liveform->get_field_value('filter_' . $i . '_dynamic_value') == 'days ago')
+                && !pg_visitor_report_days_ago_valid($liveform->get_field_value('filter_' . $i . '_dynamic_value_attribute'))) {
+                $liveform->mark_error('filter_' . $i . '_dynamic_value_attribute', lang('Day(s) ago must be a whole number of 0 or more.'));
+            }
+        }
+
+        if ($liveform->check_form_errors() == true) {
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_visitor_report.php' . $query_string_id);
+            exit();
+        }
+
         // check to see if name is already in use
         $query =
             "SELECT id
@@ -1973,6 +1921,15 @@ if (!$_POST) {
                     }
                 }
                 
+                $filter_value = $liveform->get_field_value('filter_' . $i . '_value');
+
+                // A date is stored as YYYY-MM-DD, whichever form it was typed in.
+                if ($field_type == 'date') {
+                    $filter_value = pg_date_input_iso($filter_value);
+                } else {
+                    $filter_value = prepare_form_data_for_input($filter_value, $field_type);
+                }
+
                 // insert filter
                 $query =
                     "INSERT INTO visitor_report_filters (
@@ -1989,7 +1946,7 @@ if (!$_POST) {
                         ?,
                         ?,
                         ?)";
-                $result = db_q($query, array((string) $id, (string) $liveform->get_field_value('filter_' . $i . '_field'), (string) $liveform->get_field_value('filter_' . $i . '_operator'), (string) prepare_form_data_for_input($liveform->get_field_value('filter_' . $i . '_value'), $field_type), (string) $dynamic_value, (string) $dynamic_value_attribute)) or output_error('Query failed.');
+                $result = db_q($query, array((string) $id, (string) $liveform->get_field_value('filter_' . $i . '_field'), (string) $liveform->get_field_value('filter_' . $i . '_operator'), (string) $filter_value, (string) $dynamic_value, (string) (int) $dynamic_value_attribute)) or output_error('Query failed.');
             }
         }
         
@@ -2037,7 +1994,7 @@ function get_summarize_by_column($summarize_by, $from = null, $to = null)
         case 'referring_host_name': return 'visitors.referring_host_name';
         case 'referring_search_engine': return 'visitors.referring_search_engine';
         case 'referring_search_terms': return 'visitors.referring_search_terms';
-        case 'pay_per_click_organic': return 'CASE WHEN (visitors.tracking_code LIKE "%' . escape(escape_like(PAY_PER_CLICK_FLAG)) . '%") THEN "Pay Per Click" WHEN (visitors.referring_search_engine != "") THEN "Organic" ELSE "" END';
+        case 'pay_per_click_organic': return pg_visitor_report_channel_sql(false);
         case 'first_visit': return 'visitors.first_visit';
         case 'landing_page_name': return 'visitors.landing_page_name';
         case 'tracking_code': return 'visitors.tracking_code';
@@ -2100,41 +2057,41 @@ function update_summarize_by_name($summarize_by_name, $summarize_by) {
             
         case 'custom_form_submitted':
             if ($summarize_by_name == 1) {
-                $summarize_by_name = lang('Custom Form Submitted');
+                $summarize_by_name = lang('Form submitted');
             } else {
-                $summarize_by_name = lang('Custom Form Not Submitted');
+                $summarize_by_name = lang('Form not submitted');
             }
             break;
             
         case 'order_created':
             if ($summarize_by_name == 1) {
-                $summarize_by_name = lang('Order Created');
+                $summarize_by_name = lang('Order created');
             } else {
-                $summarize_by_name = lang('Order Not Created');
+                $summarize_by_name = lang('Order not created');
             }
             break;
         
         case 'order_retrieved':
             if ($summarize_by_name == 1) {
-                $summarize_by_name = lang('Order Retrieved');
+                $summarize_by_name = lang('Order retrieved');
             } else {
-                $summarize_by_name = lang('Order Not Retrieved');
+                $summarize_by_name = lang('Order not retrieved');
             }
             break;
         
         case 'order_checked_out':
             if ($summarize_by_name == 1) {
-                $summarize_by_name = lang('Order Checked Out');
+                $summarize_by_name = lang('Order checked out');
             } else {
-                $summarize_by_name = lang('Order Not Checked Out');
+                $summarize_by_name = lang('Order not checked out');
             }
             break;
         
         case 'order_completed':
             if ($summarize_by_name == 1) {
-                $summarize_by_name = lang('Order Completed');
+                $summarize_by_name = lang('Order completed');
             } else {
-                $summarize_by_name = lang('Order Not Completed');
+                $summarize_by_name = lang('Order not completed');
             }
             break;
             

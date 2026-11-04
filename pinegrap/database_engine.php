@@ -346,16 +346,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $engine_capability = pg_innodb_capability();
 
-$engine_status = pg_innodb_table_status(pg_innodb_core_tables());
-
-$engine_on_innodb = 0;
-
-foreach ($engine_status as $engine_row) {
-    if ($engine_row['engine'] === 'innodb') {
-        $engine_on_innodb++;
-    }
-}
-
 $engine_pending = pg_innodb_pending_tables();
 
 // The list is short and each estimate is three information_schema reads.
@@ -364,6 +354,19 @@ foreach ($engine_pending as $engine_table => $engine_row) {
 }
 
 $engine_catalog = pg_db_table_catalog();
+
+// The summary counts every table of the database, the same set as the table
+// list beside it, so the engine figures add up to the table count.
+$engine_on_innodb = 0;
+$engine_on_myisam = 0;
+
+foreach ($engine_catalog as $engine_row) {
+    if ($engine_row['engine'] === 'innodb') {
+        $engine_on_innodb++;
+    } elseif ($engine_row['engine'] === 'myisam') {
+        $engine_on_myisam++;
+    }
+}
 
 $engine_facts = pg_db_server_facts();
 
@@ -404,12 +407,23 @@ $engine_tools = ($engine_running === null);
 
 $engine_repairable = array('myisam', 'aria', 'mrg_myisam', 'isam');
 
+// The catalog keeps engine names in lower case; printed the way the server
+// itself writes them.
+$engine_name = function ($engine) {
+    $names = array('innodb' => 'InnoDB', 'myisam' => 'MyISAM', 'aria' => 'Aria', 'mrg_myisam' => 'MRG_MyISAM', 'memory' => 'MEMORY', 'csv' => 'CSV', 'archive' => 'ARCHIVE');
+    $engine = (string) $engine;
+    return isset($names[$engine]) ? $names[$engine] : (($engine !== '') ? $engine : '-');
+};
+
 // One action button. The row's own form would nest inside the page's; the
 // buttons fill in the single hidden form below instead.
 $engine_button = function ($action, $table, $label, $icon, $class, $confirm, $enabled, $title = '') {
+    // A row button is one of many with the same label: the table name,
+    // hidden from view, tells a screen reader which table it acts on.
     return '<button type="button" class="btn btn-sm ' . $class . ' pg-engine-action text-nowrap" data-action="' . h($action) . '" data-table="' . h($table) . '" data-confirm="' . h($confirm) . '"'
         . (($title !== '') ? ' title="' . h($title) . '"' : '')
-        . ($enabled ? '' : ' disabled') . '><i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>' . h($label) . '</button>';
+        . ($enabled ? '' : ' disabled') . '><i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>' . h($label)
+        . (($table !== '') ? '<span class="visually-hidden"> ' . h($table) . '</span>' : '') . '</button>';
 };
 
 $engine_confirm_convert = lang('Convert {var:1} to InnoDB now? Writes to the table wait until the conversion ends.');
@@ -531,7 +545,9 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
     $visitor_card = '
                     <div class="alert theme-secondary d-flex gap-3 align-items-start mb-0">
                         <i class="bi bi-hourglass" aria-hidden="true"></i>
-                        <div>' . h(lang('The period for keeping visitor records arrives with the upgrade steps of this version. Run them again to see the cleanup here.')) . '</div>
+                        <div>' . h(pg_hosted()
+                            ? lang('The period for keeping visitor records arrives with the upgrade steps of this version, which the hosting platform runs.')
+                            : lang('The period for keeping visitor records arrives with the upgrade steps of this version. Run them again to see the cleanup here.')) . '</div>
                     </div>';
 
 } else {
@@ -545,7 +561,9 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
 
     $visitor_preview = pg_visitor_cleanup_preview(array('rows' => $visitor_figures['rows']) + $visitor_catalog);
     $visitor_last = pg_visitor_cleanup_last();
-    $visitor_through = $visitor_settings['summary'] ? pg_visitor_summary_through() : '';
+    // The run of summarized days ending at the most recent one: the days
+    // the overview and the API read from the summary.
+    $visitor_range = $visitor_settings['summary'] ? pg_visitor_summary_range() : null;
     $visitor_settings_link = '<a href="settings_privacy.php#pgset-analytics">' . h(lang('Change')) . '</a>';
 
     $visitor_alert = '';
@@ -730,8 +748,11 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
 
     if (!$visitor_settings['summary']) {
         $visitor_summary = lang('Off');
-    } elseif ($visitor_through !== '') {
-        $visitor_summary = lang(array('string' => 'On, through {var:1}', 'vars' => array(get_absolute_time(array('timestamp' => strtotime($visitor_through . ' 00:00:00'), 'type' => 'date', 'format' => 'plain_text')))));
+    } elseif (is_array($visitor_range)) {
+        $visitor_summary = lang(array('string' => 'On, {var:1} to {var:2}', 'vars' => array(
+            get_absolute_time(array('timestamp' => strtotime($visitor_range['first'] . ' 00:00:00'), 'type' => 'date', 'format' => 'plain_text')),
+            get_absolute_time(array('timestamp' => strtotime($visitor_range['last'] . ' 00:00:00'), 'type' => 'date', 'format' => 'plain_text')),
+        )));
     } else {
         $visitor_summary = lang('On, nothing added up yet');
     }
@@ -905,7 +926,7 @@ if (count($engine_pending) == 0) {
                                 <td><code>' . h($engine_table) . '</code></td>
                                 <td class="text-end">' . h(pg_format_number($engine_row['rows'], 0)) . '</td>
                                 <td class="text-end">' . h(pg_innodb_size_label($engine_row['bytes'])) . '</td>
-                                <td>' . h(($engine_row['engine'] !== '') ? $engine_row['engine'] : '-') . '</td>
+                                <td>' . h($engine_name($engine_row['engine'])) . '</td>
                                 <td>' . $engine_note . '</td>
                                 <td class="text-end">
                                     ' . $engine_button('convert', $engine_table, lang('Convert'), 'bi-database-gear', 'btn-outline theme-warning', $engine_confirm_convert, ($engine_buttons && !$engine_too_wide)) . '
@@ -935,7 +956,7 @@ if (count($engine_pending) == 0) {
 // -- Table health -------------------------------------------------------------
 
 $health_when = ($engine_health['checked_at'] > 0)
-    ? get_relative_time(array('timestamp' => $engine_health['checked_at'], 'format' => 'plain_text'))
+    ? get_relative_time(array('timestamp' => $engine_health['checked_at'], 'format' => 'plain_text', 'mid_sentence' => true))
     : '';
 
 $health_header_note = ($health_when !== '')
@@ -944,11 +965,22 @@ $health_header_note = ($health_when !== '')
 
 if (count($engine_health['issues']) == 0) {
 
+    // The hourly check reads only the MyISAM and Aria tables; "Check all
+    // tables" reads every one until the next hourly check replaces its
+    // report. The sentence says which of the two the figure counts.
+    if ($engine_health['tables'] >= count($engine_catalog)) {
+        $health_summary = lang(array('string' => 'All tables are healthy ({var:1} tables, checked {var:2})', 'vars' => array(pg_format_number($engine_health['tables'], 0), $health_when)));
+    } elseif ($engine_health['tables'] == 0) {
+        $health_summary = lang(array('string' => 'The hourly check found no MyISAM table to read (checked {var:1}). "Check all tables" reads the InnoDB tables.', 'vars' => array($health_when)));
+    } else {
+        $health_summary = lang(array('string' => '{var:1} MyISAM tables are healthy (checked {var:2})', 'vars' => array(pg_format_number($engine_health['tables'], 0), $health_when)));
+    }
+
     $health_list = ($health_when !== '')
         ? '
                     <div class="alert theme-success d-flex gap-3 align-items-start mb-3">
                         <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
-                        <div>' . h(lang(array('string' => 'All tables are healthy ({var:1} tables, checked {var:2})', 'vars' => array(pg_format_number($engine_health['tables'], 0), $health_when)))) . '</div>
+                        <div>' . h($health_summary) . '</div>
                     </div>'
         : '
                     <div class="alert theme-secondary d-flex gap-3 align-items-start mb-3">
@@ -993,7 +1025,7 @@ if (count($engine_health['issues']) == 0) {
         $health_rows .= '
                             <tr>
                                 <td><code>' . h($health_table) . '</code></td>
-                                <td>' . h(($health_engine !== '') ? $health_engine : '-') . '</td>
+                                <td>' . h($engine_name($health_engine)) . '</td>
                                 <td>' . $health_status . '</td>
                                 <td class="text-end text-nowrap">' . $health_actions . '</td>
                             </tr>';
@@ -1037,7 +1069,7 @@ foreach ($engine_catalog as $catalog_table => $catalog_row) {
     } elseif ($catalog_row['engine'] === 'innodb') {
         $catalog_engine = 'InnoDB';
     } else {
-        $catalog_engine = h($catalog_row['engine']);
+        $catalog_engine = h($engine_name($catalog_row['engine']));
     }
 
     $catalog_candidate = isset($engine_candidates[$catalog_table]);
@@ -1045,7 +1077,7 @@ foreach ($engine_catalog as $catalog_table => $catalog_row) {
     $catalog_rows .= '
                             <tr>
                                 <td>' . $engine_optimize_button($catalog_table, ($engine_tools && ($catalog_row['engine'] !== ''))) . '</td>
-                                <td><code>' . h($catalog_table) . '</code></td>
+                                <th scope="row" class="fw-normal"><code>' . h($catalog_table) . '</code></th>
                                 <td>' . $catalog_engine . '</td>
                                 <td class="text-end" data-order="' . (int) $catalog_row['rows'] . '">' . h(pg_format_number($catalog_row['rows'], 0)) . '</td>
                                 <td class="text-end" data-order="' . h(sprintf('%.0f', $catalog_row['bytes'])) . '">' . h(pg_innodb_size_label($catalog_row['bytes'])) . '</td>
@@ -1099,7 +1131,7 @@ $fact_rows = array(
     lang('Page size') => $fact_size($engine_facts['page_size']),
     'max_allowed_packet' => $fact_size($engine_facts['max_allowed_packet']),
     lang('Isolation level') => $fact($engine_facts['isolation']),
-    lang('Uptime') => $fact_uptime,
+    lang('Server uptime') => $fact_uptime,
     lang('Connections') => $fact($engine_facts['threads_connected']) . ' / ' . $fact($engine_facts['max_connections']),
 );
 
@@ -1126,9 +1158,9 @@ echo '
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-                ' . $engine_button('check_all', '', lang('Check all tables'), 'bi-clipboard-check', 'btn-text theme-secondary', lang('A full CHECK TABLE of every table; minutes on a large database.'), $engine_tools) . '
+                ' . $engine_button('check_all', '', lang('Check all tables'), 'bi-clipboard-check', 'btn-text theme-secondary', lang('Check all tables now? Every table is read in full and a broken MyISAM table is repaired; on a large database that takes minutes. Take a backup first.'), $engine_tools) . '
                 <a class="btn btn-sm btn-text theme-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
-                <a class="btn btn-sm btn-text theme-secondary" href="welcome.php"><i class="bi bi-heart-pulse me-1" aria-hidden="true"></i>' . h(lang('System Status')) . '</a>' . (((int) $user['role'] === 0) ? '
+                <a class="btn btn-sm btn-text theme-secondary" href="welcome.php"><i class="bi bi-heart-pulse me-1" aria-hidden="true"></i>' . h(lang('System Status')) . '</a>' . ((((int) $user['role'] === 0) && !pg_hosted()) ? '
                 <a class="btn btn-sm btn-text theme-secondary" href="software_repair.php#rerun"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Run upgrade steps again')) . '</a>' : '') . '
             </nav>
 
@@ -1191,7 +1223,7 @@ echo '
                     </div>
                 </div>
                 <div class="col-12 lg:col-4 2xl:col-3 order-2">
-                    <div class="position-sticky" style="top:3.3rem;">
+                    <div class="pg-engine-side">
                         <div class="card mb-5">
                             <div class="card-body">
                                 <div class="small fg-secondary">' . h(lang('Tables')) . '</div>
@@ -1201,9 +1233,9 @@ echo '
                                 <div class="small fg-secondary">' . h(lang('Free space')) . '</div>
                                 <div class="h4 mb-3 pg-fg-emphasis">' . h(pg_innodb_size_label($catalog_free)) . '</div>
                                 <div class="small fg-secondary">' . h(lang('InnoDB')) . '</div>
-                                <div class="h4 mb-3 pg-fg-emphasis">' . h(pg_format_number($engine_on_innodb, 0)) . ' / ' . h(pg_format_number(count($engine_status), 0)) . '</div>
+                                <div class="h4 mb-3 pg-fg-emphasis">' . h(pg_format_number($engine_on_innodb, 0)) . ' / ' . h(pg_format_number(count($engine_catalog), 0)) . '</div>
                                 <div class="small fg-secondary">' . h(lang('MyISAM')) . '</div>
-                                <div class="h4 mb-0 pg-fg-emphasis">' . h(pg_format_number(count($engine_pending), 0)) . '</div>
+                                <div class="h4 mb-0 pg-fg-emphasis">' . h(pg_format_number($engine_on_myisam, 0)) . '</div>
                             </div>
                         </div>
                         <div class="card mb-5">

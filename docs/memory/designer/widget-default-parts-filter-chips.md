@@ -11,7 +11,7 @@ description: The catalog listing's filter chip parts (W16, #2218): the catalog.a
 
 ## Where do the rows come from?
 - Source `catalog.active_filters` (`pg_sw_list_active_filter_sources()`, `widgets_lists_product.php`), family `filter_chips`, listing only, key `__has_active_attr_filters` (`1`/`0`), rows under key 1, tokens `__filter_chip_label` ("Colour: Red"), `__filter_chip_url` (the listing without that filter). Pure builder `pg_sw_list_active_filter_rows()`; the renderer's chip loop reads the same rows.
-- `__clear_filters_url` is the clear button's old address unescaped (`$clear_url_raw`); the fill escapes it once.
+- `__clear_filters_url` is the clear button's address unescaped (`$clear_url_raw`, `_pg_catalog_clear_filters_query()`); the fill escapes it once. It drops pmin, pmax, stock, sort, every `pg_attr_<id>` and the page number, keeps the search text and `cat`, and starts from `_pg_sw_query_params()`. Before #5134 it kept the attribute filters (a click left them on) and repeated the router's `page` on a pretty address.
 - The list stands anywhere in a listing (`_sdListNeedsMainLoop()`).
 
 ## Which placements become the parts?

@@ -60,6 +60,10 @@ $action_names = array(
     'subscription_cancelled' => lang('Subscription Cancelled'),
     'subscription_price_changed' => lang('Subscription Price Changed'),
     'product_ordered' => lang('Product Ordered'),
+    'booking_confirmed' => lang('Booking Confirmed'),
+    'booking_reminder' => lang('Booking Reminder'),
+    'booking_rescheduled' => lang('Booking Rescheduled'),
+    'booking_cancelled' => lang('Booking Cancelled'),
 );
 
 // What each sort code orders by. Only codes pg_list_state() let through
@@ -374,7 +378,7 @@ if (isset($_GET['export'])) {
                                                 <div class="switch"><input class="disabled" disabled title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
                                             </div>
                                         </th>
-                                        <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
+                                        <th class="noVis">' . lang('Row Actions') . '</th> 
                                         <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
                                         <th class="text-center">' . get_column_heading(lang('Enabled'), $sort_levels, '', '', 'enabled') . '</th>
                                         <th>' . get_column_heading(lang('Action'), $sort_levels, '', '', 'action') . '</th>

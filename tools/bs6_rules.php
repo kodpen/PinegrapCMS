@@ -795,8 +795,11 @@ function bs6_site_functions()
 {
 	return array(
 		'includes/fn/custom_form.php' => array('pg_cf_validation_script'),
+		'includes/fn/custom_form_steps.php' => array('_pg_cf_steps_progress_html', '_pg_cf_steps_nav_html', 'pg_cf_steps_script'),
 		'includes/fn/design_themes.php' => array('pg_design_looks'),
+		'includes/fn/form_payment_step.php' => array('pg_form_payment_render', 'pg_form_payment_retry_html', 'pg_form_payment_step_html'),
 		'includes/fn/passkeys.php' => array('pg_passkey_account_section', 'pg_passkey_add_form_script'),
+		'includes/fn/payments.php' => array('pg_payment_box'),
 		'includes/fn/privacy.php' => array('pg_consent_sms_checkout_row'),
 		'includes/fn/returns.php' => array('pg_return_actions_html', 'pg_return_badge_class', 'pg_return_form_html', 'pg_returns_list_html'),
 		'includes/fn/sms_codes.php' => array('pg_sms_cod_field_html'),

@@ -360,6 +360,19 @@ function pg_panel_shared_component($request, $action)
             respond(array('status' => 'success'));
             break;
 
+        // ── HOME ROWS ────────────────────────────────────────────────────
+        // The rows of the designs home's shared components panel, asked
+        // when it first opens (pg_designer_components_card() prints only
+        // the button and the count). Full designer only, as the panel.
+        case 'home_rows':
+            if (!pg_designer_is_full($user)) {
+                respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+            }
+            require_once(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+            $sc_home = pg_designer_components_rows();
+            respond(array('status' => 'success', 'total' => $sc_home['total'], 'html' => $sc_home['html']));
+            break;
+
         // ── DELETE MANY ──────────────────────────────────────────────────
         // The palette's and the designs home's bulk delete, any number of
         // rows. A row a saved page still places is kept unless the request
@@ -505,6 +518,28 @@ function pg_panel_shared_component($request, $action)
                      ORDER BY parent_id ASC, sort_order ASC, name ASC"
             );
             respond(array('status' => 'success', 'groups' => $sc_pg_rows));
+            break;
+
+        // ── LIST FEE PRODUCTS ───────────────────────────────────────────
+        // The products a designed form's fee may name (Custom Form
+        // Settings, Payment): id, name, title and price in minor units,
+        // the first 2000 by name. Written with the page's form settings by
+        // administrators and designers only, as the folder list below.
+        case 'list_fee_products':
+            $sc_fp_rows = db_items(
+                "SELECT id, name, short_description, price
+                     FROM products
+                     ORDER BY name ASC, id ASC
+                     LIMIT 2000"
+            );
+            respond(array('status' => 'success', 'products' => array_map(function ($row) {
+                return array(
+                    'id'    => (int)$row['id'],
+                    'name'  => (string)$row['name'],
+                    'title' => (string)$row['short_description'],
+                    'price' => (int)$row['price'],
+                );
+            }, is_array($sc_fp_rows) ? $sc_fp_rows : array())));
             break;
 
         // ── LIST FOLDERS ────────────────────────────────────────────────

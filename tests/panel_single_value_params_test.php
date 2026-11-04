@@ -41,6 +41,8 @@ function panel_single_value_params_screens()
 		'import_design'              => array('submit_button'),
 		'preview_form'               => array('product_id'),
 		'print_packing_slip'         => array('ship_to_id'),
+		'registration_entrance'      => array('send_to', 'allow_guest'),
+		'remove_item_from_cart'      => array('order_item_id', 'screen', 'send_to'),
 		'view_fields'                => array('page_id', 'product_id', 'product_group_id'),
 	);
 }
@@ -81,6 +83,8 @@ function test_panel_single_value_params_delete_users_list()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/delete_users.php');
 
-	pg_assert_contains("isset(\$_POST['users']) && is_array(\$_POST['users'])", $source, 'delete_users list check');
-	pg_assert_contains('if (!is_scalar($user_id)) {', $source, 'delete_users entry check');
+	// The ids come from the list's resolver, whole numbers only; nothing
+	// posted is read as a list of users any more.
+	pg_assert_contains("pg_user_list_selected_ids(\$user, \$_POST['selection'] ?? '', \$_POST['list_params'] ?? '')", $source, 'delete_users reads the selection');
+	pg_assert_false(strpos($source, "\$_POST['users']") !== false, 'delete_users no longer reads users[]');
 }

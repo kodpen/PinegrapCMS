@@ -17,6 +17,7 @@
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_home.php');
 // initialize function that can generate HTML for a system style based on the layout and cells that were submitted which are in the areas array
 function get_system_style_code($layout, $areas, $style_name, $empty_cell_width_percentage, $additional_body_classes)
 {
@@ -1224,6 +1225,13 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_google_reviews($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'accessibility_statement' — the statement from Site Settings and
+            // the nightly accessibility report (widgets_accessibility.php).
+            if ($region_type === 'accessibility_statement') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_accessibility_statement($tree_json, $sid, $cfg, $mode);
+            }
+
             // 'billing_information' — the third step of the classic checkout,
             // posting to billing_information.php (widgets_billing_information.php).
             if ($region_type === 'billing_information') {
@@ -1419,13 +1427,23 @@ function _split_widget_tree($tree, $outside_markers = false)
     );
 }
 
+// The visitor's query parameters a widget's own links start from: those of
+// _pg_sw_query_params() (widgets.php), which drops the router's page name on
+// a pretty address, so a page link reads /blog?page_number=2 and not
+// /blog?page=blog&page_number=2.
+function _pg_sw_link_params()
+{
+    if (function_exists('_pg_sw_query_params')) return _pg_sw_query_params();
+    return is_array($_GET) ? $_GET : array();
+}
+
 // Helper: build a URL query string with one or more keys removed.
 // Avoids chained `_pg_sw_build_query` calls when clearing multiple filters
 // at once (active filter chips' clear-all link, price chip's bilateral
 // pmin+pmax clear).
 function _build_clear_filters_query($keys_to_clear)
 {
-    $params = (is_array($_GET)) ? $_GET : array();
+    $params = _pg_sw_link_params();
     foreach ($keys_to_clear as $k) {
         if (isset($params[$k])) unset($params[$k]);
     }
@@ -1435,10 +1453,11 @@ function _build_clear_filters_query($keys_to_clear)
 // Build a URL query string with ONE parameter changed (or removed if value is '').
 // Optionally clears a SECOND parameter at the same time — used by the search box
 // "clear" button which resets both the query and the page index in one step.
-// Preserves all OTHER current $_GET params verbatim.
+// Preserves all OTHER current $_GET params verbatim, except the router's
+// page name on a pretty address (_pg_sw_link_params()).
 function _pg_sw_build_query($key, $value, $reset_key = null, $reset_value = null)
 {
-    $params = (is_array($_GET)) ? $_GET : array();
+    $params = _pg_sw_link_params();
     if ($value === '' || $value === null) {
         unset($params[$key]);
     } else {
@@ -3490,6 +3509,16 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     foreach ($schedule['warnings'] as $w) $warnings[] = $w;
     if ($schedule['apply']) $draft_plan['want'] = $schedule['draft'];
 
+    // A draft that is an open experiment's variant stays a draft until the
+    // experiment ends: published, its own address would answer for visitors
+    // beside the live page it is compared with.
+    if ($draft_plan['was'] && !$draft_plan['want'] && function_exists('pg_experiment_variant_hold_message')) {
+        $held = pg_experiment_variant_hold_message($page_id, $name);
+        if ($held !== '') {
+            return array('ok' => false, 'page_id' => $page_id, 'errors' => array($held), 'warnings' => $warnings);
+        }
+    }
+
     if ($dry_run) {
         return array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings, 'draft' => $draft_plan['want']);
     }
@@ -3552,9 +3581,9 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         $sitemap = 0;
     }
     // Only staff may promote a page to home; other roles keep the stored
-    // flag (UPDATE) or get '' (INSERT).
+    // flag (UPDATE) or get 'no' (INSERT). page_home is ENUM('no','yes').
     $can_set_home = ((int)$user['role'] < 3);
-    $home_str     = ($can_set_home && $flag('page_home')) ? 'yes' : '';
+    $home_str     = pg_page_home_value(($can_set_home && $flag('page_home')) ? 'yes' : 'no');
 
 
     $folder      = (int)(isset($page['page_folder']) ? $page['page_folder'] : 0);
@@ -3796,6 +3825,12 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         $page_created = true;
         update_tag_cloud_keywords_for_page($page_id, $search, $keywords, 0, '');
         log_activity(lang(array('string' => 'page ({var:1}) was created', 'vars' => array($name))), $_SESSION['sessionusername']);
+    }
+
+    // The site has one home page: a page saved as the home page takes the
+    // flag from every other page (includes/fn/page_home.php).
+    if ($page_id > 0 && $home_str === 'yes') {
+        pg_page_home_claim($page_id);
     }
 
     // The texts written with AI (page.ai_fields): the columns the editor
@@ -5664,11 +5699,15 @@ function _render_component_html($props, $pad, $kids = '')
 // An href bound to '__page_link' (a link to another page with a record's
 // values) is a sentinel the form list and form detail renderers expand per
 // link before drawing (pg_sw_page_link_bindings()). One still standing here
-// was drawn by a path that does not expand it (another widget kind, a shared
-// component nested inside the widget), so it prints '#' like the canvas and
-// is no token: an unanswered token would be swept to href="", which opens
-// the current address. An href bound to '__ref' (a field of a record the
-// record points at, pg_coll_ref_bindings()) is the same kind of sentinel.
+// inside a widget was drawn by a path that does not expand it (another widget
+// kind), so it prints '#' like the canvas and is no token: an unanswered
+// token would be swept to href="", which opens the current address. An href
+// bound to '__ref' (a field of a record the record points at,
+// pg_coll_ref_bindings()) is the same kind of sentinel. Outside a widget (a
+// page tree, a shared component, one placed in a widget's layout) a
+// '__page_link' keeps the typed href as its fallback and names its page in
+// data-pg-page-link, which the drawn page swaps for the page's current
+// address (pg_page_link_expand()): the saved body outlives a rename.
 function _apply_bindings($props, $rich_text = false)
 {
     if (empty($props['_bindings']) || !is_array($props['_bindings'])) return $props;
@@ -5679,6 +5718,7 @@ function _apply_bindings($props, $rich_text = false)
     static $renderable_props = array('text' => 1, 'html' => 1, 'src' => 1, 'alt' => 1, 'href' => 1, 'value' => 1);
     $formats = (isset($props['_bindFormats']) && is_array($props['_bindFormats'])) ? $props['_bindFormats'] : array();
     $bind_pairs = array();
+    $page_link  = null;
     foreach ($props['_bindings'] as $prop_name => $field_name) {
         if (!$field_name) continue;
         // Sanitize: field tokens are [a-z0-9_-]. The hyphen is kept: a form
@@ -5686,6 +5726,10 @@ function _apply_bindings($props, $rich_text = false)
         // no field and printed nothing.
         $safe = preg_replace('/[^a-z0-9_\-]/i', '', (string)$field_name);
         if ($safe === '') continue;
+        if ($prop_name === 'href' && $safe === '__page_link' && !_pg_page_link_in_widget()) {
+            $page_link = pg_page_link_bound_id($props);
+            continue;
+        }
         if ($prop_name === 'href' && ($safe === '__page_link' || $safe === '__ref')) {
             $props['href'] = '#';
             continue;
@@ -5727,7 +5771,90 @@ function _apply_bindings($props, $rich_text = false)
         }));
         $props['_attrs'][] = array('name' => 'data-pg-bind', 'value' => implode(';', $bind_pairs));
     }
+    if ($page_link !== null) {
+        $attrs = (isset($props['_attrs']) && is_array($props['_attrs'])) ? $props['_attrs'] : array();
+        $attrs = array_values(array_filter($attrs, function ($a) {
+            return !(is_array($a) && isset($a['name']) && $a['name'] === 'data-pg-page-link');
+        }));
+        if ($page_link > 0) $attrs[] = array('name' => 'data-pg-page-link', 'value' => (string)$page_link);
+        $props['_attrs'] = $attrs;
+    }
     return $props;
+}
+
+// Whether a system widget is being drawn: a '__page_link' still standing
+// inside one prints '#' (its renderer did not expand it).
+function _pg_page_link_in_widget()
+{
+    return function_exists('pg_sw_finish_active') && pg_sw_finish_active();
+}
+
+// The page a link outside a widget is kept by (_bindParams.href.page_id), 0
+// when it names none or a tab not yet saved. The typed href stays the
+// link's fallback.
+function pg_page_link_bound_id($props)
+{
+    $spec = (isset($props['_bindParams']['href']) && is_array($props['_bindParams']['href'])) ? $props['_bindParams']['href'] : array();
+    $page_id = isset($spec['page_id']) ? $spec['page_id'] : 0;
+    if (is_int($page_id)) return max(0, $page_id);
+    return (is_string($page_id) && ctype_digit($page_id)) ? (int)$page_id : 0;
+}
+
+// The pages the links of drawn HTML are kept by (data-pg-page-link on an
+// <a> tag), each once, in the order met.
+function pg_page_link_ids($html)
+{
+    $html = (string)$html;
+    if (stripos($html, 'data-pg-page-link=') === false) return array();
+    if (!preg_match_all('/<a\b[^>]*\sdata-pg-page-link="(\d+)"/i', $html, $m)) return array();
+    $ids = array();
+    foreach ($m[1] as $id) {
+        $id = (int)$id;
+        if ($id > 0 && !in_array($id, $ids, true)) $ids[] = $id;
+    }
+    return $ids;
+}
+
+// Drawn HTML with each link kept by page id pointing at the page's current
+// address ($bases: page id => address, '' for a page missing or in the
+// bin), so a rename reaches the link without the saved body or tree being
+// written again. A page with no address keeps the typed href. The marker
+// attribute goes either way; it is dropped from any other tag too. Attribute
+// values in the body are escaped, so a tag ends at the first '>'.
+function pg_page_link_expand_html($html, $bases)
+{
+    $html = (string)$html;
+    if (stripos($html, 'data-pg-page-link=') === false) return $html;
+    $bases = is_array($bases) ? $bases : array();
+    return preg_replace_callback('/<([a-z][a-z0-9-]*)\b[^>]*\sdata-pg-page-link="(\d+)"[^>]*>/i', function ($m) use ($bases) {
+        $tag = preg_replace('/\sdata-pg-page-link="\d+"/i', '', $m[0]);
+        $id  = (int)$m[2];
+        if (strtolower($m[1]) !== 'a' || !isset($bases[$id]) || (string)$bases[$id] === '') return $tag;
+        $href = h((string)$bases[$id]);
+        $done = 0;
+        $tag  = preg_replace_callback('/(\shref=)"[^"]*"/i', function ($h) use ($href) {
+            return $h[1] . '"' . $href . '"';
+        }, $tag, 1, $done);
+        if (!$done) $tag = substr($tag, 0, 2) . ' href="' . $href . '"' . substr($tag, 2);
+        return $tag;
+    }, $html);
+}
+
+// The page's links kept by page id pointed at the pages' current addresses
+// (pg_page_link_expand_html()), the pages read in one query
+// (pg_sw_page_link_resolve()).
+function pg_page_link_expand($html)
+{
+    $ids = pg_page_link_ids($html);
+    if (!$ids) return pg_page_link_expand_html($html, array());
+    $links = array();
+    foreach ($ids as $id) $links[$id] = array('page_id' => $id, 'params' => array(), 'base' => '');
+    $bases = array();
+    if (function_exists('pg_sw_page_link_resolve')) {
+        pg_sw_page_link_resolve($links);
+        foreach ($links as $id => $link) $bases[$id] = $link['base'];
+    }
+    return pg_page_link_expand_html($html, $bases);
 }
 
 /**
@@ -5768,30 +5895,182 @@ function pg_binding_text_slot($text, $token)
  * <foreignObject>, frames, event handler attributes and script URLs; a data:
  * URL is kept only for an image. The editor's twin is _sdSvgElement() in
  * style_designer.js. '' when $raw holds no <svg>.
+ *
+ * The node is not locked for content-level operators, so the tags are read
+ * the way a browser reads them (_pg_svg_clean_tags()), not with a pattern:
+ * a handler after a slash (<svg/onload=…>) or straight after a quoted value
+ * is an attribute to the browser too.
  */
 function pg_designer_svg_markup($raw)
 {
-    $raw = (string)$raw;
+    $raw = str_replace("\0", '', (string)$raw);
     $start = stripos($raw, '<svg');
     $end   = strripos($raw, '</svg');
     if ($start === false || $end === false || $end < $start) return '';
     $close = strpos($raw, '>', $end);
     if ($close === false) return '';
-    $svg = substr($raw, $start, $close - $start + 1);
+    return _pg_svg_clean_tags(substr($raw, $start, $close - $start + 1));
+}
 
-    $svg = preg_replace('~<(script|foreignObject|iframe|object|embed)\b[^>]*>.*?</\1\s*>~is', '', $svg);
-    $svg = preg_replace('~<(script|foreignObject|iframe|object|embed)\b[^>]*/?>~is', '', $svg);
-    // Event handlers, quoted or not.
-    $svg = preg_replace('~\s+on[a-z0-9_:.-]*\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)~i', '', $svg);
-    // Any attribute that names a script URL, entities and spaces folded first.
-    $svg = preg_replace_callback('~\s+([a-z_:][a-z0-9_:.-]*)\s*=\s*("[^"]*"|\'[^\']*\')~i', function ($m) {
-        $name  = strtolower($m[1]);
-        $value = strtolower(preg_replace('~[\s\x00-\x1f]+~', '', html_entity_decode(substr($m[2], 1, -1), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
-        if (strpos($value, 'javascript:') !== false || strpos($value, 'vbscript:') !== false) return '';
-        if (($name === 'href' || $name === 'xlink:href') && strpos($value, 'data:') === 0 && strpos($value, 'data:image/') !== 0) return '';
-        return $m[0];
-    }, $svg);
-    return is_string($svg) ? $svg : '';
+/**
+ * Rewrites every tag of a drawing from its attributes as an HTML tokenizer
+ * reads them: each value decoded, checked, and written again double-quoted
+ * and escaped, so no value can hold markup. Script-like elements go with
+ * their content; comments and processing instructions go; a CDATA section
+ * becomes escaped text (inside <title> or <desc> the browser parses HTML,
+ * where CDATA is no section). A tag never closed is dropped with the rest.
+ * Anything the browser might read as a tag is read as one here, so dropping
+ * is the only way the two can differ.
+ */
+function _pg_svg_clean_tags($svg)
+{
+    $drop = array('script' => 1, 'foreignobject' => 1, 'iframe' => 1, 'object' => 1, 'embed' => 1);
+    $len  = strlen($svg);
+    $out  = '';
+    $skip = '';     // the dropped element whose content is being skipped
+    $depth = 0;
+    $i = 0;
+    while ($i < $len) {
+        $lt = strpos($svg, '<', $i);
+        if ($lt === false) {
+            if ($skip === '') $out .= substr($svg, $i);
+            break;
+        }
+        if ($skip === '') $out .= substr($svg, $i, $lt - $i);
+        $i = $lt;
+
+        if (substr($svg, $i, 4) === '<!--') {
+            // Closed by -->, --!>, or at once by <!--> and <!--->.
+            if (substr($svg, $i + 4, 1) === '>') { $i += 5; continue; }
+            if (substr($svg, $i + 4, 2) === '->') { $i += 6; continue; }
+            $a = strpos($svg, '-->', $i + 4);
+            $b = strpos($svg, '--!>', $i + 4);
+            if ($a === false && $b === false) break;
+            $i = ($b === false || ($a !== false && $a < $b)) ? $a + 3 : $b + 4;
+            continue;
+        }
+        if (substr($svg, $i, 9) === '<![CDATA[') {
+            $c = strpos($svg, ']]>', $i + 9);
+            $text = ($c === false) ? substr($svg, $i + 9) : substr($svg, $i + 9, $c - $i - 9);
+            if ($skip === '') $out .= htmlspecialchars($text, ENT_NOQUOTES, 'UTF-8');
+            if ($c === false) break;
+            $i = $c + 3;
+            continue;
+        }
+        $next = substr($svg, $i + 1, 1);
+        if ($next === '!' || $next === '?' || ($next === '/' && !ctype_alpha(substr($svg, $i + 2, 1)))) {
+            // A bogus comment, to the first '>'.
+            $gt = strpos($svg, '>', $i + 1);
+            if ($gt === false) break;
+            $i = $gt + 1;
+            continue;
+        }
+        $closing = ($next === '/');
+        $p = $i + ($closing ? 2 : 1);
+        if (!ctype_alpha(substr($svg, $p, 1))) {
+            if ($skip === '') $out .= '&lt;';
+            $i++;
+            continue;
+        }
+
+        $tag = _pg_svg_read_tag($svg, $p);
+        if ($tag === null) break;   // never closed: the browser drops it
+        $i = $tag['end'];
+        $lname = strtolower($tag['name']);
+
+        if ($skip !== '') {
+            if ($lname === $skip) {
+                if ($closing) {
+                    if (--$depth === 0) $skip = '';
+                } elseif (!$tag['self']) {
+                    $depth++;
+                }
+            }
+            continue;
+        }
+        if (isset($drop[$lname])) {
+            if (!$closing && !$tag['self']) {
+                $skip  = $lname;
+                $depth = 1;
+            }
+            continue;
+        }
+        if (!preg_match('/^[a-z][a-z0-9:_.-]*$/i', $tag['name'])) continue;
+        if ($closing) {
+            $out .= '</' . $tag['name'] . '>';
+            continue;
+        }
+
+        $attrs = '';
+        foreach ($tag['attrs'] as $a) {
+            $name = $a[0];
+            if (!preg_match('/^[a-z_:][a-z0-9_:.-]*$/i', $name)) continue;
+            $lattr = strtolower($name);
+            if (strncmp($lattr, 'on', 2) === 0) continue;
+            if ($a[1] === null) {
+                $attrs .= ' ' . $name;
+                continue;
+            }
+            $value = html_entity_decode($a[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $check = strtolower(preg_replace('~[\s\x00-\x1f]+~', '', $value));
+            if (strpos($check, 'javascript:') !== false || strpos($check, 'vbscript:') !== false) continue;
+            if (($lattr === 'href' || $lattr === 'xlink:href') && strpos($check, 'data:') === 0 && strpos($check, 'data:image/') !== 0) continue;
+            $attrs .= ' ' . $name . '="' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '"';
+        }
+        $out .= '<' . $tag['name'] . $attrs . ($tag['self'] ? '/>' : '>');
+    }
+    return $out;
+}
+
+/**
+ * One tag of _pg_svg_clean_tags(), from its name at $p, read as the HTML
+ * tokenizer does: attributes split at blanks and slashes, a value quoted or
+ * running to a blank or '>'. Returns name, attrs (list of array(name,
+ * raw value or null)), self (ends with '/>') and end (offset after '>'), or
+ * null when the tag never closes.
+ */
+function _pg_svg_read_tag($s, $p)
+{
+    $len = strlen($s);
+    $blank = " \t\n\r\f";
+    $n = strcspn($s, $blank . '/>', $p);
+    $tag = array('name' => substr($s, $p, $n), 'attrs' => array(), 'self' => false, 'end' => 0);
+    $p += $n;
+    while (true) {
+        $p += strspn($s, $blank . '/', $p);
+        if ($p >= $len) return null;
+        if ($s[$p] === '>') {
+            $tag['self'] = ($s[$p - 1] === '/');
+            $tag['end'] = $p + 1;
+            return $tag;
+        }
+        // A name runs to a blank, '/', '>' or '='; a leading '=' is part of it.
+        $n = 1 + strcspn($s, $blank . '/>=', $p + 1);
+        $name = substr($s, $p, $n);
+        $p += $n;
+        $p += strspn($s, $blank, $p);
+        if ($p >= $len) return null;
+        if ($s[$p] !== '=') {
+            $tag['attrs'][] = array($name, null);
+            continue;
+        }
+        $p++;
+        $p += strspn($s, $blank, $p);
+        if ($p >= $len) return null;
+        $q = $s[$p];
+        if ($q === '"' || $q === "'") {
+            $e = strpos($s, $q, $p + 1);
+            if ($e === false) return null;
+            $tag['attrs'][] = array($name, substr($s, $p + 1, $e - $p - 1));
+            $p = $e + 1;
+        } elseif ($q === '>') {
+            $tag['attrs'][] = array($name, '');
+        } else {
+            $n = strcspn($s, $blank . '>', $p);
+            $tag['attrs'][] = array($name, substr($s, $p, $n));
+            $p += $n;
+        }
+    }
 }
 
 // Render a content node as HTML
@@ -7542,12 +7821,15 @@ function _pg_tpl_include($file)
     return include $file;
 }
 
-// One template, or null.
+// One template, or null. A template made from a design and written in this
+// request is not in the cached list yet (the Migration installs one per
+// design it carries), so it is read from its row.
 function pg_design_template($id)
 {
     $all = pg_design_templates();
     $id  = is_scalar($id) ? (string)$id : '';
-    return isset($all[$id]) ? $all[$id] : null;
+    if (isset($all[$id])) return $all[$id];
+    return function_exists('pg_design_template_custom_get') ? pg_design_template_custom_get($id) : null;
 }
 
 // What the gallery shows of a template - no trees.
@@ -9050,7 +9332,7 @@ function pg_design_template_install($template_id, $user, $opts = array())
     // One home page: the one just marked.
     $home_page_id = ($home_key !== '' && isset($id_map[$home_key])) ? (int)$id_map[$home_key] : 0;
     if ($home_page_id > 0) {
-        db("UPDATE page SET page_home = '' WHERE page_home = 'yes' AND page_id <> '$home_page_id'");
+        pg_page_home_claim($home_page_id);
     }
 
     // The scores the pages list shows, as the editor's save leaves them.
@@ -9855,7 +10137,9 @@ function pg_designer_widget_ghosts($page_id, $widget, $limit = 10)
 // Stored shape, version 1:
 //   {"v":1,
 //    "groups":{"g1":{"name":"Docs","color":"orange"}},
-//    "tabs":[{"id":12},{"id":13,"g":"g1"},{"id":14,"g":"g1"},{"id":15}]}
+//    "tabs":[{"id":12},{"id":13,"g":"g1"},{"id":14,"g":"g1"},{"id":15}],
+//    "proto":{"p12":{"x":0,"y":0},"s5":{"x":408,"y":0}}}
+// `proto` (optional) holds the Prototype view's frame places.
 // `id` is a page_id of the design. The editor keeps a twin of the
 // normaliser (_pgTabsNormalizeGroups()); the two are changed together.
 
@@ -9967,7 +10251,40 @@ function pg_designer_tab_layout_normalize($layout, $page_ids)
         if (!isset($members[$gid])) unset($groups[$gid]);
     }
 
-    return array('v' => 1, 'groups' => $groups, 'tabs' => $tabs);
+    $out = array('v' => 1, 'groups' => $groups, 'tabs' => $tabs);
+    $proto = pg_designer_tab_layout_proto(isset($layout['proto']) ? $layout['proto'] : null, $known);
+    if ($proto) $out['proto'] = $proto;
+    return $out;
+}
+
+/**
+ * The places of the Prototype view's frames (designer/prototype-view.md),
+ * shared by everyone who opens the design. Keys are `p<page_id>` for a page
+ * of the design and `s<shared component id>`; a place is {x, y}, whole
+ * canvas units within ±1,000,000. Other keys and values are dropped, at most
+ * 500 places are kept. Twin: PGProtoHotspots.places() reads the same shape.
+ *
+ * @param mixed $proto decoded `proto` of a layout
+ * @param array $known page_id => true, the pages of the design
+ * @return array key => {x, y}
+ */
+function pg_designer_tab_layout_proto($proto, $known)
+{
+    $out = array();
+    if (!is_array($proto)) return $out;
+    foreach ($proto as $key => $at) {
+        if (count($out) >= 500) break;
+        if (!preg_match('/^([ps])([1-9][0-9]{0,9})$/', (string)$key, $m) || !is_array($at)) continue;
+        if ($m[1] === 'p' && !isset($known[(int)$m[2]])) continue;
+        $pos = array();
+        foreach (array('x', 'y') as $axis) {
+            $v = isset($at[$axis]) ? $at[$axis] : null;
+            if (!is_numeric($v) || !is_finite((float)$v)) continue 2;
+            $pos[$axis] = (int)max(-1000000, min(1000000, round((float)$v)));
+        }
+        $out[(string)$key] = $pos;
+    }
+    return $out;
 }
 
 /**
@@ -9977,6 +10294,7 @@ function pg_designer_tab_layout_normalize($layout, $page_ids)
 function pg_designer_tab_layout_export($layout)
 {
     $layout['groups'] = (object)$layout['groups'];
+    if (isset($layout['proto'])) $layout['proto'] = (object)$layout['proto'];
     return $layout;
 }
 
@@ -10044,4 +10362,65 @@ function pg_designer_screen_messages($errors, $warnings, $notices)
         }
     }
     return $out;
+}
+
+/**
+ * The editor's blank tab (sdDesign.pages entry): a page not saved yet,
+ * created by the first save. Opened in add mode, for a design with no page,
+ * and for a classic style opened in the designer that no page names as its
+ * own style; that one starts with the tree placing the style's frame
+ * (pg_classic_style_page_tree()) and is marked converted, so it opens
+ * unsaved and the frame shows on the canvas and in the tree.
+ *
+ * Pure: no query.
+ *
+ * @param int        $draft  1 when the new page starts as a draft
+ * @param array|null $tree   decoded tree, null for an empty canvas
+ * @return array
+ */
+function pg_designer_blank_page($draft, $tree = null)
+{
+    $tree = is_array($tree) ? $tree : null;
+    return array(
+        'key'                   => 'new1',
+        'page_id'               => 0,
+        'page_name'             => '',
+        'page_folder'           => 0,
+        'page_draft'            => $draft ? 1 : 0,
+        'page_title'            => '',
+        'page_meta_description' => '',
+        'page_search'           => 1,
+        'page_search_keywords'  => '',
+        'page_sitemap'          => 1,
+        'page_home'             => 0,
+        'page_noindex'          => 0,
+        'page_nofollow'         => 0,
+        'pg_comments'           => 0,
+        'pg_comments_label'     => '',
+        'pg_comments_allow_new' => 1,
+        'pg_comments_rating'    => 0,
+        'pg_comments_auto_publish' => 0,
+        'pg_comments_show_date'    => 0,
+        'pg_comments_login'        => 0,
+        'pg_comments_email_page'    => 0,
+        'pg_comments_email_subject' => '',
+        'pg_comments_notify_email'  => '',
+        'pg_comments_attachments'      => 0,
+        'pg_comments_select_name'      => 0,
+        'pg_comments_message'          => '',
+        'pg_comments_closed_message'   => '',
+        'pg_comments_watchers_managed' => 0,
+        'page_meta_tags'        => '',
+        'page_custom_jsonld'    => '',
+        'page_canonical_url'    => '',
+        'page_noarchive'        => 0,
+        'page_max_snippet'      => '',
+        'page_publish_at'       => '',
+        'page_unpublish_at'     => '',
+        'tree'                  => $tree,
+        'treeLoadWarning'       => false,
+        'formSettings'          => array(),
+        'access'                => 'edit',
+        'converted'             => $tree !== null ? 1 : 0,
+    );
 }

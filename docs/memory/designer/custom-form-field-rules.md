@@ -22,7 +22,7 @@ module: custom_form
 
 ## And in the browser?
 - `pg_cf_apply_field_bindings()`: a day picker with `min_date` gets `min` = today; a field with `required_when` (not always required, not a box of a group, not rich text) gets `data-pg-required-when` = the other field's id (its posted name, `id` or `id[]`) and `data-pg-required-answers` (JSON).
-- `pg_cf_validation_script()` switches `required` on change/input. It hides nothing, so the widgets decision #2450 (a value condition never hides a required control) is untouched.
+- `pg_cf_validation_script()` switches `required` on change/input; a disabled control (hidden by "Shown when") is no answer. Hiding a field is the separate `shown_when` rule (`custom-form-shown-when.md`).
 - A cached page may carry yesterday's `min`; the server refuses anyway.
 
 ## Templates?

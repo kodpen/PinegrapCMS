@@ -259,7 +259,7 @@ function pg_subscription_store_move($row, $action, $detail, $io)
 
     // The status the row was read with is the condition of the write: a
     // renewal or another move made meanwhile wins and this one is refused.
-    if (!$io['set_status']((int) $row['id'], $to, (string) $detail)) {
+    if (!$io['set_status']((int) $row['id'], $to, (string) $detail, (string) $row['status'])) {
         return false;
     }
 

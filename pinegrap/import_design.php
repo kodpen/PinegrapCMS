@@ -54,7 +54,7 @@ $liveform = new liveform('import_design');
 
 // The button is one value; one sent as an array (submit_button[]=x) counts as
 // not given: it ended in an error page.
-pg_request_single_values(array('submit_button'));
+pg_request_single_values(array('submit_button', 'scan_id'));
 
 $action = '';
 
@@ -84,7 +84,12 @@ if ($command_line) {
 
     $result = scan(array('url' => $url));
 
-    $_SESSION['software']['design']['import_design']['scanned_items'] = $scanned_items;
+    // A shell run imports what it has just scanned; the folder is named then.
+    $import_scan = array(
+        'items' => $scanned_items,
+        'url' => $url,
+        'import_name' => $import_name,
+        'folder_name' => '');
 }
 
 if (!empty($_REQUEST['submit_button'])) {
@@ -98,12 +103,18 @@ if ($action and !$command_line) {
     validate_token_field();
 
     $liveform->validate_required_field('url', lang('URL is required.'));
-    $liveform->validate_required_field('max_link_level', lang('Follow Depth is required.'));
+    $liveform->validate_required_field('max_link_level', lang('Scan mode is required.'));
 
     // A request without the field (the required check above has marked it)
     // reads as '' rather than null, which mb_substr() deprecates.
     $url = (string) $liveform->get_field_value('url');
-    $import_name = $liveform->get_field_value('import_name');
+    $import_name = trim((string) $liveform->get_field_value('import_name'));
+
+    // The tag is added to every name the import writes; a long one was cut
+    // by the 100-character columns, and two imports got the same names.
+    if (mb_strlen($import_name, 'UTF-8') > pg_site_import_tag_max_length()) {
+        $liveform->mark_error('import_name', lang(array('string' => 'The tag can be at most {var:1} characters long.', 'vars' => array(pg_site_import_tag_max_length()))));
+    }
 
     $url = import_design_start_url($url);
 
@@ -147,6 +158,8 @@ if ($action != 'import') {
                 $current_max_link_level = '1';
             }
 
+            $scan_mode_error = $liveform->check_field_error('max_link_level');
+
             $output_fields =
                 get_token_field() . '
                 <div class="row">
@@ -162,26 +175,27 @@ if ($action != 'import') {
                                     </div>
                                     <div class="col-12 md:col-6 my-3">
                                         <label for="import_name" class="form-label">' . lang('Tag') . ' <span class="fg-secondary fw-normal">(' . lang('optional') . ')</span></label>
-                                        ' . $liveform->output_field(array('type'=>'text','name'=>'import_name','id'=>'import_name','class'=>'form-control','placeholder'=>lang('e.g. mysite'))) . '
+                                        ' . $liveform->output_field(array('type'=>'text','name'=>'import_name','id'=>'import_name','class'=>'form-control','maxlength'=>pg_site_import_tag_max_length(),'placeholder'=>lang('e.g. mysite'))) . '
                                         <div class="form-text fg-secondary">' . lang('Added to imported item names for easy identification.') . '</div>
                                     </div>
-                                    <div class="col-12 my-5">
-                                        <label class="form-label d-block mb-3">' . lang('Scan Mode') . '</label>
+                                    <fieldset class="col-12 my-5"' . ($scan_mode_error ? ' aria-describedby="max_link_level_error"' : '') . '>
+                                        <legend class="form-label d-block mb-3">' . lang('Scan Mode') . '</legend>
+                                        ' . ($scan_mode_error ? '<div class="form-text fg-danger mb-3" id="max_link_level_error">' . lang('Scan mode is required.') . '</div>' : '') . '
                                         <div class="form-field mb-5">
-                                            <input class="radio" type="radio" name="max_link_level" id="depth_0" value="0"' . ($current_max_link_level == '0' ? ' checked' : '') . '>
+                                            <input class="' . $liveform->create_error_class('max_link_level', 'radio') . '" type="radio" name="max_link_level" id="depth_0" value="0"' . ($current_max_link_level == '0' ? ' checked' : '') . '>
                                             <label class="" for="depth_0">
                                                 <strong>' . lang('This page only') . '</strong>
                                                 <span class="fg-secondary d-block small">' . lang('Only the entered URL is scanned along with its assets (images, CSS, JS).') . '</span>
                                             </label>
                                         </div>
                                         <div class="form-field">
-                                            <input class="radio" type="radio" name="max_link_level" id="depth_1" value="1"' . ($current_max_link_level != '0' ? ' checked' : '') . '>
+                                            <input class="' . $liveform->create_error_class('max_link_level', 'radio') . '" type="radio" name="max_link_level" id="depth_1" value="1"' . ($current_max_link_level != '0' ? ' checked' : '') . '>
                                             <label class="" for="depth_1">
                                                 <strong>' . lang('All linked content') . '</strong>
                                                 <span class="fg-secondary d-block small">' . lang('All pages linked from the starting URL are also scanned.') . '</span>
                                             </label>
                                         </div>
-                                    </div>
+                                    </fieldset>
                                 </div>
                             </div>
                         </div>
@@ -195,8 +209,13 @@ if ($action != 'import') {
         case 'scan':
             $output_method = 'post';
 
+            // Each scan is kept under its own id, so the Import of one tab
+            // takes that tab's scan and not the one another tab ran last.
+            $scan_id = bin2hex(random_bytes(8));
+
             $output_fields =
                 get_token_field() . '
+                <input type="hidden" name="scan_id" value="' . h($scan_id) . '">
                 ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'url')) . '
                 ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'import_name')) . '
                 ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'max_link_level'));
@@ -230,28 +249,16 @@ if ($action != 'import') {
             <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Scan Results') . '</div>
             <div class="p-5">';
 
-        // set folder name to URL
-        $folder_name = $url;
-        $folder_name = str_replace('https://', '', $folder_name);
-        $folder_name = str_replace('http://', '', $folder_name);
-
-        // Add timestamp to folder name
-        $folder_name .= ' ' . get_absolute_time(array('timestamp' => time(), 'format' => 'plain_text', 'timezone_type' => 'site'));
-
-        // If the user supplied an import name, then add it to the folder name
-        if ($import_name != '') {
-            $folder_name .= '-' . $import_name;
-        }
-
+        // The address, the time of the scan and the tag. Kept with the scan,
+        // so the folder the import creates is the one shown here.
         $folder_name = get_unique_name(array(
-            'name' => $folder_name,
+            'name' => pg_site_import_folder_name($url, get_absolute_time(array('timestamp' => time(), 'format' => 'plain_text', 'timezone_type' => 'site')), $import_name),
             'type' => 'folder'));
 
-        //echo '<div>Folder: Import My Site</div>';
-        //echo '<div>Folder: ' . h($folder_name) . '</div>';
-
+        // The parent folder is found by its stored name 'Import My Site';
+        // the screen shows it in the panel's language.
         echo '<div class="import-tree">'
-            . '<div class="d-flex align-items-center gap-3 py-1"><i class="bi bi-folder2-open fg-warning"></i><span class="small fw-medium">Import My Site</span></div>'
+            . '<div class="d-flex align-items-center gap-3 py-1"><i class="bi bi-folder2-open fg-warning"></i><span class="small fw-medium">' . h(lang('Import My Site')) . '</span></div>'
             . '<div class="ms-5 d-flex align-items-center gap-3 py-1"><i class="bi bi-folder2 fg-warning"></i><span class="small fg-secondary">' . h($folder_name) . '</span></div>'
             . '<div class="ms-7 ps-5 border-start">';
         flush();
@@ -274,9 +281,17 @@ if ($action != 'import') {
 
         $result = scan(array('url' => $url));
 
-        // Store the scanned items in the session, so that we can import them
-        // if the user decides to import.
-        $_SESSION['software']['design']['import_design']['scanned_items'] = $scanned_items;
+        // Store the scan in the session under its id, with the address, the
+        // tag and the folder name it showed, so that the Import of this form
+        // creates exactly that.
+        $_SESSION['software']['design']['import_design']['scans'] = pg_site_import_scans_add(
+            $_SESSION['software']['design']['import_design']['scans'] ?? array(),
+            $scan_id,
+            array(
+                'items' => $scanned_items,
+                'url' => $url,
+                'import_name' => $import_name,
+                'folder_name' => $folder_name));
 
         echo '</div></div></div>'; // close border-start + import-tree + card p-3
 
@@ -363,9 +378,26 @@ if ($action != 'import') {
         validate_token_field();
     }
 
-    $scanned_items = ($_SESSION['software']['design']['import_design']['scanned_items'] ?? '');
+    if (!$command_line) {
+        // Only the scan this form came from is imported; another tab's scan
+        // stays for that tab.
+        $scan_id = (string) ($_REQUEST['scan_id'] ?? '');
+        $import_scan = ($scan_id !== '') ? ($_SESSION['software']['design']['import_design']['scans'][$scan_id] ?? null) : null;
 
-    unset($_SESSION['software']['design']['import_design']['scanned_items']);
+        if (!is_array($import_scan)) {
+            $liveform->mark_error('', lang('This scan has expired or was replaced. Please scan again.'));
+            go(PATH . SOFTWARE_DIRECTORY . '/import_design.php');
+        }
+
+        unset($_SESSION['software']['design']['import_design']['scans'][$scan_id]);
+    }
+
+    // The address, the tag and the folder name come with the scan, not from
+    // the form, so the folder says where its items came from.
+    $scanned_items = $import_scan['items'] ?? array();
+    $url = (string) ($import_scan['url'] ?? $url);
+    $import_name = (string) ($import_scan['import_name'] ?? $import_name);
+    $allowed_hostname = str_replace('www.', '', mb_strtolower((string) parse_url($url, PHP_URL_HOST)));
 
     // If there are no scanned items to import then add error
     // and forward user back to original screen.
@@ -410,21 +442,16 @@ if ($action != 'import') {
 
     $folder_level = $import_my_site_folder_level + 1;
 
-    // set folder name to URL
-    $folder_name = $url;
-    $folder_name = str_replace('https://', '', $folder_name);
-    $folder_name = str_replace('http://', '', $folder_name);
+    // The name the scan showed; checked again, since another import may
+    // have taken it since.
+    $folder_name = (string) ($import_scan['folder_name'] ?? '');
 
-    // Add timestamp to folder name
-    $folder_name .= ' ' . get_absolute_time(array('timestamp' => time(), 'format' => 'plain_text', 'timezone_type' => 'site'));
-
-    // If the user supplied an import name, then add it to the folder name
-    if ($import_name != '') {
-        $folder_name .= '-' . $import_name;
+    if ($folder_name === '') {
+        $folder_name = pg_site_import_folder_name($url, get_absolute_time(array('timestamp' => time(), 'format' => 'plain_text', 'timezone_type' => 'site')), $import_name);
     }
 
     $folder_name = get_unique_name(array(
-        'name' => $folder_name,
+        'name' => pg_import_name_fit($folder_name),
         'type' => 'folder'));
     
     // Create folder for this import.
@@ -461,8 +488,9 @@ if ($action != 'import') {
         $base_url = $item['base_url'];
         $type = $item['type'];
         $name = $item['name'];
-        $extension = $item['extension'];
-        $design = $item['design'];
+        // Only file items carry these.
+        $extension = $item['extension'] ?? '';
+        $design = $item['design'] ?? false;
 
         // Imported files land in the files directory like uploads do, so the
         // upload rules apply: a name the web server would run, or one that
@@ -531,10 +559,10 @@ if ($action != 'import') {
             $meta_description = '';
 
             // If a meta description was found, then remember it and remove meta description tags.
-            if ($matches[0] != '') {
+            if (($matches[0] ?? '') != '') {
                 preg_match('/content\s*=\s*["\'](.*?)["\']/i', $matches[0], $matches);
 
-                $meta_description = unhtmlspecialchars(trim($matches[1]));
+                $meta_description = unhtmlspecialchars(trim($matches[1] ?? ''));
 
                 // Remove all meta description tags from the HTML.
                 $content = preg_replace('/<meta\s+[^>]*name\s*=\s*["\']\s*description\s*["\'].*?>/i', '', $content);
@@ -546,10 +574,10 @@ if ($action != 'import') {
             $meta_keywords = '';
 
             // If a meta keywords was found, then remember it and remove meta keywords tags.
-            if ($matches[0] != '') {
+            if (($matches[0] ?? '') != '') {
                 preg_match('/content\s*=\s*["\'](.*?)["\']/i', $matches[0], $matches);
 
-                $meta_keywords = unhtmlspecialchars(trim($matches[1]));
+                $meta_keywords = unhtmlspecialchars(trim($matches[1] ?? ''));
 
                 // Remove all meta keywords tags from the HTML.
                 $content = preg_replace('/<meta\s+[^>]*name\s*=\s*["\']\s*keywords\s*["\'].*?>/i', '', $content);
@@ -885,6 +913,11 @@ function scan($properties) {
 
 
 
+    // A script found outside a page (no base address passed) falls back to
+    // its own address below.
+    $url = '';
+    $base_url = '';
+
     if(isset($properties['url'])){
         $url = trim($properties['url']);
     }
@@ -929,7 +962,11 @@ function scan($properties) {
 
     // Get the URL parts in order to just get the path and query string
     // in order to determine if the url has already been crawled.
+    // parse_url() leaves out a part the address does not have.
     $url_parts = parse_url($url);
+    $url_parts = is_array($url_parts) ? $url_parts : array();
+    $url_parts['path'] = $url_parts['path'] ?? '';
+    $url_parts['query'] = $url_parts['query'] ?? '';
 
     $scanned_url = $url_parts['path'];
 
@@ -1133,6 +1170,10 @@ function scan($properties) {
             $base_url = $url;
         }
 
+        // Cut to the 100-character page column before the uniqueness check,
+        // or the check never matches the cut name already stored.
+        $name = pg_import_name_fit($name);
+
         // Store a new name, before we create a unique version of the name,
         // so we can store the new name in the array and won't have to generate
         // it again during import.
@@ -1193,7 +1234,7 @@ function scan($properties) {
             }
         }
 
-        $name = prepare_file_name($name);
+        $name = pg_import_name_fit(prepare_file_name($name), true);
 
         // Store a new name, before we create a unique version of the name,
         // so we can store the new name in the array and won't have to generate
@@ -1287,7 +1328,7 @@ function scan($properties) {
             foreach ($matches as $match) {
                 preg_match('/rel\s*=\s*["\'](.*?)["\']/is', $match[0], $match_rel);
 
-                $rel = mb_strtolower(trim($match_rel[1]));
+                $rel = mb_strtolower(trim($match_rel[1] ?? ''));
 
                 // If the link tag is for a stylesheet or favicon,
                 // then continue to crawl it.
@@ -1702,14 +1743,15 @@ function fetch_url_content($url)
 
 function get_http_stream_context($method = 'GET')
 {
-    // Same verification as pg_curl_tls(): peer and name checked, and the
-    // configured CA bundle used when the host has one.
+    // Same verification as pg_curl_tls(): peer and name checked, against
+    // the store the site chose (pg_ca_bundle_effective()).
     $ssl_options = array(
         'verify_peer' => true,
         'verify_peer_name' => true,
     );
-    if (defined('CURL_CA_BUNDLE') && CURL_CA_BUNDLE !== '' && is_file(CURL_CA_BUNDLE)) {
-        $ssl_options['cafile'] = CURL_CA_BUNDLE;
+    $ca_file = pg_ca_bundle_effective();
+    if ($ca_file !== '') {
+        $ssl_options['cafile'] = $ca_file;
     }
 
     // Redirects are walked by import_design_fetch(), one checked hop at a

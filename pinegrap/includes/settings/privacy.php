@@ -44,7 +44,7 @@ $pg_settings_cards[] = '
                                                             <label for="tracking_code_duration" class="form-label">' . lang('Tracking Code Duration') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                             <label class="form-control form-adorn form-adorn-end">
                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
-                                                                <input type="text" required name="tracking_code_duration" id="tracking_code_duration" class="form-ghost" value="' . h($tracking_code_duration) . '" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="1" style="text-align: right;" min="1" max="365" />
+                                                                <input type="text" required name="tracking_code_duration" id="tracking_code_duration" class="form-ghost" value="' . h($tracking_code_duration) . '" size="7" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="1" style="text-align: right;" />
                                                             </label>
                                                         </div>
                                                         <div class="pg-f-md">
@@ -67,7 +67,7 @@ $pg_settings_cards[] = '
                                                                     </div>
                                                                     <div class="col-12 ">
                                                                         <label for="google_analytics_web_property_id" class="form-label">' . lang('Web Property ID') . '</label>
-                                                                        <input type="text" name="google_analytics_web_property_id" id="google_analytics_web_property_id" class="form-control" value="' . $google_analytics_web_property_id. '" maxlength="50"/>
+                                                                        <input type="text" name="google_analytics_web_property_id" id="google_analytics_web_property_id" class="form-control" value="' . h($google_analytics_web_property_id) . '" maxlength="50"/>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -99,8 +99,8 @@ $pg_settings_cards[] = '
                                         ' : '') . '<div class="col-12">
                                             <div class="form-field">
                                                 <div class="switch"><input value="1"' . ($visitor_summary ? ' checked="checked"' : '') . ' class="" type="checkbox" id="visitor_summary" name="visitor_summary"/></div>
-                                                <label class="" for="visitor_summary">' . lang('Keep a daily summary before records are removed') . '</label>
-                                                <div class="form-text">' . lang('Each day is added up by source, landing page, campaign, place and device first, so the visitor report and the API still count it. Turned off, those days are gone from the visitor report; the dashboard charts keep them either way.') . '</div>
+                                                <label class="" for="visitor_summary">' . lang('Keep a daily summary of every day') . '</label>
+                                                <div class="form-text">' . lang('Every day through yesterday is added up by source, landing page, campaign, place and device, whatever the period above, so the visitor overview reads it quickly and the visitor report and the API still count a day once its records are removed. Turned off, removed days are gone from the visitor report; the dashboard charts keep them either way.') . '</div>
                                                 <div class="form-text"><a href="database_engine.php#visitor-records">' . lang('The size of the table, and a cleanup you can start yourself, are on the Database Engine screen.') . '</a></div>
                                             </div>
                                         </div>' : '') . $google_analytics_figures . '
@@ -219,4 +219,54 @@ if ($legal_documents_ready) {
             </div>
         </div>
     </div>';
+}
+
+// ── Accessibility Statement ──
+// The fixed texts of the statement the Accessibility Statement widget and
+// view_accessibility.php?statement=1 draw (includes/fn/widgets_accessibility.php);
+// the conformance and the known limitations come from the nightly report.
+// One config_text row as JSON, so the card needs only that table.
+if (pg_schema_has('config_text')) {
+    $a11y_statement = pg_a11y_statement_settings();
+    $a11y_statement_limits = pg_a11y_statement_fields();
+    $a11y_statement_field = function ($field, $label, $help, $rows) use ($a11y_statement, $a11y_statement_limits) {
+        $id = 'a11y_statement_' . $field;
+        $control = ($rows > 1)
+            ? '<textarea class="form-control" id="' . $id . '" name="' . $id . '" rows="' . (int) $rows . '" maxlength="' . (int) $a11y_statement_limits[$field] . '">' . h($a11y_statement[$field]) . '</textarea>'
+            : '<input type="text" class="form-control" id="' . $id . '" name="' . $id . '" maxlength="' . (int) $a11y_statement_limits[$field] . '" value="' . h($a11y_statement[$field]) . '"/>';
+
+        return '
+                                        <div class="col-12">
+                                            <label class="form-label" for="' . $id . '">' . h($label) . '</label>
+                                            ' . $control . '
+                                            <div class="form-text">' . h($help) . '</div>
+                                        </div>';
+    };
+
+    $pg_settings_cards[] = '
+                        <div id="pgset-a11y-statement" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Accessibility Statement') . '
+                                </div>
+                                <div class="card-body">
+                                    <input type="hidden" name="a11y_statement_card" value="1"/>
+                                    <div class="row gy-5">
+                                        <div class="col-12">
+                                            <div class="form-text">' . h(lang('The EU Accessibility Act asks for a statement on the site. Place the Accessibility Statement widget on a page in the visual editor: it shows these texts with the conformance and the known limitations of the nightly accessibility report.')) . ' <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_accessibility.php?statement=1') . '" target="_blank" rel="noopener">' . h(lang('Print the statement')) . '</a></div>
+                                        </div>'
+        . $a11y_statement_field('organisation', lang('Organisation Name'), lang('Who makes the statement. Empty: the site name.'), 1)
+        . $a11y_statement_field('scope', lang('Scope'), lang('What the statement applies to, such as the site address and its online shop. Empty: the site name.'), 2)
+        . $a11y_statement_field('contact', lang('Contact Address'), lang('An e-mail address, telephone number or postal address for accessibility questions.'), 2)
+        . $a11y_statement_field('feedback', lang('Feedback Mechanism'), lang('How visitors report a barrier and how soon they get an answer.'), 3)
+        . $a11y_statement_field('enforcement', lang('Enforcement Procedure'), lang('The authority a visitor may turn to when the answer does not satisfy them, with its address. Empty: the section is left out.'), 3) . '
+                                        <div class="pg-f-sm">
+                                            <label class="form-label" for="a11y_statement_date">' . lang('Statement Date') . '</label>
+                                            <input type="date" class="form-control" id="a11y_statement_date" name="a11y_statement_date" value="' . h($a11y_statement['date']) . '"/>
+                                            <div class="form-text">' . h(lang('When the statement was prepared or last reviewed. Empty: today.')) . '</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
 }

@@ -463,11 +463,11 @@ function test_innodb_stock_config_row_fits()
 
 	pg_assert_same(array(), array_keys(array_filter($columns, 'is_null')), 'definitions that could not be read');
 
-	pg_assert_same(481, count($columns), 'columns of the stock config');
+	pg_assert_same(483, count($columns), 'columns of the stock config');
 
 	$before = array_values($columns);
 
-	pg_assert_same(9114, pg_innodb_row_estimate_from_columns($before, false, 16384, 'mysql80')['bytes'], 'stock config on MySQL 8.0 before 8.16');
+	pg_assert_same(9119, pg_innodb_row_estimate_from_columns($before, false, 16384, 'mysql80')['bytes'], 'stock config on MySQL 8.0 before 8.16');
 	pg_assert_false(pg_innodb_row_estimate_from_columns($before, false, 16384, 'mysql80')['fits'], 'stock config fits MySQL 8.0 before 8.16');
 	pg_assert_true(pg_innodb_row_estimate_from_columns($before, false, 16384, 'mysql57')['fits'], 'stock config fits MySQL 5.7 before 8.16');
 	pg_assert_true(pg_innodb_row_estimate_from_columns($before, false, 16384, 'mariadb')['fits'], 'stock config fits MariaDB before 8.16');
@@ -498,7 +498,7 @@ function test_innodb_stock_config_sql_row_size()
 
 	$before = pg_innodb_sql_row_estimate_from_columns(array_values($columns));
 
-	pg_assert_same(64312, $before['bytes'], 'stock config before 8.16');
+	pg_assert_same(64317, $before['bytes'], 'stock config before 8.16');
 	pg_assert_true($before['fits'], 'stock config fits the server row before 8.16');
 
 	$after = pg_innodb_sql_row_estimate_from_columns(pg_test_innodb_config_after_text_columns($columns));
@@ -589,4 +589,49 @@ function test_innodb_state_text_too_wide()
 
 	pg_assert_contains('1118', $fallback);
 	pg_assert_contains('Row size too large', $fallback);
+}
+
+// A conversion that died leaves its table in the marker. Starting the next
+// table must keep it there, and so must that table's end, or the upgrade
+// walks into the same wall on its next pass and the Database Engine screen
+// stops telling the operator.
+function test_innodb_marker_keeps_an_earlier_aborted_table()
+{
+	// Table a died at 100; the upgrade goes on to b at 200.
+	$died = array('table' => 'a', 'started' => 100, 'pid' => 7);
+	$during = pg_innodb_marker_begin($died, 'b', 200, 8);
+
+	pg_assert_same('b', $during['table'], 'the running table is named');
+	pg_assert_same(200, $during['started']);
+	pg_assert_same(100, pg_innodb_marker_started($during, 'a'), 'a is still recorded while b runs');
+	pg_assert_same(200, pg_innodb_marker_started($during, 'b'));
+	pg_assert_same(null, pg_innodb_marker_started($during, 'c'));
+
+	// b ends: a is the marker's table again, so the screen and the next
+	// pass both see it.
+	$after = pg_innodb_marker_end($during, 'b');
+
+	pg_assert_same('a', $after['table']);
+	pg_assert_same(100, $after['started']);
+	pg_assert_same(null, pg_innodb_marker_started($after, 'b'));
+
+	// a is retried by the operator and ends: nothing is left.
+	$retry = pg_innodb_marker_begin($after, 'a', 300, 9);
+	pg_assert_same(300, pg_innodb_marker_started($retry, 'a'), 'a retried carries its new start');
+	pg_assert_same(null, pg_innodb_marker_end($retry, 'a'));
+
+	// No earlier marker, or a broken one: only the running table.
+	foreach (array(null, false, 'x', array('table' => 5)) as $broken) {
+		$only = pg_innodb_marker_begin($broken, 'b', 200, 8);
+		pg_assert_same(array('b'), array_keys(array('b' => 1) + (isset($only['earlier']) ? $only['earlier'] : array())), 'nothing carried from a broken marker');
+		pg_assert_same(null, pg_innodb_marker_end($only, 'b'));
+	}
+
+	// Two earlier deaths survive a third table.
+	$two = pg_innodb_marker_begin(pg_innodb_marker_begin($died, 'b', 200, 8), 'c', 300, 9);
+	pg_assert_same(100, pg_innodb_marker_started($two, 'a'));
+	pg_assert_same(200, pg_innodb_marker_started($two, 'b'));
+	$left = pg_innodb_marker_end($two, 'c');
+	pg_assert_same(100, pg_innodb_marker_started($left, 'a'));
+	pg_assert_same(200, pg_innodb_marker_started($left, 'b'));
 }

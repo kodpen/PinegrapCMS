@@ -129,15 +129,152 @@ function pg_innodb_core_tables()
 
 /**
  * The file that says a conversion has started and not yet ended:
- * {"table": ..., "started": unix time, "pid": ...}. It is written before the
- * ALTER and removed after it, whichever way it ended, so a file that is still
- * there after the ALTER is no longer running means the request died under it.
+ * {"table": ..., "started": unix time, "pid": ..., "earlier": {table: started}}.
+ * It is written before the ALTER and the table is taken out after it,
+ * whichever way it ended, so a table still in it after the ALTER is no longer
+ * running means the request died under it. 'earlier' keeps such tables while
+ * the next one is converted (pg_innodb_marker_begin()).
  *
  * @return string
  */
 function pg_innodb_temp_marker()
 {
     return PG_FUNCTIONS_DIR . '/data/temp/innodb_convert.json';
+}
+
+/**
+ * The tables a marker records, table => the time its attempt started: the
+ * one it names, then the ones under 'earlier'. Anything that is not a valid
+ * entry is left out.
+ *
+ * No database access.
+ *
+ * @param mixed $marker the decoded marker file
+ * @return array
+ */
+function pg_innodb_marker_tables($marker)
+{
+    $tables = array();
+
+    if (!is_array($marker)) {
+        return $tables;
+    }
+
+    if (isset($marker['table']) && is_string($marker['table']) && ($marker['table'] !== '')) {
+        $tables[$marker['table']] = isset($marker['started']) ? (int) $marker['started'] : 0;
+    }
+
+    if (isset($marker['earlier']) && is_array($marker['earlier'])) {
+        foreach ($marker['earlier'] as $table => $started) {
+            if (is_string($table) && ($table !== '') && !isset($tables[$table])) {
+                $tables[$table] = (int) $started;
+            }
+        }
+    }
+
+    return $tables;
+}
+
+/**
+ * When the marker says an attempt on this table started, or null when it
+ * does not record the table.
+ *
+ * No database access.
+ *
+ * @param mixed  $marker
+ * @param string $table
+ * @return int|null
+ */
+function pg_innodb_marker_started($marker, $table)
+{
+    $tables = pg_innodb_marker_tables($marker);
+
+    return isset($tables[(string) $table]) ? $tables[(string) $table] : null;
+}
+
+/**
+ * The marker to write before the ALTER on $table. An attempt on another
+ * table that never removed itself is kept under 'earlier': the upgrade goes
+ * on to the next table after an aborted one, and overwriting the record
+ * would let its next pass start the same table again unattended.
+ *
+ * No database access.
+ *
+ * @param mixed  $marker the marker as it is now
+ * @param string $table
+ * @param int    $now
+ * @param int    $pid
+ * @return array
+ */
+function pg_innodb_marker_begin($marker, $table, $now, $pid)
+{
+    $table = (string) $table;
+    $earlier = pg_innodb_marker_tables($marker);
+    unset($earlier[$table]);
+
+    $next = array('table' => $table, 'started' => (int) $now, 'pid' => (int) $pid);
+
+    if (count($earlier) > 0) {
+        $next['earlier'] = $earlier;
+    }
+
+    return $next;
+}
+
+/**
+ * The marker left once the attempt on $table has ended, whichever way: the
+ * table is taken out, and an earlier aborted one becomes the marker's table
+ * again. null when nothing is left and the file is removed.
+ *
+ * No database access.
+ *
+ * @param mixed  $marker
+ * @param string $table
+ * @return array|null
+ */
+function pg_innodb_marker_end($marker, $table)
+{
+    $tables = pg_innodb_marker_tables($marker);
+    unset($tables[(string) $table]);
+
+    if (count($tables) === 0) {
+        return null;
+    }
+
+    reset($tables);
+    $first = (string) key($tables);
+    $next = array('table' => $first, 'started' => $tables[$first], 'pid' => 0);
+    unset($tables[$first]);
+
+    if (count($tables) > 0) {
+        $next['earlier'] = $tables;
+    }
+
+    return $next;
+}
+
+/**
+ * Writes the marker, or removes the file when there is nothing to record.
+ *
+ * @param array|null $marker
+ * @return void
+ */
+function pg_innodb_marker_write($marker)
+{
+    $marker_file = pg_innodb_temp_marker();
+
+    if (!is_array($marker)) {
+        @unlink($marker_file);
+        return;
+    }
+
+    $marker_directory = dirname($marker_file);
+
+    if (!is_dir($marker_directory)) {
+        @mkdir($marker_directory, 0755, true);
+    }
+
+    @file_put_contents($marker_file, json_encode($marker), LOCK_EX);
 }
 
 /**
@@ -890,15 +1027,14 @@ function pg_innodb_convert_table($table, $options = array())
     $result['rows'] = $status[$table]['rows'];
     $result['bytes'] = $status[$table]['bytes'];
 
-    $marker_file = pg_innodb_temp_marker();
-    $marker = @json_decode((string) @file_get_contents($marker_file), true);
-    $marker_is_ours = (is_array($marker) && isset($marker['table']) && ($marker['table'] === $table));
+    $marker = @json_decode((string) @file_get_contents(pg_innodb_temp_marker()), true);
+    $marker_started = pg_innodb_marker_started($marker, $table);
 
     if ($status[$table]['engine'] === 'innodb') {
         // A marker left by an attempt that the server finished after the
         // request had gone.
-        if ($marker_is_ours) {
-            @unlink($marker_file);
+        if ($marker_started !== null) {
+            pg_innodb_marker_write(pg_innodb_marker_end($marker, $table));
         }
         $result['state'] = 'already';
         return $result;
@@ -936,22 +1072,13 @@ function pg_innodb_convert_table($table, $options = array())
     // it began more than half a minute ago and never removed its marker: the
     // request (or the server) died during the copy. Whatever stopped it then
     // is likely to stop it again, so only the operator retries it.
-    if ($marker_is_ours && !$retry && isset($marker['started']) && (((int) $marker['started'] + 30) <= time())) {
+    if (($marker_started !== null) && !$retry && (($marker_started + 30) <= time())) {
         $result['state'] = 'aborted';
         return $result;
     }
 
-    $marker_directory = dirname($marker_file);
-
-    if (!is_dir($marker_directory)) {
-        @mkdir($marker_directory, 0755, true);
-    }
-
-    @file_put_contents($marker_file, json_encode(array(
-        'table' => $table,
-        'started' => time(),
-        'pid' => (function_exists('getmypid') ? getmypid() : 0),
-    )), LOCK_EX);
+    $marker = pg_innodb_marker_begin($marker, $table, time(), (function_exists('getmypid') ? (int) getmypid() : 0));
+    pg_innodb_marker_write($marker);
 
     // The session settings are put back afterwards; the same connection
     // carries on with the rest of the request.
@@ -990,7 +1117,7 @@ function pg_innodb_convert_table($table, $options = array())
         db_q("SET SESSION sql_mode = ?", array((string) $previous['sql_mode']));
     }
 
-    @unlink($marker_file);
+    pg_innodb_marker_write(pg_innodb_marker_end($marker, $table));
 
     if ($done) {
         $result['state'] = 'converted';

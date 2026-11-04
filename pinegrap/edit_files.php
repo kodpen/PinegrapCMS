@@ -179,6 +179,13 @@ if (!$_POST) {
     // if at least one file was selected then continue
     if ($_POST['files']) {
 
+        // A document the ERP module keeps has no folder, which the folder
+        // right below lets staff write to: it is refused by name, before any
+        // file of the list is moved or deleted.
+        if (pg_files_include_erp_document((array) $_POST['files'])) {
+            output_error(lang('ERP documents are read-only in the file manager.'));
+        }
+
         $number_of_files = 0;
         $number_of_images = 0;
         

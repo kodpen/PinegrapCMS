@@ -199,14 +199,8 @@ function get_folder_view_tree($folder_id, $include_pages, $include_files, $exclu
 
             // If files are selected to be included, then get them.
             if ($include_files == 1) {
-                $files = db_items(
-                    "SELECT
-                        name,
-                        description,
-                        design
-                    FROM files
-                    WHERE folder = '$folder_id'
-                    ORDER BY name ASC");
+                // No submitted form's upload (pg_fv_files_sql()).
+                $files = db_items(pg_fv_files_sql($folder_id));
 
                 // Loop through files in order to output them.
                 foreach ($files as $file) {

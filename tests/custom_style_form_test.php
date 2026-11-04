@@ -102,3 +102,133 @@ function test_custom_style_screens_refuse_a_blank_name()
 	pg_assert_contains('<button type="submit" name="submit_delete" value="Delete" formnovalidate', $edit, 'Delete is not blocked by an empty required box');
 	pg_assert_true(strpos($edit, "if (\$name === '') {") > strpos($edit, 'DELETE FROM style WHERE style_id = ?'), 'Delete is never refused for a blank name');
 }
+
+function test_custom_style_form_values_keep_to_the_lists()
+{
+	$post = array('name' => 'Home', 'code' => '', 'social_networking_position' => 'middle', 'collection' => 'z', 'layout_type' => 'wide');
+	$values = pg_custom_style_form_values($post, true);
+
+	pg_assert_same('a', $values['collection'], 'an unknown collection falls back to A');
+	pg_assert_same('', $values['layout_type'], 'an unknown layout type is no override');
+	pg_assert_same('bottom_left', $values['social_networking_position'], 'an unknown position is bottom left');
+
+	$values = pg_custom_style_form_values(array('name' => array('x'), 'code' => array('y'), 'collection' => array('b')), true);
+	pg_assert_same('', $values['style_name'], 'a name sent as a list is no name');
+	pg_assert_same('', $values['style_code'], 'code sent as a list is no code');
+	pg_assert_same('a', $values['collection'], 'a missing or listed collection falls back to A');
+	pg_assert_same('bottom_left', $values['social_networking_position'], 'a missing position is bottom left');
+
+	foreach (array('top_left', 'top_right', 'bottom_left', 'bottom_right', 'disabled') as $position) {
+		pg_assert_same($position, pg_custom_style_form_choice('social_networking_position', $position), $position . ' is kept');
+	}
+	pg_assert_same('b', pg_custom_style_form_choice('collection', 'b'), 'B is kept');
+	pg_assert_same('custom', pg_custom_style_form_choice('layout_type', 'custom'), 'custom is kept');
+}
+
+function test_custom_style_form_cards_blank_collection_and_layout_label()
+{
+	$stored = array('style_name' => 'x', 'style_code' => '', 'collection' => '', 'layout_type' => '', 'social_networking_position' => 'bottom_left');
+	$cards = pg_custom_style_form_cards($stored, false);
+
+	pg_assert_contains('value="a" checked="checked" class="radio"', $cards, 'an empty collection shows A');
+	pg_assert_false(strpos($cards, 'value="b" checked') !== false, 'an empty collection does not show B');
+	pg_assert_contains('<option value="" selected="selected">' . lang('No override (the page type layout)') . '</option>', $cards, 'the no-override option has a label');
+	pg_assert_false(strpos($cards, '<option value=""></option>') !== false, 'no blank option');
+}
+
+function test_custom_style_form_name_error_under_the_input()
+{
+	$cards = pg_custom_style_form_cards(pg_custom_style_form_defaults(), false, 'Taken <b>');
+
+	pg_assert_contains('is-invalid" aria-invalid="true" aria-describedby="name_error"', $cards, 'the input is marked invalid');
+	pg_assert_contains('<div id="name_error" class="invalid-feedback d-block">Taken &lt;b&gt;</div>', $cards, 'the escaped text under the input');
+	pg_assert_false(strpos(pg_custom_style_form_cards(pg_custom_style_form_defaults(), false), 'name_error') !== false, 'no error without a refusal');
+}
+
+function test_style_layout_type_label()
+{
+	pg_assert_same(lang('System'), pg_style_layout_type_label('system'), 'system');
+	pg_assert_same(lang('Custom'), pg_style_layout_type_label('custom'), 'custom');
+	pg_assert_same('', pg_style_layout_type_label(''), 'no override');
+
+	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_styles.php');
+	pg_assert_contains("h(pg_style_layout_type_label(\$style['layout_type']))", $list, 'the list column is translated');
+	pg_assert_false(strpos($list, "ucwords(\$style['layout_type'])") !== false, 'no raw enum in the list');
+}
+
+function test_style_edit_screen()
+{
+	pg_assert_same('custom', pg_style_edit_screen('custom', ''), 'a custom style');
+	pg_assert_same('system', pg_style_edit_screen('system', ''), 'a system style');
+	pg_assert_same('system', pg_style_edit_screen('system', 'visual_designer'), 'a visual design');
+	pg_assert_same('system', pg_style_edit_screen('custom', 'visual_designer'), 'a visual design whatever its type');
+	pg_assert_same('', pg_style_edit_screen('', ''), 'neither');
+
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_custom_style.php');
+	$guard = strpos($edit, "if (\$edit_screen !== 'custom') {");
+	pg_assert_true($guard !== false, 'the edit screen checks the style kind');
+	pg_assert_true($guard < strpos($edit, 'if (!$_POST) {'), 'before the form or a save');
+	pg_assert_contains("/edit_system_style.php?id=' . \$id", $edit, 'a design goes to its own screen');
+}
+
+function test_style_name_taken()
+{
+	$calls = array();
+	$lookup = function ($sql, $values) use (&$calls) {
+		$calls[] = array($sql, $values);
+		if (strpos($sql, 'SELECT style_name') === 0) {
+			return 'Old';
+		}
+		return in_array('Kafe', $values, true) ? 1 : 0;
+	};
+
+	pg_assert_false(pg_style_name_taken('', null, $lookup), 'an empty name is not checked');
+	pg_assert_same(0, count($calls), 'no query for an empty name');
+	pg_assert_true(pg_style_name_taken('Kafe', null, $lookup), 'create: a design name is taken');
+	pg_assert_false(pg_style_name_taken('New', null, $lookup), 'create: a free name');
+	pg_assert_false(pg_style_name_taken('Old', 5, $lookup), 'edit: the unchanged name is not checked');
+	pg_assert_true(pg_style_name_taken('Kafe', 5, $lookup), 'edit: a rename to a taken name');
+	pg_assert_same(array('Kafe', '5'), $calls[count($calls) - 1][1], 'edit leaves its own id out');
+}
+
+function test_custom_style_screens_refuse_a_taken_or_long_name()
+{
+	pg_assert_contains('can be at most', pg_region_form_name_refusal(str_repeat('ş', 101), false), 'over 100 characters');
+	pg_assert_same('', pg_region_form_name_refusal(str_repeat('ş', 100), false), '100 characters fit');
+
+	foreach (array('add_custom_style.php' => 'pg_style_name_taken($name)', 'edit_custom_style.php' => 'pg_style_name_taken($name, $id)') as $file => $call) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('pg_region_form_name_refusal($name, ' . $call . ')', $source, $file . ' refuses a taken or long name');
+		pg_assert_contains("mark_error('name', \$name_error)", $source, $file . ' shows it under the name');
+		pg_assert_contains(', $name_error)', $source, $file . ' draws the error');
+	}
+}
+
+function test_style_duplicate_name_fits_the_column()
+{
+	pg_assert_same(100, pg_unique_name_limit('style'), 'style.style_name is varchar(100)');
+
+	$long = 'pg-test uzun ' . str_repeat('ş', 87);
+	$copy = pg_bracket_suffix_name($long, pg_unique_name_limit('style'));
+	pg_assert_same(100, mb_strlen($copy, 'UTF-8'), 'the copy fits the column');
+	pg_assert_true($copy !== $long, 'the copy differs from its source');
+}
+
+function test_delete_styles_reads_the_selection_safely()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/delete_styles.php');
+
+	pg_assert_contains("(isset(\$_POST['styles']) && is_array(\$_POST['styles'])) ? \$_POST['styles'] : array()", $source, 'a missing or single value selects nothing');
+	pg_assert_false(strpos($source, "if (!\$_POST['styles'])") !== false, 'no unchecked key read');
+	pg_assert_false(strpos($source, "foreach (\$_POST['styles']") !== false, 'no loop over the raw post');
+}
+
+function test_view_system_style_source_returns_to_the_style()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_system_style_source.php');
+
+	pg_assert_contains("\$edit_style_path = 'edit_system_style.php?id=' . \$id;", $source, 'the style edit screen is the way back');
+	pg_assert_contains("pg_safe_back_url(\$liveform->get_field_value('send_to'), \$edit_style_path)", $source, 'Cancel goes back to the style');
+	pg_assert_contains("PATH . SOFTWARE_DIRECTORY . '/' . \$edit_style_path", $source, 'Save & Return goes back to the style');
+	pg_assert_false(strpos($source, "'view_styles.php'") !== false, 'not to the list without designs');
+}

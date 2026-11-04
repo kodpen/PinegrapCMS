@@ -140,16 +140,17 @@ function test_submitted_form_list_row()
 		'submitted_timestamp' => time(), 'last_modified_username' => 'ed', 'last_modified_timestamp' => time(),
 	), true);
 
-	pg_assert_same(9, count($row['cells']), 'as many cells as headings');
-	pg_assert_contains('name="forms[]" value="12"', $row['cells'][0]['html']);
-	pg_assert_contains("edit_submitted_form.php?id=12", $row['cells'][1]['html']);
-	pg_assert_same('&lt;b&gt;Form&lt;/b&gt;', $row['cells'][2]['html']);
-	pg_assert_same('chart_label', $row['cells'][2]['class']);
-	pg_assert_same('R&amp;1', $row['cells'][3]['html']);
-	pg_assert_contains('[' . lang('No Name') . ']', $row['cells'][5]['html'], 'a contact without a name');
-	pg_assert_contains('edit_contact.php?id=4', $row['cells'][5]['html']);
-	pg_assert_same('', $row['cells'][6]['html'], 'no user');
-	pg_assert_contains('[' . lang('Unknown') . ']', $row['cells'][7]['html']);
+	pg_assert_same(12, $row['id']);
+	pg_assert_same(array_keys(pg_submitted_form_list_columns()), array_keys($row['cells']), 'a cell for every column');
+	pg_assert_contains('data-pg-open href="edit_submitted_form.php?id=12"', $row['cells']['custom_form']['html'], 'the name opens the form');
+	pg_assert_contains('&lt;b&gt;Form&lt;/b&gt;</a>', $row['cells']['custom_form']['html']);
+	pg_assert_same('chart_label', $row['cells']['custom_form']['class']);
+	pg_assert_contains('edit_submitted_form.php?id=12', $row['cells']['actions']['html']);
+	pg_assert_same('R&amp;1', $row['cells']['reference_code']['html']);
+	pg_assert_contains('[' . lang('No Name') . ']', $row['cells']['contact']['html'], 'a contact without a name');
+	pg_assert_contains('edit_contact.php?id=4', $row['cells']['contact']['html']);
+	pg_assert_same('', $row['cells']['user']['html'], 'no user');
+	pg_assert_contains('[' . lang('Unknown') . ']', $row['cells']['submitted']['html']);
 
 	$row = pg_submitted_form_list_row(array(
 		'id' => '3', 'complete' => '0', 'form_name' => 'F', 'reference_code' => '',
@@ -157,9 +158,9 @@ function test_submitted_form_list_row()
 		'submitted_timestamp' => time(), 'last_modified_username' => '', 'last_modified_timestamp' => time(),
 	), false);
 
-	pg_assert_same('', $row['cells'][5]['html'], 'no contact, no contacts access');
-	pg_assert_contains(lang('Incomplete'), $row['cells'][4]['html']);
-	pg_assert_same('sam', $row['cells'][6]['html']);
+	pg_assert_same('', $row['cells']['contact']['html'], 'no contact, no contacts access');
+	pg_assert_contains(lang('Incomplete'), $row['cells']['status']['html']);
+	pg_assert_same('sam', $row['cells']['user']['html']);
 
 	// A submission whose contact is missing or deleted reads contacts.id as
 	// NULL: no empty, nameless link even with contacts access.
@@ -169,7 +170,7 @@ function test_submitted_form_list_row()
 		'submitted_timestamp' => time(), 'last_modified_username' => '', 'last_modified_timestamp' => time(),
 	), true);
 
-	pg_assert_same('', $row['cells'][5]['html'], 'no contact, contacts access');
+	pg_assert_same('', $row['cells']['contact']['html'], 'no contact, contacts access');
 }
 
 function test_submitted_form_list_labels_tell_forms_apart()
@@ -201,4 +202,149 @@ function test_submitted_form_list_options_keep_every_form()
 
 	pg_assert_same(array('1609', '1654', '1584'), array_values($options), 'each form is its own option');
 	pg_assert_same(array('Blog — blog', 'Blog — blog (#1654)', 'Contact &amp; Co'), array_keys($options), 'a label still equal gets the form id; labels are escaped');
+}
+
+// A field filter is a condition on the form, not a join: a check box group
+// stores one row per ticked box, and a join on a filter two of them match
+// listed the form twice and counted it twice.
+function test_submitted_form_list_field_condition_is_one_per_form()
+{
+	$condition = pg_submitted_form_list_field_condition(12, 'e');
+
+	pg_assert_same(0, preg_match('/\bJOIN\b/i', $condition['sql']), 'no join');
+	pg_assert_contains('EXISTS (SELECT 1 FROM form_data', $condition['sql']);
+	pg_assert_contains('(form_data.form_id = forms.id)', $condition['sql']);
+	pg_assert_same(array('12', pg_list_like_pattern('e')), $condition['params']);
+}
+
+function test_submitted_form_list_labels_number_forms_still_equal()
+{
+	$labels = pg_submitted_form_list_labels(array(
+		array('id' => '1745', 'form_name' => 'Blog', 'page_name' => 'post-4', 'binned' => true),
+		array('id' => '1778', 'form_name' => 'Blog', 'page_name' => 'post-4', 'binned' => true),
+		array('id' => '1609', 'form_name' => 'Blog', 'page_name' => 'blog', 'binned' => false),
+	));
+
+	pg_assert_same('Blog — blog', $labels[0]['name'], 'a label of its own gets no id');
+	pg_assert_same('Blog — post-4 [' . lang('IN RECYCLE BIN') . '] (#1745)', $labels[1]['name'], 'every form of a shared label gets its id');
+	pg_assert_same('Blog — post-4 [' . lang('IN RECYCLE BIN') . '] (#1778)', $labels[2]['name'], 'the second one too');
+}
+
+function test_submitted_form_list_field_label_reads_the_label()
+{
+	pg_assert_same(array('text' => 'Department', 'title' => 'Department (department)'), pg_submitted_form_list_field_label('Department', 'department'), 'the label is shown, the title names the field');
+	pg_assert_same(array('text' => 'doctor', 'title' => 'doctor'), pg_submitted_form_list_field_label('', 'doctor'), 'a field without a label shows its name');
+	pg_assert_same('A & B', pg_submitted_form_list_field_label('<b>A &amp; B</b>', 'ab')['text'], 'markup is taken off, not escaped twice');
+
+	$long = pg_submitted_form_list_field_label(str_repeat('consent ', 20), 'consent', 30);
+	pg_assert_same(30, mb_strlen($long['text'], 'UTF-8'), 'a long label is cut');
+	pg_assert_same('…', mb_substr($long['text'], -1, 1, 'UTF-8'), 'and ends with an ellipsis');
+	pg_assert_true(strpos($long['title'], '(consent)') !== false, 'the title keeps the whole label and the name');
+}
+
+function test_submitted_form_import_fixed_columns()
+{
+	$export = pg_submitted_form_export_columns();
+
+	pg_assert_same(12, pg_submitted_form_import_fixed_columns(array_merge($export, array('status', 'first_name'))), 'an exported file starts with the record columns');
+	pg_assert_same(13, pg_submitted_form_import_fixed_columns(array_merge($export, array('quiz_score', 'status'))), 'a quiz adds its score column');
+	pg_assert_same(0, pg_submitted_form_import_fixed_columns(array('status', 'first_name')), 'a hand-made file maps every column to fields');
+	pg_assert_same(0, pg_submitted_form_import_fixed_columns(array('form_name', 'reference_code')), 'a part of the record columns is not the export');
+}
+
+function test_submitted_form_import_complete()
+{
+	pg_assert_same('0', pg_submitted_form_import_complete(lang('Incomplete')), 'the incomplete status in the panel language');
+	pg_assert_same('0', pg_submitted_form_import_complete(' incomplete '), 'in English, any case');
+	pg_assert_same('1', pg_submitted_form_import_complete(lang('Complete')), 'complete');
+	pg_assert_same('1', pg_submitted_form_import_complete(''), 'an empty cell is complete');
+}
+
+function test_submitted_form_import_value_converts_dates()
+{
+	pg_assert_same('2026-12-20', pg_submitted_form_import_value('2026-12-20', 'date'), 'the export ISO date stays');
+	pg_assert_same('1990-12-15', pg_submitted_form_import_value('15/12/1990', 'date'), 'the site order is read');
+	pg_assert_same('1990-12-15', pg_submitted_form_import_value('15.12.1990', 'date'), 'the dotted date is read');
+	pg_assert_same(null, pg_submitted_form_import_value('31.02.2026', 'date'), 'no real date is refused');
+	pg_assert_same(null, pg_submitted_form_import_value('soon', 'date'), 'text is refused');
+	pg_assert_same('', pg_submitted_form_import_value('  ', 'date'), 'an empty cell stays empty');
+
+	pg_assert_same('2026-12-20 17:05', pg_submitted_form_import_value('2026-12-20 17:05', 'date and time'), 'the export date and time stays');
+	pg_assert_same('2026-12-20 17:05', pg_submitted_form_import_value('2026-12-20T17:05', 'date and time'), 'the ISO T form');
+	pg_assert_same('1990-12-15 17:05', pg_submitted_form_import_value('15.12.1990 5:05 PM', 'date and time'), 'a site date with a 12-hour time');
+	pg_assert_same(null, pg_submitted_form_import_value('15.12.1990', 'date and time'), 'a date without a time is refused');
+	pg_assert_same(null, pg_submitted_form_import_value('15.12.1990 25:00', 'date and time'), 'an impossible time is refused');
+
+	pg_assert_same('17:05', pg_submitted_form_import_value('17:05:00', 'time'), 'the export time');
+	pg_assert_same('17:05', pg_submitted_form_import_value('5:05 PM', 'time'), 'a 12-hour time');
+	pg_assert_same(null, pg_submitted_form_import_value('noon', 'time'), 'text is no time');
+
+	pg_assert_same(' as is ', pg_submitted_form_import_value(' as is ', 'text box'), 'other types are left as they are');
+}
+
+function test_submitted_form_list_columns_keep_the_sort_codes()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+	$columns = pg_list_table_columns(pg_submitted_form_list_columns());
+
+	pg_assert_same(array('custom_form', 'reference_code', 'status', 'contact', 'user', 'submitted', 'last_modified'), array_keys(pg_list_table_sort_columns($columns)), 'a kept sort still names its column');
+	pg_assert_same(false, $columns['custom_form']['hideable'], 'the form name is never hidden');
+	pg_assert_same("CONCAT(contacts.last_name, ' ', contacts.first_name)", $columns['contact']['sort'], 'the contact sorts by last name, then first name');
+	pg_assert_false($columns['actions']['sortable']);
+}
+
+function test_submitted_form_list_is_a_driver_list()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+	$definition = pg_list_table_definition('view_submitted_forms');
+
+	pg_assert_same('includes/fn/submitted_form_list.php', $definition['file']);
+	pg_assert_same('pg_submitted_form_list_source', $definition['source']);
+	pg_assert_true(function_exists($definition['source']), 'the source function is in its file');
+	pg_assert_same(null, pg_submitted_form_list_source(array('id' => 4, 'role' => 3, 'manage_forms' => false), array()), 'a user who does not manage forms may not open the list');
+}
+
+// A designed form's fee: the Payment column only once the fee columns exist,
+// after Status and never sorted, so the kept sort codes stay as they were.
+function test_submitted_form_list_payment_column()
+{
+	pg_assert_false(array_key_exists('payment', pg_submitted_form_list_columns()), 'no fee columns: no Payment column');
+
+	$columns = pg_submitted_form_list_columns(true);
+	$keys = array_keys($columns);
+	pg_assert_same(array_search('status', $keys) + 1, array_search('payment', $keys), 'right after Status');
+	pg_assert_same('badge', $columns['payment']['kind']);
+	pg_assert_false(isset($columns['payment']['sort']), 'not sorted');
+}
+
+// The badge: nothing for a record without a fee order, Unpaid or Paid.
+function test_submitted_form_list_payment_cell()
+{
+	pg_assert_same('', pg_submitted_form_list_payment_badge(array('order_id' => 0, 'paid_at' => 0)), 'no fee');
+	pg_assert_contains(lang('Unpaid'), pg_submitted_form_list_payment_badge(array('order_id' => '7', 'paid_at' => '0')));
+	pg_assert_contains(lang('Paid'), pg_submitted_form_list_payment_badge(array('order_id' => '7', 'paid_at' => '1700000000')));
+
+	$record = array(
+		'id' => '3', 'complete' => '1', 'form_name' => 'F', 'reference_code' => 'R',
+		'contact_id' => null, 'contact_name' => null, 'submitted_username' => '',
+		'submitted_timestamp' => time(), 'last_modified_username' => '', 'last_modified_timestamp' => time(),
+	);
+	pg_assert_same(array_keys(pg_submitted_form_list_columns()), array_keys(pg_submitted_form_list_row($record, false)['cells']), 'a record read without the fee columns has no Payment cell');
+
+	$row = pg_submitted_form_list_row($record + array('order_id' => '7', 'paid_at' => '0'), false);
+	pg_assert_same(array_keys(pg_submitted_form_list_columns(true)), array_keys($row['cells']), 'a cell for every column with the fee columns');
+	pg_assert_contains(lang('Unpaid'), $row['cells']['payment']['html']);
+}
+
+// The Unpaid filter, in the simple and the advanced view alike, only once
+// the fee columns exist.
+function test_submitted_form_list_unpaid_filter()
+{
+	pg_assert_same(pg_form_payment_unpaid_where('forms'), pg_submitted_form_list_payment_condition(array('payment' => 'unpaid'), true));
+	pg_assert_same('', pg_submitted_form_list_payment_condition(array('payment' => 'unpaid'), false), 'no fee columns: no filter');
+	pg_assert_same('', pg_submitted_form_list_payment_condition(array('payment' => 'any'), true), 'any');
+	pg_assert_same('', pg_submitted_form_list_payment_condition(array(), true), 'unset');
+	pg_assert_same('', pg_submitted_form_list_payment_condition(array('payment' => array('unpaid')), true), 'not text');
 }

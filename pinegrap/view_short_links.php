@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 $user = validate_user();
 validate_area_access($user, 'manager');
 
@@ -56,8 +57,6 @@ $order_by = pg_list_order_by($sort_levels, array(
     'last_modified'    => 'short_links.last_modified_timestamp',
 ));
 
-$all_short_links = 0;
-
 // Links in the Recycle Bin are left out: they are restored or deleted for good
 // in the File Manager, and the edit screen does not open them.
 require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
@@ -73,6 +72,8 @@ if (($_GET['export'] ?? '') === 'csv') {
             short_links.destination_type,
             short_links.url,
             short_links.tracking_code,
+            short_links.page_id,
+            short_links.file_id,
             " . (pg_short_link_redirects_ready() ? "short_links.redirect_code," : "") . "
             page.page_name,
             product_groups.address_name AS product_group_address_name,
@@ -95,20 +96,14 @@ if (($_GET['export'] ?? '') === 'csv') {
     exit();
 }
 
-// get the total number of short links
-$query = "SELECT COUNT(*) FROM short_links WHERE destination_type <> 'workspace_guest'" . $sql_live;
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-$row = mysqli_fetch_row($result);
-$all_short_links = $row[0];
-
-
-
 // Get all short links.
 $query =
     "SELECT
         short_links.id,
         short_links.name,
         short_links.destination_type,
+        short_links.page_id,
+        short_links.file_id,
         " . (pg_short_link_modes_ready() ? "short_links.link_mode, short_links.token_hint, short_links.expires_at, short_links.used_at," : "") . "
         " . (pg_short_link_redirects_ready() ? "short_links.redirect_code, short_links.is_pattern," : "") . "
         page.page_name,
@@ -134,15 +129,26 @@ $query =
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $short_links = mysqli_fetch_items($result);
 
-$output_rows = '';
+// Every link is printed: the list table driver sorts and searches them in
+// the browser (browser mode) and keeps a heading's sort in the session.
+$list_rows = array();
 
-// if there is at least one result to display
 if ($short_links) {
-    
-
     foreach ($short_links as $short_link) {
         $output_destination_type = isset($destination_type_names[$short_link['destination_type']]) ? $destination_type_names[$short_link['destination_type']] : '';
         $output_destination = '';
+
+        // A destination in the Recycle Bin shows the name it had, marked,
+        // never its parked pgbin_ name.
+        $binned_original = pg_short_link_binned_original($short_link);
+
+        if ($binned_original !== '') {
+            if ($short_link['destination_type'] === 'file') {
+                $short_link['file_name'] = $binned_original;
+            } else {
+                $short_link['page_name'] = $binned_original;
+            }
+        }
 
         switch ($short_link['destination_type']) {
             case 'page':
@@ -185,16 +191,8 @@ if ($short_links) {
             $output_destination .= '?t=' . h(urlencode($short_link['tracking_code']));
         }
 
-        $created_username = '';
-        
-        if ($short_link['created_username']) {
-            $created_username = ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($short_link['created_username']) ) ) );
-        }
-        
-        $last_modified_username = '';
-        
-        if ($short_link['last_modified_username']) {
-            $last_modified_username = ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($short_link['last_modified_username']) ) ) );
+        if ($binned_original !== '') {
+            $output_destination .= ' [' . h(lang('IN RECYCLE BIN')) . ']';
         }
 
         // A one-time link has a generated address, shown once when it was
@@ -221,22 +219,33 @@ if ($short_links) {
             $output_name .= '<div class="small fg-secondary">' . h($short_link_state['label']) . '</div>';
         }
 
-        $output_rows .=
-            '<tr>
-                <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_short_link.php?id=' . $short_link['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                    ' . (($short_link_token || $short_link_pattern) ? '' : '<a href="' . OUTPUT_PATH . h(encode_url_path($short_link['name'])) . '" class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " title="' . lang('Visit') . '" ><i class="bi bi-link"></i></a>') . '
-                </td>
-                <td class="align-middle chart_label">' . $output_name . '</td>
-                <td class="align-middle">' . $output_destination_type . '</td>
-                <td class="align-middle">' . $output_destination . '</td>
-                <td class="align-middle">' . get_relative_time(array('timestamp' => $short_link['created_timestamp'])) . $created_username . '</td>
-                <td class="align-middle">' . get_relative_time(array('timestamp' => $short_link['last_modified_timestamp'])) . $last_modified_username . '</td>
-            </tr>';
+        $list_rows[] = array(
+            'id' => $short_link['id'],
+            'cells' => array(
+                'name' => pg_list_cell('<a href="edit_short_link.php?id=' . (int) $short_link['id'] . '" data-pg-open>' . $output_name . '</a>'),
+                'destination_type' => pg_list_cell(h($output_destination_type)),
+                'destination' => pg_list_cell($output_destination),
+                'created' => pg_list_cell(pg_list_when($short_link['created_timestamp'], $short_link['created_username'] ?? ''), 'align-middle', array('data-pg-sort-value' => (int) $short_link['created_timestamp'])),
+                'last_modified' => pg_list_cell(pg_list_when($short_link['last_modified_timestamp'], $short_link['last_modified_username'] ?? ''), 'align-middle', array('data-pg-sort-value' => (int) $short_link['last_modified_timestamp'])),
+                'visit' => pg_list_cell(($short_link_token || $short_link_pattern) ? '' : '<a href="' . OUTPUT_PATH . h(encode_url_path($short_link['name'])) . '" class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Visit')) . '" aria-label="' . h(lang('Visit')) . '"><i class="bi bi-link" aria-hidden="true"></i></a>'),
+            ),
+        );
     }
 }
 
-
+$list = pg_list_table_printed(array(
+    'list' => 'view_short_links',
+    'columns' => array(
+        'name' => array('heading' => lang('Name')),
+        'destination_type' => array('heading' => lang('Destination Type')),
+        'destination' => array('heading' => lang('Destination')),
+        'created' => array('heading' => lang('Created'), 'kind' => 'date'),
+        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+        'visit' => array('heading' => lang('Visit'), 'kind' => 'actions'),
+    ),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+));
 
 print
 pg_page_shell(
@@ -261,34 +270,17 @@ pg_page_shell(
                     (pg_short_link_redirects_ready() ? array('label' => lang('Import'), 'url' => 'import_short_links.php', 'icon' => 'bi-upload') : ''),
                     array('label' => lang('Export'), 'url' => 'view_short_links.php?export=csv', 'icon' => 'bi-download'),
                 ),
-                'search'    => pg_list_sort_menu('view_short_links.php', $sort_columns, $sort_levels, $sort_default),
+                'search'    => array(pg_list_table_search_box('view_short_links'), pg_list_sort_menu('view_short_links.php', $sort_columns, $sort_levels, $sort_default)),
                 'view'      => (pg_not_found_log_ready() ? '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">
                     <a class="btn btn-text theme-secondary active" href="view_short_links.php" aria-current="page">' . h(lang('Short Links')) . '</a>
                     <a class="btn btn-text theme-secondary" href="view_not_found_log.php">' . h(lang('404 Log')) . '</a>
                 </div>' : ''),
             )) . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table " style="width:100%;display:none">
-                        <thead>
-                            <tr>
-                                <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                <th>' . get_column_heading(lang('Destination Type'), $sort_levels, '', '', 'destination_type') . '</th>
-                                <th>' . lang('Destination') . '</th>
-                                <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ' . $output_rows . '
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            ' . pg_list_table_html($list['source'], $list['page'], lang('Short Links')) . '
         </div>
     </div>
 </main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 ' .
 output_footer();
 

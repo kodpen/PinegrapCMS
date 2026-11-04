@@ -107,6 +107,13 @@ function pg_panel_actions()
         // The caller's own layout of the new dashboard, every backend role;
         // the handler checks the session, the token and the role's lock.
         'dashboard_layout_save' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_layout_save', 'exempt' => true, 'token' => true, 'write' => true),
+        // A role's default layout and its lock: administrators and
+        // designers, so it keeps the general gate; the handler checks too.
+        'dashboard_role_default' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_role_default', 'exempt' => false, 'token' => true, 'write' => true),
+        // The caller's own goals, pins or notes on the new dashboard, every
+        // backend role; the handler checks the session, the token and the
+        // role's lock.
+        'dashboard_personal_save' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_personal_save', 'exempt' => true, 'token' => true, 'write' => true),
         // Site-wide, so it keeps the general gate.
         'update_dashboard_appearance' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_update_dashboard_appearance', 'exempt' => false, 'token' => true, 'write' => true),
         // Noting that someone has watched a guided tour is theirs to do
@@ -182,16 +189,18 @@ function pg_panel_actions()
         // only asks for the session.
         'get_form' => array('file' => 'content.php', 'handler' => 'pg_panel_get_form', 'exempt' => false, 'any_role' => true, 'token' => false, 'write' => false),
         'get_forms' => array('file' => 'content.php', 'handler' => 'pg_panel_get_forms', 'exempt' => false, 'any_role' => true, 'token' => false, 'write' => false),
-        'user_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_user_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
-        'submitted_form_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_submitted_form_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
-        'contact_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_contact_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
-        'product_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_product_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        // Refresh now of a contact group filled by rules: every role with the
+        // contacts right and the group; the handler checks both.
+        'audience_refresh' => array('file' => 'audiences.php', 'handler' => 'pg_panel_audience_refresh', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => true),
+        'audience_count' => array('file' => 'audiences.php', 'handler' => 'pg_panel_audience_count', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'commission_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_commission_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'commission_profile_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_commission_profile_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
-        'site_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_site_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
-        'audit_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_audit_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        'booking_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_booking_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'audit_log_changes' => array('file' => 'lists.php', 'handler' => 'pg_panel_audit_log_changes', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
-        'waf_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_waf_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        'list_table_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_list_table_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        'list_table_sort' => array('file' => 'lists.php', 'handler' => 'pg_panel_list_table_sort', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        'mail_queue_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_mail_queue_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        'sms_queue_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_sms_queue_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'get_pages' => array('file' => 'content.php', 'handler' => 'pg_panel_get_pages', 'exempt' => false, 'token' => false, 'write' => false),
         'test' => array('file' => 'content.php', 'handler' => 'pg_panel_test', 'exempt' => false, 'token' => false, 'write' => false),
         // A basic user sorts the menus they may edit.
@@ -201,6 +210,9 @@ function pg_panel_actions()
         // with a user name and a password in the body; their names and
         // answers are a contract.
         'get_designer_regions' => array('file' => 'designer.php', 'handler' => 'pg_panel_get_designer_regions', 'exempt' => false, 'token' => false, 'write' => false),
+        // The visual designs as templates, with their managed files
+        // (includes/fn/site_migration.php); a designer or an administrator.
+        'get_designs' => array('file' => 'designer.php', 'handler' => 'pg_panel_get_designs', 'exempt' => false, 'token' => false, 'write' => false),
         'get_styles' => array('file' => 'designer.php', 'handler' => 'pg_panel_get_styles', 'exempt' => false, 'token' => false, 'write' => false),
         // The front-end toolbar's open/closed state lives in the caller's own
         // session. Every role; the handler checks the session and the token.
@@ -252,7 +264,6 @@ function pg_panel_actions()
         // administrator-only and keep the general gate.
         'database_deep_check' => array('file' => 'system.php', 'handler' => 'pg_panel_database_deep_check', 'exempt' => true, 'token' => true, 'write' => true),
         'server_config_repair' => array('file' => 'system.php', 'handler' => 'pg_panel_server_config_repair', 'exempt' => true, 'token' => true, 'write' => true),
-        'ca_bundle_config_repair' => array('file' => 'system.php', 'handler' => 'pg_panel_ca_bundle_config_repair', 'exempt' => false, 'token' => true, 'write' => true),
         'write_permissions_repair' => array('file' => 'system.php', 'handler' => 'pg_panel_write_permissions_repair', 'exempt' => true, 'token' => true, 'write' => true),
         'purge_cache' => array('file' => 'system.php', 'handler' => 'pg_panel_purge_cache', 'exempt' => true, 'token' => true, 'write' => true),
         'ca_bundle_update' => array('file' => 'system.php', 'handler' => 'pg_panel_ca_bundle_update', 'exempt' => false, 'token' => true, 'write' => true),

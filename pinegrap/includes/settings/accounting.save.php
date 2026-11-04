@@ -43,6 +43,28 @@ foreach (erp_settings_cards_refusals($_POST, $erp_settings_cards) as $erp_settin
     $liveform->mark_error($erp_settings_field, h($erp_settings_error));
 }
 
+// The invoice series starts every document number: Latin capitals and
+// digits only (the tax authority refuses anything else on an e-document),
+// stored upper-cased. Empty is refused while the module is on, as issuing
+// would then stop at "No invoice series is set."
+$erp_default_series_value = strtoupper(trim((string) post_value('erp_default_series')));
+
+if (
+    (post_value('erp_default_series') !== null)
+    && (!preg_match('/^[A-Z0-9]{0,10}$/', $erp_default_series_value) || (($erp_default_series_value === '') && (post_value('erp_enabled') == 1)))
+) {
+    $liveform->mark_error('erp_default_series', lang('Enter the invoice series in 1 to 10 Latin letters or digits, for example PGF.'));
+}
+
+// The overdue reminder recipients: every address is checked, and a wrong one
+// is named rather than dropped without a word.
+foreach (explode(',', (string) post_value('erp_overdue_notify_recipients')) as $erp_overdue_address) {
+    foreach (pg_email_field_errors(array('erp_overdue_notify_recipients' => trim($erp_overdue_address))) as $erp_overdue_error) {
+        $liveform->mark_error('erp_overdue_notify_recipients', $erp_overdue_error);
+        break 2;
+    }
+}
+
 if ($liveform->check_form_errors()) {
     return;
 }
@@ -209,7 +231,7 @@ function pg_parasut_credentials_for_save()
     if (waf_table_has_column('config', 'erp_notify_collections')) {
         $sql_erp_due .= "
             erp_notify_collections = '" . ((post_value('erp_notify_collections') == 1) ? 1 : 0) . "',
-            erp_notify_collection_min = '" . (min(100000000, max(0, (int) post_value('erp_notify_collection_min'))) * 100) . "',
+            erp_notify_collection_min = '" . (min(100000000, max(0, (int) round((float) str_replace(',', '.', (string) post_value('erp_notify_collection_min'))))) * 100) . "',
             erp_notify_low_stock = '" . ((post_value('erp_notify_low_stock') == 1) ? 1 : 0) . "',";
     }
 
@@ -262,11 +284,12 @@ function pg_parasut_credentials_for_save()
 
         // Its two filters (11.0.58), drawn with the select, so a switch that
         // did not come is one left off. The amount is typed in whole units of
-        // the base currency and kept in minor units.
+        // the base currency and kept in minor units; a typed fraction is
+        // rounded, never cut.
         if (waf_table_has_column('config', 'erp_auto_invoice_tax_number_only') && waf_table_has_column('config', 'erp_auto_invoice_min_total')) {
             $sql_erp_due .= "
             erp_auto_invoice_tax_number_only = '" . ((post_value('erp_auto_invoice_tax_number_only') == 1) ? 1 : 0) . "',
-            erp_auto_invoice_min_total = '" . (min(10000000, max(0, (int) post_value('erp_auto_invoice_min_total'))) * 100) . "',";
+            erp_auto_invoice_min_total = '" . (min(10000000, max(0, (int) round((float) str_replace(',', '.', (string) post_value('erp_auto_invoice_min_total'))))) * 100) . "',";
         }
 
         // Marketplace orders too (11.0.62), drawn with the select as well.
@@ -358,7 +381,7 @@ function pg_parasut_credentials_for_save()
             parasut_default_product_id = '" . escape(trim(post_value('parasut_default_product_id'))) . "',
             parasut_default_warehouse_id = '" . escape(trim(post_value('parasut_default_warehouse_id'))) . "',
             erp_enabled = '" . escape(post_value('erp_enabled')) . "',
-            erp_default_series = '" . escape(trim(post_value('erp_default_series'))) . "',
+            erp_default_series = '" . escape($erp_default_series_value) . "',
             erp_web_address = '" . escape(trim(post_value('erp_web_address'))) . "',
             " . $sql_erp_fx . "
             " . $sql_erp_due . "

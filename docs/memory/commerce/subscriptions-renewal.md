@@ -32,4 +32,4 @@ module: subscription_renewal
 - `tests/subscriptions_renewal_test.php` (pure rules, stand-in io: lock, order of writes, one charge). Not run on a database or a live service.
 - `tests/payment_stripe_webhook_test.php`: the renewal's `payment_intent.succeeded`.
 
-Related: commerce/subscriptions.md, commerce/subscriptions-stripe.md, plans/subscriptions-iyzico-stripe.md
+Related: commerce/subscriptions.md, commerce/subscriptions-stripe.md, commerce/subscriptions-decisions.md

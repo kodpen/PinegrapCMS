@@ -98,8 +98,8 @@ function test_ws_voice_push_and_search_are_wired()
 	};
 
 	pg_assert_same(2, substr_count($read('includes/workspace/notify.php'), 'ws_voice_excerpt($viewer, $message, 140)'), 'the mention and the read-receipt reminder');
-	pg_assert_contains("(body LIKE '%\" . \$like . \"%'\" . ws_voice_search_or(\$like) . \")\"", $read('includes/workspace/messages.php'), 'the message search');
-	pg_assert_contains("body LIKE '%\" . \$like . \"%'\" . ws_voice_search_or(\$like) . \")\"", $read('includes/workspace/palette.php'), 'the files group');
+	pg_assert_contains("(\" . ws_text_like_sql('body', \$query) . ws_voice_search_or(\$like) . \")\"", $read('includes/workspace/messages.php'), 'the message search');
+	pg_assert_contains("ws_text_like_sql('body', \$query) . ws_voice_search_or(\$like) . ')'", $read('includes/workspace/palette.php'), 'the files group');
 	pg_assert_contains('ws_voice_found_in_transcript($text, $heard[(int) $row[\'file_id\']], $query)', $read('includes/workspace/palette.php'), 'the answer shows the transcript');
 }
 
@@ -142,10 +142,10 @@ function test_ws_voice_asks_are_wired()
 
 	pg_assert_contains("ws_voice_posted(\$viewer, \$channel, \$result['message_id'], \$body, \$stored['name'], \$queued)", $read('includes/workspace/files.php'), 'the panel upload');
 	pg_assert_contains("ws_api_assistants_carry_on(ws_voice_posted(\$viewer, \$channel, \$result['message_id'], (string) (\$params['text'] ?? ''), \$stored['name'], \$queued));", $read('includes/workspace/api_resources.php'), 'files.create');
-	pg_assert_contains("return ws_voice_heard(\$text, ws_voice_transcript_of(\$row), (string) (\$row['file_name'] ?? ''), \$limit);", $read('includes/workspace/ai.php'), 'Pinegrap AI reads the note');
+	pg_assert_contains("return ws_voice_heard(\$text, \$transcript, (string) (\$row['file_name'] ?? ''), \$limit, \$reason);", $read('includes/workspace/ai.php'), 'Pinegrap AI reads the note');
 
 	$js = $read('assets/js/workspace.js');
 	pg_assert_contains('(this.inputEmpty() || (this.voiceTags() !== \'\'))', $js, 'the microphone beside tags alone');
 	pg_assert_contains('body: tags,', $js, 'the tags go with the recording');
-	pg_assert_contains("voiceAnswers: function (message) {\n            var sender = (message && message.sender) || {};\n\n            return !sender.mcp;", $js, 'a recording answers an assistant');
+	pg_assert_contains("voiceAnswers: function (message) {\n            return !!message;", $js, 'a recording answers an assistant, an MCP agent too');
 }

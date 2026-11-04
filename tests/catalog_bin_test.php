@@ -369,7 +369,8 @@ function test_catalog_bin_group_pickers_leave_the_bin_out()
 	pg_assert_contains("get_product_group_options(0, 0, 0, 0, array(), TRUE, 'text', false, true, false, \$v('catalog_group_ids', array()))", $builder, 'product screen: the groups it is in stay');
 
 	pg_assert_contains("'product_group_id' => \$liveform->get_field_value('product_group_id'),", catalog_bin_test_source('edit_short_link.php'), 'short link: the group it points at stays');
-	pg_assert_contains("get_product_group_options(0, 0, 0, 0, array(), TRUE, 'array', TRUE, TRUE, FALSE, \$keep['product_group_id'])", catalog_bin_test_source('includes/forms/short_link_form.php'), 'short link form: the bin left out');
+	pg_assert_contains("get_product_group_options(0, 0, 0, 0, array(), TRUE, 'array', TRUE, TRUE, FALSE, \$keep_ids)", catalog_bin_test_source('includes/forms/short_link_form.php'), 'short link form: the bin left out');
+	pg_assert_contains("pg_short_link_form_product_group_options(\$keep['product_group_id'])", catalog_bin_test_source('includes/forms/short_link_form.php'), 'short link form: the kept group reaches the picker');
 
 	$group = catalog_bin_test_source('edit_product_group.php');
 
@@ -391,7 +392,7 @@ function test_catalog_bin_group_screen_does_not_write_a_binned_group()
 	pg_assert_true($guard < strpos($source, 'DELETE FROM product_groups_images_xref'), 'before the save');
 
 	pg_assert_contains("lang('This product group is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.')", $source, 'it says so');
-	pg_assert_contains("(\$group_binned\n                                    ? '<a class=\"btn my-1 btn-solid theme-secondary\"", $source, 'the bin instead of Save');
+	pg_assert_contains("(\$group_binned\n                                            ? '<a class=\"btn my-1 btn-solid theme-secondary\"", $source, 'the bin instead of Save');
 	pg_assert_contains("if (\$group_binned) {\n        \$output_delete_button = '';", $source, 'and no Delete');
 }
 

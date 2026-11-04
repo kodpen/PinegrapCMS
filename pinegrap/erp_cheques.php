@@ -75,9 +75,13 @@ if (!$ready) {
 // Each filter is one value; one sent as an array (?status[]=x) counts as not
 // given: it wrote "Array to string conversion" into the log.
 $direction = in_array($_GET['direction'] ?? '', array('received', 'given'), true) ? (string) $_GET['direction'] : '';
-$status = is_string($_GET['status'] ?? null) ? $_GET['status'] : 'open';
-$search = mb_substr(trim(is_string($_GET['search'] ?? null) ? $_GET['search'] : ''), 0, 100);
 $statuses = erp_cheque_statuses();
+// An unknown status falls back to Open, so the filter shown is the one the list uses.
+$status = is_string($_GET['status'] ?? null) ? $_GET['status'] : 'open';
+if (($status !== 'all') && !isset($statuses[$status])) {
+    $status = 'open';
+}
+$search = mb_substr(trim(is_string($_GET['search'] ?? null) ? $_GET['search'] : ''), 0, 100);
 $kinds = erp_cheque_kinds();
 $totals = erp_cheque_totals();
 $today = date('Y-m-d');
@@ -106,8 +110,8 @@ if ($output_rows === '') {
 
 // The two filters: each keeps the other and the search, as the search form keeps both.
 $status_options = array('open' => lang('Open'), 'all' => lang('All'));
-if (isset($statuses[$status])) {
-    $status_options[$status] = $statuses[$status][0];
+foreach ($statuses as $value => $label) {
+    $status_options[$value] = $label[0];
 }
 $output_status_filter = pg_filter_select('status', $status_options, $status, array('label' => lang('Status'), 'icon' => 'funnel', 'action' => 'erp_cheques.php', 'keep' => array('direction', 'search')));
 $output_direction_filter = pg_filter_select('direction', array('' => lang('Both ways'), 'received' => lang('Received'), 'given' => lang('Given out')), $direction,
@@ -133,7 +137,8 @@ $output_new = (!$ready || $readonly) ? '' : '
             <form method="post" action="erp_cheques.php" class="card my-7" id="erp_cheque_new" autocomplete="off">
                 ' . get_token_field() . '
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('New cheque or note') . '</div>
-                <div class="card-body row g-3">
+                <div class="card-body">
+                    <div class="row g-3">
                     <div class="col-6 md:col-3">
                         <label class="form-label" for="direction">' . lang('Direction') . '</label>
                         ' . $liveform->output_field(array('type' => 'select', 'id' => 'direction', 'name' => 'direction', 'class' => 'form-control', 'options' => array(lang('Taken from a customer') => 'received', lang('Given to a supplier') => 'given'))) . '
@@ -144,20 +149,20 @@ $output_new = (!$ready || $readonly) ? '' : '
                     </div>
                     <div class="col-12 md:col-6">
                         <label class="form-label" for="account_id">' . lang('Account') . '</label>
-                        ' . $liveform->output_field(array('type' => 'select', 'id' => 'account_id', 'name' => 'account_id', 'class' => 'form-control', 'data-pg-combobox' => '', 'options' => $accounts)) . '
+                        ' . $liveform->output_field(array('type' => 'select', 'id' => 'account_id', 'name' => 'account_id', 'class' => 'form-control', 'data-pg-combobox' => '', 'required' => 'required', 'options' => $accounts)) . '
                         ' . erp_account_quick_link('#account_id', 'auto') . '
                     </div>
                     <div class="col-6 md:col-3">
                         <label class="form-label" for="amount">' . lang('Amount') . '</label>
-                        ' . $liveform->output_field(array('type' => 'text', 'id' => 'amount', 'name' => 'amount', 'class' => 'form-control text-end', 'inputmode' => 'decimal', 'maxlength' => '20')) . '
+                        ' . $liveform->output_field(array('type' => 'text', 'id' => 'amount', 'name' => 'amount', 'class' => 'form-control text-end', 'inputmode' => 'decimal', 'maxlength' => '15', 'required' => 'required')) . '
                     </div>
                     <div class="col-6 md:col-3">
                         <label class="form-label" for="doc_date">' . lang('Date') . '</label>
-                        ' . $liveform->output_field(array('type' => 'text', 'id' => 'doc_date', 'data-pg-date' => '', 'name' => 'doc_date', 'class' => 'form-control', 'maxlength' => '10')) . '
+                        ' . $liveform->output_field(array('type' => 'text', 'id' => 'doc_date', 'data-pg-date' => '', 'name' => 'doc_date', 'class' => 'form-control', 'maxlength' => '10', 'required' => 'required')) . '
                     </div>
                     <div class="col-6 md:col-3">
                         <label class="form-label" for="due_date">' . lang('Due Date') . '</label>
-                        ' . $liveform->output_field(array('type' => 'text', 'id' => 'due_date', 'data-pg-date' => '', 'name' => 'due_date', 'class' => 'form-control', 'maxlength' => '10')) . '
+                        ' . $liveform->output_field(array('type' => 'text', 'id' => 'due_date', 'data-pg-date' => '', 'name' => 'due_date', 'class' => 'form-control', 'maxlength' => '10', 'required' => 'required')) . '
                         ' . get_date_picker_format() . pg_fields_script() . '                    </div>
                     <div class="col-6 md:col-3">
                         <label class="form-label" for="serial_no">' . lang('Serial number') . '</label>
@@ -178,7 +183,7 @@ $output_new = (!$ready || $readonly) ? '' : '
                     </div>
                     <div class="col-12 md:col-6">
                         <label class="form-label" for="till_id">' . lang('Kept in') . '</label>
-                        ' . $liveform->output_field(array('type' => 'select', 'id' => 'till_id', 'name' => 'till_id', 'class' => 'form-control', 'options' => $tills)) . '
+                        ' . $liveform->output_field(array('type' => 'select', 'id' => 'till_id', 'name' => 'till_id', 'class' => 'form-control', 'options' => $tills, 'required' => 'required')) . '
                         <div class="form-text">' . lang('A till the store keeps for cheques and notes: the portfolio for the ones taken, one for the ones given. Add it under Cash and Bank first.') . '</div>
                     </div>
                     <div class="col-12">
@@ -188,6 +193,7 @@ $output_new = (!$ready || $readonly) ? '' : '
                     <div class="col-12">
                         <button type="submit" class="btn btn-solid theme-primary"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
                         <span class="form-text ms-3">' . lang('Taken from a customer, it is a collection: their debt comes down now. Given to a supplier, it is a payment.') . '</span>
+                    </div>
                     </div>
                 </div>
             </form>

@@ -28,4 +28,4 @@ module: subscriptions
 ## How was it verified?
 - `tests/payment_stripe_test.php` (stand-in HTTP caller). No Stripe test-mode run: the off-session and confirmation flows follow Stripe's documentation.
 
-Related: commerce/subscriptions.md, commerce/payment-driver-stripe.md, plans/subscriptions-iyzico-stripe.md
+Related: commerce/subscriptions.md, commerce/payment-driver-stripe.md, commerce/subscriptions-decisions.md

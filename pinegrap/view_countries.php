@@ -32,7 +32,7 @@ $sort_columns = array(
     'name'               => lang('Name'),
     'code'               => lang('Code'),
     'zip_code_required'  => lang('Zip Code Required'),
-    'transit_adjustment' => lang('Transit Adjustment'),
+    'transit_adjustment' => lang('Extra Delivery Days'),
     'default'            => lang('Default'),
     'last_modified'      => lang('Last Modified'),
 );
@@ -75,6 +75,9 @@ while ($row = mysqli_fetch_array($result)) {
     $row['label'] = pg_geo_country_label($row['name'], $row['code']);
     $country_rows[] = $row;
 }
+
+// Two rows with the same name on screen carry their code.
+$country_rows = pg_geo_label_disambiguate($country_rows);
 
 // Sorted by name first: by the name on screen in the panel language's
 // order, not by the stored English name the query orders by ("Türkiye"
@@ -150,7 +153,7 @@ echo
                                     <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
                                     <th>' . get_column_heading(lang('Code'), $sort_levels, '', '', 'code') . '</th>
                                     <th style="text-align: center">' . get_column_heading(lang('Zip Code Required'), $sort_levels, '', '', 'zip_code_required') . '</th>
-                                    <th style="text-align: right;">' . get_column_heading(lang('Transit Adjustment'), $sort_levels, '', '', 'transit_adjustment') . '</th>
+                                    <th style="text-align: right;">' . get_column_heading(lang('Extra Delivery Days'), $sort_levels, '', '', 'transit_adjustment') . '</th>
                                     <th style="text-align: center">' . get_column_heading(lang('Default'), $sort_levels, '', '', 'default') . '</th>
                                     <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                 </tr>

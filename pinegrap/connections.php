@@ -60,6 +60,8 @@ if ($_POST) {
 			$provider = $providers[$provider_key];
 
 			$options = array();
+			$option_error = '';
+			$option_error_key = '';
 
 			foreach ($provider['options'] as $option_key => $option) {
 
@@ -69,14 +71,43 @@ if ($_POST) {
 
 				$options[$option_key] = ($value !== '') ? mb_substr($value, 0, 100) : (string) $option['default'];
 
+				// A value the provider cannot read is refused, never kept
+				// and replaced by the default at connection time.
+				if (($option_error === '') && !pg_connect_option_valid($option, $options[$option_key])) {
+					$option_error = isset($option['invalid']) ? $option['invalid'] : $option['label'];
+					$option_error_key = $option_key;
+				}
+
 			}
 
 			$client_id = (isset($_POST['client_id']) && is_string($_POST['client_id'])) ? trim($_POST['client_id']) : '';
 			$client_secret = (isset($_POST['client_secret']) && is_string($_POST['client_secret'])) ? trim($_POST['client_secret']) : '';
 
+			// What was typed, for the form after a refused save; without it the
+			// redirect below drew the stored values and everything typed was
+			// lost. The secret is never kept here.
+			$draft = array(
+				'provider'   => $provider_key,
+				'client_id'  => mb_substr($client_id, 0, 1000),
+				'options'    => $options,
+				'invalid'    => $option_error_key,
+				'enabled'    => !empty($_POST['enabled']),
+				'had_secret' => ($client_secret !== '')
+			);
+
 			if (mb_strlen($client_id) > 255) {
 
 				$liveform->add_error(lang('The client ID is too long.'));
+
+				$draft['invalid'] = 'client_id';
+
+				$_SESSION['software']['connections_draft'] = $draft;
+
+			} elseif ($option_error !== '') {
+
+				$liveform->add_error(h($option_error));
+
+				$_SESSION['software']['connections_draft'] = $draft;
 
 			} elseif (pg_connect_app_save($provider_key, $client_id, $client_secret, $options, !empty($_POST['enabled']), (int) $user['id'])) {
 
@@ -88,7 +119,23 @@ if ($_POST) {
 
 				$liveform->add_error(lang('This site has no encryption key, so it cannot keep the permissions of a connected account.'));
 
+				$_SESSION['software']['connections_draft'] = $draft;
+
 			}
+
+		}
+
+	} elseif ($action === 'remove_app') {
+
+		// Only Google has an application to fall back to (Sign in with
+		// Google); for the others removing it would just stop every account.
+		if (pg_signin_google_app() !== null) {
+
+			pg_connect_app_remove('google');
+
+			$liveform->add_notice(lang('Google features use the Sign in with Google application again.'));
+
+			log_activity(lang(array('string' => 'removed the {var:1} application of connected accounts', 'vars' => 'Google')), $_SESSION['sessionusername']);
 
 		}
 
@@ -155,6 +202,17 @@ if (is_array($flash)) {
 
 $can_seal = pg_connect_can_seal();
 
+// The values of a save that was refused, shown once in that provider's form.
+$draft = null;
+
+if (isset($_SESSION['software']['connections_draft']) && is_array($_SESSION['software']['connections_draft'])) {
+
+	$draft = $_SESSION['software']['connections_draft'];
+
+	unset($_SESSION['software']['connections_draft']);
+
+}
+
 $redirect_uri = pg_connect_redirect_uri();
 
 function connections_ago($timestamp) {
@@ -187,6 +245,8 @@ foreach ($providers as $provider_key => $provider) {
 
 	$app = pg_connect_app($provider_key);
 	$ready = pg_connect_app_ready($app);
+
+	$provider_draft = (is_array($draft) && ($draft['provider'] === $provider_key)) ? $draft : null;
 
 	if ($ready) {
 		$app_badge = '<span class="badge theme-success fw-normal">' . h(lang('Ready')) . '</span>';
@@ -251,13 +311,19 @@ foreach ($providers as $provider_key => $provider) {
 
 	foreach ($provider['options'] as $option_key => $option) {
 
-		$value = (is_array($app) && isset($app['options'][$option_key])) ? (string) $app['options'][$option_key] : (string) $option['default'];
+		if (is_array($provider_draft) && isset($provider_draft['options'][$option_key])) {
+			$value = (string) $provider_draft['options'][$option_key];
+		} else {
+			$value = (is_array($app) && isset($app['options'][$option_key])) ? (string) $app['options'][$option_key] : (string) $option['default'];
+		}
+
+		$option_bad = is_array($provider_draft) && ($provider_draft['invalid'] === $option_key);
 
 		$option_fields .= '
 			<div class="col-12 md:col-6">
 				<label for="option_' . h($provider_key . '_' . $option_key) . '" class="form-label">' . h($option['label']) . '</label>
-				<input type="text" class="form-control form-control-sm" id="option_' . h($provider_key . '_' . $option_key) . '"
-					name="option_' . h($option_key) . '" value="' . h($value) . '" maxlength="100" autocomplete="off">
+				<input type="text" class="form-control form-control-sm' . ($option_bad ? ' is-invalid' : '') . '" id="option_' . h($provider_key . '_' . $option_key) . '"
+					name="option_' . h($option_key) . '" value="' . h($value) . '" maxlength="100" autocomplete="off"' . ($option_bad ? ' aria-invalid="true"' : '') . '>
 				<div class="form-text">' . h($option['help']) . '</div>
 			</div>';
 
@@ -269,7 +335,29 @@ foreach ($providers as $provider_key => $provider) {
 		$setup_steps .= '<li>' . h($step) . '</li>';
 	}
 
-	$secret_stored = is_array($app) && $app['secret_stored'] && ($app['source'] === 'connect');
+	// The Sign in with Google application's secret counts as stored: saving
+	// the form unchanged keeps it (pg_connect_app_save()).
+	$secret_stored = is_array($app) && $app['secret_stored'];
+
+	$option_invalid = is_array($app) && isset($app['options_valid']) && !$app['options_valid'];
+
+	if ($ready) {
+		$hint = '';
+	} elseif ($option_invalid) {
+		$hint = lang('The directory (tenant) must be common, organizations, consumers, a domain name or a directory ID.');
+	} elseif (is_array($app) && !$app['enabled']) {
+		$hint = lang('Connections through this application are off. Turn them on with the switch below.');
+	} else {
+		$hint = lang('Set up the application below first.');
+	}
+
+	$client_id_value = is_array($provider_draft) ? $provider_draft['client_id'] : (is_array($app) ? $app['client_id'] : '');
+
+	$client_id_bad = is_array($provider_draft) && ($provider_draft['invalid'] === 'client_id');
+
+	$enabled_checked = is_array($provider_draft) ? $provider_draft['enabled'] : (!is_array($app) || $app['enabled']);
+
+	$can_fall_back = ($provider_key === 'google') && is_array($app) && ($app['source'] === 'connect') && (pg_signin_google_app() !== null);
 
 	$app_form = '
 		<form method="post" action="connections.php" class="mt-3">
@@ -281,29 +369,32 @@ foreach ($providers as $provider_key => $provider) {
 				: '') . '
 			<ol class="small ps-5 mb-5">' . $setup_steps . '</ol>
 			<label class="form-label" for="redirect_' . h($provider_key) . '">' . h(lang('Redirect address')) . '</label>
-			<div class="input-group input-group-sm mb-5">
+			<div class="input-group input-group-sm mb-1">
 				<input type="text" class="form-control font-monospace" id="redirect_' . h($provider_key) . '" value="' . h($redirect_uri) . '" readonly>
 				<button type="button" class="btn btn-outline theme-secondary connections-copy" data-target="redirect_' . h($provider_key) . '">
 					<i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
-				<span class="visually-hidden" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>
 			</div>
+			<div class="form-text mb-5 connections-copy-status" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></div>
 			<div class="row g-3">
 				<div class="col-12 md:col-6">
 					<label for="client_id_' . h($provider_key) . '" class="form-label">' . h(lang('Client ID')) . '</label>
-					<input type="text" class="form-control form-control-sm" id="client_id_' . h($provider_key) . '" name="client_id"
-						value="' . h(is_array($app) ? $app['client_id'] : '') . '" maxlength="255" autocomplete="off">
+					<input type="text" class="form-control form-control-sm' . ($client_id_bad ? ' is-invalid' : '') . '" id="client_id_' . h($provider_key) . '" name="client_id"
+						value="' . h($client_id_value) . '" maxlength="255" autocomplete="off"' . ($client_id_bad ? ' aria-invalid="true"' : '') . '>
 				</div>
 				<div class="col-12 md:col-6">
 					<label for="client_secret_' . h($provider_key) . '" class="form-label">' . h(lang('Client secret')) . '</label>
 					<input type="password" class="form-control form-control-sm" id="client_secret_' . h($provider_key) . '" name="client_secret"
 						value="" autocomplete="new-password"
 						placeholder="' . h($secret_stored ? lang('Stored. Leave empty to keep it.') : '') . '">
+					' . ((is_array($provider_draft) && $provider_draft['had_secret'])
+						? '<div class="form-text fg-warning">' . h(lang('The secret you entered was not saved. Enter it again.')) . '</div>'
+						: '') . '
 				</div>
 				' . $option_fields . '
 				<div class="col-12">
 					<div class="form-field">
 						<div class="switch"><input class="" type="checkbox" role="switch" name="enabled" value="1" id="enabled_' . h($provider_key) . '"'
-							. ((!is_array($app) || $app['enabled']) ? ' checked' : '') . '></div>
+							. ($enabled_checked ? ' checked' : '') . '></div>
 						<label class="" for="enabled_' . h($provider_key) . '">' . h(lang('Connections through this application are allowed')) . '</label>
 					</div>
 				</div>
@@ -312,6 +403,11 @@ foreach ($providers as $provider_key => $provider) {
 				<button type="submit" name="submit_save" class="btn btn-sm btn-solid theme-primary"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
 				<a class="btn btn-sm btn-outline theme-secondary" href="' . h($provider['console_url']) . '" target="_blank" rel="noopener">
 					<i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Open the {var:1} console', 'vars' => $provider['label']))) . '</a>
+				' . ($can_fall_back
+					? '<button type="button" class="btn btn-sm btn-outline theme-secondary connections-action" data-action="remove_app" data-id="0"
+						data-confirm="' . h(lang('The application saved here is removed and Google features use the Sign in with Google application of the Security settings again. Connected accounts stay.')) . '">
+						<i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Use the Sign in with Google application')) . '</button>'
+					: '') . '
 			</div>
 		</form>';
 
@@ -329,8 +425,8 @@ foreach ($providers as $provider_key => $provider) {
 					<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 connections-connect"
 						data-provider="' . h($provider_key) . '" data-connection="0"' . (($ready && $can_seal) ? '' : ' disabled') . '>
 						<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $provider['label']))) . '</button>
-					' . ($ready ? '' : '<div class="form-text">' . h(lang('Set up the application below first.')) . '</div>') . '
-					<details class="mt-7"' . ($ready ? '' : ' open') . '>
+					' . (($hint === '') ? '' : '<div class="form-text">' . h($hint) . '</div>') . '
+					<details class="mt-7"' . (($ready && !is_array($provider_draft)) ? '' : ' open') . '>
 						<summary class="fw-semibold">' . h(lang('Application')) . '</summary>
 						' . $app_form . '
 					</details>
@@ -407,9 +503,9 @@ echo pg_page_shell(array(
 
 		if (copy) {
 			// The button keeps its label; only the icon changes and the
-			// status beside it says whether the copy happened.
+			// visible status under the field says whether the copy happened.
 			var field = document.getElementById(copy.dataset.target);
-			var status = copy.parentNode.querySelector("[role=status]");
+			var status = copy.closest(".input-group").nextElementSibling;
 			var icon = copy.querySelector("i");
 			var done = function () {
 				icon.className = "bi bi-check2 me-1";
@@ -430,6 +526,7 @@ echo pg_page_shell(array(
 				if (copied) {
 					done();
 				} else {
+					icon.className = "bi bi-exclamation-triangle me-1";
 					status.textContent = status.getAttribute("data-refused");
 				}
 			};

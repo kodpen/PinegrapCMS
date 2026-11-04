@@ -32,13 +32,13 @@ $pg_settings_cards[] = '
                                         <div class="col-12 ">
                                             <div class="form-field">
                                                 <div class="switch"><input value="1"' . $advanced_visual_effects_checked . ' class="" type="checkbox" id="advanced_visual_effects" name="advanced_visual_effects"/></div>
-                                                <label class="" for="advanced_visual_effects">' . lang('Enable Transparent Acrylic Effect') . '<br/><span class="form-text">' . lang('If the device you are using is weak in hardware, you can disable this setting to get a faster interface.') . '</span></label>
+                                                <label class="" for="advanced_visual_effects">' . lang('Enable Transparent Acrylic Effect') . '</label><div class="form-text">' . lang('If the device you are using is weak in hardware, you can disable this setting to get a faster interface.') . '</div>
                                             </div>
                                         </div>
                                         <div class="col-12 ">
                                             <label class="form-label" for="custom_css">' . lang('Custom CSS') . '</label>
                                             <div id="edit_custom">
-                                                <textarea name="custom_css" id="custom_css" rows="25" cols="60" wrap="off">' . $custom_css . '</textarea>
+                                                <textarea name="custom_css" id="custom_css" rows="25" cols="60" wrap="off">' . h($custom_css) . '</textarea>
                                                 ' . pg_code_editor_attach(array('id' => 'custom_css', 'code_type' => 'css')) . '
                                             </div>
                                         </div>

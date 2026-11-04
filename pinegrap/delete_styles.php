@@ -25,8 +25,12 @@ validate_token_field();
 include_once('liveform.class.php');
 $liveform = new liveform('view_styles');
 
+// The selected ids; a post without any (Enter, a stale tab, a script) or
+// with a single value instead of a list selects nothing.
+$style_ids = (isset($_POST['styles']) && is_array($_POST['styles'])) ? $_POST['styles'] : array();
+
 // If a style was not selected, then output error.
-if (!$_POST['styles']) {
+if (!$style_ids) {
     $liveform->mark_error('', lang('You must select at least one page style to delete.'));
     go(PATH . SOFTWARE_DIRECTORY . '/view_styles.php');
 }
@@ -41,7 +45,7 @@ require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
 $recycle_styles = pg_recycle_style_ready();
 
 // Loop through all styles that where selected.
-foreach ($_POST['styles'] as $style_id) {
+foreach ($style_ids as $style_id) {
     // If this style is being used by a folder or page,
     // then don't delete it.
     if (

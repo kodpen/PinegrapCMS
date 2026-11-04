@@ -108,7 +108,7 @@ foreach ($translation_languages as $translation_code => $translation_row) {
                                     <label class="" for="tr_auto_' . h($translation_code) . '">' . lang('Translate on save') . '</label>
                                 </div>' : '') . '
                                 <div class="form-field mb-0 ms-3">
-                                    <input value="1" class="check" type="checkbox" id="tr_remove_' . h($translation_code) . '" name="' . $translation_name . '[remove]" aria-describedby="tr_remove_hint"/>
+                                    <input value="1" class="check" type="checkbox" id="tr_remove_' . h($translation_code) . '" name="' . $translation_name . '[remove]" aria-describedby="tr_remove_hint" data-pg-confirm-ticked="' . h(lang(array('string' => 'The language {var:1} will be removed with all its translations, its update history and its own glossary terms. This cannot be undone.', 'vars' => array($translation_label . ' (' . $translation_code . ')')))) . '" data-pg-confirm-title="' . h(lang('Remove language')) . '" data-pg-confirm-ok="' . h(lang('Remove')) . '"/>
                                     <label class="fg-danger" for="tr_remove_' . h($translation_code) . '">' . lang('Remove') . '</label>
                                 </div>
                             </div>
@@ -147,7 +147,7 @@ foreach ($translation_languages as $translation_code => $translation_row) {
                                 </div>
                                 <div class="col-12 md:col-6 xl:col-3">
                                     <label class="form-label" for="tr_og_' . h($translation_code) . '">og:locale</label>
-                                    <input type="text" class="form-control font-monospace" id="tr_og_' . h($translation_code) . '" name="' . $translation_name . '[og_locale]" value="' . h($translation_row['og_locale']) . '" maxlength="16" placeholder="' . h($translation_og_example) . '" aria-describedby="tr_formats_hint_' . h($translation_code) . '"/>
+                                    <input type="text" class="form-control font-monospace" id="tr_og_' . h($translation_code) . '" name="' . $translation_name . '[og_locale]" pattern="[a-z]{2,3}_[A-Z]{2,4}" value="' . h($translation_row['og_locale']) . '" maxlength="16" placeholder="' . h($translation_og_example) . '" aria-describedby="tr_formats_hint_' . h($translation_code) . '"/>
                                 </div>
                                 <div class="col-12">
                                     <div class="form-text" id="tr_formats_hint_' . h($translation_code) . '">' . lang('Number: how 1234.56 is written in this language, for example 1.234,56. Date: PHP date letters (j day, n month, Y year; d and m with a leading zero). og:locale: language_COUNTRY, for example tr_TR; any other shape is cleared on save. An empty number or date box uses the language\'s own format.') . '</div>
@@ -164,7 +164,7 @@ if ($output_translation_rows === '') {
 }
 
 // Languages that can still be added: the known list minus the source and
-// the ones already there.
+// the ones already there, each named in the panel language and in its own.
 $output_translation_add_options = '<option value="">' . lang('-Select-') . '</option>';
 
 foreach ($translation_known as $translation_code => $translation_info) {
@@ -172,7 +172,7 @@ foreach ($translation_known as $translation_code => $translation_info) {
         continue;
     }
 
-    $output_translation_add_options .= '<option value="' . h($translation_code) . '">' . h($translation_info[0]) . ' - ' . h($translation_info[1]) . ' (' . h($translation_code) . ')</option>';
+    $output_translation_add_options .= '<option value="' . h($translation_code) . '">' . h(lang($translation_info[0])) . ' - ' . h($translation_info[1]) . ' (' . h($translation_code) . ')</option>';
 }
 
 $output_translation_languages = '
@@ -399,11 +399,9 @@ $output_translation_engines_card = '
                         </div>
                     </div>
                     <div class="col-12">
-                        <div class="pg-f-lg">
-                            <label for="translation_style_note" class="form-label">' . lang('Style note for the AI engines') . '</label>
-                            <textarea name="translation_style_note" id="translation_style_note" class="form-control" rows="3" maxlength="2000">' . h($translation_style_note) . '</textarea>
-                            <div class="form-text">' . lang('Given to the AI engines with every text, and to the AI that drafts a field for Write with AI: the tone, the form of address, the terms to keep. Google and the browser engine do not read it.') . '</div>
-                        </div>
+                        <label for="translation_style_note" class="form-label">' . lang('Style note for the AI engines') . '</label>
+                        <textarea name="translation_style_note" id="translation_style_note" class="form-control" rows="3" maxlength="2000">' . h($translation_style_note) . '</textarea>
+                        <div class="form-text">' . lang('Given to the AI engines with every text, and to the AI that drafts a field for Write with AI: the tone, the form of address, the terms to keep. Google and the browser engine do not read it.') . '</div>
                     </div>
                     <div class="col-12">
                         <div class="form-text">

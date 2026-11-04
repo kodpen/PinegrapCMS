@@ -1331,8 +1331,9 @@ function pg_passkey_passwordless_signin()
         if (!$result['ok']) {
             $error = $result['error'];
         } else {
+            // A disabled account is no match: refused like a deleted one.
             $account = db_item("SELECT user_id, user_username, user_email, user_role
-                FROM user WHERE user_id = '" . (int) $result['user_id'] . "'");
+                FROM user WHERE user_id = '" . (int) $result['user_id'] . "'" . pg_user_enabled_sql());
             $error = pg_passkey_passwordless_refusal($account,
                 is_array($account) && pg_email_blocked((string) $account['user_email']));
             $name = (string) $result['name'];

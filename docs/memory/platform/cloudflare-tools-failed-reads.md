@@ -16,6 +16,9 @@ module: cloudflare_tools
 - A failed firewall read puts "Firewall events request failed: …" in the table row in `fg-danger`, as the audit log does, instead of "No firewall events found".
 - `cf_read_analytics()` sends the three GraphQL reads once before the print (the old `getCloudflareAnalytics()` sent them five times, after `output_errors()`), `pg_cloudflare_analytics_totals()` sums them and keeps the reason; `pg_cloudflare_analytics_card()` prints a dash for a failed read and the reason goes under the cards. Visitors fail only when both the adaptive read and its daily fallback fail.
 
+## Which dates do the analytics reads ask for?
+- `pg_cloudflare_analytics_range()`: a preset runs from N days ago to today, N + 1 dates, and the day-group reads ask `limit` = that count (before #5161 `limit: N`, so Cloudflare left one date out, in no set order). A custom range keeps its dates. Date and period values from the request are used only when they are strings (an array was a PHP 8 TypeError).
+
 ## Failed actions?
 - Delete record, the four toggles and Clear Cache append `h(pg_cloudflare_answer_reason($resp))`, as Add/Edit Record and Rocket Loader already appended Cloudflare's message. The audit log reason is escaped too.
 

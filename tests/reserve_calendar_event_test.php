@@ -45,3 +45,13 @@ function test_reserve_calendar_event_endpoint_uses_condition()
 	pg_assert_true(strpos($source, 'pg_calendar_event_view_calendar_condition(') !== false, 'endpoint does not build the condition with the helper');
 	pg_assert_false(strpos($source, '" . $where_calendars . "') !== false, 'endpoint still joins an empty calendar list into WHERE ()');
 }
+
+// The calendar event view screen asks the same question as the reserve
+// handler: an event in no calendar built "WHERE  AND (page_id = …)" there,
+// and the visitor got "Query failed." instead of "not allowed in this view".
+function test_calendar_event_view_screen_uses_calendar_condition()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_calendar_event_view_screen_content.php');
+	pg_assert_contains('pg_calendar_event_view_calendar_condition(', $source, 'the view screen builds the condition with the shared helper');
+	pg_assert_false(strpos($source, '$where_calendar_id') !== false, 'the hand-built OR list is gone');
+}

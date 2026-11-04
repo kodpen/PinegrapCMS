@@ -48,7 +48,7 @@ function test_edit_file_refuses_a_blank_name_after_delete()
 function test_edit_design_file_refuses_a_blank_name_in_the_save_branch()
 {
 	$source = file_rename_blank_source('edit_design_file.php');
-	$check = "if (trim((string) (\$_POST['name'] ?? '')) === '') {\n            output_error(lang('Please enter a name.') . ' <a href=\"javascript:history.go(-1)\">' . lang('Go back') . '</a>.');\n        }";
+	$check = "if (\$name_posted === '') {\n            output_error(lang('Please enter a name.') . ' <a href=\"javascript:history.go(-1)\">' . lang('Go back') . '</a>.');\n        }";
 
 	$else = strpos($source, "        \$notice = lang('The design file was deleted successfully.');\n    }\n    else\n    {");
 	$blank = strpos($source, $check);

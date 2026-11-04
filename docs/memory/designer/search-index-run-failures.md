@@ -4,12 +4,12 @@ description: How update_search_index.php survives a bad page, event, record or f
 ---
 
 ## What did it fix?
-- One page whose render threw an `Error`, failed a query (`output_error()` exits) or one office file the converter could not read ended the run, and every later run at the same place: later pages and every designer record never got in (SA1).
-- Before that (#1197 follow-up) a run that left designer records out still said "updated successfully"; only one `error_log` line knew.
+- One page whose render threw an `Error`, failed a query (`output_error()` exits) or one office file the converter could not read ended the run, and every later run at the same place: later pages and every designer record never got in (fixed by #4733).
+- Before (#1197), a run that left records out said "updated successfully".
 
 ## How is each item read?
 - Pages, calendar events and classic form records: `pg_search_index_render($page_id, $properties)` (`includes/fn/site_search.php`): `pg_error_throws(true)`, `catch (Throwable)`, `finally` puts back `$_GET` (whole array), the output buffer level and the flag. Designer records keep their own `try` ([[designer-records-site-search]]).
-- A page, event or classic record that fails keeps its row: `pg_search_index_keep_item($url, $timestamp)` sets its `timestamp` to the run's, so the sweep spares it with its last text. A failed page's calendar events or records are still read. A designer record that fails has no item (open architect question 5 of `plans/search-and-audits.md`).
+- A page, event, classic or designer record that fails keeps its row: `pg_search_index_keep_item($url, $timestamp)` sets its `timestamp` to the run's, so the sweep spares it with its last text (designer records since #4983). A failed page's events or records are still read. A record list whose query fails names no records: their rows go with the sweep.
 - Files: each file's text extraction in its own `try` under the flag; a failure keeps the old row. `shell_exec` only after `function_exists()` (named in `disable_functions` it is "Call to undefined function" on PHP 8). `.doc`/`.ppt` read through `pg_search_index_file_bytes()`: '' for a missing, unreadable or empty file (`fread()` on a failed `fopen()` was a `TypeError`, on 0 bytes a `ValueError`).
 
 ## What does a run write?
@@ -18,13 +18,13 @@ description: How update_search_index.php survives a bad page, event, record or f
 - The finish window: a warning icon and "updated, but N item(s) could not be read. The Site Log names them." instead of the success sentence. `#finish_message` keeps its id: the status region copies its text.
 
 ## What if the run stops before its end?
-`$search_index_run` holds the stage (pages, records, files, sweep) and the last item started; a shutdown function writes "The search index run stopped before its end: …" with `pg_search_index_stop_note()` (pure): stage, item and `error_get_last()` only when fatal (message, file basename and line). `done` is set at the end of every run, also one that stops at its time budget ([[search-index-resumable-pass]]). A process killed by a signal runs no shutdown function.
+`$search_index_run` holds the stage (pages, records, files, sweep) and the last item started; a shutdown function writes "The search index run stopped before its end: …" with `pg_search_index_stop_note()` (pure): stage, item and `error_get_last()` only when fatal (message, file basename and line). `done` is set at the end of every run, also one that stops at its time budget ([[search-index-resumable-pass]]). A process killed by a signal runs no shutdown function. What a dead run keeps: [[search-index-item-parts]].
 
 ## Which tests cover it?
 `tests/search_index_isolation_test.php` (render isolation with an `Error` and `output_error()`, notes, file reader, stop note, source checks); `tests/designer_search_index_test.php` (designer branch).
 
 ## What if two runs overlap?
-- One lock for every start (#4765): the dispatcher, the panel button and a crontab run claim the `update_search_index` row of `cron_runs` through `pg_cron_claim()` (4 h, released by a shutdown function with `pg_cron_release()`). A second button start gets "The search index is already being updated…"; a second crontab start leaves quietly. Before the 2026.4.8 upgrade (no `locked_until`) there is nothing to claim.
+- One lock for every start (#4765): the dispatcher, the panel button and a crontab run claim the `update_search_index` row of `cron_runs` through `pg_cron_claim()` (length: [[search-index-resumable-pass]]), released by a shutdown function with `pg_cron_release()`. A second button start gets "The search index is already being updated…"; a second crontab start leaves quietly. Before the 2026.4.8 upgrade (no `locked_until`) there is nothing to claim.
 - The sweep deletes `timestamp < $timestamp` (`pg_search_index_sweep_sql()`): a run started later keeps its rows when an earlier one ends first. Before (`!=`), the first run to finish deleted every row the other had rewritten and pages left the search until the next run.
 
 Test: `tests/search_index_overlap_test.php` (sweep, lock length).

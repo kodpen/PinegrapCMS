@@ -2,11 +2,12 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The firewall log's events (view_waf_log.php), shared by the screen and the
- * panel action that pages them (waf_log_list_rows, includes/panel/lists.php).
+ * The firewall log's events (view_waf_log.php) on the list table driver
+ * (includes/fn/list_table.php), shared by the screen and the driver's rows
+ * action (list_table_rows, includes/panel/lists.php).
  *
  * The screen printed the newest 500 rows of the period on every visit. The
- * events are now read one page at a time, sorted by the headings' kept sort
+ * events are now read one batch at a time, sorted by the kept sort
  * and searched on the server; the period, category and search filters stay in
  * the address and also drive the summary above the table.
  *
@@ -79,6 +80,25 @@ function pg_waf_log_list_actions()
 }
 
 /**
+ * The actions the summary adds up under one card. A ban row is the decision
+ * about a request the refusing row already counts, so the request cards
+ * leave it out and the bans are counted on their own.
+ *
+ * @param string $group blocked, would_block or bans
+ * @return array actions
+ */
+function pg_waf_log_list_request_actions($group)
+{
+    $groups = array(
+        'blocked'     => array('block', 'rate'),
+        'would_block' => array('would-block', 'would-rate'),
+        'bans'        => array('ban', 'would-ban'),
+    );
+
+    return isset($groups[$group]) ? $groups[$group] : array();
+}
+
+/**
  * The filters, each checked: a value that is not one of the choices (or not
  * one value: ?range[]=x) counts as not given. The search keeps its first 200
  * characters.
@@ -137,8 +157,9 @@ function pg_waf_log_list_url(array $filters)
 
 /**
  * The condition of the filters with its values as ? placeholders: the
- * period back from $now, the category, and the search text anywhere in the
- * address, the URL, the rule, the reference or the user agent.
+ * period back from $now, the category, and the search by the table box's
+ * rule (pg_waf_log_list_search()), so the toolbar search and the table's own
+ * box find the same events.
  *
  * @param array $filters pg_waf_log_list_filters()'s answer
  * @param int   $now     the time the period ends
@@ -154,9 +175,11 @@ function pg_waf_log_list_condition(array $filters, $now)
         $params[] = (string) $filters['category'];
     }
 
-    if ($filters['search'] !== '') {
-        $sql .= ' AND (ip_address LIKE ? OR request_url LIKE ? OR rule_id LIKE ? OR reference LIKE ? OR user_agent LIKE ?)';
-        $params = array_merge($params, array_fill(0, 5, pg_list_like_pattern($filters['search'])));
+    $search = pg_waf_log_list_search(pg_list_search_terms($filters['search']));
+
+    if ($search['sql'] !== '') {
+        $sql .= ' AND ' . $search['sql'];
+        $params = array_merge($params, $search['params']);
     }
 
     return array('sql' => $sql, 'params' => $params);
@@ -218,16 +241,28 @@ function pg_waf_log_list_sort()
  */
 function pg_waf_log_list_search(array $terms)
 {
+    $search = pg_waf_log_list_search_spec();
+
+    return pg_list_search_where($terms, $search['columns'], $search['labels']);
+}
+
+/**
+ * The columns and shown names the search box looks in, as
+ * pg_list_search_where() takes them.
+ *
+ * @return array array('columns', 'labels')
+ */
+function pg_waf_log_list_search_spec()
+{
     $labels = array();
 
     foreach (pg_waf_log_list_actions() as $action => $badge) {
         $labels[$action] = $badge[1];
     }
 
-    return pg_list_search_where(
-        $terms,
-        array('ip_address', 'method', 'request_url', 'user_agent', 'rule_id', 'reference', 'target', 'matched'),
-        array(array('expr' => 'action', 'labels' => $labels))
+    return array(
+        'columns' => array('ip_address', 'method', 'request_url', 'user_agent', 'rule_id', 'reference', 'target', 'matched'),
+        'labels' => array(array('expr' => 'action', 'labels' => $labels)),
     );
 }
 
@@ -236,7 +271,7 @@ function pg_waf_log_list_search(array $terms)
  *
  * @param array $event a waf_log row
  * @param int   $now   the time "still firing" is measured from
- * @return array array('class', 'cells')
+ * @return array array('id', 'class', 'cells' => column key => cell)
  */
 function pg_waf_log_list_row(array $event, $now)
 {
@@ -267,77 +302,85 @@ function pg_waf_log_list_row(array $event, $now)
 
     $match = '<span class="fg-secondary">' . h($event['target']) . '</span><div><code>' . h($event['matched']) . '</code></div>';
 
-    return array('class' => 'unselectable', 'cells' => array(
-        pg_list_cell($time, 'small text-nowrap'),
-        pg_list_cell($hits, 'small'),
-        pg_list_cell('<span class="badge ' . h($badge[0]) . '">' . h($badge[1]) . '</span>', ''),
-        pg_list_cell(h($event['ip_address']), 'font-monospace small text-nowrap'),
-        pg_list_cell($rule, 'small'),
-        pg_list_cell((string) (int) $event['score'], 'small'),
-        // table.chart cells do not wrap and a cell's max-width does not narrow an
-        // auto-layout column, so the width limit sits on an inner block that wraps.
-        pg_list_cell('<div class="text-break" style="white-space:normal;min-width:10rem;max-width:22rem;">' . $request . '</div>', 'small'),
-        pg_list_cell('<div class="text-break" style="white-space:normal;min-width:8rem;max-width:16rem;">' . $match . '</div>', 'small'),
+    return array('id' => (string) (int) ($event['id'] ?? 0), 'class' => 'unselectable', 'cells' => array(
+        'time' => pg_list_cell($time, 'small text-nowrap'),
+        'hits' => pg_list_cell($hits, 'small'),
+        'action' => pg_list_cell('<span class="badge ' . h($badge[0]) . '">' . h($badge[1]) . '</span>', ''),
+        'ip' => pg_list_cell(h($event['ip_address']), 'font-monospace small text-nowrap'),
+        'rule' => pg_list_cell($rule, 'small'),
+        'score' => pg_list_cell((string) (int) $event['score'], 'small'),
+        // A cell's max-width does not narrow an auto-layout column, so the
+        // width limit sits on an inner block that wraps.
+        'request' => pg_list_cell('<div class="text-break" style="white-space:normal;min-width:10rem;max-width:22rem;">' . $request . '</div>', 'small'),
+        'match' => pg_list_cell('<div class="text-break" style="white-space:normal;min-width:8rem;max-width:16rem;">' . $match . '</div>', 'small'),
     ));
 }
 
 /**
- * The number of rows a condition selects.
+ * The list's columns. The keys are the sort codes pg_waf_log_list_sort()
+ * keeps, so the sort menu and the headings name the same sort.
  *
- * @param string $sql    a condition with ? placeholders
- * @param array  $params its values
- * @return int|false false when the query failed
+ * @return array key => spec, as pg_list_table_columns() takes them
  */
-function pg_waf_log_list_count($sql, array $params)
+function pg_waf_log_list_columns()
 {
-    $result = db_q('SELECT COUNT(*) FROM waf_log WHERE ' . $sql, $params);
+    $sort_keys = pg_waf_log_list_sort()['sort_keys'];
 
-    return $result ? (int) mysqli_fetch_row($result)[0] : false;
+    return array(
+        'time' => array('heading' => lang('Time'), 'width' => '10rem', 'kind' => 'date', 'sort' => $sort_keys['time']),
+        'hits' => array('heading' => lang('Hits'), 'width' => '5rem', 'sort' => $sort_keys['hits']),
+        'action' => array('heading' => lang('Action'), 'width' => '8rem', 'kind' => 'badge', 'sort' => $sort_keys['action']),
+        'ip' => array('heading' => lang('IP Address'), 'width' => '10rem', 'sort' => $sort_keys['ip']),
+        'rule' => array('heading' => lang('Rule'), 'width' => '8rem', 'sort' => $sort_keys['rule']),
+        'score' => array('heading' => lang('Score'), 'width' => '5rem', 'sort' => $sort_keys['score']),
+        'request' => array('heading' => lang('Request'), 'width' => '22rem'),
+        'match' => array('heading' => lang('Match'), 'width' => '16rem'),
+    );
 }
 
 /**
- * One page of the events: the row counts without and with the search box,
- * and the rows of the page window. The counts are rows, as DataTables pages
- * rows; the summary above the table counts requests (SUM(hit_count)).
+ * The events as the list table driver reads them: the rows the screen's
+ * filters select (its address, checked again), searched by
+ * pg_waf_log_list_search()'s rule. The screen's gate is the source's: an
+ * account above Manager, or a database without the log, gets null.
  *
- * @param array $filters pg_waf_log_list_filters()'s answer
- * @param array $terms   pg_list_search_terms()'s answer
- * @param array $window  pg_list_page_window()'s answer
- * @param int   $now
- * @return array|false array('total', 'filtered', 'rows') or false when a
- *                     query failed
+ * @param array $user   the signed-in user
+ * @param array $params array('filters' => range, category, search)
+ * @param int|null $now the time the period ends; time() when null
+ * @return array|null pg_list_table_source(), or null when the user may not
+ *                    open the list
  */
-function pg_waf_log_list_page(array $filters, array $terms, array $window, $now)
+function pg_waf_log_list_source($user, $params, $now = null)
 {
+    if (!isset($user['role']) || !is_numeric($user['role']) || ((int) $user['role'] > 2) || !pg_schema_has('waf_log')) {
+        return null;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+    $now = ($now === null) ? time() : (int) $now;
+    $filters = pg_waf_log_list_filters((is_array($params) && isset($params['filters']) && is_array($params['filters'])) ? $params['filters'] : array());
     $condition = pg_waf_log_list_condition($filters, $now);
-    $search = pg_waf_log_list_search($terms);
-    $sql = $condition['sql'] . (($search['sql'] !== '') ? ' AND ' . $search['sql'] : '');
-    $params = array_merge($condition['params'], $search['params']);
 
-    $total = pg_waf_log_list_count($condition['sql'], $condition['params']);
+    return pg_list_table_source(array(
+        'list' => 'view_waf_log',
+        'columns' => pg_waf_log_list_columns(),
+        'from' => 'waf_log',
+        'where' => $condition['sql'],
+        'params' => $condition['params'],
+        'id' => 'id',
+        'select' => 'id, log_timestamp, last_seen, hit_count, action, ip_address, rule_id, reference, score, method, request_url, user_agent, target, matched',
+        'search' => pg_waf_log_list_search_spec(),
+        'levels' => pg_waf_log_list_sort()['sort_levels'],
+        'rows' => function ($events) use ($now) {
+            $rows = array();
 
-    if ($total === false) {
-        return false;
-    }
+            foreach ($events as $event) {
+                $rows[] = pg_waf_log_list_row($event, $now);
+            }
 
-    $filtered = ($search['sql'] !== '') ? pg_waf_log_list_count($sql, $params) : $total;
-
-    if ($filtered === false) {
-        return false;
-    }
-
-    $result = db_q('SELECT id, log_timestamp, last_seen, hit_count, action, ip_address, rule_id, reference, score, method, request_url, user_agent, target, matched FROM waf_log'
-        . ' WHERE ' . $sql . ' ORDER BY ' . pg_waf_log_list_sort()['order_by'] . pg_list_limit_sql($window), $params);
-
-    if (!$result) {
-        return false;
-    }
-
-    $rows = array();
-
-    while ($event = mysqli_fetch_assoc($result)) {
-        $rows[] = pg_waf_log_list_row($event, $now);
-    }
-
-    return array('total' => $total, 'filtered' => $filtered, 'rows' => $rows);
+            return $rows;
+        },
+        'params_out' => array('filters' => $filters),
+    ));
 }

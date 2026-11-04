@@ -369,6 +369,12 @@ if (
     $order_submitted = true;
 }
 
+// A changed "Use my store credit" choice is written and the page shown again
+// with the new totals: a purchase is never charged for a total not seen.
+if (!$is_gateway_return && pg_credit_checkout_take_post((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $_POST)) {
+    $order_submitted = false;
+}
+
 // if the order has not been submitted yet, then update order items
 if ($order_submitted == false) {
     // The form posts its quantities and donation amounts as lists keyed by item
@@ -644,10 +650,17 @@ if ($order_submitted == false) {
                     "SELECT
                         id,
                         balance,
-                        expiration_date
+                        expiration_date"
+                    . pg_credit_owner_select_sql() . "
                     FROM gift_cards
                     WHERE code = '" . escape($gift_card_code)  . "'")
                     ?: array('id' => ''); // no card with this code
+
+                // A customer's store credit is applied only by that customer; to anyone
+                // else its code is no card at all.
+                if (($gift_card['id'] != '') && !pg_credit_card_usable_by($gift_card['user_id'], pg_credit_checkout_user())) {
+                    $gift_card = array('id' => '');
+                }
 
                 // If a gift card could not be found in this system,
                 // and givex is disabled (or the code was only dashes and spaces), then output error.
@@ -763,6 +776,10 @@ if ($order_submitted == false) {
     } else {
         $tax_exempt = 0;
     }
+
+    // An EU VAT id typed for a member state other than the site's is checked
+    // against VIES; the page comes back with the total that follows from it.
+    $tax_exempt = pg_vat_checkout_apply($liveform, $tax_exempt, $_SESSION['ecommerce']['order_id'] ?? 0);
     
     $sql_offline_payment_allowed = "";
     
@@ -776,6 +793,9 @@ if ($order_submitted == false) {
         }
     }
     
+    // A Turkish district is saved in its listed spelling.
+    pg_place_liveform_fix($liveform, 'billing_');
+
     // update order information
     $query =
         "UPDATE orders
@@ -957,7 +977,8 @@ if ($order_submitted == false) {
         $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
         
         // if contact is not already in contact group, then add contact to Orders contact group
-        if (mysqli_num_rows($result) == 0) {
+        // (unless the group is filled by rules)
+        if ((mysqli_num_rows($result) == 0) && !pg_audience_group_is_dynamic($contact_group_id)) {
             $query =
                 "INSERT INTO contacts_contact_groups_xref (
                     contact_id,
@@ -1158,7 +1179,16 @@ foreach ($order_items as $order_item) {
             }
             
             // set values that will be updated
-            $recurring_payment_period = $liveform->get_field_value('recurring_payment_period_' . $order_item['id']);
+            $recurring_payment_period = (string) $liveform->get_field_value('recurring_payment_period_' . $order_item['id']);
+
+            // Only a period from the fixed option list may be stored, as in the
+            // cart: the value comes straight from the customer's POST and is
+            // later shown on the order and read by the recurring billing.
+            // Anything else is dropped and the customer is asked to pick again.
+            if (in_array($recurring_payment_period, array_values(get_payment_period_options()), true) == false) {
+                $liveform->mark_error('recurring_payment_period_' . $order_item['id'], lang('Frequency is required.'));
+                $recurring_payment_period = '';
+            }
             $recurring_number_of_payments = $liveform->get_field_value('recurring_number_of_payments_' . $order_item['id']);
             
             // if credit/debit card payment method is not enabled or the payment gateway is not ClearCommerce, then set start date to the value that the customer entered
@@ -1512,6 +1542,9 @@ if (ECOMMERCE_SHIPPING) {
         // Get unique prefix for all shipping fields for this recipient, because there might be
         // multiple recipients.
         $prefix = 'shipping_' . $recipient['id'] . '_';
+
+        // A Turkish district is saved in its listed spelling.
+        pg_place_liveform_fix($liveform, $prefix);
 
         // Each recipient carries its own arrival date; one without a selection
         // must not inherit the previous recipient's row.

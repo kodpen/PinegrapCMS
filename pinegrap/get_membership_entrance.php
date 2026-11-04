@@ -130,6 +130,11 @@ function get_membership_entrance($properties = array()) {
                 </tr>';
         }
 
+        // A visitor Google has already verified may leave the password empty
+        // (pg_member_activate() only asks for it on a typed sign-up), so the
+        // browser must not demand it either.
+        $password_required = $google_signup ? '' : 'true';
+
         $output = '';
 
         if ($device_type == 'mobile') {
@@ -191,11 +196,11 @@ function get_membership_entrance($properties = array()) {
                             ' . $output_strong_password_requirement_row . '
                             <tr>
                                 <td>' . lang('Password') . '*:</td>
-                                <td>' . $form->output_field(array('type'=>'password', 'name'=>'password', 'class'=>'software_input_password', 'required' => 'true')) . '</td>
+                                <td>' . $form->output_field(array('type'=>'password', 'name'=>'password', 'class'=>'software_input_password', 'required' => $password_required)) . '</td>
                             </tr>
                             <tr>
                                 <td>' . lang('Confirm Password') . '*:</td>
-                                <td>' . $form->output_field(array('type'=>'password', 'name'=>'password_verify', 'class'=>'software_input_password', 'required' => 'true')) . '</td>
+                                <td>' . $form->output_field(array('type'=>'password', 'name'=>'password_verify', 'class'=>'software_input_password', 'required' => $password_required)) . '</td>
                             </tr>
                             ' . $output_password_hint_field . '
                             ' . $output_register_remember_me_checkbox . '
@@ -279,11 +284,11 @@ function get_membership_entrance($properties = array()) {
                                 ' . $output_strong_password_requirement_row . '
                                 <tr>
                                     <td>' . lang('Password') . '*:</td>
-                                    <td>' . $form->output_field(array('type'=>'password', 'name'=>'password', 'class'=>'software_input_password', 'required' => 'true')) . '</td>
+                                    <td>' . $form->output_field(array('type'=>'password', 'name'=>'password', 'class'=>'software_input_password', 'required' => $password_required)) . '</td>
                                 </tr>
                                 <tr>
                                     <td>' . lang('Confirm Password') . '*:</td>
-                                    <td>' . $form->output_field(array('type'=>'password', 'name'=>'password_verify', 'class'=>'software_input_password', 'required' => 'true')) . '</td>
+                                    <td>' . $form->output_field(array('type'=>'password', 'name'=>'password_verify', 'class'=>'software_input_password', 'required' => $password_required)) . '</td>
                                 </tr>
                                 ' . $output_password_hint_field . '
                                 ' . $output_register_remember_me_checkbox . '

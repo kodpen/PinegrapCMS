@@ -286,7 +286,7 @@
         reset.addEventListener("click", backToDefault);
         var stop = button("btn btn-outline theme-secondary btn-sm", S.cancel);
         stop.addEventListener("click", cancel);
-        var keep = button("btn theme-primary btn-sm", S.save);
+        var keep = button("btn btn-solid theme-primary btn-sm", S.save);
         keep.addEventListener("click", function () {
             save(false, keep);
         });
@@ -325,7 +325,7 @@
 
     // The preset's cards at their defaults, every top-section part on.
     function backToDefault() {
-        var top = {since: 1, actions: 1, tiles: 1, status: 1};
+        var top = {since: 1, actions: 1, tiles: 1, status: 1, brief: 1};
 
         if (JSON.stringify(top) !== JSON.stringify(state.top)) {
             greetingDirty = true;
@@ -692,11 +692,13 @@
             nav.textContent = "";
 
             state.actions.forEach(function (key, i) {
-                var drawn = greetingCopy.querySelector('[data-shortcut="' + key + '"] .pg-btn-label');
+                var drawn = greetingCopy.querySelector('[data-shortcut="' + key + '"]');
                 var label = drawn ? drawn.textContent : config.edit.shortcuts[key].label;
-                var chip = el("span", "pg-dash-action-edit" + (i === 0 ? " pg-dash-action-main" : ""));
-                chip.appendChild(el("span", "pg-btn-label", label));
-                var drop = button("pg-dash-action-remove", "", fmt(S.remove_item, label));
+                var chip = el("span", "pg-dash-btn pg-dash-action-edit" + (i === 0 ? " pg-dash-btn-main" : ""));
+                chip.appendChild(el("span", "pg-dash-action-label", label));
+                // The remove label names the shortcut without its live count.
+                var plain = config.edit.shortcuts[key] ? config.edit.shortcuts[key].label : label;
+                var drop = button("pg-dash-action-remove", "", fmt(S.remove_item, plain));
                 drop.appendChild(icon("bi-x-lg"));
                 drop.addEventListener("click", function () {
                     state.actions.splice(i, 1);
@@ -713,7 +715,7 @@
             });
 
             if ((state.actions.length < 6) && spare.length) {
-                var add = button("btn btn-outline theme-secondary pg-dash-action-add", "+ " + S.add_action);
+                var add = button("pg-dash-btn pg-dash-action-add", "+ " + S.add_action);
                 add.addEventListener("click", function () {
                     state.actions.push(spare[0]);
                     greetingDirty = true;
@@ -770,6 +772,12 @@
             if (node) {
                 node.hidden = !state.top[pair[0]];
             }
+        });
+
+        // The brief has two parts: the next meeting by the date and the
+        // sentence under the title.
+        greeting.querySelectorAll("[data-top-part=\"brief\"]").forEach(function (node) {
+            node.hidden = !state.top.brief;
         });
     }
 
@@ -859,6 +867,8 @@
             state: function () {
                 return state;
             },
+            // The layout as it stands on screen, in the form Save sends.
+            layout: current,
             greetingChanged: function () {
                 greetingDirty = true;
                 drawGreeting();

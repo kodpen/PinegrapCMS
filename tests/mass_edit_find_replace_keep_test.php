@@ -51,7 +51,19 @@ function test_mass_edit_find_replace_refusals_keep_the_post()
 	pg_assert_true($start !== false, 'the Find & Replace branch');
 	$branch = substr($source, (int) $start, (int) strpos($source, 'exit();', (int) $start) - (int) $start);
 
-	pg_assert_same(3, substr_count($branch, '$liveform->mark_error('), 'three refusals');
+	pg_assert_same(4, substr_count($branch, '$liveform->mark_error('), 'four refusals');
 	pg_assert_same(1, substr_count($branch, "\$liveform->add_fields_to_session(array('trim' => false));"), 'the post is kept once, untrimmed');
 	pg_assert_contains("if (\$liveform->check_form_errors() == true) {\n            // A refused apply comes back with what was typed and ticked, kept\n            // untrimmed because spaces count in a pattern.\n            \$liveform->add_fields_to_session(array('trim' => false));\n        }\n        header('Location: ", $branch, 'only a refused apply keeps the post, right before the redirect');
+}
+
+// Find and Replace arrive as text: an array (find_text[]=…) reached
+// preg_match()/preg_replace()/str_replace() and ended the request with a
+// TypeError; it is refused as an invalid request instead.
+function test_mass_edit_find_replace_refuses_non_text()
+{
+	$source = _test_mass_edit_find_replace_source();
+	$start = strpos($source, "\$_POST['action'] === 'find_replace'");
+	$branch = substr($source, (int) $start, (int) strpos($source, 'exit();', (int) $start) - (int) $start);
+
+	pg_assert_contains("if (!is_string(\$find) || !is_string(\$replace)) {\n            \$liveform->mark_error('find_text', lang('Invalid request.'));\n        } elseif (\$find === '') {", $branch, 'a non-text Find or Replace is refused before any use');
 }

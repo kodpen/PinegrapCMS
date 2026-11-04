@@ -750,8 +750,8 @@ function pg_tr_csv_export($language, $scope = 'all', $only_pending = false)
                 $row['hash'],
                 $row['format'],
                 ($row['text'] === null) ? 'pending' : $row['status'],
-                $row['source_text'],
-                ($row['text'] === null) ? '' : $row['text'],
+                pg_csv_formula_guard($row['source_text']),
+                ($row['text'] === null) ? '' : pg_csv_formula_guard($row['text']),
             ), ';', '"', '\\');
         }
     }
@@ -829,7 +829,7 @@ function pg_tr_csv_import($language, $csv, $user_id = 0, $as_machine = false)
         }
 
         $hash = isset($row[$columns['hash']]) ? trim((string) $row[$columns['hash']]) : '';
-        $translation = isset($row[$columns['translation']]) ? (string) $row[$columns['translation']] : '';
+        $translation = isset($row[$columns['translation']]) ? pg_csv_formula_unguard($row[$columns['translation']]) : '';
 
         if (!preg_match('/^[0-9a-f]{40}$/', $hash)) {
             $summary['rejected']++;

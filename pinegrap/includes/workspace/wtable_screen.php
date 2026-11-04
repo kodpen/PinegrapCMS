@@ -211,37 +211,64 @@ function ws_wtable_screen_figure($raw)
 
 /**
  * The status choices of a column from the form: one label a line. A label
- * the column had keeps its key, so the cells holding it keep their choice;
- * a new one gets the next free key. Empty lines are dropped.
+ * the column had keeps its key, so the cells holding it keep their choice.
+ * When the number of lines is unchanged, a label changed on its own line is
+ * a rename and keeps that line's key and colour. Any other new label gets a
+ * key that no current choice and no row holds, so a key dropped earlier
+ * never comes back with another meaning for the rows still holding it.
+ * Empty and repeated lines are dropped.
  *
  * @param string $lines
  * @param array  $old   the column's choices (key, label, colour)
+ * @param array  $held  the keys the table's rows hold in this column
  * @return array[] key, label, color
  */
-function ws_wtable_screen_status_choices($lines, $old = array())
+function ws_wtable_screen_status_choices($lines, $old = array(), $held = array())
 {
     $by_label = array();
+    $old_list = array();
     $used = array();
 
     foreach ((array) $old as $choice) {
         if (is_array($choice) && isset($choice['key'], $choice['label'])) {
             $by_label[(string) $choice['label']] = $choice;
+            $old_list[] = $choice;
             $used[(string) $choice['key']] = true;
         }
     }
 
-    $choices = array();
-    $next = 1;
+    foreach ((array) $held as $key) {
+        if (is_string($key) && ($key !== '')) {
+            $used[$key] = true;
+        }
+    }
+
+    $labels = array();
+    $seen = array();
 
     foreach (preg_split('/\r\n|\r|\n/', (string) $lines) as $line) {
         $label = trim($line);
 
-        if (($label === '') || isset($choices[$label])) {
+        if (($label !== '') && !isset($seen[$label])) {
+            $seen[$label] = true;
+            $labels[] = $label;
+        }
+    }
+
+    $renames = (count($labels) === count($old_list));
+    $choices = array();
+    $next = 1;
+
+    foreach ($labels as $position => $label) {
+        if (isset($by_label[$label])) {
+            $choices[] = array('key' => (string) $by_label[$label]['key'], 'label' => $label, 'color' => (string) ($by_label[$label]['color'] ?? ''));
             continue;
         }
 
-        if (isset($by_label[$label])) {
-            $choices[$label] = array('key' => (string) $by_label[$label]['key'], 'label' => $label, 'color' => (string) ($by_label[$label]['color'] ?? ''));
+        $was = $renames ? $old_list[$position] : null;
+
+        if ($was && !isset($seen[(string) $was['label']])) {
+            $choices[] = array('key' => (string) $was['key'], 'label' => $label, 'color' => (string) ($was['color'] ?? ''));
             continue;
         }
 
@@ -250,10 +277,10 @@ function ws_wtable_screen_status_choices($lines, $old = array())
         }
 
         $used['s' . $next] = true;
-        $choices[$label] = array('key' => 's' . $next, 'label' => $label, 'color' => '');
+        $choices[] = array('key' => 's' . $next, 'label' => $label, 'color' => '');
     }
 
-    return array_values($choices);
+    return $choices;
 }
 
 /**
@@ -262,9 +289,10 @@ function ws_wtable_screen_status_choices($lines, $old = array())
  * @param string     $type
  * @param array      $form decimals, currency, time, choices (lines), kinds (comma list), expression
  * @param array|null $old  the column when it is changed
+ * @param array      $held a status column's keys the table's rows hold
  * @return array
  */
-function ws_wtable_screen_options_from_form($type, $form, $old = null)
+function ws_wtable_screen_options_from_form($type, $form, $old = null, $held = array())
 {
     $form = is_array($form) ? $form : array();
     $text = function ($key) use ($form) {
@@ -290,7 +318,7 @@ function ws_wtable_screen_options_from_form($type, $form, $old = null)
             return array('time' => ($text('time') === '1'));
 
         case 'status':
-            return array('choices' => ws_wtable_screen_status_choices($text('choices'), $old['options']['choices'] ?? array()));
+            return array('choices' => ws_wtable_screen_status_choices($text('choices'), $old['options']['choices'] ?? array(), $held));
 
         case 'link':
             $kinds = array();
@@ -359,7 +387,11 @@ function ws_wtable_screen_cell_from_form($column, $raw)
             return ($number === null) ? $raw : $number;
 
         case 'date':
-            return str_replace('T', ' ', $raw);
+            // The native input posts 2026-10-29 or 2026-10-29T09:30, a
+            // browser may add the seconds; the store keeps minutes.
+            $raw = str_replace('T', ' ', $raw);
+
+            return preg_match('/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}):\d{2}$/', $raw, $parts) ? $parts[1] : $raw;
 
         case 'person':
             return ctype_digit($raw) ? (int) $raw : $raw;
@@ -404,9 +436,53 @@ function ws_wtable_screen_cell_to_form($column, $value)
 
         case 'link':
             return (is_array($value) && isset($value['kind'], $value['id'])) ? $value['kind'] . ':' . (int) $value['id'] : '';
+
+        case 'date':
+            // The field is a native date or datetime-local input, which
+            // drops any value that is not ISO.
+            if (!is_string($value) || !preg_match('/^(\d{4}-\d{2}-\d{2})(?: (\d{2}:\d{2}))?$/', $value, $parts)) {
+                return '';
+            }
+
+            return empty($options['time']) ? $parts[1] : $parts[1] . 'T' . (isset($parts[2]) ? $parts[2] : '00:00');
     }
 
     return is_scalar($value) ? (string) $value : '';
+}
+
+/**
+ * A stored date cell ('2026-11-20' or '2026-11-20 14:30', the wall time
+ * as typed, no time zone) as the site writes a date: 20.11.2026 14:30 day
+ * first, 11/20/2026 month first, 2:30 PM on a twelve-hour clock. Anything
+ * else comes back as it was. Pure.
+ *
+ * @param string $value
+ * @param string $date_format DATE_FORMAT: month_day or day_month
+ * @param string $time_format TIME_FORMAT: twelve_hours or twenty_four_hours
+ * @return string
+ */
+function ws_wtable_screen_date_text($value, $date_format, $time_format)
+{
+    $value = (string) $value;
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}(?: \d{2}:\d{2})?$/', $value)) {
+        return $value;
+    }
+
+    $timed = (strlen($value) > 10);
+    $moment = DateTime::createFromFormat($timed ? '!Y-m-d H:i' : '!Y-m-d', $value, new DateTimeZone('UTC'));
+
+    if (!$moment) {
+        return $value;
+    }
+
+    $format = ($date_format === 'month_day') ? 'm/d/Y' : 'd.m.Y';
+
+    if ($timed) {
+        $format .= ' ' . (($time_format === 'twelve_hours') ? 'g:i A' : 'H:i');
+    }
+
+    return $moment->format($format);
 }
 
 /**
@@ -442,6 +518,11 @@ function ws_wtable_screen_cell_text($column, $value, $people = array())
 
         case 'person':
             return isset($people[(int) $value]['name']) ? (string) $people[(int) $value]['name'] : '#' . (int) $value;
+
+        case 'date':
+            return is_string($value)
+                ? ws_wtable_screen_date_text($value, defined('DATE_FORMAT') ? (string) DATE_FORMAT : '', defined('TIME_FORMAT') ? (string) TIME_FORMAT : '')
+                : '';
 
         case 'status':
             foreach ((array) ($options['choices'] ?? array()) as $choice) {

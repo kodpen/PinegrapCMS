@@ -92,49 +92,15 @@ if (!$_POST || $errors) {
 
 } else {
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
-        // Clear everything tied to each state of the country before the states themselves.
-        $result = db_q("SELECT id FROM states WHERE country_id = ?", array($id)) or output_error('Query failed.');
-        $state_ids = array();
-        while ($state = mysqli_fetch_assoc($result)) {
-            $state_ids[] = (int) $state['id'];
-        }
-
-        foreach ($state_ids as $state_id) {
-            db_q("DELETE FROM zones_states_xref WHERE state_id = ?", array($state_id)) or output_error('Query failed.');
-            db_q("DELETE FROM tax_zones_states_xref WHERE state_id = ?", array($state_id)) or output_error('Query failed.');
-            db_q("DELETE FROM verified_shipping_addresses WHERE state_id = ?", array($state_id)) or output_error('Query failed.');
-        }
-
-        db_q("DELETE FROM states WHERE country_id = ?", array($id)) or output_error('Query failed.');
-        db_q("DELETE FROM zones_countries_xref WHERE country_id = ?", array($id)) or output_error('Query failed.');
-        db_q("DELETE FROM tax_zones_countries_xref WHERE country_id = ?", array($id)) or output_error('Query failed.');
-        db_q("DELETE FROM countries WHERE id = ?", array($id)) or output_error('Query failed.');
+        // The country, its states and everything tied to them.
+        pg_store_country_delete($id) or output_error('Query failed.');
 
         log_activity(lang(array('string' => 'country ({var:1}) was deleted', 'vars' => array($values['name']))), $_SESSION['sessionusername']);
 
     } else {
-        $query = "UPDATE countries SET
-                name = ?,
-                code = ?,
-                zip_code_required = ?,
-                transit_adjustment_days = ?,
-                default_selected = ?,
-                user = ?,
-                timestamp = UNIX_TIMESTAMP()
-            WHERE id = ?";
-        $result = db_q($query, array(
-            $values['name'],
-            $values['code'],
-            $values['zip_code_required'],
-            $values['transit_adjustment_days'],
-            $values['default_selected'],
-            (int) $user['id'],
-            $id)) or output_error('Query failed.');
-
-        // if default selected was checked, then turn value off for all other countries
-        if ($values['default_selected'] == 1) {
-            db_q("UPDATE countries SET default_selected = 0 WHERE id != ?", array($id)) or output_error('Query failed.');
-        }
+        pg_store_country_save($id, array_merge($values, array(
+            'transit_adjustment_days' => pg_country_form_transit_days($values['transit_adjustment_days']),
+        )), (int) $user['id']) or output_error('Query failed.');
 
         log_activity(lang(array('string' => 'country ({var:1}) was modified', 'vars' => array($values['name']))), $_SESSION['sessionusername']);
     }

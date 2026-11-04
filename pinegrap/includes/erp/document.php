@@ -197,8 +197,8 @@ function erp_document_logo()
         return $logo;
     }
 
-    $directory = defined('FILE_DIRECTORY_PATH') ? FILE_DIRECTORY_PATH : PG_FUNCTIONS_DIR . '/data/files';
-    $path = $directory . '/' . basename($setting);
+    // The logo may have been moved to the object store: a copy is read.
+    $path = defined('FILE_DIRECTORY_PATH') ? pg_file_reader_path(basename($setting)) : PG_FUNCTIONS_DIR . '/data/files/' . basename($setting);
     $types = array('png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'gif' => 'image/gif', 'svg' => 'image/svg+xml', 'webp' => 'image/webp');
     $extension = mb_strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
@@ -440,6 +440,7 @@ function erp_invoice_document_data($invoice_id, $source = null)
         'title' => (is_array($source) && isset($source['title'])) ? (string) $source['title'] : ($titles[$doc_type] ?? $titles['invoice']),
         'status' => (string) $invoice['status'],
         'status_label' => $status_labels[$invoice['status']] ?? (string) $invoice['status'],
+        'is_cancelled' => ((string) $invoice['status'] === 'cancelled'),
         'order_number' => $order_number,
         'against_number' => $against_number,
         'currency' => $currency,
@@ -491,6 +492,9 @@ function erp_invoice_document_data($invoice_id, $source = null)
                 : '',
             'quantity' => erp_quantity_text($row['quantity']),
             'unit' => (string) $row['unit_code'],
+            // The unit as a person reads it ("kilogram" for KGM); a code the
+            // list does not know is printed as it is.
+            'unit_name' => function_exists('erp_waybill_unit_label') ? erp_waybill_unit_label((string) $row['unit_code']) : (string) $row['unit_code'],
             'unit_price' => $money((int) $row['unit_price']),
             'discount' => ($discount > 0) ? $money($discount) : '',
             'has_discount' => ($discount > 0),

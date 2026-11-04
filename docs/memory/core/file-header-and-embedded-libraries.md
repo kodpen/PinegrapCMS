@@ -20,7 +20,7 @@ description: The Pinegrap file header every new PHP/JS file must carry, which fi
  */
 ```
 - Copy it when creating a file; spell it `Pinegrap`, not `PineGrap`.
-- Never touch the headers of third-party libraries: `includes/phpmailer`, `stripe`, `iyzipay-php`, `phpexcel`, `boxpacker`, `dompdf`, `qrcode`.
+- Never touch the headers of third-party libraries: `includes/phpmailer`, `stripe`, `iyzipay-php`, `phpexcel`, `boxpacker`, `dompdf`, `qrcode`; at the root `pclzip.lib.php`, `excel_reader2.php` and `mysqldump.php`.
 
 ## What PHP base must an embedded library respect?
 - Before putting a library under `includes/`, check the `php` constraint in its `composer.json` and PIN the version accordingly: the base must stay at 7.1 or below.

@@ -417,7 +417,7 @@ function test_api_order_returns_order_lines_name_their_delivery()
 	pg_assert_same('integer?', $schema['items'][0]['ship_to_id'] ?? null, 'declared, null for a line sent to no address');
 
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/orders.php');
-	$start = strpos($source, "\nfunction api_orders_get(");
+	$start = strpos($source, "\nfunction api_order_full(");
 	$body = substr($source, $start, strpos($source, "\nfunction ", $start + 1) - $start);
 
 	pg_assert_contains('order_items.ship_to_id', $body, 'read with the line');

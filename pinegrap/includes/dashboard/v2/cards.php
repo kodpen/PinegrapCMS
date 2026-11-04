@@ -66,7 +66,10 @@ function pg_dashboard_v2_periods()
 function pg_dashboard_v2_cards()
 {
     // The cards whose function exists.
-    $built = array('visitors', 'engagement', 'gsearch', 'ga', 'content', 'comments', 'files', 'activity', 'firewall', 'team', 'mytasks', 'waiting', 'week', 'calendars', 'queue');
+    $built = array('visitors', 'engagement', 'gsearch', 'ga', 'content', 'comments', 'files', 'activity', 'firewall', 'team', 'mytasks', 'waiting', 'week', 'calendars', 'queue', 'pipeline', 'goals', 'notes', 'flows');
+    $built = array_merge($built, array('shop', 'salesmap', 'orders', 'offers', 'fx', 'ops'));
+    $built[] = 'ai';
+    $built = array_merge($built, array('pins', 'perf'));
 
     $card = function ($title, $icon, $category, $width, $period, $gate) {
         return array(
@@ -85,7 +88,7 @@ function pg_dashboard_v2_cards()
         // General
         'ai'         => $card(lang('Assistant'), 'bi-stars', 'general', 'M', null, 'workspace'),
         'goals'      => $card(lang('My goals'), 'bi-bullseye', 'general', 'S', null, 'all'),
-        'pipeline'   => $card(lang('Pipeline'), 'bi-funnel', 'general', 'L', 2, 'all'),
+        'pipeline'   => $card(lang('Work line'), 'bi-funnel', 'general', 'L', 2, 'all'),
         'queue'      => $card(lang('Next up'), 'bi-list-ol', 'general', 'M', null, 'all'),
         'activity'   => $card(lang('Activity'), 'bi-activity', 'general', 'S', null, 'all'),
         'flows'      => $card(lang('Flows'), 'bi-diagram-3', 'general', 'S', null, 'workspace'),
@@ -111,7 +114,7 @@ function pg_dashboard_v2_cards()
         'calendars'  => $card(lang('Calendars'), 'bi-calendar3', 'team', 'S', null, 'calendars'),
         // Ecommerce
         'shop'       => $card(lang('Ecommerce Summary'), 'bi-cash-stack', 'shop', 'M', 2, 'shop_summary'),
-        'salesmap'   => $card(lang('Sales Map'), 'bi-map', 'shop', 'M', 2, 'shop_reports'),
+        'salesmap'   => $card(lang('Sales Map'), 'bi-map', 'shop', 'M', null, 'shop_reports'),
         'ops'        => $card(lang('Operations Desk'), 'bi-clipboard-check', 'shop', 'M', null, 'shop'),
         'orders'     => $card(lang('Orders'), 'bi-cart4', 'shop', 'S', null, 'shop'),
         'offers'     => $card(lang('Offers'), 'bi-tag', 'shop', 'S', null, 'shop'),

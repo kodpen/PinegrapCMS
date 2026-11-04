@@ -6,6 +6,7 @@ description: Header account menu (pg_account_menu()): fixed card, phone sheet, w
 ## Where is it built?
 - `pg_account_menu($user, $options)` in `includes/fn/output.php`, called by `output_header()`; it returns the `<li class="nav-item pg-menu-wrap">` with the button (`#user_menu_toggle.pg-acctbtn`, `data-bs-toggle="menu"`, `data-bs-placement="bottom-end"`, `data-bs-display="static"`, `data-bs-auto-close="outside"`) and the menu (`ul#user_menu.menu.pg-menu-end.pg-usermenu.backdrop`). Styles: `backend.src.css` "Account menu"; script: `pg_account_menu_init()` and `pg_contact_quick_init()` in `backend.src.js`.
 - Order: who is signed in (an administrator's links to `edit_user.php`), the address book form while the name or picture is missing, the licence card (`license_check('bar')`), appearance, My Account / connected applications / calendar subscription / start page, Help & Support, logout, version line.
+- The My Account row links to `my_account_link.php`, which finds the account page only when followed (`panel-background-polls.md`).
 
 ## Why is it fixed to the viewport?
 - Bootstrap 5 gave no Popper to a dropdown inside a `.navbar`; under Bootstrap 6 the toggle's `data-bs-display="static"` likewise skips Floating UI. A menu hung from its toggle has nothing keeping it on screen. The old menu ran off the left edge of a phone, and could not scroll: `#header .pg-usermenu {overflow:hidden}` beat `#user_menu {overflow-y:auto}` on specificity, so on a phone logout and the rows below the fold were out of reach (rebuilt in #593).
@@ -17,4 +18,5 @@ description: Header account menu (pg_account_menu()): fixed card, phone sheet, w
 - Menu rows carry no colour, logout included (`admin-screen-toolbar-rules.md`), and no `title` (every titled element gets a hover popover).
 
 ## Where did the keyboard shortcuts go?
-- Out of the menu (nobody found the accordion). `pg_shortcuts_dialog()` prints `#pg_shortcuts` on every screen; `?` outside a field opens it, and the search box offers a "Keyboard Shortcuts" chip (`command-palette.md`). On Apple devices the `kbd[data-pg-mod]` keys read ⌘.
+- Out of the menu (nobody found the accordion). `pg_shortcuts_dialog()` prints `#pg_shortcuts` on every screen; `?` outside a field opens it, and the search box offers a "Keyboard Shortcuts" chip (`command-palette.md`). On Apple devices every `[data-pg-mod]` reads ⌘ (`pg_shortcuts_init()`): the sheet's Ctrl keys and the Ctrl+K hints of the header field and the search box. Ctrl+Q keeps Ctrl (its row's third item is `false`): ⌘Q quits the browser.
+- The menu's rows never shrink (`#header .pg-usermenu > li { flex-shrink: 0 }`): the opened licence card shrank in the capped or phone-sheet column and hid Check License and Buy License below its edge.

@@ -19,7 +19,19 @@
 // this script processes a submitted custom form
 include('init.php');
 
+// The visitor is back from a payment service's 3-D Secure or hosted page for
+// a form's fee: the service's request carries no form token
+// (includes/fn/form_payment_step.php).
+if (isset($_GET['mode']) && is_string($_GET['mode']) && ($_GET['mode'] !== 'paypal_express_checkout_return') && pg_payment_is_return_mode($_GET['mode'])) {
+    pg_form_payment_return((int) ($_GET['page_id'] ?? 0));
+}
+
 validate_token_field();
+
+// The payment alone of a record saved unpaid: a retry, or a new submission.
+if (isset($_POST['pg_form_pay']) || isset($_POST['pg_form_pay_discard'])) {
+    pg_form_payment_retry((int) ((isset($_POST['page_id']) && is_string($_POST['page_id'])) ? $_POST['page_id'] : 0));
+}
 
 check_banned_ip_addresses('submit custom form');
 
@@ -301,6 +313,24 @@ $sms_question_dropped = array_diff_key($fields, pg_cf_drop_sms_question(
     (($connect_to_contact != 'false') && !empty($contact_mobile_phone)) ? array('mobile_phone' => $contact_mobile_phone) : array(),
     $send_to_query));
 
+// The fields "Shown when" hid from the visitor, because the field the rule
+// names was not given one of its answers (pg_cf_shown_when_hidden()): such a
+// field is neither required nor checked, its posted value is dropped and it
+// writes nothing to the contact. The browser disabled it already; anything
+// posted for it anyway is not an answer.
+$shown_when_values = array();
+foreach ($fields as $field) {
+    $shown_when_values[$field['id']] = pg_cf_rule_value($liveform, $field);
+}
+$shown_when_hidden = pg_cf_shown_when_hidden($fields, $shown_when_values);
+foreach ($fields as $field) {
+    if (!isset($shown_when_hidden[$field['id']])) continue;
+    if ($field['type'] == 'file upload') {
+        $_FILES[$field['id']] = array('name' => '', 'type' => '', 'tmp_name' => '', 'error' => UPLOAD_ERR_NO_FILE, 'size' => 0);
+    }
+    $liveform->assign_field_value($field['id'], '');
+}
+
 // loop through all fields in order to validate fields
 foreach ($fields as $field_key => $field) {
     // if the field is an office use only field and we need to deal with office use only fields
@@ -312,6 +342,7 @@ foreach ($fields as $field_key => $field) {
             || ($field['office_use_only'] == 0)
         )
         && !isset($sms_question_dropped[$field_key])
+        && !isset($shown_when_hidden[$field['id']])
     ) {
         // if field is required and visitor clicked submit button,
         // then validate field
@@ -471,6 +502,10 @@ foreach ($fields as $field_key => $field) {
         }
     }
 }
+
+// The fee a submission of a form with a payment step owes, checked with the
+// answers before anything is stored (null: none).
+$form_fee = ($action == 'submit') ? pg_form_payment_check($liveform, (int) $_POST['page_id'], $fields, $shown_when_hidden) : null;
 
 // The protections below hold every submission but staff's
 // (pg_user_has_panel_access()); saving for later writes nothing to anyone.
@@ -633,6 +668,9 @@ if ($liveform->check_form_errors() == false) {
     // Only set when this submission creates a user account; the notification
     // further below is written either way.
     $username = '';
+
+    // The signatures drawn on the form, stored after the loop.
+    $signature_pending = array();
     
     // loop through all fields
     foreach ($fields as $field_key => $field) {
@@ -753,12 +791,9 @@ if ($liveform->check_form_errors() == false) {
             // A signature is stored the way an uploaded file is - the drawing
             // becomes a file and form_data points at it - but through its own
             // path, because what makes it worth keeping is the record written
-            // beside it.
-            //
-            // The document it is bound to is read again here rather than taken
-            // from $fields: the query that built that list drops information
-            // fields, and an information field is exactly where a contract or an
-            // offer is written.
+            // beside it. Its row is written without a file here; the record is
+            // written once every answer is stored (pg_signature_store_pending()),
+            // because the document it is bound to is the answers as stored.
             } else if (($field['type'] == 'signature') && function_exists('pg_signature_ready') && pg_signature_ready()) {
                 $file_id = '';
                 $data = '';
@@ -766,36 +801,12 @@ if ($liveform->check_form_errors() == false) {
                 $signature_png = pg_signature_png_from_data_url($liveform->get_field_value($field['id']));
 
                 if ($signature_png !== false) {
-                    $signature_document = db_items(
-                        "SELECT id, name, label, type, required, information
-                        FROM form_fields
-                        WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'
-                        ORDER BY sort_order ASC");
-
-                    $signature_values = array();
-
-                    foreach ($fields as $signature_source) {
-                        if ($signature_source['type'] == 'signature') {
-                            continue;
-                        }
-
-                        $signature_values[$signature_source['id']] = $liveform->get_field_value($signature_source['id']);
-                    }
-
-                    $signature_file_id = pg_signature_store(
-                        $form_id,
-                        $field['id'],
-                        $signature_png,
-                        array(
-                            'page_id' => $_POST['page_id'] ?? 0,
-                            'document_hash' => pg_signature_document_hash($_POST['page_id'] ?? 0, $signature_document, $signature_values, $field['label']),
-                            'consent_text' => $field['label'],
-                            'strokes' => pg_signature_clean_strokes(isset($_POST[$field['id'] . '_strokes']) ? $_POST[$field['id'] . '_strokes'] : ''),
-                        ));
-
-                    if ($signature_file_id !== false) {
-                        $file_id = $signature_file_id;
-                    }
+                    $signature_pending[] = array(
+                        'field_id' => $field['id'],
+                        'label' => $field['label'],
+                        'png' => $signature_png,
+                        'strokes' => pg_signature_clean_strokes(isset($_POST[$field['id'] . '_strokes']) ? $_POST[$field['id'] . '_strokes'] : ''),
+                    );
                 }
 
             // else field does not have file upload type
@@ -822,7 +833,7 @@ if ($liveform->check_form_errors() == false) {
                 (string) $form_data_type)) or output_error('Query failed.');
             
             // if this field is connected to a contact field, and if connect to contact is on, prepare SQL for updating contact
-            if (($field['contact_field']) && ($connect_to_contact != 'false')) {
+            if (($field['contact_field']) && ($connect_to_contact != 'false') && !isset($shown_when_hidden[$field['id']])) {
                 // Only a choice the visitor saw holds the visitor's answer.
                 // An office-use-only field is filled by staff in edit mode
                 // or carries its default, a designed hidden input is
@@ -945,6 +956,10 @@ if ($liveform->check_form_errors() == false) {
                 }
             }
         }
+    }
+
+    if ($signature_pending) {
+        pg_signature_store_pending($form_id, $_POST['page_id'] ?? 0, $signature_pending);
     }
 
     // If pretty URLs are enabled, then update address name.
@@ -1324,7 +1339,8 @@ if ($liveform->check_form_errors() == false) {
         // loop through contact groups that contact should be added to
         foreach ($contact_groups as $contact_group_id) {
             // check if contact group exists
-            $query = "SELECT id FROM contact_groups WHERE id = ?";
+            // a group filled by rules is never written by a form
+            $query = "SELECT id FROM contact_groups WHERE (id = ?) AND " . pg_audience_hand_sql();
             $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
             
             // if contact group exists
@@ -1493,7 +1509,8 @@ if ($liveform->check_form_errors() == false) {
     }
 
     // If the submitter email is enabled, then send it to the submitter and possibly a watcher.
-    if ($submitter_email == 1) {
+    // A record that owes a fee is unpaid yet: no e-mail until it is paid.
+    if (($submitter_email == 1) && ($form_fee === null)) {
         // Prepare array to store email address for submitter and
         // any watcher that was added through the hidden add watcher feature.
         $submitter_and_watcher_email_addresses = array();
@@ -1646,7 +1663,7 @@ if ($liveform->check_form_errors() == false) {
     }
     
     // if an administrator e-mail is enabled and there is an e-mail address to e-mail, then send e-mail
-    if (($administrator_email == 1) && (($administrator_email_to_email_address != '') || ($administrator_email_bcc_email_address != '') || (count($administrator_email_addresses) > 0))) {
+    if (($administrator_email == 1) && ($form_fee === null) && (($administrator_email_to_email_address != '') || ($administrator_email_bcc_email_address != '') || (count($administrator_email_addresses) > 0))) {
         
         // if there is a to e-mail address and it has not already been added to the array, then add it
         if (($administrator_email_to_email_address != '') && (in_array($administrator_email_to_email_address, $administrator_email_addresses) == false)) {
@@ -1860,6 +1877,10 @@ if ($liveform->check_form_errors() == false) {
         $result = db_q($query, array((string) $form_name, (string) $_SESSION['software']['visitor_id'])) or output_error('Query failed.');
     }
 
+    // A page experiment whose goal is this form counts it for the visitor's
+    // variant, outside the visitor tracking switch (includes/fn/experiments.php).
+    pg_experiment_goal('form', array('page_id' => (int) $_POST['page_id']));
+
     // Check if there are auto e-mail campaigns that should be created based on this custom form being submitted.
     create_auto_email_campaigns(array(
         'action' => 'custom_form_submitted',
@@ -1883,6 +1904,13 @@ if ($liveform->check_form_errors() == false) {
         'contact_id'     => ((int) $contact_id > 0) ? (int) $contact_id : null
     ));
     
+    // The fee: the record is saved unpaid, its order written and charged.
+    // Returns once the order is completed; a payment page or a refusal (the
+    // form's page then shows the payment alone) ends the request.
+    if ($form_fee !== null) {
+        pg_form_payment_start((int) $_POST['page_id'], (int) $form_id, $reference_code, $form_fee, (int) $contact_id, $submitter_email_address, (int) $user_id, $send_to);
+    }
+
     // if this is a quiz custom form, then verify that user has passed quiz
     if ($quiz == 1) {
         // if quiz score is less than the quiz pass percentage, then prepare notice and send user back to custom form

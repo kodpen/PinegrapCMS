@@ -71,12 +71,12 @@ $form = $row['form'] ?? '';
 
 // if there is a custom field 1 label and custom field 1 is required, then validate required field
 if (($custom_field_1_label != '') && ($custom_field_1_required == 1)) {
-    $liveform->validate_required_field('custom_field_1', h($custom_field_1_label) . ' is required.');
+    $liveform->validate_required_field('custom_field_1', lang(array('string' => '{var:1} is required.', 'vars' => h($custom_field_1_label))));
 }
 
 // if there is a custom field 2 label and custom field 2 is required, then validate required field
 if (($custom_field_2_label != '') && ($custom_field_2_required == 1)) {
-    $liveform->validate_required_field('custom_field_2', h($custom_field_2_label) . ' is required.');
+    $liveform->validate_required_field('custom_field_2', lang(array('string' => '{var:1} is required.', 'vars' => h($custom_field_2_label))));
 }
 
 $liveform->validate_required_field('billing_first_name', lang('First Name is required.'));
@@ -163,6 +163,14 @@ if ($liveform->get_field_value('tax_exempt')) {
 } else {
     $tax_exempt = 0;
 }
+
+// An EU VAT id typed for a member state other than the site's is checked
+// against VIES: a confirmed one sets the reverse charge, a refused one stops
+// the form, and the order preview shows what was decided.
+$tax_exempt = pg_vat_checkout_apply($liveform, $tax_exempt, $_SESSION['ecommerce']['order_id'] ?? 0, new liveform('order_preview'));
+
+// A Turkish district is saved in its listed spelling.
+pg_place_liveform_fix($liveform, 'billing_');
 
 // add data to orders table
 $query =
@@ -284,7 +292,8 @@ if ($liveform->check_form_errors() == false) {
     $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
     
     // if contact is not already in contact group, then add contact to Orders contact group
-    if (mysqli_num_rows($result) == 0) {
+    // (unless the group is filled by rules)
+    if ((mysqli_num_rows($result) == 0) && !pg_audience_group_is_dynamic($contact_group_id)) {
         $query =
             "INSERT INTO contacts_contact_groups_xref (
                 contact_id,

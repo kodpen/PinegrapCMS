@@ -342,6 +342,32 @@ function erp_expense_categories_save($rows, $new = array())
 }
 
 /**
+ * Whether a typed amount or rate reads as a number: digits with point, comma
+ * or space separators, a minus sign in front when $signed, a percent sign
+ * around it when not. erp_kurus() and erp_quantity_in() drop every other
+ * character, so 'twenty' read as 0, '1e3' as 13 and '-18' as a rate of 18;
+ * the form refuses those instead. An empty value is left to the caller.
+ *
+ * @param mixed $value
+ * @param bool  $signed  True for an amount, false for a rate
+ * @return bool
+ */
+function erp_expense_number_typed($value, $signed)
+{
+    $raw = trim((string) $value);
+
+    if ($raw === '') {
+        return true;
+    }
+
+    $pattern = $signed
+        ? '/^-?\s*[0-9][0-9., ]*$/'
+        : '/^%?\s*[0-9][0-9., ]*\s*%?$/';
+
+    return (preg_match($pattern, str_replace("\xC2\xA0", ' ', $raw)) === 1);
+}
+
+/**
  * Net, tax and total from what was typed.
  *
  * The amount is the total as printed on the receipt (tax included) or the
@@ -354,21 +380,22 @@ function erp_expense_categories_save($rows, $new = array())
  * @param bool     $includes_tax
  * @param float    $rate          Percentage
  * @param int|null $typed_tax     Kurus, or null to work it out
- * @return array ['net', 'tax', 'total', 'error']
+ * @return array ['net', 'tax', 'total', 'error', 'field']: field is the
+ *               form field the error belongs to (amount, tax_rate, tax_amount)
  */
 function erp_expense_figures($amount, $includes_tax, $rate, $typed_tax = null)
 {
     $amount = (int) $amount;
     $rate = (float) $rate;
-    $fail = function ($message) {
-        return array('net' => 0, 'tax' => 0, 'total' => 0, 'error' => $message);
+    $fail = function ($message, $field = 'amount') {
+        return array('net' => 0, 'tax' => 0, 'total' => 0, 'error' => $message, 'field' => $field);
     };
 
     if ($amount <= 0) {
         return $fail(lang('Enter an amount greater than zero.'));
     }
     if (($rate < 0) || ($rate >= 100)) {
-        return $fail(lang('Enter a tax rate between 0 and 100.'));
+        return $fail(lang('Enter a tax rate between 0 and 100.'), 'tax_rate');
     }
 
     if ($includes_tax) {
@@ -384,10 +411,10 @@ function erp_expense_figures($amount, $includes_tax, $rate, $typed_tax = null)
         $typed_tax = (int) $typed_tax;
 
         if ($typed_tax < 0) {
-            return $fail(lang('The tax amount cannot be negative.'));
+            return $fail(lang('The tax amount cannot be negative.'), 'tax_amount');
         }
         if (($typed_tax > 0) && ($rate <= 0)) {
-            return $fail(lang('A tax amount needs a tax rate.'));
+            return $fail(lang('A tax amount needs a tax rate.'), 'tax_amount');
         }
 
         // A receipt rounds each of its lines; allow a kurus per ten units
@@ -398,7 +425,7 @@ function erp_expense_figures($amount, $includes_tax, $rate, $typed_tax = null)
             return $fail(lang(array(
                 'string' => 'The tax amount does not fit the rate: at {var:1} it would be about {var:2}. Check the rate, or leave the tax amount empty.',
                 'vars' => array(erp_percent_text($rate), erp_money_out($tax, false)),
-            )));
+            )), 'tax_amount');
         }
 
         if ($includes_tax) {
@@ -408,7 +435,7 @@ function erp_expense_figures($amount, $includes_tax, $rate, $typed_tax = null)
         $tax = $typed_tax;
     }
 
-    return array('net' => $net, 'tax' => $tax, 'total' => $net + $tax, 'error' => '');
+    return array('net' => $net, 'tax' => $tax, 'total' => $net + $tax, 'error' => '', 'field' => '');
 }
 
 /**
@@ -633,30 +660,37 @@ function erp_expense_till_row_refusal($till, $currency)
  * period lock on the day, a day before the expense or after today, the till,
  * and whether a cash till holds the amount (erp_till_outflow_refusal()).
  *
- * @param array $expense  expense_date, currency, total_amount
- * @param array $payment  cash_account_id, paid_date, payment_method
+ * @param array  $expense  expense_date, currency, total_amount
+ * @param array  $payment  cash_account_id, paid_date, payment_method
+ * @param string $field    Set to the form field the refusal belongs to
+ *                         (payment_method, paid_date or cash_account_id)
  * @return string
  */
-function erp_expense_payment_refusal($expense, $payment)
+function erp_expense_payment_refusal($expense, $payment, &$field = null)
 {
     $paid_date = (string) ($payment['paid_date'] ?? date('Y-m-d'));
     $method = (string) ($payment['payment_method'] ?? 'cash');
+    $field = 'payment_method';
 
     if (!in_array($method, erp_cash_payment_methods(), true)) {
         return lang('Choose a payment method.');
     }
 
+    $field = 'paid_date';
+
     if (($refusal = erp_lock_refusal($paid_date)) !== '') {
         return $refusal;
     }
 
-    if ($paid_date > date('Y-m-d')) {
-        return lang('The payment cannot be dated after today.');
+    if (($refusal = erp_till_future_date_refusal($paid_date)) !== '') {
+        return $refusal;
     }
 
     if ($paid_date < (string) $expense['expense_date']) {
         return lang('The payment cannot be dated before the expense.');
     }
+
+    $field = 'cash_account_id';
 
     if (($refusal = erp_expense_till_refusal((int) ($payment['cash_account_id'] ?? 0), (string) $expense['currency'])) !== '') {
         return $refusal;
@@ -836,7 +870,7 @@ function erp_expense_save_check($data, $id = 0)
         );
 
         if ($figures['error'] !== '') {
-            return $fail($figures['error'], 'amount');
+            return $fail($figures['error'], $figures['field']);
         }
 
         // The base figures add up the way the document ones do: the total
@@ -874,10 +908,10 @@ function erp_expense_save_check($data, $id = 0)
             'expense_date' => $columns['expense_date'],
             'currency' => $columns['currency'],
             'total_amount' => $columns['total_amount'],
-        ), erp_expense_save_payment($data, $columns['expense_date']));
+        ), erp_expense_save_payment($data, $columns['expense_date']), $refusal_field);
 
         if ($refusal !== '') {
-            return $fail($refusal, 'cash_account_id');
+            return $fail($refusal, $refusal_field);
         }
     }
 

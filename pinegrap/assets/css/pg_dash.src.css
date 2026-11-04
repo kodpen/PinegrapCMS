@@ -15,36 +15,194 @@
 
 @layer custom {
 
+  /* ── Palette ──────────────────────────────────────────────────────────────
+     The drawings' colours, read by every part below: the dark values are the
+     drawings' own, the light ones keep the same hues on a white card. A part
+     never picks a colour of its own, so a look changes in one place. The
+     switch row takes them too, since the old dashboard draws it as well. */
+
+  .pg-dash,
+  .pg-dash-switch {
+    --pgd-fg: #1e293b;
+    --pgd-strong: #0f172a;
+    --pgd-soft: #334155;
+    --pgd-muted: #64748b;
+    --pgd-card: #fff;
+    --pgd-line: rgba(15, 23, 42, .1);
+    --pgd-line-2: rgba(15, 23, 42, .16);
+    --pgd-fill: rgba(15, 23, 42, .03);
+    --pgd-tile: rgba(15, 23, 42, .025);
+    --pgd-tile-line: rgba(15, 23, 42, .09);
+    --pgd-field: #fff;
+    --pgd-accent: #0e7490;
+    --pgd-accent-line: rgba(14, 116, 144, .5);
+    --pgd-main: linear-gradient(90deg, #0e7490, #4f46e5 55%, #a21caf);
+    --pgd-main-glow: 0 6px 18px rgba(79, 70, 229, .22);
+    --pgd-name: linear-gradient(90deg, #0e7490, #4f46e5 50%, #a21caf);
+    --pgd-good: #047857;
+    --pgd-good-bg: rgba(16, 185, 129, .1);
+    --pgd-good-line: rgba(16, 185, 129, .32);
+    --pgd-warn: #b45309;
+    --pgd-warn-bg: rgba(245, 158, 11, .12);
+    --pgd-warn-line: rgba(245, 158, 11, .38);
+    --pgd-bad: #b91c1c;
+    --pgd-bad-bg: rgba(239, 68, 68, .09);
+    --pgd-bad-line: rgba(239, 68, 68, .32);
+    --pgd-new: #0e7490;
+    --pgd-new-bg: rgba(6, 182, 212, .1);
+    --pgd-new-line: rgba(6, 182, 212, .35);
+    --pgd-new-dot: #06b6d4;
+    --pgd-shadow: 0 12px 30px rgba(15, 23, 42, .08);
+    --pgd-chart-1: #0891b2;
+    --pgd-chart-2: #4f46e5;
+    --pgd-chart-3: #c026d3;
+    --pgd-chart-area: rgba(99, 102, 241, .18);
+    --pgd-chart-hot: #ef4444;
+    --pgd-track: rgba(15, 23, 42, .08);
+  }
+
+  html[data-bs-theme="dark"] .pg-dash,
+  html[data-bs-theme="dark"] .pg-dash-switch {
+    --pgd-fg: #eaf2fb;
+    --pgd-strong: #fff;
+    --pgd-soft: #c7d2e0;
+    --pgd-muted: #93a3b8;
+    --pgd-card: #0f1622;
+    --pgd-line: rgba(148, 163, 184, .14);
+    --pgd-line-2: rgba(148, 163, 184, .22);
+    --pgd-fill: rgba(255, 255, 255, .03);
+    --pgd-tile: rgba(255, 255, 255, .025);
+    --pgd-tile-line: rgba(148, 163, 184, .12);
+    --pgd-field: #0b111b;
+    --pgd-accent: #67e8f9;
+    --pgd-accent-line: rgba(34, 211, 238, .55);
+    --pgd-main-glow: 0 6px 24px rgba(79, 70, 229, .35);
+    --pgd-name: linear-gradient(90deg, #67e8f9, #a5b4fc 50%, #f0abfc);
+    --pgd-good: #bbf7d0;
+    --pgd-good-bg: rgba(52, 211, 153, .1);
+    --pgd-good-line: rgba(52, 211, 153, .25);
+    --pgd-warn: #fde68a;
+    --pgd-warn-bg: rgba(251, 191, 36, .1);
+    --pgd-warn-line: rgba(251, 191, 36, .25);
+    --pgd-bad: #fecaca;
+    --pgd-bad-bg: rgba(248, 113, 113, .1);
+    --pgd-bad-line: rgba(248, 113, 113, .28);
+    --pgd-new: #a5f3fc;
+    --pgd-new-bg: rgba(34, 211, 238, .1);
+    --pgd-new-line: rgba(34, 211, 238, .32);
+    --pgd-new-dot: #22d3ee;
+    --pgd-shadow: 0 18px 40px rgba(0, 0, 0, .35);
+    --pgd-chart-1: #22d3ee;
+    --pgd-chart-2: #6366f1;
+    --pgd-chart-3: #d946ef;
+    --pgd-chart-area: rgba(99, 102, 241, .45);
+    --pgd-chart-hot: #f87171;
+    --pgd-track: rgba(148, 163, 184, .12);
+  }
+
+  /* The drawings' button: 40 px, an 11 px corner, a quiet border; the main one
+     carries the gradient. */
+  .pg-dash .pg-dash-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    min-height: 2.5rem;
+    padding: 0 .875rem;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .6875rem;
+    background: var(--pgd-fill);
+    color: var(--pgd-fg);
+    font-size: .875rem;
+    font-weight: 500;
+    line-height: 1.2;
+    white-space: nowrap;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .pg-dash .pg-dash-btn > .bi {
+    font-size: 1rem;
+  }
+
+  .pg-dash .pg-dash-btn:hover {
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-strong);
+  }
+
+  .pg-dash .pg-dash-btn:focus-visible {
+    outline: 2px solid var(--pg-primary-ink);
+    outline-offset: 2px;
+  }
+
+  .pg-dash .pg-dash-btn-main {
+    border: 0;
+    background: var(--pgd-main);
+    color: #fff;
+    font-weight: 700;
+    box-shadow: var(--pgd-main-glow);
+  }
+
+  .pg-dash .pg-dash-btn-main:hover {
+    color: #fff;
+    filter: brightness(1.08);
+  }
+
+  @media (forced-colors: active) {
+    .pg-dash .pg-dash-btn,
+    .pg-dash .pg-dash-btn-main {
+      border: 1px solid ButtonText;
+      background: ButtonFace;
+      color: ButtonText;
+      box-shadow: none;
+    }
+  }
+
   /* ── Switch row ───────────────────────────────────────────────────────── */
 
   .pg-dash-switch {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: .25rem .75rem;
-    margin-bottom: 1rem;
+    gap: .625rem .875rem;
+    margin-bottom: 1.25rem;
   }
 
   .pg-dash-switch-label {
     display: inline-flex;
     align-items: center;
-    gap: .5rem;
+    gap: .625rem;
     margin: 0;
     cursor: pointer;
   }
 
+  /* The drawings' toggle: 40 by 22 px, a 16 px knob, the gradient track
+     when on. */
+  .pg-dash-switch .switch {
+    --bs-switch-height: 1.375rem;
+    --bs-switch-width: 2.5rem;
+    --bs-switch-padding: .125rem;
+    margin-block: 0;
+  }
+
+  .pg-dash-switch .switch:has(input:checked) {
+    --bs-switch-indicator-bg: #fff;
+    border-color: transparent;
+    background: linear-gradient(90deg, #0e7490, #4f46e5);
+  }
+
   .pg-dash-switch-name {
-    font-weight: 600;
-    color: var(--pg-fg-emphasis);
+    font-weight: 700;
+    color: var(--pgd-strong);
   }
 
   .pg-dash-switch-hint {
-    font-size: .875rem;
-    color: var(--pg-fg-2);
+    font-size: .8125rem;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-switch-end {
     display: inline-flex;
+    align-items: center;
     gap: .5rem;
     margin-inline-start: auto;
   }
@@ -54,32 +212,42 @@
   .pg-dash-top {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
   }
 
+  /* Every card of the page: the drawings' 18 px corner, 18/20 px padding,
+     14 px text. The face (flat, neon, glass, aurora) is the look's. */
   .pg-dash-card {
-    padding: 1.25rem 1.5rem;
-    border-radius: var(--pg-radius-lg);
+    --pg-accent: #6366f1;
+    padding: 1.125rem 1.25rem;
+    border: 1px solid var(--pgd-line);
+    border-radius: 1.125rem;
+    background: var(--pgd-card);
+    color: var(--pgd-fg);
+    font-size: .875rem;
+    line-height: 1.5;
   }
 
   /* ── Greeting card ────────────────────────────────────────────────────── */
 
   .pg-dash-greeting-when {
-    margin: 0 0 .25rem;
-    font-size: .875rem;
-    color: var(--pg-fg-2);
+    margin: 0 0 .375rem;
+    font-size: .8125rem;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-greeting-title {
     margin: 0;
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: var(--pg-fg-emphasis);
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -.025em;
+    color: var(--pgd-strong);
   }
 
   .pg-dash-name {
-    background: var(--clock-gradient);
+    background: var(--pgd-name);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -96,16 +264,17 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: .5rem .75rem;
+    gap: .5rem;
     margin-top: 1rem;
   }
 
   .pg-dash-since-label {
-    font-size: .75rem;
+    margin-right: .25rem;
+    font-size: .6875rem;
     font-weight: 600;
-    letter-spacing: .06em;
+    letter-spacing: .08em;
     text-transform: uppercase;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-chips,
@@ -122,59 +291,56 @@
   }
 
   .pg-dash-chip {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     padding: .25rem .625rem;
-    border: 1px solid var(--pg-border-color);
-    border-radius: var(--pg-radius);
-    font-size: .875rem;
-    color: var(--pg-fg-body);
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .5rem;
+    font-size: .8125rem;
+    line-height: 1.4;
+    color: var(--pgd-soft);
     text-decoration: none;
   }
 
   .pg-dash-chip:hover {
-    border-color: var(--pg-fg-3);
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-strong);
   }
 
   .pg-dash-chip[data-tone="good"] {
-    border-color: var(--pg-success-border-subtle);
-    background: var(--pg-success-bg-subtle);
-    color: var(--pg-success-fg-emphasis);
+    border-color: var(--pgd-good-line);
+    background: var(--pgd-good-bg);
+    color: var(--pgd-good);
   }
 
   .pg-dash-chip[data-tone="warn"] {
-    border-color: var(--pg-warning-border-subtle);
-    background: var(--pg-warning-bg-subtle);
-    color: var(--pg-warning-fg-emphasis);
+    border-color: var(--pgd-warn-line);
+    background: var(--pgd-warn-bg);
+    color: var(--pgd-warn);
+  }
+
+  .pg-dash-chip[data-tone="bad"] {
+    border-color: var(--pgd-bad-line);
+    background: var(--pgd-bad-bg);
+    color: var(--pgd-bad);
   }
 
   .pg-dash-actions {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: .5rem;
     margin-top: 1rem;
-  }
-
-  .pg-dash-action-main {
-    border: 0;
-    background: var(--clock-gradient);
-    color: #fff;
-    font-weight: 600;
-  }
-
-  .pg-dash-action-main:hover,
-  .pg-dash-action-main:focus-visible {
-    color: #fff;
-    filter: brightness(1.08);
   }
 
   .pg-dash-tiles {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: .75rem;
+    gap: .625rem;
     margin-top: 1rem;
   }
 
-  @media (min-width: 640px) {
+  @container pgdash (min-width: 38rem) {
     .pg-dash-tiles {
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
@@ -183,62 +349,461 @@
   .pg-dash-tile {
     display: flex;
     flex-direction: column;
-    gap: .125rem;
     height: 100%;
-    padding: .75rem .875rem;
-    border: 1px solid var(--pg-border-color);
-    border-radius: var(--pg-radius-lg);
-    color: var(--pg-fg-body);
+    padding: .625rem .75rem;
+    border: 1px solid var(--pgd-tile-line);
+    border-radius: .8125rem;
+    background: var(--pgd-tile);
+    color: var(--pgd-fg);
     text-decoration: none;
   }
 
   .pg-dash-tile:hover {
-    border-color: var(--pg-fg-3);
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-fg);
   }
 
   .pg-dash-tile-label {
-    font-size: .8125rem;
-    color: var(--pg-fg-2);
+    font-size: .75rem;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-tile-value {
+    margin: .125rem 0;
+    overflow-wrap: anywhere;
     font-size: 1.5rem;
-    font-weight: 700;
+    font-weight: 800;
     line-height: 1.2;
-    color: var(--pg-fg-emphasis);
+    letter-spacing: -.02em;
+    color: var(--pgd-strong);
+    font-variant-numeric: tabular-nums;
   }
 
   .pg-dash-tile-note {
-    font-size: .8125rem;
-    color: var(--pg-fg-2);
+    font-size: .75rem;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-tile-note[data-tone="good"] {
-    color: var(--pg-success-fg-emphasis);
+    color: var(--pgd-good);
   }
 
   .pg-dash-tile-note[data-tone="warn"] {
-    color: var(--pg-warning-fg-emphasis);
+    color: var(--pgd-warn);
   }
 
   .pg-dash-tile-note[data-tone="bad"] {
-    color: var(--pg-danger-fg-emphasis);
+    color: var(--pgd-bad);
+  }
+
+  /* ── Brief ────────────────────────────────────────────────────────────
+     includes/dashboard/brief.php's sentence under the greeting's title,
+     the workspace strip under it and the next meeting beside the date
+     line. The strip and the meeting keep brief.php's markup, which
+     backend.src.css draws for the old dashboard; the rules here redraw
+     them in this palette, each scoped high enough to win over those.
+     On a narrow dashboard the brief is one box: the mark, the next
+     meeting (its time and countdown; the brief's name when nothing is
+     left today) and "Say something else" on a row, the sentence across
+     the box, and the strip on one line that scrolls sideways. From 38rem
+     the box opens up: the mark and the button flank the sentence, the
+     strip wraps and the meeting moves beside the date line. */
+
+  .pg-dash-greeting-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .375rem .75rem;
+    margin-bottom: .375rem;
+  }
+
+  .pg-dash-greeting-head > .pg-dash-greeting-when {
+    margin: 0;
+  }
+
+  .pg-dash-brief {
+    display: flex;
+    flex-direction: column;
+    gap: .625rem;
+    margin-top: .875rem;
+    padding: .75rem .875rem;
+    border: 1px solid var(--pgd-line);
+    border-radius: .875rem;
+    background: var(--pgd-fill);
+  }
+
+  .pg-dash-compact .pg-dash-brief {
+    margin-top: .625rem;
+  }
+
+  .pg-dash-brief-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .5rem .625rem;
+  }
+
+  /* The speaker: the hour's own glyph (sunrise, sun, dusk, moon) on the
+     dashboard's gradient. */
+  .pg-dash-brief-mark {
+    display: inline-flex;
+    grid-column: 1;
+    grid-row: 1;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    background: var(--pgd-main);
+    box-shadow: var(--pgd-main-glow);
+    color: #fff;
+    font-size: .8125rem;
+    line-height: 1;
+  }
+
+  .pg-dash-brief-head {
+    display: flex;
+    grid-column: 2;
+    grid-row: 1;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .pg-dash-brief-head:has(> .pg-dash-brief-next:not(:empty)) > .pg-dash-brief-kicker {
+    display: none;
+  }
+
+  .pg-dash-brief-kicker {
+    min-width: 0;
+    overflow: hidden;
+    font-size: .6875rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-brief-text {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-width: 0;
+    max-width: 72ch;
+    margin: 0;
+    font-size: .9375rem;
+    line-height: 1.55;
+    color: var(--pgd-soft);
+    text-wrap: pretty;
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-link {
+    color: var(--pgd-accent);
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: var(--pgd-accent-line);
+    text-underline-offset: .2em;
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-link:hover,
+  .pg-dash .pg-dash-brief .pg-brief-link:focus-visible {
+    color: var(--pgd-strong);
+    text-decoration-color: currentColor;
+  }
+
+  /* "Say something else" at the reading end, however short the sentence;
+     it turns while the new line is on its way. */
+  .pg-dash .pg-dash-brief-again {
+    display: inline-flex;
+    grid-column: 3;
+    grid-row: 1;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .625rem;
+    background: var(--pgd-fill);
+    color: var(--pgd-muted);
+    font-size: .9375rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .pg-dash .pg-dash-brief-again:hover {
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-strong);
+  }
+
+  .pg-dash .pg-dash-brief-again:focus-visible {
+    outline: 2px solid var(--pg-primary-ink);
+    outline-offset: 2px;
+  }
+
+  .pg-dash .pg-dash-brief-again:disabled {
+    cursor: progress;
+  }
+
+  .pg-dash-brief-again .bi {
+    display: inline-block;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .pg-dash-brief-again.is-busy .bi {
+      animation: pg-dash-brief-spin .8s linear infinite;
+    }
+
+    .pg-dash-brief.is-new .pg-dash-brief-text {
+      animation: pg-dash-brief-in .45s ease-out both;
+    }
+  }
+
+  @keyframes pg-dash-brief-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes pg-dash-brief-in {
+    from { opacity: .25; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* The workspace strip: one line that scrolls sideways to the box's
+     edges on a narrow dashboard, no scroll bar drawn; each item is a
+     link, so the keyboard brings it into view. */
+  .pg-dash .pg-dash-brief .pg-brief-ws {
+    flex-wrap: nowrap;
+    gap: .5rem;
+    margin-inline: -.875rem;
+    padding: .125rem .875rem;
+    overflow-x: auto;
+    scroll-padding-inline: .875rem;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-item {
+    flex: 0 0 auto;
+    gap: .5rem;
+    min-height: 2.125rem;
+    padding: .25rem .625rem;
+    border: 1px solid var(--pgd-tile-line);
+    border-radius: .6875rem;
+    background: var(--pgd-tile);
+    color: var(--pgd-fg);
+    font-size: .8125rem;
+    line-height: 1.4;
+    scroll-snap-align: start;
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-item:hover,
+  .pg-dash .pg-dash-brief .pg-brief-ws-item:focus-visible {
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-fg);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-item .bi {
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-label {
+    font-size: .75rem;
+    font-weight: 500;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-text {
+    max-width: 16ch;
+    font-weight: 600;
+    color: var(--pgd-strong);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-pct {
+    font-weight: 700;
+    color: var(--pgd-new);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-bar {
+    background: var(--pgd-track);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-bar > span {
+    background: var(--pgd-main);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-item.is-new::before,
+  .pg-dash .pg-dash-brief .pg-brief-ws-item.is-live::before {
+    background: var(--pgd-new-dot);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-item.is-live {
+    border-color: var(--pgd-new-line);
+    background: var(--pgd-new-bg);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-item.is-live .bi {
+    color: var(--pgd-new);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-item.is-late {
+    border-color: var(--pgd-bad-line);
+    background: var(--pgd-bad-bg);
+  }
+
+  .pg-dash .pg-dash-brief .pg-brief-ws-item.is-late .bi,
+  .pg-dash .pg-dash-brief .pg-brief-ws-item.is-late .pg-brief-ws-label {
+    color: var(--pgd-bad);
+  }
+
+  /* The next meeting or visit; the page script takes out one that has
+     ended, and an empty box takes no room. Narrow, the title is left to
+     screen readers and the tooltip, so time and countdown fit the brief's
+     first row. */
+  .pg-dash-brief-next {
+    display: inline-flex;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .pg-dash-brief-next:empty,
+  .pg-dash-brief-next.is-head {
+    display: none;
+  }
+
+  .pg-dash .pg-dash-brief-next .pg-next {
+    gap: .5rem;
+    min-height: 2rem;
+    padding: .1875rem .6875rem;
+    border: 1px solid var(--pgd-new-line);
+    border-radius: 999px;
+    background: var(--pgd-new-bg);
+    color: var(--pgd-new);
+    font-size: .8125rem;
+  }
+
+  .pg-dash .pg-dash-brief-next .pg-next:hover,
+  .pg-dash .pg-dash-brief-next .pg-next:focus-visible {
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-new);
+  }
+
+  .pg-dash .pg-dash-brief-next .pg-next .bi {
+    color: inherit;
+  }
+
+  .pg-dash .pg-dash-brief-next .pg-next-time {
+    font-weight: 700;
+  }
+
+  .pg-dash .pg-dash-brief-next .pg-next-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    color: var(--pgd-fg);
+  }
+
+  .pg-dash .pg-dash-brief-next .pg-next-until {
+    color: var(--pgd-new);
+  }
+
+  .pg-dash .pg-dash-brief-next .pg-next.is-now .pg-next-until {
+    color: var(--pgd-good);
+  }
+
+  @container pgdash (min-width: 38rem) {
+    .pg-dash-brief {
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: none;
+    }
+
+    .pg-dash-brief-row {
+      display: flex;
+      align-items: flex-start;
+      gap: .75rem;
+    }
+
+    .pg-dash-brief-mark {
+      flex: 0 0 2rem;
+      width: 2rem;
+      height: 2rem;
+      font-size: .9375rem;
+    }
+
+    .pg-dash-brief-head {
+      display: none;
+    }
+
+    .pg-dash-brief-next.is-head:not(:empty) {
+      display: inline-flex;
+    }
+
+    .pg-dash-brief-text {
+      flex: 1 1 auto;
+      margin-top: .1875rem;
+      font-size: 1rem;
+    }
+
+    .pg-dash .pg-dash-brief-again {
+      flex: 0 0 2.125rem;
+      width: 2.125rem;
+      height: 2.125rem;
+      margin-inline-start: auto;
+      border-radius: .6875rem;
+      font-size: 1rem;
+    }
+
+    .pg-dash .pg-dash-brief .pg-brief-ws {
+      flex-wrap: wrap;
+      margin-inline: 0;
+      padding: 0 0 0 2.75rem;
+      overflow: visible;
+    }
+
+    .pg-dash .pg-dash-brief .pg-brief-ws-text {
+      max-width: 22ch;
+    }
+
+    .pg-dash .pg-dash-brief-next .pg-next-title {
+      position: static;
+      width: auto;
+      height: auto;
+      max-width: 22ch;
+      clip-path: none;
+      text-overflow: ellipsis;
+    }
   }
 
   @media (forced-colors: active) {
-    .pg-dash-action-main {
-      border: 1px solid ButtonText;
-      background: ButtonFace;
-      color: ButtonText;
+    .pg-dash-brief {
+      border-color: CanvasText;
+    }
+
+    .pg-dash-brief-mark {
+      border: 1px solid CanvasText;
+      background: none;
+      box-shadow: none;
+      color: CanvasText;
     }
   }
 
   /* ── System Status card ───────────────────────────────────────────────
-     Widget 2's gauge and chips (.pg-health*, .pg-check* in backend.src.css),
-     in a card about 340 px wide beside the greeting from 1000 px, under it
-     below that. A greeting alone (no status card) keeps the whole row. */
+     Widget 2's gauge (.pg-health* in backend.src.css, kept as it is) and its
+     checks as the drawings' chips, in a card about 340 px wide beside the
+     greeting on a dashboard 58rem wide (a 1000 px window), under it below
+     that. The checks that are fine fold behind one chip. A greeting alone
+     keeps the whole row. */
 
-  @media (min-width: 1000px) {
+  @container pgdash (min-width: 58rem) {
     .pg-dash-top:has(> .pg-dash-status) {
       grid-template-columns: minmax(0, 1fr) minmax(0, 21.25rem);
     }
@@ -248,14 +813,14 @@
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: .5rem;
+    gap: .75rem;
   }
 
   .pg-dash-status-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: .75rem;
+    gap: .625rem;
   }
 
   .pg-dash-status-title {
@@ -263,9 +828,9 @@
     align-items: center;
     gap: .625rem;
     margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--pg-fg-emphasis);
+    font-size: .9375rem;
+    font-weight: 700;
+    color: var(--pgd-strong);
   }
 
   .pg-dash-status-icon {
@@ -273,14 +838,25 @@
     place-items: center;
     width: 1.75rem;
     height: 1.75rem;
-    border-radius: var(--pg-radius);
-    background: color-mix(in srgb, var(--pg-accent) 16%, transparent);
-    color: var(--pg-accent);
+    border-radius: .5625rem;
+    background: rgba(99, 102, 241, .16);
+    color: #4f46e5;
+  }
+
+  html[data-bs-theme="dark"] .pg-dash-status-icon {
+    color: #a5b4fc;
   }
 
   .pg-dash-status-details {
     padding: 0;
-    font-size: .875rem;
+    border: 0;
+    font-size: .8125rem;
+    color: var(--pgd-accent);
+    text-decoration: none;
+  }
+
+  .pg-dash-status-details:hover {
+    color: var(--pgd-strong);
   }
 
   .pg-dash-status .pg-health {
@@ -300,59 +876,186 @@
   }
 
   .pg-dash-status-checks {
+    display: flex;
+    flex-wrap: wrap;
     justify-content: center;
     gap: .375rem;
+    margin: 0;
     padding: 0;
   }
 
-  .pg-dash-status-checks > .pg-check {
+  .pg-dash-status .pg-check {
+    gap: .375rem;
+    padding: .125rem .5625rem;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .5rem;
+    background: transparent;
     font-size: .75rem;
+    line-height: 1.5;
+    color: var(--pgd-soft);
+  }
+
+  .pg-dash-status .pg-check > i {
+    display: none;
+  }
+
+  .pg-dash-status .pg-check-value {
+    padding-left: .375rem;
+    border-left-color: currentColor;
+    opacity: .75;
+  }
+
+  .pg-dash-status .pg-check-danger {
+    border-color: var(--pgd-bad-line);
+    background: var(--pgd-bad-bg);
+    color: var(--pgd-bad);
+  }
+
+  .pg-dash-status .pg-check-warning {
+    border-color: var(--pgd-warn-line);
+    background: var(--pgd-warn-bg);
+    color: var(--pgd-warn);
+  }
+
+  .pg-dash-status .pg-check-success {
+    border-color: var(--pgd-good-line);
+    background: var(--pgd-good-bg);
+    color: var(--pgd-good);
+  }
+
+  /* The checks past the eighth: one dashed chip that opens them on a row
+     of their own and stays as the way to fold them again. It takes the tone
+     of the worst check it holds. */
+  .pg-dash-status-more {
+    display: inline-flex;
+  }
+
+  .pg-dash-status-more[open] {
+    display: flex;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .375rem;
+  }
+
+  /* The opened checks sit in their own box: the browser lays out what
+     follows the summary in the details content box, where the gap above
+     does not reach. */
+  .pg-dash-status-more-list {
+    display: flex;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .375rem;
+  }
+
+  .pg-dash-status-more > summary {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .125rem .5625rem;
+    border: 1px dashed var(--pgd-line-2);
+    border-radius: .5rem;
+    font-size: .75rem;
+    line-height: 1.5;
+    color: var(--pgd-soft);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .pg-dash-status-more > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .pg-dash-status-more > summary::after {
+    content: "";
+    width: .375rem;
+    height: .375rem;
+    margin-inline-start: .125rem;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: translateY(-.0625rem) rotate(45deg);
+  }
+
+  .pg-dash-status-more[open] > summary::after {
+    transform: translateY(.125rem) rotate(-135deg);
+  }
+
+  .pg-dash-status-more > summary[data-tone="warn"] {
+    border-color: var(--pgd-warn-line);
+    color: var(--pgd-warn);
+  }
+
+  .pg-dash-status-more > summary[data-tone="bad"] {
+    border-color: var(--pgd-bad-line);
+    color: var(--pgd-bad);
+  }
+
+  .pg-dash-status-more > summary:hover {
+    border-color: var(--pgd-accent-line);
+  }
+
+  .pg-dash-status-more > summary:focus-visible {
+    outline: 2px solid var(--pg-primary-ink);
+    outline-offset: 2px;
+  }
+
+  @media (forced-colors: active) {
+    .pg-dash-status .pg-check,
+    .pg-dash-status-more > summary {
+      border-color: CanvasText;
+      background: Canvas;
+      color: CanvasText;
+    }
   }
 
   /* ── Look: card style ─────────────────────────────────────────────────
-     The page root carries the old dashboard's data-widget-theme, so the
-     strengths it sets (--pg-fx-*, backend.src.css) serve these cards too;
-     flat is the plain card. The backdrop needs no rule here: the root is
-     #content[data-panel-backdrop], which backend.src.css already draws. */
+     The drawings' four faces, each with a light twin. The page root carries
+     the old dashboard's data-widget-theme; the backdrop is drawn by
+     backend.src.css on #content[data-panel-backdrop]. Flat is the card as
+     .pg-dash-card draws it. */
 
-  .pg-dash-card {
-    --pg-accent: #6366f1;
+  [data-widget-theme="aurora"] .pg-dash-card {
+    border-color: transparent;
+    background:
+      linear-gradient(180deg, #fff, #fbfcfe) padding-box,
+      linear-gradient(140deg, rgba(6, 182, 212, .45), rgba(99, 102, 241, .22) 35%, rgba(15, 23, 42, .06) 60%, rgba(217, 70, 239, .3)) border-box;
+    box-shadow: var(--pgd-shadow), inset 0 1px 0 rgba(255, 255, 255, .6);
+  }
+
+  html[data-bs-theme="dark"] [data-widget-theme="aurora"] .pg-dash-card {
+    background:
+      linear-gradient(180deg, rgba(18, 26, 38, .92), rgba(12, 18, 28, .92)) padding-box,
+      linear-gradient(140deg, rgba(34, 211, 238, .38), rgba(99, 102, 241, .16) 35%, rgba(255, 255, 255, .05) 60%, rgba(217, 70, 239, .22)) border-box;
+    box-shadow: var(--pgd-shadow), inset 0 1px 0 rgba(255, 255, 255, .04);
   }
 
   [data-widget-theme="neon"] .pg-dash-card {
-    border-color: color-mix(in srgb, var(--pg-accent) var(--pg-fx-edge), transparent);
-    box-shadow:
-      inset 0 0 22px -14px var(--pg-accent),
-      0 8px 26px -20px color-mix(in srgb, var(--pg-accent) var(--pg-fx-lift), transparent);
+    border-color: transparent;
+    background:
+      linear-gradient(#fff, #fff) padding-box,
+      linear-gradient(120deg, #06b6d4, #6366f1 50%, #d946ef) border-box;
+    box-shadow: 0 0 18px rgba(6, 182, 212, .1), 0 0 32px rgba(217, 70, 239, .08);
+  }
+
+  html[data-bs-theme="dark"] [data-widget-theme="neon"] .pg-dash-card {
+    background:
+      linear-gradient(#0b111b, #0b111b) padding-box,
+      linear-gradient(120deg, #22d3ee, #6366f1 50%, #d946ef) border-box;
+    box-shadow: 0 0 22px rgba(34, 211, 238, .1), 0 0 40px rgba(217, 70, 239, .08);
   }
 
   [data-widget-theme="glass"] .pg-dash-card {
-    background:
-      linear-gradient(180deg, color-mix(in srgb, var(--pg-accent) var(--pg-fx-top), transparent) 0%, transparent 58%),
-      color-mix(in srgb, var(--pg-card-bg) 58%, transparent);
-    border-color: color-mix(in srgb, var(--pg-accent) var(--pg-fx-edge), transparent);
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent),
-      0 6px 20px -20px color-mix(in srgb, #0f0f23 40%, transparent);
+    border-color: rgba(15, 23, 42, .08);
+    background: rgba(255, 255, 255, .62);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, .08);
     backdrop-filter: blur(14px);
   }
 
   html[data-bs-theme="dark"] [data-widget-theme="glass"] .pg-dash-card {
-    background:
-      linear-gradient(180deg, color-mix(in srgb, var(--pg-accent) var(--pg-fx-top), transparent) 0%, transparent 58%),
-      color-mix(in srgb, #fff 4.5%, transparent);
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, #fff 7%, transparent),
-      0 8px 24px -22px #000;
-  }
-
-  [data-widget-theme="aurora"] .pg-dash-card {
-    --pg-accent-shift: color-mix(in srgb, var(--pg-accent) 55%, #22d3ee);
-    background:
-      radial-gradient(74% 48% at 100% 100%, color-mix(in srgb, var(--pg-accent-shift) var(--pg-fx-two), var(--pg-card-bg)) 0%, transparent 58%),
-      radial-gradient(74% 48% at 0% 0%, color-mix(in srgb, var(--pg-accent) var(--pg-fx-one), var(--pg-card-bg)) 0%, transparent 58%),
-      var(--pg-card-bg);
-    border-color: color-mix(in srgb, var(--pg-accent) var(--pg-fx-edge), transparent);
+    border-color: rgba(255, 255, 255, .1);
+    background: rgba(255, 255, 255, .045);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
   }
 
   /* ── Look: density and lights ─────────────────────────────────────────
@@ -397,7 +1100,23 @@
     }
   }
 
-  /* ── Grid ─────────────────────────────────────────────────────────────── */
+  /* ── Width and grid ───────────────────────────────────────────────────
+     The columns follow the dashboard's own width, not the window's: the
+     rail may be open, and edit mode keeps the page's columns while its
+     panel takes a side. The dashboard's parts stop at 118rem, centred, so
+     a wide screen shows four cards of about 450 px, the drawings' size,
+     instead of cards and rows stretched across it; the panel backdrop
+     still fills #content. With a 60 px rail: 2 columns from a 640 px
+     window, 3 from 1000 px, 4 from 1600 px, centred from 1980 px. */
+
+  .pg-dash {
+    container: pgdash / inline-size;
+  }
+
+  .pg-dash > * {
+    max-width: 118rem;
+    margin-inline: auto;
+  }
 
   .pg-dash-grid {
     display: grid;
@@ -407,29 +1126,56 @@
     margin-bottom: 3rem;
   }
 
-  @media (min-width: 640px) {
+  @container pgdash (min-width: 38rem) {
     .pg-dash-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .pg-dash-grid > [data-width="M"] {
+      grid-column: span 2;
+    }
   }
 
-  @media (min-width: 1000px) {
+  @container pgdash (min-width: 58rem) {
     .pg-dash-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 
-  .pg-dash-grid > [data-width="M"] {
-    grid-column: span 2;
+  @container pgdash (min-width: 94rem) {
+    .pg-dash-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
   }
 
   .pg-dash-grid > [data-width="L"] {
     grid-column: 1 / -1;
   }
 
-  @media (max-width: 639.98px) {
-    .pg-dash-grid > [data-width="M"] {
-      grid-column: auto;
+  /* Without container queries the window decides, as before. */
+  @supports not (container-type: inline-size) {
+    @media (min-width: 640px) {
+      .pg-dash-tiles {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .pg-dash-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .pg-dash-grid > [data-width="M"] {
+        grid-column: span 2;
+      }
+    }
+
+    @media (min-width: 1000px) {
+      .pg-dash-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .pg-dash-top:has(> .pg-dash-status) {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 21.25rem);
+      }
     }
   }
 
@@ -443,45 +1189,72 @@
 
   /* ── Card frame ───────────────────────────────────────────────────────── */
 
+  /* A card's category colours its icon, as in the drawings. */
   .pg-dash-cardbox {
     --pg-dash-cat: var(--pg-primary);
+    --pgd-cat-bg: rgba(99, 102, 241, .14);
+    --pgd-cat-fg: #4f46e5;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: .875rem;
     min-width: 0;
   }
 
+  /* The colour of a card's own charts and bars. */
   .pg-dash-cardbox[data-category="content"] { --pg-dash-cat: var(--pg-info); }
   .pg-dash-cardbox[data-category="visitors"] { --pg-dash-cat: var(--pg-primary-ink); }
   .pg-dash-cardbox[data-category="security"] { --pg-dash-cat: var(--pg-danger); }
   .pg-dash-cardbox[data-category="team"] { --pg-dash-cat: var(--pg-warning); }
   .pg-dash-cardbox[data-category="shop"] { --pg-dash-cat: var(--pg-success); }
 
+  .pg-dash-cardbox[data-category="content"] { --pgd-cat-bg: rgba(217, 70, 239, .12); --pgd-cat-fg: #a21caf; }
+  .pg-dash-cardbox[data-category="visitors"] { --pgd-cat-bg: rgba(6, 182, 212, .12); --pgd-cat-fg: #0e7490; }
+  .pg-dash-cardbox[data-category="security"] { --pgd-cat-bg: rgba(16, 185, 129, .12); --pgd-cat-fg: #047857; }
+  .pg-dash-cardbox[data-category="team"] { --pgd-cat-bg: rgba(139, 92, 246, .13); --pgd-cat-fg: #6d28d9; }
+  .pg-dash-cardbox[data-category="shop"] { --pgd-cat-bg: rgba(245, 158, 11, .14); --pgd-cat-fg: #b45309; }
+  .pg-dash-cardbox[data-category="system"] { --pgd-cat-bg: rgba(100, 116, 139, .14); --pgd-cat-fg: #475569; }
+
+  html[data-bs-theme="dark"] .pg-dash-cardbox { --pgd-cat-bg: rgba(99, 102, 241, .16); --pgd-cat-fg: #a5b4fc; }
+  html[data-bs-theme="dark"] .pg-dash-cardbox[data-category="content"] { --pgd-cat-bg: rgba(217, 70, 239, .14); --pgd-cat-fg: #f0abfc; }
+  html[data-bs-theme="dark"] .pg-dash-cardbox[data-category="visitors"] { --pgd-cat-bg: rgba(34, 211, 238, .14); --pgd-cat-fg: #67e8f9; }
+  html[data-bs-theme="dark"] .pg-dash-cardbox[data-category="security"] { --pgd-cat-bg: rgba(52, 211, 153, .12); --pgd-cat-fg: #86efac; }
+  html[data-bs-theme="dark"] .pg-dash-cardbox[data-category="team"] { --pgd-cat-bg: rgba(167, 139, 250, .16); --pgd-cat-fg: #c4b5fd; }
+  html[data-bs-theme="dark"] .pg-dash-cardbox[data-category="shop"] { --pgd-cat-bg: rgba(251, 191, 36, .12); --pgd-cat-fg: #fde68a; }
+  html[data-bs-theme="dark"] .pg-dash-cardbox[data-category="system"] { --pgd-cat-bg: rgba(148, 163, 184, .14); --pgd-cat-fg: #cbd5e1; }
+
   .pg-dash-card-head {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: .5rem;
+    gap: .625rem;
   }
 
   .pg-dash-card-icon {
     display: inline-flex;
+    flex: 0 0 1.75rem;
     align-items: center;
     justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    border-radius: var(--pg-radius);
-    background: color-mix(in srgb, var(--pg-dash-cat) 16%, transparent);
-    color: var(--pg-fg-emphasis);
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: .5625rem;
+    background: var(--pgd-cat-bg);
+    color: var(--pgd-cat-fg);
+    font-size: .875rem;
+  }
+
+  /* The assistant's icon wears the main gradient. */
+  .pg-dash-cardbox[data-card="ai"] .pg-dash-card-icon {
+    background: linear-gradient(135deg, #0e7490, #4f46e5, #a21caf);
+    color: #fff;
   }
 
   .pg-dash-card-title {
     flex: 1 1 auto;
     min-width: 0;
     margin: 0;
-    font-size: 1rem;
+    font-size: .9375rem;
     font-weight: 700;
-    color: var(--pg-fg-emphasis);
+    color: var(--pgd-strong);
   }
 
   .pg-dash-card-title:focus {
@@ -493,23 +1266,69 @@
     outline-offset: 2px;
   }
 
-  .pg-dash-card-chip,
-  .pg-dash-card-badge,
-  .pg-dash-card-period {
-    padding: .125rem .5rem;
-    border: var(--pg-border-width) solid var(--pg-border-color);
-    border-radius: 999px;
+  /* A state beside the title: the drawings' chip. */
+  .pg-dash-card-chip {
+    padding: .125rem .5625rem;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .5rem;
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-soft);
     background: transparent;
   }
 
+  /* "3 new": a pill with a lit dot. */
+  .pg-dash-card-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+    padding: .0625rem .5625rem;
+    border: 1px solid var(--pgd-new-line);
+    border-radius: 999px;
+    background: var(--pgd-new-bg);
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--pgd-new);
+    white-space: nowrap;
+  }
+
+  .pg-dash-card-badge::before {
+    content: "";
+    width: .375rem;
+    height: .375rem;
+    border-radius: 50%;
+    background: var(--pgd-new-dot);
+    box-shadow: 0 0 8px var(--pgd-new-dot);
+  }
+
+  /* The period pill: 30 px, with the drop mark of the drawings. */
   .pg-dash-card-period {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+    height: 1.875rem;
+    padding: 0 .625rem;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: 999px;
+    background: var(--pgd-fill);
+    font-size: .75rem;
+    color: var(--pgd-soft);
+    white-space: nowrap;
     cursor: pointer;
   }
 
+  .pg-dash-card-period::after {
+    content: "";
+    width: .3125rem;
+    height: .3125rem;
+    margin-top: -.1875rem;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg);
+  }
+
   .pg-dash-card-period:hover {
-    background: var(--pg-tint-hover);
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-strong);
   }
 
   .pg-dash-card-period:focus-visible {
@@ -517,17 +1336,30 @@
     outline-offset: 2px;
   }
 
+  @media (forced-colors: active) {
+    .pg-dash-card-chip,
+    .pg-dash-card-badge,
+    .pg-dash-card-period {
+      border-color: CanvasText;
+    }
+
+    .pg-dash-card-badge::before {
+      background: CanvasText;
+      box-shadow: none;
+    }
+  }
+
   .pg-dash-card-body {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: .875rem;
     min-width: 0;
   }
 
   .pg-dash-card-empty,
   .pg-dash-card-error p {
     margin: 0;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-card-error {
@@ -537,9 +1369,16 @@
     gap: .75rem;
   }
 
+  /* The link at a card's foot ("All orders"). */
   .pg-dash-card-more {
     align-self: flex-start;
-    font-size: .875rem;
+    font-size: .8125rem;
+    color: var(--pgd-accent);
+    text-decoration: none;
+  }
+
+  .pg-dash-card-more:hover {
+    color: var(--pgd-strong);
   }
 
   .pg-dash-skeleton {
@@ -559,6 +1398,8 @@
 
   /* ── Card parts: figures, rows, charts ────────────────────────────────── */
 
+  /* Figure tiles, as the greeting's: a faint tile, 13 px corner, the value
+     20 px heavy. */
   .pg-dash-figs {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
@@ -569,72 +1410,103 @@
     display: flex;
     flex-direction: column;
     gap: .125rem;
+    min-width: 0;
     padding: .625rem .75rem;
-    border: var(--pg-border-width) solid var(--pg-border-color);
-    border-radius: var(--pg-radius);
+    border: 1px solid var(--pgd-tile-line);
+    border-radius: .8125rem;
+    background: var(--pgd-tile);
   }
 
   .pg-dash-fig-label,
   .pg-dash-fig-note {
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-fig-value {
+    overflow-wrap: anywhere;
     font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--pg-fg-emphasis);
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -.02em;
+    color: var(--pgd-strong);
     font-variant-numeric: tabular-nums;
   }
 
-  .pg-dash-fig-note[data-tone="good"] { color: var(--pg-success-fg-emphasis); }
-  .pg-dash-fig-note[data-tone="warn"] { color: var(--pg-warning-fg-emphasis); }
-  .pg-dash-fig-note[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
+  .pg-dash-fig-note[data-tone="good"],
+  .pg-dash-fig-value[data-tone="good"] { color: var(--pgd-good); }
+  .pg-dash-fig-note[data-tone="warn"],
+  .pg-dash-fig-value[data-tone="warn"] { color: var(--pgd-warn); }
+  .pg-dash-fig-note[data-tone="bad"],
+  .pg-dash-fig-value[data-tone="bad"] { color: var(--pgd-bad); }
 
+  /* A section's kicker: 11 px capitals, spaced, 6 px over what it heads
+     (in a card body that undoes most of the body's gap). */
   .pg-dash-rows-title {
-    margin: 0 0 .5rem;
-    font-size: .75rem;
+    margin: 0 0 .375rem;
+    font-size: .6875rem;
     font-weight: 600;
-    letter-spacing: .06em;
+    letter-spacing: .08em;
     text-transform: uppercase;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-card-body > .pg-dash-rows-title {
+    margin-bottom: -.5rem;
   }
 
   .pg-dash-rows-list {
     display: flex;
     flex-direction: column;
-    gap: .375rem;
+    gap: .5rem;
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
+  /* A bar row on one line: the name, a 6 px bar as long as its share
+     (cyan into fuchsia), the figure. */
   .pg-dash-row {
+    --pg-dash-row-from: var(--pgd-chart-1);
+    --pg-dash-row-to: var(--pgd-chart-3);
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: .125rem .5rem;
-    font-size: .875rem;
+    grid-template-columns: minmax(0, 6.5rem) minmax(2.5rem, 1fr) auto;
+    align-items: center;
+    gap: .75rem;
+    font-size: .8125rem;
   }
 
   .pg-dash-row-text {
+    grid-column: 1;
+    grid-row: 1;
     overflow: hidden;
+    color: var(--pgd-fg);
     white-space: nowrap;
     text-overflow: ellipsis;
   }
 
   .pg-dash-row-note {
-    color: var(--pg-fg-2);
+    grid-column: 3;
+    grid-row: 1;
+    font-size: .75rem;
+    color: var(--pgd-muted);
+    text-align: right;
     font-variant-numeric: tabular-nums;
   }
 
   .pg-dash-row-bar {
-    grid-column: 1 / -1;
-    height: .25rem;
+    grid-column: 2;
+    grid-row: 1;
+    height: .375rem;
     border-radius: 999px;
-    background: linear-gradient(to right, var(--pg-dash-cat) calc(var(--share, 0) * 100%), var(--pg-tint) 0);
+    background: linear-gradient(90deg, var(--pg-dash-row-from), var(--pg-dash-row-to)) 0 0 / calc(var(--share, 0) * 100%) 100% no-repeat, var(--pgd-track);
   }
 
+  /* A chart with its key above it. */
   .pg-dash-chart {
+    display: flex;
+    flex-direction: column;
+    gap: .375rem;
     margin: 0;
   }
 
@@ -642,49 +1514,58 @@
   .pg-dash-bars {
     display: block;
     width: 100%;
-    height: 10rem;
+    height: 9rem;
   }
 
   .pg-dash-bars {
-    height: 4rem;
-    fill: var(--pg-dash-cat);
+    height: 2.5rem;
+    fill: var(--pgd-chart-1);
   }
 
-  .pg-dash-line path {
+  /* The area takes its gradient from its fill attribute. */
+  .pg-dash-line path:not(.pg-dash-line-area) {
     fill: none;
-    stroke-width: 2;
+    stroke-width: 3;
     stroke-linejoin: round;
+    stroke-linecap: round;
   }
 
-  .pg-dash-line-main {
-    stroke: var(--pg-dash-cat);
+  .pg-dash-line .pg-dash-line-area {
+    stroke: none;
   }
 
-  .pg-dash-line-compare {
-    stroke: var(--pg-fg-3);
-    stroke-dasharray: 5 4;
+  .pg-dash-line-area-top { stop-color: var(--pgd-chart-area); }
+  .pg-dash-line-area-bottom { stop-color: var(--pgd-chart-1); stop-opacity: 0; }
+  .pg-dash-line-from { stop-color: var(--pgd-chart-1); }
+  .pg-dash-line-mid { stop-color: var(--pgd-chart-2); }
+  .pg-dash-line-to { stop-color: var(--pgd-chart-3); }
+
+  .pg-dash-line .pg-dash-line-compare {
+    stroke: var(--pgd-muted);
+    stroke-width: 1.5;
+    stroke-dasharray: 5 5;
   }
 
   .pg-dash-chart-caption {
     display: flex;
     flex-wrap: wrap;
-    gap: .25rem 1rem;
-    margin-top: .375rem;
+    order: -1;
+    gap: .25rem .75rem;
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-key::before {
     content: "";
     display: inline-block;
-    width: 1rem;
-    margin-inline-end: .375rem;
+    width: .5rem;
+    margin-inline-end: .25rem;
     vertical-align: middle;
-    border-top: 2px solid var(--pg-dash-cat);
+    border-top: 2px solid var(--pgd-chart-1);
   }
 
   .pg-dash-key-compare::before {
-    border-top: 2px dashed var(--pg-fg-3);
+    border-top: 2px dotted var(--pgd-muted);
   }
 
   .pg-dash-live {
@@ -714,24 +1595,26 @@
   }
 
   @media (forced-colors: active) {
-    .pg-dash-line-main,
-    .pg-dash-line-compare { stroke: CanvasText; }
+    .pg-dash-line .pg-dash-line-main,
+    .pg-dash-line .pg-dash-line-compare { stroke: CanvasText; }
+    .pg-dash-line .pg-dash-line-area { fill: none; }
     .pg-dash-bars { fill: CanvasText; }
-    .pg-dash-row-bar { background: CanvasText; forced-color-adjust: none; }
+    .pg-dash-row-bar { forced-color-adjust: none; background: linear-gradient(CanvasText, CanvasText) 0 0 / calc(var(--share, 0) * 100%) 100% no-repeat, Canvas; border: 1px solid CanvasText; }
   }
 
   /* ── Work cards: Next up ──────────────────────────────────────────────── */
 
+  /* Ruled rows: the module tag box, the text over its toned note, the
+     action as a 34 px button. */
   .pg-dash-queue-sub {
     margin: 0;
-    font-size: .8125rem;
-    color: var(--pg-fg-2);
+    font-size: .75rem;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-queue {
     display: flex;
     flex-direction: column;
-    gap: .375rem;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -739,28 +1622,45 @@
 
   .pg-dash-queue-row {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: 3.75rem minmax(0, 1fr) auto;
     align-items: center;
-    gap: .625rem;
-    padding: .5rem .625rem;
-    border: var(--pg-border-width) solid var(--pg-border-color);
-    border-inline-start-width: .25rem;
-    border-radius: var(--pg-radius);
+    gap: .75rem;
+    padding: .625rem 0;
   }
 
-  .pg-dash-queue-row[data-tone="bad"] { border-inline-start-color: var(--pg-danger); }
-  .pg-dash-queue-row[data-tone="warn"] { border-inline-start-color: var(--pg-warning); }
+  .pg-dash-queue-row + .pg-dash-queue-row {
+    border-top: 1px solid var(--pgd-line);
+  }
 
   .pg-dash-queue-tag {
-    min-width: 4.5rem;
-    padding: .125rem .375rem;
-    border-radius: 999px;
-    background: var(--pg-tint);
+    --pg-dash-tag-bg: rgba(148, 163, 184, .16);
+    --pg-dash-tag-fg: var(--pgd-soft);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.125rem;
+    padding: 0 .25rem;
+    overflow: hidden;
+    border-radius: .625rem;
+    background: var(--pg-dash-tag-bg);
     font-size: .6875rem;
-    font-weight: 600;
-    text-align: center;
-    color: var(--pg-fg-2);
+    font-weight: 800;
+    color: var(--pg-dash-tag-fg);
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
+
+  .pg-dash-queue-tag[data-module="content"] { --pg-dash-tag-bg: rgba(217, 70, 239, .14); --pg-dash-tag-fg: #a21caf; }
+  .pg-dash-queue-tag[data-module="team"] { --pg-dash-tag-bg: rgba(167, 139, 250, .18); --pg-dash-tag-fg: #6d28d9; }
+  .pg-dash-queue-tag[data-module="shop"] { --pg-dash-tag-bg: rgba(251, 191, 36, .16); --pg-dash-tag-fg: #b45309; }
+  .pg-dash-queue-tag[data-module="form"] { --pg-dash-tag-bg: rgba(34, 211, 238, .14); --pg-dash-tag-fg: #0e7490; }
+  .pg-dash-queue-tag[data-module="erp"] { --pg-dash-tag-bg: rgba(248, 113, 113, .14); --pg-dash-tag-fg: #b91c1c; }
+
+  html[data-bs-theme="dark"] .pg-dash-queue-tag[data-module="content"] { --pg-dash-tag-fg: #f0abfc; }
+  html[data-bs-theme="dark"] .pg-dash-queue-tag[data-module="team"] { --pg-dash-tag-fg: #c4b5fd; }
+  html[data-bs-theme="dark"] .pg-dash-queue-tag[data-module="shop"] { --pg-dash-tag-fg: #fde68a; }
+  html[data-bs-theme="dark"] .pg-dash-queue-tag[data-module="form"] { --pg-dash-tag-fg: #67e8f9; }
+  html[data-bs-theme="dark"] .pg-dash-queue-tag[data-module="erp"] { --pg-dash-tag-fg: #fecaca; }
 
   .pg-dash-queue-text {
     display: flex;
@@ -770,19 +1670,40 @@
 
   .pg-dash-queue-title {
     overflow: hidden;
-    font-size: .875rem;
+    font-size: .8125rem;
     white-space: nowrap;
     text-overflow: ellipsis;
-    color: var(--pg-fg-emphasis);
+    color: var(--pgd-fg);
   }
 
   .pg-dash-queue-note {
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
-  .pg-dash-queue-row[data-tone="bad"] .pg-dash-queue-note { color: var(--pg-danger-fg-emphasis); }
-  .pg-dash-queue-row[data-tone="warn"] .pg-dash-queue-note { color: var(--pg-warning-fg-emphasis); }
+  .pg-dash-queue-row[data-tone="bad"] .pg-dash-queue-note { color: var(--pgd-bad); }
+  .pg-dash-queue-row[data-tone="warn"] .pg-dash-queue-note { color: var(--pgd-warn); }
+
+  .pg-dash .pg-dash-queue-action,
+  .pg-dash .pg-dash-flow-action {
+    display: inline-flex;
+    align-items: center;
+    height: 2.125rem;
+    padding: 0 .625rem;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .5625rem;
+    background: var(--pgd-fill);
+    font-size: .8125rem;
+    color: var(--pgd-fg);
+    white-space: nowrap;
+  }
+
+  .pg-dash .pg-dash-queue-action:hover,
+  .pg-dash .pg-dash-flow-action:hover {
+    border-color: var(--pgd-accent-line);
+    background: var(--pgd-fill);
+    color: var(--pgd-strong);
+  }
 
   @media (max-width: 639.98px) {
     .pg-dash-queue-row {
@@ -800,29 +1721,307 @@
   }
 
   @media (forced-colors: active) {
-    .pg-dash-queue-row[data-tone="bad"],
-    .pg-dash-queue-row[data-tone="warn"] { border-inline-start-color: CanvasText; }
+    .pg-dash-queue-tag { border: 1px solid CanvasText; }
+  }
+
+  /* ── Work cards: Pipeline ─────────────────────────────────────────────── */
+
+  /* Steps as faint tiles: the kicker, a 28 px figure beside its cyan
+     sparkline, the note and a toned flag. */
+  .pg-dash-pipe-sub {
+    margin: 0;
+    font-size: .75rem;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-pipe {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: .75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-pipe-step {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    height: 100%;
+    padding: .875rem;
+    border: 1px solid var(--pgd-line);
+    border-radius: .9375rem;
+    background: linear-gradient(180deg, var(--pgd-fill), transparent);
+    color: var(--pgd-fg);
+    text-decoration: none;
+  }
+
+  a.pg-dash-pipe-step:hover,
+  a.pg-dash-pipe-step:focus-visible {
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-fg);
+  }
+
+  .pg-dash-pipe-label {
+    font-size: .6875rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-pipe-figure {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: .5rem;
+  }
+
+  .pg-dash-pipe-value {
+    font-size: 1.75rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -.02em;
+    color: var(--pgd-strong);
+  }
+
+  .pg-dash-pipe-spark {
+    flex: 0 1 5.625rem;
+    min-width: 3rem;
+    height: 1.875rem;
+    color: var(--pgd-chart-1);
+  }
+
+  .pg-dash-pipe-note {
+    font-size: .75rem;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-pipe-note[data-tone="good"] { color: var(--pgd-good); }
+  .pg-dash-pipe-note[data-tone="bad"] { color: var(--pgd-bad); }
+
+  .pg-dash-pipe-flag {
+    align-self: flex-start;
+    margin-top: .375rem;
+    padding: .125rem .5625rem;
+    border: 1px solid var(--pgd-warn-line);
+    border-radius: .5rem;
+    background: var(--pgd-warn-bg);
+    font-size: .75rem;
+    color: var(--pgd-warn);
+  }
+
+  .pg-dash-pipe-flag[data-tone="bad"] {
+    border-color: var(--pgd-bad-line);
+    background: var(--pgd-bad-bg);
+    color: var(--pgd-bad);
+  }
+
+  @media (forced-colors: active) {
+    .pg-dash-pipe-spark { color: CanvasText; }
+    .pg-dash-pipe-flag,
+    .pg-dash-pipe-flag[data-tone="bad"] { border-color: CanvasText; }
+  }
+
+  /* ── Work cards: Flows ────────────────────────────────────────────────── */
+
+  /* The run in hand as a chain of rounds (green done, amber waiting, red
+     failed, grey to do) on a thread green as far as it went; the last runs
+     as ruled rows behind a glowing dot of their tone. */
+  .pg-dash-flow-now {
+    margin-top: 0;
+  }
+
+  .pg-dash-flow-head {
+    margin: 0 0 .5rem;
+    font-size: .6875rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-flow-head a {
+    color: var(--pgd-soft);
+    text-decoration: none;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .pg-dash-flow-head a:hover,
+  .pg-dash-flow-head a:focus-visible {
+    text-decoration: underline;
+  }
+
+  .pg-dash-flow-line {
+    display: flex;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-flow-node {
+    --pg-dash-node: rgba(148, 163, 184, .45);
+    position: relative;
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: center;
+    gap: .375rem;
+    min-width: 0;
+    text-align: center;
+  }
+
+  .pg-dash-flow-node[data-state="done"] { --pg-dash-node: #34d399; }
+  .pg-dash-flow-node[data-state="waiting"] { --pg-dash-node: #fbbf24; }
+  .pg-dash-flow-node[data-state="failed"] { --pg-dash-node: #f87171; }
+
+  /* The thread to the round before. */
+  .pg-dash-flow-node + .pg-dash-flow-node::before {
+    position: absolute;
+    top: calc(1.0625rem - 1px);
+    inset-inline-end: 50%;
+    width: 100%;
+    height: 2px;
+    background: rgba(148, 163, 184, .3);
+    content: "";
+  }
+
+  .pg-dash-flow-node[data-state="done"] + .pg-dash-flow-node::before {
+    background: #34d399;
+  }
+
+  .pg-dash-flow-dot {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.125rem;
+    height: 2.125rem;
+    border: 2px solid var(--pg-dash-node);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--pg-dash-node) 16%, var(--pgd-card));
+    font-size: .875rem;
+    color: var(--pg-dash-node);
+  }
+
+  .pg-dash-flow-name {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: .6875rem;
+    line-height: 1.3;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--pgd-soft);
+  }
+
+  .pg-dash-flow-node[data-state="waiting"] .pg-dash-flow-name { color: var(--pgd-warn); }
+  .pg-dash-flow-node[data-state="failed"] .pg-dash-flow-name { color: var(--pgd-bad); }
+  .pg-dash-flow-node[data-state="todo"] .pg-dash-flow-name { color: var(--pgd-muted); }
+
+  .pg-dash-flow-runs {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-flow-run {
+    --pg-dash-run: var(--pgd-muted);
+    display: grid;
+    grid-template-columns: .5rem minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: .75rem;
+    padding: .625rem 0;
+    border-top: 1px solid var(--pgd-line);
+  }
+
+  .pg-dash-flow-run:first-child {
+    border-top: 0;
+  }
+
+  .pg-dash-flow-run::before {
+    width: .5rem;
+    height: .5rem;
+    border-radius: 50%;
+    background: var(--pg-dash-run);
+    box-shadow: 0 0 8px var(--pg-dash-run);
+    content: "";
+  }
+
+  .pg-dash-flow-run[data-tone="good"] { --pg-dash-run: #34d399; }
+  .pg-dash-flow-run[data-tone="warn"] { --pg-dash-run: #fbbf24; }
+  .pg-dash-flow-run[data-tone="bad"] { --pg-dash-run: #f87171; }
+
+  .pg-dash-flow-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .pg-dash-flow-title {
+    overflow: hidden;
+    font-size: .8125rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--pgd-fg);
+    text-decoration: none;
+  }
+
+  .pg-dash-flow-title:hover,
+  .pg-dash-flow-title:focus-visible {
+    text-decoration: underline;
+  }
+
+  .pg-dash-flow-note {
+    font-size: .75rem;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-flow-run[data-tone="good"] .pg-dash-flow-note { color: var(--pgd-good); }
+  .pg-dash-flow-run[data-tone="warn"] .pg-dash-flow-note { color: var(--pgd-warn); }
+  .pg-dash-flow-run[data-tone="bad"] .pg-dash-flow-note,
+  .pg-dash-flow-note[data-tone="bad"] { color: var(--pgd-bad); }
+
+  .pg-dash-flow-when {
+    font-size: .8125rem;
+    color: var(--pgd-muted);
+    white-space: nowrap;
+  }
+
+  @media (forced-colors: active) {
+    .pg-dash-flow-dot { forced-color-adjust: none; border-color: CanvasText; background: Canvas; }
+    .pg-dash-flow-node[data-state="done"] .pg-dash-flow-dot,
+    .pg-dash-flow-node[data-state="waiting"] .pg-dash-flow-dot,
+    .pg-dash-flow-node[data-state="failed"] .pg-dash-flow-dot { background: Highlight; }
+    .pg-dash-flow-node + .pg-dash-flow-node::before { background: CanvasText; }
+    .pg-dash-flow-run::before { forced-color-adjust: none; background: CanvasText; box-shadow: none; }
   }
 
   /* ── Edit mode ────────────────────────────────────────────────────────── */
 
+  /* The drawings' small square button: 34 px, a 9 px corner. */
   .pg-dash-card-edit,
   .pg-dash-grip {
     display: inline-flex;
+    flex: 0 0 2.125rem;
     align-items: center;
     justify-content: center;
-    width: 2rem;
-    height: 2rem;
+    width: 2.125rem;
+    height: 2.125rem;
     padding: 0;
-    border: var(--pg-border-width) solid transparent;
-    border-radius: var(--pg-radius);
-    background: transparent;
-    color: var(--pg-fg-2);
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .5625rem;
+    background: var(--pgd-fill);
+    color: var(--pgd-soft);
   }
 
   .pg-dash-card-edit:hover,
   .pg-dash-grip:hover {
-    background: var(--pg-tint-hover);
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-strong);
   }
 
   .pg-dash-card-edit:focus-visible,
@@ -837,7 +2036,9 @@
   }
 
   .pg-dash-grip {
-    border-color: var(--pg-border-color);
+    border-color: var(--pgd-accent-line);
+    background: var(--pgd-new-bg);
+    color: var(--pgd-accent);
     cursor: grab;
     touch-action: none;
   }
@@ -846,8 +2047,11 @@
     display: none;
   }
 
+  /* A .card: Bootstrap sets the column direction, under which the text
+     block's 18rem basis became its height. */
   .pg-dash-bar {
     display: flex;
+    flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
     gap: 1rem 1.5rem;
@@ -957,27 +2161,41 @@
     outline: 2px solid var(--pg-primary-ink);
   }
 
-  .pg-dash-action-edit {
-    display: inline-flex;
-    align-items: center;
-    gap: .5rem;
-    padding: .375rem .375rem .375rem .875rem;
-    border: var(--pg-border-width) solid var(--pg-border-color);
-    border-radius: var(--pg-radius);
+  /* A shortcut in edit mode: the drawn button with its remove cross. */
+  .pg-dash .pg-dash-action-edit {
+    padding-right: .375rem;
   }
 
+  /* At least 24 px a side (WCAG 2.5.8), 32 px under a finger. */
   .pg-dash-action-remove {
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.625rem;
+    min-height: 1.625rem;
     padding: .25rem;
     border: 0;
-    border-radius: var(--pg-radius-sm);
-    background: color-mix(in srgb, var(--pg-danger) 18%, transparent);
-    color: inherit;
+    border-radius: .4375rem;
+    background: var(--pgd-bad-bg);
+    color: var(--pgd-bad);
     font-size: .75rem;
   }
 
-  .pg-dash-action-add {
+  .pg-dash-btn-main .pg-dash-action-remove {
+    background: rgba(255, 255, 255, .18);
+    color: #fff;
+  }
+
+  @media (pointer: coarse) {
+    .pg-dash-action-remove {
+      min-width: 2rem;
+      min-height: 2rem;
+    }
+  }
+
+  .pg-dash .pg-dash-action-add {
     border-style: dashed;
+    color: var(--pgd-accent);
   }
 
   .pg-dash-tile-edit select {
@@ -991,12 +2209,13 @@
   .pg-dash-saved {
     display: inline-flex;
     align-items: center;
-    gap: .25rem;
-    padding: .125rem .625rem;
-    border-radius: 999px;
-    font-size: .8125rem;
-    background: color-mix(in srgb, var(--pg-success) 18%, transparent);
-    color: var(--pg-fg-emphasis);
+    gap: .375rem;
+    padding: .125rem .5625rem;
+    border: 1px solid var(--pgd-good-line);
+    border-radius: .5rem;
+    font-size: .75rem;
+    background: var(--pgd-good-bg);
+    color: var(--pgd-good);
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -1020,23 +2239,29 @@
   .pg-dash-card-note {
     margin: 0;
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
-  /* Content and design: four page sketches. */
+  /* Content and design: four page sketches, each with its own hero
+     gradient, the name and a state chip. */
   .pg-dash-pages {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(8.75rem, 1fr));
     gap: .75rem;
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
+  .pg-dash-pages > li:nth-child(4n + 1) { --pg-dash-hero: linear-gradient(135deg, #22d3ee, #6366f1); }
+  .pg-dash-pages > li:nth-child(4n + 2) { --pg-dash-hero: linear-gradient(135deg, #6366f1, #d946ef); }
+  .pg-dash-pages > li:nth-child(4n + 3) { --pg-dash-hero: linear-gradient(135deg, #0ea5e9, #22d3ee); }
+  .pg-dash-pages > li:nth-child(4n + 4) { --pg-dash-hero: linear-gradient(135deg, #334155, #64748b); }
+
   .pg-dash-page-link {
     display: flex;
     flex-direction: column;
-    gap: .25rem;
+    gap: .125rem;
     color: inherit;
     text-decoration: none;
   }
@@ -1045,41 +2270,57 @@
     display: flex;
     flex-direction: column;
     gap: .375rem;
-    padding: .625rem;
-    aspect-ratio: 16 / 9;
-    border: var(--pg-border-width) solid var(--pg-border-color);
-    border-radius: var(--pg-radius);
+    height: 5.75rem;
+    margin-bottom: .25rem;
+    padding: .5rem;
+    overflow: hidden;
+    border: 1px solid var(--pgd-line);
+    border-radius: .75rem;
+    background: var(--pgd-field);
   }
 
   .pg-dash-page-sketch-line {
-    height: .375rem;
-    width: 60%;
-    border-radius: 999px;
-    background: var(--pg-tint);
+    flex: none;
+    width: 40%;
+    height: .5rem;
+    border-radius: 3px;
+    background: rgba(148, 163, 184, .35);
   }
 
   .pg-dash-page-sketch-line:nth-child(2) {
-    flex: 1;
     width: 100%;
-    border-radius: var(--pg-radius-sm);
-    background: color-mix(in srgb, var(--pg-dash-cat) 55%, transparent);
+    height: 2rem;
+    border-radius: .375rem;
+    background: var(--pg-dash-hero);
   }
 
-  .pg-dash-page-sketch[data-state="draft"] .pg-dash-page-sketch-line:nth-child(2) {
-    background: var(--pg-tint);
+  .pg-dash-page-sketch-line:nth-child(3),
+  .pg-dash-page-sketch::after {
+    width: 85%;
+    height: .3125rem;
+    background: rgba(148, 163, 184, .22);
+  }
+
+  .pg-dash-page-sketch::after {
+    content: "";
+    flex: none;
+    width: 62%;
+    margin-top: -.125rem;
+    border-radius: 3px;
+    background: rgba(148, 163, 184, .16);
   }
 
   .pg-dash-page-link:hover .pg-dash-page-sketch,
   .pg-dash-page-link:focus-visible .pg-dash-page-sketch {
-    border-color: var(--pg-dash-cat);
+    border-color: var(--pgd-accent-line);
   }
 
   .pg-dash-page-name {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    font-size: .875rem;
-    font-weight: 600;
+    font-size: .8125rem;
+    color: var(--pgd-fg);
   }
 
   .pg-dash-page-meta {
@@ -1088,38 +2329,39 @@
     align-items: center;
     gap: .375rem;
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-state {
-    padding: 0 .375rem;
-    border: var(--pg-border-width) solid var(--pg-success-border-subtle);
-    border-radius: var(--pg-radius-sm);
-    background: var(--pg-success-bg-subtle);
-    color: var(--pg-success-fg-emphasis);
+    padding: 0 .4375rem;
+    border: 1px solid var(--pgd-good-line);
+    border-radius: .5rem;
+    background: var(--pgd-good-bg);
+    color: var(--pgd-good);
   }
 
   .pg-dash-state[data-state="draft"],
   .pg-dash-state[data-state="scheduled"] {
-    border-color: var(--pg-warning-border-subtle);
-    background: var(--pg-warning-bg-subtle);
-    color: var(--pg-warning-fg-emphasis);
+    border-color: var(--pgd-warn-line);
+    background: var(--pgd-warn-bg);
+    color: var(--pgd-warn);
   }
 
-  /* Comment moderation. */
+  /* Comment moderation: letters, a bubble with a tight first corner, the
+     note and Approve. */
   .pg-dash-count {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
     margin: 0;
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-count-value {
     font-size: 1.125rem;
-    font-weight: 700;
-    color: var(--pg-fg-emphasis);
+    font-weight: 800;
+    color: var(--pgd-strong);
     font-variant-numeric: tabular-nums;
   }
 
@@ -1137,20 +2379,20 @@
 
   .pg-dash-bubble {
     display: grid;
-    grid-template-columns: 2rem minmax(0, 1fr);
-    gap: .5rem;
+    grid-template-columns: 1.875rem minmax(0, 1fr);
+    gap: .625rem;
   }
 
   .pg-dash-avatar {
     display: grid;
     place-items: center;
-    width: 2rem;
-    height: 2rem;
+    width: 1.875rem;
+    height: 1.875rem;
     border-radius: 50%;
     font-size: .6875rem;
-    font-weight: 700;
-    background: color-mix(in srgb, var(--pg-dash-cat) 22%, transparent);
-    color: var(--pg-fg-emphasis);
+    font-weight: 800;
+    background: rgba(99, 102, 241, .22);
+    color: var(--pgd-strong);
   }
 
   .pg-dash-bubble-who {
@@ -1159,18 +2401,21 @@
     margin: 0;
     font-size: .75rem;
     font-weight: 600;
+    color: var(--pgd-soft);
   }
 
   .pg-dash-stars {
-    color: var(--pg-warning-fg-emphasis);
+    color: var(--pgd-warn);
   }
 
   .pg-dash-bubble-text {
-    margin: .25rem 0;
-    padding: .5rem .75rem;
-    border: var(--pg-border-width) solid var(--pg-border-color);
-    border-radius: var(--pg-radius);
-    font-size: .875rem;
+    margin: .25rem 0 .375rem;
+    padding: .5625rem .75rem;
+    border: 1px solid var(--pgd-line);
+    border-radius: .25rem .875rem .875rem .875rem;
+    background: var(--pgd-fill);
+    font-size: .8125rem;
+    color: var(--pgd-fg);
     overflow-wrap: anywhere;
   }
 
@@ -1179,12 +2424,30 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: .375rem;
+    gap: .5rem;
   }
 
   .pg-dash-bubble-note {
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash .pg-dash-approve {
+    display: inline-flex;
+    align-items: center;
+    height: 2.125rem;
+    padding: 0 .625rem;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .5625rem;
+    background: var(--pgd-fill);
+    font-size: .8125rem;
+    color: var(--pgd-fg);
+  }
+
+  .pg-dash .pg-dash-approve:hover {
+    border-color: var(--pgd-accent-line);
+    background: var(--pgd-fill);
+    color: var(--pgd-strong);
   }
 
   /* Lists of items: last uploads, top searches. */
@@ -1195,6 +2458,14 @@
     gap: .625rem;
     color: inherit;
     text-decoration: none;
+  }
+
+  /* A row that is one link: the link fills the row and may shrink below
+     its text, so a long name ends in an ellipsis instead of widening the
+     card. */
+  .pg-dash-item > .pg-dash-item-link {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .pg-dash-item-main {
@@ -1218,7 +2489,7 @@
   .pg-dash-item-note,
   .pg-dash-item-value {
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
     font-variant-numeric: tabular-nums;
   }
 
@@ -1353,71 +2624,94 @@
     gap: .25rem 1rem;
   }
 
-  /* Activity: filter chips and a timeline. */
-  .pg-dash-chips {
+  /* Activity: filter pills and a timeline, a glowing dot per kind on a
+     thin rule (the greeting's chips share the class names, so these sit
+     under a card). */
+  .pg-dash-cardbox .pg-dash-chips {
     display: flex;
     flex-wrap: wrap;
     gap: .375rem;
   }
 
-  .pg-dash-chip {
-    padding: .125rem .625rem;
-    border: var(--pg-border-width) solid var(--pg-border-color);
+  .pg-dash-cardbox .pg-dash-chip {
+    height: 1.875rem;
+    padding: 0 .625rem;
+    border: 1px solid var(--pgd-line-2);
     border-radius: 999px;
-    background: transparent;
-    color: var(--pg-fg-body);
-    font-size: .8125rem;
+    background: var(--pgd-fill);
+    color: var(--pgd-soft);
+    font-size: .75rem;
   }
 
-  .pg-dash-chip:hover {
-    background: var(--pg-tint-hover);
+  .pg-dash-cardbox .pg-dash-chip:hover {
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-strong);
   }
 
-  .pg-dash-chip[aria-pressed="true"] {
-    border-color: var(--pg-dash-cat);
-    background: color-mix(in srgb, var(--pg-dash-cat) 16%, transparent);
+  .pg-dash-cardbox .pg-dash-chip[aria-pressed="true"] {
+    border-color: var(--pgd-accent-line);
+    background: var(--pgd-new-bg);
+    color: var(--pgd-strong);
     font-weight: 600;
   }
 
   .pg-dash-timeline {
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: .625rem;
     margin: 0;
-    padding: 0 0 0 1rem;
+    padding: 0;
     list-style: none;
-    border-inline-start: 2px solid var(--pg-tint);
+  }
+
+  .pg-dash-timeline::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    inset-inline-start: 3px;
+    width: 2px;
+    background: rgba(148, 163, 184, .18);
   }
 
   .pg-dash-event {
+    --pg-dash-event: var(--pgd-muted);
     position: relative;
     display: flex;
-    gap: .5rem;
-    font-size: .875rem;
+    align-items: center;
+    gap: .75rem;
+    padding: .5625rem 0 .5625rem 1.375rem;
+    font-size: .8125rem;
   }
 
   .pg-dash-event::before {
     content: "";
     position: absolute;
-    inset-inline-start: calc(-1rem - 5px);
-    top: .4em;
+    inset-inline-start: 0;
+    top: 50%;
     width: 8px;
     height: 8px;
+    margin-top: -4px;
     border-radius: 50%;
-    background: var(--pg-dash-event, var(--pg-fg-3));
+    background: var(--pg-dash-event);
+    box-shadow: 0 0 8px var(--pg-dash-event);
   }
 
-  .pg-dash-event[data-chip="content"] { --pg-dash-event: var(--pg-accent); }
-  .pg-dash-event[data-chip="form"] { --pg-dash-event: var(--pg-info); }
-  .pg-dash-event[data-chip="team"] { --pg-dash-event: var(--pg-warning); }
-  .pg-dash-event[data-chip="security"] { --pg-dash-event: var(--pg-danger); }
+  .pg-dash-event[data-chip="form"] { --pg-dash-event: var(--pgd-chart-1); }
+  .pg-dash-event[data-chip="content"] { --pg-dash-event: var(--pgd-chart-3); }
+  .pg-dash-event[data-chip="team"] { --pg-dash-event: #818cf8; }
+  .pg-dash-event[data-chip="security"] { --pg-dash-event: var(--pgd-chart-hot); }
+  .pg-dash-event[data-kind="comment"] { --pg-dash-event: #f59e0b; }
+
+  html[data-bs-theme="dark"] .pg-dash-event[data-chip="team"] { --pg-dash-event: #a5b4fc; }
+  html[data-bs-theme="dark"] .pg-dash-event[data-kind="comment"] { --pg-dash-event: #fde68a; }
 
   .pg-dash-event-main {
     display: flex;
     flex: 1;
     min-width: 0;
     flex-direction: column;
-    color: inherit;
+    color: var(--pgd-fg);
     text-decoration: none;
   }
 
@@ -1432,14 +2726,15 @@
     text-overflow: ellipsis;
   }
 
-  .pg-dash-event-note,
-  .pg-dash-event-when {
+  .pg-dash-event-note {
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-event-when {
     flex: none;
+    font-size: .8125rem;
+    color: var(--pgd-muted);
     font-variant-numeric: tabular-nums;
   }
 
@@ -1449,26 +2744,27 @@
     .pg-dash-storage-key::before,
     .pg-dash-stack-key::before,
     .pg-dash-event::before { background: CanvasText; forced-color-adjust: none; }
-    .pg-dash-chip[aria-pressed="true"] { border-width: 2px; }
+    .pg-dash-cardbox .pg-dash-chip[aria-pressed="true"] { border-width: 2px; }
   }
 
 
   /* ── Security cards ───────────────────────────────────────────────────── */
 
-  .pg-dash-fig-value[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
-
   .pg-dash-fw-mode {
     margin: 0;
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
+  /* Hours well above the rest are red, the rest cyan; the top sources'
+     bars are red. */
   .pg-dash-fw-bars rect.is-hot {
-    fill: var(--pg-danger);
+    fill: var(--pgd-chart-hot);
   }
 
-  .pg-dash-fw-rows .pg-dash-row-bar {
-    background: linear-gradient(to right, var(--pg-danger) calc(var(--share, 0) * 100%), var(--pg-tint) 0);
+  .pg-dash-fw-rows .pg-dash-row {
+    --pg-dash-row-from: var(--pgd-chart-hot);
+    --pg-dash-row-to: var(--pgd-chart-hot);
   }
 
   /* ── Team cards ───────────────────────────────────────────────────────── */
@@ -1477,40 +2773,59 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: .375rem;
+    gap: .5rem;
   }
 
-  .pg-dash-avatar {
+  /* A person's letters on the drawings' pastel tones (the panel's theme
+     class picks the tone) in dark ink, a 2 px gap in the card's colour and
+     the presence ring: green online, amber away, grey offline. */
+  .pg-dash .pg-dash-avatar.avatar {
+    --pg-dash-avatar: #cbd5e1;
     flex: none;
+    width: 2.125rem;
+    height: 2.125rem;
+    border: 2px solid var(--pgd-card);
+    background: var(--pg-dash-avatar);
+    color: #0b1220;
+    font-size: .75rem;
+    font-weight: 800;
   }
+
+  .pg-dash .pg-dash-avatar.theme-primary { --pg-dash-avatar: #a5b4fc; }
+  .pg-dash .pg-dash-avatar.theme-info { --pg-dash-avatar: #67e8f9; }
+  .pg-dash .pg-dash-avatar.theme-warning { --pg-dash-avatar: #fde68a; }
+  .pg-dash .pg-dash-avatar.theme-accent { --pg-dash-avatar: #f0abfc; }
+  .pg-dash .pg-dash-avatar.theme-danger { --pg-dash-avatar: #fecaca; }
+  .pg-dash .pg-dash-avatar.theme-success { --pg-dash-avatar: #bbf7d0; }
+  .pg-dash .pg-dash-avatar.theme-inverse { --pg-dash-avatar: #e2e8f0; }
 
   .pg-dash-avatar[data-presence] {
-    box-shadow: 0 0 0 2px var(--pg-bg-1), 0 0 0 4px var(--pg-fg-3);
+    box-shadow: 0 0 0 2px rgba(148, 163, 184, .45);
   }
 
   .pg-dash-avatar[data-presence="online"] {
-    box-shadow: 0 0 0 2px var(--pg-bg-1), 0 0 0 4px var(--pg-success);
+    box-shadow: 0 0 0 2px #34d399;
   }
 
   .pg-dash-avatar[data-presence="away"] {
-    box-shadow: 0 0 0 2px var(--pg-bg-1), 0 0 0 4px var(--pg-warning);
+    box-shadow: 0 0 0 2px #fbbf24;
   }
 
   .pg-dash-people-more {
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-summary {
     margin: 0;
-    font-size: .8125rem;
-    color: var(--pg-fg-2);
+    font-size: .75rem;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-summary [data-tone="bad"],
-  .pg-dash-item-note[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
-  .pg-dash-item-note[data-tone="warn"] { color: var(--pg-warning-fg-emphasis); }
-  .pg-dash-item-note[data-tone="good"] { color: var(--pg-success-fg-emphasis); }
+  .pg-dash-item-note[data-tone="bad"] { color: var(--pgd-bad); }
+  .pg-dash-item-note[data-tone="warn"] { color: var(--pgd-warn); }
+  .pg-dash-item-note[data-tone="good"] { color: var(--pgd-good); }
 
   .pg-dash-items {
     display: flex;
@@ -1520,15 +2835,17 @@
     list-style: none;
   }
 
+  /* A list row: the lead, the text over its note, the end; rows ruled
+     apart. */
   .pg-dash-item {
     display: flex;
     align-items: center;
     gap: .75rem;
-    padding: .5rem 0;
+    padding: .625rem 0;
   }
 
   .pg-dash-item + .pg-dash-item {
-    border-top: var(--pg-border-width) solid var(--pg-border-color);
+    border-top: 1px solid var(--pgd-line);
   }
 
   .pg-dash-item-main {
@@ -1540,8 +2857,8 @@
 
   .pg-dash-item-text {
     overflow: hidden;
-    font-size: .875rem;
-    color: var(--pg-fg-emphasis);
+    font-size: .8125rem;
+    color: var(--pgd-fg);
     white-space: nowrap;
     text-overflow: ellipsis;
   }
@@ -1557,7 +2874,7 @@
 
   .pg-dash-item-note {
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-item.is-done .pg-dash-item-text {
@@ -1586,23 +2903,27 @@
     flex-direction: column;
     align-items: center;
     width: 2.75rem;
-    padding: .25rem 0;
-    border: var(--pg-border-width) solid var(--pg-border-color);
-    border-radius: var(--pg-radius);
-    line-height: 1.2;
+    padding: .1875rem 0;
+    border: 1px solid var(--pgd-line);
+    border-radius: .6875rem;
+    background: var(--pgd-fill);
+    line-height: 1.15;
   }
 
   .pg-dash-date-day {
-    font-weight: 700;
-    color: var(--pg-fg-emphasis);
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    color: var(--pgd-strong);
     font-variant-numeric: tabular-nums;
   }
 
   .pg-dash-date-month {
     font-size: .6875rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
+  /* My week: seven day tiles, today in a cyan frame, a dot per item. */
   .pg-dash-week {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -1616,86 +2937,110 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: .125rem;
-    padding: .375rem 0;
-    border: var(--pg-border-width) solid var(--pg-border-color);
-    border-radius: var(--pg-radius);
+    gap: .0625rem;
+    padding: .375rem 0 .3125rem;
+    border: 1px solid var(--pgd-tile-line);
+    border-radius: .625rem;
+    background: var(--pgd-tile);
   }
 
   .pg-dash-day.is-today {
-    border-color: var(--pg-dash-cat);
-    background: color-mix(in srgb, var(--pg-dash-cat) 12%, transparent);
+    border-color: var(--pgd-chart-1);
+    background: linear-gradient(180deg, rgba(34, 211, 238, .18), rgba(99, 102, 241, .12));
   }
 
   .pg-dash-day-name {
     font-size: .6875rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-day-number {
-    font-weight: 700;
-    color: var(--pg-fg-emphasis);
+    font-size: .9375rem;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    color: var(--pgd-fg);
     font-variant-numeric: tabular-nums;
+  }
+
+  .pg-dash-day.is-today .pg-dash-day-number {
+    color: var(--pgd-strong);
   }
 
   .pg-dash-day-dots {
     display: flex;
-    gap: 2px;
-    min-height: .3125rem;
+    gap: 3px;
+    min-height: .375rem;
+    margin-top: .1875rem;
   }
 
   .pg-dash-dot {
-    width: .3125rem;
-    height: .3125rem;
+    width: 5px;
+    height: 5px;
     border-radius: 50%;
-    background: var(--pg-dash-cat);
+    background: var(--pgd-chart-1);
   }
 
+  .pg-dash-dot + .pg-dash-dot {
+    background: var(--pgd-chart-3);
+  }
+
+  /* Calendars: five weeks as a light grid of 24 px days, today in the
+     main gradient, days with items tinted cyan with a line under them. The
+     days carry the week's tile class too, so its tile look is undone. */
   .pg-dash-cal-head {
     display: flex;
+    align-items: baseline;
     justify-content: space-between;
     gap: .5rem;
-    font-size: .875rem;
   }
 
   .pg-dash-cal-range {
-    font-weight: 600;
-    color: var(--pg-fg-emphasis);
+    font-size: .8125rem;
+    font-weight: 700;
+    color: var(--pgd-strong);
   }
 
   .pg-dash-cal-count {
-    color: var(--pg-fg-2);
+    font-size: .75rem;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-cal {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: .25rem;
+    gap: 3px;
     text-align: center;
   }
 
   .pg-dash-cal-weekday {
-    font-size: .6875rem;
-    color: var(--pg-fg-2);
+    font-size: .625rem;
+    color: var(--pgd-muted);
   }
 
-  .pg-dash-cal-day {
-    padding: .125rem 0;
-    font-size: .8125rem;
-    border-radius: var(--pg-radius-sm);
+  .pg-dash-cal .pg-dash-cal-day {
+    display: block;
+    height: 1.5rem;
+    padding: 0;
+    border: 0;
+    border-radius: .4375rem;
+    background: none;
+    font-size: .75rem;
+    line-height: 1.5rem;
+    color: var(--pgd-soft);
     font-variant-numeric: tabular-nums;
   }
 
-  .pg-dash-cal-day.has-items {
-    background: color-mix(in srgb, var(--pg-dash-cat) 14%, transparent);
-    box-shadow: inset 0 -2px 0 var(--pg-dash-cat);
+  .pg-dash-cal .pg-dash-cal-day.has-items {
+    background: var(--pgd-new-bg);
+    box-shadow: inset 0 -2px 0 var(--pgd-accent-line);
+    color: var(--pgd-accent);
   }
 
-  .pg-dash-cal-day.is-today {
+  .pg-dash-cal .pg-dash-cal-day.is-today {
+    background: linear-gradient(135deg, #0e7490, #4f46e5);
+    box-shadow: none;
     font-weight: 700;
-    color: var(--pg-fg-emphasis);
-    outline: 2px solid var(--pg-dash-cat);
-    outline-offset: -2px;
+    color: #fff;
   }
 
   @media (forced-colors: active) {
@@ -1704,6 +3049,7 @@
     .pg-dash-avatar[data-presence] { box-shadow: none; outline: 2px solid CanvasText; }
     .pg-dash-avatar[data-presence="offline"] { outline-style: dashed; }
     .pg-dash-cal-day.has-items { box-shadow: none; text-decoration: underline; }
+    .pg-dash-cal .pg-dash-cal-day.is-today { outline: 2px solid CanvasText; outline-offset: -2px; }
   }
 
 
@@ -1749,6 +3095,17 @@
     margin: .25rem 0 0;
     font-size: .8125rem;
     color: var(--pg-fg-2);
+  }
+
+  .pg-dash-saved[hidden] {
+    display: none;
+  }
+
+  .pg-dash-share-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
   }
 
   .pg-dash-gal-pills {
@@ -2064,23 +3421,25 @@
     transform: translate(-50%, -50%);
   }
 
+  /* Add card: a dashed tile, the cyan plus box, its title and note. */
   .pg-dash-addtile {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: .375rem;
-    min-height: 9rem;
+    min-height: 11.25rem;
     padding: 1.25rem;
-    border: var(--pg-border-width) dashed var(--pg-border-color);
-    border-radius: var(--pg-radius-lg);
-    background: transparent;
-    color: var(--pg-fg-body);
+    border: 1.5px dashed rgba(148, 163, 184, .35);
+    border-radius: 1.125rem;
+    background: rgba(255, 255, 255, .015);
+    color: var(--pgd-soft);
   }
 
   .pg-dash-addtile:hover {
-    border-color: color-mix(in srgb, var(--pg-primary) 60%, transparent);
-    background: var(--pg-tint-hover);
+    border-color: var(--pgd-chart-1);
+    background: rgba(255, 255, 255, .015);
+    color: var(--pgd-strong);
   }
 
   .pg-dash-addtile-icon {
@@ -2089,24 +3448,907 @@
     justify-content: center;
     width: 2.5rem;
     height: 2.5rem;
-    border-radius: var(--pg-radius-lg);
-    background: color-mix(in srgb, var(--pg-primary) 14%, transparent);
-    color: var(--pg-primary-ink);
+    border-radius: .75rem;
+    background: rgba(34, 211, 238, .12);
+    color: var(--pgd-accent);
+    font-size: 1.125rem;
   }
 
   .pg-dash-addtile-title {
+    font-size: .875rem;
     font-weight: 700;
-    color: var(--pg-fg-emphasis);
+    color: var(--pgd-strong);
   }
 
   .pg-dash-addtile-note {
-    font-size: .8125rem;
-    color: var(--pg-fg-2);
+    font-size: .75rem;
+    color: var(--pgd-muted);
   }
 
   @media (forced-colors: active) {
     .pg-dash-pill[aria-pressed="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
     .pg-dash-sketch { forced-color-adjust: none; }
     .pg-dash-tag { border-color: CanvasText; }
+  }
+
+  /* ── Personal cards and Performance ──────────────────────────────────── */
+
+  /* Lists of the personal cards: no bullets, no indent. */
+  .pg-dash-goals,
+  .pg-dash-pins,
+  .pg-dash-pin-found {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* A row of rings, each over its name, figure and toned state. */
+  .pg-dash-goals {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+    gap: .875rem .625rem;
+  }
+
+  .pg-dash-goal {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .25rem;
+    min-width: 0;
+    text-align: center;
+  }
+
+  /* The ring: a conic arc from the top as long as the share, cyan into
+     indigo, into fuchsia under 70 %, red into orange when it is late. */
+  .pg-dash-goal-ring {
+    --pg-dash-ring-from: #06b6d4;
+    --pg-dash-ring-to: #4f46e5;
+    --pg-dash-ring-track: rgba(100, 116, 139, .16);
+    position: relative;
+    flex: none;
+    width: 4.75rem;
+    height: 4.75rem;
+    margin-bottom: .25rem;
+  }
+
+  .pg-dash-goal-ring[data-low] { --pg-dash-ring-to: #c026d3; }
+  .pg-dash-goal-ring[data-tone="bad"] { --pg-dash-ring-from: #ef4444; --pg-dash-ring-to: #f97316; }
+
+  html[data-bs-theme="dark"] .pg-dash-goal-ring {
+    --pg-dash-ring-from: #22d3ee;
+    --pg-dash-ring-to: #6366f1;
+    --pg-dash-ring-track: rgba(148, 163, 184, .16);
+  }
+
+  html[data-bs-theme="dark"] .pg-dash-goal-ring[data-low] { --pg-dash-ring-to: #d946ef; }
+  html[data-bs-theme="dark"] .pg-dash-goal-ring[data-tone="bad"] { --pg-dash-ring-from: #f87171; --pg-dash-ring-to: #fb923c; }
+
+  .pg-dash-goal-ring-dial {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(var(--pg-dash-ring-from) 0%, var(--pg-dash-ring-to) var(--pg-dash-ring-share, 0%), var(--pg-dash-ring-track) var(--pg-dash-ring-share, 0%));
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - .5625rem), #000 calc(100% - .5rem));
+    mask: radial-gradient(farthest-side, transparent calc(100% - .5625rem), #000 calc(100% - .5rem));
+  }
+
+  .pg-dash-goal-ring-value {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.0625rem;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    color: var(--pgd-strong);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pg-dash-goal-main,
+  .pg-dash-perf-main {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .pg-dash-goal-main {
+    align-items: center;
+    gap: .125rem;
+  }
+
+  .pg-dash-goal-name {
+    max-width: 100%;
+    font-size: .8125rem;
+    line-height: 1.3;
+    color: var(--pgd-fg);
+    overflow-wrap: anywhere;
+  }
+
+  .pg-dash-goal-figure,
+  .pg-dash-perf-note,
+  .pg-dash-personal-hint,
+  .pg-dash-pin-choice-note {
+    font-size: .75rem;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-goal .pg-dash-item-note {
+    font-size: .75rem;
+  }
+
+  /* Remove sits in the goal's corner: shown on hover, on keyboard focus
+     and always on touch screens. */
+  .pg-dash .pg-dash-goal-remove {
+    position: absolute;
+    top: 0;
+    right: 0;
+    opacity: 0;
+  }
+
+  .pg-dash-goal:hover .pg-dash-goal-remove,
+  .pg-dash-goal:focus-within .pg-dash-goal-remove {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    .pg-dash .pg-dash-goal-remove { opacity: 1; }
+  }
+
+  .pg-dash-pin-remove { flex: none; }
+
+  .pg-dash-goal-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+    gap: .5rem;
+    margin-top: .5rem;
+  }
+
+  .pg-dash-goal-field .form-label {
+    margin-bottom: .125rem;
+    font-size: .75rem;
+  }
+
+  .pg-dash-goal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    grid-column: 1 / -1;
+    gap: .5rem;
+  }
+
+  .pg-dash .pg-dash-personal-add {
+    align-self: flex-start;
+    gap: .25rem;
+    margin-top: .25rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: .8125rem;
+    color: var(--pgd-accent);
+  }
+
+  .pg-dash .pg-dash-personal-add:hover,
+  .pg-dash .pg-dash-personal-add:focus-visible {
+    background: none;
+    color: var(--pgd-accent);
+    text-decoration: underline;
+  }
+
+  .pg-dash-personal-status {
+    margin: .25rem 0 0;
+    font-size: .75rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-personal-status:empty { display: none; }
+
+  /* Pinned: a tile per pin, its icon chip over the name; remove sits in
+     the corner on hover, keyboard focus and touch screens; the last tile
+     adds a pin. */
+  .pg-dash-pins {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(7.375rem, 1fr));
+  }
+
+  .pg-dash-pins > li:nth-child(4n + 1) { --pg-dash-pin-bg: rgba(34, 211, 238, .14); --pg-dash-pin-fg: #0e7490; }
+  .pg-dash-pins > li:nth-child(4n + 2) { --pg-dash-pin-bg: rgba(251, 191, 36, .16); --pg-dash-pin-fg: #b45309; }
+  .pg-dash-pins > li:nth-child(4n + 3) { --pg-dash-pin-bg: rgba(217, 70, 239, .14); --pg-dash-pin-fg: #a21caf; }
+  .pg-dash-pins > li:nth-child(4n + 4) { --pg-dash-pin-bg: rgba(167, 139, 250, .18); --pg-dash-pin-fg: #6d28d9; }
+
+  html[data-bs-theme="dark"] .pg-dash-pins > li:nth-child(4n + 1) { --pg-dash-pin-fg: #67e8f9; }
+  html[data-bs-theme="dark"] .pg-dash-pins > li:nth-child(4n + 2) { --pg-dash-pin-fg: #fde68a; }
+  html[data-bs-theme="dark"] .pg-dash-pins > li:nth-child(4n + 3) { --pg-dash-pin-fg: #f0abfc; }
+  html[data-bs-theme="dark"] .pg-dash-pins > li:nth-child(4n + 4) { --pg-dash-pin-fg: #c4b5fd; }
+
+  .pg-dash-pin {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    border: 1px solid var(--pgd-line);
+    border-radius: .75rem;
+    background: var(--pgd-tile);
+  }
+
+  .pg-dash-pin:hover {
+    border-color: var(--pgd-accent-line);
+  }
+
+  .pg-dash-pin-link {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .375rem;
+    min-width: 0;
+    padding: .625rem;
+    color: var(--pgd-fg);
+    text-decoration: none;
+  }
+
+  .pg-dash-pin-link > .bi {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: .5rem;
+    background: var(--pg-dash-pin-bg);
+    color: var(--pg-dash-pin-fg);
+    font-size: .875rem;
+  }
+
+  .pg-dash-pin-link:hover .pg-dash-pin-text { text-decoration: underline; }
+
+  .pg-dash .pg-dash-pin-remove {
+    position: absolute;
+    top: .25rem;
+    right: .25rem;
+    opacity: 0;
+  }
+
+  .pg-dash-pin:hover .pg-dash-pin-remove,
+  .pg-dash-pin:focus-within .pg-dash-pin-remove {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    .pg-dash .pg-dash-pin-remove { opacity: 1; }
+  }
+
+  .pg-dash-pin-adder {
+    display: flex;
+  }
+
+  .pg-dash .pg-dash-pin-adder .pg-dash-personal-add {
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    min-height: 6rem;
+    margin: 0;
+    border: 1.5px dashed rgba(148, 163, 184, .35);
+    border-radius: .75rem;
+    color: var(--pgd-soft);
+    text-decoration: none;
+  }
+
+  .pg-dash .pg-dash-pin-adder .pg-dash-personal-add:hover,
+  .pg-dash .pg-dash-pin-adder .pg-dash-personal-add:focus-visible {
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-strong);
+  }
+
+  .pg-dash-pin-text {
+    max-width: 100%;
+    font-size: .8125rem;
+    line-height: 1.3;
+  }
+
+  .pg-dash-pin-text,
+  .pg-dash-pin-choice-text {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .pg-dash-pin-search {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .5rem;
+    margin-top: .5rem;
+  }
+
+  .pg-dash-pin-search .form-control,
+  .pg-dash-pin-found { width: 100%; }
+
+  .pg-dash-pin-found { gap: .125rem; }
+
+  .pg-dash-pin-choice {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    width: 100%;
+    border: 0;
+    border-radius: var(--pg-radius);
+    padding: .25rem .5rem;
+    background: none;
+    color: var(--pg-fg-emphasis);
+    text-align: start;
+  }
+
+  .pg-dash-pin-choice:hover,
+  .pg-dash-pin-choice:focus-visible { background: var(--pg-tint-hover); }
+
+  .pg-dash-pin-choice-note { margin-inline-start: auto; }
+
+  /* My notes: one plain box. */
+  .pg-dash-notes {
+    min-height: 8rem;
+    resize: vertical;
+  }
+
+  .pg-dash-personal-hint { margin: .25rem 0 0; }
+
+  /* Performance: the ring of fast requests and the grade beside it. */
+  .pg-dash-perf {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin-bottom: .75rem;
+  }
+
+  .pg-dash-perf .pg-dash-goal-ring {
+    width: 4.5rem;
+    height: 4.5rem;
+    margin-bottom: 0;
+  }
+
+  .pg-dash-perf-grade {
+    font-weight: 700;
+    color: var(--pg-fg-emphasis);
+  }
+
+  .pg-dash-perf-grade[data-tone="good"] { color: var(--pg-success-fg-emphasis); }
+  .pg-dash-perf-grade[data-tone="warn"] { color: var(--pg-warning-fg-emphasis); }
+  .pg-dash-perf-grade[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
+
+  @media (forced-colors: active) {
+    .pg-dash-goal-ring-dial {
+      forced-color-adjust: none;
+      background: conic-gradient(CanvasText var(--pg-dash-ring-share, 0%), GrayText var(--pg-dash-ring-share, 0%));
+    }
+    .pg-dash-pin { border-color: CanvasText; }
+  }
+
+  /* ── Shop cards ───────────────────────────────────────────────────────
+     Ecommerce summary, Sales map, Orders, Offers, Exchange rates
+     (assets/js/pg_dash_cards_shop.js). A tone is always written out in the
+     text beside its colour. */
+
+  .pg-dash-shop-head {
+    margin-bottom: .75rem;
+  }
+
+  .pg-dash-shop-figure {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--pg-fg-emphasis);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pg-dash-shop-sub,
+  .pg-dash-shop-note {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem .75rem;
+    margin: .25rem 0 0;
+    font-size: .8125rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-shop-note {
+    margin: 0 0 .5rem;
+  }
+
+  .pg-dash-shop-change[data-tone="good"] { color: var(--pg-success-fg-emphasis); }
+  .pg-dash-shop-change[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
+
+  .pg-dash-shop-days {
+    margin-bottom: .75rem;
+  }
+
+  .pg-dash-shop-days .pg-dash-bars rect {
+    opacity: .45;
+  }
+
+  .pg-dash-shop-days .pg-dash-bars rect.is-today {
+    opacity: 1;
+  }
+
+  .pg-dash-shop-list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-shop-item + .pg-dash-shop-item {
+    border-top: var(--pg-border-width) solid var(--pg-border-color);
+  }
+
+  .pg-dash-shop-link {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .5rem .125rem;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .pg-dash-shop-link:hover .pg-dash-shop-name {
+    text-decoration: underline;
+  }
+
+  .pg-dash-shop-main {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .pg-dash-shop-name {
+    overflow: hidden;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--pg-fg-emphasis);
+  }
+
+  .pg-dash-shop-meta {
+    overflow: hidden;
+    font-size: .75rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-shop-end {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .125rem;
+    text-align: end;
+  }
+
+  .pg-dash-shop-value {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pg-dash-shop-tag {
+    padding: 0 .375rem;
+    border-radius: 999px;
+    font-size: .6875rem;
+    background: var(--pg-tint);
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-shop-tag[data-tone="good"] {
+    background: var(--pg-success-bg-subtle);
+    color: var(--pg-success-fg-emphasis);
+  }
+
+  .pg-dash-shop-tag[data-tone="warn"] {
+    background: var(--pg-warning-bg-subtle);
+    color: var(--pg-warning-fg-emphasis);
+  }
+
+  .pg-dash-shop-tag[data-tone="bad"] {
+    background: var(--pg-danger-bg-subtle);
+    color: var(--pg-danger-fg-emphasis);
+  }
+
+  .pg-dash-spark {
+    width: 4.375rem;
+    height: 1.25rem;
+  }
+
+  .pg-dash-spark path {
+    fill: none;
+    stroke: var(--pg-dash-cat);
+    stroke-width: 1.5;
+  }
+
+  .pg-dash-map svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 12rem;
+  }
+
+  .pg-dash-map path {
+    fill: var(--pg-tint);
+    stroke: var(--pg-card-bg);
+    stroke-width: 1;
+  }
+
+  .pg-dash-map [data-step="1"] { fill: color-mix(in srgb, var(--pg-dash-cat) 25%, var(--pg-card-bg)); }
+  .pg-dash-map [data-step="2"] { fill: color-mix(in srgb, var(--pg-dash-cat) 45%, var(--pg-card-bg)); }
+  .pg-dash-map [data-step="3"] { fill: color-mix(in srgb, var(--pg-dash-cat) 70%, var(--pg-card-bg)); }
+  .pg-dash-map [data-step="4"] { fill: var(--pg-dash-cat); }
+
+  .pg-dash-map-legend {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    margin: .375rem 0 .75rem;
+    font-size: .75rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-map-step {
+    width: 1rem;
+    height: .5rem;
+    border-radius: 2px;
+  }
+
+  .pg-dash-map-step[data-step="1"] { background: color-mix(in srgb, var(--pg-dash-cat) 25%, var(--pg-card-bg)); }
+  .pg-dash-map-step[data-step="2"] { background: color-mix(in srgb, var(--pg-dash-cat) 45%, var(--pg-card-bg)); }
+  .pg-dash-map-step[data-step="3"] { background: color-mix(in srgb, var(--pg-dash-cat) 70%, var(--pg-card-bg)); }
+  .pg-dash-map-step[data-step="4"] { background: var(--pg-dash-cat); }
+
+  /* Operations Desk: three lanes beside each other, under each other on a
+     narrow card. */
+  .pg-dash-ops {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: .75rem;
+  }
+
+  .pg-dash-ops-lane {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: .625rem .75rem;
+    border: 1px solid var(--pgd-tile-line);
+    border-radius: .8125rem;
+    background: var(--pgd-tile);
+  }
+
+  .pg-dash-ops-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .5rem;
+  }
+
+  .pg-dash-ops-label {
+    margin: 0;
+    font-size: .8125rem;
+    font-weight: 400;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-ops-count {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--pg-fg-emphasis);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pg-dash-ops-count[data-tone="warn"] { color: var(--pg-warning-fg-emphasis); }
+  .pg-dash-ops-count[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
+
+  .pg-dash-ops-sub,
+  .pg-dash-ops-empty {
+    margin: 0 0 .25rem;
+    font-size: .75rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-ops-empty {
+    margin-top: .5rem;
+  }
+
+  @media (forced-colors: active) {
+    .pg-dash-map path { fill: Canvas; stroke: CanvasText; }
+    .pg-dash-map [data-step], .pg-dash-map-step { forced-color-adjust: none; }
+    .pg-dash-spark path { stroke: CanvasText; }
+  }
+
+  /* ── Assistant card ───────────────────────────────────────────────────── */
+
+  .pg-dash-card-chip[data-tone="good"] {
+    border-color: var(--pgd-good-line);
+    background: var(--pgd-good-bg);
+    color: var(--pgd-good);
+  }
+
+  /* Not connected: a 44 px indigo icon, the offer, its two buttons and a
+     note. */
+  .pg-dash-ai-off {
+    display: flex;
+    align-items: flex-start;
+    gap: .875rem;
+  }
+
+  .pg-dash-ai-off-icon {
+    display: inline-flex;
+    flex: 0 0 2.75rem;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: .875rem;
+    background: rgba(99, 102, 241, .14);
+    color: #4f46e5;
+    font-size: 1.25rem;
+  }
+
+  html[data-bs-theme="dark"] .pg-dash-ai-off-icon {
+    background: rgba(99, 102, 241, .16);
+    color: #a5b4fc;
+  }
+
+  .pg-dash-ai-off-main {
+    min-width: 0;
+  }
+
+  .pg-dash-ai-off-title {
+    margin: 0 0 .25rem;
+    font-size: .9375rem;
+    font-weight: 700;
+    color: var(--pgd-strong);
+  }
+
+  .pg-dash-ai-off-text {
+    margin: 0 0 .75rem;
+    font-size: .8125rem;
+    color: var(--pgd-soft);
+  }
+
+  .pg-dash-ai-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-bottom: .625rem;
+  }
+
+  /* The summary as Claude's message: a round gradient avatar beside a
+     bubble whose first corner is tight, its lines ruled apart, each with
+     its link word on the right. */
+  .pg-dash-ai-chat {
+    display: flex;
+    align-items: flex-start;
+    gap: .625rem;
+  }
+
+  .pg-dash-ai-avatar {
+    display: inline-flex;
+    flex: 0 0 2rem;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0e7490, #4f46e5, #a21caf);
+    color: #fff;
+    font-size: .9375rem;
+  }
+
+  .pg-dash-ai-bubble {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: .625rem .875rem;
+    border: 1px solid var(--pgd-line);
+    border-radius: .25rem .875rem .875rem .875rem;
+    background: var(--pgd-fill);
+  }
+
+  .pg-dash-ai-bubble > .pg-dash-rows-title {
+    margin: .125rem 0 0;
+  }
+
+  .pg-dash-ai-summary {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-ai-summary > li + li {
+    border-top: 1px solid var(--pgd-line);
+  }
+
+  .pg-dash-ai-summary-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .25rem .75rem;
+    padding: .5rem 0;
+    color: var(--pgd-fg);
+    text-decoration: none;
+  }
+
+  .pg-dash-ai-summary-text {
+    flex: 1 1 12.5rem;
+    min-width: 0;
+  }
+
+  .pg-dash-ai-summary-open {
+    font-size: .8125rem;
+    white-space: nowrap;
+    color: var(--pgd-accent);
+  }
+
+  .pg-dash-ai-summary-line:hover,
+  .pg-dash-ai-summary-line:focus-visible {
+    color: var(--pgd-strong);
+  }
+
+  .pg-dash-ai-summary-line:hover .pg-dash-ai-summary-open,
+  .pg-dash-ai-summary-line:focus-visible .pg-dash-ai-summary-open {
+    text-decoration: underline;
+  }
+
+  .pg-dash-ai-summary-when {
+    font-weight: 600;
+    text-transform: none;
+  }
+
+  .pg-dash-ai-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin: 0 0 .25rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-ai-chips > li {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* A proposal waiting for approval: a warn chip. */
+  .pg-dash-ai-chip {
+    display: inline-block;
+    max-width: 100%;
+    padding: .25rem .625rem;
+    overflow: hidden;
+    border: 1px solid var(--pgd-warn-line);
+    border-radius: .5rem;
+    background: var(--pgd-warn-bg);
+    font-size: .75rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--pgd-warn);
+    text-decoration: none;
+  }
+
+  a.pg-dash-ai-chip:hover {
+    border-color: var(--pgd-warn);
+  }
+
+  a.pg-dash-ai-chip:focus-visible {
+    outline: 2px solid var(--pg-primary-ink);
+    outline-offset: 2px;
+  }
+
+  /* Give Claude a job: a 40 px field and the gradient send button. */
+  .pg-dash-ai-job {
+    display: flex;
+    gap: .5rem;
+    margin-top: .25rem;
+  }
+
+  .pg-dash-ai-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 2.5rem;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .6875rem;
+    background: var(--pgd-field);
+    color: var(--pgd-fg);
+    font-size: .8125rem;
+  }
+
+  .pg-dash-ai-input::placeholder {
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash .pg-dash-ai-send {
+    flex: 0 0 2.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    border: 0;
+    border-radius: .6875rem;
+    background: linear-gradient(135deg, #0e7490, #4f46e5, #a21caf);
+    color: #fff;
+  }
+
+  .pg-dash .pg-dash-ai-send:hover {
+    color: #fff;
+    filter: brightness(1.08);
+  }
+
+  .pg-dash-ai-job + .pg-dash-ai-status {
+    margin-top: -.375rem;
+  }
+
+  .pg-dash-ai-status[data-tone="good"] { color: var(--pgd-good); }
+  .pg-dash-ai-status[data-tone="bad"] { color: var(--pgd-bad); }
+
+  @media (forced-colors: active) {
+    .pg-dash-ai-chip,
+    .pg-dash-ai-bubble { border-color: CanvasText; }
+    .pg-dash .pg-dash-ai-send { border: 1px solid ButtonText; background: ButtonFace; color: ButtonText; box-shadow: none; }
+  }
+
+  /* ── Figures on hover and keyboard focus (pgDash.chartTips) ──────────── */
+
+  /* The figure box sits in <body>, outside .pg-dash and its palette, so it
+     names its own colours: dark on a light page, light on a dark one. */
+  .pg-dash-tip {
+    position: fixed;
+    z-index: 1080;
+    max-width: 16rem;
+    padding: .3125rem .625rem;
+    border-radius: .5rem;
+    background: #0f172a;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .25);
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: #f8fafc;
+    pointer-events: none;
+  }
+
+  html[data-bs-theme="dark"] .pg-dash-tip {
+    background: #eaf2fb;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+    color: #0b1220;
+  }
+
+  .pg-dash-tips:focus {
+    outline: none;
+  }
+
+  .pg-dash-tips:focus-visible {
+    outline: 2px solid var(--pg-primary-ink);
+    outline-offset: 2px;
+  }
+
+  .pg-dash-line-rule {
+    stroke: var(--pgd-muted);
+    stroke-width: 1;
+  }
+
+  .pg-dash-bars rect[data-active] {
+    fill: var(--pgd-strong);
+  }
+
+  .pg-dash-ring-svg .pg-dash-ring-part[data-active] {
+    stroke-width: 5;
+  }
+
+  .pg-dash-stack-part:hover {
+    filter: brightness(1.15);
+  }
+
+  @media (forced-colors: active) {
+    .pg-dash-tip { border: 1px solid CanvasText; background: Canvas; color: CanvasText; }
+    .pg-dash-bars rect[data-active] { fill: Highlight; }
+    .pg-dash-line-rule { stroke: CanvasText; }
   }
 }

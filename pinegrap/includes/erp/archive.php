@@ -71,10 +71,11 @@ function erp_archive_file($doc_type, $doc_id)
         return null;
     }
 
-    $row['path'] = FILE_DIRECTORY_PATH . '/' . $row['name'];
+    // The local file, or a copy of one moved to the object store.
+    $row['path'] = pg_file_local_copy((int) $row['id']);
 
     // A row whose file has gone is no copy; the caller renders again.
-    return is_file($row['path']) ? $row : null;
+    return ($row['path'] !== '') ? $row : null;
 }
 
 /**
@@ -183,8 +184,9 @@ function erp_archive_files($doc_type, $doc_id)
         ORDER BY f.id DESC");
 
     foreach ($rows as $key => $row) {
+        // A list fetches nothing: a file in the object store counts as kept.
         $rows[$key]['path'] = FILE_DIRECTORY_PATH . '/' . $row['name'];
-        $rows[$key]['on_disk'] = is_file($rows[$key]['path']);
+        $rows[$key]['on_disk'] = is_file($rows[$key]['path']) || (pg_file_storage($row) === 's3');
     }
 
     return $rows;

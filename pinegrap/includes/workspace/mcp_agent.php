@@ -805,6 +805,49 @@ function ws_mcp_agent_text($asker, $body, $limit)
 }
 
 /**
+ * A message as the agent reads it with its recording: the words
+ * (ws_mcp_agent_text()) and the recording's transcript once written out,
+ * or the reason nobody heard it (ws_voice_unheard_reason()), joined as the
+ * other assistants read them (ws_voice_heard()). A message without a
+ * recording reads as before.
+ *
+ * @param array $asker
+ * @param array $row   ws_messages row
+ * @param int   $limit characters of the words and of the transcript
+ * @return string
+ */
+function ws_mcp_agent_heard($asker, $row, $limit)
+{
+    $text = ws_mcp_agent_text($asker, (string) $row['body'], $limit);
+
+    if (!function_exists('ws_voice_state_of') || !ws_voice_is_recording((string) ($row['file_name'] ?? ''))) {
+        return $text;
+    }
+
+    $state = ws_voice_state_of($row);
+    $transcript = ($state && ($state['status'] === 'done')) ? $state['transcript'] : '';
+    $reason = ws_voice_unheard_reason(ws_channel((int) $row['channel_id']), $row, $state);
+
+    return ws_mcp_agent_heard_text($text, $transcript, (string) ($row['file_name'] ?? ''), $limit, $reason);
+}
+
+/**
+ * The pure join of ws_mcp_agent_heard(): ws_voice_heard() where voice.php
+ * is loaded, the words alone where it is not.
+ *
+ * @param string $text
+ * @param string $transcript
+ * @param string $name   the file's name, '' for none
+ * @param int    $limit
+ * @param string $reason off | skipped | failed | pending, '' for none
+ * @return string
+ */
+function ws_mcp_agent_heard_text($text, $transcript, $name, $limit, $reason)
+{
+    return function_exists('ws_voice_heard') ? ws_voice_heard($text, $transcript, $name, $limit, $reason) : $text;
+}
+
+/**
  * Who wrote a message, by name only: the agent is not told the site's tags.
  *
  * @param array $row ws_messages row
@@ -1160,6 +1203,12 @@ function ws_mcp_agent_post($row, $context, $tool, $answer, $call_id, $conversati
 
     // The answer is the service's, not the person's words: nobody edits it.
     db("UPDATE ws_messages SET locked = 1 WHERE id = '" . $reply_id . "'");
+
+    // An answer to a recording is heard back: its sound is made and kept on
+    // the same message where the speech service is set (voice.php).
+    if (function_exists('ws_voice_answer_spoken')) {
+        ws_voice_answer_spoken($channel, $reply_id, (int) $message['id'], ws_mcp_agent_neutral($answer, WS_MESSAGE_MAX), (int) $asker['id']);
+    }
     db("UPDATE ws_mcp_calls SET message_id = '" . $reply_id . "' WHERE id = '" . (int) $call_id . "'");
 
     if (function_exists('ws_thread_copy_sync')) {
@@ -1250,7 +1299,7 @@ function ws_mcp_agent_request_text($row, $context, $earlier = null, $carried = f
     $parent_text = '';
 
     if ($parent && ((int) $parent['deleted_at'] === 0)) {
-        $parent_text = ws_mcp_agent_text($asker, (string) $parent['body'], WS_MCP_AGENT_CONTEXT_LIMIT);
+        $parent_text = ws_mcp_agent_heard($asker, $parent, WS_MCP_AGENT_CONTEXT_LIMIT);
 
         if (db_value("SELECT id FROM ws_ai_requests WHERE reply_message_id = '" . (int) $parent['id'] . "' AND agent = 'mcp' LIMIT 1")) {
             $parent_text = (string) preg_replace('/^[^\n]*\n?/', '', $parent_text, 1);
@@ -1260,7 +1309,7 @@ function ws_mcp_agent_request_text($row, $context, $earlier = null, $carried = f
     }
 
     return ws_mcp_agent_compose(
-        ws_mcp_agent_unaddressed(ws_mcp_agent_text($asker, (string) $message['body'], WS_MCP_AGENT_TEXT_LIMIT), $server['alias']),
+        ws_mcp_agent_unaddressed(ws_mcp_agent_heard($asker, $message, WS_MCP_AGENT_TEXT_LIMIT), $server['alias']),
         $parent_author,
         $parent_text
     );

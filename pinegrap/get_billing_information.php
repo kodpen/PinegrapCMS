@@ -484,7 +484,7 @@ function get_billing_information($properties) {
 
             // loop through all referral sources to prepare all options for selection drop-down field
             while ($row = mysqli_fetch_assoc($result)) {
-                $referral_source_options[$row['name']] = $row['code'];
+                $referral_source_options[h($row['name'])] = h($row['code']);
             }
 
             $output_referral_source =
@@ -667,7 +667,7 @@ function get_billing_information($properties) {
                     </tr>
                     <tr>
                         <td>' . h(lang('VKN / TCKN')) . '</td>
-                        <td>' . $form->output_field(array('type'=>'text', 'name'=>'tax_number', 'maxlength'=>'11', 'class'=>'software_input_text')) . '</td>
+                        <td>' . $form->output_field(array('type'=>'text', 'name'=>'tax_number', 'maxlength'=>(string) pg_vat_tax_number_width(pg_erp_store_country()), 'class'=>'software_input_text')) . '</td>
                     </tr>
                     <tr>
                         <td>' . lang('Tax Office') . '</td>
@@ -755,7 +755,7 @@ function get_billing_information($properties) {
         $form->set('billing_email_address', 'maxlength', 100);
         $form->set('billing_email_address', 'required', true);
 
-        $form->set('tax_number', 'maxlength', 11);
+        $form->set('tax_number', 'maxlength', pg_vat_tax_number_width(pg_erp_store_country()));
         $form->set('tax_office', 'maxlength', 100);
 
         // If contact cannot be found or if contact is opted out,
@@ -792,7 +792,7 @@ function get_billing_information($properties) {
             $referral_source_options[''] = '';
 
             foreach ($referral_sources as $referral_source_row) {
-                $referral_source_options[$referral_source_row['name']] = $referral_source_row['code'];
+                $referral_source_options[h($referral_source_row['name'])] = h($referral_source_row['code']);
             }
 
             $form->set('referral_source', 'options', $referral_source_options);
@@ -887,7 +887,8 @@ function get_billing_information($properties) {
                 // (e.g. the form has not been submitted by the customer),
                 // then set default value.
                 if (!$form->field_in_session($html_name)) {
-                    $value_from_query_string = trim(isset($_GET['value_' . $field['id']]) ? $_GET['value_' . $field['id']] : '');
+                    // An array (value_<id>[]=) is not a value for one field, so it counts as not passed.
+                    $value_from_query_string = trim((isset($_GET['value_' . $field['id']]) && is_string($_GET['value_' . $field['id']])) ? $_GET['value_' . $field['id']] : '');
 
                     // If a default value was passed in the query string, then use that.
                     if ($value_from_query_string != '') {

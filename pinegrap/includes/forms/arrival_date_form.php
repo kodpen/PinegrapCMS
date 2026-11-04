@@ -60,6 +60,23 @@ function pg_arrival_date_form_shipping_method_options_js()
 }
 
 /**
+ * A stored date in the site's date order, '' for an unset one: an AT-ONCE
+ * or customer-entered arrival date has 0000-00-00, which
+ * prepare_form_data_for_output() writes as 0/0/0000.
+ *
+ * @param mixed $stored  'Y-m-d'
+ * @return string
+ */
+function pg_arrival_date_form_date_text($stored)
+{
+    if (!is_scalar($stored) || (pg_date_input_iso((string) $stored) === '')) {
+        return '';
+    }
+
+    return (string) prepare_form_data_for_output((string) $stored, 'date');
+}
+
+/**
  * The preview, availability and options cards.
  *
  * @param array $values  The stored row (raw), array() on create
@@ -75,11 +92,9 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null)
         'default_selected' => '0', 'custom' => '0'), $values);
 
     // The stored dates in the site's date order; a new arrival date has none,
-    // and an unset latest allowed date shows empty.
+    // and an unset date shows empty.
     $date = function ($column) use ($values) {
-        $value = isset($values[$column]) ? prepare_form_data_for_output($values[$column], 'date') : '';
-
-        return (($column === 'custom_maximum_arrival_date') && ($value == '0/0/0000')) ? '' : $value;
+        return pg_arrival_date_form_date_text($values[$column] ?? '');
     };
 
     $status_enabled_checked = ($v['status'] == 'enabled') ? ' checked="checked"' : '';
@@ -122,7 +137,7 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null)
                                     <div class="row">
                                         <div class="col-12 sm:col-6 lg:col-4 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Arrival Date'))) . '</label>
-                                            <input value="' . h($v['name']) . '" type="text" name="name"  id="name" maxlength="50" class="form-control" />
+                                            <input value="' . h($v['name']) . '" type="text" name="name"  id="name" maxlength="50" class="form-control" required />
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 sm:col-6 lg:col-4 my-3">
@@ -134,7 +149,7 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null)
                                             <label for="sort_order" class="form-label">' . lang('Sorting') . '</label>
                                             <div class="input-group number-controls">
                                                 <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
-                                                <input value="' . h($v['sort_order']) . '" class="form-control text-center border-start-0 border-end-0" type="text" name="sort_order" id="sort_order" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0"/>
+                                                <input value="' . h($v['sort_order']) . '" class="form-control text-center border-start-0 border-end-0" type="text" name="sort_order" id="sort_order" maxlength="3" inputmode="numeric" data-inputmask-alias="integer"  data-inputmask-placeholder="0"/>
                                                 <button class="btn material-icons plus border border-start-0" type="button" aria-label="' . h(lang('Increase')) . '">add</button>
                                             </div>
                                         </div>
@@ -258,6 +273,57 @@ function pg_arrival_date_form_status($post)
 }
 
 /**
+ * What keeps a posted arrival date from being saved: field => message for
+ * the error screen. The name and the start and end dates are required and
+ * real dates, the end not before the start; the arrival date is a real
+ * date unless the customer enters it (custom), and then the latest allowed
+ * date is blank or a real date; the sort order is a whole number. A date
+ * the screens could not read was stored as 0000-00-00 without a word, and
+ * a zero start date kept the arrival date off the checkout for good.
+ *
+ * @param array $post
+ * @return array
+ */
+function pg_arrival_date_form_errors($post)
+{
+    $text = function ($field) use ($post) {
+        return (isset($post[$field]) && is_scalar($post[$field])) ? trim((string) $post[$field]) : '';
+    };
+
+    $errors = array();
+
+    if ($text('name') === '') {
+        $errors['name'] = lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => lang(array('string' => '{var:1} Name', 'vars' => lang('Arrival Date')))));
+    }
+
+    $custom = ($text('custom') == '1');
+
+    $dates = array('start_date' => array(lang('Start Date'), true), 'end_date' => array(lang('End Date'), true), 'arrival_date' => array(lang('Arrival Date'), !$custom));
+
+    if ($custom) {
+        $dates['custom_maximum_arrival_date'] = array(lang('Latest Allowed Arrival Date'), false);
+    }
+
+    foreach ($dates as $field => $rule) {
+        $value = $text($field);
+
+        if ((($value !== '') || $rule[1]) && (pg_date_input_iso($value) === '')) {
+            $errors[$field] = lang(array('string' => 'Please enter a valid date for {var:1}', 'vars' => $rule[0]));
+        }
+    }
+
+    if (!isset($errors['start_date']) && !isset($errors['end_date']) && (pg_date_input_iso($text('end_date')) < pg_date_input_iso($text('start_date')))) {
+        $errors['end_date'] = lang('Please enter a valid end date.');
+    }
+
+    if (($text('sort_order') !== '') && (preg_match('/^-?[0-9]{1,5}$/', $text('sort_order')) !== 1 || abs((int) $text('sort_order')) > 32767)) {
+        $errors['sort_order'] = lang(array('string' => '{var:1} takes a whole number from {var:2} to {var:3}.', 'vars' => array(lang('Sorting'), pg_format_number(-32768, 0), pg_format_number(32767, 0))));
+    }
+
+    return $errors;
+}
+
+/**
  * The values of a posted arrival date, in the order of the columns name,
  * description, code, arrival_date, status, start_date, end_date,
  * default_selected, sort_order, custom, custom_maximum_arrival_date, user.
@@ -271,8 +337,12 @@ function pg_arrival_date_form_values($post, $user_id)
     $text = function ($field) use ($post) {
         return (isset($post[$field]) && is_scalar($post[$field])) ? (string) $post[$field] : '';
     };
+    // pg_arrival_date_form_errors() has checked the dates; a blank one
+    // (a custom arrival date) is stored as before.
     $date = function ($field) use ($text) {
-        return (string) prepare_form_data_for_input($text($field), 'date');
+        $iso = pg_date_input_iso($text($field));
+
+        return ($iso !== '') ? $iso : (string) prepare_form_data_for_input($text($field), 'date');
     };
 
     return array(
@@ -292,10 +362,49 @@ function pg_arrival_date_form_values($post, $user_id)
 }
 
 /**
- * Saves the posted shipping cut-offs of an arrival date. A cut-off needs a
- * shipping method not used by an earlier row and a valid date and time
- * between the arrival date's start and end dates; any other row is left
- * out.
+ * One shipping cut-off as it is stored: array(shipping method id,
+ * 'Y-m-d H:i:s'), or null when it cannot be kept. A cut-off needs a
+ * shipping method not in $taken and a valid date and time between the
+ * arrival date's start (00:00:00) and end (23:59:59).
+ *
+ * @param mixed  $shipping_method_id
+ * @param mixed  $date_and_time  as the cut-off table or the API sends it
+ * @param string $start  'Y-m-d H:i:s'
+ * @param string $end    'Y-m-d H:i:s'
+ * @param array  $taken  the shipping method ids of the earlier cut-offs
+ * @return array|null
+ */
+function pg_arrival_date_form_cutoff($shipping_method_id, $date_and_time, $start, $end, $taken)
+{
+    if (!is_scalar($shipping_method_id) || !is_scalar($date_and_time)) {
+        return null;
+    }
+
+    $shipping_method_id = trim((string) $shipping_method_id);
+    $date_and_time = trim((string) $date_and_time);
+
+    if (
+        ($shipping_method_id === '')
+        || in_array($shipping_method_id, array_map('strval', $taken), true)
+        || ($date_and_time === '')
+        || (validate_date_and_time($date_and_time) == FALSE)
+    ) {
+        return null;
+    }
+
+    $stored = (string) prepare_form_data_for_input($date_and_time, 'date and time');
+
+    if (($stored < $start) || ($stored > $end)) {
+        return null;
+    }
+
+    return array((int) $shipping_method_id, $stored);
+}
+
+/**
+ * Saves the posted shipping cut-offs of an arrival date in place of the
+ * stored ones (pg_store_arrival_date_cutoffs_save()). A row
+ * pg_arrival_date_form_cutoff() cannot keep is left out.
  *
  * @param mixed $arrival_date_id
  * @param array $post
@@ -304,44 +413,19 @@ function pg_arrival_date_form_values($post, $user_id)
 function pg_arrival_date_form_save_cutoffs($arrival_date_id, $post)
 {
     $left_out = false;
-
-    // One cut-off per shipping method.
-    $shipping_cutoff_shipping_methods = array();
+    $cutoffs = array();
+    $taken = array();
     $start = prepare_form_data_for_input($post['start_date'] ?? '', 'date') . ' 00:00:00';
     $end = prepare_form_data_for_input($post['end_date'] ?? '', 'date') . ' 23:59:59';
-
     for ($i = 1; $i <= ($post['last_shipping_cutoff_number'] ?? 0); $i++) {
-        $shipping_method_id = $post['shipping_cutoff_' . $i . '_shipping_method_id'] ?? '';
-        $date_and_time = $post['shipping_cutoff_' . $i . '_date_and_time'] ?? '';
-
-        if (
-            ($shipping_method_id != '')
-            && (in_array($shipping_method_id, $shipping_cutoff_shipping_methods) == FALSE)
-            && ($date_and_time != '')
-            && (validate_date_and_time($date_and_time) == TRUE)
-            && (prepare_form_data_for_input($date_and_time, 'date and time') >= $start)
-            && (prepare_form_data_for_input($date_and_time, 'date and time') <= $end)
-        ) {
-            $query =
-                "INSERT INTO shipping_cutoffs (
-                    arrival_date_id,
-                    shipping_method_id,
-                    date_and_time)
-                VALUES (
-                    ?,
-                    ?,
-                    ?)";
-            db_q($query, array(
-                (string) $arrival_date_id,
-                (string) $shipping_method_id,
-                (string) prepare_form_data_for_input($date_and_time, 'date and time'))) or output_error('Query failed.');
-
-            $shipping_cutoff_shipping_methods[] = $shipping_method_id;
-
-        } else {
+        $cutoff = pg_arrival_date_form_cutoff($post['shipping_cutoff_' . $i . '_shipping_method_id'] ?? '', $post['shipping_cutoff_' . $i . '_date_and_time'] ?? '', $start, $end, $taken);
+        if ($cutoff === null) {
             $left_out = true;
+            continue;
         }
+        $cutoffs[] = $cutoff;
+        $taken[] = $cutoff[0];
     }
-
+    pg_store_arrival_date_cutoffs_save($arrival_date_id, $cutoffs) or output_error('Query failed.');
     return $left_out;
 }

@@ -50,8 +50,28 @@ function test_waf_log_list_condition()
 	pg_assert_same(array('sql' => 'log_timestamp >= ?', 'params' => array(1000000 - 7 * 86400)), pg_waf_log_list_condition(pg_waf_log_list_filters(array()), 1000000));
 
 	$condition = pg_waf_log_list_condition(pg_waf_log_list_filters(array('range' => '1', 'category' => 'bot', 'search' => '50%_?')), 1000000);
-	pg_assert_same('log_timestamp >= ? AND category = ? AND (ip_address LIKE ? OR request_url LIKE ? OR rule_id LIKE ? OR reference LIKE ? OR user_agent LIKE ?)', $condition['sql']);
-	pg_assert_same(array(1000000 - 86400, 'bot', '%50\\%\\_?%', '%50\\%\\_?%', '%50\\%\\_?%', '%50\\%\\_?%', '%50\\%\\_?%'), $condition['params'], 'wildcards are literal, a ? is a value');
+	pg_assert_same('log_timestamp >= ? AND category = ? AND (ip_address LIKE ? OR method LIKE ? OR request_url LIKE ? OR user_agent LIKE ? OR rule_id LIKE ? OR reference LIKE ? OR target LIKE ? OR matched LIKE ?)', $condition['sql']);
+	pg_assert_same(array_merge(array(1000000 - 86400, 'bot'), array_fill(0, 8, '%50\\%\\_?%')), $condition['params'], 'wildcards are literal, a ? is a value');
+
+	// The toolbar search follows the table box's rule: every word, the same
+	// fields, an action by the name it is shown under.
+	$filters = pg_waf_log_list_filters(array('search' => 'unknown bot'));
+	$condition = pg_waf_log_list_condition($filters, 1000000);
+	$search = pg_waf_log_list_search(pg_list_search_terms('unknown bot'));
+	pg_assert_same('log_timestamp >= ? AND ' . $search['sql'], $condition['sql']);
+	pg_assert_same(array_merge(array(1000000 - 7 * 86400), $search['params']), $condition['params']);
+
+	$condition = pg_waf_log_list_condition(pg_waf_log_list_filters(array('search' => lang('Blocked'))), 1000000);
+	pg_assert_contains('action IN (?', $condition['sql'], 'an action by its shown name');
+}
+
+// The summary counts requests; a ban row records a decision about a request
+// already counted by the row that refused it.
+function test_waf_log_list_request_actions()
+{
+	pg_assert_same(array('block', 'rate'), pg_waf_log_list_request_actions('blocked'));
+	pg_assert_same(array('would-block', 'would-rate'), pg_waf_log_list_request_actions('would_block'));
+	pg_assert_same(array('ban', 'would-ban'), pg_waf_log_list_request_actions('bans'));
 }
 
 function test_waf_log_list_sort()
@@ -109,4 +129,29 @@ function test_waf_log_list_row()
 	$html = pg_list_row_html(pg_waf_log_list_row($event, $now));
 	pg_assert_false(strpos($html, 'fg-danger fw-semibold') !== false, 'stopped ten minutes ago');
 	pg_assert_contains('<span class="badge bg-secondary">unknown</span>', $html, 'an action without a badge');
+}
+
+function test_waf_log_list_is_a_driver_list()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+	$definition = pg_list_table_definition('view_waf_log');
+
+	pg_assert_same('includes/fn/waf_log_list.php', $definition['file']);
+	pg_assert_same('pg_waf_log_list_source', $definition['source']);
+	pg_assert_true(function_exists($definition['source']), 'the source function is in its file');
+	pg_assert_same(null, pg_waf_log_list_source(array('id' => 9, 'role' => 3), array()), 'a basic user may not open the list');
+
+	unset($_SESSION['software']['list_state']['view_waf_log']);
+	$columns = pg_list_table_columns(pg_waf_log_list_columns());
+	pg_assert_same(array_keys(pg_waf_log_list_sort()['sort_columns']), array_keys(pg_list_table_sort_columns($columns)), 'the sortable columns are the sort codes');
+	pg_assert_same('last_seen', $columns['time']['sort'], 'the time shown first is the last hit');
+	pg_assert_same(pg_waf_log_list_search(array('x')), pg_list_search_where(array('x'), pg_waf_log_list_search_spec()['columns'], pg_waf_log_list_search_spec()['labels']), 'the driver searches as the filter does');
+
+	$row = pg_waf_log_list_row(array(
+		'id' => '4', 'log_timestamp' => '100', 'last_seen' => '100', 'hit_count' => '1', 'action' => 'block', 'ip_address' => '203.0.113.7',
+		'rule_id' => 'r', 'reference' => '', 'score' => '1', 'method' => 'GET', 'request_url' => '/', 'user_agent' => '', 'target' => '', 'matched' => '',
+	), 200);
+	pg_assert_same('4', $row['id']);
+	pg_assert_same(array_keys($columns), array_keys($row['cells']), 'one cell per column');
 }

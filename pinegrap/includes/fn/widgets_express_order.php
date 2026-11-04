@@ -700,6 +700,113 @@ function _eo_default_country()
     return pg_address_default_country();
 }
 
+/**
+ * One state control of the checkout as a text box and a pick list, as the
+ * other address widgets have it: a layout that holds only the text box (the
+ * default layout and the starter draw one) gets a hidden <select> of the
+ * same name right after it (pg_sa_state_list_fit()); both are filled and
+ * marked for pg_sa_state_script() by _pg_sa_state_controls(), the list with
+ * the states of $country_states and the stored state chosen by code or name.
+ * Runs on a tree whose controls _eo_apply_field_bindings() already named.
+ * Pure.
+ *
+ * @param array  $tree
+ * @param string $name           the state control's name ('shipping_7_state', 'billing_state')
+ * @param string $value          the stored or posted state
+ * @param array  $country_states list of [code, name] of the address's country
+ * @return bool whether the tree holds a state control of that name
+ */
+function _eo_fit_state_list(&$tree, $name, $value, $country_states)
+{
+    if (!is_array($tree) || (string)$name === '') return false;
+    $found = false;
+    $scan = function ($node) use (&$scan, $name, &$found) {
+        if ($found || !is_array($node)) return;
+        if (_pg_member_control_name($node) === $name) {
+            $tag = strtolower((string)($node['props']['tag'] ?? ''));
+            if ($tag === 'input' || $tag === 'select') { $found = true; return; }
+        }
+        if (!empty($node['children']) && is_array($node['children'])) {
+            foreach ($node['children'] as $c) $scan($c);
+        }
+    };
+    $scan($tree);
+    if (!$found) return false;
+    pg_sa_state_list_fit($tree, $name);
+    _pg_sa_state_controls($tree, (string)$value, (array)$country_states, $name);
+    return true;
+}
+
+/**
+ * Gives the checkout's shipping state (the recipient's, or the one recipient
+ * of a layout without a recipient list) and billing state their pick list
+ * (_eo_fit_state_list()) for the country each address starts with: the
+ * posted or stored one, else the shop's default. Each address that holds a
+ * state control is noted for _eo_state_list_scripts().
+ *
+ * @param array  $tree
+ * @param object $lf       the express order liveform
+ * @param int    $ship_rid the recipient the shipping fields are named for, 0 for none
+ */
+function _eo_fit_state_lists(&$tree, $lf, $ship_rid = 0)
+{
+    if (!is_array($tree) || !$lf) return;
+    $place = _eo_state_list_place();
+    $prefixes = array(($ship_rid > 0) ? 'shipping_' . (int)$ship_rid . '_' : 'shipping_', 'billing_');
+    foreach ($prefixes as $prefix) {
+        $country = (string)$lf->get_field_value($prefix . 'country');
+        if ($country === '') $country = _eo_default_country();
+        $states = isset($place['states'][$country]) ? $place['states'][$country] : array();
+        if (_eo_fit_state_list($tree, $prefix . 'state', (string)$lf->get_field_value($prefix . 'state'), $states)) {
+            _eo_state_list_prefixes($prefix);
+        }
+    }
+}
+
+// The shop's states by country and the zip-required countries
+// (_pg_acct_states()), read once per request.
+function _eo_state_list_place()
+{
+    static $place = null;
+    if ($place === null) $place = _pg_acct_states();
+    return $place;
+}
+
+/**
+ * The name prefixes of the checkout addresses that hold a state control
+ * ('shipping_7_', 'billing_'), noted while the tree is fitted. With $add the
+ * prefix is added; with $take the list is returned and emptied, so a second
+ * checkout widget on the page starts with its own.
+ *
+ * @param string|null $add
+ * @param bool        $take
+ * @return array
+ */
+function _eo_state_list_prefixes($add = null, $take = false)
+{
+    static $prefixes = array();
+    if ($add !== null && !in_array((string)$add, $prefixes, true)) $prefixes[] = (string)$add;
+    if (!$take) return $prefixes;
+    $out = $prefixes;
+    $prefixes = array();
+    return $out;
+}
+
+// The state script (pg_sa_state_script()) of every checkout address noted by
+// _eo_fit_state_lists(), for the form $form_id: each switches its own text
+// box and pick list with its own country control.
+function _eo_state_list_scripts($form_id)
+{
+    $prefixes = _eo_state_list_prefixes(null, true);
+    if (!$prefixes) return '';
+    $place = _eo_state_list_place();
+    $out = '';
+    foreach ($prefixes as $prefix) {
+        $out .= pg_sa_state_script((string)$form_id, $place['states'], $place['zip'], $prefix);
+    }
+    return $out;
+}
+
 // ── Designer bindings: `_bindings.eo_field='X'` on input/select/textarea
 // ─────────────────────────────────────────────────────────────────────────
 // THE primary binding for express order form fields. Designer drops any
@@ -2403,36 +2510,7 @@ function _eo_hosted_card_html($amount_cents)
     // A card kept for renewals is asked for before it is typed (Stripe's
     // setup_future_usage), as the payment will ask for it.
     $order['recurring'] = pg_payment_order_recurring((int) ($order['id'] ?? 0));
-    $answer = pg_payment_call($key, 'prepare', array($order, (int) $amount_cents));
-    $client = $answer['client'];
-
-    // The service's script is loaded only from a host the driver lists for
-    // the site's security policy.
-    $definition = pg_payment_driver($key);
-    $script = (isset($client['script']) && is_string($client['script'])) ? $client['script'] : '';
-    $script_host = (preg_match('#^(https://[^/\s]+)/#', $script, $script_match) === 1) ? $script_match[1] : '';
-    $script_allowed = ($script_host !== '') && isset($definition['csp']['script-src']) && in_array($script_host, $definition['csp']['script-src'], true);
-
-    if (!$answer['success'] || !$script_allowed) {
-        return '<div class="alert alert-warning small mb-3" role="alert">' . h(lang('Card payments are not available right now. Please choose another payment method.')) . '</div>';
-    }
-
-    $config = array(
-        'driver'   => $key,
-        'client'   => $client,
-        'messages' => array(
-            'unavailable' => lang('Card payments are not available right now. Please choose another payment method.'),
-            'invalid'     => lang('The card details could not be read. Please check them and try again.'),
-        ),
-    );
-
-    return '<div class="pg-eo-hosted-card mb-3" data-pg-payment-hosted="' . h(json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) . '">'
-         .   '<div class="pg-eo-hosted-card-element"></div>'
-         .   '<div class="small text-danger mt-2 pg-eo-hosted-card-error" role="alert" aria-live="polite"></div>'
-         . '</div>'
-         . '<input type="hidden" name="payment_token" value="">'
-         . '<script src="' . h($script) . '"></script>'
-         . pg_js_bundle_tags('assets/js/payment_hosted.min.js', false);
+    return pg_payment_box($key, pg_payment_call($key, 'prepare', array($order, (int) $amount_cents)));
 }
 
 function _eo_render_billing_country_select($lf)
@@ -3471,16 +3549,7 @@ function _eo_prefill_billing_fields($lf, $order_id, $ghost)
         elseif (!empty($contact['lead_source']))      $rs = (string)$contact['lead_source'];
         if ($rs !== '') $lf->assign_field_value('referral_source', $rs);
     }
-    if (!$lf->field_in_session('opt_in')) {
-        $lf->assign_field_value('opt_in', !empty($order['opt_in']) ? '1' : '');
-    }
-    // The SMS box starts ticked, as the e-mail box of a new order does.
-    if (!$lf->field_in_session('opt_in_sms')) {
-        $lf->assign_field_value('opt_in_sms', '1');
-    }
-    if (!$lf->field_in_session('tax_exempt')) {
-        $lf->assign_field_value('tax_exempt', !empty($order['tax_exempt']) ? '1' : '');
-    }
+    _eo_prefill_billing_boxes($lf, $order);
     // Identity / tax number and tax office: kept on the contact, not on the
     // order, so a member finds them filled in the next time.
     foreach (array('tax_number', 'tax_office') as $f) {
@@ -3495,15 +3564,24 @@ function _eo_prefill_billing_fields($lf, $order_id, $ghost)
     if ($lf->prefill()) {
         $lf->assign_field_value('billing_same_as_shipping', empty($order['billing_address_1']) ? '1' : '');
     }
-    // update_contact: default ON for logged-in users (matches legacy intent).
-    if (!$lf->field_in_session('update_contact')) {
-        $session_pref = isset($_SESSION['software']['update_contact']) ? $_SESSION['software']['update_contact'] : null;
-        if ($session_pref === false) {
-            $lf->assign_field_value('update_contact', '');
-        } else {
-            $lf->assign_field_value('update_contact', '1');
-        }
-    }
+}
+
+// The tick boxes of the billing part: opt_in and tax_exempt from the order,
+// opt_in_sms ticked as the e-mail box of a new order is, update_contact
+// ticked unless the visitor turned it off earlier in the session. Only
+// before the visitor's first submit, as the classic express order page
+// fills them: an unticked box posts nothing, so field_in_session() cannot
+// tell "unticked" from "never shown", and a refused submit would bring an
+// unticked SMS or e-mail consent back ticked.
+function _eo_prefill_billing_boxes($lf, $order)
+{
+    if (!$lf || !$lf->prefill()) return;
+    $order = is_array($order) ? $order : array();
+    $lf->assign_field_value('opt_in', !empty($order['opt_in']) ? '1' : '');
+    $lf->assign_field_value('opt_in_sms', '1');
+    $lf->assign_field_value('tax_exempt', !empty($order['tax_exempt']) ? '1' : '');
+    $session_pref = isset($_SESSION['software']['update_contact']) ? $_SESSION['software']['update_contact'] : null;
+    $lf->assign_field_value('update_contact', ($session_pref === false) ? '' : '1');
 }
 
 // ── Helper: prefill shipping_<rid>_* fields from saved sources ──────────────
@@ -4139,8 +4217,8 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
     // expectation. The HTML5 `<input type="date">` always returns ISO
     // `YYYY-MM-DD`; the server's date validator wants `DD/MM/YYYY` (when
     // DATE_FORMAT='day_month') or `MM/DD/YYYY` (month_day). The JS converts
-    // before POSTing — without this the API rejects every custom arrival
-    // date with "Sorry, the requested arrival date is not valid".
+    // the custom arrival date it sends to the shipping methods API; the
+    // form itself posts its date inputs as ISO, which validate_date() takes.
     $date_format_json = json_encode(defined('DATE_FORMAT') ? DATE_FORMAT : 'month_day');
 
     // Pre-translated labels — passed as JSON-encoded strings into the JS
@@ -4203,23 +4281,16 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
             : (m[3] + '/' + m[2] + '/' + m[1]);
     }
 
-    // ── Form submit interceptor: date format + gift-card email auto-fill ───
-    // Two responsibilities at submit time:
-    //   1. Convert every <input type="date"> from ISO YYYY-MM-DD to the
-    //      server's DATE_FORMAT (DD/MM/YYYY for day_month sites). Same fix
-    //      as shipping arrival_date — `validate_date()` regex doesn't accept
-    //      ISO; without this the server reports "Delivery Date must contain
-    //      a valid date" or the analogous arrival-date error.
-    //   2. For gift-card products that ALSO have a custom form (CASE 3 in
-    //      _eo_render_cart_summary), auto-fill the hidden
-    //      `gift_card_recipient_email_address` from the billing email so
-    //      `express_order.php`'s validation passes WITHOUT showing a
-    //      duplicate "Recipient Email" field on top of the product form.
+    // ── Form submit interceptor: gift-card email auto-fill ──────────────────
+    // For gift-card products that ALSO have a custom form (CASE 3 in
+    // _eo_render_cart_summary), auto-fill the hidden
+    // `gift_card_recipient_email_address` from the billing email so
+    // `express_order.php`'s validation passes WITHOUT showing a duplicate
+    // "Recipient Email" field on top of the product form. Date inputs post
+    // ISO as they are: validate_date() and prepare_form_data_for_input()
+    // read it, and a site-format text written into an <input type="date">
+    // is dropped by the browser, so the date posted empty.
     form.addEventListener('submit', function () {
-        form.querySelectorAll('input[type="date"]').forEach(function (inp) {
-            if (!inp.value) return;
-            inp.value = isoToServerDate(inp.value);
-        });
         // Gift-card hidden recipient_email auto-fill from billing email.
         var billingEmail = (form.querySelector('[name="billing_email_address"]') || {}).value || '';
         if (billingEmail) {
@@ -4732,6 +4803,12 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
         });
     }
 
+    // The date control drawn over a date input (pg_fields.js) shows the
+    // input's disabled state once it is told.
+    function refreshField(inp) {
+        if (window.pgFields && window.pgFields.refresh) window.pgFields.refresh(inp);
+    }
+
     // ── Wire listeners per recipient ────────────────────────────────────────
     RIDS.forEach(function (rid) {
         // Country toggles state field + triggers method fetch
@@ -4756,12 +4833,12 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
                 // submit with no visible message.
                 form.querySelectorAll('.pg-eo-custom-arrival').forEach(function (cd) {
                     cd.style.display = 'none';
-                    cd.querySelectorAll('input').forEach(function (inp) { inp.disabled = true; });
+                    cd.querySelectorAll('input').forEach(function (inp) { inp.disabled = true; refreshField(inp); });
                 });
                 var custWrap = form.querySelector('.pg-eo-custom-arrival[data-pg-eo-arrival-id="' + r.value + '"]');
                 if (custWrap) {
                     custWrap.style.display = '';
-                    custWrap.querySelectorAll('input').forEach(function (inp) { inp.disabled = false; });
+                    custWrap.querySelectorAll('input').forEach(function (inp) { inp.disabled = false; refreshField(inp); });
                 }
                 fetchMethods(rid);
             });
@@ -4980,6 +5057,7 @@ function _eo_render_recipient_loop($template_children, $recipients, $lf)
             _eo_fit_district_field($wrap, $rid);
             _eo_apply_field_bindings($wrap, $lf, $rid);
             _eo_prefill_input_values_in_tree($wrap, $lf);
+            _eo_fit_state_lists($wrap, $lf, $rid);
         }
         _eo_apply_action_bindings($wrap);
 

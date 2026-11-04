@@ -20,8 +20,6 @@ function pg_test_list_like_sites()
 {
 	return array(
 		'view_orders.php',
-		'view_comments.php',
-		'view_themes.php',
 		'includes/fn/contact_list.php',
 		'includes/fn/submitted_form_list.php',
 		'includes/panel/search.php',
@@ -35,7 +33,7 @@ function test_list_like_sites_bind_no_raw_pattern()
 
 		pg_assert_same(0, preg_match('/LIKE \'%" \. escape\(/', $source), $file . ': raw LIKE pattern in the query');
 		pg_assert_same(0, preg_match('/\'%\' \. (?:\$[a-z_]+|[a-z_]+\(.*?\)) \. \'%\'/', $source), $file . ': raw LIKE pattern as a value');
-		pg_assert_true(strpos($source, 'pg_list_like_pattern(') !== false, $file . ': pattern from pg_list_like_pattern()');
+		pg_assert_true((strpos($source, 'pg_list_like_pattern(') !== false) || (strpos($source, 'pg_list_search_where(') !== false), $file . ': pattern from pg_list_like_pattern() or pg_list_search_where()');
 	}
 }
 

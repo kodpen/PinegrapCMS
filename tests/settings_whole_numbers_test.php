@@ -71,3 +71,48 @@ function test_settings_whole_numbers_save_modules_use_the_reader()
 		pg_assert_true(!preg_match("/\\(int\\) post_value\\('(image_|waf_|login_throttle_|form_limit_)/", $source), 'no (int) read of a whole-number box is left');
 	}
 }
+
+function test_settings_whole_numbers_range_check_refuses_what_the_reader_would_clamp()
+{
+	$s = pg_number_separators();
+	pg_assert_same(10, pg_whole_number_in_range('10', 1, 1000));
+	pg_assert_same(1, pg_whole_number_in_range(' 1 ', 1, 1000), 'trimmed');
+	pg_assert_same(0, pg_whole_number_in_range('0', 0, 50), 'zero where the range allows it');
+	pg_assert_same(2400, pg_whole_number_in_range('2' . $s['thousands'] . '400', 1, 60000), 'a grouped figure');
+	pg_assert_same(null, pg_whole_number_in_range('', 1, 1000), 'blank');
+	pg_assert_same(null, pg_whole_number_in_range(null, 1, 1000));
+	pg_assert_same(null, pg_whole_number_in_range('abc', 1, 1000), 'letters');
+	pg_assert_same(null, pg_whole_number_in_range('-3', 1, 1000), 'a sign');
+	pg_assert_same(null, pg_whole_number_in_range('12' . $s['decimal'] . '5', 1, 1000), 'a fraction');
+	pg_assert_same(null, pg_whole_number_in_range('0', 1, 1000), 'below the range');
+	pg_assert_same(null, pg_whole_number_in_range('99999', 1, 365), 'above the range');
+	pg_assert_same(null, pg_whole_number_in_range(array('5'), 1, 10), 'not a scalar');
+}
+
+function test_settings_whole_numbers_limits_are_refused_before_the_write()
+{
+	$firewall = settings_whole_numbers_test_source('includes/settings/firewall.save.php');
+	$country = strpos($firewall, 'Country restriction (2026.4.10)');
+	foreach (array('waf_rate_limit_requests', 'waf_rate_limit_sensitive', 'waf_rate_limit_api', 'waf_inflight_limit', 'waf_auto_ban_threshold', 'waf_auto_ban_minutes', 'waf_auto_ban_max_minutes', 'waf_log_retention_days', 'waf_log_max_rows') as $name) {
+		$at = strpos($firewall, "'" . $name . "' ");
+		pg_assert_true(($at !== false) && ($at < $country), $name . ' checked before the country block writes');
+	}
+
+	$security = settings_whole_numbers_test_source('includes/settings/security.save.php');
+	$first_write = strpos($security, "post_value('ecommerce_reset_encryption_key') == 1");
+	foreach (array('login_throttle_attempts', 'login_throttle_minutes', 'login_throttle_lockout', 'membership_expiration_warning_email_page_id', 'membership_expiration_warning_email_days_before_expiration') as $name) {
+		$at = strpos($security, "mark_error('" . $name . "'");
+		if ($at === false) {
+			$at = strpos($security, "'" . $name . "' ");
+		}
+		pg_assert_true(($at !== false) && ($at < $first_write), $name . ' checked before anything is written');
+	}
+
+	$seo = settings_whole_numbers_test_source('includes/settings/seo.save.php');
+	$indexnow_file = strpos($seo, 'If old key exists and changed');
+	foreach (array('merchant_country', 'merchant_return_days', 'merchant_transit_days_min', 'merchant_transit_days_max') as $name) {
+		$at = strpos($seo, "mark_error('" . $name . "'");
+		pg_assert_true(($at !== false) && ($at < $indexnow_file), $name . ' refused before the IndexNow file is written');
+	}
+	pg_assert_contains("indexnow_key = '\" . escape(\$new_indexnow_key) . \"'", $seo, 'the trimmed IndexNow key is stored');
+}

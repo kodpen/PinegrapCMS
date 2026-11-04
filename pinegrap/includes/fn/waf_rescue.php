@@ -121,19 +121,28 @@ function pg_waf_unban_entry_key($entry)
  * and a manual range covering their own address is one of the ways that
  * happens (the Settings guard refuses it only from then on).
  *
- * @param array $rows   block rows, each with ip_address and source
- * @param array $parsed pg_waf_unban_parse_args() result
+ * --all lifts the automatic bans in force only: an expired automatic row
+ * shuts nobody out and is the memory waf_auto_ban() climbs the ban ladder
+ * from; waf_sweep() removes it when its retention ends.
+ *
+ * @param array    $rows   block rows, each with ip_address, source and
+ *                         expires_at (0 is a ban without end)
+ * @param array    $parsed pg_waf_unban_parse_args() result
+ * @param int|null $now    the time a ban in force is measured at
  * @return array the rows to remove, in the given order
  */
-function pg_waf_unban_rows(array $rows, array $parsed)
+function pg_waf_unban_rows(array $rows, array $parsed, $now = null)
 {
+    $now = ($now === null) ? time() : (int) $now;
+
     $remove = array();
 
     foreach ($rows as $row) {
         $entry = (string) $row['ip_address'];
 
         if ($parsed['mode'] === 'all') {
-            $hit = ($row['source'] === 'auto');
+            $expires = isset($row['expires_at']) ? (int) $row['expires_at'] : 0;
+            $hit = ($row['source'] === 'auto') && (($expires === 0) || ($expires > $now));
         } elseif ($parsed['mode'] === 'address') {
             $hit = waf_ip_matches($parsed['target'], $entry);
         } else {
@@ -172,8 +181,8 @@ function pg_waf_unban(array $parsed)
     $result = mysqli_query(
         db::$con,
         $has_source
-            ? "SELECT ip_address, source FROM banned_ip_addresses WHERE list_type = 'block'"
-            : "SELECT ip_address, 'manual' AS source FROM banned_ip_addresses"
+            ? "SELECT ip_address, source, expires_at FROM banned_ip_addresses WHERE list_type = 'block'"
+            : "SELECT ip_address, 'manual' AS source, 0 AS expires_at FROM banned_ip_addresses"
     );
 
     if (!$result) {

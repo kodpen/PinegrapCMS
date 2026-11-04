@@ -22,7 +22,7 @@
     // Bars with the ones well above the rest marked in the danger colour.
     // The picture's title lists every figure, so colour is not the only
     // place they are.
-    function hotBars(values, hot, label) {
+    function hotBars(values, hot, label, tips) {
         var width = 300;
         var height = 60;
         var max = Math.max.apply(null, (values || []).concat([1]));
@@ -48,6 +48,9 @@
             }
             svg.appendChild(rect);
         });
+        if (tips && tips.length) {
+            pgDash.chartTips(svg, tips, {mark: pgDash.markBars(svg)});
+        }
         return svg;
     }
 
@@ -70,7 +73,7 @@
         }
 
         var chart = el("figure", "pg-dash-chart");
-        chart.appendChild(hotBars(data.bars, data.hot, data.bars_label));
+        chart.appendChild(hotBars(data.bars, data.hot, data.bars_label, data.tips));
         chart.appendChild(el("figcaption", "pg-dash-chart-caption", data.bars_label));
         body.appendChild(chart);
 

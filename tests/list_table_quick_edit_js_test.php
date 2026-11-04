@@ -1,0 +1,100 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * The list table driver's quick edit mode (assets/js/pg_list_table.js,
+ * window.PGListTable) in Node: the last save and its undo, the rows a
+ * saved value is applied to, the value a cell saves. Skipped where Node
+ * cannot run.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+require_once(__DIR__ . '/list_table_js_test.php');
+
+function test_list_table_quick_edit_history()
+{
+	$result = list_table_js_test_node(<<<'JS'
+var h = new T.QuickEdits(), out = {};
+out.empty = [h.undoable(), h.takeUndo()];
+h.record([{ id: '7', field: 'price', before: '10', after: '12' }]);
+out.one = h.undoable();
+h.record([{ id: '7', field: 'price', before: '12', after: '12' }]);
+out.unchanged = h.undoable();
+h.record([{ id: '7', field: 'price', before: '12', after: '15' }, { id: '8', field: 'price', before: '9', after: '15' }, { id: '9', field: 'price', before: '15', after: '15' }]);
+out.group = h.takeUndo();
+out.afterTake = [h.undoable(), h.takeUndo()];
+h.record([{ id: '1', field: 'a', before: 'x', after: 'y' }]);
+h.drop();
+out.dropped = h.undoable();
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(false, array()), $result['empty']);
+	pg_assert_same(true, $result['one']);
+	pg_assert_same(true, $result['unchanged'], 'a save that changed nothing keeps the one before undoable');
+	pg_assert_same(array(
+		array('id' => '7', 'field' => 'price', 'value' => '12'),
+		array('id' => '8', 'field' => 'price', 'value' => '9'),
+	), $result['group'], 'the whole last save goes back, rows it did not change left out');
+	pg_assert_same(array(false, array()), $result['afterTake'], 'one undo, then nothing');
+	pg_assert_same(false, $result['dropped']);
+}
+
+function test_list_table_quick_edit_targets()
+{
+	$result = list_table_js_test_node(<<<'JS'
+var s = new T.Selection(), out = {};
+var rows = [{ id: '1', editable: true }, { id: '2', editable: false }, { id: '3', editable: true }, { id: '4', editable: true }];
+s.only('1');
+out.alone = T.applyTargets(rows, s, '1');
+s.toggle('2'); s.toggle('3');
+out.ids = T.applyTargets(rows, s, '1');
+out.notSelected = T.applyTargets(rows, s, '4');
+s.selectAll(1000); s.toggle('4');
+out.all = T.applyTargets(rows, s, '3');
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(), $result['alone'], 'a row selected alone offers nothing');
+	pg_assert_same(array('3'), $result['ids'], 'the other selected rows that can change, in screen order');
+	pg_assert_same(array(), $result['notSelected'], 'a save on a row outside the selection offers nothing');
+	pg_assert_same(array('1'), $result['all'], 'Ctrl+A: the loaded rows less the exceptions');
+}
+
+function test_list_table_quick_edit_value()
+{
+	$result = list_table_js_test_node(<<<'JS'
+console.log(JSON.stringify([
+  T.quickValue('text', '  Blue shirt '),
+  T.quickValue('select', ' a '),
+  T.quickValue('money', '12,50'),
+  T.quickChanged('text', ' 5 ', '5'),
+  T.quickChanged('money', '12,50', '12,5')
+]));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('Blue shirt', ' a ', '12,50', false, true), $result);
+}

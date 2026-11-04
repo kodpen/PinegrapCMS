@@ -15,6 +15,7 @@ module: ecommerce, commission_list
 
 ## How does a hand edit interact?
 - Saving `edit_commission.php` clears `status_before_cancel`, saving `edit_recurring_commission_profile.php` clears `disabled_by_cancel`: a restore never undoes the operator's later choice.
+- `edit_commission.php` saves only `pending`, `payable`, `ineligible` or `paid` (`pg_commission_posted_status()`, `includes/fn/commission_list.php`); anything else goes back to the screen with an error. Before #5113 an unknown value was stored as `''` (enum column, non-strict sql_mode) and the commission left every status total.
 
 ## What does the Commissions screen show?
 - `pg_commission_list_cancelled_badge(orders.status)`: a "Cancelled order" badge beside the status on the commissions list and beside the order number on the recurring profiles list, for every status (a paid one is seen for clawback). Totals stay by status; no separate total.
@@ -22,6 +23,6 @@ module: ecommerce, commission_list
 
 ## Which schema and edges?
 - Columns: 2026.11.0 step 11.0.139 (`upgrade_2026_11_0_commission_cancel_marker()`). Every reader and writer probes `pg_schema_has()`; before the upgrade runs, the cancel changes nothing (a void that could not be restored would lose the status).
-- No fifth status (the enum, API filter and My Account labels stay). A partial refund moves nothing. An unpaid order cancelled by the job has no commission (written at completion). No webhook event exists for commissions.
+- No fifth status (the enum, API filter and My Account labels stay). A partial refund moves nothing. An unpaid order cancelled by the job has no commission (written at completion). The voiding and the restore announce no webhook event; a hand edit or `POST /commissions/{id}` announces `commission.status_changed` (`api/api-commission-writes.md`).
 
 Related: docs/memory/commerce/order-cancellation-flow.md, docs/memory/commerce/order-cancel-gift-cards.md

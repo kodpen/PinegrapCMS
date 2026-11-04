@@ -153,7 +153,7 @@ if (!$_POST) {
             <div class="col-12 sm:col-6">
                 <div class="form-floating mt-1 mb-3">
                     <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                    <select class="form-control" id="folder"><option value=""></option>' . select_folder() . '</select>
+                    <select class="form-control" id="folder"><option value=""></option>' . pg_page_select_folder() . '</select>
                 </div>
             </div>
             
@@ -182,9 +182,24 @@ if (!$_POST) {
 // else the form has been submitted, so process it
 } else {
     validate_token_field();
-    
+
+    // The pages list sends its selection as the list table driver keeps it:
+    // the pages picked, or the whole view by its condition less the
+    // exceptions. It is read back with the list's own query and the user's
+    // rights (pg_page_list_selected_ids()).
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_list.php');
+    $page_ids = pg_page_list_selected_ids($user, $_POST['selection'] ?? '', $_POST['list_params'] ?? '');
+
+    if ($page_ids === false) {
+        output_error('Query failed.');
+    }
+
+    if ($page_ids === null) {
+        output_error(lang('Too many pages are selected. Select fewer pages and try again.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    }
+
     // if at least one page was selected
-    if (!empty($_POST['pages'])) {
+    if ($page_ids) {
         $number_of_pages = 0;
         
         switch ($_POST['action'] ?? '') {
@@ -221,7 +236,7 @@ if (!$_POST) {
                 $number_of_style_skipped_pages = 0;
 
                 // loop through each page and process actions
-                foreach ($_POST['pages'] as $page_id) {
+                foreach ($page_ids as $page_id) {
                     $page = pg_page_bulk_fetch($page_id);
 
                     if (!$page) {
@@ -358,8 +373,11 @@ if (!$_POST) {
                 $number_of_binned_pages = 0;
                 $binned_home_page = false;
                 $bin_errors = array();
+                // Pages deleted since the list was drawn (another tab, another
+                // manager): skipped, never counted as deleted.
+                $number_of_missing_pages = 0;
                 
-                foreach ($_POST['pages'] as $page_id) {
+                foreach ($page_ids as $page_id) {
                     // get page properties
                     $query =
                         "SELECT
@@ -373,6 +391,11 @@ if (!$_POST) {
                         WHERE page_id = ?";
                     $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
+
+                    if (!$row) {
+                        $number_of_missing_pages++;
+                        continue;
+                    }
 
                     $page_id = $row['page_id'];
                     $page_folder = $row['page_folder'];
@@ -433,6 +456,10 @@ if (!$_POST) {
                         $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 
                         pg_audit_record('delete', 'page', $page_id, $audit_before);
+                        // A page deleted from the bin leaves no restore record behind.
+                        if (function_exists('pg_recycle_forget')) {
+                            pg_recycle_forget('page', $page_id);
+                        }
 
                         // Stored SEO findings for this page. The single-page
                         // delete in edit_page.php clears these; this screen
@@ -608,6 +635,12 @@ if (!$_POST) {
                     log_activity($binned_message, $_SESSION['sessionusername']);
                     $liveform->add_notice($binned_message
                         . ($binned_home_page ? ' ' . lang('The home page was among them: the site has no home page until another page is marked as home.') : ''));
+                }
+
+                if ($number_of_missing_pages > 0) {
+                    $liveform->add_notice(($number_of_missing_pages == 1)
+                        ? lang('One of the selected pages no longer exists, so it was skipped.')
+                        : lang(array('string' => '{var:1} of the selected pages no longer exist, so they were skipped.', 'vars' => $number_of_missing_pages)));
                 }
 
                 if (count($bin_errors) > 0) {

@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'access', 'fonts', 'glyph', 'warp');
 }
 
 /**
@@ -80,8 +80,10 @@ function pg_image_editor_strings_core()
         'zoomOut'        => lang('Zoom out'),
         'zoomFit'        => lang('Fit to screen'),
         'zoomActual'     => lang('Actual size'),
+        'percent'        => lang('{var:1}%'),
         'tools'          => lang('Tools'),
         'layers'         => lang('Layers'),
+        'selection'      => lang('Selection'),
         'closePanel'     => lang('Close the panel'),
         'customColor'    => lang('Custom color'),
         'colorTransparent' => lang('Transparent'),
@@ -109,6 +111,8 @@ function pg_image_editor_strings_core()
         'tool_sticker'   => lang('Sticker'),
         'tool_frame'     => lang('Frame'),
         'tool_vector'    => lang('Vector'),
+        'tool_scissors'  => lang('Scissors'),
+        'tool_warp'      => lang('Warp'),
         'tool_artboard'  => lang('Canvas'),
         'tool_image'     => lang('Image'),
         'tool_export'    => lang('Export'),
@@ -170,6 +174,12 @@ function pg_image_editor_config()
         'token'   => isset($_SESSION['software']['token']) ? (string) $_SESSION['software']['token'] : '',
         // Without Imagick the browser sends the colour step done.
         'serverColor' => class_exists('Imagick'),
+        // The Sticker tool's icons: the font and its name => code point map.
+        'icons'   => pg_image_editor_icon_urls(),
+        // The animation encoder's script, started as a worker.
+        'encoder' => pg_js_bundle_urls('assets/js/pg_image_editor_encode.min.js'),
+        // The largest animation Save to Files takes (0: no limit known).
+        'animationLimit' => pg_image_editor_animation_limit(pg_upload_limits()),
     );
 }
 
@@ -603,8 +613,11 @@ function pg_image_editor_file($file_id, $user)
         return array('refusal' => pg_image_editor_refusal(lang('Access denied'), 403));
     }
 
-    $path = FILE_DIRECTORY_PATH . '/' . $row['name'];
-    $size = is_file($path) ? @getimagesize($path) : false;
+    // Read from the object store's cached copy for a stored file; every
+    // write goes to the file directory (local), which the general job then
+    // takes as the file's bytes (pg_file_storage_reconcile_run()).
+    $path = pg_file_local_copy((int) $row['id']);
+    $size = (($path !== '') && is_file($path)) ? @getimagesize($path) : false;
 
     // A picture the browser shows and the engine writes back; a browser shows
     // no TIFF.
@@ -620,6 +633,7 @@ function pg_image_editor_file($file_id, $user)
         'refusal'  => null,
         'row'      => $row,
         'path'     => $path,
+        'local'    => FILE_DIRECTORY_PATH . '/' . $row['name'],
         'type'     => (int) $size[2],
         'animated' => $animated,
         // A design file is written over only by administrators (0) and
@@ -644,6 +658,20 @@ function pg_image_editor_open($request, $user)
         $file_id = (int) db_value("SELECT id FROM files WHERE name = '" . e($request['file_name']) . "' LIMIT 1");
     }
 
+    // An animation the editor made opens as its document (the render part).
+    $animation = pg_image_editor_animation_open($file_id, $user);
+
+    if ($animation !== null) {
+        return $animation;
+    }
+
+    // An SVG file opens as layers (the SVG part below).
+    $svg = pg_image_editor_svg_open($file_id, $user);
+
+    if ($svg !== null) {
+        return $svg;
+    }
+
     $file = pg_image_editor_file($file_id, $user);
 
     if ($file['refusal']) {
@@ -651,6 +679,13 @@ function pg_image_editor_open($request, $user)
     }
 
     $state = pg_file_versions_open_state((int) $file['row']['id'], $file['path']);
+    $canvas = pg_image_editor_canvas_open_doc((int) $file['row']['id']);
+
+    // A canvas opens from its document, its layers editable.
+    if ($canvas) {
+        $state['doc'] = $canvas;
+        $state['base'] = 0;
+    }
 
     return array(array(
         'status' => 'success',
@@ -665,7 +700,9 @@ function pg_image_editor_open($request, $user)
         // the browser loads instead of the file (action picture).
         'versions' => $state['count'],
         'doc'      => $state['doc'],
-        'base'     => $state['base']), 200);
+        'base'     => $state['base'],
+        // A canvas file: doc is its document, opened as a blank board.
+        'canvas'   => (bool) $canvas), 200);
 }
 
 /**
@@ -872,41 +909,7 @@ function pg_image_editor_save($request, $user)
     @set_time_limit(120);
 
     if ($check['artboard']) {
-        $folder = isset($request['folder_id']) ? (int) $request['folder_id'] : 0;
-
-        if ($folder <= 0) {
-            return pg_image_editor_refusal(lang('Invalid request.'));
-        }
-
-        // The bin folder takes no new file, as the File Manager's upload and
-        // move refuse it.
-        if (!check_edit_access($folder) || pg_folder_binned($folder)) {
-            return pg_image_editor_refusal(lang('Access denied'), 403);
-        }
-
-        $base = preg_replace('/\.[a-z0-9]{2,5}$/i', '', trim(isset($request['name']) ? (string) $request['name'] : ''));
-        $name = get_unique_name(array('name' => prepare_file_name((($base !== '') ? $base : lang('New image')) . '.png'), 'type' => 'file'));
-
-        if (pg_upload_name_blocked($name)) {
-            return pg_image_editor_refusal(pg_upload_blocked_message($name));
-        }
-
-        $path = FILE_DIRECTORY_PATH . '/' . $name;
-        $temporary = $path . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.tmp';
-
-        if (!pg_image_editor_take_png(isset($request['picture']) ? $request['picture'] : '', $temporary, $check['artboard']['width'], $check['artboard']['height'])) {
-            return pg_image_editor_refusal(lang('Invalid request.'));
-        }
-
-        // The browser's PNG is recompressed when that makes it smaller.
-        pg_process_image_file($temporary);
-
-        if (!@rename($temporary, $path)) {
-            @unlink($temporary);
-            return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
-        }
-
-        return pg_image_editor_record('new', $name, $folder, 'png', null, $user);
+        return pg_image_editor_save_canvas($request, $check['artboard'], $mode, $user);
     }
 
     if (($mode !== 'replace') && ($mode !== 'copy')) {
@@ -917,6 +920,18 @@ function pg_image_editor_save($request, $user)
 
     if ($file['refusal']) {
         return $file['refusal'];
+    }
+
+    // A file keeps its format and its address: a save in another format is
+    // a copy beside it.
+    $export = pg_image_editor_export_options(isset($request['export']) ? $request['export'] : null, pg_image_editor_export_format_of($file['type']), pg_image_editor_export_formats());
+
+    if ($export === false) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    if (($export['format'] !== '') && ($mode === 'replace')) {
+        $mode = 'copy';
     }
 
     if (($mode === 'replace') && !$file['replace']) {
@@ -930,10 +945,22 @@ function pg_image_editor_save($request, $user)
     $name = (string) $file['row']['name'];
     $overlay = '';
 
+    // The canvas grown or trimmed around the picture; the overlay is drawn
+    // at its size.
+    $extend = pg_image_edit_extend(isset($request['extend']) ? $request['extend'] : null, $edit['out_w'], $edit['out_h']);
+
+    if ($extend === false) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    if ($extend) {
+        $edit['extend'] = $extend;
+    }
+
     if (!empty($request['overlay'])) {
         $overlay = FILE_DIRECTORY_PATH . '/' . $name . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.overlay.tmp';
 
-        if (!pg_image_editor_take_png($request['overlay'], $overlay, $edit['out_w'], $edit['out_h'])) {
+        if (!pg_image_editor_take_png($request['overlay'], $overlay, $extend ? $extend['w'] : $edit['out_w'], $extend ? $extend['h'] : $edit['out_h'])) {
             return pg_image_editor_refusal(lang('Invalid request.'));
         }
 
@@ -989,6 +1016,9 @@ function pg_image_editor_save($request, $user)
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
+    // The picture as it was opened, for its camera details.
+    $picture = $source;
+
     // A server without Imagick has no colour matrix: the browser sends the
     // picture it loaded with the colour step done (the colour layer), of its
     // shape and no larger, and the rest is drawn from that in the file's type.
@@ -1015,10 +1045,12 @@ function pg_image_editor_save($request, $user)
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
-    // Encoded for quality, as the file manager's rotate button does: the
-    // operator asked for a changed picture, not a lighter file, and a replace
-    // is the next edit's original.
-    $report = pg_image_edit_apply($source, $edit, array('quality' => 92));
+    // Encoded for quality (92) in the file's own format and size, as the
+    // file manager's rotate button does: the operator asked for a changed
+    // picture, not a lighter file, and a replace is the next edit's
+    // original. The export panel's settings change these.
+    list($edit, $engine) = pg_image_editor_export_edit($edit, $export);
+    $report = pg_image_edit_apply($source, $edit, $engine);
 
     if ($overlay !== '') {
         @unlink($overlay);
@@ -1034,8 +1066,10 @@ function pg_image_editor_save($request, $user)
         return pg_image_editor_refusal(pg_image_editor_report_message($report, $name));
     }
 
+    $report['data'] = pg_image_editor_export_camera($report['data'], $export, $picture);
+
     if ($mode === 'copy') {
-        $name = get_unique_name(array('name' => prepare_file_name($name), 'type' => 'file'));
+        $name = get_unique_name(array('name' => prepare_file_name(($export['format'] !== '') ? pg_image_editor_export_name($name, $export['format']) : $name), 'type' => 'file'));
 
         if (pg_upload_name_blocked($name)) {
             return pg_image_editor_refusal(pg_upload_blocked_message($name));
@@ -1046,7 +1080,13 @@ function pg_image_editor_save($request, $user)
         return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
     }
 
-    $record = pg_image_editor_record($mode, $name, (int) $file['row']['folder'], (string) $file['row']['type'], $file['row'], $user);
+    $type = ($export['format'] !== '') ? strtolower(pathinfo($name, PATHINFO_EXTENSION)) : (string) $file['row']['type'];
+    $record = pg_image_editor_record($mode, $name, (int) $file['row']['folder'], $type, $file['row'], $user);
+
+    // A copy keeps no document: its pictures live in its pixels only.
+    if ($mode === 'replace') {
+        $record = pg_image_editor_pictures_saved($record, $request, (int) $file['row']['folder'], $user);
+    }
 
     if (($mode === 'replace') && $base && ($record[0]['status'] === 'success')) {
         pg_file_versions_after_save((int) $file['row']['id'], FILE_DIRECTORY_PATH . '/' . $name, isset($request['doc_object']) ? $request['doc_object'] : null, $base, $user['id'], !empty($redactions));
@@ -1084,11 +1124,13 @@ function pg_image_editor_arrays($value)
  *       (and versions, doc, base: the versions this file has)
  *   { token, action: 'save', mode: 'replace'|'copy'|'new', file_id | folder_id,
  *     doc, base? (the version the document is drawn on), overlay?, picture?
- *     and name? (new) }
+ *     and name? (new), export? (pg_image_editor_export_options(): another
+ *     format makes a replace a copy) }
  *       -> { status, mode, id, name, folder, url, width, height, size }
  *   { token, action: '<name>', … }
  *       -> pg_image_editor_action_<name>($request, $user), a tool's own
- *
+ *   { token, action: 'animation', … } then a line end and a file's bytes
+ *       -> the bytes in $request['binary'] (pg_image_editor_binary_body())
 
  * @param string $body the raw request body
  * @param array  $user validate_user()
@@ -1119,6 +1161,14 @@ function pg_image_editor_api($body, $user)
     // version (an empty {} stays one), the rest is read as arrays. The
     // overlay and colour strings are shared, not copied.
     $objects = json_decode($body);
+    $binary = '';
+
+    // A file the browser made (action animation) follows the request's line
+    // as raw bytes.
+    if (!is_object($objects)) {
+        list($body, $binary) = pg_image_editor_binary_body($body);
+        $objects = json_decode($body);
+    }
 
     if (!is_object($objects)) {
         return pg_image_editor_refusal(lang('Invalid request.'));
@@ -1126,6 +1176,7 @@ function pg_image_editor_api($body, $user)
 
     $request = pg_image_editor_arrays($objects);
     $request['doc_object'] = isset($objects->doc) ? $objects->doc : null;
+    $request['binary'] = $binary;
 
     // Checked here, not by validate_token_field(), which reads $_POST (a JSON
     // body never fills it) and answers with a page.
@@ -1496,19 +1547,26 @@ function pg_image_editor_sticker_rows($rows, $folders)
 
 /**
  * The WHERE clause of the sticker panel's listing: pictures only, none in
- * the Recycle Bin (pg_image_editor_file() treats those as offline), a
+ * the Recycle Bin (pg_image_editor_file() treats those as offline), no ERP
+ * document (expense receipts and signatures are personal data kept in
+ * read-only virtual folders, left out like every other picker does), a
  * role-3 user's folders only, and the name search. The folders are filtered
  * here, before the LIMIT, so a user whose folders hold none of the newest
  * pictures still sees theirs.
  *
- * @param string     $search  the name search ('' for none)
- * @param array|null $folders the folder ids a role-3 user may reach; null for every folder
- * @param array      $bin     the Recycle Bin's folder ids
+ * @param string     $search    the name search ('' for none)
+ * @param array|null $folders   the folder ids a role-3 user may reach; null for every folder
+ * @param array      $bin       the Recycle Bin's folder ids
+ * @param bool|null  $erp_ready whether files.erp_doc_type exists; null asks the schema
  * @return string|null the clause, or null when the user may reach no folder
  */
-function pg_image_editor_sticker_where($search, $folders, $bin)
+function pg_image_editor_sticker_where($search, $folders, $bin, $erp_ready = null)
 {
-    $where = "(type IN ('jpg', 'jpeg', 'png', 'gif', 'webp')) AND (name != '')";
+    if ($erp_ready === null) {
+        $erp_ready = function_exists('waf_table_has_column') && waf_table_has_column('files', 'erp_doc_type');
+    }
+
+    $where = "(type IN ('jpg', 'jpeg', 'png', 'gif', 'webp')) AND (name != '')" . ($erp_ready ? " AND (erp_doc_type = '')" : '');
     $ids = function ($list) {
         return implode(', ', array_map(function ($id) { return "'" . (int) $id . "'"; }, $list));
     };
@@ -1815,7 +1873,7 @@ function pg_file_versions_doc_json($doc, $base_no)
         return '';
     }
 
-    $doc = clone $doc;
+    $doc = pg_image_editor_animation_strip(clone $doc);
     $doc->source = clone $doc->source;
     $doc->source->base = (int) $base_no;
     $json = json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -1888,9 +1946,10 @@ function pg_file_versions_matches_file($row, $path)
  * @param string $source      save, restore, redact, copy or new
  * @param int    $user_id
  * @param bool   $redacted a save that burned a redaction in
+ * @param string $animation the format of an animation the editor saved
  * @return array|null the row written
  */
-function pg_file_versions_add($file_id, $source_path, $doc_json, $source, $user_id, $redacted = false)
+function pg_file_versions_add($file_id, $source_path, $doc_json, $source, $user_id, $redacted = false, $animation = '')
 {
     $size = @getimagesize($source_path);
     $bytes = (int) @filesize($source_path);
@@ -1900,7 +1959,14 @@ function pg_file_versions_add($file_id, $source_path, $doc_json, $source, $user_
         $formats[IMAGETYPE_AVIF] = 'avif';
     }
 
-    if (!$size || ($bytes <= 0) || !isset($formats[(int) $size[2]])) {
+    // An animation the editor saved that is no picture (a video, a PDF)
+    // is kept under its own extension, without a size.
+    if (!$size && ($animation !== '') && array_key_exists($animation, pg_image_editor_animation_formats()) && ($bytes > 0)) {
+        $size = array(0, 0, $animation);
+        $formats[$animation] = $animation;
+    }
+
+    if (!$size || ($bytes <= 0) || !isset($formats[$size[2]])) {
         return null;
     }
 
@@ -1911,7 +1977,7 @@ function pg_file_versions_add($file_id, $source_path, $doc_json, $source, $user_
     }
 
     $version_no = (int) db_value("SELECT MAX(version_no) FROM file_versions WHERE file_id = '" . (int) $file_id . "'") + 1;
-    $name = pg_file_versions_stored_name($file_id, $version_no, $formats[(int) $size[2]], sha1(uniqid((string) mt_rand(), true) . $source_path));
+    $name = pg_file_versions_stored_name($file_id, $version_no, $formats[$size[2]], sha1(uniqid((string) mt_rand(), true) . $source_path));
     $path = $dir . '/' . $name;
 
     if (($name === '') || !@copy($source_path, $path)) {
@@ -1919,7 +1985,7 @@ function pg_file_versions_add($file_id, $source_path, $doc_json, $source, $user_
     }
 
     $saved = db_q("INSERT INTO file_versions (file_id, version_no, doc_json, doc_hash, stored_name, format, width, height, size, redacted, user_id, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP())", array(
-        (int) $file_id, $version_no, (string) $doc_json, ($doc_json === '') ? '' : sha1($doc_json), $name, $formats[(int) $size[2]],
+        (int) $file_id, $version_no, (string) $doc_json, ($doc_json === '') ? '' : sha1($doc_json), $name, $formats[$size[2]],
         (int) $size[0], (int) $size[1], $bytes, $redacted ? 1 : 0, (int) $user_id, (string) $source));
 
     if (!$saved) {
@@ -2036,10 +2102,12 @@ function pg_file_versions_sweep($seconds = 5)
     return $removed;
 }
 
-// The bytes the files and their versions take, for Disk Usage.
+// The bytes the files and their versions take on this disk, for Disk Usage.
+// Files moved to the object store are not on the disk; System Info and the
+// System Status tile count them apart (pg_file_storage_usage()).
 function pg_files_disk_usage()
 {
-    $bytes = (float) db_value("SELECT SUM(size) FROM files");
+    $bytes = pg_file_storage_usage()['local_bytes'];
 
     if (pg_file_versions_ready()) {
         $bytes += (float) db_value("SELECT SUM(size) FROM file_versions");
@@ -2262,9 +2330,12 @@ function pg_image_editor_action_restore($request, $user)
 
     $data = @file_get_contents(pg_file_versions_path($row));
 
-    if (!is_string($data) || !pg_image_editor_put($file['path'], $data)) {
+    if (!is_string($data) || !pg_image_editor_put($file['local'], $data)) {
         return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
     }
+
+    // The restored bytes are the file now, whatever was read before.
+    $file['path'] = $file['local'];
 
     $record = pg_image_editor_record('replace', (string) $file['row']['name'], (int) $file['row']['folder'], (string) $file['row']['type'], $file['row'], $user);
 
@@ -2353,11 +2424,340 @@ function pg_image_editor_strings_artboard()
         'anchorBottomRight' => lang('Bottom right'),
         'fitContent'        => lang('Fit to content'),
         'fitSelection'      => lang('Fit to the selection'),
+        'frameOutside'      => lang('Outside the picture (the canvas grows)'),
         'hintArtboard'      => lang('Drag the edges and corners: the artwork stays, the canvas slides over it. Shift keeps the ratio, Alt sizes from the center.'),
         'hintImage'         => lang('Choose an image, or drop or paste one onto the canvas.'),
         'imagePick'         => lang('Choose an image from this computer'),
         'imageNote'         => lang('You can also drop an image onto the canvas or paste one.'),
     );
+}
+
+/**
+ * The canvas a picture's save is laid on (saveLayout() of the model): w x h
+ * whole pixels, the picture's top left x, y on it (below 0: trimmed) and the
+ * fill, '#rrggbb' or 'transparent'. Some of the picture (out_w x out_h) has
+ * to lie on the canvas. Pure.
+ *
+ * @return array|null|false w, h, x, y, fill (array(r, g, b) or null for
+ *                          transparent); null for none, false when refused
+ */
+function pg_image_edit_extend($value, $out_w, $out_h)
+{
+    if ($value === null) {
+        return null;
+    }
+
+    if (!is_array($value)) {
+        return false;
+    }
+
+    $w = isset($value['w']) ? pg_image_edit_number($value['w'], 1, 8000) : null;
+    $h = isset($value['h']) ? pg_image_edit_number($value['h'], 1, 8000) : null;
+
+    if (($w === null) || ($h === null)) {
+        return false;
+    }
+
+    $x = isset($value['x']) ? pg_image_edit_number($value['x'], 1 - $out_w, $w - 1) : null;
+    $y = isset($value['y']) ? pg_image_edit_number($value['y'], 1 - $out_h, $h - 1) : null;
+    $fill = isset($value['fill']) ? $value['fill'] : null;
+
+    if (($x === null) || ($y === null) || (floor($w) != $w) || (floor($h) != $h) || (floor($x) != $x) || (floor($y) != $y)) {
+        return false;
+    }
+
+    if ($fill === 'transparent') {
+        $fill = null;
+    } elseif (is_string($fill) && preg_match('/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i', $fill, $m)) {
+        $fill = array(hexdec($m[1]), hexdec($m[2]), hexdec($m[3]));
+    } else {
+        return false;
+    }
+
+    return array('w' => (int) $w, 'h' => (int) $h, 'x' => (int) $x, 'y' => (int) $y, 'fill' => $fill);
+}
+
+/**
+ * The pictures of image layers that came from this computer (picked,
+ * dropped or pasted): the browser sends them beside the document as
+ * pictures [{id: the layer's, data: a PNG or JPEG data: URL, name}]. Pure:
+ * the list kept, or false when it is no such list (at most 50).
+ *
+ * @return array|false
+ */
+function pg_image_editor_picture_list($value)
+{
+    if ($value === null) {
+        return array();
+    }
+
+    if (!is_array($value) || (count($value) > 50)) {
+        return false;
+    }
+
+    $list = array();
+
+    foreach ($value as $item) {
+        if (!is_array($item) || !isset($item['id'], $item['data']) || !is_string($item['id']) || !preg_match('/^[a-z0-9_-]{1,64}$/i', $item['id'])
+            || !is_string($item['data']) || !preg_match('#^data:image/(png|jpeg);base64,#', substr($item['data'], 0, 32))) {
+            return false;
+        }
+
+        $list[] = array('id' => $item['id'], 'data' => $item['data'], 'name' => (isset($item['name']) && is_string($item['name'])) ? $item['name'] : '');
+    }
+
+    return $list;
+}
+
+/**
+ * After a save that succeeded: each picture of the request kept as a file
+ * in $folder (its own files row, named after the file it came from) and its
+ * layer in the document pointed at it (src, fileId), so the version keeps a
+ * document without pixels in it. Only a written save leaves files: an edit
+ * that is cancelled sent nothing. A picture that cannot be kept is left in
+ * the document as it came (the version then keeps the drawn pixels).
+ *
+ * @param array $record   pg_image_editor_record()'s answer
+ * @param array $request  the save request; its doc_object is changed
+ * @return array $record, with pictures: layer id => {id, url}
+ */
+function pg_image_editor_pictures_saved($record, &$request, $folder, $user)
+{
+    $list = pg_image_editor_picture_list(isset($request['pictures']) ? $request['pictures'] : null);
+
+    if (($record[0]['status'] !== 'success') || !$list || !check_edit_access($folder) || pg_folder_binned($folder)) {
+        return $record;
+    }
+
+    $saved = array();
+
+    foreach ($list as $picture) {
+        $type = (strncmp($picture['data'], 'data:image/png', 14) === 0) ? 'png' : 'jpg';
+        $base = preg_replace('/\.[a-z0-9]{2,5}$/i', '', trim(pg_basename(str_replace('\\', '/', $picture['name']))));
+        $name = get_unique_name(array('name' => prepare_file_name((($base !== '') ? $base : lang('Picture')) . '.' . $type), 'type' => 'file'));
+
+        if (pg_upload_name_blocked($name)) {
+            continue;
+        }
+
+        $path = FILE_DIRECTORY_PATH . '/' . $name;
+        $temporary = $path . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.tmp';
+
+        if (!pg_image_editor_take_picture($picture['data'], $temporary)) {
+            continue;
+        }
+
+        // The site's upload cap, as a File Manager upload has it.
+        $settings = pg_image_settings();
+
+        if (!pg_image_upload_cap_apply($temporary, $settings['upload_max_dimension'], $settings['resize_quality'])) {
+            pg_process_image_file($temporary);
+        }
+
+        if (!@rename($temporary, $path)) {
+            @unlink($temporary);
+            continue;
+        }
+
+        $row = pg_image_editor_record('new', $name, $folder, $type, null, $user);
+
+        if ($row[0]['status'] === 'success') {
+            $saved[$picture['id']] = array('id' => (int) $row[0]['id'], 'url' => PATH . encode_url_path($name));
+        }
+    }
+
+    $doc = isset($request['doc_object']) ? $request['doc_object'] : null;
+
+    if ($saved && is_object($doc) && isset($doc->layers) && is_array($doc->layers)) {
+        foreach ($doc->layers as $layer) {
+            if (is_object($layer) && isset($layer->id) && is_string($layer->id) && isset($saved[$layer->id])) {
+                $layer->src = $saved[$layer->id]['url'];
+                $layer->fileId = $saved[$layer->id]['id'];
+            }
+        }
+    }
+
+    $record[0]['pictures'] = (object) $saved;
+
+    return $record;
+}
+
+/**
+ * A canvas's save (an artboard document): the browser's PNG (picture) at
+ * the board's size, written as a new file into folder_id (new), over the
+ * canvas file_id (replace) or beside it (copy). The pictures from this
+ * computer become files and the document is kept as the file's newest
+ * version, so the canvas opens again with its layers.
+ *
+ * @param array $board width and height of pg_image_edit_validate()
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_save_canvas($request, $board, $mode, $user)
+{
+    $row = null;
+
+    if ($mode === 'new') {
+        $folder = isset($request['folder_id']) ? (int) $request['folder_id'] : 0;
+
+        if ($folder <= 0) {
+            return pg_image_editor_refusal(lang('Invalid request.'));
+        }
+
+        // The bin folder takes no new file, as the File Manager's upload and
+        // move refuse it.
+        if (!check_edit_access($folder) || pg_folder_binned($folder)) {
+            return pg_image_editor_refusal(lang('Access denied'), 403);
+        }
+
+        $base = preg_replace('/\.[a-z0-9]{2,5}$/i', '', trim(isset($request['name']) ? (string) $request['name'] : ''));
+        $name = get_unique_name(array('name' => prepare_file_name((($base !== '') ? $base : lang('New image')) . '.png'), 'type' => 'file'));
+
+    } elseif (($mode === 'replace') || ($mode === 'copy')) {
+        $file = pg_image_editor_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
+
+        if ($file['refusal']) {
+            return $file['refusal'];
+        }
+
+        // A canvas is a PNG; a replace writes a PNG over a PNG only.
+        if (($mode === 'replace') && (!$file['replace'] || ($file['type'] !== IMAGETYPE_PNG))) {
+            return pg_image_editor_refusal(lang('Access denied'), 403);
+        }
+
+        $row = $file['row'];
+        $folder = (int) $row['folder'];
+        $name = ($mode === 'replace') ? (string) $row['name']
+            : get_unique_name(array('name' => prepare_file_name(preg_replace('/\.[a-z0-9]{2,5}$/i', '', (string) $row['name']) . '.png'), 'type' => 'file'));
+
+    } else {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    if (pg_upload_name_blocked($name)) {
+        return pg_image_editor_refusal(pg_upload_blocked_message($name));
+    }
+
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+    $temporary = $path . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.tmp';
+
+    if (!pg_image_editor_take_png(isset($request['picture']) ? $request['picture'] : '', $temporary, $board['width'], $board['height'])) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    // The browser's PNG is recompressed when that makes it smaller.
+    pg_process_image_file($temporary);
+
+    if (!@rename($temporary, $path)) {
+        @unlink($temporary);
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    $record = pg_image_editor_record(($mode === 'replace') ? 'replace' : 'new', $name, $folder, 'png', $row, $user);
+    $record = pg_image_editor_pictures_saved($record, $request, $folder, $user);
+
+    if ($record[0]['status'] === 'success') {
+        $record[0]['mode'] = $mode;
+
+        // After the pictures: the kept document points at their files.
+        if (pg_image_editor_canvas_keep((int) $record[0]['id'], isset($request['doc_object']) ? $request['doc_object'] : null, $user['id'], ($mode === 'replace') ? 'saved' : 'new')
+            && ($mode === 'replace')) {
+            pg_file_versions_prune((int) $record[0]['id']);
+        }
+    }
+
+    return $record;
+}
+
+/**
+ * Is this the document of a canvas: version 1, an artboard with its size, no
+ * source picture? Works on the array and the object decode alike. Pure.
+ *
+ * @param mixed $doc
+ * @return bool
+ */
+function pg_image_editor_canvas_is_doc($doc)
+{
+    if (is_object($doc)) {
+        $doc = json_decode(json_encode($doc), true);
+    }
+
+    if (!is_array($doc) || ((isset($doc['v']) ? $doc['v'] : null) !== 1) || !empty($doc['source'])) {
+        return false;
+    }
+
+    $board = isset($doc['artboard']) ? $doc['artboard'] : null;
+
+    return is_array($board) && isset($board['width'], $board['height'])
+        && is_numeric($board['width']) && is_numeric($board['height'])
+        && ($board['width'] >= 1) && ($board['height'] >= 1);
+}
+
+/**
+ * The canvas document as kept in a version row: JSON, or '' when it is no
+ * canvas or may not be kept (pg_file_versions_doc_storable()). The object
+ * decode keeps an empty {} an object. Pure.
+ *
+ * @param mixed $doc the editor's document, decoded as objects
+ * @return string
+ */
+function pg_image_editor_canvas_doc_json($doc)
+{
+    if (!is_object($doc) || !pg_image_editor_canvas_is_doc($doc)) {
+        return '';
+    }
+
+    $json = json_encode(pg_image_editor_animation_strip($doc), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    return (is_string($json) && pg_file_versions_doc_storable($json)) ? $json : '';
+}
+
+/**
+ * Keeps a canvas's document beside the file just written from it, as the
+ * file's newest version ($source 'new' for a new file, 'saved' over one).
+ * Nothing when the versions table is not installed yet or the document may
+ * not be kept.
+ *
+ * @param int    $file_id
+ * @param mixed  $doc     decoded as objects
+ * @param int    $user_id
+ * @param string $source
+ * @return bool kept
+ */
+function pg_image_editor_canvas_keep($file_id, $doc, $user_id, $source = 'new')
+{
+    $json = pg_image_editor_canvas_doc_json($doc);
+    $stored = ($json !== '') ? (string) db_value("SELECT name FROM files WHERE id = '" . (int) $file_id . "'") : '';
+
+    if (($stored === '') || !pg_file_versions_ready()) {
+        return false;
+    }
+
+    return (bool) pg_file_versions_add((int) $file_id, FILE_DIRECTORY_PATH . '/' . basename($stored), $json, $source, $user_id);
+}
+
+/**
+ * The canvas document a file was drawn from, while the file still holds
+ * those pixels (not changed outside since); null for any other picture.
+ *
+ * @param int $file_id
+ * @return object|null decoded as objects
+ */
+function pg_image_editor_canvas_open_doc($file_id)
+{
+    if (!pg_file_versions_ready()) {
+        return null;
+    }
+
+    $stored = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $file_id . "'");
+    $newest = ($stored !== '') ? pg_file_versions_newest((int) $file_id) : null;
+
+    if (!$newest || ((string) $newest['doc_json'] === '') || !pg_file_versions_matches_file($newest, FILE_DIRECTORY_PATH . '/' . basename($stored))) {
+        return null;
+    }
+
+    $doc = json_decode((string) $newest['doc_json']);
+
+    return (is_object($doc) && pg_image_editor_canvas_is_doc($doc)) ? $doc : null;
 }
 
 // -- Export (pg_image_editor_export.js) --
@@ -2369,7 +2769,299 @@ function pg_image_editor_strings_artboard()
  */
 function pg_image_editor_strings_export()
 {
-    return array();
+    return array(
+        'hintExport'      => lang('Settings apply to the saved file; the original stays in versions.'),
+        'exportSettings'  => lang('Export settings…'),
+        'exFormat'        => lang('Format'),
+        'exKeep'          => lang('Original'),
+        'exQuality'       => lang('Quality'),
+        'exEdge'          => lang('Longest edge'),
+        'exOriginal'      => lang('Original'),
+        'exOptions'       => lang('Options'),
+        'exProgressive'   => lang('Progressive JPEG'),
+        'exColors'        => lang('Reduce to 256 colours'),
+        'exMeta'          => lang('Metadata'),
+        'exGps'           => lang('Location (GPS) is always removed'),
+        'exExif'          => lang('Remove camera details'),
+        'exExifGone'      => lang('Camera details are kept only when a JPEG is saved as a JPEG.'),
+        'exSrgb'          => lang('Convert colours to sRGB'),
+        'exResult'        => lang('Result'),
+        'exBefore'        => lang('Before'),
+        'exAfter'         => lang('After'),
+        'exWorking'       => lang('Calculating…'),
+        'exUnknown'       => lang('The size could not be calculated.'),
+        'exCopyNote'      => lang('Another format is saved as a copy; the file keeps its own format and address.'),
+        'exSaveWith'      => lang('Save with these settings'),
+    );
+}
+
+// The format name of an IMAGETYPE_*: jpeg, png, webp, avif, gif, bmp or ''.
+// Pure.
+function pg_image_editor_export_format_of($type)
+{
+    $names = array(IMAGETYPE_JPEG => 'jpeg', IMAGETYPE_PNG => 'png', IMAGETYPE_GIF => 'gif', IMAGETYPE_BMP => 'bmp');
+
+    if (defined('IMAGETYPE_WEBP')) {
+        $names[IMAGETYPE_WEBP] = 'webp';
+    }
+
+    if (defined('IMAGETYPE_AVIF')) {
+        $names[constant('IMAGETYPE_AVIF')] = 'avif';
+    }
+
+    return isset($names[(int) $type]) ? $names[(int) $type] : '';
+}
+
+// The formats a save may write on this server: JPEG and PNG always, WebP and
+// AVIF when a library here writes them.
+function pg_image_editor_export_formats()
+{
+    $formats = array('jpeg', 'png');
+
+    foreach (array('webp', 'avif') as $format) {
+        if (pg_image_format_writer($format) !== '') {
+            $formats[] = $format;
+        }
+    }
+
+    return $formats;
+}
+
+/**
+ * A save's export settings (the panel's, M.exportRequest()), checked. Pure.
+ *
+ * @param mixed  $value   the request's export: null keeps everything as it was
+ * @param string $own     the file's own format (pg_image_editor_export_format_of())
+ * @param array  $formats what this server writes (pg_image_editor_export_formats())
+ * @return array|false format ('' keeps the file's own), quality, edge (0 keeps
+ *                     the size), colors (0 or 256, PNG only), progressive
+ *                     (JPEG), camera (camera details kept, JPEG to JPEG),
+ *                     srgb (converted to sRGB where the server can); false
+ *                     when a value is not one the panel sends
+ */
+function pg_image_editor_export_options($value, $own, $formats)
+{
+    $options = array('format' => '', 'quality' => 92, 'edge' => 0, 'colors' => 0, 'progressive' => true, 'camera' => false, 'srgb' => false);
+
+    if ($value === null) {
+        return $options;
+    }
+
+    if (!is_array($value)) {
+        return false;
+    }
+
+    if (isset($value['format'])) {
+        if (!is_string($value['format']) || !in_array($value['format'], $formats, true)) {
+            return false;
+        }
+
+        $options['format'] = ($value['format'] === $own) ? '' : $value['format'];
+    }
+
+    if (isset($value['quality'])) {
+        if (!is_int($value['quality']) || ($value['quality'] < 40) || ($value['quality'] > 100)) {
+            return false;
+        }
+
+        $options['quality'] = $value['quality'];
+    }
+
+    if (isset($value['edge'])) {
+        if (!in_array($value['edge'], array(2560, 1920, 1280, 1080), true)) {
+            return false;
+        }
+
+        $options['edge'] = $value['edge'];
+    }
+
+    $format = ($options['format'] !== '') ? $options['format'] : $own;
+
+    if (isset($value['colors'])) {
+        if (($value['colors'] !== 256) || ($format !== 'png')) {
+            return false;
+        }
+
+        $options['colors'] = 256;
+    }
+
+    if (isset($value['progressive'])) {
+        if (($value['progressive'] !== false) || ($format !== 'jpeg')) {
+            return false;
+        }
+
+        $options['progressive'] = false;
+    }
+
+    // Camera details go from a JPEG into a JPEG (M.exportCamera()).
+    if (isset($value['camera'])) {
+        if (($value['camera'] !== true) || ($own !== 'jpeg') || ($format !== 'jpeg')) {
+            return false;
+        }
+
+        $options['camera'] = true;
+    }
+
+    if (isset($value['srgb'])) {
+        if ($value['srgb'] !== true) {
+            return false;
+        }
+
+        $options['srgb'] = true;
+    }
+
+    return $options;
+}
+
+// A file name with the extension of another format: photo.png as jpeg is
+// photo.jpg. Pure.
+function pg_image_editor_export_name($name, $format)
+{
+    $extension = ($format === 'jpeg') ? 'jpg' : $format;
+    $dot = strrpos($name, '.');
+
+    return (($dot === false) || ($dot === 0) ? $name : substr($name, 0, $dot)) . '.' . $extension;
+}
+
+/**
+ * The written JPEG with the camera details of $picture (the file as it was
+ * opened) when the settings keep them: make, model, lens, exposure, dates,
+ * never the location or the thumbnail (pg_image_exif_camera()). Anything
+ * else, or a picture without them, is $data as it was.
+ *
+ * @return string
+ */
+function pg_image_editor_export_camera($data, $options, $picture)
+{
+    if (empty($options['camera'])) {
+        return $data;
+    }
+
+    $segments = pg_image_jpeg_app_segments($picture, 0xE1, "Exif\x00\x00");
+    $tiff = $segments ? pg_image_exif_camera(substr($segments[0], 6)) : '';
+    $with = ($tiff !== '') ? pg_image_jpeg_embed_exif($data, $tiff) : false;
+
+    return is_string($with) ? $with : $data;
+}
+
+/**
+ * The recipe and the engine's options for the export settings: WebP and AVIF
+ * through the engine's format, JPEG and PNG as the type the edit writes, the
+ * longest edge, colour reduction and progressive JPEG as edit steps. Pure.
+ *
+ * @param array $edit    pg_image_edit_validate()'s recipe
+ * @param array $options pg_image_editor_export_options()
+ * @return array array(recipe, pg_process_image_file() options)
+ */
+function pg_image_editor_export_edit($edit, $options)
+{
+    $engine = array('quality' => $options['quality']);
+
+    if (($options['format'] === 'webp') || ($options['format'] === 'avif')) {
+        $engine['format'] = $options['format'];
+    } elseif ($options['format'] === 'jpeg') {
+        $edit['type'] = IMAGETYPE_JPEG;
+    } elseif ($options['format'] === 'png') {
+        $edit['type'] = IMAGETYPE_PNG;
+    }
+
+    if ($options['edge'] > 0) {
+        $edit['edge'] = $options['edge'];
+    }
+
+    if ($options['colors'] > 0) {
+        $edit['colors'] = $options['colors'];
+    }
+
+    if (!$options['progressive']) {
+        $edit['progressive'] = false;
+    }
+
+    if ($options['srgb']) {
+        $edit['srgb'] = true;
+    }
+
+    return array($edit, $engine);
+}
+
+/**
+ * Action estimate: the size a save with these export settings would write,
+ * encoded here with the same engine; the overlay and the redaction are left
+ * out (they change a few bytes, not the format's weight), and on a server
+ * without Imagick the colour step too.
+ *
+ *   { file_id, doc, base?, export? }
+ *     -> { before: { size, width, height }, after: { size, width, height },
+ *          formats, colors }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_estimate($request, $user)
+{
+    $check = pg_image_edit_validate(isset($request['doc']) ? $request['doc'] : null);
+
+    if (($check['error'] !== '') || $check['artboard']) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    $file = pg_image_editor_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
+
+    if ($file['refusal']) {
+        return $file['refusal'];
+    }
+
+    $formats = pg_image_editor_export_formats();
+    $export = pg_image_editor_export_options(isset($request['export']) ? $request['export'] : null, pg_image_editor_export_format_of($file['type']), $formats);
+    $edit = $check['edit'];
+    $edit['first_frame'] = true;
+    $extend = pg_image_edit_extend(isset($request['extend']) ? $request['extend'] : null, $edit['out_w'], $edit['out_h']);
+
+    if (($export === false) || ($extend === false)) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    if ($extend) {
+        $edit['extend'] = $extend;
+    }
+
+    if (!class_exists('Imagick')) {
+        $edit['color'] = null;
+    }
+
+    // Drawn on the version the browser opened, as a save is.
+    $source = $file['path'];
+    $base_id = isset($request['base']) ? (int) $request['base'] : 0;
+
+    if ($base_id > 0) {
+        $base = pg_file_versions_ready() ? pg_file_versions_row((int) $file['row']['id'], $base_id) : null;
+
+        if (!$base) {
+            return pg_image_editor_refusal(lang('Invalid request.'));
+        }
+
+        $source = pg_file_versions_path($base);
+    }
+
+    @set_time_limit(60);
+
+    list($edit, $engine) = pg_image_editor_export_edit($edit, $export);
+    $report = pg_image_edit_apply($source, $edit, $engine);
+    $size = @getimagesize($file['path']);
+    $result = array(
+        'status'  => 'success',
+        'before'  => array('size' => (int) @filesize($file['path']), 'width' => $size ? (int) $size[0] : 0, 'height' => $size ? (int) $size[1] : 0),
+        'after'   => null,
+        'formats' => $formats,
+        // Colour reduction is Imagick's; GD's palette loses the alpha.
+        'colors'  => class_exists('Imagick'),
+        // sRGB needs Imagick converting through lcms and the sRGB profile.
+        'srgb'    => pg_image_imagick_converts() && (pg_image_srgb_icc() !== ''));
+
+    if (($report['status'] === 'success') && is_string($report['data'])) {
+        $result['after'] = array('size' => strlen(pg_image_editor_export_camera($report['data'], $export, $source)), 'width' => (int) $report['width'], 'height' => (int) $report['height']);
+    }
+
+    return array($result, 200);
 }
 
 // -- Vector (pg_image_editor_vector.js) --
@@ -2394,6 +3086,1119 @@ function pg_image_editor_strings_vector()
         'pathClosed'     => lang('Closed'),
         'finishPath'     => lang('Finish'),
         'convertToPath'  => lang('Convert to path'),
+        'hintScissors'   => lang('Click a path: cut it there. Drag across paths: cut where the line crosses.'),
+        'scissorsNote'   => lang('Click a path or shape to cut it at that point: an open path becomes two, a closed one opens. Drag a line across paths to cut each where it crosses. A shape becomes a path first.'),
+    );
+}
+
+// -- SVG (pg_image_editor_svg.js) --
+
+/**
+ * The SVG part: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_svg()
+{
+    return array(
+        'layer_svg'         => lang('SVG element'),
+        'svgOpenError'      => lang('This SVG file cannot be opened in the image editor.'),
+        'svgKeptNote'       => lang('This part of the SVG is kept as it was written. It can be moved, but not edited here.'),
+        'svgFill'           => lang('Fill'),
+        'svgStroke'         => lang('Outline'),
+        'svgText'           => lang('Text'),
+        'svgKind_path'      => lang('Path'),
+        'svgKind_rect'      => lang('Rectangle'),
+        'svgKind_circle'    => lang('Circle'),
+        'svgKind_ellipse'   => lang('Ellipse'),
+        'svgKind_line'      => lang('Line'),
+        'svgKind_polyline'  => lang('Polyline'),
+        'svgKind_polygon'   => lang('Polygon'),
+        'svgKind_text'      => lang('Text'),
+        'svgKind_g'         => lang('Group'),
+        'svgKind_image'     => lang('Picture'),
+        'svgKind_kept'      => lang('Kept element'),
+    );
+}
+
+/**
+ * The files row of an SVG the editor opens or saves, with the same gates as
+ * pg_image_editor_file() (Recycle Bin, ERP documents, folder access, design
+ * files); null when the row is not an SVG.
+ *
+ * @return array|null refusal or null; row, path, replace
+ */
+function pg_image_editor_svg_file($file_id, $user)
+{
+    $file_id = (int) $file_id;
+    $row = ($file_id > 0) ? db_item("SELECT id, name, folder, type, design FROM files WHERE id = '" . e($file_id) . "' LIMIT 1") : null;
+
+    if (!$row || (strtolower((string) $row['type']) !== 'svg')) {
+        return null;
+    }
+
+    if (pg_folder_binned((int) $row['folder'])) {
+        return array('refusal' => pg_image_editor_refusal(lang('Sorry, we could not find the file.')));
+    }
+
+    if (pg_files_include_erp_document(array($row['id']))) {
+        return array('refusal' => pg_image_editor_refusal(lang('ERP documents are read-only in the file manager.'), 403));
+    }
+
+    if (!check_edit_access((int) $row['folder'])) {
+        return array('refusal' => pg_image_editor_refusal(lang('Access denied'), 403));
+    }
+
+    return array(
+        'refusal' => null,
+        'row'     => $row,
+        'path'    => pg_file_local_copy((int) $row['id']),
+        // A design file is written over only by administrators and designers.
+        'replace' => !(((int) $row['design'] === 1) && ($user['role'] > 1)));
+}
+
+/**
+ * The open answer for an SVG file: its sanitized text instead of a picture
+ * address; null when the file is not an SVG (the picture path answers).
+ *
+ * @return array|null array(payload, HTTP status)
+ */
+function pg_image_editor_svg_open($file_id, $user)
+{
+    $file = pg_image_editor_svg_file($file_id, $user);
+
+    if ($file === null) {
+        return null;
+    }
+
+    if ($file['refusal']) {
+        return $file['refusal'];
+    }
+
+    $bytes = is_file($file['path']) ? (int) @filesize($file['path']) : 0;
+    $svg = (($bytes > 0) && ($bytes <= pg_svg_sanitize_max_bytes())) ? pg_svg_sanitize((string) @file_get_contents($file['path'])) : '';
+
+    if ($svg === '') {
+        return pg_image_editor_refusal(lang('This SVG file cannot be opened in the image editor.'));
+    }
+
+    return array(array(
+        'status'   => 'success',
+        'file'     => array(
+            'id'      => (int) $file['row']['id'],
+            'name'    => (string) $file['row']['name'],
+            'url'     => PATH . encode_url_path($file['row']['name']) . '?v=' . (int) @filemtime($file['path']),
+            'replace' => $file['replace'],
+            'notice'  => ''),
+        'svg'      => $svg,
+        'versions' => 0,
+        'doc'      => null,
+        'base'     => 0), 200);
+}
+
+/**
+ * Action svg_save: the browser's SVG of an opened SVG file, through
+ * pg_svg_sanitize(), over the file (replace) or beside it (copy).
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_svg_save($request, $user)
+{
+    $mode = isset($request['mode']) ? (string) $request['mode'] : '';
+
+    if (($mode !== 'replace') && ($mode !== 'copy')) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    $file = pg_image_editor_svg_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
+
+    if ($file === null) {
+        return pg_image_editor_refusal(lang('This file cannot be opened in the image editor.'));
+    }
+
+    if ($file['refusal']) {
+        return $file['refusal'];
+    }
+
+    if (($mode === 'replace') && !$file['replace']) {
+        return pg_image_editor_refusal(lang('Access denied'), 403);
+    }
+
+    $svg = pg_svg_sanitize(isset($request['svg']) ? $request['svg'] : '');
+
+    if ($svg === '') {
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    $svg = pg_image_editor_svg_motion_add($svg, isset($request['motion']) ? $request['motion'] : null);
+
+    $name = (string) $file['row']['name'];
+
+    if ($mode === 'copy') {
+        $name = get_unique_name(array('name' => prepare_file_name($name), 'type' => 'file'));
+
+        if (pg_upload_name_blocked($name)) {
+            return pg_image_editor_refusal(pg_upload_blocked_message($name));
+        }
+    }
+
+    if (!pg_image_editor_put(FILE_DIRECTORY_PATH . '/' . $name, '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . $svg . "\n")) {
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    return pg_image_editor_record($mode, $name, (int) $file['row']['folder'], 'svg', $file['row'], $user);
+}
+
+/**
+ * A sanitized SVG with its layers' motion: one <style> the server writes
+ * from the numbers (pg_image_editor_svg_motion_css()), first in the root,
+ * which gets an id when it has none. The SVG as it was when nothing moves
+ * or the numbers are refused.
+ *
+ * @param string $svg    pg_svg_sanitize()'s output
+ * @param mixed  $motion the request's motion (M.svgMotion())
+ *
+ * @return string
+ */
+function pg_image_editor_svg_motion_add($svg, $motion)
+{
+    if (!is_array($motion) || !class_exists('DOMDocument')) {
+        return $svg;
+    }
+
+    $dom = new DOMDocument();
+
+    if (!@$dom->loadXML($svg, LIBXML_NONET) || !$dom->documentElement) {
+        return $svg;
+    }
+
+    $root = $dom->documentElement;
+    $id = $root->getAttribute('id');
+
+    if (!preg_match('/^[A-Za-z][A-Za-z0-9_-]{0,63}$/', $id)) {
+        $id = 'pgsvg-' . substr(sha1($svg), 0, 10);
+    }
+
+    $css = pg_image_editor_svg_motion_css($motion, $id);
+
+    if ($css === '') {
+        return $svg;
+    }
+
+    $root->setAttribute('id', $id);
+
+    $style = $dom->createElementNS('http://www.w3.org/2000/svg', 'style');
+    $style->appendChild($dom->createCDATASection($css));
+    $root->insertBefore($style, $root->firstChild);
+
+    $out = $dom->saveXML($root);
+
+    return ($out === false) ? $svg : $out;
+}
+
+/**
+ * The @keyframes of an SVG's moving layers, from numbers only: for each
+ * layer its group (class pgm-n, a child of the root #$id: a stale class on a
+ * nested group never matches) turns about its centre
+ * through the sampled frames, the plays as the document's (0 forever),
+ * all inside prefers-reduced-motion: no-preference, so a reader who asks
+ * for less motion sees every layer at rest. '' when anything is out of
+ * range: nothing the browser sent reaches the file as text.
+ *
+ * @param mixed  $motion { duration, loop, layers: [{ n, cx, cy, frames: [[percent, opacity, x, y, scale, rot]] }] }
+ * @param string $id     the root's id
+ *
+ * @return string
+ */
+function pg_image_editor_svg_motion_css($motion, $id)
+{
+    if (!is_array($motion) || !isset($motion['duration'], $motion['layers']) || !is_array($motion['layers'])
+        || !preg_match('/^[A-Za-z][A-Za-z0-9_-]{0,63}$/', (string) $id)) {
+        return '';
+    }
+
+    $duration = $motion['duration'];
+    $loop = isset($motion['loop']) ? $motion['loop'] : 0;
+
+    if (!is_int($duration) || ($duration < 1000) || ($duration > 60000) || !is_int($loop) || ($loop < 0) || ($loop > 1000)
+        || !$motion['layers'] || (count($motion['layers']) > 500)) {
+        return '';
+    }
+
+    $number = function ($v, $min, $max) {
+        return ((is_int($v) || is_float($v)) && is_finite((float) $v) && ($v >= $min) && ($v <= $max));
+    };
+    $text = function ($v) {
+        $s = rtrim(rtrim(sprintf('%.3F', $v), '0'), '.');
+
+        return ($s === '-0') ? '0' : $s;
+    };
+
+    $rules = array();
+    $seen = array();
+
+    foreach ($motion['layers'] as $layer) {
+        if (!is_array($layer) || !isset($layer['n'], $layer['cx'], $layer['cy'], $layer['frames']) || !is_int($layer['n'])
+            || ($layer['n'] < 0) || ($layer['n'] > 9999) || isset($seen[$layer['n']])
+            || !$number($layer['cx'], -1e6, 1e6) || !$number($layer['cy'], -1e6, 1e6)
+            || !is_array($layer['frames']) || (count($layer['frames']) < 2) || (count($layer['frames']) > 101)) {
+            return '';
+        }
+
+        $seen[$layer['n']] = true;
+        $name = $id . '-pgm-' . $layer['n'];
+        $steps = array();
+        $last = -1;
+
+        foreach ($layer['frames'] as $f) {
+            if (!is_array($f) || (count($f) !== 6) || (array_keys($f) !== range(0, 5)) || !$number($f[0], 0, 100) || ($f[0] <= $last)
+                || !$number($f[1], 0, 1) || !$number($f[2], -1e6, 1e6) || !$number($f[3], -1e6, 1e6) || !$number($f[4], 0, 100) || !$number($f[5], -1e6, 1e6)) {
+                return '';
+            }
+
+            $last = $f[0];
+            $steps[] = $text($f[0]) . '%{opacity:' . $text($f[1]) . ';transform:translate(' . $text($layer['cx'] + $f[2]) . 'px,' . $text($layer['cy'] + $f[3]) . 'px) rotate('
+                . $text($f[5]) . 'deg) scale(' . $text($f[4]) . ') translate(' . $text(-$layer['cx']) . 'px,' . $text(-$layer['cy']) . 'px)}';
+        }
+
+        $rules[] = '#' . $id . ' > .pgm-' . $layer['n'] . '{transform-box:view-box;transform-origin:0 0;animation:' . $name . ' ' . $text($duration / 1000) . 's linear '
+            . ($loop ? $loop : 'infinite') . ' both}' . "\n" . '@keyframes ' . $name . '{' . implode('', $steps) . '}';
+    }
+
+    return '@media (prefers-reduced-motion: no-preference){' . "\n" . implode("\n", $rules) . "\n" . '}';
+}
+
+// -- Motion (pg_image_editor_motion.js) --
+
+/**
+ * The Animate tool: labels. {from}, {to} and {n} are filled in by the script.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_motion()
+{
+    return array(
+        'tool_motion'          => lang('Animate'),
+        'hintMotion'           => lang('Select a layer and give it an entrance, a loop and an exit. K: play or pause'),
+        'motionPick'           => lang('Select a layer to give it motion.'),
+        'motionNothing'        => lang('Add a text or a sticker, then give it motion here.'),
+        'motionAddSticker'     => lang('Add a sticker'),
+        'motionStill'          => lang('A redaction does not move: what it hides would show.'),
+        'motionLayers'         => lang('{n} layers'),
+        'motionIn'             => lang('Entrance'),
+        'motionLoop'           => lang('Loop'),
+        'motionOut'            => lang('Exit'),
+        'motion_inKinds'       => lang('Entrance kinds'),
+        'motion_loopKinds'     => lang('Loop kinds'),
+        'motion_outKinds'      => lang('Exit kinds'),
+        'motion_none'          => lang('None'),
+        'motion_fade'          => lang('Fade'),
+        'motion_slide'         => lang('Sliding'),
+        'motion_rise'          => lang('Rise'),
+        'motion_pop'           => lang('Pop'),
+        'motion_zoom'          => lang('Zooming'),
+        'motion_wipe'          => lang('Wipe'),
+        'motion_spin'          => lang('Spin'),
+        'motion_type'          => lang('Typewriter'),
+        'motion_draw'          => lang('Draw on'),
+        'motion_pulse'         => lang('Pulse'),
+        'motion_float'         => lang('Floating'),
+        'motion_blink'         => lang('Blink'),
+        'motion_wiggle'        => lang('Wiggle'),
+        'motion_swing'         => lang('Swing'),
+        'motionTextOnly'       => lang('Only for a text layer'),
+        'motionShapeOnly'      => lang('Only for a shape, a pen line or a path'),
+        'motionDirection'      => lang('Direction'),
+        'motionDir_left'       => lang('Left'),
+        'motionDir_up'         => lang('Up'),
+        'motionDir_right'      => lang('Right'),
+        'motionDir_down'       => lang('Down'),
+        'motionDelay'          => lang('Delay'),
+        'motionDuration'       => lang('Duration'),
+        'motionPeriod'         => lang('One cycle'),
+        'motionEase'           => lang('Easing'),
+        'motionEase_linear'    => lang('Linear'),
+        'motionEase_out'       => lang('Ease out'),
+        'motionEase_in'        => lang('Ease in'),
+        'motionEase_in-out'    => lang('Gentle'),
+        'motionEase_back'      => lang('Overshoot'),
+        'motionEase_bounce'    => lang('Bounce'),
+        'motionSaysIn'         => lang('Enters {from}–{to}'),
+        'motionSaysLoop'       => lang('loops {from}–{to}'),
+        'motionSaysOut'        => lang('leaves {from}–{to}'),
+        'motionSecondsUnit'    => lang('s'),
+        'motionRemove'         => lang('Remove'),
+        'motionWhole'          => lang('Whole animation'),
+        'motionLength'         => lang('Length'),
+        'motionRepeatCount'    => lang('Repeat'),
+        'motionForever'        => lang('Forever'),
+        'motionTimes'          => lang('{n} times'),
+        'motionBase'           => lang('Picture move'),
+        'motionBase_none'      => lang('None'),
+        'motionBase_zoomin'    => lang('Slow zoom in'),
+        'motionBase_zoomout'   => lang('Slow zoom out'),
+        'motionBase_panleft'   => lang('Pan left'),
+        'motionBase_panright'  => lang('Pan right'),
+        'motionBar'            => lang('Animation preview'),
+        'motionPlay'           => lang('Play (K)'),
+        'motionPause'          => lang('Pause (K)'),
+        'motionScrub'          => lang('Playhead'),
+        'motionRepeat'         => lang('Repeat the preview'),
+    );
+}
+
+// -- Tracks (pg_image_editor_tracks.js) --
+
+/**
+ * The tracks part's labels: the rows under the play bar and the Animate
+ * tool's hint while they show.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_tracks()
+{
+    return array(
+        'tracksRegion' => lang('Animation tracks'),
+        'tracksNote'   => lang('Drag a bar on its track to change when it plays, and its ends to change how long. Shift turns off the 0.1 s step.'),
+        'tracksLayers' => lang('Layers'),
+        'hintTracks'   => lang('Tracks: drag to move, ends change the duration, Shift turns off the 0.1 s step. K: play or pause'),
+    );
+}
+
+// -- Keyframes (pg_image_editor_keyframes.js) --
+
+/**
+ * The keyframes part's labels: the Animate tool's Path tab, the key at the
+ * playhead and the diamonds on the tracks. {time} is a time in seconds.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_keyframes()
+{
+    return array(
+        'keysTab'     => lang('Path'),
+        'keysNote'    => lang('Move the playhead, then drag the layer on the stage: where you put it becomes its place at that moment.'),
+        'keysOne'     => lang('Select one layer to give it a path.'),
+        'keysList'    => lang('Keyframes'),
+        'keysAdd'     => lang('Add a keyframe at {time}'),
+        'keysAt'      => lang('Keyframe at {time}'),
+        'keysX'       => lang('Across'),
+        'keysY'       => lang('Down'),
+        'keysScale'   => lang('Size'),
+        'keysRot'     => lang('Turn'),
+        'keysOpacity' => lang('Opacity'),
+        'keysEase'    => lang('Easing into this keyframe'),
+        'keysRemove'  => lang('Remove keyframe'),
+        'keysClear'   => lang('Remove all keyframes'),
+        'keysDiamond' => lang('Keyframe at {time}. Drag to move it, Delete removes it.'),
+    );
+}
+
+// -- Render (pg_image_editor_render.js) --
+
+/**
+ * Frames and the Save animation dialog: labels. {n}, {count} and {name} are
+ * filled in by the script.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_render()
+{
+    return array(
+        'animSave'        => lang('Save animation'),
+        'animTitle'       => lang('Save the animation'),
+        'animPreview'     => lang('Preview'),
+        'animFormat'      => lang('Format'),
+        'animFormat_gif'  => lang('GIF'),
+        'animFormat_apng' => lang('APNG'),
+        'animFormat_webp' => lang('WebP'),
+        'animFormat_mp4'  => lang('MP4 video'),
+        'animFormat_webm' => lang('WebM video'),
+        'animSize'        => lang('Longest edge'),
+        'animRate'        => lang('Frame rate'),
+        'animFps'         => lang('fps'),
+        'animRepeat'      => lang('Repeat'),
+        'animForever'     => lang('Forever'),
+        'animTimes'       => lang('{n} times'),
+        'animDither'      => lang('Smooth colour steps (dithering)'),
+        'animEstimating'  => lang('Working out the size…'),
+        'animFrames'      => lang('{n} frames'),
+        'animTooLong'     => lang('This format holds at most {n} s. Shorten the animation to save it.'),
+        'animLocal'       => lang('Frames are drawn and encoded in this browser.'),
+        'animDownload'    => lang('Download'),
+        'animKeepOpen'    => lang('Keep this window open. Cancel writes nothing.'),
+        'animStep_base'   => lang('Picture from the server'),
+        'animStep_frames' => lang('Drawing frames'),
+        'animStep_encode' => lang('Encoding the file'),
+        'animFrameOf'     => lang('Frame {n} / {count}'),
+        'animDone'        => lang('{name} is downloaded.'),
+        'animError'       => lang('Sorry, the animation could not be made.'),
+        'animSaveFiles'   => lang('Save to Files'),
+        'animReplace'     => lang('Replace {name}'),
+        'animLimit'       => lang('Files take up to {size} here.'),
+        'animOverLimit'   => lang('Larger than the {size} Files take here. Download it, or make it smaller.'),
+        'animUseSmaller'  => lang('Use {size} at {fps} ({bytes})'),
+        'animStep_upload' => lang('Saving into Files'),
+        'animSaved'       => lang('{name} is saved in Files.'),
+        'animSaveError'   => lang('Sorry, the animation could not be saved.'),
+    );
+}
+
+/**
+ * Action base { file_id, doc, base, redact, colour }: the picture an
+ * animation's frames are drawn on, its layers left out: the document's
+ * crop, turn and colour on the version the browser opened, the redaction
+ * burned in (pg_image_editor_render()). Nothing is written.
+ *
+ * @return array array(payload, HTTP status); payload data holds the bytes
+ *               image_editor_api.php sends instead of JSON
+ */
+function pg_image_editor_action_base($request, $user)
+{
+    $file = pg_image_editor_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
+
+    if ($file['refusal']) {
+        return $file['refusal'];
+    }
+
+    if (!isset($request['doc']) || !is_array($request['doc']) || !empty($request['doc']['artboard'])) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    $source = $file['path'];
+    $base_id = isset($request['base']) ? (int) $request['base'] : 0;
+
+    if ($base_id > 0) {
+        $base = pg_file_versions_ready() ? pg_file_versions_row((int) $file['row']['id'], $base_id) : null;
+
+        if (!$base) {
+            return pg_image_editor_refusal(lang('Invalid request.'));
+        }
+
+        $source = pg_file_versions_path($base);
+    }
+
+    // The layers are drawn by the browser, frame by frame.
+    $request['doc']['layers'] = array();
+    unset($request['overlay']);
+
+    $made = pg_image_editor_render($source, $request);
+
+    if ($made['error'] !== '') {
+        return pg_image_editor_refusal($made['error']);
+    }
+
+    $types = array('jpg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp', 'gif' => 'image/gif');
+
+    return array(array('status' => 'success', 'data' => $made['data'], 'type' => $types[$made['extension']]), 200);
+}
+
+/**
+ * The animation formats a file is saved in and their files.type and MIME
+ * type. Pure.
+ *
+ * @return array extension => MIME type
+ */
+function pg_image_editor_animation_formats()
+{
+    return array('gif' => 'image/gif', 'png' => 'image/apng', 'webp' => 'image/webp', 'mp4' => 'video/mp4', 'webm' => 'video/webm', 'pdf' => 'application/pdf');
+}
+
+/**
+ * An animation's format told by its bytes, never its name: GIF, APNG (an
+ * acTL chunk before the first IDAT), animated WebP (VP8X with the animation
+ * flag), MP4 (an ftyp box first), WebM (EBML with the webm doctype), PDF.
+ * Pure.
+ *
+ * @param string $bytes the file, or at least its first 4 KB
+ * @return string an extension of pg_image_editor_animation_formats(), or ''
+ */
+function pg_image_editor_animation_type($bytes)
+{
+    $bytes = (string) $bytes;
+    $head = substr($bytes, 0, 4096);
+
+    if ((strncmp($head, 'GIF89a', 6) === 0) || (strncmp($head, 'GIF87a', 6) === 0)) {
+        return 'gif';
+    }
+
+    if (strncmp($head, "\x89PNG\r\n\x1a\n", 8) === 0) {
+        // Chunks in order: an APNG's acTL comes before its first IDAT.
+        for ($at = 8; $at + 8 <= strlen($bytes);) {
+            $length = unpack('N', substr($bytes, $at, 4));
+            $type = substr($bytes, $at + 4, 4);
+
+            if ($type === 'acTL') {
+                return 'png';
+            }
+
+            if (($type === 'IDAT') || ($type === 'IEND')) {
+                return '';
+            }
+
+            $at += 12 + $length[1];
+        }
+
+        return '';
+    }
+
+    if ((strncmp($head, 'RIFF', 4) === 0) && (substr($head, 8, 8) === 'WEBPVP8X') && (strlen($head) >= 21)) {
+        return (ord($head[20]) & 0x02) ? 'webp' : '';
+    }
+
+    if (substr($head, 4, 4) === 'ftyp') {
+        return 'mp4';
+    }
+
+    // EBML: the doctype element (0x4282) names webm; plain Matroska is not
+    // a browser's video.
+    if (strncmp($head, "\x1a\x45\xdf\xa3", 4) === 0) {
+        $at = strpos(substr($head, 0, 64), "\x42\x82");
+
+        if (($at !== false) && isset($head[$at + 2])) {
+            $size = ord($head[$at + 2]) & 0x7f;
+
+            return (substr($head, $at + 3, $size) === 'webm') ? 'webm' : '';
+        }
+
+        return '';
+    }
+
+    if (strncmp($head, '%PDF-', 5) === 0) {
+        return 'pdf';
+    }
+
+    return '';
+}
+
+/**
+ * A body of image_editor_api.php that carries a file: one line of JSON (the
+ * request; JSON.stringify() writes no line end), then the file's bytes as
+ * they are, so nothing is sent base64 encoded. Pure.
+ *
+ * @param string $body
+ * @return array array(JSON text, bytes; '' when the body is JSON alone)
+ */
+function pg_image_editor_binary_body($body)
+{
+    $body = (string) $body;
+    $end = strpos($body, "\n");
+
+    return ($end === false) ? array($body, '') : array(substr($body, 0, $end), (string) substr($body, $end + 1));
+}
+
+/**
+ * The document an animation file's version keeps: the browser's (decoded as
+ * objects) with an animation member naming the file its frames are drawn
+ * from (0 for a canvas), the version_no of that file's base row and the
+ * format; '' when it may not be kept (pg_file_versions_doc_storable()).
+ * Pure.
+ *
+ * @return string JSON
+ */
+function pg_image_editor_animation_doc_json($doc, $source_id, $base_no, $format)
+{
+    $formats = pg_image_editor_animation_formats();
+
+    if (!is_object($doc) || !isset($formats[(string) $format])) {
+        return '';
+    }
+
+    // The base is the source file's version, so it is not written into
+    // source.base, which names a version of the file the row belongs to.
+    $doc = clone $doc;
+    $doc->animation = (object) array('source' => (int) $source_id, 'base' => (int) $base_no, 'format' => (string) $format);
+    $json = json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    return (is_string($json) && pg_file_versions_doc_storable($json)) ? $json : '';
+}
+
+/**
+ * The version rows action animation writes are marked by their source, on
+ * the server; the document's animation member alone proves nothing. Pure.
+ */
+function pg_image_editor_animation_source()
+{
+    return 'animation';
+}
+
+/**
+ * A document the browser sent, without an animation member: only action
+ * animation writes one (pg_image_editor_animation_doc_json()). Works on the
+ * object decode, which it copies. Pure.
+ *
+ * @param mixed $doc
+ * @return mixed
+ */
+function pg_image_editor_animation_strip($doc)
+{
+    if (is_object($doc) && property_exists($doc, 'animation')) {
+        $doc = clone $doc;
+        unset($doc->animation);
+    }
+
+    return $doc;
+}
+
+/**
+ * The animation member of a kept document, or null for any other. Pure.
+ *
+ * @param string $json a version row's doc_json
+ * @return array|null source, base, format
+ */
+function pg_image_editor_animation_of($json)
+{
+    $doc = ((string) $json !== '') ? json_decode((string) $json, true) : null;
+    $animation = (is_array($doc) && isset($doc['animation']) && is_array($doc['animation'])) ? $doc['animation'] : null;
+    $formats = pg_image_editor_animation_formats();
+
+    if (!$animation || !isset($animation['source'], $animation['base'], $animation['format'])
+        || !is_int($animation['source']) || !is_int($animation['base']) || !is_string($animation['format']) || !isset($formats[$animation['format']])) {
+        return null;
+    }
+
+    return array('source' => $animation['source'], 'base' => $animation['base'], 'format' => $animation['format']);
+}
+
+/**
+ * The largest animation a save takes: the upload limit, the request size
+ * and the memory the body is read into (two copies of it at the peak),
+ * from pg_upload_limits(); 0 when nothing bounds it. Pure.
+ *
+ * @param array $limits pg_upload_limits()
+ * @return int bytes
+ */
+function pg_image_editor_animation_limit($limits)
+{
+    $bounds = array();
+
+    foreach (array('file_max', 'request_max') as $key) {
+        if (!empty($limits[$key])) {
+            $bounds[] = (int) $limits[$key];
+        }
+    }
+
+    // json_max is the memory left over 2.9 copies of a body; a binary body
+    // is held twice.
+    if (!empty($limits['json_max'])) {
+        $bounds[] = (int) floor($limits['json_max'] * 2.9 / 2);
+    }
+
+    return $bounds ? min($bounds) : 0;
+}
+
+/**
+ * An animation file the editor made: its row, while the file still holds the
+ * newest version's bytes and that version's document names the animation.
+ *
+ * @param int $file_id
+ * @return array|null row, path, doc (decoded as objects), animation
+ *                    (pg_image_editor_animation_of())
+ */
+function pg_image_editor_animation_file($file_id)
+{
+    if (((int) $file_id <= 0) || !pg_file_versions_ready()) {
+        return null;
+    }
+
+    $row = db_item("SELECT id, name, folder, type, design FROM files WHERE id = '" . (int) $file_id . "' LIMIT 1");
+    $path = $row ? pg_file_local_copy((int) $row['id']) : '';
+    $newest = (($path !== '') && is_file($path)) ? pg_file_versions_newest((int) $row['id']) : null;
+    $animation = $newest ? pg_image_editor_animation_of($newest['doc_json']) : null;
+
+    // Only a row action animation wrote: a document a still save kept is
+    // the browser's, which could name any file as its source.
+    if (!$animation || ((string) $newest['source'] !== pg_image_editor_animation_source()) || !pg_file_versions_matches_file($newest, $path)) {
+        return null;
+    }
+
+    $doc = json_decode((string) $newest['doc_json']);
+
+    return is_object($doc) ? array('row' => $row, 'path' => $path, 'doc' => $doc, 'animation' => $animation) : null;
+}
+
+/**
+ * Opening an animation the editor made: its document again, its frames from
+ * the source file (or the canvas it was drawn as). A still save never writes
+ * over the source from here (replace false); Save animation replaces the
+ * animation in the same format. Null for any other file, which opens as
+ * before (a still copy of an animated one).
+ *
+ * @return array|null array(payload, HTTP status)
+ */
+function pg_image_editor_animation_open($file_id, $user)
+{
+    $made = pg_image_editor_animation_file($file_id);
+
+    if (!$made) {
+        return null;
+    }
+
+    $row = $made['row'];
+
+    if (pg_folder_binned((int) $row['folder']) || !check_edit_access((int) $row['folder'])) {
+        return null;
+    }
+
+    $animation = array(
+        'id'      => (int) $row['id'],
+        'name'    => (string) $row['name'],
+        'format'  => $made['animation']['format'],
+        'replace' => !(((int) $row['design'] === 1) && ($user['role'] > 1)));
+    $versions = count(pg_file_versions_rows((int) $row['id']));
+
+    if ($made['animation']['source'] === 0) {
+        if (!pg_image_editor_canvas_is_doc($made['doc'])) {
+            return null;
+        }
+
+        return array(array(
+            'status'    => 'success',
+            'file'      => array('id' => (int) $row['id'], 'name' => (string) $row['name'], 'url' => '', 'replace' => false, 'notice' => ''),
+            'versions'  => $versions,
+            'doc'       => $made['doc'],
+            'base'      => 0,
+            'canvas'    => true,
+            'animation' => $animation), 200);
+    }
+
+    $source = pg_image_editor_file($made['animation']['source'], $user);
+
+    if ($source['refusal']) {
+        return null;
+    }
+
+    // The pixels the frames were drawn on: the source's base row. Once the
+    // source's retention removed it the animation opens as a still copy.
+    $base = 0;
+
+    if ($made['animation']['base'] > 0) {
+        $base = (int) db_value("SELECT version_id FROM file_versions WHERE file_id = '" . (int) $source['row']['id'] . "' AND version_no = '" . (int) $made['animation']['base'] . "' AND doc_json = '' LIMIT 1");
+        $kept = ($base > 0) ? pg_file_versions_row((int) $source['row']['id'], $base) : null;
+
+        if (!$kept || !is_file(pg_file_versions_path($kept))) {
+            return null;
+        }
+    }
+
+    return array(array(
+        'status'    => 'success',
+        'file'      => array(
+            'id'      => (int) $source['row']['id'],
+            'name'    => (string) $source['row']['name'],
+            'url'     => PATH . encode_url_path($source['row']['name']) . '?v=' . (int) @filemtime($source['path']),
+            'replace' => false,
+            'notice'  => lang(array('string' => 'Editing the animation {var:1}: its frames are drawn from {var:2}.', 'vars' => array((string) $row['name'], (string) $source['row']['name'])))),
+        'versions'  => count(pg_file_versions_rows((int) $source['row']['id'])),
+        'doc'       => $made['doc'],
+        'base'      => $base,
+        'canvas'    => false,
+        'animation' => $animation), 200);
+}
+
+/**
+ * Action animation: the file the browser encoded, sent after the request's
+ * line as it is (pg_image_editor_binary_body()), saved into Files.
+ *
+ *   { mode: 'new', file_id (the source, or a saved canvas) | folder_id (a
+ *     canvas not saved yet), name?, base?, doc }
+ *       a new file beside the source, in the canvas's folder
+ *   { mode: 'replace', target, file_id | folder_id, base?, doc }
+ *       over an animation the editor made, in the same format
+ *
+ * Its version keeps the document with the source file's id and base, so it
+ * opens again for editing (pg_image_editor_animation_open()).
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_animation($request, $user)
+{
+    $bytes = isset($request['binary']) ? (string) $request['binary'] : '';
+    $format = pg_image_editor_animation_type($bytes);
+    $mode = isset($request['mode']) ? (string) $request['mode'] : '';
+    $doc = isset($request['doc_object']) ? $request['doc_object'] : null;
+
+    if (($format === '') || !is_object($doc) || (($mode !== 'new') && ($mode !== 'replace'))) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    $limit = pg_image_editor_animation_limit(pg_upload_limits());
+
+    if (($limit > 0) && (strlen($bytes) > $limit)) {
+        return pg_image_editor_refusal(lang(array('string' => 'The image is larger than this server accepts in one request ({var:1}).', 'vars' => convert_bytes_to_string($limit))), 413);
+    }
+
+    @set_time_limit(120);
+
+    $canvas = pg_image_editor_canvas_is_doc($doc);
+    $file_id = isset($request['file_id']) ? (int) $request['file_id'] : 0;
+    $source_id = 0;
+    $base_no = 0;
+    $stem = '';
+
+    if (!$canvas) {
+        $file = pg_image_editor_file($file_id, $user);
+
+        if ($file['refusal']) {
+            return $file['refusal'];
+        }
+
+        $source_id = (int) $file['row']['id'];
+        $folder = (int) $file['row']['folder'];
+        $stem = (string) $file['row']['name'];
+        $base_id = isset($request['base']) ? (int) $request['base'] : 0;
+
+        // The pixels the frames are drawn on stay as a base row of the
+        // source, so the animation opens again on the same picture.
+        if (pg_file_versions_ready()) {
+            $base = ($base_id > 0) ? pg_file_versions_row($source_id, $base_id) : pg_file_versions_before_save($source_id, $file['path'], 0, $user['id']);
+
+            if (!$base || ((string) $base['doc_json'] !== '')) {
+                return pg_image_editor_refusal(lang('Invalid request.'));
+            }
+
+            $base_no = (int) $base['version_no'];
+        }
+
+    } elseif ($file_id > 0) {
+        // A saved canvas, with the same checks as opening it (the bin, an
+        // ERP document, edit access).
+        $file = pg_image_editor_file($file_id, $user);
+
+        if ($file['refusal']) {
+            return $file['refusal'];
+        }
+
+        $folder = (int) $file['row']['folder'];
+        $stem = (string) $file['row']['name'];
+
+    } else {
+        $folder = isset($request['folder_id']) ? (int) $request['folder_id'] : 0;
+        $stem = isset($request['name']) ? (string) $request['name'] : '';
+    }
+
+    // A file outside every folder (an ERP document's) gets no animation
+    // beside it.
+    if ($folder <= 0) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    // The bin folder takes no new file, as the File Manager's upload and
+    // move refuse it.
+    if (!check_edit_access($folder) || pg_folder_binned($folder)) {
+        return pg_image_editor_refusal(lang('Access denied'), 403);
+    }
+
+    $target = null;
+
+    if ($mode === 'replace') {
+        $made = pg_image_editor_animation_file(isset($request['target']) ? $request['target'] : 0);
+
+        if (!$made || ($made['animation']['source'] !== $source_id)) {
+            return pg_image_editor_refusal(lang('Invalid request.'));
+        }
+
+        if ($made['animation']['format'] !== $format) {
+            return pg_image_editor_refusal(lang('An animation is replaced only by one in the same format. Save it as a new file instead.'));
+        }
+
+        $target = $made['row'];
+
+        if (pg_folder_binned((int) $target['folder']) || !check_edit_access((int) $target['folder']) || (((int) $target['design'] === 1) && ($user['role'] > 1))) {
+            return pg_image_editor_refusal(lang('Access denied'), 403);
+        }
+
+        $name = (string) $target['name'];
+        $folder = (int) $target['folder'];
+
+    } else {
+        $stem = pg_file_name_stem(trim($stem));
+        $name = get_unique_name(array('name' => prepare_file_name((($stem !== '') ? $stem : lang('Animation')) . '.' . $format), 'type' => 'file'));
+
+        if (pg_upload_name_blocked($name)) {
+            return pg_image_editor_refusal(pg_upload_blocked_message($name));
+        }
+    }
+
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+
+    if (!pg_image_editor_put($path, $bytes)) {
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    $record = pg_image_editor_record($mode, $name, $folder, $format, $target, $user);
+
+    if ($record[0]['status'] !== 'success') {
+        return $record;
+    }
+
+    $json = pg_file_versions_ready() ? pg_image_editor_animation_doc_json($doc, $source_id, $base_no, $format) : '';
+
+    if ($json !== '') {
+        pg_file_versions_add((int) $record[0]['id'], $path, $json, pg_image_editor_animation_source(), $user['id'], false, $format);
+
+        if ($mode === 'replace') {
+            pg_file_versions_prune((int) $record[0]['id']);
+        }
+    }
+
+    $record[0]['format'] = $format;
+
+    return $record;
+}
+
+// -- Access (pg_image_editor_access.js) --
+
+/**
+ * The access part's labels: the keyboard help sheet, key names, the stage's
+ * name.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_access()
+{
+    return array(
+        'keySpace'      => lang('Space'),
+        'keyDeleteName' => lang('Delete'),
+        'keyArrows'     => lang('Arrow keys'),
+        'keyDrag'       => lang('drag'),
+        'stageLabel'    => lang('Picture. Press ? for the keyboard shortcuts.'),
+        'keysTitle'     => lang('Keyboard shortcuts'),
+        'keysTools'     => lang('Tools'),
+        'keysEdit'      => lang('Editing'),
+        'keysLayers'    => lang('Layers'),
+        'keysView'      => lang('View and zoom'),
+        'keysTouch'     => lang('Touch'),
+        'keyApply'      => lang('Apply the crop'),
+        'keyEscape'     => lang('Cancel, clear the selection, then close'),
+        'keyHelp'       => lang('Show the keyboard shortcuts'),
+        'keyNudge'      => lang('Move the selection by 1 pixel'),
+        'keyNudgeMore'  => lang('Move the selection by 10 pixels'),
+        'keyDelete'     => lang('Delete the selection'),
+        'keyDuplicate'  => lang('Duplicate the selection'),
+        'keyCopy'       => lang('Copy the selection'),
+        'keyPaste'      => lang('Paste a picture or the copied layers'),
+        'keySelectAll'  => lang('Select every layer'),
+        'keyPan'        => lang('Move the view'),
+        'touchPan'      => lang('Two fingers: move and zoom the view'),
+        'touchFit'      => lang('Double tap: actual size or fit to screen'),
+        'touchTwist'    => lang('Hold a layer and twist with a second finger: turn it'),
+    );
+}
+
+// -- Google Fonts (pg_image_editor_fonts.js) --
+
+/**
+ * The Google Fonts choice of the Text tool: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_fonts()
+{
+    return array(
+        'googleFontsChoose' => lang('Choose from Google Fonts'),
+        'googleFonts'       => lang('Google Fonts'),
+        'fontSearch'        => lang('Search fonts'),
+        'fontCategory'      => lang('Font category'),
+        'fontAll'           => lang('All'),
+        'fontCat_sans'      => lang('Sans serif'),
+        'fontCat_serif'     => lang('Serif'),
+        'fontCat_display'   => lang('Display fonts'),
+        'fontCat_hand'      => lang('Handwriting'),
+        'fontCat_mono'      => lang('Monospace'),
+        'fontNone'          => lang('No font matches the search.'),
+    );
+}
+
+// -- Icons and emoji (pg_image_editor_glyph.js) --
+
+/**
+ * The Sticker tool's icons and emoji: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_glyph()
+{
+    return array(
+        'layer_glyph'        => lang('Icon or emoji'),
+        'glyphIcons'         => lang('Icons'),
+        'glyphIcon'          => lang('Icon'),
+        'glyphEmoji'         => lang('Emoji'),
+        'glyphIconFind'      => lang('Search icons by English name'),
+        'glyphIconNone'      => lang('No icon matches the search.'),
+        'glyphIconEnglish'   => lang('Icon names are in English, for example heart or star.'),
+        'glyphIconMore'      => lang('Search to find the other icons.'),
+        'glyphIconError'     => lang('The icons could not be loaded.'),
+        'glyphRecent'        => lang('Recently used'),
+        'glyphColor'         => lang('Icon colour'),
+        'glyphEmojiCategory' => lang('Emoji category'),
+        'glyphChange'        => lang('Change'),
+        'glyphChangeHint'    => lang('Pick a sticker, icon or emoji to put in its place.'),
+        'emojiCat_smileys'   => lang('Smileys'),
+        'emojiCat_people'    => lang('People'),
+        'emojiCat_nature'    => lang('Animals and nature'),
+        'emojiCat_food'      => lang('Food and drink'),
+        'emojiCat_travel'    => lang('Travel and places'),
+        'emojiCat_activities' => lang('Activities'),
+        'emojiCat_objects'   => lang('Objects'),
+        'emojiCat_symbols'   => lang('Symbols'),
+    );
+}
+
+/**
+ * The Bootstrap Icons font the panel ships and its name => code point map,
+ * for the Sticker tool's icons; each address carries the file's time so a
+ * new icon set is fetched again.
+ *
+ * @return array font, map
+ */
+function pg_image_editor_icon_urls()
+{
+    $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/fonts/bootstrap-icons/';
+    $dir = PG_FUNCTIONS_DIR . '/assets/fonts/bootstrap-icons/';
+
+    return array(
+        'font' => $base . 'fonts/bootstrap-icons.woff2?v=' . (int) @filemtime($dir . 'fonts/bootstrap-icons.woff2'),
+        'map'  => $base . 'bootstrap-icons.json?v=' . (int) @filemtime($dir . 'bootstrap-icons.json'),
+    );
+}
+
+// -- Warp (pg_image_editor_warp.js) --
+
+/**
+ * The Warp tool: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_warp()
+{
+    return array(
+        'hintWarp'       => lang('Select a path or shape, then pick a warp.'),
+        'warpNote'       => lang('Select one path, shape or outlined text to warp it.'),
+        'warpTextNote'   => lang('A text is warped once its letters are outlines.'),
+        'warpToOutlines' => lang('Convert to outlines'),
+        'warpStyles'     => lang('Warp styles'),
+        'warp_none'      => lang('None'),
+        'warp_arc'       => lang('Arc'),
+        'warp_arch'      => lang('Arch'),
+        'warp_bulge'     => lang('Bulge'),
+        'warp_flag'      => lang('Flag'),
+        'warp_wave'      => lang('Wave'),
+        'warp_fish'      => lang('Fish'),
+        'warp_rise'      => lang('Rise'),
+        'warp_squeeze'   => lang('Squeeze'),
+        'warp_twist'     => lang('Twist'),
+        'warp_mesh'      => lang('Envelope'),
+        'warpBend'       => lang('Bend'),
+        'warpHorizontal' => lang('Horizontal distortion'),
+        'warpVertical'   => lang('Vertical distortion'),
+        'warpCols'       => lang('Columns'),
+        'warpRows'       => lang('Rows'),
+        'warpMeshNote'   => lang('Drag the mesh points on the picture to shape it.'),
+        'warpMeshPoint'  => lang('Mesh point'),
+        'warpReset'      => lang('Reset mesh'),
+        'warpExpand'     => lang('Expand'),
+        'warpExpandNote' => lang('Expand turns the warp into the path for good.'),
     );
 }
 
@@ -2410,12 +4215,12 @@ function pg_image_editor_strings_vector()
  * @param string $path
  * @param array  $request
  * @return array error: '' or why not; data: the bytes; extension: jpg,
- *               png, webp or gif
+ *               png, webp or gif; redacted: whether areas were burnt in
  */
 function pg_image_editor_render($path, $request)
 {
     $check = pg_image_edit_validate(isset($request['doc']) ? $request['doc'] : null);
-    $refused = array('error' => lang('Invalid request.'), 'data' => '', 'extension' => '');
+    $refused = array('error' => lang('Invalid request.'), 'data' => '', 'extension' => '', 'redacted' => false);
     $size = is_file($path) ? @getimagesize($path) : false;
     $types = array(IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp', IMAGETYPE_GIF => 'gif');
 
@@ -2486,16 +4291,16 @@ function pg_image_editor_render($path, $request)
     pg_image_editor_drop_redactions($redactions);
 
     if (($report['status'] !== 'success') || !is_string($report['data'])) {
-        return array('error' => pg_image_editor_report_message($report, basename($path)), 'data' => '', 'extension' => '');
+        return array('error' => pg_image_editor_report_message($report, basename($path)), 'data' => '', 'extension' => '', 'redacted' => false);
     }
 
     $made = @getimagesizefromstring($report['data']);
 
     if (!$made || !isset($types[(int) $made[2]])) {
-        return array('error' => lang('Sorry, the file could not be saved.'), 'data' => '', 'extension' => '');
+        return array('error' => lang('Sorry, the file could not be saved.'), 'data' => '', 'extension' => '', 'redacted' => false);
     }
 
-    return array('error' => '', 'data' => $report['data'], 'extension' => $types[(int) $made[2]]);
+    return array('error' => '', 'data' => $report['data'], 'extension' => $types[(int) $made[2]], 'redacted' => !empty($redactions));
 }
 
 /**

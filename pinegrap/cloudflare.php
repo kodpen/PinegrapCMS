@@ -281,6 +281,83 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // WebP at a picture's own address: the Cache Rule that keeps a copy per
+    // format. It is added beside the zone's other cache rules, or put right
+    // when it was changed by hand; a token that may not read or write cache
+    // rules gets Cloudflare's reason and the steps on the card.
+    if ($action === 'image_vary_rule') {
+        $cache_rules_path = "zones/{$CF_ZONE_ID}/rulesets/phases/http_request_cache_settings/entrypoint";
+        $resp_rules = cf_request('GET', $cache_rules_path, null, $CF_API_BASE, $CF_API_TOKEN);
+        $vary_plan = pg_cloudflare_image_vary_plan($resp_rules);
+        $vary_rule = pg_cloudflare_image_vary_rule();
+        $resp = null;
+
+        if ($vary_plan['do'] === 'create') {
+            $resp = cf_request('PUT', $cache_rules_path, ['rules' => [$vary_rule]], $CF_API_BASE, $CF_API_TOKEN);
+        } elseif ($vary_plan['do'] === 'add') {
+            $resp = cf_request('POST', "zones/{$CF_ZONE_ID}/rulesets/" . $vary_plan['ruleset_id'] . '/rules', $vary_rule, $CF_API_BASE, $CF_API_TOKEN);
+        } elseif ($vary_plan['do'] === 'update') {
+            $resp = cf_request('PATCH', "zones/{$CF_ZONE_ID}/rulesets/" . $vary_plan['ruleset_id'] . '/rules/' . $vary_plan['rule_id'], $vary_rule, $CF_API_BASE, $CF_API_TOKEN);
+        }
+
+        if ($vary_plan['do'] === 'none') {
+            $liveform->add_notice(lang('The cache rule is already in place.'));
+        } elseif ($vary_plan['do'] === 'failed') {
+            $liveform->mark_error('error', lang('The cache rules could not be read') . ': ' . h(pg_cloudflare_answer_reason($resp_rules)));
+        } elseif (pg_cloudflare_answer_failed($resp)) {
+            $liveform->mark_error('error', lang('The cache rule could not be written') . ': ' . h(pg_cloudflare_answer_reason($resp)));
+        } else {
+            $liveform->add_notice(lang('The cache rule was written. Check it through Cloudflare in a minute.'));
+            log_activity(lang('Cloudflare cache rule for WebP at the picture\'s own address written.'), $_SESSION['sessionusername']);
+        }
+    }
+
+    // The edge check (includes/fn/image_vary_check.php, the test the general
+    // job runs too): sets the confirmation (bit 8 of
+    // config.image_derivative_formats) only when each browser got its own
+    // copy, and takes it back when the edge gave one copy to both.
+    if (($action === 'image_vary_check') && pg_image_delivery_ready()) {
+        $same_address = pg_image_delivery()['same_address'];
+
+        if (empty($same_address['on'])) {
+            $liveform->mark_error('error', lang('Switch on "Send WebP at the picture\'s own address" in Site Settings › Features › Image Optimization first.'));
+        } else {
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_vary_check.php');
+
+            $vary_check = pg_image_vary_test_run($_SESSION['sessionusername']);
+            $vary_file = h($vary_check['file']);
+
+            switch ($vary_check['verdict']) {
+                case 'ok':
+                    $liveform->add_notice(lang(array('string' => 'Cloudflare kept a copy of {var:1} per format. The confirmation is set: browsers that read WebP now get it through Cloudflare.', 'vars' => $vary_file)));
+                    break;
+
+                case 'shared':
+                    if ($vary_check['mode'] === 'original') {
+                        $liveform->mark_error('error', lang(array('string' => 'Cloudflare gave the same copy of {var:1} to a browser that reads WebP and to one that does not, and keeps pictures marked private too. Visitors get the original through Cloudflare until a check passes.', 'vars' => $vary_file)));
+                    } else {
+                        $liveform->mark_error('error', lang(array('string' => 'Cloudflare gave the same copy of {var:1} to a browser that reads WebP and to one that does not: the cache rule is missing or not in effect yet. Visitors get WebP through Cloudflare, but the edge keeps no copy of pictures until a check passes.', 'vars' => $vary_file)));
+                    }
+                    break;
+
+                case 'no_webp':
+                    $liveform->mark_error('error', lang(array('string' => '{var:1} came back without WebP through the site\'s address. Check that this server writes WebP and that the address reaches this site.', 'vars' => $vary_file)));
+                    break;
+
+                case 'not_proxied':
+                    $liveform->add_notice(lang('The picture did not come through Cloudflare: the site\'s address is not proxied, so nothing in between keeps a copy and no confirmation is needed.'));
+                    break;
+
+                case 'unreachable':
+                    $liveform->mark_error('error', lang(array('string' => '{var:1} could not be fetched through the site\'s address: {var:2}', 'vars' => array($vary_file, h($vary_check['reason'])))));
+                    break;
+
+                default:
+                    $liveform->mark_error('error', lang('No public JPEG or PNG with a lighter WebP copy was found to check with.'));
+            }
+        }
+    }
+
     // PRG pattern: redirect after POST so a refresh does not repeat the action.
     // A toggled switch gets focus back on the new page, and a custom period
     // keeps its dates.
@@ -378,7 +455,7 @@ if (!empty($CF_ACCOUNT_ID)) {
     $audit_since  = date('Y-m-d', strtotime('-7 days'));
     $audit_before = date('Y-m-d');
 
-    if (isset($_REQUEST['log_start']) && isset($_REQUEST['log_end'])) {
+    if (isset($_REQUEST['log_start'], $_REQUEST['log_end']) && is_string($_REQUEST['log_start']) && is_string($_REQUEST['log_end'])) {
         $log_start = trim($_REQUEST['log_start']);
         $log_end   = trim($_REQUEST['log_end']);
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $log_start) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $log_end)) {
@@ -404,7 +481,7 @@ if (!empty($CF_ACCOUNT_ID)) {
 $fw_start = date('Y-m-d', strtotime('-7 days'));
 $fw_end   = date('Y-m-d');
 
-if (isset($_REQUEST['log_start']) && isset($_REQUEST['log_end'])) {
+if (isset($_REQUEST['log_start'], $_REQUEST['log_end']) && is_string($_REQUEST['log_start']) && is_string($_REQUEST['log_end'])) {
     $log_start = trim($_REQUEST['log_start']);
     $log_end   = trim($_REQUEST['log_end']);
     if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $log_start) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $log_end)) {
@@ -546,8 +623,8 @@ if (!empty($firewall_events)) {
 
 
 // Log date range values for form
-$log_start_val = isset($_REQUEST['log_start']) ? htmlspecialchars($_REQUEST['log_start'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) : date('Y-m-d', strtotime('-7 days'));
-$log_end_val   = isset($_REQUEST['log_end'])   ? htmlspecialchars($_REQUEST['log_end'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401)   : date('Y-m-d');
+$log_start_val = (isset($_REQUEST['log_start']) && is_string($_REQUEST['log_start'])) ? h($_REQUEST['log_start']) : date('Y-m-d', strtotime('-7 days'));
+$log_end_val   = (isset($_REQUEST['log_end']) && is_string($_REQUEST['log_end']))     ? h($_REQUEST['log_end'])   : date('Y-m-d');
 
 
 // -------------------- ANALYTICS --------------------
@@ -556,20 +633,19 @@ $log_end_val   = isset($_REQUEST['log_end'])   ? htmlspecialchars($_REQUEST['log
 // reason of a failed read.
 function cf_read_analytics($CF_API_TOKEN, $CF_ZONE_ID, $days, $start_date = null, $end_date = null) {
 
-    if ($start_date && $end_date) {
-        $start = $start_date;
-        $end   = $end_date;
-    } else {
-        $start = date('Y-m-d', strtotime('-'.$days.' days'));
-        $end   = date('Y-m-d');
-    }
+    // Every date of the range is asked for: "-N days" … today is N + 1
+    // dates, and a limit of N left one out.
+    $range = pg_cloudflare_analytics_range($days, $start_date, $end_date, time());
+    $start = $range['start'];
+    $end   = $range['end'];
+    $limit = $range['limit'];
 
     // ---- Requests, Bandwidth, Cached ----
     $graphql_query = [
       'query' => 'query {
         viewer {
           zones(filter: { zoneTag: "'.$CF_ZONE_ID.'" }) {
-            httpRequests1dGroups(limit: '.$days.', filter: {
+            httpRequests1dGroups(limit: '.$limit.', filter: {
               date_geq: "'.$start.'",
               date_leq: "'.$end.'"
             }) {
@@ -614,7 +690,7 @@ function cf_read_analytics($CF_API_TOKEN, $CF_ZONE_ID, $days, $start_date = null
                 viewer {
                   zones(filter: { zoneTag: "'.$CF_ZONE_ID.'" }) {
                     httpRequests1dGroups(
-                      limit: '.$days.',
+                      limit: '.$limit.',
                       filter: { date_geq: "'.$start.'", date_leq: "'.$end.'" }
                     ) {
                       uniq { uniques }
@@ -635,7 +711,7 @@ if (!isset($_SESSION['software']['cloudflare']['analytics']['period'])) {
     $_SESSION['software']['cloudflare']['analytics']['period'] = '30d';
 }
 if (isset($_REQUEST['period'])) {
-    $_SESSION['software']['cloudflare']['analytics']['period'] = $_REQUEST['period'];
+    $_SESSION['software']['cloudflare']['analytics']['period'] = is_string($_REQUEST['period']) ? $_REQUEST['period'] : '30d';
 }
 $period = ($_SESSION['software']['cloudflare']['analytics']['period'] ?? '');
 
@@ -649,6 +725,7 @@ switch ($period) {
     case 'all':   $days = 500; break;
     case 'custom':
         if (isset($_REQUEST['start_date'], $_REQUEST['end_date']) &&
+            is_string($_REQUEST['start_date']) && is_string($_REQUEST['end_date']) &&
             preg_match('/^\d{4}-\d{2}-\d{2}$/', $_REQUEST['start_date']) &&
             preg_match('/^\d{4}-\d{2}-\d{2}$/', $_REQUEST['end_date'])) {
             $start_date = $_REQUEST['start_date'];
@@ -680,6 +757,68 @@ $switch_unread_note = function ($id) use ($unread_switches) {
     return isset($unread_switches[$id]) ? '<div id="' . $id . '_unread" class="form-text fg-danger">' . lang('Could not be read from Cloudflare.') . '</div>' : '';
 };
 
+
+// WebP at a picture's own address: whether the Cache Rule that keeps a copy
+// per format is in place, and the confirmation the edge check sets. Shown
+// once the image delivery columns exist (2026.11.0).
+$image_vary_card = '';
+if (pg_image_delivery_ready()) {
+    $resp_cache_rules = cf_request('GET', "zones/{$CF_ZONE_ID}/rulesets/phases/http_request_cache_settings/entrypoint", null, $CF_API_BASE, $CF_API_TOKEN);
+    $image_vary_plan = pg_cloudflare_image_vary_plan($resp_cache_rules);
+    $image_same_address = pg_image_delivery()['same_address'];
+
+    if ($image_vary_plan['do'] === 'none') {
+        $image_vary_state = '<span class="badge theme-success">' . lang('In place') . '</span>';
+    } elseif ($image_vary_plan['do'] === 'update') {
+        $image_vary_state = '<span class="badge theme-warning">' . lang('Changed on Cloudflare') . '</span>';
+    } elseif ($image_vary_plan['do'] === 'failed') {
+        $image_vary_state = '<span class="badge theme-secondary">' . lang('Could not be read') . '</span> <span class="small fg-danger">' . h(pg_cloudflare_answer_reason($resp_cache_rules)) . '</span>';
+    } else {
+        $image_vary_state = '<span class="badge theme-warning">' . lang('Not written') . '</span>';
+    }
+
+    $image_vary_steps_open = ($image_vary_plan['do'] === 'failed') ? ' open' : '';
+    $image_vary_rule = pg_cloudflare_image_vary_rule();
+
+    $image_vary_card = '
+    <!-- WebP at the picture\'s own address -->
+    <div class="card my-7">
+      <div class="card-header bg-transparent border-0 fw-bold">
+        <i class="bi bi-images"></i> ' . lang('WebP at the picture\'s own address') . '
+      </div>
+      <div class="card-body">
+        <p class="small">' . lang('A browser that reads WebP and one that does not are sent different files at the same address. Cloudflare keeps one copy per address unless a cache rule tells it to keep a copy per format; until a check here passes, visitors get the original through Cloudflare.') . '</p>
+        <dl class="row small">
+          <dt class="md:col-4">' . lang('Cache rule') . '</dt>
+          <dd class="md:col-8">' . $image_vary_state . '</dd>
+          <dt class="md:col-4">' . lang('Send WebP at the picture\'s own address') . '</dt>
+          <dd class="md:col-8">' . (!empty($image_same_address['on']) ? '<span class="badge theme-success">' . lang('On') . '</span>' : '<span class="badge theme-secondary">' . lang('Off') . '</span>') . '</dd>
+          <dt class="md:col-4">' . lang('The CDN keeps a copy per format') . '</dt>
+          <dd class="md:col-8">' . (!empty($image_same_address['cdn']) ? '<span class="badge theme-success">' . lang('Confirmed') . '</span>' : '<span class="badge theme-secondary">' . lang('Not confirmed') . '</span>') . '</dd>
+        </dl>
+        <div class="d-flex flex-wrap gap-3">
+          ' . (($image_vary_plan['do'] !== 'none') ? '<form method="post" class="disable_shortcut">' . get_token_field() . $period_fields . '
+            <input type="hidden" name="action" value="image_vary_rule">
+            <button type="submit" class="btn btn-solid theme-primary"><i class="bi bi-cloud-upload"></i> ' . lang('Write the cache rule') . '</button>
+          </form>' : '') . '
+          <form method="post" class="disable_shortcut">' . get_token_field() . $period_fields . '
+            <input type="hidden" name="action" value="image_vary_check">
+            <button type="submit" class="btn btn-outline theme-primary"' . (empty($image_same_address['on']) ? ' disabled aria-describedby="image_vary_check_off"' : '') . '><i class="bi bi-check2-circle"></i> ' . lang('Check through Cloudflare') . '</button>
+          </form>
+        </div>
+        ' . (empty($image_same_address['on']) ? '<div id="image_vary_check_off" class="form-text">' . lang('Switch on "Send WebP at the picture\'s own address" in Site Settings › Features › Image Optimization first.') . '</div>' : '') . '
+        <details class="mt-5"' . $image_vary_steps_open . '>
+          <summary>' . lang('Add the rule by hand') . '</summary>
+          <ol class="small mt-3">
+            <li>' . lang('Writing the rule from here needs the API token permission Zone › Cache Rules › Edit. Without it, open your domain in the Cloudflare dashboard, then Caching › Cache Rules › Create rule.') . '</li>
+            <li>' . lang('Name it, choose Edit expression and enter:') . ' <code>' . h($image_vary_rule['expression']) . '</code></li>
+            <li>' . lang('Cache eligibility: Eligible for cache. Vary: for Accept choose Normalize with the media type image/webp; for other headers, Pass through.') . '</li>
+            <li>' . lang('Deploy the rule, wait a minute, then press Check through Cloudflare here.') . '</li>
+          </ol>
+        </details>
+      </div>
+    </div>';
+}
 
 $analytics = cf_read_analytics($CF_API_TOKEN, $CF_ZONE_ID, $days, $start_date, $end_date);
 $analytics_reasons = array_unique(array_filter(array($analytics['error'], $analytics['uniques_error'])));
@@ -739,8 +878,8 @@ foreach ($records as $r) {
             </form>
         </td>
         <td><span class="badge theme-info">' . htmlspecialchars((string)$r['type'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '</span></td>
-        <td>'.truncate($r['name'],50).'</td>
-        <td>'.truncate($data_content,50).'</td>
+        <td>' . h(truncate($r['name'], 50)) . '</td>
+        <td>' . h(truncate($data_content, 50)) . '</td>
         <td>'.(($r['ttl'] == 1) ? lang('Auto') : (int)$r['ttl']).'</td>
         <td>'.(!empty($r['proxied']) ? '<span class="badge theme-success">' . lang('Yes') . '</span>' : '<span class="badge theme-secondary">' . lang('No') . '</span>').'</td>
     </tr>';
@@ -793,10 +932,10 @@ print pg_page_shell([
       <input type="hidden" name="period" value="custom">
       <div class="row g-3">
         <div class="md:col-4">
-          <input type="date" data-pg-date name="start_date" value="' . htmlspecialchars((string)isset($_REQUEST['start_date']) ? $_REQUEST['start_date'] : '', ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '" class="form-control" required>
+          <input type="date" data-pg-date name="start_date" value="' . h((isset($_REQUEST['start_date']) && is_string($_REQUEST['start_date'])) ? $_REQUEST['start_date'] : '') . '" class="form-control" required>
         </div>
         <div class="md:col-4">
-          <input type="date" data-pg-date name="end_date" value="' . htmlspecialchars((string)isset($_REQUEST['end_date']) ? $_REQUEST['end_date'] : '', ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '" class="form-control" required>
+          <input type="date" data-pg-date name="end_date" value="' . h((isset($_REQUEST['end_date']) && is_string($_REQUEST['end_date'])) ? $_REQUEST['end_date'] : '') . '" class="form-control" required>
         </div>
         <div class="md:col-4">
           <button type="submit" class="btn btn-solid theme-primary">' . lang('Apply') . '</button>
@@ -893,6 +1032,8 @@ print pg_page_shell([
         </form>
       </div>
     </div>
+
+    '.$image_vary_card.'
 
     <!-- DNS Records -->
     <div class="card my-7">

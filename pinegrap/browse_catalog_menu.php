@@ -38,6 +38,6 @@ if ($page_name == '') {
 
 $product_group_address_name = isset($_GET['product_group_id']) ? get_catalog_item_address_name_from_id($_GET['product_group_id'], 'product group') : '';
 
-header('Location: ' . URL_SCHEME . HOSTNAME . PATH . encode_url_path($page_name) . '/' . encode_url_path($product_group_address_name) . '?previous_url_id=' . ($_GET['previous_url_id'] ?? ''));
+header('Location: ' . URL_SCHEME . HOSTNAME . PATH . encode_url_path($page_name) . '/' . encode_url_path($product_group_address_name) . '?previous_url_id=' . urlencode($_GET['previous_url_id'] ?? ''));
 exit();
 ?>

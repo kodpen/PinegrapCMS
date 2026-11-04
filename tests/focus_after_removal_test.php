@@ -47,7 +47,7 @@ function test_focus_after_removal_contact_photo()
 
 		pg_assert_contains('photos.addEventListener("click", function (event) {', $php, $file . ' listens on the photo container');
 		pg_assert_contains('}, true);', $php, $file . ' listens in the capture phase, before the inline remove');
-		pg_assert_contains('photos.parentNode.querySelector(".card-footer button").focus();', $php, $file . ' focuses Change Image');
+		pg_assert_contains('photos.closest(".card").querySelector(".card-footer button").focus();', $php, $file . ' focuses Change Image');
 	}
 }
 

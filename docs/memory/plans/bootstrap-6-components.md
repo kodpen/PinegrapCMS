@@ -4,21 +4,11 @@ description: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped fo
 ---
 
 ## Which swaps did the owner ask for?
-- B9a tagin to Chips: done (#2208), how it works in `ui/pg-field-wrappers.md`.
-- B9b select2 to Combobox: done (#2243), server search for `data-pg-source` (google_product_category) done (#2362); how it works in `ui/pg-combobox.md`. Follow-up done (#2428): the panel header loads no select2 asset and `backend.src.css` has no select2 rule; `assets/lib/select2` stays for site pages.
-- B9c Datepicker and time fields: done (#2262), how it works in `ui/pg-datepicker.md`.
-- B9d OTP: done (#2210, `ui/otp-fields.md`).
-- B9e Range with value bubble: done (#2207): editor inspector (3), label editor, image quality % and disk alert % (`ui/range-value-bubble.md`). Never the palette's site Range.
-- B9f form-adorn (150 sites): groups with buttons or selects (79), several inputs (12) or a hint on the add-on (9) stay input-groups. The add-on moves inside the border: pilot 3 places with screenshots first (pilot #2219, part 2 #2280, part 3 ERP, order refund and barcode #2355, part 4 gift card amounts, workspace template icon and MCP alias #2404, part 5 toolbar search fields of `view_folders.php`, `view_audit_log.php`, `view_not_found_log.php` and the ad region timing fields #2478, part 6 settings cards and the settings search #2501, part 7 the remaining toolbar searches (`translations.php`, four ERP lists, the workspace scripts) and the contact commission rate #2498, part 8 the Paraşüt tax rate, till "Received", designer home search and offer tier fields #2537, `ui/form-adorn.md`). part 9 the commerce settings fields #2760. Nothing left: the remaining panel groups (order screens, contact screens) hold a button, a select, several inputs or a title hint and stay input-groups.
-- B9g Stepper: done (#2206); how it works is in `ui/step-rail.md`.
-- B9h `.hover-lift` with tokens at today's 1-2 px, done: `.mpp-pick`, explorer `.item-card`, `.esi-tile` (#2217), dashboard `.pg-brief-ws-item` and `.pg-next` (#2237).
-- B9i Strength on the installer meter (`.pg-strength`): with `STRONG_PASSWORD` on, the B5 port of `validate_password_strength()` scores; off (the column default, so always at install) the default scoring only advises. Messages from `lang()`.
-- B9j Avatar (57 sites), text initials in theme colours: `ws_people()`, chat and widget sources return initials and a tone index (8 `theme-*`); presence dot; no `src=""`. `pg_initials_avatar_url()` stays for e-mail, PDF, print. `.avatar-stack` is row-reverse. Moved here from the finished friendly Workspace plan (its slice U2).
+- Done: B9a #2208, B9b #2243 #2362 #2428, B9c #2262, B9d #2210, B9e #2207, B9f #2219 #2280 #2355 #2404 #2478 #2498 #2501 #2537 #2760, B9g #2206, B9h #2217 #2237, B9i #2211 #2274, B9j #2216 #2242 #2256 #2339.
 
 ## What did research add (B9k, not owner decisions)?
-- Slice 1 done (#2273): `.ws-cb-progress-bar` to `.progress`, `.pg-chip` to `.chip`, the workspace toast to Toast (`ui/bootstrap-6-own-widget-swaps.md`).
-- `.btn-ghost` to `.btn-text.theme-secondary` is done everywhere (#2373, #2479, #2505, #2552; `edit_theme_file.php` again in #3039; `workspace_flow.js` in #3342). Its CSS and the `:not()` are gone, the test scans the whole panel (#3361). The editor toast (`sdToast`) is on Toast (#2721). Focus ring colour and 3px rings on the v6 tokens (#2561); the other ring widths and offsets moved in B10 (#4465). Guest toast, `.ws-chip`, role cards and status choice wait for B11 (reasons in `ui/bootstrap-6-own-widget-swaps.md`).
-- Only where screenshots show no change, else in B11: own theme tokens and focus ring to v6 tokens, `.btn-ghost` (285) to `.btn-text.theme-secondary`, own toasts to Toast, `.pg-chip` to `.chip`, pills and `.ws-chip` to `.badge-subtle`, role cards to `form-field-card`, status choice to `label.btn-check.btn-subtle`, `.ws-cb-progress-bar` to `.progress`.
+- Done: #2273, #2373 #2479 #2505 #2552 #3039 #3342 #3361, #2721, #2561 #4465.
+- Left for B11, only where screenshots show no change (`ui/bootstrap-6-own-widget-swaps.md` says why each waits): the guest page toast to Toast, pills and `.ws-chip` to `.badge-subtle`, role cards to `form-field-card`, status choice to `label.btn-check.btn-subtle`.
 
 ## What stays as it is?
 - jquery-multiselect-checkbox (owner decision), number +/- buttons, empty states, callouts, segmented controls, the settings progress line, the glass widget theme, own show/hide bindings.

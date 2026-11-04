@@ -61,7 +61,9 @@ if ($user['role'] < 2) {
 
 // Written into the back button's onclick: the browser decodes the attribute
 // before the script runs, so it is escaped for JavaScript as well as for HTML.
-$back_button_url = escape_url(($_GET['send_to'] ?? ''));
+// Only a path on this site is followed; without one the button opens the
+// menu list.
+$back_button_url = pg_send_to_url(PATH . SOFTWARE_DIRECTORY . '/view_menus.php');
 // if the user came from the pages tab, then prepare back button label
 if (($_GET['from'] ?? '') == 'pages') {
     $output_back_button_label = lang('Back to Page');
@@ -99,7 +101,8 @@ function build_sortable_html($menu_id, $grouped_items = null, $parent_id = 0, $l
         $html .= '<li class="sort-item" data-id="' . h($item['id']) . '">';
         $html .= '<div class="d-flex align-items-center py-3 px-3 border rounded-4 mb-1 bg-body" style="margin-left:' . $indent_px . 'px; cursor:default">';
         $html .= '<button type="button" class="btn btn-link p-0 me-3 fg-secondary sort-drag-handle" style="cursor:grab; font-size:1.1rem" aria-label="' . h(lang(array('string' => 'Move {var:1}', 'vars' => array($item['name'])))) . '" aria-describedby="sort_keys_hint"><i class="bi bi-grip-vertical" aria-hidden="true"></i></button>';
-        $html .= '<span>' . h($item['name']) . '</span>';
+        // min-width lets a long name without spaces wrap inside the row.
+        $html .= '<span class="text-break" style="min-width:0">' . h($item['name']) . '</span>';
         $html .= '</div>';
         $html .= build_sortable_html($menu_id, $grouped_items, $item['id'], $level + 1);
         $html .= '</li>';
@@ -312,6 +315,9 @@ pg_page_shell( array(
                 var menuId = ' . (int)$_GET['id'] . ';
                 var saveUrl = \'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php\';
                 var sortableReady = false;
+                var sortables = [];
+                // The tree as drawn, put back on Cancel.
+                var savedTree = $(\'#sortable_tree\').html();
 
                 $(\'#toggle_reorder\').on(\'click\', function() {
                     $(\'#menu_items_table_card\').hide();
@@ -322,7 +328,15 @@ pg_page_shell( array(
                     }
                 });
 
+                // Cancel drops the moves not saved: the tree is drawn again and
+                // its lists are set up anew on the next Sort Items.
                 $(\'#cancel_reorder\').on(\'click\', function() {
+                    $.each(sortables, function(i, sortable) {
+                        sortable.destroy();
+                    });
+                    sortables = [];
+                    sortableReady = false;
+                    $(\'#sortable_tree\').html(savedTree);
                     $(\'#reorder_panel\').hide();
                     $(\'#reorder_actions\').hide();
                     $(\'#menu_items_table_card\').show();
@@ -345,7 +359,7 @@ pg_page_shell( array(
                 function initSortable() {
                     sortableReady = true;
                     $(\'#sortable_tree .sort-group\').each(function() {
-                        Sortable.create(this, {
+                        sortables.push(Sortable.create(this, {
                             group: \'menu-items\',
                             handle: \'.sort-drag-handle\',
                             draggable: \'.sort-item\',
@@ -356,7 +370,7 @@ pg_page_shell( array(
                             onAdd: function(evt) {
                                 updateIndentation($(evt.item), getGroupLevel($(evt.to)));
                             }
-                        });
+                        }));
                     });
                 }
 

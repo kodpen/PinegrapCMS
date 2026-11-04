@@ -99,6 +99,85 @@ function test_email_campaign_profile_schedule_time_midnight()
 {
 	pg_assert_same('00:01:00', pg_email_campaign_profile_schedule_time('12:00 AM'), '12:00 AM is not "any time"');
 	pg_assert_same('00:01:00', pg_email_campaign_profile_schedule_time('12:00 am'), 'lower case');
+	pg_assert_same('00:01:00', pg_email_campaign_profile_schedule_time('00:00'), '24-hour midnight is not "any time"');
+	pg_assert_same('00:01:00', pg_email_campaign_profile_schedule_time(' 0:00 '), '24-hour midnight, one digit');
+	pg_assert_same('', pg_email_campaign_profile_schedule_time(''), 'blank stays "any time"');
+	pg_assert_same('09:30', pg_email_campaign_profile_schedule_time('09:30'), 'other times unchanged');
+	pg_assert_same('21:15', pg_email_campaign_profile_schedule_time('9:15 PM'), '12-hour afternoon');
+}
+
+function test_email_campaign_profile_schedule_length_valid()
+{
+	foreach (array('', '0', '12', '123456789', ' 7 ') as $length) {
+		pg_assert_true(pg_email_campaign_profile_schedule_length_valid($length), 'valid: ' . $length);
+	}
+
+	foreach (array('-3.75', '-1', '2.5', '12,50', '1234567890', 'abc', '1e3') as $length) {
+		pg_assert_false(pg_email_campaign_profile_schedule_length_valid($length), 'refused: ' . $length);
+	}
+
+	pg_assert_false(pg_email_campaign_profile_schedule_length_valid(array('1')), 'array refused');
+}
+
+function test_email_campaign_profile_values_problem()
+{
+	$valid = array(
+		'name' => 'pg-test import',
+		'enabled' => '1',
+		'action' => 'custom_form_submitted',
+		'action_item_id' => '8',
+		'format' => 'plain_text',
+		'page_id' => '0',
+		'from_email_address' => 'pg-test@example.com',
+		'reply_email_address' => '',
+		'bcc_email_address' => '',
+		'schedule_time' => '',
+		'schedule_length' => '1',
+		'schedule_unit' => 'days',
+		'schedule_period' => '',
+		'schedule_base' => '',
+		'purpose' => 'commercial',
+	);
+
+	pg_assert_same('', pg_email_campaign_profile_values_problem($valid, false), 'valid row');
+	pg_assert_same('', pg_email_campaign_profile_values_problem(array('action' => 'order_completed', 'action_item_id' => '0') + $valid, true), 'commerce action with commerce access');
+
+	$refused = array(
+		'name over 100 characters' => array('name' => str_repeat('ı', 101)),
+		'blank name' => array('name' => ''),
+		'enabled as a word' => array('enabled' => 'evet'),
+		'unknown action' => array('action' => 'Order Completed'),
+		'item action without item' => array('action_item_id' => ''),
+		'unknown format' => array('format' => 'HTML'),
+		'html without page' => array('format' => 'html', 'page_id' => '0'),
+		'invalid from address' => array('from_email_address' => 'not-an-email'),
+		'invalid reply address' => array('reply_email_address' => 'abc'),
+		'invalid bcc address' => array('bcc_email_address' => 'abc'),
+		'invalid time' => array('schedule_time' => '25:99'),
+		'negative length' => array('schedule_length' => '-3'),
+		'decimal length' => array('schedule_length' => '2.5'),
+		'unknown unit' => array('schedule_unit' => 'gün'),
+		'unknown purpose' => array('purpose' => 'Ticari'),
+		'calendar without period' => array('action' => 'calendar_event_reserved', 'schedule_base' => 'action'),
+		'calendar before action' => array('action' => 'calendar_event_reserved', 'schedule_period' => 'before', 'schedule_base' => 'action'),
+	);
+
+	foreach ($refused as $label => $change) {
+		pg_assert_true(pg_email_campaign_profile_values_problem($change + $valid, true) !== '', $label);
+	}
+
+	pg_assert_true(pg_email_campaign_profile_values_problem(array('action' => 'order_completed', 'action_item_id' => '0') + $valid, false) !== '', 'commerce action without access');
+	pg_assert_same('', pg_email_campaign_profile_values_problem(array('action' => 'calendar_event_reserved', 'schedule_period' => 'before', 'schedule_base' => 'calendar_event_start_time') + $valid, false), 'calendar before start time');
+	pg_assert_same('', pg_email_campaign_profile_values_problem(array('format' => 'html', 'page_id' => '12') + $valid, false), 'html with page');
+}
+
+function test_email_campaign_profile_import_checks_rows()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/import_email_campaign_profiles.php');
+
+	pg_assert_contains('pg_email_campaign_profile_values_problem(', $source, 'import checks each row like the form');
+	pg_assert_contains('pg_email_campaign_profile_access_problem(', $source, 'import checks access like the form');
+	pg_assert_contains('pg_email_campaign_profile_schedule_time(', $source, 'import stores midnight like the form');
 }
 
 function test_email_campaign_profile_screens_use_shared_form()

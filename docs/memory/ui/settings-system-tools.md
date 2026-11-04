@@ -24,6 +24,7 @@ description: The System tools screen (system_tools.php): the screens beside Site
 ## Where is it in the main menu?
 - Row 25 under the System heading, after Site Settings (#3929). Slot 25 because 3, 13, 18 and 19 are retired and 22-24 taken; operators pin rows by slot, so it is never reused or renumbered.
 - Gate: `$user['role'] <= 2 && pg_settings_tool_count(pg_settings_tool_groups($user)) > 0`, the screen's own. Entries from `pg_menu_tools_markup()` (pure): the screen first, a divider, then one entry per non-empty group (`menu_entry_25_tools_<n>`) opening a second-level panel of its screens (`menu_panel_25_tools_<n>`), target, `rel="noopener"` and `data-confirm-content` kept.
+- `output_menu()` defines `PG_SETTINGS_MENU` and includes `registry.php` itself before the call: the registry is not a function module, and without it every panel screen but the settings ones died with an undefined-function 500 for roles <= 2 (#5158, `tests/menu_settings_registry_test.php`).
 - `system_tools.php` and every tool screen mark row 25 (`output_menu()`'s switch); Store Lists screens mark it for role <= 2, the shipping row for role 3.
 
 ## What is its help topic?

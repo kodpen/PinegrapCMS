@@ -62,3 +62,21 @@ function test_state_form_screens_refuse_a_blank_name_and_code()
 		pg_assert_contains('pg_state_form_required_errors($values)', $source, $file . ' checks the required fields');
 	}
 }
+
+function test_state_form_country_must_exist()
+{
+	$exists = function ($id) {
+		return $id === 5;
+	};
+
+	pg_assert_same('', pg_state_form_country_error('5', $exists), 'an existing country passes');
+	pg_assert_same(lang('The selected country was not found. Select a country.'), pg_state_form_country_error('99999', $exists), 'a missing country is refused');
+
+	foreach (array('', '0', '-5', 'abc', '5x') as $value) {
+		pg_assert_same(lang('Select a country.'), pg_state_form_country_error($value, $exists), var_export($value, true) . ' is no country');
+	}
+
+	foreach (array('add_state.php', 'edit_state.php') as $file) {
+		pg_assert_contains("pg_state_form_country_error(\$values['country_id'])", file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ' checks the country');
+	}
+}

@@ -46,7 +46,9 @@ $form = new liveform('forgot_password');
 
 $form->add_fields_to_session();
 
-$email = $form->get_field_value('email');
+// One address: an email[] array counts as none and gets the required error.
+$email = pg_password_reset_email($form->get_field_value('email'));
+$form->assign_field_value('email', $email);
 $send_to = $form->get_field_value('send_to');
 
 // A designed page (the forgot_password widget) names itself in return_to;
@@ -104,9 +106,10 @@ if (!$form->check_form_errors()) {
             user_username AS username,
             user_email AS email
         FROM user
-        WHERE user_email = '" . e($email) . "'");
+        WHERE user_email = '" . e($email) . "'" . pg_user_enabled_sql());
 
-    // No account for this address: answer exactly as if there were one.
+    // No account for this address (a disabled account counts as none): answer
+    // exactly as if there were one.
     //
     // Naming the miss turned this form into a lookup service. Anyone could
     // submit addresses and read back which ones this site holds - a list worth

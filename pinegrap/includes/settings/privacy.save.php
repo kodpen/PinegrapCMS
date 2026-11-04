@@ -29,6 +29,34 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         return;
     }
 
+    // The tracking code cookie lives this many days and an order looks back
+    // as far: 0 would set an expired cookie and attribute nothing, so a
+    // blank or out-of-range entry is refused rather than stored.
+    $tracking_code_duration_input = pg_whole_number_in_range(post_value('tracking_code_duration'), 1, 365);
+
+    if ($tracking_code_duration_input === null) {
+        $liveform->mark_error('tracking_code_duration', lang('Tracking Code Duration must be 1 to 365 days.'));
+    }
+
+    // The analytics address is printed as a link in the Visitors menu and
+    // the tag ID into the public gtag script, so each is taken only in its
+    // own format.
+    $stats_url_input = trim((string) post_value('stats_url'));
+
+    if (($stats_url_input !== '') && !preg_match('#^https?://[^\s"\'<>]+$#iD', $stats_url_input)) {
+        $liveform->mark_error('stats_url', lang('The Website Analytics URL must start with https:// or http://.'));
+    }
+
+    $google_analytics_web_property_id_input = trim((string) post_value('google_analytics_web_property_id'));
+
+    if (($google_analytics_web_property_id_input !== '') && (pg_ga_tag_id($google_analytics_web_property_id_input) === '')) {
+        $liveform->mark_error('google_analytics_web_property_id', lang('The Web Property ID must be a Google tag ID, for example G-XXXXXXXXXX.'));
+    }
+
+    if ($liveform->check_form_errors()) {
+        return;
+    }
+
     // Visitor record retention (2026.4.10, 10.3): 0, or a whole number of
     // days within the bounds the module sets. Checked here, before anything
     // on this screen is written. Only when the form carried the field: a
@@ -150,16 +178,29 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             $sql_cookie_consent_fields
             $sql_legal_documents
             visitor_tracking = '" . escape(post_value('visitor_tracking')) . "',
-            tracking_code_duration = '" . e(post_value('tracking_code_duration')) . "',
+            tracking_code_duration = '" . (int) $tracking_code_duration_input . "',
             pay_per_click_flag = '" . escape(post_value('pay_per_click_flag')) . "',
-            stats_url = '" . escape(post_value('stats_url')) . "',
+            stats_url = '" . escape($stats_url_input) . "',
             google_analytics = '" . escape(post_value('google_analytics')) . "',
-            google_analytics_web_property_id = '" . escape(post_value('google_analytics_web_property_id')) . "',
+            google_analytics_web_property_id = '" . escape(pg_ga_tag_id($google_analytics_web_property_id_input)) . "',
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
 
     if ($legal_kvkk_text !== null) {
         pg_config_text_save('ecommerce_kvkk_consent_text', $legal_kvkk_text);
+    }
+
+    // The accessibility statement's texts (includes/fn/widgets_accessibility.php):
+    // one config_text row as JSON; all empty removes it.
+    if (array_key_exists('a11y_statement_card', $_POST) && pg_schema_has('config_text')) {
+        $a11y_statement_post = array();
+
+        foreach (pg_a11y_statement_fields() as $a11y_field => $a11y_max) {
+            $a11y_statement_post[$a11y_field] = (string) post_value('a11y_statement_' . $a11y_field);
+        }
+
+        $a11y_statement_post = pg_a11y_statement_clean($a11y_statement_post);
+        pg_config_text_save('a11y_statement', (implode('', $a11y_statement_post) === '') ? '' : json_encode($a11y_statement_post, JSON_UNESCAPED_UNICODE));
     }
 
     // Google Analytics figures (includes/fn/google_analytics.php): choose a

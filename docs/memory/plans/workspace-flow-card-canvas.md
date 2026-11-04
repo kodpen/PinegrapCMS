@@ -1,6 +1,6 @@
 ---
 name: workspace-flow-card-canvas
-description: Plan (owner 2026-11-02): the flow draft card shows the real Flows canvas read-only (pan, zoom, values, threads; no panes, no toolbar); changes only by opening the flow; Edit here goes; steps K1-K5
+description: Plan (owner 2026-11-02, decided #4967): the flow draft card shows the real Flows canvas read-only; changes only by opening the flow; Edit here goes; steps K1-K5
 ---
 
 ## What is asked? (owner, 2026-11-02)
@@ -16,12 +16,13 @@ description: Plan (owner 2026-11-02): the flow draft card shows the real Flows c
 - The two bundles are printed for mode `flows` only (`ws_screen_scripts()`); the card fetches them once, as a record's screen fetches the workspace script (`ws_record_loader()`), and reads the drawing config from one panel action once per page: `ws_flow_js_config()` for mode `flows` is staff's and heavy.
 - Steps and order: `workspace-flow-card-canvas-steps.md`.
 
-## Which questions are open? (for the owner)
-1. One live card at a time (K1 as written: the Flows script has one state, a channel may hold several cards) or every card live at once, which needs the Flows adapter made per instance first, a refactor of workspace_flow.js of its own (graph-canvas-core.md slice 4 territory), not a step here.
-2. The resting state: today's thumbnail until a click (K3 as written), or live as soon as a card scrolls into view, the last one in view taking the wheel. The thumbnail keeps the channel light and the wheel predictable.
-3. The pane: 20 rem with "Larger", or the card's height left to the person (a drag handle, kept per browser).
-4. Add › Scheduled flow's mini window: left as it is, or the same read-only embed with Publish under it (K5).
-5. "Try this box" stays on the strip (assumed yes).
+## Which questions are decided? (#4967)
+1. One live card at a time (K1 as written): one `state` in workspace_flow.js; a second embed destroys the first, whose card returns to its thumbnail. A per-instance Flows adapter is its own refactor (graph-canvas-core slice 4), not a step here.
+2. At rest the card shows today's thumbnail; a click or Enter opens the real canvas read-only (K3 as written). The channel stays light and the wheel scrolls the channel until a person opens a card (owner, 2026-11-02).
+3. The pane is 20 rem; "Larger" doubles it; no stored preference. A drag handle, if ever asked for, is a separate task (owner, 2026-11-02).
+4. Add › Scheduled flow's mini window shows the same read-only embed with Publish under it: K5 is built, no second drawing of boxes anywhere (owner, 2026-11-02).
+5. "Try this box" stays on the strip beside "Open on the canvas" (owner, 2026-11-02).
+- The owner's decisions (2-5) go to `workflow/decisions-made.md` with K4, together with the "Edit here" withdrawal.
 
 ## Where to start?
-- K4, then K1 and K2 side by side; K3 once both are merged; K5 when question 4 is answered. The holder reviews K1 and K3 against the Flows canvas on desktop and a phone before they are marked ready.
+- K4, then K1 and K2 side by side; K3 once both are merged; K5 after K3. The holder reviews K1 and K3 against the Flows canvas on desktop and a phone before they are marked ready.

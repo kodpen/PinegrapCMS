@@ -318,9 +318,218 @@ function pg_contact_merge_audit($keep_id, array $before)
     }
 }
 
+/**
+ * The contacts columns a merge reads, as one SELECT list for both merge
+ * screens (Merge Contacts on view_contacts.php, Merge Selected on
+ * edit_contacts.php): every data column of the contact, so a blank one on
+ * the contact that stays is filled from the merged contact
+ * (merge_contacts()). Each screen listed its own columns, and neither had
+ * tax_number, tax_office, parasut_contact_id or the IYS statuses, so a merge
+ * silently lost the merged contact's tax id and consent answers; Merge
+ * Selected did not carry the picture either (#5325). erp_account_id is not
+ * read: pg_contact_holders_move() sets it when the ERP account moves.
+ * Pure.
+ *
+ * @param array $optional  the columns of the open version's migration steps
+ *                         the schema already has (pg_contact_merge_optional_columns())
+ * @return string  the SELECT list, ending with contacts.timestamp
+ */
+function pg_contact_merge_select(array $optional = array())
+{
+    $columns = array(
+        'id', 'image', 'file_id',
+        'salutation', 'first_name', 'last_name', 'suffix', 'nickname',
+        'company', 'title', 'department', 'office_location',
+        'business_address_1', 'business_address_2', 'business_city', 'business_state', 'business_country', 'business_zip_code', 'business_phone', 'business_fax',
+        'home_address_1', 'home_address_2', 'home_city', 'home_state', 'home_country', 'home_zip_code', 'home_phone', 'home_fax',
+        'mobile_phone', 'email_address', 'website', 'lead_source', 'opt_in', 'description',
+        'tax_number', 'tax_office', 'parasut_contact_id',
+        'member_id', 'expiration_date', 'warning_expiration_date',
+        'affiliate_approved', 'affiliate_name', 'affiliate_code', 'affiliate_commission_rate',
+        'user',
+    );
+
+    foreach ($optional as $column) {
+        if (preg_match('/^[a-z_]+$/', (string) $column) && !in_array($column, $columns, true)) {
+            $columns[] = (string) $column;
+        }
+    }
+
+    $select = '';
+
+    foreach ($columns as $column) {
+        $select .= "contacts." . $column . ",\n            ";
+    }
+
+    return $select . "contact_user.user_id as user_id,\n            contacts.timestamp";
+}
+
+/**
+ * The merge columns added by the open version's migration steps
+ * (contacts.iys_email_status, 11.0.39; contacts.iys_sms_status, 11.0.136)
+ * that the schema already has, from a column => present map. Pure.
+ *
+ * @param array $present  column => bool, pg_contact_merge_schema_columns()
+ * @return array
+ */
+function pg_contact_merge_optional_columns(array $present)
+{
+    $columns = array();
+
+    foreach (array('iys_email_status', 'iys_sms_status') as $column) {
+        if (!empty($present[$column])) {
+            $columns[] = $column;
+        }
+    }
+
+    return $columns;
+}
+
+/**
+ * The source a merged contact's row of one group is written back with: a
+ * hand, form or product row of any merged contact wins over a rule row, as
+ * the recompute never removes it; only rule rows stay a rule row. A row read
+ * before the upgrade, or of an unknown source, is hand. Pure.
+ *
+ * @param array $rows     the merged contacts' group rows (contact_group_id, source)
+ * @param int   $group_id
+ * @return string hand, form, product or rule
+ */
+function pg_contact_merge_group_source(array $rows, $group_id)
+{
+    $found = array();
+
+    foreach ($rows as $row) {
+        if ((string) $row['contact_group_id'] === (string) $group_id) {
+            $source = isset($row['source']) ? (string) $row['source'] : 'hand';
+            $found[in_array($source, array('hand', 'form', 'product', 'rule'), true) ? $source : 'hand'] = true;
+        }
+    }
+
+    foreach (array('hand', 'form', 'product', 'rule') as $source) {
+        if (isset($found[$source])) {
+            return $source;
+        }
+    }
+
+    return 'hand';
+}
+
+/**
+ * Which of the merge's optional columns this site's contacts table has.
+ *
+ * @return array  column => bool
+ */
+function pg_contact_merge_schema_columns()
+{
+    return array(
+        'iys_email_status' => pg_schema_has('contacts', 'iys_email_status'),
+        'iys_sms_status'   => pg_schema_has('contacts', 'iys_sms_status'),
+    );
+}
+
 // This function merges duplicate contacts together and then forwards the user back to the all duplicate contacts view.
 // Every record that names a merged contact is re-pointed to the contact that stays (pg_contact_holders()); a group
 // of duplicates where more than one contact has an ERP account is left as it is and counted in $refused.
+/**
+ * The contacts of $ids that may not be deleted, from the rows that hold
+ * them: a contact a user account holds (user.user_contact) is the account's
+ * own, and one an ERP account is linked to carries its ledger. Deleting
+ * either would leave the holder pointing at nothing, so the panel and the
+ * API refuse both; an account holder is named first.
+ *
+ * @param array $ids       contact ids
+ * @param array $user_rows rows with contact_id and username
+ * @param array $erp_rows  rows with contact_id and title
+ * @return array contact id => array('reason' => 'account'|'erp', 'holder' => name)
+ */
+function pg_contact_delete_refusal_list(array $ids, array $user_rows, array $erp_rows)
+{
+    $wanted = array();
+
+    foreach ($ids as $id) {
+        $wanted[(int) $id] = true;
+    }
+
+    $refusals = array();
+
+    foreach (array('account' => array($user_rows, 'username'), 'erp' => array($erp_rows, 'title')) as $reason => $source) {
+        foreach ($source[0] as $row) {
+            $id = (int) $row['contact_id'];
+
+            if (isset($wanted[$id]) && !isset($refusals[$id])) {
+                $refusals[$id] = array('reason' => $reason, 'holder' => (string) $row[$source[1]]);
+            }
+        }
+    }
+
+    ksort($refusals);
+
+    return $refusals;
+}
+
+/**
+ * pg_contact_delete_refusal_list() over the site's user and ERP accounts.
+ *
+ * @param array $ids contact ids
+ * @return array contact id => array('reason', 'holder')
+ */
+function pg_contact_delete_refusals(array $ids)
+{
+    $list = array();
+
+    foreach ($ids as $id) {
+        if ((int) $id > 0) {
+            $list[] = (int) $id;
+        }
+    }
+
+    if (!$list) {
+        return array();
+    }
+
+    $in = implode(',', array_unique($list));
+    $users = db_items("SELECT user_contact AS contact_id, user_username AS username FROM user WHERE user_contact IN (" . $in . ")");
+    $erp = pg_schema_has('erp_accounts')
+        ? db_items("SELECT contact_id, title FROM erp_accounts WHERE contact_id IN (" . $in . ")")
+        : array();
+
+    return pg_contact_delete_refusal_list($list, is_array($users) ? $users : array(), is_array($erp) ? $erp : array());
+}
+
+/**
+ * The notice of a bulk delete for the contacts it left: how many, and the
+ * accounts that hold them (the first ten). '' when none was left.
+ *
+ * @param array $refusals contact id => entry of pg_contact_delete_refusals()
+ * @return string plain text
+ */
+function pg_contact_delete_refused_notice(array $refusals)
+{
+    if (!$refusals) {
+        return '';
+    }
+
+    $holders = array_slice(array_values(array_unique(array_column($refusals, 'holder'))), 0, 10);
+
+    return lang(array('string' => '{var:1} contact(s) were not deleted because a user account or an ERP account holds them: {var:2}.', 'vars' => array(pg_format_number(count($refusals), 0), implode(', ', $holders))));
+}
+
+/**
+ * The sentence that says why a contact is not deleted.
+ *
+ * @param array $refusal one entry of pg_contact_delete_refusals()
+ * @return string plain text
+ */
+function pg_contact_delete_refusal_text(array $refusal)
+{
+    if ($refusal['reason'] === 'account') {
+        return lang(array('string' => 'This contact is the user account "{var:1}"\'s own and is not deleted. Delete the account, or merge the contact into another one, first.', 'vars' => $refusal['holder']));
+    }
+
+    return lang(array('string' => 'This contact is linked to the ERP account "{var:1}" and is not deleted.', 'vars' => $refusal['holder']));
+}
+
 function merge_contacts($contacts, &$refused = 0)
 {
     $refused = 0;
@@ -392,6 +601,8 @@ function merge_contacts($contacts, &$refused = 0)
             contacts_contact_groups_xref.contact_id,
 
             contacts_contact_groups_xref.contact_group_id,
+
+            " . (pg_audience_ready() ? 'contacts_contact_groups_xref.source,' : '') . "
 
             contact_groups.name,
 
@@ -543,20 +754,14 @@ function merge_contacts($contacts, &$refused = 0)
                         $query = "DELETE FROM contacts_contact_groups_xref WHERE (contact_id = ?) AND (contact_group_id = ?)";
                         $result = db_q($query, array((string) $child['id'], (string) $contact_group_to_be_merged['contact_group_id'])) or output_error(lang('Query failed.'));
                         // insert a new xref record
-                        $query = "INSERT INTO contacts_contact_groups_xref (
-
-                                contact_id,
-
-                                contact_group_id)
-
-                            VALUES (
-
-                                ?,
-
-                                ?
-
-                                )";
-                        $result = db_q($query, array((string) $child['id'], (string) $contact_group_to_be_merged['contact_group_id'])) or output_error(lang('Query failed.'));
+                        // keep the row's source, so a merged rule row stays one the recompute reaches
+                        $values = array((string) $child['id'], (string) $contact_group_to_be_merged['contact_group_id']);
+                        $query = "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id) VALUES (?, ?)";
+                        if (pg_audience_ready()) {
+                            $values[] = pg_contact_merge_group_source($contact_groups_to_be_merged, $contact_group_to_be_merged['contact_group_id']);
+                            $query = "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id, source) VALUES (?, ?, ?)";
+                        }
+                        $result = db_q($query, $values) or output_error(lang('Query failed.'));
                         $contact_groups_to_be_merged_opt_in = '1';
                         // loop through the contact groups to be merged to get the new opt in value for this contact group,
                         // and add the contact group's id to the merged contact groups ids array so that they are not processed after this one is complete
@@ -762,20 +967,14 @@ function merge_contacts($contacts, &$refused = 0)
                         $query = "DELETE FROM contacts_contact_groups_xref WHERE (contact_id = ?) AND (contact_group_id = ?)";
                         $result = db_q($query, array((string) $remaining_orphan['id'], (string) $contact_group_to_be_merged['contact_group_id'])) or output_error(lang('Query failed.'));
                         // insert a new xref record
-                        $query = "INSERT INTO contacts_contact_groups_xref (
-
-                                contact_id,
-
-                                contact_group_id)
-
-                            VALUES (
-
-                                ?,
-
-                                ?
-
-                                )";
-                        $result = db_q($query, array((string) $remaining_orphan['id'], (string) $contact_group_to_be_merged['contact_group_id'])) or output_error(lang('Query failed.'));
+                        // keep the row's source, so a merged rule row stays one the recompute reaches
+                        $values = array((string) $remaining_orphan['id'], (string) $contact_group_to_be_merged['contact_group_id']);
+                        $query = "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id) VALUES (?, ?)";
+                        if (pg_audience_ready()) {
+                            $values[] = pg_contact_merge_group_source($contact_groups_to_be_merged, $contact_group_to_be_merged['contact_group_id']);
+                            $query = "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id, source) VALUES (?, ?, ?)";
+                        }
+                        $result = db_q($query, $values) or output_error(lang('Query failed.'));
                         $contact_groups_to_be_merged_opt_in = 1;
                         // loop through the contact groups to be merged to get the new opt in value,
                         // and add the contact groups to the merged contact groups ids array so that they are not processed again
@@ -1227,7 +1426,7 @@ function pg_contact_quick_save($user_id, $first_name, $last_name, $mobile_phone 
 
         // The group new accounts are put in, as the profile screen does.
         if (defined('REGISTRATION_CONTACT_GROUP_ID') && ((int) REGISTRATION_CONTACT_GROUP_ID > 0)
-            && ((int) db_value("SELECT COUNT(*) FROM contact_groups WHERE id = '" . (int) REGISTRATION_CONTACT_GROUP_ID . "'") > 0)) {
+            && ((int) db_value("SELECT COUNT(*) FROM contact_groups WHERE (id = '" . (int) REGISTRATION_CONTACT_GROUP_ID . "') AND " . pg_audience_hand_sql()) > 0)) {
             db("INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id) VALUES ('" . $contact_id . "', '" . (int) REGISTRATION_CONTACT_GROUP_ID . "')");
         }
 
@@ -1631,4 +1830,115 @@ function pg_contact_lead_source_check($value, array $sources, $current)
         'value' => $value,
         'error' => lang(array('string' => 'The lead source "{var:1}" is not one of the referral sources.', 'vars' => array($value))),
     );
+}
+
+/**
+ * The affiliate code an approval writes: the one the contact already has,
+ * else a new one. Pure but for the generator it is given.
+ *
+ * @param mixed    $existing contacts.affiliate_code
+ * @param callable $generate generate_affiliate_code()
+ * @return string
+ */
+function pg_affiliate_approval_code($existing, $generate = 'generate_affiliate_code')
+{
+    $existing = trim((string) $existing);
+
+    return ($existing !== '') ? $existing : (string) call_user_func($generate);
+}
+
+/**
+ * What affiliate.approved carries: the contact and its code. Pure.
+ *
+ * @param int    $contact_id
+ * @param string $affiliate_code
+ * @param string $affiliate_name
+ * @return array
+ */
+function pg_affiliate_approved_event($contact_id, $affiliate_code, $affiliate_name)
+{
+    return array(
+        'id'             => (int) $contact_id,
+        'affiliate_code' => (string) $affiliate_code,
+        'affiliate_name' => ((string) $affiliate_name !== '') ? (string) $affiliate_name : null,
+    );
+}
+
+/**
+ * Approves a contact as an affiliate, as approve_affiliate.php (the link in
+ * the sign-up e-mail) and the external API (POST /affiliates/{id}/approve)
+ * do: the code is kept or made, the contact is marked approved, it gets a
+ * key code for the affiliate group offer when there is one, the welcome
+ * e-mail goes out and affiliate.approved is announced. An approved
+ * affiliate is left as it is: the request e-mail can be opened twice, and a
+ * second approval would send the welcome e-mail again.
+ *
+ * @param int $contact_id
+ * @param int $user_id the person or the application's owner
+ * @return array|string|null|false affiliate_code and email_address;
+ *                          'already_approved' when the contact is an
+ *                          approved affiliate already (nothing is written or
+ *                          sent); null when there is no such contact, false
+ *                          when a query failed
+ */
+function pg_affiliate_approve($contact_id, $user_id)
+{
+    $contact_id = (int) $contact_id;
+
+    $contact = db_item("SELECT id, email_address, affiliate_code, affiliate_name, affiliate_approved FROM contacts WHERE id = '" . $contact_id . "'");
+
+    if (!$contact) {
+        return null;
+    }
+
+    if ((int) $contact['affiliate_approved'] === 1) {
+        return 'already_approved';
+    }
+
+    $affiliate_code = pg_affiliate_approval_code($contact['affiliate_code']);
+
+    $audit_before = pg_audit_fetch('contacts', $contact_id);
+
+    $result = db_q(
+        "UPDATE contacts
+        SET
+            affiliate_approved = '1',
+            affiliate_code = ?,
+            user = ?,
+            timestamp = UNIX_TIMESTAMP()
+        WHERE id = ? AND affiliate_approved != '1'",
+        array($affiliate_code, (string) (int) $user_id, (string) $contact_id));
+
+    if (!$result) {
+        return false;
+    }
+
+    // Two approvals at once (two tabs, the link and the API): only the one
+    // that wrote the mark goes on to the key code and the welcome e-mail.
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return 'already_approved';
+    }
+
+    pg_audit_record('update', 'contacts', $contact_id, $audit_before);
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/forms/contact_form.php');
+
+    pg_contact_form_affiliate_key_code($affiliate_code, $user_id);
+
+    // The welcome page reads the code from the session, as the sign-up
+    // form's own welcome does.
+    $_SESSION['software']['affiliate_welcome']['affiliate_code'] = $affiliate_code;
+
+    email(array(
+        'to' => $contact['email_address'],
+        'bcc' => AFFILIATE_EMAIL_ADDRESS,
+        'from_name' => ORGANIZATION_NAME,
+        'from_email_address' => EMAIL_ADDRESS,
+        'subject' => lang('Welcome to the Affiliate Program'),
+        'format' => 'html',
+        'body' => get_affiliate_welcome_screen()));
+
+    pg_announce('affiliate.approved', pg_affiliate_approved_event($contact_id, $affiliate_code, (string) $contact['affiliate_name']));
+
+    return array('affiliate_code' => $affiliate_code, 'email_address' => (string) $contact['email_address']);
 }

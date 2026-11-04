@@ -513,7 +513,7 @@ $standard_widgets = array(
                             $el('div', 'alert alert-secondary d-flex flex-wrap align-items-center gap-2 small mt-5 mb-0', lang('Note'), array(
                                 $icon('bi-play-circle'),
                                 $span(lang('Want to try a course?'), '', lang('Text')),
-                                $link(lang('Watch a free lesson'), '{{page:courses}}', 'fw-semibold'),
+                                $link(lang('Watch a free lesson'), '{{page:courses}}', 'alert-link'),
                             )),
                         ), $show_when('record_found')),
                     ), '', '8'),

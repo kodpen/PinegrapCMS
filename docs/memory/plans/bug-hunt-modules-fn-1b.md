@@ -4,35 +4,35 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 ---
 
 ## Which includes/fn/ modules (link_resolve to pdf_merge) are hunted?
-- `link_resolve`: open
+- `link_resolve`: done (#4976: names in other letter case were broken links)
 
-- `list_paging`: open
+- `list_paging`: clean (page window, limit, search terms and Turkish folding, label order, row output checked)
 
-- `list_period`: open
+- `list_period`: clean
 
-- `mail`: open
+- `mail`: done (#5009: plain-text part capitalised whole bodies and link addresses); `email()` (transport choice, address errors, attachments, DKIM, failure notice) and the three comment mails read: clean (conditional admin lists are validated when the field is saved)
 
-- `mail_parse`: open
+- `mail_parse`: done (#4992: a quoted-printable part ending on a soft break kept its `=`)
 
 - `mail_queue`: done #4654 (rest checked: retry ladder, give-up and notices, property encoding and attachments, job-alive check, claim race, sweeps, List-Unsubscribe headers)
 
-- `maintenance_mode`: open
+- `maintenance_mode`: clean
 
-- `merchant_center`: open
+- `merchant_center`: done (#5059: a country change made pushes name another feed label than the registered data source)
 
-- `meta_tags`: open
+- `meta_tags`: done (#4952: a page `og:image` kept the design's `og:image:alt` and size)
 
 - `mfa`: taken by KY — #4590
 
-- `not_found_log`: open
+- `not_found_log`: clean (name, referrer, decide, write and stale restart, cap, sweep, keyset page, where, redirect URL checked); lead: `pg_not_found_log_answers()` shows `binned` for a name a live pattern now answers (patterns are asked only for names nothing else holds)
 
 - `office`: done (#4946: a run property turned off with `w:val="off"` showed its formatting in the Word preview)
 
-- `office_edit`: clean for addresses, value parsing, save lock, file replace, save package; sheet/docx patching not read
+- `office_edit`: clean (sheet/docx patching read; `locked` is xsd:boolean, no "off")
 
 - `ops_alerts`: clean; lead: webhook_failing mails raw webhook URLs
 
-- `order_completion`: done (#4884); receipt, ship dates, line forms, rewards, from_payment not read
+- `order_completion`: done (#4884, #4962: DST end dates; #5073: two payment callbacks both lowered `ship_tos.shipping_cost`); line forms, from_payment clean
 
 - `order_list`: clean
 
@@ -42,7 +42,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `order_view`: clean (callers escape)
 
-- `output`: clean for list sort, quick edit, back URL, filter, period nav; header, menu, license, page panel open
+- `output`: done (#5568: page panel Next/Skip Page links did not encode the page name; a deleted skip page linked to the root); clean for list sort, quick edit, back URL, filter, period nav, license check and card; menu helpers clean; header done (#5614: an OAuth client name ended <title> on the consent screen)
 
 - `page_bulk`: clean
 

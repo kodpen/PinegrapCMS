@@ -19,6 +19,27 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * The name of a duplicated calendar event: the original's with the copy
+ * suffix, the original cut so the suffix still fits the column.
+ *
+ * @param string $name
+ * @param int    $max   calendar_events.name length
+ * @return string
+ */
+function pg_calendar_event_copy_name($name, $max = 100)
+{
+    $name = (string) $name;
+    $suffix_length = mb_strlen(lang(array('string' => '{var:1} (copy)', 'vars' => '')));
+    $copy = lang(array('string' => '{var:1} (copy)', 'vars' => $name));
+
+    if (mb_strlen($copy) <= $max) {
+        return $copy;
+    }
+
+    return lang(array('string' => '{var:1} (copy)', 'vars' => rtrim(mb_substr($name, 0, max(0, $max - $suffix_length)))));
+}
+
+/**
  * The seven days of a calendar row in column order, as date('w') counts
  * them (0 = Sunday), for a week that starts on the given day.
  *
@@ -1248,6 +1269,58 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
         }
     }
 }
+/**
+ * The parameters of a Remove / Unremove link of a repeating event's
+ * instance (update_calendar_event_exception.php), or null when one is
+ * missing or wrong: action 'create' or 'delete', the event id (from 1) and
+ * the instance number (from 0), each as one value of digits.
+ *
+ * @param array $get  the query string ($_GET)
+ * @return array|null  'action', 'calendar_event_id', 'recurrence_number'
+ */
+function pg_calendar_event_exception_request($get)
+{
+    foreach (array('action', 'calendar_event_id', 'recurrence_number') as $name) {
+        if (!isset($get[$name]) || !is_string($get[$name])) {
+            return null;
+        }
+    }
+
+    if (!in_array($get['action'], array('create', 'delete'), true)) {
+        return null;
+    }
+
+    if (!ctype_digit($get['calendar_event_id']) || !ctype_digit($get['recurrence_number'])
+        || (strlen($get['calendar_event_id']) > 10) || (strlen($get['recurrence_number']) > 10)
+        || ((int) $get['calendar_event_id'] < 1)) {
+        return null;
+    }
+
+    return array(
+        'action' => $get['action'],
+        'calendar_event_id' => (int) $get['calendar_event_id'],
+        'recurrence_number' => (int) $get['recurrence_number'],
+    );
+}
+
+/**
+ * Whether a repeating event has the given instance: instance 0 is the event
+ * itself, the last is its stored repeat count.
+ *
+ * @param int   $recurrence_number  the instance asked for
+ * @param mixed $recurrence         the event's recurrence flag
+ * @param mixed $total              the event's stored repeat count
+ * @return bool
+ */
+function pg_calendar_event_exception_number_ok($recurrence_number, $recurrence, $total)
+{
+    if ((string) $recurrence !== '1') {
+        return false;
+    }
+
+    return ((int) $recurrence_number >= 0) && ((int) $recurrence_number <= (int) $total);
+}
+
 /**
  * The start and end of one occurrence of a recurring event. The occurrence
  * starts on its own date at the event's start time and lasts as long as the

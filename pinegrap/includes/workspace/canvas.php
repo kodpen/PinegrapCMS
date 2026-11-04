@@ -32,19 +32,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function ws_canvas_is_doc($doc)
 {
-    if (is_object($doc)) {
-        $doc = json_decode(json_encode($doc), true);
-    }
-
-    if (!is_array($doc) || (($doc['v'] ?? null) !== 1) || !empty($doc['source'])) {
-        return false;
-    }
-
-    $board = $doc['artboard'] ?? null;
-
-    return is_array($board) && isset($board['width'], $board['height'])
-        && is_numeric($board['width']) && is_numeric($board['height'])
-        && ($board['width'] >= 1) && ($board['height'] >= 1);
+    return pg_image_editor_canvas_is_doc($doc);
 }
 
 /**
@@ -57,13 +45,7 @@ function ws_canvas_is_doc($doc)
  */
 function ws_canvas_doc_json($doc)
 {
-    if (!is_object($doc) || !ws_canvas_is_doc($doc)) {
-        return '';
-    }
-
-    $json = json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-    return (is_string($json) && pg_file_versions_doc_storable($json)) ? $json : '';
+    return pg_image_editor_canvas_doc_json($doc);
 }
 
 /**
@@ -130,25 +112,151 @@ function ws_canvas_picture($request)
 }
 
 /**
- * Keeps a canvas's document beside the file just written from it, as the
- * file's newest version (source 'new'). Nothing when the versions table is
- * not installed yet or the document may not be kept.
+ * The file name a picture from this computer is kept under beside a
+ * canvas: the name it came with, else "Picture", in the type of its bytes.
+ * Pure but for lang().
  *
- * @param int    $file_id
- * @param mixed  $doc     decoded as objects
- * @param int    $user_id
- * @return bool kept
+ * @param mixed  $name
+ * @param string $type png or jpg
+ * @return string
  */
-function ws_canvas_keep($file_id, $doc, $user_id)
+function ws_canvas_picture_name($name, $type)
 {
-    $json = ws_canvas_doc_json($doc);
-    $stored = ($json !== '') ? (string) db_value("SELECT name FROM files WHERE id = '" . (int) $file_id . "'") : '';
+    $base = is_string($name) ? pg_basename(str_replace('\\', '/', $name)) : '';
+    $base = trim(preg_replace('/[\\\\\/:*?"<>|\x00-\x1f]+/', ' ', preg_replace('/\.[a-z0-9]{2,5}$/i', '', $base)));
 
-    if (($stored === '') || !pg_file_versions_ready()) {
-        return false;
+    if ($base === '') {
+        $base = lang('Picture');
     }
 
-    return (bool) pg_file_versions_add((int) $file_id, FILE_DIRECTORY_PATH . '/' . basename($stored), $json, 'new', $user_id);
+    return mb_substr($base, 0, 120) . '.' . $type;
+}
+
+/**
+ * Points the image layers of a canvas document at the files their pictures
+ * were kept as ($saved: layer id => {id, url}) and counts the pictures left
+ * in it as data: URLs, which keep the document from being stored. Pure.
+ *
+ * @param mixed $doc   decoded as objects; changed
+ * @param array $saved
+ * @return int
+ */
+function ws_canvas_pictures_point($doc, $saved)
+{
+    if (!is_object($doc) || !isset($doc->layers) || !is_array($doc->layers)) {
+        return 0;
+    }
+
+    $left = 0;
+
+    foreach ($doc->layers as $layer) {
+        if (!is_object($layer) || !isset($layer->id) || !is_string($layer->id)) {
+            continue;
+        }
+
+        if (isset($saved[$layer->id])) {
+            $layer->src = (string) $saved[$layer->id]['url'];
+            $layer->fileId = (int) $saved[$layer->id]['id'];
+        } elseif (isset($layer->src) && is_string($layer->src) && (strncmp($layer->src, 'data:', 5) === 0)) {
+            $left++;
+        }
+    }
+
+    return $left;
+}
+
+/**
+ * Keeps each picture from this computer (the save's pictures, as
+ * pg_image_editor_picture_list() reads them) as a file in the folder of the
+ * canvas's file, so it is read by whoever may read the canvas, and points
+ * its layer at it. A picture over the Workspace's file size, of a blocked
+ * name or that cannot be written stays in the document as it came; the
+ * document is then not kept and the canvas opens as a flat picture.
+ *
+ * @param int   $file_id the canvas's file
+ * @param mixed $doc     decoded as objects; changed
+ * @param mixed $pictures
+ * @param int   $user_id
+ * @return array layer id => {id, url}
+ */
+function ws_canvas_pictures_keep($file_id, $doc, $pictures, $user_id)
+{
+    $list = pg_image_editor_picture_list($pictures);
+    $folder = $list ? (int) db_value("SELECT folder FROM files WHERE id = '" . (int) $file_id . "'") : 0;
+
+    // A canvas outside a folder (the schema not updated yet) has no access
+    // of its own to share.
+    if (!$list || ($folder <= 0) || !is_object($doc)) {
+        return array();
+    }
+
+    $settings = pg_image_settings();
+    $saved = array();
+
+    foreach ($list as $picture) {
+        $type = (strncmp($picture['data'], 'data:image/png', 14) === 0) ? 'png' : 'jpg';
+        $name = get_unique_name(array('name' => prepare_file_name(ws_canvas_picture_name($picture['name'], $type)), 'type' => 'file'));
+
+        if (pg_upload_name_blocked($name)) {
+            continue;
+        }
+
+        $path = FILE_DIRECTORY_PATH . '/' . $name;
+        $temporary = $path . '.' . bin2hex(random_bytes(6)) . '.tmp';
+
+        if (!pg_image_editor_take_picture($picture['data'], $temporary)) {
+            continue;
+        }
+
+        // The site's upload cap, as an upload has it.
+        if (!pg_image_upload_cap_apply($temporary, $settings['upload_max_dimension'], $settings['resize_quality'])) {
+            pg_process_image_file($temporary);
+        }
+
+        if (((int) @filesize($temporary) > ws_upload_max_bytes()) || file_exists($path) || !@rename($temporary, $path)) {
+            @unlink($temporary);
+            continue;
+        }
+
+        db("INSERT INTO files (name, folder, type, size, user, design, optimized, timestamp)
+            VALUES ('" . e($name) . "', '" . $folder . "', '" . e($type) . "', '" . (int) filesize($path) . "',
+                '" . (int) $user_id . "', '0', '0', UNIX_TIMESTAMP())");
+
+        $id = (int) mysqli_insert_id(db::$con);
+
+        if ($id <= 0) {
+            @unlink($path);
+            continue;
+        }
+
+        $saved[$picture['id']] = array('id' => $id, 'url' => PATH . encode_url_path($name));
+    }
+
+    ws_canvas_pictures_point($doc, $saved);
+
+    return $saved;
+}
+
+/**
+ * Keeps a canvas's document beside the file just written from it, as the
+ * file's newest version (source 'new'), after its pictures from this
+ * computer became files beside it (ws_canvas_pictures_keep()). Nothing when
+ * the versions table is not installed yet or the document may not be kept.
+ *
+ * @param int    $file_id
+ * @param mixed  $doc      decoded as objects; its picture layers are changed
+ * @param int    $user_id
+ * @param mixed  $pictures the save's pictures
+ * @return array kept (bool), pictures: layer id => {id, url}
+ */
+function ws_canvas_keep($file_id, $doc, $user_id, $pictures = null)
+{
+    $saved = ws_canvas_pictures_keep($file_id, $doc, $pictures, $user_id);
+
+    return array(
+        'kept'     => pg_image_editor_canvas_keep($file_id, $doc, $user_id, 'new'),
+        'pictures' => (object) $saved,
+    );
 }
 
 /**
@@ -160,20 +268,7 @@ function ws_canvas_keep($file_id, $doc, $user_id)
  */
 function ws_canvas_open_doc($file_id)
 {
-    if (!pg_file_versions_ready()) {
-        return null;
-    }
-
-    $stored = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $file_id . "'");
-    $newest = ($stored !== '') ? pg_file_versions_newest((int) $file_id) : null;
-
-    if (!$newest || ((string) $newest['doc_json'] === '') || !pg_file_versions_matches_file($newest, FILE_DIRECTORY_PATH . '/' . basename($stored))) {
-        return null;
-    }
-
-    $doc = json_decode((string) $newest['doc_json']);
-
-    return (is_object($doc) && ws_canvas_is_doc($doc)) ? $doc : null;
+    return pg_image_editor_canvas_open_doc($file_id);
 }
 
 /**

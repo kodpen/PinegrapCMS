@@ -107,9 +107,15 @@ function pg_sms_campaign_decide($post, $groups, $now, $start_at, $limit = null)
 {
     $errors = array();
 
-    $name = trim((string) ($post['name'] ?? ''));
-    $body = trim(str_replace("\r\n", "\n", (string) ($post['body'] ?? '')));
-    $send = (string) ($post['send'] ?? 'draft');
+    // A field posted as a list (name[]=x) counts as not given: cast, it
+    // would be saved as "Array".
+    $field = function ($key, $default = '') use ($post) {
+        return (isset($post[$key]) && is_scalar($post[$key])) ? (string) $post[$key] : $default;
+    };
+
+    $name = trim($field('name'));
+    $body = trim(str_replace("\r\n", "\n", $field('body')));
+    $send = $field('send', 'draft');
 
     if (function_exists('mb_substr')) {
         $name = mb_substr($name, 0, 100);
@@ -119,7 +125,7 @@ function pg_sms_campaign_decide($post, $groups, $now, $start_at, $limit = null)
     $excluded = array();
 
     foreach ($groups as $group_id) {
-        $choice = (string) ($post['contact_group_' . (int) $group_id] ?? '');
+        $choice = $field('contact_group_' . (int) $group_id);
 
         if ($choice === 'included') {
             $included[] = (int) $group_id;

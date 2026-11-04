@@ -219,7 +219,15 @@ echo pg_page_shell(array(
 
 <style>
 ' . api_console_css() . '
+/* The index sticks below the fixed panel navbar, not under it. Below
+   1025px it is static (api_console_css()). */
+@media (min-width: 1025px) {
+	.api-docs .doc-nav { top: calc(var(--pg-navbar-h) + 1rem); max-height: calc(100vh - var(--pg-navbar-h) - 2rem); }
+}
 .doc-cred { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* Long addresses break inside the line on a phone instead of widening the page. */
+.doc-cred > div { min-width: 0; max-width: 100%; }
+.doc-cred code { overflow-wrap: anywhere; word-break: break-word; }
 @media (max-width: 768px) {
 	.doc-cred > .ms-auto { margin-left: 0 !important; width: 100%; flex-wrap: wrap; }
 	.doc-cred select { min-width: 0 !important; width: 100%; }
@@ -232,16 +240,16 @@ echo pg_page_shell(array(
 		<div class="card-body py-5">
 			<div class="doc-cred">
 				<div>
-					<label class="form-label small mb-1">' . lang('Base address') . '</label>
+					<div class="form-label small mb-1">' . lang('Base address') . '</div>
 					<div><code>' . h($api_base_url) . '</code></div>
 				</div>
 				<div>
-					<label class="form-label small mb-1">' . lang('Authentication') . '</label>
+					<div class="form-label small mb-1">' . lang('Authentication') . '</div>
 					<div><code>HTTP Basic</code>
 						<span class="fg-2 ms-1">' . lang('user name: application key, password: secret') . '</span></div>
 				</div>
 				<div>
-					<label class="form-label small mb-1">' . lang('OpenAPI description') . '</label>
+					<div class="form-label small mb-1">' . lang('OpenAPI description') . '</div>
 					<div><code>' . h($api_base_url . '/openapi.json') . '</code>
 						<span class="fg-2 ms-1">' . ($openapi_public
 							? lang('open to anyone')

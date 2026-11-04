@@ -515,16 +515,21 @@ function pg_fs_confirm($contact_id, $group_id, $email)
 
     $where = "(contact_id = '" . $contact_id . "') AND (contact_group_id = '" . $group_id . "')";
 
-    $writes = array(
+    // A group filled by rules takes the confirmed choice (opt_in) but no
+    // membership row: its rules decide who is in it.
+    $member_write = pg_audience_group_is_dynamic($group_id) ? array() : array(
         "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id)
         SELECT '" . $contact_id . "', '" . $group_id . "' FROM DUAL
         WHERE NOT EXISTS (SELECT 1 FROM contacts_contact_groups_xref WHERE " . $where . ")",
+    );
+
+    $writes = array_merge($member_write, array(
         "UPDATE opt_in SET opt_in = '1' WHERE " . $where,
         "INSERT INTO opt_in (contact_id, contact_group_id, opt_in)
         SELECT '" . $contact_id . "', '" . $group_id . "', '1' FROM DUAL
         WHERE NOT EXISTS (SELECT 1 FROM opt_in WHERE " . $where . ")",
         "UPDATE contacts SET timestamp = UNIX_TIMESTAMP() WHERE id = '" . $contact_id . "'",
-    );
+    ));
 
     foreach ($writes as $query) {
         // Not db(): a failed query there ends the request with an error page.
@@ -542,6 +547,12 @@ function pg_fs_confirm($contact_id, $group_id, $email)
         'email'      => $email,
         'contact_id' => $contact_id,
     ));
+
+    // The signed link proves the mailbox is the person's: a bounce or
+    // complaint block on it lifts.
+    if (function_exists('pg_mail_bounce_clear')) {
+        pg_mail_bounce_clear($email);
+    }
 
     log_activity(lang(array(
         'string' => '{var:1} confirmed the subscription to contact group {var:2}.',

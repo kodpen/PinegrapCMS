@@ -106,5 +106,114 @@ function test_search_index_resume_wiring()
 	pg_assert_contains("if (\$search_index_done) {", $end);
 
 	// The panel window asks for the next request while the pass is unfinished.
-	pg_assert_contains('update_search_index.php?continue=1', $src);
+	pg_assert_contains('<input type="hidden" name="continue" value="1">', $src);
+}
+
+// Parts inside an item: a page's own render, its calendar events and classic
+// records; a record list host's records. The budget is checked after each
+// part, a tick out of time pauses the item at its last finished part.
+function test_search_index_parts_pause_and_resume()
+{
+	$state = pg_search_index_next(array('started' => 500, 'stage' => 'pages', 'after' => '6', 'current' => ''), 1000);
+	$state = pg_search_index_begin($state, '7')['state'];
+
+	pg_assert_same('run', pg_search_index_part_step($state, 'news', false), 'the page itself is read');
+	$state = pg_search_index_part_done($state, 'news');
+	pg_assert_same('run', pg_search_index_part_step($state, 'event?id=1', false), 'then its first event');
+	$state = pg_search_index_part_done($state, 'event?id=1');
+	$state = pg_search_index_pause($state);
+
+	pg_assert_true($state['paused'], 'the item is paused');
+	pg_assert_same('7', $state['current'], 'still the item under way');
+	pg_assert_same('event?id=1', $state['part'], 'at its last finished part');
+
+	$saved = json_decode(json_encode($state), true);
+	$next = pg_search_index_next($saved, 2000);
+	$begin = pg_search_index_begin($next, '7', null);
+
+	pg_assert_false($begin['skip'], 'a paused item is resumed, not skipped');
+	pg_assert_false($begin['keep'], 'nothing to keep');
+	pg_assert_same(array(), $begin['state']['skipped'], 'and nothing named');
+	pg_assert_false($begin['state']['paused'], 'the pause is used up');
+	pg_assert_same('done', pg_search_index_part_step($begin['state'], 'news', $begin['state']['part'] !== ''), 'the page itself is not read again');
+	pg_assert_same('done', pg_search_index_part_step($begin['state'], 'event?id=1', true), 'nor the event the carry holds');
+	pg_assert_same('run', pg_search_index_part_step($begin['state'], 'event?id=2', false), 'the next event is read');
+
+	$done = pg_search_index_finish($begin['state'], '7');
+	pg_assert_same('', $done['part'], 'a finished item leaves no part');
+	pg_assert_same(array(), $done['dead_parts'], 'nor dead parts');
+}
+
+function test_search_index_parts_death_inside_a_part()
+{
+	$state = pg_search_index_next(array('started' => 500, 'stage' => 'designer', 'after' => '2', 'current' => '3', 'part' => 'blog/a'), 1000);
+	$marker = array('started' => 500, 'stage' => 'designer', 'item' => '3', 'part' => 'blog/c');
+	$begin = pg_search_index_begin($state, '3', $marker);
+
+	pg_assert_false($begin['skip'], 'the item is read on');
+	pg_assert_false($begin['keep'], 'no rows kept by page');
+	pg_assert_same(array('blog/c'), $begin['state']['dead_parts'], 'the part the tick died in');
+	pg_assert_same(array('designer 3 blog/c'), $begin['state']['skipped'], 'is named');
+	pg_assert_same('done', pg_search_index_part_step($begin['state'], 'blog/a', true), 'parts written before the checkpoint stay done');
+	pg_assert_same('run', pg_search_index_part_step($begin['state'], 'blog/b', false), 'a part after the checkpoint is read again');
+	pg_assert_same('skip', pg_search_index_part_step($begin['state'], 'blog/c', false), 'only the part the tick died in is skipped');
+	pg_assert_same('run', pg_search_index_part_step($begin['state'], 'blog/d', false), 'the rest is read');
+
+	// A marker of another pass, stage or item says nothing.
+	foreach (array(array('started' => 499) + $marker, array('stage' => 'pages') + $marker, array('item' => '4') + $marker) as $other) {
+		pg_assert_true(pg_search_index_begin($state, '3', $other)['skip'], 'a stale marker is ignored');
+	}
+
+	// The same part named again: the tick died after it was skipped, outside
+	// any part.
+	$again = pg_search_index_begin(pg_search_index_next(json_decode(json_encode($begin['state']), true), 1000), '3', $marker);
+	pg_assert_true($again['skip'], 'a part already skipped does not hold the item twice');
+	pg_assert_true($again['keep'], 'and the item keeps its rows');
+}
+
+function test_search_index_parts_death_outside_parts_keeps_rows()
+{
+	$state = pg_search_index_next(array('started' => 500, 'stage' => 'pages', 'after' => '6', 'current' => '7'), 1000);
+	$begin = pg_search_index_begin($state, '7', null);
+
+	pg_assert_true($begin['skip'], 'the item is skipped as before');
+	pg_assert_true($begin['keep'], 'and keeps its rows');
+
+	pg_assert_same("UPDATE search_items SET timestamp = '500' WHERE page_id IN ('7')", pg_search_index_keep_pages_sql(array(7), 500), 'a page item keeps by its page id');
+	pg_assert_same("UPDATE search_items SET timestamp = '500' WHERE page_id IN ('12', '14')", pg_search_index_keep_pages_sql(array('12', 14, 12, 0, -3), 500), 'ids once, positive');
+	pg_assert_same('', pg_search_index_keep_pages_sql(array(), 500), 'no page, no query');
+
+	$host = array('page' => array('id' => 3), 'lists' => array(array('detail_page_id' => 12), array('detail_page_id' => '14'), array('detail_page_id' => 12), array()));
+	pg_assert_same(array(12, 14), pg_search_index_host_pages($host), "a host keeps by its lists' detail pages");
+	pg_assert_same(array(), pg_search_index_host_pages(array()), 'a broken host keeps nothing');
+}
+
+function test_search_index_parts_old_cursor()
+{
+	// A cursor written before items had parts.
+	$old = array('started' => 500, 'stage' => 'pages', 'after' => '6', 'current' => '7', 'skipped' => array(), 'carry' => array());
+	$next = pg_search_index_next($old, 1000);
+
+	pg_assert_same('', $next['part'], 'no checkpoint');
+	pg_assert_false($next['paused'], 'not paused');
+	pg_assert_same(array(), $next['dead_parts'], 'no dead parts');
+
+	$begin = pg_search_index_begin($next, '7');
+	pg_assert_true($begin['skip'], 'the item it ended inside is skipped as before');
+	pg_assert_same(array('pages 7'), $begin['state']['skipped'], 'and named');
+	pg_assert_same('run', pg_search_index_part_step(pg_search_index_begin($begin['state'], '8')['state'], 'next', false), 'the next item reads its parts');
+}
+
+function test_search_index_parts_wiring()
+{
+	$src = file_get_contents(PG_FUNCTIONS_DIR . '/update_search_index.php');
+
+	pg_assert_same(4, substr_count($src, '= $search_index_part('), 'every part asks before it is read: page, event, classic record, visual editor record');
+	pg_assert_contains('pg_search_index_marker_write(', $src, 'a small marker names the part being read');
+	pg_assert_contains('pg_search_index_marker_read()', $src, 'and is read back when the item resumes');
+	pg_assert_contains('$search_index_keep = pg_search_index_keep_pages_sql(array($page[\'id\']), $timestamp);', $src, 'a skipped page item keeps its rows');
+	pg_assert_contains('$search_index_keep = pg_search_index_keep_pages_sql(pg_search_index_host_pages($designer_host), $timestamp);', $src, 'a skipped host keeps its records');
+	pg_assert_same(2, substr_count($src, "if (\$search_index_keep !== '') {"), 'never an empty query: a failed one is fatal');
+	pg_assert_contains("pg_search_index_keep_item(encode_url_path(\$file['name']), \$timestamp);", $src, 'a skipped file keeps its row');
+	pg_assert_contains('ORDER BY calendar_events.id ASC', $src, 'events in a fixed order');
 }

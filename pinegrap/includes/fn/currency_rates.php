@@ -61,14 +61,32 @@ function pg_exchange_rates_log_line($updated, $requested)
 
 /**
  * The currencies the Frankfurter feed (ECB reference rates) can answer for.
+ * BGN is left out: the ECB stopped publishing it when Bulgaria adopted the
+ * euro, so HexaRate answers for it.
  *
  * @return array
  */
 function pg_currency_rates_frankfurter_codes()
 {
     return array('USD', 'EUR', 'GBP', 'CHF', 'JPY', 'AUD', 'CAD', 'SEK', 'NOK', 'DKK',
-        'PLN', 'HUF', 'CZK', 'RON', 'BGN', 'ISK', 'NZD', 'SGD', 'HKD', 'KRW', 'CNY',
+        'PLN', 'HUF', 'CZK', 'RON', 'ISK', 'NZD', 'SGD', 'HKD', 'KRW', 'CNY',
         'INR', 'BRL', 'MXN', 'ZAR', 'TRY', 'ILS', 'IDR', 'MYR', 'PHP', 'THB');
+}
+
+/**
+ * The Frankfurter request for the latest rates of some codes against a base.
+ *
+ * The feed moved to api.frankfurter.dev/v1; the old api.frankfurter.app host
+ * answers with a redirect, which the outbound client does not follow.
+ *
+ * @param string $base_code
+ * @param array  $codes
+ * @return string
+ */
+function pg_currency_rates_frankfurter_url($base_code, array $codes)
+{
+    return 'https://api.frankfurter.dev/v1/latest?from=' . rawurlencode((string) $base_code)
+        . '&to=' . implode(',', array_map('rawurlencode', array_values($codes)));
 }
 
 /**
@@ -140,7 +158,7 @@ function pg_currency_rates_fetch($base_code, array $codes)
         $batch = array_values(array_intersect(array_keys($wanted), $known));
 
         if (!empty($batch)) {
-            $body = pg_currency_rates_http_get('https://api.frankfurter.app/latest?from=' . $base_code . '&to=' . implode(',', $batch));
+            $body = pg_currency_rates_http_get(pg_currency_rates_frankfurter_url($base_code, $batch));
             $response = ($body !== false) ? json_decode($body, true) : null;
 
             if (is_array($response) && isset($response['rates']) && is_array($response['rates'])) {

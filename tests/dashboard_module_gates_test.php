@@ -77,14 +77,17 @@ function test_dashboard_brief_feature_links_follow_their_screens()
 		pg_assert_true(strpos($gate, $condition) !== false, $href . ' line is gated like its screen');
 	}
 
-	// The one line with no link stays ungated, so the pool is never empty.
-	pg_assert_same('', dashboard_module_gates_block_condition($brief, "h(lang('You can start a deep database check from the system status widget whenever you like.'))"), 'database check line has no gate');
+	// The line with no link names the old dashboard's System Status widget, so
+	// only the old dashboard offers it; a kind left with nothing for the reader
+	// falls back to a closing word.
+	pg_assert_contains("!== 'v2'", dashboard_module_gates_block_condition($brief, "h(lang('You can start a deep database check from the system status widget whenever you like.'))"), 'database check line only on the old dashboard');
+	pg_assert_contains("if (empty(\$greeting_tail_pool)) {\n            \$greeting_tail_pool = \$greeting_closers;", $brief, 'an empty pool falls back to a closing word');
 }
 
 function test_user_list_calendar_column_needs_the_module()
 {
 	$list = dashboard_module_gates_source('includes/fn/user_list.php');
-	pg_assert_true(strpos($list, "if (CALENDARS === true) {\n            \$columns['manage_calendars']") !== false, 'Calendar Manager column needs Calendars on');
+	pg_assert_true(strpos($list, "if (defined('CALENDARS') && (CALENDARS === true)) {\n            \$columns['manage_calendars']") !== false, 'Calendar Manager column needs Calendars on');
 }
 
 function test_user_list_filters_follow_the_modules()

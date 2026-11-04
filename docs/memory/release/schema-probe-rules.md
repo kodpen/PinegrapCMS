@@ -6,7 +6,7 @@ description: Code that reads a table/column added by a migration probes first wi
 ## When must code probe before reading a table or column?
 - Any code that reads a table/column a migration adds, outside the upgrade bridge, probes first. A missing table read by code still gives a wrong answer even though error reporting has been off since 2026-09-12.
 - History: an `api_webhooks` status row once gave 500; `@mysqli_query` does not silence the exception.
-- Older helpers: `waf_table_has_column()` for a column, `SHOW TABLES LIKE` for a table.
+- Older: `waf_table_has_column()` (now via `pg_schema_has()`, schema-cache-file.md), `SHOW TABLES LIKE`
 
 ## What is the probe in new code (since 2026.4.8)?
 - `pg_schema_has($table, $column)` (`fn/core.php`); never `SHOW COLUMNS/TABLES ... LIKE`: `_` is a wildcard (`LIKE 'visitor_content_hourly'` also matched a table `visitorXcontent_hourly`).

@@ -29,13 +29,21 @@
 .btn:where(.text-end) {
   justify-content: flex-end;
 }
-/* v5's card: block body and header, v5 paddings and cap tint, children
-   keep their own margins (v6 zeroes them and spaces them with a gap). */
+/* A switched-off ghost button draws no frame. With a theme class
+   (.theme-secondary) v6 leaves the disabled border colour unset, so it falls
+   back to the text colour and the disabled button looked stronger than the
+   enabled one beside it (the settings step arrows). */
+.btn-text:is(:disabled, .disabled) {
+  border-color: transparent;
+}
+/* Card: block body and header, v5's cap tint, children keep their own
+   margins (v6 zeroes them and spaces them with a gap). Bootstrap 6's
+   padding; the header text starts where the body text does. */
 .card {
-  --bs-card-spacer-y: 1rem;
-  --bs-card-spacer-x: 1rem;
-  --bs-card-cap-padding-y: 0.5rem;
-  --bs-card-cap-padding-x: 1rem;
+  --bs-card-spacer-y: var(--bs-spacer-6);
+  --bs-card-spacer-x: var(--bs-spacer-6);
+  --bs-card-cap-padding-y: var(--bs-spacer-4);
+  --bs-card-cap-padding-x: var(--bs-card-spacer-x);
   --bs-card-cap-bg: color-mix(in srgb, var(--pg-fg-body) 3%, transparent);
   --bs-card-border-color: var(--pg-border-color-translucent);
 }
@@ -201,18 +209,20 @@ input.btn-check:disabled + .btn {
 :where(h6, .h6):not(.menu-header, .popover-header) {
   font-size: 1rem;
 }
-/* v5's dropdown menu: 1rem text, full-width items with no gap or radius,
-   v5 paddings (a heading in a menu keeps the header's own size). */
+/* Dropdown menu: 1rem text, rows inset from the menu's edge on Bootstrap 6's
+   spacers, rounded to the menu's radius minus that inset so the corners
+   nest (a heading in a menu keeps the header's own size). */
 .menu {
   --bs-menu-font-size: 1rem;
-  --bs-menu-padding-x: 0;
-  --bs-menu-padding-y: 0.5rem;
+  --bs-menu-padding-x: var(--bs-spacer-1);
+  --bs-menu-padding-y: var(--bs-spacer-1);
   --bs-menu-gap: 0;
   --bs-menu-item-gap: 0;
-  --bs-menu-item-padding-x: 1rem;
-  --bs-menu-item-border-radius: 0;
-  --bs-menu-header-padding-x: 1rem;
-  --bs-menu-header-padding-y: 0.5rem;
+  --bs-menu-item-padding-x: var(--bs-spacer-4);
+  --bs-menu-item-padding-y: var(--bs-spacer-2);
+  --bs-menu-item-border-radius: var(--pg-radius-lg);
+  --bs-menu-header-padding-x: var(--bs-spacer-4);
+  --bs-menu-header-padding-y: var(--bs-spacer-3);
   --bs-menu-divider-margin-x: 0;
   --bs-menu-divider-margin-y: 0.5rem;
 }
@@ -467,10 +477,11 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
 .pg-menu-caret:empty::after {
   margin-left: 0;
 }
-/* v5's dialog: its radius, an unblurred backdrop, under the top of the
-   screen; .pg-dialog-centered (v5's modal-dialog-centered) is centred. */
+/* v5's dialog: an unblurred backdrop, under the top of the screen, with
+   the panel's surface radius; .pg-dialog-centered (v5's
+   modal-dialog-centered) is centred. */
 .dialog {
-  --bs-dialog-border-radius: var(--pg-radius-lg);
+  --bs-dialog-border-radius: var(--pg-radius-surface);
   --bs-dialog-backdrop-blur: 0px;
   margin-top: var(--bs-dialog-margin);
 }
@@ -1034,6 +1045,9 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --pg-radius-xl: var(--bs-radius-9);
   --pg-radius-2xl: 2rem;
   --pg-radius-pill: var(--bs-radius-pill);
+  /* Cards, dialogs and menus: Bootstrap 6's own surface radius, one step
+     rounder than the controls (radius-5) they hold. */
+  --pg-radius-surface: var(--bs-radius-7);
   --pg-font-mono: var(--bs-font-mono);
   --pg-link-color: var(--bs-link-color);
   --pg-shadow: var(--bs-box-shadow);
@@ -1064,12 +1078,10 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
 }
 
 .card {
-  --bs-card-border-radius: var(--pg-radius-lg);
+  --bs-card-border-radius: var(--pg-radius-surface);
   --bs-card-border-width: 1px;
-  --bs-card-cap-padding-y: 1rem;
-  --bs-card-cap-padding-x: 1rem;
   --bs-card-inner-border-radius: calc(
-    var(--pg-radius-lg) - (var(--pg-border-width))
+    var(--bs-card-border-radius) - (var(--pg-border-width))
   );
   --bs-card-bg: var(--pg-card-bg);
 }
@@ -1077,8 +1089,15 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
 .table {
   --bs-table-bg: var(--bs-card-bg);
 }
+/* A table in a card starts at the card's edge (the 3rem of .table is for
+   tables on the page), and .mb-0 lets an edge-to-edge table in a
+   card-body p-0 sit on the card's bottom. */
 .card .table {
+  margin-top: 0;
   margin-bottom: 1.5rem !important;
+}
+.card .table.mb-0 {
+  margin-bottom: 0 !important;
 }
 
 .table > :not(caption) > * > * {
@@ -1559,6 +1578,13 @@ html[data-bs-theme="dark"] .accordion {
   box-shadow: 0 0 0 var(--pg-focus-ring-width)
     color-mix(in srgb, var(--pg-danger) 35%, transparent);
 }
+/* A form's own fixed message after a field (Required Area, shown by the
+   browser's validation) stays hidden while liveform's message sits before
+   it: Bootstrap's .is-invalid ~ .invalid-feedback showed both, "already in
+   use" over "Required Area". */
+.pg-inline-feedback ~ .invalid-feedback:not(.pg-inline-feedback) {
+  display: none;
+}
 .form-control.is-valid,
 .form-adorn:has(.form-ghost.is-valid),
 .chip-input:has(.form-ghost.is-valid),
@@ -1875,7 +1901,7 @@ html[data-bs-theme="dark"] #menu .pg-mi {
 #menu .pg-mi-offers { --pg-mi-a: var(--pg-mi-rose); }
 #menu .pg-mi-shipping { --pg-mi-a: var(--pg-mi-amber); }
 #menu .pg-mi-ads { --pg-mi-a: var(--pg-mi-yellow); }
-#menu .pg-mi-settings { --pg-mi-a: var(--pg-mi-sky); }
+#menu .pg-mi-tools { --pg-mi-a: var(--pg-mi-amber); }
 /* Page Styles: the paint on the palette is every colour but its own. */
 #menu .pg-mi-styles .pg-mi-c1 { color: var(--pg-mi-sky); }
 #menu .pg-mi-styles .pg-mi-c2 { color: var(--pg-mi-amber); }
@@ -1899,6 +1925,10 @@ html[data-bs-theme="dark"] #menu .pg-mi .pg-mi-2 {
 #menu .pg-mi .pg-mi-solid {
   fill-opacity: 0.92;
 }
+/* The toolbox hides its tools until the lid opens: nothing shows through. */
+#menu .pg-mi-tools .pg-mi-solid {
+  fill-opacity: 1;
+}
 #menu .pg-mi .pg-mi-date {
   font-family: inherit;
   font-variant-numeric: tabular-nums;
@@ -1911,7 +1941,7 @@ html[data-bs-theme="dark"] #menu .pg-mi .pg-mi-2 {
 #menu .pg-mi .pg-mi-speed {
   opacity: 0;
 }
-#menu .pg-mi :is(.pg-mi-bar, .pg-mi-sun, .pg-mi-tip, .pg-mi-spark, .pg-mi-date,
+#menu .pg-mi :is(.pg-mi-bar, .pg-mi-sun, .pg-mi-tip, .pg-mi-spark, .pg-mi-date, .pg-mi-latch,
   .pg-mi-keys circle, .pg-mi-dots circle, .pg-mi-lights circle) {
   transform-box: fill-box;
   transform-origin: 50% 50%;
@@ -1924,7 +1954,7 @@ html[data-bs-theme="dark"] #menu .pg-mi .pg-mi-2 {
   /* Parts that stay moved while the row is hovered spring into place and
      back. */
   #menu .pg-mi :is(.pg-mi-flap, .pg-mi-sheet, .pg-mi-back, .pg-mi-front, .pg-mi-sun,
-    .pg-mi-rings, .pg-mi-lid, .pg-mi-l1, .pg-mi-l2, .pg-mi-l3, .pg-mi-truck) {
+    .pg-mi-rings, .pg-mi-lid, .pg-mi-l1, .pg-mi-l2, .pg-mi-l3, .pg-mi-truck, .pg-mi-kit) {
     transition: transform 0.45s var(--pg-mi-spring);
   }
   #menu .pg-mi .pg-mi-speed {
@@ -2098,10 +2128,18 @@ html[data-bs-theme="dark"] #menu .pg-mi .pg-mi-2 {
   #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-styles .pg-mi-dots circle:nth-child(3) { animation-delay: 0.16s; }
   #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-styles .pg-mi-dots circle:nth-child(4) { animation-delay: 0.24s; }
 
-  /* Site Settings: the gear turns one tooth, which lands it where it began. */
-  #menu .pg-mi-settings .pg-mi-gear { transform-origin: 12px 12px; }
-  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-settings .pg-mi-gear {
-    animation: pg-mi-turn 0.6s var(--pg-mi-spring);
+  /* System tools: the lid swings open on its right hinge, the latch gives a
+     click, and the screwdriver and the spanner come up out of the box. */
+  #menu .pg-mi-tools .pg-mi-lid { transform-origin: 21px 12px; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-tools .pg-mi-lid {
+    transform: rotate(30deg);
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-tools .pg-mi-latch {
+    animation: pg-mi-pop 0.4s ease-out;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-tools .pg-mi-kit {
+    transform: translateY(-3.6px);
+    transition-delay: 0.08s;
   }
 }
 
@@ -2126,7 +2164,6 @@ html[data-bs-theme="dark"] #menu .pg-mi .pg-mi-2 {
 @keyframes pg-mi-stream { from { transform: translateX(1.2px); } to { transform: translateX(-1.2px); } }
 @keyframes pg-mi-flare { 45% { transform: rotate(90deg) scale(1.7); } 75% { transform: rotate(160deg) scale(0.9); } to { transform: rotate(180deg); } }
 @keyframes pg-mi-tip { 30% { transform: rotate(-16deg); } 60% { transform: rotate(8deg); } 82% { transform: rotate(-3deg); } }
-@keyframes pg-mi-turn { to { transform: rotate(45deg); } }
 /*ADS*/
 body .ads-color {
   color: var(--ads-color) !important;
@@ -2447,6 +2484,10 @@ body:not(.toolbar) .software-content {
   margin-left: 0.5rem;
   flex: 0 0 auto;
 }
+/* Not flush against the arrow of a row that opens a panel. */
+#menu.expanded .pg-menu-main .list-group-item.pg-menu-parent .pg-menu-badge {
+  margin-right: 0.375rem;
+}
 #menu:not(.expanded) .pg-menu-hint {
   display: none;
 }
@@ -2692,12 +2733,18 @@ body:not(.toolbar) .software-content {
   line-height: 1.4;
   text-align: start;
   color: var(--pg-fg-body);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
   cursor: pointer;
 }
+/* A long name ("Tüm Doğrulanmış Teslimat Adresleri") wraps onto a second
+   line beside its icon instead of ending in an ellipsis: the icon is the
+   first item of a row and the name the second. */
+#menu .menu-body .pg-menu-panel-body > a.bi {
+  display: flex;
+  align-items: center;
+}
 #menu .menu-body .pg-menu-panel-body > a::before {
+  flex: 0 0 auto;
   font-size: 1rem;
   vertical-align: -0.15em;
 }
@@ -2709,7 +2756,49 @@ body:not(.toolbar) .software-content {
   background: rgba(var(--pg-primary-rgb), 0.18);
   font-weight: 600;
 }
-/* An entry that opens a second-level panel (Site Settings): its arrow sits
+/* Two colours for an entry's icon, as on the rows: the glyph in the module's
+   colour on a tile of its other shade. The panel names its module
+   (data-pg-menu-tone, pg_menu_panel()); the themes swap the two shades as
+   they do for the row icons (.pg-mi-2). The tile is about as tall as the
+   text line was with its padding, so the entries keep their height. */
+#menu .pg-menu-panel[data-pg-menu-tone="dashboard"] { --pg-menu-tone: var(--dashboard-color); --pg-menu-tone-2: var(--dashboard-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="workspace"] { --pg-menu-tone: var(--workspace-color); --pg-menu-tone-2: var(--workspace-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="folders"] { --pg-menu-tone: var(--folders-color); --pg-menu-tone-2: var(--folders-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="pages"] { --pg-menu-tone: var(--pages-color); --pg-menu-tone-2: var(--pages-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="calendars"] { --pg-menu-tone: var(--calendars-color); --pg-menu-tone-2: var(--calendars-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="forms"] { --pg-menu-tone: var(--forms-color); --pg-menu-tone-2: var(--forms-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="statistics"] { --pg-menu-tone: var(--statistics-color); --pg-menu-tone-2: var(--statistics-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="contacts"] { --pg-menu-tone: var(--contacts-color); --pg-menu-tone-2: var(--contacts-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="users"] { --pg-menu-tone: var(--users-color); --pg-menu-tone-2: var(--users-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="campaigns"] { --pg-menu-tone: var(--campaigns-color); --pg-menu-tone-2: var(--campaigns-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="erp"] { --pg-menu-tone: var(--erp-color); --pg-menu-tone-2: var(--erp-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="ecommerce"] { --pg-menu-tone: var(--ecommerce-color); --pg-menu-tone-2: var(--ecommerce-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="ads"] { --pg-menu-tone: var(--ads-color); --pg-menu-tone-2: var(--ads-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="design"] { --pg-menu-tone: var(--design-color); --pg-menu-tone-2: var(--design-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="settings"] { --pg-menu-tone: var(--settings-color); --pg-menu-tone-2: var(--settings-color-highlight); }
+#menu .menu-body .pg-menu-panel[data-pg-menu-tone] .pg-menu-panel-body > a.bi {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+/* Bootstrap Icons' own ::before rule is unlayered, so its line-height of 1
+   beats this layer: the glyph is centred in the tile by the top padding. */
+#menu .menu-body .pg-menu-panel[data-pg-menu-tone] .pg-menu-panel-body > a.bi::before {
+  box-sizing: border-box;
+  width: 1.625rem;
+  height: 1.625rem;
+  padding-top: calc((1.625rem - 0.9375rem) / 2);
+  border-radius: var(--pg-radius);
+  text-align: center;
+  font-size: 0.9375rem;
+  color: var(--pg-menu-tone);
+  background: color-mix(in srgb, var(--pg-menu-tone-2) 45%, transparent);
+}
+html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .pg-menu-panel-body > a.bi::before {
+  color: var(--pg-menu-tone-2);
+  background: color-mix(in srgb, var(--pg-menu-tone) 55%, transparent);
+}
+
+/* An entry that opens a second-level panel (System tools): its arrow sits
    in its right padding, as on the rows. */
 #menu .menu-body .pg-menu-panel-body > a.pg-menu-parent {
   position: relative;
@@ -2865,6 +2954,9 @@ body:not(.toolbar) .software-content {
     flex: 0 0 auto;
     font-size: 0.7rem;
     padding: 0.3em 0.55em;
+  }
+  #menu:not(.expanded) .list-group .list-group-item.pg-menu-parent .pg-menu-badge {
+    margin-right: 0.375rem;
   }
   #menu:not(.expanded) .pg-menu-hint {
     display: block;
@@ -3161,9 +3253,19 @@ body:not(.toolbar) .software-content {
   display: none;
 }
 
-#button_bar .btn-group,
-#button_bar .btn-group-vertical {
+#button_bar .btn-group:not([role="group"]),
+#button_bar .btn-group-vertical:not([role="group"]) {
   display: contents;
+}
+
+/* A group with role="group" is one control (a view switch, a type filter):
+   its buttons are choices of the same thing, so they stay together and wrap
+   to the next row as one box. Its buttons still take the bar's pill shape
+   below, so they sit side by side with a small gap instead of welded. */
+#button_bar .btn-group[role="group"] {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  gap: 0.25rem;
 }
 
 /* Shape and spacing for everything on the bar; the colour is decided by the
@@ -3608,7 +3710,7 @@ body:not(.toolbar) .software-content {
   --bs-menu-padding-x: var(--pg-um-pad);
   --bs-menu-padding-y: var(--pg-um-pad);
   --bs-menu-font-size: 0.875rem;
-  --bs-menu-border-radius: 1rem;
+  --bs-menu-border-radius: var(--pg-radius-surface);
   --bs-menu-item-padding-x: 0.625rem;
   --bs-menu-item-padding-y: 0.375rem;
   --bs-menu-item-border-radius: var(--pg-radius-lg);
@@ -3660,6 +3762,12 @@ body:not(.toolbar) .software-content {
   }
 }
 
+/* The menu is a column of a fixed or capped height that scrolls: its rows
+   keep their height. The licence card (overflow hidden, so no automatic
+   minimum height) shrank instead and hid its buttons below its edge. */
+#header .pg-usermenu > li {
+  flex-shrink: 0;
+}
 #header .pg-usermenu .menu-item {
   display: flex;
   align-items: center;
@@ -3941,6 +4049,18 @@ body:not(.toolbar) .software-content {
   overflow: hidden;
   border-radius: var(--pg-radius-lg);
   background: var(--pg-lic-bg);
+}
+/* The technical diagnostic under a failed licence check (managers only). */
+#header .pg-lic-diag {
+  font-size: 0.65rem;
+}
+#header .pg-lic-diag > summary {
+  cursor: pointer;
+}
+#header .pg-lic-diag > pre {
+  font-size: 0.65rem;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 #header .pg-lic-success {
   --pg-lic-ink: var(--pg-success-ink);
@@ -4570,17 +4690,26 @@ html[data-bs-theme="dark"] #notifications .pg-bell-glyph {
 
 /* Combobox fields (pg_fields.js): the posted <select> stays in the form, out
    of sight but still checked by `required`; the toggle after it is what
-   people use. */
+   people use. The size is !important: a select written with an inline
+   width:100% kept that width out of sight and pushed a narrow page sideways. */
 .pg-combobox-native {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  width: 1px !important;
+  height: 1px !important;
   padding: 0;
   margin: -1px;
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
+}
+
+/* An absolutely placed <select> takes the nearest positioned box as its
+   containing block; when that box is outside a scrolling table, its
+   overflow does not clip the select and the page grows sideways on a
+   narrow screen. */
+.table-responsive:has(.pg-combobox-native) {
+  position: relative;
 }
 
 /* Date and time fields on Bootstrap 6 (pg_fields.js): the posted input is
@@ -4610,6 +4739,18 @@ html[data-bs-theme="dark"] #notifications .pg-bell-glyph {
 .input-group > .pg-combobox {
   flex: 1 1 auto;
   width: 1%;
+}
+
+/* Every combobox menu stays within the screen: it grows to its longest
+   option (a long account title), which on a phone pushed it past the edge
+   and scrolled the page sideways; a long option wraps instead. */
+.pg-combobox-menu {
+  max-width: calc(100vw - 1rem);
+}
+
+.pg-combobox-menu .menu-item {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* A combobox searching the server (data-pg-source): its own search box,
@@ -4669,6 +4810,12 @@ input[readonly=true], input[readonly=true]:focus {
 }
 .pg-settings-modal .collapse.popover{
   margin-top:.5rem;
+}
+/* Inside a settings card the box a switch opens is as wide as the card, not
+   as wide as its content: sized to content, two boxes of one card ended at
+   different places and the switches inside them did not line up. */
+.pg-set-card .collapse.popover {
+  width: calc(100% - 0.3rem);
 }
 body.toolbar {
   background-color: transparent;
@@ -4805,6 +4952,26 @@ nav.buttons.navigation .btn-solid.theme-secondary {
     flex: 1 1 calc(50% - 0.25rem);
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
+  }
+
+  /* A bar with many actions (the orders list) shows icons only: half a row
+     each still made it four rows and a fifth of the screen. The label stays
+     the accessible name and the button's title names it on hover. */
+  nav.buttons.navigation.pg-bar-icons .btn {
+    flex: 0 0 auto;
+    min-width: 2.75rem;
+  }
+
+  nav.buttons.navigation.pg-bar-icons .pg-btn-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   /* A full-width bar leaves no side gutter to keep clear, so it sits above the
@@ -5035,6 +5202,11 @@ table.table.dataTable > tbody > tr.selected > * {
   margin-top: 3rem;
   margin-bottom: 2rem;
 }
+/* Find & Replace results: the table sits right under its card header. */
+.card .table.pg-find-results {
+  margin-top: 0;
+  margin-bottom: 0 !important;
+}
 a.dt-button {
   position: relative;
 }
@@ -5054,16 +5226,8 @@ a.dt-button {
   padding: 0 4px;
 }
 
-.btn-group-sm > .btn,
-.btn-sm,
-.btn {
-  --bs-btn-border-radius: var(--pg-radius-lg);
-}
 .menu {
-  --bs-menu-border-radius: var(--pg-radius-lg);
-}
-.pagination {
-  --bs-pagination-border-radius: var(--pg-radius-lg);
+  --bs-menu-border-radius: var(--pg-radius-surface);
 }
 
 .software_notice,
@@ -5501,8 +5665,8 @@ div#software_image_picker_container {
 
 .card.widget {
   aspect-ratio: 1/1;
-  --bs-card-border-radius: var(--pg-radius-lg);
-  --bs-card-inner-border-radius: calc(var(--pg-radius-2xl) - (var(--pg-border-width)));
+  --bs-card-border-radius: var(--pg-radius-surface);
+  --bs-card-inner-border-radius: calc(var(--bs-card-border-radius) - (var(--pg-border-width)));
   --bs-card-cap-padding-y: 0.5rem;
   --bs-card-cap-padding-x: 0.5rem;
   --bs-bg-opacity: 1;
@@ -7034,6 +7198,21 @@ button.pg-job-open {
   margin-bottom: 1.1rem;
 }
 
+/* The footer's two parts (product name, version and year) carry only
+   mx-auto, which leaves no space once both fit on one line: a gap keeps them
+   apart, and on a phone they stand one under the other. */
+#footer {
+  column-gap: 0.75rem;
+  row-gap: 0.25rem;
+}
+@media (max-width: 575.98px) {
+  #footer {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+}
+
 /* Dark theme */
 html[data-bs-theme="dark"] body:not(.advanced-visuals) .card.widget {
   --bs-card-border-color: #3b3b3b;
@@ -8507,7 +8686,18 @@ button.no-popover:focus-visible {
      the file manager's app shell does exactly that. It scrolls instead. */
   max-height: calc(100vh - 10rem);
   overflow-y: auto;
+
+  /* The wrapper is only as wide as its icon button, and an absolute box
+     shrinks to its containing block, so without a width the menu falls back
+     to its 10rem minimum and long items scroll sideways inside it. It takes
+     its longest item's width instead, up to the window; past that the items
+     wrap. */
+  width: max-content;
+  max-width: min(24rem, calc(100vw - 2rem));
+  overflow-x: hidden;
 }
+.pg-toolbar .menu .menu-item,
+#button_bar .menu .menu-item { white-space: normal; }
 .pg-toolbar .menu.pg-menu-end,
 #button_bar .menu.pg-menu-end { left: auto; right: 0; }
 
@@ -8798,6 +8988,16 @@ html:has(.mpp-bulk:not(.d-none)) {
 .pg-settings-body h6 {
   font-size: 0.6875rem;
 }
+/* A card's introduction paragraph reads at the size of a description, and a
+   legend used as a field name at the size of a name: at body size (16px) the
+   accounting cards that carry them looked larger than every other card.
+   Outside the settings the legend keeps the 1rem it had from fs-md. */
+.pg-settings-body .pg-set-card p.fg-secondary {
+  font-size: 0.75rem;
+}
+legend.form-label {
+  font-size: 1rem;
+}
 
 /* Section rail placement, shared by every screen that has one.
    <main> becomes two columns from xl up: the rail, then everything the page
@@ -8945,29 +9145,32 @@ html:has(.mpp-bulk:not(.d-none)) {
   }
 }
 
-/* ── Loading curtain ──────────────────────────────────────────────────────
- * Printed straight after <body> by pg_preloader_markup(), and raised again
- * when a link is clicked, so the panel stops flashing between screens.
+/* ── Loading curtain and leaving bar ──────────────────────────────────────
+ * Printed straight after <body> by pg_preloader_markup().
  *
- * It is the page's own background with a bar across the top and nothing
- * else. This is on every screen dozens of times an hour; anything with a
- * personality of its own is tiring by the third visit.
+ * Arriving, the curtain is the page's own background with a bar across the
+ * top. It stays transparent for its first 120 ms and fades in over 100 ms,
+ * so a screen ready by then shows nothing; the script fades it out again in
+ * 100 ms once the document is ready. Only a held curtain (the visual editor,
+ * .is-hold) shows the mark in the middle.
  *
  * The failsafe animation is the point of the block: if the inline script
  * never runs — an error above it, a blocked inline script — the curtain
  * would otherwise sit over an unusable panel forever. Ten seconds is long
  * enough that a slow page never sees it and short enough that a broken one
  * is not lost.
+ *
+ * Leaving, there is no curtain: html.pg-is-leaving shows the thin bar at the
+ * top and the progress pointer over the old page until it is gone.
  * ---------------------------------------------------------------------- */
 .pg-preloader {
     position: fixed;
     inset: 0;
     z-index: 20000;
     background: var(--pg-bg-body, #fff);
-    opacity: 1;
+    opacity: 0;
     visibility: visible;
-    transition: opacity .26s ease, visibility 0s linear 0s;
-    animation: pg-preloader-failsafe 0s linear 10s forwards;
+    animation: pg-preloader-arrive .1s ease .12s forwards, pg-preloader-failsafe 0s linear 10s forwards;
 }
 /* visibility waits for the fade, so the hidden curtain is out of the layer
    tree entirely rather than sitting invisibly on top of every screen. */
@@ -8975,36 +9178,49 @@ html:has(.mpp-bulk:not(.d-none)) {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transition: opacity .26s ease, visibility 0s linear .26s;
+    transition: opacity .1s ease, visibility 0s linear .1s;
 }
-/* A done curtain stops its loops rather than running them unseen. Paused, not
-   animation:none: pgPreloaderShow() takes is-done off again on a link click,
-   and the bar and dots then carry on at once, while the mark, which rests at
-   opacity 0 until its own delayed fade-in, is left alone. */
+/* A done curtain stops its loops rather than running them unseen. */
 .pg-preloader.is-done .pg-preloader-bar i,
 .pg-preloader.is-done .pg-preloader-dots i {
     animation-play-state: paused;
 }
 
-.pg-preloader-bar {
+.pg-preloader-bar,
+.pg-leave-bar {
     position: absolute; top: 0; left: 0; right: 0; height: 3px;
     overflow: hidden; background: rgba(128, 128, 128, .16);
 }
-.pg-preloader-bar i {
+.pg-preloader-bar i,
+.pg-leave-bar i {
     position: absolute; top: 0; bottom: 0; left: -40%; width: 40%;
     background: linear-gradient(90deg, transparent, var(--pg-primary, #6366f1), transparent);
     animation: pg-preloader-slide 1.05s cubic-bezier(.4, 0, .2, 1) infinite;
 }
 @keyframes pg-preloader-slide { to { left: 100%; } }
+@keyframes pg-preloader-arrive { to { opacity: 1; } }
+
+/* The leaving bar: display:none keeps its loop stopped until it is wanted. */
+.pg-leave-bar {
+    position: fixed;
+    z-index: 20001;
+    display: none;
+    pointer-events: none;
+}
+html.pg-is-leaving .pg-leave-bar { display: block; }
+html.pg-is-leaving,
+html.pg-is-leaving * { cursor: progress !important; }
 
 /* The mark in the middle: the brand lockup with the dots under it, or on a
-   private-label install the dots alone. Held back a beat — a page that
-   arrives promptly shows the bar and nothing else, which is the difference
-   between "loading" and a logo flashing at somebody twice a minute. */
+   private-label install the dots alone. Only a held curtain draws it, and a
+   beat late, so everyday transitions never show a logo. */
 .pg-preloader-mark {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-    display: flex; flex-direction: column; align-items: center; gap: 18px;
+    display: none; flex-direction: column; align-items: center; gap: 18px;
     opacity: 0;
+}
+.pg-preloader.is-hold .pg-preloader-mark {
+    display: flex;
     animation: pg-preloader-appear .45s ease .3s forwards;
 }
 .pg-preloader-logo { display: block; width: min(210px, 46vw); }
@@ -9023,13 +9239,17 @@ html:has(.mpp-bulk:not(.d-none)) {
 @keyframes pg-preloader-pulse { 0%, 100% { opacity: .25; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
 @keyframes pg-preloader-failsafe { to { opacity: 0; visibility: hidden; pointer-events: none; } }
 
+/* Less motion keeps every delay (a delay is not motion) and drops the fades
+   and the sliding loops. */
 @media (prefers-reduced-motion: reduce) {
-    .pg-preloader { transition: none; }
-    .pg-preloader-bar i { animation: none; left: 0; width: 100%; opacity: .5; }
-    .pg-preloader-mark { animation: none; opacity: 1; }
+    .pg-preloader { animation-duration: 0s, 0s; }
+    .pg-preloader.is-done { transition: none; }
+    .pg-preloader-bar i,
+    .pg-leave-bar i { animation: none; left: 0; width: 100%; opacity: .5; }
+    .pg-preloader.is-hold .pg-preloader-mark { animation-duration: 0s; }
     .pg-preloader-dots i { animation: none; opacity: .6; transform: none; }
 }
-@media print { .pg-preloader { display: none !important; } }
+@media print { .pg-preloader, .pg-leave-bar { display: none !important; } }
 
 /* ══ Admin screen — user permission rows ══════════════════════════════════
    Shared by add_user.php and edit_user.php through includes/user_permissions.php.
@@ -9852,6 +10072,30 @@ body.pg-side-panel-open .pg-chat-launcher {
     border-top: var(--pg-border-width) solid var(--pg-border-color-translucent);
   }
 
+  /* A group heading inside a card (a cell that starts with an <h6>) starts a new
+     group, so the line goes above it, with room, and not between it and the
+     group's first setting: drawn there, the heading sat flush under the
+     previous setting's description and read as part of it. The row right
+     after a heading repeats the divider's predicate to take the line back
+     off; a plain selector could not beat it. */
+  .pg-set-card .row > * + [class]:has(> h6:first-child) {
+    /* Padding handed to the margin as on a converted cell, so the line
+       starts and ends where the text does. */
+    flex: 0 0 auto;
+    width: calc(100% - var(--bs-gutter-x));
+    max-width: calc(100% - var(--bs-gutter-x));
+    margin-inline: calc(var(--bs-gutter-x) * .5);
+    padding-inline: 0;
+    margin-top: .5rem;
+    padding-top: 1.1rem;
+    border-top: var(--pg-border-width) solid var(--pg-border-color-translucent);
+  }
+  .pg-set-card .row > [class]:has(> h6:first-child) + [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range),
+  .pg-set-card .row > [class]:has(> h6:first-child) + [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) {
+    padding-top: .25rem;
+    border-top: 0;
+  }
+
   /* The two columns. The control column is given a width rather than left to
      its content: a .form-control is width:100%, and in a content-sized column
      that is a question with no answer -- the field would end up as wide as
@@ -9900,6 +10144,16 @@ body.pg-side-panel-open .pg-chat-launcher {
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > .form-text {
     grid-area: pgnote;
     margin-top: .1rem;
+  }
+
+  /* The grid has one note area, so a second description (a warning drawn
+     only on some sites, a link to the screen that holds the rest) would be
+     painted on top of the first. Only the first takes the area; every later
+     one gets a full-width row of its own under it. The rule repeats the
+     predicate: without it, it could not beat the placement above. */
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .form-text ~ .form-text,
+  .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > .form-text ~ .form-text {
+    grid-area: auto / 1 / auto / -1;
   }
 
   .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > input.form-control,
@@ -10225,9 +10479,11 @@ body.pg-side-panel-open .pg-chat-launcher {
   opacity: .7;
 }
 .pg-sm-link span {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  /* Wraps rather than ending in an ellipsis: at tablet width the list is
+     12rem and a long category name was cut, with the full name shown
+     nowhere (its tooltip holds the description). */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .pg-sm-link:hover,
 .pg-sm-link:focus-visible {
@@ -10412,6 +10668,8 @@ body.pg-side-panel-open .pg-chat-launcher {
   transition: opacity .15s linear;
 }
 .pg-sm.is-busy .pg-sm-progress { opacity: 1; }
+/* The closed dialog stays display:flex, so the bar loops only while busy. */
+.pg-sm.is-busy .pg-sm-progress::after { animation-play-state: running; }
 .pg-sm-progress::after {
   position: absolute;
   inset-block: 0;
@@ -10419,7 +10677,7 @@ body.pg-side-panel-open .pg-chat-launcher {
   width: 40%;
   background: var(--pg-primary);
   content: "";
-  animation: pg-sm-slide 1.1s ease-in-out infinite;
+  animation: pg-sm-slide 1.1s ease-in-out infinite paused;
 }
 @keyframes pg-sm-slide {
   0%   { transform: translateX(-100%); }
@@ -10876,6 +11134,9 @@ body.pg-side-panel-open .pg-chat-launcher {
 }
 .pg-sale-res-price small { display: block; }
 .pg-sale-res[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+/* A button for an action that does nothing here: aria-disabled, not
+   disabled, so it still takes focus and names its reason. */
+.btn.pg-btn-inert { opacity: .65; cursor: default; }
 .pg-sale-res-new b { color: var(--pg-link-color); }
 .pg-sale-res-empty { padding: .7rem; color: var(--pg-fg-2); font-size: .875rem; }
 
@@ -11053,6 +11314,18 @@ body.pg-side-panel-open .pg-chat-launcher {
 .pg-sale-status { display: flex; flex-direction: column; gap: 1rem; }
 @media (min-width: 1024px) {
   .pg-sale-status { position: sticky; top: 3.3rem; }
+}
+/* Database Engine: the side column sticks beside the long table list, but
+   it is taller than a short window, so it scrolls inside itself rather than
+   leaving its lower cards out of reach until the end of the page. */
+@media (min-width: 1024px) {
+  .pg-engine-side {
+    position: sticky;
+    top: 3.3rem;
+    max-height: calc(100vh - 4.3rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 }
 .pg-sale-total { padding: 1rem 1rem .85rem; }
 .pg-sale-total-label {
@@ -12028,10 +12301,30 @@ html[data-bs-theme="dark"] .ws-group-icon {
 .ws-group-more:focus-visible {
   opacity: .85;
 }
+/* New group closes the Channels section of the list: a quiet row in the
+   channels' column, for whoever manages the groups. */
 .ws-group-new {
-  font-size: .78rem;
-  padding: .1rem .5rem;
-  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  width: 100%;
+  margin-top: .35rem;
+  padding: var(--ws-row-y, .3rem) var(--ws-space-2, .5rem);
+  border: 0;
+  border-radius: var(--ws-radius-sm);
+  background: transparent;
+  color: var(--pg-fg-2);
+  font-size: .82rem;
+  text-align: start;
+}
+.ws-group-new:is(:hover, :focus-visible) {
+  background: var(--pg-bg-2);
+  color: var(--pg-fg-body);
+}
+.ws-group-new > .bi {
+  flex: 0 0 auto;
+  width: 1rem;
+  text-align: center;
 }
 .ws-group-empty {
   padding-top: .15rem;
@@ -12581,6 +12874,9 @@ html[data-bs-theme="dark"] .ws-group-icon {
   align-items: center;
   gap: .1rem;
   flex-shrink: 0;
+  /* A touch target as tall as the header's other buttons (it measured
+     23 px on a phone). */
+  min-height: 2rem;
   padding: .25rem .6rem .25rem .35rem;
   border: 0;
   border-radius: 999px;
@@ -12651,6 +12947,24 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   gap: .25rem;
   flex-shrink: 0;
   align-items: center;
+}
+/* The channel's More menu holds about twenty entries on a phone (the
+   header's own buttons move into it) and .ws-app clips what runs past the
+   screen, so the menu keeps to the screen's height and scrolls itself. */
+.ws-head-menu {
+  max-height: calc(100vh - 9rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@supports (height: 100dvh) {
+  .ws-head-menu { max-height: calc(100dvh - 9rem); }
+}
+/* The share notice above the tabs: the sentence starts from no width, so it
+   stays beside its icon instead of wrapping onto a row of its own (a phone
+   showed the icon alone on the first line). */
+.ws-share-bar-text {
+  flex: 1 1 0;
+  min-width: 0;
 }
 .ws-avatars {
   display: inline-flex;
@@ -13037,11 +13351,11 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 .ws-checkin-answer:first-child {
   border-top: 0;
 }
+/* A Bootstrap .avatar (workspace_status.js keeps the class): its size
+   variable sizes the photo too, which a plain width here would not. */
 .ws-checkin-face {
-  flex: 0 0 1.6rem;
-  width: 1.6rem;
-  height: 1.6rem;
-  border-radius: 50%;
+  --bs-avatar-size: var(--ws-avatar-sm);
+  flex: 0 0 auto;
 }
 .ws-checkin-text {
   min-width: 0;
@@ -13792,7 +14106,9 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 .ws-home-row-urgent .ws-home-hot-icon {
   color: var(--pg-danger);
 }
-.ws-home-priority {
+/* A task's priority badge (high or urgent) in the Today card and every
+   task list (homeDue(), taskRows() in workspace.js). */
+.ws-priority {
   display: inline-block;
   margin-left: .35rem;
   padding: 0 .4rem;
@@ -13803,7 +14119,7 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   background: color-mix(in srgb, var(--pg-warning) 20%, transparent);
   color: var(--pg-warning-fg-emphasis);
 }
-.ws-home-priority-urgent {
+.ws-priority-urgent {
   background: color-mix(in srgb, var(--pg-danger) 16%, transparent);
   color: var(--pg-danger-fg-emphasis);
 }
@@ -15786,6 +16102,7 @@ a.ws-chip:hover {
 }
 .ws-voice-rec {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--ws-space-2);
   min-height: 2.6rem;
@@ -15793,6 +16110,12 @@ a.ws-chip:hover {
 }
 .ws-voice-rec .ws-grow {
   flex: 1 1 auto;
+}
+.ws-voice-rec-hint {
+  flex: 0 0 100%;
+  padding-bottom: var(--ws-space-1);
+  font-size: .8rem;
+  color: var(--pg-fg-2);
 }
 .ws-voice-rec-dot {
   flex: 0 0 auto;
@@ -15944,6 +16267,11 @@ a.ws-chip:hover {
   padding: 0;
   min-width: 0;
   max-width: 55%;
+}
+.ws-file-row .ws-file-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ws-file-row audio {
   height: 2rem;
@@ -16779,9 +17107,7 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
 }
 .ws-extreme b {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .ws-extreme-icon {
   font-size: 1.1rem;
@@ -16792,10 +17118,10 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
 .ws-extreme-least .ws-extreme-icon {
   color: var(--pg-success);
 }
-.ws-extreme-count {
+.ws-extreme .ws-extreme-count {
   font-size: .78rem;
   font-weight: 700;
-  white-space: nowrap;
+  color: var(--pg-fg-body);
 }
 .ws-person-row {
   display: flex;
@@ -17310,13 +17636,20 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-fd-window {
   margin-top: .35rem;
 }
+/* The pane looks like the Flows canvas (.pgc-stage, .pgc-viewport): its
+   surface and its grid of dots, light or dark with the panel, the dots 10 px
+   apart (the canvas's 16 px grid at the card's 128/208 scale) and moving
+   with the drawing as it scrolls. */
 .ws-fd-pane {
   max-width: 100%;
   max-height: 16rem;
   overflow: auto;
-  border: 1px solid var(--pg-border-color);
+  border: 1px solid var(--pg-border-color-translucent);
   border-radius: var(--ws-radius);
-  background: var(--pg-bg-body);
+  background-color: var(--pg-bg-1);
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--pg-fg-body) 16%, transparent) 1px, transparent 1.25px);
+  background-size: 10px 10px;
+  background-attachment: local;
 }
 .ws-fd-pane svg {
   display: block;
@@ -17847,18 +18180,29 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 :is(#ws-menu-side, .ws-side-head-tools) .ws-side-tool.active {
   color: var(--ws-accent);
 }
-/* The new channel, the settings and the tour stand beside the panel's name
-   (workspace_side.js), which then starts at the left. */
+/* The new channel and the settings stand beside the panel's name
+   (workspace_side.js), which then starts at the left; the last one keeps
+   clear of the menu's edge. */
 #menu .pg-menu-panel-head .ws-side-head-tools {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: .1rem;
+  gap: .125rem;
   margin-left: auto;
+  padding-right: .25rem;
 }
 #menu .pg-menu-panel-head:has(.ws-side-head-tools) .pg-menu-panel-title {
   padding-right: 0;
   text-align: start;
+}
+/* Two squares beside the name, so the solid New channel button is a circle:
+   narrowed to 1.625rem and still 1.9rem tall it was an upright oval against
+   the menu's edge. A little smaller than the list's buttons, so the name
+   keeps to one line when a long list gives the menu body a classic
+   scrollbar; still over the 24px target size. */
+#menu .pg-menu-panel-head .ws-side-head-tools .ws-side-tool {
+  width: 1.75rem;
+  height: 1.75rem;
 }
 /* The search keeps its row: its key where Ctrl+K opens it. */
 #ws-menu-side .ws-side-find-key {
@@ -17892,6 +18236,50 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 #ws-menu-side .ws-channel-link.ws-notjoined:hover,
 #ws-menu-side .ws-channel-link.ws-notjoined.active {
   opacity: 1;
+}
+/* A group reads as a folder of the Channels section: its name as written,
+   not in a section heading's capitals, its folder in the channels' own
+   column and the chevron at the end of the line, shown on hover and while
+   the group is closed. Its channels and the groups inside it hang under it
+   on a thin line of its colour. */
+#ws-menu-side .ws-group-title {
+  padding: 0;
+  font-size: .85rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+}
+#ws-menu-side .ws-group-toggle {
+  gap: .4rem;
+  padding: var(--ws-row-y, .3rem) var(--ws-space-2, .5rem);
+  border-radius: var(--ws-radius-sm);
+}
+#ws-menu-side .ws-group-icon {
+  width: 1rem;
+  height: auto;
+  background: none;
+  font-size: .9rem;
+  color: color-mix(in srgb, var(--ws-group, var(--pg-fg-2)) 80%, var(--pg-fg-emphasis));
+}
+#ws-menu-side .ws-group-toggle .ws-group-chevron {
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+#ws-menu-side .ws-group-toggle:is(:hover, :focus-visible, [aria-expanded="false"]) .ws-group-chevron {
+  opacity: .7;
+}
+#ws-menu-side .ws-group-inner {
+  margin: 1px 0 .25rem .95rem;
+  border-left: 1.5px solid color-mix(in srgb, var(--ws-group, var(--pg-border-color)) 45%, transparent);
+}
+#ws-menu-side .ws-group-inner > .ws-channel-link {
+  border-radius: 0 var(--ws-radius-sm) var(--ws-radius-sm) 0;
+}
+#ws-menu-side .ws-side-subgroup {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
 }
 /* A mention count in the workspace accent; an unread count stays neutral. */
 #ws-menu-side .ws-count.ws-count-mention {
@@ -17953,6 +18341,10 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* More alone in the last row takes the whole row. */
+#ws-menu-side .ws-side-more-tile:nth-child(odd) {
+  grid-column: 1 / -1;
 }
 /* Open, More reads as pressed: the rows it opened hang under it. */
 #ws-menu-side .ws-side-more-tile[aria-expanded="true"] {
@@ -18140,7 +18532,7 @@ html[data-bs-theme="dark"] .ws-home-count.ws-home-count-hot {
 .ws-home-task-head .ws-home-row-title {
   min-width: 0;
 }
-.ws-home-task-head .ws-home-priority {
+.ws-home-task-head .ws-priority {
   flex: none;
 }
 /* The due tasks the card has no room for. */
@@ -20147,7 +20539,10 @@ button.ws-ack-count:hover {
 .wsf-flow-name .wsf-list-level {
   display: block;
 }
-.wsf-flow-start {
+/* The start cell stays a table cell, as tall as its row, so its border
+   and the hover band line up with the other columns; its wrapper lays the
+   icon beside the sentence. */
+.wsf-flow-start-in {
   display: flex;
   align-items: flex-start;
   gap: var(--ws-space-2);
@@ -20157,7 +20552,7 @@ button.ws-ack-count:hover {
   color: var(--wsf-kind);
 }
 .wsf-flow-last .wsf-flag {
-  max-width: 22rem;
+  max-width: 16rem;
 }
 /* The scheduled actions the flow list ends with (drawScheduled()): the
    converted rows, then the cards of the rows not converted, whose state
@@ -20366,6 +20761,24 @@ button.ws-ack-count:hover {
 .pgc-port-out:hover {
   transform: scale(1.2);
 }
+/* A named port (a row's, data-port) sits at the middle of its row's edge:
+   the user makes the row the dot's positioned parent, as wide as the box. */
+.pgc-node [data-port] {
+  z-index: 1;
+}
+/* A box's picture holder (thumb()), filled once the box is in sight. */
+.pgc-thumb {
+  display: block;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--pg-bg-2);
+  border-radius: var(--pgc-radius-sm, var(--pg-radius-sm));
+}
+.pgc-thumb > img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
 /* The Flows canvas on the core: its arrowhead markers, a box's border and
    ports in its group's colour (kindClasses() in workspace_flow.js), its
    problem state. */
@@ -20553,6 +20966,51 @@ html[data-bs-theme="dark"] .wsf-group-values { --wsf-kind: #e58fd0; }
    to a thin line. */
 .wsf-palette-search {
   flex-shrink: 0;
+}
+/* The palette's sections in the order a flow is built (drawPaletteGroups()):
+   a numbered heading, the box that starts this flow (first section), a hint,
+   then its boxes; a line between two sections. */
+.wsf-palette-stage {
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--ws-space-2);
+}
+.wsf-palette-stage + .wsf-palette-stage {
+  margin-top: var(--ws-space-2);
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.wsf-palette-stage-head {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: 0;
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--pg-fg-body);
+}
+.wsf-palette-stage-num {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  font-size: .75rem;
+  color: var(--ws-accent);
+  background: color-mix(in srgb, var(--ws-accent) 16%, transparent);
+}
+.wsf-palette-stage-now {
+  margin: .35rem 0 0;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--ws-accent);
+}
+.wsf-palette-stage-hint {
+  margin: .25rem 0 0;
+  font-size: .75rem;
+  line-height: 1.35;
+  color: var(--pg-fg-2);
 }
 .wsf-palette-group {
   display: flex;
@@ -21357,7 +21815,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   .wsf-flow-table th,
   .wsf-flow-table td { display: block; padding: .2rem 0; border: 0; }
   .wsf-flow-table td::before { content: attr(data-label); display: block; font-size: .72rem; color: var(--pg-fg-2); }
-  .wsf-flow-table .wsf-flow-start { display: block; }
+  .wsf-flow-table .wsf-flow-start-in { display: block; }
 }
 /* ── /Workspace ── */
 /* A scheduled action drawn read-only in the Scheduled actions section of
@@ -21517,12 +21975,290 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     outline-color: Highlight;
   }
 }
+
+/* List table driver (assets/js/pg_list_table.js, includes/fn/list_table.php):
+   the list fills the window from where it starts; its rows scroll in their
+   own box under a sticky heading row, the selection bar stays above them. */
+.pg-list-table {
+  display: flex;
+  flex-direction: column;
+  min-height: 16rem;
+  max-height: calc(100dvh - var(--pg-list-table-top, 12rem) - 1rem);
+}
+.pg-list-table-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.pg-list-table-grid {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.pg-list-table-grid > thead > tr > th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--pg-card-bg);
+  box-shadow: inset 0 -1px 0 var(--pg-border-color);
+  white-space: nowrap;
+}
+.pg-list-table-sort {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+}
+.pg-list-table-grid th[aria-sort] .pg-list-table-sort::after {
+  content: "\2191";
+  margin-inline-start: 0.25rem;
+  color: var(--pg-fg-2);
+}
+.pg-list-table-grid th[aria-sort="descending"] .pg-list-table-sort::after {
+  content: "\2193";
+}
+.pg-list-table-grid > tbody > tr {
+  cursor: default;
+  user-select: none;
+}
+.pg-list-table-grid > tbody > tr:focus-visible {
+  outline: var(--pg-focus-ring-width) solid var(--pg-focus-ring-color);
+  outline-offset: calc(var(--pg-focus-ring-width) * -1);
+}
+.pg-list-table-grid > tbody > tr.pg-list-table-selected > td {
+  background: color-mix(in srgb, var(--pg-primary) 14%, transparent);
+}
+.pg-list-table-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border-bottom: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
+  background: color-mix(in srgb, var(--pg-primary) 8%, transparent);
+}
+.pg-list-table-bar.is-empty {
+  background: none;
+}
+.pg-list-table-bar.is-empty > .pg-list-table-count,
+.pg-list-table-bar.is-empty > .pg-list-table-actions {
+  display: none;
+}
+.pg-list-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+/* The columns menu and the details switch keep the bar's right end. */
+.pg-list-table-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-inline-start: auto;
+}
+.pg-list-table-columns-menu {
+  min-width: 16rem;
+  max-height: 60dvh;
+  overflow: auto;
+  padding: 0.25rem;
+}
+.pg-list-table-columns-menu.show {
+  opacity: 1;
+}
+.pg-list-table-column {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+.pg-list-table-column-name {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+}
+/* The rows and the details panel side by side. */
+.pg-list-table-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.pg-list-table-body > .pg-list-table-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.pg-list-table-details {
+  flex: 0 0 20rem;
+  overflow: auto;
+  padding: 0.5rem 0.75rem;
+  border-inline-start: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
+  background: var(--pg-card-bg);
+}
+.pg-list-table-details[hidden] {
+  display: none;
+}
+.pg-list-table-details-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+.pg-list-table-details dl {
+  margin: 0;
+}
+.pg-list-table-details dt {
+  font-weight: 600;
+  color: var(--pg-fg-2);
+}
+.pg-list-table-details dd {
+  margin: 0 0 0.75rem;
+  overflow-wrap: anywhere;
+}
+/* Below 1024 px the details panel is a sheet over the list's right side. */
+@media (max-width: 1023.98px) {
+  .pg-list-table-details {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-end: 0;
+    z-index: 1045;
+    width: min(22rem, 100vw);
+    box-shadow: var(--pg-shadow-lg);
+  }
+}
+/* Below 768 px a row is a card: every shown cell under its column's name. */
+@media (max-width: 767.98px) {
+  .pg-list-table-grid > thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .pg-list-table-grid,
+  .pg-list-table-grid > tbody,
+  .pg-list-table-grid > tbody > tr,
+  .pg-list-table-grid > tbody > tr > td {
+    display: block;
+    width: 100%;
+  }
+  .pg-list-table-grid > tbody > tr {
+    margin: 0.5rem 0;
+    border: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
+    border-radius: var(--pg-radius);
+  }
+  .pg-list-table-grid > tbody > tr > td {
+    display: flex;
+    gap: 0.5rem;
+    text-align: start;
+    border: 0;
+  }
+  .pg-list-table-grid > tbody > tr > td[hidden] {
+    display: none;
+  }
+  .pg-list-table-grid > tbody > tr > td::before {
+    content: attr(data-pg-label);
+    flex: 0 0 40%;
+    text-align: start;
+    font-weight: 600;
+    color: var(--pg-fg-2);
+  }
+}
+.pg-list-table-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+}
+.pg-list-table-status:empty,
+.pg-list-table-more[hidden] {
+  display: none;
+}
+.pg-list-table-status {
+  margin: 0;
+}
+.pg-list-table-sentinel {
+  height: 1px;
+}
+.pg-list-table-empty {
+  padding: 1rem;
+  margin: 0;
+  text-align: center;
+}
+/* Quick edit mode (pg_list_table_edit.js): each editable cell holds a
+   field; a refused value is marked and its reason stands under it. */
+.pg-list-table-quick[aria-pressed="true"] {
+  color: var(--pg-primary-ink);
+  background: color-mix(in srgb, var(--pg-primary) 14%, transparent);
+}
+.pg-list-table.is-quick-edit .pg-list-table-bar.is-empty.has-quick {
+  background: color-mix(in srgb, var(--pg-primary) 8%, transparent);
+}
+.pg-list-table-field {
+  min-width: 6rem;
+}
+.pg-list-table-grid > tbody > tr > td[aria-busy="true"] > .pg-list-table-field {
+  opacity: 0.6;
+}
+.pg-list-table-field-note {
+  margin-top: 0.125rem;
+  font-size: 0.8125rem;
+  color: var(--pg-danger-ink);
+  white-space: normal;
+  text-align: start;
+}
+.pg-list-table-grid > tbody > tr > td.pg-list-table-saved {
+  animation: pgListTableSaved 1.2s ease-out;
+}
+@keyframes pgListTableSaved {
+  from {
+    background-color: color-mix(in srgb, var(--pg-success) 30%, transparent);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-list-table-grid > tbody > tr > td.pg-list-table-saved {
+    animation: none;
+  }
+}
+
+/* Bookings week (view_bookings.php?view=week): seven day columns from xl up.
+   A flex item's min-width is its content, so a booking's unbreakable first
+   line (time and status badge) widened the columns until Saturday and Sunday
+   wrapped to a second row; the columns may shrink and that line wraps. */
+.pg-bookings-week > section {
+  min-width: 0;
+}
+.pg-bookings-week .list-group-item .d-flex {
+  flex-wrap: wrap;
+}
 }
 
 /* Unlayered: Bootstrap 6 gives .fixed-top 1020 in its helpers layer, which
    beats @layer custom, and 1020 falls below the sidebar and the menu backdrop. */
 .software-navbar.fixed-top {
   z-index: 1030;
+}
+
+/* Unlayered: the DataTables stylesheet gives the column chooser a fixed
+   400px width centred with a -200px margin, which @layer custom cannot
+   override. On a phone that runs off both edges, so it takes the screen
+   width less a gutter, and one column. */
+@media (max-width: 575.98px) {
+  div.dt-button-collection.fixed.two-column {
+    width: calc(100vw - 2rem);
+    left: 1rem;
+    margin-left: 0;
+  }
+
+  div.dt-button-collection.fixed.two-column > :last-child {
+    column-count: 1;
+  }
 }
 
 /* Bootstrap 6 bridge: its theme variables read the panel's palette, its
@@ -21542,10 +22278,6 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   --bs-btn-input-xs-min-height: 0;
   --bs-btn-input-sm-min-height: 0;
   --bs-btn-input-lg-min-height: 0;
-  --bs-btn-input-border-radius: var(--bs-radius-4);
-  --bs-btn-input-xs-border-radius: var(--bs-radius-3);
-  --bs-btn-input-sm-border-radius: var(--bs-radius-3);
-  --bs-btn-input-lg-border-radius: var(--bs-radius-5);
   --bs-btn-input-gap: 0.25em;
   --bs-btn-input-xs-gap: 0.25em;
   --bs-btn-input-sm-gap: 0.25em;

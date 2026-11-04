@@ -21,6 +21,9 @@ include('init.php');
 $user = validate_user();
 validate_area_access($user, 'designer');
 
+// The page name rules of the page screens.
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/page_form.php');
+
 $liveform = new liveform('mass_edit');
 
 // Pages in the Recycle Bin, or in a folder carried into it, are neither
@@ -160,9 +163,9 @@ if (!$_POST) {
                 $outputs .= '
                     <div class="col-12 lg:col-6">
                         <div class="card my-7">
-                            <div class="card-header no-popover " title="' . h($row['page_name']) . '">
-                                <span class="bi bi-window-fullscreen me-3"></span>
-                                <span class="text-truncate">' . h($row['page_name']) . '</span>
+                            <div class="card-header no-popover" style="display: flex; align-items: center; min-width: 0;" title="' . h($row['page_name']) . '">
+                                <span class="bi bi-window-fullscreen me-3 flex-shrink-0" aria-hidden="true"></span>
+                                <span class="text-truncate" style="min-width: 0;">' . h($row['page_name']) . '</span>
                             </div>
                             <div class="card-body"> 
                                 <div class="row g-7">';
@@ -419,7 +422,11 @@ if (!$_POST) {
         $allowed_fr = array('page_name', 'page_title', 'page_meta_description');
         $fr_fields  = array_values(array_intersect($fr_fields, $allowed_fr));
 
-        if ($find === '') {
+        // Both are text: an array would reach preg_match(), preg_replace()
+        // or str_replace() and end the request with a TypeError.
+        if (!is_string($find) || !is_string($replace)) {
+            $liveform->mark_error('find_text', lang('Invalid request.'));
+        } elseif ($find === '') {
             $liveform->mark_error('find_text', lang('Find field cannot be empty.'));
         } elseif (empty($fr_fields)) {
             $liveform->mark_error('fr_fields', lang('Please select at least one field.'));
@@ -438,7 +445,8 @@ if (!$_POST) {
                 $count_by_field  = array();
                 $fr_name_skipped = 0;
                 $fr_long_skipped = 0;
-                $q = mysqli_query(db::$con, "SELECT page_id, page_name, page_folder, page_title, page_meta_description FROM page" . $live_pages_where) or output_error(lang('Query failed.'));
+                $fr_invalid_skipped = 0;
+                $q = mysqli_query(db::$con, "SELECT page_id, page_name, page_folder, page_type, page_title, page_meta_description FROM page" . $live_pages_where) or output_error(lang('Query failed.'));
                 while ($row = mysqli_fetch_assoc($q)) {
                     // One audit line per changed page: read before its first
                     // field update, recorded after its last.
@@ -453,11 +461,16 @@ if (!$_POST) {
                         if ($new_val === null) continue; // regex error on value
                         if ($new_val === $current) continue; // no change
 
-                        // page_name: sanitize + uniqueness check
+                        // page_name: cleaned and refused as the page screens
+                        // do (blank, or a slash in a catalog page name),
+                        // then the uniqueness check
                         if ($field === 'page_name') {
-                            if (trim($new_val) === '') continue;
-                            $new_val = str_replace(' ', '_', $new_val);
-                            $new_val = str_replace('&', '_', $new_val);
+                            $new_val = pg_page_form_bulk_name($new_val, $row['page_type']);
+                            if ($new_val === null) {
+                                $fr_invalid_skipped++;
+                                continue;
+                            }
+                            if ($new_val === $current) continue;
                         }
 
                         // page_name is varchar(100), the other two
@@ -494,7 +507,11 @@ if (!$_POST) {
                         pg_audit_record('update', 'page', $row['page_id'], $audit_before);
                     }
                 }
-                if (empty($count_by_field)) {
+                // Text that was found but whose change was skipped is not
+                // "not found": the skip notices below say why.
+                if (empty($count_by_field) && (($fr_name_skipped + $fr_invalid_skipped + $fr_long_skipped) > 0)) {
+                    $liveform->add_notice(lang('No change was applied.'));
+                } elseif (empty($count_by_field)) {
                     $liveform->add_notice(lang('No matching text found.'));
                 } else {
                     $parts = array();
@@ -505,6 +522,9 @@ if (!$_POST) {
                 }
                 if ($fr_name_skipped > 0) {
                     $liveform->add_notice($fr_name_skipped . ' ' . lang('page name(s) skipped: name already in use.'));
+                }
+                if ($fr_invalid_skipped > 0) {
+                    $liveform->add_notice($fr_invalid_skipped . ' ' . lang('page name(s) skipped: blank, or a forward slash in a catalog or catalog detail page name.'));
                 }
                 if ($fr_long_skipped > 0) {
                     $liveform->add_notice($fr_long_skipped . ' ' . lang('value(s) skipped: longer than the field allows.'));
@@ -534,6 +554,10 @@ if (!$_POST) {
     $count_page_search_keywords_changes = 0;
     $count_page_search_changes = 0;
     $page_name_conflicts = array();
+    $page_name_refused = array();
+    // Pages a value was not saved for because it is longer than its column:
+    // the session is not strict, so the column would cut it without a word.
+    $page_too_long = array();
 
     // get current page data
     $query = "SELECT * FROM page" . $live_pages_where;
@@ -560,17 +584,35 @@ if (!$_POST) {
         // marks it stale (as Edit Page does) for the scheduled SEO job.
         $audit_before = null;
 
+        // A posted title or description over its 255 characters is not
+        // saved; the page is named once in the notice.
+        $too_long_for_column = function ($prefix) use ($row, &$page_too_long) {
+            $value = $_POST[$prefix . $row['page_id']] ?? '';
+
+            if (!is_scalar($value) || !pg_name_too_long((string) $value, 255)) {
+                return false;
+            }
+
+            $page_too_long[$row['page_id']] = h($row['page_name']);
+
+            return true;
+        };
+
         
         
 
 
 
-        // if page_name was posted, sanitize and save (same rules as edit_page.php)
+        // if page_name was posted, clean and save it by the rules of
+        // edit_page.php: a name it refuses (blank once trimmed, or a slash
+        // in a catalog page name) is listed and the page keeps its name
         if (isset($_POST['page_name_' . $page_id]) && ($_POST['page_name_' . $page_id] ?? '') !== '') {
-            $new_page_name = trim($_POST['page_name_' . $page_id]);
-            $new_page_name = str_replace(' ', '_', $new_page_name);
-            $new_page_name = str_replace('&', '_', $new_page_name);
-            if ($new_page_name !== $current_page_name) {
+            $new_page_name = pg_page_form_bulk_name($_POST['page_name_' . $page_id], $row['page_type']);
+            if ($new_page_name === null) {
+                $page_name_refused[] = h($current_page_name);
+            } elseif (pg_name_too_long($new_page_name)) {
+                $page_too_long[$page_id] = h($current_page_name);
+            } elseif ($new_page_name !== $current_page_name) {
                 // A 301/302 short link of the page's own does not hold
                 // its name: the rename deletes it below.
                 if (check_name_availability(array('name' => $new_page_name, 'ignore_item_id' => $page_id, 'ignore_item_type' => 'page', 'ignore_redirects_to_page' => $page_id))) {
@@ -594,7 +636,8 @@ if (!$_POST) {
         //if page_title posted and posted page_title not equal to current one, update it.
         if(
             isset($_POST['page_title_' . $row['page_id']])
-            && $_POST['page_title_' . $row['page_id']] !== (string) $current_page_title)
+            && $_POST['page_title_' . $row['page_id']] !== (string) $current_page_title
+            && !$too_long_for_column('page_title_'))
         {
             //count how many updated.
             $count_change++;
@@ -609,7 +652,8 @@ if (!$_POST) {
         //if page_meta_description posted and posted page_meta_description not equal to current one, update it.
         if( 
             isset($_POST['meta_description_' . $row['page_id']])
-            && $_POST['meta_description_' . $row['page_id']] !== (string) $current_page_meta_description)
+            && $_POST['meta_description_' . $row['page_id']] !== (string) $current_page_meta_description
+            && !$too_long_for_column('meta_description_'))
         {
             //count how many updated.
             $count_change++;
@@ -676,8 +720,15 @@ if (!$_POST) {
     if ($count_page_name_changes > 0) {
         $liveform->add_notice(lang(array('string' => '{var:1} Page(s) name updated.', 'vars' => array($count_page_name_changes))));
     }
+    if (!empty($page_name_refused)) {
+        $liveform->add_notice(lang('Some page names could not be updated because the name is blank, or a catalog or catalog detail page name holds a forward slash') . ': ' . implode(', ', $page_name_refused));
+    }
     if (!empty($page_name_conflicts)) {
         $liveform->add_notice(lang('Some page names could not be updated because the name is already in use') . ': ' . implode(', ', $page_name_conflicts));
+    }
+
+    if (!empty($page_too_long)) {
+        $liveform->add_notice(lang('Some values were not saved because they are longer than the field allows') . ': ' . implode(', ', $page_too_long));
     }
 
     //if page title changed, notice it.

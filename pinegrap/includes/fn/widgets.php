@@ -90,6 +90,7 @@ function pg_sw_type_labels()
         'ad_region'           => lang('Ad Region'),
         'tag_cloud_region'    => lang('Tag Cloud'),
         'google_reviews'      => lang('Google Reviews'),
+        'accessibility_statement' => lang('Accessibility Statement'),
     );
 }
 
@@ -790,6 +791,29 @@ function pg_sw_uniquify_row_ids($html, $widget_id, $row_id)
     return $html;
 }
 
+// Whether widget $widget_id was drawn before in this request; the call
+// counts this drawing, so a renderer asks once per drawing.
+function pg_sw_widget_drawn_before($widget_id)
+{
+    static $drawn = array();
+    $widget_id = (int)$widget_id;
+    $before = isset($drawn[$widget_id]);
+    $drawn[$widget_id] = true;
+    return $before;
+}
+
+// pg_sw_uniquify_row_ids() for a row of a widget's main loop. $again: 0
+// when the widget is drawn for the first time in the request, else its
+// placement's number, whose suffix (1000 + n) the static part takes: the
+// row's ids take it too, so a widget placed twice (a header and an
+// offcanvas menu) shares no id or toggle target between its copies. The
+// first drawing keeps the ids it always had.
+function pg_sw_uniquify_loop_row_ids($html, $widget_id, $row_id, $again = 0)
+{
+    $html = pg_sw_uniquify_row_ids($html, $widget_id, $row_id);
+    return ((int)$again > 0) ? pg_sw_uniquify_row_ids($html, $widget_id, 1000 + (int)$again) : $html;
+}
+
 // The token keys whose values are HTML on purpose: the rich-text columns an
 // operator writes in the editor, and the blocks the renderer builds itself
 // (filter chips, variant picker, the strike-through
@@ -996,7 +1020,8 @@ function _pg_sw_current_page_id()
     if ($page_id !== null) return $page_id;
 
     $page_id = 0;
-    $slug = isset($_GET['page']) ? (string)$_GET['page'] : '';
+    // A non-string page (page[]=2) is no slug; casting it raised a warning.
+    $slug = (isset($_GET['page']) && is_string($_GET['page'])) ? $_GET['page'] : '';
     if ($slug !== '') {
         $first_slash = mb_strpos($slug, '/');
         if ($first_slash !== false) $slug = mb_substr($slug, 0, $first_slash);
@@ -2066,12 +2091,13 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     $search_where = '';
     if ($search_active) {
         $sf_in   = implode(',', $search_field_ids);
-        $q_esc   = e(escape_like($search_query));
+        // A typed backslash, % or _ is a plain character, not a LIKE escape.
+        $q_like  = e(pg_list_like_pattern($search_query));
         $search_where =
             " AND EXISTS (SELECT 1 FROM form_data fd_q
                           WHERE fd_q.form_id = forms.id
                             AND fd_q.form_field_id IN ($sf_in)
-                            AND fd_q.data LIKE '%$q_esc%')";
+                            AND fd_q.data LIKE '$q_like')";
     }
 
     // ── Build search box HTML (rendered above the loop output) ────────────
@@ -2345,9 +2371,10 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         $extra['__filter_value'] = pg_sw_filter_value_html($filter_value);
         $extra['__result_count'] = $result_count_html;
         $extra += $paging_tokens;
-        // Links to another page, valued from this record.
+        // Links to another page, valued from this record (its address as a
+        // whole address, pg_sw_page_link_record_value()).
         $extra += pg_sw_page_link_values($page_links, $f, isset($by_form_source[$fid]) ? $by_form_source[$fid] : array(), array(
-            'form_item_view'    => ($extra['form_item_view'] !== '#') ? $extra['form_item_view'] : '',
+            'form_item_view'    => pg_sw_page_link_record_value($extra['form_item_view'], pg_sw_ai_page_url($extra['form_item_view'] !== '#' ? $extra['form_item_view'] : '')),
             'submitted_form_id' => $extra['submitted_form_id'],
             'submitter_user_id' => $extra['submitter_user_id'],
         ));
@@ -3023,6 +3050,19 @@ function pg_sw_page_link_values($links, $row, $custom, $extra_raw)
     return $values;
 }
 
+// The value a record's address (the form_item_view token) gives a link to
+// another page: the whole address ($absolute, pg_sw_ai_page_url() of
+// $path), so whoever reads it on that page can paste it into a browser; the
+// path when the whole address is unknown or longer than a URL filter reads
+// (pg_sw_url_param_value(): 100 characters); '' without a record.
+function pg_sw_page_link_record_value($path, $absolute)
+{
+    $path = (string)$path;
+    if ($path === '' || $path === '#') return '';
+    $absolute = (string)$absolute;
+    return ($absolute !== '' && mb_strlen($absolute, 'UTF-8') <= 100) ? $absolute : $path;
+}
+
 // Whether a link takes a value from a list row.
 function pg_sw_page_link_has_row($link)
 {
@@ -3159,6 +3199,27 @@ function pg_sw_request_segment($page_parameter = null)
     if ($next !== false) $segment = mb_substr($segment, 0, $next, 'UTF-8');
     $segment = trim(urldecode(trim($segment)));
     return (strlen($segment) > 255) ? '' : $segment;
+}
+
+// Whether a widget read the address segment (pg_sw_request_segment()) as the
+// product, product group or record it shows. Pass true to mark (the widget
+// read it), false to clear (get_page_content() before its widget pass),
+// nothing to read. Marking and clearing return the value before.
+function pg_sw_segment_read($mark = null)
+{
+    static $read = false;
+    $before = $read;
+    if ($mark !== null) $read = (bool)$mark;
+    return $before;
+}
+
+// Whether the page answers 404 for its address segment: there is one, no
+// widget read it, and the page's type does not read it itself (a classic
+// catalog or catalog detail page takes its product or group from it).
+function pg_sw_unread_segment_missing($segment, $read, $page_type)
+{
+    if ((string)$segment === '' || $read) return false;
+    return !in_array((string)$page_type, array('catalog', 'catalog detail'), true);
 }
 
 // The record of a form a pretty address names: array('id', 'reference_code',
@@ -3428,7 +3489,8 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     $standard_skip   = array_merge(array('reference_code', 'address_name'), pg_sw_form_yields($template_tokens, $custom_form_page_id));
     $standard_sql    = pg_sw_standard_sql($template_tokens, _pg_sw_current_page_id(), $standard_skip);
 
-    $reference_code = isset($_GET['r']) ? trim((string)$_GET['r']) : '';
+    // ?r[]=x is no reference, not an "Array to string conversion" warning.
+    $reference_code = (isset($_GET['r']) && is_scalar($_GET['r'])) ? trim((string)$_GET['r']) : '';
     // An e-mail page (a form's confirmation or notification) is drawn for
     // the record just submitted: its id comes with the call, not the URL.
     $sw_ctx          = pg_sw_render_context();
@@ -3483,12 +3545,18 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             && pg_sw_record_passes_filters($custom_form_page_id, pg_sw_record_view_filters($cfg), $form_row['id'], _pg_sw_current_page_id()));
     $found_and_allowed = ($form_row && $allowed);
 
-    // The address asked for a record (?r=, or a name under the page when the
-    // form has pretty URLs on and no catalog widget on the page reads that
-    // segment instead) and there is none to show: a 404, not the page.
+    // With pretty URLs on, the segment names the record (the router turned
+    // it into ?r=): the page does not answer 404 for it as an unread one.
+    if ($email_record_id === 0 && pg_sw_request_segment() !== '' && pg_sw_form_pretty_urls($custom_form_page_id)) {
+        pg_sw_segment_read(true);
+    }
+
+    // The address asked for a record (?r=, or a name under the page, unless
+    // a catalog widget on the page reads that segment instead) and there is
+    // none to show: a 404, not the page.
     if (!$found_and_allowed && $email_record_id === 0) {
         $asked = ($reference_code !== '');
-        if (!$asked && pg_sw_request_segment() !== '' && pg_sw_form_pretty_urls($custom_form_page_id)) {
+        if (!$asked && pg_sw_request_segment() !== '') {
             $asked = true;
             foreach (pg_sw_page_widgets(_pg_sw_current_page_id()) as $w) {
                 $type = isset($w['cfg']['regionType']) ? (string)$w['cfg']['regionType'] : '';
@@ -3671,7 +3739,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     // and the surround alike. With no record to show every value is empty
     // and such a link opens the bare page.
     $extra += pg_sw_page_link_values($page_links, $form_row, $custom_source, array(
-        'form_item_view'    => ($extra['form_item_view'] !== '#') ? (string)$extra['form_item_view'] : '',
+        'form_item_view'    => pg_sw_page_link_record_value($extra['form_item_view'], pg_sw_ai_page_url($extra['form_item_view'] !== '#' ? (string)$extra['form_item_view'] : '')),
         'submitted_form_id' => (string)$extra['submitted_form_id'],
         'submitter_user_id' => (string)$extra['submitter_user_id'],
     ));
@@ -5757,12 +5825,15 @@ function _pg_sw_current_path()
 
 // The visitor's query parameters. On a pretty address (/widget-takvim) the
 // router puts the page's name into $_GET['page'] itself; carrying it into our
-// own links and forms would only repeat the path. On /index.php?page=… it is
+// own links and forms would only repeat the path. On /index.php?page=… and
+// on the site's root (/?page=…, which the router hands on as it came) it is
 // the address and stays.
 function _pg_sw_query_params()
 {
     $params = is_array($_GET) ? $_GET : array();
-    if (isset($params['page']) && !preg_match('/\.php$/i', _pg_sw_current_path())) unset($params['page']);
+    $path   = _pg_sw_current_path();
+    $root   = defined('OUTPUT_PATH') ? (string)OUTPUT_PATH : '/';
+    if (isset($params['page']) && !preg_match('/\.php$/i', $path) && $path !== $root && $path !== '/') unset($params['page']);
     return $params;
 }
 
@@ -6160,7 +6231,23 @@ function pg_search_highlight_inject($content)
 // a page row adds 'name' and 'section' - a page with a search section that
 // answers the query links to it (_pg_sw_search_attach_sections()).
 // $advanced: null follows the site setting; true / false picks the search.
+// The site's synonyms add the results of the other words of a group, and
+// its promoted results come first (includes/fn/site_search_tuning.php).
 function _pg_sw_search_collect($query, $cfg, $advanced = null)
+{
+    $found = _pg_sw_search_collect_one($query, $cfg, $advanced);
+    if (trim((string)$query) === '' || !function_exists('pg_search_tuning_apply')) return $found;
+    $groups   = pg_search_synonyms();
+    // A search of products only lists no pinned page.
+    $promoted = (is_array($cfg) && isset($cfg['search_scope']) && $cfg['search_scope'] === 'products') ? array() : pg_search_promoted();
+    if (!$groups && !$promoted) return $found;
+    return pg_search_tuning_apply($query, $found, function ($alt) use ($cfg, $advanced) {
+        return _pg_sw_search_collect_one($alt, $cfg, $advanced);
+    }, $groups, $promoted, 'pg_search_promoted_row');
+}
+
+// One search of _pg_sw_search_collect(), without synonyms or promoted results.
+function _pg_sw_search_collect_one($query, $cfg, $advanced = null)
 {
     $out = array('featured' => array(), 'catalog' => array(), 'pages' => array(), 'limited' => false);
     $query = trim((string)$query);
@@ -6344,7 +6431,7 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
 
     // ── Simple: featured, then pages ranked by matches ───────────────────
     $needle   = mb_strtolower($query);
-    $like     = "'%" . e(escape_like($query)) . "%'";
+    $like     = "'" . e(pg_list_like_pattern($query)) . "'";
     $promoted = get_page_id_list_for_sql(get_page_ids_promoted_on_keyword($query));
     $featured = db_items(
         "SELECT page.page_id AS id, page.page_name AS name, page.page_folder AS folder_id,
@@ -6675,8 +6762,10 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
 
     // The visit records the search once: a later results page of the same
     // search does not add it again.
+    // The day's rollup counts it the same once (pg_site_search_count()).
     if ($current_page === 1 && !isset($_GET[$page_param])) {
         pg_search_record_visit_term($query);
+        if ($query !== '') pg_site_search_count($query, $total);
     }
 
     _pg_sw_apply_search_form_bindings($tree, array(
@@ -6774,7 +6863,12 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
         return pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, $static_values));
     }
     $static_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, $static_values));
-    return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html);
+    // A click on a result shown here is counted for the term through
+    // page_view.php (pg_site_search_click()).
+    $click_script = ($loop_rendered !== '')
+        ? pg_site_search_click_script_for($query, array_column(array_slice($rows, $offset, $per_page), 'url'))
+        : '';
+    return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html) . $click_script;
 }
 
 // Render a 'registration' system widget.
@@ -7511,7 +7605,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 p.id AS product_id, p.address_name, p.image_name,
                 p.short_description, p.full_description,
                 p.form AS product_has_form, p.form_name, p.form_quantity_type,
-                p.gift_card AS product_is_gift_card" . $_ov_entity_sql . ",
+                p.gift_card AS product_is_gift_card,
+                p.inventory, p.inventory_quantity" . pg_preorder_select_sql('p', pg_product_preorder_ready()) . $_ov_entity_sql . ",
                 st.first_name AS st_first_name, st.last_name AS st_last_name,
                 st.address_1 AS st_address_1, st.city AS st_city,
                 st.state AS st_state, st.zip_code AS st_zip, st.country AS st_country
@@ -7523,6 +7618,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     );
 
     $items = array();
+    $_ov_today = pg_preorder_today();
     if (is_array($item_rows)) {
         foreach ($item_rows as $r) {
             $qty        = (int)$r['quantity'];
@@ -7579,6 +7675,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 'url'               => $item_url,
                 'ship_to'           => $item_ship_to,
                 'ship_to_id'        => (int)$r['ship_to_id'],
+                // "Pre-order, ships from <date>" while the product's
+                // pre-order runs (includes/fn/preorder.php), else ''.
+                'preorder_label'    => pg_preorder_label($r, $_ov_today),
                 'entity'            => $item_entity,
             );
         }
@@ -7881,7 +7980,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // URL query flag set by cancel_order.php redirect — drives the
     // success/failure notice token. Values: '1' (success), 'already',
     // 'shipped'. Missing = nothing to show.
-    $_ov_cancel_flash = isset($_GET['cancelled']) ? (string)$_GET['cancelled'] : '';
+    $_ov_cancel_flash = (isset($_GET['cancelled']) && is_scalar($_GET['cancelled'])) ? (string)$_GET['cancelled'] : '';
 
     // ── Returns (includes/fn/returns.php) ──────────────────────────────
     // Only the signed-in owner reads or asks for returns; a guest who has
@@ -8064,6 +8163,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 '__item_url'               => h($item['url']),
                 // Per-item shipping (one-liner; empty for digital products)
                 '__item_ship_to'           => h($item['ship_to']),
+                '__item_preorder_label'    => h($item['preorder_label']),
                 // Whether the item's product form answers and gift cards
                 // have rows (the item form and gift card parts' boxes).
                 '__item_has_form_data'     => !empty($item['has_form_data']) ? '1' : '',
@@ -8499,6 +8599,12 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
         $cf_liveform = new liveform($form_page_id);
     }
 
+    // A form with a fee (includes/fn/form_payment_step.php): its payment
+    // step, or, while this session has the form's payment open, the payment
+    // alone. Never in the SEO pass.
+    $cf_payment = ($form_page_id > 0 && !pg_seo_rendering()) ? pg_form_payment_render($form_page_id, $cf_liveform) : array('kind' => '', 'html' => '');
+    if ($cf_payment['kind'] === 'replace') return $cf_payment['html'];
+
     // Staff view: the page in edit mode, seen by someone who may edit it. The
     // same gate custom_form.php applies before it reads an office-use-only
     // field from the POST, so what is shown is what will be stored.
@@ -8566,6 +8672,14 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
             ? (string)get_captcha_fields($cf_liveform) : '',
     );
     pg_cf_apply_section_bindings($tree_decoded, $cf_sections);
+    if ($cf_payment['kind'] === 'step') pg_cf_insert_payment_step($tree_decoded, $cf_payment['html'], lang('Payment'));
+
+    // "Step" breaks split the controls into fieldsets shown one at a time;
+    // a form without one is left exactly as it was.
+    // A stepped form keeps its answers in the browser through a reload,
+    // except in the editor's Preview and the SEO pass.
+    $cf_draft_key = ($mode === 'background' || pg_seo_rendering()) ? '' : pg_cf_draft_key($form_page_id);
+    $cf_steps = pg_cf_apply_steps($tree_decoded, $cf_draft_key);
 
     // Render the full tree (loop_area present but hidden)
     $rendered = trim(_render_tree_node($tree_decoded, 0, 0));
@@ -8600,7 +8714,8 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
                      ($cf_contact_off ? '<input type="hidden" name="connect_to_contact" value="false">' : '') .
                      ($cf_staff ? '<input type="hidden" name="office_use_only" value="true">' : '');
 
-        $rendered = $form_open . $rendered . pg_cf_validation_script() . '</form>';
+        $rendered = $form_open . $rendered . pg_cf_validation_script()
+                  . ($cf_steps > 1 ? pg_cf_steps_script() : '') . '</form>';
     }
 
     $values = array(

@@ -372,6 +372,22 @@ if ($item_name_lowercase == '.well-known/pinegrap.json') {
     api_discovery_well_known();
 }
 
+// The site as a Fediverse actor (activitypub.php, includes/fn/activitypub.php):
+// WebFinger and NodeInfo at their well-known names, the actor and its
+// collections at /@<handle>. Only while the feature is on with that handle;
+// otherwise the names go on as they always have.
+if (preg_match('#^(?:\.well-known/(webfinger|nodeinfo|nodeinfo/2\.1)|@([a-z0-9_]{1,64})(?:/(followers|outbox))?)$#', $item_name_lowercase, $router_ap)) {
+    $router_ap_handle = router_activitypub_handle();
+
+    if (($router_ap_handle !== '')
+        && (($router_ap[1] !== '') || ($router_ap[2] === strtolower($router_ap_handle)))
+    ) {
+        define('PG_AP_ROUTE', ($router_ap[1] !== '') ? str_replace('/', '-', $router_ap[1]) : (isset($router_ap[3]) && ($router_ap[3] !== '') ? $router_ap[3] : 'actor'));
+        require(dirname(__FILE__) . '/activitypub.php');
+        exit();
+    }
+}
+
 // The MCP server at the site's own address (mcp.php in the software
 // directory). It is the address the site gives out, because it is the one a
 // person types into an AI application.
@@ -721,6 +737,9 @@ function router_page_cache_module()
     }
 
     require_once(dirname(__FILE__) . '/includes/fn/page_cache.php');
+    // The bucket of a page experiment is read and drawn from a stored copy's
+    // weights; nothing there runs a query.
+    require_once(dirname(__FILE__) . '/includes/fn/experiments.php');
 }
 
 /**
@@ -960,6 +979,33 @@ function router_llms_txt_enabled()
     $row = mysqli_fetch_assoc($result);
 
     return is_array($row) && !empty($row['llms_txt']);
+}
+
+/**
+ * The Fediverse actor's handle while the feature is on (the config_text row
+ * ap_settings, includes/fn/activitypub.php), '' otherwise. A missing table
+ * or row reads as off.
+ *
+ * @return string
+ */
+function router_activitypub_handle()
+{
+    $result = @mysqli_query(db::$con, "SELECT value FROM config_text WHERE name = 'ap_settings'");
+
+    if (!$result) {
+        return '';
+    }
+
+    $row = mysqli_fetch_assoc($result);
+    $settings = is_array($row) ? json_decode((string) $row['value'], true) : null;
+
+    if (!is_array($settings) || empty($settings['enabled']) || !isset($settings['handle'])
+        || !preg_match('/^[A-Za-z0-9_]{1,64}$/', (string) $settings['handle'])
+    ) {
+        return '';
+    }
+
+    return (string) $settings['handle'];
 }
 
 /**

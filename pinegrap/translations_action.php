@@ -465,7 +465,9 @@ if ($translations_is_export) {
 include_once('liveform.class.php');
 
 $language = isset($_POST['language']) ? trim((string) $_POST['language']) : '';
-$back = PATH . SOFTWARE_DIRECTORY . '/translations.php?language=' . urlencode($language);
+// Back to the view the form was posted from: the same page or group, filter
+// and search.
+$back = PATH . SOFTWARE_DIRECTORY . '/translations.php?' . pg_tr_screen_view_query($language, $_POST);
 
 $liveform = new liveform('translations');
 
@@ -501,13 +503,28 @@ if ($translations_form_action === 'glossary_save') {
     $note = isset($_POST['note']) ? trim((string) $_POST['note']) : '';
     $for_all = !empty($_POST['all_languages']);
 
+    // A refused save hands what was typed back to the screen, which opens
+    // the glossary dialog again with it.
+    $glossary_refused = function () use ($liveform, $id, $term, $translation, $keep, $case_sensitive, $note, $for_all) {
+        $liveform->assign_field_value('glossary_form', '1');
+        $liveform->assign_field_value('id', (string) $id);
+        $liveform->assign_field_value('term', $term);
+        $liveform->assign_field_value('translation', $translation);
+        $liveform->assign_field_value('keep', (string) $keep);
+        $liveform->assign_field_value('case_sensitive', (string) $case_sensitive);
+        $liveform->assign_field_value('all_languages', $for_all ? '1' : '0');
+        $liveform->assign_field_value('note', $note);
+    };
+
     if ($term === '') {
         $liveform->mark_error('term', lang('Please enter the term.'));
+        $glossary_refused();
         go($back . '#pg_tr_glossary');
     }
 
     if (!$keep && ($translation === '')) {
         $liveform->mark_error('translation', lang('Enter the translation to use, or mark the term as one to keep as written.'));
+        $glossary_refused();
         go($back . '#pg_tr_glossary');
     }
 
@@ -520,6 +537,19 @@ if ($translations_form_action === 'glossary_save') {
 
     $values = "language = '" . ($for_all ? '' : e($language)) . "', term = '" . e(mb_substr($term, 0, 255)) . "', translation = '" . e(mb_substr($translation, 0, 255)) . "',
         keep = '$keep', case_sensitive = '$case_sensitive', note = '" . e(mb_substr($note, 0, 255)) . "'";
+
+    // One row per term and language: a second row for the same term would send
+    // the engines two instructions for it. A term for every language is
+    // compared with every row, a term for one language with that language's
+    // rows and the ones for every language.
+    $scope_where = $for_all ? '' : " WHERE language IN ('', '" . e($language) . "')";
+    $same = pg_tr_glossary_duplicate(db_items("SELECT id, term, case_sensitive FROM translation_glossary$scope_where"), $id, mb_substr($term, 0, 255), (bool) $case_sensitive);
+
+    if ($same !== null) {
+        $liveform->mark_error('term', h(lang(array('string' => 'The term "{var:1}" is already in the glossary. Edit that term instead.', 'vars' => array($same['term'])))));
+        $glossary_refused();
+        go($back . '#pg_tr_glossary');
+    }
 
     if (($id > 0) && db_value("SELECT id FROM translation_glossary WHERE id = '$id' LIMIT 1")) {
         db("UPDATE translation_glossary SET $values WHERE id = '$id'");

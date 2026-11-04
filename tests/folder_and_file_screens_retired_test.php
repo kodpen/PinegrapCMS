@@ -110,7 +110,7 @@ function test_folder_and_file_screens_retired_ways_in_open_the_file_manager()
 	pg_assert_contains("header('Location: view_folders.php?view=files');", folder_and_file_screens_retired_source('create_file.php'), 'a created file lands in the Files view');
 	pg_assert_contains("'view_folders.php?view=files'", folder_and_file_screens_retired_source('assets/js/cloud_file_picker.js'), 'the cloud picker lands in the Files view');
 
-	foreach (array('add_file.php', 'create_file.php', 'edit_file.php', 'optimize.php') as $path) {
+	foreach (array('add_file.php', 'create_file.php', 'optimize.php') as $path) {
 		pg_assert_contains("new liveform('view_folders');", folder_and_file_screens_retired_source($path), $path . ' leaves its notice for the File Manager');
 	}
 }
@@ -138,6 +138,8 @@ function test_folder_and_file_screens_retired_root_settings_keep_order_and_archi
 	pg_assert_same(array(4, '1'), pg_explorer_folder_settings_order_archive(array('folder_parent' => 0, 'folder_order' => 4, 'folder_archived' => '1'), array()), 'an archived root stays so');
 	pg_assert_same(array(9, '1'), pg_explorer_folder_settings_order_archive($child, array('order' => '9', 'archived' => '1')), 'another folder takes the request');
 	pg_assert_same(array(0, ''), pg_explorer_folder_settings_order_archive($child, array('archived' => 'yes')), 'only an exact 1 archives');
+	pg_assert_same(array(9999, ''), pg_explorer_folder_settings_order_archive($child, array('order' => '99999999999')), 'a huge order is held at the top of the range');
+	pg_assert_same(array(-9999, ''), pg_explorer_folder_settings_order_archive($child, array('order' => '-99999999999')), 'a huge negative order is held at the bottom');
 
 	$handler = folder_and_file_screens_retired_source('includes/explorer/handle_folders.php');
 	pg_assert_contains("'is_root' => ((int) \$folder['folder_parent'] == 0),", $handler, 'the drawer is told the root');
@@ -154,8 +156,9 @@ function test_folder_and_file_screens_retired_duplicate_with_find_and_replace()
 
 	$screen = folder_and_file_screens_retired_source('duplicate_folder.php');
 	pg_assert_contains("\$back_url = pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?folder=' . (int) \$folder['parent']);", $screen, 'Cancel goes back to the File Manager');
-	pg_assert_contains("go(pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?folder=' . (int) \$new_folder['id']));", $screen, 'the duplicate lands in the File Manager');
-	pg_assert_contains("new liveform('view_folders');", $screen, 'its notice is left for the File Manager');
+	pg_assert_contains("\$location = pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?folder=' . (int) \$new_folder['id']);", $screen, 'the duplicate lands in the File Manager');
+	pg_assert_contains("go(\$location);", $screen, 'it redirects there');
+	pg_assert_contains("\$notice_form = pg_redirect_notice_form(\$location);", $screen, 'its notice is left on the screen the redirect opens');
 
 	pg_assert_contains('href="<?=h($back_url)?>"', folder_and_file_screens_retired_source('includes/templates/duplicate_folder.php'), 'the crumb goes back to the File Manager');
 }

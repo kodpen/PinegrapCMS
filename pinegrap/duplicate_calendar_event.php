@@ -1,10 +1,10 @@
 <?php
 /**
- * PineGrap - Enterprise Website Platform
+ * Pinegrap - Enterprise Website Platform
  *
  * Originally developed as LiveSite by Camelback Web Architects.
- * Since 2017, maintained and evolved by Erdal Güral (Kodpen) under the name PineGrap.
- * The final LiveSite update (2019) has been integrated into PineGrap.
+ * Since 2017, maintained and evolved by Erdal Güral (Kodpen) under the name Pinegrap.
+ * The final LiveSite update (2019) has been integrated into Pinegrap.
  * LiveSite remains available as a separate downloadable legacy version.
  *
  * @author      Camelback Web Architects
@@ -74,10 +74,10 @@ $query =
 $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 $calendar_event = mysqli_fetch_assoc($result);
 
-// if the event is published and the user does not have rights to publish calendar events then do not publish new event
-if (($calendar_event['published'] == 1) && ($user['role'] == 3) && ($user['publish_calendar_events'] == FALSE)) {
-    $calendar_event['published'] = 0;
-}
+// The copy starts unpublished and named as a copy: published as it was, the
+// site showed the same event twice until the copy was edited.
+$calendar_event['published'] = 0;
+$calendar_event['name'] = pg_calendar_event_copy_name($calendar_event['name']);
 
 // create new calendar event
 $query =
@@ -204,6 +204,28 @@ foreach ($calendar_event_exceptions as $calendar_event_exception) {
             ?,
             ?)";
     $result = db_q($query, array((string) $new_calendar_event_id, (string) $calendar_event_exception['recurrence_number'])) or output_error('Query failed.');
+}
+
+// The copy holds the original's locations; at the same time it holds them
+// twice, which the location check asks about when the copy is saved.
+$query = "SELECT calendar_event_location_id FROM calendar_events_calendar_event_locations_xref WHERE calendar_event_id = ?";
+$result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+
+$calendar_event_location_ids = array();
+
+while ($row = mysqli_fetch_assoc($result)) {
+    $calendar_event_location_ids[] = $row['calendar_event_location_id'];
+}
+
+foreach ($calendar_event_location_ids as $calendar_event_location_id) {
+    $query =
+        "INSERT INTO calendar_events_calendar_event_locations_xref (
+            calendar_event_id,
+            calendar_event_location_id)
+        VALUES (
+            ?,
+            ?)";
+    $result = db_q($query, array((string) $new_calendar_event_id, (string) $calendar_event_location_id)) or output_error('Query failed.');
 }
 
 log_activity(lang(array('string'=>'{var:1} ({var:2}) was duplicated','vars'=>array(lang('event'), $calendar_event['name']) )), $_SESSION['sessionusername']);

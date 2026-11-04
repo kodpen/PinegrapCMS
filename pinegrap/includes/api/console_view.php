@@ -26,6 +26,80 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 
+// The heading of each endpoint group, keyed by the route id's prefix. A group
+// a resource or module adds needs its line here, or it falls back to the
+// prefix itself.
+function api_console_group_labels() {
+
+	return array(
+		'meta'           => lang('Site info'),
+		'products'       => lang('Products'),
+		'product_groups' => lang('Product Groups'),
+		'product_attributes' => lang('Product Attributes'),
+		'inventory'      => lang('Inventory'),
+		'orders'         => lang('Orders'),
+		'customers'      => lang('Customers'),
+		'pages'          => lang('Pages'),
+		'folders'        => lang('Folders'),
+		'menus'          => lang('Menus'),
+		'comments'       => lang('Comments'),
+		'short_links'    => lang('Short Links'),
+		'store'          => lang('Store set-up'),
+		'gift_cards'     => lang('Gift Cards'),
+		'commissions'    => lang('Commissions'),
+		'site_log'       => lang('Site Log'),
+		'campaigns'      => lang('Campaigns'),
+		'contact_groups' => lang('Contact Groups'),
+		'users'          => lang('Users'),
+		'files'          => lang('Files'),
+		'forms'          => lang('Forms'),
+		'seo'            => lang('SEO'),
+		'system'         => lang('System'),
+		'reports'        => lang('Reports'),
+		'offers'         => lang('Offers'),
+		'key_codes'      => lang('Key Codes'),
+		'calendars'      => lang('Calendars'),
+		'webhooks'       => lang('Webhooks'),
+		// The groups the later resources and the modules add (includes/api/
+		// modules.php); without a line here they showed the bare route prefix.
+		'design'         => lang('Visual Page Editor'),
+		'auth'           => lang('Sign-in'),
+		'devices'        => lang('Devices'),
+		'notifications'  => lang('Notifications'),
+		'push'           => lang('Push notifications'),
+		'erp'            => lang('ERP'),
+		'workspace'      => lang('Workspace'),
+		'translations'   => lang('Translations'),
+		'returns'        => lang('Returns'),
+		'cart_quotes'    => lang('Cart quotes'),
+		'audit_log'      => lang('Audit trail'),
+		'affiliates'     => lang('Affiliates'),
+		'subscriptions'  => lang('Subscriptions'),
+		'experiments'    => lang('Experiments'),
+		'bookings'       => lang('Bookings'),
+		'docs'           => lang('Documentation')
+	);
+
+}
+
+// The allowed range of a parameter as one short note: both ends as "1–100", one
+// end as "≥ 1" or "≤ 100", '' when neither is declared.
+function api_console_range_note($param) {
+
+	$has_min = isset($param['min']);
+
+	$has_max = isset($param['max']);
+
+	if ($has_min && $has_max) { return $param['min'] . '–' . $param['max']; }
+
+	if ($has_min) { return '≥ ' . $param['min']; }
+
+	if ($has_max) { return '≤ ' . $param['max']; }
+
+	return '';
+
+}
+
 // The endpoint blocks and the index beside them, grouped by resource in the
 // order the schema declares them. Returns array('nav' => html, 'panels' => html,
 // 'count' => endpoints, 'groups' => groups). $try_hint is a sentence shown
@@ -46,45 +120,7 @@ function api_console_endpoints_html($try_hint = '') {
 
 	}
 
-	$group_labels = array(
-		'meta'           => lang('Site info'),
-		'products'       => lang('Products'),
-		'product_groups' => lang('Product Groups'),
-		'product_attributes' => lang('Product Attributes'),
-		'inventory'      => lang('Inventory'),
-		'orders'         => lang('Orders'),
-		'customers'      => lang('Customers'),
-		'pages'          => lang('Pages'),
-		'folders'        => lang('Folders'),
-		'menus'          => lang('Menus'),
-		'comments'       => lang('Comments'),
-		'short_links'    => lang('Short Links'),
-		'store'          => lang('Store set-up'),
-		'gift_cards'     => lang('Gift Cards'),
-		'commissions'    => lang('Commissions'),
-		'site_log'       => lang('Site Log'),
-		'campaigns'      => lang('Campaigns'),
-		'contact_groups' => lang('Contact Groups'),
-		'files'          => lang('Files'),
-		'forms'          => lang('Forms'),
-		'seo'            => lang('SEO'),
-		'system'         => lang('System'),
-		'reports'        => lang('Reports'),
-		'offers'         => lang('Offers'),
-		'key_codes'      => lang('Key Codes'),
-		'calendars'      => lang('Calendars'),
-		'webhooks'       => lang('Webhooks'),
-		// The groups the later resources and the modules add (includes/api/
-		// modules.php); without a line here they showed the bare route prefix.
-		'design'         => lang('Visual Page Editor'),
-		'auth'           => lang('Sign-in'),
-		'devices'        => lang('Devices'),
-		'notifications'  => lang('Notifications'),
-		'push'           => lang('Push notifications'),
-		'erp'            => lang('ERP'),
-		'workspace'      => lang('Workspace'),
-		'translations'   => lang('Translations')
-	);
+	$group_labels = api_console_group_labels();
 
 	$nav = '';
 
@@ -94,7 +130,9 @@ function api_console_endpoints_html($try_hint = '') {
 
 	foreach ($groups as $tag => $routes) {
 
-		$label = isset($group_labels[$tag]) ? $group_labels[$tag] : ucfirst($tag);
+		// A prefix with no line in the list still reads as words, never as
+		// cart_quotes: the group headings are set in capitals.
+		$label = isset($group_labels[$tag]) ? $group_labels[$tag] : ucfirst(str_replace('_', ' ', $tag));
 
 		$nav .= '<div class="doc-nav-group">' . h($label) . '</div>';
 
@@ -131,11 +169,9 @@ function api_console_endpoints_html($try_hint = '') {
 
 				if (isset($param['values'])) { $notes[] = h(implode(' | ', $param['values'])); }
 
-				if (isset($param['min']) || isset($param['max'])) {
+				$range = api_console_range_note($param);
 
-					$notes[] = h((isset($param['min']) ? $param['min'] : '') . '–' . (isset($param['max']) ? $param['max'] : ''));
-
-				}
+				if ($range !== '') { $notes[] = h($range); }
 
 				if (isset($param['default'])) { $notes[] = lang('default') . ' ' . h($param['default']); }
 
@@ -483,7 +519,12 @@ window.pgApiConsole = (function () {
 			'string' => '{var:1} could not be read as a list. Enter a JSON array such as ["a", "b"], or values separated by commas.',
 			'vars'   => '%NAME%'
 		)), JSON_UNESCAPED_UNICODE) . ',
-		noCredential: ' . json_encode(lang('No credential is available for this call.'), JSON_UNESCAPED_UNICODE) . '
+		objectUnreadable: ' . json_encode(lang(array(
+			'string' => '{var:1} could not be read as an object. Enter a JSON object such as {"key": "value"}.',
+			'vars'   => '%NAME%'
+		)), JSON_UNESCAPED_UNICODE) . ',
+		noCredential: ' . json_encode(lang('No credential is available for this call.'), JSON_UNESCAPED_UNICODE) . ',
+		where: ' . json_encode(array('path' => lang('Path'), 'query' => lang('Query'), 'body' => lang('Body')), JSON_UNESCAPED_UNICODE) . '
 	};
 
 	var settings = null;
@@ -513,10 +554,13 @@ window.pgApiConsole = (function () {
 			var id = "doc_field_" + (++fieldSeq);
 			var attributes = " id=\'" + id + "\' data-name=\'" + esc(name) + "\' data-type=\'" + esc(type) + "\' data-where=\'" + esc(where) + "\'";
 			html += "<div class=\'col-6 lg:col-4\'><label for=\'" + id + "\' class=\'form-label small mb-1\'>" + esc(name) +
-				" <span class=\'fg-2\'>" + esc(where) + "</span></label>";
+				" <span class=\'fg-2\'>" + esc(T.where[where] || where) + "</span></label>";
 			if (type === "list") {
 				html += "<textarea rows=\'2\' class=\'form-control form-control-sm doc-field\'" + attributes +
 					" placeholder=\'[&quot;a&quot;, &quot;b&quot;]\'></textarea>";
+			} else if (type === "object") {
+				html += "<textarea rows=\'3\' class=\'form-control form-control-sm doc-field\'" + attributes +
+					" spellcheck=\'false\' placeholder=\'{&quot;key&quot;: &quot;value&quot;}\'></textarea>";
 			} else if (type === "enum") {
 				var values = [];
 				try { values = JSON.parse(row.dataset.values || "[]"); } catch (e) {}
@@ -547,6 +591,16 @@ window.pgApiConsole = (function () {
 			.filter(function (item) { return item !== ""; });
 	}
 
+	// An object field has to be a JSON object: an array, a number or plain
+	// text comes back as null so the caller can name the field.
+	function parseObject(text) {
+		try {
+			var parsed = JSON.parse(text);
+			if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) { return parsed; }
+		} catch (e) {}
+		return null;
+	}
+
 	function showProblem(panel, text) {
 		var box = panel.querySelector(".doc-problem");
 		box.textContent = text;
@@ -568,6 +622,12 @@ window.pgApiConsole = (function () {
 		var panel = endpoint.querySelector(".doc-try-panel");
 
 		if (!settings.hasCredential()) {
+			// The warning stands in for the fields; a second click on Try it
+			// closes it again, like it closes an open panel.
+			if (!panel.classList.contains("d-none") && !panel.querySelector(".doc-send")) {
+				panel.classList.add("d-none");
+				return;
+			}
 			panel.classList.remove("d-none");
 			panel.innerHTML = "<div class=\'alert theme-warning py-3 px-5 small mb-0\'>" + esc(settings.missing) + "</div>";
 			return;
@@ -625,6 +685,14 @@ window.pgApiConsole = (function () {
 					return;
 				}
 				body[name] = list;
+				hasBody = true;
+			} else if (field.dataset.type === "object") {
+				var object = parseObject(value);
+				if (object === null) {
+					problem = T.objectUnreadable.replace("%NAME%", name);
+					return;
+				}
+				body[name] = object;
 				hasBody = true;
 			} else {
 				body[name] = value;

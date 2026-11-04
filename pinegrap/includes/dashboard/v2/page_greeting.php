@@ -3,9 +3,11 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The new dashboard's greeting card: the date and time line in the person's
- * time zone, the greeting by the hour with their name, the "since your last
- * sign-in" chips, the shortcuts and the four figure tiles. What each preset
- * starts the card with is kept here; the figures are in figures.php.
+ * time zone with the next meeting beside it, the greeting by the hour with
+ * their name, the brief under it, the "since your last sign-in" chips, the
+ * shortcuts and the four figure tiles. What each preset starts the card with
+ * is kept here; the figures are in figures.php, the brief's sentence in
+ * includes/dashboard/brief.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -83,7 +85,7 @@ function pg_dashboard_v2_greeting_preset($preset, $shop = false)
  * @param string $layout_json dashboard_layout.layout, '' when none
  * @param bool   $shop
  * @return array preset, actions, tiles, chips, top (since, actions, tiles,
- *               status)
+ *               status, brief)
  */
 function pg_dashboard_v2_greeting_settings($layout_json, $shop)
 {
@@ -105,7 +107,7 @@ function pg_dashboard_v2_greeting_settings($layout_json, $shop)
     };
 
     $top = array();
-    foreach (array('since', 'actions', 'tiles', 'status') as $part) {
+    foreach (array('since', 'actions', 'tiles', 'status', 'brief') as $part) {
         $top[$part] = (isset($layout['top'][$part]) && ((int) $layout['top'][$part] === 0)) ? 0 : 1;
     }
 
@@ -152,15 +154,25 @@ function pg_dashboard_v2_greeting($user)
     require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/figures.php');
 
     $now = time();
-    $row = pg_dashboard_v2_row($user['id']);
+    $row = pg_dashboard_v2_row_for($user);
     $settings = pg_dashboard_v2_greeting_settings((string) ($row['layout'] ?? ''), defined('ECOMMERCE') && (ECOMMERCE === true));
 
     $when = get_absolute_time(array('timestamp' => $now, 'type' => 'date', 'size' => 'long'))
         . ' · ' . get_absolute_time(array('timestamp' => $now, 'type' => 'time'));
 
+    // Switched off in the top section, the brief is not worked out at all.
+    $brief = $settings['top']['brief'] ? pg_dashboard_v2_brief_data($user, $now) : null;
+
     $output = '
-            <p class="pg-dash-greeting-when">' . $when . '</p>
+            <div class="pg-dash-greeting-head">
+                <p class="pg-dash-greeting-when">' . $when . '</p>'
+                . (($brief !== null) ? pg_dashboard_v2_brief_next_markup($brief) : '') . '
+            </div>
             <h2 class="pg-dash-greeting-title" id="pg_dash_greeting_title">' . h(ws_home_greeting(pg_dashboard_v2_local_hour($now))) . ', <span class="pg-dash-name">' . h((string) $user['username']) . '</span></h2>';
+
+    if ($brief !== null) {
+        $output .= pg_dashboard_v2_brief_markup($brief, $now);
+    }
 
     // Since the previous sign-in: no previous one, or nothing happened, no line.
     $since = (int) ($row['signed_in_before'] ?? 0);
@@ -191,9 +203,8 @@ function pg_dashboard_v2_greeting($user)
             foreach ($actions as $i => $key) {
                 $shortcut = $pool[$key];
                 $count = ($shortcut['count'] !== '') ? pg_dashboard_v2_shortcut_count($shortcut['count'], $user) : 0;
-                $output .= '<a class="btn ' . (($i === 0) ? 'pg-dash-action-main' : 'btn-outline theme-secondary') . ' pg-dash-action" data-shortcut="' . h($key) . '" href="' . h($shortcut['url']) . '">'
-                    . '<i class="bi ' . h($shortcut['icon']) . '" aria-hidden="true"></i> '
-                    . '<span class="pg-btn-label">' . h($shortcut['label']) . (($count > 0) ? ' · ' . h(pg_format_number($count, 0)) : '') . '</span></a>';
+                $output .= '<a class="pg-dash-btn' . (($i === 0) ? ' pg-dash-btn-main' : '') . ' pg-dash-action" data-shortcut="' . h($key) . '" href="' . h($shortcut['url']) . '">'
+                    . h($shortcut['label']) . (($count > 0) ? ' · ' . h(pg_format_number($count, 0)) : '') . '</a>';
             }
 
             $output .= '</nav>';
@@ -223,6 +234,79 @@ function pg_dashboard_v2_greeting($user)
     return '
         <section class="card pg-dash-card pg-dash-greeting" aria-labelledby="pg_dash_greeting_title">' . $output . '
         </section>';
+}
+
+/**
+ * The brief for this person on the new dashboard: brief.php's sentence,
+ * workspace strip and next meeting, the tips worded for this dashboard and
+ * the mark following the hour the greeting uses. The page and api.php's
+ * get_dashboard_brief both go through here.
+ *
+ * @param array $user the row validate_user() returned
+ * @param int   $now
+ * @return array pg_dashboard_brief()'s answer
+ */
+function pg_dashboard_v2_brief_data($user, $now)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/brief.php');
+
+    return pg_dashboard_brief($user, pg_changelog_sections(), array(
+        'dashboard' => 'v2',
+        'hour'      => pg_dashboard_v2_local_hour($now),
+        'edit'      => !pg_dashboard_v2_locked_for($user),
+    ));
+}
+
+/**
+ * The brief under the greeting's title: the hour's mark, the sentence with
+ * "Say something else" at its end, and the workspace strip under them. On a
+ * narrow dashboard the brief is a box of its own (pg_dash.src.css) whose
+ * first row holds the next meeting, or the brief's name when nothing is
+ * left today; the group carries the name for screen readers. The page
+ * script (pg_dash_brief.js) asks for another line and counts the next
+ * meeting down from data-pg-now with the texts in data-pg-until. Pure.
+ *
+ * @param array $brief pg_dashboard_brief()'s answer
+ * @param int   $now
+ * @return string HTML
+ */
+function pg_dashboard_v2_brief_markup($brief, $now)
+{
+    $until = array(
+        'now'  => lang('Now'),
+        'min'  => lang(array('string' => 'in {var:1} min', 'vars' => array('%1'))),
+        'h'    => lang(array('string' => 'in {var:1} h', 'vars' => array('%1'))),
+        'hmin' => lang(array('string' => 'in {var:1} h {var:2} min', 'vars' => array('%1', '%2'))),
+    );
+    $again = h(lang('Say something else'));
+    $name = h(lang("Today's brief"));
+
+    return '
+            <div class="pg-dash-brief" id="pg_dash_brief" role="group" aria-label="' . $name . '" data-top-part="brief"'
+                . ' data-pg-now="' . (int) $now . '" data-pg-until="' . h(json_encode($until, JSON_UNESCAPED_UNICODE)) . '">
+                <div class="pg-dash-brief-row">
+                    <span class="pg-dash-brief-mark" aria-hidden="true"><i class="bi ' . h((string) $brief['icon']) . '"></i></span>
+                    <span class="pg-dash-brief-head"><span class="pg-dash-brief-kicker" aria-hidden="true">' . $name . '</span>' . pg_dashboard_v2_brief_next_markup($brief, true) . '</span>
+                    <p class="pg-dash-brief-text" aria-live="polite">' . $brief['line'] . '</p>
+                    <button type="button" class="pg-dash-brief-again" id="pg_dash_brief_again" title="' . $again . '" aria-label="' . $again . '"><i class="bi bi-arrow-repeat" aria-hidden="true"></i></button>
+                </div>' . $brief['strip'] . '
+            </div>';
+}
+
+/**
+ * The next meeting or visit in a box the page script fills again with
+ * another line; empty when nothing is left today. It is drawn twice: beside
+ * the date line, shown on a wide dashboard, and in the brief's first row,
+ * shown on a narrow one, so it never takes a line of its own; CSS shows one.
+ * Pure.
+ *
+ * @param array $brief  pg_dashboard_brief()'s answer
+ * @param bool  $inside the copy in the brief's first row
+ * @return string HTML
+ */
+function pg_dashboard_v2_brief_next_markup($brief, $inside = false)
+{
+    return '<span class="pg-dash-brief-next ' . ($inside ? 'is-inside' : 'is-head') . '" data-top-part="brief">' . $brief['next'] . '</span>';
 }
 
 /**

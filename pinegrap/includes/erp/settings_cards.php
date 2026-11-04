@@ -26,7 +26,7 @@ if (!defined('PG_ERP_ENTRY')) {
  * letter got theirs in 4.60, so they are listed only once that upgrade has
  * run - until then they print from the built-in files.
  *
- * @return array key => label, column, default, current, preview, log
+ * @return array key => label, column, default, current, preview, log_changed, log_reset
  */
 function erp_settings_documents()
 {
@@ -37,7 +37,8 @@ function erp_settings_documents()
             'default' => erp_invoice_default_template(),
             'current' => erp_invoice_template(),
             'preview' => 'get_erp_invoice_pdf.php',
-            'log' => 'erp invoice template',
+            'log_changed' => lang('erp invoice template was changed'),
+            'log_reset' => lang('erp invoice template was reset'),
         ),
     );
 
@@ -48,7 +49,8 @@ function erp_settings_documents()
             'default' => erp_waybill_default_template(),
             'current' => erp_waybill_template(),
             'preview' => 'get_erp_waybill_pdf.php',
-            'log' => 'erp delivery note template',
+            'log_changed' => lang('erp delivery note template was changed'),
+            'log_reset' => lang('erp delivery note template was reset'),
         );
     }
 
@@ -59,7 +61,8 @@ function erp_settings_documents()
             'default' => erp_reconciliation_default_template(),
             'current' => erp_reconciliation_template(),
             'preview' => 'get_erp_reconciliation_pdf.php',
-            'log' => 'erp reconciliation letter template',
+            'log_changed' => lang('erp reconciliation letter template was changed'),
+            'log_reset' => lang('erp reconciliation letter template was reset'),
         );
     }
 
@@ -165,7 +168,7 @@ function erp_settings_rules_fields()
 
         $output .= '
                         <fieldset class="mb-7">
-                            <legend class="form-label fs-md">' . lang('VAT withheld on sales, in the VAT report and the accountant\'s pack') . '</legend>
+                            <legend class="form-label">' . lang('VAT withheld on sales, in the VAT report and the accountant\'s pack') . '</legend>
                             <div class="form-field">
                                 <input class="radio" type="radio" name="vat_net_withholding" id="vat_net_withholding_0" value="0"' . ($rules['vat_net_withholding'] ? '' : ' checked') . ' />
                                 <label class="" for="vat_net_withholding_0">' . lang('Shown beside the calculated VAT, which stays in full') . '</label>
@@ -279,13 +282,13 @@ function erp_settings_cards_refusals($post, $cards)
     }
 
     if (in_array('late_fee', $cards, true)) {
-        $rate = (trim($text('late_fee_rate')) === '') ? 0.0 : erp_fx_rate_in($text('late_fee_rate'));
+        $rate = (trim($text('late_fee_rate')) === '') ? 0.0 : erp_late_fee_percent_in($text('late_fee_rate'));
 
         if (($rate < 0) || ($rate > ERP_LATE_FEE_MAX_RATE)) {
             $refusals['late_fee_rate'] = lang(array('string' => 'The monthly rate runs from 0 to {var:1}.', 'vars' => ERP_LATE_FEE_MAX_RATE));
         }
 
-        $tax_rate = (trim($text('late_fee_tax_rate')) === '') ? null : erp_fx_rate_in($text('late_fee_tax_rate'));
+        $tax_rate = (trim($text('late_fee_tax_rate')) === '') ? null : erp_late_fee_percent_in($text('late_fee_tax_rate'));
 
         if (($tax_rate !== null) && (($tax_rate < 0) || ($tax_rate > 100))) {
             $refusals['late_fee_tax_rate'] = lang('The tax rate runs from 0 to 100.');

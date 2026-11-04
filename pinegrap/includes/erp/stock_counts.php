@@ -134,10 +134,23 @@ function erp_stock_count_items($count_id)
 }
 
 /**
+ * The most pieces one product can have on a count: one read, the sum of the
+ * reads and a correction typed on the line all stop here (the API takes the
+ * same, includes/erp/api_stock.php).
+ *
+ * @return int
+ */
+function erp_stock_count_max()
+{
+    return 1000000;
+}
+
+/**
  * The quantity typed beside a barcode read, by the same rule as the counted
  * list: an empty box is one piece, otherwise up to seven digits and nothing
  * else. A grouped or decimal figure (1.200, 2,5) or text is refused rather
- * than cut to a smaller count.
+ * than cut to a smaller count; one above erp_stock_count_max() is passed on
+ * so the add can say what the limit is.
  *
  * @param string $text
  * @return int|null  null when it is not a whole number of pieces
@@ -218,13 +231,27 @@ function erp_stock_count_add($count_id, $product, $quantity = 1, $set = false)
     }
 
     $quantity = (int) $quantity;
-    if (($quantity < 0) || ($quantity > 1000000) || (!$set && ($quantity === 0))) {
+    $max = erp_stock_count_max();
+
+    if (($quantity < 0) || (!$set && ($quantity === 0))) {
         return $fail(lang('Enter a quantity from 1 up.'));
+    }
+
+    // The reads add up on the line, and the sum keeps to the same limit as
+    // one read: a total the line's own box would refuse is never stored.
+    $before = $set ? 0 : (int) db_value("SELECT counted FROM erp_stock_count_items WHERE count_id = '" . (int) $count_id . "' AND product_id = '" . (int) $product['id'] . "'");
+
+    if ($quantity > $max) {
+        return $fail(erp_stock_count_max_error());
+    }
+
+    if (($before + $quantity) > $max) {
+        return $fail(lang(array('string' => '{var:1} already has {var:2} counted; a count can be at most {var:3}.', 'vars' => array($name, erp_quantity_text($before), erp_quantity_text($max)))));
     }
 
     db("INSERT INTO erp_stock_count_items (count_id, product_id, counted, updated_at)
         VALUES ('" . (int) $count_id . "', '" . (int) $product['id'] . "', '" . $quantity . "', UNIX_TIMESTAMP())
-        ON DUPLICATE KEY UPDATE counted = " . ($set ? "VALUES(counted)" : "counted + VALUES(counted)") . ", updated_at = VALUES(updated_at)");
+        ON DUPLICATE KEY UPDATE counted = " . ($set ? "VALUES(counted)" : "LEAST(counted + VALUES(counted), " . $max . ")") . ", updated_at = VALUES(updated_at)");
 
     db("UPDATE erp_stock_counts SET updated_at = UNIX_TIMESTAMP() WHERE id = '" . (int) $count_id . "'");
 
@@ -234,9 +261,21 @@ function erp_stock_count_add($count_id, $product, $quantity = 1, $set = false)
 }
 
 /**
+ * The refusal for a quantity above erp_stock_count_max().
+ *
+ * @return string
+ */
+function erp_stock_count_max_error()
+{
+    return lang(array('string' => 'A count can be at most {var:1}.', 'vars' => erp_quantity_text(erp_stock_count_max())));
+}
+
+/**
  * Corrections typed on the count's lines: a number sets the count, an empty
  * box takes the product off the count, and an entry that is not one value
- * leaves the line alone.
+ * leaves the line alone. Every figure is checked before any is written: one
+ * that is refused leaves the whole count as it was, and the refusal names
+ * the product whose box holds it.
  *
  * @param int   $count_id
  * @param array $values  product_id => text
@@ -250,6 +289,8 @@ function erp_stock_count_save($count_id, $values)
         return array('success' => false, 'error' => lang('Only an open count can be changed.'));
     }
 
+    $writes = array();
+
     foreach ((array) $values as $product_id => $text) {
         // A count is one figure; one posted as an array (counted[5][]=x) is
         // not given, and the line keeps what it had.
@@ -258,14 +299,21 @@ function erp_stock_count_save($count_id, $values)
         }
 
         $text = trim((string) $text);
+        $refusal = erp_stock_count_value_refusal($text);
 
+        if ($refusal !== '') {
+            $label = erp_stock_count_line_label($product_id);
+
+            return array('success' => false, 'error' => ($label !== '') ? $label . ': ' . $refusal : $refusal);
+        }
+
+        $writes[(int) $product_id] = $text;
+    }
+
+    foreach ($writes as $product_id => $text) {
         if ($text === '') {
             db("DELETE FROM erp_stock_count_items WHERE count_id = '" . (int) $count_id . "' AND product_id = '" . (int) $product_id . "'");
             continue;
-        }
-
-        if (!preg_match('/^\d{1,7}$/', $text)) {
-            return array('success' => false, 'error' => lang('A count is a whole number of pieces.'));
         }
 
         db("UPDATE erp_stock_count_items SET counted = '" . (int) $text . "', updated_at = UNIX_TIMESTAMP()
@@ -273,6 +321,45 @@ function erp_stock_count_save($count_id, $values)
     }
 
     return array('success' => true, 'error' => '');
+}
+
+/**
+ * Why a figure typed on a count's line is refused: empty (off the count) and
+ * whole numbers up to erp_stock_count_max() are taken.
+ *
+ * @param string $text  trimmed
+ * @return string  '' when it is taken
+ */
+function erp_stock_count_value_refusal($text)
+{
+    $text = (string) $text;
+
+    if ($text === '') {
+        return '';
+    }
+
+    if (!preg_match('/^\d{1,8}$/', $text)) {
+        return lang('A count is a whole number of pieces.');
+    }
+
+    return ((int) $text > erp_stock_count_max()) ? erp_stock_count_max_error() : '';
+}
+
+/**
+ * The name of a product, for a refusal that points at its line on a count.
+ *
+ * @param int $product_id
+ * @return string  '' when the product is not found
+ */
+function erp_stock_count_line_label($product_id)
+{
+    $row = db_item("SELECT name, short_description FROM products WHERE id = '" . (int) $product_id . "' LIMIT 1");
+
+    if (!is_array($row)) {
+        return '';
+    }
+
+    return (trim((string) $row['short_description']) !== '') ? (string) $row['short_description'] : (string) $row['name'];
 }
 
 /**

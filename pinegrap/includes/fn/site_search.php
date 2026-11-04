@@ -242,6 +242,44 @@ function pg_search_fulltext_items($sql, array $params)
 }
 
 /**
+ * How long a search index run that the dispatcher did not start holds the
+ * job's lock: a panel window request works within its budget and takes the
+ * catalogue's lock (null); a command-line run does the whole pass in one
+ * process and holds the job for up to four hours. Pure.
+ *
+ * @param bool $web The run answers an HTTP request.
+ * @return int|null Seconds, or null for the catalogue's lock.
+ */
+function pg_search_index_claim_seconds($web)
+{
+    return $web ? null : 14400;
+}
+
+/**
+ * Whether a search index run asked for over HTTP from the panel may start: a
+ * POST carrying the session's form token. A GET, or a POST without the
+ * token, is what a cross-site link or form sends, and would start a crawl in
+ * a manager's session. Pure.
+ *
+ * @param mixed $method        The request method.
+ * @param mixed $posted_token  The token field of the POST body.
+ * @param mixed $session_token The token kept in the session.
+ * @return bool
+ */
+function pg_search_index_web_request_valid($method, $posted_token, $session_token)
+{
+    if (!is_string($method) || (strtoupper($method) !== 'POST')) {
+        return false;
+    }
+
+    if (!is_string($posted_token) || !is_string($session_token) || ($session_token === '')) {
+        return false;
+    }
+
+    return hash_equals($session_token, $posted_token);
+}
+
+/**
  * The closing sweep of a search index run: every row older than the run's
  * start goes. Older, not different: a run started later has rewritten its
  * rows with its own, newer time, and an earlier run that ends first must
@@ -626,7 +664,10 @@ function pg_search_index_stages()
  * The state: started (the pass's start time: every row it writes carries it
  * and the sweep removes the rows older than it), stage, after (the key of the
  * stage's last finished item, '' at its start), current (the item started and
- * not finished: a tick that ended inside it), skipped (notes of the items
+ * not finished: a tick that ended inside it), part (the last finished part of
+ * the current item: its checkpoint), paused (the tick ran out of time inside
+ * the current item, after that part), dead_parts (the parts of the current
+ * item a tick ended inside), skipped (notes of the items
  * skipped this pass), carry (what one stage hands the next: the linked names
  * the files stage reads, the record lists, the addresses already written),
  * done.
@@ -640,7 +681,7 @@ function pg_search_index_next($state, $now)
     if (!is_array($state) || !isset($state['stage'], $state['started'])
         || !in_array($state['stage'], pg_search_index_stages(), true)
         || ((int) $state['started'] <= 0) || !empty($state['done'])) {
-        return array('started' => (int) $now, 'stage' => 'pages', 'after' => '', 'current' => '', 'skipped' => array(), 'carry' => array(), 'done' => false);
+        return array('started' => (int) $now, 'stage' => 'pages', 'after' => '', 'current' => '', 'part' => '', 'paused' => false, 'dead_parts' => array(), 'skipped' => array(), 'carry' => array(), 'done' => false);
     }
 
     return array(
@@ -648,6 +689,9 @@ function pg_search_index_next($state, $now)
         'stage'   => (string) $state['stage'],
         'after'   => (string) ($state['after'] ?? ''),
         'current' => (string) ($state['current'] ?? ''),
+        'part'    => (string) ($state['part'] ?? ''),
+        'paused'  => !empty($state['paused']),
+        'dead_parts' => array_values(array_map('strval', array_slice((array) ($state['dead_parts'] ?? array()), 0, 50))),
         'skipped' => array_values(array_slice((array) ($state['skipped'] ?? array()), 0, 50)),
         'carry'   => (isset($state['carry']) && is_array($state['carry'])) ? $state['carry'] : array(),
         'done'    => false,
@@ -863,32 +907,70 @@ function pg_search_index_state_write($state)
 
 /**
  * Start one item of the stage. When it is the item the state names as
- * started and not finished, a tick ended inside it (a fatal error, an exit,
- * a killed process): it is skipped, named in the state's notes, and counted
- * as finished, so the pass never stops at the same item twice. Pure.
+ * started and not finished, an earlier tick stopped inside it:
+ * - paused (out of time between two parts): the item is resumed after its
+ *   last finished part;
+ * - ended inside a part (a fatal error, an exit, a killed process), which the
+ *   marker names: the item is resumed and only that part is skipped, keeps
+ *   its row and is named;
+ * - ended outside any part (a host's list queries), or a cursor written
+ *   before items had parts: the item is skipped, named in the state's notes
+ *   and counted as finished, and keeps its rows ('keep'), so the pass never
+ *   stops at the same item twice. Pure.
  *
- * @param array  $state from pg_search_index_next()
- * @param string $key   the item's key in its stage
- * @return array state, skip (bool)
+ * @param array      $state  from pg_search_index_next()
+ * @param string     $key    the item's key in its stage
+ * @param array|null $marker the part marker read back (pg_search_index_marker_read())
+ * @return array state, skip (bool), keep (bool: keep the skipped item's rows)
  */
-function pg_search_index_begin($state, $key)
+function pg_search_index_begin($state, $key, $marker = null)
 {
     $key = (string) $key;
 
     if (($state['current'] !== '') && ($state['current'] === $key)) {
-        $state['current'] = '';
-        $state['after'] = $key;
+        if (!empty($state['paused'])) {
+            $state['paused'] = false;
+
+            return array('state' => $state, 'skip' => false, 'keep' => false);
+        }
+
+        $dead_parts = (array) ($state['dead_parts'] ?? array());
+        $part = is_array($marker) ? (string) ($marker['part'] ?? '') : '';
+
+        // A part already skipped named again: the tick ended after it, outside
+        // any part.
+        if (
+            ($part !== '')
+            && ((int) ($marker['started'] ?? 0) === (int) $state['started'])
+            && ((string) ($marker['stage'] ?? '') === (string) $state['stage'])
+            && ((string) ($marker['item'] ?? '') === $key)
+            && !in_array($part, $dead_parts, true)
+            && (count($dead_parts) < 50)
+        ) {
+            $state['dead_parts'][] = $part;
+
+            if (count($state['skipped']) < 50) {
+                $state['skipped'][] = $state['stage'] . ' ' . $key . ' ' . $part;
+            }
+
+            return array('state' => $state, 'skip' => false, 'keep' => false);
+        }
+
+        $state = pg_search_index_finish($state, $key);
 
         if (count($state['skipped']) < 50) {
             $state['skipped'][] = $state['stage'] . ' ' . $key;
         }
 
-        return array('state' => $state, 'skip' => true);
+        return array('state' => $state, 'skip' => true, 'keep' => true);
     }
 
     $state['current'] = $key;
+    $state['part'] = '';
+    $state['paused'] = false;
+    $state['dead_parts'] = array();
 
-    return array('state' => $state, 'skip' => false);
+    return array('state' => $state, 'skip' => false, 'keep' => false);
 }
 
 /**
@@ -902,8 +984,149 @@ function pg_search_index_finish($state, $key)
 {
     $state['after'] = (string) $key;
     $state['current'] = '';
+    $state['part'] = '';
+    $state['paused'] = false;
+    $state['dead_parts'] = array();
 
     return $state;
+}
+
+/**
+ * What to do with one part of the current item (a page's own render, a
+ * calendar event, a classic record, a visual editor record; its key is its
+ * address): 'skip' when a tick ended inside it (it keeps its row and is
+ * named), 'done' when this pass already wrote it ($written: its address is in
+ * the carry, or for a page's own render, the item has a checkpoint), else
+ * 'run'. Pure.
+ *
+ * @param array  $state
+ * @param string $part
+ * @param bool   $written
+ * @return string
+ */
+function pg_search_index_part_step($state, $part, $written)
+{
+    if (in_array((string) $part, (array) ($state['dead_parts'] ?? array()), true)) {
+        return 'skip';
+    }
+
+    return $written ? 'done' : 'run';
+}
+
+/**
+ * A part of the current item finished: the item's checkpoint. Pure.
+ *
+ * @param array  $state
+ * @param string $part
+ * @return array
+ */
+function pg_search_index_part_done($state, $part)
+{
+    $state['part'] = (string) $part;
+
+    return $state;
+}
+
+/**
+ * The tick is out of time between two parts of the current item: the item
+ * stays current and the next tick resumes it after its checkpoint. Pure.
+ *
+ * @param array $state
+ * @return array
+ */
+function pg_search_index_pause($state)
+{
+    $state['paused'] = true;
+
+    return $state;
+}
+
+/**
+ * The query that keeps the rows of an item a tick ended inside outside any
+ * part: every row carrying one of the pages, at the pass's start time, so the
+ * sweep spares them. A row kept one pass too long is acceptable, a live row
+ * swept is not. '' for no page. Pure.
+ *
+ * @param array $page_ids
+ * @param int   $timestamp the pass's start time
+ * @return string
+ */
+function pg_search_index_keep_pages_sql($page_ids, $timestamp)
+{
+    $ids = array();
+
+    foreach ((array) $page_ids as $id) {
+        if ((int) $id > 0) {
+            $ids[(int) $id] = "'" . (int) $id . "'";
+        }
+    }
+
+    if (!$ids) {
+        return '';
+    }
+
+    return "UPDATE search_items SET timestamp = '" . (int) $timestamp . "' WHERE page_id IN (" . implode(', ', $ids) . ")";
+}
+
+/**
+ * The pages whose rows a record list host keeps: its lists' detail pages,
+ * which its records carry. Pure.
+ *
+ * @param array $host array('page' => page row, 'lists' => list configs)
+ * @return int[]
+ */
+function pg_search_index_host_pages($host)
+{
+    $ids = array();
+
+    foreach ((array) ($host['lists'] ?? array()) as $list) {
+        $id = (int) ($list['detail_page_id'] ?? 0);
+
+        if (($id > 0) && !in_array($id, $ids, true)) {
+            $ids[] = $id;
+        }
+    }
+
+    return $ids;
+}
+
+/**
+ * Where the part being read is named: a small file written before each part
+ * and removed after it, so the cursor and its large carry need not be.
+ *
+ * @return string
+ */
+function pg_search_index_marker_path()
+{
+    return PG_FUNCTIONS_DIR . '/data/temp/search_index_part.json';
+}
+
+/**
+ * The part marker, or null when no part is being read.
+ *
+ * @return array|null
+ */
+function pg_search_index_marker_read()
+{
+    $marker = json_decode((string) @file_get_contents(pg_search_index_marker_path()), true);
+
+    return is_array($marker) ? $marker : null;
+}
+
+/**
+ * Name the part about to be read (started, stage, item, part), or with null
+ * remove the marker after it.
+ *
+ * @param array|null $marker
+ */
+function pg_search_index_marker_write($marker)
+{
+    if ($marker === null) {
+        @unlink(pg_search_index_marker_path());
+        return;
+    }
+
+    @file_put_contents(pg_search_index_marker_path(), json_encode($marker), LOCK_EX);
 }
 
 /**

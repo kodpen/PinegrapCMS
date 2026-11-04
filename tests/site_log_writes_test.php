@@ -70,6 +70,7 @@ function test_site_log_writes_cloudflare_actions()
 		"'Brotli updated to {var:1}.'",
 		"'Rocket Loader updated to {var:1}.'",
 		"'Cache successfully purged.'",
+		"'The cache rule was written. Check it through Cloudflare in a minute.'",
 	);
 
 	foreach ($notices as $notice) {
@@ -80,7 +81,11 @@ function test_site_log_writes_cloudflare_actions()
 		pg_assert_contains('log_activity(lang(', $branch, $notice . ' branch writes a line');
 	}
 
-	pg_assert_same(9, substr_count($source, 'log_activity(lang('), 'one line per action, none on failure');
+	// Ten actions above; the edge check writes its lines in the shared
+	// self-test (pg_image_vary_test_run()), which the button calls.
+	pg_assert_same(10, substr_count($source, 'log_activity(lang('), 'one line per action, none on failure');
+	pg_assert_contains('pg_image_vary_test_run($_SESSION[\'sessionusername\'])', $source, 'the edge check logs as the signed-in user');
+	pg_assert_same(3, substr_count(file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/image_vary_check.php'), 'log_activity(lang('), 'the self-test: passed, taken back, original');
 
 	// A deleted record is named by its type and name, read before the DELETE.
 	$delete = site_log_writes_slice($source, "if (\$action === 'delete_record') {", "// Development Mode toggle");

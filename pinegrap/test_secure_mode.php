@@ -41,6 +41,16 @@ if (file_exists($config_file)) {
     require_once($config_file);
 }
 
+// The forwarded-scheme parser and the peer offer: the same code Secure Mode
+// decides with, loadable without functions.php. The peer check loads waf.php
+// for the Cloudflare ranges, which only defines. No database is opened: the
+// Trusted Proxies list lives there, so this page says what would be listed,
+// not whether it is.
+if (!defined('PG_FUNCTIONS_DIR')) {
+    define('PG_FUNCTIONS_DIR', dirname(__FILE__));
+}
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/request_scheme.php');
+
 // Minimal HTML escaper - h() lives in functions.php, which is not loaded here.
 function tsm_h($value)
 {
@@ -89,8 +99,9 @@ function tsm_lang($string)
     return isset($translations[$string]) ? $translations[$string] : $string;
 }
 
-// KEEP IN SYNC with check_proxy_ssl_headers() in functions.php and get_file.php.
-// Returns the name of the header that claims HTTPS, or an empty string.
+// The name of the header that claims HTTPS, or an empty string, for the
+// report. KEEP IN SYNC with pg_forwarded_https() (includes/fn/request_scheme.php),
+// which decides; this only names the header.
 function tsm_detect_proxy_ssl_header()
 {
     if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
@@ -111,6 +122,9 @@ function tsm_detect_proxy_ssl_header()
     if (!empty($_SERVER['HTTP_FRONT_END_HTTPS']) && strtolower($_SERVER['HTTP_FRONT_END_HTTPS']) === 'on') {
         return 'Front-End-Https';
     }
+    if (!empty($_SERVER['HTTP_X_ARR_SSL'])) {
+        return 'X-ARR-SSL';
+    }
     if (!empty($_SERVER['HTTP_X_FORWARDED_PORT']) && $_SERVER['HTTP_X_FORWARDED_PORT'] == '443') {
         return 'X-Forwarded-Port';
     }
@@ -127,12 +141,21 @@ $direct_tls = (
 );
 
 $proxy_header      = tsm_detect_proxy_ssl_header();
-$proxy_tls         = ($proxy_header !== '');
+$proxy_tls         = pg_forwarded_https($_SERVER);
 $trust_headers     = (defined('TRUST_PROXY_SSL_HEADERS') && TRUST_PROXY_SSL_HEADERS === true);
 $behind_cloudflare = (!empty($_SERVER['HTTP_CF_RAY']) || !empty($_SERVER['HTTP_CF_VISITOR']));
 
-// What check_if_request_is_secure() would return for this request right now.
-$effective_secure = ($direct_tls || ($trust_headers && $proxy_tls));
+// The peer that sent the headers, what the Firewall screen would offer to
+// list for it, and whether it is trusted without the stored list (the
+// config constant, or a Cloudflare edge address).
+$peer         = isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
+$peer_offer   = pg_https_peer_offer($peer);
+$peer_trusted = pg_https_peer_trusted($peer, '');
+
+// What check_if_request_is_secure() returns for this request while the peer
+// is not on Trusted Proxies; listed there, a forwarded claim counts too.
+$effective_secure = ($direct_tls || ($proxy_tls && $peer_trusted));
+$secure_if_listed = (!$effective_secure && $proxy_tls);
 
 
 // --- Decide the verdict -------------------------------------------------------
@@ -152,20 +175,40 @@ if (!$direct_tls && !$proxy_tls) {
     $summary = tsm_lang('This server can see the encrypted connection directly, so Secure Mode will work without any extra configuration.');
     $verdict = tsm_lang('It is safe to enable Secure Mode.');
 
-} elseif ($proxy_tls && $trust_headers) {
-    // Proxy topology, correctly configured.
+} elseif ($proxy_tls && $peer_trusted) {
+    // Proxy topology, the peer trusted without the stored list: a Cloudflare
+    // edge address, or the config constant.
     $level   = 'success';
-    $title   = tsm_lang('SSL is terminated by a proxy, and this server is configured to trust it.');
-    $summary = tsm_lang('The connection between this server and the proxy is plain HTTP, but TRUST_PROXY_SSL_HEADERS is enabled, so Secure Mode will read the forwarded header correctly.');
+    $title   = tsm_lang('SSL is terminated by a proxy this server trusts.');
+    $summary = tsm_lang('The connection between this server and the proxy is plain HTTP, but the proxy is one whose forwarded headers count (a Cloudflare edge address, or TRUST_PROXY_SSL_HEADERS is enabled), so Secure Mode reads them correctly.');
     $verdict = tsm_lang('It is safe to enable Secure Mode.');
 
 } else {
-    // The reported failure: Flexible SSL with the trust setting still off.
-    $level   = 'danger';
-    $title   = tsm_lang('SSL is terminated by a proxy, and this server cannot see it.');
-    $summary = tsm_lang('Your browser has a secure connection to the proxy, but the proxy forwards the request to this server over plain HTTP. Secure Mode would therefore treat every request as insecure and redirect it to HTTPS, which comes straight back over the same plain HTTP connection. The result is an endless redirect loop that makes the site unreachable.');
-    $verdict = tsm_lang('Do NOT enable Secure Mode yet.');
+    // The headers say https from a peer this page cannot vouch for: Secure
+    // Mode works once the peer is on Trusted Proxies, which this page does
+    // not read. The Firewall screen checks the stored list and offers the
+    // peer's own address when it is a loopback or private one.
+    $level   = 'warning';
+    $title   = str_replace('{var:1}', $peer, tsm_lang('SSL is terminated by a proxy at {var:1}.'));
+
+    if ($peer_offer['entries']) {
+        $summary = str_replace('{var:1}', implode(', ', $peer_offer['entries']), tsm_lang('Your browser has a secure connection to the proxy, which forwards the request to this server over plain HTTP. Secure Mode works once this proxy is listed under Settings > Firewall > Trusted Proxies; the Firewall screen offers to list {var:1} when you turn Secure Mode on. This page reads no site settings, so it cannot tell whether the proxy is listed already.'));
+    } elseif ($peer_offer['kind'] === 'public') {
+        $summary = tsm_lang('Your browser has a secure connection to the CDN or load balancer, which forwards the request to this server over plain HTTP. List it under Settings > Firewall > Trusted Proxies with all of its published address ranges before turning Secure Mode on; Cloudflare is recognised on its own. This page reads no site settings, so it cannot tell whether it is listed already.');
+    } else {
+        $summary = tsm_lang('Your browser has a secure connection to the proxy, which forwards the request to this server over plain HTTP. List its address under Settings > Firewall > Trusted Proxies before turning Secure Mode on. This page reads no site settings, so it cannot tell whether the proxy is listed already.');
+    }
+
+    $verdict = tsm_lang('Turn Secure Mode on from the Firewall settings, which check the proxy against Trusted Proxies before saving.');
 }
+
+// The kind of the peer's address, for the report.
+$peer_kinds = array(
+    'loopback' => tsm_lang('a loopback address'),
+    'private'  => tsm_lang('a private address'),
+    'public'   => tsm_lang('a public address'),
+    'other'    => tsm_lang('a reserved address'),
+);
 
 
 // --- Server variables to display ---------------------------------------------
@@ -174,10 +217,12 @@ $rows = array(
     'HTTPS'             => isset($_SERVER['HTTPS']) ? $_SERVER['HTTPS'] : null,
     'SERVER_PORT'       => isset($_SERVER['SERVER_PORT']) ? $_SERVER['SERVER_PORT'] : null,
     'REQUEST_SCHEME'    => isset($_SERVER['REQUEST_SCHEME']) ? $_SERVER['REQUEST_SCHEME'] : null,
+    'REMOTE_ADDR'       => ($peer !== '') ? $peer : null,
     'X-Forwarded-Proto' => isset($_SERVER['HTTP_X_FORWARDED_PROTO']) ? $_SERVER['HTTP_X_FORWARDED_PROTO'] : null,
     'X-Forwarded-Port'  => isset($_SERVER['HTTP_X_FORWARDED_PORT']) ? $_SERVER['HTTP_X_FORWARDED_PORT'] : null,
     'X-Forwarded-SSL'   => isset($_SERVER['HTTP_X_FORWARDED_SSL']) ? $_SERVER['HTTP_X_FORWARDED_SSL'] : null,
     'Front-End-Https'   => isset($_SERVER['HTTP_FRONT_END_HTTPS']) ? $_SERVER['HTTP_FRONT_END_HTTPS'] : null,
+    'X-ARR-SSL'         => isset($_SERVER['HTTP_X_ARR_SSL']) ? $_SERVER['HTTP_X_ARR_SSL'] : null,
     'Forwarded'         => isset($_SERVER['HTTP_FORWARDED']) ? $_SERVER['HTTP_FORWARDED'] : null,
     'CF-Visitor'        => isset($_SERVER['HTTP_CF_VISITOR']) ? $_SERVER['HTTP_CF_VISITOR'] : null,
     'CF-Ray'            => isset($_SERVER['HTTP_CF_RAY']) ? $_SERVER['HTTP_CF_RAY'] : null,
@@ -235,15 +280,20 @@ $html_language = (defined('ENFORCEMENT_SOFTWARE_LANGUAGE') && ENFORCEMENT_SOFTWA
         <div class="verdict"><?php echo tsm_h($verdict); ?></div>
     </div>
 
-    <?php if ($level === 'danger') { ?>
-        <h2><?php echo tsm_h(tsm_lang('How to fix this')); ?></h2>
+    <?php if ($secure_if_listed) { ?>
+        <h2><?php echo tsm_h(tsm_lang('How to proceed')); ?></h2>
         <ol>
             <li>
                 <?php echo tsm_h(tsm_lang('Preferred: change the proxy so that it connects to this server over HTTPS as well. In Cloudflare this means switching the SSL/TLS mode from "Flexible" to "Full" or "Full (strict)", which requires a certificate installed on this server.')); ?>
             </li>
             <li>
-                <?php echo tsm_h(tsm_lang('Alternative: add the line below to your config file, then reload this page. Only do this if this server cannot be reached directly, bypassing the proxy, because these headers can be forged by anyone who can.')); ?>
-                <br><code>define('TRUST_PROXY_SSL_HEADERS', true);</code>
+                <?php if ($peer_offer['entries']) { ?>
+                    <?php echo tsm_h(str_replace('{var:1}', implode(', ', $peer_offer['entries']), tsm_lang('Or list the proxy under Settings > Firewall > Trusted Proxies: the Firewall screen offers to add {var:1} when you turn Secure Mode on, so no file needs editing.'))); ?>
+                <?php } elseif ($peer_offer['kind'] === 'public') { ?>
+                    <?php echo tsm_h(tsm_lang('Or list the CDN or load balancer under Settings > Firewall > Trusted Proxies with all of its published address ranges (Cloudflare is recognised on its own), then turn Secure Mode on.')); ?>
+                <?php } else { ?>
+                    <?php echo tsm_h(tsm_lang('Or list the proxy\'s address under Settings > Firewall > Trusted Proxies, then turn Secure Mode on.')); ?>
+                <?php } ?>
             </li>
         </ol>
         <div class="note">
@@ -287,6 +337,18 @@ $html_language = (defined('ENFORCEMENT_SOFTWARE_LANGUAGE') && ENFORCEMENT_SOFTWA
             <td><?php echo $proxy_tls ? '<code>' . tsm_h($proxy_header) . '</code>' : tsm_h(tsm_lang('No')); ?></td>
         </tr>
         <tr>
+            <th><?php echo tsm_h(tsm_lang('Proxy address (REMOTE_ADDR)')); ?></th>
+            <td><?php echo ($peer !== '') ? '<code>' . tsm_h($peer) . '</code>' : '<span class="muted">' . tsm_h($not_set) . '</span>'; ?></td>
+        </tr>
+        <tr>
+            <th><?php echo tsm_h(tsm_lang('Kind of the proxy address')); ?></th>
+            <td><?php echo isset($peer_kinds[$peer_offer['kind']]) ? tsm_h($peer_kinds[$peer_offer['kind']]) : '<span class="muted">' . tsm_h($not_set) . '</span>'; ?></td>
+        </tr>
+        <tr>
+            <th><?php echo tsm_h(tsm_lang('Entries the Firewall screen offers for Trusted Proxies')); ?></th>
+            <td><?php echo $peer_offer['entries'] ? '<code>' . tsm_h(implode(', ', $peer_offer['entries'])) . '</code>' : tsm_h(tsm_lang('nothing to add')); ?></td>
+        </tr>
+        <tr>
             <th><code>TRUST_PROXY_SSL_HEADERS</code></th>
             <td><?php echo tsm_h($trust_headers ? 'true' : (defined('TRUST_PROXY_SSL_HEADERS') ? 'false' : $not_set)); ?></td>
         </tr>
@@ -296,7 +358,7 @@ $html_language = (defined('ENFORCEMENT_SOFTWARE_LANGUAGE') && ENFORCEMENT_SOFTWA
         </tr>
         <tr>
             <th><?php echo tsm_h(tsm_lang('This request counts as secure')); ?></th>
-            <td><strong><?php echo tsm_h($effective_secure ? tsm_lang('Yes') : tsm_lang('No')); ?></strong></td>
+            <td><strong><?php echo tsm_h($effective_secure ? tsm_lang('Yes') : ($secure_if_listed ? tsm_lang('Yes, once the proxy is listed under Trusted Proxies') : tsm_lang('No'))); ?></strong></td>
         </tr>
     </table>
 

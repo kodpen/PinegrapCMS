@@ -22,6 +22,8 @@ echo output_header_secure(array('title'=>lang('System Info'),'icon'=>'setting'))
 
 echo render(array(
     'template' => 'si.php',
-    'disk_usage' => pg_files_disk_usage()));
+    'disk_usage' => pg_files_disk_usage(),
+    'storage_usage' => pg_file_storage_usage(),
+    'storage_name' => pg_os_store_name(pg_os_settings())));
 
 echo output_footer_secure();

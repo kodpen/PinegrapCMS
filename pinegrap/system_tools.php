@@ -26,6 +26,10 @@ include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
 
 $system_tools_groups = pg_settings_tool_groups($user);
 
+// Clear Cache and Clean Up come back here and leave their result in this form.
+include_once('liveform.class.php');
+$liveform = new liveform('system_tools');
+
 if (pg_settings_tool_count($system_tools_groups) === 0) {
     log_activity(lang('access denied because user attempted to access area for higher role'), $_SESSION['sessionusername']);
     output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
@@ -46,9 +50,15 @@ pg_page_shell(array(
     )) . '
 <main id="content" class="container-fluid">
     <div class="row">
-        <div class="col-12">' . pg_settings_tool_cards($system_tools_groups, PATH . SOFTWARE_DIRECTORY . '/') . '
+        <div class="col-12">
+            ' . $liveform->output_errors() . '
+            ' . $liveform->get_warnings() . '
+            ' . $liveform->output_notices() . '
+            ' . pg_settings_tool_cards($system_tools_groups, PATH . SOFTWARE_DIRECTORY . '/') . '
         </div>
     </div>
 </main>
 ' .
 output_footer();
+
+$liveform->remove_form();

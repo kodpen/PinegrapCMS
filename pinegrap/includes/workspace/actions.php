@@ -1275,7 +1275,8 @@ function ws_handle_action($action, $request)
 
             // A macro file posted before channels refused them opens read only: its edit would be refused.
             $editing = !empty($request['edit']) && ws_can_post_channel($viewer, $channel) && !ws_upload_refused($message['file_name']);
-            $office = pg_office_read(FILE_DIRECTORY_PATH . '/' . $stored, $message['file_name'], $editing);
+            // The file may be in the object store: the reader gets a copy.
+            $office = pg_office_read(pg_file_reader_path($stored), $message['file_name'], $editing);
 
             if (!$office['ok']) {
                 return ws_action_error($office['error']);
@@ -1401,7 +1402,7 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('That message could not be found.'));
             }
 
-            return ws_action_ok(array('versions' => ws_file_history($message['id'])));
+            return ws_action_ok(array('versions' => ws_file_history($message['id'], (int) $viewer['id'])));
 
         // The overview: what is coming, what was written to the person, the
         // latest decisions and the channels they could join.
@@ -2182,10 +2183,16 @@ function ws_handle_action($action, $request)
             // A message that could not be written (too many too fast, too
             // long) keeps no file, as the external API does.
             // A recording also carries the length and waveform its recorder
-            // measured, cleaned before they are kept (ws_voice_queue()).
+            // measured, and where no service writes it out the text the
+            // sender's browser wrote, cleaned before they are kept
+            // (ws_voice_queue()).
             $result = ws_message_send_file_bytes($viewer, $channel, $body, $file['name'], $file['binary'], array(
                 'parent_id' => $parent_id,
-                'voice'     => array('duration_ms' => $request['voice_duration_ms'] ?? 0, 'peaks' => $request['voice_peaks'] ?? ''),
+                'voice'     => array(
+                    'duration_ms' => $request['voice_duration_ms'] ?? 0,
+                    'peaks'       => $request['voice_peaks'] ?? '',
+                    'transcript'  => $request['voice_transcript'] ?? '',
+                ),
             ));
 
             if (!$result['ok']) {

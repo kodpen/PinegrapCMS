@@ -256,7 +256,7 @@ function test_product_stock_site_writers_call_the_helper()
 	$writers = array(
 		// The checkout's stock write is pg_order_complete_line_stock().
 		'includes/fn/order_completion.php' => 'checkout',
-		'includes/local_sale.php'        => 'local_sale',
+		'includes/fn/local_order.php'    => 'local_sale',
 		'product_builder.php'            => 'panel',
 		'barcode_decrease_inventory.php' => 'barcode',
 		'barcode_increase_inventory.php' => 'barcode',
@@ -378,7 +378,7 @@ function test_product_stock_events_crossing_depends_on_the_fresh_before()
 function test_product_stock_checkout_reads_the_stock_before_the_decrement()
 {
 	// The checkout's line stock stage (pg_order_complete_line_stock()).
-	$block = product_stock_events_test_block(product_stock_events_test_source('includes/fn/order_completion.php'), 'function pg_order_complete_line_stock(', "'checkout');");
+	$block = product_stock_events_test_block(product_stock_events_test_source('includes/fn/order_completion.php'), 'function pg_order_complete_line_stock(', "'checkout',\n        (\$sale === null)");
 	$select = strpos($block, "SELECT inventory, inventory_quantity FROM products WHERE id = '");
 	$decrement = strpos($block, "UPDATE products SET inventory_quantity = (inventory_quantity - ?)");
 
@@ -393,7 +393,7 @@ function test_product_stock_checkout_reads_the_stock_before_the_decrement()
 // loop: a product on two lines (2 + 3 of 5) reached 0 with no flag.
 function test_product_stock_local_sale_reads_the_stock_and_flags_from_what_is_left()
 {
-	$block = product_stock_events_test_block(product_stock_events_test_source('includes/local_sale.php'), '// 5. Stock goes down', '// 6. Tell whoever');
+	$block = product_stock_events_test_block(product_stock_events_test_source('includes/fn/local_order.php'), '// 5. Stock goes down', '// 6. Tell whoever');
 	$select = strpos($block, "SELECT inventory, inventory_quantity FROM products WHERE id = '");
 	$decrement = strpos($block, "UPDATE products SET inventory_quantity = (inventory_quantity - '");
 

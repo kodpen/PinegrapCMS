@@ -180,7 +180,7 @@ if (count($rerun_choices) == 0) {
 
     foreach (array_reverse($rerun_choices) as $rerun_choice) {
         $rerun_count = $rerun_position - array_search($rerun_choice, $rerun_versions, true);
-        $rerun_options[lang(array('string' => '{var:1} — runs {var:2} version(s) again', 'vars' => array($rerun_choice, $rerun_count)))] = $rerun_choice;
+        $rerun_options[lang(array('string' => '{var:1} — {var:2} version(s)', 'vars' => array($rerun_choice, $rerun_count)))] = $rerun_choice;
     }
 
     $rerun_body = ($rerun_install_folder ? '' : '
@@ -190,7 +190,7 @@ if (count($rerun_choices) == 0) {
                         <input type="hidden" name="action" value="rerun_upgrades">
                         <label for="version" class="form-label">' . h(lang('Run the steps again from')) . '</label>
                         <div class="d-flex flex-wrap gap-3 align-items-start">
-                            <div class="pg-f-md">' . $liveform->output_field(array('type' => 'select', 'name' => 'version', 'id' => 'version', 'class' => 'form-control', 'options' => $rerun_options)) . '</div>
+                            <div class="flex-grow-1" style="min-width: 0; max-width: 28rem;">' . $liveform->output_field(array('type' => 'select', 'name' => 'version', 'id' => 'version', 'class' => 'form-control', 'options' => $rerun_options)) . '</div>
                             <button type="submit" class="btn btn-outline theme-warning"' . ($rerun_install_folder ? '' : ' disabled') . '>
                                 <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Run the steps again')) . '
                             </button>
@@ -244,6 +244,9 @@ echo pg_page_shell(array(
 
 echo '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array(
+        'secondary' => array('label' => lang('Backup Manager'), 'url' => 'backups.php', 'icon' => 'bi-archive'),
+    )) . '
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
@@ -252,9 +255,8 @@ echo '
             <div class="row g-5 mb-5">
                 <div class="col-12 xl:col-6">
                     <div class="card h-100">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
                             <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Repair Software')) . '</span>
-                            <a class="btn btn-sm btn-outline theme-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
                         </div>
                         <div class="card-body">' . $repair_warning . '
                             <ul class="list-group mb-5">' . $repair_rows . '
@@ -271,9 +273,8 @@ echo '
                 </div>
                 <div class="col-12 xl:col-6">
                     <div class="card h-100" id="rerun" style="scroll-margin-top: 1.5rem;">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
                             <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Run the database upgrade steps again')) . '</span>
-                            <a class="btn btn-sm btn-outline theme-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
                         </div>
                         <div class="card-body">
                             <p>' . h(lang('Writes the chosen version into the database as the installed one and opens the upgrade screen, which applies every version after it again. Each step asks before it changes anything, so a step that already ran is skipped in a moment; a step that was missed — an upgrade cut short, a table restored from an older backup — is done now.')) . '</p>
@@ -287,9 +288,8 @@ echo '
             <div class="row g-5 mb-5">
                 <div class="col-12">
                     <div class="card" id="rollback" style="scroll-margin-top: 1.5rem;">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
                             <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Roll back an update')) . '</span>
-                            <a class="btn btn-sm btn-outline theme-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
                         </div>
                         <div class="card-body">
                             <p>' . h(lang('Before an update or a repair replaces the software files, it backs up the files it replaces and the database. Rolling back writes those files back, deletes the files the update added and records the older version as the installed one. The database is not changed: what the newer upgrade steps added stays and the older version does not use it; the next update runs those steps again.')) . '</p>

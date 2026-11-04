@@ -26,7 +26,9 @@ if (!defined('PG_TEST_RUNNER')) {
 // into the session, so no array reaches escape() or the filter loop.
 function test_report_request_values_post_fields_single()
 {
-	foreach (array('view_order_report', 'view_visitor_report') as $screen) {
+	// The visitor report reads its parts in pg_visitor_report_requested_range()
+	// (visitor_report_presets_test.php).
+	foreach (array('view_order_report') as $screen) {
 		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $screen . '.php');
 		$post_branch = strpos($source, 'validate_token_field();');
 		$call = strpos($source, 'pg_request_single_values(array_keys($_GET + $_POST));', (int) $post_branch);
@@ -42,7 +44,9 @@ function test_report_request_values_post_fields_single()
 // is 0, checkdate() fails and the previous range stays.
 function test_report_request_values_date_parts()
 {
-	foreach (array('view_order_report', 'view_visitor_report') as $screen) {
+	// The visitor report reads its parts in pg_visitor_report_requested_range()
+	// (visitor_report_presets_test.php).
+	foreach (array('view_order_report') as $screen) {
 		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $screen . '.php');
 
 		pg_assert_true(strpos($source, 'is_scalar($_GET[$date_part] ?? null) ? (int) $_GET[$date_part] : 0') !== false, $screen . ': date part not checked');
@@ -73,5 +77,8 @@ function test_report_request_values_shipping_report_filters()
 
 	$loop = substr($source, 0, (int) $store);
 	pg_assert_true(strpos($loop, "in_array(\$value, array('any', 'unshipped', 'shipped'), true)") !== false, 'view_shipping_report: status not checked');
-	pg_assert_true(strpos($loop, 'validate_date($value)') !== false, 'view_shipping_report: date not checked');
+	// The dates are never stored one at a time: pg_shipping_report_period()
+	// takes them as a pair (tests/shipping_report_period_test.php).
+	pg_assert_true(strpos($loop, "if ((\$key == 'start_date') || (\$key == 'end_date')) {\n            continue;") !== false, 'view_shipping_report: dates stored one at a time');
+	pg_assert_contains('pg_shipping_report_period(', $source, 'view_shipping_report: period not checked as a pair');
 }

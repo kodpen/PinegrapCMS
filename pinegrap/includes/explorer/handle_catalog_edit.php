@@ -168,6 +168,11 @@ function pg_explorer_handle_catalog_quick_edit($type, $request, $user)
             respond(array('status' => 'error', 'message' => lang('Stock is not tracked for this product.')));
         }
 
+        // Kept per location: one figure here would not say where.
+        if (pg_stock_screen_locations()) {
+            respond(array('status' => 'error', 'message' => lang('Stock is kept per location: change it on the product screen.')));
+        }
+
         $quick_number = pg_explorer_catalog_quick_quantity($quick_value);
 
         if ($quick_number === null) {
@@ -333,9 +338,12 @@ function pg_explorer_handle_catalog_access_get($type, $request, $user)
                 manage_ecommerce_reports,
                 user_set_offline_payment
             FROM user
-            WHERE user_role = '3'
+            WHERE (user_role = '3')
+                AND ((user_manage_ecommerce = 'yes') OR (manage_ecommerce_reports = '1') OR (user_set_offline_payment = '1'))
             ORDER BY user_username");
 
+        // Only the users who hold a commerce right: customers and members are
+        // role 3 too, so the others are found through the Add a user box.
         foreach ((array) $rows as $row) {
 
             $response['users'][] = array(

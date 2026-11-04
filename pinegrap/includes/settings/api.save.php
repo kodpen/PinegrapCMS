@@ -25,6 +25,25 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 // anything is written; the sealed key is stored after the API columns.
 $google_reviews_post = pg_grev_settings_check($_POST, $liveform);
 
+// API uploads are not filed in the Workspace's folders nor in the Recycle
+// Bin (pg_settings_folder_choice_ok()): they would show up as a
+// conversation's files.
+if (!pg_settings_folder_choice_ok((int) post_value('api_upload_folder_id'))) {
+    $liveform->mark_error('api_upload_folder_id', lang('Choose a folder outside the Workspace and the Recycle Bin.'));
+}
+
+// Log Retention: a whole number of days from 1 to 3650, as the form says. An
+// empty or mistyped box is refused; stored as 1 day, it let the next daily
+// purge remove all but a day of the API log.
+$api_log_retention_text = trim((string) post_value('api_log_retention_days'));
+
+if (
+    (post_value('api_log_retention_days') !== null)
+    && (!ctype_digit($api_log_retention_text) || ((int) $api_log_retention_text < 1) || ((int) $api_log_retention_text > 3650))
+) {
+    $liveform->mark_error('api_log_retention_days', lang('Enter a whole number of days from 1 to 3650.'));
+}
+
 if ($liveform->check_form_errors()) {
     return;
 }
@@ -33,15 +52,16 @@ if ($liveform->check_form_errors()) {
 // not run it the card shows a note and there is nothing to write.
 if (waf_table_has_column('config', 'api_enabled')) {
 
-    // The purge job treats anything under a day as the default, so the range
-    // the form offers starts at one; the upper bound is what the form says.
-    $api_log_retention_days = max(1, min((int) post_value('api_log_retention_days'), 3650));
+    // Checked above; a save that did not carry the box keeps the stored value.
+    $sql_api_log_retention = (post_value('api_log_retention_days') !== null)
+        ? "api_log_retention_days = '" . (int) $api_log_retention_text . "',"
+        : '';
 
     db("UPDATE config SET
         api_enabled = '" . (post_value('api_enabled') ? 1 : 0) . "',
         api_require_https = '" . (post_value('api_require_https') ? 1 : 0) . "',
         api_openapi_public = '" . (post_value('api_openapi_public') ? 1 : 0) . "',
-        api_log_retention_days = '" . $api_log_retention_days . "',
+        " . $sql_api_log_retention . "
         api_upload_folder_id = '" . (int) post_value('api_upload_folder_id') . "',
         last_modified_user_id = '" . USER_ID . "',
         last_modified_timestamp = UNIX_TIMESTAMP()");

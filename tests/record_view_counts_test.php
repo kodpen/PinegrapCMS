@@ -259,7 +259,7 @@ function test_record_view_counts_placement()
 
 	$echo = strpos($page, 'echo $content;');
 	$count = strpos($page, 'pg_sfv_count_view(');
-	$tracking = strpos($page, 'if (VISITOR_TRACKING == true)');
+	$tracking = strpos($page, 'if ((VISITOR_TRACKING == true) && !$pg_panel_preview)');
 	pg_assert_true($echo !== false && $count !== false && $tracking !== false && $echo < $count && $count < $tracking);
 	pg_assert_contains('pg_request_is_automated()', _record_view_counts_function_body(_record_view_counts_source('includes/fn/seo.php'), 'init_tracking'));
 

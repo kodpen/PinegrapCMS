@@ -24,6 +24,11 @@ validate_token_field();
 
 $liveform->add_fields_to_session();
 
+// Every field of the form holds one value. One posted as an array
+// (password_hint[]=) counts as not given: it reached mb_strtolower(), the
+// sign-in check and the password hash and stopped the request on PHP 8.
+pg_liveform_single_values($liveform, array('email_address', 'current_password', 'new_password', 'new_password_verify', 'password_hint'));
+
 // A designed page (the change_password widget) names itself in return_to:
 // errors go back there, and the confirmation follows the widget's send_to.
 // pg_controls lists what the widget drew; a hint it left out is kept.

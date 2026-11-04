@@ -25,52 +25,11 @@ function pg_dashboard_widget_15($request, $user)
         $today = date('Y-m-d');
         $deadline = date('Y-m-d', strtotime('+7 days'));
 
-        require_once(PG_FUNCTIONS_DIR . '/edit_offer_f.php');
-
-        // Current and upcoming offers by end date, then the latest expired
-        // ones apart: in one list ordered by end date, sixty expired offers
-        // used to push every open-ended (2099-12-31) offer out of it.
-        $current_offers = db_items(
-            "SELECT offers.id, offers.code, offers.description, offers.status,
-                    offers.start_date, offers.end_date
-             FROM offers
-             WHERE offers.end_date >= '" . e($today) . "'
-                AND offers.status = 'enabled'
-                AND offers.start_date <= '" . e($today) . "'
-             ORDER BY offers.end_date ASC, offers.id ASC
-             LIMIT 40"
-        );
-
-        $expired = db_items(
-            "SELECT offers.id, offers.code, offers.description, offers.status,
-                    offers.start_date, offers.end_date
-             FROM offers
-             WHERE offers.end_date < '" . e($today) . "'
-             ORDER BY offers.end_date DESC, offers.id ASC
-             LIMIT 20"
-        );
-
-        $expiring = array();
-        $active = array();
-
-        foreach ($current_offers as $offer) {
-            if ($offer['end_date'] <= $deadline) {
-                if (count($expiring) < 20)
-                    $expiring[] = $offer;
-            } elseif (count($active) < 20) {
-                $active[] = $offer;
-            }
-        }
-
-        // "Automatic - cart is 100.00 or more -> %100 off shipping":
-        // the same sentence the offer list and the editor show, so
-        // an offer reads the same wherever it appears. Built for
-        // every row at once - a load per offer would be four
-        // queries times sixty.
-        $offer_sentences = _pg_offer_sentences(array_merge(
-            array_column($expiring, 'id'),
-            array_column($active, 'id'),
-            array_column($expired, 'id')));
+        $offer_lists = pg_dashboard_offer_lists($today, $deadline);
+        $expiring = $offer_lists['expiring'];
+        $active = $offer_lists['active'];
+        $expired = $offer_lists['expired'];
+        $offer_sentences = $offer_lists['sentences'];
 
         $output_rows = '';
 
@@ -149,4 +108,72 @@ function pg_dashboard_widget_15($request, $user)
         );
         return $response;
     }
+}
+
+/**
+ * The offers the card lists: running ones ending within a week (expiring,
+ * at most 20), the other running ones (active, at most 20) and the latest
+ * expired ones (at most 20), with each offer's sentence ("Automatic - cart is
+ * 100.00 or more -> %100 off shipping") by id. Shared by this card and the
+ * new dashboard's Offers card.
+ *
+ * @param string $today    Y-m-d
+ * @param string $deadline Y-m-d, a week after $today
+ * @return array expiring, active, expired (offer rows), sentences (id => text)
+ */
+function pg_dashboard_offer_lists($today, $deadline)
+{
+    require_once(PG_FUNCTIONS_DIR . '/edit_offer_f.php');
+
+    // Current and upcoming offers by end date, then the latest expired
+    // ones apart: in one list ordered by end date, sixty expired offers
+    // used to push every open-ended (2099-12-31) offer out of it.
+    $current_offers = db_items(
+        "SELECT offers.id, offers.code, offers.description, offers.status,
+                offers.start_date, offers.end_date
+         FROM offers
+         WHERE offers.end_date >= '" . e($today) . "'
+            AND offers.status = 'enabled'
+            AND offers.start_date <= '" . e($today) . "'
+         ORDER BY offers.end_date ASC, offers.id ASC
+         LIMIT 40"
+    );
+
+    $expired = db_items(
+        "SELECT offers.id, offers.code, offers.description, offers.status,
+                offers.start_date, offers.end_date
+         FROM offers
+         WHERE offers.end_date < '" . e($today) . "'
+         ORDER BY offers.end_date DESC, offers.id ASC
+         LIMIT 20"
+    );
+
+    $expiring = array();
+    $active = array();
+
+    foreach ($current_offers as $offer) {
+        if ($offer['end_date'] <= $deadline) {
+            if (count($expiring) < 20)
+                $expiring[] = $offer;
+        } elseif (count($active) < 20) {
+            $active[] = $offer;
+        }
+    }
+
+    // "Automatic - cart is 100.00 or more -> %100 off shipping":
+    // the same sentence the offer list and the editor show, so
+    // an offer reads the same wherever it appears. Built for
+    // every row at once - a load per offer would be four
+    // queries times sixty.
+    $offer_sentences = _pg_offer_sentences(array_merge(
+        array_column($expiring, 'id'),
+        array_column($active, 'id'),
+        array_column($expired, 'id')));
+
+    return array(
+        'expiring'  => $expiring,
+        'active'    => $active,
+        'expired'   => $expired,
+        'sentences' => $offer_sentences,
+    );
 }

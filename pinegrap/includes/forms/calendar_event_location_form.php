@@ -6,8 +6,8 @@
  * screens (add_calendar_event_location.php,
  * edit_calendar_event_location.php): the options card and the check of a
  * name another location uses. The screens keep what differs: the edit
- * screen loads the record, offers delete and updates the row; the create
- * screen inserts it.
+ * screen loads the record and offers delete. Both write through
+ * includes/fn/calendar_writes.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -56,18 +56,11 @@ function pg_calendar_event_location_form_card($liveform)
  */
 function pg_calendar_event_location_form_name_in_use($name, $id)
 {
-    $query =
-        "SELECT id
-        FROM calendar_event_locations
-        WHERE (name = ?)";
-    $values = array((string) $name);
+    $taken = pg_calendar_location_name_taken($name, ($id === null) ? 0 : (int) $id);
 
-    if ($id !== null) {
-        $query .= " AND (id != ?)";
-        $values[] = (string) $id;
+    if ($taken === null) {
+        output_error('Query failed.');
     }
 
-    $result = db_q($query, $values) or output_error('Query failed.');
-
-    return mysqli_num_rows($result) > 0;
+    return $taken;
 }

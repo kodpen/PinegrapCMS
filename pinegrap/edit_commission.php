@@ -30,6 +30,7 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM commissions WHERE id = '"
 }
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/commission_list.php');
 $liveform = new liveform('edit_commission');
 
 $liveform->add_fields_to_session();
@@ -40,9 +41,14 @@ $query =
         commissions.affiliate_code,
         commissions.reference_code,
         commissions.status,
-        contacts.affiliate_name
+        commissions.amount,
+        commissions.order_id,
+        contacts.affiliate_name,
+        orders.order_number,
+        orders.status AS order_status
     FROM commissions
     LEFT JOIN contacts ON commissions.affiliate_code = contacts.affiliate_code
+    LEFT JOIN orders ON commissions.order_id = orders.id
     WHERE commissions.id = ?";
 $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
 $commission = mysqli_fetch_assoc($result);
@@ -79,16 +85,7 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-<div class="row mb-3">
-                            <div class="col-12 md:col">
-                                
-                                <p class="p-0 m-0">' . lang('Reference Code') . ': ' . h($commission['reference_code']) . '</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                ' . pg_commission_edit_summary($commission) . '
                 <form action="edit_commission.php" method="post">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$_GET['id'])) . '
@@ -128,22 +125,24 @@ if (!$_POST) {
 // else the form has been submitted
 } else {
     validate_token_field();
-    
-    // A hand edit is the operator's choice: it clears the mark the order's
-    // cancellation left, so restoring the order does not undo it.
-    $cancel_marker_sql = pg_schema_has('commissions', 'status_before_cancel') ? "status_before_cancel = ''," : '';
 
-    // update commission
-    $query =
-        "UPDATE commissions
-        SET
-            status = ?,
-            " . $cancel_marker_sql . "
-            last_modified_user_id = ?,
-            last_modified_timestamp = UNIX_TIMESTAMP()
-        WHERE id = ?";
-    $result = db_q($query, array((string) $liveform->get_field_value('status'), (string) $user['id'], (string) $liveform->get_field_value('id'))) or output_error('Query failed.');
-    
+    // Only a stored status is saved (an enum column under a non-strict
+    // sql_mode would take anything else as '').
+    $status = pg_commission_posted_status($_POST['status'] ?? null);
+
+    if ($status === '') {
+        $liveform->mark_error('status', lang('Please select a status.'));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_commission.php?id=' . $id);
+        exit();
+    }
+
+    // The write the external API shares (includes/fn/commission_list.php):
+    // it clears the mark the order's cancellation left and announces the
+    // move.
+    if (pg_commission_status_save($id, $status, $user['id']) === false) {
+        output_error('Query failed.');
+    }
+
     log_activity(lang(array('string'=>'commission ({var:1}) was modified','vars'=>$commission['reference_code'])) , $_SESSION['sessionusername']);
     
     $liveform->remove_form();

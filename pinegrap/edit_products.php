@@ -54,12 +54,30 @@ if (!$_POST) {
         lang('Set the tax rate to the value below')=>'set',
         lang('Follow the tax zone (clear the product rate)')=>'zone',
     );
+    // The locations a quantity change can go to, default first; none on a
+    // site without stock locations.
+    $stock_locations = pg_stock_screen_locations();
     require('includes/templates/edit_products.php');
 
 // Otherwise the form has been submitted, so process it.
 } else {
 
     validate_token_field();
+
+    // The products the list's selection stands for, read with the list's own
+    // query and the user's rights (pg_product_list_selected_ids()): the rows
+    // picked one by one, or the whole view by its condition. A product in the
+    // Recycle Bin is on no view, so it is never among them.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_list.php');
+    $product_ids = pg_product_list_selected_ids($user, $_POST['selection'] ?? '', $_POST['list_params'] ?? '');
+
+    if ($product_ids === false) {
+        output_error(lang('Query failed.'));
+    }
+
+    if ($product_ids === null) {
+        output_error(lang('Too many products are selected. Select fewer products and try again.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    }
 
     // The shared readers of the price amount and the stock quantity.
     require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_products_bulk.php');
@@ -80,6 +98,24 @@ if (!$_POST) {
 			$liveform->add_error(lang('Enter an amount for the price change.'));
 		}
 	}
+
+    // A stock process with no figure, a tax rate to set with none or one
+    // outside 0..100, or a zone both allowed and disallowed stops the whole
+    // change before any product is touched, with its own message.
+    if (($_POST['action'] ?? '') === 'edit') {
+        $mass_edit_problem = pg_products_mass_edit_problem($_POST);
+        $mass_edit_messages = array(
+            'quantity_missing' => lang('Enter an inventory quantity.'),
+            'tax_rate_missing' => lang('Enter a tax rate, or choose to follow the tax zone.'),
+            'tax_rate_range' => lang('Enter a tax rate between 0 and 100.'),
+            'zones_overlap' => lang('A shipping zone cannot be both allowed and disallowed.'),
+        );
+
+        if ($mass_edit_problem !== '') {
+            $liveform->add_error($mass_edit_messages[$mass_edit_problem]);
+            go(PATH . SOFTWARE_DIRECTORY . '/view_products.php');
+        }
+    }
 
     // The stock quantity is read once, the panel's way (1.200 on a Turkish
     // panel is twelve hundred), with the Catalog Manager's reader. A figure
@@ -109,8 +145,13 @@ if (!$_POST) {
         }
     }
 
+    // With stock locations the quantity goes to one location (0 = the
+    // default) through the writer, which keeps the total the sum.
+    $quantity_by_location = ($quantity_value !== null) && (bool) pg_stock_screen_locations();
+    $quantity_location = (int) ($_POST['edit_inventory_location'] ?? 0);
+
     // If at least one product was selected then continue.
-    if ($_POST['products']) {
+    if ($product_ids) {
         $number_of_products = 0;
         
         switch ($_POST['action']) {
@@ -146,7 +187,7 @@ if (!$_POST) {
                     $change_besides_price = pg_products_mass_change_besides_price($_POST, $quantity_value);
 
                     // Loop through selected products in order to edit them.
-                    foreach ($_POST['products'] as $product_id) {
+                    foreach ($product_ids as $product_id) {
                         // A product in the Recycle Bin is not changed, as on
                         // Edit Product and in the Catalog Manager: the list
                         // does not show one, but a selection made before it
@@ -257,7 +298,7 @@ if (!$_POST) {
                         }
                         // The new count, worked out from the stored one by the
                         // Catalog Manager's rule: never below zero.
-                        if ($quantity_value !== null) {
+                        if (($quantity_value !== null) && !$quantity_by_location) {
                             $inventory_quantity = (int) ($stock_stored['inventory_quantity'] ?? 0);
                             $new_inventory_quantity = pg_explorer_bulk_product_new_quantity($inventory_quantity, $quantity_process, $quantity_value);
 
@@ -296,12 +337,10 @@ if (!$_POST) {
                         } elseif ($tax_rate_method === 'set') {
                             $new_tax_rate = parse_tax_rate($_POST['edit_tax_rate_value'] ?? '');
 
+                            // A missing or out-of-range rate was refused above
+                            // (pg_products_mass_edit_problem()).
                             if ($new_tax_rate !== NULL) {
                                 $sql_tax_rate = "tax_rate = '" . e($new_tax_rate) . "',";
-                            } else {
-                                // Asking to set a rate and giving none is a mistake, not an
-                                // instruction to clear: clearing has its own option.
-                                $liveform->mark_error('Update Error', lang('Enter a tax rate, or choose to follow the tax zone.'));
                             }
                         }
 
@@ -358,7 +397,7 @@ if (!$_POST) {
                         // stock really moved. A selection on the list is a few rows
                         // an operator changed on purpose, not a product import, so
                         // each one is announced the way a single save is.
-                        $stock_was = (($sql_inventory_quantity !== '') || ($sql_inventory !== ''))
+                        $stock_was = (($sql_inventory_quantity !== '') || ($sql_inventory !== '') || $quantity_by_location)
                             ? db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . escape($product_id) . "'")
                             : null;
 
@@ -377,6 +416,21 @@ if (!$_POST) {
                             WHERE id = '" . escape($product_id) . "'");
 
                         pg_audit_record('update', 'products', $product_id, $audit_before);
+
+                        // The quantity at the chosen location, once tracking
+                        // is written. A product that does not track stock has
+                        // no rows and is left alone, a bundle follows its
+                        // components; one the change would take past the top
+                        // is counted.
+                        if ($quantity_by_location && !pg_bundle_ids_among(array((int) $product_id))) {
+                            $location_result = pg_stock_bulk_write($product_id, $quantity_location, $quantity_process, $quantity_value, 'bulk_edit');
+
+                            if ($location_result['error'] === 'too_many') {
+                                $number_of_too_large_quantity_products++;
+                            }
+
+                            pg_stock_refresh_out_of_stock($product_id);
+                        }
 
                         // A bundle's stock (and a summed price) is worked
                         // out from its components: whatever this edit wrote
@@ -471,18 +525,22 @@ if (!$_POST) {
                             $liveform->add_notice(h($message));
                         }
                     }
+                } elseif (!$price_value_refused) {
+                    // Nothing was chosen: the list comes back with a word
+                    // rather than silently, as if something had changed.
+                    $liveform->add_error(lang('Select a field to change.'));
                 }
                 
                 break;
 
             // Assign a new barcode to each selected product.
             case 'assign_barcodes':
-                if (defined('BARCODE_ENABLED') && BARCODE_ENABLED && !empty($_POST['products'])) {
+                if (defined('BARCODE_ENABLED') && BARCODE_ENABLED && $product_ids) {
                     $bc_type  = BARCODE_DEFAULT_TYPE;
                     $assigned = 0;
                     $now      = date('Y-m-d H:i:s');
 
-                    foreach ($_POST['products'] as $pid) {
+                    foreach ($product_ids as $pid) {
                         $pid = (int)$pid;
                         if (!$pid) continue;
 
@@ -537,7 +595,7 @@ if (!$_POST) {
                     include_once('product_builder.php');
                 }
 
-                foreach ((array) $_POST['products'] as $product_id) {
+                foreach ($product_ids as $product_id) {
                     // Cast once, up front: the value comes straight out of $_POST.
                     $product_id = (int) $product_id;
 

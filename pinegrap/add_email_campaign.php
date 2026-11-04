@@ -20,6 +20,7 @@
 ini_set('memory_limit', '-1');
 include('init.php');
 require_once(dirname(__FILE__) . '/includes/forms/email_campaign_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_recipients.php');
 $user = validate_user();
 validate_email_access($user);
 
@@ -105,7 +106,9 @@ if (!$_POST) {
             }
             
             // prepare option
-            $output_page_options .= '<option value="' . $page['id'] . '"' . $selected . '>' . h($page['name']) . '</option>';
+            // The preview frame loads the URL the option carries, built from
+            // the page name, never from the option's label.
+            $output_page_options .= '<option value="' . $page['id'] . '" data-url="' . h(OUTPUT_PATH . encode_url_path($page['name']) . '?edit=no&email=true') . '"' . $selected . '>' . h($page['name']) . '</option>';
         }
     }
     
@@ -113,7 +116,8 @@ if (!$_POST) {
     $query =
         "SELECT
            id,
-           name
+           name,
+           email_subscription
         FROM contact_groups
         ORDER BY name";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -127,14 +131,16 @@ if (!$_POST) {
         
         // if user has access to contact group, then include this contact group
         if (validate_contact_group_access($user, $id) == true) {
-            // get number of contacts in contact group
-            $number_of_contacts = get_number_of_contacts($id, $require_email = true);
+            // count the contacts with an address and those opted in: both are
+            // shown, so a change of purpose needs no reload
+            $result_count = db_q(pg_email_campaign_group_count_query($row['email_subscription'] == 1), array((string) $id)) or output_error('Query failed.');
+            $counts = mysqli_fetch_assoc($result_count);
             
-            // if contact group has at least one contact
-            if ($number_of_contacts > 0) {
+            // if contact group has at least one contact with an address
+            if ((int) $counts['total'] > 0) {
                 $output_contact_group_rows .=
                     '<tr>
-                        <td id="contact_group_name_' . $id . '">' . h($name) . ' (' . pg_format_number($number_of_contacts, 0) . ')</td>
+                        <td id="contact_group_name_' . $id . '">' . pg_email_campaign_group_label($name, $counts['total'], $counts['opted_in']) . '</td>
                         <td style="text-align: center"><div class="form-field  d-inline-grid me-5"><input class="radio" type="radio" name="contact_group_' . $id . '" value="ignored" aria-labelledby="contact_group_name_' . $id . ' contact_group_ignore" checked="checked" /></div></td>
                         <td style="text-align: center"><div class="form-field  d-inline-grid me-5"><input class="radio" type="radio" name="contact_group_' . $id . '" value="included" aria-labelledby="contact_group_name_' . $id . ' contact_group_include" /></div></td>
                         <td style="text-align: center"><div class="form-field  d-inline-grid me-5"><input class="radio" type="radio" name="contact_group_' . $id . '" value="excluded" aria-labelledby="contact_group_name_' . $id . ' contact_group_exclude" /></div></td>
@@ -179,13 +185,10 @@ if (!$_POST) {
         )
     ) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                
                 <form name="form" action="add_email_campaign.php" method="post" >
                     ' . get_token_field() . '
-                    <div class="row">
-                        ' . pg_email_campaign_message_card(
+                    ' . pg_email_campaign_layout(
+                        pg_email_campaign_message_card(
                             pg_email_campaign_subject_row(''),
                             pg_email_campaign_format_row(
                                 '<div class="form-field  d-inline-grid me-5">
@@ -213,7 +216,7 @@ if (!$_POST) {
                                         <div class="row">
                                             <div class="col-12 sm:col-8 my-1">
                                                 <label class="form-label" for="page_id">' . lang('Page') . '</label>
-                                                <select class="form-control collapse-if-selected" id="page_id" name="page_id" onchange="document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';" data-bs-target="#body_preview_row"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . $output_page_options . '</select>
+                                                <select class="form-control collapse-if-selected" id="page_id" name="page_id" onchange="document.getElementById(\'body_preview_iframe\').src = this.options[this.selectedIndex].getAttribute(\'data-url\') || \'about:blank\';" data-bs-target="#body_preview_row"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . $output_page_options . '</select>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="body_preview_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
@@ -236,12 +239,14 @@ if (!$_POST) {
                                 ' . $output_contact_groups . '
                             </div>
                             <div class="col-12 my-3">
-                                <div class="alert theme-secondary row justify-content-between">
-                                    <div class="col-auto">
-                                    <label class="form-label" for="entered_email_address">' . lang('Also send message to the following e-mail address') . ':</label>
-                                    </div>
-                                    <div class="col-12 col-6 lg:col-4">
-                                        <input type="text" class="form-control text-end" id="entered_email_address" name="entered_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email">
+                                <div class="alert theme-secondary">
+                                    <div class="row align-items-center justify-content-between">
+                                        <div class="col-12 md:col-auto">
+                                            <label class="form-label md:mb-0" for="entered_email_address">' . lang('Also send message to the following e-mail address') . ':</label>
+                                        </div>
+                                        <div class="col-12 md:col-6 xl:col-5">
+                                            <input type="text" class="form-control text-end" id="entered_email_address" name="entered_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email">
+                                        </div>
                                     </div>
                                 </div>
                             </div>'
@@ -249,26 +254,47 @@ if (!$_POST) {
                             'from_name' => ORGANIZATION_NAME,
                             'from_email_address' => $user['email_address'],
                             'reply_email_address' => $user['email_address'],
-                        )) . pg_email_campaign_schedule_card('') . pg_email_campaign_purpose_card('commercial') . '
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                        )),
+                        pg_email_campaign_schedule_card('') . pg_email_campaign_purpose_card('commercial'),
+                        '<button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>'
+                    ) . '
                 </form>
-            </div>
-        </div>
-    
 </main>' .
     output_footer();
     
 // else form has been submitted
 } else {
     validate_token_field();
-    
+
+    // The format and purpose are ones the form offers, and the subject and
+    // addresses are checked before anything is stored: a campaign without
+    // a sender address only failed later, at every delivery.
+    $_POST['format'] = pg_email_campaign_allowed_value('format', $_POST['format'] ?? null);
+    $_POST['purpose'] = pg_email_campaign_allowed_value('purpose', $_POST['purpose'] ?? null);
+    $_POST['page_id'] = (isset($_POST['page_id']) && is_scalar($_POST['page_id'])) ? (string) $_POST['page_id'] : '';
+
+    $field_errors = pg_email_campaign_field_errors(array(
+        'subject' => $_POST['subject'] ?? '',
+        'from_email_address' => $_POST['from_email_address'] ?? '',
+        'reply_email_address' => $_POST['reply_email_address'] ?? '',
+    ));
+
+    if ($_POST['format'] === null) {
+        $field_errors['format'] = lang('Select a format.');
+    }
+
+    if ($_POST['purpose'] === null) {
+        $field_errors['purpose'] = lang('Select a purpose.');
+    }
+
+    if ($field_errors) {
+        output_error(pg_email_campaign_field_errors_html($field_errors));
+    }
+
+    $_POST['subject'] = trim((string) $_POST['subject']);
+    $_POST['from_email_address'] = trim((string) $_POST['from_email_address']);
+    $_POST['reply_email_address'] = trim((string) ($_POST['reply_email_address'] ?? ''));
+
     // if the user selected plain text, then clear the page id, so we don't store it with the e-mail campaign
     if ($_POST['format'] == 'plain_text') {
         $_POST['page_id'] = '';
@@ -326,42 +352,10 @@ if (!$_POST) {
                 $row = mysqli_fetch_assoc($result);
                 $email_subscription = $row['email_subscription'];
                 
-                // if this is a subscription contact group
-                if ($email_subscription == 1) {
-                    // get all contacts in this contact group that are global opted-in and opted-in to this contact group
-                    $query =
-                        "SELECT
-                            contacts.id,
-                            contacts.email_address,
-                            opt_in.opt_in
-                        FROM contacts_contact_groups_xref
-                        LEFT JOIN contacts ON contacts_contact_groups_xref.contact_id = contacts.id
-                        LEFT JOIN opt_in ON (contacts_contact_groups_xref.contact_id = opt_in.contact_id) AND (contacts_contact_groups_xref.contact_group_id = opt_in.contact_group_id)
-                        WHERE
-                            (contacts_contact_groups_xref.contact_group_id = ?)
-                            AND (contacts.opt_in = 1)
-                            AND (
-                                (opt_in.opt_in = 1)
-                                OR (opt_in.opt_in IS NULL)
-                            )
-                            AND (contacts.email_address != '')";
-                    $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
-                    
-                // else this is not a subscription contact group
-                } else {
-                    // get all contacts in this contact group that are global opted-in
-                    $query =
-                        "SELECT
-                            contacts.id,
-                            contacts.email_address
-                        FROM contacts_contact_groups_xref
-                        LEFT JOIN contacts ON contacts_contact_groups_xref.contact_id = contacts.id
-                        WHERE
-                            (contacts_contact_groups_xref.contact_group_id = ?)
-                            AND (contacts.opt_in = 1)
-                            AND (contacts.email_address != '')";
-                    $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
-                }
+                // a commercial campaign takes opted-in contacts only, a
+                // transactional one every contact of the group with an address
+                $query = pg_email_campaign_recipient_query($_POST['purpose'], $email_subscription == 1);
+                $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
                 
                 // loop through all contact e-mail addresses
                 while ($row = mysqli_fetch_assoc($result)) {
@@ -416,7 +410,7 @@ if (!$_POST) {
     }
     
     // if entered e-mail address was entered
-    if ($_POST['entered_email_address']) {
+    if (is_string($_POST['entered_email_address'] ?? null) && ($_POST['entered_email_address'] !== '')) {
         // if e-mail address is valid
         if (validate_email_address($_POST['entered_email_address']) == true) {
             $recipients[] = mb_strtolower($_POST['entered_email_address']);
@@ -450,7 +444,7 @@ if (!$_POST) {
 
         // else e-mail address is not valid, so generate error
         } else {
-            output_error(lang('The e-mail address you entered under Enter Recipient is invalid.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+            output_error(lang('The address you entered under Also send message to the following e-mail address is not valid.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
     }
 

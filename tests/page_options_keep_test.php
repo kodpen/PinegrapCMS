@@ -51,7 +51,7 @@ function test_menu_item_edit_keeps_its_stored_page()
 	$edit = page_options_keep_test_source('edit_menu_item.php');
 	pg_assert_contains("get_page_options('', '', 'edit', true, \$keep_page_id)", $form, 'the picker keeps the given page');
 	pg_assert_contains("\$stored_link_page_id = (int) \$row['link_page_id'];", $edit, 'the keep id is the stored link, not the post');
-	pg_assert_contains("</div>', \$stored_link_page_id)", $edit, 'edit passes the stored page');
+	pg_assert_contains("</script>', \$stored_link_page_id)", $edit, 'edit passes the stored page');
 	pg_assert_contains('pg_menu_item_form_card($liveform, $parent_id_options)', page_options_keep_test_source('add_menu_item.php'), 'add keeps nothing');
 }
 

@@ -30,7 +30,7 @@ if (!defined('PG_INIT_LOADED')) {
 						</ol>
 					</nav>
 					<h2 class="d-inline-block text-break header-content-for-add-page">[<?=h($folder['name'])?>]</h2>
-					<p class="form-text mt-0"><?=lang('Press Duplicate to duplicate this folder and pages directly inside of it.  Optionally, you may configure content that you want the system to find and replace in the new duplicated items.')?></p>
+					<p class="form-text mt-0"><?=lang('Duplicate creates a new folder with a copy of each page directly inside this one. Files and sub-folders are not copied; use Duplicate in the File Manager to copy the whole folder. With Find & Replace on, the words in each row are replaced in the new folder name and in the copied pages.')?></p>
 				</div>
 			</div>
 			<form method="post">
@@ -66,7 +66,6 @@ if (!defined('PG_INIT_LOADED')) {
 															</div>
 														</div>
 														<?php endfor ?>
-														<input type="hidden" name="find_replace">
 													</div>
 												</div>
 											</div>
@@ -79,7 +78,7 @@ if (!defined('PG_INIT_LOADED')) {
 					<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="<?= h(lang('data edit buttons')) ?>">
 						<div class="container">
 							<div class=" btn-group flex-wrap justify-content-center">
-								<button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">control_point_duplicate</span><span class="pg-btn-label" ><?=lang(array('string'=>'Duplicate') )?></span></button>
+								<button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1  btn-solid theme-success "><i class="bi bi-copy me-3" aria-hidden="true"></i><span class="pg-btn-label" ><?=lang(array('string'=>'Duplicate') )?></span></button>
 							</div>
 						</div>
 					</nav>

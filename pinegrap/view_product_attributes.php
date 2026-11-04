@@ -97,7 +97,7 @@ if ($product_attributes) {
                 $output_no_value = lang(' [\'No Thanks\' Option]');
             }
 
-            $output_options .= '<li><span class="menu-text badge fg-body fw-light py-3" >' . h($option['label']) . $output_no_value . '</span></li>';
+            $output_options .= '<li><span class="menu-text d-block text-wrap text-break fg-body fw-light py-2 px-3">' . h($option['label']) . $output_no_value . '</span></li>';
         }
 
        
@@ -128,13 +128,13 @@ if ($product_attributes) {
                     <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product_attribute.php?id=' . $product_attribute['id'] . '\'"><i class="bi bi-pencil"></i></button>
                     <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                 </td>
-                <td class="chart_label align-middle">' . h($product_attribute['name']) . '</td>
+                <td class="chart_label align-middle"><div class="text-wrap text-break" style="max-width:20rem;">' . h($product_attribute['name']) . '</div></td>
                 <td class="align-middle ">
                     <div class="row row-cols-2 align-middle">
-                        <div class="col align-self-center">' . $output_label . '</div>
+                        <div class="col align-self-center text-wrap text-break" style="max-width:20rem;">' . $output_label . '</div>
                         <div class="pg-menu-wrap col">
                             <button type="button" class="m-1 btn btn-sm p-1 no-popover pg-menu-caret" data-bs-auto-close="outside" data-bs-strategy="fixed" data-bs-toggle="menu" aria-expanded="false">' . lang('Options') . '</button>
-                            <ul class="menu">
+                            <ul class="menu" style="max-width:min(20rem, 90vw);">
                                 ' . $output_options . '
                             </ul>
                         </div>

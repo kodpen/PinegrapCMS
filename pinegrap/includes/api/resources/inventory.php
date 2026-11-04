@@ -65,9 +65,26 @@ function api_inventory_quantity($raw) {
 
 }
 
+// The location a stock call names: 0 for none (the default location, or the
+// total on a site without locations), the id when it is one of the site's
+// locations, null when it is not.
+function api_inventory_location($raw) {
+
+	return pg_stock_requested_location($raw);
+
+}
+
 function api_inventory_write($params) {
 
-	$result = api_inventory_apply((int)$params['id'], '', $params['op'], (int)$params['quantity'], true, api_dry_run_requested());
+	$location = api_inventory_location(isset($params['location']) ? $params['location'] : null);
+
+	if ($location === null) {
+
+		api_fail(422, 'location', lang('location is not a stock location of this site.'));
+
+	}
+
+	$result = api_inventory_apply((int)$params['id'], '', $params['op'], (int)$params['quantity'], true, api_dry_run_requested(), $location);
 
 	if ($result['status'] === 'not_tracked') {
 
@@ -78,6 +95,12 @@ function api_inventory_write($params) {
 	if ($result['status'] === 'bundle') {
 
 		api_fail(409, 'bundle', lang('This product is a bundle: its stock follows the products in it. Change their stock instead.'));
+
+	}
+
+	if ($result['status'] === 'refused') {
+
+		api_fail(409, 'refused', lang('The stock could not be changed at this location: the change would pass the largest quantity it can hold.'));
 
 	}
 
@@ -94,7 +117,8 @@ function api_inventory_write($params) {
 	api_dry_run_stop('updated', 'inventory', array(
 		'id'       => (int)$params['id'],
 		'op'       => $params['op'],
-		'quantity' => (int)$params['quantity']
+		'quantity' => (int)$params['quantity'],
+		'location' => $location
 	));
 
 	api_ok($result['inventory']);
@@ -181,7 +205,17 @@ function api_inventory_bulk($params) {
 
 		}
 
-		$outcome = api_inventory_apply($id, $sku, $op, $quantity, false, $dry);
+		$location = api_inventory_location(isset($item['location']) ? $item['location'] : null);
+
+		if ($location === null) {
+
+			$results[] = array('index' => $index, 'id' => $id, 'sku' => $sku, 'status' => 'invalid', 'message' => lang('location is not a stock location of this site.'));
+
+			continue;
+
+		}
+
+		$outcome = api_inventory_apply($id, $sku, $op, $quantity, false, $dry, $location);
 
 		if ($outcome['status'] === 'ok') {
 
@@ -212,11 +246,13 @@ function api_inventory_bulk($params) {
 				'id'      => $id,
 				'sku'     => $sku,
 				'status'  => $outcome['status'],
-				'message' => ($outcome['status'] === 'not_tracked')
+				'message' => ($outcome['status'] === 'refused')
+					? lang('The stock could not be changed at this location: the change would pass the largest quantity it can hold.')
+					: (($outcome['status'] === 'not_tracked')
 					? lang('This product does not track stock. Send op=set with a quantity to start tracking it.')
 					: (($outcome['status'] === 'bundle')
 						? lang('This product is a bundle: its stock follows the products in it. Change their stock instead.')
-						: lang('Product not found.'))
+						: lang('Product not found.')))
 			);
 
 		}
@@ -251,7 +287,12 @@ function api_inventory_bulk($params) {
 // 'not_found', 'bundle' for a bundle (its stock is its components'), or
 // 'not_tracked' when an adjust was aimed at a product that does not track
 // stock.
-function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry = false) {
+//
+// With stock per location a tracked product's units change at one location
+// ($location, 0 for the default) through pg_stock_change(): an adjust stops
+// at 0 there, as the total's GREATEST(0, ...) does, and nothing is taken from
+// another location; the total follows from the product's rows.
+function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry = false, $location = 0) {
 
 	if ($id <= 0 && $sku !== '') {
 
@@ -334,13 +375,57 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 
 	}
 
-	api_exec("UPDATE products
-		SET out_of_stock = IF((" . $quantity_sql . ") <= 0, '1', '0'),
-		    inventory_quantity = " . $quantity_sql . ",
-		    " . $tracking_sql . "
-		    timestamp = UNIX_TIMESTAMP()
-		WHERE id = '" . $id . "'
-		LIMIT 1");
+	$stock_location = null;
+
+	if (pg_stock_has_locations()) {
+
+		// A set switches tracking on first: the writer keeps rows only for a
+		// product that tracks stock, and seeds its default row from the total.
+		if ((int)$product['inventory'] !== 1) {
+
+			api_exec("UPDATE products SET inventory = '1' WHERE id = '" . $id . "' LIMIT 1");
+
+		}
+
+		$location_id = $location ? (int)$location : pg_stock_default_location();
+
+		$change = pg_stock_change_from_row($id, $location_id,
+			function ($at_location) use ($op, $quantity) {
+				return pg_stock_api_delta($op, $quantity, $at_location);
+			},
+			'api', (string)(api_current_app()['api_key'] ?? ''));
+
+		if (!$change['ok']) {
+
+			return array('status' => 'refused');
+
+		}
+
+		$stock_rows = pg_stock_rows($id);
+
+		$stock_location = array(
+			'id'       => $location_id,
+			'name'     => pg_stock_location_name($location_id),
+			'quantity' => isset($stock_rows[$location_id]) ? (int)$stock_rows[$location_id] : 0
+		);
+
+		api_exec("UPDATE products
+			SET out_of_stock = IF(inventory_quantity <= 0, '1', '0'),
+			    timestamp = UNIX_TIMESTAMP()
+			WHERE id = '" . $id . "'
+			LIMIT 1");
+
+	} else {
+
+		api_exec("UPDATE products
+			SET out_of_stock = IF((" . $quantity_sql . ") <= 0, '1', '0'),
+			    inventory_quantity = " . $quantity_sql . ",
+			    " . $tracking_sql . "
+			    timestamp = UNIX_TIMESTAMP()
+			WHERE id = '" . $id . "'
+			LIMIT 1");
+
+	}
 
 	$row = api_row("SELECT id, inventory, inventory_quantity, out_of_stock, timestamp
 		FROM products WHERE id = '" . $id . "' LIMIT 1");
@@ -363,7 +448,7 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 		'product_id' => (int)$row['id'],
 		'quantity'   => (int)$row['inventory_quantity'],
 		'out_of_stock' => ((int)$row['out_of_stock'] === 1)
-	);
+	) + pg_stock_event_location_fields($stock_location);
 
 	api_webhook_enqueue('inventory.changed', $stock_event);
 
@@ -394,7 +479,7 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 			'name'       => $product['name'],
 			'quantity'   => (int)$row['inventory_quantity'],
 			'threshold'  => $threshold
-		));
+		) + pg_stock_event_location_fields($stock_location));
 
 	}
 
@@ -415,7 +500,10 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 			'quantity'     => (int)$row['inventory_quantity'],
 			'out_of_stock' => ((int)$row['out_of_stock'] === 1),
 			'updated_at'   => api_time($row['timestamp'])
-		)
+		) + (($stock_location === null) ? array() : array(
+			'location_id'       => $stock_location['id'],
+			'location_quantity' => $stock_location['quantity']
+		))
 	);
 
 }
@@ -430,7 +518,9 @@ function api_inventory_schema() {
 		'tracked'      => 'boolean',
 		'quantity'     => 'integer',
 		'out_of_stock' => 'boolean',
-		'updated_at'   => 'string?'
+		'updated_at'   => 'string?',
+		'location_id'       => 'integer?',
+		'location_quantity' => 'integer?'
 	);
 
 }

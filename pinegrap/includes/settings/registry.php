@@ -6,8 +6,8 @@
  * into, and the neighbouring screens that live beside them.
  *
  * Read by four places -- the dialog's sidebar and the link helper
- * (includes/fn/output.php), the main menu's Site Settings row
- * (pg_menu_settings_entries(), same file), the category screens
+ * (includes/fn/output.php), the main menu's System tools row
+ * (output_menu(), same file), the category screens
  * (includes/settings/screen.php) and the command palette (api.php). One list, because they all name the same
  * screens with the same gates, and copies of that answer drift: a screen added
  * to one is missing from the others and nothing says so.
@@ -102,7 +102,7 @@ function pg_settings_categories()
             ),
             'keywords' => array(
                 'pgset-organization' => pg_settings_keywords(lang('organization, company, name, address, logo, support, email, tax number, tax office, vkn, seller')),
-                'pgset-server'   => pg_settings_keywords(lang('hostname, domain, ip, ssl, https, secure mode, secure, proxy')),
+                'pgset-server'   => pg_settings_keywords(lang('hostname, domain, ip, proxy')),
                 'pgset-software' => pg_settings_keywords(lang('software, language, licence, license, subscription, error, debug')),
                 'pgset-datetime' => pg_settings_keywords(lang('date, time, timezone, format')),
             ),
@@ -134,13 +134,15 @@ function pg_settings_categories()
             'description' => lang('Which features are on, and how images are handled.'),
             'sections' => array(
                 'pgset-features' => lang('Feature Options'),
+                'pgset-search-tuning' => lang('Search Tuning'),
                 'pgset-images'   => lang('Image Optimization'),
                 'pgset-revisions' => lang('Page Revisions'),
                 'pgset-page-cache' => lang('Page Cache'),
                 'pgset-signature' => lang('Signature Time Stamp'),
             ),
             'keywords' => array(
-                'pgset-features' => pg_settings_keywords(lang('feature, cart, comment, blog, calendar, form, ads, sharing, search, performance, mobile, prefetch, speculation rules, preload')),
+                'pgset-features' => pg_settings_keywords(lang('feature, badge, calendar, form, ads, auto dialog, sharing, social, workspace, search, performance, mobile, prefetch, speculation rules, preload')),
+                'pgset-search-tuning' => pg_settings_keywords(lang('search, synonym, synonyms, promoted, recommended, pinned result')),
                 'pgset-images'   => pg_settings_keywords(lang('image, photo, optimization, webp, avif, responsive, quality, size, upload, watermark')),
                 'pgset-revisions' => pg_settings_keywords(lang('revision, revisions, history, version, versions, restore, retention, page, designer')),
                 'pgset-page-cache' => pg_settings_keywords(lang('cache, page cache, cdn, proxy, varnish, nginx, cloudflare, speed, performance, s-maxage, cache-control')),
@@ -173,16 +175,18 @@ function pg_settings_categories()
             'label' => lang('Visitors and privacy'),
             'group' => 'site',
             'icon'  => 'bi-incognito',
-            'description' => lang('Visitor tracking, cookie consent and the checkout\'s legal documents.'),
+            'description' => lang('Visitor tracking, cookie consent, the checkout\'s legal documents and the accessibility statement.'),
             'sections' => array(
                 'pgset-analytics' => lang('Visitor Tracking'),
                 'pgset-cookies'   => lang('Cookie Consent'),
                 'pgset-legal'     => lang('Legal Documents'),
+                'pgset-a11y-statement' => lang('Accessibility Statement'),
             ),
             'keywords' => array(
                 'pgset-analytics' => pg_settings_keywords(lang('visitor, analytics, tracking code, tracking, statistics, google analytics')),
                 'pgset-cookies'   => pg_settings_keywords(lang('cookie, cookies, consent, gdpr, kvkk, privacy, cookie policy, banner, notice')),
                 'pgset-legal'     => pg_settings_keywords(lang('legal, contract, distance sales contract, pre-information form, terms, withdrawal, consumer')),
+                'pgset-a11y-statement' => pg_settings_keywords(lang('accessibility, statement, accessibility statement, wcag, en 301 549, european accessibility act, disability')),
             ),
         ),
 
@@ -289,6 +293,7 @@ function pg_settings_categories()
             'sections' => array(
                 'pgset-store'     => lang('Store'),
                 'pgset-shipping'  => lang('Shipping'),
+                'pgset-address-autocomplete' => lang('Address Autocomplete'),
                 'pgset-giftcards' => lang('Gift Cards & Rewards'),
                 'pgset-payments'  => lang('Payment Methods'),
                 'pgset-reference-price' => lang('Reference Price'),
@@ -298,6 +303,7 @@ function pg_settings_categories()
             'keywords' => array(
                 'pgset-store'     => pg_settings_keywords(lang('store, commerce, ecommerce, order number, tax, vat, barcode, currency')),
                 'pgset-shipping'  => pg_settings_keywords(lang('shipping, cargo, delivery, ups, fedex, usps, recipient, address verification')),
+                'pgset-address-autocomplete' => pg_settings_keywords(lang('address, autocomplete, suggestions, google places, mapbox, photon, openstreetmap')),
                 'pgset-giftcards' => pg_settings_keywords(lang('gift card, points, reward, givex')),
                 'pgset-payments'  => pg_settings_keywords(lang('payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure')),
                 'pgset-reference-price' => pg_settings_keywords(lang('reference price, price before discount, lowest price, 30 days, 10 days, compare-at price, omnibus, price label')),
@@ -335,6 +341,29 @@ function pg_settings_categories()
             ),
         ),
 
+        'bookings' => array(
+            'label' => lang('Bookings'),
+            'group' => 'selling',
+            'icon'  => 'bi-calendar-check',
+            'description' => lang('The services that can be booked, the staff who take them, the booking rules and the booking widget\'s texts.'),
+            'sections' => array(
+                'pgset-booking-services' => lang('Bookable services'),
+                'pgset-booking-staff'    => lang('Staff'),
+                'pgset-booking-policy'   => lang('Booking rules'),
+                'pgset-booking-texts'    => lang('Booking widget texts'),
+            ),
+            'keywords' => array(
+                'pgset-booking-services' => pg_settings_keywords(lang('booking, appointment, service, duration, length, buffer, price, reservation')),
+                'pgset-booking-staff'    => pg_settings_keywords(lang('booking, appointment, staff, working hours, opening hours, time off, holiday, day off, schedule')),
+                'pgset-booking-policy'   => pg_settings_keywords(lang('booking, appointment, lead time, horizon, cancellation, reschedule, hold, reminder, confirmation')),
+                'pgset-booking-texts'    => pg_settings_keywords(lang('booking, appointment, widget, text, heading, message')),
+            ),
+            'lists' => array(
+                'booking_service' => 2,
+                'booking_staff'   => 3,
+            ),
+        ),
+
         'api' => array(
             'label' => lang('Integrations'),
             'group' => 'running',
@@ -363,18 +392,28 @@ function pg_settings_categories()
                 'pgset-channel'     => lang('Update Channel'),
                 'pgset-cron'        => lang('Cron Jobs'),
                 'pgset-backup'      => lang('Backups'),
+                'pgset-storage'     => lang('Storage'),
                 'pgset-alerts'      => lang('Alerts'),
+                'pgset-chat-notify' => lang('Chat notifications'),
                 'pgset-maintenance' => lang('Maintenance Mode'),
             ),
             'keywords' => array(
                 'pgset-channel'     => pg_settings_keywords(lang('update, channel, beta, stable, version')),
                 'pgset-cron'        => pg_settings_keywords(lang('cron, scheduled, task, job, schedule, automatic')),
                 'pgset-backup'      => pg_settings_keywords(lang('backup, zip, ftp, s3, retention, remote, archive')),
+                'pgset-storage'     => pg_settings_keywords(lang('storage, object storage, s3, bucket, endpoint, files, uploads')),
                 'pgset-alerts'      => pg_settings_keywords(lang('alert, alerts, notification, e-mail, push, monitoring, backup failed, cron stopped, integrity, warning')),
+                'pgset-chat-notify' => pg_settings_keywords(lang('slack, teams, telegram, chat, notification, channel, webhook')),
                 'pgset-maintenance' => pg_settings_keywords(lang('maintenance, offline, closed, 503, coming soon, health, uptime, monitor')),
             ),
             'lists' => array(
                 'job_dispatch_job' => 1,
+                'notify_new_codes'     => 1,
+                'notify_new_events'    => 1,
+                'notify_target_label'  => 1,
+                'notify_target_delete' => 1,
+                'notify_target_codes'  => 2,
+                'notify_target_events' => 2,
             ),
         ),
 
@@ -515,6 +554,79 @@ function pg_settings_refuse_lists($key, $liveform)
 
 
 /**
+ * What a settings page posted, by the name of the control that sent it, so a
+ * refused save can put it back into the form it redraws
+ * (pgSettingsRestore(), backend.src.js). Every value is a list: a name can
+ * be posted more than once. A list of plain values ("x[]") is given under
+ * both "x[]" and "x[0]", "x[1]", ..., so a control named either way finds
+ * it. The token, the decoy field and the save button are left out. Pure.
+ *
+ * @param array $post $_POST
+ * @return array control name => list of strings
+ */
+function pg_settings_typed_values($post)
+{
+    $typed = array();
+    $skip  = array('token' => true, 'fake_user' => true, 'submitted_button_field' => true, 'submit_save' => true);
+
+    $walk = function ($name, $value) use (&$walk, &$typed) {
+
+        if (!is_array($value)) {
+            $typed[$name][] = (string) $value;
+            return;
+        }
+
+        $list = ($value !== array()) && (array_keys($value) === range(0, count($value) - 1));
+
+        foreach ($value as $key => $item) {
+
+            if ($list && !is_array($item)) {
+                $typed[$name . '[]'][] = (string) $item;
+            }
+
+            $walk($name . '[' . $key . ']', $item);
+        }
+    };
+
+    foreach ((array) $post as $name => $value) {
+
+        if (!isset($skip[(string) $name])) {
+            $walk((string) $name, $value);
+        }
+    }
+
+    return $typed;
+}
+
+
+/**
+ * The posted values that may be printed back into the page: a password or a
+ * file control of the drawn markup is left out, so a secret typed into a
+ * refused save never travels back in the page source. Pure.
+ *
+ * @param array  $typed pg_settings_typed_values()
+ * @param string $html  the drawn cards
+ * @return array
+ */
+function pg_settings_typed_restorable($typed, $html)
+{
+    $typed = is_array($typed) ? $typed : array();
+
+    if (preg_match_all('/<input\b[^>]*>/i', (string) $html, $inputs)) {
+
+        foreach ($inputs[0] as $tag) {
+
+            if (preg_match('/\btype\s*=\s*["\']?(password|file)\b/i', $tag) && preg_match('/\bname\s*=\s*"([^"]*)"/i', $tag, $name)) {
+                unset($typed[html_entity_decode($name[1], ENT_QUOTES, 'UTF-8')]);
+            }
+        }
+    }
+
+    return $typed;
+}
+
+
+/**
  * The fields a refused save marked, by name, each with its sentence ('' when
  * it was marked without one), so the dialog can mark them in view. Read from
  * the liveform's state: the form-level errors (_form_error_N) and the notice
@@ -608,39 +720,11 @@ function pg_settings_legacy_anchors()
         'pgset-channel'    => array('maintenance', 'pgset-channel'),
         'pgset-cron'       => array('maintenance', 'pgset-cron'),
         'pgset-alerts'     => array('maintenance', 'pgset-alerts'),
+        'pgset-chat-notify' => array('maintenance', 'pgset-chat-notify'),
         'pgset-maintenance' => array('maintenance', 'pgset-maintenance'),
         'pgset-backup'     => array('maintenance', 'pgset-backup'),
         'pgset-google-reviews' => array('api',    'pgset-google-reviews'),
     );
-}
-
-
-/**
- * Screens that belong with a category without being one of its sections.
- *
- * The main menu lists them in the category's panel, under its sections
- * (pg_menu_settings_markup()), so a screen that no other menu path reaches
- * for some of the people its own gate admits has a home beside the settings
- * it goes with. Same rule as the groups below: each item under the gate of
- * the screen itself, and the gate decides visibility only.
- *
- * @param array $user the row validate_user() returned
- * @return array category key => array of array(label, icon, url)
- */
-function pg_settings_category_screens($user)
-{
-    $role = isset($user['role']) ? (int) $user['role'] : 3;
-
-    $screens = array();
-
-    // The translations of the pages and texts: validate_area_access($user,
-    // 'manager'). Its other entry, in the Visual Page Editor panel, is drawn
-    // for role < 2 only, so a manager had no way to it.
-    if ($role <= 2) {
-        $screens['languages'][] = array('label' => lang('Translations'), 'icon' => 'bi-translate', 'url' => 'translations.php');
-    }
-
-    return $screens;
 }
 
 
@@ -969,7 +1053,8 @@ function pg_settings_tools_link($groups)
 
 
 /**
- * "Last modified 5 hours ago by admin", or an empty string.
+ * "Last modified 5 hours ago by admin", or an empty string. The relative
+ * time sits mid-sentence, so "a moment ago" keeps a small letter.
  *
  * Shown by the hub and by the category screens, from one place: the hub is
  * often opened to find out what somebody else changed, and the answer must not
@@ -986,7 +1071,7 @@ function pg_settings_last_modified($row)
         return '';
     }
 
-    $output = lang('Last modified') . ' ' . get_relative_time(array('timestamp' => $timestamp)) . ' ';
+    $output = lang('Last modified') . ' ' . get_relative_time(array('timestamp' => $timestamp, 'mid_sentence' => true)) . ' ';
 
     $user_id = isset($row['last_modified_user_id']) ? (int) $row['last_modified_user_id'] : 0;
 
