@@ -1512,6 +1512,7 @@
     "A tickets page with what each pass includes; with the shop on, the passes are sold as products with cart and checkout.": "Her paketin neleri kapsadığını gösteren bir bilet sayfası; mağaza açıkken paketler sepet ve ödeme adımıyla ürün olarak satılır.",
     "A tidy work van with a load floor of 3.2 m, shelving and a roof rack. Serviced every 20,000 km and sold with a six-month warranty.": "3,2 m yükleme alanı, rafları ve tavan barı olan bakımlı bir iş aracı. Her 20.000 km'de bakımı yapıldı; altı ay garantiyle satılıyor.",
     "A tiered discount gives percentages; send tiers without amount.": "Kademeli indirim yüzde verir; tiers alanını amount olmadan gönderin.",
+    "A till below zero cannot be made a cash till.": "Bakiyesi sıfırın altındaki bir hesap nakit kasaya çevrilemez.",
     "A till movement cannot be dated after today. Record money that comes or goes later as a cheque or note, or as a due date.": "Kasa hareketi bugünden sonraya tarihlenemez. Sonra gelecek ya da gidecek parayı çek/senet ya da vade olarak kaydedin.",
     "A till the store keeps for cheques and notes: the portfolio for the ones taken, one for the ones given. Add it under Cash and Bank first.": "Mağazanın çek ve senetler için tuttuğu kasa: alınanlar için portföy, verilenler için ayrı bir kasa. Önce Kasa ve Banka altında ekleyin.",
     "A time that suits you": "Size uyan bir saat",
