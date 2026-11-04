@@ -102,6 +102,9 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null, $status_rows = 
         return pg_arrival_date_form_date_text($values[$column] ?? '');
     };
 
+    // A new arrival date starts today, as a new shipping method does.
+    $start_date = ($values === array()) ? pg_arrival_date_form_date_text(date('Y-m-d')) : $date('start_date');
+
     $status_enabled_checked = ($v['status'] == 'enabled') ? ' checked="checked"' : '';
     $default_selected_checked = ($v['default_selected'] == 1) ? ' checked="checked"' : '';
     $date_placeholder = date(get_date_format_code() . '/Y');
@@ -114,11 +117,20 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null, $status_rows = 
         $custom_checked = ' checked="checked"';
         $custom_maximum_arrival_date_row_style = '';
         $shipping_cutoff_row_style = ' style="display: none"';
+        $arrival_date_required = '';
+        $arrival_date_marker_class = ' d-none';
     } else {
         $custom_checked = '';
         $custom_maximum_arrival_date_row_style = ' style="display: none"';
         $shipping_cutoff_row_style = '';
+        $arrival_date_required = ' required';
+        $arrival_date_marker_class = '';
     }
+
+    // The arrival date is required only while the customer does not enter
+    // it; its label carries its own marker, which the script below shows
+    // and hides with the attribute (the load-time marker script runs once).
+    $arrival_date_marker = '<span id="arrival_date_required_marker" class="pg-required-marker fg-danger ms-1' . $arrival_date_marker_class . '" aria-hidden="true">*</span>';
 
     $output_cutoffs_js = (string) $cutoffs_js . '
                                         var shipping_method_id_options = new Array();
@@ -139,7 +151,7 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null, $status_rows = 
 
     $summary = pg_arrival_date_form_status_row(lang('Name'), '<span id="arrival_date_summary_name">' . h($v['name']) . '</span>', false)
         . pg_arrival_date_form_status_row(lang('Arrival Date'), '<span id="arrival_date_summary_arrival_date">' . h($summary_arrival_date) . '</span>', false)
-        . pg_arrival_date_form_status_row(lang('Start Date'), '<span id="arrival_date_summary_start_date">' . h($date('start_date')) . '</span>', false)
+        . pg_arrival_date_form_status_row(lang('Start Date'), '<span id="arrival_date_summary_start_date">' . h($start_date) . '</span>', false)
         . pg_arrival_date_form_status_row(lang('End Date'), '<span id="arrival_date_summary_end_date">' . h($date('end_date')) . '</span>', false)
         . pg_arrival_date_form_status_row(lang('Shipping Cut-offs'), '<span id="arrival_date_summary_cutoffs">' . substr_count((string) $cutoffs_js, '["shipping_method_id"]') . '</span>', $status_rows === '')
         . $status_rows;
@@ -170,7 +182,7 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null, $status_rows = 
                                             <label for="sort_order" class="form-label">' . lang('Sorting') . '</label>
                                             <div class="input-group number-controls">
                                                 <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
-                                                <input value="' . h($v['sort_order']) . '" class="form-control text-center border-start-0 border-end-0" type="text" name="sort_order" id="sort_order" maxlength="3" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-placeholder="0"/>
+                                                <input value="' . h($v['sort_order']) . '" class="form-control text-center border-start-0 border-end-0" type="text" name="sort_order" id="sort_order" maxlength="6" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-min="-32768" data-inputmask-max="32767" data-inputmask-placeholder="0"/>
                                                 <button class="btn material-icons plus border border-start-0" type="button" aria-label="' . h(lang('Increase')) . '">add</button>
                                             </div>
                                         </div>
@@ -185,15 +197,18 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null, $status_rows = 
                                     <div class="row">
                                         <div class="col-12 md:col-6 my-3">
                                             <label for="start_date" class="form-label">' . lang('Start Date') . '</label>
-                                            <input value="' . $date('start_date') . '" placeholder="' . $date_placeholder . '" type="text" name="start_date" id="start_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
+                                            <input value="' . $start_date . '" placeholder="' . $date_placeholder . '" type="text" name="start_date" id="start_date" class="form-control" maxlength="10" autocomplete="off" required data-pg-date/>
+                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 md:col-6 my-3">
                                             <label for="end_date" class="form-label">' . lang('End Date') . '</label>
-                                            <input value="' . $date('end_date') . '" placeholder="' . $date_placeholder . '" type="text" name="end_date" id="end_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
+                                            <input value="' . $date('end_date') . '" placeholder="' . $date_placeholder . '" type="text" name="end_date" id="end_date" class="form-control" maxlength="10" autocomplete="off" required data-pg-date/>
+                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 md:col-6 my-3">
-                                            <label for="arrival_date" class="form-label">' . lang('Arrival Date') . '</label>
-                                            <input value="' . $date('arrival_date') . '" placeholder="' . $date_placeholder . '" type="text" name="arrival_date" id="arrival_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
+                                            <label for="arrival_date" class="form-label">' . lang('Arrival Date') . $arrival_date_marker . '</label>
+                                            <input value="' . $date('arrival_date') . '" placeholder="' . $date_placeholder . '" type="text" name="arrival_date" id="arrival_date" class="form-control" maxlength="10" autocomplete="off"' . $arrival_date_required . ' data-pg-date/>
+                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 my-3">
                                             <div class="form-field">
@@ -288,6 +303,14 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null, $status_rows = 
                                     return custom.checked ? customer_text : field.value;
                                 });
                                 custom.addEventListener("change", arrival_date);
+                                // The customer enters a custom arrival date, so the
+                                // box is required only while the switch is off.
+                                var arrival_date_field = document.getElementById("arrival_date");
+                                var arrival_date_marker = document.getElementById("arrival_date_required_marker");
+                                custom.addEventListener("change", function () {
+                                    arrival_date_field.required = !custom.checked;
+                                    arrival_date_marker.classList.toggle("d-none", custom.checked);
+                                });
                                 var rows = document.getElementById("shipping_cutoff_table").tBodies[0];
                                 new MutationObserver(function () {
                                     document.getElementById("arrival_date_summary_cutoffs").textContent = String(rows.rows.length);
@@ -391,11 +414,30 @@ function pg_arrival_date_form_errors($post)
         $errors['end_date'] = lang('Please enter a valid end date.');
     }
 
-    if (($text('sort_order') !== '') && (preg_match('/^-?[0-9]{1,5}$/', $text('sort_order')) !== 1 || abs((int) $text('sort_order')) > 32767)) {
+    if (($text('sort_order') !== '') && (preg_match('/^-?[0-9]{1,5}$/', $text('sort_order')) !== 1 || (int) $text('sort_order') < -32768 || (int) $text('sort_order') > 32767)) {
         $errors['sort_order'] = lang(array('string' => '{var:1} takes a whole number from {var:2} to {var:3}.', 'vars' => array(lang('Sorting'), pg_format_number(-32768, 0), pg_format_number(32767, 0))));
     }
 
     return $errors;
+}
+
+/**
+ * The messages of pg_arrival_date_form_errors() as HTML for the error
+ * screen: each one a sentence ending in one full stop, as some messages
+ * carry their own stop and some do not.
+ *
+ * @param array $errors  field => message
+ * @return string
+ */
+function pg_arrival_date_form_error_text($errors)
+{
+    $sentences = array();
+
+    foreach ($errors as $message) {
+        $sentences[] = h(rtrim(trim((string) $message), '.')) . '.';
+    }
+
+    return implode(' ', $sentences);
 }
 
 /**
