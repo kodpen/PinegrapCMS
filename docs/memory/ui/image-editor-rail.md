@@ -15,4 +15,4 @@ module: image_editor
 - `modeSwitch()` draws the switch (`.pgie-seg.pgie-modes`, role group, label `railMode`) at the top of the panel body; a mode's label is `mode_<tool>` when defined (`mode_vector` is Pen), else `tool_<tool>`. A switch goes through `pickTool()`, which keeps the selection.
 
 ## Where is it tested?
-- `tests/image_editor_rail_test.php`: the profiles' items, the modes, the reopened mode, the letters. The DOM part was checked in a headless browser at 1280×800 and 390×780 (#PR).
+- `tests/image_editor_rail_test.php`: the profiles' items, the modes, the reopened mode, the letters. The DOM part was checked in a headless browser at 1280×800 and 390×780 (#6819).
