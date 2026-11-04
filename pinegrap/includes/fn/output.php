@@ -1525,11 +1525,20 @@ function pg_list_edit_table($url, $columns)
 
         // Pairs rather than an object: an object with numeric keys comes
         // back in numeric order, and the order of the choices is the screen's.
+        // An option with a class ('option_classes', value => class) carries
+        // it as a third item.
         if (isset($column['options'])) {
             $entry['options'] = array();
+            $classes = (array) ($column['option_classes'] ?? array());
 
             foreach ((array) $column['options'] as $value => $label) {
-                $entry['options'][] = array((string) $value, (string) $label);
+                $pair = array((string) $value, (string) $label);
+
+                if (isset($classes[$value]) && ((string) $classes[$value] !== '')) {
+                    $pair[] = (string) $classes[$value];
+                }
+
+                $entry['options'][] = $pair;
             }
         }
 

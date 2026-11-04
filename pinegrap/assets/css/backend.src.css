@@ -22483,6 +22483,33 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 .pg-list-table-field {
   min-width: 6rem;
 }
+/* A select in a cell coloured by an access level (.private * and the like)
+   keeps the field's own colour; it and each option wear their own level's
+   class instead (the Pages list's folders, tintSelect()). */
+select.pg-list-table-field,
+select.pg-list-table-field option {
+  color: var(--pg-fg-body);
+}
+select.pg-list-table-field.public,
+select.pg-list-table-field option.public {
+  color: var(--pg-access-public);
+}
+select.pg-list-table-field.guest,
+select.pg-list-table-field option.guest {
+  color: var(--pg-access-guest);
+}
+select.pg-list-table-field.registration,
+select.pg-list-table-field option.registration {
+  color: var(--pg-access-registration);
+}
+select.pg-list-table-field.membership,
+select.pg-list-table-field option.membership {
+  color: var(--pg-access-membership);
+}
+select.pg-list-table-field.private,
+select.pg-list-table-field option.private {
+  color: var(--pg-access-private);
+}
 .pg-list-table-grid > tbody > tr > td[aria-busy="true"] > .pg-list-table-field {
   opacity: 0.6;
 }
