@@ -39551,7 +39551,13 @@ const StyleDesigner = (function () {
         });
         (meta.contactGroups || []).forEach(function (g) {
             var id = parseInt(g.id, 10);
-            if (id > 0) out.push({ token: '__audience_group_' + id, label: _sdT('Audience: in contact group {var:1}', [String(g.name)]), ops: SD_AUDIENCE_YESNO });
+            if (!(id > 0)) return;
+            // A group filled by rules reads the same way (its members are
+            // contact group rows too); the label says which kind it is.
+            var label = (g.kind === 'dynamic')
+                ? _sdT('Audience: in contact group {var:1} (filled by rules)', [String(g.name)])
+                : _sdT('Audience: in contact group {var:1}', [String(g.name)]);
+            out.push({ token: '__audience_group_' + id, label: label, ops: SD_AUDIENCE_YESNO });
         });
         (meta.experiments || []).forEach(function (e) {
             var id = parseInt(e.id, 10);

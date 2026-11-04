@@ -404,10 +404,11 @@ function pg_designer_screen_render($ctx)
             'contact'  => function_exists('pg_cf_contact_fields') ? pg_cf_contact_fields() : array(),
             'folders'  => function_exists('pg_cf_folder_options') ? pg_cf_folder_options() : array(),
             // The registration widget files its new member's contact into one
-            // of these; the address book's own list, id and name.
-            'contactGroups' => array_map(function ($g) {
-                return array('id' => (int)$g['id'], 'name' => (string)$g['name']);
-            }, (array)db_items("SELECT id, name FROM contact_groups ORDER BY name")),
+            // of these; the address book's own list, id, name and kind (a
+            // group filled by rules is named so in the audience conditions).
+            'contactGroups' => pg_audience_group_options((array)db_items("SELECT id, name"
+                . ((function_exists('pg_audience_ready') && pg_audience_ready()) ? ', kind' : '')
+                . " FROM contact_groups ORDER BY name")),
             // The form's double opt-in switch exists once the 11.0.27 column
             // is there; until then pg_cf_write_form_settings() drops it.
             'doubleOptIn' => function_exists('pg_fs_ready') && pg_fs_ready(),
