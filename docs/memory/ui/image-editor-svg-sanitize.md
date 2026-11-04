@@ -1,0 +1,14 @@
+---
+name: image-editor-svg-sanitize
+description: The SVG allowlist sanitizer pg_svg_sanitize(): kept elements and values, style sheets scoped to the root, ids and classes prefixed so rules reach <use> copies
+module: svg_sanitize
+---
+
+## What does pg_svg_sanitize() keep?
+- It rebuilds the SVG element by element (`includes/fn/svg_sanitize.php`): only the listed drawing elements and their listed attributes; presentation properties as attributes or `style` declarations.
+- `href` / `xlink:href` only to `#id` or `data:image/png|jpeg|gif|webp|avif;base64`; never `data:image/svg+xml`. A `use` with nothing left to point at goes.
+- A value with an outside `url()`, an image function (`image-set(`, `-webkit-image-set(`, `cross-fade(`, `element(`, `image(`, `src(`), a backslash, `<`, `expression(`, `javascript:` or `@import` is dropped.
+- Why are style sheets scoped? An inline SVG's `<style>` applies to the whole page: a file's `svg path{display:none}` hid every panel icon. A sheet keeps only plain rules (names, `.class`, `#id`, descendant and child combinators; no attribute selector, pseudo-class, `*`, sibling combinator, at-rule or rule on `svg`), its declarations kept as a `style` attribute's. The root's id (its own plain id, else `pgsvg-` and ten hex of the file's SHA-1) is set on the root; the editor gives the stage and the saved root that id (`doc.svgRootId`).
+- Why are ids and classes prefixed? What a `<use>` draws matches selectors inside the use's own tree, so a rule under `#root` never reached symbol content: an Illustrator file (`<symbol>`, `.cls-1{fill:…}`, `<use>`) showed black symbols, `#star{stroke:…}` lost its outline on a `<use>` of `#star` (review of #6653, fixed in E31b). A file whose sheet keeps a rule now has every id (but the root's) and class prefixed with `pg_svg_sanitize_prefix()` (`pgsvg-<root id>-`, or the generated root id and `-`), in the elements, `href`, `url(#…)` and the rules. A selector whose every compound names a prefixed id or class stays unscoped; any other (an element-name compound, the root's id) goes under `#root`. The prefix always starts with `pgsvg-`, so a chosen root id cannot aim an unscoped rule at the panel's names. Kept as they are: names already prefixed (a sanitized file comes through unchanged; an older scoped file is brought to the prefixed form on its next save) and the motion groups' `pgm-n` (styled after the sanitizer). Without a kept rule nothing is renamed.
+- Refused whole (''): not a string, empty, over 5 MB, broken XML, a root that is not an SVG-namespace `<svg>`, any `<!DOCTYPE` / `<!ENTITY` in the text or a document type after parsing. Comments, processing instructions, scripts, event handlers, `foreignObject`, `a`, animations and other namespaces never come through.
+- Tests: `tests/svg_sanitize_test.php`.

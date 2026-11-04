@@ -99,8 +99,8 @@ function test_svg_sanitize_references()
 function test_svg_sanitize_style_sheets()
 {
 	$ok = pg_svg_sanitize(svg_sanitize_doc('<style>/* note */ .a { fill: #f00; } g > .b, #c rect { fill: url(#g1); stroke-width: 2 }</style><rect class="a" width="1" height="1"/>', ' id="art"'));
-	pg_assert_contains('<style>#art .a{fill: #f00}' . "\n" . '#art g &gt; .b, #art #c rect{fill: url(#g1); stroke-width: 2}</style>', $ok, 'a plain sheet stays, each selector under the root');
-	pg_assert_contains('class="a"', $ok, 'classes stay');
+	pg_assert_contains('<style>.pgsvg-art-a{fill: #f00}' . "\n" . '#art g &gt; .pgsvg-art-b, #art #pgsvg-art-c rect{fill: url(#pgsvg-art-g1); stroke-width: 2}</style>', $ok, 'a plain sheet stays, a selector with an element name under the root');
+	pg_assert_contains('class="pgsvg-art-a"', $ok, 'classes stay, prefixed');
 	pg_assert_true((bool) preg_match('#<svg [^>]*id="art"#', $ok), 'the root keeps its id');
 
 	foreach (array(
@@ -118,7 +118,8 @@ function test_svg_sanitize_style_sheets()
 }
 
 // A sheet cannot reach past the drawing: rules are scoped to the root's id
-// (a generated one when it has none), selectors other than names, classes,
+// (a generated one when it has none) or name only the file's prefixed ids
+// and classes, selectors other than names, classes,
 // ids and descendant or child combinators go, and so do at-rules, rules
 // on the root's own element name and declarations of unlisted properties.
 function test_svg_sanitize_sheet_scoped()
@@ -126,7 +127,7 @@ function test_svg_sanitize_sheet_scoped()
 	$out = pg_svg_sanitize(svg_sanitize_doc('<style>svg path{display:none} .pgie-top{background:#ff00ff !important} rect.box{fill:#2563eb}</style><rect class="box" width="1" height="1"/>'));
 
 	pg_assert_true((bool) preg_match('#<svg [^>]*id="(pgsvg-[0-9a-f]{10})"#', $out, $m), 'a root without an id gets one');
-	pg_assert_contains('<style>#' . (isset($m[1]) ? $m[1] : '?') . ' rect.box{fill: #2563eb}</style>', $out, 'only the drawing\'s own rule stays, under the root');
+	pg_assert_contains('<style>rect.' . (isset($m[1]) ? $m[1] : '?') . '-box{fill: #2563eb}</style>', $out, 'only the drawing\'s own rule stays, on its prefixed class');
 	pg_assert_false(strpos($out, 'pgie-top') !== false, 'a rule of no listed property goes');
 	pg_assert_false(strpos($out, 'display') !== false, 'a rule on the root\'s element name goes');
 
@@ -136,7 +137,7 @@ function test_svg_sanitize_sheet_scoped()
 
 	$once = pg_svg_sanitize(svg_sanitize_doc('<style>rect.box{fill:#2563eb} g > .t{fill:red}</style><rect class="box" width="1" height="1"/>'));
 	pg_assert_same($once, pg_svg_sanitize($once), 'a sanitized file comes through unchanged: rules are scoped once');
-	pg_assert_contains(' rect.box{fill: #2563eb}', $once, 'scoped');
+	pg_assert_true((bool) preg_match('#<style>rect\.pgsvg-[0-9a-f]{10}-box\{fill: \#2563eb\}\n\#pgsvg-[0-9a-f]{10} g &gt; \.pgsvg-[0-9a-f]{10}-t\{#', $once), 'prefixed, and scoped where a compound is an element name');
 
 	$plain = pg_svg_sanitize(svg_sanitize_doc('<rect width="1" height="1"/>'));
 	pg_assert_false(strpos($plain, ' id=') !== false, 'no sheet, no generated id');
@@ -255,6 +256,10 @@ function test_svg_sanitize_sheet_reaches_use_copies()
 	$out = pg_svg_sanitize(svg_sanitize_doc('<style>#art .a{fill:red}</style><rect class="a" width="1" height="1"/>', ' id="art"'));
 	pg_assert_contains('<style>.pgsvg-art-a{fill: red}</style>', $out, 'an old scoped rule');
 	pg_assert_contains('class="pgsvg-art-a"', $out, 'and its class');
+
+	// A motion group's class is the editor's, styled after the sanitizer.
+	$out = pg_svg_sanitize(svg_sanitize_doc('<style>.a{fill:red}</style><g class="pgm-0 a"><rect width="1" height="1"/></g>', ' id="m"'));
+	pg_assert_contains('<g class="pgm-0 pgsvg-m-a">', $out, 'pgm-n keeps its name');
 
 	// Without a sheet nothing is renamed.
 	$out = pg_svg_sanitize(svg_sanitize_doc('<symbol id="s"><rect class="a" width="1" height="1"/></symbol><use href="#s"/>'));
