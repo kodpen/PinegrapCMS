@@ -69,15 +69,15 @@ if (!isset($_POST['name'])) {
 
     print
     pg_page_shell([
-        'title'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Designer Region'))),
+        'title'=> lang('Edit Designer Region'),
         'extra classes'=>'design',
         'icon'=>'design',
-        'heading'=>lang(array('string'=>'Edit {var:1}','vars'=>lang('Designer Region'))),
+        'heading'=>lang('Edit Designer Region'),
         'heading_description' => lang('Update this designer region of shared content. (A rename will require its tag to be updated in any page styles.)'),
         'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('view_regions.php?filter=all_designer_regions')),
         'breadcrumb' => array(
             array('label' => lang('All Designer Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_designer_regions'),
-            array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Designer Region')))),
+            array('label' => lang('Edit Designer Region')),
         ),
     ]) . '
 <main id="content" class="container-fluid">
