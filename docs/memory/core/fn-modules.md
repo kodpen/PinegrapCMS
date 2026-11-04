@@ -204,6 +204,7 @@ description: Generated from the module field of the memory files: each includes/
 - `widgets_affiliate_sign_up`: [[affiliate-sign-up-widget]]
 - `widgets_attrs`: [[widget-attr-bindings]]
 - `widgets_billing_information`: [[billing-information-widget]]
+- `widgets_booking`: [[booking-widget]]
 - `widgets_cart`: [[cart-tax-estimate]], [[express-order-tax-address]]
 - `widgets_catalog`: [[catalog-item-checkout-options-tab]], [[comments-block-product-page]]
 - `widgets_comments`: [[comments-widget]], [[comments-widget-decisions]], [[comments-widget-email-items]], [[comments-widget-form]], [[comments-widget-pages]], [[comments-widget-replies]], [[comments-widget-watch-staff]]
