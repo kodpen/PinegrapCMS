@@ -128,6 +128,17 @@ function test_contact_screens_icon_ligatures_hidden()
 	}
 }
 
+// The group list names the By hand / By rule column Membership and puts
+// Members over the member count, as the cells come.
+function test_contact_screens_group_list_headings_match_cells()
+{
+	$source = contact_screens_source('view_contact_groups.php');
+
+	pg_assert_true((bool) preg_match("/<td class=\"align-middle\">' \\. \\\$output_kind \\. '<\\/td>\\s*<td class=\"align-middle text-end\">' \\. \\\$output_members \\. '<\\/td>/", $source), 'cells: kind, then members');
+	pg_assert_true((bool) preg_match("/<th>' \\. lang\\('Membership'\\) \\. '<\\/th>\\s*<th class=\"text-end\">' \\. lang\\('Members'\\) \\. '<\\/th>/", $source), 'headings: Membership, then Members');
+	pg_assert_false(strpos($source, "lang('Contacts') . '</th>") !== false, 'no Contacts heading over the count');
+}
+
 // A save opened without a send to (the hidden field posts it empty) ends on
 // the contacts list and announces itself there.
 function test_contact_screens_edit_contact_saved_notice_without_send_to()
