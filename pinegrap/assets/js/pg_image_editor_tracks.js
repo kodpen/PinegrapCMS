@@ -93,7 +93,7 @@
             var r = ruler.getBoundingClientRect();
 
             if (r.width > 0) {
-                self.seek(Math.round((e.clientX - r.left) / r.width * end / 10) * 10);
+                self.seek(self.motionStart() + Math.round((e.clientX - r.left) / r.width * end / 10) * 10);
             }
         });
 
@@ -264,16 +264,17 @@
         });
     };
 
-    // The playhead's line over the lanes, at rest at 0.
+    // The playhead's line over the lanes, at rest at 0; dimmed while the
+    // playhead is in another scene (motionNow() outside this one).
     Editor.prototype.updateTracks = function () {
-        var e = this.trackEls, now = (this.time === null) ? 0 : this.time;
+        var e = this.trackEls, now = this.motionNow(), end = this.motionEnd();
 
         if (!e) {
             return;
         }
 
-        e.playhead.style.setProperty('--pgie-trat', String(Math.max(0, Math.min(1, now / this.motionEnd()))));
-        e.playhead.classList.toggle('pgie-tridle', this.time === null);
+        e.playhead.style.setProperty('--pgie-trat', String(Math.max(0, Math.min(1, (now || 0) / end))));
+        e.playhead.classList.toggle('pgie-tridle', (now === null) || (now < 0) || (now > end));
     };
 
     Editor.inits.push(function () {

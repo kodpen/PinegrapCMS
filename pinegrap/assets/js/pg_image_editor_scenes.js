@@ -8,10 +8,14 @@
  * and that transition's time, and duplicates, deletes or moves it.
  *
  * The open scene's layers are the document's own (M.sceneOpen()), so every
- * tool edits it as before; Play shows the open scene. Save animation draws
- * the scenes one after another (renderFrame() at the whole animation's
- * time), the previous scene's last moment under the next one's first while
- * a transition runs.
+ * tool edits it as before. The play bar's playhead, scrub and clock run
+ * over every scene: the stage shows the scene the playhead is in (its
+ * layers drawn from the closed scene's entry, never written to the
+ * document) and a transition as Save animation draws it, then the open
+ * scene again once the preview ends. Save animation draws the scenes one
+ * after another (renderFrame() at the whole animation's time), the
+ * previous scene's last moment under the next one's first while a
+ * transition runs. A card dragged along the strip moves its scene.
  *
  * A part of window.PgImageEditor, bundled after pg_image_editor_render.js
  * (pg_js_bundles()); it hangs its code on the editor through
@@ -28,6 +32,10 @@
 
     var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, t = X.t, el = X.el, icon = X.icon, section = X.section, button = X.button;
     var PHONE = '(max-width: 599.98px)';
+    // A transition's frame on the stage is drawn at most this many pixels wide.
+    var FX_MAX = 1600;
+    // A card moved this far is dragged, not clicked.
+    var DRAG_PX = 6;
     var TRANSITION_ICONS = { none: 'm_none', fade: 'm_fade', slide: 'm_slide', zoom: 'm_zoom', wipe: 'm_wipe' };
 
     X.icons.s_earlier = 'M19 12H5M11 6l-6 6 6 6';
@@ -73,6 +81,213 @@
         }
 
         this.sceneChange(function (doc) { M.sceneAdd(doc, copy); });
+    };
+
+    // ---- the whole timeline ----
+
+    // With two scenes or more the play bar runs over all of them; the open
+    // scene's layers move by their own time (motionNow()). sceneShift, while
+    // a closed scene is drawn, is where that scene starts.
+    var motionTotal = Editor.prototype.motionTotal, motionStart = Editor.prototype.motionStart;
+
+    Editor.prototype.motionTotal = function () {
+        return (M.sceneCount(this.doc) < 2) ? motionTotal.call(this) : M.sceneTotal(this.doc);
+    };
+
+    Editor.prototype.motionStart = function () {
+        if (this.sceneShift !== null) {
+            return this.sceneShift;
+        }
+
+        return (M.sceneCount(this.doc) < 2) ? motionStart.call(this) : M.sceneStartAt(this.doc, M.sceneIndex(this.doc));
+    };
+
+    // The stage at the playhead: the scene it is in, drawn as a document of
+    // its own while the open scene's stays as it is; over a transition the
+    // frame Save animation would draw.
+    var applyMotion = Editor.prototype.applyMotion;
+
+    Editor.prototype.applyMotion = function () {
+        if ((this.time === null) || (M.sceneCount(this.doc) < 2)) {
+            this.sceneShow(null);
+            return applyMotion.call(this);
+        }
+
+        var live = this.doc, at = M.sceneAt(live, this.time);
+
+        this.sceneShow(at.index);
+
+        if (this.sceneShown === null) {
+            applyMotion.call(this);
+        } else {
+            this.doc = M.sceneView(live, at.index);
+            this.sceneShift = this.time - at.local;
+
+            try {
+                applyMotion.call(this);
+            } finally {
+                this.doc = live;
+                this.sceneShift = null;
+            }
+        }
+
+        this.sceneFx(at.from !== null);
+    };
+
+    // Shows scene index on the stage (null or the open one: the document's
+    // own layers): its layers, its background; the selection belongs to the
+    // open scene and hides meanwhile.
+    Editor.prototype.sceneShow = function (index) {
+        var live = this.doc, open = M.sceneIndex(live), other = (index !== null) && (index !== open) && (M.sceneCount(live) > 1);
+
+        if (other && ((index !== this.sceneShown) || (this.layerGroups !== this.sceneGroups))) {
+            this.doc = M.sceneView(live, index);
+            this.layersDirty = true;
+
+            try {
+                this.renderLayers();
+            } finally {
+                this.doc = live;
+            }
+
+            this.sceneGroups = this.layerGroups;
+        } else if (!other && (this.sceneShown !== null)) {
+            this.layersDirty = true;
+            this.renderLayers();
+        }
+
+        if (!other && (this.sceneShown === null)) {
+            return;
+        }
+
+        this.sceneShown = other ? index : null;
+
+        if (live.artboard) {
+            var bg = other ? M.sceneList(live)[index].background : live.artboard.background;
+
+            this.frame.style.background = (bg === 'transparent') ? '' : bg;
+            this.frame.classList.toggle('pgie-checker', bg === 'transparent');
+        }
+
+        if (this.selEl) {
+            this.selEl.style.visibility = other ? 'hidden' : '';
+        }
+
+        if (this.keyPathEl) {
+            this.keyPathEl.style.visibility = other ? 'hidden' : '';
+        }
+    };
+
+    // A transition on the stage: the whole animation's frame at the
+    // playhead on a canvas over the frame (the scenes' layers hidden under
+    // it once it is drawn). A frame still drawing lets the next moments
+    // pass and draws the last one asked for.
+    Editor.prototype.sceneFx = function (on) {
+        var self = this, fx = this.sceneFxState;
+
+        if (!on) {
+            if (fx.el) {
+                fx.el.remove();
+                fx.el = null;
+                this.layersSvg.style.visibility = '';
+            }
+
+            fx.want = false;
+            return;
+        }
+
+        if (!fx.el) {
+            fx.el = el('canvas', { class: 'pgie-sfx', 'aria-hidden': 'true' });
+            this.frame.appendChild(fx.el);
+        }
+
+        if (fx.busy) {
+            fx.want = true;
+            return;
+        }
+
+        var vr = this.viewRect(), k = this.view.k, dpr = Math.min(2, window.devicePixelRatio || 1);
+        var s = Math.min(dpr, FX_MAX / (Math.max(vr.w, vr.h) * k)), canvas = fx.el;
+        var w = Math.max(1, Math.round(vr.w * k * s)), h = Math.max(1, Math.round(vr.h * k * s));
+
+        fx.busy = true;
+        fx.want = false;
+
+        this.renderFrame(this.time, w, h, canvas).then(function () {
+            fx.busy = false;
+
+            if (fx.el === canvas) {
+                self.layersSvg.style.visibility = 'hidden';
+
+                if (fx.want && (self.time !== null)) {
+                    self.sceneFx(true);
+                }
+            }
+        }, function () {
+            fx.busy = false;
+        });
+    };
+
+    // Back to the open scene when the playhead leaves (a press on the
+    // stage, another tool, a scene change).
+    var stopMotion = Editor.prototype.stopMotion;
+
+    Editor.prototype.stopMotion = function (quiet) {
+        this.sceneFx(false);
+        stopMotion.call(this, quiet);
+        this.sceneShow(null);
+    };
+
+    // A preview that played through to the end without repeating ends on
+    // the scene that was open, at rest.
+    var pause = Editor.prototype.pause;
+
+    Editor.prototype.pause = function () {
+        var ended = (M.sceneCount(this.doc) > 1) && (this.time !== null) && (this.time >= this.motionTotal()) && (this.previewEnd === null);
+
+        pause.call(this);
+
+        if (ended && (this.sceneShown !== null)) {
+            this.stopMotion();
+            this.render();
+        }
+    };
+
+    // Play first readies every scene's pictures, which a transition paints.
+    var play = Editor.prototype.play;
+
+    Editor.prototype.play = function () {
+        if (M.sceneCount(this.doc) > 1) {
+            this.layersReady();
+        }
+
+        return play.apply(this, arguments);
+    };
+
+    // Where each scene starts, under the scrub; the open one's span marked.
+    var motionBar = Editor.prototype.motionBar;
+
+    Editor.prototype.motionBar = function () {
+        var bar = motionBar.call(this), list = M.sceneList(this.doc), total = this.motionTotal(), track = bar.querySelector('.pgie-mtrack');
+
+        if ((list.length < 2) || !track || !(total > 0)) {
+            return bar;
+        }
+
+        var marks = el('div', { class: 'pgie-mscenes', 'aria-hidden': 'true' }), start = 0;
+
+        list.forEach(function (s) {
+            var span = el('span', { class: s.open ? 'on' : '' });
+
+            span.style.left = (100 * start / total) + '%';
+            span.style.width = (100 * s.duration / total) + '%';
+            marks.appendChild(span);
+            start += s.duration;
+        });
+
+        track.insertBefore(marks, track.firstChild);
+
+        return bar;
     };
 
     // ---- the strip ----
@@ -135,8 +350,16 @@
             }
 
             var card = el('button', { type: 'button', class: 'pgie-scard' + (open ? ' on' : '') + (s.open ? ' pgie-sopen' : ''), title: name, 'aria-label': name + ', ' + seconds(s.duration), onclick: function () {
-                self.openScene(s.id);
+                if (!self.sceneDragged) {
+                    self.openScene(s.id);
+                }
+
+                self.sceneDragged = false;
             } }, [el('span', { class: 'pgie-snum', text: String(i + 1) }), self.sceneThumb(s)]);
+
+            if (list.length > 1) {
+                card.addEventListener('pointerdown', function (e) { self.sceneDragStart(e, card, s.id, i); });
+            }
 
             if (s.open) {
                 card.setAttribute('aria-current', 'true');
@@ -154,6 +377,68 @@
         strip.appendChild(el('div', { class: 'pgie-scene', role: 'listitem' }, [add]));
 
         return strip;
+    };
+
+    // A card dragged along the strip (a mouse or a pen: a finger scrolls the
+    // strip, the panel's Move earlier and Move later do it there) follows
+    // the pointer and moves its scene where it is let go: one undo step.
+    Editor.prototype.sceneDragStart = function (e, card, id, at) {
+        var self = this, x0 = e.clientX, moved = false, item = card.parentNode, strip = item.parentNode;
+
+        if ((e.pointerType === 'touch') || (e.button !== 0)) {
+            return;
+        }
+
+        var items = Array.prototype.filter.call(strip.querySelectorAll('.pgie-scard'), function (c) { return c !== card; });
+
+        try {
+            card.setPointerCapture(e.pointerId);
+        } catch (err) {
+            // A pointer the browser no longer tracks: the drag still follows moves.
+        }
+
+        var slot = function (ev) {
+            return M.sceneSlot(items.map(function (c) {
+                var r = c.getBoundingClientRect();
+
+                return r.left + r.width / 2;
+            }), ev.clientX);
+        };
+
+        var move = function (ev) {
+            moved = moved || (Math.abs(ev.clientX - x0) > DRAG_PX);
+
+            if (moved) {
+                item.classList.add('pgie-sdrag');
+                item.style.transform = 'translateX(' + (ev.clientX - x0) + 'px)';
+            }
+        };
+
+        var up = function (ev) {
+            card.removeEventListener('pointermove', move);
+            card.removeEventListener('pointerup', up);
+            card.removeEventListener('pointercancel', up);
+            item.classList.remove('pgie-sdrag');
+            item.style.transform = '';
+
+            if (!moved) {
+                return;
+            }
+
+            // The click that follows the release is the drag's, not a pick.
+            self.sceneDragged = true;
+            window.setTimeout(function () { self.sceneDragged = false; }, 0);
+
+            var to = (ev.type === 'pointerup') ? slot(ev) : at;
+
+            if (to !== at) {
+                self.sceneChange(function (doc) { M.sceneMove(doc, id, to - at); });
+            }
+        };
+
+        card.addEventListener('pointermove', move);
+        card.addEventListener('pointerup', up);
+        card.addEventListener('pointercancel', up);
     };
 
     // The strip as a row under the play bar (Editor.motionDocks).
@@ -401,6 +686,11 @@
         this.sceneThumbs = new WeakMap();
         this.scenePair = null;
         this.sceneDock = null;
+        this.sceneShown = null;
+        this.sceneShift = null;
+        this.sceneGroups = null;
+        this.sceneFxState = { el: null, busy: false, want: false };
+        this.sceneDragged = false;
     });
 
     Editor.motionDocks.push({ key: Editor.prototype.scenesKey, node: Editor.prototype.scenesNode, update: function () {}, note: function () { return null; } });

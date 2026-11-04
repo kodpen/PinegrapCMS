@@ -4666,6 +4666,27 @@
         return sceneList(doc).reduce(function (sum, s) { return sum + s.duration; }, 0);
     }
 
+    // Where scene i starts on the whole timeline (ms): the scenes before it
+    // back to back; 0 for the first scene or a document without scenes.
+    function sceneStartAt(doc, i) {
+        return sceneList(doc).slice(0, Math.max(0, i)).reduce(function (sum, s) { return sum + s.duration; }, 0);
+    }
+
+    // The place a dragged card lands at: mids are the middles of the other
+    // cards (in order, without the dragged one), x the pointer's; answers
+    // how many of them stay before it.
+    function sceneSlot(mids, x) {
+        var n = 0;
+
+        (mids || []).forEach(function (m) {
+            if (x > m) {
+                n++;
+            }
+        });
+
+        return n;
+    }
+
     // The moment t of the whole animation: the scene playing (index) at its
     // own time (local) and, while the previous scene's transition runs over
     // the start of this one, that scene (from, shown at its end), the kind
@@ -4746,7 +4767,7 @@
         SCENE_MAX: SCENE_MAX, SCENE_LAYERS_MAX: SCENE_LAYERS_MAX, SCENE_TRANSITIONS: SCENE_TRANSITIONS, SCENE_TRANSITION_MIN: SCENE_TRANSITION_MIN,
         SCENE_TRANSITION_MAX: SCENE_TRANSITION_MAX, sceneCount: sceneCount, sceneIndex: sceneIndex, sceneTransition: sceneTransition, sceneList: sceneList,
         sceneStart: sceneStart, sceneOpen: sceneOpen, sceneAdd: sceneAdd, sceneDelete: sceneDelete, sceneMove: sceneMove, sceneSet: sceneSet,
-        sceneTotal: sceneTotal, sceneAt: sceneAt, sceneView: sceneView, sceneTransitionAt: sceneTransitionAt
+        sceneTotal: sceneTotal, sceneStartAt: sceneStartAt, sceneSlot: sceneSlot, sceneAt: sceneAt, sceneView: sceneView, sceneTransitionAt: sceneTransitionAt
     };
 
     var api = {
