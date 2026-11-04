@@ -364,8 +364,8 @@ function pg_booking_widget_mark(&$node)
  */
 function pg_booking_widget_parts()
 {
-    return array('booking_step_service', 'booking_step_staff', 'booking_step_when', 'booking_step_details',
-        'booking_staff', 'booking_calendar', 'booking_times', 'booking_summary', 'booking_status');
+    return array('booking_step_service', 'booking_step_staff', 'booking_step_when', 'booking_step_details', 'booking_step_done',
+        'booking_staff', 'booking_calendar', 'booking_times', 'booking_summary', 'booking_form', 'booking_done', 'booking_status');
 }
 
 /**
@@ -572,6 +572,60 @@ function pg_booking_busy_between($staff, $from, $until, $now)
     return $busy;
 }
 
+/**
+ * The details of the signed-in visitor for the widget's form: the contact's
+ * name and phone and the account's e-mail. Empty values for a guest.
+ *
+ * @return array name, email, phone, user_id
+ */
+function pg_booking_widget_visitor()
+{
+    $visitor = array('name' => '', 'email' => '', 'phone' => '', 'user_id' => 0);
+
+    if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN || !defined('USER_ID')) {
+        return $visitor;
+    }
+
+    $visitor['user_id'] = (int) USER_ID;
+    $visitor['email'] = defined('USER_EMAIL_ADDRESS') ? (string) USER_EMAIL_ADDRESS : '';
+    $contact = (defined('USER_CONTACT_ID') && USER_CONTACT_ID)
+        ? db_item("SELECT first_name, last_name, mobile_phone, home_phone, business_phone FROM contacts WHERE id = '" . (int) USER_CONTACT_ID . "'")
+        : null;
+
+    if (is_array($contact)) {
+        $visitor['name'] = pg_contact_display_name($contact['first_name'], $contact['last_name']);
+
+        foreach (array('mobile_phone', 'home_phone', 'business_phone') as $column) {
+            if (($visitor['phone'] === '') && (trim((string) $contact[$column]) !== '')) {
+                $visitor['phone'] = trim((string) $contact[$column]);
+            }
+        }
+    }
+
+    return $visitor;
+}
+
+/**
+ * The address of the site's privacy notice for the consent box: the page
+ * the design templates install for it ("privacy-policy" in the site's
+ * language, or in English). '' when the site has none.
+ *
+ * @return string
+ */
+function pg_booking_widget_privacy_url()
+{
+    static $url = null;
+
+    if ($url === null) {
+        $names = array_unique(array(lang('privacy-policy'), 'privacy-policy'));
+        $name = (string) db_value(
+            "SELECT page_name FROM page WHERE page_name IN ('" . implode("', '", array_map('e', $names)) . "') ORDER BY page_name = '" . e($names[0]) . "' DESC LIMIT 1");
+        $url = ($name !== '') ? OUTPUT_PATH . encode_url_path($name) : '';
+    }
+
+    return $url;
+}
+
 /* ---------------------------------------------------------------------------
    Drawing
    --------------------------------------------------------------------------- */
@@ -604,6 +658,8 @@ function pg_booking_widget_settings($services, $staff)
             'failed'   => lang('Something went wrong. Please try again.'),
             'times'    => lang('Free times on {day}'),
             'zoneNote' => lang('Times are in {zone}.'),
+            'sending'  => lang('Booking your appointment…'),
+            'check'    => lang('Please check the marked fields.'),
         ),
     );
 }
@@ -613,11 +669,14 @@ function pg_booking_widget_settings($services, $staff)
 // loop_area: one row per service a visitor may book (pg_booking_widget_rows()).
 // Row tokens: ^^__service_id^^, ^^__service_name^^, ^^__service_description^^,
 // ^^__service_length^^ ("60 min"), ^^__service_price^^ ('' when free).
-// Flags: has_services, no_services; row: service_has_price,
+// Static: ^^__service_total^^, ^^__privacy_url^^ (the privacy notice page,
+// pg_booking_widget_privacy_url()).
+// Flags: has_services, no_services, has_privacy_page; row: service_has_price,
 // service_has_description.
 // Parts by section binding (pg_booking_widget_parts()) and buttons by action
 // binding (booking_service, booking_back), drawn by assets/js/pg_booking.js.
-// $data: for the tests, array(services, staff) in place of the tables.
+// $data: for the tests, array(services, staff, privacy url) in place of the
+// tables.
 function _render_system_widget_booking($tree_json, $widget_id, $cfg = array(), $mode = 'preview', $data = null)
 {
     static $placement = 0;
@@ -628,12 +687,14 @@ function _render_system_widget_booking($tree_json, $widget_id, $cfg = array(), $
 
     list($services, $staff) = is_array($data) ? $data : pg_booking_widget_data();
     $rows = pg_booking_widget_rows($services);
+    $privacy = isset($data[2]) ? (string) $data[2] : (is_array($data) ? '' : pg_booking_widget_privacy_url());
 
     _eo_apply_visibility_bindings($tree, array(
         'has_services'            => (bool) $rows,
         'no_services'             => !$rows,
         'service_has_price'       => true,
         'service_has_description' => true,
+        'has_privacy_page'        => $privacy !== '',
     ));
     _pg_inject_messages_node($tree, 'booking');
     pg_booking_widget_mark($tree);
@@ -661,6 +722,7 @@ function _render_system_widget_booking($tree_json, $widget_id, $cfg = array(), $
     $static = trim(_render_tree_node($split['static_tree'], 0, 0));
     $static = pg_sw_uniquify_row_ids(pg_sw_sweep_tokens(_pg_sw_fill_tokens($static, pg_sw_escape_token_values(array(
         '__service_total' => (string) count($rows),
+        '__privacy_url'   => $privacy,
     )))), $widget_id, 1000 + $placed);
     $html = str_replace('<!--pg-loop-slot-->', $loop_rendered, $static);
 
@@ -752,7 +814,7 @@ function pg_booking_throttled($kind)
 function pg_booking_release_session_hold($now)
 {
     $id = isset($_SESSION['software']['booking_hold']) ? (int) $_SESSION['software']['booking_hold'] : 0;
-    unset($_SESSION['software']['booking_hold']);
+    unset($_SESSION['software']['booking_hold'], $_SESSION['software']['booking_hold_slot']);
 
     if (($id > 0) && pg_booking_ready()) {
         db_q("DELETE FROM bookings WHERE id = ? AND status = 'held'", array($id));
@@ -892,6 +954,103 @@ function pg_booking_slots_request($request, $now)
     }
 
     $_SESSION['software']['booking_hold'] = (int) $held['id'];
+    $_SESSION['software']['booking_hold_slot'] = array($service_id, $staff_id, $start);
+    $visitor = pg_booking_widget_visitor();
+    unset($visitor['user_id']);
 
-    return array('ok' => true, 'hold' => array('until' => $now + ((int) $policy['hold_minutes'] * 60), 'label' => pg_booking_time_label($start, $policy['zone'])));
+    // The signed-in visitor's details fill the form: the page itself is the
+    // same for everyone and may come from the page cache.
+    return array('ok' => true, 'hold' => array('until' => $now + ((int) $policy['hold_minutes'] * 60), 'label' => pg_booking_time_label($start, $policy['zone'])), 'visitor' => $visitor);
+}
+
+/**
+ * Books the slot this session holds with the visitor's details. A hold that
+ * ran out is booked anyway while its time is still free; otherwise the
+ * answer sends the visitor back to the times ("expired" or "taken").
+ *
+ * @param array $request decoded body: name, email, phone, notes, consent
+ * @param int   $now
+ * @return array
+ */
+function pg_booking_confirm_request($request, $now)
+{
+    $details = pg_booking_widget_details_clean($request);
+
+    if ($details['errors']) {
+        return array('ok' => false, 'error' => 'invalid', 'fields' => $details['errors'], 'message' => lang('Please check the marked fields.'));
+    }
+
+    $expired = array('ok' => false, 'error' => 'expired', 'message' => lang('The time we kept for you ran out and is no longer free. Please pick another one.'));
+    $id = isset($_SESSION['software']['booking_hold']) ? (int) $_SESSION['software']['booking_hold'] : 0;
+    $slot = (isset($_SESSION['software']['booking_hold_slot']) && is_array($_SESSION['software']['booking_hold_slot'])) ? $_SESSION['software']['booking_hold_slot'] : array();
+
+    if (($id <= 0) || (count($slot) !== 3)) {
+        return $expired;
+    }
+
+    list($service_id, $staff_id, $start) = array_map('intval', array_values($slot));
+    list($services, $staff) = pg_booking_widget_data();
+    $service = null;
+
+    foreach ($services as $row) {
+        if ((int) $row['id'] === $service_id) {
+            $service = $row;
+        }
+    }
+
+    $staff = array_values(array_filter(pg_booking_staff_for($staff, $service_id), function ($row) use ($staff_id) {
+        return (int) $row['id'] === $staff_id;
+    }));
+
+    if (($service === null) || !$staff) {
+        return $expired;
+    }
+
+    $policy = pg_booking_widget_policy();
+    $visitor = pg_booking_widget_visitor();
+    $booking = $details['values'] + array(
+        'id'         => $id,
+        'user_id'    => $visitor['user_id'],
+        'service'    => $service,
+        'service_id' => $service_id,
+        'staff_id'   => $staff_id,
+        'start_at'   => $start,
+    );
+    $status = !empty($policy['auto_confirm']) ? 'confirmed' : 'requested';
+    $done = pg_booking_confirm($booking, $status, $now);
+
+    if ($done['answer'] === 'expired') {
+        // The hold ran out: book the time at once when the day still offers it.
+        $day = (new DateTime('@' . $start))->setTimezone(new DateTimeZone($policy['zone']))->format('Y-m-d');
+        $midnight = new DateTime($day . ' 00:00:00', new DateTimeZone($policy['zone']));
+        $from = $midnight->getTimestamp() - 86400;
+        $until = $midnight->modify('+1 day')->getTimestamp() + 86400;
+        $offered = false;
+
+        foreach (pg_booking_day_times($service, $staff, $day, pg_booking_busy_between($staff, $from, $until, $now), $now, $policy) as $time) {
+            $offered = $offered || ($time['start'] === $start);
+        }
+
+        if (!$offered) {
+            pg_booking_release_session_hold($now);
+            return $expired;
+        }
+
+        unset($booking['id']);
+        $done = pg_booking_confirm($booking, $status, $now);
+    }
+
+    if ($done['answer'] === 'taken') {
+        pg_booking_release_session_hold($now);
+        return array('ok' => false, 'error' => 'taken', 'message' => pg_booking_widget_taken_text());
+    }
+
+    if ($done['answer'] !== 'ok') {
+        return array('ok' => false, 'error' => 'failed', 'message' => lang('Something went wrong. Please try again.'));
+    }
+
+    // The row is a booking now: forget it, so a later release leaves it alone.
+    unset($_SESSION['software']['booking_hold'], $_SESSION['software']['booking_hold_slot']);
+
+    return array('ok' => true, 'status' => $status, 'message' => pg_booking_widget_done_text($status, pg_booking_texts()));
 }

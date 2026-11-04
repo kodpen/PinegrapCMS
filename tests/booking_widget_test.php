@@ -225,3 +225,37 @@ function test_booking_widget_details_clean()
 	$arrays = pg_booking_widget_details_clean(array('name' => array('x'), 'email' => array('a@b.co')));
 	pg_assert_same(array('name', 'email'), array_keys($arrays['errors']), 'a list is no value');
 }
+
+function test_booking_widget_render_details()
+{
+	$node = function ($tag, $props, $children = array()) {
+		return array('type' => 'semantic', 'props' => array('tag' => $tag) + $props, 'children' => $children);
+	};
+	$tree = json_encode(array('type' => 'root', 'props' => array(), 'children' => array(
+		$node('form', array('_bindings' => array('section' => 'booking_form')), array(
+			$node('span', array('_bindings' => array('eo_visible_if' => 'has_privacy_page')), array(
+				$node('a', array('text' => 'Privacy', 'href' => '#', '_bindings' => array('href' => '__privacy_url'))),
+			)),
+		)),
+		$node('div', array('_bindings' => array('section' => 'booking_step_done')), array(
+			$node('p', array('_bindings' => array('section' => 'booking_done'))),
+		)),
+	)));
+	$services = array(array('id' => 3, 'name' => 'Cut', 'description' => '', 'length_minutes' => 45, 'price' => 0));
+	$staff = array(array('id' => 9, 'user_id' => 1, 'name' => 'Ayşe', 'service_ids' => '[3]', 'enabled' => 1));
+
+	$html = _render_system_widget_booking($tree, 43, array(), 'preview', array($services, $staff, '/privacy-policy'));
+	pg_assert_contains('data-pg-booking-part="form"', $html);
+	pg_assert_contains('data-pg-booking-part="step_done"', $html);
+	pg_assert_contains('data-pg-booking-part="done"', $html);
+	pg_assert_contains('href="/privacy-policy"', $html, 'the consent box links the privacy notice');
+
+	$none = _render_system_widget_booking($tree, 44, array(), 'preview', array($services, $staff, ''));
+	pg_assert_false(strpos($none, 'Privacy') !== false, 'no privacy page: no dead link');
+}
+
+function test_booking_widget_done_text()
+{
+	pg_assert_same('See you soon.', pg_booking_widget_done_text('confirmed', array('done' => 'See you soon.')), 'the site\'s own words');
+	pg_assert_true(pg_booking_widget_done_text('confirmed', array()) !== pg_booking_widget_done_text('requested', array()), 'a request waits, a booking is made');
+}

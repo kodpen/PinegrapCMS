@@ -4,7 +4,8 @@
  * The booking widget on a site page (includes/fn/widgets_booking.php): the
  * visitor picks a service, a staff member or "anyone", a free day on the
  * month calendar of pg_datetime.js, then a time, which booking_slots.php
- * holds for them. The widget's parts are found by the attributes their
+ * holds for them while they give their details; the confirm request books
+ * it, or sends them back to the times when it was taken or the hold ran out. The widget's parts are found by the attributes their
  * bindings gave them (data-pg-booking-part, data-pg-booking-action), never
  * by a class, so a designer may style and move them freely.
  *
@@ -16,7 +17,8 @@
 (function (window, document) {
     'use strict';
 
-    var STEPS = ['step_service', 'step_staff', 'step_when', 'step_details'];
+    var STEPS = ['step_service', 'step_staff', 'step_when', 'step_details', 'step_done'];
+    var FIELDS = ['name', 'email', 'phone', 'notes', 'consent'];
 
     function pad(n) {
         return (n < 10 ? '0' : '') + n;
@@ -234,8 +236,10 @@
         var self = this;
         this.post({ action: 'hold', service: this.state.service, staff: time.staff, start: time.start }).then(function (answer) {
             if (answer && answer.ok && answer.hold) {
-                self.state.held = { start: time.start, staff: time.staff, until: answer.hold.until };
-                var text = fill(self.w.held, { time: self.dayLabel(self.state.day) + ' ' + answer.hold.label, minutes: self.s.hold });
+                self.state.held = { start: time.start, staff: time.staff, until: answer.hold.until,
+                    when: self.dayLabel(self.state.day) + ' ' + answer.hold.label };
+                self.prefill(answer.visitor || {});
+                var text = fill(self.w.held, { time: self.state.held.when, minutes: self.s.hold });
                 var summary = self.part('summary');
                 if (summary) {
                     summary.textContent = text;
@@ -254,6 +258,126 @@
         });
     };
 
+    Widget.prototype.field = function (name) {
+        var form = this.part('form');
+        return form && form.elements ? form.elements.namedItem(name) : null;
+    };
+
+    // A signed-in visitor's details go into the boxes still empty.
+    Widget.prototype.prefill = function (visitor) {
+        var self = this;
+        ['name', 'email', 'phone'].forEach(function (name) {
+            var el = self.field(name);
+            if (el && !el.value && visitor[name]) {
+                el.value = visitor[name];
+            }
+        });
+    };
+
+    Widget.prototype.mark = function (errors) {
+        var self = this, first = null;
+        FIELDS.forEach(function (name) {
+            var el = self.field(name);
+            if (!el || !el.setAttribute) {
+                return;
+            }
+            var bad = Object.prototype.hasOwnProperty.call(errors, name);
+            el.setAttribute('aria-invalid', bad ? 'true' : 'false');
+            el.classList.toggle('is-invalid', bad);
+            if (bad && !first) {
+                first = el;
+            }
+        });
+        return first;
+    };
+
+    // Back to the times of the held day, which are read again: the time
+    // was taken by someone else or the hold ran out.
+    Widget.prototype.lost = function (message) {
+        var path = this.state.path;
+        while (path.length > 1 && path[path.length - 1] !== 'step_when') {
+            path.pop();
+        }
+        this.state.held = null;
+        this.show('step_when');
+        this.pickDay(this.state.day);
+        this.loadMonth(this.state.month);
+        this.say(message);
+    };
+
+    Widget.prototype.confirm = function () {
+        var self = this, form = this.part('form');
+        if (!form || this.sending) {
+            return;
+        }
+        if (form.checkValidity && !form.checkValidity()) {
+            if (form.reportValidity) {
+                form.reportValidity();
+            }
+            return;
+        }
+        var body = { action: 'confirm' };
+        FIELDS.forEach(function (name) {
+            var el = self.field(name);
+            if (el) {
+                body[name] = name === 'consent' ? !!el.checked : String(el.value || '');
+            }
+        });
+        var submit = form.querySelector('[type="submit"]');
+        this.sending = true;
+        if (submit) {
+            submit.disabled = true;
+        }
+        this.say(this.w.sending);
+        var finish = function () {
+            self.sending = false;
+            if (submit) {
+                submit.disabled = false;
+            }
+        };
+        this.post(body).then(function (answer) {
+            finish();
+            answer = answer || {};
+            if (answer.ok) {
+                self.mark({});
+                var done = self.part('done');
+                if (done) {
+                    done.textContent = answer.message || '';
+                }
+                var summary = self.part('summary');
+                var when = self.state.held ? self.state.held.when : '';
+                form.reset();
+                self.state.path = ['step_done'];
+                self.state.held = null;
+                self.show('step_done');
+                self.say((answer.message || '') + (when ? ' ' + when : ''));
+                if (summary) {
+                    summary.textContent = '';
+                }
+                return;
+            }
+            if (answer.error === 'invalid') {
+                var errors = answer.fields || {}, first = self.mark(errors), list = [];
+                Object.keys(errors).forEach(function (key) {
+                    list.push(errors[key]);
+                });
+                self.say((answer.message || self.w.check) + ' ' + list.join(' '));
+                if (first) {
+                    first.focus();
+                }
+                return;
+            }
+            if (answer.error === 'taken' || answer.error === 'expired') {
+                self.lost(answer.message || self.w.taken);
+                return;
+            }
+            self.say(answer.message || self.w.failed);
+        }, function () {
+            finish();
+            self.say(self.w.failed);
+        });
+    };
+
     Widget.prototype.start = function () {
         var self = this, status = this.part('status');
         if (status) {
@@ -261,6 +385,13 @@
             status.setAttribute('aria-live', 'polite');
         }
         this.show('step_service');
+        this.root.addEventListener('submit', function (event) {
+            var form = self.part('form');
+            if (form && event.target === form) {
+                event.preventDefault();
+                self.confirm();
+            }
+        });
         this.root.addEventListener('click', function (event) {
             var target = event.target && event.target.closest ? event.target.closest('[data-pg-booking-action]') : null;
             if (!target || !self.root.contains(target)) {
