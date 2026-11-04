@@ -21,16 +21,18 @@ description: External API (integration.php): find what the panel can do that the
 - X8 Store lookup lists, cut in three:
   - X8a the eight screens' write path (`fn/store_lookups.php`), `/store/referral-sources` CRUD: PR #6247 (`api/api-store-lookups.md`).
   - X8b `/store/ship-date-adjustments`, `/store/verified-addresses` CRUD (409 `adjustment_taken`): PR #6308.
-  - X8c `/store/arrival-dates` CRUD with `shipping_cutoffs` (a row the screen drops is 422): PR #6332 (`api/api-store-arrival-dates.md`).
+  - X8c `/store/arrival-dates` CRUD: PR #6332 (`api/api-store-arrival-dates.md`).
 - X9 Campaigns, `campaigns:*`, cut in three:
   - X9a `/campaigns/profiles` CRUD: PR #6353 (`api/api-campaign-profiles.md`).
   - X9b `GET /campaigns/sms`, event `campaign.sent`: PR #6480 (`api/api-sms-campaigns.md`).
   - X9c `POST /campaigns` (plain text), `/schedule`: PR #6502. HTML open (`api/api-campaign-create.md`).
 - X10 Calendars, cut in two:
   - X10a Calendars create/update/delete (`fn/calendar_writes.php`): PR #6375 (`api/api-calendar-writes.md`).
-  - X10b `/calendars/locations` CRUD, `GET /calendars/events/{id}/reservations`, event `calendar_event.reserved`: PR #6415 (`api/api-calendar-locations-reservations.md`).
+  - X10b locations CRUD, event reservations, `calendar_event.reserved`: PR #6415 (`api/api-calendar-locations-reservations.md`).
 - X11 Form submissions write, `GET /forms/{id}/fields`: PR #6424.
-- X12 CRUD for ads, ad regions, auto dialogs, common regions under `/design/`. `design:*`. No events.
+- X12 `/design/` CRUD, `design:*`, no events:
+  - X12a ads, ad regions: PR #6383 (`api/api-design-ads.md`).
+  - X12b auto dialogs, common regions; a converted common region refuses delete as its screen does (#5516).
 
 ## What is not a step?
 - Redirects: short links with `redirect_code` and `*` patterns, covered. Saved reports and the back-in-stock list wait for a client. Settings, firewall, sessions, backups, updates: no endpoint (#5238, `external-api-coverage-2.md`).

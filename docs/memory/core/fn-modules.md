@@ -11,6 +11,7 @@ description: Generated from the module field of the memory files: each includes/
 - `activitypub_inbox`: [[activitypub-inbox]]
 - `activitypub_moderation`: [[activitypub-moderation]]
 - `address_autocomplete`: [[address-autocomplete]]
+- `ads`: [[api-design-ads]]
 - `ai_prompts`: [[ai-prompt-version]]
 - `ai_visibility`: [[ai-visibility-figures]]
 - `audience_doors`: [[audiences-doors]]
