@@ -24,5 +24,5 @@ description: Steps V5-V11 of plans/visitors-overview.md, the sections: traffic, 
 - V10 (M) Pages joined with Google. After V2 and V9.
   - `includes/visitors/pages.php`: `pg_visitor_page_key()` (`-data.md`); one table per page: impressions, clicks, click rate, position (`pg_gsc_top('page', ...)`), visits and page views (landing-page breakdown and content rows), forms, orders, `page.seo_score` with its colour (`pg_seo_score_color()`); sortable by clicks, visits or score; rows one side alone knows stay in; links to the page and to its SEO panel. `tests/visitors_pages_test.php`: the key on Google addresses, pretty paths, the root and its aliases, encoded Turkish letters.
 
-- V11 (S) Places and devices section. After V1 and V2.
+- V11 (S) Places and devices section. Done (#6473).
   - `includes/visitors/places.php`: countries and cities as top lists with shares, the device split (desktop, mobile, tablet, unknown) as one bar, first against return visits; all four through `pg_visitor_breakdown()`.
