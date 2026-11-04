@@ -17,7 +17,10 @@ module: reseal
 ## What do the counts mean?
 - `pg_reseal_value()` answers `done`, `skipped` (does not open with the old key: unreadable already, left as it is) or `failed` (opened, could not be sealed); a `fields` entry counts each value inside.
 - The write is `UPDATE … WHERE column = <value read> [AND key = …]`; a failed write counts as failed. The run never stops halfway: the new key is already on disk.
-- `pg_reseal_run()` returns `areas` => area => done/skipped/failed and `seconds` (the plan's request-budget question). A missing table or column counts as nothing. The save's notice shows the done counts and a warning the failed ones (`ui/settings-security-cards.md`); the card's lists are split by the registry's area names.
+- `pg_reseal_run()` returns `areas` => area => done/skipped/failed and `seconds` (the plan's request-budget question). The save's notice shows the done counts and a warning the failed ones (`ui/settings-security-cards.md`). A missing table or column counts as nothing.
+
+## Is the save request enough for a big site?
+- Not measured on a real site yet: `seconds` gives the time. If a site with thousands of two-step keys exceeds the request budget, the re-seal moves to the general job (`release/migration-long-steps.md` pattern); that is a decision question then, not before.
 
 ## Why is a JSON value checked after opening?
 - `iv` and `connect` values are AES-256-CBC without a MAC: a wrong key passes the padding check about once in 256 tries with garbage. `connect` values and `json` entries must decode to an array. A non-JSON value that was not sealed with the old key can be re-sealed as garbage; it was unreadable before, so nothing is lost.
