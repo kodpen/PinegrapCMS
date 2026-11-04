@@ -147,35 +147,30 @@ if (!$_POST) {
                 ' . (($back_order_id > 0) ? '<input type="hidden" name="back_order" value="' . $back_order_id . '" />' : '') . '
                 <input type="hidden" name="invoice_id" value="' . $invoice_id . '" />
 
+                <div class="row">
+                <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Return an Invoice') . '
-                    </div>
+                    </h2>
                     <div class="card-body">
                         <div class="row">
                             <div class="col-12 sm:col-6 lg:col-4 my-3">
-                                <div class="form-label fg-secondary">' . lang('Invoice') . '</div>
-                                <div><a href="' . h($invoice_url) . '">' . h($invoice['full_number']) . '</a></div>
-                            </div>
-                            <div class="col-12 sm:col-6 lg:col-4 my-3">
-                                <div class="form-label fg-secondary">' . lang('Account') . '</div>
-                                <div>' . h($invoice['account_title']) . '</div>
-                            </div>
-                            <div class="col-12 sm:col-4 lg:col-3 my-3">
                                 <label for="issue_date" class="form-label">' . lang('Date') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'text', 'id' => 'issue_date', 'data-pg-date' => '', 'name' => 'issue_date',
                                     'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                                     'autocomplete' => 'off')) . '
-                                ' . get_date_picker_format() . pg_fields_script() . '                            </div>
+                                ' . get_date_picker_format() . pg_fields_script() . '
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Lines') . '
-                    </div>
+                    </h2>
                     <div class="card-body p-0 position-relative table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead>
@@ -195,14 +190,35 @@ if (!$_POST) {
                         <div class="form-text">' . lang('Set a quantity to zero to leave that line out; a line below zero left at zero comes back with the goods in proportion. Returning everything gives back exactly what the invoice charged, to the kurus.') . '</div>
                     </div>
                 </div>
-
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                </div>
+                <!-- The invoice being returned is read, not filled: it sits
+                     beside the form, written after it, so on a narrow screen
+                     it does not push the date and the lines down. -->
+                <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                    <div class="position-sticky" style="top:3.3rem;">
+                        <div class="card my-7">
+                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Summary') . '</h2>
+                            <div class="card-body pt-0">
+                                <dl class="row mb-0">
+                                    <dt class="sm:col-5 fg-secondary fw-normal">' . lang('Invoice') . '</dt><dd class="sm:col-7"><a href="' . h($invoice_url) . '">' . h($invoice['full_number']) . '</a></dd>
+                                    <dt class="sm:col-5 fg-secondary fw-normal">' . lang('Account') . '</dt><dd class="sm:col-7 text-break">' . h((string) $invoice['account_title']) . '</dd>
+                                    <dt class="sm:col-5 fg-secondary fw-normal">' . lang('Invoice Date') . '</dt><dd class="sm:col-7">' . h(prepare_form_data_for_output((string) $invoice['issue_date'], 'date')) . '</dd>
+                                    <dt class="sm:col-5 fg-secondary fw-normal">' . lang('Invoice Total') . '</dt><dd class="sm:col-7 mb-0">' . h(erp_money_out_currency((int) $invoice['grand_total'], (string) $invoice['currency'])) . '</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><i class="bi bi-arrow-return-left me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Create the Return')) . '</span></button>
                         </div>
                     </div>
                 </nav>
+                </div>
+                </div>
             </form>
         </div>
     </div>
