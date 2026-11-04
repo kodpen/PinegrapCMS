@@ -610,6 +610,7 @@
     "Link text that does not say where it leads": "Nereye gittiğini söylemeyen bağlantı metni",
     "Link the site": "Siteyi bağla",
     "Link the site to Google Search Console": "Siteyi Google Search Console'a bağlayın",
+    "Link the site to Google Search Console to see here the searches that bring visitors, how often Google shows the pages and where they rank.": "Ziyaretçi getiren aramaları, Google'ın sayfaları ne sıklıkla gösterdiğini ve hangi sırada çıktıklarını burada görmek için siteyi Google Search Console'a bağlayın.",
     "Link to a card at {var:1}": "Bir {var:1} kartına bağla",
     "Link to a guide in the docs when one covers it.": "Konuyu anlatan bir rehber varsa ona bağlantı verin.",
     "Link to an ERP account": "Bir ERP carisine bağla",
