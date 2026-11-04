@@ -6263,15 +6263,17 @@ function _render_content_html($props, $pad, $kids = '')
             }
 
             // onerror handler: when the bound src 404s, swap to the
-            // placeholder. The `this.onerror=null` guard prevents an
-            // infinite loop if even the placeholder ever fails to load.
-            // A srcset or a <source> outranks src, so they go first. A bound
-            // image gets its srcset after the token is filled in
-            // (pg_img_responsive_html() on the widget's output), so it is
-            // given the same handler.
-            $onerror_attr = ($_sets || strpos($raw_src, '^^') !== false)
-                ? ' onerror="' . h("this.onerror=null;var p=this.parentNode;if(p&&p.nodeName==='PICTURE'){var s;while((s=p.querySelector('source')))p.removeChild(s);}this.removeAttribute('srcset');this.src='" . $_pg_no_img . "'") . '"'
-                : ' onerror="this.onerror=null;this.src=\'' . h($_pg_no_img) . '\'"';
+            // placeholder. The address stays out of the handler code, in
+            // data-pg-fallback: crawlers read a path inside an inline
+            // handler as a link and request the handler code as a URL, and
+            // "onerror=" in that URL is an XSS signature for the firewall.
+            // For the same reason the handler never assigns this.onerror;
+            // it removes the attribute it reads instead, so a placeholder
+            // that fails too is not retried. A srcset or a <source>
+            // outranks src, so they go first. A bound image gets its srcset
+            // after the token is filled in (pg_img_responsive_html() on the
+            // widget's output), so it is given the same handler.
+            $onerror_attr = ' data-pg-fallback="' . h($_pg_no_img) . '" onerror="' . h(pg_img_fallback_handler($_sets || strpos($raw_src, '^^') !== false)) . '"';
             $img_tag = '<img src="' . $src . '"' . $_resp . ' alt="' . $alt . '"' . pg_img_attr_string($_loading) . $w_attr . $h_attr
                 . ($cls ? ' class="' . $cls . '"' : '') . $obj_pos . $img_extra . $onerror_attr . '>';
 
