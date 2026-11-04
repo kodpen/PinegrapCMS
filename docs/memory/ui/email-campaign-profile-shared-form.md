@@ -28,4 +28,4 @@ description: The campaign profile create and edit screens share includes/forms/e
 - The edit screen passes `'page_gone'` in `$keep_pages`: a notice above the Page picker. `create_auto_email_campaigns()` skips an HTML profile whose page row is gone with a Site Log line instead of queuing a body without the page (#4033, PR #4183).
 
 ## How does "joined a group" send?
-- `contact_group_joined` (#AU5C), item `contact_group_id`: `pg_announce()` hands `contact_group.members_changed` to `pg_contact_group_joined_heard()` (`fn/mail.php`), one campaign per added contact. Offered once 11.0.170 widened both ENUMs.
+- `contact_group_joined` (#6659), item `contact_group_id`: `pg_announce()` hands `contact_group.members_changed` to `pg_contact_group_joined_heard()` (`fn/mail.php`), one campaign per added contact. Offered once 11.0.170 widened both ENUMs.
