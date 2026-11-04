@@ -155,6 +155,9 @@
         var format = function (value) {
             return Number(value).toLocaleString(locale, { maximumFractionDigits: 1 });
         };
+        var withUnit = function (value, unit) {
+            return format(value) + (unit ? ' ' + unit : '');
+        };
 
         document.querySelectorAll('canvas[data-pg-chart]').forEach(function (canvas) {
             var source = document.getElementById(canvas.getAttribute('data-pg-chart'));
@@ -167,6 +170,8 @@
             }
 
             var right = false;
+            // An axis is written in the unit of its first series.
+            var units = { left: null, right: null };
             var line = (data.type === 'line');
             // A dot on every day of a month is noise: points show on hover
             // only, unless the line has a handful of them.
@@ -176,9 +181,14 @@
 
                 right = right || (series.axis === 'right');
 
+                if (units[series.axis] === null) {
+                    units[series.axis] = series.unit || '';
+                }
+
                 return {
                     label: series.label,
                     data: series.data,
+                    unit: series.unit || '',
                     yAxisID: series.axis,
                     borderColor: colour,
                     // The first line of a chart sits on a light area of its
@@ -202,7 +212,7 @@
                     beginAtZero: true,
                     border: { display: false },
                     grid: { color: colours.grid, drawOnChartArea: position === 'left', drawTicks: false },
-                    ticks: { color: colours.text, padding: 8, maxTicksLimit: 5, callback: function (value) { return format(value); } }
+                    ticks: { color: colours.text, padding: 8, maxTicksLimit: 5, callback: function (value) { return withUnit(value, units[position]); } }
                 };
             };
 
@@ -217,11 +227,11 @@
                         legend: { display: datasets.length > 1, position: 'bottom', align: 'start', labels: { color: colours.text, usePointStyle: true, boxWidth: 8, boxHeight: 8, padding: 16 } },
                         tooltip: {
                             callbacks: {
-                                label: function (ctx) { return ctx.dataset.label + ': ' + format(ctx.parsed.y); },
+                                label: function (ctx) { return ctx.dataset.label + ': ' + withUnit(ctx.parsed.y, ctx.dataset.unit); },
                                 footer: function (items) {
                                     var notes = data.notes || [];
 
-                                    return (items.length && notes[items[0].dataIndex]) ? notes[items[0].dataIndex] : '';
+                                    return (items.length && notes[items[0].dataIndex]) ? String(notes[items[0].dataIndex]).split('\n') : '';
                                 }
                             }
                         }

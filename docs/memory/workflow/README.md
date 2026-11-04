@@ -55,7 +55,8 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-24.md: Decisions list, product part 24 (2026-11-01 on): Visitors overview, daily summary, channel rule, Search Console on pages, social likes and follows, image editor's new tools and video
 - decisions-made-product-25.md: Decisions list, product part 25 (2026-11-03 evening on): bookings on the Workspace calendar, reward points of a cancelled order, hand rows of a group filled by rules; the key reset warning
 - decisions-made-product-26.md: Decisions list, product part 26 (2026-11-04 on): the starter dumps stay deletable in the Backup Manager, with a confirmation that names the consequence
-- decisions-made-product-27.md: Decisions list, product part 27 (2026-11-04 midday on): image editor rail groups, Import, SVG as one layer, a context menu; the new logo; group triggers once per joined contact
+- decisions-made-product-27.md: Decisions list, product part 27 (2026-11-04 midday on): image editor rail groups, Import, SVG layer, context menu; group-join triggers; no Delete for a store credit card on the gift card screen
+- decisions-made-product-28.md: Decisions list, product part 28 (2026-11-04 afternoon on): a changed expense updates its active repeat; a duplicated campaign profile starts disabled; the new logo
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
@@ -75,7 +76,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-schema-9.md: Decisions list, schema part 9 (2026-11-03 on): columns of the external API coverage steps, the designer form fee, the booking slot key, the disabled user stamp
 - decisions-made-schema.md: Decisions list, schema part: steps approved in advance (ENUM appends in the 4.48 shape), the tables and columns approved on 2026-10-27 and 2026-10-28, who decides schema
 - decisions-made-seo.md: Decisions list, SEO part (2026-10-27/28): large image preview, site icon, main-host redirect, per-form structured-data type, author source and share-image field; defaults keep running sites
-- decisions-made-waf.md: Decisions list, firewall part: thresholds stay, a concurrent refusal is no offence, rate bans off the ladder, global limit before the session, no lock release, nothing served to a ban.
+- decisions-made-waf.md: Decisions list, firewall part: thresholds stay, concurrent refusal no offence, rate bans off the ladder, global limit before session, no lock release, nothing served to a ban, Claude Code unverified.
 - decisions-made-widgets.md: Decisions list, system widget part: conditions and required controls, translated text, equal old blocks (W16), gallery sources (W5), entity values (W8), 2026-10-27 answers, Photo Gallery folder.
 - decisions-made-workspace-2.md: Decisions list, workspace part 2 (2026-10-29 on): the channel menu holds only the channel's own items; creates in a chat go through /oluştur (/create): its rights and kinds; the sales quote stays
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold

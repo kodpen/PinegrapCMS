@@ -12,6 +12,9 @@ description: AI bot policy: training crawlers vs user fetchers, waf_ai_bots() ve
 - Fail-open ladder differs from rDNS: IP not matching a FRESH list (<=30 days) = `spoofed` (the list is complete by operator declaration); not matching a stale list = `unknown`; matching the list = always `verified`; no list = `unknown`.
 - An AI token with verdict `unknown` does NOT get good-bot privilege: `waf_handle_bot()` turns it into class `unverified` and applies the unknown-bot policy, so while the list is not yet fetched (fresh upgrade, failed fetch) a fake "ChatGPT-User" UA cannot get in on text alone; behaviour equals pre-4.6. For rDNS bots (`googlebot` etc.) `unknown` stays fail-open; this rule is only for `waf_ai_bots()` tokens.
 
+## Which Claude-User claim is never range-verified?
+- One naming `claude-code/` (Claude Code on a person's computer, from their own address): `waf_handle_bot()` skips `waf_verify_bot()` via `waf_bot_claim_unverifiable()`, so it is never `spoofed` and registers no offence. With `waf_allow_ai_fetchers` on it passes unverified (counted as `unverified`, no `waf_bot_verified()`); with the token only hand-typed it gets the unknown-bot policy (#6693, `workflow/decisions-made-waf.md`).
+
 ## Where does fetching happen?
 - There is NO HTTP in waf.php. Fetch only in `pg_waf_refresh_ai_ranges()` (`includes/fn/cron.php`, loaded through functions.php): the "Update Bot IP Lists" button on SEO › AI Crawlers (force, `seo.save.php`), dashboard WAF widget (6-hour attempt stamp), `waf_ranges_job.php` (cron catalog, daily).
 - A failed or empty fetch KEEPS the old rows: overwriting a good list would turn every real AI bot into an impostor.

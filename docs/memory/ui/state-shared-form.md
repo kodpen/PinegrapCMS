@@ -1,11 +1,14 @@
 ---
 name: state-shared-form
-description: add_state.php and edit_state.php draw the state/province options card and read its posted values through includes/forms/state_form.php; what each screen keeps
+description: add_state.php and edit_state.php draw the state/province wide layout (Options card, Summary, save bar) and read its posted values through includes/forms/state_form.php; what each screen keeps
 ---
 
 ## What is shared?
-- `includes/forms/state_form.php` (loaded with `require_once(PG_FUNCTIONS_DIR . …)` after `init.php`): `pg_state_form_card($values)` (name, code, country; `$values` null on create, which prints no values and no preselected country) and `pg_state_form_values($_POST)` (name, code, country id as text, in INSERT/UPDATE order). PR #2619.
+- `includes/forms/state_form.php` (loaded with `require_once(PG_FUNCTIONS_DIR . …)` after `init.php`): `pg_state_form_cards($values, $errors = array(), $status_rows = '')` (the form column with the Options card: name, code, country; `$values` null on create, which prints no values and the default country; and the sticky status column), `pg_state_form_status_row()`, `pg_state_form_layout($cards, $buttons)` (the row with the sticky save bar) and `pg_state_form_values($_POST)` (name, code, country id as text, in INSERT/UPDATE order). PR #2619.
 - A screen keeps its gates (`validate_user()`, `validate_ecommerce_access()`), the edit screen's not-found guard and record load, the form tag, the hidden `id`, buttons (edit adds Delete), the INSERT / UPDATE, the log line and the redirect.
+
+## How is the screen laid out?
+- The product_builder pattern (`ui/edit-screen-wide-layout.md`, B11, PR #6698): form column, sticky status column, sticky save bar. The Summary shows the name, the code and the country (the selected option's label, `pg_state_form_selected_label()`, empty for the 'Select a country' choice of a lost country) and follows the fields as they change; edit adds the Shipping Zones, Tax Zones and Verified Shipping Addresses it is in (`pg_state_form_delete_counts()`, read once as `$delete_counts` and passed to the Delete confirmation too) and Last Modified (`states.timestamp` and `user`). Edit's Delete is `formnovalidate`. Tests: `tests/state_form_test.php`.
 
 ## How is a taken code refused?
 - `pg_state_form_code_error($values, $stored, $except_id)` answers '…already in use by another state in this country…' when another state of the same country has the code (`pg_state_form_code_taken()`, db_q). Looked up only for a non-empty code, and on edit only when the code or the country changed; delete is never held back.

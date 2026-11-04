@@ -10,7 +10,7 @@ description: The Pinegrap logo (the squirrel's space window, the single-line wor
 - The drawing is a trace of the old mascot; the source pages and the loop's frames were made outside the repo.
 
 ## Which shape goes where?
-- Owner, 2026-11-04 (`workflow/decisions-made-product-27.md`): a narrow place shows the square mascot, a wide place the full logo, whatever the place showed before.
+- Owner, 2026-11-04 (`workflow/decisions-made-product-28.md`): a narrow place shows the square mascot, a wide place the full logo, whatever the place showed before.
 - The panel itself (header, loading curtain, installer, theme designer) moves; icons, files and the live site's image edit button (`add_edit_button_for_images()`, `frontend.src.js` and its hand-edited `.min.js` twin) stay still.
 
 ## How is the panel's logo drawn?

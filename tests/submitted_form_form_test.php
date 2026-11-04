@@ -210,3 +210,34 @@ function test_add_submitted_form_reads_the_pressed_button()
 	pg_assert_true(strpos($source, "field_in_session('save_for_later_button')") === false, 'the save for later button is not read from the session');
 	pg_assert_true(strpos($source, "isset(\$_POST['complete_button'])") !== false, 'the button of this request decides');
 }
+
+// The create and edit screens follow the wide edit layout: Form Data in the
+// form column, a sticky status column, a sticky save bar.
+function test_submitted_form_layout()
+{
+	$row = pg_submitted_form_status_row('Reference Code', '<b>X</b>', false);
+	pg_assert_contains('<dt class="fw-normal">Reference Code</dt>', $row, 'the label is the term');
+	pg_assert_contains('<b>X</b></dd>', $row, 'the value is printed as given');
+	pg_assert_contains('border-bottom', $row, 'a row before the last is ruled');
+	pg_assert_same(false, strpos(pg_submitted_form_status_row('A', 'B'), 'border-bottom'), 'the last row is not');
+
+	$html = pg_submitted_form_layout('<p>DATA</p>', '<p>STATUS</p>', '<button>SAVE</button>');
+	pg_assert_contains('col-12 lg:col-8 2xl:col-9 order-1', $html, 'form column');
+	pg_assert_contains('col-12 lg:col-4 2xl:col-3 order-2', $html, 'status column');
+	pg_assert_contains('style="top:3.3rem;"', $html, 'the status box sticks below the top bar');
+	pg_assert_contains('col-12 order-3 position-sticky', $html, 'sticky save bar');
+	pg_assert_contains('<button>SAVE</button>', $html, 'the buttons go in the bar');
+	pg_assert_same(true, strpos($html, 'DATA') < strpos($html, 'STATUS'), 'the status column follows the form column in source order');
+
+	$card = pg_submitted_form_status_card('Summary', '<dl>R</dl>');
+	pg_assert_contains('<h2 class="card-header', $card, 'the card title is a heading');
+	pg_assert_contains('<dl>R</dl>', $card, 'the body is printed as given');
+
+	foreach (array('add_submitted_form.php', 'edit_submitted_form.php') as $screen) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $screen);
+		pg_assert_contains('pg_submitted_form_layout(', $source, $screen . ' uses the shared layout');
+	}
+
+	$edit = file_get_contents(PG_FUNCTIONS_DIR . '/edit_submitted_form.php');
+	pg_assert_contains('form="pg_record_offline_payment"', $edit, 'the payment button in the status column posts its own form, not a nested one');
+}

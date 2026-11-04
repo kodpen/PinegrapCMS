@@ -1,6 +1,6 @@
 ---
 name: decisions-made-waf
-description: Decisions list, firewall part: thresholds stay, a concurrent refusal is no offence, rate bans off the ladder, global limit before the session, no lock release, nothing served to a ban.
+description: Decisions list, firewall part: thresholds stay, concurrent refusal no offence, rate bans off the ladder, global limit before session, no lock release, nothing served to a ban, Claude Code unverified.
 ---
 
 ## Which firewall counting rules are decided?
@@ -15,3 +15,6 @@ description: Decisions list, firewall part: thresholds stay, a concurrent refusa
 
 ## Is anything served to a banned address?
 - Owner, 2026-10-27 (issue #1989, "Q3 gerek yok"): no script, token or signed link or not; the IP list and the ban shield stay without exceptions. Reason: an exception is a way past the ban for whoever holds it. The rescue runs on the server (`waf_unban.php`) and Settings refuses a block entry covering the operator's own address (#2187, `waf/waf-self-rescue.md`). Not a missing rescue link.
+
+## Is Claude Code's Claude-User checked against Anthropic's ranges?
+- Owner, 2026-11-04 (issue #6675): no. A `Claude-User` UA naming `claude-code/` comes from the person's own address, so `waf_bot_claim_unverifiable()` skips the range check: never `spoofed`, no offence. Allowed AI assistants: passes as a visitor, never verified (no rate or country exemption); otherwise the unknown-bot policy (#6693). Reason: developers reading a site were auto-banned. Not a spoof hole.

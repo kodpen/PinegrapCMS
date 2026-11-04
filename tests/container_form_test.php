@@ -3,7 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the container form (includes/forms/container_form.php): which
- * posted length, width and height a container may be saved with.
+ * posted length, width and height a container may be saved with, and the
+ * wide edit layout of its create and edit screens.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -74,4 +75,38 @@ function test_container_figure_is_the_stored_decimal()
 	pg_assert_same('2.5000', pg_container_figure('2,5'), 'a decimal comma is read');
 	pg_assert_same('11.8110', pg_container_figure('11.811'), 'four places');
 	pg_assert_same('0', pg_container_figure(''), 'blank is 0');
+}
+
+function test_container_form_uses_the_wide_edit_layout()
+{
+	if (!defined('BASE_CURRENCY_SYMBOL')) {
+		define('BASE_CURRENCY_SYMBOL', '$');
+	}
+
+	$liveform = new class {
+		public function get_field_value($name)
+		{
+			return array('name' => 'Box <A>', 'enabled' => 1, 'length' => '10', 'width' => '8', 'height' => '4')[$name] ?? '';
+		}
+
+		public function check_field_error($name)
+		{
+			return false;
+		}
+	};
+
+	$html = pg_container_form_layout(pg_container_form_cards($liveform, pg_container_form_status_row('Last Modified', 'today')), '<button>Save</button>');
+
+	$form = strpos($html, 'lg:col-8 2xl:col-9 order-1');
+	$status = strpos($html, 'lg:col-4 2xl:col-3 order-2');
+	$bar = strpos($html, 'col-12 order-3 position-sticky');
+	pg_assert_true(($form !== false) && ($status !== false) && ($bar !== false), 'form column, status column and save bar are drawn');
+	pg_assert_true(($form < $status) && ($status < $bar), 'the status column follows the form column in source order');
+	pg_assert_contains('class="position-sticky" style="top:3.3rem;"', $html, 'the status box sticks below the top bar');
+	pg_assert_true(strpos($html, 'id="enabled"') > $status, 'Enabled sits in the status column');
+	pg_assert_true(strpos($html, 'id="name"') < $status, 'the name stays in the form column');
+	pg_assert_contains('id="container_summary_dimensions"', $html, 'the Summary shows the dimensions');
+	pg_assert_contains('Last Modified', $html, 'the extra status row is printed');
+	pg_assert_contains('Box &lt;A&gt;', $html, 'the name is escaped');
+	pg_assert_true(strpos($html, '<button>Save</button>') > $bar, 'the buttons sit in the save bar');
 }

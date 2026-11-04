@@ -46,7 +46,7 @@ function test_visitors_change_markup_never_says_zero_percent_for_none()
 	$bad = pg_visitors_change(80, 100);
 	pg_assert_contains('is-bad', $bad);
 	pg_assert_contains('bi-arrow-down-right', $bad);
-	pg_assert_contains(pg_format_number(20, 0) . ' %', $bad);
+	pg_assert_contains(h(pg_visitors_percent(20, 0)), $bad, 'through the language\'s percent form');
 }
 
 function test_visitors_section_frame_and_escaping()
@@ -137,6 +137,40 @@ function test_visitors_table_limit_label_and_hidden_first_heading()
 	pg_assert_false(strpos($short, 'is-collapsed') !== false);
 }
 
+function test_visitors_chart_reads_out_its_tooltip_notes()
+{
+	$html = pg_visitors_chart('notes_chart', array(
+		'labels' => array('Mon', 'Tue'),
+		'series' => array(array('label' => 'Orders', 'data' => array(1, 2))),
+		'notes'  => array('Revenue: <b>5</b>', ''),
+	));
+
+	pg_assert_contains('<th scope="col">' . h(lang('Notes')) . '</th>', $html);
+	pg_assert_contains('<td>Revenue: &lt;b&gt;5&lt;/b&gt;</td>', $html, 'escaped, beside its figures');
+
+	$plain = pg_visitors_chart('plain_chart', array('labels' => array('Mon'), 'series' => array(array('label' => 'x', 'data' => array(1)))));
+	pg_assert_false(strpos($plain, h(lang('Notes'))) !== false, 'no column without notes');
+}
+
+function test_visitors_chart_writes_units_and_note_lines()
+{
+	$html = pg_visitors_chart('unit_chart', array(
+		'labels' => array('Mon', 'Tue'),
+		'series' => array(
+			array('label' => 'LCP', 'data' => array(3.4, null), 'unit' => 's'),
+			array('label' => 'Views', 'data' => array(52, 7)),
+		),
+		'notes'  => array("INP: 160 ms\nCLS: 0,07", ''),
+	));
+
+	pg_assert_contains('<td>' . h(pg_format_number(3.4, 1)) . ' s</td>', $html, 'the unit follows the figure');
+	pg_assert_contains('<td>–</td>', $html, 'no figure, no unit');
+	pg_assert_contains('<td>52</td>', $html, 'a series without a unit');
+	pg_assert_contains('<td>INP: 160 ms; CLS: 0,07</td>', $html, 'the note lines read out as one cell');
+	pg_assert_contains('"unit":"s"', $html, 'the script gets the unit');
+	pg_assert_contains('INP: 160 ms\nCLS: 0,07', $html, 'the script gets the lines');
+}
+
 function test_visitors_chart_figures_are_hidden_through_a_box()
 {
 	$html = pg_visitors_chart('box_chart', array('labels' => array('a'), 'series' => array(array('label' => 'x', 'data' => array(1)))));
@@ -167,4 +201,24 @@ function test_visitors_sections_order_and_files()
 
 	pg_assert_false(pg_visitors_section_exists('shell'), 'the frame is no section');
 	pg_assert_false(pg_visitors_section_exists('../shell'));
+}
+
+// A percentage goes through the '{var:1}%' key (pg_visitors_percent()), which
+// Turkish words as %12, as everywhere in the panel; the sections had written
+// "12 %" in every language.
+function test_visitors_percent_follows_the_language()
+{
+	pg_assert_same(lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number(12.5, 1)))), pg_visitors_percent(12.5));
+	pg_assert_same(lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number(3, 0)))), pg_visitors_percent(3, 0));
+
+	$files = glob(PG_FUNCTIONS_DIR . '/includes/visitors/*.php');
+	$files[] = PG_FUNCTIONS_DIR . '/includes/fn/visitor_insights.php';
+	$files[] = PG_FUNCTIONS_DIR . '/includes/fn/site_search_stats.php';
+
+	foreach ($files as $path) {
+		$source = (string) file_get_contents($path);
+
+		pg_assert_true(strpos($source, ". ' %'") === false, basename($path) . ': a percent sign glued in code');
+		pg_assert_true(strpos($source, ". '%'") === false, basename($path) . ': a percent sign glued in code');
+	}
 }
