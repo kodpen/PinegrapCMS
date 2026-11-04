@@ -100,42 +100,43 @@ if (!$_POST) {
         ),
     ]) . '
 <main id="content" class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            ' . $liveform->output_errors() . '
-            ' . $liveform->get_warnings() . '
-            ' . $liveform->output_notices() . '
-            ' . $output_purchase_order . '
-            ' . $output_waybill . '
-            ' . ((function_exists('erp_credit_draft_warning') && (($output_credit_warning = erp_credit_draft_warning($invoice)) !== ''))
-                ? '<div class="alert theme-warning"><i class="bi bi-speedometer2 me-3" aria-hidden="true"></i>' . h($output_credit_warning) . '</div>'
-                : '') . '
-            ' . ((((string) $invoice['doc_type'] === 'invoice') && ((int) $invoice['order_id'] === 0) && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '
-            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_manual_invoice.php?copy=' . $invoice_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>
-            </nav>' : '') . '
+    ' . $liveform->output_errors() . '
+    ' . $liveform->get_warnings() . '
+    ' . $liveform->output_notices() . '
+    ' . ((function_exists('erp_credit_draft_warning') && (($output_credit_warning = erp_credit_draft_warning($invoice)) !== ''))
+        ? '<div class="alert theme-warning"><i class="bi bi-speedometer2 me-3" aria-hidden="true"></i>' . h($output_credit_warning) . '</div>'
+        : '') . '
+    ' . ((((string) $invoice['doc_type'] === 'invoice') && ((int) $invoice['order_id'] === 0) && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '
+    <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
+        <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_manual_invoice.php?copy=' . $invoice_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>
+    </nav>' : '') . '
 
-            <form name="form" action="' . $self_action . '" method="post" autocomplete="off">
-                ' . get_token_field() . '
-                <input type="hidden" name="id" value="' . $invoice_id . '" />
-                ' . erp_invoice_form_cards($liveform, array('keep_account_id' => (int) $invoice['account_id'], 'lines' => erp_invoice_form_lines($liveform, $stored_rows))) . '
-                ' . ((defined('USER_ERP_READONLY') && USER_ERP_READONLY)
-                    // The read-only accountant reads the draft; saving, issuing
-                    // and deleting it would only be refused after the press.
-                    ? ''
-                    : '<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="erp_action" value="draft" data-pg-save-shortcut class="btn my-1 btn-outline theme-secondary"><i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save Draft') . '</span></button>
-                            <button type="submit" name="erp_action" value="issue" class="btn my-1 btn-solid theme-success"><i class="bi bi-receipt me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Issue the Invoice') . '</span></button>
-                            <button type="submit" name="erp_action" value="delete" class="btn my-1 btn-outline theme-warning" data-confirm-content="' . lang('Delete this draft? It has no number and nothing has been posted, so nothing is reversed.') . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Delete Draft') . '</span></button>
-                        </div>
-                    </div>
-                </nav>') . '
-            </form>
-            ' . erp_account_quick_modal() . '
-        </div>
-    </div>
+    <form name="form" action="' . $self_action . '" method="post" autocomplete="off">
+        ' . get_token_field() . '
+        <input type="hidden" name="id" value="' . $invoice_id . '" />
+        ' . erp_invoice_form_cards($liveform, array(
+            'keep_account_id' => (int) $invoice['account_id'],
+            'lines' => erp_invoice_form_lines($liveform, $stored_rows),
+            'columns' => true,
+            // The purchase order or delivery note the draft came from is
+            // read, not filled: it sits under the totals.
+            'status' => $output_purchase_order . $output_waybill,
+            'save_bar' => ((defined('USER_ERP_READONLY') && USER_ERP_READONLY)
+                // The read-only accountant reads the draft; saving, issuing
+                // and deleting it would only be refused after the press.
+                ? ''
+                : '<nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+            <div class="container">
+                <div class="btn-group flex-wrap justify-content-center">
+                    <button type="submit" name="erp_action" value="draft" data-pg-save-shortcut class="btn my-1 btn-outline theme-secondary"><i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save Draft') . '</span></button>
+                    <button type="submit" name="erp_action" value="issue" class="btn my-1 btn-solid theme-success"><i class="bi bi-receipt me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Issue the Invoice') . '</span></button>
+                    <button type="submit" name="erp_action" value="delete" class="btn my-1 btn-outline theme-warning" data-confirm-content="' . lang('Delete this draft? It has no number and nothing has been posted, so nothing is reversed.') . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Delete Draft') . '</span></button>
+                </div>
+            </div>
+        </nav>'),
+        )) . '
+    </form>
+    ' . erp_account_quick_modal() . '
 </main>' .
     output_footer();
 
