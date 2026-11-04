@@ -957,6 +957,7 @@
     "A picture uploaded to the library whose longest edge is above this is shrunk to it, in its own format. 0 leaves uploads as they are; product photos keep their own limit.": "Kütüphaneye yüklenen ve uzun kenarı bundan büyük olan resim kendi biçiminde bu boyuta küçültülür. 0 yüklemelere dokunmaz; ürün fotoğrafları kendi sınırlarını korur.",
     "A piece of text within a line, for styling a word or a phrase.": "Bir kelimeyi ya da ifadeyi biçimlendirmek için satır içindeki metin parçası.",
     "A place for everyone": "Herkese yer var",
+    "A place is known for {var:1} of {var:2} visits: it is saved from the billing address a visit gives.": "{var:2} ziyaretin {var:1} tanesinde yer biliniyor: yer, ziyaretin verdiği fatura adresinden kaydedilir.",
     "A place on the same page": "Aynı sayfada bir yer",
     "A place to ask questions about the app, share what you made and learn from each other.": "Uygulama hakkında soru sorabileceğiniz, yaptıklarınızı paylaşabileceğiniz ve birbirinizden öğrenebileceğiniz bir yer.",
     "A plain box with no meaning of its own, for grouping and styling elements.": "Kendine ait bir anlamı olmayan düz kutu; öğeleri gruplamak ve biçimlendirmek için.",
