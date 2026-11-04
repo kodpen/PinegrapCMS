@@ -59,6 +59,13 @@ if ($_POST) {
     $action = (string) ($_POST['erp_action'] ?? '');
 
     if ($action === 'cancel') {
+        // A second cancel (two tabs, a resent form) is refused in the
+        // direction's own words: the shared refusal calls a payment a receipt.
+        if ($is_cancelled) {
+            $liveform->mark_error('_error', $is_collection ? lang('That receipt has already been cancelled.') : lang('That payment has already been cancelled.'));
+            go($self_url);
+        }
+
         $result = erp_receipt_cancel($cash_id, (string) ($_POST['reason'] ?? ''), (int) $user['id']);
 
         if ($result['success']) {

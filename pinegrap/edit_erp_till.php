@@ -231,12 +231,33 @@ if (!$_POST) {
 
     $liveform->validate_required_field('name', lang(array('string' => '{var:1} is required', 'vars' => lang('Name'))));
 
-    if ($liveform->check_form_errors() == true) {
-        go(PATH . SOFTWARE_DIRECTORY . '/edit_erp_till.php?id=' . $till_id);
+    // A typo in the opening figure would be saved as 0, and an IBAN with a
+    // wrong check digit would be kept: both are refused on their field.
+    if (($refusal = erp_till_opening_refusal($liveform->get_field_value('opening_balance'))) !== '') {
+        $liveform->mark_error('opening_balance', $refusal);
+    }
+    if (($refusal = erp_till_iban_refusal($liveform->get_field_value('iban'))) !== '') {
+        $liveform->mark_error('iban', $refusal);
     }
 
     $kinds = array('cash', 'bank', 'pos', 'credit_card');
     $kind = in_array($liveform->get_field_value('kind'), $kinds, true) ? $liveform->get_field_value('kind') : 'cash';
+
+    // A bank, POS or card till below zero cannot become a cash till: the
+    // balance it would have is the opening figure being saved plus every
+    // movement, as erp_cash_refresh_balance() will write it.
+    $stored_kind = (string) db_value("SELECT kind FROM erp_cash_accounts WHERE id = '" . $till_id . "' LIMIT 1");
+    if (($kind === 'cash') && ($stored_kind !== 'cash')) {
+        $movement_sum = (int) db_value("SELECT COALESCE(SUM(CASE WHEN direction = 'in' THEN amount ELSE -amount END), 0)
+            FROM erp_cash_transactions WHERE cash_account_id = '" . $till_id . "'");
+        if (($refusal = erp_till_kind_refusal($stored_kind, $kind, erp_kurus($liveform->get_field_value('opening_balance')) + $movement_sum)) !== '') {
+            $liveform->mark_error('kind', $refusal);
+        }
+    }
+
+    if ($liveform->check_form_errors() == true) {
+        go(PATH . SOFTWARE_DIRECTORY . '/edit_erp_till.php?id=' . $till_id);
+    }
 
     // The currency may only change while nothing has moved through the till:
     // its balance is a plain sum of movements in one currency.
@@ -265,7 +286,7 @@ if (!$_POST) {
         name = '" . escape(trim((string) $liveform->get_field_value('name'))) . "',
         kind = '" . escape($kind) . "',
         " . $sql_currency . "
-        iban = '" . escape(trim((string) $liveform->get_field_value('iban'))) . "',
+        iban = '" . escape(erp_till_iban_normalise($liveform->get_field_value('iban'))) . "',
         bank_name = '" . escape(trim((string) $liveform->get_field_value('bank_name'))) . "',
         opening_balance = '" . erp_kurus($liveform->get_field_value('opening_balance')) . "',
         is_active = '" . (($liveform->get_field_value('is_active') === '0') ? 0 : 1) . "',
