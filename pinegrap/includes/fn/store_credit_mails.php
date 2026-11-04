@@ -283,6 +283,10 @@ function pg_credit_expire_card(array $card, $now)
 
     pg_audit('revoke', 'store_credit', (int) $card['id'], pg_credit_audit_fields($card), pg_credit_audit_fields($after), pg_credit_audit_label($card['code']));
 
+    if (function_exists('pg_credit_announce')) {
+        pg_credit_announce('credit.expired', (int) $card['id'], array('expired_amount' => $left));
+    }
+
     return true;
 }
 

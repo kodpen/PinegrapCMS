@@ -97,6 +97,12 @@ function api_webhook_events() {
 		'subscription.cancelled' => 'A subscription was cancelled; it runs until next_charge_at and is not charged again (its end that day is not announced)',
 		'subscription.paused'    => 'A subscription was paused: nothing is charged until it is resumed',
 		'subscription.resumed'   => 'A paused subscription was resumed and is charged again from next_charge_at',
+		// A customer's store credit (includes/fn/store_credit_events.php): id is
+		// the card's (GET /gift-cards/{id}); account_id, customer_id, kind,
+		// reason, amount, balance and expires_at follow, never the code.
+		'credit.issued'  => 'Store credit was given to a customer: reward points converted, a refund paid as credit, or issued by staff on the customer\'s screen or through the API; GET /customers/{id}/credit lists the cards',
+		'credit.used'    => 'An order spent a customer\'s store credit card; order_id and amount_used name the order and what it took, balance what is left (giving it back when the order is cancelled is not announced)',
+		'credit.expired' => 'A store credit card reached its end with money left and was closed by the scheduled job; expired_amount is what was left (a card voided by staff, through the API or by an erasure is not announced)',
 		// An affiliate commission's status (includes/fn/commission_list.php,
 		// pg_commission_status_save()): id is the commission's; reference_code,
 		// status, previous_status, affiliate_code, order_id and amount follow.
