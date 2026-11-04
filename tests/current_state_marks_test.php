@@ -73,10 +73,12 @@ function test_current_state_offer_editor_pressed()
 function test_current_state_site_log_type_filter()
 {
 	$source = current_state_marks_source('view_log.php');
-	pg_assert_contains('active pg-log-type-filter" aria-pressed="true" data-token=""', $source);
-	pg_assert_same(3, substr_count($source, 'pg-log-type-filter" aria-pressed="false"'));
-	pg_assert_contains('buttons[i].setAttribute("aria-pressed", "false");', $source);
-	pg_assert_contains('type_filter.setAttribute("aria-pressed", "true");', $source);
+	pg_assert_contains("(\$type_value === '') ? ' active' : ''", $source, 'All starts pressed');
+	pg_assert_contains("aria-pressed=\"' . ((\$type_value === '') ? 'true' : 'false') . '\"", $source);
+	pg_assert_contains('data-pg-list-filter="view_log" data-pg-filter-column="type"', $source);
+
+	$driver = current_state_marks_source('assets/js/pg_list_table.js');
+	pg_assert_contains("other.setAttribute('aria-pressed', (other === button) ? 'true' : 'false');", $driver, 'the driver moves the mark');
 }
 
 function test_current_state_sales_map_choices()

@@ -116,7 +116,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $type = $column ? $column['type'] : $field('type');
             $input = array(
                 'name'    => $field('name'),
-                'options' => ws_wtable_screen_options_from_form($type, (isset($_POST['options']) && is_array($_POST['options'])) ? $_POST['options'] : array(), $column),
+                'options' => ws_wtable_screen_options_from_form(
+                    $type,
+                    (isset($_POST['options']) && is_array($_POST['options'])) ? $_POST['options'] : array(),
+                    $column,
+                    ($column && ($type === 'status')) ? ws_wtable_column_held_values((int) $table['id'], (int) $column['id']) : array()
+                ),
             );
 
             if ($column) {
@@ -546,12 +551,14 @@ if ($kept) {
 
     $head = $table
         ? '<th scope="col">' . h($kept['note'] ? lang('In the note') : lang('In the file')) . '</th><th scope="col">' . h(lang('Into the column')) . '</th><th scope="col">' . h(lang('First values')) . '</th>'
-        : '<th scope="col"><span class="visually-hidden">' . h(lang('Import')) . '</span></th><th scope="col">' . h(lang('Column')) . '</th><th scope="col">' . h(lang('Type')) . '</th><th scope="col">' . h(lang('First values')) . '</th>';
+        : '<th scope="col" aria-label="' . h(lang('Import')) . '"></th><th scope="col">' . h(lang('Column')) . '</th><th scope="col">' . h(lang('Type')) . '</th><th scope="col">' . h(lang('First values')) . '</th>';
 
     $import_card = '
     <div class="card mb-5 border-primary" id="ws-wt-import">
         <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-file-earmark-arrow-up me-1" aria-hidden="true"></i>'
-            . h(lang(array('string' => '{var:1} rows from “{var:2}”', 'vars' => array(count($kept['rows']), $kept['file'])))) . '</h2></div>
+            . h($kept['note']
+                ? lang(array('string' => '{var:1} rows from the note “{var:2}”', 'vars' => array(count($kept['rows']), $kept['file'])))
+                : lang(array('string' => '{var:1} rows from “{var:2}”', 'vars' => array(count($kept['rows']), $kept['file'])))) . '</h2></div>
         <div class="card-body">
             ' . ($kept['more'] ? '<div class="alert theme-warning small py-3">' . h(lang(array('string' => 'The file has more rows than a table holds: only the first {var:1} are read.', 'vars' => ws_wtable_limits()['rows']))) . '</div>' : '') . '
             <p class="small fg-secondary">' . h($kept['note'] ? ($table
@@ -788,7 +795,7 @@ if (!$table) {
         $rows_body = pg_empty_state('bi-table', lang('No row yet'));
     } else {
         $rows_body = '<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
-            <thead><tr><th scope="col" class="text-end">#</th>' . $head . ($can_write ? '<th scope="col"><span class="visually-hidden">' . h(lang('Actions')) . '</span></th>' : '') . '</tr></thead>
+            <thead><tr><th scope="col" class="text-end">#</th>' . $head . ($can_write ? '<th scope="col" aria-label="' . h(lang('Actions')) . '"></th>' : '') . '</tr></thead>
             <tbody>' . $lines . '</tbody>
         </table></div>' . (($pager !== '') ? '<div class="d-flex gap-3 mt-3">' . $pager . '</div>' : '');
     }
@@ -858,11 +865,14 @@ if (!$table) {
                     break;
 
                 case 'date':
-                    $input = '<input type="text" class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" value="' . h($value) . '" ' . (!empty($options['time']) ? 'data-pg-datetime' : 'data-pg-date') . ' autocomplete="off">';
+                    // A native input keeps the ISO store the cell is saved in.
+                    $input = '<input type="' . (!empty($options['time']) ? 'datetime-local' : 'date') . '" class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" value="' . h($value) . '" ' . (!empty($options['time']) ? 'data-pg-datetime' : 'data-pg-date') . ' autocomplete="off">';
                     break;
 
                 case 'text':
-                    $input = '<textarea class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" rows="1">' . h($value) . '</textarea>';
+                    // Tall enough for the lines the value has, two at least.
+                    $lines = min(8, max(2, count(preg_split('/\r\n|\r|\n/', $value))));
+                    $input = '<textarea class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" rows="' . $lines . '">' . h($value) . '</textarea>';
                     break;
 
                 default:
@@ -979,7 +989,7 @@ if (!$table) {
                     <input type="hidden" name="wt_table" value="' . $id . '">
                     <input type="hidden" name="wt_column" value="' . (int) $column_id . '">
                     <div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_name">' . h(lang('Name')) . '</label>
-                        <input type="text" class="form-control form-control-sm" name="name" id="' . $prefix . '_name" value="' . h($column['name']) . '" required></div>
+                        <input type="text" class="form-control form-control-sm" name="name" id="' . $prefix . '_name" value="' . h($column['name']) . '" maxlength="' . (int) ws_wtable_limits()['name'] . '" required></div>
                     ' . $option_fields($column['type'], $column, $prefix) . '
                     <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5">' . h(lang('Save')) . '</button>
                 </form>
@@ -1331,12 +1341,7 @@ if (!$table) {
    The screen
    --------------------------------------------------------------------------- */
 
-$liveform_messages = $liveform->output_errors() . $liveform->output_notices();
-
-$liveform->remove_form();
-
-echo
-pg_page_shell(array(
+$shell = pg_page_shell(array(
     // The shell prints the title and heading as markup: a table's name is text.
     'title'               => h($title),
     'extra classes'       => 'workspace workspace_wtables',
@@ -1345,7 +1350,16 @@ pg_page_shell(array(
     'heading_description' => $description,
     'cancel'              => $cancel,
     'breadcrumb'          => $breadcrumb,
-)) . '
+));
+
+// After the shell, which defines PG_PANEL_OUTPUT: the messages then come in
+// the panel's alert markup, not the site's.
+$liveform_messages = $liveform->output_errors() . $liveform->output_notices();
+
+$liveform->remove_form();
+
+echo
+$shell . '
 <main id="content" class="container-fluid p-0">
 <div class="ws-shell">
 <div class="ws-shell-main">

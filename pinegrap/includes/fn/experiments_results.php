@@ -49,7 +49,8 @@ function pg_experiment_two_sided_p($z)
  *               rate of a), z, p (null without views on both), significant
  *               (p below 0.05), needed (more views each variant needs at
  *               these rates for 95 % confidence and 80 % power; 0 when
- *               already significant, null when it cannot be said)
+ *               already significant, null when it cannot be said),
+ *               views_a, goals_a, views_b, goals_b (as counted)
  */
 function pg_experiment_significance($views_a, $goals_a, $views_b, $goals_b)
 {
@@ -69,6 +70,10 @@ function pg_experiment_significance($views_a, $goals_a, $views_b, $goals_b)
         'p' => null,
         'significant' => false,
         'needed' => null,
+        'views_a' => $views_a,
+        'goals_a' => $goals_a,
+        'views_b' => $views_b,
+        'goals_b' => $goals_b,
     );
 
     if (($views_a === 0) || ($views_b === 0)) {
@@ -98,8 +103,9 @@ function pg_experiment_significance($views_a, $goals_a, $views_b, $goals_b)
 
 /**
  * Which sentence a result gives: 'ahead' or 'behind' (the variant against
- * the control, beyond chance), 'more' (not beyond chance yet, a number of
- * views would tell), 'even' (no difference to tell), 'none' (no views yet).
+ * the control, beyond chance), 'more' (not beyond chance yet: a number of
+ * views would tell, or one version has no views or nobody converted yet),
+ * 'even' (no difference to tell), 'none' (no views on either version).
  * Pure.
  *
  * @param array $r pg_experiment_significance()
@@ -107,7 +113,20 @@ function pg_experiment_significance($views_a, $goals_a, $views_b, $goals_b)
  */
 function pg_experiment_verdict_kind(array $r)
 {
-    if ($r['p'] === null && $r['z'] === null && (float) $r['rate_a'] === 0.0 && (float) $r['rate_b'] === 0.0 && $r['needed'] === null) {
+    if (isset($r['views_a'], $r['views_b'])) {
+        $views_a = (int) $r['views_a'];
+        $views_b = (int) $r['views_b'];
+
+        if ($views_a + $views_b === 0) {
+            return 'none';
+        }
+
+        // One side without views, or views without a single conversion, is
+        // too early to call: equal zero rates are not "the same rate".
+        if (($views_a === 0) || ($views_b === 0) || ((int) ($r['goals_a'] ?? 0) + (int) ($r['goals_b'] ?? 0) === 0)) {
+            return 'more';
+        }
+    } elseif ($r['p'] === null && $r['z'] === null && (float) $r['rate_a'] === 0.0 && (float) $r['rate_b'] === 0.0 && $r['needed'] === null) {
         return 'none';
     }
 
@@ -128,7 +147,7 @@ function pg_experiment_verdict_kind(array $r)
 function pg_experiment_verdict_sentence(array $r, $key)
 {
     $key = strtoupper((string) $key);
-    $lift = ($r['lift'] === null) ? '' : number_format(abs($r['lift']) * 100, 1);
+    $lift = ($r['lift'] === null) ? '' : pg_experiment_number(abs($r['lift']) * 100, 1);
 
     switch (pg_experiment_verdict_kind($r)) {
         case 'ahead':
@@ -138,12 +157,47 @@ function pg_experiment_verdict_sentence(array $r, $key)
         case 'behind':
             return lang(array('string' => '{var:1} is behind by {var:2} %, and the difference is unlikely to be chance.', 'vars' => array($key, $lift)));
         case 'more':
-            return lang(array('string' => 'Not enough visits yet: about {var:1} more for each version.', 'vars' => number_format((int) $r['needed'])));
+            if ($r['needed'] !== null) {
+                return lang(array('string' => 'Not enough visits yet: about {var:1} more for each version.', 'vars' => pg_experiment_number((int) $r['needed'], 0)));
+            }
+
+            if (((int) ($r['views_a'] ?? 0) > 0) && ((int) ($r['views_b'] ?? 0) > 0)) {
+                return lang('No conversions counted yet.');
+            }
+
+            return lang('Not enough visits yet.');
         case 'even':
             return lang('Both versions convert at the same rate so far.');
     }
 
     return lang('No visits counted yet.');
+}
+
+/**
+ * A figure with the panel language's decimal and thousands separators.
+ *
+ * @param float|int $value
+ * @param int       $decimals
+ * @return string not escaped
+ */
+function pg_experiment_number($value, $decimals = 1)
+{
+    return function_exists('pg_format_number')
+        ? pg_format_number($value, $decimals)
+        : number_format((float) $value, (int) $decimals);
+}
+
+/**
+ * A percentage for display: the figure in the panel language's format and
+ * the percent sign where that language puts it (37.5% / %37,5).
+ *
+ * @param float|int $percent already times 100
+ * @param int       $decimals
+ * @return string translated, not escaped
+ */
+function pg_experiment_percent($percent, $decimals = 1)
+{
+    return lang(array('string' => '{var:1}%', 'vars' => pg_experiment_number($percent, $decimals)));
 }
 
 /**
@@ -261,15 +315,17 @@ function pg_experiment_chart_range(array $experiment, $now)
  *
  * @param array $series pg_experiment_daily_series()
  * @param array $colors variant id => CSS colour (a var(--pg-…) token)
- * @return string '' when no day has a rate
+ * @return string '' when no day has a rate; a series of 0 % days draws
  */
 function pg_experiment_chart_svg(array $series, array $colors)
 {
     $max = 0.0;
+    $any = false;
 
     foreach ($series['rates'] as $list) {
         foreach ($list as $rate) {
             if ($rate !== null) {
+                $any = true;
                 $max = max($max, (float) $rate);
             }
         }
@@ -277,13 +333,14 @@ function pg_experiment_chart_svg(array $series, array $colors)
 
     $count = count($series['days']);
 
-    if (($max <= 0) || ($count === 0)) {
+    if (!$any || ($count === 0)) {
         return '';
     }
 
     $width = 600;
     $height = 160;
-    $top = ceil($max / 5) * 5;
+    // A 0 % series still draws, as a flat line at the bottom.
+    $top = max(5, ceil($max / 5) * 5);
     $step = ($count > 1) ? $width / ($count - 1) : 0;
     $lines = '';
 
@@ -300,9 +357,11 @@ function pg_experiment_chart_svg(array $series, array $colors)
             $color = isset($colors[$id]) ? (string) $colors[$id] : 'currentColor';
             $lines .= '<polyline fill="none" stroke="' . h($color) . '" stroke-width="2" vector-effect="non-scaling-stroke" points="' . implode(' ', $points) . '"/>';
 
+            // A lone point as a zero-length round-capped line: the SVG is
+            // stretched (preserveAspectRatio none) and a non-scaling stroke
+            // keeps it round, where a circle would turn into an ellipse.
             if (count($points) === 1) {
-                list($x, $y) = explode(',', $points[0]);
-                $lines .= '<circle cx="' . $x . '" cy="' . $y . '" r="3" fill="' . h($color) . '"/>';
+                $lines .= '<polyline fill="none" stroke="' . h($color) . '" stroke-width="6" stroke-linecap="round" vector-effect="non-scaling-stroke" points="' . $points[0] . ' ' . $points[0] . '"/>';
             }
         }
     }

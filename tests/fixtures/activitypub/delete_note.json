@@ -1,0 +1,20 @@
+{
+    "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        {
+            "ostatus": "http://ostatus.org#",
+            "atomUri": "ostatus:atomUri"
+        }
+    ],
+    "id": "https://mastodon.example/users/alice/statuses/113000000000000001#delete",
+    "type": "Delete",
+    "actor": "https://mastodon.example/users/alice",
+    "to": [
+        "https://www.w3.org/ns/activitystreams#Public"
+    ],
+    "object": {
+        "id": "https://mastodon.example/users/alice/statuses/113000000000000001",
+        "type": "Tombstone",
+        "atomUri": "https://mastodon.example/users/alice/statuses/113000000000000001"
+    }
+}

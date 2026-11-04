@@ -3,15 +3,13 @@ name: bootstrap-6-panel-steps
 description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status (each done step names its PR); claim as [plan:bootstrap-6-panel] B<n>
 ---
 
-## Which steps run before the switch (on 5.3.8, nothing visible changes)?
-- Done: B0a, B0b, B1a, B1b, B2a, B2b, B3, B4, B5, B6, B7, B8 (`bootstrap-6-panel-done.md`).
+## Which steps are left?
+- Done: B0a #1643, B0b #1654, B1a #1670, B1b #1690, B2a #1677, B2b #1692 #1712 #1720 #1736, B3 #1694 #1711 #1723, B4 #1738 #1751 #1762 #1797 #1820, B5 #1698, B6 #1733 #1741 #1750 #1764 #1775 #1787 #1794 #1820, B7 #1822 #1841, B8 #1866, B9a #2208, B9b #2243, B9c #2262, B9d #2210, B9e #2207, B9f #2219 #2280 #2355 #2404 #2478 #2498 #2501 #2537 #2760, B9g #2206, B9h #2217 #2237, B9i #2211 #2274, B9j #2216 #2242 #2256 #2339, B9k slices #2273 #2373 #2479 #2505 #2552 #2561 #2721 #3342 #3361, B10 #4465 #4836 #4867 #5356, B12 #2762 #2789.
 
-## What happens after the switch?
-- B8, the switch, is done (#1866, `bootstrap-6-panel-done.md`); B9 can start.
-- B9 Component swaps on v6, one claim each (`bootstrap-6-components.md`): B9a Chips (done, #2208), B9b Combobox (done, #2243), B9c Datepicker and time (done, #2262), B9e Range (done, #2207), B9f form-adorn, B9g Stepper (done, #2206), B9h hover-lift (done, #2217, #2237), B9i Strength, B9j Avatar (done, #2216, #2242, #2256, #2339), B9k research proposals (slice 1 done, #2273; `.btn-ghost` done #2373, #2479, #2505, #2552, #3342 (flow canvas); focus ring tokens done #2561; editor toast done #2721; `.btn-ghost` CSS dropped #3361, the rest waits for B11: `ui/bootstrap-6-own-widget-swaps.md`).
-- B9i: done — the panel meter (#2211) and the installer meter (#2274), `ui/password-strength-js.md`.
-- B10 Token tuning (focus #4465, colours #4836, radius #4867, spacing #5356), B11 redesign (ready to start, one screen per claim): `bootstrap-6-redesign.md`. B12 jQuery UI out of the panel (done, #2762, #2789): `ui/panel-without-jquery-ui.md`.
+- B9k Research proposals (`bootstrap-6-components.md`): guest toast, `.ws-chip`, role cards and status choice wait for B11 (`ui/bootstrap-6-own-widget-swaps.md`).
+
+- B11 Redesign (ready to start, one screen per claim): `bootstrap-6-redesign.md`.
 
 ## Where do I start?
-- After the claim check, take the lowest open step whose dependencies are done and that no open PR holds; independent steps run in parallel sessions, one draft PR each; a step over about 1,000 product lines goes in several PRs, one after the other (`workflow/working-mode.md`). B1-B5 are independent; B6 needs B2a; B7 needs B1a and B2a; B8 needs B1a-B7; B9 needs B8 (B9c also B5); B10 needs B9; B11 needs B10; B12 needs B9c.
-- Pre-switch PRs show their screens unchanged on the B1b screenshots (`ui/panel-screenshots.md`); later PRs show before and after. Mark a step done here with its PR numbers; once all its parts are done, its line moves to `bootstrap-6-panel-done.md`.
+- After the claim check, take the next B11 screen that no open PR holds; independent screens run in parallel sessions, one draft PR each; a step over about 1,000 product lines goes in several PRs, one after the other (`workflow/working-mode.md`).
+- PRs show their screens before and after (`ui/panel-screenshots.md`). Mark a step done here with its PR numbers.

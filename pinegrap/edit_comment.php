@@ -58,6 +58,7 @@ $query =
         products.address_name as product_address_name,
         " . (pg_reviews_ready() ? "comments.verified_order_id," : "0 AS verified_order_id,") . "
         " . (pg_review_replies_ready() ? "comments.seller_reply, comments.seller_reply_at," : "'' AS seller_reply, 0 AS seller_reply_at,") . "
+        " . (pg_schema_has('comments', 'remote_actor') ? "comments.remote_actor," : "'' AS remote_actor,") . "
         comments.created_timestamp
     FROM comments
     LEFT JOIN forms ON forms.id = comments.item_id
@@ -97,6 +98,11 @@ $comments_submitter_email_page_id = $row['comments_submitter_email_page_id'];
 $comments_watcher_email_page_id = $row['comments_watcher_email_page_id'];
 $created_timestamp = $row['created_timestamp'];
 $comments_rating = $row['comments_rating'];
+
+// A comment from the Fediverse names its writer's actor; a Manager or above
+// may block that actor or its whole server (includes/fn/activitypub_moderation.php).
+$remote_actor = (string) $row['remote_actor'];
+$can_block = ($remote_actor !== '') && ($user['role'] < 3);
 
 // A product review (includes/fn/reviews.php): whether its purchase was
 // verified, and the store's reply under it.
@@ -157,6 +163,7 @@ if (check_edit_access($folder_id) == false) {
 }
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub_moderation.php');
 $liveform = new liveform('edit_comment', $_REQUEST['id']);
 
 // if the form has not been submitted
@@ -383,7 +390,7 @@ if (!$_POST) {
                     'secondary' => $output_reference_button,
                     'grow' => '<p class="p-0 m-0">' . lang('Added') . ': ' . get_relative_time(array('timestamp' => $created_timestamp)) . ' ' . $created_username . '</p>
                     <p class="p-0 m-0">' . lang('Page') . ': ' . h(pg_comment_page_label(get_page_name($page_id), $page_id)) . ($binned ? ' (' . h(lang('In the Recycle Bin')) . ')' : '') . '</p>
-                    ' . $output_reference_line . $output_review_line,
+                    ' . $output_reference_line . $output_review_line . (($remote_actor !== '') ? '<p class="p-0 m-0">' . lang('From the Fediverse') . ': ' . h($remote_actor) . '</p>' : ''),
                 )) . '
                 <form name="form" action="edit_comment.php" method="post">
                     ' . get_token_field() . '
@@ -457,7 +464,9 @@ if (!$_POST) {
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('comment')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('comment')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>' . ($can_block ? '
+                                <button type="submit" name="submit_block" value="actor" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(lang('This account will be blocked: its comments, likes and boosts are deleted and it can no longer follow the site or reply.')) . '"><span class="material-icons me-3">block</span><span class="pg-btn-label">' . lang('Block Account') . '</span></button>
+                                <button type="submit" name="submit_block" value="domain" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(lang(array('string' => 'Every account on {var:1} will be blocked: their comments, likes and boosts are deleted and they can no longer follow the site or reply.', 'vars' => array(pg_ap_host($remote_actor))))) . '"><span class="material-icons me-3">domain_disabled</span><span class="pg-btn-label">' . lang('Block Server') . '</span></button>' : '') . '
                             </div>
                         </div>
                     </nav>
@@ -477,6 +486,30 @@ if (!$_POST) {
     $liveform->add_fields_to_session();
     
     $bookmark = '';
+
+    // A block removes this comment with everything else of the actors it
+    // covers, so the screen goes back to the list.
+    $block_kind = (string) $liveform->get_field_value('submit_block');
+
+    if (($block_kind === 'actor') || ($block_kind === 'domain')) {
+        if (!$can_block) {
+            output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
+        $blocked = pg_ap_block_add($block_kind, $remote_actor);
+        $liveform->remove_form();
+        $liveform_view_comments = new liveform('view_comments');
+
+        if ($blocked['ok']) {
+            log_activity(lang(array('string' => 'Fediverse {var:1} was blocked', 'vars' => array($blocked['value']))), $_SESSION['sessionusername']);
+            $liveform_view_comments->add_notice(lang(array('string' => '{var:1} is blocked; what the site kept of it has been deleted.', 'vars' => array(h($blocked['value'])))));
+        } else {
+            $liveform_view_comments->mark_error('', lang('The block could not be saved.'));
+        }
+
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_comments.php');
+        exit();
+    }
     
     // if comment was selected for deletion, then delete the comment
     if ($liveform->get_field_value('submit_delete') == 'Delete') {

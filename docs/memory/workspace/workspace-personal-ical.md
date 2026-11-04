@@ -24,5 +24,5 @@ description: A person's own secret iCal address as a read-only layer on their Wo
 - Site-wide rows (`user_id` 0): `ws_holiday_feeds()` and the settings card read only those (`ws_holiday_feed_owner_where(0)`), and the admin's Read now / Remove refuse a person's row (`ws_holiday_feed_site_wide()`).
 - The layer is placed by `ws_personal_ical_place()` as events with `id` 0, `kind` other, `layer` (calendar name), `readonly` true, only when the calendar shows the reader's own view (person filter 0 or themselves).
 
-## What is left?
-- Google and Outlook write: `workspace-calendar-write.md`. Reading changes back: decision #4490, `plans/reverse-oauth-leftovers.md`.
+## Where are Google and Outlook calendars written and read?
+- Writing: `workspace-calendar-write.md`. Reading changes back (#4490): `workspace-calendar-read.md`.

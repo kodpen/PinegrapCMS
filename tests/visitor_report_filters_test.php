@@ -40,15 +40,15 @@ function test_visitor_report_channel_sql()
 	$group = pg_visitor_report_channel_sql(false);
 	$filter = pg_visitor_report_channel_sql(true);
 
-	pg_assert_contains(pg_visitor_channel_sql('visitors.'), $group, 'grouping reads the shared channel');
+	pg_assert_contains(pg_visitor_paid_organic_sql('visitors.'), $group, 'grouping reads the shared channel');
 	pg_assert_contains("WHEN 'organic' THEN 'Organic'", $group, 'grouping names organic');
 	pg_assert_contains("ELSE '' END", $group, 'grouping leaves the rest empty');
-	pg_assert_contains(pg_visitor_channel_sql('visitors.'), $filter, 'filter reads the shared channel');
+	pg_assert_contains(pg_visitor_paid_organic_sql('visitors.'), $filter, 'filter reads the shared channel');
 	pg_assert_contains("'neither'", $filter, 'filter names the rest neither');
 
 	if (!defined('PAY_PER_CLICK_FLAG') || (trim((string) PAY_PER_CLICK_FLAG) === '')) {
 		pg_assert_false(strpos($group, "LIKE '%%'") !== false, 'no pattern that matches every visit');
-		pg_assert_false(strpos(pg_visitor_channel_sql('visitors.'), 'pay_per_click') !== false, 'no paid branch without a flag');
+		pg_assert_false(strpos(pg_visitor_paid_organic_sql('visitors.'), 'pay_per_click') !== false, 'no paid branch without a flag');
 	}
 
 	$source = visitor_report_filters_source();

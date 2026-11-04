@@ -144,9 +144,11 @@ function pg_contact_group_form_values($liveform)
  * @param liveform $liveform kind and rules as the form holds them
  * @param array    $group    the stored group: id, kind, computed_at, compute_cursor
  * @param bool     $may_edit
+ * @param array|null $review pg_audience_switch_counts() of a static group:
+ *                   its hand, form and product rows, reviewed on the switch
  * @return string
  */
-function pg_contact_group_rules_card($liveform, array $group, $may_edit)
+function pg_contact_group_rules_card($liveform, array $group, $may_edit, $review = null)
 {
     $stored_dynamic = (($group['kind'] ?? 'static') === 'dynamic');
 
@@ -201,6 +203,33 @@ function pg_contact_group_rules_card($liveform, array $group, $may_edit)
     );
 
     $output_refresh = '';
+    $output_review = '';
+
+    // A static group about to be switched: its other rows stay unless the
+    // switch is saved with one of the two actions.
+    if (!$stored_dynamic && is_array($review) && ($review['total'] > 0)) {
+        $choice = pg_audience_switch_action(array('switch_rows' => $liveform->get_field_value('switch_rows')));
+        $options = array(
+            'keep' => lang('Keep them'),
+            'remove' => lang('Remove them'),
+            'to_rule' => lang('Let the rules decide them'),
+        );
+        $output_options = '';
+
+        foreach ($options as $value => $label) {
+            $output_options .= '
+                                            <div class="my-1">
+                                                <input type="radio" class="radio" name="switch_rows" id="switch_rows_' . $value . '" value="' . $value . '"' . (($value === $choice) ? ' checked' : '') . '>
+                                                <label for="switch_rows_' . $value . '">' . h($label) . '</label>
+                                            </div>';
+        }
+
+        $output_review = '
+                                        <fieldset class="alert theme-warning my-12" id="pg_audience_switch_review">
+                                            <legend class="fs-md fw-bold">' . h(lang(array('string' => 'This group already has members: {var:1}.', 'vars' => array(pg_audience_switch_review_text($review['counts']))))) . '</legend>
+                                            <p class="form-text">' . h(lang('Rules never remove these members. Remove them now, or let the rules decide them: those the rules do not select leave at the next refresh.')) . '</p>' . $output_options . '
+                                        </fieldset>';
+    }
 
     if ($stored_dynamic) {
         $output_refresh = '
@@ -222,6 +251,7 @@ function pg_contact_group_rules_card($liveform, array $group, $may_edit)
                                         <div class="form-text">' . lang('Contacts who match the rules are added and taken out by themselves, about once an hour. Contacts added by hand, by a form or by a product stay.') . '</div>
                                     </div>
                                     <div class="collapse" id="pg_audience_rules_row">
+                                        ' . $output_review . '
                                         <input type="hidden" name="rules" id="rules" value="' . h(json_encode($rules, JSON_UNESCAPED_UNICODE)) . '">
                                         <div id="pg_audience_editor" class="my-5" data-pg-audience="' . h(json_encode($config, JSON_UNESCAPED_UNICODE)) . '"></div>
                                         <p class="fw-bold my-3" id="pg_audience_count" role="status" aria-live="polite"></p>

@@ -496,6 +496,10 @@ if (!$_POST) {
         $tax_exempt = lang('No');
     }
 
+    // A VAT id VIES confirmed at checkout: the reverse charge behind the
+    // tax-exempt flag, with the time of the check and the consultation number.
+    $order_vat_note = pg_vat_order_note($row);
+
     $output_gift_card_discount_row = '';
 
     // if there is a gift card discount, then prepare to output row for it
@@ -1204,6 +1208,13 @@ if (!$_POST) {
                         '<a class="pg-link-secondary" href="edit_shipping_method.php?id=' . h($recipient['shipping_method_id']) . '">' .
                             h($recipient['shipping_method_name']) . ' (' . h($recipient['shipping_method_code']) . ')' .
                         '</a>';
+
+                    // The place a pickup order is collected at.
+                    $pickup_location = pg_stock_pickup_location($recipient['shipping_method_id']);
+
+                    if ($pickup_location) {
+                        $shipping_method .= '<div class="small fg-secondary">' . h(lang('Pickup at') . ': ' . pg_stock_pickup_place($pickup_location)) . '</div>';
+                    }
 
                 // Otherwise the shipping method no longer exists, so just show code.
                 } else {
@@ -3063,6 +3074,7 @@ if (!$_POST) {
                                         <span class="translateable col fg-secondary">' . lang('Tax-Exempt') . ':</span>
                                         <span class="col text-end">' . $tax_exempt . '</span>
                                     </div>
+                                    ' . pg_order_view_row(lang('EU VAT ID'), (($order_vat_note !== '') ? h((string) $row['vat_id']) . '<span class="d-block small fg-secondary">' . h($order_vat_note) . '</span>' : '')) . '
                                     ' . ($contact_tax_number !== '' || $contact_tax_office !== '' ? '
                                     <hr/>
                                     <div class="row">

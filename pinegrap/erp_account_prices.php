@@ -40,6 +40,8 @@ if (!validate_erp_access($user)) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/commerce_list.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_account_prices');
 
@@ -104,23 +106,38 @@ if ($ready && ((string) $account['kind'] === 'supplier')) {
 // are typed.
 $quick_edit = (!$readonly && $ready) ? erp_account_price_edit_columns() : array();
 
-$output_rows = '';
+// Every product of the account's list is printed: the list table driver
+// sorts and searches them in the browser (browser mode). The product and
+// the terms are drawn by the function that draws them again in the answer
+// to an edit; the cells are keyed the way the answer names them.
+$list_rows = array();
+
 foreach (erp_account_price_rows($account_id) as $row) {
     $product_id = (int) $row['product_id'];
     $cells = erp_account_price_cells($row);
 
-    $output_rows .= '
-        <tr>
-            <td data-pg-cell="product">' . $cells['product']['html'] . '</td>
-            <td class="text-end text-nowrap" data-sort="' . (int) $row['list_price'] . '">' . h(erp_money_out((int) $row['list_price'])) . '</td>
-            <td class="' . $cells['price']['class'] . '" style="width:10rem" data-sort="' . $cells['price']['sort'] . '"' . pg_list_edit_cell($quick_edit, 'price', $product_id, erp_account_price_input($row['price'])) . '>' . $cells['price']['html'] . '</td>
-            <td class="' . $cells['discount']['class'] . '" style="width:8rem" data-sort="' . $cells['discount']['sort'] . '"' . pg_list_edit_cell($quick_edit, 'discount', $product_id, erp_account_rate_input($row['discount_rate'])) . '>' . $cells['discount']['html'] . '</td>
-        </tr>';
+    $list_rows[] = array(
+        'id' => $product_id,
+        'cells' => array(
+            'product' => pg_list_cell($cells['product']['html'], 'align-middle text-wrap text-break'),
+            'list_price' => pg_list_cell(h(erp_money_out((int) $row['list_price'])), 'align-middle text-nowrap', array('data-pg-sort-value' => (string) (int) $row['list_price'])),
+            'price' => pg_list_cell($cells['price']['html'], 'align-middle ' . $cells['price']['class'], pg_list_edit_cell_attributes($quick_edit, 'price', $product_id, erp_account_price_input($row['price'])) + array('data-pg-sort-value' => (string) $cells['price']['sort'])),
+            'discount' => pg_list_cell($cells['discount']['html'], 'align-middle ' . $cells['discount']['class'], pg_list_edit_cell_attributes($quick_edit, 'discount', $product_id, erp_account_rate_input($row['discount_rate'])) + array('data-pg-sort-value' => (string) $cells['discount']['sort'])),
+        ),
+    );
 }
 
-if ($output_rows === '') {
-    $output_rows = '<tr data-pg-sort-fixed><td colspan="4" class="text-center fg-secondary py-7">' . lang('No product has a price of its own for this account yet. Find one below and add it.') . '</td></tr>';
-}
+$list = pg_list_table_printed(array(
+    'list' => 'erp_account_prices',
+    'columns' => pg_commerce_list_specs(array(
+        'product' => array('heading' => lang('Product')),
+        'list_price' => array('heading' => lang('List price'), 'kind' => 'money'),
+        'price' => array('heading' => lang('Account price'), 'kind' => 'money', 'width' => '10rem'),
+        'discount' => array('heading' => lang('Discount %'), 'kind' => 'number', 'width' => '8rem'),
+    ), array('product' => 1, 'list_price' => 1, 'price' => 1, 'discount' => 1), $quick_edit),
+    'rows' => $list_rows,
+    'edit' => array('url' => 'erp_account_prices.php?account_id=' . $account_id, 'columns' => $quick_edit),
+));
 
 // Finding a product to add: the ERP's own product search.
 $output_found = '';
@@ -182,21 +199,8 @@ pg_page_shell([
             </form>
 
             <div class="card my-7" id="erp_prices">
-                <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover align-middle mb-0" data-pg-sort' . pg_list_edit_table('erp_account_prices.php?account_id=' . $account_id, $quick_edit) . '>
-                        <thead>
-                            <tr>
-                                <th>' . lang('Product') . '</th>
-                                <th class="text-end">' . lang('List price') . '</th>
-                                <th class="text-end">' . lang('Account price') . '</th>
-                                <th class="text-end">' . lang('Discount %') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>' . $output_rows . '</tbody>
-                    </table>
-                </div>
-                <div class="form-text px-5 pb-5">' . lang('A price replaces the list price; with no price, the discount applies to the list price. Clear both to take the product off the list. Prices are in the catalogue\'s basis, the way the list price is.')
-                    . ($quick_edit ? ' ' . h(lang('Click a price or a discount to change it; it is saved as soon as you press Enter or leave the box.')) : '') . '</div>
+                ' . ($list_rows ? pg_list_table_html($list['source'], $list['page'], lang('Account prices')) : '<p class="text-center fg-secondary py-7 mb-0">' . lang('No product has a price of its own for this account yet. Find one below and add it.') . '</p>') . '
+                <div class="form-text px-5 pb-5">' . lang('A price replaces the list price; with no price, the discount applies to the list price. Clear both to take the product off the list. Prices are in the catalogue\'s basis, the way the list price is.'). '</div>
             </div>
 
             ' . ((!$readonly && $ready) ? '<div class="card my-7">
@@ -212,7 +216,8 @@ pg_page_shell([
             </div>' : '') . '
         </div>
     </div>
-</main>' .
+</main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();
 
 $liveform->remove_form();

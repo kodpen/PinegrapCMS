@@ -1777,8 +1777,11 @@ Work through the queue:
       arrow leaves a box only on one of that kind's outcomes; a yes-or-no
       question put to people is an approval box (approved, rejected), a post box
       only says something; a text setting may take {{node.ID.VALUE}} (a value
-      of an earlier box) or {{trigger.FIELD}}; leave x and y out, the boxes are
-      laid out for you. Nothing runs: the draft waits under your answer, and the
+      of an earlier box) or {{trigger.FIELD}}; a value box (kind value) whose
+      rule reads two values (join, compare, add, subtract, add_days) needs both
+      a and b - join writes a, a space, then b, so split a text between them;
+      leave x and y out, the boxes are laid out for you. Nothing runs: the
+      draft waits under your answer, and the
       person who asked opens it on the Flows canvas and publishes it. Say that
       you drafted it, never that it is set up or running.
       A request may come from a person's note instead of a channel: then "note" is

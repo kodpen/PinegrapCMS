@@ -69,6 +69,22 @@ function pg_import_redirect_name($address)
 }
 
 /**
+ * Whether a redirect name is the page's own name: a WordPress page at
+ * /about/ is imported as page "about", so its old address is its new one
+ * and needs no redirect. Letter case is ignored, as page names are. Pure.
+ *
+ * @param string $name      pg_import_redirect_name()
+ * @param string $page_name
+ * @return bool
+ */
+function pg_import_redirect_is_own_address($name, $page_name)
+{
+    $name = (string) $name;
+
+    return ($name !== '') && (mb_strtolower($name) === mb_strtolower((string) $page_name));
+}
+
+/**
  * A record's address on the page that shows it, from the site's root. Pure.
  *
  * @param string $page_name
@@ -169,7 +185,15 @@ function pg_import_redirect_after($import, $item, $item_id)
         return array('result' => 'skipped', 'id' => 0, 'reason' => $destination);
     }
 
-    $answer = pg_import_redirect_add($import, pg_import_redirect_name($address), $destination);
+    $name = pg_import_redirect_name($address);
+
+    // The page made under its old address answers there itself.
+    if (($destination['destination_type'] === 'page')
+        && pg_import_redirect_is_own_address($name, (string) db_value("SELECT page_name FROM page WHERE page_id = '" . (int) $destination['page_id'] . "'"))) {
+        return null;
+    }
+
+    $answer = pg_import_redirect_add($import, $name, $destination);
 
     if ($answer['result'] === 'made') {
         db("INSERT IGNORE INTO import_items SET

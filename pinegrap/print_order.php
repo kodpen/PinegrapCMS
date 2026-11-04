@@ -114,6 +114,8 @@ $po_number = $row['po_number'];
 $payment_method = $row['payment_method'];
 $ip_address = $row['ip_address'];
 $contact_tax_number = (string) ($row['contact_tax_number'] ?? '');
+// The reverse charge of a VAT id VIES confirmed at checkout ('' for none).
+$order_vat_note = pg_vat_order_note($row);
 $contact_tax_office = (string) ($row['contact_tax_office'] ?? '');
 
 // Read before $row is reused by the later queries. An order put on the
@@ -1713,6 +1715,7 @@ legend { font-size: .9em; font-weight: bold; }
                 ' . ($custom_field_2 ? '<div>' . lang('Custom Field') . ' #2: ' . h($custom_field_2) . '</div>' : '') . '
                 ' . ($contact_tax_number !== '' ? '<div style="margin-top:3px">VKN / TCKN: ' . h($contact_tax_number) . '</div>' : '') . '
                 ' . ($contact_tax_office !== '' ? '<div>' . lang('Tax Office') . ': ' . h($contact_tax_office) . '</div>' : '') . '
+                ' . ($order_vat_note !== '' ? '<div style="margin-top:3px">' . h($order_vat_note) . '</div>' : '') . '
             </td>
             ' . ($ship_to_exists && $output_print_shipping !== '' ?
             '<td style="width:33%;padding-right:1.5em;vertical-align:top">

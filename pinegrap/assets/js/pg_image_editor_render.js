@@ -25,7 +25,7 @@
 (function (X) {
     'use strict';
 
-    var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, t = X.t, el = X.el, icon = X.icon, button = X.button;
+    var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, t = X.t, el = X.el, icon = X.icon, button = X.button, pct = X.pct;
 
     X.icons.film = 'M4 4.5h16v15H4zM8 4.5v15M16 4.5v15M4 9h4M4 15h4M16 9h4M16 15h4';
     X.icons.download = 'M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14';
@@ -170,14 +170,22 @@
     };
 
     // One moment of the animation drawn at w x h on canvas (a new one when
-    // none is given); answers the canvas.
-    Editor.prototype.renderFrame = function (time, w, h, canvas) {
-        var self = this, doc = this.doc, out = M.saveSize(doc), box = M.saveBox(doc), k = w / box.w;
+    // none is given); answers the canvas. doc, when given, is drawn in place
+    // of the editor's (a scene, M.sceneView()).
+    Editor.prototype.renderFrame = function (time, w, h, canvas, doc) {
+        var self = this, live = this.doc, cutting;
+
+        doc = doc || live;
+
+        var out = M.saveSize(doc), box = M.saveBox(doc), k = w / box.w;
 
         canvas = canvas || document.createElement('canvas');
+        this.doc = doc;
+        cutting = this.frameCutsAt(time, k);
+        this.doc = live;
 
-        return this.frameCutsAt(time, k).then(function (cuts) {
-            var g = canvas.getContext('2d');
+        return cutting.then(function (cuts) {
+            var g = canvas.getContext('2d'), keep = self.doc;
 
             if ((canvas.width !== w) || (canvas.height !== h)) {
                 canvas.width = w;
@@ -187,13 +195,19 @@
                 g.clearRect(0, 0, w, h);
             }
 
-            self.paintBase(g, time, w / out.w, h / out.h);
-            self.frameCuts = cuts;
-            self.paintLayers(g, box, w, h, time);
-            self.frameCuts = null;
+            self.doc = doc;
 
-            if (self.paintFrame) {
-                self.paintFrame(g, box, w, h);
+            try {
+                self.paintBase(g, time, w / out.w, h / out.h);
+                self.frameCuts = cuts;
+                self.paintLayers(g, box, w, h, time);
+
+                if (self.paintFrame) {
+                    self.paintFrame(g, box, w, h);
+                }
+            } finally {
+                self.frameCuts = null;
+                self.doc = keep;
             }
 
             return canvas;
@@ -219,7 +233,7 @@
         }
 
         var layout = M.saveLayout(doc), size = M.outputSize(doc), m = M.docMotion(doc);
-        var r = layout ? { x: layout.x, y: layout.y, w: size.w, h: size.h } : { x: 0, y: 0, w: size.w, h: size.h };
+        var r = layout ? { x: layout.x, y: layout.y, w: layout.pw || size.w, h: layout.ph || size.h } : { x: 0, y: 0, w: size.w, h: size.h };
 
         if (layout && (layout.fill !== 'transparent')) {
             g.fillStyle = layout.fill;
@@ -483,7 +497,7 @@
     // file as a Blob. progress(stage, done, count) on the way; job.cancel().
     Editor.prototype.animJob = function (set, estimate, progress) {
         var self = this, f = M.ANIM_FORMATS[set.format], out = M.saveSize(this.doc), size = M.animSize(out, set.edge, f.even);
-        var ms = M.docMotion(this.doc).duration, count = M.animFrames(ms, set.fps), job = { cancelled: false, enc: null };
+        var ms = M.sceneTotal(this.doc), count = M.animFrames(ms, set.fps), job = { cancelled: false, enc: null };
         var bitrate = M.animBitrate(size, set.fps);
         var canvas = document.createElement('canvas');
 
@@ -633,7 +647,7 @@
     };
 
     Editor.prototype.animMoves = function () {
-        return M.hasMotion(this.doc) || (!this.doc.artboard && (M.docMotion(this.doc).base !== 'none'));
+        return M.hasMotion(this.doc) || (M.sceneCount(this.doc) > 1) || (!this.doc.artboard && (M.docMotion(this.doc).base !== 'none'));
     };
 
     Editor.prototype.openAnimation = function () {
@@ -705,7 +719,7 @@
     // dithering, the estimate, Download.
     Editor.prototype.renderAnimation = function () {
         var self = this, set = this.animSet, f = M.ANIM_FORMATS[set.format], out = M.saveSize(this.doc);
-        var size = M.animSize(out, set.edge, f.even), ms = M.docMotion(this.doc).duration, long = ms > f.maxMs;
+        var size = M.animSize(out, set.edge, f.even), ms = M.sceneTotal(this.doc), long = ms > f.maxMs;
         var box = this.animBox;
 
         box.textContent = '';
@@ -800,7 +814,7 @@
         var self = this, k = Math.min(1, 240 / Math.max(size.w, size.h));
 
         Promise.resolve(this.animBase || this.doc.artboard ? null : this.loadBase()).then(function () {
-            return self.renderFrame(M.docMotion(self.doc).duration / 2, Math.max(1, Math.round(size.w * k)), Math.max(1, Math.round(size.h * k)));
+            return self.renderFrame(M.sceneTotal(self.doc) / 2, Math.max(1, Math.round(size.w * k)), Math.max(1, Math.round(size.h * k)));
         }).then(function (c) {
             self.animPreview(c);
         }, function () {});
@@ -846,7 +860,7 @@
                 var e = self.animEls.estimate;
 
                 e.children[1].textContent = '≈ ' + bytesText(r.bytes);
-                e.children[2].textContent = t('animFrames').replace('{n}', r.count) + ' · ' + X.decimal(M.docMotion(self.doc).duration / 1000) + ' ' + t('motionSecondsUnit');
+                e.children[2].textContent = t('animFrames').replace('{n}', r.count) + ' · ' + X.decimal(M.sceneTotal(self.doc) / 1000) + ' ' + t('motionSecondsUnit');
                 self.animLimit(r.bytes);
             }, function (err) {
                 if ((self.animTask === task) && err) {
@@ -958,7 +972,7 @@
 
             bar.style.width = p + '%';
             bar.parentNode.setAttribute('aria-valuenow', String(p));
-            percent.textContent = p + '%';
+            percent.textContent = pct(p);
             steps.textContent = '';
             order.forEach(function (s, i) {
                 var text = t('animStep_' + s) + ((s === 'frames') && (i === at) ? ' · ' + done + ' / ' + count : '');

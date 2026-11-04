@@ -1,6 +1,6 @@
 ---
 name: erp-parasut-open-work
-description: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), small fixes; where to start
+description: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442); where to start
 ---
 
 ## Where does it stand?
@@ -25,10 +25,7 @@ description: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#16
 3. **A `sent` e-Invoice whose conversion failed** keeps refusing Cancel (first Ask After the Status; `erp/erp-parasut-sent-cancel.md`); reconsidered once the live round confirms the #2025 guard.
 
 ## Which small fixes are left? (one PR each, unit tests)
-- #1628: done in #2032 (the deleted ERP record and the pre-2026.4.4 "Sent" flag: `erp-parasut-legacy-order-gates-limits.md`).
-- #1629: done in #2001 (the 404 legacy id is cleared only once the send goes on).
-- #1630: done in #2032 (a failed press leaves the opened card higher: `erp-parasut-product-card-opening-stock.md`).
-- #1626: done in #2025 (a deleted-record 404 frees a row only when the company holds another record it names).
+- Done: #1628 #2032, #1629 #2001, #1630 #2032, #1626 #2025.
 - Bigger, kept elsewhere: the `erp_edoc_queue` worker (`erp-parasut-driver-design.md`); incoming e-invoices through `GET e_invoices`, which needs a company with an e-document integration.
 
 ## Where to start?

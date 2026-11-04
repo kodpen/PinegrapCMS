@@ -358,7 +358,9 @@ function update_order($request) {
             }
         }
 
-        $fields = array_merge($fields, pg_shipment_mail_fields($shipped_ids));
+        // ^^pickup_place^^: where a pickup order is collected; the shipped
+        // mail is also the one a pickup order gets when it is ready.
+        $fields = array_merge($fields, pg_shipment_mail_fields($shipped_ids), pg_stock_pickup_mail_fields($shipped_ids));
 
         create_auto_email_campaigns(array(
             'action' => 'order_shipped',

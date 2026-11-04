@@ -1985,6 +1985,7 @@ function pg_timezone_legacy_names()
         'Pacific/Samoa'       => 'Pacific/Pago_Pago',
         'Asia/Chongqing'      => 'Asia/Shanghai',
         'Australia/Canberra'  => 'Australia/Sydney',
+        'Europe/Kiev'         => 'Europe/Kyiv',
     );
 }
 
@@ -3886,7 +3887,7 @@ function get_timezones($known = null)
         '(UTC+02:00) Harare' => 'Africa/Harare',
         '(UTC+02:00) Helsinki' => 'Europe/Helsinki',
         '(UTC+02:00) Jerusalem' => 'Asia/Jerusalem',
-        '(UTC+02:00) Kyiv' => 'Europe/Helsinki',
+        '(UTC+02:00) Kyiv' => 'Europe/Kyiv',
         '(UTC+02:00) Pretoria' => 'Africa/Johannesburg',
         '(UTC+02:00) Riga' => 'Europe/Riga',
         '(UTC+02:00) Sofia' => 'Europe/Sofia',
@@ -3932,12 +3933,11 @@ function get_timezones($known = null)
         '(UTC+09:30) Adelaide' => 'Australia/Adelaide',
         '(UTC+09:30) Darwin' => 'Australia/Darwin',
         '(UTC+10:00) Brisbane' => 'Australia/Brisbane',
-        '(UTC+10:00) Canberra' => 'Australia/Sydney',
         '(UTC+10:00) Guam' => 'Pacific/Guam',
         '(UTC+10:00) Hobart' => 'Australia/Hobart',
         '(UTC+10:00) Melbourne' => 'Australia/Melbourne',
         '(UTC+10:00) Port Moresby' => 'Pacific/Port_Moresby',
-        '(UTC+10:00) Sydney' => 'Australia/Sydney',
+        '(UTC+10:00) Canberra, Sydney' => 'Australia/Sydney',
         '(UTC+10:00) Yakutsk' => 'Asia/Yakutsk',
         '(UTC+11:00) Vladivostok' => 'Asia/Vladivostok',
         '(UTC+11:00) New Caledonia' => 'Pacific/Noumea',

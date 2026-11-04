@@ -286,7 +286,7 @@ function pg_email_campaign_purpose_card($purpose, $readonly = false)
             <div class="form-field">
                 <input class="radio" type="radio" name="purpose" id="purpose_transactional" value="transactional"' . $transactional . ' aria-describedby="purpose_transactional_help">
                 <label class="" for="purpose_transactional">' . lang('Transactional') . '</label>
-                <div class="form-text" id="purpose_transactional_help">' . lang('send email, regardless of opt-in. Example: \'Your order has been shipped\'') . '</div>
+                <div class="form-text" id="purpose_transactional_help">' . lang('send email, regardless of opt-in. Example: \'Your order has been shipped\'') . ' ' . lang('Use transactional only for real transaction and relationship notices (service outage, terms change, delivery schedule); promotional text is sent as commercial.') . '</div>
             </div>
             </fieldset>';
     }

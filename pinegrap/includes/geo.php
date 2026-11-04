@@ -167,6 +167,57 @@ function pg_geo_header_country()
 }
 
 /**
+ * The visitor's city as Cloudflare names it (CF-IPCity, sent when the zone
+ * adds visitor location headers), believed under the same rule as its
+ * country header. '' when the request did not come through a trusted edge
+ * or the edge sent no city: there is no other source, the site's own
+ * database only places countries.
+ *
+ * @return string at most 50 characters, the visitors.city column's length
+ */
+function pg_geo_city()
+{
+    static $city = null;
+
+    if ($city !== null) {
+        return $city;
+    }
+
+    $city = '';
+
+    if (!empty($_SERVER['HTTP_CF_IPCITY']) && pg_geo_trusted_edge()) {
+        $city = pg_geo_clean_city((string) $_SERVER['HTTP_CF_IPCITY']);
+    }
+
+    return $city;
+}
+
+/**
+ * A city header's value made safe to store: valid UTF-8 only, no control
+ * characters, spaces folded, cut to 50 characters. Pure.
+ *
+ * @param string $value
+ * @return string
+ */
+function pg_geo_clean_city($value)
+{
+    $value = (string) $value;
+
+    if (($value === '') || !preg_match('//u', $value)) {
+        return '';
+    }
+
+    $value = trim((string) preg_replace('/[\p{C}\s]+/u', ' ', $value));
+
+    if (preg_match('/^.{51,}$/us', $value)) {
+        preg_match('/^.{50}/us', $value, $cut);
+        $value = rtrim($cut[0]);
+    }
+
+    return $value;
+}
+
+/**
  * The country a module of the web server set. Such a module places the
  * address the server was connected from, which behind a proxy is the proxy:
  * believed only when the visitor's address and the peer are the same.

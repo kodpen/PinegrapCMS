@@ -2,14 +2,15 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The Site Log list (view_log.php), shared by the screen and the panel action
- * that pages it (site_log_list_rows, includes/panel/lists.php).
+ * The Site Log list (view_log.php) on the list table driver
+ * (includes/fn/list_table.php), shared by the screen and the driver's rows
+ * action (list_table_rows, includes/panel/lists.php).
  *
  * The log keeps six months of events, so a busy site printed thousands of
- * rows on one screen. The database view is now read one page at a time. The
+ * rows on one screen. The database view is read one batch at a time. The
  * view that mixes in the error_log files (administrators, "Show Error Logs")
- * merges and sorts file entries in PHP, so it stays printed whole on the
- * screen through the same row builder.
+ * merges and sorts file entries in PHP, so it is printed whole and the
+ * browser sorts, searches and filters it by type.
  *
  * Loaded where it is needed (require_once), not by functions.php.
  *
@@ -133,47 +134,71 @@ function pg_site_log_list_description($text, $is_error, $key)
 }
 
 /**
+ * The list's columns. The keys are the sort codes pg_site_log_list_sort()
+ * keeps, so the sort menu and the headings name the same sort.
+ *
+ * @return array key => spec, as pg_list_table_columns() takes them
+ */
+function pg_site_log_list_columns()
+{
+    return array(
+        'time' => array('heading' => lang('Time'), 'width' => '10rem', 'kind' => 'date', 'sort' => 'log_timestamp'),
+        'type' => array('heading' => lang('Type'), 'width' => '8rem', 'kind' => 'badge'),
+        'user' => array('heading' => lang('User'), 'width' => '12rem', 'sort' => 'log_user'),
+        'description' => array('heading' => lang('Description'), 'sort' => 'log_description'),
+        'ip_address' => array('heading' => lang('IP Address'), 'width' => '10rem', 'sort' => 'log_ip'),
+    );
+}
+
+/**
+ * The type of an entry the type filter knows it by: a site log, an error
+ * or a warning of an error_log file.
+ *
+ * @param array $entry log_type, log_description
+ * @return string site, error or warn
+ */
+function pg_site_log_list_type($entry)
+{
+    if (($entry['log_type'] ?? 'Site Log') === 'Site Log') {
+        return 'site';
+    }
+
+    return preg_match('/\bwarning\b/i', (string) ($entry['log_description'] ?? '')) ? 'warn' : 'error';
+}
+
+/**
  * One row of the list: a site log row from the database, or an error_log
- * entry (log_type 'Error Log', log_location already escaped).
+ * entry (log_type 'Error Log', log_location already escaped). The type cell
+ * carries the type for the driver's type filter and the time cell the Unix
+ * time, so a list printed whole sorts by it in the browser.
  *
  * @param array $entry log_id, log_description, log_ip, log_user,
  *                     log_timestamp[, log_type, log_location]
- * @return array array('id', 'class', 'cells')
+ * @return array array('id', 'class', 'cells' => column key => cell)
  */
 function pg_site_log_list_row($entry)
 {
     $ip = (string) ($entry['log_ip'] ?? '');
     // A row without a user is named like the dashboard's Activity card names it.
     $user = pg_log_actor($entry['log_user'] ?? '', $ip);
-    $is_error = (($entry['log_type'] ?? 'Site Log') !== 'Site Log');
+    $type = pg_site_log_list_type($entry);
     $location = $entry['log_location'] ?? h(lang('Database'));
     $class = 'unselectable';
 
-    // Hidden tokens let the type filter buttons search this column without
-    // depending on the translated badge text.
-    if (!$is_error) {
-        $type = '<span title="' . $location . '" class="badge theme-success me-1">' . lang('Site Log') . '</span><span class="d-none">pglogsite</span>';
+    if ($type === 'site') {
+        $badge = '<span title="' . $location . '" class="badge theme-success me-1">' . lang('Site Log') . '</span>';
     } else {
-        $badge = 'bg-danger';
-        $token = 'pglogerror';
-        $class .= ' pg-log-row-error';
-
-        if (preg_match('/\bwarning\b/i', (string) $entry['log_description'])) {
-            // bg-warning needs dark text, the default white is unreadable on yellow.
-            $badge = 'bg-warning fg-black';
-            $token = 'pglogwarn';
-            $class = 'unselectable pg-log-row-warn';
-        }
-
-        $type = '<span title="' . $location . '" class="badge ' . $badge . ' me-1">' . h(lang('Error Log')) . '</span><span class="d-none">' . $token . '</span>';
+        // The warning badge needs dark text: white is unreadable on yellow.
+        $class .= ($type === 'warn') ? ' pg-log-row-warn' : ' pg-log-row-error';
+        $badge = '<span title="' . $location . '" class="badge ' . (($type === 'warn') ? 'theme-warning fg-black' : 'theme-danger') . ' me-1">' . h(lang('Error Log')) . '</span>';
     }
 
     return array('id' => (string) $entry['log_id'], 'class' => $class, 'cells' => array(
-        pg_list_cell(get_relative_time(array('timestamp' => $entry['log_timestamp'])), ''),
-        pg_list_cell($type, ''),
-        pg_list_cell(h($user), ''),
-        pg_list_cell(pg_site_log_list_description($entry['log_description'], $is_error, $entry['log_id']), ''),
-        pg_list_cell(($ip !== '') ? h($ip) : '<span class="fg-secondary">&mdash;</span>', ''),
+        'time' => pg_list_cell(get_relative_time(array('timestamp' => $entry['log_timestamp'])), '', array('data-pg-sort-value' => (string) (int) $entry['log_timestamp'])),
+        'type' => pg_list_cell($badge, '', array('data-pg-filter' => $type)),
+        'user' => pg_list_cell(h($user), ''),
+        'description' => pg_list_cell(pg_site_log_list_description($entry['log_description'], $type !== 'site', $entry['log_id']), ''),
+        'ip_address' => pg_list_cell(($ip !== '') ? h($ip) : '<span class="fg-secondary">&mdash;</span>', ''),
     ));
 }
 
@@ -191,54 +216,44 @@ function pg_site_log_list_count($range)
 }
 
 /**
- * One page of the database view: the counts without and with the search,
- * and the rows of the page window. The search finds every word in the user,
- * the description or the IP address.
+ * The database view as the list table driver reads it: the log rows of the
+ * range the screen shows, searched by every word in the user, the
+ * description or the IP address. The screen's gate is the source's: an
+ * account above Manager gets null.
  *
- * @param array $range  pg_site_log_list_range()'s answer
- * @param array $terms  pg_list_search_terms()'s answer
- * @param array $window pg_list_page_window()'s answer
- * @return array|false array('total', 'filtered', 'rows') or false when a
- *                     query failed
+ * @param array $user   the signed-in user
+ * @param array $params start_time, stop_time: the range in Unix seconds
+ * @return array|null pg_list_table_source(), or null when the user may not
+ *                    open the list or the range is not whole numbers
  */
-function pg_site_log_list_page($range, $terms, $window)
+function pg_site_log_list_source($user, $params)
 {
-    $where = 'WHERE (log_timestamp >= ?) AND (log_timestamp <= ?)';
-    $params = array((string) $range['start'], (string) $range['stop']);
-    $search = pg_list_search_where($terms, array('log_user', 'log_description', 'log_ip'));
-    $search_sql = ($search['sql'] !== '') ? ' AND ' . $search['sql'] : '';
-    $search_params = array_merge($params, $search['params']);
-
-    $total = pg_site_log_list_count($range);
-
-    if ($total === false) {
-        return false;
+    if (!isset($user['role']) || !is_numeric($user['role']) || ((int) $user['role'] > 2)) {
+        return null;
     }
 
-    $filtered = $total;
+    $params = is_array($params) ? $params : array();
+    $range = pg_site_log_list_range($params['start_time'] ?? null, $params['stop_time'] ?? null);
 
-    if ($search_sql !== '') {
-        $result = db_q('SELECT COUNT(*) FROM log ' . $where . $search_sql, $search_params);
-
-        if (!$result) {
-            return false;
-        }
-
-        $filtered = (int) mysqli_fetch_row($result)[0];
+    if ($range === null) {
+        return null;
     }
 
-    $result = db_q('SELECT log_id, log_description, log_ip, log_user, log_timestamp FROM log ' . $where . $search_sql
-        . ' ORDER BY ' . pg_site_log_list_sort()['order_by'] . pg_list_limit_sql($window), $search_params);
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
-    if (!$result) {
-        return false;
-    }
-
-    $rows = array();
-
-    while ($entry = mysqli_fetch_assoc($result)) {
-        $rows[] = pg_site_log_list_row($entry);
-    }
-
-    return array('total' => $total, 'filtered' => $filtered, 'rows' => $rows);
+    return pg_list_table_source(array(
+        'list' => 'view_log',
+        'columns' => pg_site_log_list_columns(),
+        'from' => 'log',
+        'where' => '(log_timestamp >= ?) AND (log_timestamp <= ?)',
+        'params' => array((string) $range['start'], (string) $range['stop']),
+        'id' => 'log_id',
+        'select' => 'log_id, log_description, log_ip, log_user, log_timestamp',
+        'search' => array('columns' => array('log_user', 'log_description', 'log_ip')),
+        'levels' => pg_site_log_list_sort()['sort_levels'],
+        'rows' => function ($records) {
+            return array_map('pg_site_log_list_row', $records);
+        },
+        'params_out' => array('start_time' => (string) $range['start'], 'stop_time' => (string) $range['stop']),
+    ));
 }

@@ -130,22 +130,74 @@ function pg_migration_design_entry($entry)
 }
 
 /**
- * Whether the classic copy leaves a page of the source out: one in a design
- * the same run carries (the source marks it with 'visual_design').
+ * Whether the classic copy leaves a page of the source out: a page of a
+ * visual design (the source marks it with 'visual_design'). Its classic
+ * columns hold no content, so it travels only with its design.
  */
-function pg_migration_page_carried_by_design($page, $carry_designs)
+function pg_migration_page_carried_by_design($page)
 {
-    return $carry_designs && is_array($page) && !empty($page['visual_design']);
+    return is_array($page) && !empty($page['visual_design']);
 }
 
 /**
  * Whether the classic copy leaves a style of the source out: a visual
- * design (style_layout 'visual_designer') when the same run carries the
- * designs.
+ * design (style_layout 'visual_designer'), which travels only as a design.
  */
-function pg_migration_style_carried_by_design($style, $carry_designs)
+function pg_migration_style_carried_by_design($style)
 {
-    return $carry_designs && is_array($style) && isset($style['layout']) && $style['layout'] === 'visual_designer';
+    return is_array($style) && isset($style['layout']) && $style['layout'] === 'visual_designer';
+}
+
+/**
+ * The source folders the classic copy leaves out when the designs are
+ * carried: a folder whose subtree holds design pages and no classic page
+ * (the design install creates its own folders), and every folder below
+ * one left out. $folders and $pages are the source's rows, before the
+ * design pages are filtered. Returns array(source folder id => true).
+ */
+function pg_migration_design_only_folder_ids($folders, $pages)
+{
+    $parent = array();
+    foreach ((array)$folders as $folder) {
+        if (is_array($folder) && isset($folder['id'])) {
+            $parent[(string)$folder['id']] = isset($folder['parent_folder_id']) ? (string)$folder['parent_folder_id'] : '0';
+        }
+    }
+
+    // Count design and classic pages in each folder's subtree.
+    $design = array();
+    $classic = array();
+    foreach ((array)$pages as $page) {
+        if (!is_array($page) || !isset($page['folder_id'])) continue;
+        $is_design = pg_migration_page_carried_by_design($page);
+        $id = (string)$page['folder_id'];
+        $seen = array();
+        while (isset($parent[$id]) && !isset($seen[$id])) {
+            $seen[$id] = true;
+            if ($is_design) {
+                $design[$id] = true;
+            } else {
+                $classic[$id] = true;
+            }
+            $id = $parent[$id];
+        }
+    }
+
+    $skip = array();
+    foreach ($parent as $id => $unused) {
+        $cur = (string)$id;
+        $seen = array();
+        while (isset($parent[$cur]) && !isset($seen[$cur])) {
+            $seen[$cur] = true;
+            if (isset($design[$cur]) && !isset($classic[$cur])) {
+                $skip[$id] = true;
+                break;
+            }
+            $cur = $parent[$cur];
+        }
+    }
+
+    return $skip;
 }
 
 // ========================= SOURCE SITE ===========================================================

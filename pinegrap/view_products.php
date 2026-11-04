@@ -29,7 +29,7 @@ if (pg_list_edit_requested()) {
         return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
     });
 
-    $saved = pg_pb_quick_update($edit['id'], $edit['field'], $edit['value']);
+    $saved = pg_pb_quick_update($edit['id'], $edit['field'], $edit['value'], $edit['user']);
 
     pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
 }

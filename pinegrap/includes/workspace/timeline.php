@@ -164,7 +164,7 @@ function ws_timeline_where($channel_ids, $filters, $content = true)
     }
 
     if ($content && ($filters['search'] !== '')) {
-        $where[] = "body LIKE '%" . e(escape_like($filters['search'])) . "%'";
+        $where[] = ws_search_like_sql($filters['search'], array('body'), pg_list_search_connection_charset());
     }
 
     return $where;

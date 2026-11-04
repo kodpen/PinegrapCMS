@@ -298,8 +298,8 @@ pg_page_shell([
         <div class="col-12 md:col-8 md:offset-2">
 			<div class="card my-12 border-4">
 				<div class="card-body">
-					<h4 class="fg-success text-center"><span class="material-icons" style="line-height:1em;font-size:4em;" aria-hidden="true">browser_updated</span><br/>' . lang('A new update has been found!') . '</h4>
-                    <div class="text-center"><span class="fg-secondary h4">' . h($old_version) . '</span> <span class="material-icons h2" aria-hidden="true">arrow_right_alt</span> <span class="fg-primary fw-bold h2 fg-success">' . h($new_version) . '</span></div>
+					<h4 class="fg-success text-center"><i class="bi bi-cloud-arrow-down d-block fs-6xl lh-1" aria-hidden="true"></i>' . lang('A new update has been found!') . '</h4>
+                    <div class="text-center"><span class="fg-secondary h4">' . h($old_version) . '</span> <i class="bi bi-arrow-right h2" aria-hidden="true"></i> <span class="fw-bold h2 fg-success">' . h($new_version) . '</span></div>
                     
                     <div class="progress">
                       <div class="progress-bar progress-bar-striped" role="progressbar" aria-label="' . h(lang('Update')) . '" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"></div>
@@ -308,7 +308,7 @@ pg_page_shell([
 				</div>
 				<div class="card-footer">
 					<div class="text-center">
-                    <button type="button" id="update" class="btn btn-subtle theme-secondary"' . ($update_blocked ? ' disabled title="' . h(lang('Open the folders listed above first.')) . '"' : '') . '><span class="me-1 material-icons" aria-hidden="true">sync</span>' . lang('Update') . '</button></div>
+                    <button type="button" id="update" class="btn btn-solid theme-primary"' . ($update_blocked ? ' disabled title="' . h(lang('Open the folders listed above first.')) . '"' : '') . '><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Update') . '</button></div>
 				</div>
                 
 			</div>
@@ -319,8 +319,8 @@ pg_page_shell([
                 <p class="form-text mb-0">' . lang('The files that are replaced and the database are backed up first (data/backups/pre-update-….zip). Repair Software can roll the files back to it.') . '</p>' : '') . '
             </div>
         </div>
-
-        
+      </div>
+    </div>
 </main>
 ' . output_footer();
 $liveform->remove_form();

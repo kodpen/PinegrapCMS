@@ -348,6 +348,78 @@ function test_image_editor_save_gd_shape_and_overlay()
 	}
 }
 
+// On a canvas that reaches past the picture (extend) the crop shape cuts the
+// picture only: its cut corners take the canvas fill (or stay clear on a
+// transparent canvas), the canvas's own corners stay, and the layers over it
+// are not cut. Both libraries.
+function test_image_editor_save_shape_on_a_canvas()
+{
+	if (!image_editor_save_gd()) {
+		pg_assert_true(true, 'GD is not available; skipped');
+		return;
+	}
+
+	$folder = image_editor_save_folder();
+	$overlay = $folder . '/overlay.png';
+
+	try {
+		// A red mark in the canvas's top left corner, outside the picture.
+		$layer = image_editor_save_solid(200, 100, 0, 0, 0, 127);
+		imagefilledrectangle($layer, 0, 0, 9, 9, imagecolorallocatealpha($layer, 255, 0, 0, 0));
+		imagepng($layer, $overlay);
+		pg_image_destroy($layer);
+
+		// The 100 x 100 picture at 50, 0 on a 200 x 100 canvas.
+		$edit = array('shape' => 'circle', 'out_w' => 100, 'out_h' => 100, 'overlay' => $overlay,
+			'extend' => array('w' => 200, 'h' => 100, 'x' => 50, 'y' => 0, 'fill' => array(0, 255, 0)));
+
+		$gd = pg_image_edit_gd(image_editor_save_solid(100, 100, 10, 120, 200), $edit, true);
+		pg_assert_same(array(200, 100), array(imagesx($gd), imagesy($gd)), 'GD: the canvas size');
+		pg_assert_same(array(0, 255, 0, 0), image_editor_save_pixel($gd, 52, 2), 'GD: a corner the circle cut takes the fill');
+		pg_assert_same(array(10, 120, 200, 0), image_editor_save_pixel($gd, 100, 50), 'GD: the middle of the picture is kept');
+		pg_assert_same(array(0, 255, 0, 0), image_editor_save_pixel($gd, 199, 99), 'GD: the canvas keeps its corner');
+		pg_assert_same(array(255, 0, 0, 0), image_editor_save_pixel($gd, 2, 2), 'GD: the layer outside the picture is not cut');
+		pg_image_destroy($gd);
+
+		$edit['extend']['fill'] = null;
+		$clear = pg_image_edit_gd(image_editor_save_solid(100, 100, 10, 120, 200), $edit, true);
+		pg_assert_same(127, image_editor_save_pixel($clear, 52, 2)[3], 'GD: on a transparent canvas the cut corner is clear');
+		pg_image_destroy($clear);
+
+		if (!class_exists('Imagick')) {
+			return;
+		}
+
+		$edit['extend']['fill'] = array(0, 255, 0);
+		$source = image_editor_save_solid(100, 100, 10, 120, 200);
+		ob_start();
+		imagepng($source);
+		$blob = ob_get_clean();
+		pg_image_destroy($source);
+
+		$image = new Imagick();
+		$image->readImageBlob($blob);
+		pg_assert_true(pg_image_edit_imagick($image, $edit, true), 'Imagick drew it');
+		$image->setImageFormat('png');
+		$drawn = imagecreatefromstring($image->getImageBlob());
+		$image->clear();
+
+		// Imagick may write a few colours as a palette PNG: read RGB values.
+		if (!imageistruecolor($drawn)) {
+			imagepalettetotruecolor($drawn);
+		}
+
+		pg_assert_same(array(200, 100), array(imagesx($drawn), imagesy($drawn)), 'Imagick: the canvas size');
+		pg_assert_same(array(0, 255, 0, 0), image_editor_save_pixel($drawn, 52, 2), 'Imagick: a corner the circle cut takes the fill');
+		pg_assert_same(array(10, 120, 200, 0), image_editor_save_pixel($drawn, 100, 50), 'Imagick: the middle of the picture is kept');
+		pg_assert_same(array(0, 255, 0, 0), image_editor_save_pixel($drawn, 199, 99), 'Imagick: the canvas keeps its corner');
+		pg_assert_same(array(255, 0, 0, 0), image_editor_save_pixel($drawn, 2, 2), 'Imagick: the layer outside the picture is not cut');
+		pg_image_destroy($drawn);
+	} finally {
+		image_editor_save_remove($folder);
+	}
+}
+
 // An edit is refused for an animated picture unless it asks for the first
 // frame (a copy); it is written even when the file comes out heavier.
 function test_image_editor_save_engine_edit()
