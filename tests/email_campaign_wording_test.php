@@ -62,6 +62,8 @@ function test_email_campaign_wording_opt_in_values()
 		'Also send message to the following e-mail address' => 'Mesajı ayrıca şu e-posta adresine de gönder',
 		"send email to opted-in contacts only. Example: 'We have an offer for you'" => "yalnızca ileti izni veren kişilere e-posta gönderir. Örnek: 'Size bir teklifimiz var'",
 		"send email, regardless of opt-in. Example: 'Your order has been shipped'" => "ileti izninden bağımsız olarak e-posta gönderir. Örnek: 'Siparişiniz gönderildi'",
+		"Send e-mail to opted-in contacts only. Example: 'We have an offer for you'" => "Yalnızca ileti izni veren kişilere e-posta gönderir. Örnek: 'Size bir teklifimiz var'",
+		"Send e-mail regardless of opt-in. Example: 'Your order has been shipped'" => "İleti izninden bağımsız olarak e-posta gönderir. Örnek: 'Siparişiniz gönderildi'",
 		'WARNING: The selected {var:1} will be opted-in.' => 'UYARI: Seçilen {var:1} için ileti izni verilecek.',
 		'WARNING: The selected {var:1} will be opted-out.' => 'UYARI: Seçilen {var:1} için ileti izni kaldırılacak.',
 		'{var:1} contact(s) were opted-in' => '{var:1} kişiye ileti izni verildi.',
@@ -76,6 +78,20 @@ function test_email_campaign_wording_opt_in_values()
 		pg_assert_same($value, $actual, $key);
 		pg_assert_false((bool) preg_match('/Opt-in|Opt-Out|opted|adresinede/i', $actual), $key . ' has no English opt-in word');
 	}
+}
+
+// The purpose choice has one Turkish name, the one the card's law title
+// and help text use, and the send window's progress line is a sentence.
+function test_email_campaign_wording_purpose_and_send_values()
+{
+	$map = pg_test_language_map();
+
+	pg_assert_same('Ticari', $map['Commercial'] ?? null, 'the commercial purpose');
+	pg_assert_same('E-posta mesajı şimdi her aboneye gönderiliyor.', $map['Sending the e-mail message to each subscriber now.'] ?? null, 'the send window line');
+
+	$send = (string) file_get_contents(PG_FUNCTIONS_DIR . '/send_email_campaign.php');
+	pg_assert_false(strpos($send, "lang('Informations')") !== false, 'the send window card header is Information');
+	pg_assert_contains("lang('Sending the e-mail message to each subscriber now.')", $send, 'the send window uses the new line');
 }
 
 function test_email_campaign_profiles_screen_uses_schedule_label()

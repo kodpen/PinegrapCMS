@@ -2009,8 +2009,9 @@ function prepare_page_for_email($html)
         // change relative URLs to absolute URLs for HTML background images
         $html = preg_replace('/(background\s*=\s*["\'])(?!http:\/\/|https:\/\/)(?:\/|\.\.\/|\.\/|)(.*?["\'])/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $html);
     }
-    // wrap long lines (RFC 821)
-    $html = wordwrap($html, 900, "\n", 1);
+    // No hard wrap: email() sends through PHPMailer, which encodes a line
+    // over 998 characters as quoted-printable; a cut wrap split words, URLs,
+    // multibyte characters and inline scripts.
     return $html;
 }
 // outputs the form's <select> product list for selecting a product

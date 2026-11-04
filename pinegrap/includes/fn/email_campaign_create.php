@@ -162,8 +162,11 @@ function pg_email_campaign_pick_recipients($user, $purpose, $groups, $entered)
  */
 function pg_email_campaign_insert($values, $picked, $user_id)
 {
-    // Long lines are wrapped (RFC 821).
-    $body = wordwrap((string) $values['body'], 900, "\n", 1);
+    // The body is stored as written or drawn. email() sends through
+    // PHPMailer, which switches to quoted-printable for a line over 998
+    // characters; a hard wrap here cut words, URLs, multibyte characters and
+    // inline scripts apart.
+    $body = (string) $values['body'];
     $status = (($values['status'] ?? 'ready') === 'paused') ? 'paused' : 'ready';
     $user_id = (string) (int) $user_id;
 
@@ -213,4 +216,45 @@ function pg_email_campaign_insert($values, $picked, $user_id)
     }
 
     return $email_campaign_id;
+}
+
+/**
+ * The HTML of a page drawn as the body of a campaign.
+ *
+ * The page is drawn inside the sender's request, but the e-mail is read by
+ * its recipients: the render is an e-mail render (the account widgets draw
+ * signed out, get_page_content() writes no session token), and any copy of
+ * the sender's CSRF token that still reached the HTML, such as a link a
+ * widget built with it, is removed (pg_email_campaign_without_token()).
+ *
+ * @param int|string $page_id
+ * @return string
+ */
+function pg_email_campaign_page_body($page_id)
+{
+    require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
+
+    $body = (string) get_page_content($page_id, '', '', 'preview', true);
+
+    return pg_email_campaign_without_token($body, (string) ($_SESSION['software']['token'] ?? ''));
+}
+
+/**
+ * The HTML without the given session token. A token is a long random hex
+ * string, so it is cut wherever it appears (a link's token= parameter, a
+ * hidden field, an inline script); a blank or short value cuts nothing.
+ *
+ * @param string $html
+ * @param string $token
+ * @return string
+ */
+function pg_email_campaign_without_token($html, $token)
+{
+    $token = (string) $token;
+
+    if (strlen($token) < 16) {
+        return (string) $html;
+    }
+
+    return str_replace($token, '', (string) $html);
 }

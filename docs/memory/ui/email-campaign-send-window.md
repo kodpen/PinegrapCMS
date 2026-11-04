@@ -19,4 +19,8 @@ description: The Send E-mail Campaign pop-up draws once and sends its batches ov
 - The bar (`role=progressbar`) is named by the "Sending Campaign Now…" heading (`aria-labelledby`); its percent is a span beside the bar, not inside it (Bootstrap 6 `.progress-bar` clips with `overflow:hidden; white-space:nowrap`).
 - A visually hidden `role=status` line gets "x of y" once per tenth of the campaign, and "Campaign Sent. …" at the end. On done the finished block replaces the progress, Close (reloads the opener) replaces Stop & Close and takes focus; the header X reloads the opener too.
 
+## What do Close and Stop & Close do without an opener?
+- Every close button calls `pgSendClose(reload)` (`send_email_campaign_close_script()`): with a live `window.opener` it reloads the opener (Close only) and closes; opened as a tab (middle-click, a pop-up blocker) it goes to `edit_email_campaign.php?id=…` (My Campaigns from a refusal). Before, Close threw on `window.opener` being null and Stop & Close did nothing.
+- The dead `d-none` theme menu of the window header was removed; the buttons use Bootstrap Icons.
+
 Related: docs/memory/ui/print-views-light-paper.md, docs/memory/core/json-endpoint-rules.md
