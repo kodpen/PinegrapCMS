@@ -946,6 +946,102 @@ function erp_account_form_check_tax_number_taken($liveform, $country_code, $acco
 }
 
 /**
+ * What a VIES answer about an account card's tax number means for the save:
+ * error stops the form on the tax number box; notice (confirmed) and
+ * warning (not confirmed) are shown on the next screen. Pure.
+ *
+ * A confirmed id and a VIES that cannot be reached never stop the save: the
+ * card is the accountant's record, and the service being down is no reason
+ * to lose what was typed. Whether an id VIES does not know (or one that is
+ * not shaped like a VAT id) is refused or only warned about is the caller's
+ * $refuse_invalid: a card may hold a national tax number that is no EU VAT id.
+ *
+ * @param array $check           an answer of pg_vat_check(), array() for none
+ * @param bool  $refuse_invalid  Refuse an unknown or malformed id instead of warning
+ * @return array{error:string,notice:string,warning:string}
+ */
+function erp_account_vat_outcome(array $check, $refuse_invalid)
+{
+    $outcome = array('error' => '', 'notice' => '', 'warning' => '');
+    $status = (string) ($check['status'] ?? '');
+
+    if ($status === 'valid') {
+        $name = trim((string) ($check['name'] ?? ''));
+        $outcome['notice'] = ($name !== '')
+            ? lang(array('string' => 'The EU VAT service (VIES) confirmed the tax number ({var:1}).', 'vars' => array(h($name))))
+            : lang('The EU VAT service (VIES) confirmed the tax number.');
+    } elseif ($status === 'unavailable') {
+        $outcome['warning'] = lang('The EU VAT service (VIES) could not be reached, so the tax number was saved unchecked.');
+    } elseif (($status === 'invalid') || ($status === 'malformed')) {
+        $text = ($status === 'malformed')
+            ? lang('This is not a valid EU VAT id for the account\'s country.')
+            : lang('The EU VAT service (VIES) does not know this tax number.');
+        $outcome[$refuse_invalid ? 'error' : 'warning'] = $text;
+    }
+
+    return $outcome;
+}
+
+/**
+ * Checks the card's tax number against VIES when it is an EU VAT id that
+ * matters across a border: the account's country and the store's are both
+ * member states and differ (pg_vat_checkout_applies(), as at checkout). A
+ * Turkish card, a card in the store's own country or one outside the EU
+ * never reaches VIES. On edit only a changed number is checked (compared
+ * without case and separators), so saving an untouched card makes no call.
+ *
+ * Runs after erp_account_form_check_formats(): a number already marked is
+ * not sent. An error is marked on the tax number box; the notice and the
+ * warning are returned for the screen the save goes to.
+ *
+ * @param liveform      $liveform
+ * @param string        $country_code    The account's country; the store's when empty
+ * @param string|null   $stored_number   The card's saved number on edit, null on create
+ * @param bool          $refuse_invalid  See erp_account_vat_outcome()
+ * @param callable|null $check           function ($number, $country): pg_vat_check()'s answer; VIES by default
+ * @param string|null   $store_country   The store's country; erp_default_country_code() by default
+ * @return array{notice:string,warning:string}
+ */
+function erp_account_form_check_vat($liveform, $country_code, $stored_number = null, $refuse_invalid = false, $check = null, $store_country = null)
+{
+    $said = array('notice' => '', 'warning' => '');
+    $number = trim((string) $liveform->get_field_value('tax_number'));
+
+    if (($number === '') || $liveform->check_field_error('tax_number')) {
+        return $said;
+    }
+
+    $country = erp_account_country($country_code);
+    $store = ($store_country === null) ? erp_default_country_code() : strtoupper(trim((string) $store_country));
+
+    if (!pg_vat_checkout_applies($number, $country, $store)) {
+        return $said;
+    }
+
+    $key = function ($value) {
+        return strtoupper((string) preg_replace('/[\s.\/_-]+/', '', (string) $value));
+    };
+
+    if (($stored_number !== null) && ($key($number) === $key($stored_number))) {
+        return $said;
+    }
+
+    if ($check === null) {
+        $check = function ($number, $country) {
+            return pg_vat_check($number, array('country' => $country));
+        };
+    }
+
+    $outcome = erp_account_vat_outcome((array) $check($number, $country), $refuse_invalid);
+
+    if ($outcome['error'] !== '') {
+        $liveform->mark_error('tax_number', $outcome['error']);
+    }
+
+    return array('notice' => $outcome['notice'], 'warning' => $outcome['warning']);
+}
+
+/**
  * The payment term and the reminder threshold as posted, trimmed, with a
  * value that is not whole days from 0 to 3650 marked on its field.
  *

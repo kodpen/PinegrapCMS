@@ -13,7 +13,7 @@ description: Steps SF4-SF8 of plans/small-features-2026-11.md: product questions
   - Memory: `commerce/product-preorder.md`.
 
 - SF6 (M) EU VAT checks. Cut in two: SF6a (`includes/fn/vat_check.php`, tests, `commerce/eu-vat-check.md`) done (#5552); SF6b after #5559, decided: the id, check time and consultation number go in `orders.vat_id`, `vat_checked_at`, `vat_request_id` (`workflow/decisions-made-schema-8.md`).
-  - SF6b1 done (#6410): columns, checkout check (`commerce/eu-vat-checkout.md`). SF6b2a done (#6468): ERP invoice note, order screen/print/API, express box. SF6b2b free: the ERP account card's tax number checked against VIES (`includes/erp/account_form.php`, `add_`/`edit_erp_account.php`); a card may hold a national number that is no VAT id: refuse or only warn.
+  - SF6b1 done (#6410): columns, checkout check (`commerce/eu-vat-checkout.md`). SF6b2a done (#6468): ERP invoice note, order screen/print/API, express box. SF6b2b done (#6493): the ERP account card's tax number checked against VIES on save, warn only (decided in #6489; `erp/erp-account-vat-check.md`).
   - SF6b: checkout check, order and ERP invoice carry the id, check time and reverse-charge note; VIES down: VAT charged with a note (`commerce/eu-vat-checkout.md`).
 
 - SF7 (S) Panel offline page and install hint. done (#5064); the site manifest needs nothing: Site Icon already serves `/site.webmanifest` (#5065, `platform/site-icon.md`). Memory: `ui/panel-offline-and-install.md`.
