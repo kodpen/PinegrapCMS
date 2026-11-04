@@ -2434,12 +2434,13 @@ function pg_image_editor_strings_artboard()
 
 /**
  * The canvas a picture's save is laid on (saveLayout() of the model): w x h
- * whole pixels, the picture's top left x, y on it (below 0: trimmed) and the
- * fill, '#rrggbb' or 'transparent'. Some of the picture (out_w x out_h) has
- * to lie on the canvas. Pure.
+ * whole pixels, the picture's top left x, y on it (below 0: trimmed), its
+ * size there pw x ph when it was resized on the canvas (else out_w x out_h)
+ * and the fill, '#rrggbb' or 'transparent'. Some of the picture has to lie
+ * on the canvas. Pure.
  *
- * @return array|null|false w, h, x, y, fill (array(r, g, b) or null for
- *                          transparent); null for none, false when refused
+ * @return array|null|false w, h, x, y, pw, ph, fill (array(r, g, b) or null
+ *                          for transparent); null for none, false when refused
  */
 function pg_image_edit_extend($value, $out_w, $out_h)
 {
@@ -2458,8 +2459,15 @@ function pg_image_edit_extend($value, $out_w, $out_h)
         return false;
     }
 
-    $x = isset($value['x']) ? pg_image_edit_number($value['x'], 1 - $out_w, $w - 1) : null;
-    $y = isset($value['y']) ? pg_image_edit_number($value['y'], 1 - $out_h, $h - 1) : null;
+    $pw = isset($value['pw']) ? pg_image_edit_number($value['pw'], 1, 8000) : $out_w;
+    $ph = isset($value['ph']) ? pg_image_edit_number($value['ph'], 1, 8000) : $out_h;
+
+    if (($pw === null) || ($ph === null) || (floor($pw) != $pw) || (floor($ph) != $ph)) {
+        return false;
+    }
+
+    $x = isset($value['x']) ? pg_image_edit_number($value['x'], 1 - $pw, $w - 1) : null;
+    $y = isset($value['y']) ? pg_image_edit_number($value['y'], 1 - $ph, $h - 1) : null;
     $fill = isset($value['fill']) ? $value['fill'] : null;
 
     if (($x === null) || ($y === null) || (floor($w) != $w) || (floor($h) != $h) || (floor($x) != $x) || (floor($y) != $y)) {
@@ -2474,7 +2482,7 @@ function pg_image_edit_extend($value, $out_w, $out_h)
         return false;
     }
 
-    return array('w' => (int) $w, 'h' => (int) $h, 'x' => (int) $x, 'y' => (int) $y, 'fill' => $fill);
+    return array('w' => (int) $w, 'h' => (int) $h, 'x' => (int) $x, 'y' => (int) $y, 'pw' => (int) $pw, 'ph' => (int) $ph, 'fill' => $fill);
 }
 
 /**

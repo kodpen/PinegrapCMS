@@ -1564,8 +1564,8 @@ function pg_image_edit_work_size($width, $height, $edit)
     $bw = $plan['scale'] * ($plan['rw'] * cos($a) + $plan['rh'] * sin($a));
     $bh = $plan['scale'] * ($plan['rw'] * sin($a) + $plan['rh'] * cos($a));
 
-    $ew = !empty($edit['extend']) ? (int) $edit['extend']['w'] : 0;
-    $eh = !empty($edit['extend']) ? (int) $edit['extend']['h'] : 0;
+    $ew = !empty($edit['extend']) ? max((int) $edit['extend']['w'], isset($edit['extend']['pw']) ? (int) $edit['extend']['pw'] : 0) : 0;
+    $eh = !empty($edit['extend']) ? max((int) $edit['extend']['h'], isset($edit['extend']['ph']) ? (int) $edit['extend']['ph'] : 0) : 0;
 
     return array(
         (int) ceil(max($plan['rw'], $bw, $plan['out_w'], $ew)),
@@ -1705,6 +1705,11 @@ function pg_image_edit_imagick($image, $edit, $alpha)
         $e = $edit['extend'];
         $fill = $e['fill'] ? $e['fill'] : ($alpha ? null : array(255, 255, 255));
         $color = $fill ? new ImagickPixel(sprintf('rgb(%d,%d,%d)', $fill[0], $fill[1], $fill[2])) : null;
+
+        // A picture resized on its canvas comes to its size there first.
+        if (!empty($e['pw']) && (($e['pw'] != $image->getImageWidth()) || ($e['ph'] != $image->getImageHeight()))) {
+            $image->resizeImage($e['pw'], $e['ph'], Imagick::FILTER_LANCZOS, 1);
+        }
 
         // The shape is the picture's: cut before the canvas grows around it.
         if ($shaped) {
@@ -1908,6 +1913,20 @@ function pg_image_edit_gd($image, $edit, $alpha)
     $shaped = ($shape === 'rounded') || ($shape === 'circle');
 
     if (!empty($edit['extend'])) {
+        // A picture resized on its canvas comes to its size there first.
+        if (!empty($edit['extend']['pw']) && (($edit['extend']['pw'] != imagesx($out)) || ($edit['extend']['ph'] != imagesy($out)))) {
+            $sized = pg_image_edit_gd_canvas($edit['extend']['pw'], $edit['extend']['ph']);
+
+            if (!$sized) {
+                pg_image_destroy($out);
+                return false;
+            }
+
+            imagecopyresampled($sized, $out, 0, 0, 0, 0, imagesx($sized), imagesy($sized), imagesx($out), imagesy($out));
+            pg_image_destroy($out);
+            $out = $sized;
+        }
+
         // The shape is the picture's: its cut corners transparent, so the
         // canvas fill shows in them once the picture is laid on it.
         if ($shaped) {
