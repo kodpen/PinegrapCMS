@@ -454,101 +454,12 @@ if (!$_POST) {
     }
 
     $badge_checked = '';
-    $manage_visitors_checked = '';
-    $create_pages_checked = '';
-    $delete_pages_checked = '';
-    $manage_forms_checked = '';
-    $manage_calendars_checked = '';
-    $manage_ecommerce_checked = '';
-    $view_card_data_checked = '';
-    $manage_ecommerce_reports_checked = '';
-    $set_offline_payment_checked = '';
-    $manage_contacts_checked = '';
-    $manage_emails_checked = '';
-    $publish_calendar_events_checked = '';
     
     // If badge is enabled, then check check box and show badge label row.
     if ($badge == 1) {
         $badge_checked = ' checked="checked"';
     }
-    
-    // find out if manage visitors checkbox should be checked or not
-    if ($manage_visitors == 'yes') {
-        $manage_visitors_checked = ' checked="checked"';
-    }
-    
-    // find out if create pages checkbox should be checked or not
-    if ($create_pages == '1') {
-        $create_pages_checked = ' checked="checked"';
-    }
-    
-    // find out if delete pages checkbox should be checked or not
-    if ($delete_pages == '1') {
-        $delete_pages_checked = ' checked="checked"';
-    }
-    
-    // find out if manage forms checkbox should be checked or not
-    if ($manage_forms == 'yes') {
-        $manage_forms_checked = ' checked="checked"';
-    }
-    
-    // find out if manage calendars checkbox should be checked or not
-    if ($manage_calendars == 'yes') {
-        $manage_calendars_checked = ' checked="checked"';
-        $calendar_access_style = '';
-        $publish_calendar_events_style = '';
-        
-    } else {
-        $calendar_access_style = '; display: none';
-        $publish_calendar_events_style = '; display: none';
-    }
-    
-    // find out if publish calendar events should be checked or not
-    if ($publish_calendar_events == 'yes') {
-        $publish_calendar_events_checked = ' checked="checked"';
-    }
-    
-    // if manage e-commerce is enabled, then check check box and show view card data check box
-    if ($manage_ecommerce == 'yes') {
-        $manage_ecommerce_checked = ' checked="checked"';
-        $view_card_data_style = '';
-        
-    // else manage e-commerce is disabled, so uncheck check box and hide view card data check box
-    } else {
-        $view_card_data_style = '; display: none';
-    }
 
-    // find out if view card data checkbox should be checked or not
-    if ($manage_ecommerce_reports) {
-        $manage_ecommerce_reports_checked = ' checked="checked"';
-    }
-
-    if ($view_card_data == 1) {
-        $view_card_data_checked = ' checked="checked"';
-    }
-    
-    // find out if set offline payment checkbox should be checked or not
-    if ($set_offline_payment == 1) {
-        $set_offline_payment_checked = ' checked="checked"';
-    }
-    
-    // find out if manage contacts checkbox should be checked or not
-    if ($manage_contacts == 'yes') {
-        $manage_contacts_checked = ' checked="checked"';
-    }
-    
-    // find out if manage e-mails checkbox should be checked or not
-    if ($manage_emails == 'yes') {
-        $manage_emails_checked = ' checked="checked"';
-    }
-    
-    $contact_group_access_style = '';
-    
-    // if manage contacts and manage emails is off, then hide list of contact groups
-    if (($manage_contacts != 'yes') && ($manage_emails != 'yes')) {
-        $contact_group_access_style = '; display: none';
-    }
-    
     // Folders this user may edit or view. Read before the panels are built
     // because both the folder trees and the row summaries need them.
     $folders_that_user_has_edit_access_to = array();

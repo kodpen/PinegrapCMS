@@ -468,8 +468,9 @@ function pg_user_permission_ui($config)
 		);
 	}
 
-	// Ads, only when the module is on.
-	if (isset($panels['ad_regions'])) {
+	// Ads, only when the module is on and there is an ad region to choose:
+	// without one the drawer would hold nothing but a Select All switch.
+	if (isset($panels['ad_regions']) && (trim((string) $panels['ad_regions']) !== '')) {
 		$groups[] = array(
 			'id'          => 'ads',
 			'icon'        => 'bi-badge-ad',
