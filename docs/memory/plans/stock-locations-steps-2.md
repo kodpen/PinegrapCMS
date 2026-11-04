@@ -12,7 +12,7 @@ description: Steps SL4-SL7 of plans/stock-locations.md: transfers and stock hist
 - SL5 (S) Pickup at a location. After SL3 and question 2.
   - A shipping method kind "Pickup at a location" (`shipping_methods.stock_location_id`, no rate), shown at checkout with the location's address and only when that location has the cart's units; the order's location set from it; the order screen, receipt and mails name the pickup place; the Ready-for-pickup status mail is the shipped mail's text until a later plan. Memory: `commerce/stock-locations-pickup.md`.
 
-- SL6 (S) API and webhooks. After SL3 and SL4.
+- SL6 (S) API and webhooks. After SL3 and SL4. Done in #6485.
   - `GET /inventory/locations`, `GET /inventory?location=`, `POST /inventory/transfer` with scopes and `dry_run` (`api/api-endpoint-rules.md`), the location on `inventory.changed`; MCP tools follow; the marketplace and ERP pushes keep the total. Memory: `api/api-inventory-locations.md`.
 
 - SL7 (S) Close-out. After SL1-SL6.

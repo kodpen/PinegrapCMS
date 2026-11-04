@@ -3203,6 +3203,7 @@
     "Stock locations become available once the database upgrade has run.": "Stok konumları veritabanı güncellemesi çalıştıktan sonra kullanılabilir.",
     "Stock movements": "Stok hareketleri",
     "Stock not tracked": "Stok takibi yok",
+    "Stock of product ({var:1}) was moved between locations through the API by the application {var:2} (key {var:3}).": "({var:1}) ürününün stoğu, {var:2} uygulaması tarafından API üzerinden konumlar arasında taşındı (anahtar {var:3}).",
     "Stock preparation failed for {var:1}: {var:2}": "{var:1} için stok hazırlığı başarısız oldu: {var:2}",
     "Stock quantity": "Stok adedi",
     "Stock running low": "Stok azalıyor",

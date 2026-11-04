@@ -129,7 +129,11 @@ function api_webhook_events() {
 		// import, a marketplace order import or cancellation and an ERP stock
 		// count. They still move products.timestamp, so GET
 		// /products?updated_since= lists the product. The description says so.
-		'inventory.changed'    => 'A product stock level changed: a sale, a scan, a screen, the API, the Workspace or an ERP document (not product imports, marketplace order imports or a stock count; those products are listed by GET /products?updated_since=)',
+		// On a site with stock locations the payload adds location_id,
+		// location_name and location_quantity (pg_stock_event_location_fields());
+		// quantity stays the total. A transfer between locations leaves the
+		// total as it was and is not announced (GET /inventory reads it).
+		'inventory.changed'    => 'A product stock level changed: a sale, a scan, a screen, the API, the Workspace or an ERP document (not product imports, marketplace order imports or a stock count; those products are listed by GET /products?updated_since=). quantity is the total; on a site with stock locations location_id, location_name and location_quantity name the location that changed. A transfer between locations is not announced: the total stays the same',
 		// Only where the site has set ECOMMERCE_LOW_STOCK_THRESHOLD by hand: it
 		// has no settings screen yet, and without a threshold there is no low to
 		// cross. The cart widget reads the same constant for its own warning.
