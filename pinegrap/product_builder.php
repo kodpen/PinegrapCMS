@@ -236,19 +236,51 @@ function pg_pb_variant_set_clash($attributes, $set_attributes, $siblings)
 
 
 /**
+ * Whether an edit screen post unticked every attribute option. No option
+ * ticked posts an empty variants_json list, which is also what a post sent
+ * without the screen's script would carry, so the script marks a post whose
+ * ticks it read with pg_pb_attributes_posted; only then does the empty list
+ * mean "no attribute". Without the mark the stored attributes stay.
+ *
+ * @param array $post
+ * @return bool
+ */
+function pg_pb_attributes_cleared($post)
+{
+    return !empty($post['pg_pb_attributes_posted'])
+        && isset($post['variants_json']) && is_string($post['variants_json'])
+        && (trim($post['variants_json']) === '[]');
+}
+
+
+/**
  * The sentence refusing an edited set member's attribute choice, or '' when
  * the product is in no variant set or the choice fits it
- * (pg_pb_variant_set_clash()).
+ * (pg_pb_variant_set_clash()). A member whose every option was unticked is
+ * refused too: it would stay in the set with no combination to be picked by.
  *
  * @param int   $product_id
  * @param array $variants  Decoded variants_json of the edit screen
+ * @param bool  $cleared   pg_pb_attributes_cleared() of the post
  * @return string
  */
-function pg_pb_variant_set_problem($product_id, $variants)
+function pg_pb_variant_set_problem($product_id, $variants, $cleared = FALSE)
 {
     $product_id = (int) $product_id;
 
-    if (!$product_id || (count($variants) !== 1) || empty($variants[0]['attributes'])) {
+    if (!$product_id) {
+        return '';
+    }
+
+    if ($cleared && !$variants) {
+        if (pg_pb_variant_group_id($product_id) && pg_pb_product_attribute_rows($product_id)) {
+            return lang('This product is a variant in a variant set: choose one option of each of its attributes.');
+        }
+
+        return '';
+    }
+
+    if ((count($variants) !== 1) || empty($variants[0]['attributes'])) {
         return '';
     }
 
@@ -5426,6 +5458,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
              operator came from travels with the form. -->
         <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '" />
         <input type="hidden" id="variants_json" name="variants_json" value="" />
+        <input type="hidden" id="pg_pb_attributes_posted" name="pg_pb_attributes_posted" value="" />
         <input type="hidden" id="attributes_meta_json" name="attributes_meta_json" value="" />
         <input type="hidden" id="variant_price_rules" name="variant_price_rules" value="" />
         ' . ($ai_marks_ready ? pg_ai_fields_input('product', $ai_marks) : '') . '
@@ -6810,16 +6843,16 @@ function pg_pb_update_product($product_id)
     // Attributes. The edit screen allows one option per attribute — see the
     // note on singleOptionPerAttribute — so what comes back is this product's
     // own description, not a matrix. Rewritten wholesale: unticking an
-    // attribute has to remove it.
+    // attribute has to remove it, the last one too (pg_pb_attributes_cleared()).
     $variants = pg_pb_decode_variants(isset($_POST['variants_json']) ? $_POST['variants_json'] : '');
 
-    if ($variants) {
+    if ($variants || pg_pb_attributes_cleared($_POST)) {
 
         db("DELETE FROM products_attributes_xref WHERE product_id = '" . e($product_id) . "'");
 
         $sort_order = 0;
 
-        foreach ($variants[0]['attributes'] as $attribute) {
+        foreach (($variants ? $variants[0]['attributes'] : array()) as $attribute) {
             pg_pb_insert_row('products_attributes_xref', array(
                 'product_id'   => $product_id,
                 'attribute_id' => $attribute['attribute_id'],
@@ -7259,7 +7292,7 @@ function pg_pb_validate_product_post($user, $product_id = 0)
 
     // A variant set member edited on its own keeps a combination of its own.
     if ($product_id) {
-        $variant_problem = pg_pb_variant_set_problem($product_id, pg_pb_decode_variants(isset($_POST['variants_json']) ? $_POST['variants_json'] : ''));
+        $variant_problem = pg_pb_variant_set_problem($product_id, pg_pb_decode_variants(isset($_POST['variants_json']) ? $_POST['variants_json'] : ''), pg_pb_attributes_cleared($_POST));
 
         if ($variant_problem !== '') {
             output_error(h($variant_problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');

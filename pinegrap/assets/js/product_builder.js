@@ -3198,6 +3198,10 @@
         }
 
         $('#variants_json').val(JSON.stringify(collectVariants()));
+        /* Says the ticks above were read: an empty list then means "no
+           attribute", which the edit save writes, rather than a post that
+           never went through this handler. */
+        $('#pg_pb_attributes_posted').val('1');
         $('#attributes_meta_json').val(JSON.stringify(collectAttributeMeta()));
 
         /* Read again rather than taken from activeRules: a value typed a
