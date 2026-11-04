@@ -425,6 +425,7 @@
     "Records how long each request takes, so slow pages can be found. The measurement is written after the response has been sent, so visitors do not wait for it.": "Her isteğin ne kadar sürdüğünü kaydeder, böylece yavaş sayfalar bulunabilir. Ölçüm yanıt gönderildikten sonra yazılır, ziyaretçi beklemez.",
     "Records merged": "Birleştirildi",
     "Records of the form \"{var:1}\"": "\"{var:1}\" formunun kayıtları",
+    "Records of these forms": "Bu formların kayıtları",
     "Records older than {var:1} days are removed a little at a time by the general job.": "{var:1} günden eski kayıtlar genel görev tarafından azar azar silinir.",
     "Records per page": "Sayfa başına kayıt",
     "Record…": "Kaydet…",

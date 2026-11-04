@@ -196,6 +196,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - explorer-selection-bar-menu.md: The file manager's selection bar "More actions" menu is placed by Floating UI (fixed strategy), not displayed statically: why, and the rule for a menu in a clipped or bottom bar
 - explorer-tour-texts.md: File and Catalog Manager tour steps name the control they ring by its printed label; the toolbar More button is named; keys stay .4 on rewording
 - explorer-tree-keyboard.md: The File and Catalog Manager tree on the explorer's own screen (in the main menu panel) from the keyboard: focusable link rows with aria-current, arrows with aria-expanded, Enter/Space
+- fediverse-settings.md: Settings › Fediverse: account card and handle check, Look me up, what is published, followers and blocks, delivery log with Try again, the rel=alternate link
 - field-caption-links.md: Captions tied to their fields on the code-field screens, Generate Layout, Create File and the order tracking numbers; why chips need a label, not an aria-label
 - field-form-checks.md: What the form field screens refuse on save (type, number boxes, blank choices) and which pages the form view and field screens open for
 - field-help-describedby.md: pgBindFieldHelp() in backend.src.js ties a panel field's .form-text help to the field with aria-describedby at runtime: which field, what is skipped, when it runs, what is left
@@ -435,7 +436,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - settings-invalid-fields.md: A refused Site Settings save marks its fields by name; the dialog marks and focuses them (#3026), a settings page puts the typed values back (pgSettingsRestore())
 - settings-invalid-vs-error.md: Settings save outcomes: rejected input returns status invalid (no re-read, nothing written, no log); pane sentences are plain text.
 - settings-list-headings.md: Site Settings dialog list: the four group headings (decided #3879, built #4118), the group key per category, how a new category joins one.
-- settings-modal-architecture.md: Site Settings dialog: file map, the 14 categories under 4 headings, where moved cards went, moving a card, adding a category.
+- settings-modal-architecture.md: Site Settings dialog: file map, the 15 categories under 4 headings, where moved cards went, moving a card, adding a category.
 - settings-modal-autofill-lock.md: Settings dialog autofill prevention: readonly latch/unlatch of text fields, stamped autocomplete attributes, no fake password field in the dialog.
 - settings-modal-autofill-restore.md: Settings dialog defence against password-manager fills: hold()/review() restore, gesture-clock ownership, patrol() polling, three-restore limit.
 - settings-modal-card-dialogs.md: Rules for a settings card that opens its own dialog inside the settings modal: extras box, data-pgdialog rename, the dialog-open scroll lock, dispose.

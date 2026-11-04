@@ -82,6 +82,7 @@ function get_help_url($properties = array())
         'settings_bookings'   => 'site-settings#bookings',
         'settings_privacy'    => 'site-settings#visitors-and-privacy',
         'settings_api'        => 'site-settings#api',
+        'settings_fediverse'  => 'site-settings#fediverse',
         'settings_maintenance' => 'site-settings#updates-and-maintenance',
         'system_tools'        => 'site-settings#system-tools',
         'smtp_settings'       => 'site-settings#smtp-settings',

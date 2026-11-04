@@ -5,7 +5,7 @@ module: activitypub
 ---
 
 ## Where do the settings and the key pair live?
-- In `config_text`, not in `config` columns: the stock `config` row has no room left (`data/config-table-no-varchar.md`, `tests/innodb_test.php`), so the `config.ap_*` shape of #5041 became two rows. `ap_settings` is JSON (`enabled`, `handle`, `summary`, `type` Person or Organization, `publish` with the chosen forms and folders), read by `pg_ap_settings()` / `pg_ap_settings_read()`. `ap_keys` is JSON with `public` (PEM) and `private` (`pg_connect_seal()` of `array('pem' => …)`), re-sealed on a key reset (`encryption-key-reseal-registry.md`).
+- In `config_text`, not in `config` columns: the stock `config` row has no room left (`data/config-table-no-varchar.md`, `tests/innodb_test.php`), so the `config.ap_*` shape of #5041 became two rows. `ap_settings` is JSON (`enabled`, `handle`, `name`, `summary`, `icon`, `type` Person or Organization, `publish` with the chosen forms and folders), read by `pg_ap_settings()` / `pg_ap_settings_read()`. `ap_keys` is JSON with `public` (PEM) and `private` (`pg_connect_seal()` of `array('pem' => …)`), re-sealed on a key reset (`encryption-key-reseal-registry.md`).
 - The pair is made on first use by `pg_ap_keys()` with `pg_dkim_key_pair()` (RSA 2048); `INSERT IGNORE` lets only the first concurrent request write it. No `ENCRYPTION_KEY` or no OpenSSL: no pair, nothing is signed.
 - The tables of 2026.11.0, 11.0.163 (`upgrade_2026_11_0_activitypub()`): `ap_followers`, `ap_outbox`, `ap_blocks`, and `comments.remote_actor` / `remote_id` with `idx_remote`; `ap_reactions` in 11.0.167 (`platform/activitypub-inbox.md`).
 
@@ -15,7 +15,7 @@ module: activitypub
 - WebFinger and NodeInfo live at the host's root, so a site installed under a sub-path (`PATH` not `/`) is not found by handle.
 
 ## What do the documents look like?
-- Actor id `<base>@<handle>`, key `#main-key`, inbox and shared inbox `<software dir>/ap_inbox.php` (AP2), `outbox` and `followers` under the actor. Name: organization name, else title, else host; summary: `ap_settings.summary`, else the meta description; icon: the organization logo. Expected shapes are the fixtures `tests/fixtures/activitypub/blog_*.json`, checked against Mastodon's actor (`mastodon_actor.json`).
+- Actor id `<base>@<handle>`, key `#main-key`, inbox and shared inbox `<software dir>/ap_inbox.php` (AP2), `outbox` and `followers` under the actor. Name: `ap_settings.name`, else organization name, else title, else host; summary: `ap_settings.summary`, else the meta description; icon: `ap_settings.icon`, else the organization logo. Written by Settings › Fediverse (`ui/fediverse-settings.md`). Expected shapes are the fixtures `tests/fixtures/activitypub/blog_*.json`, checked against Mastodon's actor (`mastodon_actor.json`).
 - Followers collection: the count only, no members. Outbox: empty until AP3 fills it.
 
 ## How are requests signed and checked?
