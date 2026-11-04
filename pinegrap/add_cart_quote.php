@@ -91,6 +91,25 @@ function add_cart_quote_contact_text($row)
     return trim(($name !== '' ? $name : '#' . (int) $row['id']) . (($email !== '') ? ' · ' . $email : ''));
 }
 
+/**
+ * One Summary row of the status column: a label and the value the script
+ * keeps up to date.
+ *
+ * @param string $label  The label, plain text
+ * @param string $id     The id of the value
+ * @param string $value  The value, plain text
+ * @param bool   $last   False draws the line under the row
+ * @return string
+ */
+function add_cart_quote_summary_row($label, $id, $value, $last)
+{
+    return '
+                                <div class="d-flex justify-content-between gap-3 py-2' . ($last ? '' : ' border-bottom') . '">
+                                    <dt class="fw-normal">' . h($label) . '</dt>
+                                    <dd class="mb-0 fw-bold text-end text-break" id="' . h($id) . '">' . h($value) . '</dd>
+                                </div>';
+}
+
 $liveform = new liveform('add_cart_quote');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -177,11 +196,18 @@ $contact_row = ($contact_value > 0) ? db_item("SELECT id, first_name, last_name,
 $back = 'view_cart_quotes.php' . (is_array($contact_row) ? '?contact_id=' . (int) $contact_row['id'] : '');
 
 $output_rows = '';
+$chosen_products = 0;
+$chosen_quantity = 0;
 
 for ($row = 1; $row <= ADD_CART_QUOTE_ROWS; $row++) {
     $product_value = (int) $liveform->get_field_value('product_' . $row);
     $product_row = ($product_value > 0) ? db_item("SELECT id, name, short_description FROM products WHERE id = '" . $product_value . "'") : null;
     $quantity = (string) $liveform->get_field_value('quantity_' . $row);
+
+    if (is_array($product_row)) {
+        $chosen_products++;
+        $chosen_quantity += max(0, (int) $quantity);
+    }
 
     $output_rows .= '
                     <div class="row g-5 mb-5">
@@ -213,35 +239,94 @@ echo
 <main id="content" class="container-fluid">
     ' . $liveform->output_errors() . '
     ' . $liveform->output_notices() . '
-    <form action="add_cart_quote.php" method="post">
+    <form action="add_cart_quote.php" method="post" id="cart_quote_form">
         ' . get_token_field() . '
-        <div class="card my-7">
-            <div class="card-body">
-                <div class="mb-12">
-                    <label class="form-label" for="contact_id">' . h(lang('Customer')) . '</label>
-                    <select class="form-control' . ($liveform->check_field_error('contact_id') ? ' is-invalid' : '') . '" id="contact_id" name="contact_id" data-pg-combobox data-pg-source="add_cart_quote.php?request=contacts" data-pg-min-length="2" data-placeholder="' . h(lang('Search for a contact')) . '">
-                        <option value=""></option>
-                        ' . (is_array($contact_row) ? $selected($contact_row['id'], add_cart_quote_contact_text($contact_row)) : '') . '
-                    </select>
-                    <div class="form-text">' . h(lang('Optional. The link never shows whom the quote was made for.')) . '</div>
+        <div class="row mt-7">
+            <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                <div class="card mb-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Customer')) . '</h2>
+                    <div class="card-body pt-0">
+                        <label class="form-label visually-hidden" for="contact_id">' . h(lang('Customer')) . '</label>
+                        <select class="form-control' . ($liveform->check_field_error('contact_id') ? ' is-invalid' : '') . '" id="contact_id" name="contact_id" aria-describedby="contact_id_help" data-pg-combobox data-pg-source="add_cart_quote.php?request=contacts" data-pg-min-length="2" data-placeholder="' . h(lang('Search for a contact')) . '">
+                            <option value=""></option>
+                            ' . (is_array($contact_row) ? $selected($contact_row['id'], add_cart_quote_contact_text($contact_row)) : '') . '
+                        </select>
+                        <div id="contact_id_help" class="form-text">' . h(lang('Optional. The link never shows whom the quote was made for.')) . '</div>
+                    </div>
                 </div>
-                <fieldset class="mb-12">
-                    <legend class="form-label fs-md">' . h(lang('Products and quantities')) . '</legend>
-                    ' . $output_rows . '
-                    <div class="form-text">' . h(lang('A product that is disabled, out of stock or outside its minimum and maximum when the link is used is left out or adjusted in the cart.')) . '</div>
-                </fieldset>
-                <div class="mb-5">
-                    <label class="form-label" for="valid_until">' . h(lang('Valid until')) . '</label>
-                    ' . $liveform->output_field(array('type' => 'text', 'id' => 'valid_until', 'name' => 'valid_until', 'class' => 'form-control', 'size' => '10', 'maxlength' => '10', 'data-pg-date' => '')) . '
-                    <div class="form-text">' . h(lang('The link works through this day. Leave it empty for a link without an end.')) . '</div>
+                <div class="card mb-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Products and quantities')) . '</h2>
+                    <div class="card-body pt-0">
+                        ' . $output_rows . '
+                        <div class="form-text">' . h(lang('A product that is disabled, out of stock or outside its minimum and maximum when the link is used is left out or adjusted in the cart.')) . '</div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="buttons position-sticky text-end" style="bottom:.5rem;">
-            <a class="btn btn-outline theme-secondary" href="' . h($back) . '">' . h(lang('Cancel')) . '</a>
-            <button type="submit" class="btn btn-solid theme-primary"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . h(lang('Save and make the link')) . '</button>
+            <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                <div class="position-sticky" style="top:3.3rem;">
+                    <div class="card mb-7">
+                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Validity')) . '</h2>
+                        <div class="card-body pt-0">
+                            <label class="form-label" for="valid_until">' . h(lang('Valid until')) . '</label>
+                            ' . $liveform->output_field(array('type' => 'text', 'id' => 'valid_until', 'name' => 'valid_until', 'class' => 'form-control', 'size' => '10', 'maxlength' => '10', 'aria-describedby' => 'valid_until_help', 'data-pg-date' => '')) . '
+                            <div id="valid_until_help" class="form-text">' . h(lang('The link works through this day. Leave it empty for a link without an end.')) . '</div>
+                        </div>
+                    </div>
+                    <div class="card mb-7">
+                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</h2>
+                        <div class="card-body pt-0">
+                            <dl class="mb-0">'
+                                . add_cart_quote_summary_row(lang('Customer'), 'cart_quote_summary_customer', is_array($contact_row) ? add_cart_quote_contact_text($contact_row) : lang('Not chosen'), false)
+                                . add_cart_quote_summary_row(lang('Products'), 'cart_quote_summary_products', (string) $chosen_products, false)
+                                . add_cart_quote_summary_row(lang('Total quantity'), 'cart_quote_summary_quantity', (string) $chosen_quantity, false)
+                                . add_cart_quote_summary_row(lang('Valid until'), 'cart_quote_summary_until', ((string) $liveform->get_field_value('valid_until') !== '') ? (string) $liveform->get_field_value('valid_until') : lang('No end'), true) . '
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                    <div class="container">
+                        <div class="btn-group flex-wrap justify-content-center">
+                            <a class="btn my-1 btn-outline theme-secondary" href="' . h($back) . '"><span class="pg-btn-label">' . h(lang('Cancel')) . '</span></a>
+                            <button type="submit" class="btn my-1 btn-solid theme-primary"><span class="bi bi-link-45deg me-3" aria-hidden="true"></span><span class="pg-btn-label">' . h(lang('Save and make the link')) . '</span></button>
+                        </div>
+                    </div>
+                </nav>
+            </div>
         </div>
     </form>
+    <script>
+        // The Summary follows the boxes: the chosen customer, how many
+        // product boxes hold a product and their quantities, the last day.
+        // jQuery hears both native changes and a pick of the date picker.
+        (function () {
+            var form = document.getElementById("cart_quote_form");
+            var rows = ' . ADD_CART_QUOTE_ROWS . ';
+            var texts = ' . json_encode(array('none' => lang('Not chosen'), 'no_end' => lang('No end')), JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . ';
+            function text(id, value) { document.getElementById(id).textContent = value; }
+            function update() {
+                var contact = document.getElementById("contact_id");
+                var option = contact.options[contact.selectedIndex];
+                text("cart_quote_summary_customer", (contact.value !== "" && option) ? option.text.trim() : texts.none);
+                var products = 0, quantity = 0;
+                for (var n = 1; n <= rows; n++) {
+                    if (document.getElementById("product_" + n).value !== "") {
+                        products++;
+                        var amount = parseInt(document.getElementById("quantity_" + n).value, 10);
+                        quantity += (amount > 0) ? amount : 0;
+                    }
+                }
+                text("cart_quote_summary_products", String(products));
+                text("cart_quote_summary_quantity", String(quantity));
+                var until = document.getElementById("valid_until").value.trim();
+                text("cart_quote_summary_until", (until !== "") ? until : texts.no_end);
+            }
+            jQuery(form).on("change input", update);
+        })();
+    </script>
 </main>
 ' . get_date_picker_format() . pg_fields_script() . output_footer();
 
