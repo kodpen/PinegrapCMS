@@ -17,9 +17,7 @@
  */
 
 include('init.php');
-
-// only ever appended to further below, so it has to start out empty
-$output_rows = '';
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
 $user = validate_user();
 validate_contacts_access($user);
@@ -47,9 +45,6 @@ $id = ($_SESSION['software']['ecommerce']['view_orders_for_contact']['id'] ?? ''
 if (!is_scalar($id)) {
     $id = '';
 }
-
-// The page asked for, a whole number of 1 or more (pg_list_page_number()).
-$screen = pg_list_page_number($_REQUEST['screen'] ?? '');
 
 // Get contact name and last name
 $query = "SELECT first_name, last_name FROM contacts WHERE id = ?";
@@ -81,66 +76,56 @@ $sort_default = array('sort' => 'order_date', 'order' => 'desc');
 $list_state = pg_list_state('view_orders_for_contact', $sort_columns, $sort_default);
 $sort_levels = $list_state['sorts'];
 
-// What each sort code orders by. Only codes pg_list_state() let through
-// reach pg_list_order_by(), and it writes nothing but these.
-$order_by = pg_list_order_by($sort_levels, array(
-    'order_number' => 'order_number',
-    'total'        => 'total',
-    'status'       => 'status',
-    'order_date'   => 'order_date',
-));
+// The sort menu's links keep the contact in the address, so the access
+// check at the top sees the same contact the list shows.
+$sort_query = array('id' => $id);
 
 // The Awaiting Payment badge reads paid_at, which an older schema lacks.
 $paid_at_column_exists = pg_schema_has('orders', 'paid_at');
 
-// The sort links keep the contact in the address, so the access check at
-// the top sees the same contact the list shows.
-$sort_query = array('id' => $id);
-$sort_extras = h('&id=' . urlencode($id));
+// The status changes in place as on the orders list, through its own
+// screen's answer (view_orders.php), for a user who may change orders.
+$quick_edit = (($user['role'] < 3) || !empty($user['manage_ecommerce'])) ? pg_order_quick_edit_columns() : array();
 
-// An open cart (status incomplete) is not an order yet: it has no number
-// and a zero total, and the contacts list's My Customers view leaves it out
-// too.
-$where = "WHERE contact_id = ? AND status != 'incomplete' ";
+// Every order of the contact is printed: the list table driver sorts and
+// searches them in the browser (browser mode). An open cart (status
+// incomplete) is not an order yet: it has no number and a zero total, and
+// the contacts list's My Customers view leaves it out too.
+$list_rows = array();
 
-
-// get total number of results for all screens, so that we can output links to different screens
-$query = "SELECT count(id) " .
-         "FROM orders " .
-         $where;
+$query = "SELECT id, order_number, total, order_date, status, payment_method, parasut_exported, parasut_invoice_id" . ($paid_at_column_exists ? ", paid_at" : "") . "
+    FROM orders
+    WHERE contact_id = ? AND status != 'incomplete'
+    ORDER BY order_date DESC";
 $result = db_q($query, array((string) $id)) or output_error('Query failed.');
-$row = mysqli_fetch_row($result);
-$number_of_results = $row[0];
 
-
-/* get results for just this screen*/
-$query = "SELECT id, order_number, total, order_date, status, payment_method, parasut_exported, parasut_invoice_id" . ($paid_at_column_exists ? ", paid_at" : "") . " ".
-         "FROM orders ".
-         $where.
-         "ORDER BY $order_by ";
-$result = db_q($query, array((string) $id)) or output_error('Query failed.');
 while ($row = mysqli_fetch_assoc($result)) {
-    // The status badge the orders list draws (cancelled, exported, awaiting
-    // payment, the Paraşüt mark).
-    $output_status = pg_order_list_status_html($row, $paid_at_column_exists);
-    $row['total'] = pg_format_money($row['total'] / 100, BASE_CURRENCY_SYMBOL);
-    $row['order_date'] = get_relative_time(array('timestamp' => $row['order_date']));
-
-    $output_link_url = 'view_order.php?id=' . $row['id'] . '&send_to=' . urlencode(REQUEST_URL);
-
-    $output_rows .=
-    '<tr class="unselectable ">
-        
-        <td class="align-middle text-start action-buttons">
-            <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . h(lang('View Order')) . '" aria-label="' . h(lang('View Order')) . '" onclick="window.location.href=\'' . h(escape_javascript($output_link_url)) . '\'"><i class="bi bi-eye" aria-hidden="true"></i></button>
-            <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
-        </td>
-        <td>' . h($row['order_number'] ?? '') . '</td>
-        <td nowrap>' . $row['total'] . '</td>
-        <td nowrap>' . $output_status . '</td>
-        <td nowrap>' . $row['order_date'] . '</td>
-    </tr>';
+    $order_id = (int) $row['id'];
+    $status = (string) $row['status'];
+    $list_rows[] = array(
+        'id' => $order_id,
+        'cells' => array(
+            'order_number' => pg_list_cell('<a href="view_order.php?id=' . $order_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '" data-pg-open>' . h(((string) $row['order_number'] !== '') ? $row['order_number'] : '#' . $order_id) . '</a>'),
+            'total' => pg_list_cell(pg_format_money($row['total'] / 100, BASE_CURRENCY_SYMBOL), 'align-middle text-nowrap', array('data-pg-sort-value' => (int) $row['total'])),
+            'status' => pg_list_cell(pg_order_list_status_html($row, $paid_at_column_exists), 'align-middle text-nowrap',
+                (isset($quick_edit['status']['options'][$status]) ? pg_list_edit_cell_attributes($quick_edit, 'status', $order_id, $status) : array()) + array('data-pg-sort-value' => $status)),
+            'order_date' => pg_list_cell(get_relative_time(array('timestamp' => $row['order_date'])), 'align-middle text-nowrap', array('data-pg-sort-value' => (int) $row['order_date'])),
+        ),
+    );
 }
+
+$list = pg_list_table_printed(array(
+    'list' => 'view_orders_for_contact',
+    'columns' => array(
+        'order_number' => array('heading' => lang('Order Number')),
+        'total' => array('heading' => lang('Total'), 'kind' => 'money'),
+        'status' => array('heading' => lang('Status'), 'kind' => 'badge', 'editable' => $quick_edit ? 'select' : false),
+        'order_date' => array('heading' => lang('Order Date'), 'kind' => 'date'),
+    ),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+    'edit' => $quick_edit ? array('url' => 'view_orders.php', 'columns' => $quick_edit) : null,
+));
 
 echo
 pg_page_shell(
@@ -162,26 +147,12 @@ pg_page_shell(
     <div class="row">
         <div class="col-12">
             ' . pg_screen_toolbar(array(
-                'search' => pg_list_sort_menu('view_orders_for_contact.php', $sort_columns, $sort_levels, $sort_default, $sort_query),
+                'search' => array(pg_list_table_search_box('view_orders_for_contact'), pg_list_sort_menu('view_orders_for_contact.php', $sort_columns, $sort_levels, $sort_default, $sort_query)),
             )) . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table " style="width:100%;display:none">
-                        <thead>
-                            <tr>
-                                <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th nowrap>' . get_column_heading(lang('Order Number'), $sort_levels, '', $sort_extras, 'order_number') . '</th>
-                                <th nowrap>' . get_column_heading(lang('Total'), $sort_levels, '', $sort_extras, 'total') . '</th>
-                                <th nowrap>' . get_column_heading(lang('Status'), $sort_levels, '', $sort_extras, 'status') . '</th>
-                                <th nowrap>' . get_column_heading(lang('Order Date'), $sort_levels, '', $sort_extras, 'order_date') . '</th>
-                            </tr>
-                        </thead>
-                        ' . $output_rows . '
-                    </table>
-                </div>
-            </div>
+            ' . pg_list_table_html($list['source'], $list['page'], lang('All Orders for Contact')) . '
         </div>
     </div>
 </main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 ' .
     output_footer();

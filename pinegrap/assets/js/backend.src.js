@@ -7281,11 +7281,9 @@ function init_edit_comment_publish() {
     var publish_schedule = $('#publish_schedule');
 
     // The date and time field is a data-pg-datetime hook (pg_fields.js).
-    // If the schedule option is selected by default when the page first loaded,
-    // then show fields for it.
-    if (publish.val() == 'schedule') {
-        publish_schedule.fadeIn();
-    }
+    // The schedule box is shown and hidden with its hidden attribute; it is
+    // shown while the schedule option is picked, also on the first load.
+    publish_schedule.prop('hidden', publish.val() != 'schedule');
 
     // An arrow key on a closed select changes its value at once, so after a
     // navigation key the date box is shown but focus stays on the select;
@@ -7314,7 +7312,7 @@ function init_edit_comment_publish() {
     publish.change(function () {
         // If the schedule option is selected, then show fields for it.
         if (publish.val() == 'schedule') {
-            publish_schedule.fadeIn();
+            publish_schedule.prop('hidden', false);
 
             // Focus the box of the date and time field, which opens its
             // calendar; the field itself is the hidden store.
@@ -7324,7 +7322,7 @@ function init_edit_comment_publish() {
 
             // Otherwise the schedule option is not selected, so hide its fields.
         } else {
-            publish_schedule.fadeOut();
+            publish_schedule.prop('hidden', true);
         }
     });
 }

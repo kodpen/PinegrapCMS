@@ -345,14 +345,15 @@ function erp_event_quote($quote_id, $event)
 }
 
 /**
- * Announce a purchase order: written, sent, received in full, cancelled or
- * opened again. An order moves no money, so like a quote it feeds the
+ * Announce a purchase order: written, changed, sent, received in full,
+ * cancelled, opened again or turned into a purchase invoice draft. An order moves no money, so like a quote it feeds the
  * webhook queue and the audit trail only.
  *
  * @param int    $order_id
  * @param string $event  'erp.purchase_order.created' | 'erp.purchase_order.sent'
  *                       | 'erp.purchase_order.received' | 'erp.purchase_order.cancelled'
- *                       | 'erp.purchase_order.reopened'
+ *                       | 'erp.purchase_order.reopened' | 'erp.purchase_order.changed'
+ *                       | 'erp.purchase_order.invoiced'
  * @return int
  */
 function erp_event_purchase_order($order_id, $event)

@@ -176,6 +176,204 @@ function pg_user_form_text_fits($value)
 }
 
 /**
+ * The posted fields that cannot be stored as sent, field => 'invalid' or
+ * 'too_long': Reward Points that are not a whole number in the column's
+ * range, a username or badge label longer than its column. A lenient server
+ * would clamp or cut them and the screen would still say it saved. Pure.
+ *
+ * @param array $post
+ * @return array
+ */
+function pg_user_form_field_problems($post)
+{
+    $problems = array();
+
+    if (pg_user_form_reward_points($post['reward_points'] ?? null) === null) {
+        $problems['reward_points'] = 'invalid';
+    }
+
+    foreach (array('username', 'badge_label') as $field) {
+        if (isset($post[$field]) && is_scalar($post[$field]) && !pg_user_form_text_fits($post[$field])) {
+            $problems[$field] = 'too_long';
+        }
+    }
+
+    return $problems;
+}
+
+/**
+ * The sentence for a problem of pg_user_form_field_problems(), escaped HTML.
+ *
+ * @param string $field
+ * @param string $problem
+ * @return string
+ */
+function pg_user_form_field_problem_message($field, $problem)
+{
+    $labels = array(
+        'reward_points' => lang('Reward Points'),
+        'username' => lang('Username'),
+        'badge_label' => lang('Badge Label'),
+    );
+
+    $label = $labels[$field] ?? $field;
+
+    if ($problem === 'too_long') {
+        return h(lang(array('string' => '{var:1} is too long.', 'vars' => $label)));
+    }
+
+    return h(lang(array('string' => '{var:1} is invalid', 'vars' => $label))) . '.';
+}
+
+/**
+ * Why a new account may not be linked to the posted contact record, or ''.
+ * $lookup is what pg_user_contact_holder() read: 'found' (the contact
+ * exists) and 'username' (the account already linked to it, null when
+ * none). A contact id that is not a positive whole number links nothing
+ * (pg_user_contact_sql()) and is no problem. Pure.
+ *
+ * @param mixed $contact_id
+ * @param array $lookup
+ * @return string  '', 'contact_missing' or 'contact_taken'
+ */
+function pg_user_form_contact_problem($contact_id, $lookup)
+{
+    if (pg_user_contact_sql($contact_id) === 'NULL') {
+        return '';
+    }
+
+    if (empty($lookup['found'])) {
+        return 'contact_missing';
+    }
+
+    if (isset($lookup['username']) && ($lookup['username'] !== null)) {
+        return 'contact_taken';
+    }
+
+    return '';
+}
+
+/**
+ * The sentence for a problem of pg_user_form_contact_problem(), escaped HTML.
+ *
+ * @param string $problem
+ * @param string $username  The account the contact is linked to
+ * @return string
+ */
+function pg_user_form_contact_problem_message($problem, $username = '')
+{
+    if ($problem === 'contact_taken') {
+        return h(lang(array('string' => 'This contact record already belongs to the user "{var:1}".', 'vars' => (string) $username)));
+    }
+
+    return h(lang('The contact record was not found.'));
+}
+
+/**
+ * The user form's markup with the values a refused save sent, so the screen
+ * it goes back to shows what was typed: text fields take the sent value,
+ * checkboxes and radios are checked only when they were sent, a select picks
+ * the sent option. Hidden, password, file, button and disabled inputs keep
+ * what the screen drew (the token, the account id, a role the editor may not
+ * change). Fields not in $values keep their markup, except checkboxes and
+ * radios, which a form does not send when unchecked. Pure.
+ *
+ * @param string $html
+ * @param array $values  name => value as the form sent them
+ * @return string
+ */
+function pg_user_form_refill($html, $values)
+{
+    $html = preg_replace_callback('/<input\s[^>]*>/is', function ($match) use ($values) {
+        $tag = $match[0];
+
+        if (!preg_match('/\sname="([^"]*)"/i', $tag, $name_match)) {
+            return $tag;
+        }
+
+        $name = html_entity_decode($name_match[1], ENT_QUOTES, 'UTF-8');
+        $type = preg_match('/\stype="([^"]*)"/i', $tag, $type_match) ? strtolower($type_match[1]) : 'text';
+
+        if (in_array($type, array('hidden', 'password', 'file', 'submit', 'button', 'image', 'reset'), true)
+            || preg_match('/\sdisabled(\s|=|\/?>)/i', $tag)) {
+            return $tag;
+        }
+
+        $sent = $values[$name] ?? null;
+
+        if (($type === 'checkbox') || ($type === 'radio')) {
+            $value = preg_match('/\svalue="([^"]*)"/i', $tag, $value_match)
+                ? html_entity_decode($value_match[1], ENT_QUOTES, 'UTF-8') : 'on';
+            $checked = is_array($sent) ? in_array($value, array_map('strval', $sent), true) : (is_scalar($sent) && ((string) $sent === $value));
+            $tag = preg_replace('/\schecked(="[^"]*")?(?=[\s\/>])/i', '', $tag);
+
+            return $checked ? preg_replace('/\s*(\/?>)$/', ' checked="checked" $1', $tag) : $tag;
+        }
+
+        if (!is_scalar($sent)) {
+            return $tag;
+        }
+
+        $value_html = ' value="' . h((string) $sent) . '"';
+
+        if (preg_match('/\svalue="[^"]*"/i', $tag)) {
+            return preg_replace('/\svalue="[^"]*"/i', str_replace(array('\\', '$'), array('\\\\', '\\$'), $value_html), $tag, 1);
+        }
+
+        return preg_replace('/\s*(\/?>)$/', $value_html . ' $1', $tag);
+    }, $html);
+
+    return preg_replace_callback('/(<select\s[^>]*>)(.*?)(<\/select>)/is', function ($match) use ($values) {
+        if (!preg_match('/\sname="([^"]*)"/i', $match[1], $name_match) || preg_match('/\sdisabled(\s|=|>)/i', $match[1])) {
+            return $match[0];
+        }
+
+        $sent = $values[html_entity_decode($name_match[1], ENT_QUOTES, 'UTF-8')] ?? null;
+
+        if (!is_scalar($sent)) {
+            return $match[0];
+        }
+
+        $options = preg_replace_callback('/<option\s[^>]*>/is', function ($option) use ($sent) {
+            $tag = preg_replace('/\sselected(="[^"]*")?(?=[\s>])/i', '', $option[0]);
+            $value = preg_match('/\svalue="([^"]*)"/i', $tag, $value_match)
+                ? html_entity_decode($value_match[1], ENT_QUOTES, 'UTF-8') : null;
+
+            return ($value === (string) $sent) ? substr($tag, 0, -1) . ' selected="selected">' : $tag;
+        }, $match[2]);
+
+        return $match[1] . $options . $match[3];
+    }, $html);
+}
+
+/**
+ * The values a refused save of $form left in the session
+ * (liveform::add_fields_to_session()), name => value; empty when the screen
+ * is opened afresh.
+ *
+ * @param string $form
+ * @return array
+ */
+function pg_user_form_sent_values($form)
+{
+    $fields = $_SESSION['software']['liveforms'][$form][0] ?? array();
+
+    if (!is_array($fields) || (($fields['__prefill'] ?? true) !== false)) {
+        return array();
+    }
+
+    $values = array();
+
+    foreach ($fields as $name => $field) {
+        if (is_array($field) && array_key_exists('value', $field)) {
+            $values[$name] = $field['value'];
+        }
+    }
+
+    return $values;
+}
+
+/**
  * The private folders whose posted expiration date is a problem: 'invalid'
  * (a checked folder whose date is not a date, which would save no access)
  * and 'past' (a date already gone, so the access ends as it is given). Only

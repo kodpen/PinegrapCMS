@@ -66,7 +66,7 @@ function pg_product_group_form_unselected_rows($products, $show_image)
             '<td class="chart_label align-middle ' . $ustatus_class . '">' . h($urow['name']) . (($urow['enabled'] == 1) ? '' : pg_list_status_word(lang('Disabled'))) . '</td>' .
             '<td class="align-middle ' . $ustatus_class . '">' . h($urow['short_description']) . '</td>' .
             '<td class="align-middle text-end">' . prepare_amount($urow['price']) . '</td>' .
-            '<td class="align-middle"><input class="form-control text-end" type="text" name="sort_order_product_' . $urow['id'] . '" size="5" value="" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" aria-label="' . h(lang('Sort Order') . ': ' . $urow['name']) . '" style="text-align: right;width:60px;" /></td>' .
+            '<td class="align-middle"><input class="form-control text-end" type="text" name="sort_order_product_' . $urow['id'] . '" size="5" value="" maxlength="5" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-min="0" data-inputmask-max="65535" data-inputmask-placeholder="0" aria-label="' . h(lang('Sort Order') . ': ' . $urow['name']) . '" style="text-align: right;width:60px;" /></td>' .
             '<td></td>' .
             '</tr>';
     }
@@ -83,7 +83,9 @@ function pg_product_group_form_unselected_rows($products, $show_image)
  * @param array $values  The stored row (raw), array() on create; 'images'
  *                       the picker's file names, cover first
  * @param array $form    'is_new', 'attributes' (edit: the attributes block),
- *                       'seo_badge', 'seo_checklist' (edit)
+ *                       'seo_badge', 'seo_checklist' (edit), 'is_root'
+ *                       (edit of the top group: its display type is not
+ *                       saved, so the choice is shown disabled)
  * @return string
  */
 function pg_product_group_form_cards($liveform, $values, $form)
@@ -92,7 +94,7 @@ function pg_product_group_form_cards($liveform, $values, $form)
         'name' => '', 'short_description' => '', 'full_description' => '', 'details' => '',
         'code' => '', 'keywords' => '', 'display_type' => 'browse', 'address_name' => '', 'title' => '',
         'meta_description' => '', 'meta_keywords' => '', 'images' => array()), $values);
-    $form = array_merge(array('is_new' => false, 'attributes' => '', 'seo_badge' => '', 'seo_checklist' => ''), $form);
+    $form = array_merge(array('is_new' => false, 'attributes' => '', 'seo_badge' => '', 'seo_checklist' => '', 'is_root' => false), $form);
 
     // A new group's name is a liveform field, so a refused save keeps it.
     if ($form['is_new']) {
@@ -136,7 +138,7 @@ function pg_product_group_form_cards($liveform, $values, $form)
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">
-                                            <fieldset>
+                                            <fieldset' . ($form['is_root'] ? ' disabled aria-describedby="display_type_root_note"' : '') . '>
                                                 <legend class="form-label fs-md">' . lang('Display Type') . '</legend>
                                                 <div class="form-field  d-inline-grid me-5" title="' . lang('Display contents for browsing on catalog page') . '">
                                                     <input class="radio collapse-switcher"  type="radio" id="browse" name="display_type" value="browse" aria-describedby="display_type_browse_help" ' . $display_type_browse_checked . '/>
@@ -149,6 +151,7 @@ function pg_product_group_form_cards($liveform, $values, $form)
                                                     <span class="visually-hidden" id="display_type_select_help">' . lang('Display contents for selection on catalog detail page') . '</span>
                                                 </div>
                                             </fieldset>
+                                            ' . ($form['is_root'] ? '<div class="form-text" id="display_type_root_note">' . h(lang('The top product group is always shown for browsing.')) . '</div>' : '') . '
                                             <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="display_type_select_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                                 <div class="popover-body">
@@ -622,6 +625,104 @@ function pg_product_group_form_member_rows($listed, $stored_ids)
 }
 
 /**
+ * The posted value of a sort order box as the number stored: an empty box
+ * is 0, and false when the value is no whole number from 0 to 65535. The
+ * sort_order columns are smallint unsigned, so a negative or decimal value
+ * would otherwise be stored as 0 without a word.
+ *
+ * @param mixed $value
+ * @return int|false
+ */
+function pg_product_group_form_sort_order($value)
+{
+    if (($value !== null) && !is_scalar($value)) {
+        return false;
+    }
+
+    $value = pg_featured_sort_order_value((string) $value);
+
+    return ($value === '') ? 0 : $value;
+}
+
+/**
+ * What a posted create or edit form has wrong before it is saved, as
+ * field name => 'required', 'too_long' or 'sort_order'. The name is
+ * required once trimmed; the name and the short description are refused
+ * past the column length instead of being cut. The sort order boxes checked
+ * are those of the ticked products and of the child groups.
+ *
+ * @param array $post
+ * @return array
+ */
+function pg_product_group_form_post_problems($post)
+{
+    $problems = array();
+
+    $name = is_scalar($post['name'] ?? null) ? trim((string) $post['name']) : '';
+
+    if ($name === '') {
+        $problems['name'] = 'required';
+    } elseif (pg_name_too_long($name)) {
+        $problems['name'] = 'too_long';
+    }
+
+    if (is_scalar($post['short_description'] ?? null) && pg_name_too_long((string) $post['short_description'])) {
+        $problems['short_description'] = 'too_long';
+    }
+
+    $fields = array();
+
+    if (!empty($post['products']) && is_array($post['products'])) {
+        foreach (pg_product_group_form_link_ids($post['products']) as $product_id) {
+            $fields[] = 'sort_order_product_' . $product_id;
+        }
+    }
+
+    foreach (array_keys($post) as $key) {
+        if (preg_match('/^sort_order_product_group_[0-9]+$/', (string) $key)) {
+            $fields[] = (string) $key;
+        }
+    }
+
+    foreach ($fields as $field) {
+        if (array_key_exists($field, $post) && (pg_product_group_form_sort_order($post[$field]) === false)) {
+            $problems[$field] = 'sort_order';
+        }
+    }
+
+    return $problems;
+}
+
+/**
+ * Marks the problems of pg_product_group_form_post_problems() on the form;
+ * the sort order message is given once, however many boxes are wrong.
+ *
+ * @param liveform $liveform
+ * @param array    $problems
+ * @param string   $required_message  The screen's own "name is required"
+ * @return bool    Whether anything was marked
+ */
+function pg_product_group_form_mark_problems($liveform, $problems, $required_message)
+{
+    $sort_order_marked = false;
+
+    foreach ($problems as $field => $problem) {
+        if ($problem === 'required') {
+            $liveform->mark_error($field, $required_message);
+        } elseif ($problem === 'too_long') {
+            $liveform->mark_error($field, ($field === 'name')
+                ? lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => array(pg_name_max_length())))
+                : lang(array('string' => 'The short description can be at most {var:1} characters long.', 'vars' => array(pg_name_max_length()))));
+        } else {
+            $liveform->mark_error($field, $sort_order_marked ? '' : lang('Please enter a whole number from 0 to 65535 as the sort order.'));
+            $sort_order_marked = true;
+        }
+    }
+
+    return !empty($problems);
+}
+
+/**
  * Links the ticked products to the group with their sort orders.
  *
  * @param mixed $product_group_id
@@ -644,6 +745,6 @@ function pg_product_group_form_link_products($product_group_id, $post, $kept_pro
         }
 
         $query = "INSERT INTO products_groups_xref (product, product_group, sort_order) VALUES (?, ?, ?)";
-        db_q($query, array((string) $product_id, (string) $product_group_id, (string) ($post['sort_order_product_' . $product_id] ?? ''))) or output_error('Query failed');
+        db_q($query, array((string) $product_id, (string) $product_group_id, (string) (int) pg_product_group_form_sort_order($post['sort_order_product_' . $product_id] ?? ''))) or output_error('Query failed');
     }
 }

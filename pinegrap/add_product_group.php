@@ -132,14 +132,16 @@ $liveform->remove_form();
         output_error(lang('Sorry, the server did not accept the form that you submitted. We recommend that you ask the server administrator to check the max_input_vars PHP setting in the php.ini file.  We recommend that it be set to a number that is at least double the number of Products that the site will contain.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
-    // if the name is blank, then mark error and forward user back to previous screen
-    if ($_POST['name'] == '') {
-        $liveform->mark_error('name', lang(array('string'=>'{var:1} is required','vars'=>array(lang('Product Group Name')))) . '.');
+    // A blank name, an over-long name or short description or a sort order
+    // that is no whole number sends the user back to the form.
+    if (pg_product_group_form_mark_problems($liveform, pg_product_group_form_post_problems($_POST), lang(array('string'=>'{var:1} is required','vars'=>array(lang('Product Group Name')))) . '.')) {
         
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_product_group.php');
         exit();
     }
     
+    $_POST['name'] = trim((string) $_POST['name']);
+
     // If product groups exist, parent_id is required
     if (db_value("SELECT COUNT(*) FROM product_groups") && !$_POST['parent_id']) {
         $liveform->mark_error('parent_id', lang(array('string' => '{var:1} is required', 'vars' => array(lang('Parent Product Group')))) . '.');
@@ -235,6 +237,9 @@ $liveform->remove_form();
     
     log_activity( lang(array('string'=>'product group ({var:1}) was created','vars'=>array($_POST['name']) )) , $_SESSION['sessionusername']);
 
-    // forward user to view product groups page
+    // Back to the Catalog Manager, which shows the notice as a toast.
+    $notice_liveform = new liveform('view_product_groups');
+    $notice_liveform->add_notice(lang(array('string' => 'The product group, {var:1}, was added.', 'vars' => $_POST['name'])));
+
     header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_product_groups.php');
 }

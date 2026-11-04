@@ -149,16 +149,10 @@ function get_unique_name($properties)
             }
             break;
         // For menus use a dash instead of brackets because we don't allow brackets in menu names
+        // The base is cut to fit the 100-character column, or the column
+        // would cut the suffix off and the copy would get the same name.
         case 'menu':
-            // If there is already a dash area on the end of the name (e.g. example-1), then just
-            // increase number after dash.
-            if (preg_match('/(.*?)-(\d+)$/', $name, $matches) == 1) {
-                $new_name = $matches[1] . '-' . ($matches[2] + 1);
-                // Otherwise there is not already a dash area on the end of the name, so add dash area
-                // with a 1.
-            } else {
-                $new_name = $name . '-1';
-            }
+            $new_name = pg_dash_suffix_name($name, pg_name_max_length());
             break;
     }
     // Use recursion to check if this new name is unique
@@ -1949,6 +1943,37 @@ function pg_bracket_suffix_name($name, $limit = 0)
     } else {
         $base = $name;
         $suffix = '[1]';
+    }
+
+    $limit = (int) $limit;
+
+    if (($limit > 0) && (mb_strlen($base . $suffix, 'UTF-8') > $limit)) {
+        $base = mb_substr($base, 0, max(0, $limit - mb_strlen($suffix, 'UTF-8')), 'UTF-8');
+    }
+
+    return $base . $suffix;
+}
+
+/**
+ * The next name in the -n series (menus, whose names take no brackets): the
+ * number after the last dash goes up by one, a name without one gets -1.
+ * With a limit, the part before the dash is cut so that the whole name fits
+ * in that many characters. Pure.
+ *
+ * @param string $name
+ * @param int    $limit 0 for no limit
+ * @return string
+ */
+function pg_dash_suffix_name($name, $limit = 0)
+{
+    $name = (string) $name;
+
+    if (preg_match('/^(.*?)-(\d+)$/su', $name, $matches) == 1) {
+        $base = $matches[1];
+        $suffix = '-' . ($matches[2] + 1);
+    } else {
+        $base = $name;
+        $suffix = '-1';
     }
 
     $limit = (int) $limit;

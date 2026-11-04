@@ -350,3 +350,88 @@ function pg_menu_item_form_touch_menu($menu_id, $user_id)
         WHERE id = ?";
     db_q($query, array((string) $user_id, (string) $menu_id)) or output_error('Query failed.');
 }
+
+/**
+ * The stored link target of a posted value: 'New Window' or, for anything
+ * else, 'Same Window' (the column's two values). Pure.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function pg_menu_item_form_link_target($value)
+{
+    return ($value === 'New Window') ? 'New Window' : 'Same Window';
+}
+
+/**
+ * Whether a posted parent may hold the item: 0 (top level) always; any
+ * other id only when it is an item of the same menu and lies outside the
+ * item's own subtree, so a save never stores a cycle (which hides the item
+ * and everything below it) or a parent in another menu. Walks the parents
+ * upward from the posted one, at most 1000 steps. Pure apart from $lookup.
+ *
+ * @param int|string $menu_id
+ * @param int|string $item_id   The edited item, 0 on create
+ * @param mixed $parent_id      The posted parent
+ * @param callable $lookup  function (int $id): array('menu_id', 'parent_id') or null
+ * @return bool
+ */
+function pg_menu_item_parent_allowed($menu_id, $item_id, $parent_id, $lookup)
+{
+    if (!is_scalar($parent_id) || (preg_match('/^\d*$/', trim((string) $parent_id)) !== 1)) {
+        return false;
+    }
+
+    $parent_id = (int) $parent_id;
+    $item_id = (int) $item_id;
+
+    if ($parent_id === 0) {
+        return true;
+    }
+
+    $row = $lookup($parent_id);
+
+    if (!is_array($row) || ((int) $row['menu_id'] !== (int) $menu_id)) {
+        return false;
+    }
+
+    $current = $parent_id;
+
+    for ($steps = 0; $steps < 1000; $steps++) {
+        if ($current === $item_id) {
+            return false;
+        }
+
+        $current = (int) $row['parent_id'];
+
+        if ($current === 0) {
+            return true;
+        }
+
+        $row = $lookup($current);
+
+        // A broken chain (a parent that no longer exists) cannot lead back
+        // to the item.
+        if (!is_array($row)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * The database lookup of pg_menu_item_parent_allowed(): a menu item's menu
+ * and parent, or null.
+ *
+ * @return callable
+ */
+function pg_menu_item_parent_lookup()
+{
+    return function ($id) {
+        $result = db_q("SELECT menu_id, parent_id FROM menu_items WHERE id = ?", array((string) (int) $id)) or output_error('Query failed.');
+        $row = mysqli_fetch_assoc($result);
+
+        return $row ? $row : null;
+    };
+}

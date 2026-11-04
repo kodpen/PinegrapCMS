@@ -1243,6 +1243,9 @@ function api_order_return_present($row, $reasons = null, $windows = array()) {
 		'received_at'     => api_time($row['received_at']),
 		'refunded_at'     => api_time($row['refunded_at']),
 		'closed_at'       => api_time($row['closed_at']),
+		// The last change (order_returns.updated_at), which GET
+		// /returns?modified_since= walks; null before the step adds it.
+		'modified_at'     => api_time(isset($row['updated_at']) ? $row['updated_at'] : 0),
 		'refund'          => api_order_return_refund_present($row),
 		'withdrawal'      => api_order_return_withdrawal_present($row, $windows)
 	);
@@ -1688,6 +1691,7 @@ function api_order_return_schema() {
 		'received_at'     => 'string?',
 		'refunded_at'     => 'string?',
 		'closed_at'       => 'string?',
+		'modified_at'     => 'string?',
 		'refund'          => 'OrderReturnRefund?',
 		'withdrawal'      => 'OrderReturnWithdrawal?'
 	);

@@ -52,11 +52,17 @@ function api_return_action_fields() {
 }
 
 // The WHERE parts of GET /returns. status is one stored status or open (the
-// panel's default: requested, approved, shipped, received). The cursor is the
-// last id of the page before: newest first, as the panel lists them.
+// panel's default: requested, approved, shipped, received); modified_since
+// keeps the returns changed at or after it (order_returns.updated_at).
 function api_returns_where($params) {
 
 	$where = array();
+
+	if (isset($params['modified_since'])) {
+
+		$where[] = "updated_at >= '" . (int)$params['modified_since'] . "'";
+
+	}
 
 	if (isset($params['status']) && ($params['status'] !== '')) {
 
@@ -76,14 +82,104 @@ function api_returns_where($params) {
 
 }
 
+// Which listing a call asks for: 'newest' (newest id first, as the panel
+// lists them, the default) or 'modified' (oldest change first, under
+// modified_since, so a client walks forward from its last read).
+function api_returns_list_order($params) {
+
+	return isset($params['modified_since']) ? 'modified' : 'newest';
+
+}
+
+// The cursor without its mark, or null when it was made for the other
+// listing. The newest-first cursor has no mark (it was handed out before
+// modified_since existed); the modified one starts with 'm.', and '.' is not
+// in the cursor's alphabet, so neither is read as the other.
+function api_returns_cursor_parts($cursor, $order) {
+
+	$cursor = (string)$cursor;
+
+	if ($order === 'modified') {
+
+		return (strpos($cursor, 'm.') === 0) ? (string)substr($cursor, 2) : null;
+
+	}
+
+	return (strpos($cursor, '.') === false) ? $cursor : null;
+
+}
+
+// The cursor of the page after the one ending with $last.
+function api_returns_cursor_after($last, $order) {
+
+	if ($order === 'modified') {
+
+		return 'm.' . api_cursor_encode((int)$last['updated_at'], (int)$last['id']);
+
+	}
+
+	return api_cursor_encode(0, (int)$last['id']);
+
+}
+
+// One page of a listing: newest id first (id < the cursor's), or keyset paged
+// on (updated_at, id) oldest first under 'modified'. $cursor is
+// array('v' => int, 'i' => int) or null.
+function api_returns_list_sql($where, $order, $cursor, $limit) {
+
+	if ($order === 'modified') {
+
+		if ($cursor !== null) {
+
+			$value = "'" . (int)$cursor['v'] . "'";
+
+			$where[] = "(updated_at > " . $value . " OR (updated_at = " . $value . " AND id > '" . (int)$cursor['i'] . "'))";
+
+		}
+
+		$sort = "updated_at ASC, id ASC";
+
+	} else {
+
+		if ($cursor !== null) {
+
+			$where[] = "id < '" . (int)$cursor['i'] . "'";
+
+		}
+
+		$sort = "id DESC";
+
+	}
+
+	return "SELECT * FROM order_returns"
+		. (empty($where) ? '' : ' WHERE ' . implode(' AND ', $where)) . "
+		ORDER BY " . $sort . "
+		LIMIT " . ((int)$limit + 1);
+
+}
+
 // GET /returns
 function api_returns_list($params) {
 
+	$order = api_returns_list_order($params);
+
+	// The stamp comes with 11.0.168; until the update runs no return can be
+	// found by its last change, and an empty list would read as "none".
+	if (($order === 'modified') && !pg_schema_has('order_returns', 'updated_at')) {
+
+		api_fail(503, 'service_unavailable', lang('The database has not been upgraded yet. Run the software update first.'));
+
+	}
+
 	$where = api_returns_where($params);
+
+	$cursor = null;
 
 	if (isset($params['cursor']) && ($params['cursor'] !== '')) {
 
-		$cursor = api_cursor_decode($params['cursor']);
+		$parts = api_returns_cursor_parts($params['cursor'], $order);
+
+		$cursor = ($parts === null) ? null : api_cursor_decode($parts);
 
 		if ($cursor === null) {
 
@@ -91,17 +187,12 @@ function api_returns_list($params) {
 
 		}
 
-		$where[] = "id < '" . (int)$cursor['i'] . "'";
-
 	}
 
 	$limit = (int)$params['limit'];
 
 	$rows = pg_returns_ready()
-		? api_rows("SELECT * FROM order_returns"
-			. (empty($where) ? '' : ' WHERE ' . implode(' AND ', $where)) . "
-			ORDER BY id DESC
-			LIMIT " . ($limit + 1))
+		? api_rows(api_returns_list_sql($where, $order, $cursor, $limit))
 		: array();
 
 	$next = null;
@@ -110,9 +201,7 @@ function api_returns_list($params) {
 
 		array_pop($rows);
 
-		$last = end($rows);
-
-		$next = api_cursor_encode(0, (int)$last['id']);
+		$next = api_returns_cursor_after(end($rows), $order);
 
 	}
 

@@ -31,6 +31,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-account-csv-import-export.md: ERP account CSV import wizard (steps, matching, batches, defaults) and export profiles incl. Parasut XLSX templates and erp_export_log.
 - erp-account-prices.md: ERP account prices (4.94) in the line editor and, with erp_storefront_account_prices (10.59), in the store: the two layers, the campaign rule (erp_storefront_price), where the shop applies them.
 - erp-account-save-partial-writes.md: Which columns erp_account_save() writes only when given and which it always writes, the full-row rule for every partial update (API PATCH, account sync), the CSV optional-column rule.
+- erp-account-vat-check.md: The ERP account card's tax number checked against VIES on save: when it runs, what each answer does, why an unknown id only warns
 - erp-accountant-pack.md: ERP accountant pack (4.78): the shared xlsx writer, where the ZIP is kept, the link token, the monthly job, and what a new record type must add to the pack.
 - erp-accounting-rules.md: ERP accounting rules (4.103): withholding in the VAT difference, the exemption code of zero-rated lines, the expense category VAT default, and the accountant questions file.
 - erp-aging-and-due-date.md: Single source for ERP due dates and aging (includes/erp/aging.php): point-in-time open amounts, buckets, filters, and payment_days default due dates.
@@ -142,6 +143,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-profit-report.md: ERP profit and loss (includes/erp/profit.php): what counts as revenue and cost, the optional uninvoiced orders, the negative margin text, and where a new cost or revenue source goes.
 - erp-purchase-orders.md: ERP purchase orders (10.58): own table and series, the line key that ties invoice lines back, status read from purchase invoices, the draft made from an order, shared refusals, API line keys.
 - erp-quote-guest-link.md: Sales quote guest link (#3761, 2026.11.0 step 11.0.64): erp_quote_links, erp_quote.php, one live link, expiry, acceptance through erp_signatures and erp_quote_set_status(), WAF, e-mail
+- erp-quote-screen-layout.md: edit_erp_quote.php toolbar, two-column layout and where the messages of the signature, guest link and e-mail cards are drawn.
 - erp-quote-templates.md: Sales quote templates (#3717, step 11.0.63; API #3921): table, who sees and writes one, what it keeps, shared checks, events, the panel box, the API routes.
 - erp-quotes.md: ERP sales quotes (4.92) and their signature (8.58): own table, numbering, state, printing, invoicing, signature, guest link, expiry, Workspace tag.
 - erp-readonly-accountant-right.md: The ERP read-only right for an accountant (user.manage_erp_readonly, 4.78): what the gate refuses, its areas, USER_ERP_READONLY, the writers outside ERP screens, the Workspace's erp_readonly.

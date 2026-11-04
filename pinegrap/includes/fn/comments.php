@@ -1435,6 +1435,56 @@ function pg_comment_view_query($query_string, $comment_id)
 }
 
 /**
+ * Where the panel's "Go To Comment" link of one comment leads, below
+ * OUTPUT_PATH and without the '#c-<id>' anchor: $page_name followed by
+ * what the page needs to show the comment's item (as
+ * get_query_string_for_page_url() gives it to the comment mails) and
+ * pg_comment_view_query(). $comment is a comments row with item_type,
+ * item_id, id and the joined reference_code, product_group_address_name
+ * and product_address_name. '' when the thread names nothing the page
+ * could show (a record without a reference code, an item without an
+ * address name, an unknown item type). Pure.
+ *
+ * @param mixed $page_name
+ * @param array $comment
+ * @return string
+ */
+function pg_comment_site_path($page_name, array $comment)
+{
+    $page_name = is_scalar($page_name) ? (string) $page_name : '';
+
+    if ($page_name === '') {
+        return '';
+    }
+
+    $id = (int) ($comment['id'] ?? 0);
+    $item_type = (string) ($comment['item_type'] ?? '');
+    $item_id = (int) ($comment['item_id'] ?? 0);
+
+    switch ($item_type) {
+        case '':
+            return $page_name . pg_comment_view_query('', $id);
+
+        case 'submitted_form':
+            $code = (string) ($comment['reference_code'] ?? '');
+            return ($code === '') ? '' : $page_name . pg_comment_view_query('?r=' . $code, $id);
+
+        case 'product_group':
+            $address_name = (string) ($comment['product_group_address_name'] ?? '');
+            return ($address_name === '') ? '' : $page_name . '/' . $address_name . pg_comment_view_query('', $id);
+
+        case 'product':
+            $address_name = (string) ($comment['product_address_name'] ?? '');
+            return ($address_name === '') ? '' : $page_name . '/' . $address_name . pg_comment_view_query('', $id);
+
+        case 'calendar_event':
+            return ($item_id < 1) ? '' : $page_name . pg_comment_view_query('?id=' . $item_id, $id);
+    }
+
+    return '';
+}
+
+/**
  * The address add_comment.php sends the writer back to after a post: the
  * page they posted from ($path, pg_safe_redirect_path()'s answer), without
  * the comment they answered (reply_to), the page of the thread they were on

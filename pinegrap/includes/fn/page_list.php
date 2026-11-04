@@ -432,19 +432,19 @@ function pg_page_list_search_columns($view)
 function pg_page_list_columns($view)
 {
     $columns = array(
-        'name' => array('heading' => lang('Name'), 'width' => '18rem', 'kind' => 'link', 'sort' => 'page.page_name'),
+        'name' => array('heading' => lang('Name'), 'width' => '18rem', 'kind' => 'link', 'sort' => 'page.page_name', 'editable' => 'text'),
         // The score bar in a narrow column of its own beside the name.
         'seo' => pg_list_table_seo_column('page.seo_score'),
     );
 
     if (!empty($view['custom_form'])) {
-        $columns['form_name'] = array('heading' => lang('Form Name'), 'sort' => 'custom_form_pages.form_name');
-        $columns['form_enabled'] = array('heading' => lang('Form Enabled'), 'kind' => 'check', 'sort' => 'custom_form_pages.enabled');
+        $columns['form_name'] = array('heading' => lang('Form Name'), 'sort' => 'custom_form_pages.form_name', 'editable' => 'text');
+        $columns['form_enabled'] = array('heading' => lang('Form Enabled'), 'kind' => 'check', 'sort' => 'custom_form_pages.enabled', 'editable' => 'select');
     }
 
-    $columns['folder'] = array('heading' => lang('Folder'), 'width' => '14rem', 'sort' => 'folder.folder_name');
-    $columns['style'] = array('heading' => $view['style_heading'], 'width' => '12rem', 'sort' => empty($view['previewing_other_theme']) ? 'style.style_name' : '');
-    $columns['page_type'] = array('heading' => lang('Page Type'), 'width' => '10rem', 'sort' => pg_list_label_order('page.page_type', get_page_type_names()));
+    $columns['folder'] = array('heading' => lang('Folder'), 'width' => '14rem', 'sort' => 'folder.folder_name', 'editable' => 'select');
+    $columns['style'] = array('heading' => $view['style_heading'], 'width' => '12rem', 'sort' => empty($view['previewing_other_theme']) ? 'style.style_name' : '', 'editable' => 'select');
+    $columns['page_type'] = array('heading' => lang('Page Type'), 'width' => '10rem', 'sort' => pg_list_label_order('page.page_type', get_page_type_names()), 'editable' => 'select');
     $columns['searchable'] = array('heading' => lang('Searchable'), 'kind' => 'check', 'sort' => 'page.page_search', 'editable' => 'select');
     $columns['comments'] = array('heading' => lang('Comments'), 'kind' => 'check', 'sort' => 'page.comments', 'editable' => 'select');
     $columns['sitemap'] = array('heading' => lang('Site Map'), 'kind' => 'check', 'sort' => 'page.sitemap', 'editable' => 'select');
@@ -467,6 +467,7 @@ function pg_page_list_select($view)
         page.page_name,
         page.page_folder,
         page.page_style,
+        page.mobile_style_id,
         page.layout_type,
         ' . (pg_multi_page_design_ready() ? "(page.page_tree_json IS NOT NULL AND page.page_tree_json <> '') AS has_tree," : "'0' AS has_tree,") . '
         folder.folder_name,
@@ -507,6 +508,7 @@ function pg_page_list_source($user, $params)
 
     $filter = (is_array($params) && isset($params['filter']) && is_string($params['filter'])) ? $params['filter'] : '';
     $view = pg_page_list_view($user, $filter);
+    $view['quick_edit'] = pg_page_quick_edit_columns($user);
 
     // The traffic behind the impact figure joins only the list's read.
     return pg_list_table_source(array(
@@ -525,9 +527,10 @@ function pg_page_list_source($user, $params)
             return pg_page_list_rows($view, $records);
         },
         'params_out' => array('filter' => $view['filter']),
-        // The switches change in place on the screen's own endpoint; the
-        // write checks the page's folder (pg_page_quick_update()).
-        'edit' => array('url' => 'view_pages.php', 'columns' => pg_page_quick_edit_columns()),
+        // The cells change in place on the screen's own endpoint, told the
+        // view so its answer draws the row as this list does; the write
+        // checks the page's folder (pg_page_quick_update()).
+        'edit' => array('url' => 'view_pages.php?filter=' . rawurlencode($view['filter']), 'columns' => $view['quick_edit']),
     ));
 }
 
@@ -626,11 +629,13 @@ function pg_page_list_inherited_styles()
  *
  * @param array $view  pg_page_list_view()
  * @param array $pages records of the list's read (pg_page_list_select())
- * @return array page id => array('html', 'class')
+ * @return array page id => array('html', 'class', 'value' => the style id
+ *               a quick edit opens with)
  */
 function pg_page_list_style_cells($view, $pages)
 {
     $preview = array();
+    $preview_ids = array();
 
     if ($view['previewing_other_theme'] && $pages) {
         $ids = array();
@@ -640,7 +645,7 @@ function pg_page_list_style_cells($view, $pages)
         }
 
         $result = db_q(
-            'SELECT preview_styles.page_id, style.style_name
+            'SELECT preview_styles.page_id, preview_styles.style_id, style.style_name
             FROM preview_styles
             LEFT JOIN style ON preview_styles.style_id = style.style_id
             WHERE
@@ -652,6 +657,7 @@ function pg_page_list_style_cells($view, $pages)
         while ($result && ($row = mysqli_fetch_assoc($result))) {
             if ((string) $row['style_name'] !== '') {
                 $preview[(int) $row['page_id']] = $row['style_name'];
+                $preview_ids[(int) $row['page_id']] = (int) $row['style_id'];
             }
         }
     }
@@ -685,8 +691,13 @@ function pg_page_list_style_cells($view, $pages)
         $page_id = (int) $page['page_id'];
         $class = 'align-middle';
 
+        // The style the cell's field opens with: the previewed theme's for
+        // the page, the page's own otherwise (0: the folder's).
+        $own = ($view['device_type'] === 'mobile') ? (int) ($page['mobile_style_id'] ?? 0) : (int) $page['page_style'];
+        $value = $view['previewing_other_theme'] ? ($preview_ids[$page_id] ?? 0) : $own;
+
         if (isset($preview[$page_id])) {
-            $cells[$page_id] = array('html' => '[P] ' . h($preview[$page_id]), 'class' => $class);
+            $cells[$page_id] = array('html' => '[P] ' . h($preview[$page_id]), 'class' => $class, 'value' => $value);
             continue;
         }
 
@@ -708,7 +719,7 @@ function pg_page_list_style_cells($view, $pages)
             $html = '[A] ' . $html;
         }
 
-        $cells[$page_id] = array('html' => $html, 'class' => $class);
+        $cells[$page_id] = array('html' => $html, 'class' => $class, 'value' => $value);
     }
 
     return $cells;
@@ -725,7 +736,7 @@ function pg_page_list_style_cells($view, $pages)
 function pg_page_list_rows($view, $pages)
 {
     $styles = pg_page_list_style_cells($view, $pages);
-    $quick_edit = pg_page_quick_edit_columns();
+    $quick_edit = $view['quick_edit'] ?? pg_page_quick_edit_columns();
     $check = pg_page_list_check_html();
     $rows = array();
 
@@ -745,24 +756,30 @@ function pg_page_list_rows($view, $pages)
         // A visual-editor page opens in the visual editor; everything else
         // (custom style, folder default) in the page screen.
         $edit_url = pg_page_edit_url($page);
+        $visual = pg_page_is_visual_design($page);
+        $quick = function ($field, $value) use ($quick_edit, $id, $page, $visual) {
+            return pg_page_quick_cell_editable($field, $page, $visual, $quick_edit)
+                ? pg_list_edit_cell_attributes($quick_edit, $field, $id, $value)
+                : array();
+        };
         $home = ($page['page_home'] == 'yes') ? '<span class="material-icons" role="img" aria-label="' . h(lang('Home Page')) . '">home</span>' : '';
 
         // The name opens the page's editor: a double-click or Enter on the
         // row follows it (data-pg-open).
         $cells = array(
-            'name' => pg_list_cell($home . '<a class="pg-link-body-emphasis text-decoration-none" data-pg-open href="' . h($edit_url) . '">' . h($page['page_name']) . '</a>' . pg_experiment_chip_html($experiment_states[$id] ?? null), 'align-middle chart_label position-relative'),
+            'name' => pg_list_cell($home . '<a class="pg-link-body-emphasis text-decoration-none" data-pg-open href="' . h($edit_url) . '">' . h($page['page_name']) . '</a>' . pg_experiment_chip_html($experiment_states[$id] ?? null), 'align-middle chart_label position-relative', $quick('name', pg_page_quick_edit_value('name', $page))),
             'seo' => pg_list_table_seo_cell('page', $page['page_id'], $page),
         );
 
         if ($view['custom_form']) {
-            $cells['form_name'] = pg_list_cell(h($page['form_name']));
-            $cells['form_enabled'] = pg_list_cell(($page['enabled'] == 1) ? $check : '', 'align-middle');
+            $cells['form_name'] = pg_list_cell(h($page['form_name']), 'align-middle', $quick('form_name', pg_page_quick_edit_value('form_name', $page)));
+            $cells['form_enabled'] = pg_list_cell(($page['enabled'] == 1) ? $check : '', 'align-middle', $quick('form_enabled', pg_page_quick_edit_value('form_enabled', $page)));
         }
 
-        $cells['folder'] = pg_list_cell(pg_folder_list_name($page['folder_name'], $page['folder_access_control_type']), 'align-middle text-start text-wrap ' . $page['folder_access_control_type']);
-        $cells['style'] = pg_list_cell($styles[$id]['html'], $styles[$id]['class']);
-        $cells['page_type'] = pg_list_cell(h(get_page_type_name($page['page_type'])));
-        // The switches change in place (pg_page_quick_edit_columns()).
+        $cells['folder'] = pg_list_cell(pg_folder_list_name($page['folder_name'], $page['folder_access_control_type']), 'align-middle text-start text-wrap ' . $page['folder_access_control_type'], $quick('folder', pg_page_quick_edit_value('folder', $page)));
+        $cells['style'] = pg_list_cell($styles[$id]['html'], $styles[$id]['class'], $quick('style', (string) $styles[$id]['value']));
+        $cells['page_type'] = pg_list_cell(h(get_page_type_name($page['page_type'])), 'align-middle', $quick('page_type', pg_page_quick_edit_value('page_type', $page)));
+        // The switches change in place too (pg_page_quick_edit_columns()).
         $cells['searchable'] = pg_list_cell(($page['page_search'] == 1) ? $check : '', 'align-middle', pg_list_edit_cell_attributes($quick_edit, 'searchable', $id, pg_page_quick_edit_value('searchable', $page)));
         $cells['comments'] = pg_list_cell(($page['comments'] == '1') ? $check : '', 'align-middle', pg_list_edit_cell_attributes($quick_edit, 'comments', $id, pg_page_quick_edit_value('comments', $page)));
         $cells['sitemap'] = pg_list_cell(($page['sitemap'] == '1') ? $check : '', 'align-middle', pg_list_edit_cell_attributes($quick_edit, 'sitemap', $id, pg_page_quick_edit_value('sitemap', $page)));

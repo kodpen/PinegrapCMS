@@ -122,6 +122,17 @@ if (!$_POST) {
         $liveform->mark_error('link_url', $url_problem);
     }
 
+    // The parent select only offers items of this menu; a posted id from
+    // another menu would orphan the new item.
+    if (!pg_menu_item_parent_allowed($menu_id, 0, $_POST['parent_id'] ?? '0', pg_menu_item_parent_lookup())) {
+        $liveform->mark_error('parent_id', lang('Please choose a parent menu item of this menu.'));
+    }
+
+    // The column holds 255 characters and would cut a longer list mid-class.
+    if (mb_strlen((string) ($_POST['class'] ?? ''), 'UTF-8') > 255) {
+        $liveform->mark_error('class', lang('Classes can be at most 255 characters long.'));
+    }
+
     // if there is an error, forward user back to edit menu screen
     if ($liveform->check_form_errors() == true) {
         header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/add_menu_item.php?menu_id=' . $menu_id . '&from=' . urlencode($_POST['from'] ?? '') . '&send_to=' . urlencode($_POST['send_to'] ?? ''));
@@ -134,7 +145,8 @@ if (!$_POST) {
     $link_url = $link['link_url'];
 
     // The new item goes last on its level.
-    $new_sort_order = pg_menu_item_form_last_sort_order($menu_id, $_POST['parent_id'] ?? '');
+    $new_parent_id = (int) ($_POST['parent_id'] ?? 0);
+    $new_sort_order = pg_menu_item_form_last_sort_order($menu_id, $new_parent_id);
     
     // create menu item
     $query =
@@ -166,7 +178,7 @@ if (!$_POST) {
             UNIX_TIMESTAMP(),
             ?,
             UNIX_TIMESTAMP())";
-    $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) $menu_id, (string) ($_POST['parent_id'] ?? ''), (string) $new_sort_order, (string) $link_page_id, (string) $link_url, (string) ($_POST['link_target'] ?? ''), (string) ($_POST['security'] ?? ''), (string) ($_POST['class'] ?? ''), (string) $user['id'], (string) $user['id'])) or output_error('Query failed.');
+    $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) $menu_id, (string) $new_parent_id, (string) $new_sort_order, (string) $link_page_id, (string) $link_url, pg_menu_item_form_link_target($_POST['link_target'] ?? ''), (string) ($_POST['security'] ?? ''), (string) ($_POST['class'] ?? ''), (string) $user['id'], (string) $user['id'])) or output_error('Query failed.');
     
     log_activity(lang(array('string'=>'menu item ({var:1}) on menu ({var:2}) was created','vars'=>array($_POST['name'],$menu_name) )), $_SESSION['sessionusername']);
     

@@ -13,10 +13,9 @@ module: list_table_edit
 - The checks are pure (`pg_pb_quick_more_change()`); `pg_pb_quick_update()` writes them, stamps the change, logs, announces `product.updated`, tells a marketplace about the code and the weight too. The answer's cell is the list's own row read again (`pg_list_table_record_row()` with the session's view, then `pg_list_table_edit_answer()`), so the ID cell keeps its link.
 
 ## Pages: which cells change?
-- Searchable, comments and site map (`pg_page_quick_edit_columns()`), written by Modify Selected's rules (`pg_page_bulk_decide()`/`apply()`: tag cloud, SEO stale, audit). The site map switch is refused, with the reason, on a noindex page or a type the site map does not list. The folder's edit right is checked per page.
-- Remaining work: name (rename and redirect), folder, page style, page type, form name and form enabled.
+- Every column but SEO, impact and last modified: `list-table-quick-edit-pages.md`.
 
 ## Which lists are not done yet?
 - Users, contacts, submitted forms, menus, short links, themes, containers, comments, styles, design files, and the commerce lists' columns outside their `pg_*_edit_columns()`.
 
-Related: docs/memory/ui/list-table-quick-edit.md, docs/memory/ui/product-list-paging.md
+Related: docs/memory/ui/list-table-quick-edit.md, docs/memory/ui/list-table-quick-edit-pages.md, docs/memory/ui/product-list-paging.md

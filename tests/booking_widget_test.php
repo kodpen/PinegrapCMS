@@ -201,3 +201,61 @@ function test_booking_widget_registered()
 		pg_assert_contains("'" . $part . "'", $js, 'the editor offers part ' . $part);
 	}
 }
+
+function test_booking_widget_details_clean()
+{
+	$good = pg_booking_widget_details_clean(array('name' => "  Ada \n Lovelace ", 'email' => ' ada@example.com ', 'phone' => '+90 (532) 111-22-33', 'notes' => "First visit\r\nPlease call", 'consent' => true));
+	pg_assert_same(array(), $good['errors'], 'a full form passes');
+	pg_assert_same('Ada Lovelace', $good['values']['name'], 'spaces folded');
+	pg_assert_same('ada@example.com', $good['values']['email']);
+	pg_assert_same('+90 (532) 111-22-33', $good['values']['phone']);
+	pg_assert_same("First visit\nPlease call", $good['values']['notes'], 'line ends kept as \n');
+
+	$empty = pg_booking_widget_details_clean(array());
+	pg_assert_same(array('name', 'email'), array_keys($empty['errors']), 'name and e-mail are needed; no consent box sent, none asked');
+
+	$bad = pg_booking_widget_details_clean(array('name' => 'A', 'email' => 'not-mail', 'phone' => 'call me', 'consent' => false));
+	pg_assert_same(array('email', 'phone', 'consent'), array_keys($bad['errors']), 'bad e-mail, phone with letters, consent box left empty');
+
+	$long = pg_booking_widget_details_clean(array('name' => str_repeat('a', 150), 'email' => 'a@b.co', 'notes' => str_repeat('n', 3000), 'consent' => 'yes'));
+	pg_assert_same(100, mb_strlen($long['values']['name']), 'name cut to its column');
+	pg_assert_same(1000, mb_strlen($long['values']['notes']), 'notes bounded');
+	pg_assert_true(isset($long['errors']['consent']), 'only a true consent counts');
+
+	$arrays = pg_booking_widget_details_clean(array('name' => array('x'), 'email' => array('a@b.co')));
+	pg_assert_same(array('name', 'email'), array_keys($arrays['errors']), 'a list is no value');
+}
+
+function test_booking_widget_render_details()
+{
+	$node = function ($tag, $props, $children = array()) {
+		return array('type' => 'semantic', 'props' => array('tag' => $tag) + $props, 'children' => $children);
+	};
+	$tree = json_encode(array('type' => 'root', 'props' => array(), 'children' => array(
+		$node('form', array('_bindings' => array('section' => 'booking_form')), array(
+			$node('span', array('_bindings' => array('eo_visible_if' => 'has_privacy_page')), array(
+				$node('a', array('text' => 'Privacy', 'href' => '#', '_bindings' => array('href' => '__privacy_url'))),
+			)),
+		)),
+		$node('div', array('_bindings' => array('section' => 'booking_step_done')), array(
+			$node('p', array('_bindings' => array('section' => 'booking_done'))),
+		)),
+	)));
+	$services = array(array('id' => 3, 'name' => 'Cut', 'description' => '', 'length_minutes' => 45, 'price' => 0));
+	$staff = array(array('id' => 9, 'user_id' => 1, 'name' => 'Ayşe', 'service_ids' => '[3]', 'enabled' => 1));
+
+	$html = _render_system_widget_booking($tree, 43, array(), 'preview', array($services, $staff, '/privacy-policy'));
+	pg_assert_contains('data-pg-booking-part="form"', $html);
+	pg_assert_contains('data-pg-booking-part="step_done"', $html);
+	pg_assert_contains('data-pg-booking-part="done"', $html);
+	pg_assert_contains('href="/privacy-policy"', $html, 'the consent box links the privacy notice');
+
+	$none = _render_system_widget_booking($tree, 44, array(), 'preview', array($services, $staff, ''));
+	pg_assert_false(strpos($none, 'Privacy') !== false, 'no privacy page: no dead link');
+}
+
+function test_booking_widget_done_text()
+{
+	pg_assert_same('See you soon.', pg_booking_widget_done_text('confirmed', array('done' => 'See you soon.')), 'the site\'s own words');
+	pg_assert_true(pg_booking_widget_done_text('confirmed', array()) !== pg_booking_widget_done_text('requested', array()), 'a request waits, a booking is made');
+}

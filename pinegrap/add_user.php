@@ -23,6 +23,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/user_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php');
 $user = validate_user();
 validate_area_access($user, 'manager');
+$liveform = new liveform('add_user');
 
 // The contact, username and e-mail are one value each; one sent as an array
 // (?contact_id[]=x, username[]=x) counts as not given: escape() and trim()
@@ -31,11 +32,22 @@ pg_request_single_values(array('contact_id', 'username', 'email'));
 
 if (!$_POST) {
     $email_address = '';
+    $contact_id = (string) ($_GET['contact_id'] ?? '');
 
     // If the editing user came from the edit contact screen,
     // then get email address for contact in order to prefill email field.
-    if (isset($_GET['contact_id']) && ($_GET['contact_id'] != '')) {
-        $email_address = db_value("SELECT email_address FROM contacts WHERE id = '" . escape($_GET['contact_id']) . "'");
+    // A contact that is gone or already has an account is not offered: a
+    // contact has one account at most.
+    if ($contact_id !== '') {
+        $contact_holder = pg_user_contact_holder($contact_id);
+        $contact_problem = pg_user_form_contact_problem($contact_id, $contact_holder);
+
+        if ($contact_problem !== '') {
+            $liveform->add_warning(pg_user_form_contact_problem_message($contact_problem, $contact_holder['username']));
+            $contact_id = '';
+        } else {
+            $email_address = db_value("SELECT email_address FROM contacts WHERE id = '" . escape($contact_id) . "'");
+        }
     }
 
 
@@ -141,7 +153,7 @@ if (!$_POST) {
         $output_badge_label_placeholder = h(BADGE_LABEL);
     }
 
-    print
+    $output_page_shell =
     pg_page_shell(
         array(
             'title'=> lang('Create User'),
@@ -155,16 +167,19 @@ if (!$_POST) {
                 array('label' => lang('Create User')),
             ),
         )
-    ) . '
+    );
+
+    $output_main = '
 <main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
-                
+                ' . $liveform->output_errors() . '
+                ' . $liveform->get_warnings() . '
                 <form name="form" action="add_user.php" method="post">
                     ' . get_token_field() . '
                     ' . $output_hidden_role . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
-                    <input type="hidden" name="contact_id" value="' . h(isset($_GET['contact_id']) ? $_GET['contact_id'] : '') . '" />
+                    <input type="hidden" name="contact_id" value="' . h($contact_id) . '" />
                     <div class="card mb-5">
                         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
                             <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Role') . '</span>
@@ -239,8 +254,18 @@ if (!$_POST) {
             </div>
         </div>
     
-</main>' .
-    output_footer();
+</main>';
+
+    // A refused save comes back here with what was sent.
+    $sent_values = pg_user_form_sent_values('add_user');
+
+    if ($sent_values) {
+        $output_main = pg_user_form_refill($output_main, $sent_values);
+    }
+
+    print $output_page_shell . $output_main . output_footer();
+
+    $liveform->remove_form();
 
 } else {
 
@@ -264,12 +289,48 @@ if (!$_POST) {
         output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
-    // A blank username, an invalid e-mail address, or one either account
-    // field already uses.
-    $problem = pg_user_write_problem($_POST['username'], $_POST['email']);
+    // Points out of range and texts longer than their column, a blank
+    // username, an invalid e-mail address, one either account field already
+    // uses, and a contact that is gone or has an account: the form opens
+    // again with the error and what was sent.
+    foreach (pg_user_form_field_problems($_POST) as $field => $field_problem) {
+        $liveform->mark_error($field, pg_user_form_field_problem_message($field, $field_problem));
+    }
 
-    if ($problem !== '') {
-        output_error(pg_user_write_problem_message($problem) . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    if (!$liveform->check_form_errors()) {
+        $problem = pg_user_write_problem($_POST['username'], $_POST['email']);
+
+        if ($problem !== '') {
+            $liveform->mark_error(($problem === 'email_invalid' || $problem === 'email_taken') ? 'email' : 'username',
+                h(pg_user_write_problem_message($problem)) . '.');
+        }
+    }
+
+    $contact_holder = array('found' => false, 'username' => null);
+
+    if (pg_user_contact_sql($_POST['contact_id'] ?? '') !== 'NULL') {
+        $contact_holder = pg_user_contact_holder($_POST['contact_id']);
+    }
+
+    $contact_problem = pg_user_form_contact_problem($_POST['contact_id'] ?? '', $contact_holder);
+
+    if ($contact_problem !== '') {
+        $liveform->mark_error('contact_id', pg_user_form_contact_problem_message($contact_problem, $contact_holder['username']));
+    }
+
+    if ($liveform->check_form_errors()) {
+        $liveform->add_fields_to_session();
+
+        // The contact link is dropped when it was the problem, so the account
+        // can be created without it.
+        $back = array('send_to' => (string) ($_REQUEST['send_to'] ?? ''));
+
+        if ($contact_problem === '') {
+            $back['contact_id'] = (string) ($_POST['contact_id'] ?? '');
+        }
+
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_user.php?' . http_build_query(array_filter($back, 'strlen')));
+        exit();
     }
 
     // A checked private folder whose date is not one stops here, before
@@ -290,7 +351,16 @@ if (!$_POST) {
 
     // Output Confirmation
     $liveform_view_users = new liveform('view_users');
-    $liveform_view_users->add_notice(h(pg_new_user_notice((($_POST['notify_user'] ?? '') == 1), $sent ?? false, $set_password_url ?? '', $created['password'])));
+    // A mail that was not sent leaves an account nobody can sign in to yet,
+    // so it is a warning the operator acts on, not a confirmation.
+    $notify_user = (($_POST['notify_user'] ?? '') == 1);
+    $new_user_notice = h(pg_new_user_notice($notify_user, $sent ?? false, $set_password_url ?? '', $created['password']));
+
+    if ($notify_user && empty($sent)) {
+        $liveform_view_users->add_warning($new_user_notice);
+    } else {
+        $liveform_view_users->add_notice($new_user_notice);
+    }
 
     if ($past_expiry_folders) {
         $liveform_view_users->add_warning(pg_user_form_past_expiry_warning($past_expiry_folders));

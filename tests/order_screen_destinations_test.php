@@ -60,6 +60,5 @@ function test_orders_for_contact_returns_to_edit_contact()
 	$source = order_screen_destinations_source('view_orders_for_contact.php');
 
 	pg_assert_contains("'cancel'=>array('enable'=>'true','url'=>'edit_contact.php?id=' . (int) \$id)", $source, 'the arrow goes to the opener, Edit Contact');
-	pg_assert_contains("\$output_link_url = 'view_order.php?id=' . \$row['id'] . '&send_to=' . urlencode(REQUEST_URL);", $source, 'the row link brings the order back here');
-	pg_assert_contains("h(escape_javascript(\$output_link_url))", $source, 'the onclick url is escaped');
+	pg_assert_contains("view_order.php?id=' . \$order_id . '&amp;send_to=' . h(urlencode(REQUEST_URL))", $source, 'the row link brings the order back here, escaped');
 }

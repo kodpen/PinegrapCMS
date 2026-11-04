@@ -80,21 +80,19 @@ function pg_menu_form_cards($liveform, $form = array())
                                     <style>@layer custom { html[data-bs-theme="dark"] .pg-menu-effect-picture { filter: invert(1); } }</style>
                                     <div role="radiogroup" aria-labelledby="effect_label" class="my-3">
                                         <div class="form-field d-inline-grid me-5" title="">
-                                            ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_popup',  'name'=>'effect', 'value'=>'Pop-up', 'class'=>'radio collapse-switcher', 'data-bs-target'=>'#pop-up_row')) . '
+                                            ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_popup',  'name'=>'effect', 'value'=>'Pop-up', 'class'=>'radio', 'aria-controls'=>'pop-up_row')) . '
                                             <label class="" for="effect_popup">'. lang('Pop-up') . '<br><img src="assets/images/menu_effect_popup.png" width="71" height="75" alt="" class="pg-menu-effect-picture" /></label>
                                         </div>
                                         <div class="form-field d-inline-grid me-5">
-                                            ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_accordion', 'name'=>'effect', 'value'=>'Accordion', 'class'=>'radio collapse-switcher')) . '
+                                            ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_accordion', 'name'=>'effect', 'value'=>'Accordion', 'class'=>'radio')) . '
                                             <label class="" for="effect_accordion">'. lang('Accordion') . '<br><img src="assets/images/menu_effect_accordion.png" width="56" height="75" alt="" class="pg-menu-effect-picture" /></label>
                                         </div>
                                         <div class="form-field d-inline-grid me-5">
-                                            ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_none', 'name'=>'effect', 'value'=>'', 'class'=>'radio collapse-switcher')) . '
+                                            ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_none', 'name'=>'effect', 'value'=>'', 'class'=>'radio')) . '
                                             <label class="" for="effect_none">'. lang('None') . '<br><img src="assets/images/menu_effect_none.png" width="56" height="75" alt="" class="pg-menu-effect-picture" /></label>
                                         </div>
                                     </div>
-                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="pop-up_row">
-                                        <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(25px, 0px);"></div>
-                                        <div class="popover-body">
+                                    <div class="border rounded-4 p-5 mb-3' . ($effect === 'Pop-up' ? '' : ' d-none') . '" id="pop-up_row">
                                             <div class="row">
                                                 <div class="col-12 md:col-6 my-1">
                                                     <label for="first_level_popup_position" class="form-label">' . lang('First Expand Menu') . '</label>
@@ -105,7 +103,6 @@ function pg_menu_form_cards($liveform, $form = array())
                                                     ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control', 'name'=>'second_level_popup_position', 'id'=>'second_level_popup_position', 'options'=>$popup_position_options)) . '
                                                 </div>
                                             </div>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -150,6 +147,8 @@ function pg_menu_form_cards($liveform, $form = array())
                             $(document).on(\'change\', \'input[name="effect"]\', function () {
                                 var $effect = $(\'#menu_summary_effect\');
                                 $effect.text($effect.data(\'labels\')[this.value] || \'\');
+                                // The pop-up positions apply to the Pop-up effect only.
+                                $(\'#pop-up_row\').toggleClass(\'d-none\', this.value !== \'Pop-up\');
                             });
                         </script>';
 }
@@ -268,6 +267,13 @@ function pg_menu_form_validate_name($liveform, $id)
 {
     $liveform->validate_required_field('name', lang('Name is required.'));
 
+    // The column holds 100 characters: a longer name would be stored cut and
+    // could then equal another menu's name, which the uniqueness check below
+    // compares in full.
+    if (($liveform->check_field_error('name') == false) && (mb_strlen((string) $liveform->get_field_value('name'), 'UTF-8') > pg_name_max_length())) {
+        $liveform->mark_error('name', lang('Name can be at most 100 characters long.'));
+    }
+
     if ($liveform->check_field_error('name') == false) {
         $previous_name = null;
 
@@ -297,6 +303,22 @@ function pg_menu_form_validate_name($liveform, $id)
 
         if (mysqli_num_rows($result) > 0) {
             $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
+        }
+    }
+}
+
+/**
+ * Checks the two classes fields: each column holds 255 characters, and a
+ * longer list would be stored cut in the middle of a class. The chips
+ * field joins its value in script, so the input's maxlength never applies.
+ *
+ * @param liveform $liveform
+ */
+function pg_menu_form_validate_classes($liveform)
+{
+    foreach (array('class', 'active_item_class') as $field) {
+        if (mb_strlen((string) $liveform->get($field), 'UTF-8') > 255) {
+            $liveform->mark_error($field, lang('Classes can be at most 255 characters long.'));
         }
     }
 }

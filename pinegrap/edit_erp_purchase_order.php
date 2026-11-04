@@ -124,20 +124,32 @@ if ($_POST) {
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice_draft.php?id=' . (int) $result['invoice_id']);
     }
 
+    // The page lands on the e-mail card, so the answer is drawn in that card
+    // (see $mail_result below), not at the page top out of sight.
     if ($action === 'mail') {
-        $sent = erp_purchase_order_mail_send($order_id, (string) ($_POST['mail_to'] ?? ''), (string) ($_POST['mail_subject'] ?? ''), (string) ($_POST['mail_message'] ?? ''), (int) $user['id']);
+        $mail_to = (string) ($_POST['mail_to'] ?? '');
+        $sent = erp_purchase_order_mail_send($order_id, $mail_to, (string) ($_POST['mail_subject'] ?? ''), (string) ($_POST['mail_message'] ?? ''), (int) $user['id']);
 
         if (!$sent['success']) {
             $_SESSION['software']['erp_purchase_order_mail_draft'][$order_id] = array(
-                'to' => mb_substr((string) ($_POST['mail_to'] ?? ''), 0, 500),
+                'to' => mb_substr($mail_to, 0, 500),
                 'subject' => mb_substr((string) ($_POST['mail_subject'] ?? ''), 0, 255),
                 'message' => mb_substr((string) ($_POST['mail_message'] ?? ''), 0, 5000),
             );
-            $liveform->mark_error('_error', h($sent['error']));
+            $addresses = erp_mail_addresses($mail_to);
+            $_SESSION['software']['erp_purchase_order_mail_result'][$order_id] = array(
+                'type' => 'error',
+                'text' => (string) $sent['error'],
+                'field' => (($addresses['error'] !== '') || empty($addresses['addresses'])) ? 'mail_to' : '',
+            );
             go($self_url . '#erp-mail');
         }
 
-        $liveform->add_notice(h(lang('The purchase order was e-mailed to the supplier.')));
+        $_SESSION['software']['erp_purchase_order_mail_result'][$order_id] = array(
+            'type' => 'notice',
+            'text' => lang('The purchase order was e-mailed to the supplier.'),
+            'field' => '',
+        );
         go($self_url . '#erp-mail');
     }
 
@@ -160,10 +172,12 @@ $quantity = function ($value, $unit_code) {
 };
 
 // The actions: each is a small form, so a readonly account never sees one.
+// A menu row ($class 'menu-item ...') is a full-width form in the overflow menu.
 $action_button = function ($action, $label, $icon, $class, $confirm = '') use ($order_id, $self_action) {
-    return '<form method="post" action="' . $self_action . '" class="d-inline">' . get_token_field()
+    $menu = (strpos($class, 'menu-item') === 0);
+    return '<form method="post" action="' . $self_action . '" class="' . ($menu ? 'disable_shortcut' : 'd-inline') . '">' . get_token_field()
         . '<input type="hidden" name="id" value="' . $order_id . '" /><input type="hidden" name="erp_action" value="' . h($action) . '" />'
-        . '<button type="submit" class="btn btn-sm ' . $class . '"' . (($confirm !== '') ? ' data-confirm-content="' . h($confirm) . '"' : '') . '><i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>' . $label . '</button></form>';
+        . '<button type="submit" class="' . ($menu ? '' : 'btn btn-sm ') . $class . '"' . (($confirm !== '') ? ' data-confirm-content="' . h($confirm) . '"' : '') . '><i class="bi ' . $icon . ' ' . ($menu ? 'me-3' : 'me-1') . '" aria-hidden="true"></i>' . $label . '</button></form>';
 };
 
 // What has come against each line, and the invoices it came on.
@@ -176,19 +190,23 @@ foreach ($progress as $row) {
 }
 $can_invoice = !$readonly && in_array($status_key, array('open', 'sent', 'partial'), true) && ($remaining_total > 0);
 
-$output_actions = '';
+// The next step is the toolbar's primary button; the status changes are
+// rarer and sit in the three-dots menu.
+$output_invoice_button = '';
+$status_actions = array();
 if (!$readonly) {
+    $menu_row = 'menu-item pg-link-body-emphasis';
     if ($can_invoice) {
-        $output_actions .= $action_button('invoice', lang('Make a purchase invoice draft'), 'bi-receipt', 'btn-solid theme-primary', lang('Make a purchase invoice draft for what has not come yet, at the order\'s prices and dated today?'));
+        $output_invoice_button = $action_button('invoice', lang('Make a purchase invoice draft'), 'bi-receipt', 'btn-solid theme-primary rounded-pill px-5', lang('Make a purchase invoice draft for what has not come yet, at the order\'s prices and dated today?'));
     }
     if ($status_key === 'open') {
-        $output_actions .= $action_button('sent', lang('Mark as sent'), 'bi-send-check', 'btn-outline theme-primary', lang('Mark this order as sent to the supplier (by phone, on paper)? Sending it by e-mail does this by itself.'));
+        $status_actions[] = $action_button('sent', lang('Mark as sent'), 'bi-send-check', $menu_row, lang('Mark this order as sent to the supplier (by phone, on paper)? Sending it by e-mail does this by itself.'));
     }
     if (in_array($status_key, array('open', 'sent', 'partial'), true)) {
-        $output_actions .= $action_button('cancelled', lang('Cancel the order'), 'bi-x-circle', 'btn-outline theme-secondary', lang('Cancel this purchase order? It stays on the list, marked cancelled; what has already come in stays on its purchase invoices.'));
+        $status_actions[] = $action_button('cancelled', lang('Cancel the order'), 'bi-x-circle', $menu_row, lang('Cancel this purchase order? It stays on the list, marked cancelled; what has already come in stays on its purchase invoices.'));
     }
     if ($status_key === 'cancelled') {
-        $output_actions .= $action_button('open', lang('Open again'), 'bi-arrow-counterclockwise', 'btn-outline theme-secondary');
+        $status_actions[] = $action_button('open', lang('Open again'), 'bi-arrow-counterclockwise', $menu_row);
     }
 }
 
@@ -230,7 +248,7 @@ if ($editable) {
         $rows .= '
             <tr>
                 <td>' . (int) $line['line_no'] . '</td>
-                <td>' . h((string) $line['description']) . ((trim((string) ($line['product_name'] ?? '')) !== '' && (trim((string) $line['product_name']) !== trim((string) $line['description']))) ? '<div class="small fg-secondary">' . h((string) $line['product_name']) . '</div>' : '') . '</td>
+                <td class="text-break">' . h((string) $line['description']) . ((trim((string) ($line['product_name'] ?? '')) !== '' && (trim((string) $line['product_name']) !== trim((string) $line['description']))) ? '<div class="small fg-secondary">' . h((string) $line['product_name']) . '</div>' : '') . '</td>
                 <td class="text-end text-nowrap">' . $quantity($line['quantity'], $line['unit_code'] ?? '') . '</td>
                 <td class="text-end">' . $money($line['unit_price']) . '</td>
                 <td class="text-end">' . (((int) $line['discount_amount'] > 0) ? $money($line['discount_amount']) : '') . '</td>
@@ -280,7 +298,7 @@ if (!empty($linked_invoices) || in_array($status_key, array('partial', 'received
         $goods_rows .= '
             <tr>
                 <td>' . (int) $row['line_no'] . '</td>
-                <td>' . h($row['description']) . '</td>
+                <td class="text-break">' . h($row['description']) . '</td>
                 <td class="text-end text-nowrap">' . $quantity($row['ordered'], $unit) . '</td>
                 <td class="text-end text-nowrap' . ($full ? ' fg-success fw-semibold' : '') . '">' . $quantity($row['received'], $unit) . '</td>
                 <td class="text-end text-nowrap fg-secondary">' . (((float) $row['drafted'] > 0) ? $quantity($row['drafted'], $unit) : '—') . '</td>
@@ -333,11 +351,15 @@ if (!empty($linked_invoices) || in_array($status_key, array('partial', 'received
 // E-mail: the form and every e-mail the order already went out in.
 $output_mail = '';
 $output_mail_button = '';
+$output_mail_result = '';
 
 if (function_exists('erp_mail_ready') && erp_mail_ready()) {
     $defaults = erp_purchase_order_mail_defaults($order);
     $draft = $_SESSION['software']['erp_purchase_order_mail_draft'][$order_id] ?? null;
     unset($_SESSION['software']['erp_purchase_order_mail_draft'][$order_id]);
+    $mail_result = $_SESSION['software']['erp_purchase_order_mail_result'][$order_id] ?? null;
+    unset($_SESSION['software']['erp_purchase_order_mail_result'][$order_id]);
+    $mail_to_invalid = is_array($mail_result) && (($mail_result['field'] ?? '') === 'mail_to');
 
     if (is_array($draft)) {
         $defaults = array_merge($defaults, $draft);
@@ -364,18 +386,18 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
     $output_mail_form = '';
 
     if ($can_mail) {
-        $output_mail_button = '<a class="btn btn-sm btn-outline theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
+        $output_mail_button = '<a class="btn btn-sm btn-text theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
         $output_mail_form = '
             <form name="mail_form" action="' . $self_action . '" method="post" class="row g-3" data-erp-send-once>
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $order_id . '" />
                 <input type="hidden" name="erp_action" value="mail" />
-                <div class="col-12 md:col-6">
+                <div class="col-12 md:col-6 lg:col-12">
                     <label class="form-label" for="mail_to">' . lang('Recipient e-mail') . '</label>
-                    <input type="text" class="form-control" id="mail_to" name="mail_to" value="' . h((string) $defaults['to']) . '" maxlength="500" inputmode="email" spellcheck="false" autocapitalize="off" autocomplete="off" required />
+                    <input type="text" class="form-control' . ($mail_to_invalid ? ' is-invalid' : '') . '" id="mail_to" name="mail_to" value="' . h((string) $defaults['to']) . '" maxlength="500" inputmode="email" spellcheck="false" autocapitalize="off" autocomplete="off" required' . ($mail_to_invalid ? ' aria-invalid="true" aria-describedby="erp-mail-result"' : '') . ' />
                     <div class="form-text">' . (((string) $defaults['to'] === '') ? lang('The account has no e-mail address. Type one, or add it to the account.') : lang('More than one address: separate them with commas.')) . '</div>
                 </div>
-                <div class="col-12 md:col-6">
+                <div class="col-12 md:col-6 lg:col-12">
                     <label class="form-label" for="mail_subject">' . lang('Subject') . '</label>
                     <input type="text" class="form-control" id="mail_subject" name="mail_subject" value="' . h((string) $defaults['subject']) . '" maxlength="255" />
                 </div>
@@ -391,11 +413,17 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
             </form>';
     }
 
-    if (($output_mail_form !== '') || ($mail_rows !== '')) {
+    if (is_array($mail_result)) {
+        $mail_error = (($mail_result['type'] ?? '') === 'error');
+        $output_mail_result = '<div id="erp-mail-result" class="alert theme-' . ($mail_error ? 'danger' : 'success') . ' d-flex align-items-start gap-3" role="' . ($mail_error ? 'alert' : 'status') . '">'
+            . '<i class="bi ' . ($mail_error ? 'bi-exclamation-triangle-fill' : 'bi-check-circle-fill') . '" aria-hidden="true"></i><div class="flex-grow-1 min-w-0">' . h((string) ($mail_result['text'] ?? '')) . '</div></div>';
+    }
+
+    if (($output_mail_form !== '') || ($mail_rows !== '') || ($output_mail_result !== '')) {
         $output_mail = '
             <div class="card my-7" id="erp-mail">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('E-mail to the supplier') . '</div>
-                <div class="card-body">' . $output_mail_form . '</div>'
+                <div class="card-body">' . $output_mail_result . $output_mail_form . '</div>'
                 . (($mail_rows !== '') ? '
                 <div class="card-body p-0 border-top table-responsive">
                     <table class="table table-sm mb-0">
@@ -410,12 +438,12 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
 
 // A copy is always a new open order, whatever became of this one.
 $output_copy_button = (!$readonly && erp_purchase_orders_ready())
-    ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_purchase_order.php?copy=' . $order_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>'
+    ? '<a class="menu-item pg-link-body-emphasis" href="add_erp_purchase_order.php?copy=' . $order_id . '"><i class="bi bi-files me-3" aria-hidden="true"></i>' . lang('Copy') . '</a>'
     : '';
 
 // The same gate as the audit trail screen: the ERP settings managers and the accountant.
 $output_audit_button = (function_exists('erp_audit_ready') && erp_audit_ready() && ((((int) $user['role'] < 3) || !empty($user['manage_erp_settings']) || $readonly)))
-    ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_audit.php?type=purchase_order&amp;id=' . $order_id . '"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>' . lang('Audit trail') . '</a>'
+    ? '<a class="menu-item pg-link-body-emphasis" href="erp_audit.php?type=purchase_order&amp;id=' . $order_id . '"><i class="bi bi-shield-check me-3" aria-hidden="true"></i>' . lang('Audit trail') . '</a>'
     : '';
 
 // Who the order went to and when, beside the status in the page body: the
@@ -427,11 +455,39 @@ $facts = array(
     '<span class="fg-secondary me-2">' . lang('Order Date') . '</span>' . h(prepare_form_data_for_output((string) $order['issue_date'], 'date', false)),
 );
 if ((string) $order['expected_date'] > '0000-00-00') {
-    $facts[] = h(lang(array('string' => 'Expected {var:1}', 'vars' => prepare_form_data_for_output((string) $order['expected_date'], 'date', false))));
+    $facts[] = '<span class="fg-secondary me-2">' . lang('Expected') . '</span>' . h(prepare_form_data_for_output((string) $order['expected_date'], 'date', false));
 }
 if ((int) $order['sent_at'] > 0) {
-    $facts[] = h(lang(array('string' => 'Sent {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $order['sent_at']), 'date and time', false))));
+    $facts[] = '<span class="fg-secondary me-2">' . lang('Sent') . '</span>' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $order['sent_at']), 'date and time', false));
 }
+
+// One toolbar: the next step first, the PDF and the e-mail beside it, the
+// facts in the grow slot and the rarer things in the three-dots menu.
+$pdf_link = function ($class) use ($order_id) {
+    return '<a class="' . $class . '" href="get_erp_purchase_order_pdf.php?id=' . $order_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>';
+};
+$toolbar_more = array_values(array_filter(array(
+    '<a class="menu-item pg-link-body-emphasis" href="get_erp_purchase_order_pdf.php?id=' . $order_id . '&amp;download=1"><i class="bi bi-download me-3" aria-hidden="true"></i>' . lang('Download') . '</a>',
+    $output_copy_button,
+    $output_audit_button,
+)));
+if ($status_actions) {
+    $toolbar_more[] = '<hr class="menu-divider">';
+    $toolbar_more = array_merge($toolbar_more, $status_actions);
+}
+
+$output_toolbar = pg_screen_toolbar(array(
+    'primary' => ($output_invoice_button !== '') ? $output_invoice_button : $pdf_link('btn btn-sm btn-solid theme-primary rounded-pill px-5'),
+    'secondary' => (($output_invoice_button !== '') ? $pdf_link('btn btn-sm btn-text theme-secondary') : '') . $output_mail_button,
+    'grow' => '<div class="small d-flex flex-wrap align-items-center column-gap-5 row-gap-1"><span>' . implode('</span><span>', $facts) . '</span></div>',
+    'overflow' => '<div class="pg-menu-wrap">
+                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-display="static" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                <ul class="menu pg-menu-end">
+                    <li>' . implode('</li>
+                    <li>', $toolbar_more) . '</li>
+                </ul>
+            </div>',
+));
 
 echo
 pg_page_shell([
@@ -453,25 +509,32 @@ pg_page_shell([
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="mb-3 small d-flex flex-wrap align-items-center column-gap-5 row-gap-1"><span>' . implode('</span><span>', $facts) . '</span></div>
+            ' . (($output_mail === '') ? $output_mail_result : '') . '
 
-            <nav id="button_bar" class="pg-toolbar navigation d-flex flex-wrap gap-1" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_purchase_order_pdf.php?id=' . $order_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>
-                <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_purchase_order_pdf.php?id=' . $order_id . '&amp;download=1"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Download') . '</a>
-                ' . $output_mail_button . '
-                ' . $output_copy_button . '
-                ' . $output_audit_button . '
-                <span class="ms-auto d-flex flex-wrap gap-1">' . $output_actions . '</span>
-            </nav>
+            ' . $output_toolbar . '
+        </div>
 
+        <!--
+            The form column: the order and the goods received against it (a
+            per-line table as wide as the order\'s). The e-mail card goes in the
+            status column after it, so a narrow screen puts it below the order.
+            That column is not sticky: it holds a form, can be taller than the
+            window and is reached by the #erp-mail jump, and a sticky box taller
+            than the window hides its own end. The line editor needs about
+            1,060px, so an open order splits only from 2xl; below that the card
+            follows the editor. Without an e-mail card the order takes the width.
+        -->
+        <div class="col-12 ' . (($output_mail === '') ? '' : ($editable ? '' : 'lg:col-8 ') . '2xl:col-9 ') . 'order-1">
             ' . ((!$editable && !$readonly && in_array($status_key, array('partial', 'received'), true)) ? '<div class="form-text mb-3">' . lang('Goods have come in against this order, so its lines are no longer changed; a new order asks for more.') . '</div>' : '') . '
             ' . ((!$editable && !$readonly && ($status_key === 'cancelled')) ? '<div class="form-text mb-3">' . ($received_any
                 ? lang('A cancelled order is not changed. Goods have already come in against it, so "Open again" brings back its received status and its lines stay as they are.')
                 : lang('A cancelled order is not changed; "Open again" makes it editable.')) . '</div>' : '') . '
             ' . $output_body . '
             ' . $output_goods . '
-            ' . $output_mail . '
         </div>
+        ' . (($output_mail !== '') ? '<div class="col-12 ' . ($editable ? '' : 'lg:col-4 ') . '2xl:col-3 order-2">
+            ' . $output_mail . '
+        </div>' : '') . '
     </div>
 </main>
 <script>

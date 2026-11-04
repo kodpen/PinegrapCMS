@@ -320,7 +320,7 @@ function test_erp_purchase_order_events_are_offered()
 		pg_assert_true(isset($offered[$event]), $event . ' is in erp_webhook_events()');
 	}
 
-	foreach (array('created', 'sent', 'received', 'cancelled', 'reopened') as $name) {
+	foreach (array('created', 'changed', 'sent', 'received', 'cancelled', 'reopened', 'invoiced') as $name) {
 		pg_assert_true(isset($offered['erp.purchase_order.' . $name]), 'erp.purchase_order.' . $name);
 	}
 }

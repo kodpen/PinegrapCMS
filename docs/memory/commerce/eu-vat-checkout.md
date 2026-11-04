@@ -31,7 +31,7 @@ module: vat_checkout
 ## What else?
 - Migration step `upgrade_2026_11_0_order_vat_id()` adds the three columns (#5559).
 - No requester id is sent to VIES (no setting holds the site's own VAT id): `vat_request_id` stays empty.
-- Still open: the ERP account card's tax number checked against VIES (plan step SF6b2b).
+- The ERP account card's tax number is checked too (`eu-vat-check.md`).
 
 ## Which tests cover it?
 - `tests/vat_checkout_test.php`: when the check applies, every outcome's flag, columns, error and notice, column widths, the box width, the order note, the express box fit.

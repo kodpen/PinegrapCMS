@@ -110,6 +110,11 @@ if (!$_POST) {
         'icon'=>'store',
         'heading'=>lang('Edit Featured & New Items'),
         'heading_description' => lang('Update the featured and new product groups and products that should appear on catalog pages.'),
+        'cancel' => array('enable' => 'true', 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php'),
+        'breadcrumb' => array(
+            array('label' => lang('Product Groups'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php'),
+            array('label' => lang('Edit Featured & New Items')),
+        ),
     ]) . '<main id="content" class="container-fluid">' . get_date_picker_format() . '
             <div class="row">
             <div class="col-12">
@@ -122,8 +127,6 @@ if (!$_POST) {
                     <div class="card my-7">
                         <div class="card-body p-0 position-relative">
                             ' . get_token_field() . '
-                            ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'from', 'value'=>($_GET['from'] ?? ''))) . '
-                            ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>($_GET['send_to'] ?? ''))) . '
                             <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead>

@@ -35,7 +35,8 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - attrs-panel-undo.md: Undo steps of the designer's Attributes panel text fields (id, prop-bound attributes, custom attribute name and value) and when its style row is written
 - audience-conditions.md: Audience conditions on page elements: the __audience_* tokens, the pg_ret cookie, personal or per country/device copies in the page cache, the editor list
 - billing-information-widget.md: The Billing Information widget (third classic checkout step): handler and page row, prefill from order and contact, parts the page turns off, helpers shared with step 1.
-- booking-widget.md: The booking system widget (BK4a, #6224): parts by binding, data-pg-booking settings, booking_slots.php (month, day, hold), "anyone" picks the freest, one hold per session
+- booking-widget-confirm.md: Booking widget details step and confirm (#6596): form fields by name, signed-in prefill, auto_confirm status, expired hold rebooked when free, taken path, privacy page link
+- booking-widget.md: The booking system widget (#6224): parts by binding, data-pg-booking settings, booking_slots.php (month, day, hold), "anyone" picks the freest, one hold per session
 - bootstrap-direct-child-canvas.md: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule), the td display:flex ban, the selected-child lift.
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
 - catalog-item-checkout-options-tab.md: The product page starter's Checkout Options tab (catalog_item_view) is bound to the store's switched-on payment methods, with real fees, or not drawn (#4556); saved trees untouched

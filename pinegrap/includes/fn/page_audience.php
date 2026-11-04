@@ -512,6 +512,34 @@ function pg_audience_value($token, $background = false)
 }
 
 /**
+ * The contact groups the editor lists (formMeta.contactGroups): id, name and
+ * kind, 'dynamic' for a group filled by rules, else 'static' (also before
+ * the upgrade added the column). The group token reads either kind the same
+ * way: a rule-made membership is an xref row like a hand-made one. Pure.
+ *
+ * @param array $rows  contact_groups rows: id, name, kind (optional)
+ * @return array list of id, name, kind
+ */
+function pg_audience_group_options($rows)
+{
+    $out = array();
+
+    foreach ((array) $rows as $row) {
+        if (!is_array($row) || ((int) ($row['id'] ?? 0) <= 0)) {
+            continue;
+        }
+
+        $out[] = array(
+            'id' => (int) $row['id'],
+            'name' => (string) ($row['name'] ?? ''),
+            'kind' => ((string) ($row['kind'] ?? '') === 'dynamic') ? 'dynamic' : 'static',
+        );
+    }
+
+    return $out;
+}
+
+/**
  * The experiments the editor offers a condition on: every one not ended,
  * with its variant keys; empty before the upgrade made the tables.
  *

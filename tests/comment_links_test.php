@@ -95,19 +95,42 @@ function test_comment_links_mail_wiring()
 	pg_assert_contains("pg_comment_view_query('?r=' . \$reference_code, \$comment_id) . '#c-' . \$comment_id", $mail, 'the submitter\'s link');
 }
 
+// Where a "Go To Comment" link of the panel leads, per item type: the page
+// name, what the page needs to show the item, then the comment. A thread
+// with nothing to name (no reference code, no address name, no event) has
+// no place on the site.
+function test_comment_links_site_path()
+{
+	$rows = array(
+		array(array('item_type' => '', 'id' => 5), 'news', 'news?comments=all&comment=5'),
+		array(array('item_type' => 'submitted_form', 'reference_code' => 'ab12', 'id' => 6), 'tickets', 'tickets?r=ab12&comments=all&comment=6'),
+		array(array('item_type' => 'submitted_form', 'reference_code' => '', 'id' => 6), 'tickets', ''),
+		array(array('item_type' => 'product_group', 'product_group_address_name' => 'shirts', 'id' => 7), 'shop', 'shop/shirts?comments=all&comment=7'),
+		array(array('item_type' => 'product_group', 'product_group_address_name' => null, 'id' => 7), 'shop', ''),
+		array(array('item_type' => 'product', 'product_address_name' => 'blue-shirt', 'id' => 8), 'shop', 'shop/blue-shirt?comments=all&comment=8'),
+		array(array('item_type' => 'product', 'id' => 8), 'shop', ''),
+		array(array('item_type' => 'calendar_event', 'item_id' => '12', 'id' => 9), 'event', 'event?id=12&comments=all&comment=9'),
+		array(array('item_type' => 'calendar_event', 'item_id' => 0, 'id' => 9), 'event', ''),
+		array(array('item_type' => 'unknown', 'item_id' => 3, 'id' => 9), 'event', ''),
+		array(array('item_type' => '', 'id' => 5), '', ''),
+		array(array('id' => 5), 'news', 'news?comments=all&comment=5'),
+	);
+
+	foreach ($rows as $row) {
+		pg_assert_same($row[2], pg_comment_site_path($row[1], $row[0]), json_encode($row[0]));
+	}
+}
+
 // The panel's "Go To Comment" links (the comment screen and the comment
-// list, where the notification leads) name the comment, escaped.
+// list, where the notification leads) come from pg_comment_site_path() and
+// are escaped.
 function test_comment_links_panel_wiring()
 {
 	$source = comment_links_test_source('edit_comment.php');
-	pg_assert_same(4, substr_count($source, 'href="\' . h(OUTPUT_PATH . get_page_name('), 'edit_comment.php: four escaped links');
-	pg_assert_same(4, substr_count($source, 'pg_comment_view_query('), 'edit_comment.php: each names the comment');
-	pg_assert_contains("pg_comment_view_query('?r=' . \$form_reference_code", $source, 'edit_comment.php: a record\'s link keeps its ?r=');
+	pg_assert_contains('pg_comment_site_path(get_page_name($page_id), $row)', $source, 'edit_comment.php: the shared address');
+	pg_assert_contains('href="\' . h(OUTPUT_PATH . $comment_path . \'#c-\' . $comment_id)', $source, 'edit_comment.php: the link is escaped');
 
-	// The list builds the address four ways and escapes it in one link.
 	$source = comment_links_test_source('view_comments.php');
-	pg_assert_same(4, substr_count($source, '$comment_url = OUTPUT_PATH . get_page_name('), 'view_comments.php: four addresses');
-	pg_assert_same(4, substr_count($source, 'pg_comment_view_query('), 'view_comments.php: each names the comment');
+	pg_assert_contains("pg_comment_site_path(get_page_name(\$comment['page_id']), \$comment)", $source, 'view_comments.php: the shared address');
 	pg_assert_contains('href="\' . h($comment_url . \'#c-\' . $comment[\'id\'])', $source, 'view_comments.php: the link is escaped');
-	pg_assert_contains("pg_comment_view_query('?r=' . \$comment['reference_code']", $source, 'view_comments.php: a record\'s link keeps its ?r=');
 }

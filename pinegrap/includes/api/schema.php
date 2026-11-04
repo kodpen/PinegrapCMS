@@ -843,10 +843,11 @@ function api_schema() {
 			'handler' => 'api_returns_list',
 			'returns' => array('list' => 'OrderReturn'),
 			'summary' => 'Return requests',
-			'description' => 'Every return request of every order, newest first, as the panel\'s Returns screen lists them, cursor paged. Each is the OrderReturn GET /orders/{id}/returns answers: the order lines it sends back, its status, when each status was reached, the refund and whether it came in time. status=open gives the ones still to be dealt with (requested, approved, shipped, received), the panel\'s default; one status gives that one. A site not yet updated to the version that keeps returns has an empty list.',
+			'description' => 'Every return request of every order, newest first, as the panel\'s Returns screen lists them, cursor paged. Each is the OrderReturn GET /orders/{id}/returns answers: the order lines it sends back, its status, when each status was reached, the refund, whether it came in time and modified_at, its last change. modified_since lists the returns changed at or after a moment, oldest change first, so a client asks what changed since its last read and walks forward: a request, every move, a refund, its refusal and a return label move its modified_at; a cursor works only under the listing it was made for, under the other one it is 400 invalid_cursor. On a site whose database has not been updated to keep modified_at, modified_since answers 503 service_unavailable. status=open gives the ones still to be dealt with (requested, approved, shipped, received), the panel\'s default; one status gives that one. A site not yet updated to the version that keeps returns has an empty list.',
 			'params'  => array(
 				array('name' => 'status',   'in' => 'query', 'type' => 'enum', 'values' => array('open', 'requested', 'approved', 'rejected', 'shipped', 'received', 'refunded', 'closed')),
 				array('name' => 'order_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the returns of this order.'),
+				array('name' => 'modified_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only returns changed at or after this moment (modified_at), oldest change first.'),
 				array('name' => 'limit',    'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
 				array('name' => 'cursor',   'in' => 'query', 'type' => 'string', 'max_length' => 200)
 			)

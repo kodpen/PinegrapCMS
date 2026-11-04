@@ -10,7 +10,7 @@ description: External API (integration.php): find what the panel can do that the
 - X0 gap list: done (PR #5239). X1–X12 are `free`, most useful first. A write step first moves the screen's inline SQL into one `includes/fn/` function both call. Store writes take `store:write` (commerce ceiling); store reads stay under `orders:read`.
 - X1a zone and tax zone writes, X1b shipping methods: PRs #5377, #5491 (`api/api-store-zone-writes.md`, `api/api-store-shipping-method-writes.md`).
 - X2 Returns read and moves: PR #5925 (`api/api-returns.md`).
-- X2b `modified_since` on `GET /returns` through `order_returns.updated_at` (decided in #5927).
+- X2b `modified_since` on `GET /returns` through `order_returns.updated_at` (#5927): PR #6600.
 - X3 subscriptions read, commission/affiliate writes: PR #5741 (`api/api-commission-writes.md`, `api/api-subscriptions-list.md`).
 - X4 Users read: `GET /users`, `/users/{id}` (role, permission columns, last sign-in, MFA; no secrets). New `users:read`, designer ceiling. Writes: X13 (`api/api-users-write.md`). PR #5898 (`api/api-users-read.md`).
 - X5a countries and states, X5b currencies and rate refresh, `store:write`: PRs #6005, #6051 (`api/api-store-country-state-writes.md`, `api/api-store-currency-writes.md`).

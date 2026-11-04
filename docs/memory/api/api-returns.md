@@ -7,7 +7,8 @@ module: returns
 ## Which routes are there?
 - `returns.list` `GET /returns` (`orders:read`): every order's returns, newest first, cursor on the id (`id < last`), filters `status` (one status or `open`: `pg_return_open_statuses()`, the panel's default) and `order_id`. Lines of the page in one query (`pg_return_items_of()`), withdrawal windows per order (`api_return_windows_of_orders()`: a `ship_to_id` belongs to its order). Empty before the tables exist.
 - `returns.get` `GET /returns/{id}`, `returns.update` `POST /returns/{id}` (`orders:write`, rehearsable). Object `OrderReturn` (`api_order_return_present()`, the one `GET /orders/{id}/returns` answers). Code: `includes/api/resources/returns.php`.
-- `modified_since` is not there: `order_returns` has no stamp that every writer moves (a refused refund puts `refunded_at` back to 0, a return label changes `carrier_code` with no stamp); see the plan file for the decision issue.
+- `modified_since` (11.0.168, decided in #5927): `order_returns.updated_at >=`, oldest change first, keyset on `(updated_at, id)` (index `idx_updated`), cursor marked `m.` (the unmarked newest-first cursor is 400 under it and back). 503 `service_unavailable` before the column exists. `OrderReturn.modified_at` shows the stamp.
+- Every `UPDATE order_returns` in `includes/fn/returns.php` appends `pg_return_touch_sql()` (empty before the column exists), the INSERT stamps the request; the status stamps alone miss a refused refund and a label code. Only the refund reminder stamps leave it alone (not shown by the API).
 
 ## What does POST /returns/{id} do?
 - `action` approve, reject, ship, receive, close, refund: the buttons of `view_return.php` but the return label (it may cost money at the carrier). Writes only through `pg_return_staff_move()` and `pg_return_refund()`, so the decision and refund mails, the audit line and `order.return.approved|received|refunded` are the screen's.
@@ -21,4 +22,4 @@ module: returns
 - Option `log_user` on both: the activity log line names the application's owner (no signed-in person in the API); `pg_return_staff_move()` removes it before `pg_return_move()`.
 
 ## Tested?
-- `tests/api_returns_test.php`: rows and scopes, field limits against the columns, the check's statuses, stale status, foreign field, note, approval suggestion, ship carrier, refund cases, write order (check, stop, write), the codes and the 409s described on the route. Not run against a database.
+- `tests/api_returns_test.php`: rows and scopes, field limits against the columns, the check's statuses, stale status, foreign field, note, approval suggestion, ship carrier, refund cases, write order (check, stop, write), the codes and the 409s described on the route. `tests/api_returns_modified_since_test.php`: listing, cursor, SQL, `modified_at`, the step and a pin that every writer touches the stamp. Not run against a database.
