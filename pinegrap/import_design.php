@@ -259,7 +259,7 @@ if ($action != 'import') {
         // the screen shows it in the panel's language.
         echo '<div class="import-tree">'
             . '<div class="d-flex align-items-center gap-3 py-1"><i class="bi bi-folder2-open fg-warning"></i><span class="small fw-medium">' . h(lang('Import My Site')) . '</span></div>'
-            . '<div class="ms-5 d-flex align-items-center gap-3 py-1"><i class="bi bi-folder2 fg-warning"></i><span class="small fg-secondary">' . h($folder_name) . '</span></div>'
+            . '<div class="ms-5 d-flex align-items-center gap-3 py-1"><i class="bi bi-folder2 fg-warning"></i><span class="small fg-secondary text-break min-w-0">' . h($folder_name) . '</span></div>'
             . '<div class="ms-7 ps-5 border-start">';
         flush();
 
@@ -1115,7 +1115,8 @@ function scan($properties) {
         // If there is an extension in the name,
         // then place the query string before the extension.
         if ($extension != '') {
-            $extension_position = mb_strpos($name, '.');
+            // The last period starts the real extension (bootstrap.min.css -> bootstrap.min-...css).
+            $extension_position = mb_strrpos($name, '.');
 
             $name = mb_substr($name, 0, $extension_position) . '-' . $query_for_name . mb_substr($name, $extension_position);
 
@@ -1131,7 +1132,8 @@ function scan($properties) {
         // If there is an extension in the name,
         // then place the import name before the extension.
         if ($extension != '') {
-            $extension_position = mb_strpos($name, '.');
+            // The last period starts the real extension (bootstrap.min.css -> bootstrap.min-...css).
+            $extension_position = mb_strrpos($name, '.');
 
             $name = mb_substr($name, 0, $extension_position) . '-' . $import_name . mb_substr($name, $extension_position);
 
@@ -1193,7 +1195,7 @@ function scan($properties) {
             . '<div class="d-flex gap-3 align-items-center py-1">'
             . '<span class="fg-secondary small" style="min-width:2rem;text-align:right">' . $number_of_items . '</span>'
             . '<i class="bi bi-window me-1 pages-color"></i>'
-            . '<span class="" title="' . lang('Page Style') . ': ' . h($style_name) . '">' . h($page_name) . '</span>'
+            . '<span class="text-break min-w-0" title="' . lang('Page Style') . ': ' . h($style_name) . '">' . h($page_name) . '</span>'
             . '</div>'
             . '<div class="tree-page-children ms-7 ps-5 border-start border-subtle-secondary">';
         flush();
@@ -1264,13 +1266,13 @@ function scan($properties) {
         ) {
             $design = true;
 
-            echo '<div class="d-flex gap-3 align-items-center py-1"><span class="fg-secondary small" style="min-width:2rem;text-align:right">' . $number_of_items . '</span><i class="bi ' . get_filetype_icon($extension_lowercase) . ' me-1 design-color"></i><span class="badge">' . h($name) . '</span></div>';
+            echo '<div class="d-flex gap-3 align-items-center py-1"><span class="fg-secondary small" style="min-width:2rem;text-align:right">' . $number_of_items . '</span><i class="bi ' . get_filetype_icon($extension_lowercase) . ' me-1 design-color"></i><span class="small text-break min-w-0">' . h($name) . '</span></div>';
             flush();
 
         } else {
             $design = false;
 
-            echo '<div class="d-flex gap-3 align-items-center py-1"><span class="fg-secondary small" style="min-width:2rem;text-align:right">' . $number_of_items . '</span><i class="bi ' . get_filetype_icon($extension_lowercase) . ' me-1 files-color"></i><span class="badge">' . h($name) . '</span></div>';
+            echo '<div class="d-flex gap-3 align-items-center py-1"><span class="fg-secondary small" style="min-width:2rem;text-align:right">' . $number_of_items . '</span><i class="bi ' . get_filetype_icon($extension_lowercase) . ' me-1 files-color"></i><span class="small text-break min-w-0">' . h($name) . '</span></div>';
             flush();
         }
 
