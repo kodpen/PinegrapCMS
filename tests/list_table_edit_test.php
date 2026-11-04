@@ -40,11 +40,24 @@ function test_list_table_edit_answer_draws_the_cell_and_the_ones_beside_it()
 	pg_assert_same(array(), pg_list_table_edit_answer(null, 'weight', array('last_modified')), 'a row no longer on the list draws nothing');
 }
 
-function test_page_quick_edit_columns_are_the_list_switches()
+function test_page_quick_edit_columns_follow_the_user_rights()
 {
-	pg_assert_same(array('searchable', 'comments', 'sitemap'), array_keys(pg_page_quick_edit_columns()), 'the three switches');
+	pg_assert_same(array('searchable', 'comments', 'sitemap'), array_keys(pg_page_quick_edit_columns()), 'without a user, the three switches');
 
-	$columns = pg_list_table_columns(pg_page_list_columns(array('custom_form' => false, 'previewing_other_theme' => false, 'style_heading' => 'Page Style')));
+	$choices = array('device' => 'desktop', 'preview_theme_id' => 0, 'folders' => array(1 => 'Root'), 'styles' => array('0' => 'Default', '5' => 'Two columns'), 'style_label' => 'Desktop Page Style');
+	$manager = pg_page_quick_edit_columns(array('id' => 1, 'role' => 2), $choices);
+
+	pg_assert_same(array('name', 'folder', 'style', 'form_name', 'form_enabled', 'searchable', 'comments', 'sitemap'), array_keys($manager), 'staff change every column the page screen sets');
+	pg_assert_same(array(1 => 'Root'), $manager['folder']['options'], 'the folders offered');
+	pg_assert_true(!empty($manager['name']['required']) && ($manager['name']['max'] === 100), 'a name is required, at most 100 characters');
+
+	$basic = pg_page_quick_edit_columns(array('id' => 2, 'role' => 3), $choices);
+
+	pg_assert_true(!isset($basic['style']), 'a basic user sets no style, as on the page screen');
+	pg_assert_true(!isset($basic['form_name']), 'nor a form without the custom form right');
+	pg_assert_true(isset(pg_page_quick_edit_columns(array('id' => 2, 'role' => 3, 'set_page_type_custom_form' => 'yes'), $choices)['form_name']), 'with the right, the form fields');
+
+	$columns = pg_list_table_columns(pg_page_list_columns(array('custom_form' => true, 'previewing_other_theme' => false, 'style_heading' => 'Page Style')));
 	$editable = array();
 
 	foreach ($columns as $key => $column) {
@@ -53,10 +66,57 @@ function test_page_quick_edit_columns_are_the_list_switches()
 		}
 	}
 
-	pg_assert_same(array_keys(pg_page_quick_edit_columns()), $editable, 'each switch column is editable');
-	pg_assert_same('1', pg_page_quick_edit_value('searchable', array('page_search' => '1')), 'searchable reads page_search');
-	pg_assert_same('0', pg_page_quick_edit_value('sitemap', array('sitemap' => '0')), 'an off switch opens as No');
+	sort($editable);
+	$fields = array_keys($manager);
+	sort($fields);
+
+	pg_assert_same($fields, $editable, 'each field has an editable column and nothing else is');
+}
+
+function test_page_quick_edit_values_and_cells()
+{
+	$page = array('page_name' => 'about-us', 'page_folder' => '4', 'page_search' => '1', 'sitemap' => '0', 'form_name' => 'Contact', 'enabled' => '1', 'style_value' => 7, 'page_type' => 'standard');
+
+	pg_assert_same('about-us', pg_page_quick_edit_value('name', $page), 'the name');
+	pg_assert_same('4', pg_page_quick_edit_value('folder', $page), 'the folder id');
+	pg_assert_same('7', pg_page_quick_edit_value('style', $page), 'the style the cell shows');
+	pg_assert_same('1', pg_page_quick_edit_value('form_enabled', $page), 'the form switch');
+	pg_assert_same('1', pg_page_quick_edit_value('searchable', $page), 'searchable reads page_search');
 	pg_assert_same('0', pg_page_quick_edit_value('comments', array()), 'a missing value opens as No');
+
+	pg_assert_true(!pg_page_quick_cell_editable('style', $page, true), 'a visual editor page keeps its style');
+	pg_assert_true(pg_page_quick_cell_editable('style', $page, false), 'another page changes its style');
+	pg_assert_true(!pg_page_quick_cell_editable('form_name', $page, false), 'no form fields but on a custom form page');
+	pg_assert_true(pg_page_quick_cell_editable('form_enabled', array('page_type' => 'custom form'), false), 'a custom form page has them');
+}
+
+function test_page_quick_folder_choices_are_the_page_picker()
+{
+	$folders = array(
+		array('folder_id' => 1, 'folder_name' => 'Root', 'folder_parent' => 0, 'folder_archived' => 0),
+		array('folder_id' => 2, 'folder_name' => 'Blog', 'folder_parent' => 1, 'folder_archived' => 0),
+		array('folder_id' => 3, 'folder_name' => 'Workspace', 'folder_parent' => 1, 'folder_archived' => 0),
+		array('folder_id' => 4, 'folder_name' => 'Inside workspace', 'folder_parent' => 3, 'folder_archived' => 0),
+		array('folder_id' => 5, 'folder_name' => 'Recycle Bin', 'folder_parent' => 1, 'folder_archived' => 0),
+		array('folder_id' => 6, 'folder_name' => 'Old', 'folder_parent' => 2, 'folder_archived' => 1),
+		array('folder_id' => 7, 'folder_name' => 'Hidden', 'folder_parent' => 1, 'folder_archived' => 0),
+		array('folder_id' => 8, 'folder_name' => 'Below hidden', 'folder_parent' => 7, 'folder_archived' => 0),
+	);
+	$nb = "\u{00A0}\u{00A0}";
+
+	pg_assert_same(
+		array(1 => 'Root', 2 => $nb . 'Blog', 6 => $nb . $nb . 'Old [' . lang('ARCHIVED') . ']', 8 => $nb . 'Below hidden'),
+		pg_page_quick_folder_choices($folders, function ($id) { return $id !== 7; }, 3, 5),
+		'no Workspace or Recycle Bin or what is below them; a folder the user may not edit is left out, its children move up');
+}
+
+function test_page_quick_option_pairs_read_a_picker()
+{
+	pg_assert_same(
+		array('0' => 'Default (inherit)', '5' => 'A & B', '9' => 'Two'),
+		pg_page_quick_option_pairs('<option value="0">Default (inherit)</option><option value="5" selected>A &amp; B</option><option value="9">Two</option>'),
+		'value => label, entities read');
+	pg_assert_same(array(), pg_page_quick_option_pairs(''), 'no options');
 }
 
 function test_page_quick_decide_follows_the_bulk_rules()
@@ -77,4 +137,13 @@ function test_page_quick_decide_follows_the_bulk_rules()
 	pg_assert_true(!pg_page_quick_decide(array('noindex' => 1) + $page, 'sitemap', '1', 2)['ok'], 'a page closed to search engines is refused');
 	pg_assert_true(pg_page_quick_decide(array('noindex' => 1, 'sitemap' => 1) + $page, 'sitemap', '0', 2)['ok'], 'taking a page off the site map is always allowed');
 	pg_assert_true(!pg_page_quick_decide($page, 'page_name', 'x', 2)['ok'], 'another field is refused');
+
+	$decided = pg_page_quick_decide($page, 'folder', '9', 2);
+	pg_assert_same(array('page_folder' => 9), $decided['decision']['columns'], 'a folder moves the page');
+	pg_assert_true($decided['decision']['stale'], 'a move marks the SEO score stale');
+
+	pg_assert_same(array('desktop' => 5), pg_page_quick_decide($page, 'style', '5', 2)['decision']['styles'], 'the desktop style on the desktop list');
+	pg_assert_same(array('mobile' => 5), pg_page_quick_decide($page, 'style', '5', 2, 'mobile')['decision']['styles'], 'the mobile style on the mobile list');
+	pg_assert_same(array('desktop' => 0), pg_page_quick_decide($page, 'style', '0', 2)['decision']['styles'], '0 goes back to the folder style');
+	pg_assert_true(!pg_page_quick_decide(array('is_visual' => 1) + $page, 'style', '5', 2)['ok'], 'a visual editor page is refused, with the reason');
 }
