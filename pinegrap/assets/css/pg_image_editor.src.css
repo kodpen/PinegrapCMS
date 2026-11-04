@@ -1866,6 +1866,60 @@
   }
 }
 
+/* Import in the top bar: its menu under the button, the Files box. */
+
+.pgie-importwrap {
+  position: relative;
+  display: flex;
+  flex: none;
+}
+
+.pgie-importmenu {
+  right: auto;
+  left: 0;
+}
+
+.pgie-importbox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(560px, calc(100% - 32px));
+  max-height: min(640px, calc(100dvh - 48px));
+}
+
+.pgie-importhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pgie-importbox .pgie-stkfind {
+  flex: none;
+}
+
+.pgie-confirm-box .pgie-importhead h2 {
+  margin: 0;
+}
+
+.pgie-importfiles {
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  grid-auto-rows: 96px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+@media (max-width: 599.98px) {
+  .pgie-importmenu {
+    right: 0;
+    left: auto;
+  }
+
+  .pgie-importfiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 /* -- Export (pg_image_editor_export.js) -- */
 
 /* The result card: before and after, a bar of after against before, the
