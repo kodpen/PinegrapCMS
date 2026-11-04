@@ -1,6 +1,6 @@
 ---
 name: product-screen-save-checks
-description: Product add/edit save checks (count boxes, quantity range, variant set clash, BCC), the matrix esc(), long catalog names, duplicate options in the new-attribute dialog
+description: Product add/edit save checks (counts, weight, quantity range, variant set clash, unticked attributes, BCC), matrix esc(), long catalog names, duplicate options, binned duplicate
 ---
 
 ## Which numbers does the product save refuse?
@@ -15,7 +15,10 @@ this `-2` payments was stored as 0 (no end to the charges), `12,5` as 12 and
 `abc` as is (#5269). `pg_pb_common_from_post()` stores the parsed number.
 Label Column Width is empty, 0 (an old stored value, read as none) or up to
 100. Price, extra shipping cost, weight and dimensions with a minus sign are
-refused: their readers dropped the sign and stored it positive.
+refused: their readers dropped the sign and stored it positive. Weight and
+dimensions: digits and separators only, at most 99999999.9999 as pounds or
+inches (`pg_pb_measure_from_input()`); `1e5` was stored as 15 and a big
+figure cut to the column's top (#R02PR).
 
 ## Why are the quantities checked against each other?
 
@@ -32,6 +35,15 @@ attribute choice changed, every attribute must be one of the set's
 hold the same combination. Two members of one combination cannot be told
 apart by the picker and the replaced one could no longer be bought (#5272).
 An unchanged choice is not checked, so a set holding an old clash still saves.
+A member whose every option was unticked is refused: it would stay in the
+set with no combination.
+
+## What does unticking every option on the edit screen save?
+
+No option ticked posts `variants_json` `[]`; the script also posts
+`pg_pb_attributes_posted=1`, and only with both (`pg_pb_attributes_cleared()`)
+does `pg_pb_update_product()` delete the product's `products_attributes_xref`
+rows; before, the last option came back ticked (#R02PR).
 
 ## Which BCC message is shown?
 
@@ -57,4 +69,11 @@ address (#5274).
 
 `create_attribute` in `product_attribute_action.php` refuses a label given
 twice with `pg_product_attribute_form_duplicate_label()`, as the attribute
-screens do (#5273).
+screens do (#5273). `create_option` (the card's inline add) adds
+`pg_product_attribute_form_label_taken()` to its SQL `=`, whose collation
+tells `I` from `ı` (#R02PR).
+
+## Can a binned product be duplicated?
+
+No: `duplicate_product.php` refuses a product in the Recycle Bin and Edit
+Product leaves Duplicate out of its toolbar; the copy came out live (#R02PR).
