@@ -3701,6 +3701,7 @@
   height: 34px;
   color: inherit;
   font-size: 13px;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .pgie-ctx button:focus-visible {

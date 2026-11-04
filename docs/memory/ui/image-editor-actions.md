@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## What is it, and why?
-- Part `actions` (`pg_image_editor_actions.js`, bundled last; labels `pg_image_editor_strings_actions()`; rules under its line at the end of `pg_image_editor.src.css`): the selection's main commands in a bar over the stage, only where the panel is a sheet (below 768 px wide or 500 px tall). On the desktop the panel shows the same buttons, so the stylesheet hides it there.
+- Part `actions` (`pg_image_editor_actions.js`, bundled before the context menu `ui/image-editor-menu.md`, which starts from the same list; labels `pg_image_editor_strings_actions()`; rules under its line at the end of `pg_image_editor.src.css`): the selection's main commands in a bar over the stage, only where the panel is a sheet (below 768 px wide or 500 px tall). On the desktop the panel shows the same buttons, so the stylesheet hides it there.
 - Owner (2026-11-04, a phone test): a selected sticker or picture could not be deleted (no Delete key, Select's sheet closed), and after a lasso the area's commands sat at the foot of a long sheet.
 
 ## Which commands show?

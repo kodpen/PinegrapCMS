@@ -116,6 +116,8 @@
         this.ctxBound = false;
         this.ctxKeyAt = 0;
         this.ctxLongAt = 0;
+        this.ctxHeld = null;
+        this.ctxReleaseAt = 0;
         this.ctxPress = null;
     });
 
@@ -222,10 +224,9 @@
         document.addEventListener('pointerdown', this.ctxOutside, true);
     };
 
-    // focus true gives the focus back to where the menu was opened from (a
-    // card drawn again: the open scene's), else the stage.
+    // focus true gives the focus back to where the menu was opened from.
     Editor.prototype.closeMenu = function (focus) {
-        var c = this.ctx, back;
+        var c = this.ctx;
 
         if (!c) {
             return;
@@ -240,14 +241,25 @@
         });
 
         if (focus) {
-            back = (c.ret && c.ret.isConnected) ? c.ret : null;
-
-            if (!back && (c.at.at === 'scene') && this.sceneDock) {
-                back = this.sceneDock.querySelector('.pgie-sopen');
-            }
-
-            (back || this.stage).focus();
+            this.menuReturn(c);
         }
+    };
+
+    // The focus back where menu c was opened from: that element, a card
+    // drawn again by then the open scene's, else the stage. Only when the
+    // focus is lost, not when a command moved it (a box it opened).
+    Editor.prototype.menuReturn = function (c) {
+        var a = document.activeElement, back = (c.ret && c.ret.isConnected) ? c.ret : null;
+
+        if (a && (a !== document.body) && a.isConnected && this.root.contains(a)) {
+            return;
+        }
+
+        if (!back && (c.at.at === 'scene')) {
+            back = this.openCard();
+        }
+
+        (back || this.stage).focus();
     };
 
     // A menu's element: a button per item (role menuitem, menuitemradio for
@@ -307,6 +319,18 @@
 
                 self.closeMenu(true);
                 c[1].call(self, ctx, it);
+
+                // A scene's command draws the strip again, and the redraw
+                // gives the lost focus to the stage: the open card takes it.
+                if (ctx.at === 'scene') {
+                    window.setTimeout(function () {
+                        var card = self.openCard();
+
+                        if (card && (document.activeElement === self.stage)) {
+                            card.focus();
+                        }
+                    }, 0);
+                }
             });
             menu.appendChild(b);
         });
@@ -439,6 +463,11 @@
 
     // ---- where the menu opens ----
 
+    // The open scene's card in the strip, or null.
+    Editor.prototype.openCard = function () {
+        return this.sceneDock ? this.sceneDock.querySelector('.pgie-sopen') : null;
+    };
+
     // ctx for an element of the editor: a rail item, a scene's card or the
     // stage; null elsewhere (the panel, the top bar), and in a text field.
     Editor.prototype.menuPlace = function (target) {
@@ -514,7 +543,7 @@
         } else if ((ctx.at === 'scene') && (ctx.scene !== this.doc.scene)) {
             // The scene's commands work on the open scene.
             this.openScene(ctx.scene);
-            ctx.el = null;
+            ctx.el = this.openCard();
         }
 
         this.openMenu(ctx, e.clientX, e.clientY, ctx.el);
@@ -550,7 +579,7 @@
 
             if ((ctx.at === 'scene') && (ctx.scene !== this.doc.scene)) {
                 this.openScene(ctx.scene);
-                ctx.el = null;
+                ctx.el = this.openCard();
             }
         }
 
@@ -612,6 +641,8 @@
         d.addEventListener('pointerdown', function (e) {
             var ctx;
 
+            // A press after the menu key: its menu is no longer coming.
+            self.ctxKeyAt = 0;
             self.cancelPress();
 
             if ((e.pointerType !== 'touch') || self.ctx) {
@@ -640,6 +671,7 @@
                 }
 
                 self.ctxLongAt = Date.now();
+                self.ctxHeld = p.id;
                 self.menuAt(p.ctx, p.e, false);
             }, LONG_PRESS) };
         }, true);
@@ -653,14 +685,22 @@
         }, true);
 
         ['pointerup', 'pointercancel'].forEach(function (type) {
-            d.addEventListener(type, function () { self.cancelPress(); }, true);
+            d.addEventListener(type, function (e) {
+                self.cancelPress();
+
+                if (e.pointerId === self.ctxHeld) {
+                    self.ctxHeld = null;
+                    self.ctxReleaseAt = Date.now();
+                }
+            }, true);
         });
 
-        // The release of a long press on a rail item or a card is not a
-        // press of it.
+        // The release of a long press is not a press of what lies under the
+        // finger: the rail item or card it held, or the menu's item that
+        // opened under it.
         d.addEventListener('click', function (e) {
-            if ((Date.now() - self.ctxLongAt < 1500) && !(self.ctx && (self.ctx.menu.contains(e.target) || (self.ctx.sub && self.ctx.sub.contains(e.target))))) {
-                self.ctxLongAt = 0;
+            if (Date.now() - self.ctxReleaseAt < 400) {
+                self.ctxReleaseAt = 0;
                 e.preventDefault();
                 e.stopPropagation();
             }
