@@ -7,7 +7,7 @@ module: activitypub
 ## Where do the settings and the key pair live?
 - In `config_text`, not in `config` columns: the stock `config` row has no room left (`data/config-table-no-varchar.md`, `tests/innodb_test.php`), so the `config.ap_*` shape of #5041 became two rows. `ap_settings` is JSON (`enabled`, `handle`, `summary`, `type` Person or Organization, `publish` with the chosen forms and folders), read by `pg_ap_settings()` / `pg_ap_settings_read()`. `ap_keys` is JSON with `public` (PEM) and `private` (`pg_connect_seal()` of `array('pem' => …)`).
 - The pair is made on first use by `pg_ap_keys()` with `pg_dkim_key_pair()` (RSA 2048); `INSERT IGNORE` lets only the first concurrent request write it. No `ENCRYPTION_KEY` or no OpenSSL: no pair, nothing is signed.
-- The tables of 2026.11.0, 11.0.163 (`upgrade_2026_11_0_activitypub()`): `ap_followers`, `ap_outbox`, `ap_blocks`, and `comments.remote_actor` / `remote_id` with `idx_remote`.
+- The tables of 2026.11.0, 11.0.163 (`upgrade_2026_11_0_activitypub()`): `ap_followers`, `ap_outbox`, `ap_blocks`, and `comments.remote_actor` / `remote_id` with `idx_remote`; `ap_reactions` in 11.0.167 (`platform/activitypub-inbox.md`).
 
 ## Which addresses answer, and how?
 - `router.php` sends `/.well-known/webfinger`, `/.well-known/nodeinfo`, `/.well-known/nodeinfo/2.1`, `/@<handle>`, `/@<handle>/followers` and `/@<handle>/outbox` to `activitypub.php` with `PG_AP_ROUTE`, only while `router_activitypub_handle()` reads the feature on with a valid handle (`[A-Za-z0-9_]{1,64}`); otherwise the names go on as before (a page named `@x`, a 404). The router cannot load `functions.php`, so it reads `config_text` itself.
