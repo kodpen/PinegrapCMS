@@ -2121,7 +2121,7 @@
     "Convert to WebP": "WebP'ye Dönüştür",
     "Convert to design elements": "Tasarım öğelerine dönüştür",
     "Convert to metric system": "Metrik sisteme dönüştür",
-    "Convert to outlines": "Anahatlara dönüştür",
+    "Convert to outlines": "Dış hatlara dönüştür",
     "Convert to path": "Yola dönüştür",
     "Convert to text": "Metne dönüştür",
     "Convert {var:1} to InnoDB now? Writes to the table wait until the conversion ends.": "{var:1} şimdi InnoDB'ye dönüştürülsün mü? Dönüşüm bitene kadar tabloya yazma işlemleri bekler.",
