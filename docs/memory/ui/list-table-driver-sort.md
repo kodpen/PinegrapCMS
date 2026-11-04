@@ -10,7 +10,7 @@ description: List table driver sorting and filters in the browser: heading click
 ## Where is the sort menu?
 - The screen's toolbar menu (`pg_list_sort_menu()`) carries `data-pg-list-sort-menu="<url basename>"` and `data-pg-sort-default`; the driver whose list has that name (`view_products`, `view_pages`, ...) redraws it from its levels on every sort: reverse, remove (never the last level), "Ardından şuna göre sırala" + Ekle, reset to the default; buttons, no reload (`sortEdit()`, Node test). Without JavaScript its links still work.
 - A list with no such menu gets the same menu at the start of the bar's tools, without the reset.
-- Why: the server drew that menu once, so after a heading click it showed and sent the old levels, and adding a level dropped the heading's sort; Shift was the only other way and no heading showed a second level. The owner's "birden fazla sıralama seçeneği çalışmıyor" (2026-11-04, #PR).
+- Why: the server drew that menu once, so after a heading click it showed and sent the old levels, and adding a level dropped the heading's sort; Shift was the only other way and no heading showed a second level. The owner's "birden fazla sıralama seçeneği çalışmıyor" (2026-11-04, #6466).
 
 ## How does a list printed whole sort?
 - Browser mode (`data-pg-list-mode="browser"`) sorts on load by the kept levels; `sortRows()`/`compareSortValues()` (Node test): numbers as numbers, the rest by the page language's collator (`Intl.Collator`), empty first, ties kept, a cell's `data-pg-sort-value` before its text.
