@@ -444,7 +444,7 @@ function pg_page_list_columns($view)
 
     $columns['folder'] = array('heading' => lang('Folder'), 'width' => '14rem', 'sort' => 'folder.folder_name', 'editable' => 'select');
     $columns['style'] = array('heading' => $view['style_heading'], 'width' => '12rem', 'sort' => empty($view['previewing_other_theme']) ? 'style.style_name' : '', 'editable' => 'select');
-    $columns['page_type'] = array('heading' => lang('Page Type'), 'width' => '10rem', 'sort' => pg_list_label_order('page.page_type', get_page_type_names()));
+    $columns['page_type'] = array('heading' => lang('Page Type'), 'width' => '10rem', 'sort' => pg_list_label_order('page.page_type', get_page_type_names()), 'editable' => 'select');
     $columns['searchable'] = array('heading' => lang('Searchable'), 'kind' => 'check', 'sort' => 'page.page_search', 'editable' => 'select');
     $columns['comments'] = array('heading' => lang('Comments'), 'kind' => 'check', 'sort' => 'page.comments', 'editable' => 'select');
     $columns['sitemap'] = array('heading' => lang('Site Map'), 'kind' => 'check', 'sort' => 'page.sitemap', 'editable' => 'select');
@@ -758,7 +758,7 @@ function pg_page_list_rows($view, $pages)
         $edit_url = pg_page_edit_url($page);
         $visual = pg_page_is_visual_design($page);
         $quick = function ($field, $value) use ($quick_edit, $id, $page, $visual) {
-            return pg_page_quick_cell_editable($field, $page, $visual)
+            return pg_page_quick_cell_editable($field, $page, $visual, $quick_edit)
                 ? pg_list_edit_cell_attributes($quick_edit, $field, $id, $value)
                 : array();
         };
@@ -778,7 +778,7 @@ function pg_page_list_rows($view, $pages)
 
         $cells['folder'] = pg_list_cell(pg_folder_list_name($page['folder_name'], $page['folder_access_control_type']), 'align-middle text-start text-wrap ' . $page['folder_access_control_type'], $quick('folder', pg_page_quick_edit_value('folder', $page)));
         $cells['style'] = pg_list_cell($styles[$id]['html'], $styles[$id]['class'], $quick('style', (string) $styles[$id]['value']));
-        $cells['page_type'] = pg_list_cell(h(get_page_type_name($page['page_type'])));
+        $cells['page_type'] = pg_list_cell(h(get_page_type_name($page['page_type'])), 'align-middle', $quick('page_type', pg_page_quick_edit_value('page_type', $page)));
         // The switches change in place too (pg_page_quick_edit_columns()).
         $cells['searchable'] = pg_list_cell(($page['page_search'] == 1) ? $check : '', 'align-middle', pg_list_edit_cell_attributes($quick_edit, 'searchable', $id, pg_page_quick_edit_value('searchable', $page)));
         $cells['comments'] = pg_list_cell(($page['comments'] == '1') ? $check : '', 'align-middle', pg_list_edit_cell_attributes($quick_edit, 'comments', $id, pg_page_quick_edit_value('comments', $page)));

@@ -1446,6 +1446,7 @@
     "Set the file permissions": "Dosya izinlerini ayarla",
     "Set the installed version to {var:1} and run the upgrade steps after it again?": "Kurulu sürüm {var:1} olarak ayarlanıp ondan sonraki yükseltme adımları yeniden çalıştırılsın mı?",
     "Set the offline payment option on orders": "Siparişlerde çevrimdışı ödeme seçeneğini ayarlayabilir",
+    "Set the options of the new page type on the page screen.": "Yeni sayfa türünün seçeneklerini sayfa ekranında ayarlayın.",
     "Set the report to Resolved or Dismissed with Change Status.": "Durumu Değiştir ile şikâyeti \"Çözümlendi\" ya da \"Reddedildi\" yapın.",
     "Set the stock of every product on the count to what was counted? What it had before is kept on the count.": "Sayımdaki her ürünün stoğu sayılana eşitlensin mi? Önceki stok sayımda saklanır.",
     "Set the tax rate to the value below": "Vergi oranını aşağıdaki değere ayarla",
