@@ -4013,6 +4013,8 @@
     "The refund of a return is due within {var:1} days.": "Bir iadenin ücret iadesi {var:1} gün içinde yapılmalı.",
     "The refund of a return is overdue.": "Bir iadenin ücret iadesi gecikti.",
     "The refund of {var:1} for order #{var:2} was given as store credit of {var:3}.": "#{var:2} numaralı siparişin {var:1} tutarındaki iadesi {var:3} tutarında mağaza kredisi olarak verildi.",
+    "The refund of {var:1} was given as store credit of {var:2}, but the e-mail to the customer could not be sent.": "{var:1} tutarındaki iade {var:2} tutarında mağaza kredisi olarak verildi, ancak müşteriye e-posta gönderilemedi.",
+    "The refund of {var:1} was given as store credit of {var:2}. The customer was told by e-mail.": "{var:1} tutarındaki iade {var:2} tutarında mağaza kredisi olarak verildi. Müşteriye e-postayla bildirildi.",
     "The refund of {var:1} was recorded, but the e-mail to the customer could not be sent.": "{var:1} tutarındaki iade kaydedildi, ancak müşteriye e-posta gönderilemedi.",
     "The refund of {var:1} was recorded. The customer was told by e-mail.": "{var:1} tutarındaki iade kaydedildi. Müşteriye e-postayla bildirildi.",
     "The refund of {var:2} for your cancelled order #{var:1} was added to your account as store credit of {var:3}. It is used at checkout when you are signed in.": "İptal edilen #{var:1} numaralı siparişinizin {var:2} tutarındaki iadesi, hesabınıza {var:3} tutarında mağaza kredisi olarak eklendi. Oturum açtığınızda ödeme adımında kullanılır.",

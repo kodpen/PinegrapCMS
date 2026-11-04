@@ -7,7 +7,7 @@ module: store_credit_refunds
 ## Where can a refund become store credit?
 - The return's Payment Refund card (`view_return.php`): method `credit` beside driver and manual, offered when the order has a customer account (`pg_credit_refund_possible()`: `orders.user_id` > 0, the user exists, `pg_credit_ready()`). A guest order cannot.
 - A cancelled order that still owes money (`refund_status` manual_required, failed, pending): the "Mark refund as processed" dialog of `view_order.php` offers "Give it as store credit" for the same customers; the amount is `pg_order_cancel_refund_owed()['total']` (payment money left and the gift card part), not typed.
-- The external API keeps `driver` and `manual` only; `OrderReturn.refund.method` reads `credit` for a credit refund.
+- The external API refund keeps `driver` and `manual` (any other method is a 422); `OrderReturn.refund.method` and the event's `refund_method` read `credit` for a credit refund.
 
 ## What does the bonus do?
 - Settings › Ecommerce › Gift Cards & Rewards: "Bonus on refunds given as store credit" (%), the `config_text` row `credit_refund_bonus` (`pg_credit_refund_parse_bonus()`: dot number, 2 decimals, capped at 100; '' = none, the default).

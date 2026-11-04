@@ -282,12 +282,12 @@ function test_api_returns_write_functions_answer_a_code()
 
 	$refund = api_returns_test_body('includes/fn/returns.php', 'pg_return_refund');
 
-	foreach (array("'busy'", "'not_received'", "'no_driver'", "'amount_exceeds'", "'refused'", "'unclear'") as $code) {
+	foreach (array("'busy'", "'not_received'", "'no_driver'", "'amount_exceeds'", "'refused'", "'unclear'", "'no_customer'", "'credit'") as $code) {
 		pg_assert_contains($code, $refund);
 	}
 
 	pg_assert_same(5, substr_count($move, ', $log_user);'), 'each log line of a move');
-	pg_assert_same(4, substr_count($refund, ', $log_user);'), 'each log line of a refund');
+	pg_assert_same(5, substr_count($refund, ', $log_user);'), 'each log line of a refund');
 }
 
 function test_api_returns_write_refusals_map_to_codes()

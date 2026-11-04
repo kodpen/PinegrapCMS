@@ -3897,9 +3897,12 @@ function pg_return_refund_plan($return)
  * @param int   $user_id
  * @return array ok, error, code (why it was refused: not_installed,
  *               not_found, busy, not_received, no_driver, amount,
- *               amount_exceeds, changed, refused, unclear; '' when ok),
+ *               amount_exceeds, changed, refused, unclear, no_customer
+ *               (no account for store credit), credit (no card written);
+ *               '' when ok),
  *               amount, method, mailed, erp (pg_return_refund_plan()'s),
- *               unclear (the driver's answer did not say; ok is false)
+ *               unclear (the driver's answer did not say; ok is false),
+ *               credit (what the store credit card holds, minor units)
  */
 function pg_return_refund($return_id, $options, $user_id = 0)
 {
