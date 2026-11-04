@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'fonts', 'glyph', 'warp', 'outline', 'builder', 'actions');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'fonts', 'glyph', 'warp', 'outline', 'builder', 'actions', 'menu');
 }
 
 /**
@@ -2347,6 +2347,24 @@ function pg_file_versions_before_save($file_id, $path, $base_id, $user_id)
 }
 
 /**
+ * Before a file is written over: its current pixels kept as a save row
+ * unless the newest version already holds them (the first one becomes the
+ * original).
+ *
+ * @return bool false when they could not be kept
+ */
+function pg_file_versions_keep_current($file_id, $path, $user_id)
+{
+    $newest = pg_file_versions_newest($file_id);
+
+    if ($newest && pg_file_versions_matches_file($newest, $path)) {
+        return true;
+    }
+
+    return (bool) pg_file_versions_add($file_id, $path, '', 'save', $user_id);
+}
+
+/**
  * After a replace save: the result as a save row with its document, unless
  * the newest version already holds the same document; then the retention.
  */
@@ -2816,6 +2834,14 @@ function pg_image_editor_save_canvas($request, $board, $mode, $user)
 
     // The browser's PNG is recompressed when that makes it smaller.
     pg_process_image_file($temporary);
+
+    // A replace keeps the pixels it writes over as a version first, as a
+    // picture's replace does: a PNG photo drawn on as a canvas, or a canvas
+    // changed outside the editor, can then be restored.
+    if (($mode === 'replace') && pg_file_versions_ready() && !pg_file_versions_keep_current((int) $row['id'], $file['path'], $user['id'])) {
+        @unlink($temporary);
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
 
     if (!@rename($temporary, $path)) {
         @unlink($temporary);
@@ -4912,6 +4938,26 @@ function pg_image_editor_strings_actions()
     );
 }
 
+// -- Context menu (pg_image_editor_menu.js) --
+
+/**
+ * The context menu's own labels; its other items use the labels of the
+ * parts that own them (Duplicate, Bring to front, Combine shapes…).
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_menu()
+{
+    return array(
+        'ctxMenu'       => lang('Commands'),
+        'ctxCut'        => lang('Cut'),
+        'ctxCopy'       => lang('Copy'),
+        'ctxPaste'      => lang('Paste'),
+        'ctxExpandWarp' => lang('Expand warp'),
+        'ctxImportFile' => lang('Import from this computer'),
+    );
+}
+
 // -- Area selection (pg_image_editor_area.js) --
 
 /**
@@ -4944,9 +4990,10 @@ function pg_image_editor_strings_area()
         'areaWandNote'    => lang('The magic wand cannot read this picture.'),
         'areaLimit'       => lang('The selection has as many shapes as it can hold; invert or deselect it to go on.'),
         'areaWith'        => lang('With the selection'),
-        'areaErase'       => lang('Erase'),
+        'areaErase'       => lang('Erase inside'),
         'areaKeep'        => lang('Keep only'),
         'areaCopy'        => lang('Copy to a layer'),
+        'areaCut'         => lang('Cut to a layer'),
         'areaAdjust'      => lang('Adjust inside'),
         'areaCopyNote'    => lang('This picture cannot be read back, so the selection cannot be copied.'),
         'areaCutName'     => lang('Cut-out'),

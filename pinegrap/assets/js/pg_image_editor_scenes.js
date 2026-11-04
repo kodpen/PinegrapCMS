@@ -349,7 +349,7 @@
                 ]));
             }
 
-            var card = el('button', { type: 'button', class: 'pgie-scard' + (open ? ' on' : '') + (s.open ? ' pgie-sopen' : ''), title: name, 'aria-label': name + ', ' + seconds(s.duration), onclick: function () {
+            var card = el('button', { type: 'button', class: 'pgie-scard' + (open ? ' on' : '') + (s.open ? ' pgie-sopen' : ''), 'data-scene': s.id, title: name, 'aria-label': name + ', ' + seconds(s.duration), onclick: function () {
                 if (!self.sceneDragged) {
                     self.openScene(s.id);
                 }

@@ -15,6 +15,7 @@ module: image_editor
 
 ## How does a canvas keep its document in Files? (holder's review on #4741)
 - `pg_image_editor_save_canvas()` writes an artboard's PNG as new (`folder_id`), over the canvas (replace, a PNG only) or beside it (copy), then `pg_image_editor_canvas_keep()` keeps the document as the newest version (source `new`, `saved` for a replace), after the pictures became files.
+- A replace first keeps the pixels it writes over (`pg_file_versions_keep_current()`: a `save` row unless the newest version holds them; refused when that fails), as a picture's replace does. Before, a PNG photo drawn on as a canvas, or a canvas changed outside the editor, was overwritten with no version to restore.
 - `pg_image_editor_open()` answers `canvas: true` with the document while the file still holds those pixels (`pg_image_editor_canvas_open_doc()`); the artboard part's `openFile()` opens it with `M.canvasOpenDoc()`, the canvas tools and no New image dialog. The Workspace's `ws_canvas_*` call the same `pg_image_editor_canvas_*` functions.
 
 ## Where is it tested?

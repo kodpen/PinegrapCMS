@@ -431,6 +431,7 @@ function pg_submitted_form_list_filter($user)
         'status'         => lang('Status'),
         'contact'        => lang('Contact'),
         'user'           => lang('User'),
+        'form_editor'    => lang('Form Editor'),
         'submitted'      => lang('Submitted'),
         'last_modified'  => lang('Last Modified'),
     );
@@ -462,6 +463,7 @@ function pg_submitted_form_list_filter($user)
         'contact_last_name'  => 'contacts.last_name',
         'contact_first_name' => 'contacts.first_name',
         'user'               => 'submitted_user.user_username',
+        'form_editor'        => 'form_editor_user.user_username',
         'submitted'          => 'forms.submitted_timestamp',
         'last_modified'      => 'forms.last_modified_timestamp',
     )) . ', forms.id asc';
@@ -538,20 +540,31 @@ function pg_submitted_form_list_search()
  *
  * @param bool $payment whether the forms table has the fee columns
  *                      (pg_form_payment_ready()): adds the Payment column
+ * @param bool $edit    whether the list has quick edit: Status and Form
+ *                      Editor are fields then
  * @return array key => spec, as pg_list_table_columns() takes them
  */
-function pg_submitted_form_list_columns($payment = false)
+function pg_submitted_form_list_columns($payment = false, $edit = false)
 {
     $columns = array(
         'custom_form' => array('heading' => lang('Custom Form'), 'width' => '16rem', 'kind' => 'link', 'sort' => 'custom_form_pages.form_name'),
         'reference_code' => array('heading' => lang('Reference Code'), 'width' => '10rem', 'sort' => 'forms.reference_code'),
-        'status' => array('heading' => lang('Status'), 'width' => '8rem', 'kind' => 'badge', 'sort' => 'forms.complete'),
+        'status' => array('heading' => lang('Status'), 'width' => '8rem', 'kind' => 'badge', 'sort' => 'forms.complete', 'editable' => 'select'),
         'contact' => array('heading' => lang('Contact'), 'width' => '12rem', 'sort' => "CONCAT(contacts.last_name, ' ', contacts.first_name)"),
         'user' => array('heading' => lang('User'), 'width' => '10rem', 'sort' => 'submitted_user.user_username'),
+        'form_editor' => array('heading' => lang('Form Editor'), 'width' => '10rem', 'sort' => 'form_editor_user.user_username', 'editable' => 'text'),
         'submitted' => array('heading' => lang('Submitted'), 'width' => '12rem', 'kind' => 'date', 'sort' => 'forms.submitted_timestamp'),
         'last_modified' => array('heading' => lang('Last Modified'), 'width' => '12rem', 'kind' => 'date', 'sort' => 'forms.last_modified_timestamp'),
         'actions' => array('heading' => lang('Action'), 'width' => '5rem', 'kind' => 'actions'),
     );
+
+    // The cells the submitted form screen changes are fields only on a list
+    // with quick edit (includes/fn/submitted_form_list_edit.php).
+    if (!$edit) {
+        foreach ($columns as $key => $column) {
+            unset($columns[$key]['editable']);
+        }
+    }
 
     if (!$payment) {
         return $columns;
@@ -582,14 +595,19 @@ function pg_submitted_form_list_source($user, $params)
     }
 
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list_edit.php');
 
     pg_submitted_form_list_defaults(pg_submitted_form_list_custom_forms());
     $filter = pg_submitted_form_list_filter($user);
     $payment = pg_form_payment_ready();
 
+    // Every form on the list is one the viewer manages (the gate above and
+    // the folder rule of the filter), so the list always has quick edit.
+    $quick_edit = pg_submitted_form_quick_edit_columns();
+
     return pg_list_table_source(array(
         'list' => 'view_submitted_forms',
-        'columns' => pg_submitted_form_list_columns($payment),
+        'columns' => pg_submitted_form_list_columns($payment, true),
         'from' => $filter['tables'],
         'where' => $filter['condition'],
         'params' => $filter['params'],
@@ -602,6 +620,7 @@ function pg_submitted_form_list_source($user, $params)
             contacts.id as contact_id,
             CONCAT(contacts.first_name, ' ', contacts.last_name) as contact_name,
             submitted_user.user_username as submitted_username,
+            form_editor_user.user_username as form_editor_username,
             forms.submitted_timestamp,
             last_modified_user.user_username as last_modified_username,
             forms.last_modified_timestamp" . ($payment ? ',
@@ -611,9 +630,12 @@ function pg_submitted_form_list_source($user, $params)
         'levels' => $filter['sort_levels'],
         // A whole-list selection leaves out the forms submitted after it.
         'created' => 'forms.submitted_timestamp',
-        'rows' => function ($records) use ($user) {
-            return pg_submitted_form_list_rows($user, $records);
+        'rows' => function ($records) use ($user, $quick_edit) {
+            return pg_submitted_form_list_rows($user, $records, $quick_edit);
         },
+        // The status and the form editor change in place, written by the
+        // list's own screen as the submitted form screen writes them.
+        'edit' => array('url' => 'view_submitted_forms.php', 'columns' => $quick_edit),
     ));
 }
 
@@ -659,9 +681,11 @@ function pg_submitted_form_list_selected_ids($user, $selection)
  *
  * @param array $user    the viewer (validate_user())
  * @param array $records records of the list's read (pg_submitted_form_list_source())
+ * @param array $quick_edit the quick edit fields (pg_submitted_form_quick_edit_columns()),
+ *                          empty for none
  * @return array rows as pg_list_table_page() hands them on
  */
-function pg_submitted_form_list_rows($user, $records)
+function pg_submitted_form_list_rows($user, $records, array $quick_edit = array())
 {
     $contacts_access = (validate_contacts_access($user, true) == true);
     $rows = array();
@@ -669,7 +693,8 @@ function pg_submitted_form_list_rows($user, $records)
     // edit_contact.php also wants a role-3 viewer's contact in one of their
     // contact groups, so each row asks for its own contact.
     foreach ($records as $record) {
-        $rows[] = pg_submitted_form_list_row($record, $contacts_access && pg_can_open_contact($user, $record['contact_id'], $contacts_access));
+        $row = pg_submitted_form_list_row($record, $contacts_access && pg_can_open_contact($user, $record['contact_id'], $contacts_access));
+        $rows[] = $quick_edit ? pg_submitted_form_quick_cells($row, $record, $quick_edit) : $row;
     }
 
     return $rows;
@@ -717,6 +742,7 @@ function pg_submitted_form_list_row($row, $contacts_access)
         'status' => pg_list_cell($status),
         'contact' => pg_list_cell($contact),
         'user' => pg_list_cell(h($row['submitted_username'] ?? '')),
+        'form_editor' => pg_list_cell(h($row['form_editor_username'] ?? '')),
         'submitted' => pg_list_cell(get_relative_time(array('timestamp' => $row['submitted_timestamp'])) . ' ' . h($submitted_by)),
         'last_modified' => pg_list_cell(get_relative_time(array('timestamp' => $row['last_modified_timestamp'])) . ' ' . h($modified_by)),
     );
