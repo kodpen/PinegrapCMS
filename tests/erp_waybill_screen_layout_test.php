@@ -32,8 +32,8 @@ function test_erp_waybill_screen_has_form_and_status_columns()
 	pg_assert_true($status !== false, 'the status column is there');
 	pg_assert_true($form < $status, 'the status column comes after the form column in source order');
 	pg_assert_contains('<div class="position-sticky" style="top:3.3rem;">', $source, 'the status box sticks below the top bar');
-	pg_assert_false(strpos($source, '<div class="col-12">
-            \' . $liveform->output_errors()') !== false, 'no single full-width column of stacked cards');
+	$lines = strpos($source, "lang('Lines')");
+	pg_assert_true($lines !== false && $lines > $form && $lines < $status, 'the lines card sits in the form column');
 }
 
 function test_erp_waybill_screen_status_column_holds_the_facts()
