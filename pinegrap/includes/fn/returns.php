@@ -4016,7 +4016,7 @@ function pg_return_refund($return_id, $options, $user_id = 0)
             'Refund of return request #' . (int) $return['id'] . ' of order #' . $plan['order']['order_number'], (int) $user_id);
 
         if ($issued['card_id'] <= 0) {
-            db("UPDATE order_returns SET status = 'received', refunded_at = 0
+            db("UPDATE order_returns SET status = 'received', refunded_at = 0" . pg_return_touch_sql() . "
                 WHERE (id = '" . (int) $return['id'] . "') AND (status = 'refunded')");
 
             $release();
