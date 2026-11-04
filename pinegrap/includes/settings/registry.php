@@ -389,6 +389,29 @@ function pg_settings_categories()
             ),
         ),
 
+        'fediverse' => array(
+            'label' => lang('Fediverse'),
+            'group' => 'running',
+            'icon'  => 'bi-mastodon',
+            'description' => lang('The site\'s Fediverse account, what it publishes, its followers and blocks, and the delivery log.'),
+            'sections' => array(
+                'pgset-fediverse'            => lang('Fediverse account'),
+                'pgset-fediverse-publish'    => lang('What is published'),
+                'pgset-fediverse-followers'  => lang('Followers and blocks'),
+                'pgset-fediverse-deliveries' => lang('Deliveries'),
+            ),
+            'keywords' => array(
+                'pgset-fediverse'            => pg_settings_keywords(lang('fediverse, activitypub, mastodon, handle, webfinger, profile, avatar, follow')),
+                'pgset-fediverse-publish'    => pg_settings_keywords(lang('fediverse, activitypub, mastodon, publish, form, folder, article, post')),
+                'pgset-fediverse-followers'  => pg_settings_keywords(lang('fediverse, activitypub, mastodon, follower, followers, block, server, domain, account')),
+                'pgset-fediverse-deliveries' => pg_settings_keywords(lang('fediverse, activitypub, delivery, deliveries, failed, retry, try again, outbox, queue')),
+            ),
+            'lists' => array(
+                'ap_forms'   => 1,
+                'ap_folders' => 1,
+            ),
+        ),
+
         'maintenance' => array(
             'label' => lang('Updates and maintenance'),
             'group' => 'running',

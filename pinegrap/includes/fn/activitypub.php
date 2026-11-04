@@ -168,6 +168,24 @@ function pg_ap_site()
 }
 
 /**
+ * The link a page's head carries while the feature is on, so a Fediverse
+ * server given any page address finds the site's account.
+ *
+ * @return string '' while off
+ */
+function pg_ap_alternate_link()
+{
+    if (!pg_ap_enabled()) {
+        return '';
+    }
+
+    $settings = pg_ap_settings();
+    $id = URL_SCHEME . HOSTNAME_SETTING . PATH . '@' . $settings['handle'];
+
+    return '        <link rel="alternate" type="application/activity+json" href="' . htmlspecialchars($id, ENT_QUOTES, 'UTF-8') . '" />' . "\n";
+}
+
+/**
  * The actor's addresses.
  *
  * @param array $site pg_ap_site()

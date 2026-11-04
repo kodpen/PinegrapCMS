@@ -127,3 +127,22 @@ function test_activitypub_settings_lookup()
 	pg_assert_same('json', pg_ap_lookup_verdict(200, '<html></html>', $site));
 	pg_assert_same('actor', pg_ap_lookup_verdict(200, '{"links":[{"rel":"self","href":"https://other.example/@news"}]}', $site));
 }
+
+// The category is wired where every category is, and pages carry the link.
+function test_activitypub_settings_category_files()
+{
+	$root = PG_FUNCTIONS_DIR;
+
+	pg_assert_true(is_file($root . '/settings_fediverse.php'));
+	pg_assert_true(is_file($root . '/includes/settings/fediverse.php'));
+	pg_assert_true(is_file($root . '/includes/settings/fediverse.save.php'));
+	pg_assert_contains("'settings_fediverse'", (string) file_get_contents($root . '/get_help_url.php'));
+
+	$registry = (string) file_get_contents($root . '/includes/settings/registry.php');
+
+	pg_assert_contains("'fediverse' => array(", $registry);
+	pg_assert_contains("'ap_forms'   => 1,", $registry);
+	pg_assert_contains("'ap_folders' => 1,", $registry);
+
+	pg_assert_contains('pg_ap_alternate_link()', (string) file_get_contents($root . '/get_page_content.php'));
+}
