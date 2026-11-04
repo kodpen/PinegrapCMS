@@ -41,6 +41,8 @@ $booking_service_errors = array(
     'name'   => lang('Type a name for the service.'),
     'length' => lang('A service lasts from 5 to 1440 minutes.'),
     'price'  => lang('The price is too large.'),
+    'deposit' => lang('The deposit must be a part of the price: no more than the price, and only for a service with a price.'),
+    'deposit_product' => lang('Choose the product the deposit is charged as.'),
 );
 
 foreach ($booking_posted as $key => $row) {

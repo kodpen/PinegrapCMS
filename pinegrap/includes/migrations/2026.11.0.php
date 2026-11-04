@@ -157,6 +157,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_search_engines();          // 11.0.166
 	upgrade_2026_11_0_ap_reactions();            // 11.0.167
 	upgrade_2026_11_0_return_updated_at();       // 11.0.168
+	upgrade_2026_11_0_booking_deposit();         // 11.0.169
 	upgrade_2026_11_0_contact_group_joined_campaigns(); // 11.0.170
 
 }
@@ -5202,6 +5203,25 @@ function upgrade_2026_11_0_return_updated_at() {
 		WHERE updated_at = 0");
 
 	install_note('Returns: the time of a return\'s last change is kept, so the external API lists the returns changed since a given moment.');
+
+}
+
+// Booking deposits (2026.11.0, 11.0.169; includes/fn/booking_deposits.php),
+// in the shape of the form fee (11.0.158). booking_services.deposit is the
+// amount asked in advance in minor units (0 = none), deposit_product_id the
+// product the deposit order's one line names; a service asks for a deposit
+// only with both. bookings.order_id points at the deposit order (the order
+// carries nothing) and bookings.paid_at is the moment that order was paid,
+// written once (0 = unpaid). Every existing service and booking keeps 0.
+function upgrade_2026_11_0_booking_deposit() {
+
+	install_add_column('booking_services', 'deposit', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('booking_services', 'deposit_product_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('bookings', 'order_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('bookings', 'paid_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('bookings', 'idx_order_id', "INDEX idx_order_id (order_id)");
+
+	install_note('Bookings: a service can ask for a deposit, charged as a one-line order of a product; every existing service asks for none.');
 
 }
 

@@ -239,6 +239,24 @@ function pg_booking_settings_price_text($cents, $separators)
 }
 
 /**
+ * The products a service's deposit may name, as the deposit picker lists
+ * them: id => name, the first 2000 by name (the designed form's fee product
+ * list, list_fee_products).
+ *
+ * @return array
+ */
+function pg_booking_settings_deposit_products()
+{
+    $products = array();
+
+    foreach ((array) db_items("SELECT id, name FROM products ORDER BY name ASC, id ASC LIMIT 2000") as $row) {
+        $products[(int) $row['id']] = (string) $row['name'];
+    }
+
+    return $products;
+}
+
+/**
  * Whether a posted new-service row was left empty.
  *
  * @param array $row
@@ -252,9 +270,13 @@ function pg_booking_settings_service_blank($row)
 /**
  * One posted service row as columns of booking_services, with the first box
  * that is wrong ('' when none): a name and a length of 5 minutes to a day are
- * needed, the buffers are at most eight hours.
+ * needed, the buffers are at most eight hours. A row that carries the deposit
+ * boxes (drawn once the deposit columns exist and the store is on) also
+ * gives deposit and deposit_product_id (pg_booking_deposit_clean()); a row
+ * without them leaves the stored deposit as it is.
  *
- * @param array $row name, description, length, before, after, price, enabled, order
+ * @param array $row name, description, length, before, after, price, enabled,
+ *                   order, and deposit, deposit_product when drawn
  * @return array values => columns, error => box key or ''
  */
 function pg_booking_settings_service_clean($row)
@@ -288,6 +310,19 @@ function pg_booking_settings_service_clean($row)
         $error = 'length';
     } elseif ($price === null) {
         $error = 'price';
+    }
+
+    if (array_key_exists('deposit', $row)) {
+        $deposit = pg_booking_deposit_clean(
+            pg_booking_settings_price_cents($row['deposit']),
+            isset($row['deposit_product']) ? $row['deposit_product'] : 0,
+            $values['price']);
+
+        $values += $deposit['values'];
+
+        if ($error === '') {
+            $error = $deposit['error'];
+        }
     }
 
     return array('values' => $values, 'error' => $error);
@@ -583,14 +618,27 @@ function pg_booking_settings_candidates($staff)
  */
 function pg_booking_settings_save_services($rows, $new, $now)
 {
+    // The deposit columns arrive with 11.0.169; a row cleaned without the
+    // deposit boxes carries no deposit and leaves the stored one alone.
+    $deposit_ready = function_exists('pg_booking_deposit_ready') && pg_booking_deposit_ready();
+    $deposit = function ($id, $values) use ($deposit_ready) {
+        if ($deposit_ready && ((int) $id > 0) && array_key_exists('deposit', $values)) {
+            db_q("UPDATE booking_services SET deposit = ?, deposit_product_id = ? WHERE id = ?",
+                array((int) $values['deposit'], (int) $values['deposit_product_id'], (int) $id));
+        }
+    };
+
     foreach ($rows as $id => $values) {
         db_q("UPDATE booking_services SET name = ?, description = ?, length_minutes = ?, buffer_before = ?, buffer_after = ?, price = ?, enabled = ?, sort_order = ?, updated_at = ? WHERE id = ?",
             array($values['name'], $values['description'], $values['length_minutes'], $values['buffer_before'], $values['buffer_after'], $values['price'], $values['enabled'], $values['sort_order'], (int) $now, (int) $id));
+        $deposit($id, $values);
     }
 
     foreach ($new as $values) {
-        db_q("INSERT INTO booking_services (name, description, length_minutes, buffer_before, buffer_after, price, capacity, enabled, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)",
-            array($values['name'], $values['description'], $values['length_minutes'], $values['buffer_before'], $values['buffer_after'], $values['price'], $values['enabled'], $values['sort_order'], (int) $now, (int) $now));
+        if (db_q("INSERT INTO booking_services (name, description, length_minutes, buffer_before, buffer_after, price, capacity, enabled, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)",
+            array($values['name'], $values['description'], $values['length_minutes'], $values['buffer_before'], $values['buffer_after'], $values['price'], $values['enabled'], $values['sort_order'], (int) $now, (int) $now))) {
+            $deposit(mysqli_insert_id(db::$con), $values);
+        }
     }
 }
 
