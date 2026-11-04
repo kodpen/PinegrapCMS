@@ -31,7 +31,7 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
 - AN7a (M) Scenes. Done (#6409, `ui/image-editor-scenes.md`).
   - `doc.scenes` on a canvas, the strip under the play bar, the scene panel (duration, transition and its time, duplicate, delete, move), transitions in Save animation's frames across scenes, the validator's cap on scenes and their layers, a canvas animation tied to its canvas (#6229 review).
 
-- AN7b (S) Scenes on the stage. `free` after AN7a.
+- AN7b (S) Scenes on the stage. Done (#6491, `ui/image-editor-scenes-play.md`).
   - Play, the scrub and the clock across every scene (the stage opening each scene as the playhead reaches it, the transition shown there), then back to the scene that was open; drag a card to reorder; the tracks of the open scene under the whole timeline.
 
 - AN8 (M) Present and PDF. After AN7a.
