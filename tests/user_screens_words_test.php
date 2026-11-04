@@ -117,7 +117,7 @@ function test_user_screens_password_is_parola()
 		'Password',
 		'User Password Hint',
 		'You cannot reset your own password here.',
-		'Update this user\'s privileges, or email a new password.',
+		'Update this user\'s role and rights, or e-mail a link to set a new password.',
 		'The password is \'{var:1}\'. The user has not been notified.',
 		'Reset Password & Send Link',
 	) as $key) {

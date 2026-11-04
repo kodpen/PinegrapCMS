@@ -1228,7 +1228,7 @@ if (!$_POST) {
             'extra classes'=>'users',
             'icon'=>'account',
             'heading'=>lang('Edit User'),
-            'heading_description' => lang('Update this user\'s privileges, or email a new password.'),
+            'heading_description' => lang('Update this user\'s role and rights, or e-mail a link to set a new password.'),
             'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')),
             'breadcrumb' => array(
                 array('label' => lang('Users'), 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')),

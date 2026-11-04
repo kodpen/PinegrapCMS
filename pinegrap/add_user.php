@@ -147,7 +147,7 @@ if (!$_POST) {
             'extra classes'=>'users',
             'icon'=>'account',
             'heading'=>lang('Create User'),
-            'heading_description' => lang('Create a new user account, assign privileges, and choose to email login info to User.'),
+            'heading_description' => lang('Create a user account, give it a role and rights, and optionally e-mail the person a link to set a password.'),
             'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')),
             'breadcrumb' => array(
                 array('label' => lang('Users'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')),
@@ -216,7 +216,7 @@ if (!$_POST) {
                                     </div>
                                     <div class="form-field">
                                         <div class="switch"><input type="checkbox" id="notify_user" name="notify_user" value="1" class=""/></div>
-                                        <label class="" for="notify_user">' . lang('Notify User: Send email with login info to User') . '</label>
+                                        <label class="" for="notify_user">' . lang('Notify User: e-mail a link to set a password') . '</label>
                                     </div>
                                 </div>
                             </div>

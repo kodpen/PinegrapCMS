@@ -159,7 +159,7 @@ if (!$_POST) {
             'extra classes'=>'users',
             'icon'=>'account', 
             'heading'=>lang('Import Users'),
-            'heading_description' => lang('Import new Users and Contacts, assign privileges, and choose to email login info to Users.'),
+            'heading_description' => lang('Import new users and their contacts, give them a role and rights, and optionally e-mail each one a link to set a password.'),
             'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')),
         
             'breadcrumb' => array(array('label' => lang('Users'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')), array('label' => lang('Import Users'))),
@@ -183,6 +183,7 @@ if (!$_POST) {
                         <div class="card-body">
                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
                             ' . $liveform->output_field(array('type'=>'file', 'name'=>'file', 'size'=>'60', 'id'=>'file', 'class'=>'form-control w-auto', 'required'=>'required')) . '
+                            <div class="form-text">' . lang('The first row holds the column names: email_address (or email) is required, username is optional, and the other columns fill the contact, such as first_name, last_name and company.') . '</div>
                             ' . pg_upload_limit_hint() . '
                         </div>
                     </div>
@@ -223,7 +224,7 @@ if (!$_POST) {
                                     </div>
                                     <div class="form-field">
                                         <div class="switch"><input type="checkbox" id="notify_user" name="notify_user" value="1" class=""/></div>
-                                        <label class="" for="notify_user">' . lang('Notify User: Send email with login info to User') . '</label>
+                                        <label class="" for="notify_user">' . lang('Notify User: e-mail a link to set a password') . '</label>
                                     </div>
                                 </div>
                             </div>
