@@ -108,9 +108,8 @@ function test_auto_dialog_form_limits_keep_the_delay_inside_settimeout()
 
 function test_auto_dialog_list_enabled_cell_is_read_as_a_word()
 {
-	$template = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/view_auto_dialogs.php');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_auto_dialogs.php');
 
-	pg_assert_contains('<span class="material-icons" aria-hidden="true">task_alt</span>', $template, 'the icon is hidden from screen readers');
-	pg_assert_contains("<span class=\"visually-hidden\"><?=lang('Yes')?></span>", $template, 'an enabled dialog reads Yes');
-	pg_assert_contains("<span class=\"visually-hidden\"><?=lang('No')?></span>", $template, 'a disabled dialog reads No');
+	// The shared check cell: a mark with role img and the label Yes, sorted by 1/0.
+	pg_assert_contains("'enabled' => pg_list_table_check_cell(!empty(\$auto_dialog['enabled']))", $screen, 'an enabled dialog reads Yes');
 }

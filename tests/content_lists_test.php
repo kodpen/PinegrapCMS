@@ -96,6 +96,6 @@ function test_content_lists_comment_link_title_and_calendar_usernames()
 	pg_assert_same(1, substr_count($comments, '" title="\' . h(lang(\'Go To Comment\')) . \'" aria-label="\' . h(lang(\'Go To Comment\')) . \'"><i class="bi bi-link" aria-hidden="true"></i></a>'));
 
 	$calendars = content_lists_source('view_calendars.php');
-	pg_assert_contains("'vars'=>array(h(\$calendar['created_username']))", $calendars);
-	pg_assert_contains("'vars'=>array(h(\$calendar['last_modified_username']))", $calendars);
+	pg_assert_contains("pg_list_table_when_cell(\$calendar['created_timestamp'], (string) \$calendar['created_username'])", $calendars);
+	pg_assert_contains("pg_list_table_when_cell(\$calendar['last_modified_timestamp'], (string) \$calendar['last_modified_username'])", $calendars);
 }

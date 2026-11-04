@@ -92,7 +92,7 @@ function test_contact_screens_radio_groups_named()
 function test_contact_screens_subscription_mark_readable()
 {
 	$source = contact_screens_source('view_contact_groups.php');
-	pg_assert_true(strpos($source, '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">\' . lang(\'Yes\') . \'</span>') !== false, 'contact groups: subscription mark reads Yes');
+	pg_assert_contains("'subscription' => pg_list_table_check_cell(!empty(\$contact_group['email_subscription']))", $source, 'contact groups: subscription mark reads Yes');
 }
 
 function test_contact_screens_landmarks_translated()
@@ -136,9 +136,12 @@ function test_contact_screens_group_list_headings_match_cells()
 {
 	$source = contact_screens_source('view_contact_groups.php');
 
-	pg_assert_true((bool) preg_match("/<td class=\"align-middle\">' \\. \\\$output_kind \\. '<\\/td>\\s*<td class=\"align-middle text-end\">' \\. \\\$output_members \\. '<\\/td>/", $source), 'cells: kind, then members');
-	pg_assert_true((bool) preg_match("/<th>' \\. lang\\('Membership'\\) \\. '<\\/th>\\s*<th class=\"text-end\">' \\. lang\\('Members'\\) \\. '<\\/th>/", $source), 'headings: Membership, then Members');
-	pg_assert_false(strpos($source, "lang('Contacts') . '</th>") !== false, 'no Contacts heading over the count');
+	// The driver puts every row's cells in the columns' order by key, so the
+	// heading over the count is Members and the badge's is Membership.
+	pg_assert_true((bool) preg_match("/'kind' => array\\('heading' => lang\\('Membership'\\)[^\\n]*\\n\\s*'members' => array\\('heading' => lang\\('Members'\\)/", $source), 'headings: Membership, then Members');
+	pg_assert_contains("'kind' => pg_list_cell(\$output_kind)", $source, 'Membership column holds the kind badge');
+	pg_assert_contains("'members' => pg_list_cell(pg_format_number(\$members, 0)", $source, 'Members column holds the count');
+	pg_assert_false(strpos($source, "lang('Contacts')") !== false, 'no Contacts heading over the count');
 }
 
 // A save opened without a send to (the hidden field posts it empty) ends on
