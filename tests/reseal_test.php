@@ -256,7 +256,13 @@ function test_reseal_product_feed_tokens()
 {
 	$entry = reseal_test_entry('config', 'product_feeds');
 	list($c1, $i1) = encrypt_string_with_iv('tok-google', 'old-key');
-	list($c2, $i2) = encrypt_string_with_iv('tok-meta', 'other-key');
+	// AES-CBC has no MAC: about one IV in 256 lets a value sealed with another
+	// key open with the old one as garbage (a valid padding byte), and a
+	// token is not checked after opening. Draw until it does not open, so the
+	// skipped count does not depend on the random IV.
+	do {
+		list($c2, $i2) = encrypt_string_with_iv('tok-meta', 'other-key');
+	} while (pg_ssl_keys_open($c2, $i2, 'old-key') !== null);
 	$stored = json_encode(array('formats' => array(
 		'google' => array('token_hash' => 'h1', 'token_secret' => $c1 . ':' . $i1, 'url' => 'a/b'),
 		'meta'   => array('token_hash' => 'h2', 'token_secret' => $c2 . ':' . $i2),
