@@ -18,7 +18,7 @@ description: Steps V5-V11 of plans/visitors-overview.md, the sections: traffic, 
 - V8 (M) Content section. After V1 and V2.
   - `includes/visitors/content.php`: most viewed pages, products, groups and forms (`visitor_content_hourly`, labels and links as widget 5), landing pages with their visits, forms and orders (`landing_page_name` breakdown, the home page folded); each with the previous period's figure.
 
-- V9 (M) Google search section. After V1.
+- V9 (M) Google search section. After V1. Done (#6472).
   - `includes/visitors/google.php`: linked: clicks, impressions, click rate and average position with changes over the period ending on the latest day with figures (said under the tiles), clicks and impressions by day, top queries and top pages (`pg_gsc_top()`), opportunities: queries whose impressions are above the period's median and whose click rate is under half the site's, and queries at positions 8-20 with impressions, each linking to the query in Search Console; not linked: the small card (decision 6) with one explaining line and a link to `search_console.php`. `search_console.php` is not changed.
 
 - V10 (M) Pages joined with Google. After V2 and V9.

@@ -62,6 +62,7 @@ Visitor statistics, page and article views, search engine index flags.
 - visitor-table-size-figures.md: Where the visitor card, the System Status line and the shrink/move before-after sizes get their record count and file size, and how each figure says its source
 - visitor-texts-list.md: Referring address and user agent of a visit kept once each in visitor_texts and named by number in visitors (step 10.6): writer, readers, prune, old rows, upgrade limits
 - visitors-conversions.md: The conversions section of the Visitors overview (includes/visitors/conversions.php): which tiles, the conversion rate, the funnel, the chart by grain, commerce off, the empty state
+- visitors-google.md: The Google search section of visitors.php: its window ending on the latest day with figures, tiles, top lists, the two opportunity rules, the unlinked card
 - visitors-places.md: The places and devices section of the Visitors overview (includes/visitors/places.php): country and city top lists, device and first/return split bars, where a place comes from
 - visitors-traffic.md: The traffic section of visitors.php (includes/visitors/traffic.php): headline tiles, the line by the period's grain with the earlier period dashed, the busiest content in the tooltip, the empty states
 - web-vitals-ai-visibility-decisions.md: Decisions behind the page speed figures and the AI visibility view (owner 2026-11-02, #5040): privacy, where the beacon is off, derived data, table shapes, unverified bots, where the screens go
