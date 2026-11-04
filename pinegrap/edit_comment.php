@@ -336,8 +336,9 @@ if (!$_POST) {
             }
         }</style>
 
-        <label id="comment_rating_label" class="form-label">' . lang('Rating') . '</label>
-        <div class="rating btn-group" role="radiogroup" aria-labelledby="comment_rating_label">
+        <div class="col-12 my-3">
+        <label id="comment_rating_label" class="form-label d-block">' . lang('Rating') . '</label>
+        <div class="rating btn-group d-inline-flex w-auto" role="radiogroup" aria-labelledby="comment_rating_label">
             ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_1', 'value'=>'1', 'class'=>'btn-check radio', 'aria-label'=>lang(array('string'=>'Rated {var:1} out of 5', 'vars'=>array('1'))))) . '
             <label for="comment_rating_1" style="cursor:pointer;min-width: 16px;min-height: 16px;"></label>
             ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_2', 'value'=>'2', 'class'=>'btn-check radio', 'aria-label'=>lang(array('string'=>'Rated {var:1} out of 5', 'vars'=>array('2'))))) . '
@@ -348,6 +349,7 @@ if (!$_POST) {
             <label for="comment_rating_4" style="cursor:pointer;min-width: 16px;min-height: 16px;"></label>
             ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_5', 'value'=>'5', 'checked'=>'checked', 'class'=>'btn-check radio', 'aria-label'=>lang(array('string'=>'Rated {var:1} out of 5', 'vars'=>array('5'))))) . '
             <label for="comment_rating_5" style="cursor:pointer;min-width: 16px;min-height: 16px;"></label>
+        </div>
         </div>';
     }
 
@@ -398,15 +400,8 @@ if (!$_POST) {
                                                 <label for="publish" class="form-label">' . lang('Publish') . '</label>
                                                 ' . $liveform->output_field(array( 'type' => 'select', 'class' => 'form-control', 'id' => 'publish', 'name' => 'publish', 'options' => $publish_options)) . '
                                         </div>
-                                        <div class="col-12 my-3">
-                                            <label for="message" class="form-label">' . lang('Comment') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'message', 'id'=>'message', 'rows'=>'10', 'class'=>'form-control', 'required'=>'required')) . '
-                                        </div>
-                                        ' . $output_seller_reply_field . '
-                                        ' . $output_rating_field . '
-                                        ' . $output_file_attachment . '
-                                        <div class="col-12 md:col-6 lg:col-4 my-3" id="publish_schedule" style="display: none">
-                                            <div class="border-1 border p-3 my-3 rounded-4">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3" id="publish_schedule" hidden>
+                                            <div class="border-1 border p-3 rounded-4">
                                                 <label for="publish_date_and_time" class="form-label">' . lang('Publish Date') . '</label>
                                                 ' . $liveform->output_field(array(
                                                     'type' => 'text',
@@ -427,6 +422,13 @@ if (!$_POST) {
                                                 </div>
                                             </div>
                                         </div>
+                                        <div class="col-12 my-3">
+                                            <label for="message" class="form-label">' . lang('Comment') . '</label>
+                                            ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'message', 'id'=>'message', 'rows'=>'10', 'class'=>'form-control', 'required'=>'required')) . '
+                                        </div>
+                                        ' . $output_seller_reply_field . '
+                                        ' . $output_rating_field . '
+                                        ' . $output_file_attachment . '
                                         ' . get_date_time_picker_format() . pg_fields_script() . '
                                         <script>init_edit_comment_publish()</script>
                                         <div class="col-12 my-5">
