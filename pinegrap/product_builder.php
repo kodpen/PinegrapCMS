@@ -6344,7 +6344,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                 <span class="bi ' . (($pg_mode === 'edit') ? 'bi-check-circle' : 'bi-plus-circle') . ' me-3"></span><span class="pg-btn-label">' . (($pg_mode === 'edit') ? lang(array('string' => 'Save')) : lang(array('string' => 'Create'))) . '</span>
                             </button>
                             ' . (($pg_mode === 'edit')
-                                ? '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" formnovalidate data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product')))) : lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product'))))) . '"><span class="bi bi-trash me-3"></span><span class="pg-btn-label">' . lang(array('string' => 'Delete')) . '</span></button>'
+                                // Saves and comes back to this product
+                                // (edit_product.php), where Save goes on to the list.
+                                ? '<button type="submit" name="submit_save_and_stay" value="1" class="btn my-1 btn-outline theme-success"><span class="bi bi-arrow-repeat me-3" aria-hidden="true"></span><span class="pg-btn-label">' . lang('Save and Keep Editing') . '</span></button>'
+                                . '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" formnovalidate data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product')))) : lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product'))))) . '"><span class="bi bi-trash me-3"></span><span class="pg-btn-label">' . lang(array('string' => 'Delete')) . '</span></button>'
                                 : '')) . '
                         </div>
                     </div>
