@@ -1439,7 +1439,11 @@ function pg_list_sort_menu($url, $columns, $levels, $default, $query = array())
         : '<li><hr class="menu-divider"></li>'
             . '<li><a class="menu-item pg-link-body-emphasis" href="' . h($link(array($default))) . '"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i>' . h(lang('Reset the sort order')) . '</a></li>';
 
-    return '<div class="pg-menu-wrap">'
+    // A list on the table driver whose name is the screen's (view_products)
+    // takes this menu over (assets/js/pg_list_table.js): it sorts without a
+    // reload there, so the menu follows the headings.
+    return '<div class="pg-menu-wrap" data-pg-list-sort-menu="' . h(basename((string) $url, '.php')) . '"'
+        . ' data-pg-sort-default="' . h(pg_list_sort_value(array($default))) . '">'
         . '<button type="button" class="btn btn-sm btn-text theme-secondary pg-menu-caret" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-auto-close="outside" aria-expanded="false">'
         . '<i class="bi bi-sort-down me-1" aria-hidden="true"></i>' . h(lang('Sort by'))
         . (($count > 1) ? ' <span class="badge rounded-pill theme-secondary">' . $count . '</span>' : '')
