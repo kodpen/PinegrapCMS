@@ -83,7 +83,9 @@ if ($_POST) {
     $saved = erp_account_discount_save($account_id, (string) ($_POST['account_discount'] ?? ''));
 
     if (!$saved['success']) {
-        $liveform->mark_error('_error', h($saved['error']));
+        // The box comes back with what was typed, marked.
+        $liveform->assign_field_value('account_discount', (string) ($_POST['account_discount'] ?? ''));
+        $liveform->mark_error('account_discount', h($saved['error']));
         go($self);
     }
 
@@ -157,6 +159,9 @@ if (($search !== '') && $ready && !$readonly) {
     $output_found = ($found !== '') ? '<ul class="list-group list-group-flush border-top">' . $found . '</ul>' : '<div class="card-body border-top fg-secondary">' . lang('No products match.') . '</div>';
 }
 
+// A refused discount: the box shows what was typed and is marked.
+$discount_refused = $liveform->check_field_error('account_discount');
+
 echo
 pg_page_shell([
     'title' => lang('Account prices'),
@@ -187,7 +192,7 @@ pg_page_shell([
                         <div class="row g-3 align-items-end">
                         <div class="col-12 sm:col-6 md:col-4">
                             <label class="form-label" for="account_discount">' . lang('Discount on everything else (%)') . '</label>
-                            <input type="text" class="form-control text-end" id="account_discount" name="account_discount" value="' . h(erp_account_rate_input($account['discount_rate'] ?? 0)) . '" inputmode="decimal" placeholder="—"' . (($readonly || !$ready) ? ' disabled' : '') . ' />
+                            <input type="text" class="form-control text-end' . ($discount_refused ? ' is-invalid' : '') . '" id="account_discount" name="account_discount" value="' . h($liveform->field_in_session('account_discount') ? (string) $liveform->get_field_value('account_discount') : erp_account_rate_input($account['discount_rate'] ?? 0)) . '" inputmode="decimal" placeholder="—"' . ($discount_refused ? ' aria-invalid="true"' : '') . (($readonly || !$ready) ? ' disabled' : '') . ' />
                         </div>
                         ' . ((!$readonly && $ready) ? '<div class="col-12 sm:col-auto">
                             <button type="submit" class="btn btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
