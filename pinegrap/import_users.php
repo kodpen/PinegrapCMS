@@ -32,15 +32,6 @@ $user = validate_user();
 validate_area_access($user, 'manager');
 
 if (!$_POST) {
-    // if user is not an administrator or designer, then prepare to disable role picklist
-    if ($user['role'] <= 1) {    
-        $output_role_disabled_class = '';
-        $output_role_disabled_attribute = '';
-    }else{
-        $output_role_disabled_class =' disabled';
-        $output_role_disabled_attribute = 'disabled="disabled"';
-    }
-    
     // Selection markup for the permission panels. Imported users all get the
     // same rights, so nothing here is per-user and every panel starts empty.
     $permission_panels = array(
@@ -314,7 +305,7 @@ if (!$_POST) {
     if (empty($_FILES['file']['name'])) {
         $liveform->mark_error('file', lang('Please select a file.'));
         
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : ''));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . urlencode((string) ($_REQUEST['send_to'] ?? '')));
         exit();
     }
 
@@ -324,7 +315,7 @@ if (!$_POST) {
     if ($upload_refusal !== '') {
         $liveform->mark_error('file', h($upload_refusal));
 
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : ''));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . urlencode((string) ($_REQUEST['send_to'] ?? '')));
         exit();
     }
 
@@ -342,7 +333,7 @@ if (!$_POST) {
         fclose($handle);
         
         // Redirect user back to the import_users page
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : ''));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . urlencode((string) ($_REQUEST['send_to'] ?? '')));
         exit();
     }
     
@@ -396,7 +387,7 @@ if (!$_POST) {
         $liveform->mark_error('file', h(lang(array('string' => 'The file has no e-mail address column (email_address), so no user could be imported. Headings found: {var:1}', 'vars' => array(pg_csv_headings_text($columns))))));
         fclose($handle);
 
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : ''));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . urlencode((string) ($_REQUEST['send_to'] ?? '')));
         exit();
     }
 
@@ -522,7 +513,7 @@ if (!$_POST) {
         $liveform->mark_error('general_error', '<h4 class="alert-heading">' . lang('The file you selected could not be imported because of the following error(s)') . ':</h4>' . $combined_errors);
         
         // Forward them back to the import users screen.
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : ''));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . urlencode((string) ($_REQUEST['send_to'] ?? '')));
         exit();
     }
     
@@ -894,7 +885,7 @@ if (!$_POST) {
         foreach ($column_names as $key => $value) {
             // If this is not the username column, then add data for it.
             if ($value != 'username') {
-                $value = escape(pg_import_contact_cell($value, $user_to_be_imported[$key]));
+                $value = escape(pg_import_contact_cell($value, $import_cell($user_to_be_imported, $key)));
                 $contact_data_list .= "'$value', ";
             }
         }
