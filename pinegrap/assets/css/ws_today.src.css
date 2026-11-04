@@ -338,15 +338,254 @@
     }
   }
 
-  /* ── What happened in the channels ────────────────────────────────────── */
+  /* ── What happened in the channels ──────────────────────────────────────
+     One row per channel: its sign in a tile of the channel's colour, the
+     name with the "N new" pill, the last message on one line, the time. */
 
-  /* ── Latest decisions ─────────────────────────────────────────────────── */
+  .ws-today-digest {
+    display: flex;
+    flex-direction: column;
+    gap: .125rem;
+    margin: 0 -.5rem;
+    padding: 0;
+    list-style: none;
+  }
 
-  /* ── Channels you could join ──────────────────────────────────────────── */
+  .ws-today-digest-row {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    width: 100%;
+    padding: .5rem;
+    border: 0;
+    border-radius: .75rem;
+    background: transparent;
+    color: var(--pgd-fg);
+    text-align: start;
+  }
+
+  .ws-today-digest-row:hover {
+    background: var(--pgd-fill);
+  }
+
+  .ws-today-digest-row:focus-visible {
+    outline: 2px solid var(--pg-primary-ink);
+    outline-offset: -2px;
+  }
+
+  .ws-today-digest-icon {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: .6875rem;
+    background: color-mix(in srgb, var(--ws-ch, var(--pgd-accent)) 14%, transparent);
+    color: var(--ws-ch, var(--pgd-accent));
+  }
+
+  .ws-today-digest-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .ws-today-digest-head {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    min-width: 0;
+  }
+
+  .ws-today-digest-name {
+    overflow: hidden;
+    font-size: .875rem;
+    font-weight: 600;
+    color: var(--pgd-strong);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .ws-today-new {
+    flex: none;
+    padding: .0625rem .5rem;
+    border: 1px solid var(--pgd-line);
+    border-radius: 999px;
+    background: var(--pgd-fill);
+    color: var(--pgd-soft);
+    font-size: .6875rem;
+    font-weight: 600;
+  }
+
+  .ws-today-new.ws-today-new-mention {
+    border-color: var(--pgd-accent-line);
+    background: color-mix(in srgb, var(--pgd-accent) 14%, transparent);
+    color: var(--pgd-accent);
+  }
+
+  .ws-today-digest-last {
+    overflow: hidden;
+    font-size: .8125rem;
+    color: var(--pgd-muted);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .ws-today-digest-last b {
+    font-weight: 600;
+    color: var(--pgd-soft);
+  }
+
+  .ws-today-digest-time {
+    flex: none;
+    align-self: flex-start;
+    padding-top: .125rem;
+    font-size: .75rem;
+    color: var(--pgd-muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* ── Latest decisions ─────────────────────────────────────────────────────
+     The dashboard's Activity line (pg_dash.src.css .pg-dash-timeline): a
+     decision's dot is green, Claude's in the accent; its words wrap to two
+     lines, the channel under them is the button to the message. */
+
+  .ws-today-decision {
+    --pg-dash-event: var(--pgd-good);
+    align-items: flex-start;
+    cursor: pointer;
+  }
+
+  .ws-today-decision::before {
+    top: 1.125rem;
+  }
+
+  .ws-today-decision[data-kind="claude"] {
+    --pg-dash-event: var(--pgd-accent);
+  }
+
+  .ws-today .ws-today-decision-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    font-size: .8125rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .ws-today .ws-today-decision-text > * {
+    display: inline;
+    margin: 0;
+  }
+
+  .ws-today-decision-open {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: .25rem;
+    max-width: 100%;
+    margin-top: .125rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--pgd-muted);
+  }
+
+  .ws-today-decision-channel {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .ws-today-decision-open:hover {
+    color: var(--pgd-strong);
+    text-decoration: underline;
+  }
+
+  .ws-today-decision-open:focus-visible {
+    outline: 2px solid var(--pg-primary-ink);
+    outline-offset: 2px;
+  }
+
+  .ws-today-decision .pg-dash-event-when {
+    padding-top: .0625rem;
+    font-size: .75rem;
+    white-space: nowrap;
+  }
+
+  /* ── Channels you could join ─────────────────────────────────────────────
+     One line per public channel: its sign in a tile-sized box, the name over
+     the topic and member count, Join at the end, a hairline between lines. */
+
+  .ws-today .ws-today-join-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ws-today .ws-today-join-row {
+    display: flex;
+    align-items: center;
+    gap: .625rem;
+    padding: .5rem 0;
+  }
+
+  .ws-today .ws-today-join-row + .ws-today-join-row {
+    border-top: 1px solid var(--pgd-line);
+  }
+
+  .ws-today .ws-today-join-sign {
+    display: inline-flex;
+    flex: 0 0 2rem;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--pgd-tile-line);
+    border-radius: .625rem;
+    background: var(--pgd-tile);
+    color: var(--pgd-muted);
+  }
+
+  .ws-today .ws-today-join-text {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .ws-today .ws-today-join-name {
+    overflow: hidden;
+    font-size: .875rem;
+    font-weight: 600;
+    color: var(--pgd-strong);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ws-today .ws-today-join-meta {
+    font-size: .75rem;
+    color: var(--pgd-muted);
+    overflow-wrap: anywhere;
+  }
+
+  .ws-today .ws-today-join-btn {
+    flex: 0 0 auto;
+    min-height: 2rem;
+  }
+
+  .ws-today .ws-today-join-btn:disabled {
+    opacity: .6;
+    cursor: default;
+  }
 
   /* ── What is the Workspace? ───────────────────────────────────────────────
      A details card across the row: the summary is the card head, its chevron
-     at the end; folded, the card is the head alone. */
+     at the end turning when open; folded, the card is the head alone. The
+     parts are dashboard tiles, as many to a line as fit. */
 
   .ws-today .ws-home-about.card {
     margin-top: 0;
@@ -356,18 +595,81 @@
   }
 
   .ws-today .ws-home-about > summary {
+    border-bottom: 0;
+    background: transparent;
     cursor: pointer;
     list-style: none;
   }
 
+  .ws-today .ws-home-about > summary::-webkit-details-marker {
+    display: none;
+  }
+
   .ws-today .ws-home-about > summary::after {
+    content: "\F282";
     margin-inline-start: auto;
     float: none;
+    font-family: bootstrap-icons;
     color: var(--pgd-muted);
+    transition: transform .15s ease;
+  }
+
+  .ws-today .ws-home-about[open] > summary::after {
+    transform: rotate(180deg);
+  }
+
+  .ws-today .ws-home-about > summary:focus-visible {
+    outline: 2px solid var(--pg-primary-ink);
+    outline-offset: 2px;
+    border-radius: .5rem;
   }
 
   .ws-today .ws-home-about:not([open]) {
     gap: 0;
+  }
+
+  .ws-today .ws-today-about-text {
+    margin: 0;
+    font-size: .875rem;
+    color: var(--pgd-soft);
+  }
+
+  .ws-today .ws-today-about-tiles {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+  }
+
+  .ws-today .ws-today-about-tile {
+    gap: .25rem;
+  }
+
+  .ws-today .ws-today-about-tile:hover {
+    border-color: var(--pgd-tile-line);
+  }
+
+  .ws-today .ws-today-about-tile-title {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+    font-size: .875rem;
+    font-weight: 600;
+    color: var(--pgd-strong);
+  }
+
+  .ws-today .ws-today-about-tile-title > .bi {
+    color: var(--pgd-accent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ws-today .ws-home-about > summary::after {
+      transition: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .ws-today .ws-today-join-sign,
+    .ws-today .ws-today-about-tile {
+      border-color: CanvasText;
+    }
   }
 
 }

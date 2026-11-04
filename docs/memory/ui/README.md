@@ -78,6 +78,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - calendar-location-availability.md: How check_calendar_event_location_availability() finds a room already booked, including recurring, overnight and multi-day events
 - calendar-shared-form.md: The calendar create and edit screens share includes/forms/calendar_form.php: what it holds and what stays in the screens
 - calendar-view-date.md: The date a calendar view is asked for (?date=, kept in the session): format, check and why it is written with two-digit month and day
+- cart-quote-screen-layout.md: The new cart quote screen (add_cart_quote.php) on the product_builder pattern: which card holds what, the Summary that follows the boxes, the boxes' searches
 - catalog-new-group-address.md: Catalog Manager New Product Group takes its address from its first name; delete badges carry the count in the sentence, the bin progress says so, New image hidden in the catalog
 - catalog-rename-live-row.md: Catalog Manager rename (grid, tree, Bulk Rename) refuses a product or group that is deleted or in the Recycle Bin
 - chart-destroy-before-markup-change.md: Destroy Chart.js charts (destroy_widget_charts in welcome.php) before .html()/.remove()/.append() replaces markup with canvases, or instances leak.
@@ -163,7 +164,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - details-panel-rule.md: The one structure rule of a list's details panel ("Ayrıntılar"): fixed section order, label/value lines with a fixed label column, empty values left out; how the table driver applies it
 - dialog-result-after-close.md: A Bootstrap 6 dialog or drawer hands its result to the page only once closed; the writing box's + menu windows put in nothing before that (#4196); the caret after a card
 - dynamic-region-shared-form.md: The dynamic region create and edit screens share includes/forms/dynamic_region_form.php: what it holds, the label fix, what stays in the screens
-- edit-file-header.md: Edit File header (edit_file.php) mirrors the File Manager details: "W × H px", folder crumb, optimized state, last change with name, address, Where is it used?
+- edit-file-header.md: Edit File (edit_file.php) layout and status column: preview, Summary mirroring the File Manager details ("W × H px", optimized, last change with name, address), access, Where is it used?
 - edit-screen-wide-layout.md: Owner decision for panel edit screens: a wide screen is not spent on one column of stacked cards; form column, sticky status column, sticky save bar, modeled on product_builder.php.
 - edit-user-return-key.md: Return in an Edit User field saves through a hidden nameless first submit; the Create Contact button saves the form first, then creates and opens the contact
 - email-campaign-profile-follow-ring.md: A campaign profile may not follow itself or a profile that follows it, on the edit screen and in the import
@@ -245,6 +246,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-export.md: The image editor's export panel (E13, E13b): format, quality, edge, progressive JPEG, PNG colours, camera details, sRGB, the estimate action, another format as a copy, the optimise profile
 - image-editor-fonts.md: The image editor's Google Fonts choice in the Text tool and the one font catalogue it shares with the visual designer
 - image-editor-glyph.md: The image editor's Bootstrap Icons and emoji in the Sticker tool: the glyph layer, where the icon font and map come from, the emoji set and its recent row
+- image-editor-import.md: Import in the image editor's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas
 - image-editor-keyframes.md: The Animate tool's keyframes (AN9): anim.keys and M.keyAt() composed in M.motionAt(), the Path tab, dragging a layer at the playhead, diamonds on the tracks, the path on the stage
 - image-editor-keys.md: The image editor's keys: shortcuts, Escape on keydown, Enter and Space to focused buttons, arrows to sliders (ownsKey), focus kept after a panel redraw, panning
 - image-editor-layers.md: The image editor's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
@@ -287,7 +289,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-row-names.md: Orders, products, submitted forms, pages and files lists: row box names, SEO links, No Image, folder access by icon and word, names and descriptions that wrap instead of a cut
 - list-stale-filter.md: All Ads, Verified Shipping Addresses and Submitted Forms reset a remembered filter whose ad region, state or custom form is gone to '[All]' (pg_list_filter_known())
 - list-status-words.md: A word beside a list row's green or red state (pg_list_status_word()): product groups, key codes, arrival dates, gift cards, ERP expenses
-- list-table-campaign-system-lists.md: E-mail and SMS campaigns, visitor reports, the 404 log, backups, Cloudflare DNS records and the database tables on the list table driver (TD12a); the gift card redemption history as a plain ledger
+- list-table-campaign-system-lists.md: E-mail campaigns and campaign profiles, SMS campaigns, visitor reports, the 404 log, backups, DNS records and database tables on the list table driver; gift card redemptions a plain ledger
 - list-table-commerce-lists.md: Orders, gift cards, key codes, shipping methods (TD8a) and the ERP account prices, minimum stock and stock lists (TD8b) on the list table driver: printed whole, quick edit, bulk actions as ids
 - list-table-driver-browser.md: List table driver in the browser (assets/js/pg_list_table.js): selection, Ctrl+A and Select all, undo, rows on scroll, search, columns menu, details panel, phone cards, thumbnails, layout
 - list-table-driver-lists.md: Which screens are on the list table driver (pages, users, contacts, submitted forms, products, commissions, mail queue, logs, printed lists): sources, columns, bulk actions
@@ -297,10 +299,11 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-table-order-side-lists.md: Product attributes, cart quotes, returns, subscriptions and a contact's orders on the list table driver (TD10a): printed whole, what changes in place and what stays on the record's screen
 - list-table-printed.md: Browser mode of the list table driver: a small list printed whole (pg_list_table_printed()), its sort kept by list_table_sort, the toolbar search box
 - list-table-quick-edit-contacts.md: Contacts list quick edit (includes/fn/contact_list_edit.php): which cells are fields in which view, the split phone and address columns, how a change is checked and written like edit_contact.php
+- list-table-quick-edit-containers.md: All Containers list quick edit (includes/fn/container_list_edit.php): the fields, the units, the container screen's own check and save, who may change them
 - list-table-quick-edit-pages.md: Pages list quick edit (includes/fn/list_table_edit.php): which cells are fields for whom, where the choices come from, how name, folder, style, type, form fields and switches are written
 - list-table-quick-edit-short-links.md: Short links list quick edit (includes/fn/short_link_list_edit.php): fields per destination type, the split destination columns, the edit screen's own checks and save
 - list-table-quick-edit-users.md: Users list quick edit (includes/fn/user_list_edit.php): which cells are fields for whom and in which view, how a username, e-mail, role, start page or right is checked and written
-- list-table-quick-edit-values.md: Which values of each driver list change in quick edit (products, pages), which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
+- list-table-quick-edit-values.md: Which values of each driver list change in quick edit (products, pages, containers …), which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
 - list-table-quick-edit.md: Quick edit mode of the list table driver (assets/js/pg_list_table_edit.js): the source's edit key, F2, save on leave, refused values, undo, apply to the selected rows
 - list-table-region-lists.md: Regions, ads and form fields on the list table driver (TD9c): printed whole, list names, quick edit fields and checks, what stays on the edit screen; menu items stay a plain table
 - list-table-settings-lists.md: Countries, states, zones, tax zones, currencies, referral sources, contact groups, calendars, event locations and auto dialogs on the list table driver (TD11): printed whole in browser mode
@@ -468,6 +471,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - settings-system-tools.md: The System tools screen (system_tools.php): the screens beside Site Settings as cards, the dialog's one row to it, the palette rows; gates from pg_settings_tool_groups()
 - settings-window-turkish-texts.md: Site Settings window wording in Turkish (#5029, PR #5079): mid-sentence relative time, Turkish starter dollar name, translated language names, the category-switch question, settled terms
 - ship-date-adjustment-shared-form.md: The ship date adjustment create and edit screens share includes/forms/ship_date_adjustment_form.php: what it holds, what stays in the screens
+- shipping-method-service-picker.md: The Service field of the shipping method form offers only carriers that are set up, keeps a stored service the picker does not offer, and is left out with no carrier
 - shipping-method-shared-form.md: The shipping method create and edit screens share includes/forms/shipping_method_form.php
 - short-link-shared-form.md: The short link create and edit screens share includes/forms/short_link_form.php: what it holds, what stays in the screens
 - single-email-address-boxes.md: Panel boxes that hold one e-mail address refuse a broken one before the save writes anything, through pg_email_field_errors()
@@ -495,7 +499,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - system-status-gauge-layers.md: System Status gauge (widget 2) as five stacked SVGs: paint order, which layer animates, will-change, the off-screen pause and its redraw guard, reduced motion
 - tax-zone-shared-form.md: The tax zone screens share includes/forms/tax_zone_form.php: wide layout with a Summary, options, links; a blank name is refused and redrawn; states under the country's shown name
 - theme-screens-names-and-returns.md: Theme screens: no ".." in stored names, the design-file gate, the new name said, upload errors on the form, Edit CSS's way back, System refused on the server
-- theme-screens.md: Edit Theme, the themes list and Private Label Branding on cards: labelled fields, theme tools in the toolbar, named list marks, the private label switch
+- theme-screens.md: Create and Edit Theme, the themes list and Private Label Branding on cards: labelled fields, theme tools in the toolbar, named list marks, the private label switch
 - time-zone-list-labels.md: How the time zone pick lists label and order their zones (offsets computed from the time zone database, renamed places, values unchanged)
 - toggle-and-mark-names.md: Toggle aria-labels follow state, icon marks carry visually-hidden text, radio groups get a legend or radiogroup name, reasons are printed not hovered (offers, key codes, ERP)
 - toolbar-phone-fit.md: Toolbar filter forms capped to the bar (.pg-toolbar-filter), Edit Comment / Edit Theme File facts in the grow slot, Subscriptions date range wrapping at 375 px (#4264)

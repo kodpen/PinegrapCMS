@@ -15,7 +15,7 @@ module: svg_sanitize, image_editor
 - The part wraps `send()`: for an opened SVG, replace and copy post `svg_save` with the file's SVG (`M.svgFile()`: size, view box, the artboard's fill, `svgDefs`, each visible layer as its type's `node()` draws it). Pictures (`<image>` of picture and sticker layers) are fetched and embedded as data URLs (PNG, JPEG, GIF, WebP, AVIF); fonts stay by name.
 - `pg_image_editor_action_svg_save()` sanitizes, refuses an empty result, writes through `pg_image_editor_put()` and records with `pg_image_editor_record()` (type `svg`, no pixel size).
 - Motion: `image-editor-svg-motion.md`.
-- Not for SVG files: versions (the drawer reads pictures) and the raster export; a layer of type `svg` has no `paint()`, so it never reaches a PNG.
+- Not for SVG files: versions (the drawer reads pictures) and the raster export. An `svg` layer paints on a canvas as an SVG picture (#6653, `image-editor-import.md`).
 
 ## What does pg_svg_sanitize() keep?
 - It rebuilds the SVG element by element (`includes/fn/svg_sanitize.php`): only the listed drawing elements and their listed attributes; presentation properties as attributes or `style` declarations.

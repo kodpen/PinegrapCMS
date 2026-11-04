@@ -50,5 +50,10 @@ function test_edit_file_header_wiring()
 	pg_assert_contains("lang('Not optimised')", $source);
 	pg_assert_contains('id="file_address"', $source);
 	pg_assert_contains('type: "explorer_file_usage"', $source);
-	pg_assert_contains("' . \$output_where_used . '", $source);
+	// The facts, the preview and "Where is it used?" sit in the sticky status
+	// column of the shared design file layout (ui/edit-screen-wide-layout.md).
+	pg_assert_contains('pg_design_file_form_layout(', $source);
+	pg_assert_contains("pg_design_file_form_summary_card('', \$summary_rows)", $source);
+	pg_assert_contains(". \$output_where_used,", $source);
+	pg_assert_false(strpos($source, 'output_no_file_editor_classes') !== false, 'no column classes switched by the editor');
 }

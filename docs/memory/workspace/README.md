@@ -269,7 +269,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-scheduled-draft-ai.md: Pinegrap AI's propose_scheduled_action: a sentence drafted in a call of its own, kept under the answer as a flow draft card (C5b leftover), the model's texts and final words, when it is offered
 - workspace-scheduled-draft-proposals.md: A connected app proposes a scheduled action (type scheduled in workspace.changes.propose): body, the save check, kept as a flow draft card since C5b, older scheduled cards, why never on a task
 - workspace-screen-companion-scripts.md: Why the Flows canvas and the channel Board tab wait for their own bundle (workspace_flow.js, workspace_board_channel.js) instead of racing ws_bootstrap; the "script did not load" fallback (#2516)
-- workspace-screen-frame.md: Which Workspace screens pad their own main area, where sticky columns stop, how the MCP servers card wraps on a phone
+- workspace-screen-frame.md: Every Workspace screen but the channel one is padded by .ws-shell-main (no screen list), where sticky columns stop, how the MCP servers card wraps on a phone
 - workspace-settings-card-saves.md: Workspace Settings card saves: list allow-list, refused form refilled with its error, rank rule for team rows, hours and holiday checks, mailbox fields
 - workspace-settings-row-names.md: Workspace Settings rows name their person or department, hours boxes use the panel's decimal separator, the Claude guide's copy fields are named (#2918); no two active departments of one name
 - workspace-tag-card.md: A Workspace message that is one record tag and nothing else drawn as a card per reader (ws_tag_card_html(), PR #2150): which bodies, what the card shows, rights, where it is drawn, what stays text
@@ -280,6 +280,8 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-text-highlight.md: ==x== as a highlight (<mark>): the pair rule, old shapes that stay text, server and editor twins, plain text, guest page, notes import, sums, table cells
 - workspace-text-links.md: Where a web address in a Workspace text ends: escaped quotes, angle brackets and apostrophes stay outside the link, &amp; stays inside, punctuation after it stays text
 - workspace-text-lists.md: Lists and quotes in Workspace texts drawn by the server (#1725): which shapes become a list, which stay text so old messages look the same, plain text, guest page, approval mail
+- workspace-today-digest-decisions.md: Today's "What happened in the channels" and "Latest decisions" cards in the new dashboard's parts: rows, badge, the Activity line, why a decision row is no button
+- workspace-today-join-about.md: Today's "Channels you could join" and "What is the Workspace?" cards in the dashboard design: markup, where their styles live, what the Join button does
 - workspace-today-page.md: The Workspace's first page, Today (?view=home, was Overview): the greeting and its count line, the cards in the drawn order, what can be done from them, where each card's data comes from
 - workspace-ui-notes.md: Where the Workspace screens are drawn and styled, its tokens, colour picker vs plan board legend class names, what a closed section of the channel list shows, cosmetic leftovers
 - workspace-ui-scale.md: The Workspace CSS scale (radii, spaces, row and header padding, avatar sizes, shadows as --ws-* tokens), keyboard-only focus rings, dark nav tones, where the block ends
