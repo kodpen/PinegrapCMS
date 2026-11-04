@@ -1071,6 +1071,78 @@ function erp_import_sweep($max_age = 86400)
 }
 
 /**
+ * The template's example line, one cell per field in the fields' order, so
+ * the line cannot fall a cell short of the header. Fields without an example
+ * are empty.
+ *
+ * @param array  $fields    From erp_import_fields()
+ * @param string $country   The store's country code
+ * @param string $currency  The base currency
+ * @return array
+ */
+function erp_import_template_example($fields, $country, $currency)
+{
+    $values = array(
+        'title' => lang('Example Ltd.'),
+        'kind' => lang('Customer'),
+        'is_person' => lang('Company'),
+        'tax_number' => '1234567890',
+        'tax_office' => lang('Central'),
+        'email' => 'info@example.com',
+        'phone' => '+90 212 000 00 00',
+        'address' => lang('Example Street 1'),
+        'country_code' => (string) $country,
+        'currency' => (string) $currency,
+        'status' => lang('Active'),
+        'payment_days' => '30',
+    );
+
+    $example = array();
+    foreach ($fields as $field => $definition) {
+        $example[] = isset($values[$field]) ? $values[$field] : '';
+    }
+
+    return $example;
+}
+
+/**
+ * The text the mapping step's preview shows for one field of a normalised
+ * row: the coded fields in words, a field the row leaves unset (an empty
+ * "Remind the customer" cell keeps the card's choice) as an empty cell.
+ *
+ * @param string $field
+ * @param array  $account       The 'account' part of a planned row
+ * @param array  $kind_options  label => kind
+ * @return string
+ */
+function erp_import_preview_cell($field, $account, $kind_options)
+{
+    $value = isset($account[$field]) ? $account[$field] : '';
+
+    if ($field === 'kind') {
+        $kinds = array_flip($kind_options);
+        return isset($kinds[$value]) ? (string) $kinds[$value] : (string) $value;
+    }
+
+    if ($field === 'is_person') {
+        return ((int) $value === 1) ? lang('Person') : lang('Company');
+    }
+
+    if ($field === 'status') {
+        return ($value === 'passive') ? lang('Passive') : lang('Active');
+    }
+
+    if ($field === 'overdue_notify_customer') {
+        if (($value === '') || ($value === null)) {
+            return '';
+        }
+        return ((int) $value === 1) ? lang('Yes') : lang('No');
+    }
+
+    return (string) $value;
+}
+
+/**
  * The template file: the header row the importer maps by itself, and one
  * example line.
  *
@@ -1088,11 +1160,7 @@ function erp_import_template_csv()
         $header[] = $definition['label'];
     }
 
-    $example = array(
-        lang('Example Ltd.'), lang('Customer'), lang('Company'), '1234567890', lang('Central'), 'info@example.com',
-        '+90 212 000 00 00', lang('Example Street 1'), '', '', '', '', erp_default_country_code(), erp_base_currency(),
-        lang('Active'), '', '30', '',
-    );
+    $example = erp_import_template_example($fields, erp_default_country_code(), erp_base_currency());
 
     $handle = fopen('php://temp', 'r+');
     fwrite($handle, "\xEF\xBB\xBF");

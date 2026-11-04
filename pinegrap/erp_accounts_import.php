@@ -21,7 +21,9 @@
 
 include('init.php');
 $user = validate_user();
-if (!validate_erp_access($user)) {
+// The whole screen writes accounts: the read-only accountant is told on
+// arrival, not after choosing a file and mapping its columns.
+if (!validate_erp_access($user, 'write')) {
     exit();
 }
 
@@ -68,7 +70,7 @@ function erp_import_page($liveform, $body, $list_url)
         'icon' => 'erp',
         'heading' => lang('Import Accounts from CSV'),
         'heading_description' => lang('Upload a list of customers and suppliers. Matching accounts can be updated or left alone; nothing is written until the last step.'),
-        'cancel' => array('enable' => 'true', 'url' => 'erp_accounts.php'),
+        'cancel' => array('enable' => 'true', 'url' => 'erp_accounts.php', 'title' => lang('Accounts')),
         'breadcrumb' => array(
             array('label' => lang('Accounts'), 'url' => $list_url),
             array('label' => lang('Import Accounts from CSV')),
@@ -303,15 +305,7 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
 
         $output_cells = '';
         foreach ($shown as $field) {
-            $value = $entry['account'][$field];
-            if ($field === 'kind') {
-                $kinds = array_flip($kind_options);
-                $value = isset($kinds[$value]) ? $kinds[$value] : $value;
-            } elseif ($field === 'is_person') {
-                $value = ((int) $value === 1) ? lang('Person') : lang('Company');
-            } elseif ($field === 'status') {
-                $value = ($value === 'passive') ? lang('Passive') : lang('Active');
-            }
+            $value = erp_import_preview_cell($field, $entry['account'], $kind_options);
             $output_cells .= '<td class="text-truncate" style="max-width:200px" title="' . h($value) . '">' . h($value) . '</td>';
         }
 
@@ -450,16 +444,15 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
  * Step 3: what happened.
  *
  * @param array  $outcome  From erp_import_run()
- * @param string $list_url
  * @return string
  */
-function erp_import_step_result($outcome, $list_url)
+function erp_import_step_result($outcome)
 {
     $counts = $outcome['counts'];
 
     $output_counts = '
                         <div class="row text-center">
-                            <div class="col-6 md:col-3 my-3"><div class="pg-display-6 fg-success">' . (int) $counts['created'] . '</div><div class="small fg-secondary">' . lang('Created') . '</div></div>
+                            <div class="col-6 md:col-3 my-3"><div class="pg-display-6 fg-success">' . (int) $counts['created'] . '</div><div class="small fg-secondary">' . lang('Newly created') . '</div></div>
                             <div class="col-6 md:col-3 my-3"><div class="pg-display-6 fg-primary">' . (int) $counts['updated'] . '</div><div class="small fg-secondary">' . lang('Updated') . '</div></div>
                             <div class="col-6 md:col-3 my-3"><div class="pg-display-6 fg-secondary">' . (int) $counts['skipped'] . '</div><div class="small fg-secondary">' . lang('Skipped') . '</div></div>
                             <div class="col-6 md:col-3 my-3"><div class="pg-display-6 fg-danger">' . (int) $counts['failed'] . '</div><div class="small fg-secondary">' . lang('Failed') . '</div></div>
@@ -516,8 +509,7 @@ function erp_import_step_result($outcome, $list_url)
                 <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <a href="' . h($list_url) . '" class="btn my-1 btn-solid theme-primary"><i class="bi bi-people me-3" aria-hidden="true"></i>' . lang('Accounts') . '</a>
-                            <a href="erp_accounts_import.php" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-upload me-3" aria-hidden="true"></i>' . lang('Import another file') . '</a>
+                            <a href="erp_accounts_import.php" class="btn my-1 btn-solid theme-primary"><i class="bi bi-upload me-3" aria-hidden="true"></i>' . lang('Import another file') . '</a>
                         </div>
                     </div>
                 </nav>';
@@ -552,6 +544,9 @@ validate_token_field();
 
 $default_kind = isset($_POST['default_kind']) ? (string) $_POST['default_kind'] : 'customer';
 $defaults = erp_import_defaults($default_kind);
+
+// Two columns on one field, set by a re-check; an upload maps by itself.
+$clashes = array();
 
 // Step 1 submitted: stage the file, then fall through to the mapping screen.
 if ($step === 'upload') {
@@ -685,7 +680,7 @@ if ($step === 'upload') {
             'vars' => array($outcome['counts']['created'], $outcome['counts']['updated'], $outcome['counts']['skipped'], $outcome['counts']['failed']),
         )), $_SESSION['sessionusername']);
 
-        echo erp_import_page($liveform, erp_import_step_result($outcome, $list_url), $list_url);
+        echo erp_import_page($liveform, erp_import_step_result($outcome), $list_url);
         $liveform->remove_form();
         exit();
     }
