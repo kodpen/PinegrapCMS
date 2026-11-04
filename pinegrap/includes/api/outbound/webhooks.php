@@ -517,6 +517,19 @@ function api_webhook_max_attempts() {
 
 }
 
+// The activity log line for a delivery given up after its last attempt. The
+// address is cut to scheme and host (pg_ops_alert_mask_url()): the log is read
+// by every manager and by API apps with site_log:read, and Slack, Discord and
+// Zapier addresses carry their secret in the path. Pure.
+function api_webhook_given_up_note($url, $attempts, $error) {
+
+	return lang(array(
+		'string' => 'A webhook delivery to {var:1} was given up after {var:2} attempts: {var:3}',
+		'vars'   => array(pg_ops_alert_mask_url($url), (int)$attempts, (string)$error)
+	));
+
+}
+
 // Send one queued row. Answers true when it is done with - delivered, or given
 // up on - and false when it is waiting for another attempt.
 function api_webhook_deliver($row) {
@@ -599,10 +612,7 @@ function api_webhook_deliver($row) {
 		// an integration is discovered to be broken a week later.
 		db("UPDATE api_webhooks SET status = 'failing' WHERE id = '" . (int)$hook['id'] . "'");
 
-		log_activity(lang(array(
-			'string' => 'A webhook delivery to {var:1} was given up after {var:2} attempts: {var:3}',
-			'vars'   => array($hook['url'], $attempts, $error)
-		)), 'SYSTEM');
+		log_activity(api_webhook_given_up_note($hook['url'], $attempts, $error), 'SYSTEM');
 
 		return true;
 

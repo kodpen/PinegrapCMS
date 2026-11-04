@@ -31,3 +31,18 @@ function test_webhook_queue_failing_subscription_holds_its_events()
 	pg_assert_false(api_webhook_queue_hold('active'), 'active: sent');
 	pg_assert_false(api_webhook_queue_hold(''), 'no status');
 }
+
+// The activity log line for a given-up delivery names the address the way
+// the ops alert does: scheme and host only. The log is readable by every
+// manager and by any API app with site_log:read, while Slack, Discord and
+// Zapier addresses carry their secret in the path.
+function test_webhook_given_up_note_masks_the_address()
+{
+	$note = api_webhook_given_up_note('https://hooks.slack.com/services/T000/B000/SECRETTOKEN?x=1', 8, 'HTTP 404');
+
+	pg_assert_true(strpos($note, 'https://hooks.slack.com/…') !== false, 'scheme and host are kept');
+	pg_assert_false(strpos($note, 'SECRETTOKEN'), 'the secret path is cut');
+	pg_assert_false(strpos($note, 'x=1'), 'the query is cut');
+	pg_assert_true(strpos($note, '8') !== false, 'attempts are named');
+	pg_assert_true(strpos($note, 'HTTP 404') !== false, 'the error is named');
+}

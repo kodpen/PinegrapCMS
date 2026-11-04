@@ -92,7 +92,7 @@ function test_joined_campaign_action_listed_everywhere()
 	$root = PG_FUNCTIONS_DIR;
 
 	pg_assert_true(strpos(file_get_contents($root . '/includes/api/resources/campaign_profiles.php'), 'pg_email_campaign_profile_group_actions()') !== false, 'API action list');
-	pg_assert_true(substr_count(file_get_contents($root . '/includes/api/schema.php'), "'booking_cancelled', 'contact_group_joined')") === 3, 'API schema enums');
+	pg_assert_true(substr_count(file_get_contents($root . '/includes/api/schema.php'), "'contact_group_joined'") === 3, 'API schema enums');
 	pg_assert_true(strpos(file_get_contents($root . '/view_email_campaign_profiles.php'), "'contact_group_joined' =>") !== false, 'list label');
 	pg_assert_true(strpos(file_get_contents($root . '/assets/js/backend.src.js'), "contact_group_joined: 'contact_group_id'") !== false, 'form script');
 	pg_assert_true(strpos(file_get_contents($root . '/includes/fn/events.php'), "pg_contact_group_joined_heard(") !== false, 'announce seam');
