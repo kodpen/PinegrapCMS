@@ -42,6 +42,9 @@ if (!defined('ECOMMERCE') || (ECOMMERCE !== true)) {
     output_error(lang('E-commerce is not enabled on this site.'));
 }
 
+// Each of these is one value: one sent as an array counts as not given.
+pg_request_single_values(array('id', 'action', 'status_was', 'note', 'carrier', 'carrier_code', 'tracking_number', 'refund_amount', 'refund_method', 'refund_reference'));
+
 $liveform = new liveform('view_return');
 $return_id = isset($_REQUEST['id']) ? (int) $_REQUEST['id'] : 0;
 $return = pg_return_load($return_id);
