@@ -389,6 +389,8 @@
     "Scanning the next product starts a new sale.": "Sonraki ürünü okuttuğunuzda yeni satış başlar.",
     "Scanning the pages…": "Sayfalar taranıyor…",
     "Scanning the pages… {var} of {var2}": "Sayfalar taranıyor… {var}/{var2}",
+    "Scene {n}": "Sahne {n}",
+    "Scenes": "Sahneler",
     "Schedule": "Zamanlama",
     "Schedule it": "Programla",
     "Schedule the message": "Mesajı zamanla",
