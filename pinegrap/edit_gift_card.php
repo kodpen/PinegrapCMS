@@ -254,22 +254,17 @@ if (!$_POST) {
 
     // If there is at least one redemption, then output them.
     if ($redemptions) {
+        // A ledger: newest first, each row with the balance it left, so the
+        // order is its meaning and it stays a plain table (no sorting).
         $output_redemption_history_rows = '';
 
-        
         foreach ($redemptions as $redemption) {
-            $output_link_url = 'view_order.php?id=' . $redemption['order_id'] . '&amp;send_to=' . h(urlencode($request_uri));
             $output_redemption_history_rows .=
                 '<tr>
-                    <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                        <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
-                    </td>
-                    <td class="align-middle">' . h($redemption['order_number']) . '</td>
-                    <td class="align-middle text-end"><span class=" badge theme-secondary  fw-lighter">' . pg_format_money($redemption['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
-                    <td class="align-middle text-end"><span class=" badge theme-primary  fw-lighter">' . pg_format_money($redemption['new_balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
-                    <td>' . get_relative_time(array('timestamp' => $redemption['order_date'])) . '</td>
-                    <td></td>
+                    <td class="align-middle"><a href="view_order.php?id=' . (int) $redemption['order_id'] . '&amp;send_to=' . h(urlencode($request_uri)) . '">' . h($redemption['order_number']) . '</a></td>
+                    <td class="align-middle text-end">' . pg_format_money($redemption['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                    <td class="align-middle text-end">' . pg_format_money($redemption['new_balance'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                    <td class="align-middle">' . get_relative_time(array('timestamp' => $redemption['order_date'])) . '</td>
                 </tr>';
         }
 
@@ -278,17 +273,15 @@ if (!$_POST) {
                     <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Redemption History') . '
                     </h2>
-                    <div class="card-body">
-                        <div class="row">
-                            <table class="chart table-hover table " style="width:100%;display:none">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
                                 <thead>
                                     <tr>
-                                        <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                        <th>' . lang('Order') . '</th>
-                                        <th class="text-end">' . lang('Amount') . '</th>
-                                        <th class="text-end">' . lang('Remaining Balance') . '</th>
-                                        <th>' . lang('Redeemed On') . '</th>
-                                        <th class="noVis"></th>
+                                        <th scope="col">' . lang('Order') . '</th>
+                                        <th scope="col" class="text-end">' . lang('Amount') . '</th>
+                                        <th scope="col" class="text-end">' . lang('Remaining Balance') . '</th>
+                                        <th scope="col">' . lang('Redeemed On') . '</th>
                                     </tr>
                                 </thead>
                                 <tbody>' . $output_redemption_history_rows . '</tbody>
