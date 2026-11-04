@@ -2141,6 +2141,22 @@ function api_schema() {
 		/* ----- Campaign profiles -------------------------------------------- */
 
 		array(
+			'id'      => 'campaigns.sms.list',
+			'method'  => 'GET',
+			'path'    => '/campaigns/sms',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaigns_sms_list',
+			'returns' => array('list' => 'SmsCampaign'),
+			'summary' => 'SMS campaigns',
+			'description' => 'The texts sent to the mobile numbers of chosen contact groups, as My SMS Campaigns lists them, newest first, cursor paged. status: draft (kept, never sent), ready (waiting for send_at), queued (handed to the SMS queue at queued_at) or cancelled. queued counts the messages the queue took and refused the numbers the SMS checks turned away (no consent, refused by IYS, no sender identity, SMS not set up); outbox says what the queue still holds of a queued campaign: sent, waiting and failed (null before it is queued; sent rows leave the queue after 7 days, failed ones after 30). contact_group_ids are the groups it goes to, excluded_contact_group_ids the groups whose members are left out. campaign.sent is announced when a campaign is queued. An account with the e-mail right but the user role sees only the campaigns it created. 503 service_unavailable until the database update has created the table.',
+			'params'  => array(
+				array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('draft', 'ready', 'queued', 'cancelled')),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
 			'id'      => 'campaigns.profiles.list',
 			'method'  => 'GET',
 			'path'    => '/campaigns/profiles',

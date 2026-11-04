@@ -213,7 +213,11 @@ function api_webhook_events() {
 		'calendar_event.reserved' => 'A placed order reserved spots on a calendar event (a cart that is not ordered yet is not announced)',
 		// The submitted form screens' deletes and the API's alike (includes/fn/
 		// submitted_form_writes.php); undoing an import stays quiet.
-		'form.submission.deleted' => 'A form submission was deleted'
+		'form.submission.deleted' => 'A form submission was deleted',
+		// An e-mail campaign whose last recipient was dealt with (the job or
+		// Send now), or an SMS campaign the job handed to the SMS queue.
+		// channel email or sms; read the figures from /campaigns.
+		'campaign.sent'        => 'An e-mail campaign finished sending, or an SMS campaign was queued'
 	);
 
 	// A module announces its own events from its own file. The core list wins a
