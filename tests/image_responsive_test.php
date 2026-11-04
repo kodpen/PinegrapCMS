@@ -282,9 +282,9 @@ function test_img_loading_attribute_outranks_prop()
 
 	$html = generate_style_code_from_tree($tree, 'test');
 
-	pg_assert_contains('<img src="/first.jpg" alt="A" loading="eager" onerror=', $html, 'the attribute, written once');
-	pg_assert_contains('<img src="/second.jpg" alt="A" loading="lazy" onerror=', $html, 'the attribute wins over the prop');
-	pg_assert_contains('<img src="/third.jpg" alt="A" loading="eager" onerror=', $html, 'a prop alone still counts');
+	pg_assert_contains('<img src="/first.jpg" alt="A" loading="eager" data-pg-fallback=', $html, 'the attribute, written once');
+	pg_assert_contains('<img src="/second.jpg" alt="A" loading="lazy" data-pg-fallback=', $html, 'the attribute wins over the prop');
+	pg_assert_contains('<img src="/third.jpg" alt="A" loading="eager" data-pg-fallback=', $html, 'a prop alone still counts');
 	pg_assert_same(3, substr_count($html, 'loading='), 'one loading attribute per image');
 	pg_assert_false(strpos($html, 'fetchpriority') !== false, 'a first image with its own choice is not raised');
 }
