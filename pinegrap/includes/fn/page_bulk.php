@@ -148,6 +148,99 @@ function pg_page_bulk_decide($page, $set, $role)
 }
 
 /**
+ * The counts of pg_page_bulk_tally() before the first page: all 0.
+ *
+ * @return array
+ */
+function pg_page_bulk_tally_start()
+{
+    return array_fill_keys(array(
+        'pages', 'folder', 'search_on', 'search_off', 'sitemap_on', 'sitemap_off',
+        'style_desktop', 'style_mobile', 'style_skipped', 'sitemap_noindex', 'sitemap_type',
+    ), 0);
+}
+
+/**
+ * Adds one page's decision to the counts a bulk edit reports, so the notice,
+ * the site log and the audit name only what was written. A page counts as
+ * changed when a column or a style is written; the sitemap switch asked on
+ * for a page that stays out of the site map (noindex, or a type the site map
+ * does not list) is counted as left alone, with its reason.
+ *
+ * @param array $tally     the counts so far (array() to start)
+ * @param array $page      the page as pg_page_bulk_decide() read it
+ * @param array $set       the values asked for, as given to the decision
+ * @param array $decision  pg_page_bulk_decide()
+ * @return array  pages, folder, search_on, search_off, sitemap_on,
+ *                sitemap_off, style_desktop, style_mobile, style_skipped,
+ *                sitemap_noindex, sitemap_type
+ */
+function pg_page_bulk_tally($tally, $page, $set, $decision)
+{
+    $tally = array_merge(pg_page_bulk_tally_start(), (array) $tally);
+
+    $columns = $decision['columns'];
+
+    if ((count($columns) > 0) || (count($decision['styles']) > 0)) {
+        $tally['pages']++;
+    }
+
+    if (isset($columns['page_folder'])) {
+        $tally['folder']++;
+    }
+
+    if (isset($columns['page_search'])) {
+        $tally[$columns['page_search'] ? 'search_on' : 'search_off']++;
+    }
+
+    if (isset($columns['sitemap'])) {
+        $tally[$columns['sitemap'] ? 'sitemap_on' : 'sitemap_off']++;
+    }
+
+    foreach (array('desktop', 'mobile') as $device) {
+        if (isset($decision['styles'][$device])) {
+            $tally['style_' . $device]++;
+        }
+    }
+
+    if ($decision['style_skipped']) {
+        $tally['style_skipped']++;
+    }
+
+    // Asked on, not on before and not written: say why.
+    if (isset($set['sitemap']) && ((string) $set['sitemap'] === '1')
+        && ((int) $page['sitemap'] !== 1) && empty($columns['sitemap'])) {
+        $noindex = array_key_exists('noindex', $columns) ? $columns['noindex'] : (int) ($page['noindex'] ?? 0);
+
+        $tally[$noindex ? 'sitemap_noindex' : 'sitemap_type']++;
+    }
+
+    return $tally;
+}
+
+/**
+ * Whether pages may be moved into a folder: it exists, and it is neither in
+ * the Recycle Bin (a page moved there would have no restore record) nor the
+ * Workspace's folder or below it, which the page folder picker leaves out
+ * (pg_page_folder_left_out()). Pure over the rows.
+ *
+ * @param int   $folder_id
+ * @param array $rows      folder_id => array('folder_parent' => …)
+ * @param int   $workspace the Workspace's folder, 0 when there is none
+ * @param int   $bin       the Recycle Bin folder, 0 when there is none
+ * @return bool
+ */
+function pg_page_bulk_folder_ok($folder_id, $rows, $workspace, $bin)
+{
+    $folder_id = (int) $folder_id;
+
+    return ($folder_id > 0)
+        && isset($rows[$folder_id])
+        && !pg_folder_in_bin_chain($rows, $folder_id, (int) $bin)
+        && !pg_page_folder_left_out($folder_id, $rows, (int) $workspace);
+}
+
+/**
  * The page row pg_page_bulk_decide() reads, with the search keywords the
  * tag cloud update needs. False when there is no such page.
  *

@@ -3790,6 +3790,7 @@
     "site icon, favicon, app icon, installed application, home screen": "site simgesi, favicon, uygulama simgesi, yüklü uygulama, ana ekran, site icon, app icon, installed application, home screen",
     "site search turned off": "site araması kapatıldı",
     "site search turned on": "site araması açıldı",
+    "sitemap.xml was left alone on {var:1} of the selected pages.": "Seçilen sayfaların {var:1} tanesinde sitemap.xml değiştirilmedi.",
     "skills, experience, career, tools": "beceriler, deneyim, kariyer, araçlar",
     "skills, tools, experience, Figma, CV": "beceriler, araçlar, deneyim, Figma, özgeçmiş",
     "skin, dermatologist, rash, mole, acne, eczema, allergy": "cilt, cildiye, dermatolog, döküntü, ben, akne, egzama, alerji",
