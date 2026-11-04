@@ -317,13 +317,17 @@ if ($output_runs !== '') {
     </div>';
 }
 
-$output_form = $report
-    ? '<form id="ltd_dry_run" method="post" action="legacy_to_designer.php#ltd-dry-run" class="d-flex align-items-center gap-3 my-7">'
-        . get_token_field() . '
-        <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-clipboard-check me-1"></i>' . h(lang('Dry run')) . '</button>
-        <span class="small fg-secondary">' . h(lang('Tick the styles to move, then see what would be written for each.')) . '</span>
-    </form>'
-    : '';
+// Dry run is the toolbar's primary action; it submits this hidden form, which
+// carries the token and the ticked styles (their checkboxes name it in form=).
+// Neither is drawn while a move runs.
+$output_form = '';
+$toolbar_primary = '';
+$toolbar_grow = '';
+if ($report && $running === null) {
+    $toolbar_primary = '<button type="submit" form="ltd_dry_run" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-clipboard-check me-2" aria-hidden="true"></i>' . h(lang('Dry run')) . '</button>';
+    $toolbar_grow = '<span class="small fg-secondary">' . h(lang('Tick the styles to move, then see what would be written for each.')) . '</span>';
+    $output_form = '<form id="ltd_dry_run" method="post" action="legacy_to_designer.php#ltd-dry-run" hidden>' . get_token_field() . '</form>';
+}
 
 print
 pg_page_shell([
@@ -336,10 +340,12 @@ pg_page_shell([
     ]) . '
 <main id="content" class="container-fluid">
     ' . pg_screen_toolbar(array(
+        'primary' => $toolbar_primary,
+        'grow' => $toolbar_grow,
         'secondary' => array('label' => lang('All Page Styles'), 'url' => 'view_styles.php', 'icon' => 'bi-arrow-left'),
     )) . '
     <div class="row g-7 my-7">' . $output_summary . '</div>
-    ' . $output_run . $output_plan . ($running === null ? $output_form : '') . '
+    ' . $output_form . $output_run . $output_plan . '
     <div class="card my-7">
         <div class="card-body p-0 table-responsive">' . $output_table . '</div>
     </div>
