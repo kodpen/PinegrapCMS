@@ -202,6 +202,56 @@
 
   /* ── Section: google ────────────────────────────────────────────────── */
 
+  .pg-visitors-google .pg-visitors-chart {
+    margin-top: 1rem;
+  }
+
+  .pg-visitors-google-note,
+  .pg-visitors-google-hint {
+    margin: .75rem 0 0;
+    font-size: .8125rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-visitors-google-hint {
+    margin: 0 0 .5rem;
+  }
+
+  .pg-visitors-google-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
+    gap: 1.5rem;
+    margin: 1.5rem 0 1rem;
+  }
+
+  .pg-visitors-google-block {
+    min-width: 0;
+  }
+
+  .pg-visitors-google-heading {
+    margin: 0 0 .5rem;
+    font-size: .9375rem;
+    font-weight: 600;
+    color: var(--pg-fg-emphasis);
+  }
+
+  .pg-visitors-google-unlinked {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .75rem 1rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-visitors-google-unlinked > p {
+    flex: 1 1 18rem;
+  }
+
+  .pg-visitors-google-unlinked > .bi {
+    font-size: 1.5rem;
+    color: var(--pg-primary-ink);
+  }
+
   /* ── Section: pages ─────────────────────────────────────────────────── */
 
   /* ── Section: speed ─────────────────────────────────────────────────── */
