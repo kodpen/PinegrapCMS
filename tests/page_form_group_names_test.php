@@ -46,10 +46,10 @@ function test_page_form_radio_groups_keep_their_ids_and_hooks()
 {
 	$src = page_form_group_names_source('includes/forms/page_form.php');
 
-	pg_assert_contains('<div class="form-field" id="order_form_product_layout_row_2" style="\' . $order_form_product_layout_row_2_style . \'">', $src, 'the drop-down option wrapper keeps its id');
+	pg_assert_contains('<div class="form-field\' . $order_form_product_layout_row_2_style . \'" id="order_form_product_layout_row_2">', $src, 'the drop-down option wrapper keeps its id');
 	pg_assert_contains('id="layout_type_row"', $src, 'the layout type row keeps its id');
-	pg_assert_contains('onclick="show_or_hide_custom_form_confirmation_type()" data-bs-target="#custom_form_confirmation_type_message_row"', $src, 'the confirmation radio keeps its hooks');
-	pg_assert_contains('onclick="show_or_hide_custom_form_return_type()" data-bs-target="#custom_form_return_type_page_row"', $src, 'the return type radio keeps its hooks');
+	pg_assert_contains('value="message" data-bs-target="#custom_form_confirmation_type_message_row"', $src, 'the confirmation radio keeps its switch target');
+	pg_assert_contains('value="page" data-bs-target="#custom_form_return_type_page_row"', $src, 'the return type radio keeps its switch target');
 	pg_assert_contains('data-bs-target="#custom_form_administrator_email_format_html_row"', $src, 'the administrator format radio keeps its target');
 }
 
