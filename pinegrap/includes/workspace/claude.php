@@ -1780,10 +1780,14 @@ Work through the queue:
       of an earlier box) or {{trigger.FIELD}}; a value box (kind value) whose
       rule reads two values (join, compare, add, subtract, add_days) needs both
       a and b - join writes a, a space, then b, so split a text between them;
-      leave x and y out, the boxes are laid out for you. Nothing runs: the
-      draft waits under your answer, and the
-      person who asked opens it on the Flows canvas and publishes it. Say that
-      you drafted it, never that it is set up or running.
+      the subject of a box started by hand (kind manual) is the kind of record
+      the flow is about (order, contact, task...)
+      or left out - never the flow's name; leave x and y out, the boxes are
+      laid out for you. A flow that could not be published is refused with
+      what stops it: fix it, or leave it out and say why. Nothing runs: the
+      draft waits under your answer, and the person who asked
+      opens it on the Flows canvas and publishes it. Say that you drafted it,
+      never that it is set up or running.
       A request may come from a person's note instead of a channel: then "note" is
       set (note.title, note.body, the whole note as written, formulas shown with
       their values) and channel.id is 0. Read the note, not a channel, as the

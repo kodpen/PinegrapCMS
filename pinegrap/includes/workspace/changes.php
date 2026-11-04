@@ -2559,6 +2559,14 @@ function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0, $f
                 return $refuse($drafted['error']);
             }
 
+            // Claude's draft must be one the person can publish: what stops
+            // it goes back with the answer refused, to be fixed or left out.
+            $unpublishable = $drafts ? ws_flow_draft_answer_refusal($drafted['row']['snapshot']['data']['graph'] ?? array()) : '';
+
+            if ($unpublishable !== '') {
+                return $refuse($unpublishable);
+            }
+
             $out['rows'][] = $drafted['row'];
 
             continue;

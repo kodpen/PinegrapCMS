@@ -17634,8 +17634,12 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-claude-state.ws-claude-cancelled {
   color: var(--pg-danger-fg-emphasis);
 }
+/* One column no wider than the list: a card is never wider than its text
+   column, so a flow drawing wider than the card scrolls in its own pane
+   instead of widening the card and the whole channel with it. */
 .ws-drafts {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: .4rem;
   max-width: 34rem;
   margin-top: .45rem;
