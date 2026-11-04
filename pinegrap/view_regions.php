@@ -17,622 +17,131 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/region_list.php');
+
+$filter = (isset($_GET['filter']) && is_string($_GET['filter'])) ? $_GET['filter'] : '';
+
+// Common regions are the list shown for an unknown filter, as before.
+if (!isset(pg_region_list_names()[$filter])) {
+    $filter = 'all_common_regions';
+}
+
+$kinds = array(
+    'all_ad_regions' => 'ad',
+    'all_login_regions' => 'login',
+    'all_dynamic_regions' => 'dynamic',
+    'all_designer_regions' => 'designer',
+    'all_common_regions' => 'common',
+);
+$kind = $kinds[$filter];
+
+// The fields each list changes in place.
+if ($kind === 'ad') {
+    $quick_edit = pg_ad_region_edit_columns();
+} elseif ($kind === 'login') {
+    $quick_edit = pg_login_region_edit_columns();
+} else {
+    $quick_edit = pg_content_region_edit_columns($kind);
+}
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php). Answered in JSON before anything below draws the
+// screen, with the checks of the region's edit screen. Dynamic regions hold
+// PHP code: administrators only, as their screens.
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request($quick_edit, function ($user) use ($kind) {
+        return ($kind === 'dynamic') ? ($user['role'] < 1) : ($user['role'] <= 1);
+    });
+
+    if ($kind === 'ad') {
+        $saved = pg_ad_region_quick_update($edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id']);
+    } elseif ($kind === 'login') {
+        $saved = pg_login_region_quick_update($edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id']);
+    } else {
+        $saved = pg_content_region_quick_update($kind, $edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id']);
+    }
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
 
 $user = validate_user();
 validate_area_access($user, 'designer');
 
 $liveform = new liveform('view_regions');
 
-$number_of_results = 0;
+$list_name = pg_region_list_names()[$filter];
+$create_url = '';
+$list_rows = array();
 
-$filter = (isset($_GET['filter']) && is_string($_GET['filter'])) ? $_GET['filter'] : '';
-
-$filter_for_links = '&filter=' . $filter;
-$output_filter_for_links = h($filter_for_links);
-$output_table_headers = '';
-$output_table_contents = '';
-$output_sort_menu = '';
-$button_bar_button = '';
-switch ($filter) {
-    case 'all_ad_regions':
-        
-        // Set the heading and subheading.
+// Every region of the kind is printed: the list table driver sorts and
+// searches them in the browser (browser mode) and keeps a heading's sort in
+// the session. The sort codes are the column keys.
+switch ($kind) {
+    case 'ad':
         $heading = lang('All Ad Regions');
         $subheading = lang('All ad regions that can be added to any page style and display rotating ads created by any site manager.');
-        
-        // Add the create button to the button bar.
-        $button_bar_button = '<a class="btn btn-sm btn-solid theme-primary m-1" href="add_ad_region.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
-        
-        // The columns this list sorts by, in the order the table shows them.
-        // pg_list_state() keeps the choice in the session as a code, so it survives
-        // a language change, and falls back to the default for anything else.
-        $sort_columns = array(
-            'name'          => lang('Name'),
-            'display_type'  => lang('Display Type'),
-            'created'       => lang('Created'),
-            'last_modified' => lang('Last Modified'),
-        );
+        $create_url = 'add_ad_region.php';
+        $columns = pg_ad_region_list_columns();
 
-        $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
-
-        $list_state = pg_list_state('view_regions_all_ad_regions', $sort_columns, $sort_default);
-        $sort_levels = $list_state['sorts'];
-        $output_sort_menu = pg_list_sort_menu('view_regions.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter));
-
-        // What each sort code orders by. Only codes pg_list_state() let through
-        // reach pg_list_order_by(), and it writes nothing but these.
-        $order_by = pg_list_order_by($sort_levels, array(
-            'name'          => 'name',
-            'display_type'  => 'display_type',
-            'created'       => 'created_timestamp',
-            'last_modified' => 'last_modified_timestamp',
-        ));
-
-        // get total number of ad regions
-        $query = "SELECT COUNT(id) FROM ad_regions";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        $row = mysqli_fetch_row($result);
-        $all_regions = $row[0];
-        
-        // Output table headings
-        $output_table_headers .= '
-            <tr>
-                <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                <th>' . get_column_heading(lang('Name'), $sort_levels, '', $output_filter_for_links, 'name') . '</th>
-                <th>' . get_column_heading(lang('Display Type'), $sort_levels, '', $output_filter_for_links, 'display_type') . '</th>
-                <th>' . lang('Duration') . '</th>
-                <th class="text-center">' . lang('Autoplay') . '</th>
-                <th>' . lang('Interval') . '</th>
-                <th class="text-center">' . lang('Continuous') . '</th>
-                <th>' . get_column_heading(lang('Created'), $sort_levels, '', $output_filter_for_links, 'created') . '</th>
-                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $output_filter_for_links, 'last_modified') . '</th>
-            </tr>';
-
-      
-        $query = 
-            "SELECT 
-                id,
-                name,
-                display_type,
-                transition_duration,
-                slideshow,
-                slideshow_interval,
-                slideshow_continuous,
-                created_user.user_username as created_username,
-                ad_regions.created_timestamp,
-                last_modified_user.user_username as last_modified_username,
-                ad_regions.last_modified_timestamp
-            FROM ad_regions
-            LEFT JOIN user as created_user ON ad_regions.created_user_id = created_user.user_id
-            LEFT JOIN user as last_modified_user ON ad_regions.last_modified_user_id = last_modified_user.user_id
-            ORDER BY " . $order_by;
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-        
-        while ($row = mysqli_fetch_array($result)){
-            $id = $row['id'];
-            $name = $row['name'];
-            $display_type = $row['display_type'];
-            $transition_duration = $row['transition_duration'];
-            $slideshow = $row['slideshow'];
-            $slideshow_interval = $row['slideshow_interval'];
-            $slideshow_continuous = $row['slideshow_continuous'];
-            $created_timestamp = $row['created_timestamp'];
-            $last_modified_timestamp = $row['last_modified_timestamp'];
-            $created_username = '';
-            $last_modified_username = '';
-            
-            if (isset($row['created_username']) == TRUE) {
-                $created_username = lang(array('string'=>'by {var:1}','vars'=>array( h($row['created_username']) ) ) );
-            }
-
-            if (isset($row['last_modified_username']) == TRUE) {
-                $last_modified_username = lang(array('string'=>'by {var:1}','vars'=>array( h($row['last_modified_username']) ) ) );
-            }
-            
-            // output link url
-            $output_link_url = 'edit_ad_region.php?id=' . $id;
-            
-            // Increment the amount of results
-            $number_of_results++;
-            
-            // if the display type is static then set output value
-            if ($display_type == 'static') {
-                $output_display_type = lang('Static');
-                $output_transition_duration = '';
-                $output_slideshow = '';
-                $output_slideshow_interval = '';
-                $output_slideshow_continuous = '';
-                
-            // else the display type is dynamic so set output value
-            } else {
-                $output_display_type = lang('Dynamic');
-                
-                // if transition duration is 0, then set to empty string
-                if ($transition_duration == 0) {
-                    $output_transition_duration = '';
-                    
-                // else transition duration is not 0, so set to value
-                } else {
-                    $output_transition_duration = pg_format_number($transition_duration, 0);
-                }
-                
-                $output_slideshow = '';
-                $output_slideshow_interval = '';
-                $output_slideshow_continuous = '';
-                
-                // if slideshow is enabled, then prepare to output slideshow values
-                if ($slideshow == 1) {
-                    $output_slideshow = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
-                    $output_slideshow_interval = $slideshow_interval;
-
-                    // If the slideshow is continuous, then output check mark.
-                    if ($slideshow_continuous == 1) {
-                        $output_slideshow_continuous = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
-                    }
-                }
-            }
-            
-            // Output table.
-            $output_table_contents .= '
-                <tr>
-                    <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                    </td>
-                    <td class="align-middle chart_label text-nowrap">' . h($name) . '</td>
-                    <td class="align-middle">' . $output_display_type . '</td>
-                    <td class="align-middle">' . $output_transition_duration . '</td>
-                    <td class="align-middle text-center" nowrap>' . $output_slideshow . '</td>
-                    <td class="align-middle">' . $output_slideshow_interval . '</td>
-                    <td class="align-middle text-center" nowrap>' . $output_slideshow_continuous . '</td>
-                    <td class="align-middle">' . get_relative_time(array('timestamp' => $created_timestamp)) . ' ' . $created_username . '</td>
-                    <td class="align-middle">' . get_relative_time(array('timestamp' => $last_modified_timestamp)) . ' ' . $last_modified_username . '</td>
-                </tr>';
+        foreach (pg_ad_region_list_rows() as $row) {
+            $list_rows[] = array('id' => $row['id'], 'cells' => pg_ad_region_list_row_cells($row, $quick_edit));
         }
+
         break;
-        
-    case 'all_login_regions':
-        
-        // Set the heading and subheading.
+
+    case 'login':
         $heading = lang('All Login Regions');
         $subheading = lang('All login regions that add the login process to any page.');
-        
-        // Add the create button to the button bar.
-        $button_bar_button = '<a class="btn btn-sm btn-solid theme-primary m-1" href="add_login_region.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
-        
-        // The columns this list sorts by, in the order the table shows them.
-        // pg_list_state() keeps the choice in the session as a code, so it survives
-        // a language change, and falls back to the default for anything else.
-        $sort_columns = array(
-            'name'                 => lang('Name'),
-            'not_logged_in_header' => lang('Not Logged In Header'),
-            'login_form'           => lang('Show Login Form'),
-            'not_logged_in_footer' => lang('Not Logged In Footer'),
-            'logged_in_header'     => lang('Logged In Header'),
-            'logged_in_footer'     => lang('Logged In Footer'),
-            'created'              => lang('Created'),
-            'last_modified'        => lang('Last Modified'),
-        );
+        $create_url = 'add_login_region.php';
+        $columns = pg_login_region_list_columns();
 
-        $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
-
-        $list_state = pg_list_state('view_regions_all_login_regions', $sort_columns, $sort_default);
-        $sort_levels = $list_state['sorts'];
-        $output_sort_menu = pg_list_sort_menu('view_regions.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter));
-
-        // What each sort code orders by. Only codes pg_list_state() let through
-        // reach pg_list_order_by(), and it writes nothing but these.
-        $order_by = pg_list_order_by($sort_levels, array(
-            'name'                 => 'name',
-            'not_logged_in_header' => 'not_logged_in_header',
-            'login_form'           => 'login_form',
-            'not_logged_in_footer' => 'not_logged_in_footer',
-            'logged_in_header'     => 'logged_in_header',
-            'logged_in_footer'     => 'logged_in_footer',
-            'created'              => 'created_timestamp',
-            'last_modified'        => 'last_modified_timestamp',
-        ));
-
-        // get total number of login regions
-        $query = "SELECT COUNT(id) FROM login_regions";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        $row = mysqli_fetch_row($result);
-        $all_regions = $row[0];
-        
-        // Output table headings
-        $output_table_headers = '            
-            <tr>
-                <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                <th>' . get_column_heading(lang('Name'), $sort_levels, '', $output_filter_for_links, 'name') . '</th>
-                <th>' . get_column_heading(lang('Not Logged In Header'), $sort_levels, '', $output_filter_for_links, 'not_logged_in_header') . '</th>
-                <th class="text-center text-nowrap">' . get_column_heading(lang('Show Login Form'), $sort_levels, '', $output_filter_for_links, 'login_form') . '</th>
-                <th>' . get_column_heading(lang('Not Logged In Footer'), $sort_levels, '', $output_filter_for_links, 'not_logged_in_footer') . '</th>
-                <th>' . get_column_heading(lang('Logged In Header'), $sort_levels, '', $output_filter_for_links, 'logged_in_header') . '</th>
-                <th>' . get_column_heading(lang('Logged In Footer'), $sort_levels, '', $output_filter_for_links, 'logged_in_footer') . '</th>
-                <th>' . get_column_heading(lang('Created'), $sort_levels, '', $output_filter_for_links, 'created') . '</th>
-                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $output_filter_for_links, 'last_modified') . '</th>
-            </tr>
-            ';
-
-        
-        $query = 
-            "SELECT 
-                id,
-                name,
-                not_logged_in_header,
-                login_form,
-                not_logged_in_footer,
-                logged_in_header,
-                logged_in_footer,
-                created_timestamp,
-                last_modified_timestamp,
-                created_user.user_username as created_username,
-                last_modified_user.user_username as last_modified_username
-            FROM login_regions
-            LEFT JOIN user as created_user ON login_regions.created_user_id = created_user.user_id
-            LEFT JOIN user as last_modified_user ON login_regions.last_modified_user_id = last_modified_user.user_id
-            ORDER BY " . $order_by;
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-        
-        while ($row = mysqli_fetch_array($result)){
-            $id = $row['id'];
-            $name = $row['name'];
-            $not_logged_in_header = $row['not_logged_in_header'];
-            $login_form = $row['login_form'];
-            $not_logged_in_footer = $row['not_logged_in_footer'];
-            $logged_in_header = $row['logged_in_header'];
-            $logged_in_footer = $row['logged_in_footer'];
-            $created_timestamp = $row['created_timestamp'];
-            $last_modified_timestamp = $row['last_modified_timestamp'];
-            $created_username = '';
-            $last_modified_username = '';
-            
-            if (isset($row['created_username']) == TRUE) {
-                $created_username = lang(array('string'=>'by {var:1}','vars'=>array( h($row['created_username']) ) ) );
-            }
-
-            if (isset($row['last_modified_username']) == TRUE) {
-                $last_modified_username = lang(array('string'=>'by {var:1}','vars'=>array( h($row['last_modified_username']) ) ) );
-            }
-
-
-
-            
-            // Previews are cut here and escaped in their cells, so stored markup never renders in the list.
-            // if not_logged_in_header is longer than 50 characters
-            if (mb_strlen($not_logged_in_header) > 50) {
-                $not_logged_in_header = mb_substr($not_logged_in_header, 0, 50) . '...';
-            }
-            
-            // if login form is enabled, then output check mark
-            if ($login_form == 1) {
-                $login_form = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
-                
-            // else login form is disabled, so do not output check mark
-            } else {
-                $login_form = '';
-            }
-            
-            // if not_logged_in_footer is longer than 50 characters
-            if (mb_strlen($not_logged_in_footer) > 50) {
-                $not_logged_in_footer = mb_substr($not_logged_in_footer, 0, 50) . '...';
-            }
-            
-            // if logged_in_header is longer than 50 characters
-            if (mb_strlen($logged_in_header) > 50) {
-                $logged_in_header = mb_substr($logged_in_header, 0, 50) . '...';
-            }
-            
-            // if logged_in_footer is longer than 50 characters
-            if (mb_strlen($logged_in_footer) > 50) {
-                $logged_in_footer = mb_substr($logged_in_footer, 0, 50) . '...';
-            }
-            
-            // output link url
-            $output_link_url = 'edit_login_region.php?id=' . $id;
-            
-            // Increment the amount of results
-            $number_of_results++;
-            
-            // Output table.
-            $output_table_contents .= '
-                <tr>
-                    <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                    </td>
-                    <td class="align-middle chart_label text-nowrap">' . h($name) . '</td>
-                    <td class="align-middle">' . h($not_logged_in_header) . '</td>
-                    <td class="align-middle text-center">' . $login_form . '</td>
-                    <td class="align-middle">' . h($not_logged_in_footer) . '</td>
-                    <td class="align-middle">' . h($logged_in_header) . '</td>
-                    <td class="align-middle">' . h($logged_in_footer) . '</td>
-                    <td class="align-middle">' . get_relative_time(array('timestamp' => $created_timestamp)) . ' ' . $created_username . '</td>
-                    <td class="align-middle">' . get_relative_time(array('timestamp' => $last_modified_timestamp)) . ' ' . $last_modified_username . '</td>
-                </tr>';
+        foreach (pg_login_region_list_rows() as $row) {
+            $list_rows[] = array('id' => $row['id'], 'cells' => pg_login_region_list_cells($row, $quick_edit));
         }
-        break;
-    case 'all_dynamic_regions':
-        
-        // Set the heading and subheading.
-        $heading = lang('All Dynamic Regions');
-        $subheading = lang('All dynamic regions that contain PHP code and can be added to any page style.');
-        
-        // output dynamic regions
-        // if user's role is above a designer role then output dynamic region area
-        if ($user['role'] < 1) {
-            // add_dynamic_region.php admits administrators only.
-            $button_bar_button = '<a class="btn btn-sm btn-solid theme-primary m-1" href="add_dynamic_region.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
 
-            // The columns this list sorts by, in the order the table shows them.
-            // pg_list_state() keeps the choice in the session as a code, so it survives
-            // a language change, and falls back to the default for anything else.
-            $sort_columns = array(
-                'name'          => lang('Name'),
-                'code'          => lang('Code Preview'),
-                'last_modified' => lang('Last Modified'),
-            );
-
-            $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
-
-            $list_state = pg_list_state('view_regions_all_dynamic_regions', $sort_columns, $sort_default);
-            $sort_levels = $list_state['sorts'];
-            $output_sort_menu = pg_list_sort_menu('view_regions.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter));
-
-            // What each sort code orders by. Only codes pg_list_state() let through
-            // reach pg_list_order_by(), and it writes nothing but these.
-            $order_by = pg_list_order_by($sort_levels, array(
-                'name'          => 'dregion_name',
-                'code'          => 'dregion_code',
-                'last_modified' => 'dregion_timestamp',
-            ));
-
-            // get total number of dynamic regions
-            $query = "SELECT COUNT(dregion_id) FROM dregion";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            $row = mysqli_fetch_row($result);
-            $all_regions = $row[0];
-            
-            // Output table headings
-            $output_table_headers .= '
-            <tr>
-                <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                <th>' . get_column_heading(lang('Name'), $sort_levels, '', $output_filter_for_links, 'name') . '</th>
-                <th>' . get_column_heading(lang('Code Preview'), $sort_levels, '', $output_filter_for_links, 'code') . '</th>
-                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $output_filter_for_links, 'last_modified') . '</th>
-            </tr>
-            ';
-            
-         
-            
-            $query = 
-                "SELECT 
-                    dregion_id,
-                    dregion_name,
-                    dregion_code,
-                    dregion_timestamp,
-                    last_modified_user.user_username as user_username
-                FROM dregion
-                LEFT JOIN user as last_modified_user ON dregion.dregion_user = last_modified_user.user_id
-                ORDER BY $order_by";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-            
-            while ($row = mysqli_fetch_array($result)){
-
-                $user_username = '';
-
-                if (isset($row['user_username']) == TRUE) {
-                    $user_username = lang(array('string'=>'by {var:1}','vars'=>array( h($row['user_username']) ) ) );
-                }
-
-
-                // get preview of content
-                $code_preview = h(mb_substr($row['dregion_code'], 0, 50));
-                
-                // Output link url
-                $output_link_url = 'edit_dynamic_region.php?id='.$row['dregion_id'];
-                
-                // Increment the amount of results
-                $number_of_results++;
-                
-                // Output table
-                $output_table_contents .= '
-                <tr>
-                    <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                    </td>
-                    <td class="align-middle chart_label text-nowrap">' . h($row['dregion_name']) . '</td>
-                    <td class="align-middle">'.$code_preview.'</td>
-                    <td class="align-middle">'. get_relative_time(array('timestamp' => $row['dregion_timestamp'])) .' '. $user_username .'</td>
-                </tr>';
-            }
-        }
         break;
 
-    case 'all_designer_regions':
-        
-        // Set the heading and subheading.
-        $heading = lang('All Designer Regions');
-        $subheading =lang('All designer regions of shared content that can be added to any page style and updated during page editing by any Site Designer.');
-        
-        // Add the create button to the button bar.
-        $button_bar_button = '<a class="btn btn-sm btn-solid theme-primary m-1" href="add_designer_region.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
-        
-        // The columns this list sorts by, in the order the table shows them.
-        // pg_list_state() keeps the choice in the session as a code, so it survives
-        // a language change, and falls back to the default for anything else.
-        $sort_columns = array(
-            'name'          => lang('Name'),
-            'content'       => lang('Content Preview'),
-            'last_modified' => lang('Last Modified'),
-        );
-
-        $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
-
-        $list_state = pg_list_state('view_regions_all_designer_regions', $sort_columns, $sort_default);
-        $sort_levels = $list_state['sorts'];
-        $output_sort_menu = pg_list_sort_menu('view_regions.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter));
-
-        // What each sort code orders by. Only codes pg_list_state() let through
-        // reach pg_list_order_by(), and it writes nothing but these.
-        $order_by = pg_list_order_by($sort_levels, array(
-            'name'          => 'cregion_name',
-            'content'       => 'cregion_content',
-            'last_modified' => 'cregion_timestamp',
-        ));
-
-        // Get total number of designer regions.
-        $query = "SELECT COUNT(cregion_id) FROM cregion WHERE cregion_designer_type = 'yes'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        $row = mysqli_fetch_row($result);
-        $all_regions = $row[0];
-        
-        // Output table headings
-        $output_table_headers = '
-        <tr>
-            <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-            <th>' . get_column_heading(lang('Name'), $sort_levels, '', $output_filter_for_links, 'name') . '</th>
-            <th>' . get_column_heading(lang('Content Preview'), $sort_levels, '', $output_filter_for_links, 'content') . '</th>
-            <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $output_filter_for_links, 'last_modified') . '</th>
-        </tr>';
-        
-       
-
-        // Query to get the database information
-        $query = 
-            "SELECT 
-                cregion_id,
-                cregion_name,
-                cregion_content,
-                cregion_timestamp,
-                cregion_designer_type,
-                last_modified_user.user_username as user_username
-            FROM cregion
-            LEFT JOIN user as last_modified_user ON cregion.cregion_user = last_modified_user.user_id
-            WHERE cregion_designer_type = 'yes'
-            ORDER BY $order_by";
-
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-
-        while ($row = mysqli_fetch_array($result)){
-
-            $user_username = '';
-
-            if (isset($row['user_username']) == TRUE) {
-                $user_username = lang(array('string'=>'by {var:1}','vars'=>array( h($row['user_username']) ) ) );
-            }
-            
-            $content_preview = h(mb_substr($row['cregion_content'], 0, 50));
-
-            $output_link_url = 'edit_designer_region.php?id=' . $row['cregion_id'];
-            
-            // Increment the amount of results
-            $number_of_results++;
-            
-            // Output table
-            $output_table_contents .= '
-                <tr>
-                    <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                    </td>
-                    <td class="align-middle chart_label text-nowrap">' . h($row['cregion_name']) . '</td>
-                    <td class="align-middle">' . $content_preview . '</td>
-                    <td class="align-middle">' . get_relative_time(array('timestamp' => $row['cregion_timestamp'])) . ' ' . $user_username . '</td>
-                </tr>';
-        }
-        break;
-
-    case 'all_common_regions':
     default:
-        
-        // Set the heading and subheading.
-        $heading = lang('All Common Regions');
-        $subheading =lang('All common regions of shared content that can be added to any page style and updated during page editing by any site manager.');
-        
-        // Add the create button to the button bar.
-        $button_bar_button = '<a class="btn btn-sm btn-solid theme-primary m-1" href="add_common_region.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
-        
-        // The columns this list sorts by, in the order the table shows them.
-        // pg_list_state() keeps the choice in the session as a code, so it survives
-        // a language change, and falls back to the default for anything else.
-        $sort_columns = array(
-            'name'          => lang('Name'),
-            'content'       => lang('Content Preview'),
-            'last_modified' => lang('Last Modified'),
+        $headings = array(
+            'dynamic' => array(lang('All Dynamic Regions'), lang('All dynamic regions that contain PHP code and can be added to any page style.'), 'add_dynamic_region.php'),
+            'designer' => array(lang('All Designer Regions'), lang('All designer regions of shared content that can be added to any page style and updated during page editing by any Site Designer.'), 'add_designer_region.php'),
+            'common' => array(lang('All Common Regions'), lang('All common regions of shared content that can be added to any page style and updated during page editing by any site manager.'), 'add_common_region.php'),
         );
+        list($heading, $subheading, $create_url) = $headings[$kind];
+        $columns = pg_content_region_list_columns($kind);
 
-        $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
-
-        $list_state = pg_list_state('view_regions_all_common_regions', $sort_columns, $sort_default);
-        $sort_levels = $list_state['sorts'];
-        $output_sort_menu = pg_list_sort_menu('view_regions.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter));
-
-        // What each sort code orders by. Only codes pg_list_state() let through
-        // reach pg_list_order_by(), and it writes nothing but these.
-        $order_by = pg_list_order_by($sort_levels, array(
-            'name'          => 'cregion_name',
-            'content'       => 'cregion_content',
-            'last_modified' => 'cregion_timestamp',
-        ));
-
-        // Get total number of common regions.
-        $query = "SELECT COUNT(cregion_id) FROM cregion WHERE cregion_designer_type = 'no'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        $row = mysqli_fetch_row($result);
-        $all_regions = $row[0];
-        
-        // Output table headings
-        $output_table_headers = '
-        <tr>
-            <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-            <th>' . get_column_heading(lang('Name'), $sort_levels, '', $output_filter_for_links, 'name') . '</th>
-            <th>' . get_column_heading(lang('Content Preview'), $sort_levels, '', $output_filter_for_links, 'content') . '</th>
-            <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $output_filter_for_links, 'last_modified') . '</th>
-        </tr>';
-        
-        
-
-        // Query to get the database information
-        $query = 
-            "SELECT
-                cregion_id,
-                cregion_name,
-                cregion_content,
-                cregion_timestamp,
-                cregion_designer_type,
-                last_modified_user.user_username as user_username
-            FROM cregion
-            LEFT JOIN user as last_modified_user ON cregion.cregion_user = last_modified_user.user_id
-            WHERE cregion_designer_type = 'no'
-            ORDER BY $order_by";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-
-        while ($row = mysqli_fetch_array($result)){
-
-            $user_username = '';
-
-            if (isset($row['user_username']) == TRUE) {
-                $user_username = lang(array('string'=>'by {var:1}','vars'=>array( h($row['user_username']) ) ) );
+        // Dynamic regions hold PHP code: only administrators see them and
+        // add_dynamic_region.php admits administrators only.
+        if (($kind !== 'dynamic') || ($user['role'] < 1)) {
+            foreach (pg_content_region_list_rows($kind) as $row) {
+                $list_rows[] = array('id' => $row['id'], 'cells' => pg_content_region_list_cells($kind, $row, $quick_edit));
             }
-            
-            $content_preview = h(mb_substr($row['cregion_content'], 0, 50));
-            
-            $output_link_url = 'edit_common_region.php?id=' . $row['cregion_id'];
-            
-            // Increment the amount of results
-            $number_of_results++;
-            
-            // Output table
-            $output_table_contents .= '
-                <tr>
-                    <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                    </td>
-                    <td class="align-middle chart_label text-nowrap">' . h($row['cregion_name']) . '</td>
-                    <td class="align-middle">' . $content_preview . '</td>
-                    <td class="align-middle">' . get_relative_time(array('timestamp' => $row['cregion_timestamp'])) . ' ' . $user_username . '</td>
-                </tr>';
+        } else {
+            $create_url = '';
+            $quick_edit = array();
         }
-        break;
 }
+
+// The sort the list opens with: kept in the session by the list's name
+// (pg_list_state(), list_table_sort), Last Modified first by default.
+$sort_columns = array();
+
+foreach ($columns as $key => $spec) {
+    $sort_columns[$key] = $spec['heading'];
+}
+
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
+$list_state = pg_list_state($list_name, $sort_columns, $sort_default);
+$sort_levels = $list_state['sorts'];
+
+$list = pg_list_table_printed(array(
+    'list' => $list_name,
+    'columns' => $columns,
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+    'edit' => $quick_edit ? array('url' => 'view_regions.php?filter=' . $filter, 'columns' => $quick_edit) : null,
+));
 
 echo
     pg_page_shell([
@@ -640,7 +149,7 @@ echo
         'extra classes'=>'design',
         'icon'=>'design',
         'heading'=>$heading,
-        'heading_description' => ($subheading ?? lang('Reusable content blocks placed on pages'))
+        'heading_description' => $subheading,
     ]) . '
 <main id="content" class="container-fluid">
             <div class="row">
@@ -648,23 +157,17 @@ echo
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-               
+
                 ' . pg_screen_toolbar(array(
-                    'primary' => $button_bar_button,
-                    'search'  => $output_sort_menu,
+                    'primary' => ($create_url !== '') ? array('label' => lang('Create'), 'url' => $create_url, 'icon' => 'bi-plus-circle') : '',
+                    'search'  => array(pg_list_table_search_box($list_name), pg_list_sort_menu('view_regions.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter))),
                 )) . '
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative">
-                        <table class="chart table-hover table " style="width:100%;display:none">
-                            <thead>' . $output_table_headers . '</thead>
-                            <tbody>' . $output_table_contents . '</tbody>
-                        </table>
-                    </div>
-                </div>
+                ' . pg_list_table_html($list['source'], $list['page'], $heading) . '
             </div>
         </div>
-    
-</main>' .
+</main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
+' .
     output_footer();
 
 $liveform->remove_form();

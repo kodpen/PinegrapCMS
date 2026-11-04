@@ -144,11 +144,11 @@ function test_ad_form_validate_refuses_long_names_and_missing_regions()
 function test_view_ads_filter_and_alignment()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_ads.php');
+	$cells = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/region_list.php');
 
 	pg_assert_false(strpos($source, 'Content that viewed') !== false, 'the region filter is named Ad Region');
-	pg_assert_contains('<th class="text-center">\' . get_column_heading(lang(\'Display Type\')', $source, 'Display Type heading is centred like its cells');
-	pg_assert_contains('<td class="align-middle text-center">\' . $output_label', $source, 'Label cells are centred like their heading');
-	pg_assert_contains("elseif (\$ad['ad_region_display_type'] == 'dynamic')", $source, 'an ad without a region is not shown as Dynamic');
+	pg_assert_contains("\$types[\$row['ad_region_display_type']] ?? ''", $cells, 'an ad without a region shows no display type');
+	pg_assert_contains("\$dynamic = (\$row['ad_region_display_type'] === 'dynamic');", $cells, 'label and sort order show for a dynamic region only');
 }
 
 function test_ad_region_options_keep_regions_that_share_a_name()
