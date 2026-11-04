@@ -24,7 +24,7 @@ description: Plan: the Workspace Today page (?view=home) drawn as new-dashboard 
 
 - W3 — Calendar · today. Files: workspace.js (`homeCalendar`), ws_today.src.css "Calendar". After W1; parallel with W2, W4, W5.
 
-- W4 — What happened in the channels, Latest decisions. Files: workspace.js (`homeDigest`, `homeDecisions`), ws_today.src.css "Digest", "Decisions". After W1; parallel with W2, W3, W5.
+- W4 (done, #6735) — What happened in the channels, Latest decisions. Files: workspace.js (`homeDigest`, `homeDecisions`), ws_today.src.css "Digest", "Decisions". After W1; parallel with W2, W3, W5.
 
 - W5 — Channels you could join, What is the Workspace?. Files: workspace.js (`homeJoin`, `homeAbout`), ws_today.src.css "Join", "About". After W1; parallel with W2–W4.
 
