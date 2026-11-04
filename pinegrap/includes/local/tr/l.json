@@ -997,6 +997,7 @@
     "leave blank for default: {var:1}%": "varsayılan için boş bırakın: %{var:1}",
     "leave blank for instant": "anında açılması için boş bırakın",
     "leave blank for lifetime membership": "ömür boyu üyelik için boş bırakın",
+    "leave blank for no bonus": "bonus yoksa boş bırakın",
     "leave blank for no button": "boşsa düğme çıkmaz",
     "leave blank for no expiration": "Son kullanma tarihi istemiyorsanız boş bırakın",
     "leave blank for no limit": "limitsiz için boş bırakın",
