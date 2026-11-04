@@ -166,7 +166,8 @@ function pg_password_insert_fragments($password)
 //   $data keys: email, username (both required; the caller uniquifies username),
 //   password (optional plaintext -> modern hash, algo 2; omit/empty for an
 //   external provider-only account -> stored empty, algo 3), contact_id, home
-//   (start page id), password_hint, role (default '3'), google_id. Returns the
+//   (start page id), password_hint, role (default '3'), google_id, disabled_at (a
+//   timestamp: the account starts disabled). Returns the
 //   new user_id.
 function create_member_user($data)
 {
@@ -221,6 +222,13 @@ function create_member_user($data)
     if (pg_user_has_password_changed_at()) {
         $columns[] = 'user_password_changed_at';
         $values[]  = 'UNIX_TIMESTAMP()';
+    }
+
+    // An account made disabled (an imported author) carries the moment it was
+    // disabled; everything else starts enabled with the column's default.
+    if (!empty($data['disabled_at']) && pg_user_has_disabled_at()) {
+        $columns[] = 'user_disabled_at';
+        $values[]  = (int) $data['disabled_at'];
     }
 
     // Creation time last, as the old INSERTs had it.
@@ -630,7 +638,7 @@ function pg_member_register($form, $opts = array())
     $group_id = (isset($opts['contact_group_id']) && (int) $opts['contact_group_id'] > 0)
         ? (int) $opts['contact_group_id']
         : (int) REGISTRATION_CONTACT_GROUP_ID;
-    if ($group_id > 0 && db_value("SELECT id FROM contact_groups WHERE id = '" . $group_id . "'")) {
+    if ($group_id > 0 && db_value("SELECT id FROM contact_groups WHERE (id = '" . $group_id . "') AND " . pg_audience_hand_sql())) {
         db("INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id)
             VALUES ('" . $contact_id . "', '" . $group_id . "')");
     }
@@ -911,7 +919,7 @@ function pg_member_activate($form, $opts = array())
     $group_id = (isset($opts['contact_group_id']) && (int) $opts['contact_group_id'] > 0)
         ? (int) $opts['contact_group_id']
         : (int) MEMBERSHIP_CONTACT_GROUP_ID;
-    if ($group_id > 0 && db_value("SELECT id FROM contact_groups WHERE id = '" . $group_id . "'")) {
+    if ($group_id > 0 && db_value("SELECT id FROM contact_groups WHERE (id = '" . $group_id . "') AND " . pg_audience_hand_sql())) {
         $in_group = db_value(
             "SELECT contact_id FROM contacts_contact_groups_xref
             WHERE contact_id = '" . $contact_id . "' AND contact_group_id = '" . $group_id . "'");
@@ -1866,6 +1874,51 @@ function pg_user_has_password_algo()
     return $has;
 }
 
+// Does the user table carry user_disabled_at yet? It arrives with a
+// 2026.11.0 step (11.0.160). Until then no account is disabled; the sign-in
+// paths run on the bridge, so they ask here instead of assuming the column.
+function pg_user_has_disabled_at()
+{
+    static $has = null;
+
+    if ($has === null) {
+        $has = pg_schema_has('user', 'user_disabled_at');
+    }
+
+    return $has;
+}
+
+// Is this user row disabled? A disabled account (an imported author, or one
+// switched off on the user screen) matches no credential: no password, reset
+// link, provider, passkey or API key signs it in, and a live session ends at
+// the next validate_user(). A row read before the column existed is enabled.
+// Pure.
+function pg_user_is_disabled($row)
+{
+    return is_array($row) && ((int) ($row['user_disabled_at'] ?? 0) > 0);
+}
+
+// The same answer by id, for paths that read only a few columns.
+function pg_user_id_is_disabled($user_id)
+{
+    if (((int) $user_id <= 0) || !pg_user_has_disabled_at()) {
+        return false;
+    }
+
+    return (int) db_value("SELECT user_disabled_at FROM user WHERE user_id = '" . (int) $user_id . "'") > 0;
+}
+
+// A WHERE fragment that keeps disabled accounts out of a credential lookup
+// (leading AND, nothing on a schema that predates the column).
+function pg_user_enabled_sql($alias = '')
+{
+    if (!pg_user_has_disabled_at()) {
+        return '';
+    }
+
+    return ' AND ' . (($alias !== '') ? $alias . '.' : '') . 'user_disabled_at = 0';
+}
+
 // Does the user table carry user_password_changed_at yet? It arrives with a
 // 2026.4.4 step. Asked the same way as the algo column above, so a site running
 // this code against an older schema writes the password and skips the stamp
@@ -2255,11 +2308,12 @@ function validate_login($username, $password)
             (
                 (user_username = '" . escape($username) . "')
                 OR (user_email = '" . escape($username) . "')
-            )
+            )" . pg_user_enabled_sql() . "
         LIMIT 1");
 
-    // An unknown name is checked against a stand-in hash, so it costs the
-    // same as a wrong password and the time taken does not tell the two apart.
+    // An unknown name (or a disabled account, which the lookup above skips)
+    // is checked against a stand-in hash, so it costs the same as a wrong
+    // password and the time taken does not tell the two apart.
     if (!is_array($row) || !isset($row['user_id'])) {
         pg_password_dummy_verify($password);
         return false;
@@ -2337,7 +2391,7 @@ function pg_session_signed_in()
     }
 
     return (bool) db_value("SELECT user_id FROM user
-        WHERE user_id = '" . (int) $_SESSION['sessionuserid'] . "' LIMIT 1");
+        WHERE user_id = '" . (int) $_SESSION['sessionuserid'] . "'" . pg_user_enabled_sql() . " LIMIT 1");
 }
 // The username can either be a username or email address for a user.
 function validate_username($username)
@@ -2371,13 +2425,14 @@ function validate_user()
     $result = db_q($query, array((string) (int) $_SESSION['sessionuserid'])) or output_error(lang('Query failed'));
     $row = mysqli_fetch_array($result);
     $num_rows = mysqli_num_rows($result);
-    // The account was deleted out from under a live session: clear it and send
-    // back to the login screen, the same end state the old invalid-login branch
-    // reached.
-    if ($num_rows == 0) {
+    // The account was deleted or disabled under a live session: clear it and
+    // send back to the login screen, the same end state the old invalid-login
+    // branch reached.
+    if (($num_rows == 0) || pg_user_is_disabled($row)) {
         $logged_in_as_different_user = $_SESSION['software']['logged_in_as_different_user'] ?? false;
         session_unset();
         session_destroy();
+        pg_session_end_clear_cache();
         if ($logged_in_as_different_user == false) {
             setcookie('software[auth]', '', time() - 1000, '/');
         }
@@ -3197,6 +3252,48 @@ function pg_settings_select_folder($folder_id, $access_control_type = '')
     if (($folder_id > 0) && !pg_settings_folder_choice_ok($folder_id)) {
         $name = (string) db_value("SELECT folder_name FROM folder WHERE folder_id = '" . $folder_id . "'");
         $output .= '<option value="' . $folder_id . '" selected>' . h($name) . ' ' . lang('(no longer offered)') . '</option>';
+    }
+
+    return $output;
+}
+
+/**
+ * Whether a page picker leaves a folder out: the Workspace's folder and what
+ * is below it. A page is never filed under the Workspace; the Recycle Bin is
+ * left to select_folder() as before.
+ *
+ * @param int   $folder_id
+ * @param array $rows      folder_id => array('folder_parent' => …)
+ * @param int   $workspace the Workspace's folder, 0 when there is none
+ * @return bool
+ */
+function pg_page_folder_left_out($folder_id, $rows, $workspace)
+{
+    return ((int) $folder_id > 0) && pg_folder_in_bin_chain($rows, (int) $folder_id, (int) $workspace);
+}
+
+/**
+ * The options of a page folder picker (Add Page, Edit Page, the Pages
+ * list's move picker): select_folder() without the Workspace's folder and
+ * what is below it. A page already filed there keeps its folder, added
+ * selected and marked, so the stored value is shown and not rewritten.
+ *
+ * @param int $folder_id the stored choice, 0 for none
+ * @return string
+ */
+function pg_page_select_folder($folder_id = 0)
+{
+    $folder_id = (int) $folder_id;
+    $workspace = (int) pg_workspace_folder_id();
+    $output = select_folder($folder_id, 0, $workspace);
+
+    if (($folder_id > 0) && ($workspace > 0)) {
+        $tree = pg_folder_access_tree();
+
+        if (pg_page_folder_left_out($folder_id, $tree['rows'], $workspace)) {
+            $name = (string) db_value("SELECT folder_name FROM folder WHERE folder_id = '" . $folder_id . "'");
+            $output .= '<option value="' . $folder_id . '" selected>' . h($name) . ' ' . lang('(no longer offered)') . '</option>';
+        }
     }
 
     return $output;
@@ -4319,6 +4416,7 @@ function initialize_user()
 
             session_unset();
             session_destroy();
+            pg_session_end_clear_cache();
             setcookie('software[auth]', '', time() - 1000, '/');
             unset($_COOKIE['software']['auth']);
 
@@ -4362,6 +4460,12 @@ function initialize_user()
         && pg_auth_tokens_table_exists()) {
 
         $token_user_id = pg_auth_token_verify($_COOKIE['software']['auth']);
+
+        // A disabled account's token signs nobody in; the cookie is cleared
+        // like an invalid one.
+        if ($token_user_id && pg_user_id_is_disabled($token_user_id)) {
+            $token_user_id = false;
+        }
 
         if ($token_user_id) {
 
@@ -4420,8 +4524,10 @@ function initialize_user()
             // The API sends the raw password; verify it against the stored hash.
             // pg_password_verify() also upgrades a legacy row the first time an
             // API client signs in with it.
+            // A disabled account is no match: it costs and answers what an
+            // unknown name does.
             $cred = db_item("SELECT " . pg_password_select_columns() . ", user_email, user_role FROM user
-                WHERE (user_username = '" . e(API_USERNAME) . "') OR (user_email = '" . e(API_USERNAME) . "') LIMIT 1");
+                WHERE ((user_username = '" . e(API_USERNAME) . "') OR (user_email = '" . e(API_USERNAME) . "'))" . pg_user_enabled_sql() . " LIMIT 1");
 
             $api_password_ok = false;
 
@@ -4474,8 +4580,10 @@ function initialize_user()
 
         } else {
             // The session id was verified when it was set; load the row, no
-            // password re-check.
-            $user = pg_load_user_row((int) $_SESSION['sessionuserid']);
+            // password re-check. A disabled account's session loads no user.
+            if (!pg_user_id_is_disabled((int) $_SESSION['sessionuserid'])) {
+                $user = pg_load_user_row((int) $_SESSION['sessionuserid']);
+            }
         }
     }
 
@@ -6103,11 +6211,20 @@ function initialize_developer_security()
 
 /**
  * Encrypt a string with AES-256-CBC and return [encrypted_base64, iv_base64].
+ *
+ * @param string      $plaintext
+ * @param string|null $key the key to seal with; null is ENCRYPTION_KEY (a
+ *                         key reset seals with the new key while the constant
+ *                         still holds the old one)
+ * @return array
  */
-function encrypt_string_with_iv($plaintext)
+function encrypt_string_with_iv($plaintext, $key = null)
 {
+    if ($key === null) {
+        $key = ENCRYPTION_KEY;
+    }
     $crypto_method = 'aes-256-cbc';
-    $crypto_key = substr(hash('sha256', ENCRYPTION_KEY, true), 0, 32);
+    $crypto_key = substr(hash('sha256', (string) $key, true), 0, 32);
     $ivlen = openssl_cipher_iv_length($crypto_method);
     $iv = function_exists('random_bytes') ? random_bytes($ivlen) : openssl_random_pseudo_bytes($ivlen);
     $encrypted_raw = openssl_encrypt($plaintext, $crypto_method, $crypto_key, OPENSSL_RAW_DATA, $iv);

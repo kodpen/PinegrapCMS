@@ -87,7 +87,7 @@ function ws_wtable_column_types()
         'number' => lang('Number'),
         'money' => lang('Money'),
         'date' => lang('Date'),
-        'person' => lang('Person'),
+        'person' => lang('Person (team member)'),
         'status' => lang('Status'),
         'checkbox' => lang('Checkbox'),
         'link' => lang('Record link'),

@@ -23,4 +23,7 @@ description: The dashboard top card (welcome.php, .pg-clockbar): greeting on the
 ## Where do the brief's settings links go?
 - Every `settings_<category>.php#pgset-…` link in `brief.php` must name a card id the registry lists for that category (`pg_settings_categories()`); `tests/dashboard_brief_test.php` reads the ids from `registry.php` and fails on a stale anchor. The device-limit hint opens `#pgset-device`; it opened `#pgset-session` before (#3558).
 
-Related: docs/memory/ui/dashboard-widget-files.md, docs/memory/ui/panel-css-tokens.md
+## Does the new dashboard draw the brief too?
+- Yes, in its greeting card, worded for it: `ui/dashboard-v2-brief.md`.
+
+Related: docs/memory/ui/dashboard-widget-files.md, docs/memory/ui/panel-css-tokens.md, docs/memory/ui/dashboard-v2-brief.md

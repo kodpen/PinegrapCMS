@@ -710,22 +710,28 @@ function pg_connect_schema_ready()
 /**
  * Whether tokens can be kept: the site has an encryption key.
  *
+ * @param string|null $key a key to ask about instead of ENCRYPTION_KEY
  * @return bool
  */
-function pg_connect_can_seal()
+function pg_connect_can_seal($key = null)
 {
+    if ($key !== null) {
+        return ((string) $key !== '') && function_exists('openssl_encrypt');
+    }
+
     return defined('ENCRYPTION_KEY') && ((string) ENCRYPTION_KEY !== '') && function_exists('openssl_encrypt');
 }
 
 /**
  * Data encrypted with the site's key, as "<ciphertext>:<iv>".
  *
- * @param array $data
+ * @param array       $data
+ * @param string|null $key the key to seal with; null is ENCRYPTION_KEY
  * @return string '' when the site has no key
  */
-function pg_connect_seal($data)
+function pg_connect_seal($data, $key = null)
 {
-    if (!pg_connect_can_seal()) {
+    if (!pg_connect_can_seal($key)) {
         return '';
     }
 
@@ -735,20 +741,21 @@ function pg_connect_seal($data)
         return '';
     }
 
-    $sealed = encrypt_string_with_iv($json);
+    $sealed = encrypt_string_with_iv($json, $key);
 
     return $sealed[0] . ':' . $sealed[1];
 }
 
 /**
- * @param string $stored
+ * @param string      $stored
+ * @param string|null $key the key to open with; null is ENCRYPTION_KEY
  * @return array
  */
-function pg_connect_unseal($stored)
+function pg_connect_unseal($stored, $key = null)
 {
     $stored = (string) $stored;
 
-    if (($stored === '') || !pg_connect_can_seal()) {
+    if (($stored === '') || !pg_connect_can_seal($key)) {
         return array();
     }
 
@@ -758,7 +765,7 @@ function pg_connect_unseal($stored)
         return array();
     }
 
-    $data = json_decode(decode_ssl_keys($parts[0], $parts[1]), true);
+    $data = json_decode(decode_ssl_keys($parts[0], $parts[1], $key), true);
 
     return is_array($data) ? $data : array();
 }

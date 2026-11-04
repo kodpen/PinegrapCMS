@@ -693,6 +693,47 @@ function _eo_fit_district_field(&$tree, $ship_rid = 0)
     pg_ship_to_district_tree_mark($tree, $bound('shipping_district'), $country, $tr_codes, $asks);
 }
 
+// The tax number box of a designed form was drawn for Turkish ids (10 or 11
+// digits, a pattern the browser enforces). A store elsewhere takes an EU VAT
+// id with its prefix, which the pattern would refuse: the box loses the
+// pattern, widens to the column, and the digits hint beside it becomes the
+// VAT id hint (pg_vat_tax_number_attrs_fit(), pg_vat_tax_number_hint()).
+function _eo_fit_tax_number_field(&$tree, $store_country = null)
+{
+    if (!is_array($tree)) return;
+    if ($store_country === null) {
+        $store_country = function_exists('pg_erp_store_country') ? (string) pg_erp_store_country() : '';
+    }
+    $hint = pg_vat_tax_number_hint($store_country);
+    if ($hint === '') return;
+    $source = '11 digits for a person, 10 for a company.';
+    $digits_hints = array($source, lang($source));
+    $walk = function (&$node) use (&$walk, $store_country, $hint, $digits_hints) {
+        if (!is_array($node) || empty($node['children']) || !is_array($node['children'])) return;
+        $has_box = false;
+        foreach ($node['children'] as &$child) {
+            if (isset($child['props']['_bindings']['eo_field']) && (string) $child['props']['_bindings']['eo_field'] === 'tax_number') {
+                $has_box = true;
+                $child['props']['_attrs'] = pg_vat_tax_number_attrs_fit(isset($child['props']['_attrs']) ? (array) $child['props']['_attrs'] : array(), $store_country);
+            }
+        }
+        unset($child);
+        foreach ($node['children'] as &$child) {
+            if ($has_box && isset($child['props']['text']) && in_array(trim((string) $child['props']['text']), $digits_hints, true)) {
+                $child['props']['text'] = $hint;
+            }
+            $walk($child);
+        }
+        unset($child);
+    };
+    if (isset($tree['type']) || isset($tree['children'])) {
+        $walk($tree);
+    } else {
+        foreach ($tree as &$root) $walk($root);
+        unset($root);
+    }
+}
+
 // The country the checkout's country controls start with: the shop's
 // default (countries.default_selected), '' when none is set.
 function _eo_default_country()
@@ -2510,36 +2551,7 @@ function _eo_hosted_card_html($amount_cents)
     // A card kept for renewals is asked for before it is typed (Stripe's
     // setup_future_usage), as the payment will ask for it.
     $order['recurring'] = pg_payment_order_recurring((int) ($order['id'] ?? 0));
-    $answer = pg_payment_call($key, 'prepare', array($order, (int) $amount_cents));
-    $client = $answer['client'];
-
-    // The service's script is loaded only from a host the driver lists for
-    // the site's security policy.
-    $definition = pg_payment_driver($key);
-    $script = (isset($client['script']) && is_string($client['script'])) ? $client['script'] : '';
-    $script_host = (preg_match('#^(https://[^/\s]+)/#', $script, $script_match) === 1) ? $script_match[1] : '';
-    $script_allowed = ($script_host !== '') && isset($definition['csp']['script-src']) && in_array($script_host, $definition['csp']['script-src'], true);
-
-    if (!$answer['success'] || !$script_allowed) {
-        return '<div class="alert alert-warning small mb-3" role="alert">' . h(lang('Card payments are not available right now. Please choose another payment method.')) . '</div>';
-    }
-
-    $config = array(
-        'driver'   => $key,
-        'client'   => $client,
-        'messages' => array(
-            'unavailable' => lang('Card payments are not available right now. Please choose another payment method.'),
-            'invalid'     => lang('The card details could not be read. Please check them and try again.'),
-        ),
-    );
-
-    return '<div class="pg-eo-hosted-card mb-3" data-pg-payment-hosted="' . h(json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) . '">'
-         .   '<div class="pg-eo-hosted-card-element"></div>'
-         .   '<div class="small text-danger mt-2 pg-eo-hosted-card-error" role="alert" aria-live="polite"></div>'
-         . '</div>'
-         . '<input type="hidden" name="payment_token" value="">'
-         . '<script src="' . h($script) . '"></script>'
-         . pg_js_bundle_tags('assets/js/payment_hosted.min.js', false);
+    return pg_payment_box($key, pg_payment_call($key, 'prepare', array($order, (int) $amount_cents)));
 }
 
 function _eo_render_billing_country_select($lf)

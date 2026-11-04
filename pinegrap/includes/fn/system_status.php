@@ -1891,6 +1891,7 @@ function get_system_status_checks()
         'Webhooks'                 => 'Webhook',
         'Storage Engine'           => 'Engine',
         'Visitor Records'          => 'Visitors',
+        'Visitor Summary'          => 'Summary',
         'Operations Alerts'        => 'Alerts',
         'Maintenance Mode'         => 'Maintenance',
         'Product Feeds'            => 'Feeds',
@@ -1929,6 +1930,7 @@ function get_system_status_checks()
         'Webhooks',
         'Storage Engine',
         'Visitor Records',
+        'Visitor Summary',
         'Operations Alerts',
         'Maintenance Mode',
         'Product Feeds',
@@ -2693,6 +2695,35 @@ function get_system_status_checks()
                 'database_engine.php#visitor-records'
             );
         }
+
+        // The daily summary is written every day through yesterday; the
+        // overview and the API read it for every day before today. A last
+        // day more than two days back means the general job has stopped
+        // writing it. Reported and not scored, like the line above.
+        if ($visitor_settings['summary']) {
+            $visitor_range = pg_visitor_summary_range();
+            $visitor_last_day = is_array($visitor_range) ? $visitor_range['last'] : '';
+            $visitor_lag = pg_visitor_summary_lag($visitor_last_day, pg_visitor_oldest_day(), date('Y-m-d'));
+
+            if ($visitor_lag > PG_VISITOR_SUMMARY_LATE_DAYS) {
+                $output .= $makeIcon(
+                    'bi-calendar-x',
+                    'fg-warning',
+                    'Visitor Summary',
+                    ($visitor_last_day !== '')
+                        ? lang(array(
+                            'string' => 'The daily visitor summary was last written for {var:1}, {var:2} days back. The general job writes every day through yesterday; check that it runs.',
+                            'vars'   => array(
+                                get_absolute_time(array('timestamp' => strtotime($visitor_last_day . ' 00:00:00'), 'type' => 'date', 'format' => 'plain_text')),
+                                pg_format_number($visitor_lag, 0),
+                            ),
+                        ))
+                        : lang('The daily visitor summary has not been written yet. The general job writes every day through yesterday; check that it runs.'),
+                    lang(array('string' => '{var:1} days back', 'vars' => array(pg_format_number($visitor_lag, 0)))),
+                    'database_engine.php#visitor-records'
+                );
+            }
+        }
     }
 
     // 📦 PHP extensions check with alias support for IIS and Apache
@@ -3052,17 +3083,20 @@ function get_system_status_checks()
     //
     // Reported, not scored: an upgraded site has the switch off until the
     // operator turns it on, which is a choice, not a fault. Yellow when it is
-    // on and still sends the original: the server writes no WebP, or the
-    // panel came through a CDN nobody confirmed keeps a copy per format.
+    // on and the server writes no WebP, or the panel came through a CDN
+    // nobody confirmed keeps a copy per format: pictures then go private
+    // (the edge keeps no copy) or, when the self-test found the edge keeps
+    // private answers too, as the original.
     if (function_exists('pg_image_delivery_ready') && pg_image_delivery_ready()) {
 
-        require_once(PG_FUNCTIONS_DIR . '/includes/image_negotiation.php');
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_vary_check.php');
 
         $webp_written = pg_image_derivative_formats(pg_image_derivative_directory());
         $webp_state = pg_image_same_address_state(
             pg_image_delivery()['same_address'],
             !empty($webp_written['webp']),
-            pg_image_behind_proxy($_SERVER));
+            pg_image_behind_proxy($_SERVER),
+            pg_image_same_address_mode(pg_image_vary_state()));
         $webp_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_features.php#pgset-images';
 
         if ($webp_state === 'off') {
@@ -3083,13 +3117,22 @@ function get_system_status_checks()
                 lang('No WebP'),
                 $webp_href
             );
-        } elseif ($webp_state === 'cdn') {
+        } elseif ($webp_state === 'private') {
             $output .= $makeIcon(
                 'bi-filetype-jpg',
                 'fg-warning',
                 'WebP At Own Address',
-                'WebP at the picture\'s own address is on, but this site is reached through a CDN that is not confirmed to keep a copy per format, so requests through it get the original. Set up the CDN to cache pictures per Accept value, then confirm it in Image Optimization.',
-                lang('CDN not confirmed'),
+                'WebP is sent; the CDN keeps no copy of pictures until confirmed. This site is reached through a CDN that is not confirmed to keep a copy per format, so pictures go out private and each first view reaches the server. A daily check confirms the CDN by itself once it keeps a copy per Accept value.',
+                lang('Private'),
+                $webp_href
+            );
+        } elseif ($webp_state === 'original') {
+            $output .= $makeIcon(
+                'bi-filetype-jpg',
+                'fg-warning',
+                'WebP At Own Address',
+                'WebP at the picture\'s own address is on, but the CDN in front of this site keeps pictures marked private too, so requests through it get the original until a daily check finds it keeps a copy per format. Set up the CDN to cache pictures per Accept value.',
+                lang('Original'),
                 $webp_href
             );
         } else {

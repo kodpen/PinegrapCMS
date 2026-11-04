@@ -9,7 +9,8 @@ description: How the product attribute create/edit screens clean, check and save
 returns `pg_product_attribute_form_clean_options()`: labels trimmed, rows with
 no label dropped (the form opens with two empty rows), `id` an int, `no_value`
 `'1'` or `''`. No option left gives "Please add an option."; a label given twice
-(case ignored, Turkish `İ` folded to `i`) gives "The option {var:1} is entered
+(case ignored the English and the Turkish way, `pg_product_attribute_form_label_keys()`:
+`KIRMIZI` = `Kırmızı`, `IVORY` = `ivory`, `Kirmizi` ≠ `Kırmızı`; #6527) gives "The option {var:1} is entered
 more than once." Before this the blank second row and repeated labels were
 stored (#5450).
 

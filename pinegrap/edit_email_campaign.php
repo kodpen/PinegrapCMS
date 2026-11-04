@@ -156,18 +156,12 @@ if (!$_POST) {
         
         $output_status_options .= '<option value="cancelled"' . $cancelled_status . '>' . lang('Cancelled') . '</option>';
         
-        $output_status = '<select id="status" name="status" class="form-control" aria-label="' . h(lang('Status')) . '">' .  $output_status_options . '</select>';
+        $output_status = '<label class="form-label" for="status">' . lang('Status') . '</label>
+            <select id="status" name="status" class="form-control">' .  $output_status_options . '</select>';
         
         $output_bcc_email_address = '<div class="row"><div class="col-12 md:col-auto"><input value="' . h($bcc_email_address) . '" type="text" class="form-control text-end" id="bcc_email_address" aria-label="' . h(lang('BCC E-mail Address')) . '" name="bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"></div></div>';
 
-        $output_buttons =
-            '<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                <div class="container">
-                    <div class=" btn-group flex-wrap justify-content-center">
-                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                    </div>
-                </div>
-            </nav>';
+        $output_buttons = '<button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="bi bi-save me-3" aria-hidden="true"></span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>';
         $output_form_end = '</form>';
         
     // else the e-mail campaign is complete, so prepare information for viewing
@@ -175,7 +169,8 @@ if (!$_POST) {
         $output_heading = lang('View Campaign');
         $output_subheading = lang('View this e-mail campaign\'s information.');
         $output_form_start = '';
-        $output_status = h(get_email_campaign_status_name($status));
+        $output_status = '<div class="form-label">' . lang('Status') . '</div>
+            <p class="mb-0">' . h(get_email_campaign_status_name($status)) . '</p>';
         $output_bcc_email_address = '<p>' . h($bcc_email_address) . '</p>';
 
         $output_buttons = '';
@@ -198,22 +193,18 @@ if (!$_POST) {
             }
 
             $output_order =
-                '<div class="col-12 sm:col-6 xl:col my-3">
-                    <div class="alert border-4 theme-secondary" role="alert">
-                        <h4 class="alert-heading">' . lang('Order') . '</h4>
-                        <p>' . $output_order_reference . '</p>
-                    </div>
+                '<div class="col-12 my-3">
+                    <div class="form-label">' . lang('Order') . '</div>
+                    <p class="mb-0">' . $output_order_reference . '</p>
                 </div>';
         }
 
         $output_auto_campaign =
-            '<div class="col-12 sm:col-6 xl:col my-3">
-                <div class="alert border-4 theme-secondary" role="alert">
-                    <h4 class="alert-heading">' . lang('Profile') . '</h4>
-                    <p>' . (($email_campaign_profile_name !== null)
-                        ? '<a href="edit_email_campaign_profile.php?id=' . $email_campaign_profile_id . '">' . h($email_campaign_profile_name) . '</a>'
-                        : h(lang('The campaign profile has been deleted.'))) . '</p>
-                </div>
+            '<div class="col-12 my-3">
+                <div class="form-label">' . lang('Profile') . '</div>
+                <p class="mb-0">' . (($email_campaign_profile_name !== null)
+                    ? '<a href="edit_email_campaign_profile.php?id=' . $email_campaign_profile_id . '">' . h($email_campaign_profile_name) . '</a>'
+                    : h(lang('The campaign profile has been deleted.'))) . '</p>
             </div>
             ' . $output_order;
             
@@ -357,15 +348,9 @@ if (!$_POST) {
                 $output_entered_email_address = '[' . lang('None') . ']';
             }
 
-            $output_to_rows =
-                '<div class="col-12">
-                    <div class="card my-7">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                            ' . lang('E-Mail Message To My Contact Groups') . '
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-12 my-3">
+            $output_to_rows = pg_email_campaign_card(
+                lang('E-Mail Message To My Contact Groups'),
+                '<div class="col-12 my-3">
                                     <div class="alert theme-primary">
                                         <p>' . lang('Send message to all Subscribers in my selected Contact Groups') . '</p>
                                         <p>' . $output_included_contact_groups . '</p>
@@ -380,27 +365,16 @@ if (!$_POST) {
                                         <p>' . lang('Also send message to the following e-mail address') . '</p>
                                         <p>' . $output_entered_email_address . '</p>
                                     </div>
-                                </div>
-                                
-                            </div>
-                        </div>
-                    </div>
-                </div>';
+                </div>');
 
             break;
         
         case 'automatic':
             $to_email_address = db_value("SELECT email_address FROM email_recipients WHERE email_campaign_id = '" . escape($_GET['id']) . "'");
 
-            $output_to_rows =
-                '<div class="col-12">
-                    <div class="card my-7">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                            ' . lang('E-Mail Message To') . '
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-12 my-3">
+            $output_to_rows = pg_email_campaign_card(
+                lang('E-Mail Message To'),
+                '<div class="col-12 my-3">
                                     <div class="alert theme-primary">
                                         <p>' . lang('To') . '</p>
                                         <p>' . h($to_email_address) . '</p>
@@ -409,12 +383,7 @@ if (!$_POST) {
                                         <p>' . lang('BCC E-mail Address') . '</p>
                                         <div>' . $output_bcc_email_address . '</div>
                                     </div>
-                                </div>
-                                
-                            </div>
-                        </div>
-                    </div>
-                </div>';
+                </div>');
 
             break;
     }
@@ -427,58 +396,61 @@ if (!$_POST) {
             'icon'=>'campaign', 
             'heading'=> $output_heading,
             'heading_description' => $output_subheading,
-            'cancel'=>array('enable'=>'true','url'=>'view_email_campaigns.php')
-        ,
+            'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaigns.php')),
             'breadcrumb' => array(array('label' => lang('My Campaigns'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaigns.php'), array('label' => $output_heading)),
         )
     ) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                <p class="text-center md:text-start">' . lang(array('string'=>'Created {var:1} by {var:2}.','vars'=>array( get_relative_time(array('timestamp' => $created_timestamp)),h($creator_username) ))) . '</p>
                 ' . $output_button_bar . '
                 ' . $output_form_start . '
-                <div class="row">
-
-                    <div class="col-12 sm:col-6 xl:col my-3">
-                        <div class="alert border-4 theme-secondary" role="alert">
-                            <h4 class="alert-heading">' . lang('Status') . '</h4>
-                            <p class="mb-0">' . $output_status . '</p>
-                        </div>
-                    </div>
-                    <div class="col-12 sm:col-6 xl:col my-3">
-                        <div class="alert border-4 theme-secondary" role="alert">
-                            <h4 class="alert-heading">' . lang('Progress') . '</h4>
-                            <p>' . lang(array('string' => '{var:1}%', 'vars' => array($output_progress_percentage))) . ' (' . pg_format_number($number_of_completed_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0) . ' ' . lang('subscribers') . ')</p>
-                            ' . $output_failed_email_recipients . '
-                        </div>
-                    </div> 
-                    ' . $output_auto_campaign . '
-                    ' . pg_email_campaign_message_card(
+                ' . pg_email_campaign_layout(
+                    pg_email_campaign_message_card(
                         pg_email_campaign_subject_row($subject, $readonly),
                         pg_email_campaign_format_row($output_format, true),
                         '<div class="col-12 my-3">
                             ' . $output_body_heading . '
                             ' . $output_body . '
                         </div>'
-                    ) . '
-                    ' . $output_to_rows . '
-                    ' . pg_email_campaign_from_card(array(
+                    ) . $output_to_rows . pg_email_campaign_from_card(array(
                         'from_name' => $from_name,
                         'from_email_address' => $from_email_address,
                         'reply_email_address' => $reply_email_address,
-                    ), $readonly) . pg_email_campaign_schedule_card($start_time, $readonly) . pg_email_campaign_purpose_card($purpose, $readonly) . '
-                </div>
-                ' . $output_buttons . '
+                    ), $readonly),
+                    pg_email_campaign_card(
+                        lang('Summary'),
+                        '<div class="col-12 my-3">
+                            ' . $output_status . '
+                        </div>
+                        <div class="col-12 my-3">
+                            <div class="form-label">' . lang('Progress') . '</div>
+                            <div class="progress mb-2" role="progressbar" aria-label="' . h(lang('Progress')) . '" aria-valuenow="' . h($output_progress_percentage) . '" aria-valuemin="0" aria-valuemax="100">
+                                <div class="progress-bar" style="width: ' . h($output_progress_percentage) . '%"></div>
+                            </div>
+                            <p class="mb-0">' . lang(array('string' => '{var:1}%', 'vars' => array($output_progress_percentage))) . ' (' . pg_format_number($number_of_completed_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0) . ' ' . lang('subscribers') . ')</p>
+                            ' . $output_failed_email_recipients . '
+                        </div>
+                        ' . $output_auto_campaign . '
+                        <div class="col-12 my-3">
+                            <p class="small fg-secondary mb-0">' . lang(array('string'=>'Created {var:1} by {var:2}.','vars'=>array( get_relative_time(array('timestamp' => $created_timestamp)),h($creator_username) ))) . '</p>
+                        </div>'
+                    ) . pg_email_campaign_schedule_card($start_time, $readonly) . pg_email_campaign_purpose_card($purpose, $readonly),
+                    $output_buttons
+                ) . '
                 ' . $output_form_end . '
-            </div>
-        
 </main>' .
         output_footer();
     
 // else form has been submitted
 } else {
     validate_token_field();
+
+    // The sender name, body and return address are text: one posted as an
+    // array (from_name[]=x) ended in a fatal error, a missing send_to in
+    // warnings. The sender name goes into the From header, so it is trimmed
+    // like the subject and the addresses.
+    $_POST['from_name'] = trim(pg_email_campaign_posted_text($_POST, 'from_name'));
+    $_POST['body'] = pg_email_campaign_posted_text($_POST, 'body');
+    $_POST['send_to'] = pg_email_campaign_posted_text($_POST, 'send_to');
     
     // check if the e-mail campaign is complete
     $query =
@@ -536,7 +508,7 @@ if (!$_POST) {
 
     // if the format is plain text, then allow the body to be updated
     if ($format == 'plain_text') {
-        $sql_body = "body = '" . escape($_POST['body'] ?? '') . "',";
+        $sql_body = "body = '" . escape($_POST['body']) . "',";
     }
 
     $sql_bcc_email_address = "";
@@ -560,7 +532,7 @@ if (!$_POST) {
             status = '" . escape($new_status) . "',
             subject = '" . escape(trim((string) $_POST['subject'])) . "',
             " . $sql_body . "
-            from_name = '" . escape($_POST['from_name'] ?? '') . "',
+            from_name = '" . escape($_POST['from_name']) . "',
             from_email_address = '" . escape(trim((string) $_POST['from_email_address'])) . "',
             reply_email_address = '" . escape(trim((string) ($_POST['reply_email_address'] ?? ''))) . "',
             " . $sql_bcc_email_address . "
@@ -585,7 +557,7 @@ if (!$_POST) {
 
     // If there is a send to set, then forward user to send to.
     if ($_POST['send_to'] != '') {
-        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($_POST['send_to']));
         
     // Otherwise there is not a send to set, so forward user to view e-mail campaigns screen.
     } else {

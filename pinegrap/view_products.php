@@ -29,7 +29,7 @@ if (pg_list_edit_requested()) {
         return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
     });
 
-    $saved = pg_pb_quick_update($edit['id'], $edit['field'], $edit['value']);
+    $saved = pg_pb_quick_update($edit['id'], $edit['field'], $edit['value'], $edit['user']);
 
     pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
 }
@@ -69,8 +69,7 @@ if (isset($_GET['filter']) && $_GET['filter']) {
 $filter = pg_product_list_filter_name($_SESSION['software']['view_products']['filter'] ?? '');
 $_SESSION['software']['view_products']['filter'] = $filter;
 
-// The view, its columns and its sort (includes/fn/product_list.php). The
-// rows come one page at a time from the product_list_rows action.
+// The view, its columns and its sort (includes/fn/product_list.php).
 $view = pg_product_list_site_view($filter);
 
 // A product in the Recycle Bin is not on this list or in its counts: deleting
@@ -104,6 +103,26 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
 
 // else the user did not select to export products, so just list products
 } else {
+    // Refresh stale SEO scores before the views are counted and the list is
+    // fetched (a weak-score view counts only current scores) - newest records
+    // first, since those are the likeliest to be on the first screen - capped
+    // per request so a large catalog cannot stall the page; leftovers are
+    // covered by the nightly job and the refresh button on the Pages screen.
+    if (pg_seo_schema_ready()) {
+        $stale_product_ids = array();
+        $stale_result = mysqli_query(db::$con, "SELECT id FROM products WHERE seo_analysis_current = 0 ORDER BY timestamp DESC LIMIT 200") or output_error('Query failed.');
+
+        while ($stale_row = mysqli_fetch_assoc($stale_result)) {
+            $stale_product_ids[] = $stale_row['id'];
+        }
+
+        if ($stale_product_ids) {
+            // Budgeted for the same reason as the pages screen: this is
+            // synchronous work inside the visitor's request.
+            pg_seo_recalculate('product', $stale_product_ids, 3);
+        }
+    }
+
     // The filter menu, each view with its count.
     $output_filter_options = '';
     $all_products = null;
@@ -123,27 +142,28 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
         $output_filter_options .= '<option value="' . h($option) . '"' . (($option == $filter) ? ' selected="selected"' : '') . '>' . h($option_view['label']) . ' (' . pg_format_number($count, 0) . ')</option>';
     }
 
-    // Refresh stale SEO scores before the list is fetched - newest records
-    // first, since those are the likeliest to be on the first screen - capped
-    // per request so a large catalog cannot stall the page; leftovers are
-    // covered by the nightly job and the refresh button on the Pages screen.
-    if (pg_seo_schema_ready()) {
-        $stale_product_ids = array();
-        $stale_result = mysqli_query(db::$con, "SELECT id FROM products WHERE seo_analysis_current = 0 ORDER BY timestamp DESC LIMIT 200") or output_error('Query failed.');
+    // The list table driver prints the first rows; the next ones come from
+    // its list_table_rows action (includes/panel/lists.php) as the list
+    // scrolls. A cell of an editable column changes in place in its quick
+    // edit mode, on this screen's pg_list_edit_request() endpoint above.
+    $list_source = pg_product_list_source($user, array('filter' => $filter));
 
-        while ($stale_row = mysqli_fetch_assoc($stale_result)) {
-            $stale_product_ids[] = $stale_row['id'];
-        }
-
-        if ($stale_product_ids) {
-            // Budgeted for the same reason as the pages screen: this is
-            // synchronous work inside the visitor's request.
-            pg_seo_recalculate('product', $stale_product_ids, 3);
-        }
+    if ($list_source === null) {
+        output_error(lang('Access denied'));
     }
 
-    // The rows come from the product_list_rows action (includes/panel/lists.php).
-    $output_list_attributes = ' data-pg-list-action="product_list_rows" data-pg-list-params="' . h(encode_json(array('filter' => $filter))) . '"';
+    $list_page = pg_list_table_page($list_source, array(), null);
+
+    if ($list_page === false) {
+        output_error(lang('Query failed.'));
+    }
+
+    // The bulk actions sit in the list's selection bar, which shows while
+    // rows are selected, and post the selection to edit_products.php, which
+    // reads it with the list's own query and rights. Modify Selected first
+    // asks for the changes in its window, which submits the form.
+    $output_bulk_buttons = '<button type="button" value="Modify Selected" class="btn btn-sm btn-solid theme-primary" onclick="window.open(\'edit_products.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'edit\',\'product\')"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Modify Selected') . '</button>'
+        . '<button type="button" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . h($catalog_bin ? lang(array('string' => 'Selected {var:1} will be moved to the Recycle Bin. They can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('products')))) : lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('products'))))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang('Delete Selected') . '</button>';
 
     $output = '
     <div class="row">
@@ -153,56 +173,42 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                 ' . $liveform->output_notices() . '
                
                 <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-                            <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_product.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
-                            <a class="btn btn-sm btn-outline theme-secondary m-1" href="view_products.php?mode=variant_sets"><span class="bi bi-grid me-3"></span>' . lang('Variant Sets') . '</a>
+                            <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_product.php"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i>' . lang(array('string'=>'Create') ) . '</a>
+                            <a class="btn btn-sm btn-text theme-secondary" href="view_products.php?mode=variant_sets"><i class="bi bi-grid me-2" aria-hidden="true"></i>' . lang('Variant Sets') . '</a>
+                            <a class="btn btn-sm btn-text theme-secondary" href="import_products.php"><i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>' . lang(array('string'=>'Import') ) . '</a>
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
-                                <div class=" btn-group btn-group-sm flex-wrap">
-                                    <a class="btn btn-link pg-link-secondary py-0 m-1" href="import_products.php"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
-                                    <button type="submit" name="submit_data" value="Export Products" class="btn btn-link pg-link-secondary py-0 m-1"><span class="material-icons me-1">file_download</span>' . lang(array('string'=>'Export') ) . '</button>
-                                </div>
+                                <button type="submit" name="submit_data" value="Export Products" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-file-earmark-arrow-down me-2" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
                             </form>
                             <div class="pg-toolbar-grow"></div>
+                            <label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
+                                <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                                <input type="search" class="form-ghost" data-pg-list-search="view_products" placeholder="' . h(lang('Search')) . '" aria-label="' . h(lang('Search')) . '">
+                            </label>
                             ' . pg_list_sort_menu('view_products.php', $view['sort_columns'], $view['sort_levels'], $view['sort_default']) . '
                             <form id="search_form" action="view_products.php" method="get" class="search_form">
                                 <div class="input-group input-group-sm">
-                                    <label class="input-group-text material-icons" title="' . lang('Products shown') . '" for="filter_select">visibility</label>
+                                    <label class="input-group-text" title="' . h(lang('Products shown')) . '" for="filter_select"><i class="bi bi-eye" aria-hidden="true"></i></label>
                                     <select id="filter_select" aria-label="' . h(lang('Products shown')) . '" name="filter" class="form-control" title="' . lang('Products shown') . '" onchange="submit_form(\'search_form\')">' . $output_filter_options . '</select>
                                 </div>
                             </form>
                 </nav>
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative">
-                        <form name="form"  action="edit_products.php" method="post"> 
-                            ' . get_token_field() . '
-                            <input type="hidden" name="action">
-                            <input type="hidden" name="edit_enabled">
-                            <input type="hidden" name="edit_allowed_zones">
-                            <input type="hidden" name="edit_disallowed_zones">
-                            <input type="hidden" name="edit_change_price_method">
-                            <input type="hidden" name="edit_price_value">
-                            <input type="hidden" name="edit_inventory">
-                            <input type="hidden" name="edit_inventory_quantity_process">
-                            <input type="hidden" name="edit_tax_rate_method">
-                            <input type="hidden" name="edit_tax_rate_value">
-                            <input type="hidden" name="edit_inventory_quantity">
-                            <table class="chart table-hover table" style="width:100%;display:none"' . $output_list_attributes . pg_list_edit_table('view_products.php', pg_pb_quick_edit_columns()) . '>
-                                <thead>
-                                    <tr>' . pg_product_list_headings($view) . '</tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-
-                            <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                                <div class="container">
-                                    <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                        <button type="button" value="Modify Selected" class=" btn mb-1 mt-1 btn-solid theme-primary disabled" onclick="window.open(\'edit_products.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'edit\',\'product\')"><span class="material-icons me-3">edit</span>' . lang(array('string'=>'Modify Selected') ) . '</button>
-                                        <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . h($catalog_bin ? lang(array('string' => 'Selected {var:1} will be moved to the Recycle Bin. They can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('products')))) : lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('products'))))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
-                                    </div>
-                                </div>
-                            </nav>
-                        </form>
-                    </div>
-                </div>
+                <form name="form" action="edit_products.php" method="post" class="disable_shortcut">
+                    ' . get_token_field() . '
+                    <input type="hidden" name="action">
+                    <input type="hidden" name="selection">
+                    <input type="hidden" name="list_params" value="' . h(encode_json(array('filter' => $filter))) . '">
+                    <input type="hidden" name="edit_enabled">
+                    <input type="hidden" name="edit_allowed_zones">
+                    <input type="hidden" name="edit_disallowed_zones">
+                    <input type="hidden" name="edit_change_price_method">
+                    <input type="hidden" name="edit_price_value">
+                    <input type="hidden" name="edit_inventory">
+                    <input type="hidden" name="edit_inventory_quantity_process">
+                    <input type="hidden" name="edit_tax_rate_method">
+                    <input type="hidden" name="edit_tax_rate_value">
+                    <input type="hidden" name="edit_inventory_quantity">
+                    ' . pg_list_table_html($list_source, $list_page, $view['heading'], $output_bulk_buttons) . '
+                </form>
             </div>
         </div>
         ' . pg_seo_render_detail_offcanvas() . '
@@ -233,6 +239,21 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
             'head' => (defined('BARCODE_ENABLED') && BARCODE_ENABLED ?
                 '<script src="assets/lib/JsBarcode/JsBarcode.all.min.js"></script>' : '')
         )
-    ) . '<main id="content" class="container-fluid">' . $output . $barcode_print_js . ($view['show_image'] ? _pg_lightbox_assets_once() : '') . '</main>' . output_footer();
+    ) . '<main id="content" class="container-fluid">' . $output . $barcode_print_js . ($view['show_image'] ? _pg_lightbox_assets_once() : '') . '</main>
+    <script>
+        // The bulk actions post what the list has selected (edit_products.php
+        // resolves it with the list\'s own query and the user\'s rights).
+        (function () {
+            var root = document.querySelector(\'.pg-list-table[data-pg-list-table="view_products"]\');
+
+            if (root) {
+                root.addEventListener(\'pg-list-table:selection\', function (event) {
+                    document.form.selection.value = JSON.stringify(event.detail.payload);
+                });
+            }
+        }());
+    </script>
+    ' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
+    ' . output_footer();
     $liveform->remove_form('view_products');
 }

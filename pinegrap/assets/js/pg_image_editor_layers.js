@@ -18,7 +18,7 @@
 (function (X) {
     'use strict';
 
-    var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, find = X.find, t = X.t, el = X.el, section = X.section, button = X.button;
+    var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, find = X.find, t = X.t, el = X.el, section = X.section, button = X.button, pct = X.pct;
 
     // The eight handles of a box and the turning handle. The corners come
     // after the edges, so on a small box their touch targets lie on top.
@@ -491,12 +491,43 @@
         reader.readAsDataURL(file);
     };
 
-    // The layers list's name: the type's own (a text's words), else its
-    // label, numbered when there are more of the type.
-    Editor.prototype.layerName = function (l) {
-        var same = this.doc.layers.filter(function (o) { return o.type === l.type; }), own = kind(l).name ? kind(l).name.call(this, l) : '';
+    // The number in a layer's id ("l3" → 3, M.newId()); -1 for an id
+    // without one.
+    function idNumber(l) {
+        var m = /^l(\d+)$/.exec(String(l.id));
 
-        return own || (t('layer_' + l.type) + ((same.length > 1) ? ' ' + (same.indexOf(l) + 1) : ''));
+        return m ? parseInt(m[1], 10) : -1;
+    }
+
+    // The layers list's name: the type's own (a text's words), else its
+    // label, numbered when there are more of the type. The number follows
+    // the order the layers were added in (their ids), not the stacking
+    // order, so arranging a layer moves its row and keeps its name; ids
+    // without a number come after, in stacking order.
+    Editor.prototype.layerName = function (l) {
+        var own = kind(l).name ? kind(l).name.call(this, l) : '', layers = this.doc.layers, same;
+
+        if (own) {
+            return own;
+        }
+
+        same = layers.filter(function (o) { return o.type === l.type; });
+
+        if (same.length < 2) {
+            return t('layer_' + l.type);
+        }
+
+        same.sort(function (a, b) {
+            var na = idNumber(a), nb = idNumber(b);
+
+            if (na < 0 || nb < 0 || na === nb) {
+                return (na < 0) - (nb < 0) || layers.indexOf(a) - layers.indexOf(b);
+            }
+
+            return na - nb;
+        });
+
+        return t('layer_' + l.type) + ' ' + (same.indexOf(l) + 1);
     };
 
     // The Select tool's panel: the selection's arrange, align, opacity,
@@ -546,13 +577,13 @@
                 });
             };
             var opacity = Math.round(100 * ((picked[0].opacity === undefined) ? 1 : picked[0].opacity));
-            var value = el('span', { class: 'pgie-val', text: opacity + ' %' });
+            var value = el('span', { class: 'pgie-val', text: pct(opacity) });
             var slider = el('input', { type: 'range', class: 'pgie-range', min: '0', max: '100', step: '1', value: String(opacity), 'aria-label': t('opacity') });
 
             slider.addEventListener('input', function () {
                 var n = Number(slider.value);
 
-                value.textContent = n + ' %';
+                value.textContent = pct(n);
                 self.change(function (doc) {
                     picked.forEach(function (o) { find(doc, o.id).opacity = n / 100; });
                 }, 'opacity', true);

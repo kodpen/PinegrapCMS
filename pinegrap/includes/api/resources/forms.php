@@ -165,6 +165,8 @@ function api_form_field_present($row, $options = array()) {
 // One submission, with its values.
 function api_form_submission_present($row, $values) {
 
+	$state = pg_form_payment_state($row);
+
 	return array(
 		'id'                => (int)$row['id'],
 		'form_id'           => (int)$row['page_id'],
@@ -180,6 +182,10 @@ function api_form_submission_present($row, $values) {
 		// Last changed, by the visitor finishing it or by staff editing it in
 		// the panel - what updated_since filters on.
 		'updated_at'        => api_time(isset($row['last_modified_timestamp']) ? $row['last_modified_timestamp'] : 0),
+		// The fee of a designed form (includes/fn/form_payments.php): null
+		// for a record without one; the number once the order is completed.
+		'order_number'      => api_form_submission_order_number($row),
+		'paid'              => ($state === 'none') ? null : ($state === 'paid'),
 		'values'            => $values
 	);
 
@@ -327,6 +333,18 @@ function api_forms_get($params) {
 
 	}
 
+	$fields = api_form_fields_present($id);
+
+	api_ok(api_form_present($row, $fields));
+
+}
+
+// The fields of one form as api_form_field_present() gives them, in form
+// order, with the choices of the three types that have them.
+function api_form_fields_present($id) {
+
+	$id = (int)$id;
+
 	$field_rows = api_rows("SELECT id, name, label, type, required, sort_order, multiple,
 			office_use_only, contact_field, default_value
 		FROM form_fields
@@ -365,7 +383,7 @@ function api_forms_get($params) {
 
 	}
 
-	api_ok(api_form_present($row, $fields));
+	return $fields;
 
 }
 
@@ -533,8 +551,35 @@ function api_form_submissions($params) {
 
 }
 
-// The submission columns every reader of one submission selects.
+// The fee order's number, null without a fee order or before the order is
+// completed (an incomplete order's number is 0).
+function api_form_submission_order_number($row) {
+
+	if (pg_form_payment_state($row) === 'none') {
+
+		return null;
+
+	}
+
+	$number = isset($row['order_number']) ? (string)$row['order_number'] : '';
+
+	return (($number !== '') && ($number !== '0')) ? $number : null;
+
+}
+
+// The submission columns every reader of one submission selects; the fee
+// columns only once the upgrade added them.
 function api_form_submission_select() {
+
+	if (pg_form_payment_ready()) {
+
+		return "SELECT forms.id, forms.page_id, forms.reference_code, forms.complete,
+				forms.contact_id, forms.quiz_score, forms.submitted_timestamp, forms.last_modified_timestamp,
+				forms.order_id, forms.paid_at, orders.order_number
+			FROM forms
+			LEFT JOIN orders ON orders.id = forms.order_id";
+
+	}
 
 	return "SELECT forms.id, forms.page_id, forms.reference_code, forms.complete,
 			forms.contact_id, forms.quiz_score, forms.submitted_timestamp, forms.last_modified_timestamp
@@ -729,6 +774,301 @@ function api_form_submission_update($params) {
 
 }
 
+// The fields of one form, on their own: what a client reads before it sends
+// a submission. The same field objects GET /forms/{id} carries, one page.
+function api_form_fields($params) {
+
+	$app = api_current_app();
+
+	$id = (int)$params['id'];
+
+	$reach = api_form_owner_filter($app['owner'], 'form_fields.page_id');
+
+	$exists = api_row("SELECT form_fields.page_id FROM form_fields
+		WHERE form_fields.page_id = '" . $id . "'" . (($reach !== '') ? " AND " . $reach : '') . "
+		LIMIT 1");
+
+	if ($exists === null) {
+
+		api_fail_not_found(lang('Form'));
+
+	}
+
+	$fields = api_form_fields_present($id);
+
+	api_ok_list($fields, max(1, count($fields)), null);
+
+}
+
+// The field types an answer cannot be sent for: a file is uploaded and a
+// signature is drawn, neither is a string an integration can make up.
+function api_form_unsendable_field_types() {
+
+	return array('file upload', 'signature');
+
+}
+
+// Whether a field takes several answers: a check box group, or a pick list
+// that lets more than one choice be picked.
+function api_form_field_takes_many($field) {
+
+	return ($field['type'] === 'check box')
+		|| (($field['type'] === 'pick list') && ((int)$field['multiple'] === 1));
+
+}
+
+// The answers of a new submission, keyed by field id, from the {name, value}
+// objects sent: a string per field, a list for a field that takes several
+// (its name sent once per choice). Returns the refusal as a string instead
+// when one is not acceptable. Pure: the fields and their choices are given.
+//
+// $fields   field rows (id, name, type, multiple), in form order
+// $choices  field id => the option values the field offers
+function api_form_submission_answers($items, $fields, $choices) {
+
+	$by_name = array();
+
+	foreach ($fields as $field) {
+
+		$name = (string)$field['name'];
+
+		if (($name !== '') && !isset($by_name[$name])) {
+
+			$by_name[$name] = $field;
+
+		}
+
+	}
+
+	$answers = array();
+
+	foreach ((array)$items as $item) {
+
+		if (!is_array($item) || !isset($item['name']) || !is_scalar($item['name'])
+			|| (array_key_exists('value', $item) && !is_scalar($item['value']) && ($item['value'] !== null))) {
+
+			return lang('Each value must be an object of {name, value}.');
+
+		}
+
+		$name = trim((string)$item['name']);
+
+		if (!isset($by_name[$name])) {
+
+			return lang(array('string' => 'This form has no field called {var:1}.', 'vars' => mb_substr($name, 0, 60)));
+
+		}
+
+		$field = $by_name[$name];
+
+		if (in_array($field['type'], api_form_unsendable_field_types(), true)) {
+
+			return lang(array('string' => 'The field {var:1} takes a file or a drawn signature and cannot be sent through the API.', 'vars' => $name));
+
+		}
+
+		$value = trim(str_replace("\r\n", "\n", isset($item['value']) ? (string)$item['value'] : ''));
+
+		if (mb_strlen($value) > 10000) {
+
+			return lang(array('string' => 'The answer to {var:1} is longer than the 10000 characters accepted.', 'vars' => $name));
+
+		}
+
+		$key = (int)$field['id'];
+
+		if (($value !== '') && pg_cf_type_has_options($field['type'])
+			&& !in_array($value, isset($choices[$key]) ? $choices[$key] : array(), true)) {
+
+			return lang(array('string' => 'The answer to {var:1} is not one of the choices the field offers.', 'vars' => $name));
+
+		}
+
+		if (api_form_field_takes_many($field)) {
+
+			if (!isset($answers[$key])) { $answers[$key] = array(); }
+
+			if ($value !== '') { $answers[$key][] = $value; }
+
+			continue;
+
+		}
+
+		if (isset($answers[$key])) {
+
+			return lang(array('string' => 'The field {var:1} takes one answer and was sent more than once.', 'vars' => $name));
+
+		}
+
+		$answers[$key] = $value;
+
+	}
+
+	return $answers;
+
+}
+
+// A new submission, as a member of staff makes one on the Add Submitted Form
+// screen: through the same checks and the same write
+// (includes/fn/submitted_form_writes.php), with the owner as the submitter.
+// The answers are held in a live form for the length of the call, because the
+// screen's checks and its value writer read them from one.
+function api_form_submission_create($params) {
+
+	$app = api_current_app();
+
+	$id = (int)$params['id'];
+
+	$reach = api_form_owner_filter($app['owner'], 'page.page_id');
+
+	$form = api_row("SELECT page.page_id, page.page_name, custom_form_pages.form_name
+		FROM page
+		LEFT JOIN custom_form_pages ON custom_form_pages.page_id = page.page_id
+		WHERE page.page_id = '" . $id . "' AND " . pg_form_page_sql('page') . (($reach !== '') ? " AND " . $reach : '') . "
+		LIMIT 1");
+
+	if ($form === null) {
+
+		api_fail_not_found(lang('Form'));
+
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_writes.php');
+	include_once(PG_FUNCTIONS_DIR . '/liveform.class.php');
+
+	$fields = pg_submitted_form_fields($id);
+
+	$choices = array();
+
+	foreach (api_rows("SELECT form_field_id, value FROM form_field_options WHERE page_id = '" . $id . "'") as $option) {
+
+		$choices[(int)$option['form_field_id']][] = (string)$option['value'];
+
+	}
+
+	$answers = api_form_submission_answers(isset($params['values']) ? $params['values'] : array(), $fields, $choices);
+
+	if (!is_array($answers)) {
+
+		api_fail_validation($answers, 'values');
+
+	}
+
+	$complete = array_key_exists('complete', $params) ? (bool)$params['complete'] : true;
+
+	$pretty_urls = check_if_pretty_urls_are_enabled($id);
+
+	// The forms scope is held by roles below the user role and by a user with
+	// the forms right, and the row rule above has checked the folder: the
+	// people the screen shows the office use only fields to.
+	$office_use_only_access = true;
+
+	$liveform = new liveform('api_form_submission', $id);
+
+	$liveform->remove_form();
+
+	foreach ($answers as $field_id => $value) {
+
+		$liveform->assign_field_value($field_id, $value);
+
+	}
+
+	pg_submitted_form_create_check($liveform, $fields, $id, $complete, $office_use_only_access, $pretty_urls, array());
+
+	$errors = $liveform->field_error_texts();
+
+	if ($errors) {
+
+		$liveform->remove_form();
+
+		$field_id = key($errors);
+
+		$message = (string)current($errors);
+
+		foreach ($fields as $field) {
+
+			if (((string)$field['id'] === (string)$field_id) && ($message === '')) {
+
+				$message = lang(array('string' => '{var:1} is required.', 'vars' => (string)$field['name']));
+
+			}
+
+		}
+
+		api_fail_validation($message, 'values');
+
+	}
+
+	api_dry_run_stop('created', 'form_submission', array('form_id' => $id, 'values' => count($answers), 'complete' => $complete));
+
+	$created = pg_submitted_form_create($liveform, $fields, $id, $complete, (int)$app['owner']['id'], $office_use_only_access, $pretty_urls, array(), !empty($params['send_notifications']));
+
+	$liveform->remove_form();
+
+	if ($created === false) {
+
+		api_fail(500, 'server_error', lang('The submission could not be saved.'));
+
+	}
+
+	$form_name = ((string)$form['form_name'] !== '') ? (string)$form['form_name'] : (string)$form['page_name'];
+
+	log_activity(lang(array(
+		'string' => 'The submitted form ({var:1}) was created through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array($created['reference_code'], $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	// A completed record tells whoever listens, as a visitor's submission
+	// does; a record saved for later is not an enquiry yet.
+	if ($complete) {
+
+		pg_announce('form.submitted', array(
+			'id'             => (int)$created['id'],
+			'form_id'        => $id,
+			'form_name'      => $form_name,
+			'reference_code' => $created['reference_code'],
+			'contact_id'     => null
+		));
+
+	}
+
+	$row = api_form_submission_owned($id, $created['id']);
+
+	$values = api_form_submission_values(array($created['id']));
+
+	api_ok(api_form_submission_present($row, isset($values[(int)$created['id']]) ? $values[(int)$created['id']] : array()), 201);
+
+}
+
+// Deleting a submission through the delete the submitted form screens share,
+// with its files, signatures, views and comment thread.
+function api_form_submission_delete($params) {
+
+	$app = api_current_app();
+
+	$row = api_form_submission_owned($params['id'], $params['submission_id']);
+
+	$id = (int)$row['id'];
+
+	api_dry_run_stop('deleted', 'form_submission', array('id' => $id, 'form_id' => (int)$row['page_id']));
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_writes.php');
+
+	if (pg_submitted_form_delete($id) === false) {
+
+		api_fail(500, 'server_error', lang('The submission could not be deleted.'));
+
+	}
+
+	log_activity(lang(array(
+		'string' => 'The submitted form ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array((string)$row['reference_code'], $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	api_ok(array('id' => $id, 'deleted' => true));
+
+}
+
 // What api_form_present() returns, declared for the OpenAPI document. fields is
 // carried by the single-form endpoint only. name is the page's name, a DEFAULT
 // NULL column that every create path writes, so not nullable
@@ -785,6 +1125,8 @@ function api_form_submission_schema() {
 		'submitted_at'      => 'string?',
 		'submitted_at_unix' => 'integer',
 		'updated_at'        => 'string?',
+		'order_number'      => 'string?',
+		'paid'              => 'boolean?',
 		'values'            => array(array(
 			'field_id' => 'integer',
 			'name'     => 'string',

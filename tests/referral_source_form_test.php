@@ -76,18 +76,16 @@ function test_referral_source_form_error()
 
 function test_referral_source_screens_refuse_blank_values()
 {
-	$queries = array('add_referral_source.php' => 'INSERT INTO referral_sources', 'edit_referral_source.php' => 'UPDATE referral_sources SET');
-
-	foreach ($queries as $file => $query) {
+	foreach (array('add_referral_source.php', 'edit_referral_source.php') as $file) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 		$check = strpos($source, 'pg_referral_source_form_error($values, $others)');
 		pg_assert_true($check !== false, $file . ' refuses a blank name or code');
-		pg_assert_true($check < strpos($source, '$result = db_q($query, array($values[\'name\']'), $file . ' refuses them before the save');
+		pg_assert_true($check < strpos($source, 'pg_store_referral_source_save('), $file . ' refuses them before the save');
 	}
 
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_referral_source.php');
 	pg_assert_contains('<button type="submit" name="submit_delete" value="Delete" formnovalidate', $edit, 'Delete is not blocked by an empty required box');
-	pg_assert_true(strpos($edit, 'pg_referral_source_form_error($values, $others)') > strpos($edit, 'DELETE FROM referral_sources WHERE id = ?'), 'Delete is never refused for a blank value');
+	pg_assert_true(strpos($edit, 'pg_referral_source_form_error($values, $others)') > strpos($edit, 'pg_store_referral_source_delete($id)'), 'Delete is never refused for a blank value');
 }
 
 function test_referral_source_form_error_sort_order_range()
@@ -144,7 +142,8 @@ function test_referral_source_screens_check_others_and_notice()
 	}
 
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_referral_source.php');
-	pg_assert_contains('WHERE id <> ?', $edit, 'edit leaves its own row out of the clash check');
+	pg_assert_contains('pg_store_referral_source_others($id)', $edit, 'edit leaves its own row out of the clash check');
+	pg_assert_contains('WHERE id <> ?', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/store_lookups.php'), 'the clash check reads every other row');
 
 	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_referral_sources.php');
 	pg_assert_contains("'sort_order'", $list, 'the list sorts by sort order');

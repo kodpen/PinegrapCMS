@@ -25,4 +25,4 @@ description: Plan (owner 2026-11-03): the panel's own list table driver replacin
 - None.
 
 ## Where to start?
-- TD1 is `free`; every other step opens when the steps its line names after have landed.
+- A step opens when the steps its line names after have landed (`table-driver-steps.md`, `table-driver-steps-2.md`).

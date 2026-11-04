@@ -864,8 +864,7 @@ function ws_notes_filter_sql($search, $updated_since = 0, $shared_at = '')
     $search = trim(mb_substr((string) $search, 0, 100));
 
     if ($search !== '') {
-        $like = e(addcslashes($search, '%_\\'));
-        $filter .= " AND (n.title LIKE '%" . $like . "%' OR n.body LIKE '%" . $like . "%')";
+        $filter .= ' AND ' . ws_search_like_sql($search, array('n.title', 'n.body'), pg_list_search_connection_charset());
     }
 
     if ((int) $updated_since > 0) {

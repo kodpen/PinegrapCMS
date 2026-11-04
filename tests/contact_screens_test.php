@@ -24,14 +24,16 @@ function contact_screens_source($path)
 
 function test_contact_screens_organize_reads_checked_boxes()
 {
-	$source = contact_screens_source('organize_contacts.php');
+	// The Organize Selected dialog of the contacts list.
+	$source = contact_screens_source('view_contacts.php');
 
 	// With one group the form's named member is the checkbox itself and has
 	// no length, so a loop over .length drops the selection.
 	pg_assert_true(strpos($source, 'add_to_contact_groups.length') === false, 'organize: no loop over the add boxes by .length');
 	pg_assert_true(strpos($source, 'remove_from_contact_groups.length') === false, 'organize: no loop over the remove boxes by .length');
-	pg_assert_true(strpos($source, 'input[name="add_to_contact_groups"]:checked') !== false, 'organize: ticked add boxes read by selector');
-	pg_assert_true(strpos($source, 'input[name="remove_from_contact_groups"]:checked') !== false, 'organize: ticked remove boxes read by selector');
+	pg_assert_true(strpos($source, 'dialog.querySelectorAll(\\\'input[name="\\\' + name + \\\'"]:checked\\\')') !== false, 'organize: ticked boxes read by selector');
+	pg_assert_true(strpos($source, 'ticked(\\\'add_to_contact_groups\\\')') !== false, 'organize: ticked add boxes read');
+	pg_assert_true(strpos($source, 'ticked(\\\'remove_from_contact_groups\\\')') !== false, 'organize: ticked remove boxes read');
 }
 
 function test_contact_screens_description_not_capped()
@@ -110,4 +112,42 @@ function test_contact_screens_landmarks_translated()
 		pg_assert_true(strpos($source, 'aria-label="Button Bar"') === false, $path . ': Button Bar translated');
 		pg_assert_true(strpos($source, 'aria-label="data edit buttons') === false, $path . ': data edit buttons translated');
 	}
+}
+
+// The Material Icons ligature beside a label is hidden from screen readers,
+// so Save is not read as "save Kaydet"; a plain span carries no href.
+function test_contact_screens_icon_ligatures_hidden()
+{
+	foreach (array('edit_contact.php', 'edit_contact_group.php', 'includes/forms/contact_form.php') as $file) {
+		$source = contact_screens_source($file);
+
+		pg_assert_true((bool) preg_match_all('/<span class="material-icons[^"]*"[^>]*>/', $source, $spans), $file . ': ligatures found');
+		foreach ($spans[0] as $tag) {
+			pg_assert_true(strpos($tag, 'aria-hidden="true"') !== false, $file . ': ligature hidden: ' . $tag);
+		}
+
+		pg_assert_false((bool) preg_match('/<span [^>]*href=/', $source), $file . ': no href on a span');
+	}
+}
+
+// The group list names the By hand / By rule column Membership and puts
+// Members over the member count, as the cells come.
+function test_contact_screens_group_list_headings_match_cells()
+{
+	$source = contact_screens_source('view_contact_groups.php');
+
+	pg_assert_true((bool) preg_match("/<td class=\"align-middle\">' \\. \\\$output_kind \\. '<\\/td>\\s*<td class=\"align-middle text-end\">' \\. \\\$output_members \\. '<\\/td>/", $source), 'cells: kind, then members');
+	pg_assert_true((bool) preg_match("/<th>' \\. lang\\('Membership'\\) \\. '<\\/th>\\s*<th class=\"text-end\">' \\. lang\\('Members'\\) \\. '<\\/th>/", $source), 'headings: Membership, then Members');
+	pg_assert_false(strpos($source, "lang('Contacts') . '</th>") !== false, 'no Contacts heading over the count');
+}
+
+// A save opened without a send to (the hidden field posts it empty) ends on
+// the contacts list and announces itself there.
+function test_contact_screens_edit_contact_saved_notice_without_send_to()
+{
+	$source = contact_screens_source('edit_contact.php');
+
+	pg_assert_contains("\$send_to = (isset(\$_REQUEST['send_to']) && is_string(\$_REQUEST['send_to'])) ? \$_REQUEST['send_to'] : '';", $source, 'send to read as a string');
+	pg_assert_contains("if ((\$send_to === '') || (mb_strpos(\$send_to, 'view_contacts.php') !== false)) {", $source, 'empty send to counts as the list');
+	pg_assert_false(strpos($source, "(isset(\$_REQUEST['send_to']) == FALSE) ||") !== false, 'the empty field no longer hides the notice');
 }

@@ -95,6 +95,7 @@ if ($action === 'logout_all') {
     unset($_COOKIE['software']['auth']);
     session_unset();
     session_destroy();
+    pg_session_end_clear_cache();
     header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php');
     exit();
 }
@@ -152,6 +153,7 @@ if ($action === 'revoke_device') {
                 unset($_COOKIE['software']['auth']);
                 session_unset();
                 session_destroy();
+                pg_session_end_clear_cache();
                 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php');
                 exit();
             }

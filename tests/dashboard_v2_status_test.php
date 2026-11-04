@@ -76,6 +76,67 @@ function test_dashboard_v2_status_card_draws_gauge_chips_and_details()
 	pg_assert_contains('id="changelog_modal"', $card, 'the dialog comes with the card');
 }
 
+// Widget 2's order: failed, warning, the priority checks, then the rest.
+function test_dashboard_v2_status_order()
+{
+	$keys = array_column(pg_system_status_order(dashboard_v2_status_checks()), 'key');
+
+	pg_assert_same(array('Directory File Integrity', 'SSL', 'Backup', 'Firewall', 'PHP Version', 'Event subscriptions'), $keys);
+}
+
+/**
+ * A calm check for the folding tests.
+ *
+ * @param string $name
+ * @param string $state
+ * @param array  $detail
+ * @return array
+ */
+function dashboard_v2_status_extra_check($name, $state = 'ok', $detail = array())
+{
+	return array('key' => $name, 'icon' => 'bi-check', 'state' => $state, 'title' => $name, 'label' => $name, 'message' => $name . '.', 'value' => 'OK', 'generic' => true, 'href' => '', 'priority' => false, 'job' => false, 'detail' => $detail);
+}
+
+// Past eight chips the rest fold behind "+n more"; a folded panel gets its
+// own ids, so no id repeats on the page.
+function test_dashboard_v2_status_card_folds_chips_past_eight()
+{
+	$checks = dashboard_v2_status_checks();
+	$checks[] = dashboard_v2_status_extra_check('One');
+	$checks[] = dashboard_v2_status_extra_check('Two');
+	$checks[] = dashboard_v2_status_extra_check('Three');
+	$checks[] = dashboard_v2_status_extra_check('Four', 'info', array(array('label' => 'Row', 'state' => 'ok', 'when' => '')));
+
+	$ordered = pg_system_status_order($checks);
+	$chips = pg_dashboard_v2_status_chips($checks, 2);
+
+	pg_assert_true(strpos($chips, pg_system_status_chips(array_slice($ordered, 0, 8), 2)) === 0, 'the first eight are drawn as widget 2 draws them');
+	pg_assert_contains('<details class="pg-dash-status-more"><summary>+2 more</summary>', $chips, 'two folded, no tone for calm checks');
+	pg_assert_contains('<div class="pg-dash-status-more-list">' . pg_system_status_chips(array_slice($ordered, 8), 2, 'system_status_more_') . '</div></details>', $chips, 'the folded two in their own row box');
+	pg_assert_contains('id="system_status_more_2"', $chips, 'a folded panel has its own id');
+
+	preg_match_all('/\sid="([^"]+)"/', $chips, $ids);
+	pg_assert_same(count($ids[1]), count(array_unique($ids[1])), 'no id twice');
+
+	$six = pg_dashboard_v2_status_chips(dashboard_v2_status_checks(), 2);
+	pg_assert_same(pg_system_status_chips(dashboard_v2_status_checks(), 2), $six, 'six checks: nothing folds');
+}
+
+// A folded problem tints the "+n more" chip.
+function test_dashboard_v2_status_card_folded_tone()
+{
+	$failing = array();
+	for ($i = 1; $i <= 9; $i++) {
+		$failing[] = dashboard_v2_status_extra_check('Fail ' . $i, 'fail');
+	}
+
+	pg_assert_contains('<summary data-tone="bad">+1 more</summary>', pg_dashboard_v2_status_chips($failing, 2));
+
+	$failing[8]['state'] = 'warn';
+	$failing[] = dashboard_v2_status_extra_check('Calm');
+	pg_assert_contains('<summary data-tone="warn">+2 more</summary>', pg_dashboard_v2_status_chips($failing, 2), 'a warning without a failure');
+}
+
 function test_dashboard_v2_status_look_falls_back_to_the_site()
 {
 	$look = pg_dashboard_v2_look('', array('widget_theme' => 'neon', 'panel_backdrop' => 'auto'));

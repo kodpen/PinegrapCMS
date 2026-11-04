@@ -843,7 +843,7 @@ function get_email_campaign_profile_options($exclude_ids = array(), $keep_id = 0
  *                       subscription_confirm_url (subscription payment failed)
  * @return string
  */
-function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'tracking_url', 'subscription_card_url', 'subscription_confirm_url'))
+function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'tracking_url', 'subscription_card_url', 'subscription_confirm_url', 'booking_manage_url'))
 {
     $body = (string) $body;
     $names = array();
@@ -870,8 +870,11 @@ function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'track
 // Create function that is used to see if auto email campaigns need to be created after a specific action has occurred
 // and then create them if necessary.
 // Properties:
-// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_review_request", "order_shipped", "order_delivered", "product_ordered", "subscription_renewed", "subscription_failed", "subscription_cancelled", "subscription_price_changed"
+// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_review_request", "order_shipped", "order_delivered", "product_ordered", "subscription_renewed", "subscription_failed", "subscription_cancelled", "subscription_price_changed", "booking_confirmed", "booking_reminder", "booking_rescheduled", "booking_cancelled"
 // action_item_id: The id of item that is related to the action (e.g. the calendar event id)
+// campaign_item_id: The id stored on the campaign when it differs from the profiles'
+// action_item_id: a booking's mail is made from the profiles of item 0 and keeps the
+// booking's id, so the send attaches its .ics.
 // calendar_event_recurrence_number
 // order_id: Used by the order_abandoned and order_review_request actions.
 // contact_id: The ID of the contact that generated the action.
@@ -886,6 +889,7 @@ function create_auto_email_campaigns($properties)
     // caller left out.
     $properties = $properties + array(
         'action_item_id'                   => '',
+        'campaign_item_id'                 => null,
         'calendar_event_recurrence_number' => '',
         'order_id'                         => '',
         'contact_id'                       => '',
@@ -895,6 +899,7 @@ function create_auto_email_campaigns($properties)
 
     $action = $properties['action'];
     $action_item_id = $properties['action_item_id'];
+    $campaign_item_id = ($properties['campaign_item_id'] !== null) ? (int) $properties['campaign_item_id'] : $action_item_id;
     $calendar_event_recurrence_number = $properties['calendar_event_recurrence_number'];
     $order_id = $properties['order_id'];
     $contact_id = $properties['contact_id'];
@@ -979,7 +984,7 @@ function create_auto_email_campaigns($properties)
     foreach ($email_campaign_profiles as $email_campaign_profile) {
         // If the purpose is commercial and there is a contact email and the contact is opted-out,
         // then we don't want to send email to recipient, so skip to the next profile.
-        if ($email_campaign_profile['purpose'] == 'commercial' and $contact['email_address'] and $contact['opt_in'] != 1) {
+        if ($email_campaign_profile['purpose'] == 'commercial' and !empty($contact['email_address']) and $contact['opt_in'] != 1) {
             continue;
         }
         $subject = $email_campaign_profile['subject'];
@@ -1112,8 +1117,9 @@ function create_auto_email_campaigns($properties)
 				</body>';
             $body = preg_replace('/<\/body>/i', $footer, $body);
         }
-        // Wrap long lines (RFC 821).
-        $body = wordwrap($body, 900, "\n", 1);
+        // No hard wrap: email() sends through PHPMailer, which encodes a line
+        // over 998 characters as quoted-printable; a cut wrap split words,
+        // URLs, multibyte characters and inline scripts.
         // If there are mail-merge fields, then replace in body.
         if ($fields) {
             $body = replace_variables(array(
@@ -1247,7 +1253,7 @@ function create_auto_email_campaigns($properties)
 
                     '" . $action . "',
 
-                    '" . $action_item_id . "',
+                    '" . e($campaign_item_id) . "',
 
                     '" . $calendar_event_recurrence_number . "',
 
@@ -1343,6 +1349,18 @@ function create_auto_email_campaigns($properties)
                     break;
                 case 'subscription_price_changed':
                     $log_action = lang('subscription price changed');
+                    break;
+                case 'booking_confirmed':
+                    $log_action = lang('booking confirmed');
+                    break;
+                case 'booking_reminder':
+                    $log_action = lang('booking reminder');
+                    break;
+                case 'booking_rescheduled':
+                    $log_action = lang('booking rescheduled');
+                    break;
+                case 'booking_cancelled':
+                    $log_action = lang('booking cancelled');
                     break;
                 default:
                     $log_action = $action;

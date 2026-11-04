@@ -247,7 +247,8 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'id',       'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'op',       'in' => 'body', 'type' => 'enum', 'values' => array('set', 'adjust'), 'required' => true),
-				array('name' => 'quantity', 'in' => 'body', 'type' => 'int', 'min' => -1000000, 'max' => 1000000, 'required' => true, 'description' => 'The new quantity for set, the signed change for adjust.')
+				array('name' => 'quantity', 'in' => 'body', 'type' => 'int', 'min' => -1000000, 'max' => 1000000, 'required' => true, 'description' => 'The new quantity for set, the signed change for adjust.'),
+				array('name' => 'location', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'On a site that keeps stock per location: the location whose units change (left out or 0: the default location). An adjust stops at 0 there and takes nothing from another location; the product\'s quantity is the sum of its locations. A site without locations refuses any other value with 422 location.')
 			)
 		),
 
@@ -262,7 +263,58 @@ function api_schema() {
 			'summary' => 'Set or adjust stock for many products',
 			'description' => 'Up to 200 items in one call, because marketplaces synchronise stock in batches rather than one product at a time. Each item is reported on separately: one bad product id does not throw the rest away, and an adjust against a product that does not track stock is reported as not_tracked rather than switching tracking on. A bundle is reported as bundle: its stock follows the products in it.',
 			'params'  => array(
-				array('name' => 'items', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'integer', 'sku' => 'string', 'barcode' => 'string', 'op' => 'string', 'quantity' => 'integer'), 'max_items' => 200, 'required' => true, 'description' => 'Objects of {id, op, quantity}. sku is accepted as an alias for id; barcode looks the product up by its EAN/UPC. quantity is a whole number from -1000000 to 1000000, as for one product; an item outside that is reported as invalid and the others are applied.')
+				array('name' => 'items', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'integer', 'sku' => 'string', 'barcode' => 'string', 'op' => 'string', 'quantity' => 'integer', 'location' => 'integer'), 'max_items' => 200, 'required' => true, 'description' => 'Objects of {id, op, quantity}. sku is accepted as an alias for id; barcode looks the product up by its EAN/UPC. quantity is a whole number from -1000000 to 1000000, as for one product; an item outside that is reported as invalid and the others are applied. location names the stock location as for one product; an unknown one is reported as invalid.')
+			)
+		),
+
+		array(
+			'id'      => 'inventory.locations',
+			'method'  => 'GET',
+			'path'    => '/inventory/locations',
+			'scope'   => 'products:read',
+			'handler' => 'api_inventory_locations_list',
+			'returns' => array('list' => 'StockLocation'),
+			'summary' => 'Stock locations',
+			'description' => 'The warehouses and shops the site keeps stock in, in one page: the default first, then in their order. A location is never deleted, only turned off (enabled false): its units still count in a product\'s quantity, and it takes no transfer in. Empty on a site that keeps one stock per product. The id is what location means on the other stock endpoints.',
+			'params'  => array(
+				array('name' => 'enabled', 'in' => 'query', 'type' => 'bool', 'description' => 'Only the locations that are on, or only those that are off.')
+			)
+		),
+
+		array(
+			'id'      => 'inventory.list',
+			'method'  => 'GET',
+			'path'    => '/inventory',
+			'scope'   => 'products:read',
+			'handler' => 'api_inventory_list',
+			'returns' => array('list' => 'StockLevel'),
+			'summary' => 'Stock levels per location',
+			'description' => 'The products that track stock, by id, cursor paged, with quantity (the total, the figure GET /products shows and marketplaces receive) and locations: the units at each location, 0 where the product holds none. A product that has not been changed since the first location was added holds its whole quantity at the default location. On a site without locations, locations is empty.',
+			'params'  => array(
+				array('name' => 'location',      'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only this location\'s units in locations (0 or left out: every location). An id that is not a location is refused with 422 location.'),
+				array('name' => 'product_id',    'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only this product.'),
+				array('name' => 'in_stock',      'in' => 'query', 'type' => 'bool', 'description' => 'With location: only the products that hold units there (true) or none (false). Without it: by the total.'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'inventory.transfer',
+			'method'  => 'POST',
+			'path'    => '/inventory/transfer',
+			'scope'   => 'inventory:write',
+			'handler' => 'api_inventory_transfer',
+			'dry_run' => true,
+			'returns' => 'StockTransfer',
+			'summary' => 'Move stock between locations',
+			'description' => 'Moves units of one product from one location to another, as the Transfer dialog of the stock history does: both locations change or neither does, and the product\'s quantity stays the same, so no inventory.changed is announced and no marketplace is told. Both moves carry the same ref in the stock history. Refusals: 422 location when from or to is not a location, 422 validation_failed when they are the same; 409 location_disabled when the location the units go to is turned off, 409 not_enough when from holds fewer units than quantity (nothing is taken from another location), 409 not_tracked when the product does not track stock, 409 bundle for a bundle, 409 no_locations on a site without locations, 409 refused when the location the units go to cannot hold that many. Send an Idempotency-Key so a retried transfer is not made twice.',
+			'params'  => array(
+				array('name' => 'product_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'from',       'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The location the units leave (GET /inventory/locations).'),
+				array('name' => 'to',         'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The location the units go to; it has to be on.'),
+				array('name' => 'quantity',   'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 1000000, 'required' => true, 'description' => 'Whole units, 1 or more.'),
+				array('name' => 'note',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Shown beside both moves in the stock history.')
 			)
 		),
 
@@ -606,7 +658,7 @@ function api_schema() {
 			'handler' => 'api_orders_list',
 			'returns' => array('list' => 'Order'),
 			'summary' => 'List orders',
-			'description' => 'Cursor paged and ordered by the order date, oldest first, so updated_since walks new orders in one direction without repeating any; sort=placed_desc lists the newest first and resumes the same way. modified_since lists the orders changed at or after a moment, oldest change first, so a client asks what changed since its last read and walks forward: a status change, a cancellation, a restore, a refund, notes, shipping or an export moves an order\'s modified_at. A cursor works only under the sort (or the modified_since listing) it was made for; under another one it is 400 invalid_cursor. Each order carries type (online, local for a counter sale, or marketplace), cancelled_at (null unless cancelled), cancellation_reason (\'\' when none) and refund_status (\'\', pending, refunded, failed or manual_required); each is null on a site whose database lacks its column.',
+			'description' => 'Cursor paged and ordered by the order date, oldest first, so updated_since walks new orders in one direction without repeating any; sort=placed_desc lists the newest first and resumes the same way. modified_since lists the orders changed at or after a moment, oldest change first, so a client asks what changed since its last read and walks forward: a status change, a cancellation, a restore, a refund, notes, shipping or an export moves an order\'s modified_at. A cursor works only under the sort (or the modified_since listing) it was made for; under another one it is 400 invalid_cursor. Each order carries type (online, local for a counter sale, or marketplace), cancelled_at (null unless cancelled), cancellation_reason (\'\' when none), refund_status (\'\', pending, refunded, failed or manual_required) and the EU VAT id the EU VAT service (VIES) confirmed at checkout: vat_id (\'\' when none; the order is then tax-exempt under the reverse charge), vat_checked_at (when VIES confirmed it, null when never) and vat_request_id (the VIES consultation number, \'\' when none); each is null on a site whose database lacks its column.',
 			'params'  => array(
 				array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only orders placed at or after this moment.'),
 				array('name' => 'date_to',       'in' => 'query', 'type' => 'datetime', 'description' => 'Only orders placed at or before this moment. A date alone (YYYY-MM-DD) counts that day whole, to 23:59:59 in the site\'s time zone; a value with a time is that moment.'),
@@ -651,7 +703,7 @@ function api_schema() {
 			'handler' => 'api_orders_get',
 			'returns' => 'Order',
 			'summary' => 'One order, with its lines',
-			'description' => 'The order with its lines and its shipments, one per shipping address. Each shipment lists its tracking_numbers and, in parcels, every number with the carrier (a key such as yurtici, or null when none is known), carrier_name, tracking_url (the carrier\'s own page, or the one built from the carrier\'s tracking address; null when neither is known), status (created, in_transit, out_for_delivery, delivered, returned or exception) and shipped_at / delivered_at (UTC, null when not known) - the carrier and link the order screen shows. labels lists the carrier labels made for the address, newest first: driver (the label service), number (the tracking number, null when none), reference (the shipment at the service), barcode, format (pdf, zpl or svg), state (active or cancelled), is_return, created_at, cancelled_at, pickup_ref (the carrier\'s confirmation of a booked pickup, null when none), pickup_at (the start of the booked pickup window, UTC, null when none), file_kept (false once the kept copy was removed after its retention time) and document_url (GET /orders/{id}/shipments/labels/{label_id}/document); the document, which carries the recipient\'s address, is never inline. The order.shipped and order.delivered webhooks carry the same parcels for the address they are about; order.shipped from a marketplace import carries only the parcel it announces. Like the list, the order carries type (online, local or marketplace), cancelled_at, cancellation_reason and refund_status (\'\', pending, refunded, failed or manual_required), each null on a site whose database lacks its column.',
+			'description' => 'The order with its lines and its shipments, one per shipping address. Each shipment lists its tracking_numbers and, in parcels, every number with the carrier (a key such as yurtici, or null when none is known), carrier_name, tracking_url (the carrier\'s own page, or the one built from the carrier\'s tracking address; null when neither is known), status (created, in_transit, out_for_delivery, delivered, returned or exception) and shipped_at / delivered_at (UTC, null when not known) - the carrier and link the order screen shows. labels lists the carrier labels made for the address, newest first: driver (the label service), number (the tracking number, null when none), reference (the shipment at the service), barcode, format (pdf, zpl or svg), state (active or cancelled), is_return, created_at, cancelled_at, pickup_ref (the carrier\'s confirmation of a booked pickup, null when none), pickup_at (the start of the booked pickup window, UTC, null when none), file_kept (false once the kept copy was removed after its retention time) and document_url (GET /orders/{id}/shipments/labels/{label_id}/document); the document, which carries the recipient\'s address, is never inline. The order.shipped and order.delivered webhooks carry the same parcels for the address they are about; order.shipped from a marketplace import carries only the parcel it announces. Like the list, the order carries type (online, local or marketplace), cancelled_at, cancellation_reason, refund_status (\'\', pending, refunded, failed or manual_required), vat_id, vat_checked_at and vat_request_id, each null on a site whose database lacks its column.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -1505,6 +1557,408 @@ function api_schema() {
 
 
 		array(
+			'id' => 'store.arrival_dates.list',
+			'method' => 'GET',
+			'path' => '/store/arrival-dates',
+			'scope' => 'orders:read',
+			'handler' => 'api_store_arrival_dates_list',
+			'returns' => array('list' => 'StoreArrivalDate'),
+			'summary' => 'Arrival dates',
+			'description' => 'The arrival dates checkout offers for special days (an order placed before a shipping method\'s cut-off arrives on the date), with their shipping cut-offs, in checkout order. Dates are YYYY-MM-DD, null when unset. One page.',
+			'params' => array()
+		),
+
+		array(
+			'id' => 'store.arrival_dates.get',
+			'method' => 'GET',
+			'path' => '/store/arrival-dates/{id}',
+			'scope' => 'orders:read',
+			'handler' => 'api_store_arrival_dates_get',
+			'returns' => 'StoreArrivalDate',
+			'summary' => 'One of the arrival dates',
+			'description' => 'One row as GET /store/arrival-dates lists it.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.arrival_dates.create',
+			'method' => 'POST',
+			'path' => '/store/arrival-dates',
+			'scope' => 'store:write',
+			'handler' => 'api_store_arrival_dates_create',
+			'dry_run' => true,
+			'returns' => 'StoreArrivalDate',
+			'status' => 201,
+			'summary' => 'Create an arrival date',
+			'description' => 'Adds an arrival date, as the arrival date screen does. The screen\'s checks decide: a description with < or > (checkout prints it as HTML), a blank name, a missing or impossible date, an end before the start are 422; so is a shipping cut-off the screen would leave out.',
+			'params' => array(
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The name checkout shows.'),
+				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The line under the name at checkout.'),
+				array('name' => 'code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The code orders keep.'),
+				array('name' => 'arrival_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'The day the order arrives, YYYY-MM-DD. Required unless custom is true.'),
+				array('name' => 'start_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'required' => true, 'description' => 'The first day checkout offers it, YYYY-MM-DD.'),
+				array('name' => 'end_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'required' => true, 'description' => 'The last day checkout offers it, YYYY-MM-DD, not before start_date.'),
+				array('name' => 'enabled', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether checkout offers it. Defaults to true.'),
+				array('name' => 'default', 'in' => 'body', 'type' => 'bool', 'description' => 'true makes it the arrival date checkout selects first and takes the switch off every other one.'),
+				array('name' => 'sort_order', 'in' => 'body', 'type' => 'int', 'min' => -32768, 'max' => 32767, 'description' => 'Its place in the checkout list, smallest first.'),
+				array('name' => 'custom', 'in' => 'body', 'type' => 'bool', 'description' => 'true: the customer enters the day at checkout; arrival_date is then not needed.'),
+				array('name' => 'custom_maximum_arrival_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'With custom: the latest day a customer may enter, YYYY-MM-DD; empty for none.'),
+				array('name' => 'shipping_cutoffs', 'in' => 'body', 'type' => 'list', 'of' => array('shipping_method_id' => 'integer', 'date_and_time' => 'string'), 'max_items' => 100, 'description' => 'Replaces the shipping cut-offs: per shipping method, the last moment (YYYY-MM-DDTHH:MM, site time) an order can be placed to arrive on the date, between start_date and end_date, one per method. An empty list removes them; left out, they stay as stored.')
+			)
+		),
+
+		array(
+			'id' => 'store.arrival_dates.update',
+			'method' => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path' => '/store/arrival-dates/{id}',
+			'scope' => 'store:write',
+			'handler' => 'api_store_arrival_dates_update',
+			'dry_run' => true,
+			'returns' => 'StoreArrivalDate',
+			'summary' => 'Change an arrival date',
+			'description' => 'Only the fields sent change; shipping_cutoffs, when sent, replaces them all. Without shipping_cutoffs the stored ones stay, and new dates that leave one of them out are 422. PATCH is accepted as well; on an IIS server send POST.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The name checkout shows.'),
+				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The line under the name at checkout.'),
+				array('name' => 'code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The code orders keep.'),
+				array('name' => 'arrival_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'The day the order arrives, YYYY-MM-DD. Required unless custom is true.'),
+				array('name' => 'start_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'The first day checkout offers it, YYYY-MM-DD.'),
+				array('name' => 'end_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'The last day checkout offers it, YYYY-MM-DD, not before start_date.'),
+				array('name' => 'enabled', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether checkout offers it. Defaults to true.'),
+				array('name' => 'default', 'in' => 'body', 'type' => 'bool', 'description' => 'true makes it the arrival date checkout selects first and takes the switch off every other one.'),
+				array('name' => 'sort_order', 'in' => 'body', 'type' => 'int', 'min' => -32768, 'max' => 32767, 'description' => 'Its place in the checkout list, smallest first.'),
+				array('name' => 'custom', 'in' => 'body', 'type' => 'bool', 'description' => 'true: the customer enters the day at checkout; arrival_date is then not needed.'),
+				array('name' => 'custom_maximum_arrival_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'With custom: the latest day a customer may enter, YYYY-MM-DD; empty for none.'),
+				array('name' => 'shipping_cutoffs', 'in' => 'body', 'type' => 'list', 'of' => array('shipping_method_id' => 'integer', 'date_and_time' => 'string'), 'max_items' => 100, 'description' => 'Replaces the shipping cut-offs: per shipping method, the last moment (YYYY-MM-DDTHH:MM, site time) an order can be placed to arrive on the date, between start_date and end_date, one per method. An empty list removes them; left out, they stay as stored.')
+			)
+		),
+
+		array(
+			'id' => 'store.arrival_dates.delete',
+			'method' => 'DELETE',
+			'path' => '/store/arrival-dates/{id}',
+			'scope' => 'store:write',
+			'handler' => 'api_store_arrival_dates_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an arrival date',
+			'description' => 'Deletes the arrival date outright with its shipping cut-offs, as the arrival date screen does. Orders keep the date they were placed with. Cannot be undone.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.arrival_dates.delete_post',
+			'method' => 'POST',
+			'path' => '/store/arrival-dates/{id}/delete',
+			'scope' => 'store:write',
+			'handler' => 'api_store_arrival_dates_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an arrival date, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/arrival-dates/{id}, for clients that cannot send DELETE.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.ship_date_adjustments.list',
+			'method' => 'GET',
+			'path' => '/store/ship-date-adjustments',
+			'scope' => 'orders:read',
+			'handler' => 'api_store_ship_date_adjustments_list',
+			'returns' => array('list' => 'StoreShipDateAdjustment'),
+			'summary' => 'Ship date adjustments',
+			'description' => 'Days a shipping method\'s ship date moves for postal codes that start with a prefix. adjustment is the signed number of days (negative: earlier). One page.',
+			'params' => array()
+		),
+
+		array(
+			'id' => 'store.ship_date_adjustments.get',
+			'method' => 'GET',
+			'path' => '/store/ship-date-adjustments/{id}',
+			'scope' => 'orders:read',
+			'handler' => 'api_store_ship_date_adjustments_get',
+			'returns' => 'StoreShipDateAdjustment',
+			'summary' => 'One of the ship date adjustments',
+			'description' => 'One row as GET /store/ship-date-adjustments lists it.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.ship_date_adjustments.create',
+			'method' => 'POST',
+			'path' => '/store/ship-date-adjustments',
+			'scope' => 'store:write',
+			'handler' => 'api_store_ship_date_adjustments_create',
+			'dry_run' => true,
+			'returns' => 'StoreShipDateAdjustment',
+			'status' => 201,
+			'summary' => 'Create a ship date adjustment',
+			'description' => 'Adds an adjustment, as the ship date adjustment screen does: a prefix of other than three characters or a shipping method that does not exist is 422; a prefix and method another adjustment has is 409 adjustment_taken.',
+			'params' => array(
+				array('name' => 'zip_code_prefix', 'in' => 'body', 'type' => 'string', 'max_length' => 3, 'required' => true, 'description' => 'The first three characters of the postal codes it applies to.'),
+				array('name' => 'shipping_method_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The shipping method it applies to.'),
+				array('name' => 'days', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 999, 'required' => true, 'description' => 'How many days the ship date moves.'),
+				array('name' => 'direction', 'in' => 'body', 'type' => 'enum', 'values' => array('earlier', 'later'), 'description' => 'Which way the ship date moves. Defaults to later.')
+			)
+		),
+
+		array(
+			'id' => 'store.ship_date_adjustments.update',
+			'method' => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path' => '/store/ship-date-adjustments/{id}',
+			'scope' => 'store:write',
+			'handler' => 'api_store_ship_date_adjustments_update',
+			'dry_run' => true,
+			'returns' => 'StoreShipDateAdjustment',
+			'summary' => 'Change a ship date adjustment',
+			'description' => 'Only the fields sent change. A prefix and method another adjustment has is 409 adjustment_taken. PATCH is accepted as well; on an IIS server send POST.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'zip_code_prefix', 'in' => 'body', 'type' => 'string', 'max_length' => 3, 'description' => 'The first three characters of the postal codes it applies to.'),
+				array('name' => 'shipping_method_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The shipping method it applies to.'),
+				array('name' => 'days', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 999, 'description' => 'How many days the ship date moves.'),
+				array('name' => 'direction', 'in' => 'body', 'type' => 'enum', 'values' => array('earlier', 'later'), 'description' => 'Which way the ship date moves. Defaults to later.')
+			)
+		),
+
+		array(
+			'id' => 'store.ship_date_adjustments.delete',
+			'method' => 'DELETE',
+			'path' => '/store/ship-date-adjustments/{id}',
+			'scope' => 'store:write',
+			'handler' => 'api_store_ship_date_adjustments_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a ship date adjustment',
+			'description' => 'Deletes the adjustment outright, as the screen does. Cannot be undone.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.ship_date_adjustments.delete_post',
+			'method' => 'POST',
+			'path' => '/store/ship-date-adjustments/{id}/delete',
+			'scope' => 'store:write',
+			'handler' => 'api_store_ship_date_adjustments_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a ship date adjustment, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/ship-date-adjustments/{id}, for clients that cannot send DELETE.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.verified_addresses.list',
+			'method' => 'GET',
+			'path' => '/store/verified-addresses',
+			'scope' => 'orders:read',
+			'handler' => 'api_store_verified_addresses_list',
+			'returns' => array('list' => 'StoreVerifiedAddress'),
+			'summary' => 'Verified shipping addresses',
+			'description' => 'Shipping addresses the store has verified, newest first, cursor paged, with the code of their state and country.',
+			'params' => array(
+				array('name' => 'state_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the addresses in this state.'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id' => 'store.verified_addresses.get',
+			'method' => 'GET',
+			'path' => '/store/verified-addresses/{id}',
+			'scope' => 'orders:read',
+			'handler' => 'api_store_verified_addresses_get',
+			'returns' => 'StoreVerifiedAddress',
+			'summary' => 'One of the verified shipping addresses',
+			'description' => 'One row as GET /store/verified-addresses lists it.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.verified_addresses.create',
+			'method' => 'POST',
+			'path' => '/store/verified-addresses',
+			'scope' => 'store:write',
+			'handler' => 'api_store_verified_addresses_create',
+			'dry_run' => true,
+			'returns' => 'StoreVerifiedAddress',
+			'status' => 201,
+			'summary' => 'Create a verified shipping address',
+			'description' => 'Adds a verified shipping address, as the screen does: a blank address_1, city or zip_code, or a state that does not exist, is 422.',
+			'params' => array(
+				array('name' => 'company', 'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'address_1', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true),
+				array('name' => 'address_2', 'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'city', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The city (İlçe for a Turkish address).'),
+				array('name' => 'state_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The state (İl for a Turkish address), from GET /store/countries.'),
+				array('name' => 'zip_code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.verified_addresses.update',
+			'method' => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path' => '/store/verified-addresses/{id}',
+			'scope' => 'store:write',
+			'handler' => 'api_store_verified_addresses_update',
+			'dry_run' => true,
+			'returns' => 'StoreVerifiedAddress',
+			'summary' => 'Change a verified shipping address',
+			'description' => 'Only the fields sent change. PATCH is accepted as well; on an IIS server send POST.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'company', 'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'address_1', 'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'address_2', 'in' => 'body', 'type' => 'string', 'max_length' => 50),
+				array('name' => 'city', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The city (İlçe for a Turkish address).'),
+				array('name' => 'state_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The state (İl for a Turkish address), from GET /store/countries.'),
+				array('name' => 'zip_code', 'in' => 'body', 'type' => 'string', 'max_length' => 50)
+			)
+		),
+
+		array(
+			'id' => 'store.verified_addresses.delete',
+			'method' => 'DELETE',
+			'path' => '/store/verified-addresses/{id}',
+			'scope' => 'store:write',
+			'handler' => 'api_store_verified_addresses_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a verified shipping address',
+			'description' => 'Deletes the address outright, as the screen does. Cannot be undone.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.verified_addresses.delete_post',
+			'method' => 'POST',
+			'path' => '/store/verified-addresses/{id}/delete',
+			'scope' => 'store:write',
+			'handler' => 'api_store_verified_addresses_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a verified shipping address, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/verified-addresses/{id}, for clients that cannot send DELETE.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.referral_sources.list',
+			'method' => 'GET',
+			'path' => '/store/referral-sources',
+			'scope' => 'orders:read',
+			'handler' => 'api_store_referral_sources_list',
+			'returns' => array('list' => 'StoreReferralSource'),
+			'summary' => 'Referral sources',
+			'description' => 'Where customers say they heard of the store: the Lead Source list of the contact screen and checkout, in its order. One page.',
+			'params' => array()
+		),
+
+		array(
+			'id' => 'store.referral_sources.get',
+			'method' => 'GET',
+			'path' => '/store/referral-sources/{id}',
+			'scope' => 'orders:read',
+			'handler' => 'api_store_referral_sources_get',
+			'returns' => 'StoreReferralSource',
+			'summary' => 'One of the referral sources',
+			'description' => 'One row as GET /store/referral-sources lists it.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.referral_sources.create',
+			'method' => 'POST',
+			'path' => '/store/referral-sources',
+			'scope' => 'store:write',
+			'handler' => 'api_store_referral_sources_create',
+			'dry_run' => true,
+			'returns' => 'StoreReferralSource',
+			'status' => 201,
+			'summary' => 'Create a referral source',
+			'description' => 'Adds a referral source, as the screen does: a blank name or code is 422; a name or code another source has (in any case) is 409 referral_source_taken.',
+			'params' => array(
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The name the contact screen and checkout show. No other source may have it, in any case.'),
+				array('name' => 'code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The code contacts and orders keep (lead_source on a customer). No other source may have it, in any case.'),
+				array('name' => 'sort_order', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999, 'description' => 'Its place in the list, smallest first.')
+			)
+		),
+
+		array(
+			'id' => 'store.referral_sources.update',
+			'method' => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path' => '/store/referral-sources/{id}',
+			'scope' => 'store:write',
+			'handler' => 'api_store_referral_sources_update',
+			'dry_run' => true,
+			'returns' => 'StoreReferralSource',
+			'summary' => 'Change a referral source',
+			'description' => 'Only the fields sent change. A name or code another source has is 409 referral_source_taken. PATCH is accepted as well; on an IIS server send POST.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The name the contact screen and checkout show. No other source may have it, in any case.'),
+				array('name' => 'code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The code contacts and orders keep (lead_source on a customer). No other source may have it, in any case.'),
+				array('name' => 'sort_order', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999, 'description' => 'Its place in the list, smallest first.')
+			)
+		),
+
+		array(
+			'id' => 'store.referral_sources.delete',
+			'method' => 'DELETE',
+			'path' => '/store/referral-sources/{id}',
+			'scope' => 'store:write',
+			'handler' => 'api_store_referral_sources_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a referral source',
+			'description' => 'Deletes the source outright, as the screen does. Customers and orders keep the code they were written with. Cannot be undone.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id' => 'store.referral_sources.delete_post',
+			'method' => 'POST',
+			'path' => '/store/referral-sources/{id}/delete',
+			'scope' => 'store:write',
+			'handler' => 'api_store_referral_sources_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a referral source, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/referral-sources/{id}, for clients that cannot send DELETE.',
+			'params' => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
 			'id'      => 'store.currencies',
 			'method'  => 'GET',
 			'path'    => '/store/currencies',
@@ -1681,6 +2135,47 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'campaigns.create',
+			'method'  => 'POST',
+			'path'    => '/campaigns',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaigns_create',
+			'dry_run' => true,
+			'returns' => 'Campaign',
+			'status'  => 201,
+			'summary' => 'Make a plain-text campaign, kept as a draft',
+			'description' => 'Puts a manual campaign together as the create screen does: the addresses of contact_group_ids (opted-in contacts only for a commercial campaign), less every address of excluded_contact_group_ids, plus email_address, each address once. It is kept paused and nothing is sent: POST /campaigns/{id}/schedule releases it. A group that does not exist, or that an account with the user role was not given, is refused with 422. A plain-text message only; an HTML campaign is made from a page on the create screen. A campaign whose groups hold no address it may go to is refused with 422. An entered address nobody has yet becomes a contact, for an account above the user role, as on the screen.',
+			'params'  => array(
+				array('name' => 'subject',                    'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true),
+				array('name' => 'body',                       'in' => 'body', 'type' => 'string', 'max_length' => 200000, 'required' => true, 'description' => 'The text of the message.'),
+				array('name' => 'from_name',                  'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'from_email',                 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'reply_to',                   'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'purpose',                    'in' => 'body', 'type' => 'enum', 'values' => array('commercial', 'transactional'), 'required' => true, 'description' => 'commercial skips contacts who have opted out and carries the organisation and e-mail preferences footer; transactional goes to every recipient.'),
+				array('name' => 'contact_group_ids',          'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 200, 'description' => 'The groups it goes to.'),
+				array('name' => 'excluded_contact_group_ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 200, 'description' => 'Groups whose members are left out.'),
+				array('name' => 'email_address',              'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'One more address it goes to.'),
+				array('name' => 'send_at',                    'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'When the job may start sending once it is scheduled. Empty: as soon as the job runs.')
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.schedule',
+			'method'  => 'POST',
+			'path'    => '/campaigns/{id}/schedule',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaigns_schedule',
+			'dry_run' => true,
+			'returns' => 'Campaign',
+			'summary' => 'Release a draft campaign for sending',
+			'description' => 'Moves a paused campaign to ready with send_at as its time (as soon as the job runs when it is left out or empty). Nothing is sent by this call: the scheduled e-mail job sends it, and where the site runs no job it waits for Send Campaign on its screen. Any other status is refused with 409 campaign_not_paused. An account with the user role reaches only the campaigns it created.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'send_at', 'in' => 'body', 'type' => 'datetime', 'nullable' => true)
+			)
+		),
+
+		array(
 			'id'      => 'campaigns.update',
 			'method'  => 'POST',
 			'also_accepts' => array('PATCH'),
@@ -1730,6 +2225,153 @@ function api_schema() {
 			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
 			'summary' => 'Delete a campaign, addressed as a POST',
 			'description' => 'The same deletion as DELETE /campaigns/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		/* ----- Campaign profiles -------------------------------------------- */
+
+		array(
+			'id'      => 'campaigns.sms.list',
+			'method'  => 'GET',
+			'path'    => '/campaigns/sms',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaigns_sms_list',
+			'returns' => array('list' => 'SmsCampaign'),
+			'summary' => 'SMS campaigns',
+			'description' => 'The texts sent to the mobile numbers of chosen contact groups, as My SMS Campaigns lists them, newest first, cursor paged. status: draft (kept, never sent), ready (waiting for send_at), queued (handed to the SMS queue at queued_at) or cancelled. queued counts the messages the queue took and refused the numbers the SMS checks turned away (no consent, refused by IYS, no sender identity, SMS not set up); outbox says what the queue still holds of a queued campaign: sent, waiting and failed (null before it is queued; sent rows leave the queue after 7 days, failed ones after 30). contact_group_ids are the groups it goes to, excluded_contact_group_ids the groups whose members are left out. campaign.sent is announced when a campaign is queued. An account with the e-mail right but the user role sees only the campaigns it created. 503 service_unavailable until the database update has created the table.',
+			'params'  => array(
+				array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('draft', 'ready', 'queued', 'cancelled')),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.profiles.list',
+			'method'  => 'GET',
+			'path'    => '/campaigns/profiles',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaign_profiles_list',
+			'returns' => array('list' => 'CampaignProfile'),
+			'summary' => 'Campaign profiles',
+			'description' => 'The profiles that make a campaign by themselves when something happens (a reservation, a form, an order, a booking, another campaign sent), newest first, cursor paged. The campaigns a profile made are listed by GET /campaigns?profile_id=. An account with the e-mail right but the user role sees only the profiles it created, as on the profile screens.',
+			'params'  => array(
+				array('name' => 'action',  'in' => 'query', 'type' => 'enum', 'values' => array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent', 'order_abandoned', 'order_completed', 'order_review_request', 'order_shipped', 'order_delivered', 'product_ordered', 'subscription_renewed', 'subscription_failed', 'subscription_cancelled', 'subscription_price_changed', 'booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled')),
+				array('name' => 'enabled', 'in' => 'query', 'type' => 'bool'),
+				array('name' => 'q',       'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the name.'),
+				array('name' => 'limit',   'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.profiles.get',
+			'method'  => 'GET',
+			'path'    => '/campaigns/profiles/{id}',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaign_profiles_get',
+			'returns' => 'CampaignProfile',
+			'summary' => 'One campaign profile',
+			'description' => 'One profile as GET /campaigns/profiles lists it.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.profiles.create',
+			'method'  => 'POST',
+			'path'    => '/campaigns/profiles',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaign_profiles_create',
+			'dry_run' => true,
+			'returns' => 'CampaignProfile',
+			'status'  => 201,
+			'summary' => 'Create a campaign profile',
+			'description' => 'Adds a profile with the checks of the profile screen: a value the screen refuses is 422, and so is a calendar event, custom form, followed profile, product or page that does not exist or the owner may not pick (a user-role account: a calendar it was given, a form in a folder it may edit, a profile it created), and a profile that would follow one that follows it. A name another profile has is 409 campaign_profile_name_taken.',
+			'params'  => array(
+				array('name' => 'name',            'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'No other profile may have it.'),
+				array('name' => 'enabled',         'in' => 'body', 'type' => 'bool', 'description' => 'Whether it makes campaigns. A new profile is enabled.'),
+				array('name' => 'action',          'in' => 'body', 'type' => 'enum', 'values' => array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent', 'order_abandoned', 'order_completed', 'order_review_request', 'order_shipped', 'order_delivered', 'product_ordered', 'subscription_renewed', 'subscription_failed', 'subscription_cancelled', 'subscription_price_changed', 'booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled'), 'required' => true, 'description' => 'What makes a campaign. The order_*, product_ordered and subscription_* actions need the store and an owner with the e-commerce right; the booking_* actions need the bookings database update (503 service_unavailable before it).'),
+				array('name' => 'action_item_id',  'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The record the action is tied to: the calendar event (calendar_event_reserved), the custom form page (custom_form_submitted), the profile it follows (email_campaign_sent) or the product (product_ordered). Every other action ignores it.'),
+				array('name' => 'subject',         'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true),
+				array('name' => 'format',          'in' => 'body', 'type' => 'enum', 'values' => array('plain_text', 'html'), 'description' => 'plain_text (a new profile\'s) sends body; html sends the page page_id.'),
+				array('name' => 'body',            'in' => 'body', 'type' => 'string', 'max_length' => 200000, 'nullable' => true, 'description' => 'The text of a plain-text campaign.'),
+				array('name' => 'page_id',         'in' => 'body', 'type' => 'int', 'min' => 1, 'nullable' => true, 'description' => 'The page an HTML campaign is made of; required with format html.'),
+				array('name' => 'from_name',       'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'from_email',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'reply_to',        'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'An empty string removes it.'),
+				array('name' => 'bcc',             'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'An empty string removes it.'),
+				array('name' => 'schedule_time',   'in' => 'body', 'type' => 'string', 'max_length' => 5, 'nullable' => true, 'description' => 'HH:MM on the 24-hour clock, site time: the campaign waits for this time of day. An empty string means any time.'),
+				array('name' => 'schedule_length', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999999999, 'description' => 'How many days or hours after (or before) the base.'),
+				array('name' => 'schedule_unit',   'in' => 'body', 'type' => 'enum', 'values' => array('days', 'hours')),
+				array('name' => 'schedule_period', 'in' => 'body', 'type' => 'enum', 'values' => array('before', 'after'), 'description' => 'calendar_event_reserved only; every other action sends after the action.'),
+				array('name' => 'schedule_base',   'in' => 'body', 'type' => 'enum', 'values' => array('action', 'calendar_event_start_time'), 'description' => 'calendar_event_reserved only: counted from the reservation or from the event\'s start. before with action is refused.'),
+				array('name' => 'purpose',         'in' => 'body', 'type' => 'enum', 'values' => array('commercial', 'transactional'), 'description' => 'commercial (a new profile\'s) goes only to contacts who opted in.')
+			)
+		),
+
+		array(
+			'id'           => 'campaigns.profiles.update',
+			'method'       => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'         => '/campaigns/profiles/{id}',
+			'scope'        => 'campaigns:write',
+			'handler'      => 'api_campaign_profiles_update',
+			'dry_run'      => true,
+			'returns'      => 'CampaignProfile',
+			'summary'      => 'Change a campaign profile',
+			'description'  => 'Only the fields sent change; the profile as a whole is then checked as POST /campaigns/profiles checks it. Campaigns the profile already made keep what they were made with. A name another profile has is 409 campaign_profile_name_taken. PATCH is accepted as well; on an IIS server send POST.',
+			'params'       => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',            'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'No other profile may have it.'),
+				array('name' => 'enabled',         'in' => 'body', 'type' => 'bool', 'description' => 'Whether it makes campaigns. A new profile is enabled.'),
+				array('name' => 'action',          'in' => 'body', 'type' => 'enum', 'values' => array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent', 'order_abandoned', 'order_completed', 'order_review_request', 'order_shipped', 'order_delivered', 'product_ordered', 'subscription_renewed', 'subscription_failed', 'subscription_cancelled', 'subscription_price_changed', 'booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled'), 'description' => 'What makes a campaign. The order_*, product_ordered and subscription_* actions need the store and an owner with the e-commerce right; the booking_* actions need the bookings database update (503 service_unavailable before it).'),
+				array('name' => 'action_item_id',  'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The record the action is tied to: the calendar event (calendar_event_reserved), the custom form page (custom_form_submitted), the profile it follows (email_campaign_sent) or the product (product_ordered). Every other action ignores it.'),
+				array('name' => 'subject',         'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'format',          'in' => 'body', 'type' => 'enum', 'values' => array('plain_text', 'html'), 'description' => 'plain_text (a new profile\'s) sends body; html sends the page page_id.'),
+				array('name' => 'body',            'in' => 'body', 'type' => 'string', 'max_length' => 200000, 'nullable' => true, 'description' => 'The text of a plain-text campaign.'),
+				array('name' => 'page_id',         'in' => 'body', 'type' => 'int', 'min' => 1, 'nullable' => true, 'description' => 'The page an HTML campaign is made of; required with format html.'),
+				array('name' => 'from_name',       'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'from_email',      'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'reply_to',        'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'An empty string removes it.'),
+				array('name' => 'bcc',             'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'An empty string removes it.'),
+				array('name' => 'schedule_time',   'in' => 'body', 'type' => 'string', 'max_length' => 5, 'nullable' => true, 'description' => 'HH:MM on the 24-hour clock, site time: the campaign waits for this time of day. An empty string means any time.'),
+				array('name' => 'schedule_length', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999999999, 'description' => 'How many days or hours after (or before) the base.'),
+				array('name' => 'schedule_unit',   'in' => 'body', 'type' => 'enum', 'values' => array('days', 'hours')),
+				array('name' => 'schedule_period', 'in' => 'body', 'type' => 'enum', 'values' => array('before', 'after'), 'description' => 'calendar_event_reserved only; every other action sends after the action.'),
+				array('name' => 'schedule_base',   'in' => 'body', 'type' => 'enum', 'values' => array('action', 'calendar_event_start_time'), 'description' => 'calendar_event_reserved only: counted from the reservation or from the event\'s start. before with action is refused.'),
+				array('name' => 'purpose',         'in' => 'body', 'type' => 'enum', 'values' => array('commercial', 'transactional'), 'description' => 'commercial (a new profile\'s) goes only to contacts who opted in.')
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.profiles.delete',
+			'method'  => 'DELETE',
+			'path'    => '/campaigns/profiles/{id}',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaign_profiles_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a campaign profile',
+			'description' => 'Deletes the profile outright, as its screen does. The campaigns it made stay; profiles that follow it make nothing until they are given another trigger. Cannot be undone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.profiles.delete_post',
+			'method'  => 'POST',
+			'path'    => '/campaigns/profiles/{id}/delete',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaign_profiles_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a campaign profile, addressed as a POST',
+			'description' => 'The same delete as DELETE /campaigns/profiles/{id}, for clients that cannot send DELETE.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -1863,7 +2505,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'ContactGroup',
 			'summary' => 'Put contacts into a group, or take them out',
-			'description' => 'Both lists in one call, as the contact screen ticks a group. A contact added that is already there, or removed that is not, is not an error; added and removed in the answer count what actually changed, and the contacts that actually moved are announced as contact_group.members_changed. Contacts are never deleted here, only their place in this group. opt_in records the choice for this group\'s e-mail of every contact in add, members already there included, so an unsubscribe from a newsletter tool is add=[id] with opt_in=false; it is ignored for a group that takes no subscriptions. Without it nothing is written: a new member counts as opted in, and a contact who opted out before and is put back stays opted out. Taking a contact out keeps its choice, as the contact screen does. Find a contact by address with GET /customers?email=, or make one with POST /customers first.',
+			'description' => 'Both lists in one call, as the contact screen ticks a group. A group filled by rules is refused with 409 contact_group_by_rule: its rules decide who is in it. A contact added that is already there, or removed that is not, is not an error; added and removed in the answer count what actually changed, and the contacts that actually moved are announced as contact_group.members_changed. Contacts are never deleted here, only their place in this group. opt_in records the choice for this group\'s e-mail of every contact in add, members already there included, so an unsubscribe from a newsletter tool is add=[id] with opt_in=false; it is ignored for a group that takes no subscriptions. Without it nothing is written: a new member counts as opted in, and a contact who opted out before and is put back stays opted out. Taking a contact out keeps its choice, as the contact screen does. Find a contact by address with GET /customers?email=, or make one with POST /customers first.',
 			'params'  => array(
 				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'add',    'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Contact ids to put into the group. Each has to exist.'),
@@ -2262,6 +2904,176 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'calendars.create',
+			'method'  => 'POST',
+			'path'    => '/calendars',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendars_create',
+			'dry_run' => true,
+			'returns' => 'Calendar',
+			'status'  => 201,
+			'summary' => 'Add a calendar',
+			'description' => 'A new, empty calendar, as on the calendar screen. Names are unique: 409 name_taken when another calendar has it. Closed to an owner with the user role, who reaches only the calendars assigned to them (403 forbidden). Events are added with POST /calendars/events.',
+			'params'  => array(
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/calendars/{id}',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendars_update',
+			'dry_run' => true,
+			'returns' => 'Calendar',
+			'summary' => 'Rename a calendar',
+			'description' => 'Names are unique: 409 name_taken when another calendar has it. A calendar outside the ones the owner may open is answered 404. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',   'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 100)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.delete',
+			'method'  => 'DELETE',
+			'path'    => '/calendars/{id}',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendars_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove a calendar',
+			'description' => 'With its user assignments and its place on the calendar pages. Only an empty calendar is removed: 409 calendar_has_events while an event is on it; delete the events or move them to another calendar first. A calendar outside the ones the owner may open is answered 404.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.delete_post',
+			'method'  => 'POST',
+			'path'    => '/calendars/{id}/delete',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendars_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove a calendar, addressed as a POST',
+			'description' => 'The same removal as DELETE /calendars/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.locations',
+			'method'  => 'GET',
+			'path'    => '/calendars/locations',
+			'scope'   => 'calendars:read',
+			'handler' => 'api_calendar_locations_list',
+			'returns' => array('list' => 'CalendarLocation'),
+			'summary' => 'The event locations',
+			'description' => 'The rooms, buildings and other places events are held in, shared by every calendar, with how many events book each one. One page; a site has a handful. The location screens open to roles 0 to 2 only: an owner with the user role is refused (403 forbidden).',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'calendars.location_get',
+			'method'  => 'GET',
+			'path'    => '/calendars/locations/{id}',
+			'scope'   => 'calendars:read',
+			'handler' => 'api_calendar_locations_get',
+			'returns' => 'CalendarLocation',
+			'summary' => 'One event location',
+			'description' => 'Refused to an owner with the user role (403 forbidden).',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.location_create',
+			'method'  => 'POST',
+			'path'    => '/calendars/locations',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_locations_create',
+			'dry_run' => true,
+			'returns' => 'CalendarLocation',
+			'status'  => 201,
+			'summary' => 'Add an event location',
+			'description' => 'A new location, as on the location screen. Names are unique: 409 name_taken when another location has it. An event books it on the event\'s own screen. Refused to an owner with the user role (403 forbidden).',
+			'params'  => array(
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.location_update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/calendars/locations/{id}',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_locations_update',
+			'dry_run' => true,
+			'returns' => 'CalendarLocation',
+			'summary' => 'Rename an event location',
+			'description' => 'Names are unique: 409 name_taken when another location has it. Refused to an owner with the user role (403 forbidden). PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',   'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 100)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.location_delete',
+			'method'  => 'DELETE',
+			'path'    => '/calendars/locations/{id}',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_locations_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove an event location',
+			'description' => 'With its bookings, as on the location screen: the events that booked it stay, without that location. A dry run answers how many events book it (event_count). Refused to an owner with the user role (403 forbidden).',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.location_delete_post',
+			'method'  => 'POST',
+			'path'    => '/calendars/locations/{id}/delete',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_locations_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove an event location, addressed as a POST',
+			'description' => 'The same removal as DELETE /calendars/locations/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.event_reservations',
+			'method'  => 'GET',
+			'path'    => '/calendars/events/{id}/reservations',
+			'scope'   => 'calendars:read',
+			'handler' => 'api_calendar_event_reservations',
+			'returns' => array('list' => 'CalendarReservation'),
+			'summary' => 'The reservations of an event',
+			'description' => 'The order lines of placed orders that reserve the event, oldest first, cursor paged; carts not yet ordered are left out. A cancelled order\'s line is listed with its order_status. recurrence_number is the repeat a line reserves (0: the event as a whole, or a repeating event whose repeats share their spots). customer (name, e-mail, contact) is null for an owner who may not open orders. An event on none of the calendars the owner may open is answered 404. The calendar_event.reserved webhook announces each new one.',
+			'params'  => array(
+				array('name' => 'id',                'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'recurrence_number', 'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only the reservations of this repeat.'),
+				array('name' => 'limit',             'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',            'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'include_count',     'in' => 'query', 'type' => 'bool')
+			)
+		),
+
 		/* ----- Webhooks ----------------------------------------------------- */
 
 		array(
@@ -2544,7 +3356,7 @@ function api_schema() {
 				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'A note on the record, as the panel shows it.'),
 				array('name' => 'lead_source', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'Where the customer came from: the code or the name (any case) of one of the store\'s referral sources, the Lead Source list of the contact screen. The code is stored and read back. An empty value clears it; a value the record already holds is kept even when it is no longer on the list; any other value is refused with 422.'),
 				array('name' => 'opt_in',      'in' => 'body', 'type' => 'bool', 'description' => 'Consent to be mailed. Send true only where you actually hold it; it is also the choice recorded for the e-mail of the group in contact_group_id, which is otherwise recorded as not opted in.'),
-				array('name' => 'contact_group_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The contact group the customer is filed in (GET /contact-groups); left out, none. An application whose owner has the user role reaches only customers in the groups given to that account, as on the contact screens, so its customer is always filed in one of them: the one sent, or the only one it has; with several, this is required.')
+				array('name' => 'contact_group_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The contact group the customer is filed in (GET /contact-groups); left out, none. An application whose owner has the user role reaches only customers in the groups given to that account, as on the contact screens, so its customer is always filed in one of them: the one sent, or the only one it has; with several, this is required. A group filled by rules is refused with 409 contact_group_by_rule.')
 			)
 		),
 
@@ -2720,11 +3532,44 @@ function api_schema() {
 			'handler' => 'api_reports_visitors',
 			'returns' => 'VisitorBreakdown',
 			'summary' => 'Visits by source, campaign, landing page or place',
-			'description' => 'Visits started on the days of the window counted by one thing about them, largest first, with what they led to: page views, forms submitted, orders created, checked out and completed, and the completed order total in minor units - the figures the visitor report screen sums. by: referrer_host, search_engine, search_terms (what a search engine sent), channel (pay_per_click when the tracking code carries the pay-per-click flag of the SEO settings, organic when a search engine referred it, otherwise neither), landing_page, tracking_code, utm_source, utm_medium, utm_campaign, utm_term, utm_content, country, state, city, form (the custom form submitted), site_search_terms or device (desktop, mobile or tablet, from the browser). A null value is a visit without one: no referrer is a direct visit. totals covers every visit in the window, not only the rows returned. Only totals are given; a single visit is not. Defaults to the last thirty days; a window is at most 400 days. Days older than the visitor retention period are answered from the daily summary: summary_to is the last such day of the window (null when none), the totals of those days stay exact, and a value outside the top 100 of its day is counted in the totals but not listed in rows.',
+			'description' => 'Visits started on the days of the window counted by one thing about them, largest first, with what they led to: page views, forms submitted, orders created, checked out and completed, and the completed order total in minor units - the figures the visitor report screen sums. by: referrer_host, search_engine, search_terms (what a search engine sent), channel (the first that matches: paid when the tracking code carries the pay-per-click flag of the SEO settings or utm_medium is cpc, ppc, paid or paid_social; email when utm_medium is email or newsletter; ai when an AI assistant referred it; organic when a search engine referred it; social when utm_medium is social or a social network referred it; referral for any other referring site; direct), landing_page, tracking_code, utm_source, utm_medium, utm_campaign, utm_term, utm_content, country, state, city, form (the custom form submitted), site_search_terms or device (desktop, mobile or tablet, from the browser). A null value is a visit without one: no referrer is a direct visit. totals covers every visit in the window, not only the rows returned. Only totals are given; a single visit is not. Defaults to the last thirty days; a window is at most 400 days. Days the daily summary holds (yesterday and before, once summarized) are answered from it and the other days from the visits themselves: summary_days counts the summarized days of the window, summary_to is the last of them (null when none held a visit), the totals of those days stay exact, and a value outside the top 100 of its day is counted in the totals but not listed in rows.',
 			'params'  => array(
 				array('name' => 'by',    'in' => 'query', 'type' => 'enum', 'values' => array('referrer_host', 'search_engine', 'search_terms', 'channel', 'landing_page', 'tracking_code', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'country', 'state', 'city', 'form', 'site_search_terms', 'device'), 'required' => true),
 				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
 				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50)
+			)
+		),
+
+		array(
+			'id'      => 'reports.search',
+			'method'  => 'GET',
+			'path'    => '/reports/search',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_search',
+			'returns' => 'SearchReport',
+			'summary' => 'Google Search: clicks, impressions, searches and pages',
+			'description' => 'What Google Search Console reports for the site, from the figures its daily job downloads: totals of the window (clicks, impressions, ctr as a fraction, average position weighted by impressions), clicks and impressions for every day, and the searches (queries) and addresses (pages) with the most clicks, at most limit each. Google publishes two or three days late: latest_day is the last day with figures and the days after it read as zeros. Searches Google keeps anonymous count in the totals but are not listed, so queries add up to less. linked false is a site not linked to Search Console: empty figures, not an error. Defaults to the last thirty days; a window is at most 400 days.',
+			'params'  => array(
+				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 25, 'description' => 'Searches and pages each.')
+			)
+		),
+
+		array(
+			'id'      => 'reports.pages',
+			'method'  => 'GET',
+			'path'    => '/reports/pages',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_pages',
+			'returns' => 'PagesReport',
+			'summary' => 'Pages with their Google figures, visits and SEO score',
+			'description' => 'One row per page of the site: Google\'s clicks, impressions, ctr (a fraction) and average position for it, the visits that began on it with their forms submitted and orders completed, its page views, and its SEO score (0-100, null until scored). A Google address and a site page meet on their path: without host, query, trailing slash or .html, decoded, case-blind; the root and every home page name are one row with home true and path /. A page only one side knows is listed too: null Google figures for a page Google did not show (or every row when linked is false, a site not linked to Search Console), page_id null for an address no page of the site has (a product or article address, or a page since deleted). Sorted by clicks, visits or score, largest first, a row without the figure last; total counts every row before limit. Google publishes two or three days late, so for the last days visits have no clicks beside them yet. summary_days and summary_to describe the visit figures as in GET /reports/visitors. Defaults to the last thirty days; a window is at most 400 days.',
+			'params'  => array(
+				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'sort',  'in' => 'query', 'type' => 'enum', 'values' => array('clicks', 'visits', 'score'), 'default' => 'clicks'),
 				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50)
 			)
 		),
@@ -2884,6 +3729,71 @@ function api_schema() {
 				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'complete',      'in' => 'body', 'type' => 'bool'),
 				array('name' => 'values',        'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'value' => 'string'), 'max_items' => 50, 'description' => 'Objects of {name, value}: the field name and its new answer. Up to 10000 characters each; an empty value clears it.')
+			)
+		),
+
+		array(
+			'id'      => 'forms.fields',
+			'method'  => 'GET',
+			'path'    => '/forms/{id}/fields',
+			'scope'   => 'forms:read',
+			'handler' => 'api_form_fields',
+			'returns' => array('list' => 'FormField'),
+			'summary' => 'The fields of a form',
+			'description' => 'The same field list GET /forms/{id} carries, on its own: what a client reads before it sends a submission. name is what a submission\'s values are addressed by; options lists the choices of a pick list, radio button or check box, and an answer to one of those is one of their value strings. In form order, one page. A form on a page in a folder the owner may not edit is answered 404.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.')
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_create',
+			'method'  => 'POST',
+			'path'    => '/forms/{id}/submissions',
+			'scope'   => 'forms:write',
+			'handler' => 'api_form_submission_create',
+			'dry_run' => true,
+			'returns' => 'FormSubmission',
+			'status'  => 201,
+			'summary' => 'Add a submission',
+			'description' => 'Records a submission the way staff add one on the Add Submitted Form screen, through the same checks and the same write: the owner is stored as the submitter, office-use fields may be answered, and no visitor columns (address, referrer, tracking code) are written. Answers are addressed by the field name (GET /forms/{id}/fields). A required field is refused when it is left empty and the submission is complete; a date is YYYY-MM-DD, a time HH:MM, an e-mail address must be one, and the answer to a choice field must be one of its option values - a check box group or a multiple pick list takes its name once per choice. A file upload or a signature field cannot be answered through the API. A complete submission announces form.submitted; send_notifications also sends the e-mails a visitor\'s submission would. Contact records, memberships and the confirmation page of a visitor\'s submission are not part of it. A form on a page in a folder the owner may not edit is answered 404.',
+			'params'  => array(
+				array('name' => 'id',                 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'values',             'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'value' => 'string'), 'max_items' => 200, 'description' => 'Objects of {name, value}: the field name and its answer, up to 10000 characters each.'),
+				array('name' => 'complete',           'in' => 'body', 'type' => 'bool', 'description' => 'false saves it for later: required fields are not enforced and nothing is announced. true by default.'),
+				array('name' => 'send_notifications', 'in' => 'body', 'type' => 'bool', 'description' => 'true sends the notification e-mails the form sends for a visitor\'s submission. Off by default; only for a complete submission.')
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_delete',
+			'method'  => 'DELETE',
+			'path'    => '/forms/{id}/submissions/{submission_id}',
+			'scope'   => 'forms:write',
+			'handler' => 'api_form_submission_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a submission',
+			'description' => 'As the submitted form screens delete one, which cannot be undone: its answers, its uploaded files, its signatures, its comments and their attachments go with it. Announces form.submission.deleted. A submission made on another form, or on a form in a folder the owner may not edit, is answered 404. A default IIS install answers DELETE itself before PHP is reached: POST /forms/{id}/submissions/{submission_id}/delete does the same thing and always arrives.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_delete_post',
+			'method'  => 'POST',
+			'path'    => '/forms/{id}/submissions/{submission_id}/delete',
+			'scope'   => 'forms:write',
+			'handler' => 'api_form_submission_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a submission, addressed as a POST',
+			'description' => 'The same deletion as DELETE /forms/{id}/submissions/{submission_id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
 		),
 
@@ -3338,6 +4248,81 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Experiments ------------------------------------------------- */
+
+		array(
+			'id'      => 'experiments.list',
+			'method'  => 'GET',
+			'path'    => '/experiments',
+			'scope'   => 'experiments:read',
+			'handler' => 'api_experiments_list',
+			'returns' => array('list' => 'Experiment'),
+			'summary' => 'Page experiments',
+			'description' => 'The A/B experiments of the designed pages, newest first, cursor paged, each with its variants and their figures. status: draft (set up, not started), running, paused or ended. Variant a is the live page (control true, draft_page_id null); the others are draft pages shown under the live page\'s address. views and goals are summed from the hourly rollup: a goal counts once a day per visitor and experiment. rate is goals over views (0-1), lift the change against the control relative to its rate, p_value the two-sided p of a two-proportion z-test against the control and significant whether it is below 0.05; verdict is ahead, behind, more (not beyond chance yet: needed_views more views each would tell at these rates; needed_views null while one version has no views or nobody converted yet), even or none (no views on any version). Nothing about a visitor is kept. 503 service_unavailable until the database update that adds experiments has run.',
+			'params'  => array(
+				array('name' => 'status',  'in' => 'query', 'type' => 'enum', 'values' => array('draft', 'running', 'paused', 'ended')),
+				array('name' => 'page_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'The live page\'s experiments only.'),
+				array('name' => 'limit',   'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'experiments.get',
+			'method'  => 'GET',
+			'path'    => '/experiments/{id}',
+			'scope'   => 'experiments:read',
+			'handler' => 'api_experiments_get',
+			'returns' => 'Experiment',
+			'summary' => 'One page experiment with its results',
+			'description' => 'As in the list: the experiment, its goal (goal_kind form, order, click or page; goal_target the click goal\'s name or the goal page\'s id, null for the others), its dates, the winner once one was published, and each variant\'s figures and comparison with the live page.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'experiments.start',
+			'method'  => 'POST',
+			'path'    => '/experiments/{id}/start',
+			'scope'   => 'experiments:write',
+			'handler' => 'api_experiments_start',
+			'returns' => 'Experiment',
+			'summary' => 'Start or resume an experiment',
+			'description' => 'A set-up (draft) experiment starts, a paused one runs again; visitors are then drawn into its variants by their weights. A start is refused with 409 experiment_state when the page is no longer on the site, a variant is no longer a draft, another experiment runs on the page, or the experiment is running or ended. The first start stamps started_at and announces experiment.started. Stored copies of pages are made old, as after a panel change.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'experiments.pause',
+			'method'  => 'POST',
+			'path'    => '/experiments/{id}/pause',
+			'scope'   => 'experiments:write',
+			'handler' => 'api_experiments_pause',
+			'returns' => 'Experiment',
+			'summary' => 'Pause an experiment',
+			'description' => 'A running experiment pauses: every visitor sees the live page and nothing is counted until it runs again. 409 experiment_state unless it is running.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'experiments.end',
+			'method'  => 'POST',
+			'path'    => '/experiments/{id}/end',
+			'scope'   => 'experiments:write',
+			'handler' => 'api_experiments_end',
+			'returns' => 'Experiment',
+			'summary' => 'End an experiment without a winner',
+			'description' => 'A running or paused experiment ends for good, with no winner and the live page as it is; the variant draft stays in Drafts. Publishing a variant\'s design as the winner is done in the panel, where the page lock applies. Announces experiment.ended. 409 experiment_state when it is a set-up or already ended.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Short links -------------------------------------------------- */
 
 		array(
@@ -3596,6 +4581,54 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'offers.create',
+			'method'  => 'POST',
+			'path'    => '/offers',
+			'scope'   => 'offers:write',
+			'handler' => 'api_offers_create',
+			'dry_run' => true,
+			'status'  => 201,
+			'returns' => 'Offer',
+			'summary' => 'Create an offer with its conditions and results',
+			'description' => 'Builds an offer as the offer editor saves one, in the shape GET /offers/{id} answers: conditions the cart has to meet and actions (results) it then gets. Only code is required; a new offer is enabled, starts today, has no end and applies only the best offer, as in the editor. Condition types: subtotal {amount}, products {product_ids, quantity}, product_group {group_ids, quantity}, cart_quantity {quantity}, usage_limit {total_limit, customer_limit}, new_customer {mode: no_orders, registered or both; days}; each type once. Result types: discount_order {amount or percentage, tiers [{min_subtotal, percentage}]}, discount_product {target: product, group or cheapest; product_id or group_id; amount or percentage}, add_product {product_id, quantity, amount or percentage, both left out for the gift at full price}, discount_shipping {percentage, shipping_method_ids}. Amounts are minor units, percentages whole numbers 0-100, counts whole numbers; a field a type does not take is refused. An offer with no condition or no result is saved and reported incomplete, as in the editor. Offers may share a code; 409 code_used_by_key_code when a key code already has it (checkout would apply the offer and the key code would stop working). Send an Idempotency-Key: a retry without one creates a second offer. Announces offer.created.',
+			'params'  => array(
+				array('name' => 'code',                  'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'What the shopper types, or the name the offer is known by when require_code is false.'),
+				array('name' => 'description',           'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The message the offer shows.'),
+				array('name' => 'enabled',               'in' => 'body', 'type' => 'bool', 'description' => 'true when left out.'),
+				array('name' => 'require_code',          'in' => 'body', 'type' => 'bool', 'description' => 'Applies only when the shopper types the code (or one of its key codes). false when left out.'),
+				array('name' => 'start_date',            'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD; today when left out.'),
+				array('name' => 'end_date',              'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'YYYY-MM-DD, not before start_date; empty, null or left out for an offer with no end.'),
+				array('name' => 'scope',                 'in' => 'body', 'type' => 'enum', 'values' => array('order', 'recipient'), 'description' => 'Whether the conditions are met by the whole order or by each recipient\'s items. order when left out.'),
+				array('name' => 'multiple_recipients',   'in' => 'body', 'type' => 'bool', 'description' => 'With scope recipient: the offer may apply to more than one recipient.'),
+				array('name' => 'only_apply_best_offer', 'in' => 'body', 'type' => 'bool', 'description' => 'true when left out.'),
+				array('name' => 'upsell',                'in' => 'body', 'type' => 'object', 'description' => '{enabled, message (255), trigger_subtotal (minor units), trigger_quantity, button_label (50)}: the nudge shown to a shopper close to the offer. Kept off unless a subtotal, products, product_group or cart_quantity condition gives it something to count down.'),
+				array('name' => 'conditions',            'in' => 'body', 'type' => 'list', 'of' => array('type' => 'string', 'amount' => 'integer', 'quantity' => 'integer', 'product_ids' => 'integer[]', 'group_ids' => 'integer[]', 'total_limit' => 'integer', 'customer_limit' => 'integer', 'mode' => 'string', 'days' => 'integer'), 'max_items' => 6, 'description' => 'Objects with a type and its fields, listed in the description.'),
+				array('name' => 'actions',               'in' => 'body', 'type' => 'list', 'of' => array('type' => 'string', 'amount' => 'integer', 'percentage' => 'integer', 'tiers' => array(array('min_subtotal' => 'integer', 'percentage' => 'integer')), 'target' => 'string', 'product_id' => 'integer', 'group_id' => 'integer', 'quantity' => 'integer', 'shipping_method_ids' => 'integer[]'), 'max_items' => 20, 'description' => 'Objects with a type and its fields, listed in the description.')
+			)
+		),
+
+		array(
+			'id'      => 'offers.duplicate',
+			'method'  => 'POST',
+			'path'    => '/offers/{id}/duplicate',
+			'scope'   => 'offers:write',
+			'handler' => 'api_offers_duplicate',
+			'dry_run' => true,
+			'status'  => 201,
+			'returns' => 'Offer',
+			'summary' => 'Duplicate an offer under a new code',
+			'description' => 'The offer screen\'s Duplicate, saved at once: a new offer with the source\'s settings, conditions and results and the code sent. The fields sent replace the source\'s; a date sent makes the dates a range (end_date empty or null for no end). The source is not changed. 409 code_used_by_key_code as for POST /offers. Send an Idempotency-Key: a retry without one makes a second copy. Announces offer.created.',
+			'params'  => array(
+				array('name' => 'id',          'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'code',        'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The new offer\'s code; it may be the source\'s own.'),
+				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The message the copy shows; the source\'s when left out.'),
+				array('name' => 'enabled',     'in' => 'body', 'type' => 'bool', 'description' => 'The source\'s switch when left out.'),
+				array('name' => 'start_date',  'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD.'),
+				array('name' => 'end_date',    'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'YYYY-MM-DD, or empty or null for no end.')
+			)
+		),
+
+		array(
 			'id'      => 'offers.update',
 			'method'  => 'POST',
 			'also_accepts' => array('PATCH'),
@@ -3605,7 +4638,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'Offer',
 			'summary' => 'Switch an offer on or off, reword it or move its dates',
-			'description' => 'The offer\'s own row, the way the offer editor writes it: dates are YYYY-MM-DD, an empty end_date is an offer that runs until it is switched off, and the end may not come before the start. The conditions and the results are not writable here; an offer the editor marks incomplete stays incomplete, and switching it on does not make it do anything at checkout.',
+			'description' => 'The offer\'s own row, the way the offer editor writes it: dates are YYYY-MM-DD, an empty end_date is an offer that runs until it is switched off, and the end may not come before the start. The conditions and the results are not writable here; an offer the editor marks incomplete stays incomplete, and switching it on does not make it do anything at checkout. Announces offer.updated.',
 			'params'  => array(
 				array('name' => 'id',          'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'enabled',     'in' => 'body', 'type' => 'bool'),
@@ -3624,7 +4657,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => array('id' => 'integer', 'code' => 'string', 'deleted' => 'boolean', 'offer_status' => 'string'),
 			'summary' => 'Delete an offer',
-			'description' => 'The only write this resource has: offers can be read and removed, not created or edited. An offer is a rule tree - the conditions the cart has to meet and the results it then gets - and building one belongs with the editor that knows those rules. Removal takes the offer, its conditions, and the rule and result rows no other offer still uses. There is no recycle bin for offers, here or in the panel, so this cannot be undone. An offer whose offer_status is active is refused with 409 offer_active unless force=true is sent: an operator removing a live campaign is looking at the shop while they do it, and an application is not. A default IIS install answers DELETE itself before PHP is reached: POST /offers/{id}/delete does the same thing and always arrives.',
+			'description' => 'Removal takes the offer, its conditions, and the rule and result rows no other offer still uses. There is no recycle bin for offers, here or in the panel, so this cannot be undone. An offer whose offer_status is active is refused with 409 offer_active unless force=true is sent: an operator removing a live campaign is looking at the shop while they do it, and an application is not. Announces offer.deleted. A default IIS install answers DELETE itself before PHP is reached: POST /offers/{id}/delete does the same thing and always arrives.',
 			'params'  => array(
 				array('name' => 'id',    'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'force', 'in' => 'query', 'type' => 'bool', 'description' => 'Remove the offer even though it is running today.')
@@ -3997,6 +5030,215 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Ads and ad regions (includes/api/resources/design_ads.php) ------- */
+
+		array(
+			'id'      => 'design.ads.list',
+			'method'  => 'GET',
+			'path'    => '/design/ads',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_ads_list',
+			'returns' => array('list' => 'DesignAd'),
+			'summary' => 'Ads',
+			'description' => 'The ads of the ad regions, as the ads screen lists them, oldest first, cursor paged. content and caption are HTML with the site\'s own links as absolute addresses. sort_order 0 is random order in a dynamic region.',
+			'params'  => array(
+				array('name' => 'ad_region_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the ads of this ad region.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'design.ads.get',
+			'method'  => 'GET',
+			'path'    => '/design/ads/{id}',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_ads_get',
+			'returns' => 'DesignAd',
+			'summary' => 'One ad',
+			'description' => 'The same fields as the list, for one ad.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.ads.create',
+			'method'  => 'POST',
+			'path'    => '/design/ads',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ads_create',
+			'dry_run' => true,
+			'returns' => 'DesignAd',
+			'status'  => 201,
+			'summary' => 'Create an ad',
+			'description' => 'Adds an ad to an ad region, as the create ad screen does, on the site at once wherever the region is placed. The name is required and no other ad may have it (409 name_taken); a region that does not exist is 422.',
+			'params'  => array(
+				array('name' => 'name',         'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The ad\'s name, which no other ad has.'),
+				array('name' => 'ad_region_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The ad region it is shown in (GET /design/ad-regions).'),
+				array('name' => 'content',      'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'The ad as HTML, stored as the screen\'s rich text editor stores it.'),
+				array('name' => 'caption',      'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'HTML a dynamic region shows on top of the content.'),
+				array('name' => 'label',        'in' => 'body', 'type' => 'string', 'max_length' => 255, 'nullable' => true, 'description' => 'The tab a dynamic region shows for the ad.'),
+				array('name' => 'sort_order',   'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'description' => 'Its place in a dynamic region, smallest first; 0 for random order.')
+			)
+		),
+
+		array(
+			'id'      => 'design.ads.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/design/ads/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ads_update',
+			'dry_run' => true,
+			'returns' => 'DesignAd',
+			'summary' => 'Change an ad',
+			'description' => 'Only the fields sent change. A name another ad has is 409 name_taken. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',         'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The ad\'s name, which no other ad has.'),
+				array('name' => 'ad_region_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The ad region it is shown in (GET /design/ad-regions).'),
+				array('name' => 'content',      'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'The ad as HTML, stored as the screen\'s rich text editor stores it.'),
+				array('name' => 'caption',      'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'HTML a dynamic region shows on top of the content.'),
+				array('name' => 'label',        'in' => 'body', 'type' => 'string', 'max_length' => 255, 'nullable' => true, 'description' => 'The tab a dynamic region shows for the ad.'),
+				array('name' => 'sort_order',   'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'description' => 'Its place in a dynamic region, smallest first; 0 for random order.')
+			)
+		),
+
+		array(
+			'id'      => 'design.ads.delete',
+			'method'  => 'DELETE',
+			'path'    => '/design/ads/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ads_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an ad',
+			'description' => 'Deletes the ad outright, as the edit ad screen does; it leaves its region at once. Cannot be undone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.ads.delete_post',
+			'method'  => 'POST',
+			'path'    => '/design/ads/{id}/delete',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ads_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an ad, addressed as a POST',
+			'description' => 'The same delete as DELETE /design/ads/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.ad_regions.list',
+			'method'  => 'GET',
+			'path'    => '/design/ad-regions',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_ad_regions_list',
+			'returns' => array('list' => 'DesignAdRegion'),
+			'summary' => 'Ad regions',
+			'description' => 'The ad regions, oldest first, cursor paged. A page style places one with its tag; ads counts the ads in it. display_type static shows one ad at a time, dynamic shows them with tabs and transitions (transition_type, transition_duration in milliseconds, 0 for the default; autoplay with interval in seconds, 0 for the default; continuous starts again after the last ad).',
+			'params'  => array(
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'design.ad_regions.get',
+			'method'  => 'GET',
+			'path'    => '/design/ad-regions/{id}',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_ad_regions_get',
+			'returns' => 'DesignAdRegion',
+			'summary' => 'One ad region',
+			'description' => 'The same fields as the list, for one ad region.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.ad_regions.create',
+			'method'  => 'POST',
+			'path'    => '/design/ad-regions',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ad_regions_create',
+			'dry_run' => true,
+			'returns' => 'DesignAdRegion',
+			'status'  => 201,
+			'summary' => 'Create an ad region',
+			'description' => 'Adds an ad region, as the create ad region screen does; place it in a page style with its tag. The name follows the screen\'s rule (English letters, numbers and dashes, at most 100 characters: 422 otherwise) and no other region may have it (409 name_taken). Fields left out take the screen\'s defaults: static, slide, continuous play.',
+			'params'  => array(
+				array('name' => 'name',                'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The name page styles place the region by (<ad>name</ad>): English letters, numbers and dashes, no other region\'s.'),
+				array('name' => 'display_type',        'in' => 'body', 'type' => 'enum', 'values' => array('static', 'dynamic'), 'description' => 'static shows one ad at a time; dynamic shows them with tabs and transitions. static when left out.'),
+				array('name' => 'transition_type',     'in' => 'body', 'type' => 'enum', 'values' => array('slide', 'fade'), 'description' => 'How a dynamic region moves between ads.'),
+				array('name' => 'transition_duration', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Milliseconds a transition takes; null for the default.'),
+				array('name' => 'autoplay',            'in' => 'body', 'type' => 'bool', 'description' => 'A dynamic region moves to the next ad by itself.'),
+				array('name' => 'interval',            'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 999, 'nullable' => true, 'description' => 'Seconds between two ads with autoplay; null for the default.'),
+				array('name' => 'continuous',          'in' => 'body', 'type' => 'bool', 'description' => 'Autoplay starts again from the first ad after the last. true when left out.')
+			)
+		),
+
+		array(
+			'id'      => 'design.ad_regions.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/design/ad-regions/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ad_regions_update',
+			'dry_run' => true,
+			'returns' => 'DesignAdRegion',
+			'summary' => 'Change an ad region',
+			'description' => 'Only the fields sent change, with the screen\'s checks (422). A name another region has is 409 name_taken; a rename leaves the tags already in page styles behind, so change them too. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',                'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The name page styles place the region by (<ad>name</ad>): English letters, numbers and dashes, no other region\'s. A rename has to be made in the page styles too.'),
+				array('name' => 'display_type',        'in' => 'body', 'type' => 'enum', 'values' => array('static', 'dynamic'), 'description' => 'static shows one ad at a time; dynamic shows them with tabs and transitions.'),
+				array('name' => 'transition_type',     'in' => 'body', 'type' => 'enum', 'values' => array('slide', 'fade'), 'description' => 'How a dynamic region moves between ads.'),
+				array('name' => 'transition_duration', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Milliseconds a transition takes; null for the default.'),
+				array('name' => 'autoplay',            'in' => 'body', 'type' => 'bool', 'description' => 'A dynamic region moves to the next ad by itself.'),
+				array('name' => 'interval',            'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 999, 'nullable' => true, 'description' => 'Seconds between two ads with autoplay; null for the default.'),
+				array('name' => 'continuous',          'in' => 'body', 'type' => 'bool', 'description' => 'Autoplay starts again from the first ad after the last.')
+			)
+		),
+
+		array(
+			'id'      => 'design.ad_regions.delete',
+			'method'  => 'DELETE',
+			'path'    => '/design/ad-regions/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ad_regions_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an ad region',
+			'description' => 'Deletes the ad region and the user accounts\' access to it, as the edit ad region screen does. 409 ad_region_has_ads while ads are still in it: delete them or move them to another region first. Cannot be undone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.ad_regions.delete_post',
+			'method'  => 'POST',
+			'path'    => '/design/ad-regions/{id}/delete',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ad_regions_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an ad region, addressed as a POST',
+			'description' => 'The same delete as DELETE /design/ad-regions/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Signing in from a device ------------------------------------ */
 
 		array(
@@ -4245,6 +5487,113 @@ function api_schema() {
 			'summary' => 'Wake this person\'s devices',
 			'description' => 'Sends a push to every registration this person holds and says how many the push services accepted. Each device then shows whatever its bell holds.',
 			'params'  => array()
+		),
+
+		/* ----- Bookings ---------------------------------------------------- */
+
+		array(
+			'id'      => 'bookings.list',
+			'method'  => 'GET',
+			'path'    => '/bookings',
+			'scope'   => 'bookings:read',
+			'handler' => 'api_bookings_list',
+			'returns' => array('list' => 'Booking'),
+			'summary' => 'Appointment bookings',
+			'description' => 'The bookings of the staff agenda by start time, earliest first, cursor paged. status: held (a visitor\'s slot kept for ten minutes while the form is filled; hold_until says until when), requested, confirmed, cancelled, no_show or done; without status every one but held is listed. Times are ISO-8601 UTC; the site\'s zone is site.timezone of GET /meta. source says where it was made: site (the booking widget), panel (the agenda) or api. An owner with the user role reaches only their own staff member\'s bookings. 503 service_unavailable until the database update that adds bookings has run.',
+			'params'  => array(
+				array('name' => 'status',     'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'One status or a comma list of them.'),
+				array('name' => 'staff_id',   'in' => 'query', 'type' => 'int', 'min' => 1),
+				array('name' => 'service_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
+				array('name' => 'from',       'in' => 'query', 'type' => 'datetime', 'description' => 'Only bookings that start at or after this moment.'),
+				array('name' => 'to',         'in' => 'query', 'type' => 'datetime', 'description' => 'Only bookings that start at or before this moment; a bare day counts whole.'),
+				array('name' => 'limit',      'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',     'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'bookings.slots',
+			'method'  => 'GET',
+			'path'    => '/bookings/slots',
+			'scope'   => 'bookings:read',
+			'handler' => 'api_bookings_slots',
+			'returns' => array('day' => 'string', 'timezone' => 'string', 'service_id' => 'integer', 'slots' => 'BookingSlot[]'),
+			'summary' => 'Free times of a day for a service',
+			'description' => 'The starts a staff-made booking may take on the day (in the site\'s zone, named in timezone): the service\'s length and buffers over the staff member\'s hours and day exceptions, minus holidays, their other bookings and live holds, and the busy times of their Workspace calendar, as the agenda offers them. Starts already past are left out; the visitors\' lead time and horizon do not apply. Without staff every enabled staff member who gives the service is asked. POST /bookings accepts exactly these starts. 404 not_found for a service or staff member that is not enabled.',
+			'params'  => array(
+				array('name' => 'service', 'in' => 'query', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The service\'s id.'),
+				array('name' => 'staff',   'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'The staff member\'s id; every one by default.'),
+				array('name' => 'day',     'in' => 'query', 'type' => 'string', 'max_length' => 10, 'required' => true, 'description' => 'YYYY-MM-DD in the site\'s zone.')
+			)
+		),
+
+		array(
+			'id'      => 'bookings.get',
+			'method'  => 'GET',
+			'path'    => '/bookings/{id}',
+			'scope'   => 'bookings:read',
+			'handler' => 'api_bookings_get',
+			'returns' => 'Booking',
+			'summary' => 'One booking',
+			'description' => 'As in the list.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'bookings.create',
+			'method'  => 'POST',
+			'path'    => '/bookings',
+			'scope'   => 'bookings:write',
+			'handler' => 'api_bookings_create',
+			'dry_run' => true,
+			'status'  => 201,
+			'returns' => 'Booking',
+			'summary' => 'Book a time for a customer',
+			'description' => 'A staff-made booking, as the agenda makes it (source api). The staff member must be enabled and give the service, and start_at must be one of the day\'s free starts of GET /bookings/slots; a name and an e-mail address or a phone are needed. 409 slot_taken when the time is no longer free, also when another booking took it at the same moment. Announces booking.created, and booking.confirmed with the customer\'s mail and text when it is confirmed. Answers 201 with the booking.',
+			'params'  => array(
+				array('name' => 'service_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'staff_id',   'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'start_at',   'in' => 'body', 'type' => 'datetime', 'required' => true, 'description' => 'The start, ISO-8601 with its zone.'),
+				array('name' => 'name',       'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'email',      'in' => 'body', 'type' => 'string', 'max_length' => 191),
+				array('name' => 'phone',      'in' => 'body', 'type' => 'string', 'max_length' => 40),
+				array('name' => 'notes',      'in' => 'body', 'type' => 'string', 'max_length' => 2000),
+				array('name' => 'status',     'in' => 'body', 'type' => 'enum', 'values' => array('confirmed', 'requested'), 'default' => 'confirmed', 'description' => 'requested waits for a confirmation and sends no mail yet.')
+			)
+		),
+
+		array(
+			'id'      => 'bookings.status',
+			'method'  => 'POST',
+			'path'    => '/bookings/{id}/status',
+			'scope'   => 'bookings:write',
+			'handler' => 'api_bookings_status',
+			'dry_run' => true,
+			'returns' => 'Booking',
+			'summary' => 'Change a booking\'s status',
+			'description' => 'confirmed (a request or a visitor\'s live hold), no_show or done, as the agenda offers it: cancelled, no_show and done are final, and a hold that ran out can only be cancelled. 409 booking_state when the booking cannot move there, or was changed meanwhile. A booking becoming confirmed announces booking.confirmed and mails the customer. To cancel, use POST /bookings/{id}/cancel.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'status', 'in' => 'body', 'type' => 'enum', 'values' => array('confirmed', 'no_show', 'done'), 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'bookings.cancel',
+			'method'  => 'POST',
+			'path'    => '/bookings/{id}/cancel',
+			'scope'   => 'bookings:write',
+			'handler' => 'api_bookings_cancel',
+			'dry_run' => true,
+			'returns' => 'Booking',
+			'summary' => 'Cancel a booking',
+			'description' => 'The booking is cancelled and its time is free again; the row is kept. A reason is added to the notes as "Cancelled: <reason>". Announces booking.cancelled and tells the customer, except for a visitor\'s hold. 409 booking_state when it is already in a final status, or was changed meanwhile.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'reason', 'in' => 'body', 'type' => 'string', 'max_length' => 500)
+			)
 		)
 
 	);
@@ -4324,6 +5673,7 @@ function api_error_catalogue() {
 
 		'validation_failed'        => array(422, 'A parameter is missing, the wrong type or out of range. The field is named in the answer.'),
 		'period_locked'            => array(422, 'The date falls in a period whose books are locked: nothing dated there can be issued, cancelled or paid. Date it after the lock, or have the lock moved in the panel.'),
+		'location'                 => array(422, 'location is not one of the site\'s stock locations, or the site keeps no stock per location. Leave it out to use the default.'),
 		'credit_limit'             => array(422, 'The sale would take the customer past the credit limit the store enforces. Take a payment first, or raise the limit on the account.'),
 
 		'rate_limited'             => array(429, 'Too many calls. Retry-After says how long to wait.'),

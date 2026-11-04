@@ -155,7 +155,7 @@ function test_products_mass_change_quantity_is_read_before_the_write()
 
 	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_products_bulk.php');", $screen, 'loads the reader');
 	pg_assert_true(strpos($screen, 'pg_products_mass_quantity_value(') !== false, 'reads with the shared reader');
-	pg_assert_true(strpos($screen, 'pg_products_mass_quantity_value(') < strpos($screen, 'foreach ($_POST[\'products\'] as $product_id)'), 'before any product is touched');
+	pg_assert_true(strpos($screen, 'pg_products_mass_quantity_value(') < strpos($screen, 'foreach ($product_ids as $product_id)'), 'before any product is touched');
 	pg_assert_true(strpos($screen, 'pg_explorer_bulk_product_new_quantity(') !== false, 'the new count is worked out by the shared helper');
 	pg_assert_same(0, preg_match('/[+\-]\s*\$_POST\[\'edit_inventory_quantity\'\]/', $screen), 'no arithmetic on the posted text');
 	pg_assert_same(false, strpos($screen, "'\" . e(\$_POST['edit_inventory_quantity']"), 'the posted text is not written');
@@ -200,7 +200,7 @@ function test_stock_writers_refuse_a_count_past_the_column()
 	pg_assert_contains("'quantity_too_large' => \$quantity_too_large", $bulk, 'in the answer');
 
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_products.php');
-	$loop = strpos($screen, 'foreach ($_POST[\'products\'] as $product_id)');
+	$loop = strpos($screen, 'foreach ($product_ids as $product_id)');
 
 	pg_assert_true(strpos($screen, 'pg_inventory_quantity_too_large($quantity_value)') < $loop, 'Edit Selected: the typed figure, before any product is touched');
 	pg_assert_true(strpos($screen, 'pg_inventory_quantity_too_large($new_inventory_quantity)') > $loop, 'Edit Selected: each product\'s new count');

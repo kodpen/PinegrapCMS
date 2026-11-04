@@ -35,19 +35,34 @@ $sort_levels = $view['sort_levels'];
 $heading = $view['heading'];
 $subheading = $view['subheading'];
 
-// The rows come one page at a time from the user_list_rows action
-// (includes/panel/lists.php); the table carries what it asks with.
-$output_list_params = h(encode_json(array('filter' => $filter)));
+// The list table driver prints the first rows; the next ones come from its
+// list_table_rows action (includes/panel/lists.php) as the list scrolls.
+$list_source = pg_user_list_source($user, array('filter' => $filter));
+
+if ($list_source === null) {
+    output_error(lang('Access denied'));
+}
+
+$list_page = pg_list_table_page($list_source, array(), null);
+
+if ($list_page === false) {
+    output_error(lang('Query failed.'));
+}
+
+// Delete Selected sits in the list's selection bar, which shows while rows
+// are selected, and posts the selection to delete_users.php. That screen
+// reads it with the list's own query and rights, and never deletes the
+// last administrator.
+$output_bulk_buttons = '<button type="button" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . h(lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('users'))))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang('Delete Selected') . '</button>';
 
 echo
     pg_page_shell(
         array(
             'title'=> lang($heading),
             'extra classes'=>'users',
-            'icon'=>'account', 
+            'icon'=>'account',
             'heading'=>lang($heading),
             'heading_description' => ($subheading ?? lang('Panel users and what they can access')),
-                    
         )
     ). '
 <main id="content" class="container-fluid">
@@ -56,57 +71,48 @@ echo
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-               
+
                 <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
                             <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_user.php?send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
-                            <form id="export_form" class="disable_shortcut d-inline-block" method="get">
-                                <div class=" btn-group btn-group-sm flex-wrap">
-                                    <a class="btn btn-link pg-link-secondary py-0 m-1" href="import_users.php?send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
-                                </div>
-                            </form>
+                            <a class="btn btn-sm btn-link pg-link-secondary py-0 m-1" href="import_users.php?send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
                             <div class="pg-toolbar-grow"></div>
+                            <label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
+                                <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                                <input type="search" class="form-ghost" data-pg-list-search="view_users" placeholder="' . h(lang('Search')) . '" aria-label="' . h(lang('Search')) . '">
+                            </label>
                             ' . pg_list_sort_menu('view_users.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter)) . '
                             <form id="search_form" action="view_users.php" method="get" class="search_form">
-                                <input type="hidden" name="filter" value="' . h($filter) . '">
                                 <div class="input-group input-group-sm">
                                     <label class="input-group-text material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
                                     <select id="filter_select" aria-label="' . h(lang('Content that viewed')) . '" name="filter" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($view['filters'], $filter) . '</select>
                                 </div>
                             </form>
                 </nav>
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative">
-                        <form name="form"  action="delete_users.php" method="post" class="disable_shortcut"> 
-                            ' . get_token_field() . '
-                            <input type="hidden" name="send_to" value="' . h(REQUEST_URL) . '" />
-                            <table class="chart table-hover table " style="width:100%;display:none" data-pg-list-action="user_list_rows" data-pg-list-params="' . $output_list_params . '">
-                                <thead>
-                                    <tr>
-                                        <th class="noVis">
-                                            <div class="form-field">
-                                                <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
-                                            </div>
-                                        </th>
-                                        <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                        ' . implode("\n                                        ", $view['columns']) . '
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                            <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                                <div class="container">
-                                    <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                        <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('users')))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
-                                    </div>
-                                </div>
-                            </nav>
-                        </form>
-                    </div>
-                </div>
+                <form name="form" action="delete_users.php" method="post" class="disable_shortcut">
+                    ' . get_token_field() . '
+                    <input type="hidden" name="selection" />
+                    <input type="hidden" name="list_params" value="' . h(encode_json(array('filter' => $filter))) . '" />
+                    <input type="hidden" name="send_to" value="' . h(REQUEST_URL) . '" />
+                    ' . pg_list_table_html($list_source, $list_page, lang($heading), $output_bulk_buttons) . '
+                </form>
             </div>
         </div>
-    
-</main>' .
+</main>
+<script>
+    // Delete Selected posts what the list has selected (delete_users.php
+    // resolves it with the list\'s own query and the user\'s rights).
+    (function () {
+        var root = document.querySelector(\'.pg-list-table[data-pg-list-table="view_users"]\');
+
+        if (root) {
+            root.addEventListener(\'pg-list-table:selection\', function (event) {
+                document.form.selection.value = JSON.stringify(event.detail.payload);
+            });
+        }
+    }());
+</script>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
+' .
     output_footer();
 
 $liveform->remove_form('view_users');

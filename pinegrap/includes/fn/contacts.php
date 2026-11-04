@@ -386,6 +386,36 @@ function pg_contact_merge_optional_columns(array $present)
 }
 
 /**
+ * The source a merged contact's row of one group is written back with: a
+ * hand, form or product row of any merged contact wins over a rule row, as
+ * the recompute never removes it; only rule rows stay a rule row. A row read
+ * before the upgrade, or of an unknown source, is hand. Pure.
+ *
+ * @param array $rows     the merged contacts' group rows (contact_group_id, source)
+ * @param int   $group_id
+ * @return string hand, form, product or rule
+ */
+function pg_contact_merge_group_source(array $rows, $group_id)
+{
+    $found = array();
+
+    foreach ($rows as $row) {
+        if ((string) $row['contact_group_id'] === (string) $group_id) {
+            $source = isset($row['source']) ? (string) $row['source'] : 'hand';
+            $found[in_array($source, array('hand', 'form', 'product', 'rule'), true) ? $source : 'hand'] = true;
+        }
+    }
+
+    foreach (array('hand', 'form', 'product', 'rule') as $source) {
+        if (isset($found[$source])) {
+            return $source;
+        }
+    }
+
+    return 'hand';
+}
+
+/**
  * Which of the merge's optional columns this site's contacts table has.
  *
  * @return array  column => bool
@@ -401,6 +431,105 @@ function pg_contact_merge_schema_columns()
 // This function merges duplicate contacts together and then forwards the user back to the all duplicate contacts view.
 // Every record that names a merged contact is re-pointed to the contact that stays (pg_contact_holders()); a group
 // of duplicates where more than one contact has an ERP account is left as it is and counted in $refused.
+/**
+ * The contacts of $ids that may not be deleted, from the rows that hold
+ * them: a contact a user account holds (user.user_contact) is the account's
+ * own, and one an ERP account is linked to carries its ledger. Deleting
+ * either would leave the holder pointing at nothing, so the panel and the
+ * API refuse both; an account holder is named first.
+ *
+ * @param array $ids       contact ids
+ * @param array $user_rows rows with contact_id and username
+ * @param array $erp_rows  rows with contact_id and title
+ * @return array contact id => array('reason' => 'account'|'erp', 'holder' => name)
+ */
+function pg_contact_delete_refusal_list(array $ids, array $user_rows, array $erp_rows)
+{
+    $wanted = array();
+
+    foreach ($ids as $id) {
+        $wanted[(int) $id] = true;
+    }
+
+    $refusals = array();
+
+    foreach (array('account' => array($user_rows, 'username'), 'erp' => array($erp_rows, 'title')) as $reason => $source) {
+        foreach ($source[0] as $row) {
+            $id = (int) $row['contact_id'];
+
+            if (isset($wanted[$id]) && !isset($refusals[$id])) {
+                $refusals[$id] = array('reason' => $reason, 'holder' => (string) $row[$source[1]]);
+            }
+        }
+    }
+
+    ksort($refusals);
+
+    return $refusals;
+}
+
+/**
+ * pg_contact_delete_refusal_list() over the site's user and ERP accounts.
+ *
+ * @param array $ids contact ids
+ * @return array contact id => array('reason', 'holder')
+ */
+function pg_contact_delete_refusals(array $ids)
+{
+    $list = array();
+
+    foreach ($ids as $id) {
+        if ((int) $id > 0) {
+            $list[] = (int) $id;
+        }
+    }
+
+    if (!$list) {
+        return array();
+    }
+
+    $in = implode(',', array_unique($list));
+    $users = db_items("SELECT user_contact AS contact_id, user_username AS username FROM user WHERE user_contact IN (" . $in . ")");
+    $erp = pg_schema_has('erp_accounts')
+        ? db_items("SELECT contact_id, title FROM erp_accounts WHERE contact_id IN (" . $in . ")")
+        : array();
+
+    return pg_contact_delete_refusal_list($list, is_array($users) ? $users : array(), is_array($erp) ? $erp : array());
+}
+
+/**
+ * The notice of a bulk delete for the contacts it left: how many, and the
+ * accounts that hold them (the first ten). '' when none was left.
+ *
+ * @param array $refusals contact id => entry of pg_contact_delete_refusals()
+ * @return string plain text
+ */
+function pg_contact_delete_refused_notice(array $refusals)
+{
+    if (!$refusals) {
+        return '';
+    }
+
+    $holders = array_slice(array_values(array_unique(array_column($refusals, 'holder'))), 0, 10);
+
+    return lang(array('string' => '{var:1} contact(s) were not deleted because a user account or an ERP account holds them: {var:2}.', 'vars' => array(pg_format_number(count($refusals), 0), implode(', ', $holders))));
+}
+
+/**
+ * The sentence that says why a contact is not deleted.
+ *
+ * @param array $refusal one entry of pg_contact_delete_refusals()
+ * @return string plain text
+ */
+function pg_contact_delete_refusal_text(array $refusal)
+{
+    if ($refusal['reason'] === 'account') {
+        return lang(array('string' => 'This contact is the user account "{var:1}"\'s own and is not deleted. Delete the account, or merge the contact into another one, first.', 'vars' => $refusal['holder']));
+    }
+
+    return lang(array('string' => 'This contact is linked to the ERP account "{var:1}" and is not deleted.', 'vars' => $refusal['holder']));
+}
+
 function merge_contacts($contacts, &$refused = 0)
 {
     $refused = 0;
@@ -472,6 +601,8 @@ function merge_contacts($contacts, &$refused = 0)
             contacts_contact_groups_xref.contact_id,
 
             contacts_contact_groups_xref.contact_group_id,
+
+            " . (pg_audience_ready() ? 'contacts_contact_groups_xref.source,' : '') . "
 
             contact_groups.name,
 
@@ -623,20 +754,14 @@ function merge_contacts($contacts, &$refused = 0)
                         $query = "DELETE FROM contacts_contact_groups_xref WHERE (contact_id = ?) AND (contact_group_id = ?)";
                         $result = db_q($query, array((string) $child['id'], (string) $contact_group_to_be_merged['contact_group_id'])) or output_error(lang('Query failed.'));
                         // insert a new xref record
-                        $query = "INSERT INTO contacts_contact_groups_xref (
-
-                                contact_id,
-
-                                contact_group_id)
-
-                            VALUES (
-
-                                ?,
-
-                                ?
-
-                                )";
-                        $result = db_q($query, array((string) $child['id'], (string) $contact_group_to_be_merged['contact_group_id'])) or output_error(lang('Query failed.'));
+                        // keep the row's source, so a merged rule row stays one the recompute reaches
+                        $values = array((string) $child['id'], (string) $contact_group_to_be_merged['contact_group_id']);
+                        $query = "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id) VALUES (?, ?)";
+                        if (pg_audience_ready()) {
+                            $values[] = pg_contact_merge_group_source($contact_groups_to_be_merged, $contact_group_to_be_merged['contact_group_id']);
+                            $query = "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id, source) VALUES (?, ?, ?)";
+                        }
+                        $result = db_q($query, $values) or output_error(lang('Query failed.'));
                         $contact_groups_to_be_merged_opt_in = '1';
                         // loop through the contact groups to be merged to get the new opt in value for this contact group,
                         // and add the contact group's id to the merged contact groups ids array so that they are not processed after this one is complete
@@ -842,20 +967,14 @@ function merge_contacts($contacts, &$refused = 0)
                         $query = "DELETE FROM contacts_contact_groups_xref WHERE (contact_id = ?) AND (contact_group_id = ?)";
                         $result = db_q($query, array((string) $remaining_orphan['id'], (string) $contact_group_to_be_merged['contact_group_id'])) or output_error(lang('Query failed.'));
                         // insert a new xref record
-                        $query = "INSERT INTO contacts_contact_groups_xref (
-
-                                contact_id,
-
-                                contact_group_id)
-
-                            VALUES (
-
-                                ?,
-
-                                ?
-
-                                )";
-                        $result = db_q($query, array((string) $remaining_orphan['id'], (string) $contact_group_to_be_merged['contact_group_id'])) or output_error(lang('Query failed.'));
+                        // keep the row's source, so a merged rule row stays one the recompute reaches
+                        $values = array((string) $remaining_orphan['id'], (string) $contact_group_to_be_merged['contact_group_id']);
+                        $query = "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id) VALUES (?, ?)";
+                        if (pg_audience_ready()) {
+                            $values[] = pg_contact_merge_group_source($contact_groups_to_be_merged, $contact_group_to_be_merged['contact_group_id']);
+                            $query = "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id, source) VALUES (?, ?, ?)";
+                        }
+                        $result = db_q($query, $values) or output_error(lang('Query failed.'));
                         $contact_groups_to_be_merged_opt_in = 1;
                         // loop through the contact groups to be merged to get the new opt in value,
                         // and add the contact groups to the merged contact groups ids array so that they are not processed again
@@ -1307,7 +1426,7 @@ function pg_contact_quick_save($user_id, $first_name, $last_name, $mobile_phone 
 
         // The group new accounts are put in, as the profile screen does.
         if (defined('REGISTRATION_CONTACT_GROUP_ID') && ((int) REGISTRATION_CONTACT_GROUP_ID > 0)
-            && ((int) db_value("SELECT COUNT(*) FROM contact_groups WHERE id = '" . (int) REGISTRATION_CONTACT_GROUP_ID . "'") > 0)) {
+            && ((int) db_value("SELECT COUNT(*) FROM contact_groups WHERE (id = '" . (int) REGISTRATION_CONTACT_GROUP_ID . "') AND " . pg_audience_hand_sql()) > 0)) {
             db("INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id) VALUES ('" . $contact_id . "', '" . (int) REGISTRATION_CONTACT_GROUP_ID . "')");
         }
 

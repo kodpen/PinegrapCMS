@@ -1538,7 +1538,7 @@ function pg_signin_address_user($identity)
         LEFT JOIN user_identities
             ON user_identities.user_id = user.user_id
             AND user_identities.provider = '" . e($identity['provider']) . "'
-        WHERE user.user_email = '" . e($identity['email']) . "' AND user_identities.id IS NULL" . $legacy_google . "
+        WHERE user.user_email = '" . e($identity['email']) . "' AND user_identities.id IS NULL" . $legacy_google . pg_user_enabled_sql('user') . "
         ORDER BY user.user_id
         LIMIT 20"), $identity['email']);
 }
@@ -1608,6 +1608,12 @@ function pg_signin_match_user($identity)
 {
     $user_id = pg_signin_identity_user($identity['provider'], $identity['subject']);
 
+    // A disabled account matches no credential; signin.php refuses the
+    // sign-in through pg_signin_reaches_disabled().
+    if ($user_id && pg_user_id_is_disabled($user_id)) {
+        return 0;
+    }
+
     if ($user_id) {
         pg_signin_identity_touch($identity['provider'], $identity['subject'], $identity['email_verified'] ? $identity['email'] : '');
 
@@ -1658,7 +1664,7 @@ function pg_signin_create_member($identity)
     pg_announce_contact_created($contact_id);
 
     if (defined('REGISTRATION_CONTACT_GROUP_ID')
-        && db_value("SELECT id FROM contact_groups WHERE id = '" . (int) REGISTRATION_CONTACT_GROUP_ID . "'")) {
+        && db_value("SELECT id FROM contact_groups WHERE (id = '" . (int) REGISTRATION_CONTACT_GROUP_ID . "') AND " . pg_audience_hand_sql())) {
         db(
             "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id)
             VALUES ('" . $contact_id . "', '" . (int) REGISTRATION_CONTACT_GROUP_ID . "')");
@@ -1695,6 +1701,36 @@ function pg_signin_same_address_user($rows, $email)
     }
 
     return 0;
+}
+
+/**
+ * Whether a provider sign-in nobody matched would reach a disabled account:
+ * the identity is tied to one, or an account with the reported address
+ * (accent-folded look-alikes included) is disabled. Such a sign-in is
+ * refused rather than tied or opened as a second account beside it.
+ *
+ * @param array $identity what pg_signin_finish() returned
+ * @return bool
+ */
+function pg_signin_reaches_disabled($identity)
+{
+    if (!pg_user_has_disabled_at()) {
+        return false;
+    }
+
+    $holder = pg_signin_identity_user($identity['provider'], $identity['subject']);
+
+    if ($holder && pg_user_id_is_disabled($holder)) {
+        return true;
+    }
+
+    foreach (pg_signin_address_accounts($identity['email']) as $row) {
+        if (pg_user_id_is_disabled($row['user_id'])) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**

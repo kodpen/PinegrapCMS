@@ -17,7 +17,7 @@ module: page_audience
 ## How may such a page be kept?
 - `pg_audience_cache_rule($kinds)`: `country` and `device` vary (one file-cache copy per value); `returning`, `utm_*`, `experiment` make the answer personal (`pg_page_cache_personal('audience')`); `member` and `group` change nothing: only a signed-in visitor can be one, and no cache serves a signed-in session (as `__visit_signed_in`). The plan said personal for those; dropped because it would cost every signed-out view.
 - The kinds come from every span in the drawn page (`pg_audience_html_tokens()`), also those a condition around them cuts, so the copy's key never depends on which spans one visit reached.
-- A varying page is stored as a pointer under the address key (empty body, meta `aud` = the kinds) and the page under `pg_audience_cache_key(key, kinds, values)`. `pg_page_cache_lookup()` reads the pointer, computes the visitor's values (`pg_audience_request_values()`, runs in the router: geo from waf.php, the user agent) and reads that copy; `$out['key']` stays the address's, so a miss stores both again.
+- Kept by country or device: a stub under the address key (empty body, meta `aud`), the page under `pg_audience_cache_key(key, kinds, values)`. With an experiment too (#6238), audience first: that key is the experiment's control key, variants under `pg_page_cache_variant_key()` of it; `pg_page_cache_follow()` (stub, copy, variant) and `pg_page_cache_store_targets()` (no stub when nothing is kept). `$out['key']` stays the address's.
 - No shared cache keeps it: `Cache-Control: private, max-age=0` on the drawn answer and on a file-cache hit; a CDN cannot vary by country.
 
 ## What does the editor offer?

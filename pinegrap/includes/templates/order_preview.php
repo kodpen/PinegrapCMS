@@ -1184,6 +1184,21 @@ if (!defined('PG_INIT_LOADED')) {
 
             <h2><?=h(lang('Payment'))?></h2>
 
+            <?php if (!empty($store_credit['show'])): ?>
+
+                <div class="form-group store_credit">
+                    <input type="hidden" name="store_credit_shown" value="1">
+                    <div class="form-check form-check-inline">
+                        <input type="checkbox" name="use_store_credit" id="use_store_credit" value="1" class="form-check-input"<?=$store_credit['checked'] ? ' checked' : ''?> onchange="var b = this.form.elements['submit_store_credit']; if (b) { b.click(); }">
+                        <label for="use_store_credit" class="form-check-label"><?=h(lang('Use my store credit'))?> (<?=prepare_price_for_output($store_credit['balance'], false, '', 'html')?>)</label>
+                    </div>
+                    <button type="submit" name="submit_store_credit" class="btn btn-default btn-secondary btn-sm" formnovalidate>
+                    <?=h(lang('Update'))?>
+                    </button>
+                </div>
+
+            <?php endif ?>
+
             <?php if ($gift_card_code): ?>
 
                 <div class="form-group form-inline">

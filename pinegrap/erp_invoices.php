@@ -389,7 +389,7 @@ foreach ($invoices as $invoice) {
             <td class="align-middle text-nowrap chart_label" data-order="' . h($is_draft ? ('~' . $id) : $invoice['full_number']) . '">' . $output_number . '</td>
             <td class="align-middle text-nowrap" data-order="' . h($invoice['issue_date']) . '">' . h(prepare_form_data_for_output($invoice['issue_date'], 'date')) . '</td>
             <td class="align-middle text-nowrap" data-order="' . h($effective_due) . '">' . $output_due . '</td>
-            <td style="max-width:240px" class="text-nowrap text-truncate align-middle">' . h($account_title) . '</td>
+            <td class="text-nowrap align-middle" title="' . h($account_title) . '"><span class="d-inline-block text-truncate pg-cell-truncate">' . h($account_title) . '</span></td>
             <td class="align-middle">' . h($direction_labels[$invoice['direction']] ?? $invoice['direction']) . '</td>
             <td class="align-middle ' . ($status_classes[$status] ?? '') . '">' . h($status_labels[$status] ?? $status) . '</td>
             ' . $output_edoc_cell . '
@@ -430,18 +430,46 @@ if (!empty($edoc_filters)) {
                 </div>';
 }
 
-// The bulk buttons act on the ticked rows of the page on screen; they stay
-// disabled until something is ticked (chart_checkbox_state_change()).
-$output_bulk_buttons = '';
+// The bulk actions act on the ticked rows of the page on screen. They sit in
+// one menu whose toggle stays disabled until something is ticked
+// (chart_checkbox_state_change() enables every button under
+// .enable-on-selected); the submit buttons post the bulk form by its id.
+$output_bulk_menu = '';
 
 if ($edoc_bulk) {
-    $output_bulk_buttons = '
-                <span class="enable-on-selected d-inline-flex flex-wrap gap-1">
-                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_send" class="btn btn-sm btn-outline theme-secondary disabled" disabled data-confirm-content="' . h(lang('Send the ticked invoices to the e-document provider? Invoices that were already sent are skipped.')) . '"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Send selected') . '</button>
-                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_submit" class="btn btn-sm btn-outline theme-secondary disabled" disabled data-confirm-content="' . h(lang('Hand the ticked drafts to GİB? Only documents waiting as a draft at the provider are handed over.')) . '"><i class="bi bi-bank me-1" aria-hidden="true"></i>' . lang('Hand to GİB') . '</button>
-                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_poll" class="btn btn-sm btn-outline theme-secondary disabled" disabled><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Ask status') . '</button>
-                </span>';
+    $output_bulk_menu = '
+                <div class="pg-menu-wrap enable-on-selected">
+                    <button class="btn btn-sm btn-text theme-secondary pg-menu-caret disabled" type="button" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" disabled><i class="bi bi-check2-square me-1" aria-hidden="true"></i>' . lang('Selected invoices') . '</button>
+                    <ul class="menu">
+                        <li><button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_send" class="menu-item pg-link-body-emphasis" disabled data-confirm-content="' . h(lang('Send the ticked invoices to the e-document provider? Invoices that were already sent are skipped.')) . '"><i class="bi bi-send me-3" aria-hidden="true"></i>' . lang('Send selected') . '</button></li>
+                        <li><button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_submit" class="menu-item pg-link-body-emphasis" disabled data-confirm-content="' . h(lang('Hand the ticked drafts to GİB? Only documents waiting as a draft at the provider are handed over.')) . '"><i class="bi bi-bank me-3" aria-hidden="true"></i>' . lang('Hand to GİB') . '</button></li>
+                        <li><button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_poll" class="menu-item pg-link-body-emphasis" disabled><i class="bi bi-arrow-repeat me-3" aria-hidden="true"></i>' . lang('Ask status') . '</button></li>
+                    </ul>
+                </div>';
 }
+
+// The related screens share one menu, so the bar keeps to one line.
+$output_tool_items = ($readonly ? '' : '
+                        <li><a class="menu-item pg-link-body-emphasis" href="add_erp_invoice.php"><i class="bi bi-receipt me-3" aria-hidden="true"></i>' . lang(array('string' => 'Invoice an Order')) . '</a></li>') . '
+                        <li><a class="menu-item pg-link-body-emphasis" href="erp_export.php?entity=invoices"><i class="bi bi-box-arrow-up me-3" aria-hidden="true"></i>' . lang('Export') . '</a></li>
+                        <li><a class="menu-item pg-link-body-emphasis" href="erp_aging.php"><i class="bi bi-hourglass-split me-3" aria-hidden="true"></i>' . lang('Aging report') . '</a></li>'
+    . ((function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_ready()) ? '
+                        <li><a class="menu-item pg-link-body-emphasis" href="erp_invoice_recurrences.php"><i class="bi bi-arrow-repeat me-3" aria-hidden="true"></i>' . lang('Repeating invoices') . '</a></li>' : '');
+
+$output_tools_menu = '
+                <div class="pg-menu-wrap">
+                    <button class="btn btn-sm btn-text theme-secondary pg-menu-caret" type="button" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false"><i class="bi bi-grid me-1" aria-hidden="true"></i>' . lang('Tools') . '</button>
+                    <ul class="menu">' . $output_tool_items . '
+                    </ul>
+                </div>';
+
+$output_toolbar = pg_screen_toolbar(array(
+    'primary' => $readonly ? '' : array('label' => lang('New Invoice'), 'url' => 'add_erp_manual_invoice.php', 'icon' => 'bi-plus-lg'),
+    'secondary' => array($output_tools_menu, $output_bulk_menu),
+    // A kept bucket would force the due-date view back to "Open", so "All"
+    // could never be picked; every other part of the view is kept.
+    'search' => array($output_edoc_menu, pg_filter_select('filter', array('' => lang('All')) + $filter_names, $filter, array('label' => lang('Due date'), 'icon' => 'calendar-week', 'action' => 'erp_invoices.php', 'keep' => array('edoc', 'direction', 'account_id', 'as_of')))),
+));
 
 echo
 pg_page_shell([
@@ -453,23 +481,12 @@ pg_page_shell([
         'cancel' => false,
     ]) . '
 <main id="content" class="container-fluid">
+    ' . $output_toolbar . '
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-
-            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . ($readonly ? '' : '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_manual_invoice.php"><i class="bi bi-plus-lg me-1"></i>' . lang('New Invoice') . '</a>
-                <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_invoice.php"><i class="bi bi-receipt me-1"></i>' . lang(array('string' => 'Invoice an Order')) . '</a>') . '
-                <a class="btn btn-sm btn-outline theme-secondary" href="erp_export.php?entity=invoices"><i class="bi bi-box-arrow-up me-1"></i>' . lang('Export') . '</a>
-                <a class="btn btn-sm btn-outline theme-secondary" href="erp_aging.php"><i class="bi bi-hourglass-split me-1"></i>' . lang('Aging report') . '</a>
-                ' . ((function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_ready()) ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_invoice_recurrences.php"><i class="bi bi-arrow-repeat me-1"></i>' . lang('Repeating invoices') . '</a>' : '') . '
-                ' . $output_bulk_buttons . '
-                <div class="pg-toolbar-grow"></div>
-                ' . $output_edoc_menu . '
-                ' . pg_filter_select('filter', array('' => lang('All')) + $filter_names, $filter, array('label' => lang('Due date'), 'icon' => 'calendar-week', 'action' => 'erp_invoices.php', 'keep' => array('edoc'))) . '
-            </nav>
             ' . $output_filter_note . '
             ' . ($edoc_bulk ? '<form id="erp_edoc_bulk" method="post" action="' . h($self_url) . '">' . get_token_field() : '') . '
             <div class="card my-7">

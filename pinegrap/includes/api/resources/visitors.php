@@ -183,14 +183,9 @@ function api_reports_top_content($params) {
 // What a visit can be counted by, and the visitors column (or expression) it is.
 function api_visitors_dimensions() {
 
-	// Paid is a tracking code carrying the pay-per-click flag set in the SEO
-	// settings. With no flag set nothing is counted as paid: an empty pattern
-	// would match every visit.
-	$flag = defined('PAY_PER_CLICK_FLAG') ? trim((string)PAY_PER_CLICK_FLAG) : '';
-
-	$channel = "CASE"
-		. (($flag !== '') ? " WHEN (tracking_code LIKE '%" . escape(escape_like($flag)) . "%') THEN 'pay_per_click'" : '')
-		. " WHEN (referring_search_engine <> '') THEN 'organic' ELSE 'neither' END";
+	// The channel is the rule the daily summary keeps (pg_visitor_channel_sql()):
+	// paid, email, ai, organic, social, referral or direct.
+	$channel = pg_visitor_channel_sql();
 
 	return array(
 		'referrer_host'     => 'referring_host_name',
@@ -222,7 +217,7 @@ function api_visitors_summary_dimensions() {
 		'referrer_host'     => 'referring_host_name',
 		'search_engine'     => 'referring_search_engine',
 		'search_terms'      => 'referring_search_terms',
-		'channel'           => 'pay_per_click_organic',
+		'channel'           => 'channel',
 		'landing_page'      => 'landing_page_name',
 		'tracking_code'     => 'tracking_code',
 		'utm_source'        => 'utm_source',
@@ -269,142 +264,45 @@ function api_visitors_figures_schema() {
 }
 
 // Visits in the window counted by one dimension, largest first, as the visitor
-// report screen summarises them. The figures are the same sums the screen
-// shows: the order flags are 0 or 1 on a visit, so their sum is a count.
+// report screen summarises them (includes/fn/visitor_figures.php): the daily
+// summary for the days it holds, the rows for the rest. summary_days and
+// raw_days say how many days each answered.
 function api_reports_visitors($params) {
 
 	$window = api_visitors_window($params, 400);
 
-	$dimensions = api_visitors_dimensions();
-
 	$by = (string)$params['by'];
 
-	$expression = $dimensions[$by];
+	$summary_dimensions = api_visitors_summary_dimensions();
 
 	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
 
-	$sums = "COUNT(*) AS visits,
-		COALESCE(SUM(page_views), 0) AS page_views,
-		COALESCE(SUM(custom_form_submitted), 0) AS forms_submitted,
-		COALESCE(SUM(order_created), 0) AS orders_created,
-		COALESCE(SUM(order_checked_out), 0) AS orders_checked_out,
-		COALESCE(SUM(order_completed), 0) AS orders_completed,
-		COALESCE(SUM(order_total), 0) AS order_total";
-
-	// Whole days by the site's clock, as the other two reports count them.
-	$start = strtotime($window['first'] . ' 00:00:00');
-	$stop = strtotime($window['last'] . ' 00:00:00 +1 day');
-
-	// Days whose rows the retention period has removed come from the daily
-	// summary: every day before the first raw one, the rows from it on. A
-	// summarized day's row the cleanup has not reached yet is not counted
-	// twice.
-	$summary_to = null;
-	$summary_rows = array();
-	$summary_total = null;
-	$raw_from = function_exists('pg_visitor_summary_raw_from') ? pg_visitor_summary_raw_from() : 0;
-
-	if ($raw_from > $start) {
-
-		$summary_last = min($window['last'], date('Y-m-d', $raw_from - 1));
-		$summary_dimensions = api_visitors_summary_dimensions();
-
-		$summary_range = "(stat_date >= '" . escape($window['first']) . "') AND (stat_date <= '" . escape($summary_last) . "')";
-
-		$summary_sums = "COALESCE(SUM(visits), 0) AS visits,
-			COALESCE(SUM(page_views), 0) AS page_views,
-			COALESCE(SUM(forms_submitted), 0) AS forms_submitted,
-			COALESCE(SUM(orders_created), 0) AS orders_created,
-			COALESCE(SUM(orders_checked_out), 0) AS orders_checked_out,
-			COALESCE(SUM(orders_completed), 0) AS orders_completed,
-			COALESCE(SUM(order_total), 0) AS order_total";
-
-		$summary_total = api_row("SELECT " . $summary_sums . " FROM visitor_stats_daily WHERE (dimension = '') AND " . $summary_range);
-
-		// A day's values outside its top ones are one remainder row there,
-		// counted in the totals and never listed as a value.
-		$summary_rows = api_rows("SELECT
-				" . (($by === 'channel') ? "IF(dim_value = '', 'neither', dim_value)" : "dim_value") . " AS value, " . $summary_sums . "
-			FROM visitor_stats_daily
-			WHERE (dimension = '" . escape($summary_dimensions[$by]) . "') AND (is_rest = 0) AND " . $summary_range . "
-			GROUP BY value
-			ORDER BY visits DESC, value ASC
-			LIMIT " . max(500, $limit * 4));
-
-		if ((int) $summary_total['visits'] > 0) {
-			$summary_to = $summary_last;
-		}
-
-		$start = max($start, $raw_from);
-
-	}
-
-	$where = "WHERE start_timestamp >= '" . (int) $start . "'
-		AND start_timestamp < '" . (int) $stop . "'";
-
-	$total = api_row("SELECT " . $sums . " FROM visitors " . $where);
-
-	$rows = api_rows("SELECT " . $expression . " AS value, " . $sums . "
-		FROM visitors" . pg_visitor_text_joins($expression) . "
-		" . $where . "
-		GROUP BY value
-		ORDER BY visits DESC, value ASC
-		LIMIT " . (($summary_to !== null) ? max(500, $limit * 4) : $limit));
-
-	if ($summary_to !== null) {
-
-		$figures = array('visits', 'page_views', 'forms_submitted', 'orders_created', 'orders_checked_out', 'orders_completed', 'order_total');
-
-		foreach ($figures as $figure) {
-			$total[$figure] = (int) $total[$figure] + (int) $summary_total[$figure];
-		}
-
-		// The two lists added up by value, as the database groups them:
-		// without regard to case.
-		$merged = array();
-
-		foreach (array_merge($summary_rows, $rows) as $row) {
-
-			$key = mb_strtolower((string) $row['value']);
-
-			if (!isset($merged[$key])) {
-				$merged[$key] = array('value' => (string) $row['value']) + array_fill_keys($figures, 0);
-			}
-
-			foreach ($figures as $figure) {
-				$merged[$key][$figure] += (int) $row[$figure];
-			}
-
-		}
-
-		usort($merged, function ($a, $b) {
-			return ($a['visits'] != $b['visits']) ? (($a['visits'] > $b['visits']) ? -1 : 1) : strcmp($a['value'], $b['value']);
-		});
-
-		$rows = array_slice($merged, 0, $limit);
-
-	}
+	// by is one of the route's values, each kept in the summary.
+	$figures = pg_visitor_breakdown($summary_dimensions[$by], $window['first'], $window['last'], $limit);
 
 	$out = array();
 
-	foreach ($rows as $row) {
+	foreach ($figures['rows'] as $row) {
+
+		$value = (string)$row['value'];
 
 		$out[] = array_merge(
 			// An empty value is a visit that had none: no referrer is a direct
 			// visit, no campaign is traffic that did not come from one.
-			array('value' => ((string)$row['value'] !== '') ? (string)$row['value'] : null),
+			array('value' => ($value !== '') ? $value : null),
 			api_visitors_figures($row)
 		);
 
 	}
 
 	api_ok(array(
-		'from'       => $window['first'],
-		'to'         => $window['last'],
-		'by'         => $by,
-		'totals'     => api_visitors_figures($total),
-		'rows'       => $out,
-		'summary_to' => $summary_to
+		'from'         => $window['first'],
+		'to'           => $window['last'],
+		'by'           => $by,
+		'totals'       => api_visitors_figures($figures['totals']),
+		'rows'         => $out,
+		'summary_to'   => $figures['summary_to'],
+		'summary_days' => $figures['summary_days']
 	));
 
 }
@@ -417,7 +315,8 @@ function api_visitor_breakdown_schema() {
 		'by'     => 'string',
 		'totals'     => api_visitors_figures_schema(),
 		'rows'       => array(array_merge(array('value' => 'string?'), api_visitors_figures_schema())),
-		'summary_to' => 'string?'
+		'summary_to'   => 'string?',
+		'summary_days' => 'integer'
 	);
 
 }
@@ -538,6 +437,198 @@ function api_ai_visibility_report_schema() {
 			'assistants' => array(array_merge(array('assistant' => 'string'), api_ai_referral_figures_schema())),
 			'summary_to' => 'string?'
 		)
+	);
+
+}
+
+// Google's figures for the site in the window, from what the Search Console
+// job downloaded (includes/fn/search_console.php): totals, each day, the top
+// searches and the top pages. Google publishes two or three days late:
+// latest_day is the last day it has figures for, and the days after it read
+// as zeros. linked false is a site not linked to Search Console, answered
+// with empty figures rather than an error.
+function api_reports_search($params) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/search_console.php');
+
+	$window = api_visitors_window($params, 400);
+
+	$limit = isset($params['limit']) ? (int)$params['limit'] : 25;
+
+	$linked = pg_gsc_schema_ready() && pg_gsc_linked();
+
+	$latest = $linked ? pg_gsc_latest_day() : '';
+
+	$out = array(
+		'linked'     => $linked,
+		'from'       => $window['first'],
+		'to'         => $window['last'],
+		'latest_day' => ($latest !== '') ? $latest : null,
+		'totals'     => api_search_figures(array('clicks' => 0, 'impressions' => 0, 'ctr' => 0, 'position' => 0)),
+		'days'       => array(),
+		'queries'    => array(),
+		'pages'      => array()
+	);
+
+	if ($linked) {
+
+		$out['totals'] = api_search_figures(pg_gsc_totals($window['first'], $window['last']));
+
+		foreach (pg_gsc_daily($window['first'], $window['last']) as $day => $figures) {
+
+			$out['days'][] = array('date' => $day, 'clicks' => (int)$figures['clicks'], 'impressions' => (int)$figures['impressions']);
+
+		}
+
+		foreach (pg_gsc_top('query', $window['first'], $window['last'], $limit) as $row) {
+
+			$out['queries'][] = array_merge(array('query' => (string)$row['name']), api_search_figures($row));
+
+		}
+
+		foreach (pg_gsc_top('page', $window['first'], $window['last'], $limit) as $row) {
+
+			$out['pages'][] = array_merge(array('url' => (string)$row['name']), api_search_figures($row));
+
+		}
+
+	}
+
+	api_ok($out);
+
+}
+
+// Clicks, impressions, the click rate as a fraction and the average position,
+// rounded so a client does not get float noise.
+function api_search_figures($row) {
+
+	return array(
+		'clicks'      => (int)$row['clicks'],
+		'impressions' => (int)$row['impressions'],
+		'ctr'         => round((float)$row['ctr'], 4),
+		'position'    => round((float)$row['position'], 2)
+	);
+
+}
+
+function api_search_figures_schema() {
+
+	return array(
+		'clicks'      => 'integer',
+		'impressions' => 'integer',
+		'ctr'         => 'number',
+		'position'    => 'number'
+	);
+
+}
+
+function api_search_report_schema() {
+
+	return array(
+		'linked'     => 'boolean',
+		'from'       => 'string',
+		'to'         => 'string',
+		'latest_day' => 'string?',
+		'totals'     => api_search_figures_schema(),
+		'days'       => array(array('date' => 'string', 'clicks' => 'integer', 'impressions' => 'integer')),
+		'queries'    => array(array_merge(array('query' => 'string'), api_search_figures_schema())),
+		'pages'      => array(array_merge(array('url' => 'string'), api_search_figures_schema()))
+	);
+
+}
+
+// Each page of the site with Google's figures beside the visits that began
+// on it, their forms and orders, its page views and its SEO score
+// (includes/fn/visitor_pages.php). A Google address and a site page meet on
+// their path; pages only one side knows are listed too, with null for the
+// side that does not know them.
+function api_reports_pages($params) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/visitor_pages.php');
+
+	$window = api_visitors_window($params, 400);
+
+	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
+
+	$sort = (isset($params['sort']) && in_array($params['sort'], array('clicks', 'visits', 'score'), true)) ? $params['sort'] : 'clicks';
+
+	$linked = pg_gsc_schema_ready() && pg_gsc_linked();
+
+	$answer = pg_visitor_pages($window['first'], $window['last'], $linked);
+
+	$rows = array();
+
+	foreach (array_slice(pg_visitor_pages_sort($answer['rows'], $sort), 0, $limit) as $row) {
+
+		$rows[] = api_page_figures($row);
+
+	}
+
+	api_ok(array(
+		'linked'       => $linked,
+		'from'         => $window['first'],
+		'to'           => $window['last'],
+		'sort'         => $sort,
+		'total'        => count($answer['rows']),
+		'rows'         => $rows,
+		'summary_to'   => $answer['summary_to'],
+		'summary_days' => $answer['summary_days']
+	));
+
+}
+
+// One row of GET /reports/pages.
+function api_page_figures($row) {
+
+	$key = (string)$row['key'];
+
+	return array(
+		'path'        => '/' . $key,
+		'home'        => ($key === ''),
+		'page_id'     => ($row['page_id'] > 0) ? (int)$row['page_id'] : null,
+		'clicks'      => ($row['clicks'] !== null) ? (int)$row['clicks'] : null,
+		'impressions' => ($row['impressions'] !== null) ? (int)$row['impressions'] : null,
+		'ctr'         => ($row['ctr'] !== null) ? round((float)$row['ctr'], 4) : null,
+		'position'    => ($row['position'] !== null) ? round((float)$row['position'], 2) : null,
+		'visits'      => (int)$row['visits'],
+		'page_views'  => (int)$row['page_views'],
+		'forms_submitted'  => (int)$row['forms'],
+		'orders_completed' => (int)$row['orders'],
+		'seo_score'   => ($row['score'] !== null) ? (int)$row['score'] : null
+	);
+
+}
+
+function api_page_figures_schema() {
+
+	return array(
+		'path'        => 'string',
+		'home'        => 'boolean',
+		'page_id'     => 'integer?',
+		'clicks'      => 'integer?',
+		'impressions' => 'integer?',
+		'ctr'         => 'number?',
+		'position'    => 'number?',
+		'visits'      => 'integer',
+		'page_views'  => 'integer',
+		'forms_submitted'  => 'integer',
+		'orders_completed' => 'integer',
+		'seo_score'   => 'integer?'
+	);
+
+}
+
+function api_pages_report_schema() {
+
+	return array(
+		'linked'       => 'boolean',
+		'from'         => 'string',
+		'to'           => 'string',
+		'sort'         => 'string',
+		'total'        => 'integer',
+		'rows'         => array(api_page_figures_schema()),
+		'summary_to'   => 'string?',
+		'summary_days' => 'integer'
 	);
 
 }

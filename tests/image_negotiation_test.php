@@ -89,13 +89,13 @@ function test_pg_image_negotiated_format_switch_on()
 	$webp = pg_image_negotiation_test_server('image/avif,image/webp,*/*;q=0.8');
 	$other = pg_image_negotiation_test_server('image/png,image/*;q=0.8,*/*;q=0.5');
 
-	pg_assert_same(array('format' => 'webp', 'vary' => true), pg_image_negotiated_format($row, 'jpg', array(), $webp), 'jpg');
-	pg_assert_same(array('format' => 'webp', 'vary' => true), pg_image_negotiated_format($row, 'jpeg', array(), $webp), 'jpeg');
-	pg_assert_same(array('format' => 'webp', 'vary' => true), pg_image_negotiated_format($row, 'jpe', array(), $webp), 'jpe');
-	pg_assert_same(array('format' => 'webp', 'vary' => true), pg_image_negotiated_format($row, 'png', array(), $webp), 'png');
-	pg_assert_same(array('format' => 'webp', 'vary' => true), pg_image_negotiated_format($row, 'jpg', array('w' => '960'), $webp), 'a width');
-	pg_assert_same(array('format' => '', 'vary' => true), pg_image_negotiated_format($row, 'jpg', array(), $other), 'no WebP named');
-	pg_assert_same(array('format' => '', 'vary' => true), pg_image_negotiated_format($row, 'jpg', array(), array()), 'no Accept');
+	pg_assert_same(array('format' => 'webp', 'vary' => true, 'private' => false), pg_image_negotiated_format($row, 'jpg', array(), $webp), 'jpg');
+	pg_assert_same(array('format' => 'webp', 'vary' => true, 'private' => false), pg_image_negotiated_format($row, 'jpeg', array(), $webp), 'jpeg');
+	pg_assert_same(array('format' => 'webp', 'vary' => true, 'private' => false), pg_image_negotiated_format($row, 'jpe', array(), $webp), 'jpe');
+	pg_assert_same(array('format' => 'webp', 'vary' => true, 'private' => false), pg_image_negotiated_format($row, 'png', array(), $webp), 'png');
+	pg_assert_same(array('format' => 'webp', 'vary' => true, 'private' => false), pg_image_negotiated_format($row, 'jpg', array('w' => '960'), $webp), 'a width');
+	pg_assert_same(array('format' => '', 'vary' => true, 'private' => false), pg_image_negotiated_format($row, 'jpg', array(), $other), 'no WebP named');
+	pg_assert_same(array('format' => '', 'vary' => true, 'private' => false), pg_image_negotiated_format($row, 'jpg', array(), array()), 'no Accept');
 }
 
 // What never negotiates: other types, an explicit format, the switch off.
@@ -103,7 +103,7 @@ function test_pg_image_negotiated_format_left_alone()
 {
 	$on = array('image_derivative_formats' => '5');
 	$webp = pg_image_negotiation_test_server('image/webp,*/*');
-	$none = array('format' => '', 'vary' => false);
+	$none = array('format' => '', 'vary' => false, 'private' => false);
 
 	pg_assert_same($none, pg_image_negotiated_format($on, 'gif', array(), $webp), 'gif');
 	pg_assert_same($none, pg_image_negotiated_format($on, 'webp', array(), $webp), 'webp');
@@ -118,14 +118,33 @@ function test_pg_image_negotiated_format_left_alone()
 	pg_assert_same($none, pg_image_negotiated_format(null, 'jpg', array(), $webp), 'no config row');
 }
 
-// Through a CDN or proxy the original goes until the operator confirmed
-// that the edge keeps a copy per format.
+// Through a CDN or proxy nobody confirmed the picture is negotiated with
+// private caching, so the edge keeps no copy; once the self-test found a CDN
+// that keeps private answers too, the original goes as before; confirmed
+// (bit 8), both formats go public.
 function test_pg_image_negotiated_format_behind_proxy()
 {
 	$cf = pg_image_negotiation_test_server('image/webp,*/*', array('HTTP_CF_RAY' => '1-IST'));
+	$cf_other = pg_image_negotiation_test_server('image/png,*/*', array('HTTP_VIA' => '1.1 varnish'));
+	$on = array('image_derivative_formats' => '5');
 
-	pg_assert_same(array('format' => '', 'vary' => true), pg_image_negotiated_format(array('image_derivative_formats' => '5'), 'jpg', array(), $cf), 'unconfirmed');
-	pg_assert_same(array('format' => 'webp', 'vary' => true), pg_image_negotiated_format(array('image_derivative_formats' => '13'), 'jpg', array(), $cf), 'confirmed');
+	pg_assert_same(array('format' => 'webp', 'vary' => true, 'private' => true), pg_image_negotiated_format($on, 'jpg', array(), $cf), 'unconfirmed: WebP, private');
+	pg_assert_same(array('format' => 'webp', 'vary' => true, 'private' => true), pg_image_negotiated_format($on, 'jpg', array(), $cf, 'private'), 'unconfirmed, private mode');
+	pg_assert_same(array('format' => '', 'vary' => true, 'private' => true), pg_image_negotiated_format($on, 'jpg', array(), $cf_other), 'unconfirmed: the original, private');
+	pg_assert_same(array('format' => '', 'vary' => true, 'private' => false), pg_image_negotiated_format($on, 'jpg', array(), $cf, 'original'), 'a CDN keeping private answers: the original');
+	pg_assert_same(array('format' => 'webp', 'vary' => true, 'private' => false), pg_image_negotiated_format(array('image_derivative_formats' => '13'), 'jpg', array(), $cf), 'confirmed');
+	pg_assert_same(array('format' => 'webp', 'vary' => true, 'private' => false), pg_image_negotiated_format(array('image_derivative_formats' => '13'), 'jpg', array(), $cf, 'original'), 'confirmed wins over the mode');
+	pg_assert_same(array('format' => 'webp', 'vary' => true, 'private' => false), pg_image_negotiated_format($on, 'jpg', array(), pg_image_negotiation_test_server('image/webp'), 'original'), 'no CDN: the mode does not matter');
+	pg_assert_same(array('format' => '', 'vary' => false, 'private' => false), pg_image_negotiated_format(array('image_derivative_formats' => '1'), 'jpg', array(), $cf), 'switch off');
+}
+
+function test_pg_image_same_address_mode()
+{
+	pg_assert_same('private', pg_image_same_address_mode(null), 'no state yet');
+	pg_assert_same('private', pg_image_same_address_mode(array('mode' => 'private')), 'private');
+	pg_assert_same('original', pg_image_same_address_mode(array('mode' => 'original')), 'original');
+	pg_assert_same('private', pg_image_same_address_mode(array('mode' => 'public')), 'public is bit 8, not the file');
+	pg_assert_same('private', pg_image_same_address_mode(array('mode' => array('original'))), 'not a string');
 }
 
 // Cloudflare Tools' edge check is negotiated through the CDN before bit 8 is
@@ -141,10 +160,22 @@ function test_pg_image_vary_check_asked()
 	pg_assert_false(pg_image_vary_check_asked(array('pg_vary_check' => array('0123456789abcdef'))), 'an array');
 	pg_assert_false(pg_image_vary_check_asked(array()), 'none');
 
-	pg_assert_same(array('format' => 'webp', 'vary' => true), pg_image_negotiated_format(array('image_derivative_formats' => '5'), 'jpg', $check, $cf), 'unconfirmed CDN, check');
-	pg_assert_same(array('format' => '', 'vary' => true), pg_image_negotiated_format(array('image_derivative_formats' => '5'), 'jpg', $check, pg_image_negotiation_test_server('*/*')), 'check without WebP');
-	pg_assert_same(array('format' => '', 'vary' => false), pg_image_negotiated_format(array('image_derivative_formats' => '1'), 'jpg', $check, $cf), 'switch off');
-	pg_assert_same(array('format' => '', 'vary' => true), pg_image_negotiated_format(array('image_derivative_formats' => '5'), 'jpg', array('pg_vary_check' => 'x'), $cf), 'a bad token keeps the guard');
+	pg_assert_same(array('format' => 'webp', 'vary' => true, 'private' => false), pg_image_negotiated_format(array('image_derivative_formats' => '5'), 'jpg', $check, $cf), 'unconfirmed CDN, check');
+	pg_assert_same(array('format' => '', 'vary' => true, 'private' => false), pg_image_negotiated_format(array('image_derivative_formats' => '5'), 'jpg', $check, pg_image_negotiation_test_server('*/*')), 'check without WebP');
+	pg_assert_same(array('format' => '', 'vary' => false, 'private' => false), pg_image_negotiated_format(array('image_derivative_formats' => '1'), 'jpg', $check, $cf), 'switch off');
+	pg_assert_same(array('format' => 'webp', 'vary' => true, 'private' => false), pg_image_negotiated_format(array('image_derivative_formats' => '5'), 'jpg', $check, $cf, 'original'), 'the check is negotiated in the original mode too');
+	pg_assert_same(array('format' => 'webp', 'vary' => true, 'private' => true), pg_image_negotiated_format(array('image_derivative_formats' => '5'), 'jpg', array('pg_vary_check' => 'x'), $cf), 'a bad token is an ordinary request');
+	pg_assert_same(array('format' => '', 'vary' => true, 'private' => false), pg_image_negotiated_format(array('image_derivative_formats' => '5'), 'jpg', array('pg_vary_check' => 'x'), $cf, 'original'), 'a bad token keeps the guard');
+
+	$private = array('pg_vary_check' => '0123456789abcdef', 'pg_vary_cache' => 'private');
+
+	pg_assert_true(pg_image_vary_check_private($private), 'the private check');
+	pg_assert_false(pg_image_vary_check_private($check), 'the public check');
+	pg_assert_false(pg_image_vary_check_private(array('pg_vary_cache' => 'private')), 'no token');
+	pg_assert_false(pg_image_vary_check_private(array('pg_vary_check' => '0123456789abcdef', 'pg_vary_cache' => 'public')), 'another value');
+	pg_assert_same(array('format' => 'webp', 'vary' => true, 'private' => true), pg_image_negotiated_format(array('image_derivative_formats' => '5'), 'jpg', $private, $cf, 'original'), 'the private check is answered private');
+	pg_assert_same(array('format' => '', 'vary' => true, 'private' => true), pg_image_negotiated_format(array('image_derivative_formats' => '5'), 'jpg', $private, pg_image_negotiation_test_server('*/*', array('HTTP_CF_RAY' => '1-IST'))), 'the private check without WebP');
+	pg_assert_same(array('format' => 'webp', 'vary' => true, 'private' => false), pg_image_negotiated_format(array('image_derivative_formats' => '13'), 'jpg', $private, $cf), 'confirmed: public whatever the check asks');
 }
 
 function test_pg_image_original_asked()
@@ -232,7 +263,11 @@ function test_pg_image_same_address_state()
 	pg_assert_same('off', pg_image_same_address_state(array('on' => false, 'cdn' => true), true, true), 'off, whatever the CDN');
 	pg_assert_same('off', pg_image_same_address_state(null, true, false), 'no settings');
 	pg_assert_same('no_webp', pg_image_same_address_state($on, false, false), 'the server writes no WebP');
-	pg_assert_same('cdn', pg_image_same_address_state($on, true, true), 'a CDN in front, not confirmed');
+	pg_assert_same('private', pg_image_same_address_state($on, true, true), 'a CDN in front, not confirmed');
+	pg_assert_same('private', pg_image_same_address_state($on, true, true, 'private'), 'a CDN in front, private mode');
+	pg_assert_same('original', pg_image_same_address_state($on, true, true, 'original'), 'a CDN that keeps private answers');
+	pg_assert_same('on', pg_image_same_address_state($confirmed, true, true, 'original'), 'confirmed wins over the mode');
+	pg_assert_same('on', pg_image_same_address_state($on, true, false, 'original'), 'no CDN in front of the panel');
 	pg_assert_same('on', pg_image_same_address_state($confirmed, true, true), 'a CDN in front, confirmed');
 	pg_assert_same('on', pg_image_same_address_state($on, true, false), 'no CDN');
 }

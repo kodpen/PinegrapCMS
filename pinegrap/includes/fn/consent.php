@@ -61,6 +61,22 @@ function pg_consent_enabled()
 }
 
 /**
+ * The Google tag ID of the site's gtag script (G-, GT-, AW-, DC- or the old
+ * UA- form), trimmed; '' when the value is anything else. The ID is printed
+ * into a script address and an inline script, so nothing but letters, digits
+ * and dashes passes.
+ *
+ * @param  mixed $value
+ * @return string
+ */
+function pg_ga_tag_id($value)
+{
+    $value = trim((string) $value);
+
+    return preg_match('/^(G|GT|AW|DC|UA)-[A-Z0-9-]{4,30}$/iD', $value) ? $value : '';
+}
+
+/**
  * The optional categories and the letter each one has in the cookie value.
  * The notice's script carries the same map.
  *

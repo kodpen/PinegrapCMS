@@ -38,14 +38,19 @@ function get_style($folder_id, $device_type = 'desktop')
                 WHERE folder_id = ?";
             $result = db_q($query, array((string) $folder_id)) or output_error(lang('Query failed'));
             $row = mysqli_fetch_assoc($result);
-            $folder_parent = $row['folder_parent'] ?? '';
-            $folder_style = $row['folder_style'] ?? '';
-            $folder_level = $row['folder_level'] ?? '';
+            // A missing folder (deleted, or a bad id) ends the search: on
+            // PHP 8 '' == 0 is false, so a blank level would recurse forever.
+            if (!$row) {
+                return 0;
+            }
+            $folder_parent = $row['folder_parent'];
+            $folder_style = $row['folder_style'];
+            $folder_level = $row['folder_level'];
             // if there is a style for this folder, then return it
             if ($folder_style) {
                 return $folder_style;
                 // else if this is the root folder, then there is no where else to look, so return 0
-            } else if ($folder_level == 0) {
+            } else if ((int) $folder_level === 0) {
                 return 0;
                 // else use recursion to check for a style in the parent folder
             } else {
@@ -66,6 +71,10 @@ function get_style($folder_id, $device_type = 'desktop')
                 WHERE folder_id = ?";
             $result = db_q($query, array((string) $folder_id)) or output_error(lang('Query failed'));
             $row = mysqli_fetch_assoc($result);
+            // A missing folder ends the search (see the desktop branch).
+            if (!$row) {
+                return 0;
+            }
             $folder_parent = $row['folder_parent'];
             $mobile_style_id = $row['mobile_style_id'];
             $folder_level = $row['folder_level'];
@@ -73,7 +82,7 @@ function get_style($folder_id, $device_type = 'desktop')
             if ($mobile_style_id != 0) {
                 return $mobile_style_id;
                 // else if this is the root folder, then there is no where else to look, so return 0
-            } else if ($folder_level == 0) {
+            } else if ((int) $folder_level === 0) {
                 return 0;
                 // else use recursion to check for a style in the parent folder
             } else {
@@ -2000,8 +2009,9 @@ function prepare_page_for_email($html)
         // change relative URLs to absolute URLs for HTML background images
         $html = preg_replace('/(background\s*=\s*["\'])(?!http:\/\/|https:\/\/)(?:\/|\.\.\/|\.\/|)(.*?["\'])/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $html);
     }
-    // wrap long lines (RFC 821)
-    $html = wordwrap($html, 900, "\n", 1);
+    // No hard wrap: email() sends through PHPMailer, which encodes a line
+    // over 998 characters as quoted-printable; a cut wrap split words, URLs,
+    // multibyte characters and inline scripts.
     return $html;
 }
 // outputs the form's <select> product list for selecting a product
@@ -2137,7 +2147,7 @@ function select_country($country_id = '')
         $rows[] = $row;
     }
 
-    return pg_country_select_options(pg_geo_sort_by_label($rows), $country_id);
+    return pg_country_select_options(pg_geo_sort_by_label(pg_geo_label_disambiguate($rows)), $country_id);
 }
 
 /**
@@ -2618,6 +2628,9 @@ function logout()
 
     session_unset();
     session_destroy();
+    // Panel pages may sit in the browser's back/forward cache (private,
+    // no-cache, pg_panel_cache_headers()); the sign-out answer drops them.
+    pg_session_end_clear_cache();
     // If the user was not logged in as a different user, then also clear the
     // remember me cookie. We don't clear it when logged in as a different user,
     // so the user can automatically log back in under their own account now.
@@ -4112,8 +4125,67 @@ function get_standard_fields_for_view()
             'type' => ''
         )
     );
+    // The fee of a designed form (2026.11.0, 11.0.158): the number of the
+    // order the record points at once that order is completed, and Paid
+    // while forms.paid_at is set. Offered only once the columns are there.
+    if (function_exists('pg_form_payment_ready') && pg_form_payment_ready()) {
+        $standard_fields[] = array(
+            'name' => lang('Order Number'),
+            'value' => 'order_number',
+            'sql_name' => '(SELECT orders.order_number FROM orders WHERE (forms.order_id != 0) AND (orders.id = forms.order_id) AND (orders.order_number != 0))',
+            'type' => ''
+        );
+        $standard_fields[] = array(
+            'name' => lang('Paid'),
+            'value' => 'paid',
+            'sql_name' => 'CASE WHEN (forms.paid_at > 0) THEN "Paid" ELSE "" END',
+            'type' => ''
+        );
+    }
     return $standard_fields;
 }
+
+// Whether a field picked on the form list view screen (an order-by or a
+// filter field) is one the view can store: '' (none), a value of
+// get_standard_fields_for_view(), 'random' where $allow_random (only the first
+// order-by column carries it), or the id of one of the form's own fields. The
+// standard field columns are ENUMs, so a value outside them was written as ''
+// and the setting was lost without a word.
+function pg_form_list_view_field_allowed($value, array $standard_fields, array $form_field_ids, $allow_random = false)
+{
+    if (!is_string($value) && !is_int($value)) {
+        return false;
+    }
+
+    $value = (string) $value;
+
+    if ($value === '') {
+        return true;
+    }
+
+    if (ctype_digit($value)) {
+        foreach ($form_field_ids as $form_field_id) {
+            if ((string) $form_field_id === $value) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    if ($value === 'random') {
+        return (bool) $allow_random;
+    }
+
+    foreach ($standard_fields as $standard_field) {
+        if (isset($standard_field['value']) && ($standard_field['value'] === $value)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 // This function is used by form list view to create sql for filters.
 function prepare_sql_operation($operator, $operand_1, $operand_2)
 {

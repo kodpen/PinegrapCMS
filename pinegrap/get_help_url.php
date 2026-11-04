@@ -79,6 +79,7 @@ function get_help_url($properties = array())
         'settings_firewall'   => 'site-settings#firewall',
         'settings_commerce'   => 'site-settings#commerce',
         'settings_accounting' => 'site-settings#accounting',
+        'settings_bookings'   => 'site-settings#bookings',
         'settings_privacy'    => 'site-settings#visitors-and-privacy',
         'settings_api'        => 'site-settings#api',
         'settings_maintenance' => 'site-settings#updates-and-maintenance',
@@ -166,6 +167,8 @@ function get_help_url($properties = array())
         'add_calendar_event'            => 'calendars#create-edit-calendar-event',
         'edit_calendar_event'           => 'calendars#create-edit-calendar-event',
         'view_calendar_event_locations' => 'calendars#event-locations',
+        'view_bookings'                 => 'calendars',
+        'edit_booking'                  => 'calendars',
         'add_calendar_event_location'   => 'calendars#create-edit-calendar-event-location',
         'edit_calendar_event_location'  => 'calendars#create-edit-calendar-event-location',
 
@@ -176,6 +179,7 @@ function get_help_url($properties = array())
         'import_submitted_forms' => 'forms#import-submitted-forms',
 
         // Visitors
+        'visitors'             => 'visitors#overview',
         'view_visitor_reports' => 'visitors#visitor-reports',
         'view_visitor_report'  => 'visitors#create-edit-visitor-report',
         'view_visitor'         => 'visitors#visit-details',
@@ -304,6 +308,7 @@ function get_help_url($properties = array())
         'add_zone'                         => 'commerce-cont#create-edit-zone',
         'edit_zone'                        => 'commerce-cont#create-edit-zone',
         'view_shipping_methods'            => 'commerce-cont#shipping-methods',
+        'view_stock_moves'                 => 'commerce-cont#stock-history',
         'add_shipping_method'              => 'commerce-cont#create-edit-shipping-method',
         'edit_shipping_method'             => 'commerce-cont#create-edit-shipping-method',
         'view_arrival_dates'               => 'commerce-cont#arrival-dates',
@@ -342,6 +347,7 @@ function get_help_url($properties = array())
 
         // Design
         'view_styles'              => 'design#styles',
+        'legacy_to_designer'       => 'design#styles',
         'add_style'                => 'design#create-style',
         'add_custom_style'         => 'design#create-edit-custom-style',
         'edit_custom_style'        => 'design#create-edit-custom-style',
@@ -487,7 +493,7 @@ function get_help_url($properties = array())
         'view_audit_log' => 'security#audit-trail',
         'developer_lock' => 'security#developer-lock',
         'device_limit'   => 'security#devices',
-        'device_pairing' => 'security#devices',
+        'device_pairing' => 'api#device-sessions-signin',
         'mfa'            => 'security#two-step-verification',
     );
 

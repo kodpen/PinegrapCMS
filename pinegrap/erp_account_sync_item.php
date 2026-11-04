@@ -207,7 +207,16 @@ if ($_POST) {
 $fields = erp_edoc_account_fields();
 
 // The confirmation sits on the button: the panel's click handler asks it.
-$form = function ($action, $button, $extra = '', $confirm = '') use ($row, $account) {
+// The read-only accountant reads both sides: every form that writes (link,
+// align, send, take in, set aside, read again) is left out; the gate would
+// refuse its POST anyway.
+$readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
+
+$form = function ($action, $button, $extra = '', $confirm = '') use ($row, $account, $readonly) {
+    if ($readonly) {
+        return '';
+    }
+
     if (($confirm !== '') && (strpos($button, '<button ') === 0)) {
         $button = '<button data-confirm-content="' . h($confirm) . '" ' . substr($button, 8);
     }
@@ -364,7 +373,7 @@ if ($mode === 'linked') {
                 </div>
             </form>';
 
-    if (!empty($diff)) {
+    if (!empty($diff) && !$readonly) {
         $output_actions .= '<button type="submit" form="erp_account_align" class="btn my-1 btn-solid theme-primary" data-confirm-content="' . h(lang(array('string' => 'Write the chosen values to the ERP account and to {var:1}?', 'vars' => $provider_label))) . '"><i class="bi bi-arrow-left-right me-3" aria-hidden="true"></i>' . lang('Align the chosen fields') . '</button>';
     }
 
@@ -405,9 +414,15 @@ if ($mode === 'linked') {
     }
 
     $aside = in_array((int) $account['id'], ($provider_code !== '') ? erp_edoc_accounts_ignored_ids($provider_code) : array(), true);
-    $output_actions .= $aside
-        ? $form('restore', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i>' . lang('Bring back') . '</button>')
-        : $form('aside', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-archive me-3" aria-hidden="true"></i>' . lang('Set aside') . '</button>');
+
+    // Only an account the list could offer is set aside: the Put aside tab
+    // lists accounts with a usable number and no card, so one that is not
+    // eligible would vanish there. One already aside can always come back.
+    if ($aside) {
+        $output_actions .= $form('restore', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i>' . lang('Bring back') . '</button>');
+    } elseif ($eligible) {
+        $output_actions .= $form('aside', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-archive me-3" aria-hidden="true"></i>' . lang('Set aside') . '</button>');
+    }
 
 } else {
 
@@ -512,7 +527,7 @@ pg_page_shell([
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            ' . ((($row !== null) && ($provider_code !== '') && erp_edoc_supports('account', $provider_code))
+            ' . ((($row !== null) && ($provider_code !== '') && !$readonly && erp_edoc_supports('account', $provider_code))
                 ? '<nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 ' . $form('refresh', '<button type="submit" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Read the card again from {var:1}', 'vars' => $provider_label))) . '</button>') . '
             </nav>'

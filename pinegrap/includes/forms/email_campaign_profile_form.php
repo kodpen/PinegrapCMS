@@ -41,6 +41,18 @@ function pg_email_campaign_profile_commerce_actions()
 }
 
 /**
+ * The booking actions (includes/fn/booking_messages.php): tied to no record
+ * and offered once the booking tables are in place, whatever the commerce
+ * access.
+ *
+ * @return array
+ */
+function pg_email_campaign_profile_booking_actions()
+{
+    return array('booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled');
+}
+
+/**
  * The mail-merge fields the subscription actions fill in, as the form lists
  * them (pg_subscription_mail_fields(), then the two of
  * pg_subscription_price_mail_fields() only the price change mail fills in).
@@ -108,10 +120,15 @@ function pg_email_campaign_profile_action_rows($action)
         'calendar_schedule' => '',
         'standard_schedule' => 'show',
         'subscription_fields' => '',
+        'booking_fields' => '',
     );
 
     if (strpos((string) $action, 'subscription_') === 0) {
         $rows['subscription_fields'] = 'show';
+    }
+
+    if (in_array((string) $action, pg_email_campaign_profile_booking_actions(), true)) {
+        $rows['booking_fields'] = 'show';
     }
 
     $item_field = pg_email_campaign_profile_action_item_field($action);
@@ -150,7 +167,7 @@ function pg_email_campaign_profile_action_values($action, $fields)
 
     if ($item_field != '') {
         $values['action_item_id'] = isset($fields[$item_field]) ? (string) $fields[$item_field] : '';
-    } elseif (in_array($action, pg_email_campaign_profile_commerce_actions(), true)) {
+    } elseif (in_array($action, pg_email_campaign_profile_commerce_actions(), true) || in_array($action, pg_email_campaign_profile_booking_actions(), true)) {
         $values['action_item_id'] = '0';
     } else {
         return $values;
@@ -249,7 +266,7 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
     }
 
     $action = $value('action');
-    $actions = array_merge(array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent'), pg_email_campaign_profile_commerce_actions());
+    $actions = array_merge(array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent'), pg_email_campaign_profile_commerce_actions(), pg_email_campaign_profile_booking_actions());
 
     if (!in_array($action, $actions, true)) {
         return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'action'));
@@ -713,6 +730,28 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
 
     $output_product_id_row = '';
     $output_subscription_fields_row = '';
+    $output_booking_fields_row = '';
+
+    // The booking actions, once the booking tables are in place, or when the
+    // profile already has one.
+    if ((function_exists('pg_booking_ready') && pg_booking_ready()) || in_array($liveform->get_field_value('action'), pg_email_campaign_profile_booking_actions(), true)) {
+        $action_options[lang('Booking Confirmed')] = 'booking_confirmed';
+        $action_options[lang('Booking Reminder')] = 'booking_reminder';
+        $action_options[lang('Booking Rescheduled')] = 'booking_rescheduled';
+        $action_options[lang('Booking Cancelled')] = 'booking_cancelled';
+
+        $output_booking_fields = '';
+
+        foreach (pg_booking_mail_field_meanings() as $name => $meaning) {
+            $output_booking_fields .= '<li><code>^^' . h($name) . '^^</code> ' . h($meaning) . '</li>';
+        }
+
+        $output_booking_fields_row =
+            '<div class="col-12 my-3 collapse ' . $rows['booking_fields'] . '" id="booking_fields_row">
+                <div class="form-text">' . h(lang('The subject and the body can use these fields; the e-mail carries the booking as a calendar file (.ics).')) . '</div>
+                <ul class="form-text mb-0">' . $output_booking_fields . '</ul>
+            </div>';
+    }
 
     // If commerce is enabled and the user has access to commerce,
     // then add commerce actions and product id row.
@@ -786,6 +825,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                 </div>
                                 ' . $output_product_id_row . '
                                 ' . $output_subscription_fields_row . '
+                                ' . $output_booking_fields_row . '
                             </div>
                         </div>
                     </div>

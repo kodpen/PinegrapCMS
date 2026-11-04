@@ -80,6 +80,18 @@ if (($import_id > 0) && ($import === null)) {
     output_error(h(lang('The import was not found.')));
 }
 
+// The redirects an import made as a CSV file (from,to,code), the form the
+// short links screen exports and imports.
+if (($import !== null) && (($_GET['export'] ?? '') === 'redirects') && pg_import_writer_load('redirect')) {
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="import-' . (int) $import['id'] . '-redirects.csv"');
+    header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: no-store, private');
+
+    echo pg_short_link_csv(pg_import_redirect_links((int) $import['id']), PATH);
+    exit();
+}
+
 // The short requests: a few seconds of work, then the screen asks again. The
 // session is closed first so other panel tabs do not wait behind them.
 if ($import_ajax) {
@@ -100,11 +112,11 @@ if ($import_ajax) {
     if ($import_step === 'undo') {
         $undo = pg_import_undo($import_id, 8);
 
-        if ($undo['done']) {
+        if ($undo['done'] && !$undo['closed']) {
             log_activity(lang(array('string' => 'import {var:1} was undone', 'vars' => array($import_id))), $_SESSION['sessionusername'] ?? '');
         }
 
-        $import_json(200, array('ok' => true, 'removed' => $undo['removed'], 'left' => $undo['left'], 'kept' => $undo['kept'], 'done' => $undo['done']));
+        $import_json(200, array('ok' => true, 'removed' => $undo['removed'], 'left' => $undo['left'], 'kept' => $undo['kept'], 'done' => $undo['done'], 'closed' => $undo['closed'], 'busy' => $undo['busy']));
     }
 
     $import_json(400, array('ok' => false, 'text' => lang('Invalid action.')));
@@ -113,32 +125,67 @@ if ($import_ajax) {
 // The choices of each mapping row type, for the rows a reader asks for.
 $import_choices = function ($type) {
 
+    // Several rows share a type (seven field rows): read once.
+    static $cache = array();
+
+    if (isset($cache[$type])) {
+        return $cache[$type];
+    }
+
     $choices = array();
+
+    // The Recycle Bin and the Workspace's folder, each with what is below
+    // it, are no destination: what the import put there nobody would see.
+    $tree = pg_folder_access_tree();
+    $workspace = (int) pg_workspace_folder_id();
+    $hidden_folder = function ($folder_id) use ($tree, $workspace) {
+        return pg_folder_in_bin_chain($tree['rows'], (int) $folder_id, (int) $tree['bin'])
+            || pg_folder_in_bin_chain($tree['rows'], (int) $folder_id, $workspace);
+    };
 
     if ($type === 'form') {
         foreach ((array) db_items("SELECT custom_form_pages.page_id, custom_form_pages.form_name, page.page_name, page.page_folder
             FROM custom_form_pages
             JOIN page ON custom_form_pages.page_id = page.page_id
             ORDER BY custom_form_pages.form_name, page.page_name") as $row) {
-            if (check_edit_access($row['page_folder'])) {
-                $choices[(string) (int) $row['page_id']] = ((string) $row['form_name'] !== '') ? (string) $row['form_name'] : (string) $row['page_name'];
+            if (!$hidden_folder($row['page_folder']) && check_edit_access($row['page_folder'])) {
+                $form_name = (string) $row['form_name'];
+                $page_name = (string) $row['page_name'];
+                $choices[(string) (int) $row['page_id']] = (($form_name !== '') && ($form_name !== $page_name)) ? $form_name . ' (' . $page_name . ')' : $page_name;
             }
         }
     } elseif ($type === 'form_field') {
-        foreach ((array) db_items("SELECT id, page_id, label, name FROM form_fields WHERE page_id > 0 ORDER BY page_id, sort_order, id") as $row) {
-            $choices[(string) (int) $row['id']] = array('label' => ((string) $row['label'] !== '') ? (string) $row['label'] : (string) $row['name'], 'form' => (int) $row['page_id']);
+        foreach ((array) db_items("SELECT id, page_id, label, name, type FROM form_fields WHERE page_id > 0 ORDER BY page_id, sort_order, id") as $row) {
+            $choices[(string) (int) $row['id']] = array('label' => ((string) $row['label'] !== '') ? (string) $row['label'] : (string) $row['name'], 'form' => (int) $row['page_id'], 'type' => (string) $row['type']);
         }
     } elseif ($type === 'folder') {
-        foreach ((array) db_items("SELECT folder_id, folder_name FROM folder WHERE (folder_archived IS NULL) OR (folder_archived <> '1') ORDER BY folder_name") as $row) {
-            if (check_edit_access($row['folder_id'])) {
-                $choices[(string) (int) $row['folder_id']] = (string) $row['folder_name'];
+        $rows = array();
+        $left_out = array_filter(array((int) $tree['bin'], $workspace));
+
+        foreach ((array) db_items("SELECT folder_id, folder_name, folder_parent, folder_archived FROM folder ORDER BY folder_level, folder_order, folder_name") as $row) {
+            $rows[(int) $row['folder_id']] = array('parent' => (int) $row['folder_parent'], 'name' => (string) $row['folder_name']);
+
+            if ((string) $row['folder_archived'] === '1') {
+                $left_out[] = (int) $row['folder_id'];
+            }
+        }
+
+        foreach (pg_import_tree_choices($rows, $left_out) as $folder_id => $label) {
+            if (check_edit_access($folder_id)) {
+                $choices[(string) $folder_id] = $label;
             }
         }
     } elseif ($type === 'product_group') {
-        foreach ((array) db_items("SELECT id, name FROM product_groups WHERE 1 = 1" . pg_catalog_bin_live_sql('product_groups') . " ORDER BY name") as $row) {
-            $choices[(string) (int) $row['id']] = (string) $row['name'];
+        $rows = array();
+
+        foreach ((array) db_items("SELECT id, name, parent_id FROM product_groups WHERE 1 = 1" . pg_catalog_bin_live_sql('product_groups') . " ORDER BY name") as $row) {
+            $rows[(int) $row['id']] = array('parent' => (int) $row['parent_id'], 'name' => (string) $row['name']);
         }
+
+        $choices = pg_import_tree_choices($rows, array());
     }
+
+    $cache[$type] = $choices;
 
     return $choices;
 };
@@ -156,6 +203,16 @@ $import_mapping_rows = function ($kind) use ($import_choices) {
         $type = (string) ($row['type'] ?? 'select');
         $row['type'] = $type;
         $row['choices'] = ($type === 'select') ? (array) ($row['choices'] ?? array()) : $import_choices($type);
+
+        // A field row offers only the field types its writer fills; the
+        // choices are the save's whitelist too.
+        if ($type === 'form_field') {
+            $types = (array) ($row['field_types'] ?? array());
+            $row['choices'] = array_filter($row['choices'], function ($choice) use ($types) {
+                return pg_import_field_fits($choice['type'] ?? '', $types);
+            });
+        }
+
         $rows[(string) $name] = $row;
     }
 
@@ -223,6 +280,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $liveform->remove_form();
         go($screen_url . '?id=' . $new_id);
+    }
+
+    // A checked upload that is not wanted: nothing was written, so the row
+    // and the kept file go.
+    if (($import_action === 'discard') && ($import !== null)) {
+        if (pg_import_discard($import_id)) {
+            log_activity(lang(array('string' => 'import {var:1} ({var:2}) was discarded', 'vars' => array($import_id, $import['file_name']))), $_SESSION['sessionusername']);
+            go($screen_url);
+        }
+
+        go($screen_url . '?id=' . $import_id);
     }
 
     if (($import_action === 'start') && ($import !== null) && ($import['status'] === 'dry_run')) {
@@ -309,10 +377,19 @@ $counts_table = function ($counts, $labels) use ($writer_kinds) {
         $head .= '<th scope="col" class="text-end">' . h($label) . '</th>';
     }
 
-    return '<table class="table"><thead><tr>' . $head . '</tr></thead><tbody>' . $rows . '</tbody></table>';
+    return '<div class="table-responsive"><table class="table"><thead><tr>' . $head . '</tr></thead><tbody>' . $rows . '</tbody></table></div>';
+};
+
+// The Undo card, also on a running import, which it stops first.
+$undo_card = function ($label) use ($card) {
+    return $card(lang('Undo'), '
+        <p>' . h(lang('Removes everything this import made. Items that were changed since are removed too.')) . '</p>
+        <p id="pg_import_undo_progress" role="status" aria-live="polite"></p>
+        <button type="button" id="pg_import_undo" class="btn btn-outline theme-danger"><i class="bi bi-arrow-counterclockwise me-5" aria-hidden="true"></i><span class="pg-btn-label">' . h($label) . '</span></button>');
 };
 
 $body = '';
+$field_list = array();
 
 if ($import === null) {
 
@@ -321,7 +398,7 @@ if ($import === null) {
         <input type="hidden" name="action" value="upload">
         ' . $card(lang('Export file'), '
             <label for="file" class="form-label">' . h(lang('File')) . '</label>
-            <input type="file" id="file" name="file" class="form-control" accept=".xml,.csv,.txt,text/xml,application/xml,text/csv" required>
+            <input type="file" id="file" name="file" class="' . $liveform->create_error_class('file', 'form-control') . '" accept=".xml,.csv,.txt,text/xml,application/xml,text/csv" required>
             ' . pg_upload_limit_hint() . '
             <p class="small fg-secondary mt-5 mb-12">' . h(lang('A WordPress export (Tools, Export), a WooCommerce products CSV or a Shopify products or customers CSV. The file is read first and nothing is written until you start.')) . '</p>
             <button type="submit" class="btn btn-solid theme-success"><i class="bi bi-upload me-5" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Upload and check')) . '</span></button>') . '
@@ -341,13 +418,13 @@ if ($import === null) {
     }
 
     if ($list !== '') {
-        $body .= $card(lang('Earlier imports'), '<table class="table"><thead><tr>
+        $body .= $card(lang('Earlier imports'), '<div class="table-responsive"><table class="table"><thead><tr>
             <th scope="col">' . h(lang('File')) . '</th>
             <th scope="col">' . h(lang('Kind')) . '</th>
             <th scope="col">' . h(lang('Status')) . '</th>
             <th scope="col" class="text-end">' . h(lang('Made')) . '</th>
             <th scope="col">' . h(lang('Uploaded')) . '</th>
-        </tr></thead><tbody>' . $list . '</tbody></table>');
+        </tr></thead><tbody>' . $list . '</tbody></table></div>');
     }
 
 } else {
@@ -359,7 +436,8 @@ if ($import === null) {
 
         $dry = (array) ($import['report']['dry'] ?? array());
 
-        $body .= $card(lang('What the file holds'), $counts_table($dry['counts'] ?? array(), array('made' => lang('New'), 'skipped' => lang('Imported already')))
+        // The dry run tallies what the writer will refuse under failed.
+        $body .= $card(lang('What the file holds'), $counts_table($dry['counts'] ?? array(), array('made' => lang('New'), 'skipped' => lang('Imported already'), 'failed' => lang('Will be skipped')))
             . (empty($dry['complete']) ? '<p class="small fg-secondary mb-0">' . h(lang('The file is large; only its first part was counted. The import reads all of it.')) . '</p>' : ''));
 
         $sample = '';
@@ -369,32 +447,48 @@ if ($import === null) {
                 <td>' . h($writer_kinds[$line['kind'] ?? ''] ?? ($line['kind'] ?? '')) . '</td>
                 <td>' . h((string) ($line['title'] ?? '')) . '</td>
                 <td>' . h((string) ($line['detail'] ?? '')) . '</td>
-                <td>' . (!empty($line['seen']) ? h(lang('Imported already')) : '') . '</td>
+                <td>' . (!empty($line['seen']) ? h(lang('Imported already')) : h((string) ($line['refusal'] ?? ''))) . '</td>
             </tr>';
         }
 
         if ($sample !== '') {
-            $body .= $card(lang('First items'), '<table class="table"><thead><tr>
+            $body .= $card(lang('First items'), '<div class="table-responsive"><table class="table"><thead><tr>
                 <th scope="col">' . h(lang('Kind')) . '</th>
                 <th scope="col">' . h(lang('Title')) . '</th>
                 <th scope="col">' . h(lang('Details')) . '</th>
-                <th scope="col"></th>
-            </tr></thead><tbody>' . $sample . '</tbody></table>');
+                <th scope="col">' . h(lang('Note')) . '</th>
+            </tr></thead><tbody>' . $sample . '</tbody></table></div>');
         }
 
         $mapping = '';
 
-        foreach ($import_mapping_rows($import['kind']) as $name => $row) {
+        // The fields of the offered forms go to the script once, by form,
+        // and fill a field row's select when a form is chosen, keeping the
+        // types the row takes: printed as options in every row they weighed
+        // a megabyte on a site with many forms.
+        $field_list = array();
+        $mapping_rows = $import_mapping_rows($import['kind']);
+
+        foreach ($mapping_rows as $name => $row) {
 
             $options = '<option value="">' . h(empty($row['required']) ? lang('Leave out') : lang('Choose')) . '</option>';
+            $for = '';
 
-            foreach ($row['choices'] as $value => $choice) {
-                $label = is_array($choice) ? (string) $choice['label'] : (string) $choice;
-                $form_attr = is_array($choice) ? ' data-form="' . (int) $choice['form'] . '"' : '';
-                $options .= '<option value="' . h((string) $value) . '"' . $form_attr . '>' . h($label) . '</option>';
+            if ($row['type'] === 'form_field') {
+                $forms = (array) ($mapping_rows[(string) ($row['form'] ?? '')]['choices'] ?? array());
+
+                foreach ($row['choices'] as $value => $choice) {
+                    if (isset($forms[(string) (int) $choice['form']])) {
+                        $field_list[(string) (int) $choice['form']][(string) $value] = array((string) $value, (string) $choice['label'], (string) $choice['type']);
+                    }
+                }
+
+                $for = ' data-pg-import-form="map_' . h((string) ($row['form'] ?? '')) . '" data-pg-import-types="' . h(json_encode(array_values((array) ($row['field_types'] ?? array())))) . '"';
+            } else {
+                foreach ($row['choices'] as $value => $choice) {
+                    $options .= '<option value="' . h((string) $value) . '">' . h((string) $choice) . '</option>';
+                }
             }
-
-            $for = ($row['type'] === 'form_field') ? ' data-pg-import-form="map_' . h((string) ($row['form'] ?? '')) . '"' : '';
 
             $mapping .= '<div class="row my-5">
                 <label for="map_' . h($name) . '" class="col-12 md:col-4 form-label">' . h((string) ($row['label'] ?? $name)) . '</label>
@@ -409,6 +503,13 @@ if ($import === null) {
             ' . $card(lang('Where it goes'), ($mapping !== '' ? $mapping : '<p>' . h(lang('Nothing to choose for this kind of export.')) . '</p>')
                 . '<p class="small fg-secondary">' . h(lang('Nothing is overwritten: an item imported already is skipped and named in the report. Everything the import makes can be undone for 30 days.')) . '</p>
                 <button type="submit" class="btn btn-solid theme-success"><i class="bi bi-play me-5" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Start the import')) . '</span></button>') . '
+        </form>
+        <form action="import.php" method="post" class="my-7">
+            ' . get_token_field() . '
+            <input type="hidden" name="action" value="discard">
+            <input type="hidden" name="id" value="' . (int) $import_id . '">
+            <p class="small fg-secondary">' . h(lang(array('string' => 'An upload that is not started is removed with its file after {var:1} days.', 'vars' => array(PG_IMPORT_UNSTARTED_DAYS)))) . '</p>
+            <button type="submit" class="btn btn-outline theme-secondary"><i class="bi bi-x-lg me-5" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Discard the upload')) . '</span></button>
         </form>';
 
     } elseif ($status === 'running') {
@@ -419,15 +520,26 @@ if ($import === null) {
             <p id="pg_import_progress" role="status" aria-live="polite">' . h(lang(array('string' => '{var:1} item(s) read: {var:2} made, {var:3} skipped, {var:4} failed.', 'vars' => array((int) $import['cursor'], $totals['made'], $totals['skipped'], $totals['failed'])))) . '</p>
             <p class="small fg-secondary mb-0">' . h(lang('You can leave this screen; the general job carries on.')) . '</p>');
 
+        $body .= $undo_card(lang('Stop and undo the import'));
+
     } else {
 
         $body .= $card(lang('Report'), $counts_table($import['counts'], array('made' => lang('Made'), 'skipped' => lang('Skipped'), 'failed' => lang('Failed'))));
 
+        $redirects = (int) ($import['counts']['redirect']['made'] ?? 0);
+
+        if (($redirects > 0) && ($status !== 'undone')) {
+            $body .= $card(lang('Redirects'), '
+                <p>' . h(lang(array('string' => '{var:1} old address(es) now send visitors to what they became (301). They are listed with the short links.', 'vars' => array(pg_format_number($redirects, 0))))) . '</p>
+                <a class="btn btn-outline theme-secondary" href="' . h($screen_url . '?id=' . (int) $import['id'] . '&export=redirects') . '"><i class="bi bi-download me-5" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Download the redirects (CSV)')) . '</span></a>');
+        }
+
         $lines = '';
+        $line_results = array('made' => lang('Made, with a note'), 'skipped' => lang('Skipped'), 'failed' => lang('Failed'), 'kept' => lang('Kept'));
 
         foreach ((array) ($import['report']['lines'] ?? array()) as $line) {
             $lines .= '<tr>
-                <td>' . h(($line['result'] ?? '') === 'failed' ? lang('Failed') : lang('Skipped')) . '</td>
+                <td>' . h($line_results[$line['result'] ?? ''] ?? lang('Skipped')) . '</td>
                 <td>' . h($writer_kinds[$line['kind'] ?? ''] ?? ($line['kind'] ?? '')) . '</td>
                 <td>' . h((string) (($line['title'] ?? '') !== '' ? $line['title'] : ($line['key'] ?? ''))) . '</td>
                 <td>' . h((string) ($line['reason'] ?? '')) . '</td>
@@ -436,20 +548,17 @@ if ($import === null) {
 
         if ($lines !== '') {
             $more = (int) ($import['report']['more'] ?? 0);
-            $body .= $card(lang('Skipped and failed'), '<table class="table"><thead><tr>
+            $body .= $card(lang('Notes, skipped and failed'), '<div class="table-responsive"><table class="table"><thead><tr>
                 <th scope="col">' . h(lang('Result')) . '</th>
                 <th scope="col">' . h(lang('Kind')) . '</th>
                 <th scope="col">' . h(lang('Item')) . '</th>
                 <th scope="col">' . h(lang('Why')) . '</th>
-            </tr></thead><tbody>' . $lines . '</tbody></table>'
+            </tr></thead><tbody>' . $lines . '</tbody></table></div>'
                 . (($more > 0) ? '<p class="mb-0">' . h(lang(array('string' => 'and {var:1} more.', 'vars' => array(pg_format_number($more, 0))))) . '</p>' : ''));
         }
 
         if (pg_import_undo_open($status, $import['finished_at'], time())) {
-            $body .= $card(lang('Undo'), '
-                <p>' . h(lang('Removes everything this import made. Items that were changed since are removed too.')) . '</p>
-                <p id="pg_import_undo_progress" role="status" aria-live="polite"></p>
-                <button type="button" id="pg_import_undo" class="btn btn-outline theme-danger"><i class="bi bi-arrow-counterclockwise me-5" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Undo the import')) . '</span></button>');
+            $body .= $undo_card(lang('Undo the import'));
         }
     }
 }
@@ -459,6 +568,7 @@ $import_texts = array(
     'undo'     => lang('{var:1} removed, {var:2} left.'),
     'kept'     => lang('{var:1} item(s) of a kind this site cannot remove yet stay.'),
     'confirm'  => lang('Remove everything this import made?'),
+    'confirm_button' => lang('Undo the import'),
     'error'    => lang('The request did not get an answer; try again.'),
 );
 
@@ -501,26 +611,36 @@ pg_page_shell(
         return fetch("import.php", {method: "POST", body: body, credentials: "same-origin"}).then(function (r) { return r.json(); });
     };
 
-    // A field row lists only the fields of the form chosen above it.
+    // A field row lists only the fields of the form chosen above it, of the
+    // types the row takes (an empty list takes every type).
+    var fields = ' . (json_encode((object) array_map('array_values', $field_list), JSON_HEX_TAG | JSON_HEX_AMP) ?: '{}') . ';
     document.querySelectorAll("[data-pg-import-form]").forEach(function (select) {
         var form = document.getElementById(select.getAttribute("data-pg-import-form"));
         if (!form) { return; }
+        var types = JSON.parse(select.getAttribute("data-pg-import-types") || "[]");
+        var first = select.options[0];
         var sync = function () {
-            select.querySelectorAll("option[data-form]").forEach(function (option) {
-                var other = option.getAttribute("data-form") !== form.value;
-                option.hidden = other;
-                option.disabled = other;
-                if (other && option.selected) { select.value = ""; }
+            var kept = select.value;
+            while (select.options.length > 1) { select.remove(1); }
+            (fields[form.value] || []).forEach(function (field) {
+                if (types.length && types.indexOf(field[2]) === -1) { return; }
+                var option = new Option(field[1], field[0]);
+                select.add(option);
             });
+            select.value = kept;
+            if (select.value !== kept) { select.value = first.value; }
         };
         form.addEventListener("change", sync);
         sync();
     });
 
+    var undoing = false;
     var progress = document.getElementById("pg_import_progress");
     if (progress) {
         var run = function () {
+            if (undoing) { return; }
             post("run").then(function (a) {
+                if (undoing) { return; }
                 if (!a.ok) { progress.textContent = a.text || texts.error; return; }
                 if (a.status === "running" || a.busy) {
                     if (!a.busy) { progress.textContent = fill(texts.progress, [a.position, a.totals.made, a.totals.skipped, a.totals.failed]); }
@@ -539,19 +659,35 @@ pg_page_shell(
         var step = function () {
             post("undo").then(function (a) {
                 if (!a.ok) { status.textContent = a.text || texts.error; undo.disabled = false; return; }
+                // Undone already or past its 30 days (a stale tab): the
+                // reloaded screen shows where it stands.
+                if (a.closed) { window.location.reload(); return; }
+                // A run step or another undo holds the import: ask later.
+                if (a.busy) { setTimeout(step, 3000); return; }
                 status.textContent = fill(texts.undo, [a.removed, a.left]);
                 if (a.done) {
-                    if (a.kept > 0) { status.textContent = fill(texts.kept, [a.kept]); }
-                    window.location.reload();
+                    // The kept count is read before the screen reloads.
+                    if (a.kept > 0) {
+                        status.textContent = fill(texts.kept, [a.kept]);
+                        setTimeout(function () { window.location.reload(); }, 4000);
+                    } else {
+                        window.location.reload();
+                    }
                 } else {
                     setTimeout(step, 200);
                 }
             }, function () { status.textContent = texts.error; undo.disabled = false; });
         };
+        var ask = (typeof window.pgConfirm === "function")
+            ? function () { return window.pgConfirm({message: texts.confirm, confirmText: texts.confirm_button, variant: "danger"}); }
+            : function () { return Promise.resolve(window.confirm(texts.confirm)); };
         undo.addEventListener("click", function () {
-            if (!window.confirm(texts.confirm)) { return; }
-            undo.disabled = true;
-            step();
+            ask().then(function (yes) {
+                if (!yes) { return; }
+                undoing = true;
+                undo.disabled = true;
+                step();
+            });
         });
     }
 })();

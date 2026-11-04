@@ -180,7 +180,7 @@ if (!$_POST) {
 
     // If the user selected to delete this profile, then delete it.
     if ($liveform->get_field_value('submit_delete') == 'Delete') {
-        db_q("DELETE FROM email_campaign_profiles WHERE id = ?", array($id)) or output_error('Query failed.');
+        pg_email_campaign_profile_delete($id) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'campaign profile ({var:1}) was deleted','vars'=>$email_campaign_profile['name'])), $_SESSION['sessionusername']);
         $liveform->remove_form();
@@ -199,25 +199,7 @@ if (!$_POST) {
             exit();
         }
 
-        $columns = pg_email_campaign_profile_form_columns($liveform);
-
-        $columns['last_modified_user_id'] = (int) USER_ID;
-
-        $assignments = array();
-
-        foreach (array_keys($columns) as $column) {
-            $assignments[] = $column . ' = ?';
-        }
-
-        $parameters = array_values($columns);
-        $parameters[] = $id;
-
-        // Update profile.
-        db_q(
-            "UPDATE email_campaign_profiles
-            SET " . implode(', ', $assignments) . ", last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = ?",
-            $parameters) or output_error('Query failed.');
+        pg_email_campaign_profile_save($id, pg_email_campaign_profile_form_columns($liveform), (int) USER_ID) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'campaign profile ({var:1}) was modified','vars'=>$liveform->get_field_value('name'))), $_SESSION['sessionusername']);
         

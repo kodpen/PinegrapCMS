@@ -170,6 +170,18 @@ if ($preorders_ended > 0) {
 
 }
 
+// Contact groups filled by rules (includes/fn/audiences.php): each dynamic
+// group recomputed at most once an hour, the one waiting longest first, at
+// most PG_AUDIENCE_TICK_SECONDS of this tick; a big group goes on from its
+// cursor next tick. A site with no dynamic group pays one small read.
+$audiences = pg_audience_job_run();
+
+if (($audiences['added'] + $audiences['removed']) > 0) {
+
+    log_activity(lang(array('string' => 'general job recomputed {var:1} contact group(s) filled by rules: {var:2} added, {var:3} removed', 'vars' => array(pg_format_number($audiences['groups'], 0), pg_format_number($audiences['added'], 0), pg_format_number($audiences['removed'], 0)))), 'UNKNOWN');
+
+}
+
 // Shipping label documents whose time is up (includes/fn/shipment_labels.php):
 // 30 days after delivery or cancellation, 90 days after creation at the
 // latest. Once a day; the rows stay with their orders.
@@ -504,6 +516,15 @@ if (pg_image_derivative_sweep_due(pg_image_derivative_directory())) {
     }
 }
 
+// WebP at a picture's own address behind a CDN or proxy nobody confirmed
+// (includes/fn/image_vary_check.php): the token-free self-test through the
+// site's own address, once after the switch is turned on or the confirmation
+// taken back, then daily while unconfirmed. It sets the confirmation when the
+// edge keeps a copy per format, and sends the original when the edge keeps
+// even private answers. A tick with nothing due reads one small file.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_vary_check.php');
+pg_image_vary_test_daily();
+
 // Uploaded files to the object store (includes/fn/file_storage.php): while
 // the switch is on, the newest local files first, twenty files or twenty
 // seconds a tick, each checked by its size in the store before its bytes
@@ -658,6 +679,15 @@ if ($import_tick['swept'] > 0) {
         'string' => 'general job ended the undo of {var:1} imported item(s) older than 30 days',
         'vars'   => array(pg_format_number($import_tick['swept'], 0)),
     )), 'UNKNOWN');
+}
+
+// The bulk move to the visual designer (includes/fn/legacy_to_designer_run.php):
+// a move started on its screen is worked for a short budget every tick, so it
+// carries on with the screen closed. With none it is one missing file, and the
+// converters are not loaded (the path is pg_ltd_state_path()'s).
+if (is_file(PG_FUNCTIONS_DIR . '/data/temp/legacy_to_designer.json')) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_run.php');
+    pg_ltd_job_tick(pg_cron_time_left(20));
 }
 
 // Page revisions (includes/fn/page_revisions.php): once a day the rows of
@@ -884,6 +914,17 @@ if (pg_cron_job_is_enabled('push_job')) {
     pg_push_queue_run(10);
 
     pg_cron_ran('push_job');
+
+}
+
+// Booking reminders (pg_booking_reminders_run() in
+// includes/fn/booking_messages.php): the confirmed bookings whose reminder
+// moment fell since the last pass get their mail and text. Before the mail
+// and SMS passes, so a reminder made now goes out in this run. Nothing to do
+// on a site without the booking tables; otherwise one indexed read.
+if (function_exists('pg_booking_reminders_run')) {
+
+    pg_booking_reminders_run(time());
 
 }
 

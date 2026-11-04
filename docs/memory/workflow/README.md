@@ -23,7 +23,8 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - architect.md: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
-- coordinator-limits.md: Coordinator rules: model and effort, the quota guard before a worker starts, 4 to 10 workers by the 5-hour quota, a new worker for a decided draft PR, hand-over by a desktop session at depth 6
+- coordinator-context.md: Keeping a coordinator's context small (2026-11-04): what its first turn and each check-in read, tools/free_work.php for free work, what it never reads whole
+- coordinator-limits.md: Coordinator rules: model and effort, the quota guard before a worker starts, 4 to 10 workers by the 5-hour quota, a new worker for a decided draft PR, no hand-over at depth 7
 - coordinator-no-plans.md: What a coordinator gives its workers when no plan step is free: open issues first, then a module-by-module bug hunt, then a new design template
 - coordinator-quota.md: Coordinator worker count by the 5-hour quota (owner, 2026-11-02): 8 at a window's start, 4 to 10, retuned each hour against 20% a hour, read from the sessions' cost
 - coordinator-todo-list.md: Coordinator's to-do list (2026-10-27): one item per worker PR in the list shown in its own window, added when the draft is on GitHub, struck through once the PR is merged
@@ -49,7 +50,11 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-2.md: Decisions list, product part 2 (2026-10-29 on): guest account and receipt of a webhook-completed order; PayTR instalments; layout editor of a page not on a visual design; carrier drivers
 - decisions-made-product-20.md: Decisions list, product part 20 (2026-11-02 on): voice to assistants, transactional campaigns and opt-in, converted regions, event copies, till dates, country names, bank statements, untracked scans
 - decisions-made-product-21.md: Decisions list, product part 21 (2026-11-03 on): clearing the performance log, the Migration screen, panel transitions, the panel back/forward cache, WebP behind an unconfirmed CDN
-- decisions-made-product-22.md: Decisions list, product part 22 (2026-11-03 on): the panel's own table driver replacing DataTables
+- decisions-made-product-22.md: Decisions list, product part 22 (2026-11-01 evening on): the panel's own table driver replacing DataTables
+- decisions-made-product-23.md: Decisions list, product part 23 (2026-11-03 on): page cache copies under an experiment and audience conditions, designer page links by id outside widgets, the classic styles' bulk run
+- decisions-made-product-24.md: Decisions list, product part 24 (2026-11-01 on): Visitors overview, daily summary, channel rule, Search Console on pages, social likes and follows, image editor's new tools and video
+- decisions-made-product-25.md: Decisions list, product part 25 (2026-11-03 evening on): bookings on the Workspace calendar, reward points of a cancelled order, hand rows of a group filled by rules; the key reset warning
+- decisions-made-product-26.md: Decisions list, product part 26 (2026-11-04 on): the starter dumps stay deletable in the Backup Manager, with a confirmation that names the consequence
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
@@ -58,6 +63,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
+- decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): the search engines appended to the visitors referring-engine ENUM; the ActivityPub reactions table
 - decisions-made-schema-2.md: Decisions list, schema part 2, approved on 2026-10-28: e-mail tables, workflow tables, MCP preamble, secret widths, prompt version, discussion follow; rules in part 1, 2026-10-29 on in part 3
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
@@ -65,16 +71,16 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
 - decisions-made-schema-7.md: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables; image versions table in principle; ws_file_edits.redacted for a redacted Workspace replace
 - decisions-made-schema-8.md: Decisions list, schema part 8 (2026-11-02 on): tables and columns of the 2026-11 feature plans (#5032-#5042) and the Assistant card summary columns (#5014, #5227)
-- decisions-made-schema-9.md: Decisions list, schema part 9 (2026-11-03 on): columns of the external API coverage steps, the designer form fee, the booking slot key
+- decisions-made-schema-9.md: Decisions list, schema part 9 (2026-11-03 on): columns of the external API coverage steps, the designer form fee, the booking slot key, the disabled user stamp
 - decisions-made-schema.md: Decisions list, schema part: steps approved in advance (ENUM appends in the 4.48 shape), the tables and columns approved on 2026-10-27 and 2026-10-28, who decides schema
 - decisions-made-seo.md: Decisions list, SEO part (2026-10-27/28): large image preview, site icon, main-host redirect, per-form structured-data type, author source and share-image field; defaults keep running sites
 - decisions-made-waf.md: Decisions list, firewall part: thresholds stay, a concurrent refusal is no offence, rate bans off the ladder, global limit before the session, no lock release, nothing served to a ban.
 - decisions-made-widgets.md: Decisions list, system widget part: conditions and required controls, translated text, equal old blocks (W16), gallery sources (W5), entity values (W8), 2026-10-27 answers, Photo Gallery folder.
 - decisions-made-workspace-2.md: Decisions list, workspace part 2 (2026-10-29 on): the channel menu holds only the channel's own items; creates in a chat go through /oluştur (/create): its rights and kinds; the sales quote stays
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
-- decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), "Edit here" on the AI draft card, flow run notices per chain
+- decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
-- decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): a task moved in the person's own calendar writes its due date back; the pinned My Notes row opens the Workspace list
+- decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): calendar move writes a due date back; the pinned My Notes row opens the Workspace list; the list's top and the tour's place; flow draft card read-only
 - decisions-made-workspace.md: Decisions list, workspace part: a typed @username in /task, a flow change box's rights, bulk product cards, model assistants, the Workspace list, the retired scheduled form
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, the PR footer (pointer), editing shared files without conflicts, API vs ERP files
@@ -84,7 +90,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - merge-train-landing.md: How a green merge train lands (2026-10-25): one fast-forward push, GitHub marks the PRs merged and wakes their sessions, no push to PR branches; why not a squash per PR; a red train; the merge queue
 - merge-train-tool.md: tools/merge_train.php (#2002): --start (the lock), --list (train order), --build (merge, settle, changelog, push), --land (fast-forward); what it leaves to the merging session
 - merge-train.md: Working rule (2026-10-25) for the merging session: one merger, one train at a time, 30-minute windows, rules-only PRs alone, the ready label, one merge commit per PR, one CI run
-- merger-wake.md: How the merging session keeps waking: a 10-minute send_later chain and an hourly routine that re-arms it (2026-11-03); GitHub events are not relied on
+- merger-wake.md: How the merging session keeps waking: a 3-minute send_later chain and an hourly routine that re-arms it (2026-11-03); GitHub events are not relied on
 - owner-rules.md: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, where area rules live (memory; vendor Bootstrap skills aside), language, the mobile app, who edits which notes
 - pr-footer-and-trailers.md: Where the "Generated by Claude Code" footer and commit trailers come from, the settings that turn them off, how to write without it, and why only the merging session removes it.
 - pre-push-checks.md: git push runs tools/pre_push.sh first (installed when a cloud session starts in the clone): which CI checks it runs on the pushed commit, why, installing it elsewhere, its blind spots, skipping

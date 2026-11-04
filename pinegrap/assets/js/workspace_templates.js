@@ -383,7 +383,7 @@
                         if (markup !== '') {
                             editor.insertBlock('checklist', markup);
                         }
-                    });
+                    }, { insertLabel: t('insert_to_text') });
                 });
 
                 table.addEventListener('click', function () {
@@ -391,7 +391,7 @@
                         if (markup !== '') {
                             editor.insertBlock('table', markup);
                         }
-                    });
+                    }, { insertLabel: t('insert_to_text') });
                 });
 
                 tools.appendChild(list);
@@ -585,6 +585,8 @@
             title.value = task.title || '';
             title.placeholder = t('title');
             title.setAttribute('aria-label', t('title'));
+            // The save refuses a task without a title (ws_template_body_clean()).
+            title.required = true;
             head.appendChild(title);
 
             var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-trash', t('tpl_remove_task'));

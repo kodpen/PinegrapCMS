@@ -57,6 +57,10 @@ if (!$_POST) {
         $liveform->assign_field_value('options', encode_json($stored_options));
     }
 
+    // Products and product groups using the attribute: the Summary and the
+    // Delete confirmation read the same counts.
+    $usage = pg_product_attribute_form_delete_counts($id);
+
     echo
     pg_page_shell([
         'title'=> lang('Edit Product Attribute'),
@@ -78,15 +82,11 @@ if (!$_POST) {
                 <form  method="post" class="product_attribute_form">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'id', 'value' => $_GET['id'])) . '
-                    ' . pg_product_attribute_form_cards($liveform) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Create" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h(implode(' ', array_map('lang', pg_product_attribute_form_delete_confirm(...pg_product_attribute_form_delete_counts($id))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                    ' . pg_product_attribute_form_layout(
+                        pg_product_attribute_form_cards($liveform, $usage),
+                        '
+                                        <button type="submit" id="submit_save" name="submit_save" value="Create" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h(implode(' ', array_map('lang', pg_product_attribute_form_delete_confirm(...$usage)))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>') . '
                 </form>
             </div>
         </div>

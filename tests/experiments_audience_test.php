@@ -218,3 +218,91 @@ function test_experiments_audience_editor_list_matches()
 	pg_assert_same(pg_audience_tokens(), $m[1]);
 	pg_assert_contains("/^__audience_(group|experiment)_[1-9][0-9]{0,9}$/", $js, 'the twin of pg_audience_token_kind()');
 }
+
+// Audience first, then experiment: country and device give the audience
+// copy's key, which is the experiment's control key; another variant sits
+// under the variant key of that copy's key.
+function test_experiments_audience_layered_key_chain()
+{
+	$key = sha1('https://example.com/offer');
+	$served = array('experiment_id' => 3, 'variant_id' => 12, 'key' => 'b', 'control_key' => 'a', 'weights' => array('a' => 50, 'b' => 50));
+	$values = array('country' => 'TR', 'device' => 'phone');
+	$audience = pg_audience_cache_key($key, array('country', 'device'), $values);
+
+	$store = pg_page_cache_store_targets($key, array('device', 'country'), $values, $served, false);
+	pg_assert_same($key, $store['stub'], 'the stub sits under the address');
+	pg_assert_same(pg_page_cache_variant_key($audience, 3, 'b'), $store['key'], 'variant b of the TR phone copy');
+	pg_assert_same(array('country', 'device'), $store['aud']);
+	pg_assert_same(3, $store['exp']['id']);
+
+	$control = pg_page_cache_store_targets($key, array('country', 'device'), $values, array('key' => 'a') + $served, false);
+	pg_assert_same($audience, $control['key'], 'the control variant is the audience copy itself');
+
+	$plain = pg_page_cache_store_targets($key, array(), array(), array('key' => 'a') + $served, false);
+	pg_assert_same('', $plain['stub'], 'no audience: no stub');
+	pg_assert_same($key, $plain['key'], 'no audience: the control copy under the address, as before');
+
+	pg_assert_same(null, pg_page_cache_store_targets($key, array('device'), array('device' => 'phone'), null, true),
+		'a request that joined no running experiment stores nothing, stub included');
+}
+
+// The stub never takes the place of a control copy: the address holds the
+// stub only for a page kept by audience, whose control copy is elsewhere.
+function test_experiments_audience_stub_keeps_control_copy()
+{
+	$key = sha1('https://example.com/offer');
+	$served = array('experiment_id' => 3, 'variant_id' => 11, 'key' => 'a', 'control_key' => 'a', 'weights' => array('a' => 50, 'b' => 50));
+	$store = pg_page_cache_store_targets($key, array('device'), array('device' => 'desktop'), $served, false);
+
+	pg_assert_true($store['key'] !== $store['stub'], 'the control copy is not under the stub\'s key');
+
+	$stub = pg_page_cache_unpack(pg_page_cache_pack(array('created' => 5, 'headers' => array(), 'page_id' => 7, 'aud' => $store['aud']), ''));
+	pg_assert_same(null, $stub['meta']['exp'], 'the stub names no experiment');
+	pg_assert_same(array('device'), $stub['meta']['aud']);
+
+	$copy = pg_page_cache_unpack(pg_page_cache_pack(array('created' => 5, 'headers' => array(), 'page_id' => 7,
+		'exp' => $store['exp'], 'aud' => $store['aud']), 'page'));
+	pg_assert_same(array('id' => 3, 'control' => 'a', 'weights' => array('a' => 50, 'b' => 50)), $copy['meta']['exp'], 'the copy carries both');
+	pg_assert_same(array('device'), $copy['meta']['aud']);
+}
+
+// The router follows stub -> audience copy -> variant for a visitor; a
+// crawler gets the audience copy's control.
+function test_experiments_audience_lookup_follows_stub_then_variant()
+{
+	$key = sha1('https://example.com/offer');
+	$exp = array('id' => 3, 'control' => 'a', 'weights' => array('a' => 50, 'b' => 50));
+	$phone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148';
+	$audience = pg_audience_cache_key($key, array('device'), array('device' => 'phone'));
+	$dir = pg_page_cache_directory();
+
+	$files = array(
+		pg_page_cache_file_path($dir, 9, $key) => pg_page_cache_pack(array('created' => 1, 'headers' => array(), 'page_id' => 7, 'aud' => array('device')), ''),
+		pg_page_cache_file_path($dir, 9, $audience) => pg_page_cache_pack(array('created' => 1, 'headers' => array(), 'page_id' => 7,
+			'exp' => $exp, 'aud' => array('device')), 'phone a'),
+		pg_page_cache_file_path($dir, 9, pg_page_cache_variant_key($audience, 3, 'b')) => pg_page_cache_pack(array('created' => 1,
+			'headers' => array(), 'page_id' => 7, 'exp' => $exp, 'aud' => array('device')), 'phone b'),
+	);
+	$read = function ($file) use ($files) {
+		return isset($files[$file]) ? pg_page_cache_unpack($files[$file]) : null;
+	};
+	$server = array('HTTP_USER_AGENT' => $phone);
+
+	$visitor = pg_page_cache_follow($key, 9, $read, $server, array('pg_exp' => '3:b'), false, 0.0);
+	pg_assert_same('phone b', $visitor['entry']['body'], 'the visitor\'s variant of their device');
+	pg_assert_same(false, $visitor['route']['drawn']);
+
+	$crawler = pg_page_cache_follow($key, 9, $read, $server, array('pg_exp' => '3:b'), true, 0.0);
+	pg_assert_same('phone a', $crawler['entry']['body'], 'a crawler gets the audience copy\'s control');
+
+	$new = pg_page_cache_follow($key, 9, $read, $server, array(), false, 0.9);
+	pg_assert_same('phone b', $new['entry']['body'], 'a new visitor draws b');
+	pg_assert_same(true, $new['route']['drawn']);
+	pg_assert_same(3, $new['exp_id']);
+
+	$desktop = pg_page_cache_follow($key, 9, $read, array('HTTP_USER_AGENT' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'),
+		array('pg_exp' => '3:b'), false, 0.0);
+	pg_assert_same(null, $desktop['entry'], 'no desktop copy yet: a miss');
+	pg_assert_same(pg_page_cache_file_path($dir, 9, pg_audience_cache_key($key, array('device'), array('device' => 'desktop'))),
+		$desktop['file'], 'the miss locks the desktop copy');
+}

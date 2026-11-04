@@ -1107,6 +1107,24 @@ function erp_account_link_contact($account_id, $contact_id)
 }
 
 /**
+ * The query for contacts that have placed an order but have no account yet,
+ * shared by the list's count and the button that opens the accounts so the
+ * two never disagree. An open cart (status incomplete) is not an order: a
+ * visitor who only filled a cart gets no account.
+ *
+ * @param string $select  What to select, e.g. 'COUNT(DISTINCT orders.contact_id)'
+ * @return string
+ */
+function erp_accounts_unlinked_contacts_sql($select)
+{
+    return "SELECT " . $select . "
+        FROM orders
+        INNER JOIN contacts ON contacts.id = orders.contact_id
+        LEFT JOIN erp_accounts ON erp_accounts.contact_id = orders.contact_id
+        WHERE orders.contact_id > 0 AND orders.status <> 'incomplete' AND erp_accounts.id IS NULL";
+}
+
+/**
  * Give every contact that has ordered something an account.
  *
  * A shop switching the module on has a customer list already and no appetite
@@ -1123,11 +1141,7 @@ function erp_account_link_contact($account_id, $contact_id)
  */
 function erp_accounts_sync_contacts($created_by = 0)
 {
-    $rows = (array) db_items("SELECT DISTINCT orders.contact_id
-        FROM orders
-        INNER JOIN contacts ON contacts.id = orders.contact_id
-        LEFT JOIN erp_accounts ON erp_accounts.contact_id = orders.contact_id
-        WHERE orders.contact_id > 0 AND erp_accounts.id IS NULL");
+    $rows = (array) db_items(erp_accounts_unlinked_contacts_sql('DISTINCT orders.contact_id'));
 
     $created = 0;
 

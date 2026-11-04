@@ -54,11 +54,7 @@ if ($_POST && (($_POST['erp_action'] ?? '') === 'sync_contacts')) {
 $accounts = erp_accounts(array());
 
 // Contacts that have ordered but have no account yet; the button says how many.
-$unlinked_contacts = (int) db_value("SELECT COUNT(DISTINCT orders.contact_id)
-    FROM orders
-    INNER JOIN contacts ON contacts.id = orders.contact_id
-    LEFT JOIN erp_accounts ON erp_accounts.contact_id = orders.contact_id
-    WHERE orders.contact_id > 0 AND erp_accounts.id IS NULL");
+$unlinked_contacts = (int) db_value(erp_accounts_unlinked_contacts_sql('COUNT(DISTINCT orders.contact_id)'));
 
 // Cards an e-document would be refused for. Counted on every load so the
 // toolbar can say how many there are, and the list can be narrowed to

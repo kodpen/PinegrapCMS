@@ -1009,6 +1009,8 @@ function api_customer_create_group_or_fail($owner, $sent) {
 
 	}
 
+	api_contact_group_hand_or_fail($group['id']);
+
 	return $group;
 
 }
@@ -1079,14 +1081,17 @@ function api_customers_delete($params) {
 
 	$existing = api_customer_reachable_or_fail($id, 'contacts.id, contacts.email_address');
 
-	if ((int)api_value("SELECT COUNT(*) FROM user WHERE user_contact = '" . $id . "'") > 0) {
+	// The panel's rule (pg_contact_delete_refusals()): a user account's own
+	// contact, or one an ERP account is linked to, stays.
+	$refusals = pg_contact_delete_refusals(array($id));
+
+	if (isset($refusals[$id]) && ($refusals[$id]['reason'] === 'account')) {
 
 		api_fail(409, 'customer_has_account', lang('This contact belongs to a user account and is not deleted through the API.'));
 
 	}
 
-	if (pg_schema_has('erp_accounts')
-		&& ((int)api_value("SELECT COUNT(*) FROM erp_accounts WHERE contact_id = '" . $id . "'") > 0)) {
+	if (isset($refusals[$id])) {
 
 		api_fail(409, 'customer_has_erp_account', lang('This contact is linked to an ERP account and is not deleted through the API.'));
 

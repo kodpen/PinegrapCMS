@@ -309,15 +309,20 @@ function pg_page_cache_bypass_header($reason, $staff)
 /**
  * The header lines of a cacheable answer: browsers ask again every time, a
  * shared cache keeps the page for the lifetime. Pragma and Expires, which the
- * session sent, are removed by the caller.
+ * session sent, are removed by the caller. A page under a running experiment
+ * is kept by no shared cache: one address answers with another variant per
+ * visitor, and only the file cache keeps a copy per variant.
  *
- * @param int $ttl
+ * @param int  $ttl
+ * @param bool $experiment the page runs an experiment
  * @return array
  */
-function pg_page_cache_headers($ttl)
+function pg_page_cache_headers($ttl, $experiment = false)
 {
     return array(
-        'Cache-Control: public, max-age=0, s-maxage=' . pg_page_cache_ttl_value((int) $ttl),
+        $experiment
+            ? 'Cache-Control: private, max-age=0'
+            : 'Cache-Control: public, max-age=0, s-maxage=' . pg_page_cache_ttl_value((int) $ttl),
         'Vary: Accept-Encoding',
     );
 }
@@ -567,14 +572,18 @@ function pg_page_cache_apply($content, array $context)
     header_remove('Pragma');
     header_remove('Expires');
 
-    foreach (pg_page_cache_headers($ttl) as $line) {
-        header($line);
+    // The experiment bucket is no personal cookie (the gate let it through):
+    // a bucket drawn in this request goes out again.
+    if (function_exists('pg_experiment_bucket_resend')) {
+        pg_experiment_bucket_resend();
     }
+
+    $served = function_exists('pg_experiment_served') ? pg_experiment_served() : null;
 
     // A page shown by country or device is kept by the file cache alone,
     // one copy per value: a shared cache would keep one for everyone.
-    if (pg_audience_cache_vary()) {
-        header('Cache-Control: private, max-age=0');
+    foreach (pg_page_cache_headers($ttl, is_array($served) || pg_audience_cache_vary()) as $line) {
+        header($line);
     }
 
     header('X-Pinegrap-Cache: cacheable');
@@ -896,8 +905,10 @@ function pg_page_cache_kept_headers(array $headers)
  * then the page as it is sent. A file stored before the page was kept reads
  * back as page 0.
  *
- * @param array  $meta created, headers, page_id, aud (the audience kinds the
- *                     page is kept by, pg_audience_vary_clean())
+ * @param array  $meta created, headers, page_id, exp (the running experiment
+ *                     the copy was drawn under, pg_page_cache_experiment_meta()),
+ *                     aud (the audience kinds the page is kept by,
+ *                     pg_audience_vary_clean())
  * @param string $body
  * @return string '' when the headers cannot be written as JSON
  */
@@ -908,6 +919,7 @@ function pg_page_cache_pack(array $meta, $body)
         'created' => (int) ($meta['created'] ?? 0),
         'headers' => array_values(pg_page_cache_kept_headers((array) ($meta['headers'] ?? array()))),
         'page_id' => max(0, (int) ($meta['page_id'] ?? 0)),
+        'exp' => pg_page_cache_experiment_meta($meta['exp'] ?? null),
         'aud' => pg_audience_vary_clean($meta['aud'] ?? null),
     ), JSON_UNESCAPED_SLASHES);
 
@@ -919,7 +931,7 @@ function pg_page_cache_pack(array $meta, $body)
  * empty or cut file, another layout).
  *
  * @param string $raw
- * @return array|null ['meta' => [created, headers, page_id, aud], 'body' => string]
+ * @return array|null ['meta' => [created, headers, page_id, exp, aud], 'body' => string]
  */
 function pg_page_cache_unpack($raw)
 {
@@ -942,6 +954,7 @@ function pg_page_cache_unpack($raw)
             'created' => (int) $meta['created'],
             'headers' => pg_page_cache_kept_headers($meta['headers']),
             'page_id' => max(0, (int) ($meta['page_id'] ?? 0)),
+            'exp' => pg_page_cache_experiment_meta($meta['exp'] ?? null),
             'aud' => pg_audience_vary_clean($meta['aud'] ?? null),
         ),
         'body' => (string) substr($raw, $eol + 1),
@@ -1107,17 +1120,17 @@ function pg_page_cache_lookup(array $config, array $server, array $cookies, $uri
     ));
     $out['file'] = pg_page_cache_file_path(pg_page_cache_directory(), $out['generation'], $out['key']);
 
-    $raw = is_file($out['file']) ? @file_get_contents($out['file']) : false;
-    $entry = ($raw === false) ? null : pg_page_cache_unpack($raw);
+    // The address's key keeps the name the page is stored under on a miss;
+    // the file is the copy that answers (or is locked while it is drawn).
+    $follow = pg_page_cache_follow($out['key'], $out['generation'], 'pg_page_cache_read', $server, $cookies,
+        pg_page_cache_request_automated($server));
+    $out['file'] = $follow['file'];
+    $entry = $follow['entry'];
 
-    // A page shown by country or device keeps, under the address's key, only
-    // the kinds it is kept by; the visitor's copy is the one of their values.
-    // The key stays the address's: the page stores both again on a miss.
-    if (($entry !== null) && $entry['meta']['aud']) {
-        $out['file'] = pg_page_cache_file_path(pg_page_cache_directory(), $out['generation'],
-            pg_audience_cache_key($out['key'], $entry['meta']['aud'], pg_audience_request_values($entry['meta']['aud'], $server)));
-        $raw = is_file($out['file']) ? @file_get_contents($out['file']) : false;
-        $entry = ($raw === false) ? null : pg_page_cache_unpack($raw);
+    if (($follow['route'] !== null) && $follow['route']['drawn'] && function_exists('pg_experiment_bucket_write')) {
+        $buckets = pg_experiment_bucket_read();
+        $buckets[$follow['exp_id']] = $follow['route']['key'];
+        pg_experiment_bucket_write($buckets, ($scheme === 'https') || ($forwarded === 'https'));
     }
 
     if ($entry === null) {
@@ -1133,6 +1146,176 @@ function pg_page_cache_lookup(array $config, array $server, array $cookies, $uri
     }
 
     return $out;
+}
+
+/**
+ * A stored copy read from disk; null when there is none or it is not whole.
+ *
+ * @param string $file
+ * @return array|null pg_page_cache_unpack()
+ */
+function pg_page_cache_read($file)
+{
+    $raw = (($file !== '') && is_file($file)) ? @file_get_contents($file) : false;
+
+    return ($raw === false) ? null : pg_page_cache_unpack($raw);
+}
+
+/**
+ * The copy that answers a request, followed from the address's key: first
+ * the audience (a stub under the address names the kinds the page is kept
+ * by, the copy sits under the key of the request's values), then the
+ * experiment (the copy found names it; another variant's copy sits under
+ * pg_page_cache_variant_key() of that copy's key). Pure but for $read and the
+ * draw's random, which may be given.
+ *
+ * @param string     $key        pg_page_cache_key()
+ * @param int        $generation
+ * @param callable   $read       file path => pg_page_cache_unpack() or null
+ * @param array      $server     $_SERVER
+ * @param array      $cookies    $_COOKIE
+ * @param bool       $automated  pg_page_cache_request_automated()
+ * @param float|null $random
+ * @return array file, entry (null for none), route (pg_page_cache_experiment_route()
+ *               or null), exp_id
+ */
+function pg_page_cache_follow($key, $generation, callable $read, array $server, array $cookies, $automated, $random = null)
+{
+    $directory = pg_page_cache_directory();
+    $out = array('file' => pg_page_cache_file_path($directory, $generation, $key), 'entry' => null, 'route' => null, 'exp_id' => 0);
+    $out['entry'] = $read($out['file']);
+
+    // A page shown by country or device keeps, under the address's key, only
+    // the kinds; the copy is the one of the request's values.
+    if (($out['entry'] !== null) && $out['entry']['meta']['aud']) {
+        $aud = $out['entry']['meta']['aud'];
+        $key = pg_audience_cache_key($key, $aud, pg_audience_request_values($aud, $server));
+        $out['file'] = pg_page_cache_file_path($directory, $generation, $key);
+        $out['entry'] = $read($out['file']);
+    }
+
+    // The live page's copy names the experiment it runs, at any age: every
+    // start, pause, end or weight change raises the generation. A visitor
+    // who joins is answered from the copy of their variant, drawn here when
+    // the bucket holds none; a crawler gets the live page's copy.
+    if (($out['entry'] !== null) && ($out['entry']['meta']['exp'] !== null)) {
+        $exp = $out['entry']['meta']['exp'];
+        $out['exp_id'] = $exp['id'];
+        $out['route'] = pg_page_cache_experiment_route($exp, $cookies, $automated, $random);
+
+        if ($out['route']['variant']) {
+            $out['file'] = pg_page_cache_file_path($directory, $generation,
+                pg_page_cache_variant_key($key, $exp['id'], $out['route']['key']));
+            $out['entry'] = $read($out['file']);
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Whether the router's request comes from a crawler or a script, by the
+ * firewall's verdict as pg_request_is_automated() reads it before init.php.
+ *
+ * @param array $server $_SERVER
+ * @return bool
+ */
+function pg_page_cache_request_automated(array $server)
+{
+    if (function_exists('waf_classify_bot')) {
+        $class = waf_classify_bot(isset($server['HTTP_USER_AGENT']) ? (string) $server['HTTP_USER_AGENT'] : '');
+
+        if (($class['class'] ?? 'human') !== 'human') {
+            return true;
+        }
+    }
+
+    return function_exists('waf_is_pinegrap_client') && waf_is_pinegrap_client();
+}
+
+// ── Experiments ────────────────────────────────────────────────────────────
+//
+// A page under a running experiment (includes/fn/experiments.php) is kept as
+// one copy per variant: the live page's (control) copy under the address's
+// key, every other variant under pg_page_cache_variant_key(). Each copy
+// carries the experiment's id, control key and weights, so the router can
+// read or draw the visitor's bucket without the database.
+
+/**
+ * The experiment part of a stored copy's meta line, cleaned: the id, the
+ * control key and the weights; null for a copy drawn under no experiment.
+ * Pure.
+ *
+ * @param mixed $exp [id, control, weights]
+ * @return array|null
+ */
+function pg_page_cache_experiment_meta($exp)
+{
+    if (!is_array($exp) || ((int) ($exp['id'] ?? 0) <= 0) || !is_array($exp['weights'] ?? null)) {
+        return null;
+    }
+
+    $weights = array();
+
+    foreach ($exp['weights'] as $key => $weight) {
+        if (is_string($key) && (preg_match('/^[a-z0-9]{1,8}$/', $key) === 1)) {
+            $weights[$key] = max(0, (int) $weight);
+        }
+    }
+
+    $control = (string) ($exp['control'] ?? '');
+
+    if ((count($weights) < 2) || !isset($weights[$control])) {
+        return null;
+    }
+
+    return array('id' => (int) $exp['id'], 'control' => $control, 'weights' => $weights);
+}
+
+/**
+ * The name of a variant's copy: the address's key joined with the
+ * experiment and the variant key. Pure.
+ *
+ * @param string $key pg_page_cache_key()
+ * @param int    $experiment_id
+ * @param string $variant_key
+ * @return string 40 hex characters
+ */
+function pg_page_cache_variant_key($key, $experiment_id, $variant_key)
+{
+    return sha1((string) $key . "\nexp" . (int) $experiment_id . ':' . (string) $variant_key);
+}
+
+/**
+ * Which copy answers a request for a page whose stored copy names an
+ * experiment: the variant the visitor's pg_exp cookie holds while it has a
+ * weight, else a new draw; a crawler or script always the live page's. Pure
+ * but for the draw's random, which may be given.
+ *
+ * @param array      $exp       pg_page_cache_experiment_meta()
+ * @param array      $cookies   $_COOKIE
+ * @param bool       $automated pg_page_cache_request_automated()
+ * @param float|null $random
+ * @return array key (the variant, '' for none), drawn (a new bucket to send),
+ *               variant (a copy other than the live page's answers)
+ */
+function pg_page_cache_experiment_route(array $exp, array $cookies, $automated, $random = null)
+{
+    $none = array('key' => '', 'drawn' => false, 'variant' => false);
+
+    if ($automated || !function_exists('pg_experiment_pick')) {
+        return $none;
+    }
+
+    $buckets = pg_experiment_bucket_parse(isset($cookies[PG_EXPERIMENT_COOKIE]) ? $cookies[PG_EXPERIMENT_COOKIE] : '');
+    $pick = pg_experiment_pick($exp['weights'], isset($buckets[$exp['id']]) ? $buckets[$exp['id']] : '',
+        ($random === null) ? pg_experiment_random() : $random);
+
+    if ($pick['key'] === '') {
+        return $none;
+    }
+
+    return array('key' => $pick['key'], 'drawn' => $pick['drawn'], 'variant' => ($pick['key'] !== $exp['control']));
 }
 
 /**
@@ -1153,12 +1336,9 @@ function pg_page_cache_send(array $lookup, $method)
         header($line);
     }
 
-    foreach (pg_page_cache_headers(max(0, pg_page_cache_ttl() - (int) $lookup['age'])) as $line) {
+    foreach (pg_page_cache_headers(max(0, pg_page_cache_ttl() - (int) $lookup['age']),
+        !empty($lookup['entry']['meta']['exp']) || !empty($lookup['entry']['meta']['aud'])) as $line) {
         header($line);
-    }
-
-    if (!empty($lookup['entry']['meta']['aud'])) {
-        header('Cache-Control: private, max-age=0');
     }
 
     header('X-Pinegrap-Cache: ' . (($lookup['state'] === 'hit') ? 'hit' : 'stale'));
@@ -1190,7 +1370,15 @@ function pg_page_cache_store_page($content, $page_id, $page_name)
         'bytes' => strlen((string) $content),
     ));
 
-    if (($reason !== '') || !pg_page_cache_file_enabled()) {
+    // A page under a running experiment is kept only as a variant's copy:
+    // one drawn for a request that joined no experiment would answer for all.
+    // A page shown by country or device is kept per value first.
+    $served = function_exists('pg_experiment_served') ? pg_experiment_served() : null;
+    $vary = pg_audience_cache_vary();
+    $store = pg_page_cache_store_targets($key, $vary, $vary ? pg_audience_request_values($vary, $_SERVER) : array(), $served,
+        ($served === null) && function_exists('pg_experiment_for_page') && (pg_experiment_for_page($page_id) !== null));
+
+    if (($reason !== '') || ($store === null) || !pg_page_cache_file_enabled()) {
         pg_page_cache_unlock();
         return;
     }
@@ -1200,7 +1388,7 @@ function pg_page_cache_store_page($content, $page_id, $page_name)
     $item = function_exists('pg_track_content') ? pg_track_content() : array('type' => '', 'id' => 0);
     $record = function_exists('pg_sw_record_view_seen') ? pg_sw_record_view_seen() : array();
 
-    if ((defined('VISITOR_TRACKING') && VISITOR_TRACKING) || !empty($record['form_id'])) {
+    if ((defined('VISITOR_TRACKING') && VISITOR_TRACKING) || !empty($record['form_id']) || ($store['exp'] !== null)) {
         $payload = pg_page_cache_beacon_payload(array(
             'page_id' => $page_id,
             'page_name' => $page_name,
@@ -1209,6 +1397,8 @@ function pg_page_cache_store_page($content, $page_id, $page_name)
             'item_id' => $item['id'] ?? 0,
             'form_id' => $record['form_id'] ?? 0,
             'record_page_id' => $record['page_id'] ?? 0,
+            'exp_id' => is_array($served) ? $served['experiment_id'] : 0,
+            'variant_id' => is_array($served) ? $served['variant_id'] : 0,
         ));
 
         $body = pg_page_cache_beacon_inject($body, $payload,
@@ -1217,21 +1407,81 @@ function pg_page_cache_store_page($content, $page_id, $page_name)
     }
 
     $generation = defined('PG_PAGE_CACHE_GENERATION') ? PG_PAGE_CACHE_GENERATION : 0;
-    $vary = pg_audience_cache_vary();
 
-    // A page shown by country or device: the address's key holds only the
-    // kinds (no page), the copy goes under the key of this visitor's values.
-    if ($vary) {
-        pg_page_cache_write(pg_page_cache_file_path(pg_page_cache_directory(), $generation, $key),
-            pg_page_cache_pack(array('created' => time(), 'headers' => array(), 'page_id' => (int) $page_id, 'aud' => $vary), ''));
-        $key = pg_audience_cache_key($key, $vary, pg_audience_request_values($vary, $_SERVER));
+    // The address's key holds only the kinds (no page) for a page kept by
+    // country or device.
+    if ($store['stub'] !== '') {
+        pg_page_cache_write(pg_page_cache_file_path(pg_page_cache_directory(), $generation, $store['stub']),
+            pg_page_cache_pack(array('created' => time(), 'headers' => array(), 'page_id' => (int) $page_id, 'aud' => $store['aud']), ''));
     }
 
     pg_page_cache_write(
-        pg_page_cache_file_path(pg_page_cache_directory(), $generation, $key),
-        pg_page_cache_pack(array('created' => time(), 'headers' => headers_list(), 'page_id' => (int) $page_id, 'aud' => $vary), $body));
+        pg_page_cache_file_path(pg_page_cache_directory(), $generation, $store['key']),
+        pg_page_cache_pack(array('created' => time(), 'headers' => headers_list(), 'page_id' => (int) $page_id,
+            'exp' => $store['exp'], 'aud' => $store['aud']), $body));
 
     pg_page_cache_unlock();
+}
+
+/**
+ * Where a drawn page is kept when an experiment may be involved: the live
+ * page's copy under the address's key, another variant's under its own key,
+ * both naming the experiment; null when it is not kept because the page runs
+ * an experiment this request did not join. Pure.
+ *
+ * @param string     $key    the address's key
+ * @param array|null $served pg_experiment_served()
+ * @param bool       $running_unserved the page runs an experiment, but this
+ *                           request was served none of it
+ * @return array|null key, exp (pg_page_cache_experiment_meta() or null)
+ */
+function pg_page_cache_experiment_store($key, $served, $running_unserved)
+{
+    if (!is_array($served)) {
+        return $running_unserved ? null : array('key' => (string) $key, 'exp' => null);
+    }
+
+    $exp = pg_page_cache_experiment_meta(array(
+        'id' => $served['experiment_id'] ?? 0,
+        'control' => $served['control_key'] ?? '',
+        'weights' => $served['weights'] ?? null,
+    ));
+
+    if (($exp === null) || !isset($exp['weights'][(string) ($served['key'] ?? '')])) {
+        return null;
+    }
+
+    return array(
+        'key' => ((string) $served['key'] === $exp['control']) ? (string) $key : pg_page_cache_variant_key($key, $exp['id'], $served['key']),
+        'exp' => $exp,
+    );
+}
+
+/**
+ * Where a drawn page and its audience stub are kept: audience first (the
+ * copy's key is that of the request's values, and the address's key gets a
+ * stub naming the kinds), then the experiment from that key
+ * (pg_page_cache_experiment_store()). Null when nothing is kept, the stub
+ * included. Pure.
+ *
+ * @param string     $key    the address's key
+ * @param array      $vary   pg_audience_cache_vary()
+ * @param array      $values pg_audience_request_values()
+ * @param array|null $served pg_experiment_served()
+ * @param bool       $running_unserved
+ * @return array|null stub (the address's key, '' for none), key, exp, aud
+ */
+function pg_page_cache_store_targets($key, array $vary, array $values, $served, $running_unserved)
+{
+    $vary = pg_audience_vary_clean($vary);
+    $base = $vary ? pg_audience_cache_key($key, $vary, $values) : (string) $key;
+    $store = pg_page_cache_experiment_store($base, $served, $running_unserved);
+
+    if ($store === null) {
+        return null;
+    }
+
+    return array('stub' => $vary ? (string) $key : '', 'key' => $store['key'], 'exp' => $store['exp'], 'aud' => $vary);
 }
 
 // ── The visitor beacon ─────────────────────────────────────────────────────
@@ -1239,9 +1489,11 @@ function pg_page_cache_store_page($content, $page_id, $page_name)
 /**
  * What a stored page tells page_view.php about the view it stands for, as
  * JSON: the page, the address the visitor used (PRETTY_URL_PATH), the
- * catalogue item (pg_track_content()) and the record a record page showed.
+ * catalogue item (pg_track_content()), the record a record page showed and
+ * the experiment variant the copy is.
  *
- * @param array $view page_id, page_name, pretty, item_type, item_id, form_id, record_page_id
+ * @param array $view page_id, page_name, pretty, item_type, item_id, form_id, record_page_id,
+ *                    exp_id, variant_id
  * @return string '' when it cannot be written
  */
 function pg_page_cache_beacon_payload(array $view)
@@ -1254,6 +1506,8 @@ function pg_page_cache_beacon_payload(array $view)
         'item_id' => (int) ($view['item_id'] ?? 0),
         'form_id' => (int) ($view['form_id'] ?? 0),
         'record_page_id' => (int) ($view['record_page_id'] ?? 0),
+        'exp_id' => (int) ($view['exp_id'] ?? 0),
+        'variant_id' => (int) ($view['variant_id'] ?? 0),
     ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
     return is_string($json) ? $json : '';
@@ -1320,6 +1574,8 @@ function pg_page_cache_beacon_read($payload)
         'item_id' => (int) ($data['item_id'] ?? 0),
         'form_id' => (int) ($data['form_id'] ?? 0),
         'record_page_id' => (int) ($data['record_page_id'] ?? 0),
+        'exp_id' => (int) ($data['exp_id'] ?? 0),
+        'variant_id' => (int) ($data['variant_id'] ?? 0),
     );
 }
 
@@ -1512,7 +1768,7 @@ function pg_page_cache_panel_sub_actions()
                 'rename', 'delete', 'delete_many'),
             'clean' => array('list', 'usage_all', 'prefetch', 'get', 'home_rows', 'list_custom_forms',
                 'list_form_item_view_pages', 'list_calendars', 'list_calendar_event_pages',
-                'list_product_groups', 'list_folders', 'list_catalog_pages', 'list_catalog_listing_pages',
+                'list_product_groups', 'list_fee_products', 'list_folders', 'list_catalog_pages', 'list_catalog_listing_pages',
                 'list_catalog_detail_pages', 'list_shopping_cart_pages', 'list_all_pages', 'list_form_fields', 'template_layouts', 'starter_layouts'),
         ),
         'file_explorer' => array(

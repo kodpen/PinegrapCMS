@@ -56,6 +56,8 @@ if (!$_POST) {
     }
 
     $menu_name = $row['name'];
+    $item_count = (int) db_value("SELECT COUNT(*) FROM menu_items WHERE menu_id = '" . $id . "'");
+    $items_url = 'view_menu_items.php?id=' . $id . '&from=' . urlencode((string) ($_GET['from'] ?? '')) . '&send_to=' . urlencode((string) ($_GET['send_to'] ?? ''));
 
     // if edit menu screen has not been submitted already, pre-populate fields with data
     if (!$liveform->field_in_session('name')) {
@@ -76,7 +78,7 @@ if (!$_POST) {
         'heading'=>lang('Edit Menu Properties'),
         'heading_description' => lang('Edit shared menu that can be added to any page style and managed by any site manager.'),
         // Cancel returns where Save does: the menu's items screen.
-        'cancel'=>array('enable'=>'true','url'=>'view_menu_items.php?id=' . $id . '&from=' . urlencode((string) ($_GET['from'] ?? '')) . '&send_to=' . urlencode((string) ($_GET['send_to'] ?? '')))
+        'cancel'=>array('enable'=>'true','url'=>$items_url)
     ,
             'breadcrumb' => array(array('label' => lang('All Menus'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menus.php'), array('label' => lang('Edit Menu Properties'))),
         ]) . '
@@ -85,7 +87,6 @@ if (!$_POST) {
         'secondary' => array(
             '<a class="btn btn-sm btn-text theme-secondary" href="duplicate_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . get_token_query_string_field() . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>',
         ),
-        'grow'      => '<span class="small fg-secondary">' . lang('Page Style Body Tag') . ': <code>' . h('<menu>' . $menu_name . '</menu>') . '</code></span>',
     )) . '
             <div class="row">
             <div class="col-12">
@@ -97,15 +98,15 @@ if (!$_POST) {
                     <input type="hidden" name="from" value="' . h(($_GET['from'] ?? '')) . '" />
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
-                    ' . pg_menu_form_card($liveform, (string) $menu_name) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
+                    ' . pg_menu_form_layout(
+                        pg_menu_form_cards($liveform, array(
+                            'stored_name' => (string) $menu_name,
+                            'status' => pg_menu_form_items_status($item_count, h($items_url)),
+                        )),
+                        '
                                 <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('menu')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('menu')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>'
+                    ) . '
                 </form>
             </div>
         </div>

@@ -26,7 +26,7 @@ pg_request_single_values(array('page_id'));
 
 $form = new liveform('generate_layout');
 
-$page = db_item("SELECT page_name AS name FROM page WHERE page_id = '" . e($_GET['page_id'] ?? '') . "'");
+$page = db_item("SELECT page_id AS id, page_name AS name, page_type AS type FROM page WHERE page_id = '" . e($_GET['page_id'] ?? '') . "'");
 
 // Opened without a page, or for one that no longer exists (stale link,
 // hand-typed URL): a "not found" screen instead of PHP notices and an empty
@@ -35,16 +35,29 @@ if (!$page) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
+// A type without a layout template (a standard page, say) has nothing to
+// generate; Edit Layout refuses it the same way.
+if (!check_if_page_type_supports_layout($page['type'])) {
+    output_error(lang('This page does not use a custom layout.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
 require('generate_layout_content.php');
 
 $form->set('layout', "\n" . generate_layout_content($_GET['page_id']));
 
+$edit_page_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_page.php?id=' . (int) $page['id'];
+
 echo pg_page_shell([
-        'title'=> lang('Generate Layout'),
+        'title'=> h($page['name']) . ' | ' . lang('Generate Layout'),
         'extra classes'=>'design',
         'icon'=>'design',
         'heading'=>lang('Generate Layout'),
-        'cancel'=>true,
+        'cancel'=>array('enable' => 'true', 'url' => $edit_page_url),
+        'breadcrumb' => array(
+            array('label' => lang('Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'),
+            array('label' => $page['name'], 'url' => $edit_page_url),
+            array('label' => lang('Generate Layout')),
+        ),
     ]);
 
 require('includes/templates/generate_layout.php');

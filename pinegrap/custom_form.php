@@ -19,7 +19,19 @@
 // this script processes a submitted custom form
 include('init.php');
 
+// The visitor is back from a payment service's 3-D Secure or hosted page for
+// a form's fee: the service's request carries no form token
+// (includes/fn/form_payment_step.php).
+if (isset($_GET['mode']) && is_string($_GET['mode']) && ($_GET['mode'] !== 'paypal_express_checkout_return') && pg_payment_is_return_mode($_GET['mode'])) {
+    pg_form_payment_return((int) ($_GET['page_id'] ?? 0));
+}
+
 validate_token_field();
+
+// The payment alone of a record saved unpaid: a retry, or a new submission.
+if (isset($_POST['pg_form_pay']) || isset($_POST['pg_form_pay_discard'])) {
+    pg_form_payment_retry((int) ((isset($_POST['page_id']) && is_string($_POST['page_id'])) ? $_POST['page_id'] : 0));
+}
 
 check_banned_ip_addresses('submit custom form');
 
@@ -490,6 +502,10 @@ foreach ($fields as $field_key => $field) {
         }
     }
 }
+
+// The fee a submission of a form with a payment step owes, checked with the
+// answers before anything is stored (null: none).
+$form_fee = ($action == 'submit') ? pg_form_payment_check($liveform, (int) $_POST['page_id'], $fields, $shown_when_hidden) : null;
 
 // The protections below hold every submission but staff's
 // (pg_user_has_panel_access()); saving for later writes nothing to anyone.
@@ -1323,7 +1339,8 @@ if ($liveform->check_form_errors() == false) {
         // loop through contact groups that contact should be added to
         foreach ($contact_groups as $contact_group_id) {
             // check if contact group exists
-            $query = "SELECT id FROM contact_groups WHERE id = ?";
+            // a group filled by rules is never written by a form
+            $query = "SELECT id FROM contact_groups WHERE (id = ?) AND " . pg_audience_hand_sql();
             $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
             
             // if contact group exists
@@ -1491,257 +1508,32 @@ if ($liveform->check_form_errors() == false) {
         }
     }
 
-    // If the submitter email is enabled, then send it to the submitter and possibly a watcher.
-    if ($submitter_email == 1) {
-        // Prepare array to store email address for submitter and
-        // any watcher that was added through the hidden add watcher feature.
-        $submitter_and_watcher_email_addresses = array();
-
-        // If the submitter email address is not blank, then add it to array.
-        if ($submitter_email_address != '') {
-            $submitter_and_watcher_email_addresses[] = $submitter_email_address;
-        }
-
-        // If the add watcher feature was used and a user was found for the watcher,
-        // then add watcher's email address to array.
-        if (!empty($add_watcher_user['id'])) {
-            $submitter_and_watcher_email_addresses[] = $add_watcher_user['email_address'];
-        }
-
-        // If at least one submitter or watcher was found,
-        // then continue to send email.
-        if (count($submitter_and_watcher_email_addresses) > 0) {
-
-            // Loop through the submitter and watcher email addresses,
-            // in order to send a separate email to each one.  We don't just
-            // want to send one email with multiple tos because they can see eachother's
-            // email address that way.  We don't need to re-prepare the subject
-            // and body for every round of this loop, because they will be the same each time,
-            // however we are just doing it like that for now to save development time.
-            foreach ($submitter_and_watcher_email_addresses as $to_email_address) {
-
-                if ($submitter_email_from_email_address != '') {
-                    $from_email_address = $submitter_email_from_email_address;
-                } else {
-                    $from_email_address = EMAIL_ADDRESS;
-                }
-                
-                // The signed links (^^email_preferences_url^^, ^^confirm_subscription_url^^)
-                // go into the sender's own copy only; a watcher's copy gets them empty.
-                if ($to_email_address == $submitter_email_address) {
-                    pg_cf_mail_links_context(array(
-                        'email_address' => $submitter_email_address,
-                        'contact_id' => (int) $contact_id,
-                        'custom_form_page_id' => (int) $_POST['page_id'],
-                        'form_id' => (int) $form_id));
-                } else {
-                    pg_cf_mail_links_context(false);
-                }
-
-                $mail_link_values = pg_cf_mail_link_values();
-
-                // The link fields are filled into the template before the submitted
-                // values go in, so a value holding "[[" or "]]" cannot open or close
-                // a block around other text. $submitter_email_subject stays the
-                // template for the next recipient.
-                $subject = pg_cf_fill_mail_links($submitter_email_subject, $mail_link_values, 'plain_text');
-
-                // check the subject line for variable data and replace any variables with content from the submitted form
-                $subject = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, $subject, $prepare_for_html = FALSE);
-
-                // If this form grants an offer, then replace ^^key_code^^ mail-merge field,
-                // with the key code that was created, or a blank value if no key code was created.
-                if ($offer) {
-                    $subject = replace_variables(array(
-                        'content' => $subject,
-                        'fields' => array(array(
-                            'name' => 'key_code',
-                            'data' => $key_code,
-                            'type' => '')),
-                        'format' => 'plain_text'));
-                }
-
-                // if the format of the e-mail should be plain text, then prepare that
-                if ($submitter_email_format == 'plain_text') {
-
-                    // Check the body for variable data and replace any variables with content from the submitted form.
-                    // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
-                    // The link fields go into the template first (see the subject).
-                    $body = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, pg_cf_fill_mail_links(pg_cf_email_body_or_default($_POST['page_id'], $submitter_email_body, true), $mail_link_values, 'plain_text'), $prepare_for_html = FALSE);
-
-                    // If this form grants an offer, then replace ^^key_code^^ mail-merge field,
-                    // with the key code that was created, or a blank value if no key code was created.
-                    if ($offer) {
-                        $body = replace_variables(array(
-                            'content' => $body,
-                            'fields' => array(array(
-                                'name' => 'key_code',
-                                'data' => $key_code,
-                                'type' => '')),
-                            'format' => 'plain_text'));
-                    }
-
-                    // If a user account was created via the auto-registration feature,
-                    // and this is the email for the submitter (i.e. not the email for the watcher)
-                    // then name the account and give the link to set its password.
-                    if ($to_email_address == $submitter_email_address) {
-                        $body .= pg_cf_new_account_plain_text(pg_cf_new_account_email($form_id), pg_cf_new_account_link($form_id), true);
-                    }
-
-                // else the format of the e-mail should be HTML, so prepare that
-                } else {
-
-                    require_once(dirname(__FILE__) . '/get_page_content.php');
-
-                    // A new account's set password link goes into the sender's copy only.
-                    pg_cf_new_account_recipient($to_email_address == $submitter_email_address);
-
-                    $body = get_page_content($submitter_email_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $form_id));
-
-                    pg_cf_new_account_recipient(true);
-
-                    // The sender's copy reads in the language they wrote in.
-                    if (function_exists('pg_tr_email')) {
-                        $body = pg_tr_email($body);
-                    }
-
-                    // If this form grants an offer, then replace ^^key_code^^ mail-merge field,
-                    // with the key code that was created, or a blank value if no key code was created.
-                    if ($offer) {
-                        $body = replace_variables(array(
-                            'content' => $body,
-                            'fields' => array(array(
-                                'name' => 'key_code',
-                                'data' => $key_code,
-                                'type' => '')),
-                            'format' => 'html'));
-                    }
-
-                    // Bare link fields outside the form item view (other regions of the
-                    // e-mail page); the body already holds the submitted values, so no
-                    // [[...]] block is evaluated here.
-                    $body = pg_cf_fill_mail_link_tokens($body, $mail_link_values, 'html');
-
-                }
-                
-                email(array(
-                    'to' => $to_email_address,
-                    'from_name' => ORGANIZATION_NAME,
-                    'from_email_address' => $from_email_address,
-                    'subject' => $subject,
-                    'format' => $submitter_email_format,
-                    'body' => $body,
-                    // The sender's copy may carry the set password link or a signed
-                    // link, which must stay out of the failure log and the
-                    // delivery-failed notice.
-                    'secret' => (($to_email_address == $submitter_email_address) && (pg_cf_new_account_email($form_id) !== ''))
-                        || pg_cf_mail_links_in($subject . $body, $mail_link_values),
-                    'queue' => true));
-
-                pg_cf_mail_links_context(false);
-
-            }
-        }
-    }
-    
-    // if an administrator e-mail is enabled and there is an e-mail address to e-mail, then send e-mail
-    if (($administrator_email == 1) && (($administrator_email_to_email_address != '') || ($administrator_email_bcc_email_address != '') || (count($administrator_email_addresses) > 0))) {
-        
-        // if there is a to e-mail address and it has not already been added to the array, then add it
-        if (($administrator_email_to_email_address != '') && (in_array($administrator_email_to_email_address, $administrator_email_addresses) == false)) {
-            $administrator_email_addresses[] = $administrator_email_to_email_address;
-        }
-        
-        // The signed links belong to the sender alone: empty in the administrator's
-        // e-mail, filled into the template before the submitted values go in.
-        $administrator_email_subject = pg_cf_fill_mail_links($administrator_email_subject, array(), 'plain_text');
-
-        // check the subject line for variable data and replace any variables with content from the submitted form
-        $administrator_email_subject = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, $administrator_email_subject, $prepare_for_html = FALSE);
-
-        // If this form grants an offer, then replace ^^key_code^^ mail-merge field,
-        // with the key code that was created, or a blank value if no key code was created.
-        if ($offer) {
-            $administrator_email_subject = replace_variables(array(
-                'content' => $administrator_email_subject,
-                'fields' => array(array(
-                    'name' => 'key_code',
-                    'data' => $key_code,
-                    'type' => '')),
-                'format' => 'plain_text'));
-        }
-
-        // if the format of the e-mail should be plain text, then prepare that
-        if ($administrator_email_format == 'plain_text') {
-            // Check the body for variable data and replace any variables with content from the submitted form.
-            // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
-            $body = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, pg_cf_fill_mail_links(pg_cf_email_body_or_default($_POST['page_id'], $administrator_email_body), array(), 'plain_text'), $prepare_for_html = FALSE);
-
-            // If this form grants an offer, then replace ^^key_code^^ mail-merge field,
-            // with the key code that was created, or a blank value if no key code was created.
-            if ($offer) {
-                $body = replace_variables(array(
-                    'content' => $body,
-                    'fields' => array(array(
-                        'name' => 'key_code',
-                        'data' => $key_code,
-                        'type' => '')),
-                    'format' => 'plain_text'));
-            }
-
-            // If a user account was created via the auto-registration feature,
-            // then say so. The set password link belongs to the visitor alone.
-            $body .= pg_cf_new_account_plain_text(pg_cf_new_account_email($form_id), '', false);
-
-        // else the format of the e-mail should be HTML, so prepare that
-        } else {
-
-            require_once(dirname(__FILE__) . '/get_page_content.php');
-            
-            // The administrator's e-mail in the site's own language, whatever
-            // language the form was sent from.
-            if (function_exists('pg_tr_suspend')) {
-                pg_tr_suspend(true);
-            }
-
-            $body = get_page_content($administrator_email_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $form_id));
-
-            if (function_exists('pg_tr_suspend')) {
-                pg_tr_suspend(false);
-            }
-
-            // If this form grants an offer, then replace ^^key_code^^ mail-merge field,
-            // with the key code that was created, or a blank value if no key code was created.
-            if ($offer) {
-                $body = replace_variables(array(
-                    'content' => $body,
-                    'fields' => array(array(
-                        'name' => 'key_code',
-                        'data' => $key_code,
-                        'type' => '')),
-                    'format' => 'html'));
-            }
-
-            $body = pg_cf_fill_mail_link_tokens($body, array(), 'html');
-
-        }
-
-        // In the past we would set the from info to the submitter's address (if one existed),
-        // however this caused issues with mail providers using DMARC (e.g. Yahoo, AOL),
-        // so we now send it from this site's info and add a reply to for the submitter (if exists).
-        
-        email(array(
-            'to' => $administrator_email_addresses,
-            'bcc' => $administrator_email_bcc_email_address,
-            'from_name' => ORGANIZATION_NAME,
-            'from_email_address' => EMAIL_ADDRESS,
-            'reply_to' => $submitter_email_address,
-            'subject' => $administrator_email_subject,
-            'format' => $administrator_email_format,
-            'body' => $body,
-            'queue' => true));
-
-    }
+    // The form's e-mails (includes/fn/form_mails.php). A record that owes a
+    // fee is unpaid yet: its e-mails go when the payment marks it paid
+    // (pg_form_payment_mark_paid()).
+    pg_cf_form_mails_send((int) $_POST['page_id'], (int) $form_id, array(
+        'submitter_email'                       => $submitter_email,
+        'submitter_email_from_email_address'    => $submitter_email_from_email_address,
+        'submitter_email_subject'               => $submitter_email_subject,
+        'submitter_email_format'                => $submitter_email_format,
+        'submitter_email_body'                  => $submitter_email_body,
+        'submitter_email_page_id'               => $submitter_email_page_id,
+        'administrator_email'                   => $administrator_email,
+        'administrator_email_to_email_address'  => $administrator_email_to_email_address,
+        'administrator_email_bcc_email_address' => $administrator_email_bcc_email_address,
+        'administrator_email_subject'           => $administrator_email_subject,
+        'administrator_email_format'            => $administrator_email_format,
+        'administrator_email_body'              => $administrator_email_body,
+        'administrator_email_page_id'           => $administrator_email_page_id,
+        'offer'                                 => $offer,
+    ), array(
+        'submitter_email_address'       => $submitter_email_address,
+        'watcher_email_address'         => (string) ($add_watcher_user['email_address'] ?? ''),
+        'administrator_email_addresses' => $administrator_email_addresses,
+        'contact_id'                    => (int) $contact_id,
+        'key_code'                      => $key_code,
+        'fee_owed'                      => ($form_fee !== null),
+    ));
     
     // If the user is allowed to select to be a watcher
     // and there is a user for this submitted form
@@ -1859,6 +1651,10 @@ if ($liveform->check_form_errors() == false) {
         $result = db_q($query, array((string) $form_name, (string) $_SESSION['software']['visitor_id'])) or output_error('Query failed.');
     }
 
+    // A page experiment whose goal is this form counts it for the visitor's
+    // variant, outside the visitor tracking switch (includes/fn/experiments.php).
+    pg_experiment_goal('form', array('page_id' => (int) $_POST['page_id']));
+
     // Check if there are auto e-mail campaigns that should be created based on this custom form being submitted.
     create_auto_email_campaigns(array(
         'action' => 'custom_form_submitted',
@@ -1882,6 +1678,13 @@ if ($liveform->check_form_errors() == false) {
         'contact_id'     => ((int) $contact_id > 0) ? (int) $contact_id : null
     ));
     
+    // The fee: the record is saved unpaid, its order written and charged.
+    // Returns once the order is completed; a payment page or a refusal (the
+    // form's page then shows the payment alone) ends the request.
+    if ($form_fee !== null) {
+        pg_form_payment_start((int) $_POST['page_id'], (int) $form_id, $reference_code, $form_fee, (int) $contact_id, $submitter_email_address, (int) $user_id, $send_to);
+    }
+
     // if this is a quiz custom form, then verify that user has passed quiz
     if ($quiz == 1) {
         // if quiz score is less than the quiz pass percentage, then prepare notice and send user back to custom form

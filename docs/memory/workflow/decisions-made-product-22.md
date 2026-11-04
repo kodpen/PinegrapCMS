@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-22
-description: Decisions list, product part 22 (2026-11-03 on): the panel's own table driver replacing DataTables
+description: Decisions list, product part 22 (2026-11-01 evening on): the panel's own table driver replacing DataTables
 ---
 
 ## Where are the rules and the earlier parts?

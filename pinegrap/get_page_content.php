@@ -111,6 +111,20 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // database, in which case this stays '' and style_code is used as before.
     $page_tree_code = isset($row['page_tree_code']) ? (string)$row['page_tree_code'] : '';
 
+    // A page experiment's variant swaps in its draft's body only: the title,
+    // meta tags, structured data and address above stay the live page's.
+    $page_body_id = function_exists('pg_experiment_body_page_id') ? pg_experiment_body_page_id((int) $page_id) : (int) $page_id;
+
+    if ($page_body_id !== (int) $page_id) {
+        $variant_code = pg_experiment_variant_code($page_body_id);
+
+        if ($variant_code !== '') {
+            $page_tree_code = $variant_code;
+        } else {
+            $page_body_id = (int) $page_id;
+        }
+    }
+
     // Remember the requested device type, because we might change this below
     // if a mobile style does not exist.  We want to remember the requested device type,
     // because we still want to output the appropriate mobile switch.
@@ -159,7 +173,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // translations: from page_translations while the source body is
     // unchanged, drawn now otherwise. The page's own body stays as it is.
     if (defined('FRONTEND_LANGUAGE') && ($page_tree_code !== '')) {
-        $page_tree_code = pg_tr_page_body($page_id, $page_tree_code, $style_name, (string) ($row['additional_body_classes'] ?? ''));
+        $page_tree_code = pg_tr_page_body($page_body_id, $page_tree_code, $style_name, (string) ($row['additional_body_classes'] ?? ''));
     }
 
     // The page's own generated layout wins when it has one; the style's code
@@ -559,6 +573,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
     }
 
+    // Links kept by page id (in the page tree and in shared components, drawn
+    // above) point at the page's current address, so a rename reaches them;
+    // a page missing or in the bin keeps the typed href. Before the language
+    // pass, which adds its prefix to them.
+    if (stripos($content, 'data-pg-page-link=') !== false && function_exists('pg_page_link_expand')) {
+        $content = pg_page_link_expand($content);
+    }
+
     // An address segment after the page name that nothing on the page read
     // (/about/xyz, a classic system-layout page included) is not there: a 404
     // with noindex that goes into the 404 log, as a missing record or product
@@ -665,6 +687,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // checked once everything is drawn in. Not in an e-mail.
     if (!$email && strpos($content, 'data-pg-wishlist') !== false && function_exists('pg_wishlist_inject')) {
         $content = pg_wishlist_inject($content);
+    }
+
+    // ── Booking widget ──────────────────────────────────────────────────────────
+    // A booking widget with services (data-pg-booking) brings its script
+    // (pg_booking_widget_inject()); its calendar comes with the site's date
+    // control, which the same attribute brings. Not in an e-mail.
+    if (!$email && strpos($content, 'data-pg-booking=') !== false && function_exists('pg_booking_widget_inject')) {
+        $content = pg_booking_widget_inject($content);
     }
 
     // ── Rich-text editor for designed forms ─────────────────────────────────────
@@ -1196,7 +1226,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             var software_path = "' . escape_javascript(PATH) . '";
             var software_directory = "' . escape_javascript(SOFTWARE_DIRECTORY) . '";
             var software_system_language = "' . escape_javascript(lang(array('info'=>''))) . '";
-            var software_token = "' . ($_SESSION['software']['token'] ?? '') . '";
+            var software_token = "' . ($email ? '' : ($_SESSION['software']['token'] ?? '')) . '";
             var software_device_type = "' . $device_type . '";
             var software_page_id = ' . $page_id . ';
             var translate ={
@@ -1258,7 +1288,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // if Google Analytics is enabled and there is a Web Property ID, then add Google Analytics JavaScript.
         // Not in a background render (the SEO pass, the prototype frame): that is nobody's visit, and the
         // tag would report a page view with the address the render was asked by.
-        if ((GOOGLE_ANALYTICS == TRUE) && (GOOGLE_ANALYTICS_WEB_PROPERTY_ID != '') && !pg_seo_rendering()) {
+        // A stored ID that is not a Google tag ID prints no tag at all: it
+        // would break the script address and the inline script.
+        $google_analytics_tag_id = pg_ga_tag_id(GOOGLE_ANALYTICS_WEB_PROPERTY_ID);
+
+        if ((GOOGLE_ANALYTICS == TRUE) && ($google_analytics_tag_id !== '') && !pg_seo_rendering()) {
 
             $output_ecommerce_tracking_data = '';
 
@@ -1353,12 +1387,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             }
             $output_google_analytics =
                 '<!-- Google tag (gtag.js) -->' . "\n" .
-                '<script async src="https://www.googletagmanager.com/gtag/js?id=' . GOOGLE_ANALYTICS_WEB_PROPERTY_ID . '"></script>' . "\n" .
+                '<script async src="https://www.googletagmanager.com/gtag/js?id=' . h(rawurlencode($google_analytics_tag_id)) . '"></script>' . "\n" .
                 '<script>' . "\n" .
                 '    window.dataLayer = window.dataLayer || [];' . "\n" .
                 '    function gtag(){dataLayer.push(arguments);}' . "\n" .
                 '    gtag(\'js\', new Date());' . "\n" .
-                '    gtag(\'config\', \'' . GOOGLE_ANALYTICS_WEB_PROPERTY_ID . '\');' . "\n" .
+                '    gtag(\'config\', \'' . escape_javascript($google_analytics_tag_id) . '\');' . "\n" .
                     $output_ecommerce_tracking_data .
                 '</script>';
 

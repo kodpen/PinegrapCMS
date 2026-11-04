@@ -60,6 +60,16 @@ $catalog = array(
             'products'    => $pass_products,
         ),
     ),
+    // The registration form's fee (its payment setting): a hidden product
+    // priced 0, so registering stays free until the operator prices it.
+    'fees'    => array(
+        'registration_fee' => array(
+            'sku'         => 'EVENTS-REGISTRATION-FEE',
+            'title'       => lang('Registration fee'),
+            'description' => lang('The fee paid with a registration. At a price of 0 registering stays free.'),
+            'price'       => array('USD' => 0, 'EUR' => 0, 'GBP' => 0, 'TRY' => 0),
+        ),
+    ),
 );
 
 // ── Pages ───────────────────────────────────────────────────────────────

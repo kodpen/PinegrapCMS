@@ -125,6 +125,57 @@ function pg_user_contact_sql($contact_id)
 }
 
 /**
+ * The posted Reward Points as the integer user_reward_points holds (int
+ * unsigned): blank is 0, anything that is not a whole number from 0 to
+ * 4294967295 is null. A lenient server would clamp -5 to 0, cut "12,50" to
+ * 12 and cap a larger number, and the screen would still say it saved. Pure.
+ *
+ * @param mixed $value  The posted value; null when the field was not sent
+ * @return int|null
+ */
+function pg_user_form_reward_points($value)
+{
+    if ($value === null) {
+        return 0;
+    }
+
+    if (is_int($value)) {
+        $value = (string) $value;
+    }
+
+    if (!is_string($value)) {
+        return null;
+    }
+
+    $value = trim($value);
+
+    if ($value === '') {
+        return 0;
+    }
+
+    if (!ctype_digit($value) || (strlen(ltrim($value, '0')) > 10)) {
+        return null;
+    }
+
+    $points = (float) $value;
+
+    return ($points <= 4294967295) ? (int) $value : null;
+}
+
+/**
+ * Whether a user text fits its varchar(100) column (user_username,
+ * user_badge_label). A lenient server cuts a longer value, which also gets
+ * around the uniqueness check run on the whole value. Pure.
+ *
+ * @param mixed $value
+ * @return bool
+ */
+function pg_user_form_text_fits($value)
+{
+    return mb_strlen((string) $value, 'UTF-8') <= 100;
+}
+
+/**
  * The private folders whose posted expiration date is a problem: 'invalid'
  * (a checked folder whose date is not a date, which would save no access)
  * and 'past' (a date already gone, so the access ends as it is given). Only
@@ -427,4 +478,38 @@ function pg_user_form_save_access($user_id, $role, $post, $replace)
 
         pg_user_form_save_xref("SELECT id FROM ad_regions", 'ad_region_', 'users_ad_regions_xref', 'ad_region_id', $user_id, $post);
     }
+}
+
+/**
+ * Whether the edit screen may switch an account off, the same rule that keeps
+ * the last administrator from being demoted or deleted: nobody disables his/
+ * her own account, and the last enabled administrator (role 0, not disabled)
+ * stays enabled, or the site is left with nobody who can reach the
+ * admin-only screens. Switching an account back on is always allowed.
+ * Asked only when pg_user_has_disabled_at(): it reads the column.
+ *
+ * @param int $user_id   the account being edited
+ * @param int $editor_id the signed-in editor
+ * @return bool
+ */
+function pg_user_form_may_disable($user_id, $editor_id)
+{
+    $user_id = (int) $user_id;
+
+    if (($user_id <= 0) || ($user_id === (int) $editor_id)) {
+        return false;
+    }
+
+    $target = db_item("SELECT user_role, user_disabled_at FROM user WHERE user_id = '" . $user_id . "'");
+
+    if (!is_array($target)) {
+        return false;
+    }
+
+    if (((int) $target['user_role'] !== 0) || pg_user_is_disabled($target)) {
+        return true;
+    }
+
+    return (bool) db_value("SELECT user_id FROM user
+        WHERE (user_role = '0') AND (user_id != '" . $user_id . "')" . pg_user_enabled_sql() . " LIMIT 1");
 }

@@ -74,11 +74,16 @@ if($directory){
 		// download as if it were a backup.
 		$backup_incomplete = !$backup_is_archive && !is_file('data/backups/'.$backup_folder.'/sql.sql');
 		$backup_time = $backup_times[$backup_folder];
+		// A starter-site dump stays deletable, but its confirmation names
+		// what is lost: the installer offers only the dumps on disk.
+		$backup_delete_confirm = (!$backup_is_archive && pg_backup_is_starter_dump($backup_folder))
+			? lang(array('string' => 'Delete the backup {var:1} permanently? It is a starter site: a later install made from this copy no longer offers this language, and the panel does not bring the backup back.', 'vars' => array($backup_folder)))
+			: lang(array('string' => 'Delete the backup {var:1} permanently?', 'vars' => array($backup_folder)));
 		$output_rows .= '
 		<tr>
 			<td class="align-middle text-start actions-buttons">' . ($backup_incomplete ? '' : '
         	    <button type="submit" name="download_selected" value="Download '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . h(lang('Download')) . '" aria-label="' . h(lang(array('string' => 'Download {var:1}', 'vars' => array($backup_folder)))) . '"><i class="bi bi-download" aria-hidden="true"></i></button>') . '
-        	    <button type="submit" name="delete_selected"   value="Delete '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " data-confirm-content="' . h(lang(array('string' => 'Delete the backup {var:1} permanently?', 'vars' => array($backup_folder)))) . '" title="' . h(lang('Delete')) . '" aria-label="' . h(lang(array('string' => 'Delete {var:1}', 'vars' => array($backup_folder)))) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>
+        	    <button type="submit" name="delete_selected"   value="Delete '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " data-confirm-content="' . h($backup_delete_confirm) . '" title="' . h(lang('Delete')) . '" aria-label="' . h(lang(array('string' => 'Delete {var:1}', 'vars' => array($backup_folder)))) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>
         	</td>
 			<td>
 				'.h($backup_folder).'
@@ -180,8 +185,51 @@ if (!$_POST) {
 	    ) . '
 <main id="content" class="container-fluid">
 	    ' . pg_screen_toolbar(array(
+	        // The screen's one action: a name and the button that takes the
+	        // backup. backend.src.js reads #backup_folder_name and #backup.
+	        'primary' => '<label for="backup_folder_name" class="visually-hidden">' . lang('Backup Name') . '</label>
+	            <fieldset class="input-group input-group-sm pg-toolbar-search pg-backup-create" ' . $disabled_fieldset_attribute . '>
+	                ' . $liveform->output_field([
+	                    'type'  => 'text',
+	                    'id'    => 'backup_folder_name',
+	                    'name'  => 'backup_folder_name',
+	                    'class' => 'form-control',
+	                    'maxlength' => PG_BACKUP_NAME_MAX,
+	                    'placeholder' => lang('Backup Name'),
+	                ]) . '
+	                <button type="button" id="backup" class="btn btn-sm btn-solid theme-primary ready">'
+	                    . lang('Backup') . '
+	                </button>
+	            </fieldset>
+	            <script>
+	                // Return starts the backup; the field sits outside any form,
+	                // so there is no submit to stop, only the click to make.
+	                document.getElementById("backup_folder_name").addEventListener("keydown", function(event) {
+	                    if (event.key !== "Enter" || event.isComposing) {
+	                        return;
+	                    }
+	                    event.preventDefault();
+	                    document.getElementById("backup").click();
+	                });
+	            </script>',
 	        'grow' => '<span class="small fg-secondary">' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(folderSize('data/backups'), 2)) . '</span>',
 	    )) . '
+
+	        <div class="mb-7">
+	            ' . $output_warnings_for_backup . '
+	            <div class="progress d-none">
+	                <div class="progress-bar progress-bar-striped"
+	                     role="progressbar"
+	                     aria-label="' . h(lang('Backup')) . '"
+	                     aria-valuenow="0"
+	                     aria-valuemin="0"
+	                     aria-valuemax="100"
+	                     style="width: 0%">
+	                </div>
+	            </div>
+	            <div class="logbox form-text" role="status"></div>
+	            <div class="form-text">' . lang('Database backups leave out the rows of visit records, page view counts, form item view counts, the firewall, performance and API request logs and the Search Console figures: those tables are backed up empty. The daily visitor summary and the hourly visitor chart are backed up in full; the Search Console figures of the last 90 days are downloaded again after a restore.') . '</div>
+	        </div>
 
 	        <div class="row">
 	            <div class="col-12">
@@ -216,63 +264,6 @@ if (!$_POST) {
 	                    </div>
 
 	                    ' . $output_remote_card . '
-
-	                    <div class="card my-7">
-	                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-	                            ' . lang('Create or Update Backup') . '
-	                        </div>
-	                        <div class="card-body">
-	                            <div class="row">
-	                                <div class="col-12 my-1">
-	                                    ' . $output_warnings_for_backup . '
-	                                    <div class="form-text mt-0">' . lang('Database backups leave out the rows of visit records, page view counts, form item view counts, the firewall, performance and API request logs and the Search Console figures: those tables are backed up empty. The daily visitor summary and the hourly visitor chart are backed up in full; the Search Console figures of the last 90 days are downloaded again after a restore.') . '</div>
-	                                </div>
-	                                <div class="col-12 my-1">
-	                                    <div class="progress d-none">
-	                                        <div class="progress-bar progress-bar-striped"
-	                                             role="progressbar"
-	                                             aria-label="' . h(lang('Backup')) . '"
-	                                             aria-valuenow="0"
-	                                             aria-valuemin="0"
-	                                             aria-valuemax="100"
-	                                             style="width: 0%">
-	                                        </div>
-	                                    </div>
-	                                    <div class="logbox form-text" role="status"></div>
-	                                </div>
-	                                <div class="col-12 md:col-auto my-1">
-	                                    <label for="backup_folder_name" class="form-label">'
-	                                        . lang('Backup Name') . '
-	                                    </label>
-	                                    <fieldset class="input-group" ' . $disabled_fieldset_attribute . '>
-	                                        ' . $liveform->output_field([
-	                                            'type'  => 'text',
-	                                            'id'    => 'backup_folder_name',
-	                                            'name'  => 'backup_folder_name',
-	                                            'class' => 'form-control',
-	                                            'maxlength' => PG_BACKUP_NAME_MAX
-	                                        ]) . '
-	                                        <button type="button" id="backup"
-	                                                class="btn btn-solid theme-success ready">'
-	                                            . lang('Backup') . '
-	                                        </button>
-	                                    </fieldset>
-	                                    <script>
-	                                        // Return would submit #backupform with its first submit
-	                                        // button, a row\'s Download; keydown stops that before the
-	                                        // browser does it and starts the backup instead.
-	                                        document.getElementById("backup_folder_name").addEventListener("keydown", function(event) {
-	                                            if (event.key !== "Enter" || event.isComposing) {
-	                                                return;
-	                                            }
-	                                            event.preventDefault();
-	                                            document.getElementById("backup").click();
-	                                        });
-	                                    </script>
-	                                </div>
-	                            </div>
-	                        </div>
-	                    </div>
 	                </form>
 	            </div>
 	        </div>

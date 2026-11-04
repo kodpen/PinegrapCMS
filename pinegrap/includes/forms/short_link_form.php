@@ -28,7 +28,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function pg_short_link_form_destination_options()
 {
     return array(
-        '-' . lang(array('string'=>'Select {var:1}','vars'=>lang('destination type'))) . '-' => '',
+        '-' . lang(array('string'=>'Select {var:1}','vars'=>lang('Destination Type'))) . '-' => '',
         lang('Page') => 'page',
         lang('Product Group') => 'product_group',
         lang('Product') => 'product',
@@ -113,11 +113,44 @@ function pg_short_link_form_redirect_code_row($liveform)
 }
 
 /**
- * The destination type card, the name card and the function options card.
+ * The product group picker's options: the groups, with a labelled first
+ * option as the page, product and file pickers have.
+ *
+ * @param array $keep_ids Groups that stay on the list while in the Recycle Bin
+ * @return array  Rows of 'label' and 'value'
+ */
+function pg_short_link_form_product_group_options($keep_ids)
+{
+    $options = get_product_group_options(0, 0, 0, 0, array(), TRUE, 'array', TRUE, TRUE, FALSE, $keep_ids);
+
+    return pg_short_link_form_label_blank($options, '-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Product Group')))) . '-');
+}
+
+/**
+ * Gives an option list's unlabelled blank first option a label. Pure.
+ *
+ * @param array  $options Rows of 'label' and 'value'
+ * @param string $label
+ * @return array
+ */
+function pg_short_link_form_label_blank($options, $label)
+{
+    if (isset($options[0]) && is_array($options[0]) && ((string) $options[0]['value'] === '') && ((string) $options[0]['label'] === '')) {
+        $options[0]['label'] = $label;
+    }
+
+    return $options;
+}
+
+/**
+ * The form column (name and destination cards) and the sticky status column
+ * (a summary of the link and the screen's own cards) of the edit screen
+ * layout (ui/edit-screen-wide-layout.md); pg_short_link_form_layout() wraps
+ * them in their row with the save bar.
  *
  * @param liveform $liveform
- * @param array $form  'extra_rows' (markup after the name row), 'after_main'
- *                     (markup between the name card and the options card),
+ * @param array $form  'extra_rows' (markup after the name row), 'status'
+ *                     (cards under the summary in the status column),
  *                     'keep' (the page_id, product_group_id, product_id and
  *                     file_id the link points at, which stay on their lists
  *                     while in the Recycle Bin; nothing on create)
@@ -125,107 +158,210 @@ function pg_short_link_form_redirect_code_row($liveform)
  */
 function pg_short_link_form_cards($liveform, $form)
 {
-    $form = array_merge(array('extra_rows' => '', 'after_main' => '', 'keep' => array()), $form);
+    $form = array_merge(array('extra_rows' => '', 'status' => '', 'keep' => array()), $form);
     $keep = array_merge(array('page_id' => 0, 'product_group_id' => array(), 'product_id' => 0, 'file_id' => 0), $form['keep']);
     $style = pg_short_link_form_row_styles($liveform->get_field_value('destination_type'));
+    $address_base = URL_SCHEME . HOSTNAME . OUTPUT_PATH;
+    $name = (string) $liveform->get_field_value('name');
+    $destination_label = (string) array_search((string) $liveform->get_field_value('destination_type'), pg_short_link_form_destination_options(), true);
+
+    if ((string) $liveform->get_field_value('destination_type') === '') {
+        $destination_label = '';
+    }
 
     return '
-                    <div class="row">
-                        <div class="col-12 md:col-4 lg:col-3 xl:col-2">
-                            <div class="card my-7 position-sticky" style="top:56px;">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Destination Type') . '
+                                    ' . lang('Main Informations') . '
                                 </h2>
-                                <div class="card-body">
+                                <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12">
-                                            <label for="destination_type" class="form-label visually-hidden">' . lang('Destination Type') . '</label>
+                                        <div class="col-12 md:col-8 lg:col-6 my-3" id="name_row">
+                                            <label for="name" class="form-label">' . lang('Name') . '</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text material-icons" aria-hidden="true">public</span>
+                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>pg_short_link_name_max(), 'placeholder'=>lang('Short Link Name'), 'required'=>'required')) . '
+                                            </div>
+                                            <div class="form-text">' . lang('This option determines the url address of the short link.') . ' <code>' . h(URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Short Link Name') . '}') . '</code></div>
+                                            <div class="form-text">' . pg_short_link_name_rule_text() . '</div>
+                                            <div class="form-text">' . lang('An old address can be pasted as it is: only its path is kept. A name with a * is tried only where no page answers, and it always redirects.') . '</div>
+                                        </div>
+                                        ' . $form['extra_rows'] . '
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Destination') . '
+                                </h2>
+                                <div class="card-body pt-0">
+                                    <div class="row">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3">
+                                            <label for="destination_type" class="form-label">' . lang('Destination Type') . '</label>
                                             ' . $liveform->output_field(array('type'=>'select', 'id'=>'destination_type', 'class'=>'form-control collapse-if-selected', 'name'=>'destination_type', 'options'=>pg_short_link_form_destination_options(), 'onchange'=>'change_short_link_destination_type(this.options[this.selectedIndex].value)', 'data-bs-target'=>'#options_row', 'required'=>'required')) . '
-                                            <script>
-                                                $(document).ready(function() {
-                                                    change_short_link_destination_type($("select#destination_type option:selected").val());
-                                                });
-                                            </script>
+                                        </div>
+                                    </div>
+                                    <div class="collapse" id="options_row">
+                                        <div class="row">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3" id="page_id_row"' . $style['page_id'] . '>
+                                                <label for="page_id" class="form-label">' . lang('Page') . '</label>
+                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'page_id', 'id'=>'page_id', 'class'=>'form-control', 'options'=>get_page_options('', '', 'edit', FALSE, $keep['page_id']))) . '
+                                            </div>
+                                            <div class="col-12 md:col-6 lg:col-5 my-3" id="catalog_page_id_row"' . $style['catalog_page_id'] . '>
+                                                <label for="catalog_page_id" class="form-label">' . lang('Catalog Page') . '</label>
+                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_page_id', 'id'=>'catalog_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'catalog', 'edit', FALSE, $keep['page_id']), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_detail_page_id\').selectedIndex = 0}' )) . '
+                                            </div>
+                                            <div class="col-12 lg:col-2 my-3 lg:text-center align-self-end" id="or_row"' . $style['or'] . '>
+                                                -' . lang('or') . '-
+                                            </div>
+                                            <div class="col-12 md:col-6 lg:col-5 my-3" id="catalog_detail_page_id_row"' . $style['catalog_detail_page_id'] . '>
+                                                <label for="catalog_detail_page_id" class="form-label">' . lang('Catalog Detail Page') . '</label>
+                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_detail_page_id', 'id'=>'catalog_detail_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'catalog detail', 'edit', FALSE, $keep['page_id']), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_page_id\').selectedIndex = 0}' )) . '
+                                            </div>
+                                            <div class="col-12 md:col-6 lg:col-5 my-3" id="product_group_id_row"' . $style['product_group_id'] . '>
+                                                <label for="product_group_id" class="form-label">' . lang('Product Group') . '</label>
+                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_group_id', 'id'=>'product_group_id', 'class'=>'form-control', 'options'=>pg_short_link_form_product_group_options($keep['product_group_id']))) . '
+                                            </div>
+                                            <div class="col-12 md:col-6 lg:col-7 my-3" id="product_id_row"' . $style['product_id'] . '>
+                                                <label for="product_id" class="form-label">' . lang('Product') . '</label>
+                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-control', 'options'=>get_product_options(true, $keep['product_id']))) . '
+                                            </div>
+                                            <div class="col-12 md:col-8 lg:col-6 my-3" id="url_row"' . $style['url'] . '>
+                                                <label for="url" class="form-label">' . lang('Destination URL') . '</label>
+                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'url', 'id'=>'url', 'class'=>'form-control', 'maxlength'=>pg_short_link_url_max(), 'placeholder' => lang('Enter URL that visitor should be redirected to'))) . '
+                                                <div class="form-text">' . lang('With a * in the name, $1 to $9 put here what each * matched, after the host name.') . '</div>
+                                            </div>
+                                            <div class="col-12 md:col-6 lg:col my-3" id="tracking_code_row"' . $style['tracking_code'] . '>
+                                                <label for="tracking_code" class="form-label">' . lang('Tracking Code') . '</label>
+                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'tracking_code', 'id'=>'tracking_code', 'class'=>'form-control', 'maxlength'=>pg_short_link_form_tracking_code_max())) . '
+                                            </div>
+                                            <div class="col-12 md:col-6 lg:col-4 my-3" id="file_row"' . $style['file'] . '>
+                                                <label for="file" class="form-label">' . lang('File') . '</label>
+                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'file', 'id'=>'file', 'class'=>'form-control', 'options'=>get_file_options(true, $keep['file_id']))) . '
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 md:col-8 lg:col-9 xl:col-10">
-                            <div class="row">
-                                <div class="col-12">
-                                    <div class="card my-7 position-sticky" style="top:56px;">
-                                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                        ' . lang('Main Informations') . '
-                                        </h2>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-12 md:col-8 lg:col-6 my-3" id="name_row">
-                                                    <label for="name" class="form-label">' . lang('Name') . '</label>
-                                                    <div class="input-group ">
-                                                        <span class="input-group-text material-icons" aria-hidden="true">public</span>
-                                                        ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>pg_short_link_url_max(), 'placeholder'=>lang('Short Link Name'), 'required'=>'required')) . '
-                                                    </div>
-                                                    <div class="form-text">' . lang('This option determines the url address of the short link.') . ' <code>' . h(URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Short Link Name') . '}') . '</code></div>
-                                                    <div class="form-text">' . pg_short_link_name_rule_text() . '</div>
-                                                    <div class="form-text">' . lang('An old address can be pasted as it is: only its path is kept. A name with a * is tried only where no page answers, and it always redirects.') . '</div>
-                                                </div>
-                                                ' . $form['extra_rows'] . '
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Summary') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <dl class="mb-0">
+                                            <div class="py-2 border-bottom">
+                                                <dt class="fw-normal">' . lang('Address') . '</dt>
+                                                <dd class="mb-0 fw-bold text-break" id="short_link_summary_address" data-base="' . h($address_base) . '">' . h($address_base . $name) . '</dd>
                                             </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                ' . $form['after_main'] . '
-                                <div class="col-12 collapse" id="options_row">
-                                    <div class="card my-7">
-                                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                            ' . lang('Function Options') . '
-                                        </h2>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-12 md:col-6 lg:col-4 my-3" id="page_id_row"' . $style['page_id'] . '>
-                                                    <label for="page_id" class="form-label">' . lang('Page') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'page_id', 'id'=>'page_id', 'class'=>'form-control', 'options'=>get_page_options('', '', 'edit', FALSE, $keep['page_id']))) . '
-                                                </div>
-                                                <div class="col-12 md:col-6 lg:col-5 my-3" id="catalog_page_id_row"' . $style['catalog_page_id'] . '>
-                                                    <label for="catalog_page_id" class="form-label">' . lang('Catalog Page') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_page_id', 'id'=>'catalog_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'catalog', 'edit', FALSE, $keep['page_id']), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_detail_page_id\').selectedIndex = 0}' )) . '
-                                                </div>
-                                                <div class="col-12 lg:col-2 my-3 lg:text-center" id="or_row"' . $style['or'] . '>
-                                                -' . lang('or') . '-
-                                                </div>
-                                                <div class="col-12 md:col-6 lg:col-5 my-3" id="catalog_detail_page_id_row"' . $style['catalog_detail_page_id'] . '>
-                                                    <label for="catalog_detail_page_id" class="form-label">' . lang('Catalog Detail Page') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_detail_page_id', 'id'=>'catalog_detail_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'catalog detail', 'edit', FALSE, $keep['page_id']), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_page_id\').selectedIndex = 0}' )) . '
-                                                </div>
-                                                <div class="col-12 md:col-6 lg:col-5 my-3" id="product_group_id_row"' . $style['product_group_id'] . '>
-                                                    <label for="product_group_id" class="form-label">' . lang('Product Group') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_group_id', 'id'=>'product_group_id', 'class'=>'form-control', 'options'=>get_product_group_options(0, 0, 0, 0, array(), TRUE, 'array', TRUE, TRUE, FALSE, $keep['product_group_id']))) . '
-                                                </div>
-                                                <div class="col-12 md:col-6 lg:col-7 my-3" id="product_id_row"' . $style['product_id'] . '>
-                                                    <label for="product_id" class="form-label">' . lang('Product') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-control', 'options'=>get_product_options(true, $keep['product_id']))) . '
-                                                </div>
-                                                <div class="col-12 md:col-8 lg:col-6 my-3" id="url_row"' . $style['url'] . '>
-                                                    <label for="url" class="form-label">' . lang('Destination URL') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'text', 'name'=>'url', 'id'=>'url', 'class'=>'form-control', 'maxlength'=>pg_short_link_url_max(), 'placeholder' => lang('Enter URL that visitor should be redirected to'))) . '
-                                                    <div class="form-text">' . lang('With a * in the name, $1 to $9 put here what each * matched, after the host name.') . '</div>
-                                                </div>
-                                                <div class="col-12 md:col-6 lg:col my-3" id="tracking_code_row"' . $style['tracking_code'] . '>
-                                                    <label for="tracking_code" class="form-label">' . lang('Tracking Code') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'text', 'name'=>'tracking_code', 'id'=>'tracking_code', 'class'=>'form-control', 'maxlength'=>'100')) . '
-                                                </div>
-                                                <div class="col-12 md:col-6 lg:col-4 my-3" id="file_row"' . $style['file'] . '>
-                                                     <label for="file" class="form-label">' . lang('File') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'file', 'id'=>'file', 'class'=>'form-control', 'options'=>get_file_options(true, $keep['file_id']))) . '
-                                                </div>
+                                            <div class="d-flex justify-content-between py-2">
+                                                <dt class="fw-normal">' . lang('Destination Type') . '</dt>
+                                                <dd class="mb-0 fw-bold" id="short_link_summary_destination">' . h($destination_label) . '</dd>
                                             </div>
-                                        </div>
+                                        </dl>
                                     </div>
-                                </div>
+                                </div>' . $form['status'] . '
                             </div>
+                        </div>
+                        <script>
+                            // A name with a * always redirects, so "Open as a short link" is
+                            // not offered for it; a chosen 0 moves to 301, as the save would.
+                            function pg_short_link_pattern_answer() {
+                                var $name = $(\'#name\');
+                                var $open = $(\'#redirect_code option[value="0"]\');
+                                if (!$name.length || !$open.length) {
+                                    return;
+                                }
+                                var pattern = String($name.val()).indexOf(\'*\') !== -1;
+                                $open.prop(\'disabled\', pattern);
+                                if (pattern && $(\'#redirect_code\').val() === \'0\') {
+                                    $(\'#redirect_code\').val(\'301\');
+                                }
+                            }
+                            $(document).ready(function() {
+                                change_short_link_destination_type($("select#destination_type option:selected").val());
+                                pg_short_link_pattern_answer();
+                            });
+                            $(document).on(\'input\', \'#name\', function () {
+                                var $address = $(\'#short_link_summary_address\');
+                                $address.text($address.data(\'base\') + this.value);
+                                pg_short_link_pattern_answer();
+                            });
+                            $(document).on(\'change\', \'#destination_type\', function () {
+                                $(\'#short_link_summary_destination\').text(this.value === \'\' ? \'\' : $(this).find(\'option:selected\').text());
+                            });
+                        </script>';
+}
+
+/**
+ * The screen row: the cards (pg_short_link_form_cards()) and the sticky save
+ * bar with the given buttons.
+ *
+ * @param string $cards   pg_short_link_form_cards()
+ * @param string $buttons The buttons inside the bar's group
+ * @return string
+ */
+function pg_short_link_form_layout($cards, $buttons)
+{
+    return '
+                    <div class="row">' . $cards . '
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">' . $buttons . '
+                                    </div>
+                                </div>
+                            </nav>
                         </div>
                     </div>';
+}
+
+/**
+ * The longest tracking code the short_links.tracking_code column holds.
+ *
+ * @return int
+ */
+function pg_short_link_form_tracking_code_max()
+{
+    return 100;
+}
+
+/**
+ * Checks the posted tracking code against its column: a longer one is
+ * refused rather than cut by the database.
+ *
+ * @param liveform $liveform
+ * @return void
+ */
+function pg_short_link_form_validate_tracking_code($liveform)
+{
+    $problem = pg_short_link_form_tracking_code_problem($liveform->get_field_value('tracking_code'));
+
+    if ($problem !== '') {
+        $liveform->mark_error('tracking_code', h($problem));
+    }
+}
+
+/**
+ * Why a tracking code cannot be saved, '' when it can. Characters, not bytes,
+ * as the column counts them. Pure.
+ *
+ * @param mixed $tracking_code
+ * @return string
+ */
+function pg_short_link_form_tracking_code_problem($tracking_code)
+{
+    $max = pg_short_link_form_tracking_code_max();
+
+    if (mb_strlen((string) $tracking_code, 'UTF-8') > $max) {
+        return lang(array('string' => '{var:1} can be at most {var:2} characters long.', 'vars' => array(lang('Tracking Code'), $max)));
+    }
+
+    return '';
 }
 
 /**
@@ -270,10 +406,42 @@ function pg_short_link_form_validate_name($liveform, $ignore_id)
         ($liveform->check_field_error('name') == false)
         && (check_name_availability($availability) == false)
     ) {
-        $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
+        // A short link in the Recycle Bin keeps its name and is not on the
+        // list, so a plain "in use" would point nowhere.
+        if (pg_short_link_form_name_binned($name, $ignore_id)) {
+            $liveform->mark_error('name', lang('A short link in the Recycle Bin has this name: restore it, or delete it for good, in the File Manager.'));
+        } else {
+            $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
+        }
     }
 
     return $name;
+}
+
+/**
+ * Whether a short link in the Recycle Bin holds the name.
+ *
+ * @param string $name
+ * @param mixed  $ignore_id The edited link's id, null on create
+ * @return bool
+ */
+function pg_short_link_form_name_binned($name, $ignore_id)
+{
+    if (!pg_schema_has('short_links', 'recycled')) {
+        return false;
+    }
+
+    $result = db_q(
+        "SELECT COUNT(*) FROM short_links WHERE name = ? AND recycled = '1' AND id <> ?",
+        array((string) $name, (string) (int) $ignore_id));
+
+    if (!$result) {
+        return false;
+    }
+
+    $row = mysqli_fetch_row($result);
+
+    return ((int) $row[0] > 0);
 }
 
 /**
@@ -295,6 +463,10 @@ function pg_short_link_form_validate_destination($liveform, $current)
     };
 
     $liveform->validate_required_field('destination_type', lang('Destination Type is required.'));
+
+    // The column holds 100 characters; the database would cut a longer code
+    // without a word (the panel session's sql_mode is not strict).
+    pg_short_link_form_validate_tracking_code($liveform);
 
     // If there is not already an error for the destination type and the destination type is invalid, then add error.
     if (
@@ -417,7 +589,7 @@ function pg_short_link_form_validate_destination($liveform, $current)
                 break;
 
             case 'file':
-                $liveform->validate_required_field('file', lang('Destination URL is required.'));
+                $liveform->validate_required_field('file', lang('File is required.'));
 
                 if (
                     ($liveform->check_field_error('file') == FALSE)
@@ -491,6 +663,29 @@ function pg_short_link_form_validate_destination($liveform, $current)
 }
 
 /**
+ * The answer a form posted, before pg_short_link_answer_for() settles it.
+ * A pattern name cannot show its destination, so a posted 0 (the select
+ * offers it before the script disables it, or a hand-made post) keeps the
+ * stored 301 or 302 instead of being turned into 301 without a word.
+ *
+ * @param int|null $posted  The posted answer, null when the form had no field
+ * @param string $name
+ * @param int $current_code  The stored answer, 0 on create
+ * @return int|null
+ */
+function pg_short_link_form_posted_answer($posted, $name, $current_code)
+{
+    if (($posted === 0)
+        && pg_short_link_is_pattern($name)
+        && in_array((int) $current_code, array(301, 302), true)
+    ) {
+        return (int) $current_code;
+    }
+
+    return $posted;
+}
+
+/**
  * How it answers, checked with the name and the destination it goes with:
  * an address may not lead back to the link or round a loop. Run only on a
  * form without errors.
@@ -512,7 +707,7 @@ function pg_short_link_form_answer($liveform, $short_link_id, $name, $current_co
                 'name' => $name,
                 'destination_type' => $liveform->get_field_value('destination_type'),
                 'url' => ($liveform->get_field_value('destination_type') == 'url') ? $liveform->get_field_value('url') : ''),
-            pg_short_link_redirects_ready() ? (int) $liveform->get_field_value('redirect_code') : null,
+            pg_short_link_form_posted_answer(pg_short_link_redirects_ready() ? (int) $liveform->get_field_value('redirect_code') : null, $name, $current_code),
             (int) $current_code);
 
         if ($short_link_answer['problem'] !== null) {

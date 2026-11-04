@@ -44,7 +44,7 @@ $verified_shipping_address = db_item(
         states.name as state_name
     FROM verified_shipping_addresses
     LEFT JOIN states ON verified_shipping_addresses.state_id = states.id
-    WHERE verified_shipping_addresses.id = '" . escape($_REQUEST['id']) . "'");
+    WHERE verified_shipping_addresses.id = '" . $id . "'");
 
 $verified_shipping_address['name'] = pg_verified_shipping_address_form_name($verified_shipping_address['company'], $verified_shipping_address['address_1']);
 
@@ -78,7 +78,7 @@ if (!$_POST) {
                     
                     <form action="edit_verified_shipping_address.php" method="post">
                         ' . get_token_field() . '
-                        <input type="hidden" name="id" value="' . h($_GET['id']) . '">
+                        <input type="hidden" name="id" value="' . $id . '">
                         ' . pg_verified_shipping_address_form_card($liveform) . '
                         <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                             <div class="container">
@@ -104,8 +104,7 @@ if (!$_POST) {
     $liveform->add_fields_to_session();
 
     if ($liveform->get_field_value('submit_delete') == 'Delete') {
-        db("DELETE FROM verified_shipping_addresses WHERE id = '" . escape($liveform->get_field_value('id')) . "'");
-
+        pg_store_verified_address_delete($id) or output_error('Query failed.');
         log_activity(lang(array('string' => 'verified shipping address ({var:1}) was deleted', 'vars' => array($verified_shipping_address['name']))), $_SESSION['sessionusername']);
 
         $liveform_view = new liveform('view_verified_shipping_addresses');
@@ -119,22 +118,11 @@ if (!$_POST) {
         pg_verified_shipping_address_form_validate($liveform);
 
         if ($liveform->check_form_errors() == true) {
-            go(PATH . SOFTWARE_DIRECTORY . '/edit_verified_shipping_address.php?id=' . $liveform->get_field_value('id'));
+            go(PATH . SOFTWARE_DIRECTORY . '/edit_verified_shipping_address.php?id=' . $id);
         }
 
         $values = pg_verified_shipping_address_form_values($liveform);
-        $set = array();
-        foreach ($values as $column => $value) {
-            $set[] = $column . " = '" . escape($value) . "'";
-        }
-
-        db(
-            "UPDATE verified_shipping_addresses
-            SET
-                " . implode(",\n                ", $set) . ",
-                last_modified_user_id = '" . $user['id'] . "',
-                last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($liveform->get_field_value('id')) . "'");
+        pg_store_verified_address_save($id, $values, $user['id']) or output_error('Query failed.');
 
         $name = pg_verified_shipping_address_form_name($values['company'], $values['address_1']);
 

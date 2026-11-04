@@ -106,6 +106,26 @@ function test_ai_visibility_unfetched_cut()
 	pg_assert_same(array(array('page_id' => 1, 'page_name' => 'about')), $left['pages']);
 }
 
+// The unfetched list keeps only what sitemap.xml lists: a standard page
+// with a system widget it leaves out is dropped, and of the pages marked as
+// home only the newest one (the root address) stays.
+function test_ai_visibility_sitemap_listed_pages()
+{
+	$rows = array(
+		array('page_id' => 1, 'page_name' => 'home-new', 'page_type' => 'standard', 'page_home' => 'yes', 'page_timestamp' => 300),
+		array('page_id' => 2, 'page_name' => 'home-old', 'page_type' => 'standard', 'page_home' => 'yes', 'page_timestamp' => 100),
+		array('page_id' => 3, 'page_name' => 'login', 'page_type' => 'standard', 'page_home' => 'no', 'page_timestamp' => 200),
+		array('page_id' => 4, 'page_name' => 'about', 'page_type' => 'standard', 'page_home' => 'no', 'page_timestamp' => 50),
+		array('page_id' => 5, 'page_name' => 'shop', 'page_type' => 'catalog', 'page_home' => 'no', 'page_timestamp' => 60),
+	);
+
+	$listed = pg_ai_sitemap_listed_pages($rows, array(3 => true, 5 => true));
+
+	pg_assert_same(array(1, 4, 5), array_map(function ($row) {
+		return (int) $row['page_id'];
+	}, $listed));
+}
+
 // A referrer host is an assistant's with or without www., in any case.
 function test_ai_visibility_assistant_hosts()
 {

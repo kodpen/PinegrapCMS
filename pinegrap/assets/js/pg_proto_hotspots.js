@@ -258,11 +258,51 @@
         return text || str(props.ariaLabel) || str(attrOf(props, 'aria-label')) || str(props.alt);
     }
 
-    // The links of one node itself (its children not included).
+    // The page a link kept by page id opens (_bindParams.href.page_id of a
+    // '__page_link' href): the id as digits, 'tab:<key>' for a tab not
+    // saved yet, '' for none (the typed href is then what it opens).
+    function boundPage(props) {
+        var spec = (isObject(props._bindParams) && isObject(props._bindParams.href)) ? props._bindParams.href : {};
+        var id = spec.page_id;
+
+        if (typeof id === 'number' && isFinite(id) && id > 0 && Math.floor(id) === id) {
+            return String(id);
+        }
+
+        id = str(id);
+
+        return (/^[1-9][0-9]{0,9}$/.test(id) || /^tab:./.test(id)) ? id : '';
+    }
+
+    // Whether a link outside a widget may be kept by page id ('__page_link',
+    // the Bind Data panel's page choice): a link of its own the site draws
+    // as <a> (a content link, a btn drawn as <a>, a semantic a), whatever its
+    // href holds or is bound to now; never a Bootstrap toggle.
+    function pageLinkable(node) {
+        if (!isObject(node)) {
+            return false;
+        }
+
+        var type = str(node.type);
+        var props = propsOf(node);
+
+        if (String(attrOf(props, 'data-bs-toggle') || '').trim() !== '') {
+            return false;
+        }
+
+        return (type === 'content' && props.contentType === 'link')
+            || (type === 'component' && props.componentType === 'btn' && (str(props.btnElement) || 'a') === 'a')
+            || (type === 'semantic' && str(props.tag).toLowerCase() === 'a');
+    }
+
+    // The links of one node itself (its children not included). A link kept
+    // by page id ('__page_link') carries `bound` (boundPage()) and
+    // `pageLink`; its href is the typed one, the fallback.
     function nodeLinks(node) {
         var type = str(node && node.type);
         var props = propsOf(node);
         var bindings = isObject(props._bindings) ? props._bindings : {};
+        var pageLink = (bindings.href === '__page_link');
         var out = [];
         var base = { nodeId: String(node && node._id !== undefined ? node._id : '') };
 
@@ -271,13 +311,20 @@
                 return;
             }
 
-            out.push({ nodeId: base.nodeId, source: source, href: href, label: label, index: index, target: target });
+            var spot = { nodeId: base.nodeId, source: source, href: href, label: label, index: index, target: target };
+
+            if (pageLink && source !== 'text') {
+                spot.bound = boundPage(props);
+                spot.pageLink = true;
+            }
+
+            out.push(spot);
         }
 
         var toggle = String(attrOf(props, 'data-bs-toggle') || '').trim();
         var target = str(props.target) || str(attrOf(props, 'target'));
 
-        if (!bindings.href) {
+        if (!bindings.href || pageLink) {
             if (type === 'content' && props.contentType === 'link') {
                 // The renderer prints '#' for an empty address.
                 var fromAttrs = (str(props.href) === '') && (str(attrOf(props, 'href')) !== '');
@@ -366,6 +413,132 @@
         return out;
     }
 
+    // ── Thumbnails ──
+
+    // At most this many bands in a sketch; the rest are joined into the last.
+    var SKETCH_MAX = 12;
+
+    // What a top-level node of a tree stands for in a frame's thumbnail.
+    function sketchRole(node) {
+        var props = propsOf(node);
+        var tag = str(props.tag).toLowerCase();
+        var component = str(props.componentType).toLowerCase();
+
+        if (node.type === 'shared_ref') {
+            return 'shared';
+        }
+
+        if (node.type === 'region') {
+            return 'region';
+        }
+
+        if (tag === 'nav' || component.indexOf('navbar') === 0) {
+            return 'nav';
+        }
+
+        if (tag === 'header') {
+            return 'header';
+        }
+
+        if (tag === 'footer' || component.indexOf('footer') === 0) {
+            return 'footer';
+        }
+
+        return 'block';
+    }
+
+    function sketchWeight(node) {
+        var count = 0;
+
+        (function walk(n) {
+            if (!isObject(n)) {
+                return;
+            }
+
+            count++;
+
+            if (n.type !== 'shared_ref') {
+                (Array.isArray(n.children) ? n.children : []).forEach(walk);
+            }
+        })(node);
+
+        return count;
+    }
+
+    // The bands of a page's thumbnail, top to bottom: one per top-level node
+    // (through a lone wrapper the page sits in), each { role, weight (nodes
+    // in it), links (hotspots in it) }. Roles: nav, header, footer, shared,
+    // region, block. Reads the tree only; null for no tree.
+    function sketch(tree) {
+        if (!isObject(tree)) {
+            return null;
+        }
+
+        var top = Array.isArray(tree.children) ? tree.children : [];
+
+        // A page held in one plain wrapper is drawn by the wrapper's children.
+        for (var depth = 0; depth < 2 && top.length === 1 && isObject(top[0]) && sketchRole(top[0]) === 'block' && Array.isArray(top[0].children) && top[0].children.length > 1; depth++) {
+            top = top[0].children;
+        }
+
+        var bands = [];
+
+        top.forEach(function (node) {
+            if (!isObject(node)) {
+                return;
+            }
+
+            var band = { role: sketchRole(node), weight: sketchWeight(node), links: collect(node).hotspots.length };
+
+            if (bands.length < SKETCH_MAX) {
+                bands.push(band);
+                return;
+            }
+
+            var last = bands[SKETCH_MAX - 1];
+
+            last.role = 'block';
+            last.weight += band.weight;
+            last.links += band.links;
+        });
+
+        return bands;
+    }
+
+    // Where the bands of a sketch go in a w x h box: heights by the square
+    // root of their weight, each at least 3 high, 2 apart; each { y, h,
+    // role, links }, whole units.
+    function sketchBoxes(bands, w, h) {
+        var list = Array.isArray(bands) ? bands : [];
+        var gap = 2;
+        var min = 3;
+
+        if (!list.length) {
+            return [];
+        }
+
+        var room = Math.max(0, h - gap * (list.length - 1) - min * list.length);
+        var total = 0;
+
+        list.forEach(function (band) { total += Math.sqrt(Math.max(1, band.weight)); });
+
+        var out = [];
+        var y = 0;
+        var used = 0;
+
+        list.forEach(function (band, i) {
+            used += Math.sqrt(Math.max(1, band.weight));
+
+            var end = (i === list.length - 1) ? h : Math.round(min * (i + 1) + gap * i + room * used / total);
+            var height = Math.max(min, end - y);
+
+            out.push({ y: y, h: height, role: band.role, links: band.links });
+            y += height + gap;
+        });
+
+        return out;
+    }
+
     // Every tab once, every shared component once (from `shared`, id =>
     // { name, tree }, the designer's _sharedCache; one not fetched yet
     // gets no hotspots and loaded: false), and the request for the map
@@ -374,13 +547,15 @@
     function design(pages, shared) {
         shared = isObject(shared) ? shared : {};
 
-        var out = { pages: [], shared: [], request: { hrefs: [], menus: [], regions: [] } };
+        var out = { pages: [], shared: [], request: { hrefs: [], menus: [], regions: [], page_ids: [] } };
         var byId = {};
         var reach = {};
 
         function take(found) {
             found.hotspots.forEach(function (spot) {
-                if (spot.href !== undefined && String(spot.href).length <= LIMITS.length) {
+                if (/^[1-9][0-9]*$/.test(str(spot.bound))) {
+                    addOnce(out.request.page_ids, parseInt(spot.bound, 10));
+                } else if (spot.href !== undefined && String(spot.href).length <= LIMITS.length) {
                     addOnce(out.request.hrefs, String(spot.href));
                 }
             });
@@ -399,7 +574,7 @@
                 var tree = (entry && entry.tree) ? entry.tree : null;
                 var found = tree ? collect(tree) : { hotspots: [], shared: [], menus: [], regions: [] };
 
-                byId[sid] = { id: sid, name: entry ? str(entry.name) : '', loaded: !!tree, pages: 0, hotspots: found.hotspots, sharedIn: found.shared };
+                byId[sid] = { id: sid, name: entry ? str(entry.name) : '', loaded: !!tree, pages: 0, hotspots: found.hotspots, sharedIn: found.shared, sketch: tree ? sketch(tree) : null };
                 reach[sid] = [];
                 out.shared.push(byId[sid]);
                 take(found);
@@ -423,7 +598,7 @@
             var found = collect(page.tree);
             var key = String(page.key !== undefined ? page.key : '');
 
-            out.pages.push({ key: key, pageId: parseInt(page.page_id, 10) || 0, name: str(page.page_name), hotspots: found.hotspots, shared: found.shared });
+            out.pages.push({ key: key, pageId: parseInt(page.page_id, 10) || 0, name: str(page.page_name), hotspots: found.hotspots, shared: found.shared, sketch: sketch(page.tree) });
             take(found);
             found.shared.forEach(function (sid) { frame(sid, key, []); });
         });
@@ -436,6 +611,7 @@
         out.request.hrefs = out.request.hrefs.slice(0, LIMITS.hrefs);
         out.request.menus = out.request.menus.slice(0, LIMITS.menus);
         out.request.regions = out.request.regions.slice(0, LIMITS.regions);
+        out.request.page_ids = out.request.page_ids.slice(0, LIMITS.hrefs);
 
         return out;
     }
@@ -455,6 +631,19 @@
         }
 
         return null;
+    }
+
+    function nameById(maps, id) {
+        var pages = (maps && isObject(maps.pages)) ? maps.pages : {};
+        var names = Object.keys(pages);
+
+        for (var i = 0; i < names.length; i++) {
+            if ((parseInt(pages[names[i]].id, 10) || 0) === id) {
+                return names[i];
+            }
+        }
+
+        return '';
     }
 
     function inList(list, value) {
@@ -523,6 +712,54 @@
         return out;
     }
 
+    // The mark of a link kept by page id (spot.bound): the tab of that page
+    // or key, else the page by its current name in the map read
+    // (markHref() of its address, so a binned or draft page is marked as
+    // one), hidden when the read lists the id in `hidden_ids`, else broken.
+    // `href` is the current address; a hidden or broken one keeps the typed
+    // href, which the site prints.
+    function markBound(spot, read, tabs, resolver) {
+        var bound = str(spot.bound);
+        var env = (read && read.env) || {};
+        var list = Array.isArray(tabs) ? tabs : [];
+        var key = /^tab:/.test(bound) ? bound.substr(4) : null;
+        var id = (key === null) ? (parseInt(bound, 10) || 0) : 0;
+        var out = { href: str(spot.href), mark: 'broken', draft: false, type: 'unknown', 'class': 'unknown', pageId: id, tab: '' };
+
+        for (var i = 0; i < list.length; i++) {
+            var tabId = parseInt(list[i].page_id, 10) || 0;
+
+            if ((key !== null && String(list[i].key) === key) || (id && tabId === id)) {
+                var at = hrefTo({ kind: 'page', name: list[i].page_name }, env);
+
+                out.href = (at === null) ? out.href : at;
+                out.mark = 'tab';
+                out.type = 'page';
+                out['class'] = 'page';
+                out.tab = String(list[i].key);
+                out.pageId = tabId;
+
+                return out;
+            }
+        }
+
+        var name = id ? nameById((read && read.maps) || {}, id) : '';
+
+        if (name !== '') {
+            var marked = markHref(hrefTo({ kind: 'page', name: name }, env), read, [], resolver);
+
+            marked.pageId = id;
+
+            return marked;
+        }
+
+        if (id && inList(read && read.hidden_ids, id)) {
+            out.mark = 'hidden';
+        }
+
+        return out;
+    }
+
     // The design of design() with every hotspot marked; a menu or region
     // hotspot gets its links (`links`, each marked; null when the read
     // knows no menu or region by that name). Answers a copy.
@@ -552,6 +789,10 @@
                 var region = has(regions, spot.name) ? regions[spot.name] : null;
 
                 copy.links = (region && region.kind) ? (region.hrefs || []).map(function (href) { return markHref(href, read, tabs, resolver); }) : null;
+            } else if (str(spot.bound) !== '') {
+                var bound = markBound(spot, read, tabs, resolver);
+
+                ['href', 'mark', 'draft', 'type', 'class', 'pageId', 'tab'].forEach(function (key) { copy[key] = bound[key]; });
             } else {
                 var marked = markHref(spot.href, read, tabs, resolver);
 
@@ -576,7 +817,7 @@
     }
 
     // The sizes of what layout() places, in canvas units.
-    var FRAME = { w: 248, head: 44, row: 30, pad: 10, gap: 160, chipW: 200, chipH: 36, chipGap: 12 };
+    var FRAME = { w: 248, head: 44, thumb: 84, row: 30, pad: 10, gap: 160, chipW: 200, chipH: 36, chipGap: 12 };
 
     // The marks that end on a chip, in the order the chips are stacked.
     var CHIP_MARKS = ['page', 'anchor', 'contact', 'external', 'hidden', 'broken'];
@@ -599,6 +840,7 @@
                 mark: str(link.mark) || 'broken',
                 draft: !!link.draft,
                 tab: str(link.tab),
+                bound: str(link.bound),
                 from: from
             });
         }
@@ -655,19 +897,24 @@
         [['page', marked.pages || []], ['shared', marked.shared || []]].forEach(function (group) {
             group[1].forEach(function (frame) {
                 var rows = rowsOf(frame);
+                var bands = Array.isArray(frame.sketch) ? frame.sketch : [];
+                var thumb = bands.length ? FRAME.thumb : 0;
                 var item = {
                     id: (group[0] === 'page') ? 'p:' + frame.key : 's:' + frame.id,
                     kind: group[0],
                     key: (group[0] === 'page') ? frame.key : '',
+                    pageId: (group[0] === 'page') ? (parseInt(frame.pageId, 10) || 0) : 0,
                     sharedId: (group[0] === 'shared') ? frame.id : 0,
                     name: frame.name,
                     pages: (group[0] === 'shared') ? frame.pages : 0,
                     loaded: (group[0] === 'shared') ? frame.loaded : true,
                     rows: rows,
+                    sketch: bands,
+                    thumb: thumb,
                     x: x,
                     y: 0,
                     w: FRAME.w,
-                    h: FRAME.head + Math.max(1, rows.length) * FRAME.row + FRAME.pad
+                    h: FRAME.head + thumb + Math.max(1, rows.length) * FRAME.row + FRAME.pad
                 };
 
                 x += FRAME.w + FRAME.gap;
@@ -715,7 +962,7 @@
     function rowY(frame, port) {
         var index = parseInt(String(port).replace(/^h/, ''), 10) || 0;
 
-        return FRAME.head + index * FRAME.row + FRAME.row / 2;
+        return FRAME.head + ((frame && frame.thumb) || 0) + index * FRAME.row + FRAME.row / 2;
     }
 
     // ── Drawing an arrow ──
@@ -753,6 +1000,38 @@
         return null;
     }
 
+    // The page an arrow ending on `target` keeps its link by: a tab frame's
+    // page id, 'tab:<key>' for a tab not saved yet (made an id on Save);
+    // null for anything else (a chip keeps the link by its href).
+    function boundTo(target) {
+        if (!isObject(target) || target.kind !== 'page') {
+            return null;
+        }
+
+        var id = parseInt(target.pageId, 10) || 0;
+
+        return (id > 0) ? id : ((str(target.key) === '') ? null : 'tab:' + str(target.key));
+    }
+
+    // What an arrow from a link row may end on, as the keyboard menu lists
+    // it: every item of a layout (tab frames, then chips) that gives an
+    // href, each { id, href }, an href once (the first item giving it).
+    function drawTargets(laid, env) {
+        var out = [];
+        var seen = {};
+
+        ((laid && laid.frames) || []).concat((laid && laid.chips) || []).forEach(function (item) {
+            var href = hrefTo(item, env);
+
+            if (href !== null && !has(seen, href)) {
+                seen[href] = true;
+                out.push({ id: item.id, href: href });
+            }
+        });
+
+        return out;
+    }
+
     function attrValue(value) {
         return '"' + String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '"';
     }
@@ -776,9 +1055,12 @@
 
     // What an arrow from `row` to `href` writes into the row's node, as
     // { key, value } of its props (a copy, the node is not changed), or
-    // null when the node no longer holds the href the map showed (or the
-    // row is not drawable).
-    function hrefPatch(node, row, href) {
+    // null when the node no longer holds the link the map showed (or the
+    // row is not drawable). With the arrow's `target` a link of its own
+    // (not one in text) ending on a tab is kept by page id: `bind` names
+    // the page (boundTo()); one kept by page id that ends on a chip gets
+    // `bind: false`, back to its href. applyPatch() writes it.
+    function hrefPatch(node, row, href, target) {
         if (!drawable(row) || !isObject(node)) {
             return null;
         }
@@ -789,10 +1071,67 @@
             return spot.source === row.source && (spot.index === index);
         })[0];
 
-        if (!now || now.href !== str(row.href)) {
+        if (!now || (str(row.bound) !== '' ? str(now.bound) !== str(row.bound) : (str(now.bound) !== '' || now.href !== str(row.href)))) {
             return null;
         }
 
+        var patch = hrefPatchValue(node, props, row, index, href);
+
+        if (patch && row.source !== 'text' && target !== undefined) {
+            var bind = boundTo(target);
+
+            if (bind !== null) {
+                patch.bind = { page_id: bind };
+            } else if (now.pageLink) {
+                patch.bind = false;
+            }
+        }
+
+        return patch;
+    }
+
+    // The props of a node with a patch of hrefPatch() written (changes
+    // `props`): the prop, then the page binding. A link kept by page id
+    // keeps its other values (params, written by a widget's Bind Data).
+    function applyPatch(props, patch) {
+        if (!isObject(props) || !isObject(patch)) {
+            return props;
+        }
+
+        props[patch.key] = patch.value;
+
+        if (patch.bind === undefined) {
+            return props;
+        }
+
+        var bindings = {};
+        var params = {};
+        var old = (isObject(props._bindParams) && isObject(props._bindParams.href)) ? props._bindParams.href : {};
+
+        Object.keys(isObject(props._bindings) ? props._bindings : {}).forEach(function (k) { if (k !== 'href') bindings[k] = props._bindings[k]; });
+        Object.keys(isObject(props._bindParams) ? props._bindParams : {}).forEach(function (k) { if (k !== 'href') params[k] = props._bindParams[k]; });
+
+        if (patch.bind) {
+            bindings.href = '__page_link';
+            params.href = { page_id: patch.bind.page_id, params: Array.isArray(old.params) ? old.params : [] };
+        }
+
+        if (Object.keys(bindings).length) {
+            props._bindings = bindings;
+        } else {
+            delete props._bindings;
+        }
+
+        if (Object.keys(params).length) {
+            props._bindParams = params;
+        } else {
+            delete props._bindParams;
+        }
+
+        return props;
+    }
+
+    function hrefPatchValue(node, props, row, index, href) {
         if (row.source === 'attrs') {
             return {
                 key: '_attrs',
@@ -820,13 +1159,70 @@
         return { key: 'href', value: href };
     }
 
+    // The key a frame's place is shared under in the design's tab layout
+    // (style.style_tab_layout `proto`): 'p<page_id>' for a saved tab's
+    // frame, 's<id>' for a shared component's; '' for a chip or an unsaved
+    // tab, whose places stay in the browser.
+    function placeKey(id) {
+        var m = /^(?:p:p|s:)([1-9][0-9]{0,9})$/.exec(str(id));
+
+        return m ? (id.charAt(0) + m[1]) : '';
+    }
+
+    // The shared places as layout()'s `saved` (frame id => { x, y }). Twin
+    // of pg_designer_tab_layout_proto(): keys 'p<page_id>' or 's<id>',
+    // whole units within +-1,000,000, at most 500; the server also drops
+    // pages that are not the design's.
+    function places(proto) {
+        var out = {};
+        var count = 0;
+
+        if (!isObject(proto)) {
+            return out;
+        }
+
+        Object.keys(proto).forEach(function (key) {
+            var m = /^([ps])([1-9][0-9]{0,9})$/.exec(key);
+            var at = proto[key];
+
+            if (count >= 500 || !m || !isObject(at)) {
+                return;
+            }
+
+            var pos = {};
+            var ok = ['x', 'y'].every(function (axis) {
+                var v = at[axis];
+
+                if ((typeof v !== 'number' && typeof v !== 'string') || String(v).trim() === '' || !isFinite(Number(v))) {
+                    return false;
+                }
+
+                pos[axis] = Math.max(-1000000, Math.min(1000000, Math.round(Number(v))));
+
+                return true;
+            });
+
+            if (ok) {
+                out[(m[1] === 'p' ? 'p:p' : 's:') + m[2]] = pos;
+                count++;
+            }
+        });
+
+        return out;
+    }
+
     window.PGProtoHotspots = {
         FRAME: FRAME,
         layout: layout,
+        sketch: sketch,
+        sketchBoxes: sketchBoxes,
+        placeKey: placeKey,
+        places: places,
         rowY: rowY,
         LIMITS: LIMITS,
         htmlLinks: htmlLinks,
         nodeLinks: nodeLinks,
+        pageLinkable: pageLinkable,
         collect: collect,
         design: design,
         markHref: markHref,
@@ -834,6 +1230,10 @@
         drawable: drawable,
         hrefTo: hrefTo,
         setHtmlHref: setHtmlHref,
-        hrefPatch: hrefPatch
+        hrefPatch: hrefPatch,
+        applyPatch: applyPatch,
+        boundTo: boundTo,
+        markBound: markBound,
+        drawTargets: drawTargets
     };
 })();

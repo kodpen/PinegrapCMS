@@ -96,7 +96,7 @@ if (!$_POST) {
             'extra classes'=>'page',
             'icon'=>'page',
             'heading'=>lang('Create Short Link'),
-            'heading_description' => lang('Create a shortcut alias for a Page, Product Group, Product, or URL.'),
+            'heading_description' => lang('Create a short address for a page, product group, product, file or URL.'),
             'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('view_short_links.php')),
             'breadcrumb' => array(
                 array('label' => lang('Short Links'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_short_links.php'),
@@ -105,27 +105,18 @@ if (!$_POST) {
         )
     )  . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                ' . $liveform->output_errors() . '
-                ' . $liveform->output_notices() . '
-                
-                <form name="form" action="add_short_link.php" method="post">
-                    ' . get_token_field() . '
-                    <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '">
-                    ' . pg_short_link_form_cards($liveform, array('extra_rows' => $output_link_mode . '
-                                                ' . pg_short_link_form_redirect_code_row($liveform))) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
-                </form>
-            </div>
-        </div>
-    
+    ' . $liveform->output_errors() . '
+    ' . $liveform->output_notices() . '
+    <form name="form" action="add_short_link.php" method="post">
+        ' . get_token_field() . '
+        <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '">
+        ' . pg_short_link_form_layout(
+            pg_short_link_form_cards($liveform, array('extra_rows' => $output_link_mode . '
+                                        ' . pg_short_link_form_redirect_code_row($liveform))),
+            '
+                                        <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>'
+        ) . '
+    </form>
 </main>' .
     output_footer();
     

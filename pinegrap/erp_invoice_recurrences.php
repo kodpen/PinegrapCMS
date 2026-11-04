@@ -35,28 +35,36 @@ $modes = erp_invoice_recurring_modes();
 $output_rows = '';
 $recurrences = erp_invoice_recurrences(!$show_stopped);
 
+// The invoice screens' back arrow returns here, to the same view.
+$output_send_to = '&send_to=' . urlencode(REQUEST_URL);
+
 foreach ($recurrences as $row) {
     $active = ((string) $row['status'] === 'active');
 
     $output_rows .= '
         <tr' . ($active ? '' : ' class="opacity-75"') . '>
             <td style="max-width:260px" class="text-break">' . h((string) $row['account_title']) . '</td>
-            <td class="text-nowrap"><a class="pg-link-body-emphasis" href="edit_erp_invoice.php?id=' . (int) $row['source_invoice_id'] . '#erp-recurring">' . h((string) $row['source_number']) . '</a></td>
-            <td>' . h($periods[(int) $row['every_months']] ?? '') . '</td>
+            <td class="text-nowrap"><a class="pg-link-body-emphasis" href="' . h('edit_erp_invoice.php?id=' . (int) $row['source_invoice_id'] . $output_send_to . '#erp-recurring') . '">' . h((string) $row['source_number']) . '</a></td>
+            <td data-sort="' . (int) $row['every_months'] . '">' . h($periods[(int) $row['every_months']] ?? '') . '</td>
             <td>' . h($modes[(string) $row['mode']] ?? '') . '</td>
-            <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['next_date'])) . '">' . ($active ? h(prepare_form_data_for_output((string) $row['next_date'], 'date')) : '<span class="badge theme-secondary">' . lang('Stopped') . '</span>')
+            <td class="text-nowrap" data-sort="' . ($active ? h(str_replace('-', '', (string) $row['next_date'])) : '') . '">' . ($active ? h(prepare_form_data_for_output((string) $row['next_date'], 'date')) : '<span class="badge theme-secondary">' . lang('Stopped') . '</span>')
                 . (((string) $row['end_date'] !== '0000-00-00') ? '<div class="small fg-secondary">' . h(lang(array('string' => 'Until {var:1}.', 'vars' => prepare_form_data_for_output((string) $row['end_date'], 'date', false)))) . '</div>' : '') . '</td>
             <td class="text-end text-nowrap" data-sort="' . (int) $row['grand_total'] . '">' . h(erp_money_out_currency((int) $row['grand_total'], (string) $row['currency'])) . '</td>
             <td class="text-end">' . (int) $row['occurrences'] . '</td>
             <td>' . (((int) ($row['last_id'] ?? 0) > 0)
-                ? '<a class="pg-link-body-emphasis" href="' . (((string) $row['last_status'] === 'draft') ? 'edit_erp_invoice_draft.php' : 'edit_erp_invoice.php') . '?id=' . (int) $row['last_invoice_id'] . '">' . h(((string) $row['last_number'] !== '') ? (string) $row['last_number'] : lang('Draft')) . '</a>'
+                ? '<a class="pg-link-body-emphasis" href="' . h((((string) $row['last_status'] === 'draft') ? 'edit_erp_invoice_draft.php' : 'edit_erp_invoice.php') . '?id=' . (int) $row['last_invoice_id'] . $output_send_to) . '">' . h(((string) $row['last_number'] !== '') ? (string) $row['last_number'] : lang('Draft')) . '</a>'
                 : '—')
                 . (((string) $row['last_error'] !== '') ? '<div class="small fg-danger">' . h((string) $row['last_error']) . '</div>' : '') . '</td>
         </tr>';
 }
 
 if ($output_rows === '') {
-    $output_rows = '<tr data-pg-sort-fixed><td colspan="8" class="text-center fg-secondary py-7">' . lang('No invoice repeats yet. Open an issued invoice typed in the ERP and use "Repeat this invoice".') . '</td></tr>';
+    // Nothing running, but stopped repeats exist: point to the view that
+    // shows them instead of saying there are none.
+    $output_empty = (!$show_stopped && !empty(erp_invoice_recurrences(false)))
+        ? lang('No invoice repeats right now. Choose "All" to see the stopped ones.')
+        : lang('No invoice repeats yet. Open an issued invoice typed in the ERP and use "Repeat this invoice".');
+    $output_rows = '<tr data-pg-sort-fixed><td colspan="8" class="text-center fg-secondary py-7">' . $output_empty . '</td></tr>';
 }
 
 echo

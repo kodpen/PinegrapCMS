@@ -1066,6 +1066,9 @@ function pg_order_mark_paid(int $order_id, int $user_id = 0): bool
 
     pg_erp_auto_invoice($order_id, 'order_paid');
 
+    // A designed form's record whose fee this order charged is now paid.
+    pg_form_payment_mark_paid($order_id);
+
     return true;
 }
 
@@ -2143,9 +2146,12 @@ function pg_product_stock_threshold()
  * @param int      $after      stock left after the write
  * @param int      $threshold  the low-stock line, 0 for none (pg_product_stock_threshold())
  * @param string   $source     the writer: checkout, local_sale, panel, barcode, bulk_edit
+ * @param array|null $location id, name, quantity (left there) when the site keeps
+ *                             stock per location; adds location_id, location_name
+ *                             and location_quantity to both payloads
  * @return array   list of array(event name, payload)
  */
-function pg_product_stock_events($product_id, $name, $tracked, $before, $after, $threshold, $source)
+function pg_product_stock_events($product_id, $name, $tracked, $before, $after, $threshold, $source, $location = null)
 {
     $product_id = (int) $product_id;
     $after = (int) $after;
@@ -2161,7 +2167,7 @@ function pg_product_stock_events($product_id, $name, $tracked, $before, $after, 
             'quantity'     => $after,
             'out_of_stock' => ($after <= 0),
             'source'       => (string) $source,
-        )),
+        ) + pg_stock_event_location_fields($location)),
     );
 
     $was_above = ($before === null) || ((int) $before > $threshold);
@@ -2172,7 +2178,7 @@ function pg_product_stock_events($product_id, $name, $tracked, $before, $after, 
             'name'       => (string) $name,
             'quantity'   => $after,
             'threshold'  => $threshold,
-        ));
+        ) + pg_stock_event_location_fields($location));
     }
 
     return $events;
@@ -2275,9 +2281,11 @@ function pg_product_out_of_stock_sql($tracked, $quantity, $was_flagged)
  * @param int|null $before  stock before the write; null when it was not tracked
  * @param int|null $after   stock left after the write; null reads the row
  * @param string   $source  the writer: checkout, local_sale, panel, barcode, bulk_edit, bundle
+ * @param array|null $location id, name, quantity (left there): the location the
+ *                   write changed, carried by inventory.changed and stock.low
  * @return int|null the stock left, null when the product is not there
  */
-function pg_product_stock_changed($product_id, $before, $after, $source)
+function pg_product_stock_changed($product_id, $before, $after, $source, $location = null)
 {
     $product_id = (int) $product_id;
 
@@ -2304,7 +2312,8 @@ function pg_product_stock_changed($product_id, $before, $after, $source)
         ($before === null) ? null : (int) $before,
         $after,
         pg_product_stock_threshold(),
-        $source);
+        $source,
+        $location);
 
     if (function_exists('pg_announce')) {
         foreach ($events as $event) {
@@ -8478,6 +8487,39 @@ function pg_parse_whole_number($raw, $max)
 }
 
 /**
+ * Check a settings box that must hold a whole number from $min to $max. The
+ * figure is read as pg_parse_whole_number() reads it ("2.400" on a Turkish
+ * panel is 2400), but a blank entry, a letter, a sign, a fraction or a figure
+ * outside the range gives null, so the save can refuse it instead of storing
+ * a bound nobody typed (an emptied box read as 0 became the strictest limit).
+ *
+ * @param  mixed $raw
+ * @param  int   $min
+ * @param  int   $max
+ * @return int|null
+ */
+function pg_whole_number_in_range($raw, $min, $max)
+{
+    if (!is_scalar($raw)) {
+        return null;
+    }
+
+    $value = str_replace(array("\u{00A0}", ' '), '', trim((string) $raw));
+
+    if (!preg_match('/^[0-9]([0-9.,]*[0-9])?$/D', $value)) {
+        return null;
+    }
+
+    $number = pg_parse_amount($value);
+
+    if (($number != floor($number)) || ($number < $min) || ($number > $max)) {
+        return null;
+    }
+
+    return (int) $number;
+}
+
+/**
  * An amount typed into a form, in the machine format ("1.234,56" ->
  * "1234.56"), for the handlers that validate with is_numeric() before they
  * store it. A value that is not a number is returned trimmed and otherwise
@@ -8757,8 +8799,17 @@ function check_inventory($liveform)
     while ($row = mysqli_fetch_assoc($result)) {
         $products[] = $row;
     }
+    // With stock per location the cart is checked against the location the
+    // order will take its units from: what that location cannot cover is
+    // refused as the total's shortfall is, and nothing counts from another
+    // location. Without locations the total is counted as before.
+    $stock_location_id = pg_stock_order_location((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
     // loop through products in order to check inventory for order items
     foreach ($products as $product) {
+        $at_location = pg_stock_quantity_at($product['id'], $stock_location_id, $product['inventory_quantity']);
+        if ($at_location !== null) {
+            $product['inventory_quantity'] = $at_location;
+        }
         // set the starting inventory quantity
         // so later we know if the product was completely out of stock to begin with before we started looking at order items
         $product['starting_inventory_quantity'] = $product['inventory_quantity'];
@@ -11833,6 +11884,40 @@ function pg_order_refund_instruction($payment_method)
     return ((string) $payment_method === 'Offline Payment')
         ? lang('The payment was NOT refunded automatically. Send the amount back to the customer by bank transfer.')
         : lang('The payment was NOT refunded automatically. Process the refund in your payment provider dashboard.');
+}
+
+// What a bulk cancel on the Orders list tells the operator about money, as
+// the per-row Cancel button tells it for one order (cancel_order.php): each
+// entry of $cancelled is array('order' => the re-read orders row,
+// 'refund_status' => process_order_cancellation()'s). Returns the order
+// numbers (pg_order_log_number()) whose payment was refunded ('refunded'),
+// whose payment must go back by bank transfer ('transfer') or in the payment
+// provider's dashboard ('provider'), and that gift cards paid part of
+// ('gift_card'), with that part's sum in minor units ('gift_card_amount').
+function pg_order_bulk_cancel_refunds(array $cancelled)
+{
+    $groups = array('refunded' => array(), 'transfer' => array(), 'provider' => array(), 'gift_card' => array(), 'gift_card_amount' => 0);
+
+    foreach ($cancelled as $entry) {
+        $order  = (array) ($entry['order'] ?? array());
+        $status = (string) ($entry['refund_status'] ?? '');
+        $owed   = pg_order_cancel_refund_owed($order);
+        $number = pg_order_log_number($order);
+
+        if ($status === 'refunded') {
+            $groups['refunded'][] = $number;
+        } elseif ((($status === 'manual_required') || ($status === 'failed'))
+            && (($owed['payment'] > 0) || ($owed['gift_card'] <= 0))) {
+            $groups[((string) ($order['payment_method'] ?? '') === 'Offline Payment') ? 'transfer' : 'provider'][] = $number;
+        }
+
+        if ($owed['gift_card'] > 0) {
+            $groups['gift_card'][] = $number;
+            $groups['gift_card_amount'] += $owed['gift_card'];
+        }
+    }
+
+    return $groups;
 }
 
 // The base currency symbol as plain text: the currencies table keeps it as an

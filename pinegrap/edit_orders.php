@@ -544,6 +544,9 @@ if (!empty($_POST['orders'])) {
             $bulk_skipped_shipped = 0;
             $bulk_skipped_incomplete = 0;
             $bulk_failed = 0;
+            // The cancelled orders with their refund outcome, for the money
+            // notices below (pg_order_bulk_cancel_refunds()).
+            $bulk_cancelled_refunds = array();
 
             foreach ($_POST['orders'] as $order_id) {
                 // An incomplete order is a customer's open cart, not an order:
@@ -561,6 +564,10 @@ if (!empty($_POST['orders'])) {
                 );
                 if ($res['status'] === 'success') {
                     pg_audit_record('cancel', 'orders', $order_id, $audit_before);
+                    $bulk_cancelled_refunds[] = array(
+                        'order'         => ((array) db_item("SELECT * FROM orders WHERE id = '" . (int) $order_id . "'")) + array('id' => (int) $order_id),
+                        'refund_status' => (string) ($res['refund_status'] ?? ''),
+                    );
                 }
                 switch ($res['status']) {
                     case 'success': $bulk_cancelled++;       break;
@@ -587,6 +594,34 @@ if (!empty($_POST['orders'])) {
                     'vars'   => array(pg_format_number($bulk_cancelled, 0)),
                 ))
             );
+
+            // What the cancellations owe the customers, as the per-row Cancel
+            // button tells it (cancel_order.php): a paid order cancelled here
+            // may need its money returned by hand.
+            $bulk_refunds = pg_order_bulk_cancel_refunds($bulk_cancelled_refunds);
+            $bulk_numbers = function (array $numbers) {
+                return '#' . implode(', #', $numbers);
+            };
+            if ($bulk_refunds['refunded']) {
+                $liveform_view_orders->add_notice(lang(array(
+                    'string' => 'The payment has been refunded for order(s) {var:1}.',
+                    'vars'   => array($bulk_numbers($bulk_refunds['refunded'])))));
+            }
+            if ($bulk_refunds['transfer']) {
+                $liveform_view_orders->add_warning(lang(array(
+                    'string' => 'Order(s) {var:1}: {var:2}',
+                    'vars'   => array($bulk_numbers($bulk_refunds['transfer']), pg_order_refund_instruction('Offline Payment')))));
+            }
+            if ($bulk_refunds['provider']) {
+                $liveform_view_orders->add_warning(lang(array(
+                    'string' => 'Order(s) {var:1}: {var:2}',
+                    'vars'   => array($bulk_numbers($bulk_refunds['provider']), pg_order_refund_instruction('')))));
+            }
+            if ($bulk_refunds['gift_card']) {
+                $liveform_view_orders->add_warning(lang(array(
+                    'string' => 'Gift cards paid {var:1} of order(s) {var:2}. Return the amounts to the cards; the site log names them.',
+                    'vars'   => array(pg_format_money($bulk_refunds['gift_card_amount'] / 100, BASE_CURRENCY_SYMBOL), $bulk_numbers($bulk_refunds['gift_card'])))));
+            }
             if ($bulk_skipped_already > 0) {
                 $liveform_view_orders->add_warning(
                     lang(array(

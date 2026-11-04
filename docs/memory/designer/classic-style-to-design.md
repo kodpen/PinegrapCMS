@@ -21,7 +21,7 @@ module: classic_style_design
 
 ## What happens before and at Save?
 - Opening writes only the component row. The pages arrive with `converted: 1`, so their tabs start unsaved (baseline null in `_pgTabsInit()`); the editor opens with framework `custom` and the style's head assets in the asset panel.
-- Save (`pg_designer_screen_post()`): `$converting` when the stored row is not `visual_designer`; a content-level save is refused. `save_system_style()` sets `style_type = 'system'`, `style_layout = 'visual_designer'`; then `style_framework` gets the posted key (an update never changes it otherwise). `style_code` stays: the fallback of a page with no tree. `layout_type`, `collection`, `theme_id` stay; pages keep `page_type`, `layout_type`, `layout_modified`.
+- Save (`pg_designer_screen_post()`): `$converting` when the stored row is not `visual_designer`; a content-level save is refused. `save_system_style()` sets `style_type = 'system'`, `style_layout = 'visual_designer'`; then `pg_classic_style_mark_design()` (also the bulk move's) sets `style_framework` to the posted key (an update never changes it otherwise). `style_code` stays: the fallback of a page with no tree. `layout_type`, `collection`, `theme_id` stay; pages keep `page_type`, `layout_type`, `layout_modified`.
 
 ## What happens to pages that take the style from their folder?
 - Save asks whether to convert them too: `classic-style-folder-pages.md`.

@@ -76,6 +76,9 @@ function test_import_report_cap()
 	$report = pg_import_report_add(array(), 'made', $item, '');
 	pg_assert_same(array(), $report['lines'], 'made not listed');
 
+	$noted = pg_import_report_add(array(), 'made', $item, 'Kept at the old address: x');
+	pg_assert_same('made', $noted['lines'][0]['result'], 'made with a note listed');
+
 	$report = pg_import_report_add($report, 'failed', $item, 'No title');
 	pg_assert_same(array('result' => 'failed', 'kind' => 'record', 'key' => 'post:1', 'title' => 'Hello', 'reason' => 'No title'), $report['lines'][0], 'line');
 
@@ -111,4 +114,59 @@ function test_import_mapping_clean()
 
 	pg_assert_same(array('form' => '14'), $clean['mapping'], 'kept');
 	pg_assert_same(array('group'), $clean['missing'], 'missing');
+}
+
+// A field row offers only the field types its writer fills; an information
+// field never.
+function test_import_field_fits()
+{
+	pg_assert_true(pg_import_field_fits('text box', array('text box', 'text area')), 'a listed type');
+	pg_assert_true(!pg_import_field_fits('file upload', array('text box', 'text area')), 'a file field does not take the title');
+	pg_assert_true(pg_import_field_fits('file upload', array()), 'no list takes every type');
+	pg_assert_true(!pg_import_field_fits('information', array()), 'an information field holds no value');
+	pg_assert_true(!pg_import_field_fits('', array()), 'no type');
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/import/wordpress.php');
+	$mapping = pg_import_wordpress_mapping();
+	pg_assert_same(array('file upload'), $mapping['picture']['field_types'], 'the featured image goes to a file field');
+	pg_assert_true(!in_array('file upload', $mapping['title']['field_types'], true), 'the title never goes to a file field');
+}
+
+// Tree pickers: path labels in tree order, the lone top node out of the
+// paths, a left-out node with its subtree dropped.
+function test_import_tree_choices()
+{
+	$rows = array(
+		1  => array('parent' => 0, 'name' => 'Root'),
+		2  => array('parent' => 1, 'name' => 'Shop'),
+		3  => array('parent' => 2, 'name' => 'private'),
+		4  => array('parent' => 1, 'name' => 'Blog'),
+		5  => array('parent' => 4, 'name' => 'private'),
+		9  => array('parent' => 1, 'name' => 'Recycle Bin'),
+		10 => array('parent' => 9, 'name' => 'pgbin_10_Old'),
+	);
+
+	pg_assert_same(array(
+		'1' => 'Root',
+		'2' => 'Shop',
+		'3' => 'Shop › private',
+		'4' => 'Blog',
+		'5' => 'Blog › private',
+	), pg_import_tree_choices($rows, array(9)), 'folders');
+
+	$groups = array(
+		43 => array('parent' => 7, 'name' => 'e-Gift Cards'),
+		56 => array('parent' => 8, 'name' => 'e-Gift Cards'),
+		7  => array('parent' => 0, 'name' => 'Store'),
+		8  => array('parent' => 0, 'name' => 'Outlet'),
+	);
+
+	pg_assert_same(array(
+		'7'  => 'Store',
+		'43' => 'Store › e-Gift Cards',
+		'8'  => 'Outlet',
+		'56' => 'Outlet › e-Gift Cards',
+	), pg_import_tree_choices($groups, array()), 'several top nodes lead their paths');
+
+	pg_assert_same(array(), pg_import_tree_choices(array(), array()), 'empty');
 }

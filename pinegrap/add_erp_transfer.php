@@ -78,13 +78,13 @@ if (!$_POST) {
                                 <label for="from_id" class="form-label">' . lang('From till') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'select', 'id' => 'from_id', 'name' => 'from_id',
-                                    'class' => 'form-control', 'options' => $till_options)) . '
+                                    'class' => 'form-control', 'options' => $till_options, 'required' => 'required')) . '
                             </div>
                             <div class="col-12 lg:col-4 my-3">
                                 <label for="to_id" class="form-label">' . lang('To till') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'select', 'id' => 'to_id', 'name' => 'to_id',
-                                    'class' => 'form-control', 'options' => $till_options))
+                                    'class' => 'form-control', 'options' => $till_options, 'required' => 'required'))
                                 . erp_no_till_hint($till_count, 'transfer') . '
                             </div>
                             <div class="col-12 sm:col-6 lg:col-4 my-3">

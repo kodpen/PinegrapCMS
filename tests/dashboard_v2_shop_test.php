@@ -44,7 +44,7 @@ function test_dashboard_v2_shop_cards_are_built()
 function test_dashboard_v2_shop_windows_last_7_days()
 {
 	$midnight = mktime(0, 0, 0, 3, 10, 2026);
-	$windows = pg_dashboard_v2_shop_windows(1, 1, $midnight);
+	$windows = pg_dashboard_v2_shop_windows(1, 0, $midnight);
 
 	pg_assert_same(array(mktime(0, 0, 0, 3, 4, 2026), mktime(0, 0, 0, 3, 11, 2026)), $windows['now']);
 	pg_assert_same(array(mktime(0, 0, 0, 2, 25, 2026), mktime(0, 0, 0, 3, 4, 2026)), $windows['before'], 'the 7 days before');
@@ -55,7 +55,7 @@ function test_dashboard_v2_shop_windows_last_7_days()
 function test_dashboard_v2_shop_windows_today_against_last_year()
 {
 	$midnight = mktime(0, 0, 0, 3, 10, 2026);
-	$windows = pg_dashboard_v2_shop_windows(0, 2, $midnight);
+	$windows = pg_dashboard_v2_shop_windows(0, 1, $midnight);
 
 	pg_assert_same(array($midnight, mktime(0, 0, 0, 3, 11, 2026)), $windows['now']);
 	pg_assert_same(array(mktime(0, 0, 0, 3, 10, 2025), mktime(0, 0, 0, 3, 11, 2025)), $windows['before']);
@@ -212,4 +212,16 @@ function test_dashboard_v2_shop_money_is_plain_text()
 	pg_assert_same(pg_format_money(12345.67, html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8')), $money);
 	pg_assert_same('&#8378;', htmlspecialchars_decode('&#8378;'), 'the entity the store keeps is not decoded by h()-style helpers');
 	pg_assert_same('₺', html_entity_decode('&#8378;', ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+}
+
+// prepare_amount() returns HTML: the pipeline's orders box read
+// "Average &#8378;4.180,80". No card sends it.
+function test_dashboard_v2_cards_send_no_html_money()
+{
+	$files = glob(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/*.php');
+
+	pg_assert_true(count($files) > 10, 'the card files are found');
+	foreach ($files as $file) {
+		pg_assert_false(strpos((string) file_get_contents($file), 'prepare_amount(') !== false, basename($file) . ' sends plain-text money');
+	}
 }

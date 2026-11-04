@@ -26,7 +26,8 @@ function report_screens_bs6_source($path)
 
 function test_report_screens_no_bare_btn_in_a_group()
 {
-	foreach (array('view_order_report.php', 'view_visitor_report.php', 'view_shipping_report.php') as $screen) {
+	// The visitor report has period presets, no stepper arrows.
+	foreach (array('view_order_report.php', 'view_shipping_report.php') as $screen) {
 		$source = report_screens_bs6_source($screen);
 
 		pg_assert_false((bool) preg_match('/<a class="btn py-0/', $source), $screen . ': no bare .btn link without a variant');
@@ -36,6 +37,8 @@ function test_report_screens_no_bare_btn_in_a_group()
 		pg_assert_contains("aria-label=\"' . h(lang('Next')) . '\"", $source, $screen . ': next arrow is named');
 		pg_assert_contains('role="group"', $source, $screen . ': each changer is a named group');
 	}
+
+	pg_assert_contains('role="group" aria-label="\' . h(lang(\'Date Range\')) . \'"', report_screens_bs6_source('view_visitor_report.php'), 'view_visitor_report.php: the presets are a named group');
 }
 
 function test_report_screens_layout_selects_are_labelled()

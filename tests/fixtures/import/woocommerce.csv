@@ -1,0 +1,9 @@
+ID,Type,SKU,Name,Published,"Is featured?","Visibility in catalog","Short description",Description,"Tax status","In stock?",Stock,"Weight (kg)","Length (cm)","Width (cm)","Height (cm)","Sale price","Regular price",Categories,Tags,Images,Parent,"Attribute 1 name","Attribute 1 value(s)","Attribute 1 visible","Attribute 1 global","Attribute 2 name","Attribute 2 value(s)","Attribute 2 visible","Attribute 2 global"
+10,simple,MUG-01,"Coffee Mug",1,0,visible,"A mug.","<p>A <strong>stoneware</strong> mug.</p><script>alert(1)</script>",taxable,1,25,0.4,,,,,12.50,"Kitchen > Mugs, Gifts","coffee, mug","https://shop.example.com/wp-content/uploads/mug.jpg, https://shop.example.com/wp-content/uploads/mug-2.jpg",,,,,,,,,
+11,variable,TEE,"V-Neck T-Shirt",1,1,visible,"Soft cotton.","<p>A tee in three colours.</p>",taxable,1,,0.2,,,,,,Clothing > Tshirts,,https://shop.example.com/wp-content/uploads/tee.jpg,,Color,"Blue, Red",1,1,Size,"S, M",1,1
+12,variation,TEE-BLUE-S,"V-Neck T-Shirt - Blue, S",1,0,visible,,,taxable,1,5,,,,,15,20,,,https://shop.example.com/wp-content/uploads/tee-blue.jpg,id:11,Color,Blue,,1,Size,S,,1
+13,variation,,"V-Neck T-Shirt - Red, M",1,0,visible,,,taxable,0,0,,,,,,"18,00",,,,TEE,Color,Red,,1,Size,M,,1
+14,variation,TEE-RED-S,"V-Neck T-Shirt - Red, S",0,0,visible,,,taxable,1,,,,,,,abc,,,,id:11,Color,Red,,1,Size,S,,1
+15,grouped,SET,"Breakfast Set",1,0,visible,,,taxable,1,,,,,,,,Kitchen,,,,,,,,,,,
+16,simple,,"Draft Poster",0,0,hidden,,"<p>Poster</p>",taxable,1,,,,,,,"1.234,50",Prints,,,,,,,,,,,
+17,variation,LOST-1,"Lost - Blue",1,0,visible,,,taxable,1,,,,,,,9,,,,id:99,Color,Blue,,1,,,,

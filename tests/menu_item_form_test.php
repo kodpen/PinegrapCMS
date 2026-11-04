@@ -65,7 +65,10 @@ function test_menu_item_form_screens_use_shared_form()
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 
 		pg_assert_contains('includes/forms/menu_item_form.php', $source, $file . ' loads the form');
-		pg_assert_contains('pg_menu_item_form_card(', $source, $file . ' prints the shared card');
+		pg_assert_contains('pg_menu_item_form_cards($liveform', $source, $file . ' prints the shared cards');
+		pg_assert_contains('pg_menu_item_form_layout(', $source, $file . ' uses the shared layout');
+		pg_assert_contains("'menu_url' => h(\$items_url)", $source, $file . ' links the menu in the Summary');
+		pg_assert_false(strpos($source, "lang('Menu') . ': '") !== false, $file . ' moved the menu line into the Summary');
 		pg_assert_contains('pg_menu_item_form_link(', $source, $file . ' takes the link the shared way');
 		pg_assert_contains($file === 'add_menu_item.php' ? 'pg_menu_item_form_last_sort_order(' : 'pg_menu_item_form_level_order(', $source, $file . ' puts a moved or new item last');
 		pg_assert_contains('pg_menu_item_form_touch_menu(', $source, $file . ' stamps the menu');
@@ -88,4 +91,30 @@ function test_menu_item_form_level_order_new_parent_goes_last()
 	pg_assert_same(array(1, 2, 5), pg_menu_item_form_level_order(array(1, 2), 5, '1', true), 'a sibling of the old level is ignored');
 	pg_assert_same(array(1, 2, 5), pg_menu_item_form_level_order(array(1, 2), 5, '9', false), 'an unknown position goes last');
 	pg_assert_same(array(1, 2, 5), pg_menu_item_form_level_order(array(1, 2), 5, '', false), 'no position goes last');
+}
+
+function test_menu_item_form_wide_layout_columns_and_save_bar()
+{
+	$layout = pg_menu_item_form_layout('<div id="cards"></div>', '<button id="b"></button>');
+	pg_assert_contains('<div class="row"><div id="cards"></div>', $layout, 'the cards open the row');
+	pg_assert_contains('col-12 order-3 position-sticky', $layout, 'the save bar is sticky under both columns');
+	pg_assert_contains('<button id="b"></button>', $layout, 'the buttons go in the bar');
+
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/menu_item_form.php');
+	$form_column = strpos($src, 'col-12 lg:col-8 2xl:col-9 order-1');
+	$status_column = strpos($src, 'col-12 lg:col-4 2xl:col-3 order-2');
+	pg_assert_true($form_column !== false, 'the form column');
+	pg_assert_true(($status_column !== false) && ($status_column > $form_column), 'the status column follows the form column in the source');
+	pg_assert_contains('style="top:3.3rem;"', $src, 'the status box sticks below the top bar');
+	pg_assert_contains('id="menu_item_summary_link"', $src, 'the Summary shows what the item links to');
+
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_menu_item.php');
+	pg_assert_contains("'status' => pg_menu_item_form_children_status(\$child_count)", $edit, 'the edit screen counts the items under it');
+	pg_assert_contains("'keep_page_id' => \$stored_link_page_id", $edit, 'the stored page stays in the picker');
+}
+
+function test_menu_item_form_children_status()
+{
+	$row = pg_menu_item_form_children_status(4);
+	pg_assert_contains('id="menu_item_summary_children">4</dd>', $row, 'the count');
 }

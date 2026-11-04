@@ -175,6 +175,14 @@ function test_menu_products_full_list_entries_name_the_row()
 	pg_assert_contains("/view_products.php?filter=all_products\\'' . \$output_parent_target . ' data-pg-menu-label=\\'' . h(lang('Products')) . '\\'", $menu, 'the filtered full list gives no hint either');
 }
 
+function test_menu_products_has_one_all_products_entry_on_the_full_list()
+{
+	$menu = pg_test_function_source('output_menu');
+
+	pg_assert_same(1, substr_count($menu, "lang('All Products')"), 'one All Products entry in the panel');
+	pg_assert_false(strpos($menu, "/view_products.php\\'' . \$output_parent_target") !== false, 'no entry on the bare address, which reopens the last filter');
+}
+
 function test_menu_explorer_views_refresh_the_menu_mark()
 {
 	// The explorer changes its view in place; every address it writes goes

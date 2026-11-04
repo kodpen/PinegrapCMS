@@ -292,7 +292,7 @@ function pg_dashboard_v2_ai_summary_lines($text, $limit = 3)
  * summary is on and the person reads its channel.
  *
  * @param array $viewer ws_viewer()
- * @return array|null title, lines (text, url), when
+ * @return array|null title, lines (text, url), when, open (a line's link word)
  */
 function pg_dashboard_v2_ai_summary($viewer)
 {
@@ -328,6 +328,7 @@ function pg_dashboard_v2_ai_summary($viewer)
         'title' => lang('Daily summary'),
         'lines' => $lines,
         'when'  => get_relative_time(array('timestamp' => (int) $message['created_at'], 'format' => 'plain_text')),
+        'open'  => lang('Open'),
     );
 }
 

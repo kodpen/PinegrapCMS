@@ -92,3 +92,41 @@ function test_email_campaign_form_used_by_both_screens()
 	$edit = file_get_contents(PG_FUNCTIONS_DIR . '/edit_email_campaign.php');
 	pg_assert_contains(", \$readonly)", $edit, 'edit passes the read-only flag');
 }
+
+function test_email_campaign_form_layout_columns()
+{
+	$html = pg_email_campaign_layout('<p>FORM</p>', '<p>SIDE</p>', '<button>Save</button>');
+	pg_assert_contains('<div class="col-12 lg:col-8 2xl:col-9 order-1">', $html, 'form column');
+	pg_assert_contains('<div class="col-12 lg:col-4 2xl:col-3 order-2">', $html, 'status column');
+	pg_assert_contains('<div class="position-sticky" style="top:3.3rem;">', $html, 'the box inside the status column sticks');
+	pg_assert_contains('<div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">', $html, 'sticky save bar');
+	pg_assert_true(strpos($html, 'FORM') < strpos($html, 'SIDE'), 'the status column comes after the form column');
+	pg_assert_contains('<button>Save</button>', $html, 'buttons in the bar');
+
+	pg_assert_false(strpos(pg_email_campaign_layout('F', 'S', ''), 'buttons navigation') !== false, 'no bar without buttons (completed campaign)');
+	pg_assert_false(strpos(pg_email_campaign_layout('F', '', 'B'), 'lg:col-4') !== false, 'no status column without cards');
+}
+
+function test_email_campaign_form_side_cards_fit_the_column()
+{
+	$html = pg_email_campaign_schedule_card('', false, true);
+	pg_assert_contains('<div class="col-12 my-3">', $html, 'the start time takes the narrow column');
+	pg_assert_false(strpos($html, 'lg:col-4') !== false, 'no wide-screen width in the status column');
+
+	$html = pg_email_campaign_purpose_card('commercial');
+	pg_assert_contains('<label class="" for="purpose_commercial">' . lang('Commercial') . '</label>', $html, 'short radio label');
+	pg_assert_contains('<div class="form-text" id="purpose_commercial_help">' . lang('Send e-mail to opted-in contacts only. Example: \'We have an offer for you\'') . '</div>', $html, 'the example under the radio');
+	pg_assert_contains('aria-describedby="purpose_commercial_help"', $html, 'the radio is described by its example');
+}
+
+function test_email_campaign_form_screens_use_the_layout()
+{
+	foreach (array('add_email_campaign.php', 'edit_email_campaign.php') as $file) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('pg_email_campaign_layout(', $source, $file . ' draws the two columns');
+		pg_assert_false(strpos($source, 'nav class="buttons navigation') !== false, $file . ' prints no own save bar');
+	}
+
+	$edit = file_get_contents(PG_FUNCTIONS_DIR . '/edit_email_campaign.php');
+	pg_assert_contains('<label class="form-label" for="status">', $edit, 'the status select has a visible label');
+}

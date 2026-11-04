@@ -198,9 +198,7 @@ function test_ws_saved_replies_table_wiring()
 {
 	pg_assert_contains("'ws_saved_replies',", file_get_contents(PG_FUNCTIONS_DIR . '/install/index.php'));
 
-	foreach (array('delete_users.php', 'edit_user.php') as $file) {
-		pg_assert_contains('DELETE FROM ws_saved_replies WHERE user_id', file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file);
-	}
+	pg_assert_contains('DELETE FROM ws_saved_replies WHERE user_id', file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php'), 'pg_user_delete()');
 
 	$migration = file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
 	pg_assert_contains('upgrade_2026_11_0_workspace_saved_replies(); // 11.0.114', $migration);

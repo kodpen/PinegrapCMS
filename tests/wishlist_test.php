@@ -357,14 +357,19 @@ function test_wishlist_forget_user()
 
 	pg_assert_contains('pg_wishlist_forget_user_sql(', wishlist_test_function_source('pg_wishlist_forget_user'));
 
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php');
+
+	$forget = strpos($source, 'pg_wishlist_forget_user(');
+	$delete = strpos($source, 'DELETE FROM user WHERE');
+
+	pg_assert_true($forget !== false, 'pg_user_delete() removes the favourites');
+	pg_assert_true(($forget !== false) && ($delete !== false) && ($forget < $delete), 'pg_user_delete() with the rest of the account');
+
 	foreach (array('delete_users.php', 'edit_user.php') as $file) {
-		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 
-		$forget = strpos($source, 'pg_wishlist_forget_user(');
-		$delete = strpos($source, 'DELETE FROM user WHERE');
-
-		pg_assert_true($forget !== false, $file . ' removes the favourites');
-		pg_assert_true(($forget !== false) && ($delete !== false) && ($forget < $delete), $file . ' with the rest of the account');
+		pg_assert_contains('pg_user_delete(', $screen, $file . ' deletes through pg_user_delete()');
+		pg_assert_false(strpos($screen, 'DELETE FROM user WHERE') !== false, $file . ' has no delete of its own');
 	}
 }
 

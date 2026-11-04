@@ -87,6 +87,23 @@
                 return;
             }
 
+            // A save's motion group gives back its one element, the group's
+            // transform before the element's own.
+            if (M.svgMotionGroup(name, child.getAttribute('class'), Array.prototype.map.call(child.attributes, function (a) { return a.name; }), child.children.length)) {
+                var inner = child.children[0], moved = ((child.getAttribute('transform') || '') + ' ' + (inner.getAttribute('transform') || '')).trim();
+
+                if (moved) {
+                    inner.setAttribute('transform', moved);
+                }
+
+                child = inner;
+                name = child.localName;
+
+                if ((SKIP.indexOf(name) >= 0) || (DEFS.indexOf(name) >= 0)) {
+                    return;
+                }
+            }
+
             var node = document.importNode(child, true), own = M.svgTransform(node.getAttribute('transform'));
 
             INHERITED.forEach(function (a) {
@@ -369,6 +386,14 @@
 
         n.setAttribute('transform', M.svgMatrixText(M.svgMatrix(l)));
 
+        var cls = M.svgMotionClass(n.getAttribute('class'));
+
+        if (cls) {
+            n.setAttribute('class', cls);
+        } else {
+            n.removeAttribute('class');
+        }
+
         if ((l.opacity !== undefined) && (l.opacity < 1)) {
             var own = n.hasAttribute('opacity') ? Number(n.getAttribute('opacity')) : 1;
 
@@ -405,16 +430,28 @@
 
     // The document as an SVG file: the artboard's fill, the kept
     // definitions and every visible layer as the stage draws it, with its
-    // pictures embedded.
+    // pictures embedded. A layer that moves sits in a group of class pgm-n,
+    // which the style the server writes from this.svgMotion (M.svgMotion())
+    // animates.
     Editor.prototype.svgText = function () {
-        var self = this, a = this.doc.artboard, nodes = [];
+        var self = this, a = this.doc.artboard, nodes = [], saved = [];
 
         this.doc.layers.forEach(function (l) {
             var n = l.hidden ? null : ((l.type === 'svg') ? svgSaveNode(l) : self.layerNode(l));
 
             if (n) {
                 nodes.push(n);
+                saved.push(l);
             }
+        });
+
+        this.svgMotion = M.svgMotion(this.doc, saved);
+        (this.svgMotion ? this.svgMotion.layers : []).forEach(function (m) {
+            var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+            g.setAttribute('class', 'pgm-' + m.n);
+            g.appendChild(nodes[m.n]);
+            nodes[m.n] = g;
         });
 
         var links = [];
@@ -451,7 +488,7 @@
         }
 
         this.svgText().then(function (text) {
-            return self.request({ action: 'svg_save', mode: mode, file_id: self.svgFileId, svg: text });
+            return self.request({ action: 'svg_save', mode: mode, file_id: self.svgFileId, svg: text, motion: self.svgMotion });
         }).then(function (r) {
             if (!r || (r.status !== 'success')) {
                 self.setSaving(false);

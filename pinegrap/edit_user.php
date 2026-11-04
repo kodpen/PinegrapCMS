@@ -20,6 +20,7 @@ include('init.php');
 include_once('liveform.class.php');
 include_once('includes/user_permissions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/user_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php');
 $liveform_view_users = new liveform('view_users');
 $user = validate_user();
 validate_area_access($user, 'manager');
@@ -279,7 +280,7 @@ if (!$_POST) {
             contacts.first_name,
             contacts.last_name,
             contacts.email_address,
-            contacts.member_id
+            contacts.member_id" . (pg_user_has_disabled_at() ? ", user.user_disabled_at" : "") . "
         FROM user
         LEFT JOIN contacts ON user.user_contact = contacts.id
         WHERE user_id = ?";
@@ -351,7 +352,8 @@ if (!$_POST) {
     // however we just decided to prevent this because there is really no reason to allow it and
     // it might cause confusing log messages eventually (e.g. "example_username -> example_username").
     // It might also cause confusion for the user about what happens if they do that.
-    if ($id != USER_ID) {
+    // Not offered for a disabled account, which login_as_user.php refuses.
+    if (($id != USER_ID) && !pg_user_is_disabled($row)) {
         $output_login_as_user_button = '<a class="btn btn-sm btn-outline theme-secondary rounded-pill px-5" href="login_as_user.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-box-arrow-in-right me-1"></i>' . lang('Login as User') . '</a>';
     }
 
@@ -402,7 +404,7 @@ if (!$_POST) {
         if (($user['role'] == 0) && ($role == 0)) {
 
             $another_administrator = db_value("SELECT user_id FROM user
-                WHERE (user_role = '0') AND (user_id != '" . escape($id) . "')");
+                WHERE (user_role = '0') AND (user_id != '" . escape($id) . "')" . pg_user_enabled_sql() . " LIMIT 1");
 
             if ($another_administrator == '') {
                 $allow_role_change   = false;
@@ -410,6 +412,29 @@ if (!$_POST) {
                 $role_cards_disabled = true;
             }
         }
+    }
+
+    // The "Account enabled" switch, once the column exists. A disabled
+    // account matches no credential (pg_user_is_disabled()). One's own
+    // account and the last enabled administrator cannot be switched off: the
+    // switch is drawn locked, posts nothing, and the save checks again.
+    $output_account_enabled_field = '';
+
+    if (pg_user_has_disabled_at()) {
+        $account_enabled = !pg_user_is_disabled($row);
+        $may_disable = pg_user_form_may_disable($id, USER_ID);
+
+        $output_account_enabled_field =
+            '<div class="col-12">
+                ' . ($may_disable ? '<input type="hidden" name="account_enabled_drawn" value="1" />' : '') . '
+                <div class="form-field">
+                    <div class="switch"><input type="checkbox"' . ($account_enabled ? ' checked="checked"' : '') . ($may_disable ? '' : ' disabled="disabled"') . ' id="account_enabled" name="account_enabled" value="1"/></div>
+                    <label for="account_enabled">' . lang('Account enabled') . '</label>
+                </div>
+                <div class="form-text">' . ($may_disable
+                    ? lang('A disabled account cannot sign in by any means; its content stays.')
+                    : lang('You cannot disable your own account or the last enabled administrator.')) . '</div>
+            </div>';
     }
 
     if ($allow_delete == true) {
@@ -430,101 +455,12 @@ if (!$_POST) {
     }
 
     $badge_checked = '';
-    $manage_visitors_checked = '';
-    $create_pages_checked = '';
-    $delete_pages_checked = '';
-    $manage_forms_checked = '';
-    $manage_calendars_checked = '';
-    $manage_ecommerce_checked = '';
-    $view_card_data_checked = '';
-    $manage_ecommerce_reports_checked = '';
-    $set_offline_payment_checked = '';
-    $manage_contacts_checked = '';
-    $manage_emails_checked = '';
-    $publish_calendar_events_checked = '';
     
     // If badge is enabled, then check check box and show badge label row.
     if ($badge == 1) {
         $badge_checked = ' checked="checked"';
     }
-    
-    // find out if manage visitors checkbox should be checked or not
-    if ($manage_visitors == 'yes') {
-        $manage_visitors_checked = ' checked="checked"';
-    }
-    
-    // find out if create pages checkbox should be checked or not
-    if ($create_pages == '1') {
-        $create_pages_checked = ' checked="checked"';
-    }
-    
-    // find out if delete pages checkbox should be checked or not
-    if ($delete_pages == '1') {
-        $delete_pages_checked = ' checked="checked"';
-    }
-    
-    // find out if manage forms checkbox should be checked or not
-    if ($manage_forms == 'yes') {
-        $manage_forms_checked = ' checked="checked"';
-    }
-    
-    // find out if manage calendars checkbox should be checked or not
-    if ($manage_calendars == 'yes') {
-        $manage_calendars_checked = ' checked="checked"';
-        $calendar_access_style = '';
-        $publish_calendar_events_style = '';
-        
-    } else {
-        $calendar_access_style = '; display: none';
-        $publish_calendar_events_style = '; display: none';
-    }
-    
-    // find out if publish calendar events should be checked or not
-    if ($publish_calendar_events == 'yes') {
-        $publish_calendar_events_checked = ' checked="checked"';
-    }
-    
-    // if manage e-commerce is enabled, then check check box and show view card data check box
-    if ($manage_ecommerce == 'yes') {
-        $manage_ecommerce_checked = ' checked="checked"';
-        $view_card_data_style = '';
-        
-    // else manage e-commerce is disabled, so uncheck check box and hide view card data check box
-    } else {
-        $view_card_data_style = '; display: none';
-    }
 
-    // find out if view card data checkbox should be checked or not
-    if ($manage_ecommerce_reports) {
-        $manage_ecommerce_reports_checked = ' checked="checked"';
-    }
-
-    if ($view_card_data == 1) {
-        $view_card_data_checked = ' checked="checked"';
-    }
-    
-    // find out if set offline payment checkbox should be checked or not
-    if ($set_offline_payment == 1) {
-        $set_offline_payment_checked = ' checked="checked"';
-    }
-    
-    // find out if manage contacts checkbox should be checked or not
-    if ($manage_contacts == 'yes') {
-        $manage_contacts_checked = ' checked="checked"';
-    }
-    
-    // find out if manage e-mails checkbox should be checked or not
-    if ($manage_emails == 'yes') {
-        $manage_emails_checked = ' checked="checked"';
-    }
-    
-    $contact_group_access_style = '';
-    
-    // if manage contacts and manage emails is off, then hide list of contact groups
-    if (($manage_contacts != 'yes') && ($manage_emails != 'yes')) {
-        $contact_group_access_style = '; display: none';
-    }
-    
     // Folders this user may edit or view. Read before the panels are built
     // because both the folder trees and the row summaries need them.
     $folders_that_user_has_edit_access_to = array();
@@ -1204,7 +1140,7 @@ if (!$_POST) {
             'extra classes'=>'users',
             'icon'=>'account',
             'heading'=>lang('Edit User'),
-            'heading_description' => lang('Update this user\'s privileges, or email a new password.'),
+            'heading_description' => lang('Update this user\'s role and rights, or e-mail a link to set a new password.'),
             'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')),
             'breadcrumb' => array(
                 array('label' => lang('Users'), 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')),
@@ -1275,6 +1211,7 @@ if (!$_POST) {
                                             <select class="form-control" name="home_page" id="home_page"><option value="0">[' . lang('None') . ']</option>' . select_page($home) . '</select>
                                             <div class="form-text">' . lang('Opened after signing in.') . '</div>
                                         </div>
+                                        ' . $output_account_enabled_field . '
                                     </div>
 
                                     <hr class="border-subtle-secondary opacity-50 my-5">
@@ -1336,100 +1273,16 @@ if (!$_POST) {
     
     // if user was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
-        // get role for user that is being deleted
-        $query =
-            "SELECT user_role
-            FROM user
-            WHERE user_id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
-        $role = $row['user_role'];
-        
-        // assume that user is allowed to be deleted until we find out otherwise
-        $allow_delete = true;
-        
-        // if the editor is an administrator and the user that is being edited is an administrator, find out if user is allowed to be deleted
-        if (($user['role'] == 0) && ($role == 0)) {
-            // check to see if there is another administrator user, other than this user that is being edited
-            $query =
-                "SELECT user_id
-                FROM user
-                WHERE
-                    (user_role = '0')
-                    AND (user_id != ?)";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-            
-            // if there is no other administrator user, do not allow user to be deleted
-            if (mysqli_num_rows($result) == 0) {
-                $allow_delete = false;
-            }
-        }
+        $result = db_q("SELECT user_role FROM user WHERE user_id = ?", array((string) $audit_user_id)) or output_error('Query failed.');
+        $role = (mysqli_fetch_assoc($result) ?: array('user_role' => null))['user_role'];
+
+        // The last enabled administrator is not deleted.
+        $allow_delete = !(($user['role'] == 0) && ($role == 0) && pg_user_is_last_admin($audit_user_id));
 
         // if the user is allowed to be deleted
         if ($allow_delete == true) {
-            // The account as it was, before anything that goes with it is
-            // removed.
-            $audit_before = pg_audit_fetch('user', $audit_user_id);
+            pg_user_delete($audit_user_id);
 
-            // Revoke sign-in tokens first, as delete_users.php does, so no token
-            // outlives the user row it belongs to.
-            pg_auth_token_revoke_user((int) ($_POST['id'] ?? 0));
-
-            // The second factor, its recovery codes and the account's
-            // passkeys go with the account, as in delete_users.php: MySQL 5.7
-            // hands the highest id out again after a restart, and a new
-            // account would inherit them.
-            pg_mfa_reset((int) ($_POST['id'] ?? 0));
-
-            // The Microsoft and Apple identities go with the account.
-            pg_signin_identities_forget((int) ($_POST['id'] ?? 0));
-
-            // So do its favourites and back-in-stock requests.
-            pg_wishlist_forget_user((int) ($_POST['id'] ?? 0));
-            pg_stock_notify_forget_user((int) ($_POST['id'] ?? 0));
-
-            // delete user record
-            $query = "DELETE FROM user WHERE user_id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-
-            pg_audit_record('delete', 'user', $audit_user_id, $audit_before);
-            
-            // delete aclfolder records
-            $query = "DELETE FROM aclfolder WHERE aclfolder_user = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-            
-            // delete users_contact_groups_xref records
-            $query = "DELETE FROM users_contact_groups_xref WHERE user_id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-            
-            // delete users_calendars_xref records
-            $query = "DELETE FROM users_calendars_xref WHERE user_id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-            
-            // delete address book records
-            $query = "DELETE FROM address_book WHERE user = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-            
-            // delete ad region xref records
-            $query = "DELETE FROM users_ad_regions_xref WHERE user_id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-            
-            // delete common region xref records
-            $query = "DELETE FROM users_common_regions_xref WHERE user_id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-            
-            // delete menu xref records
-            $query = "DELETE FROM users_menus_xref WHERE user_id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-
-            db("DELETE FROM users_messages_xref WHERE user_id = '" . e($_POST['id'] ?? '') . "'");
-
-            // A person's saved replies are theirs alone.
-            if (pg_schema_has('ws_saved_replies')) db("DELETE FROM ws_saved_replies WHERE user_id = '" . (int) ($_POST['id'] ?? 0) . "'");
-
-            // delete shared component xref records
-            if (pg_schema_has('users_shared_components_xref')) db("DELETE FROM users_shared_components_xref WHERE user_id = '" . e($_POST['id'] ?? '') . "'");
-            
             log_activity(lang(array('string'=>'user ({var:1}) was deleted','vars'=>$_POST['username'])), $_SESSION['sessionusername']);
             
             $liveform_view_users->add_notice(lang('The user has been deleted.'));
@@ -1474,8 +1327,10 @@ if (!$_POST) {
             }
         }
 
-        // if editor is not an administrator and the editor's role is less than or equal to the role that the editor is trying to set, then output error
-        if (($user['role'] != 0) && ($user['role'] >= $_POST['role'])) {
+        // A role at or above the editor's own is refused, and so is a save
+        // without a role, except to an administrator (the last
+        // administrator's form posts no role).
+        if (!pg_user_role_writable($user['role'], $_POST['role'] ?? null)) {
             log_activity(lang('access denied because user does not have access to set the requested role for a user'), $_SESSION['sessionusername']);
             output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
@@ -1483,27 +1338,12 @@ if (!$_POST) {
         $_POST['username'] = trim($_POST['username'] ?? '');
         $_POST['email'] = trim($_POST['email'] ?? '');
 
-        // If the username is blank, then output error.
-        if ($_POST['username'] == '') {
-            output_error(lang(array('string'=>'{var:1} is required','vars'=>lang('Username'))) . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
-        }
+        // A blank username, an invalid e-mail address, or one another
+        // account already uses.
+        $problem = pg_user_write_problem($_POST['username'], $_POST['email'], $audit_user_id);
 
-        // validate e-mail address
-        if (validate_email_address($_POST['email']) == FALSE) {
-            output_error(lang(array('string'=>'{var:1} is invalid','vars'=>lang('The email address'))) . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
-        }
-
-        // determine if username is already in use
-        $result = db_q("SELECT user_id FROM user WHERE ((user_username = ?) OR (user_email = ?)) AND (user_id != ?)", array((string) ($_POST['username'] ?? ''), (string) ($_POST['username'] ?? ''), (string) ($_POST['id'] ?? ''))) or output_error('Query failed');
-        if (mysqli_num_rows($result) > 0)
-        {
-            output_error(lang('The username that you entered is already in use') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
-        }
-
-        // determine if e-mail address is already in use
-        $result = db_q("SELECT user_id FROM user WHERE ((user_email = ?) OR (user_username = ?)) AND (user_id != ?)", array((string) ($_POST['email'] ?? ''), (string) ($_POST['email'] ?? ''), (string) ($_POST['id'] ?? ''))) or output_error('Query failed');
-        if (mysqli_num_rows($result) > 0) {
-            output_error(lang('The email address that you entered is already in use') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        if ($problem !== '') {
+            output_error(pg_user_write_problem_message($problem) . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
 
         // A checked private folder whose date is not one stops here, before
@@ -1511,149 +1351,15 @@ if (!$_POST) {
         $past_expiry_folders = pg_user_form_check_expiry_dates($_POST);
 
         $username = $_POST['username'];
-        
-        // get role for user that is being edited
-        $query =
-            "SELECT user_role
-            FROM user
-            WHERE user_id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
-        $role = $row['user_role'];
-        
-        // assume that role is allowed to be changed, until we find out otherwise
-        $allow_role_change = true;
-        
-        // if the editor is an administrator and the user that is being edited is an administrator, find out if role is allowed to be changed
-        if (($user['role'] == 0) && ($role == 0)) {
-            // check to see if there is another administrator user, other than this user that is being edited
-            $query =
-                "SELECT user_id
-                FROM user
-                WHERE
-                    (user_role = '0')
-                    AND (user_id != ?)";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-            
-            // if there is no other administrator user, do not allow the role to be changed
-            if (mysqli_num_rows($result) == 0) {
-                $allow_role_change = false;
-            }
-        }
 
-        // if the role is allowed to be changed. The last administrator's role
-        // cards are disabled and post nothing; an empty role must not reach
-        // the column, where a lenient server would store it as 0.
-        if (($allow_role_change == true) && isset($_POST['role'])) {
-            $sql_role = " user_role = '" . escape($_POST['role']) . "',";
-            $saved_role = (int) $_POST['role'];
-        } else {
-            $sql_role = "";
-            $saved_role = (int) $role;
-        }
-        
-        // The optional modules' rights and the password hint, written only
-        // when their rows were drawn (the same checks as the screen): a row
-        // that was not drawn posts nothing, and writing its column would take
-        // the right away while the module or hints are switched off.
-        $sql_module_rights = '';
-
-        $module_columns = pg_user_form_module_columns(array(
-            'password_hint'   => (PASSWORD_HINT == true),
-            'forms'           => (FORMS == true),
-            'calendars'       => (CALENDARS == true),
-            'ecommerce'       => (ECOMMERCE == true),
-            'offline_payment' => (ECOMMERCE_OFFLINE_PAYMENT == true),
-            'erp'             => (defined('ERP_ENABLED') && ERP_ENABLED),
-        ));
-
-        foreach ($module_columns as $column => $field) {
-            $sql_module_rights .= " " . $column . " = '" . escape($_POST[$field] ?? '') . "',";
-        }
-
-        $sql_set_page_types = '';
-        
-        // if forms are enabled, then set the sql to update the set page type columns that are associated with this feature
-        if (FORMS == true) {
-            $sql_set_page_types .= 
-                " user_set_page_type_custom_form = '" . escape($_POST['set_page_type_custom_form'] ?? '') . "',
-                user_set_page_type_custom_form_confirmation = '" . escape($_POST['set_page_type_custom_form_confirmation'] ?? '') . "', 
-                user_set_page_type_form_list_view = '" . escape($_POST['set_page_type_form_list_view'] ?? '') . "',
-                user_set_page_type_form_item_view = '" . escape($_POST['set_page_type_form_item_view'] ?? '') . "',
-                user_set_page_type_form_view_directory = '" . escape($_POST['set_page_type_form_view_directory'] ?? '') . "',";
-        }
-        
-        // if calendars are enabled, then set the sql to update the set page type columns that are associated with this feature
-        if (CALENDARS == true) {
-            $sql_set_page_types .= 
-                " user_set_page_type_calendar_view = '" . escape($_POST['set_page_type_calendar_view'] ?? '') . "',
-                user_set_page_type_calendar_event_view = '" . escape($_POST['set_page_type_calendar_event_view'] ?? '') . "',";
-        }
-        
-        // if ecommerce is enabled, then set the sql to update the set page type columns that are associated with this feature
-        if (ECOMMERCE == true) {
-            $sql_set_page_types .= 
-                " user_set_page_type_catalog = '" . escape($_POST['set_page_type_catalog'] ?? '') . "',
-                user_set_page_type_catalog_detail = '" . escape($_POST['set_page_type_catalog_detail'] ?? '') . "',
-                user_set_page_type_express_order = '" . escape($_POST['set_page_type_express_order'] ?? '') . "',
-                user_set_page_type_order_form = '" . escape($_POST['set_page_type_order_form'] ?? '') . "',
-                user_set_page_type_shopping_cart = '" . escape($_POST['set_page_type_shopping_cart'] ?? '') . "',
-                user_set_page_type_shipping_address_and_arrival = '" . escape($_POST['set_page_type_shipping_address_and_arrival'] ?? '') . "',
-                user_set_page_type_shipping_method = '" . escape($_POST['set_page_type_shipping_method'] ?? '') . "',
-                user_set_page_type_billing_information = '" . escape($_POST['set_page_type_billing_information'] ?? '') . "',
-                user_set_page_type_order_preview = '" . escape($_POST['set_page_type_order_preview'] ?? '') . "',
-                user_set_page_type_order_receipt = '" . escape($_POST['set_page_type_order_receipt'] ?? '') . "',";
-        }
-        
-        // The workspace rights, when their row was drawn.
-        $sql_ws_rights = (pg_user_permission_ws_available() ? pg_user_permission_ws_sql('set') : '');
-
-        // The ERP's read-only right, when the ERP row was drawn and the
-        // column exists.
-        $sql_erp_readonly = ((defined('ERP_ENABLED') && ERP_ENABLED) ? pg_user_erp_readonly_sql('set') : '');
-
-        // The only write to the user row in this save; the rest go to the
-        // access lists.
-        $audit_before = pg_audit_fetch('user', $audit_user_id);
-
-        // update user
-        $query =
-            "UPDATE user
-            SET
-                user_username = '" . escape($username) . "',
-                user_email = '" . escape($_POST['email'] ?? '') . "',
-                $sql_role
-                user_home = '" . escape($_POST['home_page'] ?? '') . "',
-                user_badge = '" . escape($_POST['badge'] ?? '') . "',
-                user_badge_label = '" . escape($_POST['badge_label'] ?? '') . "',
-                user_reward_points = '" . escape($_POST['reward_points'] ?? '') . "',
-                user_manage_contacts = '" . escape($_POST['manage_contacts'] ?? '') . "',
-                user_manage_visitors = '" . escape($_POST['manage_visitors'] ?? '') . "',
-                user_create_pages = '" . escape($_POST['create_pages'] ?? '') . "',
-                user_delete_pages = '" . escape($_POST['delete_pages'] ?? '') . "',
-                user_manage_emails = '" . escape($_POST['manage_emails'] ?? '') . "',
-                $sql_module_rights
-                $sql_erp_readonly
-                $sql_ws_rights
-                user_set_page_type_email_a_friend = '" . escape($_POST['set_page_type_email_a_friend'] ?? '') . "',
-                user_set_page_type_folder_view = '" . escape($_POST['set_page_type_folder_view'] ?? '') . "',
-                user_set_page_type_photo_gallery = '" . escape($_POST['set_page_type_photo_gallery'] ?? '') . "',
-                $sql_set_page_types
-                user_user = '" . $user['id'] . "',
-                user_timestamp = UNIX_TIMESTAMP()
-            WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        pg_user_update($audit_user_id, $_POST, array('id' => $user['id'], 'role' => $user['role']));
 
         // The session keeps its own copy of the username from sign-in; the
         // greeting, the account menu, the Site Log and the developer lock
         // read it, so a rename of your own account must update it here.
-        if ((int) ($_POST['id'] ?? 0) === (int) USER_ID) {
+        if ($audit_user_id === (int) USER_ID) {
             $_SESSION['sessionusername'] = (string) $username;
         }
-
-        pg_audit_record('update', 'user', $audit_user_id, $audit_before);
-
-        pg_user_form_save_access($_POST['id'] ?? '', $saved_role, $_POST, true);
 
         log_activity(lang(array('string'=>'user ({var:1}) was modified','vars'=>$username)), $_SESSION['sessionusername']);
 

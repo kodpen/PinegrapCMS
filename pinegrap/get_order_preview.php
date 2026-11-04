@@ -50,6 +50,14 @@ function get_order_preview($properties) {
     // Remember if the form was empty so we know whether to prefill fields or not.
     $form_is_empty = $form->is_empty();
 
+    // A signed-in customer's store credit is applied (or taken off when the
+    // box was unticked) before the totals are read, so the total shown is the
+    // one charged.
+    $store_credit_box = pg_credit_checkout_box(
+        (int) ($_SESSION['ecommerce']['order_id'] ?? 0),
+        pg_credit_checkout_sync((int) ($_SESSION['ecommerce']['order_id'] ?? 0)));
+    $store_credit_ids = pg_credit_applied_ids((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+
     // get various order data that we will use later
     $query = "SELECT 
                 discount_offer_id,
@@ -184,7 +192,7 @@ function get_order_preview($properties) {
                 $arrival_date_id = $row['arrival_date_id'];
                 $shipping_method_id = $row['shipping_method_id'];
                 $shipping_method_name = $row['shipping_method_name'];
-                $shipping_method_description = $row['shipping_method_description'];
+                $shipping_method_description = pg_stock_pickup_describe($row['shipping_method_id'], $row['shipping_method_description'], true);
                 $shipping_cost = $row['shipping_cost'] / 100;
                 $original_shipping_cost = $row['original_shipping_cost'] / 100;
                 $ship_to_offer_id = $row['offer_id'];
@@ -1420,11 +1428,7 @@ function get_order_preview($properties) {
                 
                 $remaining_balance = $applied_gift_card['old_balance'] - $amount;
 
-                if ($applied_gift_card['givex'] == 0) {
-                    $protected_gift_card_code = protect_gift_card_code($applied_gift_card['code']);
-                } else {
-                    $protected_gift_card_code = protect_givex_gift_card_code($applied_gift_card['code']);
-                }
+                $protected_gift_card_code = pg_credit_applied_name($applied_gift_card, $store_credit_ids);
                 
                 $output_applied_gift_cards .= '<li>' . h($protected_gift_card_code) . ' (Remaining Balance: ' . prepare_price_for_output($remaining_balance, FALSE, $discounted_price = '', 'html') . ') <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/remove_gift_card_from_order.php?applied_gift_card_id=' . $applied_gift_card['id'] . '&send_to=' . h(urlencode(get_request_uri())) . get_token_query_string_field() . '" class="software_button_small_secondary remove_button" title="Remove">X</a></li>';
                 
@@ -1512,6 +1516,7 @@ function get_order_preview($properties) {
             // If gift cards are enabled and if a non-recurring transaction is required,
             // then the customer might want to add a gift card, so output gift card code field.
             if ((ECOMMERCE_GIFT_CARD == true) && ($nonrecurring_transaction == true)) {
+                $output_payment_methods .= pg_credit_checkout_box_html($store_credit_box);
                 $output_payment_methods .= '<div class="apply_gift_cards" style="margin-bottom: 1em">' . h(lang('Gift Card Code')) . ': ' . $form->output_field(array('type'=>'text', 'name'=>'gift_card_code', 'size'=>'30', 'maxlength'=>'50', 'class'=>'software_input_text mobile_text_width')) . ' <input type="submit" name="submit_apply_gift_card" value="' . h(lang('Apply')) . '" class="software_input_submit_small_secondary" formnovalidate></div>';
             }
             
@@ -2050,6 +2055,11 @@ function get_order_preview($properties) {
             LEFT JOIN arrival_dates ON ship_tos.arrival_date_id = arrival_dates.id
             WHERE ship_tos.order_id = '" . e($order_id) . "'
             ORDER BY ship_tos.id");
+
+        // The pickup place follows the method's description.
+        foreach ($ship_tos as $pickup_key => $pickup_ship_to) {
+            $ship_tos[$pickup_key]['shipping_method_description'] = pg_stock_pickup_describe($pickup_ship_to['shipping_method_id'], $pickup_ship_to['shipping_method_description']);
+        }
 
         $recipients = array_merge($recipients, $ship_tos);
 
@@ -2751,11 +2761,7 @@ function get_order_preview($properties) {
 
                         $gift_card['remaining_balance_info'] = prepare_price_for_output($gift_card['remaining_balance'] * 100, false, $discounted_price = '', 'html');
 
-                        if ($gift_card['givex'] == 0) {
-                            $gift_card['protected_code'] = protect_gift_card_code($gift_card['code']);
-                        } else {
-                            $gift_card['protected_code'] = protect_givex_gift_card_code($gift_card['code']);
-                        }
+                        $gift_card['protected_code'] = pg_credit_applied_name($gift_card, $store_credit_ids);
 
                         $gift_card['remove_url'] = PATH . SOFTWARE_DIRECTORY . '/remove_gift_card_from_order.php?applied_gift_card_id=' . $gift_card['id'] . '&send_to=' . urlencode(REQUEST_URL) . '&token=' . $_SESSION['software']['token'];
                         
@@ -3446,6 +3452,7 @@ function get_order_preview($properties) {
             'recurring_transaction' => $recurring_transaction,
             'payment' => $payment,
             'gift_card_code' => $gift_card_code,
+            'store_credit' => $gift_card_code ? $store_credit_box : array('show' => false, 'checked' => false, 'balance' => 0),
             'number_of_payment_methods' => $number_of_payment_methods,
             'credit_debit_card' => $credit_debit_card,
             'card_verification_number_url' => $card_verification_number_url,

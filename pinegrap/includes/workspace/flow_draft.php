@@ -113,6 +113,13 @@ function ws_flow_draft_proposal_input($change)
             $graph[$part] = $sent[$part];
         }
 
+        // Boxes sent all in one place - none given, as an assistant writes
+        // them, or the same x and y - are laid out from the start, as Pinegrap
+        // AI's are; boxes with places of their own keep them.
+        if (ws_flow_draft_unplaced($graph['nodes'])) {
+            $graph = ws_flow_auto_layout(ws_flow_graph_normalize($graph), array());
+        }
+
         $data['graph'] = $graph;
     }
 
@@ -125,6 +132,25 @@ function ws_flow_draft_proposal_input($change)
         'home'  => max(0, (int) ($sent['channel_id'] ?? 0)),
         'notes' => ($reason !== '') ? array($reason) : array(),
     );
+}
+
+/**
+ * Are these boxes all in one place, with more than one of them (pure)? A box
+ * with no x or y stands at 0, 0.
+ *
+ * @param array $nodes the boxes, as sent
+ * @return bool
+ */
+function ws_flow_draft_unplaced($nodes)
+{
+    $places = array();
+
+    foreach ((array) $nodes as $node) {
+        $node = is_array($node) ? $node : array();
+        $places[ws_flow_coord($node['x'] ?? 0) . ',' . ws_flow_coord($node['y'] ?? 0)] = true;
+    }
+
+    return (count((array) $nodes) > 1) && (count($places) === 1);
 }
 
 /**
@@ -852,7 +878,7 @@ function ws_flow_card_tries($viewer, $flow, $card)
  *
  * @param array $viewer
  * @param int   $change_id the ws_ai_changes row of the draft
- * @return array ok, error, graph (ws_flow_card_graph() plus flow_id, can_try, edit: ws_flow_draft_box_edit())
+ * @return array ok, error, graph (ws_flow_card_graph() plus flow_id, can_try)
  */
 function ws_flow_draft_card_graph_read($viewer, $change_id)
 {
@@ -887,7 +913,6 @@ function ws_flow_draft_card_graph_read($viewer, $change_id)
         return array('ok' => true, 'error' => '', 'graph' => ws_flow_card_tries($viewer, ws_flow_card_try_flow($viewer, 'opened', null, $flow, $can_try), $card) + array(
             'flow_id' => (int) $flow['id'],
             'can_try' => $can_try,
-            'edit'    => ws_flow_draft_box_edit(true, 'applied', true, true, (string) $flow['access'], $patch !== null),
         ));
     }
 
@@ -900,7 +925,6 @@ function ws_flow_draft_card_graph_read($viewer, $change_id)
     }
 
     $name = '';
-    $access = '';
 
     if ($patch === null) {
         $input = ws_flow_draft_flow_input($draft);
@@ -920,7 +944,6 @@ function ws_flow_draft_card_graph_read($viewer, $change_id)
         }
 
         $graph = $made['graph'];
-        $access = (string) $flow['access'];
     }
 
     // Not a flow of the person yet: no canvas to link to and no try button;
@@ -930,234 +953,7 @@ function ws_flow_draft_card_graph_read($viewer, $change_id)
     return array('ok' => true, 'error' => '', 'graph' => ws_flow_card_tries($viewer, $tries, ws_flow_card_graph($graph, $patch)) + array(
         'flow_id' => 0,
         'can_try' => false,
-        // Edit here opens the draft first, as Open on canvas does.
-        'edit'    => ws_flow_draft_box_edit(true, 'pending', true, true, $access, $patch !== null),
     ));
-}
-
-// ─── Edit here: a box changed from the card ─────────────────────────────
-
-/**
- * What the card's window offers on a picked box (pure): 'open' on a waiting
- * card where opening it would pass (its asker, who builds flows and may post
- * where it waits), so the draft is opened first; 'edit' on an opened card
- * whose flow the person may change; '' else. The proposal itself is never
- * edited: a box changed here is a save of the flow's draft.
- *
- * @param bool   $asker        the card waits for this person
- * @param string $status       the card's status
- * @param bool   $can_schedule ws_can_schedule()
- * @param bool   $can_post     ws_can_post_channel() where the card is
- * @param string $access       ws_flow_access() on the flow it was opened as, or that a patch changes
- * @param bool   $patch        a patch to a flow that exists
- * @return string open | edit | ''
- */
-function ws_flow_draft_box_edit($asker, $status, $can_schedule, $can_post, $access, $patch)
-{
-    if (!$asker) {
-        return '';
-    }
-
-    if ($status === 'pending') {
-        return ($can_schedule && $can_post && (!$patch || ($access === 'edit'))) ? 'open' : '';
-    }
-
-    return (($status === 'applied') && ($access === 'edit')) ? 'edit' : '';
-}
-
-/**
- * The settings the card's form changes, per kind of box: the texts a run
- * fills (as the canvas lists them for its data threads), each with the name
- * the canvas's side panel gives it, the most it holds and whether it takes
- * several lines. Everything else (people, addresses, times, rules, lists)
- * is changed on the canvas.
- *
- * @return array kind => list of {key, label, most, lines}
- */
-function ws_flow_draft_box_texts()
-{
-    $text = function ($key, $label, $most, $lines = false) {
-        return array('key' => $key, 'label' => $label, 'most' => $most, 'lines' => $lines);
-    };
-    $task = array($text('title', lang('Title'), 200), $text('description', lang('Description'), 8000, true));
-
-    return array(
-        'task'        => $task,
-        'task_open'   => $task,
-        'post'        => array($text('body', lang('Message'), 4000, true)),
-        'email'       => array($text('subject', lang('Subject'), 250), $text('body', lang('Text of the e-mail'), 20000, true)),
-        'notify'      => array($text('text', lang('What they are told'), 500, true)),
-        'webhook'     => array($text('text', lang('Message'), 4000, true)),
-        'task_digest' => array($text('subject', lang('Subject'), 250), $text('intro', lang('Opening lines'), 2000, true)),
-        'report'      => array($text('title', lang('Title of the summary'), 160)),
-        'checkin'     => array($text('question', lang('Question'), 500, true)),
-        'approval'    => array($text('title', lang('Title'), 200), $text('text', lang('Description'), 4000, true)),
-    );
-}
-
-/**
- * The settings of a box the card's form shows (pure): its kind's texts
- * (ws_flow_draft_box_texts()) with what the box holds now. A kind with none
- * shows only its label.
- *
- * @param string $kind
- * @param array  $config the box's config
- * @param array  $texts  ws_flow_draft_box_texts()
- * @return array list of {key, label, most, lines, value}
- */
-function ws_flow_draft_box_fields($kind, $config, $texts)
-{
-    $fields = array();
-
-    foreach ((array) ($texts[$kind] ?? array()) as $field) {
-        $value = $config[$field['key']] ?? '';
-        $fields[] = $field + array('value' => is_scalar($value) ? (string) $value : '');
-    }
-
-    return $fields;
-}
-
-/**
- * The graph with one box's label and texts as the card's form sent them
- * (pure): only the texts its kind's form shows are set, cut to their most;
- * the rest of the box, its place and its arrows stay. The flow's save
- * normalizes the box again.
- *
- * @param array  $graph   ws_flow_graph_normalize()
- * @param string $node_id
- * @param mixed  $label
- * @param mixed  $values  key => text sent
- * @param array  $texts   ws_flow_draft_box_texts()
- * @return array ok, error, graph
- */
-function ws_flow_draft_box_set($graph, $node_id, $label, $values, $texts)
-{
-    $values = is_array($values) ? $values : array();
-
-    foreach ($graph['nodes'] as $i => $node) {
-        if ((string) $node['id'] !== (string) $node_id) {
-            continue;
-        }
-
-        $config = is_array($node['config']) ? $node['config'] : array();
-
-        foreach (ws_flow_draft_box_fields((string) $node['kind'], $config, $texts) as $field) {
-            if (array_key_exists($field['key'], $values) && is_scalar($values[$field['key']])) {
-                $config[$field['key']] = $field['lines'] ? ws_flow_lines($values[$field['key']], $field['most']) : ws_flow_line($values[$field['key']], $field['most']);
-            }
-        }
-
-        $graph['nodes'][$i]['label'] = ws_flow_line(is_scalar($label) ? (string) $label : '', 160);
-        $graph['nodes'][$i]['config'] = $config;
-
-        return array('ok' => true, 'error' => '', 'graph' => $graph);
-    }
-
-    return array('ok' => false, 'error' => lang('That box is no longer on the flow.'), 'graph' => $graph);
-}
-
-/**
- * The flow an opened draft card edits here, with the box picked: the card's
- * asker, the flow it was opened as at edit. The card is opened first
- * (ws_flow_draft_open()) when it still waits.
- *
- * @param array  $viewer
- * @param int    $change_id
- * @param string $node_id
- * @return array ok, error, flow, node
- */
-function ws_flow_draft_box_flow($viewer, $change_id, $node_id)
-{
-    $fail = function ($error) {
-        return array('ok' => false, 'error' => $error, 'flow' => null, 'node' => null);
-    };
-
-    if (!function_exists('ws_changes_ready') || !ws_changes_ready() || !ws_flows_ready()) {
-        return $fail(lang('The database has to be updated first.'));
-    }
-
-    $row = db_item("SELECT * FROM ws_ai_changes WHERE id = '" . (int) $change_id . "' AND record_type = 'flow' AND action = 'draft'");
-
-    if (!is_array($row) || ((int) $row['requested_by'] !== (int) $viewer['id'])) {
-        return $fail(lang('That draft could not be found.'));
-    }
-
-    $draft = json_decode((string) $row['snapshot'], true);
-    $flow = ws_flow((int) (is_array($draft) ? ($draft['flow_id'] ?? 0) : 0));
-
-    if (ws_flow_draft_box_edit(true, (string) $row['status'], true, true, ws_flow_access($viewer, $flow), false) !== 'edit') {
-        return $fail(lang('The flow this draft was opened as is gone, or you may no longer change it.'));
-    }
-
-    foreach (ws_flow_graph_of($flow)['nodes'] as $node) {
-        if ((string) $node['id'] === (string) $node_id) {
-            return array('ok' => true, 'error' => '', 'flow' => $flow, 'node' => $node);
-        }
-    }
-
-    return $fail(lang('That box is no longer on the flow.'));
-}
-
-/**
- * A box of an opened draft card's flow as the card's form shows it: its
- * label, its kind and the texts its form changes, with the draft_rev the
- * save is checked at.
- *
- * @param array  $viewer
- * @param int    $change_id
- * @param string $node_id
- * @return array ok, error, box (flow_id, draft_rev, id, kind, kind_label, label, fields)
- */
-function ws_flow_draft_box_read($viewer, $change_id, $node_id)
-{
-    $found = ws_flow_draft_box_flow($viewer, $change_id, $node_id);
-
-    if (!$found['ok']) {
-        return array('ok' => false, 'error' => $found['error'], 'box' => null);
-    }
-
-    $node = $found['node'];
-    $kinds = ws_flow_kinds();
-
-    return array('ok' => true, 'error' => '', 'box' => array(
-        'flow_id'    => (int) $found['flow']['id'],
-        'draft_rev'  => (int) $found['flow']['draft_rev'],
-        'id'         => (string) $node['id'],
-        'kind'       => (string) $node['kind'],
-        'kind_label' => (string) ($kinds[$node['kind']]['label'] ?? $node['kind']),
-        'label'      => (string) $node['label'],
-        'fields'     => ws_flow_draft_box_fields((string) $node['kind'], (array) $node['config'], ws_flow_draft_box_texts()),
-    ));
-}
-
-/**
- * Saves a box changed on an opened draft card through the canvas's own save
- * (ws_flow_save() with the draft_rev the form was read at): a draft moved
- * meanwhile on another screen is refused with 409, as on the canvas. The
- * card's proposal (its ws_ai_changes row) is not touched.
- *
- * @param array  $viewer
- * @param int    $change_id
- * @param string $node_id
- * @param array  $data label, settings (key => text), draft_rev
- * @return array a ws_flow_save() result
- */
-function ws_flow_draft_box_save($viewer, $change_id, $node_id, $data)
-{
-    $found = ws_flow_draft_box_flow($viewer, $change_id, $node_id);
-
-    if (!$found['ok']) {
-        return ws_flow_refusal($found['error'], 403) + array('flow_id' => 0, 'draft_rev' => 0, 'problems' => array());
-    }
-
-    $flow = $found['flow'];
-    $set = ws_flow_draft_box_set(ws_flow_graph_of($flow), $node_id, $data['label'] ?? '', $data['settings'] ?? array(), ws_flow_draft_box_texts());
-
-    if (!$set['ok']) {
-        return ws_flow_refusal($set['error']) + array('flow_id' => (int) $flow['id'], 'draft_rev' => 0, 'problems' => array());
-    }
-
-    return ws_flow_save($viewer, array('graph' => $set['graph'], 'draft_rev' => (int) ($data['draft_rev'] ?? 0)), $flow);
 }
 
 /**
@@ -1177,13 +973,6 @@ function ws_flow_draft_js_strings()
         'fd_box_try'       => lang('Try this box'),
         'fd_box_pick'      => lang('Pick a box to see it here.'),
         'fd_try_refusal'   => ws_js_template('It would not run: {var:1}', 1),
-        'fd_box_edit'      => lang('Edit here'),
-        'fd_box_open_edit' => lang('Open and edit here'),
-        'fd_box_label'     => lang('Name on the box'),
-        'fd_box_save'      => lang('Save'),
-        'fd_box_cancel'    => lang('Cancel'),
-        'fd_box_saved'     => lang('Saved to the flow\'s draft.'),
-        'fd_box_canvas'    => lang('People, times and rules are changed on the canvas.'),
     );
 }
 
@@ -1281,6 +1070,7 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
         ),
         'condition.rule' => array('hint' => ws_flow_ai_rule_shape()),
         'approval.approvers' => array('hint' => 'user ids from the list of people, the ones who answer; the person who asked when the request says I or me'),
+        'value.b' => array('hint' => 'the second value; ' . implode(', ', ws_flow_derived_two_inputs()) . ' need it (join writes a, a space, then b), so a text with values in it is split between a and b'),
     );
     // The same two settings on every step box.
     $any = array(
@@ -1672,14 +1462,78 @@ function ws_flow_ai_edge_outcome($edge, $kind)
 }
 
 /**
+ * A box the model meant as a question, made the box that asks it (pure): a
+ * post or check-in box with an arrow leaving it on yes, no, approved or
+ * rejected says something and waits for no answer, so it has none of those
+ * outcomes and nothing would wait for the answer. It becomes an approval box
+ * in its own channel (the request's when it had none), its message the
+ * question, the person who asked the one who answers; its arrows on yes,
+ * done or next leave on approved, on no on rejected. Any other box, and a
+ * post with no such arrow, stays as sent.
+ *
+ * @param array $graph   ws_flow_graph_normalize()
+ * @param array $context asker (user id), channel (the request's channel id)
+ * @return array the graph
+ */
+function ws_flow_ai_question_boxes($graph, $context)
+{
+    $asker = (int) ($context['asker'] ?? 0);
+    $channel = (int) ($context['channel'] ?? 0);
+
+    if ($asker <= 0) {
+        return $graph;
+    }
+
+    $asks = array();
+
+    foreach ($graph['edges'] as $edge) {
+        if (in_array($edge['on'], array('yes', 'no', 'approved', 'rejected'), true)) {
+            $asks[(string) $edge['from']] = true;
+        }
+    }
+
+    foreach ($graph['nodes'] as $index => $node) {
+        if (!isset($asks[(string) $node['id']]) || !in_array($node['kind'], array('post', 'checkin'), true)) {
+            continue;
+        }
+
+        $question = ($node['kind'] === 'post') ? (string) $node['config']['body'] : (string) $node['config']['question'];
+        $in = (int) $node['config']['channel_id'];
+
+        $graph['nodes'][$index]['kind'] = 'approval';
+        $graph['nodes'][$index]['config'] = ws_flow_config_normalize('approval', array(
+            'channel_id' => ($in > 0) ? $in : $channel,
+            'title'      => ($question !== '') ? $question : (string) $node['label'],
+            'approvers'  => array($asker),
+        ));
+
+        foreach ($graph['edges'] as $at => $edge) {
+            if ((string) $edge['from'] !== (string) $node['id']) {
+                continue;
+            }
+
+            if (in_array($edge['on'], array('yes', 'done', 'next'), true)) {
+                $graph['edges'][$at]['on'] = 'approved';
+            } elseif ($edge['on'] === 'no') {
+                $graph['edges'][$at]['on'] = 'rejected';
+            }
+        }
+    }
+
+    return $graph;
+}
+
+/**
  * A new flow the model sent as boxes and arrows, as a graph laid out on the
  * canvas (pure). The graph's own check is made afterwards.
  *
- * @param array $args boxes, arrows
- * @param array $keys ws_flow_ai_setting_keys()
+ * @param array $args    boxes, arrows
+ * @param array $keys    ws_flow_ai_setting_keys()
+ * @param array $context asker, channel: a post meant as a question is read
+ *                       for them (ws_flow_ai_question_boxes()); none, as sent
  * @return array ok, error, graph
  */
-function ws_flow_ai_graph($args, $keys)
+function ws_flow_ai_graph($args, $keys, $context = array())
 {
     $boxes = $args['boxes'] ?? null;
     $arrows = $args['arrows'] ?? array();
@@ -1713,7 +1567,7 @@ function ws_flow_ai_graph($args, $keys)
         $graph['edges'][] = ws_flow_ai_edge_outcome($edge, $kind_of[$edge['from']] ?? '');
     }
 
-    return array('ok' => true, 'error' => '', 'graph' => ws_flow_auto_layout(ws_flow_graph_normalize($graph), array()));
+    return array('ok' => true, 'error' => '', 'graph' => ws_flow_auto_layout(ws_flow_ai_question_boxes(ws_flow_graph_normalize($graph), $context), array()));
 }
 
 /**
@@ -2108,7 +1962,7 @@ function ws_flow_ai_propose($row, &$state, $args)
             return array('error' => 'changes are for a flow that exists (flow_id). A new flow is sent as name, boxes and arrows.');
         }
 
-        $made = ws_flow_ai_graph($args, $keys);
+        $made = ws_flow_ai_graph($args, $keys, array('asker' => (int) $asker['id'], 'channel' => (int) $row['channel_id']));
 
         if (!$made['ok']) {
             return array('error' => $made['error']);
@@ -2490,9 +2344,10 @@ function ws_flow_ai_sketch_parse($content)
  * @param array    $keys     ws_flow_ai_setting_keys()
  * @param string   $fallback the name when the model gave none
  * @param callable $problems graph => texts, ws_flow_ai_problem_texts()
+ * @param array    $context  asker, channel (ws_flow_ai_graph())
  * @return array ok, error (for the model), name, graph, problems, reason
  */
-function ws_flow_ai_sketch_read($content, $keys, $fallback, $problems = 'ws_flow_ai_problem_texts')
+function ws_flow_ai_sketch_read($content, $keys, $fallback, $problems = 'ws_flow_ai_problem_texts', $context = array())
 {
     $fail = function ($error) {
         return array('ok' => false, 'error' => $error, 'name' => '', 'graph' => null, 'problems' => array(), 'reason' => '');
@@ -2507,7 +2362,7 @@ function ws_flow_ai_sketch_read($content, $keys, $fallback, $problems = 'ws_flow
         return $fail('This is a new flow: send name, boxes and arrows, no flow_id or changes.');
     }
 
-    $made = ws_flow_ai_graph($args, $keys);
+    $made = ws_flow_ai_graph($args, $keys, $context);
 
     if (!$made['ok']) {
         return $fail($made['error']);
@@ -2539,9 +2394,10 @@ function ws_flow_ai_sketch_read($content, $keys, $fallback, $problems = 'ws_flow
  * @param string   $language
  * @param callable $ask       messages => pg_ai_chat()'s answer (ok, text, error)
  * @param callable $problems  graph => texts, ws_flow_ai_problem_texts()
+ * @param array    $context   asker, channel (ws_flow_ai_graph())
  * @return array ok, error (for the person), name, graph, problems, reason, tries
  */
-function ws_flow_ai_sketch_draft($sentence, $catalogue, $language, $ask, $problems = 'ws_flow_ai_problem_texts')
+function ws_flow_ai_sketch_draft($sentence, $catalogue, $language, $ask, $problems = 'ws_flow_ai_problem_texts', $context = array())
 {
     $keys = ws_flow_ai_setting_keys($catalogue);
     $messages = ws_flow_ai_sketch_messages($sentence, $catalogue, $language);
@@ -2554,7 +2410,7 @@ function ws_flow_ai_sketch_draft($sentence, $catalogue, $language, $ask, $proble
             return array('ok' => false, 'error' => (string) ($reply['error'] ?? ''), 'tries' => $try);
         }
 
-        $read = ws_flow_ai_sketch_read((string) $reply['text'], $keys, $sentence, $problems);
+        $read = ws_flow_ai_sketch_read((string) $reply['text'], $keys, $sentence, $problems, $context);
 
         if ($read['ok'] && empty($read['problems'])) {
             break;
@@ -2615,7 +2471,7 @@ function ws_flow_ai_sketch($viewer, $sentence, $channel_id = 0, $ask = null)
         };
     }
 
-    $draft = ws_flow_ai_sketch_draft($sentence, ws_flow_ai_catalogue(), ws_ai_request_language($sentence), $ask);
+    $draft = ws_flow_ai_sketch_draft($sentence, ws_flow_ai_catalogue(), ws_ai_request_language($sentence), $ask, 'ws_flow_ai_problem_texts', array('asker' => (int) $viewer['id'], 'channel' => (int) $channel_id));
 
     if (!$draft['ok']) {
         return $fail($draft['error']);

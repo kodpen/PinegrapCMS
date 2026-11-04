@@ -302,6 +302,7 @@ const StyleDesigner = (function () {
     // comment for the SQL rationale). The "0" key holds the full unfiltered
     // list for backwards compat.
     var _formItemViewPagesByForm = {}; // form_id → [{page_id, page_name, page_title}, …]
+    var _feeProductsCache         = null; // [{id, name, title, price}, …] — a form fee's product list
     var _productGroupsCache       = null; // [{id, name, parent_id, sort_order}, …] — catalog group list
     var _catalogDetailPagesCache  = null; // [{page_id, page_name, page_title}, …] — catalog detail-page candidates
     // [{id, name, parent_id, archived}, …] — the Photo Gallery widget's Folder
@@ -2358,6 +2359,110 @@ const StyleDesigner = (function () {
 
     function _cfMeta() {
         return (_design && _design.formMeta) ? _design.formMeta : { rss: {}, contact: {}, folders: [] };
+    }
+
+    // The products a form's fee may name, fetched once when the Payment rows
+    // are first drawn; [] when the list could not be read.
+    function _fetchFeeProducts(cb) {
+        if (_feeProductsCache !== null) { if (cb) cb(_feeProductsCache); return; }
+        var apiBase = (typeof path !== 'undefined' ? path : '') +
+                      (typeof software_directory !== 'undefined' ? software_directory + '/' : '') + 'api.php';
+        var token   = (typeof software_token !== 'undefined') ? software_token : '';
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', apiBase, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState !== 4) return;
+            try {
+                var resp = JSON.parse(xhr.responseText);
+                _feeProductsCache = (resp && resp.status === 'success' && Array.isArray(resp.products)) ? resp.products : [];
+            } catch (e) { _feeProductsCache = []; }
+            if (cb) cb(_feeProductsCache);
+        };
+        xhr.onerror = function () { _feeProductsCache = []; if (cb) cb(_feeProductsCache); };
+        xhr.send(JSON.stringify({ action: 'shared_component', sub_action: 'list_fee_products', token: token }));
+    }
+
+    // A form's payment setting in the shape the server keeps
+    // (pg_form_fee_settings_clean()): amounts in minor units, 0 = no bound.
+    function _cfPaymentOf(fs) {
+        var p = (fs && fs.payment && typeof fs.payment === 'object') ? fs.payment : {};
+        return {
+            product_id: parseInt(p.product_id, 10) > 0 ? parseInt(p.product_id, 10) : 0,
+            amount_source: p.amount_source === 'field' ? 'field' : 'product',
+            amount_field: String(p.amount_field || ''),
+            amount_min: parseInt(p.amount_min, 10) > 0 ? parseInt(p.amount_min, 10) : 0,
+            amount_max: parseInt(p.amount_max, 10) > 0 ? parseInt(p.amount_max, 10) : 0,
+            offline: p.offline ? 1 : 0
+        };
+    }
+
+    // Minor units as the amount box shows them, and back.
+    function _cfMinorToBox(v) { return v > 0 ? (v / 100).toFixed(2) : ''; }
+    function _cfBoxToMinor(v) {
+        var n = parseFloat(String(v || '').replace(/\s/g, '').replace(',', '.'));
+        return (isFinite(n) && n > 0) ? Math.round(n * 100) : 0;
+    }
+
+    // The Payment rows of a page's form settings: the fee product, where the
+    // amount comes from, its bounds and the offline choice. The order and
+    // the payment step are the server's (includes/fn/form_payments.php).
+    function _cfPaymentRows(fs, tree, row) {
+        var meta = _cfMeta();
+        if (!meta.payment) return '';
+        var pay = _cfPaymentOf(fs);
+        var sym = String(meta.currencySymbol || '');
+        var products = _feeProductsCache;
+        if (products === null) _fetchFeeProducts(function () { renderProperties(); });
+        var opt = function (value, label, on) {
+            return '<option value="' + esc(String(value)) + '"' + (on ? ' selected' : '') + '>' + esc(label) + '</option>';
+        };
+        var productSel = '<select class="form-control form-control-sm sd-cf-pay" data-k="product_id">' +
+            opt(0, _sdT('— No fee —'), pay.product_id === 0) +
+            (products || []).map(function (pr) {
+                var label = (pr.title ? pr.title + ' (' + pr.name + ')' : pr.name) + ' · ' + sym + _cfMinorToBox(pr.price || 0);
+                return opt(pr.id, label, pr.id === pay.product_id);
+            }).join('') +
+            ((products && pay.product_id > 0 && !products.some(function (pr) { return pr.id === pay.product_id; }))
+                ? opt(pay.product_id, '#' + pay.product_id, true) : '') +
+            '</select>';
+        var html = row(_sdT('Payment'),
+            (products === null ? '<div style="font-size:.7rem;color:#888">' + esc(_sdT('Loading…')) + '</div>' : productSel) +
+            '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
+                esc(_sdT('A product whose order the visitor pays when sending the form. The record is kept as unpaid until the payment arrives.')) +
+            '</div>');
+        if (pay.product_id === 0) return html;
+
+        var fields = (tree ? _cfFieldsOf(tree) : []).filter(function (f) {
+            return f.name && f.type !== 'file upload' && f.type !== 'information';
+        });
+        html += row(_sdT('Amount'),
+            '<select class="form-control form-control-sm sd-cf-pay" data-k="amount_source">' +
+                opt('product', _sdT('The product\'s price'), pay.amount_source === 'product') +
+                opt('field', _sdT('A figure the visitor enters'), pay.amount_source === 'field') +
+            '</select>' +
+            (pay.amount_source === 'field'
+                ? '<select class="form-control form-control-sm mt-1 sd-cf-pay" data-k="amount_field">' +
+                      opt('', _sdT('— Choose a field —'), pay.amount_field === '') +
+                      fields.map(function (f) {
+                          return opt(f.name, (f.label || f.name) + ' (' + f.name + ')', String(f.name).toLowerCase() === pay.amount_field.toLowerCase());
+                      }).join('') +
+                  '</select>' +
+                  '<div class="d-flex gap-1 mt-1">' +
+                      '<input type="text" inputmode="decimal" class="form-control form-control-sm sd-cf-pay" data-k="amount_min" value="' + esc(_cfMinorToBox(pay.amount_min)) + '" placeholder="' + esc(_sdT('Minimum')) + '">' +
+                      '<input type="text" inputmode="decimal" class="form-control form-control-sm sd-cf-pay" data-k="amount_max" value="' + esc(_cfMinorToBox(pay.amount_max)) + '" placeholder="' + esc(_sdT('Maximum')) + '">' +
+                  '</div>' +
+                  '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
+                      esc(_sdT('A figure under the minimum or over the maximum is refused, never changed. Leave a bound empty for none.')) +
+                  '</div>'
+                : '')
+        );
+        html += row(_sdT('Offline payment'),
+            '<div class="form-field">' +
+                '<div class="switch"><input class="sd-cf-pay" data-k="offline" type="checkbox" id="sd-sw-cf-pay-offline"' + (pay.offline ? ' checked' : '') + '></div>' +
+                '<label for="sd-sw-cf-pay-offline" style="font-size:.72rem">' + esc(_sdT('Allow offline payment (bank transfer) when the store takes it')) + '</label>' +
+            '</div>');
+        return html;
     }
 
     function _cfSel(cls, current, entries, blankLabel) {
@@ -11414,6 +11519,7 @@ const StyleDesigner = (function () {
                     tag_cloud_region:     _sdT('Tag Cloud'),
                     google_reviews:       _sdT('Google Reviews'),
                     accessibility_statement: _sdT('Accessibility Statement'),
+                    booking:              _sdT('Booking'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -13862,11 +13968,47 @@ const StyleDesigner = (function () {
         return !!(node && node.props && node.props._bindings && node.props._bindings.href);
     }
 
+    // The name of the page a link kept by page id opens: a tab's (by id, or
+    // by key while it is not saved), else the page list's when it is loaded;
+    // '' when neither knows it. Pages hidden from the operator are in
+    // neither.
+    function _sdPageLinkName(pageId) {
+        var ref = String(pageId == null ? '' : pageId);
+        var id = /^[1-9][0-9]*$/.test(ref) ? parseInt(ref, 10) : 0;
+        var key = /^tab:./.test(ref) ? ref.substr(4) : '';
+        var name = '';
+        (_pages || []).forEach(function (p) {
+            if (name === '' && p && ((id && parseInt(p.page_id, 10) === id) || (key && p.key === key))) name = p.page_name || _sdT('New Page');
+        });
+        if (name === '' && id && Array.isArray(_allPagesCache)) {
+            _allPagesCache.forEach(function (p) { if (name === '' && p && parseInt(p.page_id, 10) === id && !_swPageBinned(p)) name = p.page_name || ''; });
+        }
+        return name;
+    }
+
+    // In place of the URL input of a link outside a widget kept by page id
+    // (a Prototype arrow or Bind Data wrote it): the page it opens, which a rename does
+    // not change, and a button back to a typed address (the fallback the
+    // site prints for a page that is gone).
+    function _sdPageLinkNotice(node) {
+        var spec = (node.props._bindParams && node.props._bindParams.href) || {};
+        var name = _sdPageLinkName(spec.page_id);
+        var text = (name !== '')
+            ? _sdT('This link opens the page “{var:1}” by its id: renaming the page keeps it.', esc(name))
+            : _sdT('This link opens a page by its id; if the page is gone, it opens {var:1}.', esc(node.props.href || '#'));
+        return '<div class="sd-bound-href-note" style="font-size:.7rem;color:#6366f1;' +
+               'background:rgba(99,102,241,.06);padding:4px 8px;border-radius:3px;line-height:1.4">' +
+               '<span class="bi bi-link-45deg me-1"></span>' + text +
+               '<br><button type="button" class="btn btn-link btn-sm p-0" data-sd-page-unlink style="font-size:.7rem">' + esc(_sdT('Type an address instead')) + '</button>' +
+               '</div>';
+    }
+
     // Read-only stand-in shown in place of a URL input whose href is bound.
     // Names the Bind Data option so the designer knows WHICH binding is
     // driving it, and points at the panel where it can be cleared.
     function _sdBoundHrefNotice(node) {
         var tok = (node && node.props && node.props._bindings && node.props._bindings.href) || '';
+        if (tok === '__page_link' && !_sdSystemWidgetCfgOf(node)) return _sdPageLinkNotice(node);
         return '<div class="sd-bound-href-note" style="font-size:.7rem;color:#6366f1;' +
                'background:rgba(99,102,241,.06);padding:4px 8px;border-radius:3px;line-height:1.4">' +
                '<span class="bi bi-link-45deg me-1"></span>' +
@@ -36324,7 +36466,8 @@ const StyleDesigner = (function () {
                                 '<div class="switch"><input class="sd-cf-sb" data-s="quiz" type="checkbox" id="sd-sw-cf-quiz"' + (_cfFS.quiz ? ' checked' : '') + '></div>' +
                                 '<label class="" for="sd-sw-cf-quiz" style="font-size:.72rem">' + esc(_sdT('A quiz form (so the fields can carry a correct answer)')) + '</label>' +
                             '</div>'
-                        );
+                        ) +
+                        _cfPaymentRows(_cfFS, _cfTree, row);
                 }
 
                 // An existing form: which one, and what it holds.
@@ -38581,6 +38724,23 @@ const StyleDesigner = (function () {
             });
         });
 
+        // The fee: written as one object in the server's shape; the product
+        // and the amount source show or hide the rows under them.
+        document.querySelectorAll('.sd-cf-pay').forEach(function (el) {
+            el.addEventListener('change', function () {
+                var fs = _cfPageSettings();
+                var pay = _cfPaymentOf(fs);
+                var k = el.dataset.k;
+                if (k === 'offline') pay.offline = el.checked ? 1 : 0;
+                else if (k === 'product_id') pay.product_id = parseInt(el.value, 10) > 0 ? parseInt(el.value, 10) : 0;
+                else if (k === 'amount_min' || k === 'amount_max') pay[k] = _cfBoxToMinor(el.value);
+                else if (k === 'amount_source') pay.amount_source = el.value === 'field' ? 'field' : 'product';
+                else if (k === 'amount_field') pay.amount_field = String(el.value || '').slice(0, 100);
+                fs.payment = pay;
+                if ((k === 'product_id' || k === 'amount_source') && typeof renderProperties === 'function') renderProperties();
+            });
+        });
+
         // A field line in the summary selects its control on the canvas.
         document.querySelectorAll('.sd-cf-jump').forEach(function (el) {
             el.addEventListener('click', function () {
@@ -38939,7 +39099,8 @@ const StyleDesigner = (function () {
         shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
         order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1,
         tag_cloud_region: 1, order_form: 1, folder_view: 1, photo_gallery: 1,
-        affiliate_sign_up_form: 1, google_reviews: 1, accessibility_statement: 1
+        affiliate_sign_up_form: 1, google_reviews: 1, accessibility_statement: 1,
+        booking: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -39528,30 +39689,70 @@ const StyleDesigner = (function () {
 
     // Bind Data outside a widget: a text, a link's address or a picture
     // prints a value of the page's record (pg_page_record_bind_props()),
-    // offered when the page holds a detail widget. A binding already set
-    // stays listed, so it can be seen and cleared.
+    // offered when the page holds a detail widget. A link of its own drawn
+    // as <a> may instead open a page of the site kept by its id
+    // ('__page_link', designer/page-link-by-id.md), on every page. A
+    // binding already set stays listed, so it can be seen and cleared.
     function _sdPageRecordBindRows(node) {
         var bindable = _getBindableProps(node);
         if (!bindable.length) return '';
         var opts = _sdPageRecordValueOptions();
         var cur = (node.props && node.props._bindings) || {};
+        var linkable = !!(window.PGProtoHotspots && window.PGProtoHotspots.pageLinkable(node));
         var rows = '';
+        var pageRow = false;
         bindable.forEach(function (b) {
             var current = cur[b.prop] || '';
-            if (!opts.length && !current) return;
+            var withPage = (b.prop === 'href' && linkable);
+            if (!opts.length && !current && !withPage) return;
             var html = '<option value="">' + esc(_sdT('— No binding —')) + '</option>';
             var listed = false;
+            if (withPage) {
+                listed = (current === SW_PAGE_LINK_TOKEN);
+                html += '<option value="' + esc(SW_PAGE_LINK_TOKEN) + '"' + (listed ? ' selected' : '') + '>' + esc(_sdT('A page of this site')) + '</option>';
+            }
+            var recordOpts = '';
             opts.forEach(function (o) {
                 if (o.token === current) listed = true;
-                html += '<option value="' + esc(o.token) + '"' + (o.token === current ? ' selected' : '') + '>' + esc(o.label) + '</option>';
+                recordOpts += '<option value="' + esc(o.token) + '"' + (o.token === current ? ' selected' : '') + '>' + esc(o.label) + '</option>';
             });
+            html += (withPage && recordOpts) ? '<optgroup label="' + esc(_sdT('This page\'s record')) + '">' + recordOpts + '</optgroup>' : recordOpts;
             if (current && !listed) html += '<option value="' + esc(current) + '" selected>' + esc(current) + '</option>';
-            rows += row(b.label, '<select class="form-control form-control-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>');
+            var extra = (withPage && current === SW_PAGE_LINK_TOKEN) ? _sdPageLinkPageRow(node) : '';
+            if (extra) pageRow = true;
+            rows += row(b.label, '<select class="form-control form-control-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' + extra);
         });
         if (!rows) return '';
-        return sect('bi-link-45deg', _sdT('Show this page\'s record'), rows +
-            '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
-            esc(_sdT('The value of the record the page opens (a product, an event, a form record); empty when the page opens none.')) + '</div>');
+        var hint = opts.length
+            ? '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+              esc(_sdT('The value of the record the page opens (a product, an event, a form record); empty when the page opens none.')) + '</div>'
+            : '';
+        return sect('bi-link-45deg', (opts.length && !pageRow) ? _sdT('Show this page\'s record') : _sdT('Bind Data'), rows + hint);
+    }
+
+    // The page a link outside a widget opens (props._bindParams.href), under
+    // its Bind Data select: the design's tabs, then the site's pages. The
+    // typed address stays as the fallback the site prints for a page that
+    // is gone (pg_page_link_expand_html()).
+    function _sdPageLinkPageRow(node) {
+        var spec = _swPageLinkSpec(node.props && node.props._bindParams && node.props._bindParams.href);
+        if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
+        var note = function (text, warn) {
+            return '<div style="font-size:.66rem;margin-top:3px;line-height:1.4;color:' + (warn ? '#b45309' : '#888') + '">' +
+                       (warn ? '<span class="bi bi-exclamation-triangle me-1"></span>' : '') + esc(text) + '</div>';
+        };
+        var html = '<div class="sd-sw-plink mt-2">' +
+            '<select class="form-control form-control-sm sd-sw-plink-page" aria-label="' + esc(_sdT('Page to open')) + '">' +
+                _swPageOptions(spec.page_id ? String(spec.page_id) : '0', _allPagesCache, { none: _sdT('— Choose a page —') }) +
+            '</select>';
+        if (!spec.page_id) {
+            html += note(_sdT('Choose the page this link opens.'), false);
+        } else if (_swPageLinkPageGone(spec.page_id, (typeof _pages !== 'undefined' && _pages) ? _pages : [], _allPagesCache)) {
+            html += note(_sdT('This page is deleted or in the Recycle Bin, so the link opens the address typed under its URL. Choose another page.'), true);
+        } else {
+            html += note(_sdT('The link finds the page by its id, so renaming or moving the page keeps it.'), false);
+        }
+        return html + '</div>';
     }
 
     // Whether `token` is one the page decides (pg_page_fact_spec()).
@@ -41015,6 +41216,21 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // booking token palette — has loop_area (one row per service a visitor
+    // may book). Mirrors _render_system_widget_booking() in widgets_booking.php.
+    var SW_BOOKING_TOKEN_GROUPS = [
+        { label: _sdT('Booking'), tokens: [
+            ['__service_total',       _sdT('Number of services offered')]
+        ]},
+        { label: _sdT('Service (loop_area)'), tokens: [
+            ['__service_id',          _sdT('Service number')],
+            ['__service_name',        _sdT('Service name')],
+            ['__service_description', _sdT('Service description')],
+            ['__service_length',      _sdT('Service length ("60 min")')],
+            ['__service_price',       _sdT('Service price (empty when free)')]
+        ]}
+    ];
+
     // accessibility_statement token palette — has loop_area (one row per
     // known limitation). Mirrors _render_system_widget_accessibility_statement()
     // in widgets_accessibility.php.
@@ -41101,7 +41317,8 @@ const StyleDesigner = (function () {
         ad_region:         SW_AD_REGION_TOKEN_GROUPS,
         tag_cloud_region:  SW_TAG_CLOUD_TOKEN_GROUPS,
         google_reviews:    SW_GOOGLE_REVIEWS_TOKEN_GROUPS,
-        accessibility_statement: SW_ACCESSIBILITY_STATEMENT_TOKEN_GROUPS
+        accessibility_statement: SW_ACCESSIBILITY_STATEMENT_TOKEN_GROUPS,
+        booking:           SW_BOOKING_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -41680,7 +41897,19 @@ const StyleDesigner = (function () {
     // name the canvas gives a bound container.
     function _sdSectionOptions(type) {
         var out = [];
-        if (type === 'catalog_listing') {
+        if (type === 'booking') {
+            // The parts pg_booking.js shows, hides and fills
+            // (pg_booking_widget_parts()).
+            out.push(['booking_step_service', _sdT('Step: choose a service')]);
+            out.push(['booking_step_staff',   _sdT('Step: choose a person (skipped when one person takes the service)')]);
+            out.push(['booking_step_when',    _sdT('Step: choose a day and a time')]);
+            out.push(['booking_step_details', _sdT('Step: the held time and the visitor\'s details')]);
+            out.push(['booking_staff',        _sdT('People to choose from (filled on the page)')]);
+            out.push(['booking_calendar',     _sdT('Month calendar of the free days (filled on the page)')]);
+            out.push(['booking_times',        _sdT('Free times of the chosen day (filled on the page)')]);
+            out.push(['booking_summary',      _sdT('The held time (filled on the page)')]);
+            out.push(['booking_status',       _sdT('Status line read out to screen readers')]);
+        } else if (type === 'catalog_listing') {
             out.push(['group_tree',        _sdT('Category Tree (nested list)')]);
             out.push(['filters_offcanvas', _sdT('Filter Offcanvas')]);
             out.push(['attribute_filters', _sdT('Attribute Filter UI (legacy)')]);
@@ -43162,6 +43391,12 @@ const StyleDesigner = (function () {
             ['has_enforcement', _sdT('An enforcement procedure is set')],
             ['has_last_check',  _sdT('The date of the last full check is known')]
         ],
+        booking: [
+            ['has_services',            _sdT('A service can be booked online')],
+            ['no_services',             _sdT('No service can be booked online yet')],
+            ['service_has_price',       _sdT('Row: the service has a price')],
+            ['service_has_description', _sdT('Row: the service has a description')]
+        ],
         google_reviews: [
             ['has_reviews',      _sdT('Google has a review of the business to show')],
             ['no_reviews',       _sdT('Google shows the business without a review')],
@@ -43495,6 +43730,10 @@ const StyleDesigner = (function () {
                 aOpts.push(['passkey_remove',          _sdT('Remove the passkey (passkey list)')]);
                 aOpts.push(['passkey_send_code',       _sdT('Send the code by e-mail (add a passkey form)')]);
                 aOpts.push(['mfa_recovery_send_code',  _sdT('Send the code by e-mail (new recovery codes form)')]);
+            }
+            if (region === 'booking' && (isBtnLike || cur.action === 'booking_service' || cur.action === 'booking_back')) {
+                aOpts.push(['booking_service', _sdT('Choose this service (loop_area)')]);
+                aOpts.push(['booking_back',    _sdT('Back to the previous step')]);
             }
             if (region === 'order_view') {
                 aOpts.push(['order_cancel_submit', _sdT('Cancel the order (cancellation form)')]);
@@ -44896,7 +45135,9 @@ const StyleDesigner = (function () {
             var bp = selectedNode.props;
             if (bp && value === SW_PAGE_LINK_TOKEN) {
                 if (!bp._bindParams || typeof bp._bindParams !== 'object' || Array.isArray(bp._bindParams)) bp._bindParams = {};
-                if (!bp._bindParams[propName]) bp._bindParams[propName] = { page_id: 0, params: [{ name: '', token: '' }] };
+                // Outside a widget there is no record to send values from.
+                var inWidget = !!(_isInsideSystemWidget(selectedNode) || _sdPartSidAt(selectedNode));
+                if (!bp._bindParams[propName]) bp._bindParams[propName] = { page_id: 0, params: inWidget ? [{ name: '', token: '' }] : [] };
             } else if (bp && value === SW_REF_TOKEN) {
                 if (!bp._bindParams || typeof bp._bindParams !== 'object' || Array.isArray(bp._bindParams)) bp._bindParams = {};
                 if (!bp._bindParams[propName]) bp._bindParams[propName] = { field: '', page_id: 0, show: '', kind: '' };
@@ -44921,6 +45162,7 @@ const StyleDesigner = (function () {
             p._bindParams.href = _swPageLinkSpec(spec);
             var sid = _isInsideSystemWidget(selectedNode);
             if (sid) _sharedDirty[sid] = true;
+            else _sdSharedMarkEdited(selectedNode);
             renderCanvas();
             if (repaint && typeof renderProperties === 'function') renderProperties();
         }
@@ -52388,6 +52630,17 @@ const StyleDesigner = (function () {
             });
         });
 
+        // data-sd-page-unlink: a link kept by page id goes back to its typed
+        // address (_sdPageLinkNotice()); the address stays as it was.
+        document.querySelectorAll('#sd-properties [data-sd-page-unlink]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                if (!selectedNode || !_sdMayEdit(selectedNode)) return;
+                saveState();
+                window.PGProtoHotspots.applyPatch(selectedNode.props, { key: 'href', value: selectedNode.props.href || '', bind: false });
+                render();
+            });
+        });
+
         // data-btn-display: toggle Bootstrap button styling classes (no-btn / btn / btn-link)
         document.querySelectorAll('#sd-properties select[data-btn-display]').forEach(function(el) {
             el.addEventListener('change', function() {
@@ -57060,7 +57313,8 @@ const StyleDesigner = (function () {
         { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' },
         { type: 'tag_cloud_region',  label: _sdT('Tag Cloud'),         slug: _sdT('tag-cloud'),         icon: 'bi-tags' },
         { type: 'google_reviews',    label: _sdT('Google Reviews'),    slug: _sdT('google-reviews'),    icon: 'bi-google' },
-        { type: 'accessibility_statement', label: _sdT('Accessibility Statement'), slug: _sdT('accessibility-statement'), icon: 'bi-universal-access' }
+        { type: 'accessibility_statement', label: _sdT('Accessibility Statement'), slug: _sdT('accessibility-statement'), icon: 'bi-universal-access' },
+        { type: 'booking',           label: _sdT('Booking'),           slug: _sdT('booking'),           icon: 'bi-calendar-check' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
@@ -64110,6 +64364,70 @@ const StyleDesigner = (function () {
                 ]);
             }
 
+            case 'booking': {
+                // The steps of an appointment: a service from the list, a
+                // person (or anyone), a free day and time, then the held
+                // time. pg_booking.js shows one step at a time and fills the
+                // people, the calendar, the times and the held time into
+                // their bound parts. Mirrors _render_system_widget_booking().
+                var bkStep = function (part, label, heading, children, back) {
+                    var kids = [createNode('semantic', { tag: 'h2', cssClass: 'h5 mb-3', text: heading, customName: _sdT('Heading') })].concat(children);
+                    if (back) {
+                        kids.push(createNode('semantic', { tag: 'button', cssClass: 'btn btn-link px-0 mt-3', text: _sdT('Back'), customName: _sdT('Back'),
+                            _attrs: [{ name: 'type', value: 'button' }], _bindings: { action: 'booking_back' } }));
+                    }
+                    return createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: label, _bindings: { section: part } }, kids);
+                };
+                var bkFill = function (part, label, cls) {
+                    return createNode('semantic', { tag: 'div', cssClass: cls, customName: label, _bindings: { section: part } });
+                };
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'section', cssClass: '', customName: _sdT('Booking'),
+                        _attrs: [{ name: 'aria-label', value: _sdT('Booking') }], _bindings: { eo_visible_if: 'has_services' } }, [
+                        bkStep('booking_step_service', _sdT('Service step'), _sdT('Choose a service'), [
+                            createNode('semantic', { tag: 'div', cssClass: 'list-group', customName: _sdT('Services') }, [
+                                createNode('loop_area', {}, [
+                                    createNode('semantic', { tag: 'button', cssClass: 'list-group-item list-group-item-action d-flex justify-content-between align-items-start gap-3 text-start', customName: _sdT('Service'),
+                                        _attrs: [{ name: 'type', value: 'button' }], _bindings: { action: 'booking_service' } }, [
+                                        createNode('semantic', { tag: 'span', cssClass: '', customName: _sdT('Name and description') }, [
+                                            createNode('semantic', { tag: 'span', cssClass: 'd-block fw-semibold', text: _sdT('Service name'), customName: _sdT('Service name'),
+                                                _bindings: { text: '__service_name' } }),
+                                            createNode('semantic', { tag: 'span', cssClass: 'd-block small text-body-secondary', text: _sdT('Service description'), customName: _sdT('Service description'),
+                                                _bindings: { text: '__service_description', eo_visible_if: 'service_has_description' } })
+                                        ]),
+                                        createNode('semantic', { tag: 'span', cssClass: 'text-end small text-nowrap', customName: _sdT('Length and price') }, [
+                                            createNode('semantic', { tag: 'span', cssClass: 'd-block', text: '60 min', customName: _sdT('Service length'),
+                                                _bindings: { text: '__service_length' } }),
+                                            createNode('semantic', { tag: 'span', cssClass: 'd-block fw-semibold', text: '500,00 TL', customName: _sdT('Service price'),
+                                                _bindings: { text: '__service_price', eo_visible_if: 'service_has_price' } })
+                                        ])
+                                    ])
+                                ])
+                            ])
+                        ], false),
+                        bkStep('booking_step_staff', _sdT('Person step'), _sdT('Choose a person'), [
+                            bkFill('booking_staff', _sdT('People'), 'd-flex flex-wrap gap-2')
+                        ], true),
+                        bkStep('booking_step_when', _sdT('Day and time step'), _sdT('Choose a day and a time'), [
+                            createNode('semantic', { tag: 'div', cssClass: 'row g-3', customName: _sdT('Day and time') }, [
+                                createNode('semantic', { tag: 'div', cssClass: 'col-12 col-md-auto', customName: _sdT('Day column') }, [
+                                    bkFill('booking_calendar', _sdT('Calendar'), '')
+                                ]),
+                                createNode('semantic', { tag: 'div', cssClass: 'col-12 col-md', customName: _sdT('Time column') }, [
+                                    bkFill('booking_times', _sdT('Times'), 'd-flex flex-wrap gap-2')
+                                ])
+                            ])
+                        ], true),
+                        bkStep('booking_step_details', _sdT('Details step'), _sdT('Your appointment'), [
+                            createNode('semantic', { tag: 'p', cssClass: 'alert alert-info', customName: _sdT('Held time'), _bindings: { section: 'booking_summary' } })
+                        ], true),
+                        createNode('semantic', { tag: 'p', cssClass: 'small text-body-secondary mb-0', customName: _sdT('Status'), _bindings: { section: 'booking_status' } })
+                    ]),
+                    createNode('semantic', { tag: 'p', cssClass: 'text-body-secondary', text: _sdT('No service can be booked online yet.'), customName: _sdT('No services'),
+                        _bindings: { eo_visible_if: 'no_services' } })
+                ]);
+            }
+
             case 'google_reviews': {
                 // The business's Google rating, then up to five reviews as
                 // cards, then the link to the place and Google's attribution,
@@ -67595,10 +67913,11 @@ const StyleDesigner = (function () {
     // all three are printed before this script.
     // An arrow drawn from a link row's port to a tab's frame or to a chip of
     // a site page, another site or a contact address writes that link's
-    // href (_sdProtoConnect()): on the row's tab, opened first, so its lock,
+    // href (_sdProtoConnect(); from the keyboard L on the row picks the
+    // target from a list, _sdProtoMenuOpen()): on the row's tab, opened first, so its lock,
     // undo history and content rights answer; the normal Save writes it.
     // Classic menus and regions stay read-only.
-    var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {} };
+    var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null };
 
     var SD_PROTO_MARKS = {
         tab: { icon: 'bi-file-earmark-arrow-right', text: function () { return _sdT('Opens a page of this design'); } },
@@ -67618,7 +67937,7 @@ const StyleDesigner = (function () {
         return 'pg_proto_pos_' + ((_design && _design.styleId) ? _design.styleId : 'new');
     }
 
-    function _sdProtoSaved() {
+    function _sdProtoLocal() {
         try {
             var raw = window.localStorage.getItem(_sdProtoStoreKey());
             var parsed = raw ? JSON.parse(raw) : null;
@@ -67628,10 +67947,40 @@ const StyleDesigner = (function () {
         }
     }
 
+    function _sdProtoLocalWrite(saved) {
+        try {
+            if (Object.keys(saved).length) window.localStorage.setItem(_sdProtoStoreKey(), JSON.stringify(saved));
+            else window.localStorage.removeItem(_sdProtoStoreKey());
+        } catch (e) {}
+    }
+
+    // Where frames and chips stand: the places shared on the design
+    // (_pgTabProto, style.style_tab_layout), then this browser's on top.
+    function _sdProtoSaved() {
+        var saved = window.PGProtoHotspots.places(_pgTabProto);
+        var local = _sdProtoLocal();
+        Object.keys(local).forEach(function (id) { saved[id] = local[id]; });
+        return saved;
+    }
+
+    // A frame of a saved tab or a shared component moved by an operator who
+    // may arrange the tabs is shared with everyone opening the design, its
+    // own place in this browser dropped; chips, unsaved tabs and a
+    // content-level operator's moves stay in the browser.
     function _sdProtoKeep(item) {
-        var saved = _sdProtoSaved();
-        saved[item.id] = { x: item.x, y: item.y };
-        try { window.localStorage.setItem(_sdProtoStoreKey(), JSON.stringify(saved)); } catch (e) {}
+        var local = _sdProtoLocal();
+        var key = window.PGProtoHotspots.placeKey(item.id);
+        if (key && _pgTabLayoutEditable() && _design && _design.styleId) {
+            _pgTabProto[key] = { x: Math.round(item.x), y: Math.round(item.y) };
+            if (local[item.id]) {
+                delete local[item.id];
+                _sdProtoLocalWrite(local);
+            }
+            _pgTabsLayoutSave();
+            return;
+        }
+        local[item.id] = { x: item.x, y: item.y };
+        _sdProtoLocalWrite(local);
     }
 
     function _sdProtoEl(tag, cls, text) {
@@ -67756,10 +68105,18 @@ const StyleDesigner = (function () {
                 }
                 var row = event.target.closest ? event.target.closest('.sd-proto-row') : null;
                 if (row && (event.key === 'Enter' || event.key === ' ')) { _sdProtoOpenRow(row); return true; }
+                // L, the context menu key or Shift+F10: where the link goes,
+                // chosen from a list (the keyboard's way to draw its arrow).
+                var menuKey = (name === 'l' && !event.ctrlKey && !event.metaKey && !event.shiftKey) || event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey);
+                if (row && menuKey) return _sdProtoMenuOpen(row);
                 return false;
             }
         });
         _sdProto.canvas.bind();
+        // A press outside the target menu closes it.
+        ui.root.addEventListener('pointerdown', function (event) {
+            if (_sdProto.menu && !_sdProto.menu.el.contains(event.target)) _sdProtoMenuClose(false);
+        }, true);
         return ui;
     }
 
@@ -67800,6 +68157,7 @@ const StyleDesigner = (function () {
 
     function _sdProtoClose() {
         if (!_sdProto.open) return;
+        _sdProtoMenuClose(false);
         _sdProto.open = false;
         _sdProto.seq++;
         if (_sdProto.canvas) _sdProto.canvas.cancel();
@@ -67880,6 +68238,7 @@ const StyleDesigner = (function () {
         if (meta) head.appendChild(_sdProtoEl('span', 'sd-proto-meta', meta));
         node.appendChild(head);
         node.setAttribute('aria-label', _sdProtoFrameName(item));
+        if (item.thumb) node.appendChild(_sdProtoThumb(item));
 
         if (!item.rows.length) {
             node.appendChild(_sdProtoEl('div', 'sd-proto-empty', _sdT('No links')));
@@ -67892,6 +68251,10 @@ const StyleDesigner = (function () {
             r.setAttribute('role', 'button');
             r.setAttribute('data-row', String(i));
             r.title = row.href || '';
+            if (window.PGProtoHotspots.drawable(row)) {
+                r.title += (r.title ? ' · ' : '') + _sdT('L: choose where this link goes');
+                r.setAttribute('aria-keyshortcuts', 'L');
+            }
             r.appendChild(_sdProtoMarkIcon(row.mark));
             r.appendChild(_sdProtoEl('span', 'sd-proto-label', row.from ? row.from + ' › ' + row.label : row.label));
             if (row.draft) r.appendChild(_sdProtoEl('span', 'sd-proto-draft', _sdT('Draft')));
@@ -67903,6 +68266,43 @@ const StyleDesigner = (function () {
             }
             node.appendChild(r);
         });
+    }
+
+    // The frame's thumbnail: its page as bands (PGProtoHotspots.sketch()),
+    // a dot per link up to five. Drawn from numbers and roles only; it says
+    // nothing a screen reader needs (the rows list the links).
+    function _sdProtoThumb(item) {
+        var H = window.PGProtoHotspots;
+        var NS = 'http://www.w3.org/2000/svg';
+        var w = H.FRAME.w - 20;
+        var h = item.thumb - 13;
+        var wrap = _sdProtoEl('div', 'sd-proto-thumb');
+        var svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+        svg.setAttribute('width', String(w));
+        svg.setAttribute('height', String(h));
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+        H.sketchBoxes(item.sketch, w, h).forEach(function (box) {
+            var r = document.createElementNS(NS, 'rect');
+            r.setAttribute('class', 'sd-proto-sk sd-proto-sk-' + box.role);
+            r.setAttribute('x', '0');
+            r.setAttribute('y', String(box.y));
+            r.setAttribute('width', String(w));
+            r.setAttribute('height', String(box.h));
+            r.setAttribute('rx', '2');
+            svg.appendChild(r);
+            for (var i = 0; i < Math.min(5, box.links); i++) {
+                var c = document.createElementNS(NS, 'circle');
+                c.setAttribute('class', 'sd-proto-sk-link');
+                c.setAttribute('cx', String(w - 6 - i * 7));
+                c.setAttribute('cy', String(box.y + box.h / 2));
+                c.setAttribute('r', String(Math.min(2.5, box.h / 2)));
+                svg.appendChild(c);
+            }
+        });
+        wrap.appendChild(svg);
+        return wrap;
     }
 
     function _sdProtoChipText(chip) {
@@ -67919,6 +68319,7 @@ const StyleDesigner = (function () {
         var first = !_sdProto.layout;
         var l = H.layout(marked, _sdProtoSaved());
 
+        _sdProtoMenuClose(false);
         _sdProto.layout = l;
         _sdProto.items = l.frames.concat(l.chips);
         _sdProto.byId = {};
@@ -68005,13 +68406,17 @@ const StyleDesigner = (function () {
 
     // An arrow drawn: the row's tab opened first (its lock answered by a
     // heartbeat), then the link's node changed through saveState(), so
-    // Ctrl+Z on the canvas or in the view takes it back. A shared
+    // Ctrl+Z on the canvas or in the view takes it back. A link of its own
+    // ending on a tab is kept by page id with the address as its fallback
+    // (PGProtoHotspots.hrefPatch()), so a rename keeps it. A shared
     // component is marked changed; the warnings say where the link goes
     // live. The normal Save writes it.
     function _sdProtoConnect(from, to, port) {
         var row = _sdProtoRow(from, port);
         var href = _sdProtoArrowHref(from, to, port);
-        if (!row || href === null || href === row.href) return;
+        if (!row || href === null) return;
+        var bind = window.PGProtoHotspots.boundTo(to);
+        if (href === row.href && String(bind === null ? '' : bind) === (row.bound || '')) return;
         var key = _sdProtoFrameTab(from);
         var seq = _sdProto.seq;
 
@@ -68021,7 +68426,7 @@ const StyleDesigner = (function () {
             var sid = (from.kind === 'shared') ? from.sharedId : 0;
             var root = sid ? (_sharedCache[sid] && _sharedCache[sid].tree) : tree;
             var node = root ? findNodeById(row.nodeId, root) : null;
-            var patch = node ? H.hrefPatch(node, row, href) : null;
+            var patch = node ? H.hrefPatch(node, row, href, to) : null;
             if (!patch) {
                 sdToast(esc(_sdT('This link has changed since the map was drawn; the links are read again.')), 'warning', 4000);
                 _sdProtoLoad();
@@ -68032,7 +68437,7 @@ const StyleDesigner = (function () {
                 return;
             }
             saveState();
-            node.props[patch.key] = patch.value;
+            H.applyPatch(node.props, patch);
             if (sid) _sdSharedMarkEdited(node);
             render();
             _sdProtoWarn(from, key);
@@ -68062,6 +68467,95 @@ const StyleDesigner = (function () {
         } else {
             sdToast(esc(_sdT('This page is on the site: the changed link goes live when you click Publish.')), 'info', 6000);
         }
+    }
+
+    // The keyboard's way to draw a row's arrow: a menu of the tab frames
+    // and chips its link may be pointed at (PGProtoHotspots.drawTargets()),
+    // the current one checked; a choice goes through _sdProtoConnect() like
+    // a drawn arrow. Arrows, Home and End move, Escape closes and gives the
+    // focus back to the row. Answers whether it opened.
+    function _sdProtoMenuOpen(rowEl) {
+        var H = window.PGProtoHotspots;
+        var box = rowEl.closest('[data-node]');
+        var item = box ? _sdProto.byId[box.getAttribute('data-node')] : null;
+        var row = item && item.rows ? item.rows[parseInt(rowEl.getAttribute('data-row'), 10) || 0] : null;
+        if (!row || !H.drawable(row)) return false;
+        _sdProtoMenuClose(false);
+
+        var ui = _sdProto.ui;
+        var list = H.drawTargets(_sdProto.layout, _sdProto.env).filter(function (t) {
+            return _sdProtoArrowHref(item, _sdProto.byId[t.id], row.port) !== null;
+        });
+        var el = _sdProtoEl('div', 'sd-proto-menu');
+        el.setAttribute('role', 'menu');
+        el.setAttribute('aria-label', _sdT('Where this link goes'));
+        var head = _sdProtoEl('div', 'sd-proto-menu-head', _sdT('Where this link goes'));
+        head.setAttribute('role', 'presentation');
+        el.appendChild(head);
+        if (!list.length) {
+            var none = _sdProtoEl('div', 'sd-proto-empty', _sdT('No page or address to point it at'));
+            none.setAttribute('role', 'presentation');
+            el.appendChild(none);
+        }
+        list.forEach(function (t) {
+            var target = _sdProto.byId[t.id];
+            var b = _sdProtoEl('button', 'sd-proto-menu-item');
+            b.type = 'button';
+            b.tabIndex = -1;
+            b.title = t.href;
+            b.setAttribute('role', 'menuitemradio');
+            b.setAttribute('aria-checked', t.href === row.href ? 'true' : 'false');
+            b.appendChild(_sdProtoMarkIcon(target.kind === 'page' ? 'tab' : target.mark));
+            b.appendChild(_sdProtoEl('span', 'sd-proto-label', target.kind === 'page' ? _sdProtoFrameName(target) : _sdProtoChipText(target)));
+            b.addEventListener('click', function () {
+                _sdProtoMenuClose(true);
+                _sdProtoConnect(item, target, row.port);
+            });
+            el.appendChild(b);
+        });
+        el.addEventListener('keydown', function (event) {
+            var items = Array.prototype.slice.call(el.querySelectorAll('.sd-proto-menu-item'));
+            var at = items.indexOf(document.activeElement);
+            var go = -1;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                _sdProtoMenuClose(true);
+                return;
+            }
+            if (event.key === 'Tab') { _sdProtoMenuClose(false); return; }
+            if (event.key === 'ArrowDown') go = (at + 1) % items.length;
+            else if (event.key === 'ArrowUp') go = (at <= 0 ? items.length : at) - 1;
+            else if (event.key === 'Home') go = 0;
+            else if (event.key === 'End') go = items.length - 1;
+            if (go >= 0 && items[go]) {
+                event.preventDefault();
+                items[go].focus();
+            }
+        });
+        ui.root.appendChild(el);
+        _sdProto.menu = { el: el, rowEl: rowEl };
+
+        // Under the row, or above it when it would leave the view.
+        var r = rowEl.getBoundingClientRect();
+        var o = ui.root.getBoundingClientRect();
+        var top = r.bottom - o.top + 2;
+        if (top + el.offsetHeight > o.height) top = Math.max(4, r.top - o.top - el.offsetHeight - 2);
+        el.style.left = Math.max(4, Math.min(r.left - o.left, o.width - el.offsetWidth - 4)) + 'px';
+        el.style.top = top + 'px';
+
+        var first = el.querySelector('.sd-proto-menu-item[aria-checked="true"]') || el.querySelector('.sd-proto-menu-item');
+        if (!first) el.tabIndex = -1;
+        (first || el).focus({ preventScroll: true });
+        return true;
+    }
+
+    function _sdProtoMenuClose(refocus) {
+        var m = _sdProto.menu;
+        if (!m) return;
+        _sdProto.menu = null;
+        if (m.el.parentNode) m.el.parentNode.removeChild(m.el);
+        if (refocus && m.rowEl.isConnected) m.rowEl.focus({ preventScroll: true });
     }
 
     // A row's element selected on the canvas: its tab opened first (a
@@ -70863,6 +71357,7 @@ const StyleDesigner = (function () {
     var _PG_TAB_GROUP_COLORS = ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange'];
     var _pgTabGroups = {};            // gid → { name, color }
     var _pgTabGroupsCollapsed = {};   // gid → true, this browser only
+    var _pgTabProto = {};             // 'p<page_id>' / 's<id>' → { x, y }: Prototype view frames
     var _pgTabLayoutTimer = 0;
     var _pgTabDrag = null;
     var _pgTabDragClickBlock = 0;
@@ -70912,8 +71407,12 @@ const StyleDesigner = (function () {
     // named ones.
     function _pgTabsApplyLayout(layout) {
         _pgTabGroups = {};
+        _pgTabProto = {};
         _pages.forEach(function (p) { p.tabGroup = ''; });
         if (!_pgTabLayoutReady() || !layout || typeof layout !== 'object') return;
+        if (layout.proto && typeof layout.proto === 'object') {
+            Object.keys(layout.proto).forEach(function (k) { _pgTabProto[k] = layout.proto[k]; });
+        }
         var groups = (layout.groups && typeof layout.groups === 'object') ? layout.groups : {};
         Object.keys(groups).forEach(function (gid) {
             var g = groups[gid];
@@ -70974,7 +71473,9 @@ const StyleDesigner = (function () {
             }
             tabs.push(t);
         });
-        return { v: 1, groups: groups, tabs: tabs };
+        var out = { v: 1, groups: groups, tabs: tabs };
+        if (Object.keys(_pgTabProto).length) out.proto = _pgTabProto;
+        return out;
     }
 
     // `now`: no debounce (the editor is about to navigate).
@@ -73513,6 +74014,12 @@ const StyleDesigner = (function () {
         var list = keys.map(_pgPageByKey).filter(function (p) {
             return p && p.access !== 'locked' && !p.pickedPending && (!!p.page_draft !== on);
         });
+        // An open experiment's variant stays a draft; the server refuses it too.
+        var held = on ? [] : list.filter(_pgExperimentHeld);
+        if (held.length) {
+            list = list.filter(function (p) { return !_pgExperimentHeld(p); });
+            if (!list.length) { sdToast(esc(_sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.')), 'info', 4000); return; }
+        }
         // The home page stays on the site; the server would refuse it too.
         var home = on ? list.filter(function (p) { return p.page_home; }) : [];
         if (on) list = list.filter(function (p) { return !p.page_home; });
@@ -73621,7 +74128,53 @@ const StyleDesigner = (function () {
         box.disabled = home || waits;
         box.title    = home ? _sdT('The home page stays on the site.')
                      : (waits ? _sdT('The page stays a draft until its publish time.') : '');
+        if (_pgExperimentHeld(p)) {
+            box.disabled = true;
+            box.title = _sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.');
+        }
         _pgSyncScheduleFields(p, home);
+    }
+
+    // ── Experiments ──
+    // A page in an A/B experiment (page_experiments.php): a chip in the top
+    // bar says so - the experiment's status on the live page, "Variant of
+    // <page>" on its variant draft - and opens the Experiments sheet. A
+    // variant stays a draft while its experiment is open; the server refuses
+    // its publish and its bin too (pg_experiment_variant_hold_message()).
+    // The states are read when the editor opens.
+    function _pgExperimentOf(p) {
+        var ex = _design && _design.experiments;
+        if (!ex || !ex.pages || !p || !(p.page_id > 0)) return null;
+        return ex.pages[String(p.page_id)] || null;
+    }
+    function _pgExperimentHeld(p) { var st = _pgExperimentOf(p); return !!(st && st.held); }
+    function _pgExperimentSync(a) {
+        var ex = (_design && _design.experiments) || {};
+        var st = _pgExperimentOf(a);
+        var labels = { running: _sdT('Experiment running'), paused: _sdT('Experiment paused'), draft: _sdT('Experiment set up') };
+        var themes = { running: 'theme-success', paused: 'theme-warning', draft: 'theme-secondary' };
+        var text = (st && labels[st.status])
+            ? (st.role === 'variant' ? _sdT('Variant of {var:1}').replace('{var:1}', st.live_page_name) : labels[st.status]) : '';
+        // The sheet belongs to the live page; a variant's chip opens it too.
+        var sheet = function (id) { return (ex.ready && id > 0) ? ex.url + id : ''; };
+        var chip = document.getElementById('sd-experiment-chip');
+        if (chip) {
+            var url = text ? sheet(st.live_page_id) : '';
+            chip.className = 'badge text-decoration-none ' + (text ? themes[st.status] : 'd-none');
+            chip.textContent = text;
+            chip.title = text ? labels[st.status] : '';
+            if (url) chip.setAttribute('href', url); else chip.removeAttribute('href');
+        }
+        var link = document.getElementById('sd-page-experiments');
+        var status = document.getElementById('sd-page-experiment-status');
+        if (link) {
+            var own = (a && !a.page_draft) ? sheet(a.page_id) : (st ? sheet(st.live_page_id) : '');
+            link.classList.toggle('disabled', !own);
+            if (own) link.setAttribute('href', own); else link.removeAttribute('href');
+        }
+        if (status) {
+            status.textContent = text ? text : ((a && a.page_draft) ? _sdT('A draft is not on the site: it can be a variant, not the page tested.') : '');
+        }
     }
 
     // ── Scheduled publishing ──
@@ -73768,10 +74321,11 @@ const StyleDesigner = (function () {
         // Publish puts it on. A page on the site has one, Publish.
         var pub = document.getElementById('sd-publish-page');
         if (pub) {
-            var both = draft && _pgDraftsCanChange() && !!a && !a.pickedPending;
+            var both = draft && _pgDraftsCanChange() && !!a && !a.pickedPending && !_pgExperimentHeld(a);
             pub.classList.toggle('d-none', !both);
             btn.classList.toggle('sd-publish-solo', both);
         }
+        _pgExperimentSync(a);
         var more = document.querySelector('.sd-publish-more');
         if (!more) return;
         var anyDraft = _pages.some(function (p) { return !!p.page_draft; });
@@ -73781,7 +74335,7 @@ const StyleDesigner = (function () {
             if (b && b.parentNode) b.parentNode.classList.toggle('d-none', !on);
         };
         show('page-draft',   !!a && !draft && !a.page_home && !a.pickedPending);
-        show('page-publish', draft);
+        show('page-publish', draft && !_pgExperimentHeld(a));
         show('all-draft',    anyLive);
         show('all-publish',  anyDraft);
     }

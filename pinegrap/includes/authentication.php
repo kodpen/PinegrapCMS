@@ -128,20 +128,53 @@ function pg_user_has_erp_readonly_column()
 }
 
 /**
+ * Is this account disabled (user.user_disabled_at > 0)? The get_file.php side
+ * of pg_user_id_is_disabled() in includes/fn/auth.php, which this defers to
+ * when functions.php is loaded; without it the column is probed by exact name.
+ * Before the column exists no account is disabled.
+ *
+ * @param int $user_id
+ * @return bool
+ */
+function pg_auth_user_disabled($user_id)
+{
+    if (function_exists('pg_user_id_is_disabled')) {
+        return pg_user_id_is_disabled($user_id);
+    }
+
+    static $has = null;
+
+    if ($has === null) {
+        $has = pg_auth_column_exists('user', 'user_disabled_at');
+    }
+
+    if (!$has || ((int) $user_id <= 0)) {
+        return false;
+    }
+
+    return (int) db_value("SELECT user_disabled_at FROM user WHERE user_id = '" . (int) $user_id . "'") > 0;
+}
+
+/**
  * The read-only right as a piece of the user screens' SQL, or '' before the
  * upgrade: 'columns' and 'values' for an INSERT, 'set' for an UPDATE. Each
  * piece ends in a comma, like the lines around it.
  *
  * @param string $mode
+ * @param array|null $post  The form's fields, $_POST when not given
  * @return string
  */
-function pg_user_erp_readonly_sql($mode)
+function pg_user_erp_readonly_sql($mode, $post = null)
 {
+    if ($post === null) {
+        $post = $_POST;
+    }
+
     if (!pg_user_has_erp_readonly_column()) {
         return '';
     }
 
-    $value = (!empty($_POST['manage_erp_readonly']) ? 1 : 0);
+    $value = (!empty($post['manage_erp_readonly']) ? 1 : 0);
 
     if ($mode === 'columns') {
         return 'manage_erp_readonly,';
@@ -795,15 +828,74 @@ function pg_email_address_matches($given, $stored)
  * Decrypt API/Secret keys stored in DB. Here rather than in
  * includes/fn/auth.php because get_file.php unseals the object store's secret
  * to sign a file's address, and it never loads functions.php.
+ *
+ * @param string      $key_base64 the ciphertext encrypt_string_with_iv() gave
+ * @param string      $iv_base64  its IV
+ * @param string|null $key        the key to open with; null is ENCRYPTION_KEY
+ * @return string '' when it does not open
  */
-function decode_ssl_keys($key_base64, $iv_base64)
+function decode_ssl_keys($key_base64, $iv_base64, $key = null)
 {
+    $decrypted = pg_ssl_keys_open($key_base64, $iv_base64, $key);
+    return ($decrypted !== null) ? $decrypted : '';
+}
+
+/**
+ * What decode_ssl_keys() opens, with null instead of '' when the value does
+ * not open, so a caller can tell a failure from an empty plaintext. CBC has
+ * no MAC: a wrong key passes the padding check about once in 256 tries and
+ * gives garbage instead of null.
+ *
+ * @param string      $key_base64
+ * @param string      $iv_base64
+ * @param string|null $key null is ENCRYPTION_KEY
+ * @return string|null
+ */
+function pg_ssl_keys_open($key_base64, $iv_base64, $key = null)
+{
+    if ($key === null) {
+        $key = defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '';
+    }
+    if (((string) $key === '') || !function_exists('openssl_decrypt'))
+        return null;
     $crypto_method = 'aes-256-cbc';
-    $crypto_key = substr(hash('sha256', ENCRYPTION_KEY, true), 0, 32);
-    $key = base64_decode($key_base64);
-    $iv = base64_decode($iv_base64);
-    if ($key === false || $iv === false)
-        return '';
-    $decrypted = openssl_decrypt($key, $crypto_method, $crypto_key, OPENSSL_RAW_DATA, $iv);
-    return ($decrypted !== false) ? $decrypted : '';
+    $crypto_key = substr(hash('sha256', (string) $key, true), 0, 32);
+    $cipher = base64_decode((string) $key_base64);
+    $iv = base64_decode((string) $iv_base64);
+    if ($cipher === false || $iv === false || strlen($iv) !== 16)
+        return null;
+    $decrypted = openssl_decrypt($cipher, $crypto_method, $crypto_key, OPENSSL_RAW_DATA, $iv);
+    return ($decrypted !== false) ? $decrypted : null;
+}
+
+/**
+ * Whether a panel user may open a file a team chat message carries: a side
+ * (initiator or target) of a conversation carrying it, or a role-0
+ * administrator. A conversation between two staff members may carry
+ * personal data, so the folder's own permission does not decide.
+ *
+ * @param int   $user_id       0 when nobody is signed in
+ * @param int   $role          the user's role
+ * @param array $conversations rows with initiator_user_id and target_user_id
+ * @return bool
+ */
+function pg_chat_attachment_access_verdict($user_id, $role, $conversations)
+{
+    $user_id = (int) $user_id;
+
+    if ($user_id <= 0) {
+        return false;
+    }
+
+    if ((int) $role === 0) {
+        return true;
+    }
+
+    foreach ((array) $conversations as $conversation) {
+        if (((int) $conversation['initiator_user_id'] === $user_id) || ((int) $conversation['target_user_id'] === $user_id)) {
+            return true;
+        }
+    }
+
+    return false;
 }

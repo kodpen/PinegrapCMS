@@ -10,7 +10,10 @@
  * a page of the finished template and the header and footer never send a
  * visitor to a page that needs the shop, the spec table reads row by row
  * for a screen reader, the classes are the template's own, and no launch
- * date or year is written into the sample.
+ * date or year is written into the sample; the public pages load with
+ * their keys and root trees, every in-page anchor a link opens exists once,
+ * headings never skip a level, and each highlight, spec group and question
+ * is a search section.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -32,7 +35,10 @@ function _test_launch_load()
 	if ($out !== null) return $out;
 	$dir = PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-launch';
 	include $dir . '/parts.php';
+	$public = include $dir . '/pages_public.php';
 	$out = array(
+		'pages'       => $public['pages'],
+		'widgets'     => $public['widgets'],
 		'models'      => $models,
 		'storage'     => $storage_sizes,
 		'colours'     => $colours,
@@ -169,7 +175,7 @@ function test_launch_page_links_name_template_pages()
 {
 	$d = _test_launch_load();
 	$known = array_flip(_test_launch_page_keys());
-	preg_match_all('/\{\{(?:page|tab):([a-z0-9_]+)\}\}/', json_encode(array($d['shared'], $d['parts'])), $m);
+	preg_match_all('/\{\{(?:page|tab):([a-z0-9_]+)\}\}/', json_encode(array($d['shared'], $d['parts'], $d['pages'])), $m);
 	pg_assert_true(count(array_unique($m[1])) > 15, 'links found');
 	foreach (array_unique($m[1]) as $key) pg_assert_true(isset($known[$key]), "page link {{page:$key}} names a template page");
 }
@@ -221,6 +227,7 @@ function test_launch_classes_are_its_own()
 	$d = _test_launch_load();
 	$nodes = array();
 	foreach (array_merge($d['shared'], $d['parts']) as $t) _test_launch_nodes($t, $nodes);
+	foreach ($d['pages'] as $p) _test_launch_nodes($p['tree'], $nodes);
 	$own = array();
 	foreach ($nodes as $n) {
 		foreach (preg_split('/\s+/', (string)($n['props']['cssClass'] ?? ''), -1, PREG_SPLIT_NO_EMPTY) as $c) {
@@ -239,7 +246,7 @@ function test_launch_classes_are_its_own()
 function test_launch_no_fixed_dates()
 {
 	$d = _test_launch_load();
-	$json = json_encode(array($d['models'], $d['spec_groups'], $d['highlights'], $d['press'], $d['promises'], $d['accessories'], $d['shared'], $d['parts']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	$json = json_encode(array($d['models'], $d['spec_groups'], $d['highlights'], $d['press'], $d['promises'], $d['accessories'], $d['shared'], $d['parts'], $d['pages']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	// The SVG namespace of the drawn stars is not a date.
 	$json = str_replace('www.w3.org/2000/svg', '', $json);
 	pg_assert_false((bool)preg_match('/\b20[0-9]{2}\b/', $json), 'no year in the sample');
@@ -251,7 +258,8 @@ function test_launch_no_fixed_dates()
 function test_launch_turkish_words()
 {
 	$map = pg_test_language_map('tr');
-	$src = file_get_contents(PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-launch/parts.php');
+	$dir = PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-launch';
+	$src = file_get_contents($dir . '/parts.php') . file_get_contents($dir . '/pages_public.php');
 	preg_match_all("/lang\\('((?:[^'\\\\]|\\\\.)*)'\\)/", $src, $m);
 	foreach (array_unique($m[1]) as $raw) {
 		$key = stripslashes($raw);
@@ -259,4 +267,92 @@ function test_launch_turkish_words()
 		if (strpos($key, 'Orbit') !== false && isset($map[$key])) pg_assert_contains('Orbit', $map[$key], "'$key' keeps the name Orbit");
 		if (stripos($key, 'trade-in') !== false && isset($map[$key])) pg_assert_true(mb_stripos($map[$key], 'takas', 0, 'UTF-8') !== false, "'$key' says takas");
 	}
+}
+
+function test_launch_public_pages_load()
+{
+	$d = _test_launch_load();
+	$keys = array();
+	foreach ($d['pages'] as $p) {
+		pg_assert_true(isset($p['key'], $p['name'], $p['title'], $p['tree'], $p['meta_description']), 'page has key, name, title, tree, description');
+		pg_assert_same('root', $p['tree']['type'], $p['key'] . ': root tree');
+		pg_assert_same('public', $p['folder'], $p['key'] . ': public folder');
+		pg_assert_true(!isset($p['requires']), $p['key'] . ': stands without the shop');
+		$keys[] = $p['key'];
+	}
+	pg_assert_same(array('home', 'features', 'camera', 'specs', 'compare', 'about', 'faq'), $keys);
+	pg_assert_same(array(), $d['widgets'], 'the public pages bring no widget of their own');
+	$home = json_encode($d['pages'][0]['tree']);
+	foreach (array('home_posts', 'launch_band', 'header', 'footer') as $key) pg_assert_contains('"' . $key . '"', $home, "home places $key");
+}
+
+// An anchor a link opens (#feature-design, the spec groups, buy-<model>
+// aside, which the buy page carries) exists exactly once on its page.
+function test_launch_anchors_exist_and_are_unique()
+{
+	$d = _test_launch_load();
+	$ids = array();
+	foreach ($d['pages'] as $p) {
+		$nodes = array();
+		_test_launch_nodes($p['tree'], $nodes);
+		$seen = array();
+		foreach ($nodes as $n) {
+			if (!isset($n['props']['id'])) continue;
+			$id = $n['props']['id'];
+			pg_assert_false(isset($seen[$id]), $p['key'] . ": id $id is unique");
+			$seen[$id] = true;
+		}
+		$ids[$p['key']] = $seen;
+	}
+	$json = json_encode(array($d['shared'], $d['parts'], $d['pages']));
+	preg_match_all('/\{\{page:([a-z_]+)\}\}#([a-z0-9-]+)/', $json, $m, PREG_SET_ORDER);
+	pg_assert_true(count($m) > 5, 'anchored links found');
+	foreach ($m as $hit) {
+		if (!isset($ids[$hit[1]])) continue; // a page of a later part
+		pg_assert_true(isset($ids[$hit[1]][$hit[2]]), "{{page:{$hit[1]}}}#{$hit[2]} exists");
+	}
+	foreach ($d['pages'] as $p) {
+		if ($p['key'] !== 'specs') continue;
+		preg_match_all('/"href":"#([a-z0-9-]+)"/', json_encode($p['tree']), $jm);
+		foreach ($jm[1] as $id) pg_assert_true(isset($ids['specs'][$id]), "specs jump link #$id exists");
+		pg_assert_same(count($d['spec_groups']), count($jm[1]), 'a jump link per spec group');
+	}
+}
+
+// Headings go down one level at a time on every page (h1, then h2, ...).
+function test_launch_headings_never_skip_a_level()
+{
+	$d = _test_launch_load();
+	foreach ($d['pages'] as $p) {
+		$nodes = array();
+		_test_launch_nodes($p['tree'], $nodes);
+		$last = 0;
+		$h1 = 0;
+		foreach ($nodes as $n) {
+			$tag = isset($n['props']['tag']) ? $n['props']['tag'] : '';
+			if (!preg_match('/^h([1-6])$/', $tag, $hm)) continue;
+			$level = (int)$hm[1];
+			if ($level === 1) $h1++;
+			pg_assert_true($level <= $last + 1, $p['key'] . ": h$level after h$last");
+			$last = $level;
+		}
+		pg_assert_same(1, $h1, $p['key'] . ': one h1');
+	}
+}
+
+function test_launch_search_sections()
+{
+	$d = _test_launch_load();
+	$sections = array();
+	foreach ($d['pages'] as $p) {
+		$nodes = array();
+		_test_launch_nodes($p['tree'], $nodes);
+		foreach ($nodes as $n) {
+			if (!empty($n['props']['searchSection'])) $sections[$p['key']][] = $n['props']['id'];
+		}
+	}
+	foreach (array_keys($d['highlights']) as $key) pg_assert_true(in_array('feature-' . $key, $sections['features'], true), "feature-$key is a search section");
+	foreach (array_keys($d['spec_groups']) as $key) pg_assert_true(in_array('spec-' . $key, $sections['specs'], true), "spec-$key is a search section");
+	pg_assert_true(count($sections['faq']) >= 10, 'every question is a search section');
+	foreach (array('camera', 'compare', 'about') as $key) pg_assert_true(!empty($sections[$key]), "$key has search sections");
 }

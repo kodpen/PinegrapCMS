@@ -321,6 +321,46 @@ if ($erp_document === false) {
     }
 }
 
+// A file a team chat message carries opens only for a side of that
+// conversation or a role-0 administrator, whatever its folder allows: staff
+// conversations may carry personal data. Before the chat tables or the
+// attachment column exist the query fails and nothing is a chat attachment.
+$chat_attachment = false;
+
+if ($erp_document === false) {
+    $chat_result = @mysqli_query(db::$con, "SELECT c.initiator_user_id, c.target_user_id
+        FROM chat_messages m
+        INNER JOIN chat_conversations c ON c.id = m.conversation_id AND c.channel = 'backend'
+        WHERE m.attachment_file_id = '" . (int) $file['id'] . "' AND m.attachment_file_id > 0");
+    $chat_conversations = array();
+
+    while (($chat_result !== false) && ($chat_row = mysqli_fetch_assoc($chat_result))) {
+        $chat_conversations[] = $chat_row;
+    }
+
+    if ($chat_conversations) {
+        $chat_attachment = true;
+
+        if (defined('USER_LOGGED_IN') == false) {
+            initialize_user();
+        }
+
+        if (USER_LOGGED_IN == false) {
+            get_file_sign_in_redirect('index.php');
+        }
+
+        $chat_user = pg_load_user_row((int) USER_ID);
+        $chat_allowed = is_array($chat_user)
+            && pg_chat_attachment_access_verdict((int) $chat_user['id'], (int) $chat_user['role'], $chat_conversations);
+
+        if (!$chat_allowed) {
+            log_activity(pg_log_lang(array('string' => 'access denied to file attachment ({var:1})', 'vars' => array($file['name']))), $_SESSION['sessionusername']);
+            header('Cache-Control: no-store');
+            output_error(get_file_text('Sorry, you do not have access to view this file attachment.'), 403);
+        }
+    }
+}
+
 // If a file directory path is not set, then set it to the default which is a path
 // inside the software directory. A custom file directory path is used when
 // an adminstrator wants the file directory to be located in a different area.
@@ -1094,8 +1134,11 @@ $image_delivery_row = null;
 // config.image_derivative_formats, read from the router's config row, so no
 // query of its own). ?f=original always sends the uploaded bytes. Files that
 // get no derivatives (ERP documents, workspace files, attachments) are never
-// negotiated.
-$image_negotiation = array('format' => '', 'vary' => false);
+// negotiated. Through a CDN or proxy nobody confirmed (bit 8) the answer is
+// private, or the original when the self-test found the edge keeps private
+// answers too: its state sits beside the derivatives (same_address.json,
+// includes/fn/image_vary_check.php), read only for such a request.
+$image_negotiation = array('format' => '', 'vary' => false, 'private' => false);
 $image_original_asked = false;
 
 if (($erp_document === false) && ($workspace_file === false) && ($file['attachment'] != 1)) {
@@ -1106,11 +1149,20 @@ if (($erp_document === false) && ($workspace_file === false) && ($file['attachme
     require_once(dirname(__FILE__) . '/includes/image_negotiation.php');
 
     $image_original_asked = pg_image_original_asked($_GET);
+    $image_negotiation_row = isset($router_config_row) ? $router_config_row : null;
+    $image_negotiation_mode = 'private';
+
+    if (pg_image_behind_proxy($_SERVER) && !pg_image_same_address_settings($image_negotiation_row)['cdn']) {
+        $image_negotiation_mode = pg_image_same_address_mode(
+            @json_decode((string) @file_get_contents(dirname(FILE_DIRECTORY_PATH) . '/cache/img/same_address.json'), true));
+    }
+
     $image_negotiation = pg_image_negotiated_format(
-        isset($router_config_row) ? $router_config_row : null,
+        $image_negotiation_row,
         $extension,
         $_GET,
-        $_SERVER);
+        $_SERVER,
+        $image_negotiation_mode);
 }
 
 if ((isset($_GET['w']) || isset($_GET['f']) || ($image_negotiation['format'] !== '')) && !$image_original_asked && isset(db::$con) && db::$con) {
@@ -1325,13 +1377,20 @@ if ($designed_attachment) {
     $cache_control_type = 'private';
 }
 
+// A negotiated picture through a CDN or proxy nobody confirmed keeps a copy
+// per format: no shared cache keeps either answer (or the 304), so none can
+// hand a browser the other's copy; the browser keeps its own for a week.
+if ($image_negotiation['private']) {
+    $cache_control_type = 'private';
+}
+
 // The original sent in place of a derivative that is still being made, or
 // that the cache folder cannot hold yet, must not be kept under the
 // derivative's address: the next request should get the derivative.
 if ($derivative_status === 'busy') {
     header('Cache-Control: no-store');
 } else {
-    header('Cache-Control: ' . ($erp_document ? 'private, no-store' : ($cache_control_type . ', max-age=604800')));
+    header('Cache-Control: ' . (($erp_document || $chat_attachment) ? 'private, no-store' : ($cache_control_type . ', max-age=604800')));
 }
 
 // Set the pragma cache.  Technically, this header should not be necessary,
@@ -1595,6 +1654,11 @@ function initialize_user()
     ) {
         $token_user_id = pg_auth_token_verify($_COOKIE['software']['auth']);
 
+        // A disabled account's token signs nobody in.
+        if ($token_user_id && pg_auth_user_disabled($token_user_id)) {
+            $token_user_id = false;
+        }
+
         if ($token_user_id) {
 
             $user = pg_load_user_row($token_user_id);
@@ -1628,7 +1692,8 @@ function initialize_user()
             session_destroy();
             setcookie('software[auth]', '', time() - 1000, '/');
             unset($_COOKIE['software']['auth']);
-        } else {
+        } elseif (!pg_auth_user_disabled((int) $_SESSION['sessionuserid'])) {
+            // A disabled account's live session is treated as signed out.
             $user = pg_load_user_row((int) $_SESSION['sessionuserid']);
         }
     }

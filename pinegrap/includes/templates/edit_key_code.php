@@ -48,13 +48,14 @@ if (!defined('PG_INIT_LOADED')) {
 					'type' => 'hidden',
 					'name' => 'enabled_was'))?>
 				<?php endif ?>
+                <?php // Edit screen layout of product_builder.php: the form column, the sticky status column (availability and reporting), the sticky save bar. ?>
                 <div class="row">
-                    <div class="col-12">
-                        <div class="card my-7">
+                    <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                        <div class="card mb-7">
                             <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 <?=lang('Main Informations')?>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body pt-0">
                                 <div class="row">
 									<?php if ($screen == 'create'): ?>
                                     	<div class="col-12 md:col-4 my-3">
@@ -105,13 +106,32 @@ if (!defined('PG_INIT_LOADED')) {
 								</div>
 							</div>
 						</div>
-					</div>
-                    <div class="col-12">
-                        <div class="card my-7">
+                        <div class="card mb-7">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <?=lang('Notes')?>
+                            </div>
+                            <div class="card-body pt-0">
+                                <div class="row">
+                                    <div class="col-12 my-3">
+                                        <label for="notes" class="form-label"><?=lang('Notes')?></label>
+										<?=$liveform->output_field(array(
+											'type' => 'textarea',
+											'name' => 'notes',
+											'id' => 'notes',
+											'class' => 'form-control'))?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                        <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                        <div class="position-sticky" style="top:3.3rem;">
+                        <div class="card mb-7">
                             <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 <?=lang('Availability')?>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body pt-0">
                                 <div class="row">
 									<div class="col-12 my-3">
                                         <div class="form-field">
@@ -124,7 +144,7 @@ if (!defined('PG_INIT_LOADED')) {
                                             <label class="" for="enabled"><?=lang('Enabled')?></label>
                                         </div>
                                     </div>
-									<div class="col-12 md:col-6 lg:col-4 my-3">
+									<div class="col-12 my-3">
                                          <label for="expiration_date" class="form-label"><?=lang('Expiration Date')?></label>
                                          <?=$liveform->output_field(array(
 											'type' => 'text',
@@ -137,24 +157,14 @@ if (!defined('PG_INIT_LOADED')) {
 										<div class="text-end form-text"><?=lang('leave blank for no expiration')?></div>
 										<?=get_date_picker_format() . pg_fields_script()?>
                                     </div>
-                                    <div class="col-12 my-3">
-                                        <label for="notes" class="form-label"><?=lang('Notes')?></label>
-										<?=$liveform->output_field(array(
-											'type' => 'textarea',
-											'name' => 'notes',
-											'id' => 'notes',
-											'class' => 'form-control'))?>
-                                    </div>
-								</div>
-							</div>
-						</div>
-					</div>
-                    <div class="col-12">
-                        <div class="card my-7">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card mb-7">
                             <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 <?=lang('Other Options')?>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body pt-0">
                                 <div class="row">
 									<div class="col-12 my-3">
                                         <div class="form-field">
@@ -192,20 +202,23 @@ if (!defined('PG_INIT_LOADED')) {
 										<div class="form-text"><?=lang('Code for Order Reporting & Exporting')?></div>
                                     </fieldset>
                                 </div>
-							</div>
-						</div>
-					</div>
-				</div>
-				<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="<?=h(lang('data edit buttons'))?>">
-                    <div class="container">
-                        <div class=" btn-group flex-wrap justify-content-center">
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                    <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                        <nav class="buttons navigation text-center mb-7" aria-label="<?=h(lang('data edit buttons'))?>">
+                            <div class="container">
+                                <div class="btn-group flex-wrap justify-content-center">
                             <button type="submit" id="save_button" data-pg-save-shortcut name="submit_button" value="<?php if ($screen == 'create'): ?>Create<?php else: ?>Save<?php endif ?>" class="btn my-1 btn-solid theme-success "><span class="material-icons me-3" aria-hidden="true"><?php if ($screen == 'create'): ?>add<?php else: ?>save<?php endif ?></span><span class="pg-btn-label" ><?php if ($screen == 'create'): ?><?=lang(array('string'=>'Create') )?><?php else: ?><?=lang(array('string'=>'Save') )?><?php endif ?></span></button>
                             <?php if ($screen == 'edit'): ?>
 								<button type="submit" name="delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="<?=lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('key code'))))?>"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label" ><?=lang(array('string'=>'Delete') )?></span></button>
 							<?php endif ?>
-						</div>
+                                </div>
+                            </div>
+                        </nav>
                     </div>
-                </nav>
+                </div>
 				<?php if ($screen == 'create'): ?>
 				<script>
 					function update_key_code() {

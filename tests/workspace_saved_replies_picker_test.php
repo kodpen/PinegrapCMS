@@ -128,7 +128,7 @@ function test_ws_saved_replies_picker_wiring()
 	$stored = substr($editor, (int) strpos($editor, 'insertStored: function'), 700);
 	pg_assert_contains('return self.change(function () {', $stored, 'one undo step');
 	pg_assert_contains('self.replaceTyped(count, { text: \'\' });', $stored, 'the ;word goes inside that step');
-	pg_assert_contains('markupNodes(blocks, labels || {})', $editor);
+	pg_assert_contains('markupNodes(blocks, labels || {}, self.options.removeLabel)', $editor);
 
 	pg_assert_contains("'assets/js/workspace_replies.js',\n            'assets/js/workspace.js',", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php'), 'bundled before workspace.js');
 	pg_assert_contains("'saved_replies' => ws_saved_replies_ready(),", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php'));

@@ -179,19 +179,12 @@ function pg_ad_region_form_validate_name($liveform, $id)
     }
 
     $taken = function ($name) use ($id) {
-        $query = "SELECT id FROM ad_regions WHERE (name = ?)";
-        $values = array((string) $name);
-
-        if ($id !== null) {
-            $query .= " AND (id != ?)";
-            $values[] = (string) $id;
+        $in_use = pg_ad_name_in_use('ad_regions', $name, ($id === null) ? null : (int) $id);
+        if ($in_use === null) {
+            output_error('Query failed.');
         }
-
-        $result = db_q($query, $values) or output_error('Query failed.');
-
-        return mysqli_num_rows($result) > 0;
+        return $in_use;
     };
-
     $error = pg_ad_region_name_error($liveform->get_field_value('name'), $previous_name, $taken);
 
     if ($error !== '') {
@@ -277,16 +270,28 @@ function pg_ad_region_form_validate_behavior($liveform)
  */
 function pg_ad_region_form_values($liveform)
 {
-    $value = function ($name) use ($liveform) {
-        $field = $liveform->get_field_value($name);
+    $fields = array();
+    foreach (array('display_type', 'transition_type', 'transition_duration', 'slideshow', 'slideshow_interval', 'slideshow_continuous') as $name) {
+        $fields[$name] = $liveform->get_field_value($name);
+    }
+    return pg_ad_region_behavior_values($fields);
+}
 
-        return is_scalar($field) ? trim((string) $field) : '';
+/**
+ * pg_ad_region_form_values() over plain fields, for a caller without a
+ * form (the external API). Pure.
+ *
+ * @param array $fields  display_type, transition_type, transition_duration, slideshow, slideshow_interval, slideshow_continuous
+ * @return array
+ */
+function pg_ad_region_behavior_values(array $fields)
+{
+    $value = function ($name) use ($fields) {
+        return isset($fields[$name]) && is_scalar($fields[$name]) ? trim((string) $fields[$name]) : '';
     };
-
     $type = in_array($value('transition_type'), array('slide', 'fade'), true) ? $value('transition_type') : 'slide';
     $duration = preg_match('/^[0-9]{1,4}$/', $value('transition_duration')) ? $value('transition_duration') : '0';
     $interval = (preg_match('/^[0-9]{1,3}$/', $value('slideshow_interval')) && ((int) $value('slideshow_interval') >= 1)) ? $value('slideshow_interval') : '0';
-
     return array(
         ($value('display_type') === 'dynamic') ? 'dynamic' : 'static',
         $type,

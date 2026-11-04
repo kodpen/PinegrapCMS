@@ -79,35 +79,7 @@ if (!$_POST) {
     }
     
     // create ad region
-    $query =
-        "INSERT INTO ad_regions (
-            name,
-            display_type,
-            transition_type,
-            transition_duration,
-            slideshow,
-            slideshow_interval,
-            slideshow_continuous,
-            created_user_id,
-            created_timestamp,
-            last_modified_user_id,
-            last_modified_timestamp)
-        VALUES (
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            UNIX_TIMESTAMP(),
-            ?,
-            UNIX_TIMESTAMP())";
-    $result = db_q($query, array_merge(array((string) $liveform->get_field_value('name')), pg_ad_region_form_values($liveform), array(
-        (string) $user['id'],
-        (string) $user['id'],
-    ))) or output_error('Query failed.');
+    pg_ad_region_save(0, (string) $liveform->get_field_value('name'), pg_ad_region_form_values($liveform), $user['id']) or output_error('Query failed.');
 
     log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('ad region'),$liveform->get_field_value('name')))), $_SESSION['sessionusername']);
     
