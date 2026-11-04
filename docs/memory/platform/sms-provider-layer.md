@@ -14,7 +14,7 @@ description: SMS layer (PR #600): pg_sms_send() rules and kinds, account in conn
 - `connect_apps` row `sms_<key>`, as the carriers' API apps (`carrier_api.php`): user code / API key = `client_id`, password / API hash sealed with the site key (`pg_connect_app_save()`), `options.sender`, `enabled` = the switch. Chosen over a config blob: no migration step, a provider added later needs no column (as `commerce/marketplace-outbound-layer.md`).
 - Active provider: the first enabled one with user, password and sender (`pg_sms_provider()`); saving one switches the others off.
 - Per provider (PR #3623), in `pg_sms_providers()`: field labels and `help`, `refused_fields` (code → field a refused check marks, else user), `user_sends` (Netgsm: the user code is a sender, `pg_sms_sender_approved()`). Sender rule: `sender_*` keys (`sms-twilio-driver.md`). Every provider's fields sit in a `data-sms-provider` pane; `pg_sms_settings_script()` shows the select's one, so a new driver needs no script.
-- Reset Encryption Key re-encrypts card numbers only, not `connect_apps`: the stored password then reads empty and the card warns.
+- Reset Encryption Key re-seals `connect_apps` with the rest (`encryption-key-reseal-registry.md`).
 
 ## What does the card do on save?
 - `pg_sms_settings_decide()` (pure, tested) picks `none` / `save` / `disable` / `forget`. An unchanged account is never rewritten or asked about, so an unreadable one does not block chat or campaign saves. Off writes `enabled = 0` alone (no sealing needed); off + empty user code deletes the row; the password is never drawn back.

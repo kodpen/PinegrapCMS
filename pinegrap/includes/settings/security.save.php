@@ -124,48 +124,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         return;
     }
 
-    // The Encryption Key card: a new key in config.php, then the values the
-    // re-seal registry lists sealed again with it. Checked
-    // after every refusal above, so a refused save changes no key.
-    if (post_value('ecommerce_reset_encryption_key') == 1) {
-    
-        // if OpenSSL is disabled, then output error
-        if (extension_loaded('openssl') == FALSE) {
-            output_error(lang('The encryption key could not be reset, because the OpenSSL PHP extension is not enabled') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
-        
-        // get contents of config.php file in order to reset encryption key
-        $config_content = @file_get_contents(CONFIG_FILE_PATH);
-
-        // A file that could not be read must not be rewritten from nothing.
-        if (!is_string($config_content) || (trim($config_content) === '')) {
-            output_error(lang('Config file could not be opened.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
-        
-        $old_encryption_key = (defined('ENCRYPTION_KEY') == TRUE) ? ENCRYPTION_KEY : '';
-        $new_encryption_key = generate_encryption_key();
-        
-        // if there is not an old encryption key in the config.php file, then add new encryption key to config.php file
-        if (defined('ENCRYPTION_KEY') == FALSE) {
-            $config_content = pg_config_insert_line($config_content, pg_config_define_line('ENCRYPTION_KEY', $new_encryption_key) . ' // DO NOT MODIFY OR SHARE');
-            
-        // else there is an old encryption key in the config.php file, so update it
-        } else {
-            $config_content = str_replace($old_encryption_key, $new_encryption_key, $config_content);
-        }
-        
-        // Write the new content before any card number is re-encrypted; a key
-        // that is not on disk must not be used on the stored data.
-        if (!pg_write_config_file($config_content)) {
-            output_error(lang(array('string'=>'The encryption key could not be reset, because the config.php file ({var:1}) is not writable. Please configure the config.php file so it can be written to and then try again. For Unix, set the permissions for the file to 777. For Windows, give the anonymous web user rights to write to and delete the file.','vars'=>array(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/data/config.php') )) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
-        
-        // Every value sealed with the old key follows the new one
-        // (pg_reseal_registry()); one that does not open with the old key is
-        // left as it is.
-        $reseal_result = pg_reseal_run((string) $old_encryption_key, (string) $new_encryption_key);
-    }
-
     // ── Firewall settings ────────────────────────────────────────────────
     // Built as a fragment rather than inlined, so an install that has not run
     // the 2026.2.4 upgrade simply saves nothing here instead of failing the
@@ -450,4 +408,49 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         db_q($query, array((string) $oauth_google_secret_enc, (string) $oauth_google_secret_iv)) or output_error('Query failed.');
     } else {
         db("UPDATE config SET oauth_google_client_secret = '', oauth_google_secret_iv = ''");
+    }
+
+    // The Encryption Key card: a new key in config.php, then the values the
+    // re-seal registry lists sealed again with it. Last, after every write
+    // above: those that seal a value (Apple's application, the CAPTCHA keys,
+    // the Google client secret) seal it with the ENCRYPTION_KEY constant,
+    // which holds the old key in this request, and the re-seal then carries
+    // them to the new one with the rest.
+    if (post_value('ecommerce_reset_encryption_key') == 1) {
+    
+        // if OpenSSL is disabled, then output error
+        if (extension_loaded('openssl') == FALSE) {
+            output_error(lang('The encryption key could not be reset, because the OpenSSL PHP extension is not enabled') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+        
+        // get contents of config.php file in order to reset encryption key
+        $config_content = @file_get_contents(CONFIG_FILE_PATH);
+
+        // A file that could not be read must not be rewritten from nothing.
+        if (!is_string($config_content) || (trim($config_content) === '')) {
+            output_error(lang('Config file could not be opened.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+        
+        $old_encryption_key = (defined('ENCRYPTION_KEY') == TRUE) ? ENCRYPTION_KEY : '';
+        $new_encryption_key = generate_encryption_key();
+        
+        // if there is not an old encryption key in the config.php file, then add new encryption key to config.php file
+        if (defined('ENCRYPTION_KEY') == FALSE) {
+            $config_content = pg_config_insert_line($config_content, pg_config_define_line('ENCRYPTION_KEY', $new_encryption_key) . ' // DO NOT MODIFY OR SHARE');
+            
+        // else there is an old encryption key in the config.php file, so update it
+        } else {
+            $config_content = str_replace($old_encryption_key, $new_encryption_key, $config_content);
+        }
+        
+        // Write the new content before any card number is re-encrypted; a key
+        // that is not on disk must not be used on the stored data.
+        if (!pg_write_config_file($config_content)) {
+            output_error(lang(array('string'=>'The encryption key could not be reset, because the config.php file ({var:1}) is not writable. Please configure the config.php file so it can be written to and then try again. For Unix, set the permissions for the file to 777. For Windows, give the anonymous web user rights to write to and delete the file.','vars'=>array(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/data/config.php') )) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+        
+        // Every value sealed with the old key follows the new one
+        // (pg_reseal_registry()); one that does not open with the old key is
+        // left as it is.
+        $reseal_result = pg_reseal_run((string) $old_encryption_key, (string) $new_encryption_key);
     }

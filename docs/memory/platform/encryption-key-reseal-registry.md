@@ -1,29 +1,28 @@
 ---
 name: encryption-key-reseal-registry
-description: Reset Encryption Key re-seals what pg_reseal_registry() lists in the same save; entry fields, the four kinds, done/skipped/failed counts, the $key parameters of the sealing helpers
+description: Reset Encryption Key re-seals what pg_reseal_registry() lists, last in the same save; the entries, kinds and JSON fields, done/skipped/failed counts, the $key parameters of the sealing helpers
 module: reseal
 ---
 
 ## What does a key reset seal again?
-- `security.save.php` writes the new key with `pg_write_config_file()`, then calls `pg_reseal_run($old, $new)` (`includes/fn/reseal.php`) in the same request, while `ENCRYPTION_KEY` still holds the old key.
-- It walks `pg_reseal_registry()`: one entry per table and column. Today: `orders.card_number` (kind `card`) and the gateway secrets of `pg_gateway_secret_fields()` (kind `gateway`). The module entries come with the plan's RK2 (`plans/encryption-key-reseal.md`).
+- The key-reset block is the last thing `security.save.php` does: `pg_write_config_file()`, then `pg_reseal_run($old, $new)` (`includes/fn/reseal.php`), while `ENCRYPTION_KEY` still holds the old key. Every write before it in that save (Apple's application, the CAPTCHA keys, the Google client secret) seals with the old key and is carried over with the rest.
+- `pg_reseal_registry()` lists: `orders.card_number`, the gateway secrets, `connect_apps` / `connect_accounts.secret`, `marketplace_accounts.credentials`, `erp_edoc_providers.credentials_enc`, config `parasut_credentials_enc`, `backup_remote_settings`, `product_feeds` (token_secret of each format), `oauth_google_client_secret` (+ its IV column), `translation_google_key`, `ws_claude_token`; `user_mfa` totp_secret and pending_secret; `subscriptions.card_ref` (sealed shape only); `ws_mcp_servers.secret`, `ws_calendar_feeds.token_secret`, `ws_mail_boxes.settings` (its `secret`); config_text `ap_keys` (`private`), `ws_voice_key`, `ws_voice_speech_key`.
+- A new value sealed with the site's key gets an entry here; `tests/reseal_test.php` checks each named table and column against the migration steps.
 
 ## What does an entry hold?
 - `area` (counts are grouped by it), `table`, `column`, `key` (primary key, `''` for the one-row `config`), `kind`, `where` (SQL picking the sealed rows; code, never input).
-- Optional: `iv_column` for an `iv` value whose IV has its own column (the Google client secret's `oauth_google_secret_iv`), `width` for `gateway`, `json` for an `iv` value that is JSON.
-- Kinds: `card` (`encrypt_credit_card_number()`), `gateway` (`pg_gateway_secret_seal()`), `iv` (`encrypt_string_with_iv()`, `"<ciphertext>:<iv>"` or the own column), `connect` (`pg_connect_seal()`).
+- Optional: `iv_column` for an IV in its own column, `width` for `gateway`, `json` for an `iv` value that is JSON, `fields` (paths such as `formats.*.token_secret`) for sealed values inside a JSON column, `json_flags` for how that column is written.
+- Kinds: `card` (`encrypt_credit_card_number()`), `gateway` (`pg_gateway_secret_seal()`), `iv` (`encrypt_string_with_iv()`), `connect` (`pg_connect_seal()`).
 
 ## What do the counts mean?
-- `pg_reseal_value()` (pure apart from the cipher) answers `done` with the new value, `skipped` when the value does not open with the old key (it was unreadable already and stays as it is), `failed` when it opened but could not be sealed.
-- The write is `UPDATE … WHERE column = <value read> [AND key = …]`; a write that fails counts as `failed` and the row keeps its old value. The run never stops the save halfway: the new key is already on disk.
-- `pg_reseal_run()` returns `areas` => area => done/skipped/failed and `seconds`, the time measured for the plan's open question (the request budget on a site with thousands of two-step keys). The card does not show them yet (RK3).
-- A missing table or column counts as nothing sealed.
+- `pg_reseal_value()` answers `done`, `skipped` (does not open with the old key: unreadable already, left as it is) or `failed` (opened, could not be sealed); a `fields` entry counts each value inside.
+- The write is `UPDATE … WHERE column = <value read> [AND key = …]`; a failed write counts as failed. The run never stops halfway: the new key is already on disk.
+- `pg_reseal_run()` returns `areas` => area => done/skipped/failed and `seconds` (the plan's request-budget question). A missing table or column counts as nothing.
 
 ## Why is a JSON value checked after opening?
-- `iv` and `connect` values are AES-256-CBC without a MAC: a wrong key passes the padding check about once in 256 tries with garbage. `connect` values must decode to an array; an `iv` entry with `json` too. A non-JSON `iv` value (a two-step key, a token) can still be re-sealed as garbage once in 256 when it was not sealed with the old key; it was unreadable before, so nothing readable is lost.
+- `iv` and `connect` values are AES-256-CBC without a MAC: a wrong key passes the padding check about once in 256 tries with garbage. `connect` values and `json` entries must decode to an array. A non-JSON value that was not sealed with the old key can be re-sealed as garbage; it was unreadable before, so nothing is lost.
 
 ## Which helpers take a key?
-- `encrypt_string_with_iv($plain, $key = null)`, `decode_ssl_keys($cipher, $iv, $key = null)`, `pg_connect_seal($data, $key = null)`, `pg_connect_unseal($stored, $key = null)`, `pg_connect_can_seal($key = null)`: `null` is `ENCRYPTION_KEY`, as before.
-- `pg_ssl_keys_open($cipher, $iv, $key = null)` (`includes/authentication.php`, beside `decode_ssl_keys()`) answers `null` instead of `''` when the value does not open, so an empty plaintext is told from a failure. Without a key both answer nothing instead of failing on the undefined constant.
+- `encrypt_string_with_iv()`, `decode_ssl_keys()`, `pg_connect_seal()`, `pg_connect_unseal()`, `pg_connect_can_seal()`: a last `$key = null`, null is `ENCRYPTION_KEY`. `pg_ssl_keys_open()` answers `null` instead of `''` when a value does not open.
 
-Related: docs/memory/commerce/payment-gateway-secrets.md, docs/memory/ui/settings-security-cards.md, docs/memory/core/security-helpers-and-secret-storage.md
+Related: docs/memory/commerce/payment-gateway-secrets.md, docs/memory/ui/settings-security-cards.md
