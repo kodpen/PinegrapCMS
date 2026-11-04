@@ -30,6 +30,7 @@ function test_content_edit_names_card_headings_are_not_labels()
 		'includes/forms/page_form.php',
 		'includes/forms/short_link_form.php',
 		'edit_form_item_view.php',
+		'includes/forms/form_item_view_form.php',
 		'edit_form_list_view.php',
 	);
 
@@ -97,7 +98,7 @@ function test_content_edit_names_menu_effect_group()
 function test_content_edit_names_code_fields_named()
 {
 	$pins = array(
-		'edit_form_item_view.php' => array('<textarea id="layout" name="layout" aria-label="\' . h(lang(\'Layout\')) . \'"'),
+		'includes/forms/form_item_view_form.php' => array('<textarea id="layout" name="layout" aria-label="\' . h(lang(\'Layout\')) . \'"'),
 		'edit_form_list_view.php' => array(
 			'<textarea id="header_content" name="header_content" aria-label="\' . h(lang(\'Header\')) . \'"',
 			'<textarea id="layout" name="layout" aria-label="\' . h(lang(\'Layout\')) . \'"',

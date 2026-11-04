@@ -342,3 +342,31 @@ function pg_menu_form_values($liveform)
         (string) $liveform->get('active_item_class'),
     );
 }
+
+/**
+ * Writes the edit screen's values (pg_menu_form_values()) to a menu and
+ * stamps the change. Shared by the edit screen and the All Menus list's
+ * quick edit.
+ *
+ * @param liveform $liveform
+ * @param int $id
+ * @param int $user_id  The user who made the change
+ * @return bool  Whether the UPDATE ran
+ */
+function pg_menu_form_save($liveform, $id, $user_id)
+{
+    $query =
+        "UPDATE menus
+        SET
+            name = ?,
+            effect = ?,
+            first_level_popup_position = ?,
+            second_level_popup_position = ?,
+            class = ?,
+            active_item_class = ?,
+            last_modified_user_id = ?,
+            last_modified_timestamp = UNIX_TIMESTAMP()
+        WHERE id = ?";
+
+    return (bool) db_q($query, array_merge(pg_menu_form_values($liveform), array((string) (int) $user_id, (string) (int) $id)));
+}

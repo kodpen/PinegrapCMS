@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-28
-description: Decisions list, product part 28 (2026-11-04 afternoon on): a changed expense updates its active repeat; a duplicated campaign profile starts disabled; the new logo
+description: Decisions list, product part 28 (2026-11-04 afternoon on): a changed expense updates its active repeat; a duplicated campaign profile starts disabled; the new logo; the image editor's selection bar
 ---
 
 ## Where are the rules and the earlier parts?
@@ -12,5 +12,8 @@ description: Decisions list, product part 28 (2026-11-04 afternoon on): a change
 ## Does a duplicated campaign profile start enabled? (#6706)
 - Owner (2026-11-04): no. `duplicate_email_campaign_profile.php` stores the copy with `enabled = 0` whatever the original holds; the duplicate notice adds that the copy sends nothing until it is enabled. Existing profiles unchanged, no schema. Reason: the copy shares the original's action, subject and body, so an enabled copy mailed every customer twice on every trigger until one of the two was disabled; a copy is made to be edited first. Same shape as the duplicated calendar event, which starts unpublished (#5582).
 
+## A selection bar in the image editor on a phone (owner, 2026-11-04)
+- Where the panel is a sheet, the selected layers, picture or area get their main commands in a bar over the stage (Options, Duplicate, Delete; Lock; the area's commands). Why: on a phone a selected picture could not be deleted and the background tools after a lasso were out of reach. Details: `ui/image-editor-actions.md`.
+
 ## The new logo everywhere (owner, 2026-11-04)
-- The squirrel in its space window and the single-line Pinegrap wordmark replace every old logo. A narrow place shows the square mascot, a wide place the full logo, whatever it showed before. The panel's own screens (header, loading curtain, installer, theme designer) play the mascot's loop, with the still frame for reduced motion, a data saver, a small device or a refused play; icons and files are still. The SVGs of the mascot, the wordmark and both together stay in `assets/images`. The previous image editor's logo goes (`clean_up.php`). Why: one recognisable brand, and the very old "PineGrap™" icons kept showing. Details: `ui/brand-logo.md`.
+- The squirrel in its space window and the single-line Pinegrap wordmark replace every old logo. A narrow place shows the square mascot, a wide place the full logo, whatever it showed before. The panel's own screens (header, loading curtain, installer, theme designer) play the mascot's loop, with the still frame for reduced motion, a data saver, a small device or a refused play; icons and files are still. The SVGs of the mascot, the wordmark and both together stay in `assets/images`. The previous image editor's logo goes (`clean_up.php`). Nothing is drawn over the logo: the version pill under the mascot went the same day; the version stays in the page title. Why: one recognisable brand, and the very old "PineGrap™" icons kept showing. Details: `ui/brand-logo.md`.
