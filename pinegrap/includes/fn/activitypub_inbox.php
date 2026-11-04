@@ -13,7 +13,7 @@
  *   Undo Follow             the row removed
  *   Like, Announce          one ap_reactions row per actor, kind and object
  *   Undo Like / Announce    that row removed
- *   Delete of the actor     its follower row and reactions removed
+ *   Delete of the actor     its follower row, reactions and comments removed
  *   Create(Note) replying   handed to pg_ap_reply_receive() when it exists
  *     to one of our objects
  *   Delete of a note        handed to pg_ap_reply_deleted() when it exists
@@ -391,8 +391,10 @@ function pg_ap_inbox_apply($actions, $site)
 }
 
 /**
- * Removes what the site keeps of a remote actor: its follower row and its
- * reactions. A Delete of the actor and, later, a block come here.
+ * Removes what the site keeps of a remote actor: its follower row, its
+ * reactions and its comments (pg_ap_forget_comments(), loaded with
+ * activitypub_moderation.php). A Delete of the actor and a block
+ * (pg_ap_block_add()) come here.
  *
  * @param string $actor_id
  */
@@ -400,6 +402,10 @@ function pg_ap_forget_actor($actor_id)
 {
     db_q("DELETE FROM ap_followers WHERE actor_id = ?", array($actor_id));
     db_q("DELETE FROM ap_reactions WHERE actor_id = ?", array($actor_id));
+
+    if (function_exists('pg_ap_forget_comments')) {
+        pg_ap_forget_comments($actor_id);
+    }
 
     if (function_exists('pg_ap_reply_actor_deleted')) {
         pg_ap_reply_actor_deleted($actor_id);
