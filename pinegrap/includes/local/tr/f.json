@@ -279,6 +279,7 @@
     "Files are stored under Import / this name in the file manager, keeping the project's folders.": "Dosyalar, dosya yöneticisinde Import / bu ad altında, projenin klasör yapısı korunarak saklanır.",
     "Files can be kept once the software update has been run.": "Dosyalar yazılım güncellemesi çalıştırıldıktan sonra saklanabilir.",
     "Files copied to backup directory. Copying layouts, please wait...": "Dosyalar yedekleme dizinine kopyalandı. Düzenler kopyalanıyor, lütfen bekleyin...",
+    "Files of a type that cannot be uploaded here are left out.": "Buraya yüklenemeyen türdeki dosyalar dışarıda bırakılır.",
     "Files overwriting...": "Dosyaların üzerine yazılıyor...",
     "Files stay on the disk.": "Dosyalar diskte kalır.",
     "Files take up to {size} here.": "Dosyalar burada en çok {size} alır.",
