@@ -36,7 +36,23 @@ if (pg_catalog_product_binned($id)) {
     output_error(lang('This product is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
+include_once('product_builder.php');
+
 $new_product_id = duplicate_product($_GET['id']);
+
+// A copy of a variant set member leaves the set: the set holds one member per
+// attribute combination, and the copy carries the same combination, so the
+// storefront picker could not tell the two apart. Only the links to variant
+// sets (display_type 'select') go; the attribute options and the browsable
+// group links stay, and the set screen adds the copy back when wanted.
+// duplicate_product() keeps every link, because Duplicate Product Group
+// relinks the copies it makes into the copied set.
+if (pg_pb_variant_group_id($id) && $new_product_id) {
+    db(
+        "DELETE FROM products_groups_xref
+        WHERE product = '" . e((int) $new_product_id) . "'
+            AND product_group IN (SELECT id FROM product_groups WHERE display_type = 'select')");
+}
 
 $old_product_name = db_value("SELECT name FROM products WHERE id = '" . escape($_GET['id']) . "'");
 
