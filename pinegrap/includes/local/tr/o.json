@@ -1345,6 +1345,7 @@
     "Order — identity & status": "Sipariş — kimlik & durum",
     "Order — totals": "Sipariş — toplamlar",
     "Order(s)": "Sipariş",
+    "Order(s) {var:1}: {var:2}": "{var:1} numaralı sipariş(ler): {var:2}",
     "Ordered": "Sipariş edilen",
     "Ordered List": "Sıralı Liste",
     "Ordering": "Sipariş",
