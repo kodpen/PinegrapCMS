@@ -105,6 +105,9 @@ function pg_encryption_key_reset_labels()
         'cards'         => lang('Card numbers kept with orders'),
         'gateway'       => lang('Payment gateway secrets'),
         'subscriptions' => lang('Subscription card references'),
+        'translation'   => lang('Machine translation key'),
+        'activitypub'   => lang('ActivityPub signing key'),
+        'workspace'     => lang('Workspace connections'),
     );
 }
 

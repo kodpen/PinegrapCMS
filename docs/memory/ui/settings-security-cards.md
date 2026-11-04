@@ -16,7 +16,7 @@ module: encryption_key
 - Only the second list carries the box "I understand these will have to be set up again"; with it not empty, `security.save.php` refuses a reset with `mark_error('ecommerce_reset_encryption_key_confirm')` until it is ticked. The check runs before `check_form_errors()`, so a refused save changes no key.
 
 ## What does the save say after a reset?
-- A notice "The encryption key has been reset. Sealed again with the new key: <label>: <done>, …" from `pg_encryption_key_reset_summary()` over `pg_reseal_run()`'s areas (labels from `pg_encryption_key_reset_labels()`, which also names `cards`, `gateway`, `subscriptions`); values that did not open with the old key (skipped) are not mentioned. Values that opened but could not be sealed again come as a warning naming area and count. Both reach the screen and the settings modal through the liveform.
+- A notice "The encryption key has been reset. Sealed again with the new key: <label>: <done>, …" from `pg_encryption_key_reset_summary()` over `pg_reseal_run()`'s areas (labels from `pg_encryption_key_reset_labels()`, which also names the registry-only areas `cards`, `gateway`, `subscriptions`, `translation`, `activitypub`, `workspace`); values that did not open with the old key (skipped) are not mentioned. Values that opened but could not be sealed again come as a warning naming area and count. Both reach the screen and the settings modal through the liveform.
 
 ## Where are the blocked e-mail addresses?
 - Blocked Email Addresses (`banned_email_addresses`) sits on Spam Protection (`pgset-captcha`), out of Firewall › IP Lists; `security.save.php` writes it (same normalising, same column guard) and ends the matching members' sessions. `firewall.save.php` no longer touches it.
