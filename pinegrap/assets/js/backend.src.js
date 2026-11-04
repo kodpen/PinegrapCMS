@@ -512,6 +512,26 @@ $(document).ready(function () {
                 result = true;
                 break;
         }
+        // A list's bulk action (Delete Selected and the others above) posts
+        // document.form itself, so its question can wait for the panel's
+        // own dialog: the click is stopped here and the form goes out once
+        // the answer is yes. A refusal takes the bulk action back, or a
+        // later Ctrl+S or Return would still post it with the selected rows.
+        if (result == true && autoconfirm == false && confirm_content && !confirm_action && typeof window.pgConfirm === 'function') {
+            window.pgConfirm({
+                title: $.trim(el.text()) || lang('Confirm'),
+                message: confirm_content,
+                confirmText: $.trim(el.text()) || lang('OK'),
+                variant: value == 'Delete Selected' ? 'danger' : 'primary'
+            }).then(function (ok) {
+                if (ok) {
+                    document.form.submit();
+                } else {
+                    document.form.action.value = '';
+                }
+            });
+            return false;
+        }
         // if its not autoconfirmed btn and there is confirm content in this button
         if (autoconfirm == false && confirm_content) {
             if (confirm(confirm_content) == true) {
