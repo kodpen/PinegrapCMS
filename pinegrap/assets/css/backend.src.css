@@ -5106,6 +5106,14 @@ table.chart .text-truncate.overflow-hidden * {
   overflow: hidden;
 }
 
+/* A long name in a list cell: an inline-block span with .text-truncate,
+   so the width holds in an auto-layout table, where max-width on the cell
+   itself is ignored. The full text goes in the cell's title. */
+.pg-cell-truncate {
+  max-width: 15rem;
+  vertical-align: bottom;
+}
+
 table.dataTable.dt-checkboxes-select tbody tr,
 table.dataTable thead th.dt-checkboxes-select-all,
 table.dataTable tbody td.dt-checkboxes-cell {
@@ -5249,6 +5257,11 @@ a.dt-button {
 .pg-chips,
 .input-group-text {
   border-radius: var(--pg-radius-lg);
+}
+/* Backup Manager status line: a refused or failed step reads as an error,
+   not in the muted grey of a progress notice. */
+.logbox.software_error {
+  color: var(--pg-danger-ink);
 }
 .dialog-header,
 .popover .popover-header,
@@ -8706,6 +8719,8 @@ button.no-popover:focus-visible {
 .pg-toolbar-grow { flex: 1 1 220px; min-width: 160px; overflow: hidden; }
 
 .pg-toolbar-search { width: 200px; }
+/* Backup Manager: the name field and its button share the box. */
+.pg-toolbar-search.pg-backup-create { width: 320px; }
 
 /* A filter form (pg_filter_select(), Browse Items' folder and access pickers)
    is a flex item of the bar, and a flex item's automatic minimum is its
@@ -22003,6 +22018,10 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   overflow: hidden;
 }
 .pg-list-table-scroll {
+  /* The containing block of absolutely positioned cell content
+     (.visually-hidden): without it that content is placed against <body>,
+     escapes this box's clip and makes the whole page scroll sideways. */
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
@@ -22165,11 +22184,17 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   flex-wrap: wrap;
   gap: 0.25rem;
 }
-/* The columns menu and the details switch keep the bar's right end. */
+/* The columns menu and the details switch keep the bar's right end. On a
+   phone four labelled tools are wider than the bar: they wrap inside it
+   (min-width: 0 lets the strip shrink to the bar) instead of running past
+   the card's clipped edge. */
 .pg-list-table-tools {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 0.25rem;
+  min-width: 0;
   margin-inline-start: auto;
 }
 .pg-list-table-columns-menu {

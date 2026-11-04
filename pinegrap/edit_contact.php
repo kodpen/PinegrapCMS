@@ -49,7 +49,7 @@ if (!$_POST) {
     // if ecommerce is on, then output orders button to show orders for contact
     if ((ECOMMERCE === true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))) {
         $output_bar_links .= '
-                    <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="view_orders_for_contact.php?id=' . $id . '"><span class="material-icons me-1">storefront</span>' . lang('View Orders') . '</a>';
+                    <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="view_orders_for_contact.php?id=' . $id . '"><span class="material-icons me-1" aria-hidden="true">storefront</span>' . lang('View Orders') . '</a>';
     }
 
     // The ledger account behind this contact, for a user the ERP module lets
@@ -212,7 +212,7 @@ if (!$_POST) {
         if ((USER_ROLE == 0) || (USER_ROLE < $user_role)) {
             $output_user_info = '
             <div class="col-12 my-3">
-                <a class="btn btn-link pg-link-secondary py-0 mb-3  users-color" href="edit_user.php?id=' . $user_id . '"><span class="material-icons me-3">account_circle</span>' . h($username) . '</a>
+                <a class="btn btn-link pg-link-secondary py-0 mb-3  users-color" href="edit_user.php?id=' . $user_id . '"><span class="material-icons me-3" aria-hidden="true">account_circle</span>' . h($username) . '</a>
             </div>';
 
         // Otherwise the editor user does not have access to edit this user,
@@ -220,7 +220,7 @@ if (!$_POST) {
         } else {
             $output_user_info ='
             <div class="col-12 my-3">
-                <span class="py-3 mb-3 users-color" href="edit_user.php?id=' . $user_id . '"><span class="material-icons me-3">account_circle</span>' . h($username) . '</span>
+                <span class="py-3 mb-3 users-color"><span class="material-icons me-3" aria-hidden="true">account_circle</span>' . h($username) . '</span>
             </div>';
         }
 
@@ -324,8 +324,8 @@ if (!$_POST) {
                                     </div>
                                 </div>',
                         '
-                                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                        <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>'
+                                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact')))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>'
                     ) . '
                     <input type="hidden" name="id" value="' . $id . '">
                 </form>
@@ -448,8 +448,12 @@ if (!$_POST) {
 
         log_activity( lang(array('string'=>'contact ({var:1} {var:2}) was modified','vars'=>array($_POST['first_name'],$_POST['last_name']) )), $_SESSION['sessionusername']);
           
-        // if there is not a send to or the send to is the view contacts screen, then add notice
-        if ((isset($_REQUEST['send_to']) == FALSE) || (mb_strpos($_REQUEST['send_to'], 'view_contacts.php') !== FALSE)) {
+        // The save ends on the contacts list when there is no send to (the
+        // form always posts the hidden field, empty when the screen was
+        // opened without one) or the send to is that list: announce it there.
+        $send_to = (isset($_REQUEST['send_to']) && is_string($_REQUEST['send_to'])) ? $_REQUEST['send_to'] : '';
+
+        if (($send_to === '') || (mb_strpos($send_to, 'view_contacts.php') !== false)) {
             $liveform_view_contacts = new liveform('view_contacts');
             $liveform_view_contacts->add_notice(lang('The contact has been saved.'));
         }

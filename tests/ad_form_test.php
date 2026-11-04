@@ -47,7 +47,7 @@ function test_ad_form_values_keep_the_insert_and_update_order()
 	));
 
 	pg_assert_same(
-		array('Spring', '<a href="{path}sale">Sale</a>', '<img src="{path}banner.png">', '7', 'Tab', ''),
+		array('name' => 'Spring', 'content' => '<a href="{path}sale">Sale</a>', 'caption' => '<img src="{path}banner.png">', 'ad_region_id' => '7', 'label' => 'Tab', 'sort_order' => ''),
 		pg_ad_form_values($liveform, '/site/'),
 		'name, content, caption, region, label, sort order; content and caption store the site path as {path}');
 }
@@ -60,14 +60,17 @@ function test_ad_form_screens_use_shared_form()
 		pg_assert_contains('includes/forms/ad_form.php', $source, $file . ' loads the form');
 		pg_assert_contains('pg_ad_form_cards($liveform)', $source, $file . ' prints the shared cards');
 		pg_assert_contains('pg_ad_form_validate($liveform, $user, ', $source, $file . ' runs the shared checks');
-		pg_assert_contains('array_merge(pg_ad_form_values($liveform), ', $source, $file . ' saves the shared values');
+		pg_assert_contains('pg_ad_form_values($liveform), $user[\'id\']) or output_error(', $source, $file . ' saves the shared values through pg_ad_save()');
+		pg_assert_false(preg_match('/\\b(INSERT|UPDATE|DELETE)\\b[^;]*\\bads\\b/', $source) === 1, $file . ' keeps no SQL write of its own');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 		pg_assert_contains('get_token_field()', $source, $file . ' prints the token');
 		pg_assert_false(strpos($source, 'Dynamic Ad Region Display Options') !== false, $file . ' keeps no copy of the cards');
 	}
 
 	pg_assert_contains('pg_ad_form_validate($liveform, $user, null)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_ad.php'), 'create checks the name against every ad');
-	pg_assert_contains("pg_ad_form_validate(\$liveform, \$user, (string) \$liveform->get_field_value('id'))", (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_ad.php'), 'edit leaves its own ad out of the name check');
+	pg_assert_contains('pg_ad_form_validate($liveform, $user, (string) $id)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_ad.php'), 'edit leaves the ad it checked at the top out of the name check');
+	pg_assert_contains('pg_ad_save($id, ', (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_ad.php'), 'edit saves the ad it checked at the top');
+	pg_assert_contains('pg_ad_delete($id)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_ad.php'), 'edit deletes the ad it checked at the top');
 }
 
 function test_ad_form_region_hint_is_empty_when_a_region_exists()
@@ -132,7 +135,8 @@ function test_ad_form_validate_refuses_long_names_and_missing_regions()
 	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/ad_form.php');
 
 	pg_assert_contains("pg_name_too_long(\$liveform->get_field_value('name'), 100)", $form, 'a name over 100 characters is refused, not cut');
-	pg_assert_contains('SELECT id FROM ad_regions WHERE id = ?', $form, 'the chosen ad region must exist for every role');
+	pg_assert_contains("pg_ad_region_exists(\$liveform->get_field_value('ad_region_id'))", $form, 'the chosen ad region must exist for every role');
+	pg_assert_contains('SELECT id FROM ad_regions WHERE id = ?', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/ads.php'), 'pg_ad_region_exists() reads the region');
 	pg_assert_contains("'inputmode'=>'numeric'", $form, 'Sort Order opens a number keyboard');
 	pg_assert_contains("lang('Caption') . ' (' . lang('Add Caption on Top of Content') . ')", $form, 'no spaces inside the caption brackets');
 }
@@ -140,11 +144,11 @@ function test_ad_form_validate_refuses_long_names_and_missing_regions()
 function test_view_ads_filter_and_alignment()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_ads.php');
+	$cells = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/region_list.php');
 
 	pg_assert_false(strpos($source, 'Content that viewed') !== false, 'the region filter is named Ad Region');
-	pg_assert_contains('<th class="text-center">\' . get_column_heading(lang(\'Display Type\')', $source, 'Display Type heading is centred like its cells');
-	pg_assert_contains('<td class="align-middle text-center">\' . $output_label', $source, 'Label cells are centred like their heading');
-	pg_assert_contains("elseif (\$ad['ad_region_display_type'] == 'dynamic')", $source, 'an ad without a region is not shown as Dynamic');
+	pg_assert_contains("\$types[\$row['ad_region_display_type']] ?? ''", $cells, 'an ad without a region shows no display type');
+	pg_assert_contains("\$dynamic = (\$row['ad_region_display_type'] === 'dynamic');", $cells, 'label and sort order show for a dynamic region only');
 }
 
 function test_ad_region_options_keep_regions_that_share_a_name()

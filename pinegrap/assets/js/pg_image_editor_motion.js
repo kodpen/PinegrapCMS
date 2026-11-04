@@ -88,6 +88,22 @@
         return M.docMotion(this.doc).duration;
     };
 
+    // The play bar's whole length and where the open document's own time
+    // starts on it: the document's length and 0, or every scene back to
+    // back (the scenes part). The playhead (this.time) is on that timeline;
+    // motionNow() is the open document's own time, which its layers move by.
+    Editor.prototype.motionTotal = function () {
+        return this.motionEnd();
+    };
+
+    Editor.prototype.motionStart = function () {
+        return 0;
+    };
+
+    Editor.prototype.motionNow = function () {
+        return (this.time === null) ? null : this.time - this.motionStart();
+    };
+
     // The selected layers that may move.
     Editor.prototype.motionLayers = function () {
         return this.selected().filter(function (l) { return STILL.indexOf(l.type) < 0; });
@@ -128,7 +144,7 @@
         }, key || null, !!key);
 
         if (this.time !== null) {
-            this.time = Math.min(this.time, self.motionEnd());
+            this.time = Math.min(this.time, self.motionTotal());
         }
     };
 
@@ -411,7 +427,7 @@
     // ---- the play bar ----
 
     Editor.prototype.motionBar = function () {
-        var self = this, end = this.motionEnd(), now = (this.time === null) ? 0 : this.time;
+        var self = this, end = this.motionTotal(), from = this.motionStart(), now = (this.time === null) ? 0 : this.time;
         var playBtn = button('pgie-mplay', this.playing ? t('motionPause') : t('motionPlay'), this.playing ? 'pause' : 'play', function () { self.togglePlay(); });
         var scrub = el('input', { type: 'range', class: 'pgie-range pgie-mscrub', min: '0', max: String(end), step: '10', value: String(now), 'aria-label': t('motionScrub'), 'aria-valuetext': clockText(now) });
         var ticks = el('div', { class: 'pgie-mticks', 'aria-hidden': 'true' });
@@ -427,10 +443,10 @@
 
         // A tick where each moving layer starts.
         this.doc.layers.forEach(function (l) {
-            var sp = M.motionSpans(l, end), at = [sp.inStart, sp.loopStart, sp.outStart].filter(function (n) { return n !== null; })[0];
+            var sp = M.motionSpans(l, self.motionEnd()), at = [sp.inStart, sp.loopStart, sp.outStart].filter(function (n) { return n !== null; })[0];
 
             if (at !== undefined) {
-                ticks.appendChild(el('span', { style: 'left: ' + (100 * at / end) + '%' }));
+                ticks.appendChild(el('span', { style: 'left: ' + (100 * (from + at) / end) + '%' }));
             }
         });
 
@@ -456,7 +472,7 @@
 
         // Drawn again only when what it shows changed: a zoom redraws the
         // view, and a scrub in progress must keep its slider.
-        var key = wanted ? [this.motionEnd(), this.playing, this.motionRepeat, JSON.stringify(this.doc.layers.map(function (l) { return l.anim || 0; }))].concat(Editor.motionDocks.map(function (d) { return d.key.call(self); })).join('|') : '';
+        var key = wanted ? [this.motionEnd(), this.motionTotal(), this.motionStart(), this.playing, this.motionRepeat, JSON.stringify(this.doc.layers.map(function (l) { return l.anim || 0; }))].concat(Editor.motionDocks.map(function (d) { return d.key.call(self); })).join('|') : '';
 
         if (this.stageBar && (key !== this.stageBarKey)) {
             this.stageBar.remove();
@@ -526,7 +542,7 @@
     };
 
     Editor.prototype.play = function () {
-        var self = this, end = this.motionEnd(), last = null;
+        var self = this, end = this.motionTotal(), last = null;
 
         if ((this.time === null) || (this.time >= end)) {
             this.time = 0;
@@ -546,7 +562,7 @@
             }
 
             last = now;
-            end = self.motionEnd();
+            end = self.motionTotal();
 
             // A preview of one phase ends at rest (motionPreview()).
             if ((self.previewEnd !== null) && (self.time >= self.previewEnd)) {
@@ -594,7 +610,7 @@
             }
         }
 
-        this.time = Math.max(0, Math.min(this.motionEnd(), ms));
+        this.time = Math.max(0, Math.min(this.motionTotal(), ms));
         this.applyMotion();
         this.updateBar();
     };
@@ -635,8 +651,8 @@
 
         window.cancelAnimationFrame(this.raf);
         this.playing = false;
-        this.time = from;
-        this.previewEnd = to;
+        this.time = this.motionStart() + from;
+        this.previewEnd = this.motionStart() + to;
         this.play();
     };
 
@@ -649,7 +665,7 @@
             var g = groups[l.id];
 
             if (g) {
-                self.motionGroup(g, l, M.motionAt(l, self.time, end));
+                self.motionGroup(g, l, M.motionAt(l, self.motionNow(), end));
             }
         });
 
@@ -748,10 +764,10 @@
             return;
         }
 
-        var st = M.baseAt(base, this.time, end), vr = this.viewRect(), k = this.view.k;
+        var st = M.baseAt(base, this.motionNow(), end), vr = this.viewRect(), k = this.view.k;
         var cx = vr.x + vr.w / 2, cy = vr.y + vr.h / 2;
         var move = M.mul(M.mul(M.translate(cx + st.x * vr.w, cy + st.y * vr.h), M.scale(st.scale)), M.translate(-cx, -cy));
-        var m = M.mul(M.mul(M.scale(k), M.translate(-vr.x, -vr.y)), M.mul(move, M.pictureMatrix(this.doc)));
+        var m = M.mul(M.mul(M.scale(k), M.translate(-vr.x, -vr.y)), M.mul(move, M.placedMatrix(this.doc)));
 
         this.img.style.transform = 'matrix(' + m.map(function (n) { return Math.round(n * 1e6) / 1e6; }).join(', ') + ')';
     };

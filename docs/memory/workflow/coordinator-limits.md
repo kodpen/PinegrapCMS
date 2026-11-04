@@ -1,6 +1,6 @@
 ---
 name: coordinator-limits
-description: Coordinator rules: model and effort, the quota guard before a worker starts, 4 to 10 workers by the 5-hour quota, a new worker for a decided draft PR, hand-over by a desktop session at depth 6
+description: Coordinator rules: model and effort, the quota guard before a worker starts, 4 to 10 workers by the 5-hour quota, a new worker for a decided draft PR, no hand-over at depth 7
 ---
 
 ## Why?
@@ -8,7 +8,7 @@ description: Coordinator rules: model and effort, the quota guard before a worke
 - Workers waited hours for a decision (one 9.5 hours), paying their whole context on every check-in; a worker with an open decision question now ends its session (`session-lifecycle.md`), so the decision must reach a new session.
 
 ## Which quota guard?
-- Before starting a worker the coordinator calls `get_session` on itself and reads `rate_limit_info`: a status other than `allowed` means no new worker until `resetsAt`. A session of its account that fails within a minute of its start is read as a limit hit: no new worker for 10 minutes, the owner told once.
+- Before starting a worker the coordinator calls `get_session` on itself and reads `rate_limit_info`: a refused status (`rejected`) means no new worker until `resetsAt`. A warning (`allowed_warning`) stops nothing: the window still has room, and a worker not started leaves it unspent. A session of its account that fails within a minute of its start is read as a limit hit: no new worker for 10 minutes, the owner told once.
 - Each coordinator keeps 4 to 10 workers busy, the count set each hour by the 5-hour quota (`coordinator-quota.md`, since 2026-11-02; 4 to 8 from 2026-11-01, 3 to 6 from 2026-10-31). Fewer than 4 only while the quota guard, the queue limit (CLAUDE.md, Working mode 8) or a lack of free steps stops a start. The queue rule (at most 6 of the 20 places per coordinator; 4 of 15 before 2026-10-28) stays.
 - Starts are staggered: at most one new worker a minute. The architect starts no sub-agents for the same reason.
 
@@ -21,6 +21,6 @@ description: Coordinator rules: model and effort, the quota guard before a worke
 - The 30-minute check finds it by listing the drafts whose body has `Decision: #` and reading each issue's state; no polling of sessions.
 
 ## What happens at session depth 8?
-- A session started by another session is one step deeper in the lineage (`get_session`, `lineage.depth`, limit 8). At depth 8 it can start no session and set no schedule (`create_session`, `send_later` and `create_trigger` are refused), and no setting raises the limit: the eighteenth hand-over by `create_session` reached it on 2026-11-02 (#5412). A coordinator reads its depth when it starts. At 6 or more it never starts its successor with `create_session`: it asks the owner in its reply for a desktop session ("How is one started?" in `coordinator.md`), opens an `architect` issue so the architect relays the ask, and keeps its workers and check-ins until that session archives it. Six is the last safe step: a depth-7 coordinator's workers are born at 8 and cannot set their safety check-in.
+- A session started by another session is one step deeper in the lineage (`get_session`, `lineage.depth`, limit 8). At depth 8 it can start no session and set no schedule (`create_session`, `send_later` and `create_trigger` are refused), and no setting raises the limit: the eighteenth hand-over by `create_session` reached it on 2026-11-02 (#5412). Below 8 nothing is limited. A coordinator hands over with `create_session` while its successor can still start workers, so up to depth 6 (the successor is born at 7). At depth 7 it does not hand over and asks no one for one: it keeps its workers and check-ins and works on, whatever its context size.
 
 Related: docs/memory/workflow/coordinator.md, docs/memory/workflow/session-lifecycle.md, docs/memory/workflow/architect.md

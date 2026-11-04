@@ -56,6 +56,20 @@ if (!defined('PG_INIT_LOADED')) {
 				<td><?=h(pg_format_number($reward_points, 0))?></td>
 			</tr>
 			<?php endif ?>
+			<?php if (!empty($reward_points_credit['enabled']) && $reward_points_credit['points'] >= $reward_points_credit['minimum']): ?>
+			<tr>
+				<td><?=h(lang('Store credit'))?>:&nbsp;</td>
+				<td>
+					<form action="<?=h($reward_points_credit['url'])?>" method="post">
+						<?=$reward_points_credit['token_field']?>
+						<input type="hidden" name="send_to" value="<?=h($reward_points_credit['send_to'])?>">
+						<input type="number" name="points" aria-label="<?=h(lang('Points to convert'))?>" min="<?=(int) $reward_points_credit['minimum']?>" max="<?=(int) $reward_points_credit['points']?>" step="1" value="<?=(int) $reward_points_credit['points']?>" size="8" required>
+						<input type="submit" value="<?=h(lang('Convert to store credit'))?>" class="software_input_submit_tiny_secondary">
+					</form>
+					<?=h(lang(array('string' => 'All your points are worth {var:1}.', 'vars' => array(html_entity_decode($reward_points_credit['value_info'], ENT_QUOTES, 'UTF-8')))))?>
+				</td>
+			</tr>
+			<?php endif ?>
 		</table>
 	</div>
 	<div class="email_preferences mobile_width" style="margin-bottom: 1em; display: inline-block; vertical-align: top; width: 46%">

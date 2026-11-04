@@ -277,16 +277,16 @@ function pg_email_campaign_purpose_card($purpose, $readonly = false)
 
         $field =
             '<fieldset>
-            <legend class="form-label fs-md">' . lang('Purpose') . '</legend>
+            <legend class="visually-hidden">' . lang('Purpose') . '</legend>
             <div class="form-field mb-3">
                 <input class="radio" type="radio" name="purpose" id="purpose_commercial" value="commercial"' . $commercial . ' aria-describedby="purpose_commercial_help">
                 <label class="" for="purpose_commercial">' . lang('Commercial') . '</label>
-                <div class="form-text" id="purpose_commercial_help">' . lang('send email to opted-in contacts only. Example: \'We have an offer for you\'') . '</div>
+                <div class="form-text" id="purpose_commercial_help">' . lang('Send e-mail to opted-in contacts only. Example: \'We have an offer for you\'') . '</div>
             </div>
             <div class="form-field">
                 <input class="radio" type="radio" name="purpose" id="purpose_transactional" value="transactional"' . $transactional . ' aria-describedby="purpose_transactional_help">
                 <label class="" for="purpose_transactional">' . lang('Transactional') . '</label>
-                <div class="form-text" id="purpose_transactional_help">' . lang('send email, regardless of opt-in. Example: \'Your order has been shipped\'') . ' ' . lang('Use transactional only for real transaction and relationship notices (service outage, terms change, delivery schedule); promotional text is sent as commercial.') . '</div>
+                <div class="form-text" id="purpose_transactional_help">' . lang('Send e-mail regardless of opt-in. Example: \'Your order has been shipped\'') . ' ' . lang('Use transactional only for real transaction and relationship notices (service outage, terms change, delivery schedule); promotional text is sent as commercial.') . '</div>
             </div>
             </fieldset>';
     }
@@ -336,6 +336,19 @@ function pg_email_campaign_field_errors($values)
     }
 
     return $errors;
+}
+
+/**
+ * A posted text field (from name, body, send_to) as a string: a missing field
+ * or one posted as an array (from_name[]=x) is ''.
+ *
+ * @param array  $post
+ * @param string $name
+ * @return string
+ */
+function pg_email_campaign_posted_text($post, $name)
+{
+    return (isset($post[$name]) && is_string($post[$name])) ? $post[$name] : '';
 }
 
 /**

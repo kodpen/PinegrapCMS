@@ -5,7 +5,7 @@ module: backup
 ---
 
 ## How does a backup reach an S3-compatible bucket?
-- Remote type `s3` keeps its own fields on the Backups card (`config.backup_remote_settings`, sealed with the other destinations). `pg_backup_s3_client_config()` maps them onto the shared client (`object-storage-client.md`): `access_key` to `key_id`, `secret_key` to `secret`, endpoint, region, bucket, folder (prefix), path style.
+- Remote type `s3` keeps its own fields on the Backups card (`config.backup_remote_settings`, sealed with the other destinations, re-sealed on a key reset: `encryption-key-reseal-registry.md`). `pg_backup_s3_client_config()` maps them onto the shared client (`object-storage-client.md`): `access_key` to `key_id`, `secret_key` to `secret`, endpoint, region, bucket, folder (prefix), path style.
 - An empty endpoint has always meant Amazon S3 in the given region; the mapping keeps that (`https://s3.<region>.amazonaws.com`), so sites set up that way send where they did. An empty region is `us-east-1`.
 - `pg_backup_s3_put()` sends the archive under `<folder>/<archive name>` (the same key as before) with `pg_os_put()`: above 64 MB in 16 MB parts, aborted on failure. Before #5349's client, one signed PUT carried the whole archive, which a service's single-request limit (or a slow link inside the timeout) could refuse.
 - The module's own SigV4 copy (`pg_backup_s3_signing_key()`, `..._canonical_request()`, `..._target()`, `..._error_message()` and the rest) is gone; errors are the client's messages.

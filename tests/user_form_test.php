@@ -48,7 +48,7 @@ function test_user_form_screens_use_shared_parts()
 
 		pg_assert_contains('includes/forms/user_form.php', $source, $file . ' loads the shared parts');
 		pg_assert_contains('pg_user_form_rights_cards(', $source, $file . ' prints the shared rights cards');
-		pg_assert_contains('pg_user_form_save_access(', $source, $file . ' saves access the shared way');
+		pg_assert_contains('includes/fn/user_write.php', $source, $file . ' loads the shared writes');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 	}
 }
@@ -93,14 +93,50 @@ function test_user_form_module_columns_follow_drawn_rows()
 
 function test_user_form_edit_save_guards_module_columns()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_user.php');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php');
 
-	pg_assert_contains('pg_user_form_module_columns(', $source, 'edit_user.php picks the module columns by the drawn rows');
+	pg_assert_contains('pg_user_form_module_columns(', $source, 'pg_user_update() picks the module columns by the drawn rows');
+	pg_assert_same(2, substr_count($source, 'pg_user_form_save_access('), 'the create and the update save access the shared way');
 
 	foreach (array('user_password_hint', 'user_manage_forms', 'user_manage_calendars', 'user_publish_calendar_events', 'user_manage_ecommerce', 'user_view_card_data', 'manage_ecommerce_reports', 'manage_erp', 'manage_erp_cash', 'manage_erp_settings', 'user_set_offline_payment') as $column) {
-		pg_assert_false((bool) preg_match('/' . preg_quote($column, '/') . '\s*=\s*\'"\s*\.\s*(e|escape)\(/', $source), 'edit_user.php no longer writes ' . $column . ' from every post');
+		pg_assert_false((bool) preg_match('/' . preg_quote($column, '/') . '\s*=\s*\'"\s*\.\s*(e|escape)\(/', $source), 'pg_user_update() no longer writes ' . $column . ' from every post');
 	}
 
 	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/user_form.php');
 	pg_assert_true((bool) preg_match('/CALENDARS\s*==\s*true\)\s*\{\s*if \(\$replace\)\s*\{\s*db_q\("DELETE FROM users_calendars_xref/', $form), 'the calendar grants are rewritten only while Calendars is on');
+}
+
+function test_user_form_reward_points()
+{
+	pg_assert_same(0, pg_user_form_reward_points(null), 'not sent');
+	pg_assert_same(0, pg_user_form_reward_points(''), 'blank');
+	pg_assert_same(0, pg_user_form_reward_points('  '), 'spaces');
+	pg_assert_same(12, pg_user_form_reward_points('12'), 'a whole number');
+	pg_assert_same(12, pg_user_form_reward_points(12), 'an integer');
+	pg_assert_same(4294967295, pg_user_form_reward_points('4294967295'), 'the column maximum');
+	pg_assert_same(7, pg_user_form_reward_points('0007'), 'leading zeros');
+	pg_assert_same(null, pg_user_form_reward_points('4294967296'), 'above the column');
+	pg_assert_same(null, pg_user_form_reward_points('99999999999'), 'far above the column');
+	pg_assert_same(null, pg_user_form_reward_points('-5'), 'negative');
+	pg_assert_same(null, pg_user_form_reward_points('12,50'), 'a decimal comma');
+	pg_assert_same(null, pg_user_form_reward_points('12.5'), 'a decimal point');
+	pg_assert_same(null, pg_user_form_reward_points('abc'), 'not a number');
+	pg_assert_same(null, pg_user_form_reward_points(array('1')), 'an array');
+}
+
+function test_user_form_text_fits()
+{
+	pg_assert_same(true, pg_user_form_text_fits(str_repeat('a', 100)), '100 characters');
+	pg_assert_same(false, pg_user_form_text_fits(str_repeat('a', 101)), '101 characters');
+	pg_assert_same(true, pg_user_form_text_fits(str_repeat('ş', 100)), '100 multibyte characters');
+	pg_assert_same(true, pg_user_form_text_fits(''), 'empty');
+}
+
+function test_import_users_checks_points_and_lengths()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/import_users.php');
+
+	pg_assert_contains('pg_user_form_reward_points($_POST[\'reward_points\'] ?? null)', $source, 'the points are checked');
+	pg_assert_contains('pg_user_form_text_fits($_POST[\'badge_label\'] ?? \'\')', $source, 'the badge label length is checked');
+	pg_assert_false(strpos($source, "escape(\$_POST['reward_points']") !== false, 'the raw points are not written');
 }

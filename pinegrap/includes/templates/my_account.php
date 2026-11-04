@@ -48,6 +48,19 @@ if (!defined('PG_INIT_LOADED')) {
 			<dt><?=h(lang('Reward Points'))?></dt>
 			<dd><?=h(pg_format_number($reward_points, 0))?></dd>
 			<?php endif ?>
+			<?php if (!empty($reward_points_credit['enabled']) && $reward_points_credit['points'] >= $reward_points_credit['minimum']): ?>
+			<dt><?=h(lang('Store credit'))?></dt>
+			<dd>
+				<form action="<?=h($reward_points_credit['url'])?>" method="post" class="form-inline">
+					<?=$reward_points_credit['token_field']?>
+					<input type="hidden" name="send_to" value="<?=h($reward_points_credit['send_to'])?>">
+					<label for="reward_points_convert" class="sr-only visually-hidden"><?=h(lang('Points to convert'))?></label>
+					<input type="number" id="reward_points_convert" name="points" class="form-control input-sm" min="<?=(int) $reward_points_credit['minimum']?>" max="<?=(int) $reward_points_credit['points']?>" step="1" value="<?=(int) $reward_points_credit['points']?>" required>
+					<button type="submit" class="btn btn-default btn-secondary btn-xs"><?=h(lang('Convert to store credit'))?></button>
+				</form>
+				<div class="help-block form-text"><?=h(lang(array('string' => 'All your points are worth {var:1}.', 'vars' => array(html_entity_decode($reward_points_credit['value_info'], ENT_QUOTES, 'UTF-8')))))?></div>
+			</dd>
+			<?php endif ?>
 		</dl>
 	</div>
 	<div class="col-sm-6">

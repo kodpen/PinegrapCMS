@@ -12,7 +12,7 @@ module: ai_visibility
 ## How are visits from AI assistants found?
 - `pg_visitor_ai_hosts()` maps referrer hosts to assistants (chatgpt.com, chat.openai.com, perplexity.ai, copilot.microsoft.com, gemini.google.com, claude.ai, you.com, poe.com and others); `pg_visitor_ai_assistant()` also takes the `www.` form, any case, a trailing dot.
 - `pg_ai_referrals()` sums `visitors` rows with `referring_host_name IN (...)` and, for days the retention period emptied, `visitor_stats_daily` rows of dimension `referring_host_name` (`is_rest = 0`: a host outside a day's top values is lost there), as `api_reports_visitors()` does; `summary_to` names the last summarized day.
-- When `plans/visitors-overview.md` V4 lands, its `ai` channel replaces this host list and the function reads the channel.
+- The `ai` channel (`visitor-channel-rule.md`) uses the same host list; this function keeps reading hosts, since the channel does not say which assistant sent the visit.
 
 ## What does the API answer?
 - `GET /reports/ai-visibility` (scope `visitors:read`, `api_reports_ai_visibility()` in `includes/api/resources/visitors.php`, type `AiVisibilityReport`): bots, days, top_pages (`limit` per bot, 1-50), unfetched_pages (total and the first 50 by name), robots_ai_rules, llms_txt, referrals (totals, assistants, summary_to). Window as the other visitor reports (`api_visitors_window()`, 400 days). 503 `service_unavailable` before 11.0.150. The MCP tool comes from the route row.

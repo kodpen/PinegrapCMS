@@ -19,7 +19,7 @@ module: carrier_labels
 
 ## Where are the settings?
 - `connect_apps` row `label_<key>` as payment drivers: `client_id` empty, secrets sealed as one map (`pg_connect_seal()`), other fields in `options`, `enabled` = the driver's switch. No schema; several drivers may be on at once. `pg_label_ready()`: on, readable, every required field stored.
-- Reset Encryption Key does not re-seal `connect_apps`; the card warns that the stored keys cannot be read.
+- Reset Encryption Key re-seals `connect_apps` (`platform/encryption-key-reseal-registry.md`).
 
 ## What does the Shipping card do?
 - `pg_label_settings_rows()` after FedEx in `includes/settings/commerce.php`: nothing while no driver exists; per driver a switch, its fields (secrets never drawn back, a `__present` marker) and "Save and test the connection" (`label_test` = key) when it defines `test`.

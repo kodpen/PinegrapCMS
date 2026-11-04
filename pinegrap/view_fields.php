@@ -17,9 +17,8 @@
  */
 
 include('init.php');
-
-// only ever appended to further below, so it has to start out empty
-$output_rows = '';
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/field_list.php');
 
 $user = validate_user();
 
@@ -29,8 +28,6 @@ pg_request_single_values(array('page_id', 'product_id', 'product_group_id'));
 
 $output_layout_buttons = '';
 $output_product_id_to_url = '';
-$output_rss_table_heading = '';
-$output_office_use_only_table_heading = '';
 $output_preview_button  = '';
 $output_designer_form_notice = '';
 // A form drawn in the visual designer: its fields are listed, never changed here.
@@ -217,12 +214,10 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     
     // If this is a custom form, then output certain content.
     if ($form_type == 'custom') {
-        $output_rss_table_heading = '<th>' . lang('RSS Element') . '</th>';
-        $output_office_use_only_table_heading = '<th class="text-center">' . lang('Office Use Only') . '</th>';
         $delete_data_warning = lang(' and ALL SUBMITTED FORM DATA for the selected field(s)');
     }
     $output_cancel_onclick = 'window.location.href=\'' . h(escape_javascript(pg_safe_back_url(($_GET['send_to'] ?? ''), 'view_pages.php'))) . '\'';
-    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1}{var:2} will be permanently deleted.','vars'=>array(lang('field(s)'),$delete_data_warning))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
+    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1}{var:2} will be permanently deleted.','vars'=>array(lang('field(s)'),$delete_data_warning))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang(array('string'=>'Delete Selected') ) . '</button>';
 
     // The canvas is the record of a designer form: a field added, changed or
     // deleted here would be undone by the next design save. The list stays
@@ -292,7 +287,7 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     $output_form_designer_content_subheading = lang('Add fields to this product form.');
     $output_cancel_onclick = 'window.location.href=\'edit_product.php?id=' . h(escape_javascript($_GET['product_id'])) . '\'';
     $output_preview_button = '<button type="button" class="btn btn-sm btn-text theme-secondary" onclick="document.location.href = \'preview_form.php?product_id=\' + document.getElementById(\'product_id\').value"><i class="bi bi-eye me-1" aria-hidden="true"></i>' . lang('Preview') . '</button>';
-    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('field(s)')))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
+    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('field(s)')))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang(array('string'=>'Delete Selected') ) . '</button>';
     
     // Send the product id through the browser url.
     $output_product_id_to_url = '&product_id=' . h(escape_javascript(urlencode($_GET['product_id'])));
@@ -363,7 +358,7 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
 
     // No preview button: a template belongs to no single product, and
     // preview_form.php renders one product's form.
-    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang('WARNING: The selected field(s) will be permanently deleted.') . '"><span class="bi bi-trash me-3"></span>' . lang('Delete Selected') . '</button>';
+    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . lang('WARNING: The selected field(s) will be permanently deleted.') . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang('Delete Selected') . '</button>';
 
     $output_product_id_to_url = '&product_group_id=' . h(escape_javascript(urlencode($_GET['product_group_id'])));
 
@@ -374,115 +369,78 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     output_error(lang('Sorry, the page could not be found.'), 404);
 }
 
-// get fields
-$query = "SELECT
-            form_fields.id,
-            form_fields.name,
-            form_fields.rss_field,
-            form_fields.label,
-            form_fields.information,
-            form_fields.type,
-            form_fields.required,
-            form_fields.office_use_only,
-            user.user_username as username,
-            form_fields.timestamp
-         FROM form_fields
-         LEFT JOIN user ON form_fields.user = user.user_id
-         WHERE $form_type_filter
-         ORDER BY form_fields.sort_order";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+// The field screen's address; the field's id goes at the end.
+$field_url = 'edit_field.php?send_to=' . urlencode((string) ($_GET['send_to'] ?? ''))
+    . (($form_type == 'product') ? '&product_id=' . urlencode((string) $_GET['product_id']) : '')
+    . (($form_type == 'product_group') ? '&product_group_id=' . urlencode((string) $_GET['product_group_id']) : '')
+    . '&id=';
 
-$number_of_results = 0;
+// A designer form's fields change in the visual designer only.
+$quick_edit = $designer_form ? array() : pg_field_edit_columns($form_type);
 
-while ($row = mysqli_fetch_assoc($result)) {
-    $id = $row['id'];
-    $name = $row['name'];
-    $rss_field = $row['rss_field'];
-    $type = get_field_type_name($row['type']);
-    $office_use_only = '';
-    
-    // The information text is rich text and is shown as markup; a label is
-    // the plain text the field editor accepted and is escaped.
-    // Information text can run to paragraphs and keeps its cut preview; a
-    // label wraps so it is read in full.
-    if ($row['type'] == 'information') {
-        $label_or_information = pg_sanitize_rich_text($row['information'], 'staff');
-        $output_label_cell = '<td title="' . h(pg_liveform_message_text($label_or_information)) . '"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">' . $label_or_information . '</span></td>';
-    } else {
-        $label_or_information = h($row['label']);
-        $output_label_cell = '<td class="text-wrap"><div class="text-wrap text-break" style="max-width:20rem;">' . $label_or_information . '</div></td>';
-    }
-    
-    if ($row['required'] == 1) {
-        $required = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
-    } else {
-        $required = '';
-    }
-    
-    $office_use_only = '';
-    $output_rss_field_cell = '';
-    
-    $username = $row['username'];
-    $timestamp = $row['timestamp'];
-    
-    $output_link_url = 'edit_field.php?id=' . $id . $output_product_id_to_url . '&send_to=' . h(escape_javascript(urlencode(($_GET['send_to'] ?? ''))));
-    
-    // if this is a custom form
-    if ($form_type == 'custom') {
-        $output_rss_field_cell = '<td>' . h($rss_field) . '</td>';
-        
-        // if office_use_only is set to 1, output * in the cell
-        if ($row['office_use_only'] == 1) {
-            $office_use_only = '<td class="align-middle text-center"><span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span></td>';
-        } else {
-            $office_use_only = '<td class="align-middle text-center"></td>';
-        }
-    }
-    
-    $number_of_results++;
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php), answered in JSON once the form and the user's
+// access to it were checked above, with the checks of the field screen.
+if (pg_list_edit_requested() && $quick_edit) {
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
+        return true;
+    });
 
-    // A designer form's field is only viewed (edit_field.php shows it read-only),
-    // and its name is shown as the variable the form's e-mails use.
-    if ($designer_form) {
-        $output_select_cell = '<td class="align-middle text-start"></td>';
-        $output_open_button = '<button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('View') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-eye" aria-hidden="true"></i></button>';
-        $output_name_cell = h($name) . '<br><code class="user-select-all">^^' . h($name) . '^^</code>';
-    } else {
-        $output_select_cell = '<td class="select-all align-middle text-start"><input class="check" type="checkbox" name="fields[]" value="' . $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($name)))) . '" /></td>';
-        $output_open_button = '<button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>';
-        $output_name_cell = h($name);
-    }
+    $saved = pg_field_quick_update($edit['id'], $edit['field'], $edit['value'], array(
+        'form_type' => $form_type,
+        'filter' => $form_type_filter,
+        'page_id' => $_GET['page_id'] ?? 0,
+        'product_id' => $_GET['product_id'] ?? 0,
+        'product_group_id' => $_GET['product_group_id'] ?? 0,
+        'user_id' => (int) $edit['user']['id'],
+        'form_name' => $form_name,
+        'url' => $field_url,
+    ));
 
-    $output_rows .=
-        '<tr>
-            ' . $output_select_cell . '
-			<td class="align-middle text-start">
-                ' . $output_open_button . '
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
-            </td>
-            <td class="chart_label">' . $output_name_cell . '</td>
-            ' . $output_label_cell . '
-            ' . $output_rss_field_cell . '
-            <td>' . h($type) . '</td>
-            <td class="align-middle text-center">' . $required . '</td>
-            ' . $office_use_only . '
-            <td class="align-middle">' . pg_list_when($timestamp, $username) . '</td>
-        </tr>';
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
 }
 
-// A designer form gets no Create button and no selection column (see above).
-if ($designer_form) {
-    $output_create_button = '';
-    $output_select_all_heading = '<th class="noVis"></th>';
-} else {
-    $output_create_button = '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_field.php?' . $form_type_identifier_id . '=' . h(urlencode($_GET[$form_type_identifier_id])) . '&amp;form_type=' . $form_type . '&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
-    $output_select_all_heading =
-        '<th class="noVis">
-            <div class="form-field">
-                <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
-            </div>
-        </th>';
+// Every field is printed in the form's order: the list table driver sorts
+// and searches them in the browser (browser mode); Position brings the
+// form's order back.
+$list_rows = array();
+$position = 0;
+
+foreach (pg_field_list_rows($form_type_filter) as $row) {
+    $position++;
+    $list_rows[] = array('id' => $row['id'], 'cells' => pg_field_list_cells($row, $position, $field_url . (int) $row['id'], $designer_form, $quick_edit));
 }
+
+$columns = pg_field_list_columns($form_type, $quick_edit);
+$sort_columns = array();
+
+foreach ($columns as $key => $spec) {
+    $sort_columns[$key] = $spec['heading'];
+}
+
+$list_state = pg_list_state('view_fields', $sort_columns, array('sort' => 'position', 'order' => 'asc'));
+
+// The page's own address, which answers the quick edits of this form.
+$list_params = array('page_id', 'form_type', 'product_id', 'product_group_id', 'send_to');
+$edit_query = array();
+
+foreach ($list_params as $param) {
+    if (isset($_GET[$param]) && is_string($_GET[$param]) && ($_GET[$param] !== '')) {
+        $edit_query[$param] = $_GET[$param];
+    }
+}
+
+$list = pg_list_table_printed(array(
+    'list' => 'view_fields',
+    'columns' => $columns,
+    'levels' => $list_state['sorts'],
+    'rows' => $list_rows,
+    'edit' => $quick_edit ? array('url' => 'view_fields.php?' . http_build_query($edit_query), 'columns' => $quick_edit) : null,
+    'ids_field' => $designer_form ? '' : 'fields[]',
+));
+
+// A designer form gets no Create button.
+$output_create_button = $designer_form ? '' : '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_field.php?' . $form_type_identifier_id . '=' . h(urlencode($_GET[$form_type_identifier_id])) . '&amp;form_type=' . $form_type . '&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
 
 $liveform = new liveform('view_fields');
 
@@ -508,41 +466,15 @@ pg_page_shell(array(
         ' . $liveform->get_messages() . '
         <div class="col-12">
             ' . $output_designer_form_notice . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <form name="form"  action="delete_fields.php" method="post"  class="disable_shortcut"> 
-                        ' . get_token_field() . '
-                        <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '">
-                        <input type="hidden" name="' . h($form_type_identifier_id) . '" id="' . h($form_type_identifier_id) . '" value="' . h($_GET[$form_type_identifier_id]) . '">
-                        <input type="hidden" name="form_type" value="' . $form_type . '">
-                        <table class="chart table-hover table " style="width:100%;display:none">
-                           <thead>
-                                <tr>
-                                    ' . $output_select_all_heading . '
-                                    <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                    <th>' . lang('Name') . '</th>
-                                    <th>' . lang('Label / Information') . '</th>
-                                    ' . $output_rss_table_heading . '
-                                    <th>' . lang('Field Type') . '</th>
-                                    <th class="text-center">' . lang('Required') . '</th>
-                                    ' . $output_office_use_only_table_heading . '
-                                    <th>' . lang('Last Modified') . '</th>
-                                </tr>
-                            <tbody>' . $output_rows . '</tbody>
-                        </table>
-                        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                    ' . $output_form_designer_footer . '
-                                </div>
-                            </div>
-                        </nav>
-                    </form>
-                </div>
-            </div>
+            <form name="form" action="delete_fields.php" method="post" class="disable_shortcut">
+                ' . get_token_field() . '
+                <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '">
+                <input type="hidden" name="' . h($form_type_identifier_id) . '" id="' . h($form_type_identifier_id) . '" value="' . h($_GET[$form_type_identifier_id]) . '">
+                <input type="hidden" name="form_type" value="' . $form_type . '">
+                ' . pg_list_table_html($list['source'], $list['page'], $output_form_designer_content_heading, $output_form_designer_footer) . '
+            </form>
         </div>
     </div>
 </main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 ' . output_footer();
-
-$liveform->remove_form();

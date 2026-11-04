@@ -189,6 +189,10 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Retry Backup' => lang('Retry Backup'),
         'Backing up' => lang('Backing up'),
         'Backup Builder Starting...' => lang('Backup Builder Starting...'),
+        'Backup Manager' => lang('Backup Manager'),
+        'Replace' => lang('Replace'),
+        'The backup was not taken.' => lang('The backup was not taken.'),
+        "The server's answer to the backup step could not be read ({var}). The server's PHP error log may say why." => lang("The server's answer to the backup step could not be read ({var}). The server's PHP error log may say why."),
         'Label Designer' => lang('Label Designer'),
         'Library not loaded.' => lang('Library not loaded.'),
         'Drag fields to canvas' => lang('Drag fields to canvas'),
@@ -3719,19 +3723,17 @@ function output_menu($properties = false)
         $menu_items[6]['title'] = 'Visitors';
         $menu_items[6]['context'] = true;
         // VISITORS > Overview, then its sections as anchors. Site Search, Page
-        // Speed and AI Visibility stay links to their own screens, under the
-        // same ready checks, until their sections are there.
+        // Speed and AI Visibility are listed only once their figures are ready;
+        // their old screens answer a redirect to the anchor.
         $menu_items[6]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitors.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-speedometer bi-me-2\'>' . lang('Overview') . '</a>';
-        $visitor_screens = array(
-            'site_search' => array('visitor_search.php', 'bi-search', pg_site_search_stats_ready()),
-            'speed'       => array('visitor_vitals.php', 'bi-speedometer2', pg_vitals_ready()),
-            'ai'          => array('visitor_ai.php', 'bi-robot', pg_ai_visibility_ready()),
+        $visitor_ready = array(
+            'site_search' => pg_site_search_stats_ready(),
+            'speed'       => pg_vitals_ready(),
+            'ai'          => pg_ai_visibility_ready(),
         );
         foreach (pg_visitors_sections() as $visitor_section => $visitor_section_label) {
-            if (pg_visitors_section_exists($visitor_section) && (!isset($visitor_screens[$visitor_section]) || $visitor_screens[$visitor_section][2])) {
+            if (pg_visitors_section_exists($visitor_section) && (!isset($visitor_ready[$visitor_section]) || $visitor_ready[$visitor_section])) {
                 $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitors.php#' . $visitor_section . '\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-dot bi-me-2\'>' . h($visitor_section_label) . '</a>';
-            } elseif (isset($visitor_screens[$visitor_section]) && $visitor_screens[$visitor_section][2]) {
-                $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $visitor_screens[$visitor_section][0] . '\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ' . $visitor_screens[$visitor_section][1] . ' bi-me-2\'>' . h($visitor_section_label) . '</a>';
             }
         }
 
@@ -7296,7 +7298,7 @@ function pg_js_bundles()
             'assets/js/pg_image_editor_redact.js', 'assets/js/pg_image_editor_versions.js', 'assets/js/pg_image_editor_artboard.js',
             'assets/js/pg_image_editor_export.js', 'assets/js/pg_image_editor_vector.js', 'assets/js/pg_image_editor_svg.js',
             'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_scenes.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_fonts.js',
-            'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_warp.js'),
+            'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_warp.js', 'assets/js/pg_image_editor_outline.js', 'assets/js/pg_image_editor_builder.js'),
         // The image editor's animation encoder, started as a worker (or on the
         // page) by pg_image_editor_render.js.
         'assets/js/pg_image_editor_encode.min.js'  => array('assets/js/pg_image_editor_encode.js'),

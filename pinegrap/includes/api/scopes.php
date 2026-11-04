@@ -24,7 +24,8 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 
 // Resource groups, in the order the permission screen shows them. 'read' or
 // 'write' set to '' means the resource does not offer that half at all:
-// inventory is write-only (stock is read through products), meta is read-only.
+// inventory is write-only (stock, its locations and levels per location are
+// read under products:read), meta is read-only.
 // offers:write covers the offer's own row - switched on or off, its message,
 // its dates - and its removal; building one cannot be done from outside: an
 // offer is a rule with a condition tree and a result set behind it, and the
@@ -54,7 +55,9 @@ function api_scope_groups() {
 		// application never rewrites a layout by itself. It may add a page as a
 		// draft, set when a page goes on the site and comes off it, put back a
 		// layout a person published before (a revision), and share a design's
-		// drafts as a prototype by a link (never as an MCP tool).
+		// drafts as a prototype by a link (never as an MCP tool). Ads and ad
+		// regions are the exception: they are written directly and go live at
+		// once (/design/ads, /design/ad-regions), as on their panel screens.
 		'design'    => array('label' => 'Page design', 'read' => 'design:read',   'write' => 'design:write'),
 
 		// A/B experiments of the designed pages and their results. Writing
@@ -136,9 +139,9 @@ function api_scope_groups() {
 		'contact_groups' => array('label' => 'Contact Groups', 'read' => 'contact_groups:read', 'write' => 'contact_groups:write'),
 
 		// The panel's accounts: role, rights, last online and second factor,
-		// never a password or a key. Read only for now; opening and closing
-		// accounts is a right of its own.
-		'users'     => array('label' => 'Users',      'read' => 'users:read',     'write' => ''),
+		// never a password or a key. Opening, changing and closing accounts
+		// is a right of its own, held by an administrator only.
+		'users'     => array('label' => 'Users',      'read' => 'users:read',     'write' => 'users:write'),
 
 		// Who did what on the site, from which address. Read only.
 		'site_log'  => array('label' => 'Site Log',   'read' => 'site_log:read',  'write' => ''),
@@ -436,6 +439,17 @@ function api_owner_scopes($owner) {
 		// so handing it to a machine sits with the same roles. A designer
 		// reaches the accounts below it, as on the screen.
 		$scopes[] = 'users:read';
+
+	}
+
+	// Opening and closing accounts for an HR or single sign-on system. A
+	// designer may make managers and users on the screen, but a leaked key
+	// that makes accounts is a door nothing on the site closes in time, so
+	// only an administrator hands it out; the handlers still write only the
+	// roles below the owner's.
+	if ($role === 0) {
+
+		$scopes[] = 'users:write';
 
 	}
 

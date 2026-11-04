@@ -268,6 +268,57 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'inventory.locations',
+			'method'  => 'GET',
+			'path'    => '/inventory/locations',
+			'scope'   => 'products:read',
+			'handler' => 'api_inventory_locations_list',
+			'returns' => array('list' => 'StockLocation'),
+			'summary' => 'Stock locations',
+			'description' => 'The warehouses and shops the site keeps stock in, in one page: the default first, then in their order. A location is never deleted, only turned off (enabled false): its units still count in a product\'s quantity, and it takes no transfer in. Empty on a site that keeps one stock per product. The id is what location means on the other stock endpoints.',
+			'params'  => array(
+				array('name' => 'enabled', 'in' => 'query', 'type' => 'bool', 'description' => 'Only the locations that are on, or only those that are off.')
+			)
+		),
+
+		array(
+			'id'      => 'inventory.list',
+			'method'  => 'GET',
+			'path'    => '/inventory',
+			'scope'   => 'products:read',
+			'handler' => 'api_inventory_list',
+			'returns' => array('list' => 'StockLevel'),
+			'summary' => 'Stock levels per location',
+			'description' => 'The products that track stock, by id, cursor paged, with quantity (the total, the figure GET /products shows and marketplaces receive) and locations: the units at each location, 0 where the product holds none. A product that has not been changed since the first location was added holds its whole quantity at the default location. On a site without locations, locations is empty.',
+			'params'  => array(
+				array('name' => 'location',      'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only this location\'s units in locations (0 or left out: every location). An id that is not a location is refused with 422 location.'),
+				array('name' => 'product_id',    'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only this product.'),
+				array('name' => 'in_stock',      'in' => 'query', 'type' => 'bool', 'description' => 'With location: only the products that hold units there (true) or none (false). Without it: by the total.'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'inventory.transfer',
+			'method'  => 'POST',
+			'path'    => '/inventory/transfer',
+			'scope'   => 'inventory:write',
+			'handler' => 'api_inventory_transfer',
+			'dry_run' => true,
+			'returns' => 'StockTransfer',
+			'summary' => 'Move stock between locations',
+			'description' => 'Moves units of one product from one location to another, as the Transfer dialog of the stock history does: both locations change or neither does, and the product\'s quantity stays the same, so no inventory.changed is announced and no marketplace is told. Both moves carry the same ref in the stock history. Refusals: 422 location when from or to is not a location, 422 validation_failed when they are the same; 409 location_disabled when the location the units go to is turned off, 409 not_enough when from holds fewer units than quantity (nothing is taken from another location), 409 not_tracked when the product does not track stock, 409 bundle for a bundle, 409 no_locations on a site without locations, 409 refused when the location the units go to cannot hold that many. Send an Idempotency-Key so a retried transfer is not made twice.',
+			'params'  => array(
+				array('name' => 'product_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'from',       'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The location the units leave (GET /inventory/locations).'),
+				array('name' => 'to',         'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The location the units go to; it has to be on.'),
+				array('name' => 'quantity',   'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 1000000, 'required' => true, 'description' => 'Whole units, 1 or more.'),
+				array('name' => 'note',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Shown beside both moves in the stock history.')
+			)
+		),
+
+		array(
 			'id'      => 'products.prices',
 			'method'  => 'POST',
 			'path'    => '/products/prices',
@@ -2084,6 +2135,47 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'campaigns.create',
+			'method'  => 'POST',
+			'path'    => '/campaigns',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaigns_create',
+			'dry_run' => true,
+			'returns' => 'Campaign',
+			'status'  => 201,
+			'summary' => 'Make a plain-text campaign, kept as a draft',
+			'description' => 'Puts a manual campaign together as the create screen does: the addresses of contact_group_ids (opted-in contacts only for a commercial campaign), less every address of excluded_contact_group_ids, plus email_address, each address once. It is kept paused and nothing is sent: POST /campaigns/{id}/schedule releases it. A group that does not exist, or that an account with the user role was not given, is refused with 422. A plain-text message only; an HTML campaign is made from a page on the create screen. A campaign whose groups hold no address it may go to is refused with 422. An entered address nobody has yet becomes a contact, for an account above the user role, as on the screen.',
+			'params'  => array(
+				array('name' => 'subject',                    'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true),
+				array('name' => 'body',                       'in' => 'body', 'type' => 'string', 'max_length' => 200000, 'required' => true, 'description' => 'The text of the message.'),
+				array('name' => 'from_name',                  'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'from_email',                 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'reply_to',                   'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'purpose',                    'in' => 'body', 'type' => 'enum', 'values' => array('commercial', 'transactional'), 'required' => true, 'description' => 'commercial skips contacts who have opted out and carries the organisation and e-mail preferences footer; transactional goes to every recipient.'),
+				array('name' => 'contact_group_ids',          'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 200, 'description' => 'The groups it goes to.'),
+				array('name' => 'excluded_contact_group_ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 200, 'description' => 'Groups whose members are left out.'),
+				array('name' => 'email_address',              'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'One more address it goes to.'),
+				array('name' => 'send_at',                    'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'When the job may start sending once it is scheduled. Empty: as soon as the job runs.')
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.schedule',
+			'method'  => 'POST',
+			'path'    => '/campaigns/{id}/schedule',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaigns_schedule',
+			'dry_run' => true,
+			'returns' => 'Campaign',
+			'summary' => 'Release a draft campaign for sending',
+			'description' => 'Moves a paused campaign to ready with send_at as its time (as soon as the job runs when it is left out or empty). Nothing is sent by this call: the scheduled e-mail job sends it, and where the site runs no job it waits for Send Campaign on its screen. Any other status is refused with 409 campaign_not_paused. An account with the user role reaches only the campaigns it created.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'send_at', 'in' => 'body', 'type' => 'datetime', 'nullable' => true)
+			)
+		),
+
+		array(
 			'id'      => 'campaigns.update',
 			'method'  => 'POST',
 			'also_accepts' => array('PATCH'),
@@ -2139,6 +2231,22 @@ function api_schema() {
 		),
 
 		/* ----- Campaign profiles -------------------------------------------- */
+
+		array(
+			'id'      => 'campaigns.sms.list',
+			'method'  => 'GET',
+			'path'    => '/campaigns/sms',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaigns_sms_list',
+			'returns' => array('list' => 'SmsCampaign'),
+			'summary' => 'SMS campaigns',
+			'description' => 'The texts sent to the mobile numbers of chosen contact groups, as My SMS Campaigns lists them, newest first, cursor paged. status: draft (kept, never sent), ready (waiting for send_at), queued (handed to the SMS queue at queued_at) or cancelled. queued counts the messages the queue took and refused the numbers the SMS checks turned away (no consent, refused by IYS, no sender identity, SMS not set up); outbox says what the queue still holds of a queued campaign: sent, waiting and failed (null before it is queued; sent rows leave the queue after 7 days, failed ones after 30). contact_group_ids are the groups it goes to, excluded_contact_group_ids the groups whose members are left out. campaign.sent is announced when a campaign is queued. An account with the e-mail right but the user role sees only the campaigns it created. 503 service_unavailable until the database update has created the table.',
+			'params'  => array(
+				array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('draft', 'ready', 'queued', 'cancelled')),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
 
 		array(
 			'id'      => 'campaigns.profiles.list',
@@ -3353,6 +3461,85 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'users.create',
+			'method'  => 'POST',
+			'path'    => '/users',
+			'scope'   => 'users:write',
+			'handler' => 'api_users_create',
+			'dry_run' => true,
+			'returns' => 'User',
+			'status'  => 201,
+			'summary' => 'Create a panel user',
+			'description' => 'Opens an account as the Create User screen does, for an HR or single sign-on system. Only an application whose owner is an administrator holds users:write, and it creates designers, managers and users, never an administrator. username and email are required. No password is taken: the account is mailed the single-use link with which it sets its own (the New Account e-mail). Left out, the role is user and the rights are those the screen starts with (create and delete pages, publish calendar events). Folder and item access (private folders, menus, regions, contact groups, calendars, ad regions) stays the panel\'s to give. 409 username_taken or email_taken when another account signs in with that name or address. Sends user.created. Send an Idempotency-Key so a retried call does not open two accounts.',
+			'params'  => array(
+				array('name' => 'username',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Signs in, as the e-mail address does: neither may be another account\'s username or address (409 username_taken).'),
+				array('name' => 'email',         'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'A valid address no other account uses as its address or username (409 email_taken).'),
+				array('name' => 'role',          'in' => 'body', 'type' => 'enum', 'values' => array('administrator', 'designer', 'manager', 'user'), 'description' => 'Strictly below the owner\'s role: designer, manager or user. administrator is refused with 422.'),
+				array('name' => 'start_page_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The page opened after signing in; null or 0 for none.'),
+				array('name' => 'badge',         'in' => 'body', 'type' => 'bool', 'description' => 'Show a badge next to the username.'),
+				array('name' => 'badge_label',   'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The badge text; empty for the site\'s default.'),
+				array('name' => 'reward_points', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 4294967295),
+				array('name' => 'permissions',   'in' => 'body', 'type' => 'object', 'description' => 'For the user role only (the other roles hold every right by their role; 422 otherwise): the rights as GET /users names them, each true or false, and page_types, the list of page types the account may give a page (replacing the stored list). A right or page type of a module switched off on this site is refused with 422. Rights left out keep their value.'),
+				array('name' => 'customer_id',   'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The customer record (GET /customers) the account is linked to; left out, none.')
+			)
+		),
+
+		array(
+			'id'      => 'users.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/users/{id}',
+			'scope'   => 'users:write',
+			'handler' => 'api_users_update',
+			'dry_run' => true,
+			'returns' => 'User',
+			'summary' => 'Change a panel user',
+			'description' => 'Only the fields you send are changed, with the Edit User screen\'s rules. An administrator\'s account and the owner\'s own are refused with 403; a role is given only below the owner\'s. disabled switches the account off (it can no longer sign in and its remembered devices are signed out) or back on. No password, password hint, second factor or folder access is written here. 409 username_taken or email_taken as on create. Sends user.updated.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'username',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Signs in, as the e-mail address does: neither may be another account\'s username or address (409 username_taken).'),
+				array('name' => 'email',         'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'A valid address no other account uses as its address or username (409 email_taken).'),
+				array('name' => 'role',          'in' => 'body', 'type' => 'enum', 'values' => array('administrator', 'designer', 'manager', 'user'), 'description' => 'Strictly below the owner\'s role: designer, manager or user. administrator is refused with 422.'),
+				array('name' => 'start_page_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The page opened after signing in; null or 0 for none.'),
+				array('name' => 'badge',         'in' => 'body', 'type' => 'bool', 'description' => 'Show a badge next to the username.'),
+				array('name' => 'badge_label',   'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The badge text; empty for the site\'s default.'),
+				array('name' => 'reward_points', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 4294967295),
+				array('name' => 'permissions',   'in' => 'body', 'type' => 'object', 'description' => 'For the user role only (the other roles hold every right by their role; 422 otherwise): the rights as GET /users names them, each true or false, and page_types, the list of page types the account may give a page (replacing the stored list). A right or page type of a module switched off on this site is refused with 422. Rights left out keep their value.'),
+				array('name' => 'disabled',      'in' => 'body', 'type' => 'bool', 'description' => 'true switches the account off, false back on: the screen\'s Account enabled switch.')
+			)
+		),
+
+		array(
+			'id'      => 'users.delete',
+			'method'  => 'DELETE',
+			'path'    => '/users/{id}',
+			'scope'   => 'users:write',
+			'handler' => 'api_users_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a panel user',
+			'description' => 'Closes an account as the users screen does: its sign-in tokens, second factor, passkeys, linked identities, favourites, access records and address book go with it. It cannot be undone; switch the account off with disabled to keep it. An administrator\'s account and the owner\'s own are refused with 403. The customer record the account was linked to stays. Sends user.deleted. POST /users/{id}/delete does the same for servers that refuse DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'users.delete_post',
+			'method'  => 'POST',
+			'path'    => '/users/{id}/delete',
+			'scope'   => 'users:write',
+			'handler' => 'api_users_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a panel user, addressed as a POST',
+			'description' => 'The same deletion as DELETE /users/{id}, for clients and servers that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Operations --------------------------------------------------- */
 
 		array(
@@ -3429,6 +3616,39 @@ function api_schema() {
 				array('name' => 'by',    'in' => 'query', 'type' => 'enum', 'values' => array('referrer_host', 'search_engine', 'search_terms', 'channel', 'landing_page', 'tracking_code', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'country', 'state', 'city', 'form', 'site_search_terms', 'device'), 'required' => true),
 				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
 				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50)
+			)
+		),
+
+		array(
+			'id'      => 'reports.search',
+			'method'  => 'GET',
+			'path'    => '/reports/search',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_search',
+			'returns' => 'SearchReport',
+			'summary' => 'Google Search: clicks, impressions, searches and pages',
+			'description' => 'What Google Search Console reports for the site, from the figures its daily job downloads: totals of the window (clicks, impressions, ctr as a fraction, average position weighted by impressions), clicks and impressions for every day, and the searches (queries) and addresses (pages) with the most clicks, at most limit each. Google publishes two or three days late: latest_day is the last day with figures and the days after it read as zeros. Searches Google keeps anonymous count in the totals but are not listed, so queries add up to less. linked false is a site not linked to Search Console: empty figures, not an error. Defaults to the last thirty days; a window is at most 400 days.',
+			'params'  => array(
+				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 25, 'description' => 'Searches and pages each.')
+			)
+		),
+
+		array(
+			'id'      => 'reports.pages',
+			'method'  => 'GET',
+			'path'    => '/reports/pages',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_pages',
+			'returns' => 'PagesReport',
+			'summary' => 'Pages with their Google figures, visits and SEO score',
+			'description' => 'One row per page of the site: Google\'s clicks, impressions, ctr (a fraction) and average position for it, the visits that began on it with their forms submitted and orders completed, its page views, and its SEO score (0-100, null until scored). A Google address and a site page meet on their path: without host, query, trailing slash or .html, decoded, case-blind; the root and every home page name are one row with home true and path /. A page only one side knows is listed too: null Google figures for a page Google did not show (or every row when linked is false, a site not linked to Search Console), page_id null for an address no page of the site has (a product or article address, or a page since deleted). Sorted by clicks, visits or score, largest first, a row without the figure last; total counts every row before limit. Google publishes two or three days late, so for the last days visits have no clicks beside them yet. summary_days and summary_to describe the visit figures as in GET /reports/visitors. Defaults to the last thirty days; a window is at most 400 days.',
+			'params'  => array(
+				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'sort',  'in' => 'query', 'type' => 'enum', 'values' => array('clicks', 'visits', 'score'), 'default' => 'clicks'),
 				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50)
 			)
 		),
@@ -4884,6 +5104,215 @@ function api_schema() {
 			'handler' => 'api_design_proposals_get',
 			'returns' => 'DesignProposal',
 			'summary' => 'One proposed change',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		/* ----- Ads and ad regions (includes/api/resources/design_ads.php) ------- */
+
+		array(
+			'id'      => 'design.ads.list',
+			'method'  => 'GET',
+			'path'    => '/design/ads',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_ads_list',
+			'returns' => array('list' => 'DesignAd'),
+			'summary' => 'Ads',
+			'description' => 'The ads of the ad regions, as the ads screen lists them, oldest first, cursor paged. content and caption are HTML with the site\'s own links as absolute addresses. sort_order 0 is random order in a dynamic region.',
+			'params'  => array(
+				array('name' => 'ad_region_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the ads of this ad region.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'design.ads.get',
+			'method'  => 'GET',
+			'path'    => '/design/ads/{id}',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_ads_get',
+			'returns' => 'DesignAd',
+			'summary' => 'One ad',
+			'description' => 'The same fields as the list, for one ad.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.ads.create',
+			'method'  => 'POST',
+			'path'    => '/design/ads',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ads_create',
+			'dry_run' => true,
+			'returns' => 'DesignAd',
+			'status'  => 201,
+			'summary' => 'Create an ad',
+			'description' => 'Adds an ad to an ad region, as the create ad screen does, on the site at once wherever the region is placed. The name is required and no other ad may have it (409 name_taken); a region that does not exist is 422.',
+			'params'  => array(
+				array('name' => 'name',         'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The ad\'s name, which no other ad has.'),
+				array('name' => 'ad_region_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The ad region it is shown in (GET /design/ad-regions).'),
+				array('name' => 'content',      'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'The ad as HTML, stored as the screen\'s rich text editor stores it.'),
+				array('name' => 'caption',      'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'HTML a dynamic region shows on top of the content.'),
+				array('name' => 'label',        'in' => 'body', 'type' => 'string', 'max_length' => 255, 'nullable' => true, 'description' => 'The tab a dynamic region shows for the ad.'),
+				array('name' => 'sort_order',   'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'description' => 'Its place in a dynamic region, smallest first; 0 for random order.')
+			)
+		),
+
+		array(
+			'id'      => 'design.ads.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/design/ads/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ads_update',
+			'dry_run' => true,
+			'returns' => 'DesignAd',
+			'summary' => 'Change an ad',
+			'description' => 'Only the fields sent change. A name another ad has is 409 name_taken. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',         'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The ad\'s name, which no other ad has.'),
+				array('name' => 'ad_region_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The ad region it is shown in (GET /design/ad-regions).'),
+				array('name' => 'content',      'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'The ad as HTML, stored as the screen\'s rich text editor stores it.'),
+				array('name' => 'caption',      'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'HTML a dynamic region shows on top of the content.'),
+				array('name' => 'label',        'in' => 'body', 'type' => 'string', 'max_length' => 255, 'nullable' => true, 'description' => 'The tab a dynamic region shows for the ad.'),
+				array('name' => 'sort_order',   'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'description' => 'Its place in a dynamic region, smallest first; 0 for random order.')
+			)
+		),
+
+		array(
+			'id'      => 'design.ads.delete',
+			'method'  => 'DELETE',
+			'path'    => '/design/ads/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ads_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an ad',
+			'description' => 'Deletes the ad outright, as the edit ad screen does; it leaves its region at once. Cannot be undone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.ads.delete_post',
+			'method'  => 'POST',
+			'path'    => '/design/ads/{id}/delete',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ads_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an ad, addressed as a POST',
+			'description' => 'The same delete as DELETE /design/ads/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.ad_regions.list',
+			'method'  => 'GET',
+			'path'    => '/design/ad-regions',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_ad_regions_list',
+			'returns' => array('list' => 'DesignAdRegion'),
+			'summary' => 'Ad regions',
+			'description' => 'The ad regions, oldest first, cursor paged. A page style places one with its tag; ads counts the ads in it. display_type static shows one ad at a time, dynamic shows them with tabs and transitions (transition_type, transition_duration in milliseconds, 0 for the default; autoplay with interval in seconds, 0 for the default; continuous starts again after the last ad).',
+			'params'  => array(
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'design.ad_regions.get',
+			'method'  => 'GET',
+			'path'    => '/design/ad-regions/{id}',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_ad_regions_get',
+			'returns' => 'DesignAdRegion',
+			'summary' => 'One ad region',
+			'description' => 'The same fields as the list, for one ad region.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.ad_regions.create',
+			'method'  => 'POST',
+			'path'    => '/design/ad-regions',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ad_regions_create',
+			'dry_run' => true,
+			'returns' => 'DesignAdRegion',
+			'status'  => 201,
+			'summary' => 'Create an ad region',
+			'description' => 'Adds an ad region, as the create ad region screen does; place it in a page style with its tag. The name follows the screen\'s rule (English letters, numbers and dashes, at most 100 characters: 422 otherwise) and no other region may have it (409 name_taken). Fields left out take the screen\'s defaults: static, slide, continuous play.',
+			'params'  => array(
+				array('name' => 'name',                'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The name page styles place the region by (<ad>name</ad>): English letters, numbers and dashes, no other region\'s.'),
+				array('name' => 'display_type',        'in' => 'body', 'type' => 'enum', 'values' => array('static', 'dynamic'), 'description' => 'static shows one ad at a time; dynamic shows them with tabs and transitions. static when left out.'),
+				array('name' => 'transition_type',     'in' => 'body', 'type' => 'enum', 'values' => array('slide', 'fade'), 'description' => 'How a dynamic region moves between ads.'),
+				array('name' => 'transition_duration', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Milliseconds a transition takes; null for the default.'),
+				array('name' => 'autoplay',            'in' => 'body', 'type' => 'bool', 'description' => 'A dynamic region moves to the next ad by itself.'),
+				array('name' => 'interval',            'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 999, 'nullable' => true, 'description' => 'Seconds between two ads with autoplay; null for the default.'),
+				array('name' => 'continuous',          'in' => 'body', 'type' => 'bool', 'description' => 'Autoplay starts again from the first ad after the last. true when left out.')
+			)
+		),
+
+		array(
+			'id'      => 'design.ad_regions.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/design/ad-regions/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ad_regions_update',
+			'dry_run' => true,
+			'returns' => 'DesignAdRegion',
+			'summary' => 'Change an ad region',
+			'description' => 'Only the fields sent change, with the screen\'s checks (422). A name another region has is 409 name_taken; a rename leaves the tags already in page styles behind, so change them too. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',                'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The name page styles place the region by (<ad>name</ad>): English letters, numbers and dashes, no other region\'s. A rename has to be made in the page styles too.'),
+				array('name' => 'display_type',        'in' => 'body', 'type' => 'enum', 'values' => array('static', 'dynamic'), 'description' => 'static shows one ad at a time; dynamic shows them with tabs and transitions.'),
+				array('name' => 'transition_type',     'in' => 'body', 'type' => 'enum', 'values' => array('slide', 'fade'), 'description' => 'How a dynamic region moves between ads.'),
+				array('name' => 'transition_duration', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Milliseconds a transition takes; null for the default.'),
+				array('name' => 'autoplay',            'in' => 'body', 'type' => 'bool', 'description' => 'A dynamic region moves to the next ad by itself.'),
+				array('name' => 'interval',            'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 999, 'nullable' => true, 'description' => 'Seconds between two ads with autoplay; null for the default.'),
+				array('name' => 'continuous',          'in' => 'body', 'type' => 'bool', 'description' => 'Autoplay starts again from the first ad after the last.')
+			)
+		),
+
+		array(
+			'id'      => 'design.ad_regions.delete',
+			'method'  => 'DELETE',
+			'path'    => '/design/ad-regions/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ad_regions_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an ad region',
+			'description' => 'Deletes the ad region and the user accounts\' access to it, as the edit ad region screen does. 409 ad_region_has_ads while ads are still in it: delete them or move them to another region first. Cannot be undone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.ad_regions.delete_post',
+			'method'  => 'POST',
+			'path'    => '/design/ad-regions/{id}/delete',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_ad_regions_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an ad region, addressed as a POST',
+			'description' => 'The same delete as DELETE /design/ad-regions/{id}, for clients that cannot send DELETE.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)

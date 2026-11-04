@@ -203,8 +203,8 @@ print
                             <tr>
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
                                 <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                <th>' . lang('Members') . '</th>
-                                <th class="text-end">' . lang('Contacts') . '</th>
+                                <th>' . lang('Membership') . '</th>
+                                <th class="text-end">' . lang('Members') . '</th>
                                 <th class="text-center">' . get_column_heading(lang('Subscription'), $sort_levels, '', '', 'subscription') . '</th>
                                 <th>' . get_column_heading(lang('Type'), $sort_levels, '', '', 'type') . '</th>
                                 <th>' . get_column_heading(lang('Description'), $sort_levels, '', '', 'description') . '</th>

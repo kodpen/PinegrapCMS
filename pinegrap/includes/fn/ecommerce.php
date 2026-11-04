@@ -11689,6 +11689,12 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         log_activity($commission_line);
     }
 
+    // ── Take back the order's reward points ────────────────────────────
+    // Points already converted to store credit come off the newest points
+    // cards, so an order cannot be placed, its points converted and the
+    // order cancelled with the credit kept. Once, like the steps above.
+    pg_credit_points_order_cancelled($order);
+
     // ── Automatic refund (opt-in) ───────────────────────────────────────
     // Default OFF. When ECOMMERCE_ORDER_CANCEL_AUTO_REFUND === true and the
     // order's payment has a driver that can cancel (pg_payment_cancel_driver():
@@ -11884,6 +11890,40 @@ function pg_order_refund_instruction($payment_method)
     return ((string) $payment_method === 'Offline Payment')
         ? lang('The payment was NOT refunded automatically. Send the amount back to the customer by bank transfer.')
         : lang('The payment was NOT refunded automatically. Process the refund in your payment provider dashboard.');
+}
+
+// What a bulk cancel on the Orders list tells the operator about money, as
+// the per-row Cancel button tells it for one order (cancel_order.php): each
+// entry of $cancelled is array('order' => the re-read orders row,
+// 'refund_status' => process_order_cancellation()'s). Returns the order
+// numbers (pg_order_log_number()) whose payment was refunded ('refunded'),
+// whose payment must go back by bank transfer ('transfer') or in the payment
+// provider's dashboard ('provider'), and that gift cards paid part of
+// ('gift_card'), with that part's sum in minor units ('gift_card_amount').
+function pg_order_bulk_cancel_refunds(array $cancelled)
+{
+    $groups = array('refunded' => array(), 'transfer' => array(), 'provider' => array(), 'gift_card' => array(), 'gift_card_amount' => 0);
+
+    foreach ($cancelled as $entry) {
+        $order  = (array) ($entry['order'] ?? array());
+        $status = (string) ($entry['refund_status'] ?? '');
+        $owed   = pg_order_cancel_refund_owed($order);
+        $number = pg_order_log_number($order);
+
+        if ($status === 'refunded') {
+            $groups['refunded'][] = $number;
+        } elseif ((($status === 'manual_required') || ($status === 'failed'))
+            && (($owed['payment'] > 0) || ($owed['gift_card'] <= 0))) {
+            $groups[((string) ($order['payment_method'] ?? '') === 'Offline Payment') ? 'transfer' : 'provider'][] = $number;
+        }
+
+        if ($owed['gift_card'] > 0) {
+            $groups['gift_card'][] = $number;
+            $groups['gift_card_amount'] += $owed['gift_card'];
+        }
+    }
+
+    return $groups;
 }
 
 // The base currency symbol as plain text: the currencies table keeps it as an

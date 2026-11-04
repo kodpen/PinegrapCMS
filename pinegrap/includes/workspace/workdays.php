@@ -219,6 +219,38 @@ function ws_workdays_js_strings()
     );
 }
 
+/**
+ * Hours as typed on Workspace Settings ("7,5", "8") in minutes. Empty or
+ * nothing at all means the default (0); a value under the floor is raised to
+ * it.
+ *
+ * @param mixed $value
+ * @param int   $min floor in minutes
+ * @param int   $max ceiling in minutes
+ * @return int|null minutes, 0 for the default; null for text that is no
+ *                  number of hours, a negative one or one over the ceiling
+ */
+function ws_settings_minutes($value, $min, $max)
+{
+    $text = str_replace(',', '.', trim((string) $value));
+
+    if ($text === '') {
+        return 0;
+    }
+
+    if (!is_numeric($text) || ((float) $text < 0)) {
+        return null;
+    }
+
+    $minutes = (int) round(((float) $text) * 60);
+
+    if ($minutes === 0) {
+        return 0;
+    }
+
+    return ($minutes > $max) ? null : max($min, $minutes);
+}
+
 // ── Days off kept by hand ───────────────────────────────────────────────
 
 /**
@@ -238,6 +270,10 @@ function ws_holiday_add($viewer, $data)
         return array('ok' => false, 'error' => lang('A holiday needs a name and a first day.'), 'event_id' => 0);
     }
 
+    if ($to < $from) {
+        return array('ok' => false, 'error' => lang('The last day cannot be before the first day.'), 'event_id' => 0);
+    }
+
     $department_id = (int) ($data['department_id'] ?? 0);
 
     if (($department_id > 0) && !ws_department($department_id)) {
@@ -250,7 +286,7 @@ function ws_holiday_add($viewer, $data)
         'department_id' => $department_id,
         'title'         => $name,
         'start'         => $from,
-        'end'           => ($to < $from) ? $from : $to,
+        'end'           => $to,
         'all_day'       => 1,
     ));
 

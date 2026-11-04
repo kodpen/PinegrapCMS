@@ -80,6 +80,8 @@ if (!$_POST) {
     // one just picked when a save came back refused.
     $linked_contact = ((int) $liveform->get_field_value('contact_id') > 0) ? erp_contact_summary((int) $liveform->get_field_value('contact_id')) : null;
 
+    $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
+
     $account_currency = strtoupper(trim((string) $account['currency']));
     $has_movements = ((int) db_value("SELECT COUNT(*) FROM erp_account_transactions WHERE account_id = '" . $account_id . "'") > 0);
 
@@ -247,14 +249,18 @@ if (!$_POST) {
             <form name="form" id="erp_account_form" action="' . $self_action . '" method="post">
                 ' . get_token_field() . '
                 ' . $liveform->field(array('type' => 'hidden', 'name' => 'id')) . '
-                ' . erp_account_form_cards($liveform, false, $has_movements, $linked_contact, $account) . '
+                ' . ($readonly
+                    // The read-only accountant reads the card: every field,
+                    // the contact search and Unlink disabled, no Save.
+                    ? '<fieldset disabled>' . erp_account_form_cards($liveform, false, $has_movements, $linked_contact, $account) . '</fieldset>'
+                    : erp_account_form_cards($liveform, false, $has_movements, $linked_contact, $account) . '
                 <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
                         </div>
                     </div>
-                </nav>
+                </nav>') . '
             </form>
 
             <div class="card my-7">

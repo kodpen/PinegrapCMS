@@ -48,7 +48,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php');
 // The actions the canvas sends.
 function ws_flows_canvas_test_actions()
 {
-	return array('ws_flow_list', 'ws_flow_get', 'ws_flow_create', 'ws_flow_save', 'ws_flow_publish', 'ws_flow_pause', 'ws_flow_bin',
+	return array('ws_flow_list', 'ws_flow_get', 'ws_flow_create', 'ws_flow_save', 'ws_flow_publish', 'ws_flow_pause', 'ws_flow_resume', 'ws_flow_bin',
 		'ws_flow_run_start', 'ws_flow_runs_list', 'ws_flow_run_get', 'ws_flow_run_cancel',
 		'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove');
 }

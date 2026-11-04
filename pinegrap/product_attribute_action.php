@@ -280,7 +280,15 @@ switch ($action) {
             WHERE product_attribute_id = '" . $attribute_id . "'
                 AND label = '" . e($label) . "'");
 
-        if ($duplicate != 0) {
+        // The collation tells I from ı, so "KIRMIZI" passed beside "Kırmızı";
+        // the attribute screens' fold is applied as well.
+        $existing_labels = array();
+
+        foreach (db_items("SELECT label FROM product_attribute_options WHERE product_attribute_id = '" . $attribute_id . "'") as $existing_option) {
+            $existing_labels[] = (string) $existing_option['label'];
+        }
+
+        if (($duplicate != 0) || pg_product_attribute_form_label_taken($label, $existing_labels)) {
             pg_paa_error(lang('Sorry, the name that you entered is already in use, so please enter a different name.'));
         }
 

@@ -166,7 +166,13 @@ $sent = (bool) email(array(
     'secret' => true));
 
 log_activity(lang(array('string' => 'password was reset for user ({var:1})', 'vars' => array($user_username))), $_SESSION['sessionusername']);
-$liveform_view_users->add_notice(h(pg_reset_password_notice($set_password_url, $sent)));
+// A failed delivery leaves an account nobody can sign in to until someone
+// acts, so it is a warning, not a success notice.
+if ($sent) {
+    $liveform_view_users->add_notice(h(pg_reset_password_notice($set_password_url, $sent)));
+} else {
+    $liveform_view_users->add_warning(h(pg_reset_password_notice($set_password_url, $sent)));
+}
 
 // If there is a send to value then send user back to that screen
 if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {

@@ -148,6 +148,189 @@ function pg_page_bulk_decide($page, $set, $role)
 }
 
 /**
+ * The counts of pg_page_bulk_tally() before the first page: all 0.
+ *
+ * @return array
+ */
+function pg_page_bulk_tally_start()
+{
+    return array_fill_keys(array(
+        'pages', 'folder', 'search_on', 'search_off', 'sitemap_on', 'sitemap_off',
+        'style_desktop', 'style_mobile', 'style_skipped', 'sitemap_noindex', 'sitemap_type',
+    ), 0);
+}
+
+/**
+ * Adds one page's decision to the counts a bulk edit reports, so the notice,
+ * the site log and the audit name only what was written. A page counts as
+ * changed when a column or a style is written; the sitemap switch asked on
+ * for a page that stays out of the site map (noindex, or a type the site map
+ * does not list) is counted as left alone, with its reason.
+ *
+ * @param array $tally     the counts so far (array() to start)
+ * @param array $page      the page as pg_page_bulk_decide() read it
+ * @param array $set       the values asked for, as given to the decision
+ * @param array $decision  pg_page_bulk_decide()
+ * @return array  pages, folder, search_on, search_off, sitemap_on,
+ *                sitemap_off, style_desktop, style_mobile, style_skipped,
+ *                sitemap_noindex, sitemap_type
+ */
+function pg_page_bulk_tally($tally, $page, $set, $decision)
+{
+    $tally = array_merge(pg_page_bulk_tally_start(), (array) $tally);
+
+    $columns = $decision['columns'];
+
+    if ((count($columns) > 0) || (count($decision['styles']) > 0)) {
+        $tally['pages']++;
+    }
+
+    if (isset($columns['page_folder'])) {
+        $tally['folder']++;
+    }
+
+    if (isset($columns['page_search'])) {
+        $tally[$columns['page_search'] ? 'search_on' : 'search_off']++;
+    }
+
+    if (isset($columns['sitemap'])) {
+        $tally[$columns['sitemap'] ? 'sitemap_on' : 'sitemap_off']++;
+    }
+
+    foreach (array('desktop', 'mobile') as $device) {
+        if (isset($decision['styles'][$device])) {
+            $tally['style_' . $device]++;
+        }
+    }
+
+    if ($decision['style_skipped']) {
+        $tally['style_skipped']++;
+    }
+
+    // Asked on, not on before and not written: say why.
+    if (isset($set['sitemap']) && ((string) $set['sitemap'] === '1')
+        && ((int) $page['sitemap'] !== 1) && empty($columns['sitemap'])) {
+        $noindex = array_key_exists('noindex', $columns) ? $columns['noindex'] : (int) ($page['noindex'] ?? 0);
+
+        $tally[$noindex ? 'sitemap_noindex' : 'sitemap_type']++;
+    }
+
+    return $tally;
+}
+
+/**
+ * Whether pages may be moved into a folder: it exists, and it is neither in
+ * the Recycle Bin (a page moved there would have no restore record) nor the
+ * Workspace's folder or below it, which the page folder picker leaves out
+ * (pg_page_folder_left_out()). Pure over the rows.
+ *
+ * @param int   $folder_id
+ * @param array $rows      folder_id => array('folder_parent' => …)
+ * @param int   $workspace the Workspace's folder, 0 when there is none
+ * @param int   $bin       the Recycle Bin folder, 0 when there is none
+ * @return bool
+ */
+function pg_page_bulk_folder_ok($folder_id, $rows, $workspace, $bin)
+{
+    $folder_id = (int) $folder_id;
+
+    return ($folder_id > 0)
+        && isset($rows[$folder_id])
+        && !pg_folder_in_bin_chain($rows, $folder_id, (int) $bin)
+        && !pg_page_folder_left_out($folder_id, $rows, (int) $workspace);
+}
+
+/**
+ * Marks a page changed now by a user: the Last Modified column of the Pages
+ * list and its default sort read page_timestamp and page_user. For the
+ * screens that write a page's columns one by one (mass_edit.php), called
+ * once per changed page.
+ *
+ * @param int $page_id
+ * @param int $user_id
+ * @return bool false when the write failed
+ */
+function pg_page_bulk_touch($page_id, $user_id)
+{
+    return db_q(
+        "UPDATE page SET page_timestamp = UNIX_TIMESTAMP(), page_user = ? WHERE page_id = ?",
+        array((int) $user_id, (int) $page_id)) !== false;
+}
+
+/**
+ * The Modify Selected dialog of the Pages list: the folder, the two styles
+ * (staff only, as on the page screen), site search and sitemap.xml pick
+ * lists, owned by the list's form ($form_id) and posted to edit_pages.php
+ * with the list's selection. An empty pick list leaves its property alone.
+ *
+ * @param array  $user     validate_user()
+ * @param string $form_id  the id of the list's form
+ * @return string
+ */
+function pg_page_bulk_edit_dialog($user, $form_id)
+{
+    $id = 'page_bulk_edit_dialog';
+    $owner = ' form="' . h($form_id) . '"';
+    $default_style_label = lang('Default') . ' (' . lang('inherit') . ')';
+    $output_preview_note = '';
+
+    // While a theme other than the activated one is previewed, the styles
+    // picked here go to the preview (edit_pages.php).
+    $preview_theme_id = (int) ($_SESSION['software']['preview_theme_id'] ?? 0);
+
+    if (($preview_theme_id > 0)
+        && ($preview_theme_id != (int) db_value("SELECT id FROM files WHERE activated_desktop_theme = '1'"))
+        && ($preview_theme_id != (int) db_value("SELECT id FROM files WHERE activated_mobile_theme = '1'"))) {
+        $default_style_label = '[' . lang('Activated') . ']';
+        $output_preview_note = '
+                    <div class="col-12">
+                        <div class="alert theme-success small mb-0" role="alert">
+                            <strong class="d-block">' . lang('Theme Preview Mode') . '</strong>
+                            ' . lang('You are currently previewing a Theme that is not activated, so your Page Style and Mobile Page Style selections below will update the preview Page Style, and not the activated Page Style.  The preview Page Styles that you set here will be activated when you activate the Theme.') . '
+                        </div>
+                    </div>';
+    }
+
+    $select = function ($name, $label, $options, $width = 'sm:col-6') use ($id, $owner) {
+        return '
+                    <div class="col-12 ' . $width . '">
+                        <label class="form-label" for="' . $id . '_' . $name . '">' . $label . '</label>
+                        <select class="form-control" id="' . $id . '_' . $name . '" name="' . $name . '"' . $owner . '><option value=""></option>' . $options . '</select>
+                    </div>';
+    };
+
+    $include_options = '<option value="1">' . h(lang('Include')) . '</option><option value="0">' . h(lang('Exclude')) . '</option>';
+
+    $output_style_fields = '';
+
+    if ((int) $user['role'] < 3) {
+        $output_style_fields = $output_preview_note
+            . $select('edit_page_style', lang('Page Style'), select_style('', $default_style_label))
+            . $select('edit_mobile_style_id', lang('Mobile Page Style'), get_mobile_style_options('', $default_style_label));
+    }
+
+    return '<dialog id="' . $id . '" class="dialog" aria-labelledby="' . $id . '_title">
+            <div class="dialog-header">
+                <h5 class="dialog-title" id="' . $id . '_title">' . lang('Modify Pages') . '</h5>
+                <button type="button" class="btn-close no-submit" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
+            </div>
+            <div class="dialog-body">
+                <p class="small fg-secondary">' . lang('You may update various properties below for the selected pages. You may leave a pick list unselected if you do not want to modify a property.') . '</p>
+                <div class="row g-5">'
+                    . $select('move_to_folder', lang('Folder'), pg_page_select_folder(), '')
+                    . $output_style_fields
+                    . $select('edit_site_search', lang('Site Search'), $include_options)
+                    . $select('edit_sitemap', 'sitemap.xml', $include_options) . '
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <button type="button" class="no-submit btn btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                <button type="button" class="no-submit btn btn-solid theme-primary" data-pg-page-bulk-save><i class="bi bi-check-lg me-3" aria-hidden="true"></i>' . lang('Modify Pages') . '</button>
+            </div>
+        </dialog>';
+}
+
+/**
  * The page row pg_page_bulk_decide() reads, with the search keywords the
  * tag cloud update needs. False when there is no such page.
  *

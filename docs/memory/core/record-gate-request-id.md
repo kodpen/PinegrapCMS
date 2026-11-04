@@ -5,12 +5,13 @@ description: A record screen's access gate checks the id its handlers read ($_PO
 
 ## Which id does a screen's role or folder gate check?
 - The one its handlers act on: `$requested_<record>_id = $_POST ? ($_POST['id'] ?? '') : ($_GET['id'] ?? '');`, then `$id = is_scalar(...) ? (int) ... : 0;` and the "Record not found." gate on `$id`.
-- Screens that do it: `edit_page.php` (folder access), `edit_user.php` (role ceiling), `edit_contact.php` (a role 3 user's contact-group access; its form, delete, save and "Allow again" all read that `$id`).
+- Screens that do it: `edit_page.php` (folder access), `edit_user.php` (role ceiling), `edit_contact.php` (a role 3 user's contact-group access; its form, delete, save and "Allow again" all read that `$id`), `edit_contact_group.php` (a role 3 user's group access; its form, member count, delete with its xref rows, name check, save and redirects read that `$id`).
 
 ## Why not `$_REQUEST['id']`?
 - Where no `request_order` is set (a server without php.ini, e.g. the official Docker images), `$_REQUEST` follows `variables_order` `EGPCS`: a cookie outranks POST. A cookie `id` naming a permitted record passed the gate while the POST `id` was the record changed.
 - `edit_user.php` before the bug-hunt fix: a Manager with a cookie `id` naming a role-3 user could delete an administrator, or change their e-mail, password and rights, through the POST `id`.
+- `edit_contact_group.php` before its fix: the gate read `$_REQUEST['id']`, the delete and UPDATE `$_POST['id']`: a role 3 user with a cookie `id` naming an assigned group could rename another group or delete it with its campaign links.
 - `edit_contact.php` before its bug-hunt fix: the access check read `$_REQUEST['id']`, the delete and save `$_POST['id']`: a role 3 user with a cookie `id` naming a contact in one of their groups could delete or overwrite any contact.
 
 ## Which test holds it?
-- `tests/panel_id_gate_test.php`: `test_panel_id_gate_edit_user_checks_handler_id` (no `$_REQUEST['id']` left in `edit_user.php`); the `$_GET['id']` cast scan accepts the `$requested_<record>_id` gate; `test_panel_id_gate_edit_contact_checks_handler_id` (one `$_POST['id']`, in the gate).
+- `tests/panel_id_gate_test.php`: `test_panel_id_gate_edit_user_checks_handler_id` (no `$_REQUEST['id']` left in `edit_user.php`); the `$_GET['id']` cast scan accepts the `$requested_<record>_id` gate; `test_panel_id_gate_edit_contact_checks_handler_id` (one `$_POST['id']`, in the gate); `test_panel_id_gate_edit_contact_group_checks_handler_id` (one `$_POST['id']` and one `$_GET['id']`, both in the gate).

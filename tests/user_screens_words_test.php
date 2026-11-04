@@ -37,7 +37,7 @@ function user_screens_words_test_tr()
 function test_user_screens_create_contact_runs_after_the_save()
 {
 	$source = user_screens_words_test_source('edit_user.php');
-	$save = strpos($source, 'pg_user_form_save_access($_POST[\'id\']');
+	$save = strpos($source, 'pg_user_update($audit_user_id');
 	pg_assert_true($save !== false, 'the save branch found');
 
 	$first_read = strpos($source, '$_POST[\'submit_create_contact\']');
@@ -117,7 +117,7 @@ function test_user_screens_password_is_parola()
 		'Password',
 		'User Password Hint',
 		'You cannot reset your own password here.',
-		'Update this user\'s privileges, or email a new password.',
+		'Update this user\'s role and rights, or e-mail a link to set a new password.',
 		'The password is \'{var:1}\'. The user has not been notified.',
 		'Reset Password & Send Link',
 	) as $key) {

@@ -2,8 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Static checks on the user and page screens (edit_user.php, add_user.php,
- * import_users.php, edit_pages.php, edit_page.php): their raw queries with
+ * Static checks on the user and page screens (edit_user.php, add_user.php
+ * and the writes they share in includes/fn/user_write.php, import_users.php, edit_pages.php, edit_page.php): their raw queries with
  * values run through db_q() placeholders, not escape()/e() concatenated
  * into the SQL text, and every db_q() call passes one value per '?'. The
  * raw queries left are those without values and those completed by a
@@ -126,7 +126,7 @@ function db_q_user_page_screens_test_built($text)
 
 function test_db_q_user_page_screens_value_queries_use_db_q()
 {
-	$expected = array('edit_user.php' => 21, 'add_user.php' => 2, 'includes/forms/user_form.php' => 8, 'import_users.php' => 8, 'edit_pages.php' => 24, 'edit_page.php' => 29);
+	$expected = array('edit_user.php' => 9, 'includes/fn/user_write.php' => 12, 'includes/forms/user_form.php' => 8, 'import_users.php' => 8, 'edit_pages.php' => 23, 'edit_page.php' => 29);
 
 	foreach ($expected as $path => $minimum) {
 		$db_q = 0;

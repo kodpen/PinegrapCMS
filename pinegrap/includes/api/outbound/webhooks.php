@@ -129,7 +129,11 @@ function api_webhook_events() {
 		// import, a marketplace order import or cancellation and an ERP stock
 		// count. They still move products.timestamp, so GET
 		// /products?updated_since= lists the product. The description says so.
-		'inventory.changed'    => 'A product stock level changed: a sale, a scan, a screen, the API, the Workspace or an ERP document (not product imports, marketplace order imports or a stock count; those products are listed by GET /products?updated_since=)',
+		// On a site with stock locations the payload adds location_id,
+		// location_name and location_quantity (pg_stock_event_location_fields());
+		// quantity stays the total. A transfer between locations leaves the
+		// total as it was and is not announced (GET /inventory reads it).
+		'inventory.changed'    => 'A product stock level changed: a sale, a scan, a screen, the API, the Workspace or an ERP document (not product imports, marketplace order imports or a stock count; those products are listed by GET /products?updated_since=). quantity is the total; on a site with stock locations location_id, location_name and location_quantity name the location that changed. A transfer between locations is not announced: the total stays the same',
 		// Only where the site has set ECOMMERCE_LOW_STOCK_THRESHOLD by hand: it
 		// has no settings screen yet, and without a threshold there is no low to
 		// cross. The cart widget reads the same constant for its own warning.
@@ -146,6 +150,11 @@ function api_webhook_events() {
 		'customer.created'     => 'A customer record was created (not bulk imports)',
 		'customer.updated'     => 'A customer record was changed through the API',
 		'customer.deleted'     => 'A customer record was deleted through the API',
+		// Panel accounts opened, changed or closed by an application; the
+		// panel's own user screens do not announce.
+		'user.created'         => 'A panel user account was created through the API',
+		'user.updated'         => 'A panel user account was changed through the API',
+		'user.deleted'         => 'A panel user account was deleted through the API',
 		// Every row of the consent log a person gave (sign-up, account and
 		// unsubscribe pages, checkout, custom forms) or İYS sent back; a
 		// cookie answer names no customer, an import is a bulk path.
@@ -213,7 +222,11 @@ function api_webhook_events() {
 		'calendar_event.reserved' => 'A placed order reserved spots on a calendar event (a cart that is not ordered yet is not announced)',
 		// The submitted form screens' deletes and the API's alike (includes/fn/
 		// submitted_form_writes.php); undoing an import stays quiet.
-		'form.submission.deleted' => 'A form submission was deleted'
+		'form.submission.deleted' => 'A form submission was deleted',
+		// An e-mail campaign whose last recipient was dealt with (the job or
+		// Send now), or an SMS campaign the job handed to the SMS queue.
+		// channel email or sms; read the figures from /campaigns.
+		'campaign.sent'        => 'An e-mail campaign finished sending, or an SMS campaign was queued'
 	);
 
 	// A module announces its own events from its own file. The core list wins a

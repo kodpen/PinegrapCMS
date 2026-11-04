@@ -48,7 +48,7 @@ function test_panel_id_gate_on_formerly_ungated_screens()
 {
 	$screens = array(
 		'duplicate_folder', 'duplicate_product_group', 'edit_ad_region', 'edit_arrival_date', 'edit_auto_dialog',
-		'edit_calendar_event_location', 'edit_comment', 'edit_commission', 'edit_common_region', 'edit_contact_group',
+		'edit_calendar_event_location', 'edit_comment', 'edit_commission', 'edit_common_region',
 		'edit_custom_style', 'edit_design_file', 'edit_designer_region', 'edit_dynamic_region',
 		'edit_email_campaign_profile', 'edit_field', 'edit_file', 'edit_javascript', 'edit_login_region', 'edit_menu',
 		'edit_menu_item', 'edit_recurring_commission_profile', 'edit_ship_date_adjustment', 'edit_submitted_form',
@@ -64,6 +64,9 @@ function test_panel_id_gate_on_formerly_ungated_screens()
 
 	// edit_page.php checks the id its handler reads, never a cookie of the same name.
 	pg_assert_contains('is_scalar($requested_page_id) ? (int) $requested_page_id : 0', file_get_contents(PG_FUNCTIONS_DIR . '/edit_page.php'), 'edit_page');
+
+	// edit_contact_group.php too (test_panel_id_gate_edit_contact_group_checks_handler_id).
+	pg_assert_contains("output_error(lang('Record not found.')", file_get_contents(PG_FUNCTIONS_DIR . '/edit_contact_group.php'), 'edit_contact_group');
 }
 
 // Outside the ERP screens (tests/erp_request_values_test.php), no root screen
@@ -271,4 +274,18 @@ function test_panel_id_gate_edit_contact_checks_handler_id()
 	pg_assert_contains('validate_contact_access($user, $id)', $source, 'edit_contact access on the gated id');
 	pg_assert_same(false, strpos($source, "\$_REQUEST['id']"), 'edit_contact reads no $_REQUEST id');
 	pg_assert_same(1, substr_count($source, "\$_POST['id']"), 'edit_contact writes no other id than the gated one');
+}
+
+// edit_contact_group.php checks a role 3 user's group access on the id its
+// delete and save act on, never a cookie of the same name.
+function test_panel_id_gate_edit_contact_group_checks_handler_id()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/edit_contact_group.php');
+
+	pg_assert_contains('$requested_contact_group_id = $_POST ? ($_POST[\'id\'] ?? \'\') : ($_GET[\'id\'] ?? \'\');', $source, 'edit_contact_group id source');
+	pg_assert_contains('is_scalar($requested_contact_group_id) ? (int) $requested_contact_group_id : 0', $source, 'edit_contact_group id gate');
+	pg_assert_contains('validate_contact_group_access($user, $id)', $source, 'edit_contact_group access on the gated id');
+	pg_assert_same(false, strpos($source, "\$_REQUEST['id']"), 'edit_contact_group reads no $_REQUEST id');
+	pg_assert_same(1, substr_count($source, "\$_POST['id']"), 'edit_contact_group writes no other id than the gated one');
+	pg_assert_same(1, substr_count($source, "\$_GET['id']"), 'edit_contact_group loads no other id than the gated one');
 }

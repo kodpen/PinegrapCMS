@@ -323,8 +323,9 @@ if ($seo_summary && (($seo_summary['in_sitemap'] > 0) || ($seo_summary['in_searc
 
 // The bulk actions sit in the list's selection bar, which shows while rows
 // are selected. Both post the selection to edit_pages.php; Modify Selected
-// first asks for the changes in its window, which submits the form.
-$output_bulk_buttons = '<button type="button" value="Modify Selected" class="btn btn-sm btn-solid theme-primary" onclick="window.open(\'edit_pages.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'edit\',\'product\')"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Modify Selected') . '</button>';
+// first asks for the changes in its dialog, whose Save submits the form.
+require_once(dirname(__FILE__) . '/includes/fn/page_bulk.php');
+$output_bulk_buttons = '<button type="button" class="no-submit btn btn-sm btn-solid theme-primary" data-pg-page-bulk-open><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Modify Selected') . '</button>';
 
 // if the user is at least a manager or has access to delete pages, then output the delete selected button
 if (($user['role'] < '3') || ($user['delete_pages'] == TRUE)) {
@@ -363,14 +364,9 @@ pg_page_shell(
             <div class="row">
                 ' . $output_seo_summary . '
             </div>
-            <form name="form" action="edit_pages.php" method="post">
+            <form name="form" id="view_pages_form" action="edit_pages.php" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="action" />
-                <input type="hidden" name="move_to_folder" />
-                <input type="hidden" name="edit_page_style" />
-                <input type="hidden" name="edit_mobile_style_id" />
-                <input type="hidden" name="edit_site_search" />
-                <input type="hidden" name="edit_sitemap" />
                 <input type="hidden" name="selection" />
                 <input type="hidden" name="list_params" value="' . h(encode_json(array('filter' => $filter))) . '" />
                 <input type="hidden" name="send_to" value="' . h(get_request_uri()) . '" />
@@ -379,18 +375,35 @@ pg_page_shell(
         </div>
     </div>
     ' . pg_seo_render_detail_offcanvas() . '
+    ' . pg_page_bulk_edit_dialog($user, 'view_pages_form') . '
 </main>
 <script>
     // The bulk actions post what the list has selected (edit_pages.php
     // resolves it with the list\'s own query and the user\'s rights).
     (function () {
         var root = document.querySelector(\'.pg-list-table[data-pg-list-table="view_pages"]\');
+        var form = document.getElementById(\'view_pages_form\');
+        var dialog = document.getElementById(\'page_bulk_edit_dialog\');
 
         if (root) {
             root.addEventListener(\'pg-list-table:selection\', function (event) {
-                document.form.selection.value = JSON.stringify(event.detail.payload);
+                form.elements.selection.value = JSON.stringify(event.detail.payload);
             });
         }
+
+        // Modify Selected: the dialog opens with every pick list empty, so
+        // a choice left from an earlier opening is never posted.
+        document.addEventListener(\'click\', function (event) {
+            if (event.target.closest(\'[data-pg-page-bulk-open]\')) {
+                dialog.querySelectorAll(\'select\').forEach(function (select) {
+                    select.value = \'\';
+                });
+                pgUI.dialog.show(dialog);
+            } else if (event.target.closest(\'[data-pg-page-bulk-save]\')) {
+                form.elements.action.value = \'edit\';
+                form.submit();
+            }
+        });
     }());
 </script>
 ' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '

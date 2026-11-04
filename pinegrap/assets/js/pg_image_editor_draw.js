@@ -83,11 +83,16 @@
 
     // ---- the layer types ----
 
+    var shadows = 0;
+
     // A drawn layer as SVG: its path in its box's frame, turned around the
-    // box's centre and mirrored inside it.
+    // box's centre and mirrored inside it. stroke 0 draws no line; ink (an
+    // outlined text's outline) is a line of its own colour under the fill;
+    // a shadow ({ color, blur, dx, dy } in px) falls outside the turn, so
+    // the same way at any angle.
     function drawnNode(l) {
         var g = document.createElementNS(SVGNS, 'g'), shape = M.shapePath(l), path = document.createElementNS(SVGNS, 'path');
-        var dash = M.dashFor(l), tf = 'translate(' + l.x + ' ' + l.y + ')';
+        var dash = M.dashFor(l), tf = 'translate(' + l.x + ' ' + l.y + ')', s = l.shadow, outer, filter, drop;
 
         if (l.rot) {
             tf += ' rotate(' + l.rot + ' ' + (l.w / 2) + ' ' + (l.h / 2) + ')';
@@ -105,8 +110,12 @@
 
         path.setAttribute('d', shape.d);
         path.setAttribute('fill', M.fillFor(l));
-        path.setAttribute('stroke', l.color || '#000000');
+        path.setAttribute('stroke', (l.stroke === 0) ? 'none' : (l.ink || l.color || '#000000'));
         path.setAttribute('stroke-width', l.stroke || 1);
+
+        if (l.ink) {
+            path.setAttribute('paint-order', 'stroke');
+        }
         path.setAttribute('stroke-linecap', 'round');
         path.setAttribute('stroke-linejoin', 'round');
 
@@ -128,11 +137,56 @@
             g.appendChild(head);
         }
 
-        return g;
+        if (!s || !s.color) {
+            return g;
+        }
+
+        outer = document.createElementNS(SVGNS, 'g');
+        filter = document.createElementNS(SVGNS, 'filter');
+        drop = document.createElementNS(SVGNS, 'feDropShadow');
+        filter.setAttribute('id', 'pgie-ds-' + (++shadows));
+        [['x', '-50%'], ['y', '-50%'], ['width', '200%'], ['height', '200%'], ['color-interpolation-filters', 'sRGB']].forEach(function (a) { filter.setAttribute(a[0], a[1]); });
+        [['dx', s.dx || 0], ['dy', s.dy || 0], ['stdDeviation', (s.blur || 0) / 2], ['flood-color', s.color]].forEach(function (a) { drop.setAttribute(a[0], a[1]); });
+        filter.appendChild(drop);
+        outer.appendChild(filter);
+        outer.setAttribute('filter', 'url(#' + filter.getAttribute('id') + ')');
+        outer.appendChild(g);
+
+        return outer;
     }
 
-    // The same drawing onto the save's canvas.
+    // The same drawing onto the save's canvas. With a shadow it is drawn
+    // on a canvas of its own first, so the shadow falls from the whole
+    // drawing once (a canvas shadow is in its pixels, whatever the
+    // transform).
     function drawnPaint(g, l) {
+        var s = l.shadow, m, k, margin, fw, fh, c, cg, bare;
+
+        if (s && s.color) {
+            m = g.getTransform();
+            k = Math.hypot(m.a, m.b) || 1;
+            margin = (l.stroke || 1) + Math.max(l.w, l.h) * 0.5;
+            fw = Math.hypot(l.w, l.h) + 2 * margin;
+            fh = fw;
+            c = document.createElement('canvas');
+            c.width = Math.max(1, Math.min(Math.ceil(fw * k), 16000));
+            c.height = Math.max(1, Math.min(Math.ceil(fh * k), 16000));
+            cg = c.getContext('2d');
+            cg.setTransform(c.width / fw, 0, 0, c.height / fh, 0, 0);
+            bare = M.clone(l);
+            delete bare.shadow;
+            bare.x = fw / 2 - l.w / 2;
+            bare.y = fh / 2 - l.h / 2;
+            drawnPaint(cg, bare);
+            g.shadowColor = s.color;
+            g.shadowBlur = (s.blur || 0) * k;
+            g.shadowOffsetX = (s.dx || 0) * k;
+            g.shadowOffsetY = (s.dy || 0) * k;
+            g.drawImage(c, l.x + l.w / 2 - fw / 2, l.y + l.h / 2 - fh / 2, fw, fh);
+            g.shadowColor = 'transparent';
+            return;
+        }
+
         var shape = M.shapePath(l), fill = M.fillFor(l), color = l.color || '#000000', path = new Path2D(shape.d);
 
         g.translate(l.x + l.w / 2, l.y + l.h / 2);
@@ -146,16 +200,25 @@
         g.lineCap = 'round';
         g.lineJoin = 'round';
 
+        // ink: the line goes under the fill.
+        if (l.ink && l.stroke) {
+            g.strokeStyle = l.ink;
+            g.lineWidth = l.stroke;
+            g.stroke(path);
+        }
+
         if (fill !== 'none') {
             g.fillStyle = fill;
             g.fill(path);
         }
 
-        g.strokeStyle = color;
-        g.lineWidth = l.stroke || 1;
-        g.setLineDash(M.dashFor(l) || []);
-        g.stroke(path);
-        g.setLineDash([]);
+        if ((l.stroke !== 0) && !l.ink) {
+            g.strokeStyle = color;
+            g.lineWidth = l.stroke || 1;
+            g.setLineDash(M.dashFor(l) || []);
+            g.stroke(path);
+            g.setLineDash([]);
+        }
 
         if (shape.head) {
             var head = new Path2D(shape.head.d);

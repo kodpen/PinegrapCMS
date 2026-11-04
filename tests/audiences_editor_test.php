@@ -109,3 +109,13 @@ function test_audiences_editor_count_text()
 	pg_assert_same('about 45,700 contacts', pg_audience_count_text(45678));
 	pg_assert_same('about 1,235,000 contacts', pg_audience_count_text(1234567));
 }
+
+// The "Contact field" condition names its columns as the contact form does:
+// contacts.title is the job title, member_id the site's member ID label.
+function test_audiences_contact_field_labels_match_contact_form()
+{
+	$fields = pg_audience_contact_fields();
+
+	pg_assert_same(lang('Job Title'), $fields['title'], 'title is the job title');
+	pg_assert_same((defined('MEMBER_ID_LABEL') && (trim((string) MEMBER_ID_LABEL) !== '')) ? trim((string) MEMBER_ID_LABEL) : lang('Member ID'), $fields['member_id'], 'member id follows the site label');
+}

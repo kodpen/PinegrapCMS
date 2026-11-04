@@ -48,9 +48,8 @@ function test_settings_links_by_role_erp_settings_links_only_for_managers()
 function test_settings_links_by_role_dynamic_regions_create_for_administrators()
 {
 	$source = settings_links_by_role_source('view_regions.php');
-	$case = strpos($source, "case 'all_dynamic_regions':");
-	$gate = strpos($source, "if (\$user['role'] < 1) {", $case);
-	$button = strpos($source, 'href="add_dynamic_region.php"', $case);
-	pg_assert_true($case !== false && $gate !== false && $button !== false, 'the dynamic regions case, its gate and its button are found');
-	pg_assert_true($button > $gate, 'the Create button is set inside the administrator block');
+	$gate = strpos($source, "if ((\$kind !== 'dynamic') || (\$user['role'] < 1)) {");
+	$hidden = strpos($source, "\$create_url = '';", (int) $gate);
+	pg_assert_true(($gate !== false) && ($hidden !== false), 'below administrator the dynamic regions list has no Create button and no rows');
+	pg_assert_contains("return (\$kind === 'dynamic') ? (\$user['role'] < 1) : (\$user['role'] <= 1);", $source, 'a dynamic region changes in place for administrators only');
 }

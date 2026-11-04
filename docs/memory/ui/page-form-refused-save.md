@@ -7,6 +7,14 @@ description: Create Page and Edit Page come back with what was typed when a save
 - Every one: blank name, name in use, `/` in a catalog or catalog detail name, a custom form that cannot run (name taken, Next Page confirmation with no page), on edit the canonical address or snippet length. Each calls `add_fields_to_session()` before the redirect; `pg_page_form_refuse()` does it itself.
 - Before, Create came back empty on the Standard type with every custom form setting gone, and Edit came back with the stored page; only the canonical address and snippet length were kept.
 
+## Which folders and styles does a save refuse?
+- `pg_page_form_folder_errors($posted[, $current])`: a folder that is not there, one in the Recycle Bin (`'missing'`) or the Workspace's folder or below it (`'workspace'`); the page's stored folder is kept for the bin and Workspace. Pure part: `pg_page_form_folder_verdict()`. Before, Create Page inserted the page into folder 999999 or 0 and then died in `get_style()` (endless recursion, 4 GB fatal); `get_style()` now returns 0 for a missing folder row.
+- `pg_page_form_style_errors($source[, $stored, $stored_mobile])` (role < 3): a style id that is not there or that the picker does not offer (a visual-editor design or mobile layout on desktop; on mobile, while MOBILE is on, a style that is neither custom nor `one_column_mobile`); the stored one is kept. Pure part: `pg_page_form_style_ok()`. Create Page skips regions when no style code is found.
+- Create Page stores `sitemap` 0 for a type outside `pg_page_form_sitemap_type()`, the list Edit Page and the API use.
+
+## Where does Edit Page go when part of a save was refused?
+- A type change refused (custom form with submissions) or a contact group or private folder refused by `pg_page_type_properties_for_save()`: the rest is saved and the screen comes back to Edit Page (`$save_refused_part`) instead of the site page, so the message shows with the form.
+
 ## How does the screen draw from the stored copy?
 - `pg_page_form_posted($liveform[, $page_id])`: field => value, empty until a refusal (`prefill()`), and on edit when the copy belongs to another page.
 - `pg_page_form_redraw_fields($current, $posted, $check_boxes)`: the typed value of each of the screen's own fields; a listed check box missing from the copy is `'0'`, so list only boxes the form printed (home for role < 3, noindex/nofollow and noarchive only where their columns exist).

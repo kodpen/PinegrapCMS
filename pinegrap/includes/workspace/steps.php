@@ -593,7 +593,7 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
 
         case 'task_open':
             if ($config['title'] === '') {
-                $problems[] = lang(array('string' => 'The task box {var:1} needs a title.', 'vars' => $name));
+                $problems[] = lang(array('string' => 'The task box “{var:1}” needs a title.', 'vars' => $name));
             }
 
             break;

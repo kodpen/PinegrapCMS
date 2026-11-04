@@ -52,15 +52,19 @@ function pg_audience_ready()
 }
 
 /**
- * The contact columns the "Contact field" condition may read.
+ * The contact columns the "Contact field" condition may read, named as the
+ * contact form names them: contacts.title is the job title, member_id
+ * carries the site's own member ID label.
  *
  * @return array column => label
  */
 function pg_audience_contact_fields()
 {
+    $member_id_label = (defined('MEMBER_ID_LABEL') && is_string(MEMBER_ID_LABEL)) ? trim(MEMBER_ID_LABEL) : '';
+
     return array(
         'company' => lang('Company'),
-        'title' => lang('Title'),
+        'title' => lang('Job Title'),
         'department' => lang('Department'),
         'business_state' => lang('Business State'),
         'home_state' => lang('Home State'),
@@ -68,7 +72,7 @@ function pg_audience_contact_fields()
         'home_zip_code' => lang('Home Zip Code'),
         'salutation' => lang('Salutation'),
         'website' => lang('Website'),
-        'member_id' => lang('Member ID'),
+        'member_id' => ($member_id_label !== '') ? $member_id_label : lang('Member ID'),
     );
 }
 

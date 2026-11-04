@@ -2154,8 +2154,9 @@ function pg_order_complete_line_gift_cards(array $line, $order_id, $created_user
             $body = preg_replace('/<\/body>/i', $footer, $body);
         }
 
-        // Wrap long lines (RFC 821).
-        $body = wordwrap($body, 900, "\n", 1);
+        // No hard wrap: email() sends through PHPMailer, which encodes a line
+        // over 998 characters as quoted-printable; a cut wrap split words,
+        // URLs, multibyte characters and inline scripts.
 
         // Replace variables in body (e.g. ^^code^^).
         $body = replace_variables(array(
@@ -3367,7 +3368,9 @@ function pg_order_complete_rewards($user_id, $contact_id, $reward_points, $order
 
     $new_reward_points = $old_reward_points + $reward_points;
 
-    db_q("UPDATE user SET user_reward_points = ? WHERE user_id = ?", array((string) $new_reward_points, (string) $user_id)) or output_error('Query failed.');
+    // Added in place: a conversion to store credit running at the same
+    // moment must not be overwritten by the balance read above.
+    db_q("UPDATE user SET user_reward_points = user_reward_points + ? WHERE user_id = ?", array((int) $reward_points, (string) $user_id)) or output_error('Query failed.');
 
     // Only the order that reaches the goal completes its actions.
     if (

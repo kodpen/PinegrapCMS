@@ -27,7 +27,9 @@
 
 include('init.php');
 $user = validate_user();
-if (!validate_erp_access($user)) {
+// The read-only accountant is told on arrival, not after filling the form in.
+if (!validate_erp_access($user)
+    || (defined('USER_ERP_READONLY') && USER_ERP_READONLY && !validate_erp_access($user, 'write'))) {
     exit();
 }
 

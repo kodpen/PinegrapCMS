@@ -141,6 +141,26 @@ function test_image_editor_scenes_timeline()
 	pg_assert_same(array(1, 4000, '#ffffff', true), $r['view'], 'scene 1 drawn as a document of its own');
 }
 
+// The whole timeline's places: where each scene starts, and the slot a
+// card dragged along the strip lands at.
+function test_image_editor_scenes_starts_and_slots()
+{
+	$r = image_editor_scenes_node(
+		'var d = board(); M.sceneAdd(d, false); M.sceneAdd(d, false); M.sceneSet(d, "s2", { duration: 2000 });' . "\n"
+		. 'console.log(JSON.stringify({ starts: [0, 1, 2, 9].map(function (i) { return M.sceneStartAt(d, i); }), still: M.sceneStartAt(board(), 0),' . "\n"
+		. ' slots: [M.sceneSlot([100, 200], 50), M.sceneSlot([100, 200], 150), M.sceneSlot([100, 200], 250), M.sceneSlot([], 10)] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(0, 4000, 6000, 9000), $r['starts'], 'each scene after the ones before it; past the end, the whole length');
+	pg_assert_same(0, $r['still'], 'a document without scenes starts at 0');
+	pg_assert_same(array(0, 1, 2, 0), $r['slots'], 'the cards left of the pointer stay before the dragged one');
+}
+
 // How each transition places the two scenes.
 function test_image_editor_scenes_transitions()
 {

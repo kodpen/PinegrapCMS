@@ -46,6 +46,14 @@ function pg_announce($event, $data = array())
         pg_stock_notify_heard($event, (array) $data);
     }
 
+    // A changed page or record reaches the site's Fediverse followers on the
+    // general job's next tick (includes/fn/activitypub_outbox.php). The
+    // module is loaded only on a site that has the feature's settings.
+    if (preg_match('/^(page|form)\./', (string) $event) && function_exists('pg_config_text') && (pg_config_text('ap_settings') !== '')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub_outbox.php');
+        pg_ap_heard($event);
+    }
+
     // Chosen Workspace events to the Slack, Teams and Telegram targets.
     if (function_exists('pg_notify_announced')) {
         pg_notify_announced($event, (array) $data);
@@ -107,6 +115,17 @@ function pg_announce_consent_changed($id, $row)
     if ($event !== null) {
         pg_announce('customer.consent_changed', $event);
     }
+}
+
+// The campaign.sent payload; no database. Identifiers only: the figures are
+// read from GET /campaigns/{id} or GET /campaigns/sms.
+function pg_campaign_sent_event($channel, $id, $type)
+{
+    return array(
+        'id'      => (int) $id,
+        'channel' => ($channel === 'sms') ? 'sms' : 'email',
+        'type'    => ($type === 'automatic') ? 'automatic' : 'manual',
+    );
 }
 
 // A contact that did not exist a moment ago, whichever screen or form made it.

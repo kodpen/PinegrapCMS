@@ -127,7 +127,7 @@
         } else {
             var size = M.redactSizes(l.strength || 60, Math.max(this.doc.source.width, this.doc.source.height));
             var filter = svg('filter', { id: id + '-f', filterUnits: 'userSpaceOnUse', 'color-interpolation-filters': 'sRGB' });
-            var m = M.pictureMatrix(this.doc), image = svg('image', {
+            var m = M.placedMatrix(this.doc), image = svg('image', {
                 href: src, x: 0, y: 0, width: this.doc.source.width, height: this.doc.source.height, preserveAspectRatio: 'none',
                 transform: 'matrix(' + m.map(function (n) { return Math.round(n * 1e6) / 1e6; }).join(' ') + ')'
             });
@@ -144,7 +144,7 @@
             } else {
                 // One sample a block, grown to the block: the grid starts at
                 // the crop box's corner, as the server's starts at the output's.
-                var crop = M.cropBox(this.doc), k = size.block, half = k / 2;
+                var crop = M.pictureBox(this.doc), k = size.block * M.picturePlace(this.doc).k, half = k / 2;
                 var gx = crop.x + Math.floor((b.x - crop.x) / k) * k, gy = crop.y + Math.floor((b.y - crop.y) / k) * k;
 
                 filter.setAttribute('x', gx);
@@ -372,7 +372,7 @@
     // One mask per visible area, drawn at the output size over its own box:
     // the server pixelates, blurs or covers what lies under the opaque part.
     Editor.prototype.redactMasks = function () {
-        var box = M.cropBox(this.doc), out = M.outputSize(this.doc), list = [];
+        var box = M.pictureBox(this.doc), out = M.outputSize(this.doc), list = [];
 
         this.doc.layers.forEach(function (l) {
             var r = (isRedact(l) && !l.hidden) ? M.redactRegion(l, box, out.w, out.h) : null;

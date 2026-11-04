@@ -611,6 +611,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     if (strpos($content, '<!--pg-pf:') !== false || strpos($content, '{pg-r') !== false) {
         $content = pg_page_facts_apply($content, $email);
     }
+    // Every page drawn for a visit tells the browser it was here, so its
+    // next visit reads as returning (page_audience.php).
+    if (!pg_page_fact_background($email)) {
+        pg_audience_returning_touch();
+    }
     pg_page_record_end($pg_pr_prev);
 
     // ── Custom PHP marker expansion ─────────────────────────────────────────────
@@ -682,6 +687,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // checked once everything is drawn in. Not in an e-mail.
     if (!$email && strpos($content, 'data-pg-wishlist') !== false && function_exists('pg_wishlist_inject')) {
         $content = pg_wishlist_inject($content);
+    }
+
+    // ── Booking widget ──────────────────────────────────────────────────────────
+    // A booking widget with services (data-pg-booking) brings its script
+    // (pg_booking_widget_inject()); its calendar comes with the site's date
+    // control, which the same attribute brings. Not in an e-mail.
+    if (!$email && strpos($content, 'data-pg-booking=') !== false && function_exists('pg_booking_widget_inject')) {
+        $content = pg_booking_widget_inject($content);
     }
 
     // ── Rich-text editor for designed forms ─────────────────────────────────────
@@ -1213,7 +1226,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             var software_path = "' . escape_javascript(PATH) . '";
             var software_directory = "' . escape_javascript(SOFTWARE_DIRECTORY) . '";
             var software_system_language = "' . escape_javascript(lang(array('info'=>''))) . '";
-            var software_token = "' . ($_SESSION['software']['token'] ?? '') . '";
+            var software_token = "' . ($email ? '' : ($_SESSION['software']['token'] ?? '')) . '";
             var software_device_type = "' . $device_type . '";
             var software_page_id = ' . $page_id . ';
             var translate ={
