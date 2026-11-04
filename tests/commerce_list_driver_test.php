@@ -120,3 +120,21 @@ function test_orders_bulk_actions_post_the_selected_ids()
 	pg_assert_false(strpos($source, 'name="orders[]" value=') !== false, 'no row checkbox is left');
 	pg_assert_false(strpos($source, 'class="chart ') !== false, 'no DataTable is left');
 }
+
+function test_erp_lists_on_the_driver()
+{
+	$specs = pg_commerce_list_specs(array('min_quantity' => array('heading' => 'Minimum')), array('min_quantity' => 1), array('min_quantity' => array('type' => 'integer')));
+	pg_assert_same('number', $specs['min_quantity']['editable'], 'a whole-number field gets a number input');
+
+	foreach (array('erp_account_prices.php', 'erp_stock_minimums.php', 'erp_stock.php') as $file) {
+		$source = commerce_list_driver_test_source($file);
+		pg_assert_contains('pg_list_table_printed(array(', $source, $file . ' prints its list whole');
+		pg_assert_contains("pg_js_bundle_tags('assets/js/pg_list_table.min.js')", $source, $file . ' loads the driver');
+		pg_assert_false(strpos($source, 'class="chart ') !== false || strpos($source, 'data-pg-sort' . "'") !== false, $file . ': no DataTable or plain sorted table is left for the list');
+	}
+
+	// The quick edit answers name the product and stock cells by these keys.
+	pg_assert_contains("'product' => pg_list_cell(\$cells['product']['html']", commerce_list_driver_test_source('erp_account_prices.php'));
+	pg_assert_contains("'stock' => pg_list_cell(\$cells['stock']['html']", commerce_list_driver_test_source('erp_stock_minimums.php'));
+	pg_assert_contains('input.name = "products[]";', commerce_list_driver_test_source('erp_stock_minimums.php'), 'the selection opens a purchase order');
+}

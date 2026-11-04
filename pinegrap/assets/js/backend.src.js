@@ -3080,12 +3080,13 @@ function pgListServerOptions(options, $table) {
     });
 }
 
-// A button of a row that came from the server (a delete in the mail queue)
-// asks its data-confirm-content question here: the software-wide confirm
-// handler binds at DOM ready to the buttons on the page then, before these
-// rows exist.
+// A button of a row that came from the server asks its data-confirm-content
+// question here: the software-wide confirm handler binds at DOM ready to the
+// buttons on the page then, before these rows exist. A list table driver
+// row's button (a delete in the mail queue) is marked no-submit, so the rows
+// printed with the page are not asked twice.
 $(function () {
-    $(document).on('click', 'table.chart[data-pg-list-action] tbody button[data-confirm-content]', function (event) {
+    $(document).on('click', 'table.chart[data-pg-list-action] tbody button[data-confirm-content], .pg-list-table button.no-submit[data-confirm-content]', function (event) {
         if (!window.confirm($(this).attr('data-confirm-content'))) {
             event.preventDefault();
         }

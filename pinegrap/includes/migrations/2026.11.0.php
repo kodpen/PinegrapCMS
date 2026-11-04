@@ -155,6 +155,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_form_list_view_address();  // 11.0.164
 	upgrade_2026_11_0_order_vat_id();            // 11.0.165
 	upgrade_2026_11_0_search_engines();          // 11.0.166
+	upgrade_2026_11_0_ap_reactions();            // 11.0.167
 
 }
 
@@ -5155,5 +5156,30 @@ function upgrade_2026_11_0_search_engines() {
 	$collate = (preg_match('/^[A-Za-z0-9_]+$/', $collation) === 1) ? " COLLATE " . $collation : '';
 
 	return install_modify_column('visitors', 'referring_search_engine', preg_replace('/\)$/', ',' . implode(',', $add) . ')', $type) . $collate . " NOT NULL DEFAULT ''");
+
+}
+
+// Fediverse likes and boosts (2026.11.0, 11.0.167; includes/fn/activitypub_inbox.php).
+// One row per remote actor, kind and object: reaction_key is the sha1 of the
+// three, so a repeated delivery is ignored by the unique key; an Undo deletes
+// by its activity id or the recomputed key, a Delete of the actor by actor.
+// object_id is the address of one of the site's own objects; the counts are
+// COUNT(*) per object and kind.
+function upgrade_2026_11_0_ap_reactions() {
+
+	install_create_table('ap_reactions', "CREATE TABLE ap_reactions (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		kind         ENUM('like','announce') NOT NULL DEFAULT 'like',
+		actor_id     VARCHAR(255) NOT NULL DEFAULT '',
+		object_id    VARCHAR(255) NOT NULL DEFAULT '',
+		activity_id  VARCHAR(255) NOT NULL DEFAULT '',
+		reaction_key CHAR(40) NOT NULL DEFAULT '',
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_reaction (reaction_key),
+		KEY idx_object (object_id(191), kind),
+		KEY idx_activity (activity_id(191)),
+		KEY idx_actor (actor_id(191))
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 }

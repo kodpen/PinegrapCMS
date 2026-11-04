@@ -1439,7 +1439,11 @@ function pg_list_sort_menu($url, $columns, $levels, $default, $query = array())
         : '<li><hr class="menu-divider"></li>'
             . '<li><a class="menu-item pg-link-body-emphasis" href="' . h($link(array($default))) . '"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i>' . h(lang('Reset the sort order')) . '</a></li>';
 
-    return '<div class="pg-menu-wrap">'
+    // A list on the table driver whose name is the screen's (view_products)
+    // takes this menu over (assets/js/pg_list_table.js): it sorts without a
+    // reload there, so the menu follows the headings.
+    return '<div class="pg-menu-wrap" data-pg-list-sort-menu="' . h(basename((string) $url, '.php')) . '"'
+        . ' data-pg-sort-default="' . h(pg_list_sort_value(array($default))) . '">'
         . '<button type="button" class="btn btn-sm btn-text theme-secondary pg-menu-caret" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-auto-close="outside" aria-expanded="false">'
         . '<i class="bi bi-sort-down me-1" aria-hidden="true"></i>' . h(lang('Sort by'))
         . (($count > 1) ? ' <span class="badge rounded-pill theme-secondary">' . $count . '</span>' : '')
@@ -1589,6 +1593,7 @@ function pg_list_edit_cell_attributes($columns, $field, $id, $value)
  *            field; a pasted value often brings a line break)
  *   integer  an int, or '' when the column allows empty
  *   money    the digits and separators as typed, spaces taken out
+ *   decimal  the same, for a figure that is not an amount (a weight)
  *   select   the value of one of the options, as a string
  *
  * @param array $column the column's definition
@@ -1649,6 +1654,19 @@ function pg_list_edit_parse($column, $raw)
 
             if (preg_match('/^[0-9]+([.,][0-9]+)*$/', $value) !== 1) {
                 return $fail(lang(array('string' => '{var:1} takes an amount, such as {var:2}.', 'vars' => array($label, pg_format_number(12.5, 2)))));
+            }
+
+            return $pass($value);
+
+        case 'decimal':
+            $value = preg_replace('/[\s\x{00A0}]+/u', '', $value);
+
+            if (($value === '') && !empty($column['empty'])) {
+                return $pass('');
+            }
+
+            if (preg_match('/^[0-9]+([.,][0-9]+)*$/', $value) !== 1) {
+                return $fail(lang(array('string' => '{var:1} takes a number, such as {var:2}.', 'vars' => array($label, pg_format_number(1.5, 1)))));
             }
 
             return $pass($value);
@@ -7277,7 +7295,7 @@ function pg_js_bundles()
             'assets/js/pg_image_editor_draw.js', 'assets/js/pg_image_editor_text.js', 'assets/js/pg_image_editor_sticker.js',
             'assets/js/pg_image_editor_redact.js', 'assets/js/pg_image_editor_versions.js', 'assets/js/pg_image_editor_artboard.js',
             'assets/js/pg_image_editor_export.js', 'assets/js/pg_image_editor_vector.js', 'assets/js/pg_image_editor_svg.js',
-            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_fonts.js',
+            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_scenes.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_fonts.js',
             'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_warp.js'),
         // The image editor's animation encoder, started as a worker (or on the
         // page) by pg_image_editor_render.js.

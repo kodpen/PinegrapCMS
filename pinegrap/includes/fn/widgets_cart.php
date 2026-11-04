@@ -3203,6 +3203,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         }
 
         if ($_eo_lf) _eo_fit_district_field($tree_decoded_for_eo, $_eo_ship_rid);
+        if ($_eo_lf) _eo_fit_tax_number_field($tree_decoded_for_eo);
         if ($_eo_lf) _eo_apply_field_bindings($tree_decoded_for_eo, $_eo_lf, $_eo_ship_rid);
         if ($_eo_lf) _eo_prefill_input_values_in_tree($tree_decoded_for_eo, $_eo_lf);
         // The shipping and billing state as a text box and a pick list, the

@@ -39,7 +39,7 @@ function test_content_lists_login_region_previews_escaped()
 function test_content_lists_check_marks_named()
 {
 	$paths = array(
-		'includes/fn/page_list.php' => 1,
+		'includes/fn/list_table_edit.php' => 1,
 		'includes/fn/field_list.php' => 1,
 		'view_menu_items.php' => 1,
 	);

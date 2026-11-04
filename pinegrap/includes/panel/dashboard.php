@@ -23,6 +23,7 @@
  *                                (includes/dashboard/v2/layout.php)
  *   dashboard_role_default       the caller's layout and look as a role's
  *                                default, locked or not
+ *   dashboard_role_default_remove  a role's default and lock removed
  *   dashboard_personal_save      the caller's goals, pins or notes on the
  *                                new dashboard (includes/dashboard/v2/
  *                                personal.php)
@@ -433,7 +434,47 @@ function pg_panel_dashboard_role_default($request, $action)
         $refused(lang('The change could not be saved.'));
     }
 
-    respond(array('status' => 'success', 'message' => pg_dashboard_v2_share_done((int) $role, $locked)));
+    respond(array(
+        'status'   => 'success',
+        'message'  => pg_dashboard_v2_share_done((int) $role, $locked),
+        'defaults' => pg_dashboard_v2_share_states(pg_dashboard_v2_share_rows()),
+    ));
+}
+
+function pg_panel_dashboard_role_default_remove($request, $action)
+{
+    // Same gate as dashboard_role_default: api.php's general gate (role 1
+    // or better), checked again here beside the delete.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
+
+    validate_token();
+
+    global $user;
+    $user = validate_user();
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/layout.php');
+
+    $refused = function ($message) {
+        respond(array('status' => 'error', 'message' => $message));
+    };
+
+    if (!pg_dashboard_v2_can_share((int) $user['role'])) {
+        $refused(lang('Only administrators and designers can share a dashboard layout.'));
+    }
+
+    $role = $request['role'] ?? null;
+
+    if (!pg_dashboard_v2_share_role_valid($role) || !pg_dashboard_v2_role_default_remove((int) $role)) {
+        $refused(lang('The change could not be saved.'));
+    }
+
+    respond(array(
+        'status'   => 'success',
+        'message'  => pg_dashboard_v2_share_removed((int) $role),
+        'defaults' => pg_dashboard_v2_share_states(pg_dashboard_v2_share_rows()),
+    ));
 }
 
 function pg_panel_dashboard_personal_save($request, $action)

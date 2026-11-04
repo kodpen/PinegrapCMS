@@ -32,11 +32,12 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - accessibility-report.md: Accessibility report (seo_a11y_job.php, includes/fn/a11y.php, view_accessibility.php): server-side WCAG 2.2 checks, a11y_ codes in seo_issue, the resumable pass, screen, PDF, API filter
 - accessibility-statement.md: Accessibility statement (system widget accessibility_statement, view_accessibility.php?statement=1): settings card, conformance verdict from the nightly report, known limitations, W3C structure
 - activitypub-actor.md: The Fediverse actor: settings and keys in config_text, the addresses router.php hands to activitypub.php, the documents, HTTP Signatures (window, key cache, rotation).
+- activitypub-inbox.md: The ActivityPub inbox: the checks a delivery passes, what each activity does to ap_followers, ap_reactions and ap_outbox, the AP4 hooks, the log and the inbox's WAF bucket.
 - audit-rule-registry.md: Audit rule registry (includes/fn/audit_rules.php): per concept the SEO and a11y codes, WCAG criterion, severities, editor rule ids, document/browser flags; tools/check_audit_rules.php
 - aws-sigv4-signing.md: includes/fn/aws_sign.php: AWS Signature Version 4 without an SDK (header signing, presigned links), tested against the AWS test suite; used by Amazon SES, written for object storage too
 - background-render.md: pg_background_render(): the one in-process page render of the passes that draw many pages; what it catches, restores and lends; which pages each pass covers and as whom (audit_run.php)
 - backup-folder-download-zip.md: Backup Manager Download of a folder backup: the archive kept inside the folder is rebuilt when the backup was updated after it.
-- backup-manager-names-and-list.md: Backup Manager hand-made backups: the folder name (no basename, 100 characters), reserved names, the overwrite question, step errors, the list's time and order, incomplete folders, delete warnings
+- backup-manager-names-and-list.md: Backup Manager: the folder name (no basename, 100 characters), reserved names, starter-dump delete, the overwrite question, step errors, list time and order, incomplete folders
 - backup-object-storage.md: The backup destination "S3-compatible storage" (remote type s3): its own card fields mapped onto the shared object storage client, multipart upload, the bucket's retention prune
 - backup-upload-extraction.md: Backup archives: install-screen upload streamed into data/temp and checksum-checked; the file explorer's backup extract/upload and web-root zip extract follow the same rule plus name and size limits.
 - browser-image-preshrink.md: Browser-side pre-shrink of images over server upload limits: when, EXIF orientation check, quality-before-pixels order, shrinkTo/shrinkQuality, blob name.
