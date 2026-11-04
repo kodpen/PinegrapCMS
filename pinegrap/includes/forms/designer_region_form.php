@@ -48,7 +48,7 @@ function pg_designer_region_form_card($name = '', $content = '', $beside = '', $
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<cregion>') . '</div>
                                                 <input value="' . h($name) . '" name="name" id="name" type="text" class="form-control' . pg_region_form_name_error_attributes($name_error) . '" maxlength="100" required="required" />
-                                                <div class="input-group-text">' . h('</cregion>') . '</div>
+                                                <div class="input-group-text pg-tag-close">' . h('</cregion>') . '</div>
                                             </div>' . pg_region_form_name_error($name_error) . '
                                         </div>' . $beside . '
                                         <h3 class="h5 mt-12">' . lang('Shared Content to appear on associated Pages') . '</h3>

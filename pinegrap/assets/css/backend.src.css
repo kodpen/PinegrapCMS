@@ -400,6 +400,18 @@ input.btn-check:disabled + .btn {
   border-start-start-radius: 0;
   border-end-start-radius: 0;
 }
+/* A region's name between its opening and closing tag (.pg-tag-close):
+   on a phone the closing tag is hidden so the name keeps its width; the
+   field before it takes back its rounded end. */
+@media (max-width: 575.98px) {
+  .input-group.input-group > .pg-tag-close {
+    display: none;
+  }
+  .input-group.input-group > :has(+ .pg-tag-close) {
+    border-start-end-radius: var(--bs-control-border-radius);
+    border-end-end-radius: var(--bs-control-border-radius);
+  }
+}
 .input-group {
   --bs-input-group-addon-bg: var(--pg-bg-1);
 }

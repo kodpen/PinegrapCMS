@@ -199,6 +199,7 @@ description: Generated from the module field of the memory files: each includes/
 - `tree_search`: [[tree-search]]
 - `update`: [[ca-store-choice]], [[migration-screen]]
 - `user_list`: [[user-list-folder-filters]], [[user-screens-names-and-dates]]
+- `user_list_edit`: [[list-table-quick-edit-users]]
 - `user_write`: [[user-write]]
 - `variant_set_copy`: [[product-group-copy]]
 - `vat_check`: [[eu-vat-check]]

@@ -39,6 +39,16 @@ $liveform = new liveform('edit_common_region');
 require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
 $component_id = pg_common_region_components(array($id))[$id];
 
+// A designer region opened here (a stale recent-items link, a type changed
+// on the list, a hand-typed id) goes to its own screen: this one would show
+// it as common and save it as common, through the rich text filter.
+if (!isset($_POST['name']) && !isset($_POST['submit_convert']) && !$component_id
+    && (db_value("SELECT cregion_designer_type FROM cregion WHERE cregion_id = '" . $id . "'") === 'yes')) {
+    $send_to = is_scalar($_GET['send_to'] ?? null) ? (string) $_GET['send_to'] : '';
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_designer_region.php?id=' . $id . (($send_to !== '') ? '&send_to=' . urlencode($send_to) : ''));
+    exit();
+}
+
 // The conversion form posts no name: it is a POST all the same.
 if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
     $query = "SELECT cregion_name, cregion_content, cregion_designer_type, cregion_timestamp, user.user_username "
@@ -131,7 +141,7 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
                         )),
                         '
                                 <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h($component_id ? lang('This region is a shared component and cannot be deleted while the component exists. Delete the component first.') : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('common region'))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>'
+                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h($component_id ? lang('This region is a shared component and cannot be deleted while the component exists. Delete the component first.') : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('common region'))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>'
                     ) . '
                 </form>
             </div>

@@ -44,7 +44,7 @@ function pg_dynamic_region_form_card($name = '', $code = '', $name_error = '')
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<dregion>') . '</div>
                                                 <input value="' . h($name) . '" name="name" id="name" type="text" class="form-control' . pg_region_form_name_error_attributes($name_error) . '" maxlength="100" required="required" />
-                                                <div class="input-group-text">' . h('</dregion>') . '</div>
+                                                <div class="input-group-text pg-tag-close">' . h('</dregion>') . '</div>
                                             </div>' . pg_region_form_name_error($name_error) . '
                                         </div>
                                         <h3 class="h5 mt-12">' . lang('PHP Code to appear on associated Pages') . '</h3>

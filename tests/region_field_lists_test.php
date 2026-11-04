@@ -93,13 +93,28 @@ function test_region_lists_shared_component_keeps_its_type()
 
 	$cells = pg_content_region_list_cells('common', $row, $edit);
 	pg_assert_same('common', $cells['type']['attributes']['data-pg-edit-value']);
-	pg_assert_same('&lt;p&gt;x&lt;/p&gt;', $cells['content']['html'], 'content preview escaped');
+	pg_assert_same('x', $cells['content']['html'], 'a common region previews its text');
+
+	$cells = pg_content_region_list_cells('designer', array('type' => 'designer') + $row, $edit);
+	pg_assert_same('&lt;p&gt;x&lt;/p&gt;', $cells['content']['html'], 'a designer region previews its code, escaped');
 
 	$cells = pg_content_region_list_cells('common', array('component' => 9) + $row, $edit);
 	pg_assert_false(isset($cells['type']['attributes']['data-pg-edit']), 'a shared component region keeps its type');
 
 	pg_assert_false(isset(pg_content_region_edit_columns('dynamic')['type']), 'a dynamic region has no type');
 	pg_assert_true(isset(pg_content_region_list_columns('dynamic')['code']));
+}
+
+function test_region_lists_text_preview()
+{
+	pg_assert_same('Web Site Yönetme', pg_region_list_text_preview("<h1 class=\"large\">Web Site Y&ouml;netme</h1>"), 'tags dropped, entities decoded then escaped');
+	pg_assert_same('© Telif hakkı', pg_region_list_text_preview("<p style=\"text-align: center;\">&copy; Telif
+
+  hakkı</p>"), 'whitespace collapsed');
+	pg_assert_same('a b', pg_region_list_text_preview('<p>a</p><p>b</p>'), 'blocks keep a space between them');
+	pg_assert_same('&lt;b&gt;', pg_region_list_text_preview('&lt;b&gt;'), 'decoded markup stays text');
+	pg_assert_same(str_repeat('a', 50) . '...', pg_region_list_text_preview('<p>' . str_repeat('a', 60) . '</p>'));
+	pg_assert_same('', pg_region_list_text_preview(null));
 }
 
 function test_region_lists_ad_columns()
