@@ -380,6 +380,26 @@
 
   /* ── Section: pages ─────────────────────────────────────────────────── */
 
+  .pg-visitors-pages-sort {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .375rem;
+    margin-bottom: .75rem;
+  }
+
+  .pg-visitors-pages-sort-label {
+    margin-inline-end: .25rem;
+    font-size: .8125rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-visitors-pages-note {
+    margin: .75rem 0 0;
+    font-size: .8125rem;
+    color: var(--pg-fg-2);
+  }
+
   /* ── Section: speed ─────────────────────────────────────────────────── */
   .pg-visitors-speed-filters {
     display: flex;
