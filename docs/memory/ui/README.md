@@ -72,7 +72,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - calendar-event-duplicate.md: A duplicated calendar event starts unpublished, named "… (copy)", with its calendars, cancelled repeats and locations copied; the location check asks on its first save
 - calendar-event-edit-screen.md: Edit calendar event screen (edit_calendar_event.php): which recurring instance it edits (recurrence_number) and how a missing or array value is read
 - calendar-event-exception-endpoint.md: update_calendar_event_exception.php (Remove / Unremove a repeating event's instance): parameter check, instance range, no second row
-- calendar-event-form-checks.md: Calendar event form: whole-number fields and their server check, the location check's time window, the all day label suffix ids, the reservations switch re-running the repeat toggle
+- calendar-event-form-checks.md: Calendar event form checks: whole numbers, repeat types, text lengths, the all day switch keeping times, the location check time window, the time suffix ids, the reservations row
 - calendar-event-location-shared-form.md: The calendar event location create and edit screens share includes/forms/calendar_event_location_form.php: what it holds, what stays in the screens
 - calendar-event-shared-form.md: add_calendar_event.php and edit_calendar_event.php draw and check the event form through includes/forms/calendar_event_form.php; what differs between the two calls
 - calendar-location-availability.md: How check_calendar_event_location_availability() finds a room already booked, including recurring, overnight and multi-day events
@@ -300,6 +300,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-table-layout.md: How a list on the table driver looks (backend.src.css): the frame, one-line rows, sticky name and actions columns, the selection bar, the details panel's layout rule, the SEO score column
 - list-table-order-side-lists.md: Product attributes, cart quotes, returns, subscriptions and a contact's orders on the list table driver (TD10a): printed whole, what changes in place and what stays on the record's screen
 - list-table-printed.md: Browser mode of the list table driver: a small list printed whole (pg_list_table_printed()), its sort kept by list_table_sort, the toolbar search box
+- list-table-quick-edit-comments.md: Comments list quick edit (includes/fn/comment_list_edit.php): the fields, Published and schedule vs the publish choice, the shared check and save, who may change them
 - list-table-quick-edit-contacts.md: Contacts list quick edit (includes/fn/contact_list_edit.php): which cells are fields in which view, the split phone and address columns, how a change is checked and written like edit_contact.php
 - list-table-quick-edit-containers.md: All Containers list quick edit (includes/fn/container_list_edit.php): the fields, the units, the container screen's own check and save, who may change them
 - list-table-quick-edit-menus.md: All Menus list quick edit (includes/fn/menu_list_edit.php): the fields, the classes as the chips post them, the menu screen's own check and save, who may change them

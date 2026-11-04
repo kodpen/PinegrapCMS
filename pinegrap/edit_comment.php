@@ -151,6 +151,7 @@ if (check_edit_access($folder_id) == false) {
 
 include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub_moderation.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/comment_form.php');
 $liveform = new liveform('edit_comment', $_REQUEST['id']);
 
 // if the form has not been submitted
@@ -582,44 +583,25 @@ if (!$_POST) {
         
     // else the comment was edited, so update the comment
     } else {
-        // validate fields that need to be validated
-        $liveform->validate_required_field('message', lang('A comment is required.'));
+        // The message and the schedule (includes/forms/comment_form.php).
+        pg_comment_form_validate($liveform);
 
-        // If the user selected the publish schedule option, then validate those fields.
-        if ($liveform->get_field_value('publish') == 'schedule') {
-            $liveform->validate_required_field('publish_date_and_time', lang('Please select the date & time when you want the comment to be published.'));
-
-            // If there is not already an error for the date & time field,
-            // and the value is not valid, then add error.
-            if (
-                ($liveform->check_field_error('publish_date_and_time') == false)
-                && (validate_date_and_time($liveform->get_field_value('publish_date_and_time')) == false)
-            ) {
-                $liveform->mark_error('publish_date_and_time', lang('Please enter a valid date & time when you want the comment to be published.') );
-            }
-
-            // If there is not already an error for the date & time field,
-            // and the date & time is in the past, then add error.
-            if (
-                ($liveform->check_field_error('publish_date_and_time') == false)
-                && (prepare_form_data_for_input($liveform->get_field_value('publish_date_and_time'), 'date and time') < date('Y-m-d H:i'))
-            ) {
-                $liveform->mark_error('publish_date_and_time', lang('Sorry, the date & time you entered is in the past. Please enter a future date & time.') );
-            }
-        }
-        
         // if there is an error, forward user back to edit comment screen
         if ($liveform->check_form_errors() == true) {
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_comment.php?id=' . $liveform->get_field_value('id') . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
             exit();
         }
         
-        $sql_file_id = "";
+        $columns = array(
+            'name' => (string) $liveform->get_field_value('name'),
+            'message' => (string) $liveform->get_field_value('message'),
+            'featured' => (string) $liveform->get_field_value('featured'),
+        );
         
         // if the file attachment was selected to be deleted and the file still exists, then check if we should delete it
         if (($liveform->get_field_value('delete_file_attachment') == 1) && ($file_name != '')) {
             // prepare SQL to clear file id for comment
-            $sql_file_id = "file_id = '0',";
+            $columns['file_id'] = '0';
             
             // check if the file attachment is used by another comment (multiple comments can share the same file attachment when pages are duplicated)
             $query = "SELECT id FROM comments WHERE (file_id = ?) AND (id != ?)";
@@ -639,60 +621,25 @@ if (!$_POST) {
             }
         }
 
-        $new_published = '';
-        $new_publish_date_and_time = '';
-        $new_publish_cancel = '';
+        $columns += pg_comment_form_publish_columns($liveform);
+        $new_published = $columns['published'];
 
-        switch ($liveform->get_field_value('publish')) {
-            case 'published':
-                $new_published = '1';
-                break;
-            
-            case 'schedule':
-                $new_publish_date_and_time = prepare_form_data_for_input($liveform->get_field_value('publish_date_and_time'), 'date and time');
-
-                if ($liveform->get_field_value('publish_cancel')) {
-                    $new_publish_cancel = '1';
-                }
-
-                break;
-        }
-        
         // The store's reply to a product review, dated when it is first
         // written or changed (includes/fn/reviews.php).
-        $sql_seller_reply = '';
-
         if ($reply_allowed) {
             $new_seller_reply = pg_review_reply_text($liveform->get_field_value('seller_reply'));
-            $sql_seller_reply = "seller_reply = '" . e($new_seller_reply) . "',
-                seller_reply_at = '" . pg_review_reply_time($seller_reply, $new_seller_reply, $seller_reply_at, time()) . "',";
+            $columns['seller_reply'] = $new_seller_reply;
+            $columns['seller_reply_at'] = (string) pg_review_reply_time($seller_reply, $new_seller_reply, $seller_reply_at, time());
         }
 
         // The stars are drawn only while the page has its rating on; with it
         // off the stored rating stays, since the missing radios would write 0.
         // The value is one to five, or none (0), as the comment form stores it.
-        $sql_rating = '';
         if ($comments_rating != false) {
-            $sql_rating = "rating = '" . pg_comment_rating_value($liveform->get_field_value('rating')) . "',";
+            $columns['rating'] = (string) pg_comment_rating_value($liveform->get_field_value('rating'));
         }
 
-        // update comment
-        $query =
-            "UPDATE comments
-            SET
-                name = '" . escape($liveform->get_field_value('name')) . "',
-                message = '" . escape($liveform->get_field_value('message')) . "',
-                $sql_rating
-                $sql_file_id
-                $sql_seller_reply
-                published = '" . $new_published . "',
-                publish_date_and_time = '" . e($new_publish_date_and_time) . "',
-                publish_cancel = '" . $new_publish_cancel . "',
-                featured = '" . escape($liveform->get_field_value('featured')) . "',
-                last_modified_user_id = '" . escape($user['id']) . "',
-                last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        pg_comment_form_save($comment_id, $columns, (int) $user['id']) or output_error('Query failed.');
 
         log_activity( lang(array('string'=>'comment on page ({var:1}) was modified','vars'=>get_page_name($page_id))), $_SESSION['sessionusername']);
 
@@ -711,34 +658,10 @@ if (!$_POST) {
             }
         }
 
-        // A form record's comment count and newest comment, read by the form
-        // lists (includes/fn/comments.php). Rebuilt before the e-mails below,
-        // whose subject reads the count and the newest comment from that row.
-        pg_comment_refresh_record_info($page_id, $item_type, $item_id);
-        
-        // if the comment was just published,
-        // and if it was not published before,
-        // and if it is about a form record (on a form item view page or on a
-        // page built in the visual designer that shows the record),
-        // and if there is a page selected to send,
-        // and if someone other than the record's submitter wrote it,
-        // then send e-mail to custom form submitter letting him/her know a comment has been added
-        if (
-            ($new_published == 1)
-            && ($published == 0)
-            && pg_comment_submitter_mail_due($item_type, $item_id, $comments_submitter_email_page_id, $created_user_id, $submitter_user_id)
-        ) {
-            send_comment_email_to_custom_form_submitter($liveform->get_field_value('id'));
-        }
-        
-        // if the comment was just published,
-        // and if it was not published before,
-        // and if there is a page selected to send
-        // then send e-mail to watchers letting them know a comment has been added
-        if (($new_published == 1) && ($published == 0) && ($comments_watcher_email_page_id != 0)) {
-            send_comment_email_to_watchers($liveform->get_field_value('id'));
-        }
-        
+        // The record's comment info, and the submitter's and watchers' e-mails
+        // for a comment just published.
+        pg_comment_form_after_save($row, $new_published);
+
         // create bookmark for header
         $bookmark = '#c-' . $liveform->get_field_value('id');
     }
