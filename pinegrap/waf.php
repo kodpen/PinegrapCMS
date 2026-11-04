@@ -4947,46 +4947,66 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
             return;
         }
 
-        $verdict = waf_verify_bot($ip, $bot['token']);
+        // Claude Code on a person's own computer names itself Claude-User
+        // but fetches from that person's address, which no published range
+        // holds: testing it against the ranges would call every developer
+        // reading the site a forger and ban them. The claim is neither
+        // verified nor forged. With the AI assistants allowed it passes as
+        // a visitor would, without the verified crawler's rate and country
+        // exemptions; otherwise (the name hand-typed into Allowed Bots) it
+        // falls to the unknown-bot policy, which registers no offence.
+        if (waf_bot_claim_unverifiable($bot['token'], $agent)) {
+            waf_ai_fetch_state('bot', waf_ai_fetch_bot($bot['class'], $bot['token'], ''));
 
-        // Counted when the request ends; waf_deny() cancels it for a refused
-        // request, the forged claim below included.
-        waf_ai_fetch_state('bot', waf_ai_fetch_bot($bot['class'], $bot['token'], $verdict));
+            $good = waf_good_bots();
 
-        // Only a proven crawler is let past the country restriction: an
-        // unverifiable name is a claim anyone can type.
-        if ($verdict === 'verified') {
-            waf_bot_verified(true);
-        }
-
-        // Only a positive rDNS mismatch is acted on. No PTR record, a DNS
-        // timeout or an unverifiable operator all fail open, so a resolver
-        // outage cannot start returning 403 to Googlebot.
-        if ($verdict === 'spoofed') {
-            waf_log_event($blocking ? 'block' : 'would-block', 'bot-spoof', 'bot', 10, 'USER_AGENT', $bot['name'] . ' (forged)');
-            waf_register_offence($ip, 10, $blocking);
-
-            if ($blocking) {
-                waf_deny(403, waf_reference());
+            if (isset($good[$bot['token']])) {
+                return;
             }
 
-            return;
-        }
-
-        // Range-verified operators are trusted only on a positive match.
-        // For every other good bot 'unknown' fails open, because an absent
-        // PTR record proves nothing. For these five the published list is
-        // the sole basis for trusting the name at all - so while no list is
-        // stored yet (fresh upgrade, fetch failing) the entry must not hand
-        // out crawler privileges on UA text alone. The request falls through
-        // to the unknown-bot policy below, which is exactly where this user
-        // agent landed before 2026.4.4.
-        $ai = waf_ai_bots();
-
-        if ($verdict !== 'verified' && isset($ai[$bot['token']])) {
             $bot['class'] = 'unverified';
         } else {
-            return;
+            $verdict = waf_verify_bot($ip, $bot['token']);
+
+            // Counted when the request ends; waf_deny() cancels it for a refused
+            // request, the forged claim below included.
+            waf_ai_fetch_state('bot', waf_ai_fetch_bot($bot['class'], $bot['token'], $verdict));
+
+            // Only a proven crawler is let past the country restriction: an
+            // unverifiable name is a claim anyone can type.
+            if ($verdict === 'verified') {
+                waf_bot_verified(true);
+            }
+
+            // Only a positive rDNS mismatch is acted on. No PTR record, a DNS
+            // timeout or an unverifiable operator all fail open, so a resolver
+            // outage cannot start returning 403 to Googlebot.
+            if ($verdict === 'spoofed') {
+                waf_log_event($blocking ? 'block' : 'would-block', 'bot-spoof', 'bot', 10, 'USER_AGENT', $bot['name'] . ' (forged)');
+                waf_register_offence($ip, 10, $blocking);
+
+                if ($blocking) {
+                    waf_deny(403, waf_reference());
+                }
+
+                return;
+            }
+
+            // Range-verified operators are trusted only on a positive match.
+            // For every other good bot 'unknown' fails open, because an absent
+            // PTR record proves nothing. For these five the published list is
+            // the sole basis for trusting the name at all - so while no list is
+            // stored yet (fresh upgrade, fetch failing) the entry must not hand
+            // out crawler privileges on UA text alone. The request falls through
+            // to the unknown-bot policy below, which is exactly where this user
+            // agent landed before 2026.4.4.
+            $ai = waf_ai_bots();
+
+            if ($verdict !== 'verified' && isset($ai[$bot['token']])) {
+                $bot['class'] = 'unverified';
+            } else {
+                return;
+            }
         }
     }
 
@@ -5032,6 +5052,24 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
     if ($blocking) {
         waf_deny(403, waf_reference());
     }
+}
+
+/**
+ * Whether a good-bot claim cannot be tested against its operator's addresses
+ * and so is never verified nor read as forged.
+ *
+ * Claude Code running on a person's own computer sends
+ * "Claude-User (claude-code/<version>; ...)" from that person's address;
+ * Anthropic's published ranges cannot hold it.
+ *
+ * @param string $token waf_classify_bot() token
+ * @param string $agent the request's user agent
+ * @return bool
+ */
+function waf_bot_claim_unverifiable($token, $agent)
+{
+    return $token === 'claude-user'
+        && strpos(strtolower((string) $agent), 'claude-code/') !== false;
 }
 
 /**
