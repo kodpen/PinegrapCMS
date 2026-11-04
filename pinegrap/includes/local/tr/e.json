@@ -153,6 +153,7 @@
     "ERP stock count {var:1} was changed through the API: {var:2} item(s).": "ERP stok sayımı {var:1} API üzerinden değiştirildi: {var:2} kalem.",
     "ERP transfer #{var:1} from {var:2} to {var:3} was recorded through the API.": "#{var:1} numaralı ERP virmanı ({var:2} → {var:3}) API üzerinden kaydedildi.",
     "ETTN": "ETTN",
+    "EU VAT ID": "AB KDV numarası",
     "EUR/TRY": "Euro/TL",
     "Each Period": "Her Periyotta",
     "Each app is written in the language its phone speaks, so it stays fast, works with the newest system features and is easy for another developer to take over.": "Her uygulama telefonunun konuştuğu dille yazılır; böylece hızlı kalır, sistemin en yeni özellikleriyle çalışır ve başka bir geliştiricinin devralması kolay olur.",

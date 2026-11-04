@@ -119,3 +119,64 @@ function test_vat_checkout_tax_number_width()
 	pg_assert_same(20, pg_vat_tax_number_width('FR'));
 	pg_assert_same(20, pg_vat_tax_number_width(''));
 }
+
+function test_vat_order_note_names_the_id_the_time_and_the_consultation_number()
+{
+	pg_assert_same('', pg_vat_order_note(array()), 'no id, no note');
+	pg_assert_same('', pg_vat_order_note(array('vat_id' => ' ', 'vat_checked_at' => 1762200000)), 'a blank id is no id');
+
+	$note = pg_vat_order_note(array('vat_id' => 'DE123456789', 'vat_checked_at' => 1762200000, 'vat_request_id' => 'WAPIAAAAW1234567'));
+
+	pg_assert_true(strpos($note, 'DE123456789') !== false, 'the id');
+	pg_assert_true(strpos($note, date('Y-m-d H:i', 1762200000)) !== false, 'the time of the check');
+	pg_assert_true(strpos($note, 'WAPIAAAAW1234567') !== false, 'the consultation number');
+
+	$bare = pg_vat_order_note(array('vat_id' => 'DE123456789', 'vat_checked_at' => 0, 'vat_request_id' => ''));
+
+	pg_assert_true(strpos($bare, 'DE123456789') !== false, 'the id without a time');
+	pg_assert_true(strpos($bare, date('Y-m-d', 0)) === false, 'no epoch date for a missing time');
+}
+
+function test_vat_tax_number_attrs_fit_keeps_a_turkish_box_and_widens_others()
+{
+	$attrs = array(
+		array('name' => 'inputmode', 'value' => 'numeric'),
+		array('name' => 'maxlength', 'value' => '11'),
+		array('name' => 'pattern', 'value' => '[0-9]{10,11}'),
+		array('name' => 'autocomplete', 'value' => 'off'),
+	);
+
+	pg_assert_same($attrs, pg_vat_tax_number_attrs_fit($attrs, 'TR'), 'a Turkish store keeps the digits box');
+	pg_assert_same('', pg_vat_tax_number_hint('TR'), 'and its hint');
+
+	pg_assert_same(array(
+		array('name' => 'inputmode', 'value' => 'text'),
+		array('name' => 'maxlength', 'value' => '20'),
+		array('name' => 'autocomplete', 'value' => 'off'),
+	), pg_vat_tax_number_attrs_fit($attrs, 'DE'), 'elsewhere: no pattern, the column width, text input');
+	pg_assert_true(pg_vat_tax_number_hint('DE') !== '', 'elsewhere: the VAT id hint');
+}
+
+function test_vat_express_order_tax_number_box_fitted_in_a_designed_tree()
+{
+	$tree = array('type' => 'semantic', 'props' => array('tag' => 'div'), 'children' => array(
+		array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'col-12'), 'children' => array(
+			array('type' => 'semantic', 'props' => array('tag' => 'input', '_attrs' => array(
+				array('name' => 'maxlength', 'value' => '11'),
+				array('name' => 'pattern', 'value' => '[0-9]{10,11}'),
+			), '_bindings' => array('eo_field' => 'tax_number')), 'children' => array()),
+			array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'form-text', 'text' => '11 digits for a person, 10 for a company.'), 'children' => array()),
+		)),
+		array('type' => 'semantic', 'props' => array('tag' => 'div', 'text' => '11 digits for a person, 10 for a company.'), 'children' => array()),
+	));
+
+	$turkish = $tree;
+	_eo_fit_tax_number_field($turkish, 'TR');
+	pg_assert_same($tree, $turkish, 'a Turkish store leaves the tree as designed');
+
+	_eo_fit_tax_number_field($tree, 'FR');
+	$box = $tree['children'][0]['children'][0]['props']['_attrs'];
+	pg_assert_same(array(array('name' => 'maxlength', 'value' => '20')), $box, 'the pattern goes, the box widens');
+	pg_assert_same(pg_vat_tax_number_hint('FR'), $tree['children'][0]['children'][1]['props']['text'], 'the hint beside the box changes');
+	pg_assert_same('11 digits for a person, 10 for a company.', $tree['children'][1]['props']['text'], 'a text away from the box stays');
+}

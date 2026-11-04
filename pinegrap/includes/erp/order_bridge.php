@@ -1042,6 +1042,7 @@ function erp_invoice_from_order_locked($order_id, $options = array())
             carrier_title = '" . escape($sale['carrier_title']) . "',
             carrier_vkn = '" . escape($sale['carrier_vkn']) . "',
             web_address = '" . escape($sale['web_address']) . "',
+            notes = '" . escape(erp_order_invoice_notes($order)) . "',
             created_by = '" . (int) ($options['created_by'] ?? 0) . "',
             created_at = '" . time() . "',
             updated_at = '" . time() . "'");
@@ -1620,4 +1621,21 @@ function erp_auto_invoice_refused($order, $reason)
     if (function_exists('erp_alert_auto_invoice_refused')) {
         erp_alert_auto_invoice_refused((int) ($order['id'] ?? 0), (string) ($order['order_number'] ?? ''), $reason);
     }
+}
+
+/**
+ * The note an order's invoice is issued with: the reverse charge of a VAT id
+ * VIES confirmed at checkout, with the id, the time of the check and the
+ * consultation number (pg_vat_order_note()); '' for any other order.
+ *
+ * @param array $order a row of orders
+ * @return string
+ */
+function erp_order_invoice_notes($order)
+{
+    if (!is_array($order) || !function_exists('pg_vat_order_note')) {
+        return '';
+    }
+
+    return pg_vat_order_note($order);
 }

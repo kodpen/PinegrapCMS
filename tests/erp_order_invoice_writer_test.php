@@ -59,3 +59,17 @@ function test_erp_order_invoice_writer_refusal_reads_as_the_card()
 	pg_assert_contains("lang('A cancelled order is not invoiced.')", $body, 'a cancelled order');
 	pg_assert_contains("lang('An order is invoiced once it is complete.')", $body, 'an order that is not complete');
 }
+
+// An order whose VAT id VIES confirmed is invoiced with the reverse-charge
+// note; any other order with no note.
+function test_erp_order_invoice_writer_writes_the_reverse_charge_note()
+{
+	pg_assert_contains("notes = '\" . escape(erp_order_invoice_notes(\$order)) . \"'", erp_order_invoice_writer_test_body(), 'the invoice row carries the note');
+
+	pg_assert_same('', erp_order_invoice_notes(array('vat_id' => '')), 'no confirmed id, no note');
+	pg_assert_same('', erp_order_invoice_notes(null), 'no order, no note');
+
+	$note = erp_order_invoice_notes(array('vat_id' => 'FR12345678901', 'vat_checked_at' => 1762200000, 'vat_request_id' => 'WAPI1'));
+	pg_assert_contains('FR12345678901', $note, 'the id');
+	pg_assert_contains('WAPI1', $note, 'the consultation number');
+}
