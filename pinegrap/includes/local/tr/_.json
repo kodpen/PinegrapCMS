@@ -398,6 +398,7 @@
     "{var:1} (customer) approved": "{var:1} (müşteri) onayladı",
     "{var:1} (customer) rejected": "{var:1} (müşteri) reddetti",
     "{var:1} (due {var:2}): {var:3} owed on average for {var:4} day(s), fee {var:5}": "{var:1} (vade {var:2}): ortalama {var:3} borç, {var:4} gün, vade farkı {var:5}",
+    "{var:1} (filled by rules)": "{var:1} (kurallarla dolan)",
     "{var:1} (from the site setting)": "{var:1} (site ayarından)",
     "{var:1} (its folder is gone)": "{var:1} (klasörü artık yok)",
     "{var:1} (its folder {var:2} is in the recycle bin)": "{var:1} ({var:2} klasörü geri dönüşüm kutusunda)",

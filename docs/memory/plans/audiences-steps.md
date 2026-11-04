@@ -22,7 +22,7 @@ description: Steps AU1-AU6 of plans/audiences.md: rule model and SQL builder, re
 
 - AU5 (S) Audience token. Done in #6598 (`designer/audience-conditions.md`): `__audience_group_<id>` reads a dynamic group's rule rows as any xref row; the designer's group list carries the kind and labels a dynamic group.
 
-- AU5b (S) Flow event "joined a group". After AU5; side by side with AU5c (different files). Decided in #6599 (owner: both triggers, once per contact who joined; `workflow/decisions-made-product-27.md`).
+- AU5b (S) Flow event "joined a group". After AU5; side by side with AU5c (different files). Done in #6651 (`workspace/contact-group-joined-event.md`). Decided in #6599 (owner: both triggers, once per contact who joined; `workflow/decisions-made-product-27.md`).
   - `contact_group.joined`, one `ws_events_in` row per added contact, recorded where `pg_announce_contact_group_members()` announces (every door and the recompute pass through it; a big pass queues thousands, drained by the existing event run); `contact_group.members_changed` stays the webhook event. Entry in `pg_event_workspace_events()` and `ws_events_catalog()` (record `contact`, right `contacts`, filter: the group, dynamic groups named with their kind); outputs `contact_id`, `group_id`, `group_name` (`ws_flow_event_outputs()`). Memory under `workspace/`.
 
 - AU5c (S) Campaign-profile action "joined a group". After AU5; side by side with AU5b.

@@ -2294,6 +2294,7 @@ function workspace_flows_parity_table()
 		'events' => array(
 			array(array('order.created', 'order.status_changed', 'order.shipped', 'order.delivered', 'order.cancelled', 'order.return.requested', 'stock.low'), 3, 'event trigger box: shop events (with the shop only)'),
 			array(array('customer.created', 'customer.updated', 'form.submitted'), 3, 'event trigger box: site events'),
+			array(array('contact_group.joined'), 3, 'event trigger box: a contact joins a contact group, one start per contact, narrowed to one group'),
 			array(array('booking.created', 'booking.confirmed', 'booking.rescheduled', 'booking.cancelled'), 3, 'event trigger box: staff agenda events (once the booking tables exist), each checked against the bookings the creator\'s agenda shows (ws_events_creator_sees())'),
 			array(array('workspace.task.completed', 'workspace.task.status_changed', 'workspace.task.overdue', 'workspace.approval.decided', 'workspace.guest.message', 'workspace.mail.received'), 3, 'event trigger box: Workspace events, each checked against what the creator reads (ws_events_creator_sees())'),
 		),
@@ -2302,6 +2303,7 @@ function workspace_flows_parity_table()
 			array(array('status'), 3, 'event trigger box: the status an order moves to'),
 			array(array('task_status'), 3, 'event trigger box: the status a task moves to'),
 			array(array('outcome'), 3, 'event trigger box: how an approval request ended'),
+			array(array('group'), 3, 'event trigger box: which contact group a contact joins (its id kept as the status)'),
 			array(array('channel'), 3, 'event trigger box: a Workspace event in one channel'),
 		),
 		'event_filter_values' => array(

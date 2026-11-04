@@ -206,7 +206,41 @@ function pg_announce_contact_group_members($contact_group_id, $added = array(), 
         }
     }
 
-    pg_announce('contact_group.members_changed', pg_contact_group_members_event($contact_group_id, $name, $added, $removed));
+    $event = pg_contact_group_members_event($contact_group_id, $name, $added, $removed);
+
+    pg_announce('contact_group.members_changed', $event);
+
+    // Flows hear each contact who joined on their own (contact_group.joined):
+    // a run is about one contact, so a change of two hundred keeps two
+    // hundred rows, worked off by the workspace's event run. The webhooks
+    // keep the one members_changed event above.
+    foreach (pg_contact_group_joined_events($event) as $joined) {
+        pg_event_record('contact_group.joined', $joined);
+    }
+}
+
+// What contact_group.joined carries for each contact a members_changed event
+// put into the group: the contact (id, as every contact event names it, and
+// contact_id for a flow's {{trigger.contact_id}}), the group and its name.
+// Nobody added, or no event, gives an empty list.
+function pg_contact_group_joined_events($event)
+{
+    $out = array();
+
+    if (!is_array($event) || ((int) ($event['id'] ?? 0) <= 0)) {
+        return $out;
+    }
+
+    foreach ((array) ($event['added'] ?? array()) as $contact_id) {
+        $out[] = array(
+            'id'         => (int) $contact_id,
+            'contact_id' => (int) $contact_id,
+            'group_id'   => (int) $event['id'],
+            'group_name' => (string) ($event['name'] ?? ''),
+        );
+    }
+
+    return $out;
 }
 
 // The events the workspace listens to (includes/workspace/watch.php): what
@@ -227,6 +261,7 @@ function pg_event_workspace_events()
         'stock.low',
         'customer.created',
         'customer.updated',
+        'contact_group.joined',
         'product.updated',
         'form.submitted',
         'booking.created',

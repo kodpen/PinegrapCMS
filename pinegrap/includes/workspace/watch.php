@@ -120,7 +120,7 @@ function ws_watch_ready()
  * rule says it, what kind of record it is about, the right the creator needs
  * to see that record, and the one filter it takes (page: which form; status:
  * which order status; task_status: the status a task moves to; outcome: how
- * an approval request ended). The workspace's own events may also be
+ * an approval request ended; group: which contact group). The workspace's own events may also be
  * narrowed to one channel (channel). The shop's events only where the shop
  * is on.
  *
@@ -152,6 +152,7 @@ function ws_events_catalog()
         'customer.created' => array('label' => lang('A new contact is added'), 'when' => lang('When a new contact is added'), 'record' => 'contact', 'right' => 'contacts', 'filter' => ''),
         'customer.updated' => array('label' => lang('A contact is changed'), 'when' => lang('When a contact is changed'), 'record' => 'contact', 'right' => 'contacts', 'filter' => ''),
         'form.submitted'   => array('label' => lang('A form is submitted'), 'when' => lang('When a form is submitted'), 'record' => 'form', 'right' => 'forms', 'filter' => 'page'),
+        'contact_group.joined' => array('label' => lang('A contact joins a contact group'), 'when' => lang('When a contact joins a contact group'), 'record' => 'contact', 'right' => 'contacts', 'filter' => 'group'),
     );
 
     // The staff agenda's (pg_booking_changed()): every member may wait for
@@ -481,6 +482,7 @@ function ws_events_record_of($event, $payload)
 
         case 'customer.created':
         case 'customer.updated':
+        case 'contact_group.joined':
             return array('contact', (int) ($payload['id'] ?? 0));
 
         case 'form.submitted':
@@ -513,7 +515,8 @@ function ws_events_watched($event)
  * Does an event rule of a scheduled action match this event? The event
  * itself, and its filters when it has them: the form (the page the form is
  * on), the status the order or the task moved to or how the approval request
- * ended (status), and the channel the workspace's event happened in. A row
+ * ended (status; for a contact joining a group, the group's id), and the
+ * channel the workspace's event happened in. A row
  * rule (a flow's row box) matches a row of its table, and a change only
  * when it wrote the rule's column, if it names one.
  *
@@ -534,7 +537,7 @@ function ws_events_rule_matches($rule, $event, $payload)
         return function_exists('ws_flow_row_rule_matches') && ws_flow_row_rule_matches($rule, $payload);
     }
 
-    if (((string) ($rule['status'] ?? '') !== '') && ((string) ($payload['status'] ?? '') !== (string) $rule['status'])) {
+    if (((string) ($rule['status'] ?? '') !== '') && (ws_events_filter_value($event, $payload) !== (string) $rule['status'])) {
         return false;
     }
 
@@ -547,6 +550,65 @@ function ws_events_rule_matches($rule, $event, $payload)
     }
 
     return true;
+}
+
+/**
+ * The value of an event a rule's status filter is laid against: the group a
+ * contact joined (the rule keeps the group's id there, as the flow's event
+ * box writes every list filter into status), else the status the payload
+ * names.
+ *
+ * @param string $event
+ * @param array  $payload
+ * @return string
+ */
+function ws_events_filter_value($event, $payload)
+{
+    $payload = (array) $payload;
+
+    if ((string) $event === 'contact_group.joined') {
+        return (string) (int) ($payload['group_id'] ?? 0);
+    }
+
+    return (string) ($payload['status'] ?? '');
+}
+
+/**
+ * The contact groups a rule of contact_group.joined may be narrowed to: the
+ * id as text (the rule's status) and the name, a group filled by rules
+ * labelled so. Pure; ws_events_contact_groups() reads the rows.
+ *
+ * @param array $rows id, name, kind
+ * @return array id => label
+ */
+function ws_events_contact_group_labels($rows)
+{
+    $out = array();
+
+    foreach ((array) $rows as $row) {
+        if (!is_array($row) || ((int) ($row['id'] ?? 0) <= 0)) {
+            continue;
+        }
+
+        $name = (string) ($row['name'] ?? '');
+        $out[(string) (int) $row['id']] = ((string) ($row['kind'] ?? '') === 'dynamic')
+            ? lang(array('string' => '{var:1} (filled by rules)', 'vars' => $name))
+            : $name;
+    }
+
+    return $out;
+}
+
+/**
+ * The site's contact groups, for the filter of a contact_group.joined rule.
+ *
+ * @return array id => label
+ */
+function ws_events_contact_groups()
+{
+    $kind = function_exists('pg_schema_has') && pg_schema_has('contact_groups', 'kind');
+
+    return ws_events_contact_group_labels(db_items("SELECT id, name" . ($kind ? ", kind" : "") . " FROM contact_groups ORDER BY name LIMIT 300"));
 }
 
 /**
@@ -1250,6 +1312,11 @@ function ws_events_js_config($viewer)
 
         if (isset($own_filters[$info['filter']])) {
             $list[$key] += $own_filters[$info['filter']];
+        }
+
+        // The contact groups, read only for someone who may wait for it.
+        if ($info['filter'] === 'group') {
+            $list[$key] += array('filter_label' => lang('Contact group'), 'any' => lang('Any contact group'), 'options' => $pairs(ws_events_contact_groups()));
         }
 
         if (!empty($info['channel'])) {

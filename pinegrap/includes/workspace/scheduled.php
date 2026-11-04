@@ -1232,6 +1232,18 @@ function ws_scheduled_rule_input($viewer, $rule)
                 $out['page_id'] = $page_id;
             }
 
+            // The contact group a contact joins, its id kept as the status;
+            // empty for any.
+            if ($info['filter'] === 'group') {
+                $group = (string) ($rule['status'] ?? '');
+
+                if (($group !== '') && (!ctype_digit($group) || !db_value("SELECT id FROM contact_groups WHERE id = '" . (int) $group . "'"))) {
+                    return $fail(lang('That contact group could not be found.'));
+                }
+
+                $out['status'] = ($group === '') ? '' : (string) (int) $group;
+            }
+
             // The status an order or a task moves to, or how an approval
             // request ended; empty for any.
             $filter_values = array(
@@ -2278,6 +2290,11 @@ function ws_scheduled_rule_text($viewer, $rule)
 
                     case 'outcome':
                         $text = lang(array('string' => 'When an approval request ends: {var:1}', 'vars' => ws_events_approval_outcomes()[$status] ?? $status));
+                        break;
+
+                    case 'group':
+                        $group = db_value("SELECT name FROM contact_groups WHERE id = '" . (int) $status . "'");
+                        $text = lang(array('string' => 'When a contact joins the contact group {var:1}', 'vars' => ($group !== null) ? (string) $group : lang('a contact group that is gone')));
                         break;
                 }
             }
