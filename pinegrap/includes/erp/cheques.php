@@ -556,6 +556,42 @@ function erp_cheque_step_date_refusal($date, $doc_date)
 }
 
 /**
+ * Why a till cannot be the bank side of a deposit, collect or pay step, or ''.
+ *
+ * The screen and the API ask the same: the till exists, is active, is not the
+ * cheque's own portfolio, and keeps the portfolio's currency, since collecting
+ * and paying move the money between the two. A bank taken off after the
+ * cheque went to it stays usable for that cheque, so it can still be collected.
+ *
+ * @param array|null $till             erp_cash_accounts row: id, is_active
+ * @param array      $cheque           erp_cheques row: bank_till_id, portfolio_till_id
+ * @param string     $kept_currency    the portfolio till's currency
+ * @param string     $bank_currency    the bank till's currency
+ * @return string
+ */
+function erp_cheque_bank_till_refusal($till, $cheque, $kept_currency, $bank_currency)
+{
+    $stored = is_array($till) && ((int) $till['id'] === (int) ($cheque['bank_till_id'] ?? 0));
+
+    if (($refusal = erp_cash_till_row_refusal($till, $stored)) !== '') {
+        return $refusal;
+    }
+
+    if ((int) $till['id'] === (int) ($cheque['portfolio_till_id'] ?? 0)) {
+        return lang('Choose two different accounts.');
+    }
+
+    if ((string) $kept_currency !== (string) $bank_currency) {
+        return lang(array(
+            'string' => 'The two accounts are kept in different currencies ({var:1} and {var:2}); a transfer has to stay in one.',
+            'vars' => array((string) $kept_currency, (string) $bank_currency),
+        ));
+    }
+
+    return '';
+}
+
+/**
  * The next step of a cheque or note.
  *
  * @param int    $id
@@ -598,6 +634,21 @@ function erp_cheque_step($id, $step, $options, $user_id)
 
     if (in_array($step, array('deposit', 'collect', 'pay'), true) && ($bank_till <= 0)) {
         return $fail(lang('Choose the bank account.'));
+    }
+
+    if (in_array($step, array('deposit', 'collect', 'pay'), true)) {
+        $bank_row = db_item("SELECT id, is_active, currency FROM erp_cash_accounts WHERE id = '" . $bank_till . "' LIMIT 1");
+        $base = erp_base_currency();
+        $currency_of = function ($row) use ($base) {
+            $currency = (is_array($row) && erp_fx_enabled()) ? strtoupper(trim((string) ($row['currency'] ?? ''))) : '';
+
+            return ($currency !== '') ? $currency : $base;
+        };
+        $portfolio_row = db_item("SELECT id, currency FROM erp_cash_accounts WHERE id = '" . (int) $cheque['portfolio_till_id'] . "' LIMIT 1");
+
+        if (($refusal = erp_cheque_bank_till_refusal($bank_row, $cheque, $currency_of($portfolio_row), $currency_of($bank_row))) !== '') {
+            return $fail($refusal);
+        }
     }
 
     if ($step === 'deposit') {
