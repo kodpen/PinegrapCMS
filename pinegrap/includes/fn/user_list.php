@@ -184,29 +184,29 @@ function pg_user_list_columns($filter)
     $is_site_staff_filter = in_array($filter, array('all_site_administrators', 'all_site_designers', 'all_site_managers'), true);
 
     $columns = array(
-        'username' => array('heading' => lang('Username'), 'width' => '16rem', 'kind' => 'link', 'sort' => 'user.user_username'),
+        'username' => array('heading' => lang('Username'), 'width' => '16rem', 'kind' => 'link', 'sort' => 'user.user_username', 'editable' => 'text'),
     );
 
     if ($is_default) {
-        $columns['role'] = array('heading' => lang('Role'), 'width' => '10rem', 'kind' => 'badge', 'sort' => 'user.user_role');
+        $columns['role'] = array('heading' => lang('Role'), 'width' => '10rem', 'kind' => 'badge', 'sort' => 'user.user_role', 'editable' => 'select');
         $columns['private_folder'] = array('heading' => lang('Private User'), 'kind' => 'check');
         $columns['member_user'] = array('heading' => lang('Member User'), 'kind' => 'check', 'sort' => 'contacts.member_id');
         $columns['manage_content'] = array('heading' => lang('Content Manager'), 'kind' => 'check');
 
         if (defined('CALENDARS') && (CALENDARS === true)) {
-            $columns['manage_calendars'] = array('heading' => lang('Calendar Manager'), 'kind' => 'check');
+            $columns['manage_calendars'] = array('heading' => lang('Calendar Manager'), 'kind' => 'check', 'editable' => 'select');
         }
 
         if (defined('FORMS') && (FORMS === true)) {
-            $columns['manage_forms'] = array('heading' => lang('Forms Manager'), 'kind' => 'check');
+            $columns['manage_forms'] = array('heading' => lang('Forms Manager'), 'kind' => 'check', 'editable' => 'select');
         }
 
-        $columns['view_visitors'] = array('heading' => lang('Visitor Manager'), 'kind' => 'check');
-        $columns['manage_contacts'] = array('heading' => lang('Contact Manager'), 'kind' => 'check');
-        $columns['manage_email'] = array('heading' => lang('Campaign Manager'), 'kind' => 'check');
+        $columns['view_visitors'] = array('heading' => lang('Visitor Manager'), 'kind' => 'check', 'editable' => 'select');
+        $columns['manage_contacts'] = array('heading' => lang('Contact Manager'), 'kind' => 'check', 'editable' => 'select');
+        $columns['manage_email'] = array('heading' => lang('Campaign Manager'), 'kind' => 'check', 'editable' => 'select');
 
         if (defined('ECOMMERCE') && (ECOMMERCE === true)) {
-            $columns['manage_ecommerce'] = array('heading' => lang('Commerce Manager'), 'kind' => 'check');
+            $columns['manage_ecommerce'] = array('heading' => lang('Commerce Manager'), 'kind' => 'check', 'editable' => 'select');
         }
 
         // Site Manager and Site Designer follow the role, the way their
@@ -214,8 +214,8 @@ function pg_user_list_columns($filter)
         $columns['site_manager'] = array('heading' => lang('Site Manager'), 'kind' => 'check', 'sort' => 'user.user_role');
         $columns['site_designer'] = array('heading' => lang('Site Designer'), 'kind' => 'check', 'sort' => 'user.user_role');
     } else {
-        $columns['email'] = array('heading' => lang('E-mail Address'), 'width' => '16rem', 'sort' => 'user.user_email');
-        $columns['start_page'] = array('heading' => lang('Start Page'), 'width' => '12rem', 'sort' => 'start_page.page_name');
+        $columns['email'] = array('heading' => lang('E-mail Address'), 'width' => '16rem', 'sort' => 'user.user_email', 'editable' => 'text');
+        $columns['start_page'] = array('heading' => lang('Start Page'), 'width' => '12rem', 'sort' => 'start_page.page_name', 'editable' => 'select');
     }
 
     switch ($filter) {
@@ -239,7 +239,7 @@ function pg_user_list_columns($filter)
 
         case 'my_contact_managers':
             $columns['manage_contacts'] = array('heading' => lang('Contact Groups'), 'width' => '9rem');
-            $columns['manage_email'] = array('heading' => lang('Send Campaigns'), 'kind' => 'check');
+            $columns['manage_email'] = array('heading' => lang('Send Campaigns'), 'kind' => 'check', 'editable' => 'select');
             break;
 
         case 'my_campaign_managers':
@@ -278,6 +278,7 @@ function pg_user_list_columns($filter)
 function pg_user_list_view($user, $filter)
 {
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_list_edit.php');
 
     $role = (int) $user['role'];
     $is_default = ($filter == 'default');
@@ -324,7 +325,7 @@ function pg_user_list_view($user, $filter)
     if ($is_default) {
         $select .= ', contacts.member_id AS user_member_id';
     } else {
-        $select .= ', user.user_home, start_page.page_name AS user_start_page';
+        $select .= ', start_page.page_name AS user_start_page';
     }
 
     if ($shows_contact) {
@@ -375,6 +376,8 @@ function pg_user_list_view($user, $filter)
         'search_columns' => $search_columns,
         'search_labels' => $search_labels,
         'all_custom_form_pages' => $all_custom_form_pages,
+        // The cells that change in place (pg_user_quick_edit_columns()).
+        'quick_edit' => pg_user_quick_edit_columns_for($user, $filter),
     );
 }
 
@@ -410,6 +413,7 @@ function pg_user_list_source($user, $params)
         'select' => 'user.user_username as username,
             user.user_email as email,
             user.user_role as role,
+            user.user_home,
             user.user_password_algo as password_algo,
             user.user_manage_contacts as manage_contacts,
             user.user_manage_visitors as manage_visitors,
@@ -431,6 +435,8 @@ function pg_user_list_source($user, $params)
             return pg_user_list_rows($view, $records);
         },
         'params_out' => array('filter' => $view['filter']),
+        // Quick edit answers on the screen itself, in the same view.
+        'edit' => array('url' => 'view_users.php?filter=' . rawurlencode($view['filter']), 'columns' => $view['quick_edit']),
     ));
 }
 
@@ -793,6 +799,17 @@ function pg_user_list_row($row, $view, $providers)
 
     if (($filter == 'default') || ($filter == 'my_contact_managers')) {
         $cells['manage_email'] = pg_user_list_mark($manage['emails']);
+    }
+
+    // A cell that changes in place carries its field
+    // (pg_user_quick_cell_editable()); the rest stay text.
+    $quick_edit = $view['quick_edit'] ?? array();
+
+    foreach (array('username', 'email', 'role', 'start_page', 'manage_calendars', 'manage_forms', 'view_visitors', 'manage_contacts', 'manage_email', 'manage_ecommerce') as $field) {
+        if (isset($cells[$field], $view['columns'][$field]) && pg_user_quick_cell_editable($field, $row, $filter, $quick_edit)) {
+            $cells[$field] = pg_list_cell($cells[$field]['html'], $cells[$field]['class'],
+                pg_list_edit_cell_attributes($quick_edit, $field, $id, pg_user_quick_edit_value($field, $row)));
+        }
     }
 
     $cells['last_online'] = pg_list_cell(($row['last_seen'] >= 1) ? get_relative_time(array('timestamp' => $row['last_seen'])) . ' ' : '[' . lang('Never') . ']');
