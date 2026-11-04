@@ -26,9 +26,9 @@ function db_q_logs_short_links_system_test_files()
 	return array(
 		'view_performance_log.php' => 0,
 		'view_log.php' => 0,
-		'edit_short_link.php' => 3,
+		'edit_short_link.php' => 2,
 		'add_short_link.php' => 1,
-		'includes/forms/short_link_form.php' => 3,
+		'includes/forms/short_link_form.php' => 4,
 		'view_short_links.php' => 0,
 		'includes/fn/short_link_redirects.php' => 3,
 		'allow_or_disallow_new_comments.php' => 4,
