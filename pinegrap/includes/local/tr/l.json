@@ -359,6 +359,7 @@
     "Leave the home as you found it, ordinary wear aside, and ask for the deposit back in writing.": "Olağan yıpranma dışında evi bulduğunuz gibi bırakın ve depozitonun iadesini yazılı isteyin.",
     "Leave the note": "Paylaşımdan çık",
     "Leave the number empty for no reminder.": "Hatırlatma istemiyorsanız sayıyı boş bırakın.",
+    "Leave the presentation": "Sunumdan çık",
     "Leave the server empty to bring mail in only as .eml files. A chosen service fills an empty server and checking server.": "Postaları yalnızca .eml dosyası olarak almak için sunucuyu boş bırakın. Seçilen hizmet boş sunucu ve denetleyen sunucu alanlarını doldurur.",
     "Leave the server empty to bring mail in only as .eml files. A chosen service fills an empty server, checking server and sending server.": "E-postaları yalnızca .eml dosyası olarak getirmek için sunucuyu boş bırakın. Seçilen hizmet boş sunucuyu, denetleyen sunucuyu ve gönderme sunucusunu doldurur.",
     "Leave the {var:1} amount empty to have it worked out from the rate; type it when the receipt prints it, so the books carry the same figure. Switch off \"Tax taken back\" for a receipt whose tax cannot be deducted: it then counts as cost.": "{var:1} tutarını orandan hesaplatmak için boş bırakın; fişte yazıyorsa aynen girin ki kayıtlar fişle aynı olsun. Vergisi indirilemeyen bir fiş için \"Vergi indirilir\" seçeneğini kapatın; o zaman vergi de maliyete sayılır.",

@@ -34,8 +34,8 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
 - AN7b (S) Scenes on the stage. Done (#6491, `ui/image-editor-scenes-play.md`).
   - Play, the scrub and the clock across every scene (the stage opening each scene as the playhead reaches it, the transition shown there), then back to the scene that was open; drag a card to reorder; the tracks of the open scene under the whole timeline.
 
-- AN8 (M) Present and PDF. `free` (AN7a is done).
-  - Present mode in the editor (full screen; click, Space, arrow keys, swipe); the PDF writer; video and GIF of all scenes. No live-site viewer (question 1).
+- AN8 (M) Present and PDF. Done (#6637, `ui/image-editor-present.md`).
+  - Present mode in the editor (full screen; click, Space, arrow keys, swipe); the PDF writer; video and GIF of all scenes (AN7a). No live-site viewer (question 1).
 
 - AN9 (M) Keyframes. Done (#6290, `ui/image-editor-keyframes.md`).
   - A layer's position, scale, rotation and opacity at chosen times (diamonds on its track), eased between; moving a layer with the playhead away from 0 sets one; the path shown on the stage.

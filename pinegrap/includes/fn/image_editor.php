@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'access', 'fonts', 'glyph', 'warp', 'outline', 'builder');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'fonts', 'glyph', 'warp', 'outline', 'builder');
 }
 
 /**
@@ -4132,6 +4132,30 @@ function pg_image_editor_strings_scenes()
         'sceneEarlier'        => lang('Move earlier'),
         'sceneLater'          => lang('Move later'),
         'sceneNote'           => lang('The layers move within their own scene\'s duration. Play shows the open scene; Save animation plays the scenes one after another.'),
+    );
+}
+
+// -- Present and PDF (pg_image_editor_present.js) --
+
+/**
+ * The present part's labels: the Present button and its full screen, PDF in
+ * Save animation.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_present()
+{
+    return array(
+        'present'        => lang('Present'),
+        'presentTitle'   => lang('Present the scenes full screen'),
+        'presentDialog'  => lang('Presentation'),
+        'presentPrev'    => lang('Previous scene'),
+        'presentNext'    => lang('Next scene'),
+        'presentCount'   => lang('Scene {n} of {count}'),
+        'presentLeave'   => lang('Press Esc to leave'),
+        'presentClose'   => lang('Leave the presentation'),
+        'animFormat_pdf' => lang('PDF'),
+        'animPages'      => lang('{n} pages, one a scene'),
     );
 }
 
