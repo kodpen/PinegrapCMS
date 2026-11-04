@@ -49,7 +49,7 @@ function test_visitors_site_search_report_empty_period()
 	pg_assert_false(strpos($html, '<table') !== false);
 
 	// Clicks per search reads '-' when nothing was searched, never 0 %.
-	pg_assert_contains('<div class="h3 mb-0">-</div>', pg_site_search_report(array(), false));
+	pg_assert_contains('<div class="pg-visitors-tile-value">-</div>', pg_site_search_report(array(), false));
 }
 
 function test_visitors_site_search_old_link_keeps_period()

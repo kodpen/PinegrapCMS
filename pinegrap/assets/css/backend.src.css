@@ -2810,6 +2810,31 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
   background: color-mix(in srgb, var(--pg-menu-tone) 55%, transparent);
 }
 
+/* A jump point inside the screen of the entry above it (the Visitors
+   overview's sections): smaller and quieter than an entry, its text lined
+   up with the entry's label, on a thin line that runs down from the entry's
+   icon tile. No tile of its own, so it never reads as a screen. */
+#menu .menu-body .pg-menu-panel-body > a.pg-menu-anchor {
+  --bs-link-opacity: 0.72;
+  position: relative;
+  margin-bottom: 0;
+  padding: 0.2rem 0.625rem 0.2rem calc(0.625rem + 1.625rem + 0.5rem);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  border-radius: var(--pg-radius);
+}
+#menu .menu-body .pg-menu-panel-body > a.pg-menu-anchor::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(0.625rem + 0.8125rem - 0.5px);
+  border-inline-start: 1px solid currentColor;
+  opacity: 0.25;
+}
+#menu .menu-body .pg-menu-panel-body > a.pg-menu-anchor:is(:hover, :focus-visible) {
+  --bs-link-opacity: 1;
+}
+
 /* An entry that opens a second-level panel (System tools): its arrow sits
    in its right padding, as on the rows. */
 #menu .menu-body .pg-menu-panel-body > a.pg-menu-parent {

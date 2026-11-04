@@ -96,6 +96,68 @@ function test_visitors_chart_carries_its_data_and_a_text_table()
 	pg_assert_contains(pg_format_number(2.5, 1), $html);
 }
 
+function test_visitors_change_without_an_earlier_figure_is_a_quiet_dash()
+{
+	$none = pg_visitors_change(12, 0);
+	pg_assert_contains('<span aria-hidden="true">–</span>', $none, 'a dash is what shows');
+	pg_assert_contains('<span class="visually-hidden">' . h(lang('No earlier figure')) . '</span>', $none, 'the words are read out');
+
+	$cell = pg_visitors_change_cell(30, 20);
+	pg_assert_contains('title="' . h(lang(array('string' => 'Previous period: {var:1}', 'vars' => array(pg_format_number(20, 0))))) . '"', $cell['html']);
+	pg_assert_contains('is-good', $cell['html']);
+	pg_assert_same(10.0, $cell['sort']);
+
+	$plain = pg_visitors_change_cell(30, null);
+	pg_assert_contains('is-none', $plain['html'], 'not compared');
+	pg_assert_false(isset($plain['sort']));
+}
+
+function test_visitors_table_limit_label_and_hidden_first_heading()
+{
+	$rows = array();
+
+	for ($i = 1; $i <= 7; $i++) {
+		$rows[] = array('row' . $i, array('html' => (string) $i, 'sort' => $i));
+	}
+
+	$html = pg_visitors_table(array('Value', array('label' => 'Visits', 'end' => true)), $rows, array('caption' => 'A & B', 'limit' => 5, 'hide_first' => true));
+
+	pg_assert_contains('aria-label="A &amp; B"', $html, 'named on the table');
+	pg_assert_false(strpos($html, '<caption') !== false, 'no caption: it kept a pixel and drew a scroll bar');
+	pg_assert_contains('is-collapsed', $html);
+	pg_assert_same(2, substr_count($html, '<tr class="pg-visitors-extra">'), 'two rows past the limit');
+	pg_assert_true((bool) preg_match('/<table [^>]*id="(pg_visitors_table_\d+)"/', $html, $match), 'an id for the button');
+	pg_assert_contains('data-pg-more="' . $match[1] . '"', $html);
+	pg_assert_contains('aria-controls="' . $match[1] . '"', $html);
+	pg_assert_contains(h(lang(array('string' => 'Show all ({var:1})', 'vars' => array(pg_format_number(7, 0))))), $html);
+	pg_assert_contains('<th scope="col"><span class="visually-hidden">Value</span></th>', $html);
+
+	$short = pg_visitors_table(array('Value'), array(array('a'), array('b')), array('limit' => 5));
+	pg_assert_false(strpos($short, 'data-pg-more') !== false, 'no button when every row shows');
+	pg_assert_false(strpos($short, 'is-collapsed') !== false);
+}
+
+function test_visitors_chart_figures_are_hidden_through_a_box()
+{
+	$html = pg_visitors_chart('box_chart', array('labels' => array('a'), 'series' => array(array('label' => 'x', 'data' => array(1)))));
+
+	pg_assert_contains('<div class="visually-hidden">', $html);
+	pg_assert_false(strpos($html, '<table class="visually-hidden"') !== false, 'a hidden table keeps its width and widened the phone page');
+}
+
+function test_visitors_anchor_avoids_the_shells_ids()
+{
+	pg_assert_same('content_section', pg_visitors_anchor('content'), '<main> is #content');
+	pg_assert_same('traffic', pg_visitors_anchor('traffic'));
+	pg_assert_same('site_search', pg_visitors_anchor('site_search'));
+	pg_assert_contains('id="content_section"', pg_visitors_section('content', 'Content', ''));
+	pg_assert_contains('pg-visitors-section-icon', pg_visitors_section('traffic', 'Traffic', ''));
+
+	foreach (array_keys(pg_visitors_sections()) as $name) {
+		pg_assert_true(isset(pg_visitors_section_icons()[$name]), 'an icon for ' . $name);
+	}
+}
+
 function test_visitors_sections_order_and_files()
 {
 	pg_assert_same(

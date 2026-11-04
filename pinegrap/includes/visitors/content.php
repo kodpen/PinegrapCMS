@@ -339,26 +339,9 @@ function pg_visitors_content_name_cell($label, $url)
 }
 
 /**
- * The cells after a figure when the period is compared: the earlier figure
- * and the change.
- *
- * @param int      $now
- * @param int|null $before
- * @return array cells
- */
-function pg_visitors_content_compare_cells($now, $before)
-{
-    $before = (int) $before;
-
-    return array(
-        array('html' => h(pg_format_number($before, 0)), 'sort' => $before),
-        array('html' => pg_visitors_change($now, $before), 'sort' => $now - $before),
-    );
-}
-
-/**
  * One content list as a small table: the name, views and, when compared,
- * the earlier views and the change.
+ * the change (the earlier views on hover). The first rows show; the rest
+ * wait behind "Show all".
  *
  * @param string $title
  * @param array  $rows    pg_visitors_content_rows()
@@ -370,8 +353,7 @@ function pg_visitors_content_table($title, array $rows, $compare)
     $headings = array(lang('Item'), array('label' => lang('Views'), 'end' => true));
 
     if ($compare) {
-        $headings[] = array('label' => lang('Previous period'), 'end' => true);
-        $headings[] = array('label' => lang('Change'), 'end' => true);
+        $headings[] = pg_visitors_change_heading();
     }
 
     $body = array();
@@ -383,22 +365,22 @@ function pg_visitors_content_table($title, array $rows, $compare)
         );
 
         if ($compare) {
-            $cells = array_merge($cells, pg_visitors_content_compare_cells($row['views'], $row['before']));
+            $cells[] = pg_visitors_change_cell($row['views'], (int) $row['before']);
         }
 
         $body[] = $cells;
     }
 
-    return '
-        <div class="pg-visitors-content-list">
-            <h3 class="pg-visitors-content-list-title">' . h($title) . '</h3>
-            ' . pg_visitors_table($headings, $body, array('caption' => $title)) . '
-        </div>';
+    return pg_visitors_block($title, pg_visitors_table($headings, $body, array(
+        'caption'    => $title,
+        'limit'      => PG_VISITORS_LIST_ROWS,
+        'hide_first' => true,
+    )), 'pg-visitors-content-list');
 }
 
 /**
  * The landing page table: the page, visits, forms, orders with commerce on
- * and, when compared, the earlier visits and the change.
+ * and, when compared, the change (the earlier visits on hover).
  *
  * @param array $rows      pg_visitors_content_landing_rows()
  * @param bool  $compare
@@ -415,8 +397,7 @@ function pg_visitors_content_landing_table(array $rows, $compare, $ecommerce)
     }
 
     if ($compare) {
-        $headings[] = array('label' => lang('Previous period'), 'end' => true);
-        $headings[] = array('label' => lang('Change'), 'end' => true);
+        $headings[] = pg_visitors_change_heading();
     }
 
     $body = array();
@@ -435,17 +416,16 @@ function pg_visitors_content_landing_table(array $rows, $compare, $ecommerce)
         }
 
         if ($compare) {
-            $cells = array_merge($cells, pg_visitors_content_compare_cells($row['visits'], $row['before']));
+            $cells[] = pg_visitors_change_cell($row['visits'], (int) $row['before']);
         }
 
         $body[] = $cells;
     }
 
-    return '
-        <div class="pg-visitors-content-list pg-visitors-content-landing">
-            <h3 class="pg-visitors-content-list-title">' . h($title) . '</h3>
-            ' . pg_visitors_table($headings, $body, array('caption' => $title)) . '
-        </div>';
+    return pg_visitors_block($title, pg_visitors_table($headings, $body, array(
+        'caption' => $title,
+        'limit'   => PG_VISITORS_LIST_ROWS,
+    )), 'pg-visitors-content-list pg-visitors-content-landing');
 }
 
 /**
@@ -504,7 +484,10 @@ function pg_visitors_section_content(array $period, array $user)
         return pg_visitors_section('content', lang('Content'), pg_visitors_empty());
     }
 
-    $body = '<div class="pg-visitors-content-lists">' . $lists . pg_visitors_content_landing_table($landing_rows, $compare, $ecommerce) . '</div>';
+    // The landing pages under the lists, not in their grid: a list alone
+    // then takes the whole width.
+    $body = (($lists !== '') ? '<div class="pg-visitors-content-lists">' . $lists . '</div>' : '')
+        . pg_visitors_content_landing_table($landing_rows, $compare, $ecommerce);
 
     return pg_visitors_section('content', lang('Content'), $body);
 }

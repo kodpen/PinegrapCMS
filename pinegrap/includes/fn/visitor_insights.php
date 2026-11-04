@@ -267,7 +267,8 @@ function pg_visitor_spark_svg(array $values, $reference = 0)
 // ── Shared markup ──────────────────────────────────────────────────────────
 
 /**
- * A row of figure tiles. Each tile: label, text, note, tone.
+ * A row of figure tiles, drawn as the Visitors overview's tiles. Each tile:
+ * label, text, note, tone.
  *
  * @param array $tiles
  * @return string
@@ -278,20 +279,19 @@ function pg_visitor_insight_tiles(array $tiles)
 
     foreach ($tiles as $tile) {
         $tone = pg_visitor_insight_tone_class(isset($tile['tone']) ? $tile['tone'] : '');
-        $out .= '<div class="col-6 md:col">
-            <div class="card h-100"><div class="card-body">
-                <div class="small fg-secondary">' . h($tile['label']) . '</div>
-                <div class="h3 mb-0' . (($tone !== '') ? ' ' . $tone : '') . '">' . h($tile['text']) . '</div>'
-            . ((isset($tile['note']) && ($tile['note'] !== '')) ? '<div class="small fg-secondary">' . h($tile['note']) . '</div>' : '') . '
-            </div></div>
-        </div>';
+        $out .= '
+            <div class="pg-visitors-tile">
+                <div class="pg-visitors-tile-label">' . h($tile['label']) . '</div>
+                <div class="pg-visitors-tile-value' . (($tone !== '') ? ' ' . $tone : '') . '">' . h($tile['text']) . '</div>'
+            . ((isset($tile['note']) && ($tile['note'] !== '')) ? '<div class="pg-visitors-tile-note">' . h($tile['note']) . '</div>' : '') . '
+            </div>';
     }
 
-    return '<div class="row g-7">' . $out . '</div>';
+    return '<div class="pg-visitors-tiles">' . $out . '</div>';
 }
 
 /**
- * A card with a heading and a table, or a line when there are no rows.
+ * A block with a small heading and a table, or a line when there are no rows.
  *
  * @param string $title
  * @param string $head  the header cells' markup
@@ -302,15 +302,25 @@ function pg_visitor_insight_tiles(array $tiles)
  */
 function pg_visitor_insight_card($title, $head, $rows, $empty, $after = '')
 {
-    return '<div class="card my-7">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h($title) . '</div>
-            <div class="card-body p-0">'
+    return '<div class="pg-visitors-block">
+            <h3 class="pg-visitors-subtitle">' . h($title) . '</h3>'
         . (($rows === '')
-            ? '<p class="fg-secondary m-7">' . h($empty) . '</p>'
-            : '<div class="table-responsive"><table class="table table-hover mb-0"><thead><tr>' . $head . '</tr></thead><tbody>' . $rows . '</tbody></table></div>')
+            ? '<p class="pg-visitors-empty is-start">' . h($empty) . '</p>'
+            : pg_visitor_insight_table($head, $rows))
         . $after . '
-            </div>
         </div>';
+}
+
+/**
+ * A table of the Visitors overview's look.
+ *
+ * @param string $head the header cells' markup
+ * @param string $rows the rows' markup
+ * @return string
+ */
+function pg_visitor_insight_table($head, $rows)
+{
+    return '<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0 pg-visitors-table"><thead><tr>' . $head . '</tr></thead><tbody>' . $rows . '</tbody></table></div>';
 }
 
 /**
@@ -361,9 +371,7 @@ function pg_visitor_speed_section(array $window, $device = '', $order = 'lcp')
     $labels = pg_vitals_metric_labels();
 
     if ($site['views'] <= 0) {
-        return '<div class="card my-7"><div class="card-body">
-            <p class="fg-secondary mb-0">' . h(lang('No page speed was measured in this period. Visitors\' browsers send it from public pages; signed-in staff, Preview and the designer are not measured.')) . '</p>
-        </div></div>';
+        return '<p class="pg-visitors-empty">' . h(lang('No page speed was measured in this period. Visitors\' browsers send it from public pages; signed-in staff, Preview and the designer are not measured.')) . '</p>';
     }
 
     $tiles = array();
@@ -443,7 +451,7 @@ function pg_visitor_speed_section(array $window, $device = '', $order = 'lcp')
 
     $thresholds = pg_vitals_thresholds();
     $chart = (count($line) > 1)
-        ? '<div class="px-7 pt-7"><div class="small fg-secondary mb-3">' . h(lang(array('string' => 'Largest paint (LCP) by day; the dashed line is the good limit of {var:1}.', 'vars' => array(pg_vitals_display('lcp', $thresholds['lcp'][0]))))) . '</div>' . pg_visitor_spark_svg($line, $thresholds['lcp'][0]) . '</div>'
+        ? '<div class="pg-visitors-spark"><p class="pg-visitors-note">' . h(lang(array('string' => 'Largest paint (LCP) by day; the dashed line is the good limit of {var:1}.', 'vars' => array(pg_vitals_display('lcp', $thresholds['lcp'][0]))))) . '</p>' . pg_visitor_spark_svg($line, $thresholds['lcp'][0]) . '</div>'
         : '';
     $trend_head = '<th>' . h(lang('Date')) . '</th><th>' . h(lang('Measured views')) . '</th>';
 
@@ -452,17 +460,11 @@ function pg_visitor_speed_section(array $window, $device = '', $order = 'lcp')
     }
 
     return pg_visitor_insight_tiles($tiles) . '
-    <div class="row">
-        <div class="col-12">
-            ' . pg_visitor_insight_card(lang('Slowest Pages'), $head, $rows, lang('No page was measured in this period.')) . '
-        </div>
-        <div class="col-12">
-            <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Trend')) . '</div>
-                <div class="card-body p-0">' . $chart . '
-                    <div class="table-responsive"><table class="table table-hover mb-0"><thead><tr>' . $trend_head . '</tr></thead><tbody>' . $trend_rows . '</tbody></table></div>
-                </div>
-            </div>
+    <div class="pg-visitors-grid">
+        ' . pg_visitor_insight_card(lang('Slowest Pages'), $head, $rows, lang('No page was measured in this period.')) . '
+        <div class="pg-visitors-block">
+            <h3 class="pg-visitors-subtitle">' . h(lang('Trend')) . '</h3>
+            ' . $chart . pg_visitor_insight_table($trend_head, $trend_rows) . '
         </div>
     </div>';
 }
@@ -561,7 +563,7 @@ function pg_visitor_ai_section(array $window, array $user)
             </tr>';
     }
 
-    $policy_line = '<p class="small fg-secondary m-7">'
+    $policy_line = '<p class="pg-visitors-note">'
         . h(!empty($settings['rules']) ? lang('robots.txt carries the AI section.') : lang('robots.txt carries no AI section.')) . ' '
         . h(!empty($settings['llms']) ? lang('llms.txt is served.') : lang('llms.txt is not served.'))
         . (((int) $user['role'] < 3) ? ' <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_seo.php#pgset-ai') . '">' . h(lang('AI crawler settings')) . '</a>' : '')
@@ -583,9 +585,9 @@ function pg_visitor_ai_section(array $window, array $user)
     }
 
     $chart = ($summary['fetches'] + $summary['unverified'] > 0)
-        ? '<div class="card my-7"><div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Fetches by Day')) . '</div>
-            <div class="card-body">' . pg_visitor_spark_svg($line) . '
-                <div class="d-flex justify-content-between small fg-secondary mt-3"><span>' . h(prepare_form_data_for_output($window['from'], 'date', false)) . '</span><span>' . h(prepare_form_data_for_output($window['to'], 'date', false)) . '</span></div>
+        ? '<div class="pg-visitors-block"><h3 class="pg-visitors-subtitle">' . h(lang('Fetches by Day')) . '</h3>
+            <div class="pg-visitors-spark">' . pg_visitor_spark_svg($line) . '
+                <div class="pg-visitors-spark-dates"><span>' . h(prepare_form_data_for_output($window['from'], 'date', false)) . '</span><span>' . h(prepare_form_data_for_output($window['to'], 'date', false)) . '</span></div>
             </div></div>'
         : '';
 
@@ -617,7 +619,7 @@ function pg_visitor_ai_section(array $window, array $user)
     $referral_head = '<th>' . h(lang('Assistant')) . '</th><th>' . h(lang('Visits')) . '</th><th>' . h(lang('Page views')) . '</th><th>' . h(lang('Forms submitted')) . '</th>'
         . ($shop ? '<th>' . h(lang('Orders completed')) . '</th><th class="text-end">' . h(lang('Order total')) . '</th>' : '');
     $referral_note = ($referrals['summary_to'] !== null)
-        ? '<p class="small fg-secondary m-7">' . h(lang(array('string' => 'Days up to {var:1} come from the daily summary, which keeps only each day\'s top referrers.', 'vars' => array(prepare_form_data_for_output($referrals['summary_to'], 'date', false))))) . '</p>'
+        ? '<p class="pg-visitors-note">' . h(lang(array('string' => 'Days up to {var:1} come from the daily summary, which keeps only each day\'s top referrers.', 'vars' => array(prepare_form_data_for_output($referrals['summary_to'], 'date', false))))) . '</p>'
         : '';
 
     // The sitemap's pages no verified AI fetched.
@@ -629,28 +631,25 @@ function pg_visitor_ai_section(array $window, array $user)
     }
 
     $unfetched_note = ($unfetched['total'] > count($unfetched['pages']))
-        ? '<p class="small fg-secondary m-7">' . h(lang(array('string' => 'The first {var:1} of {var:2} pages by name.', 'vars' => array(pg_format_number(count($unfetched['pages']), 0), pg_format_number($unfetched['total'], 0))))) . '</p>'
+        ? '<p class="pg-visitors-note">' . h(lang(array('string' => 'The first {var:1} of {var:2} pages by name.', 'vars' => array(pg_format_number(count($unfetched['pages']), 0), pg_format_number($unfetched['total'], 0))))) . '</p>'
         : '';
 
-    return pg_visitor_insight_tiles($tiles) . $chart . '
-    <div class="row">
-        <div class="col-12 xl:col-6">
+    return pg_visitor_insight_tiles($tiles) . '
+    <div class="pg-visitors-grid is-split">
+        ' . $chart . '
+        <div class="is-half">
             ' . pg_visitor_insight_card(lang('AI Bots'),
                 '<th>' . h(lang('Bot')) . '</th><th>' . h(lang('Kind')) . '</th><th>' . h(lang('Fetches')) . '</th><th>' . h(lang('Firewall')) . '</th>',
                 $bot_rows, lang('No AI bot is known.'), $policy_line) . '
         </div>
-        <div class="col-12 xl:col-6">
+        <div class="is-half">
             ' . pg_visitor_insight_card(lang('Most-read Pages per Bot'),
                 '<th>' . h(lang('Bot')) . '</th><th>' . h(lang('Page')) . '</th><th>' . h(lang('Fetches')) . '</th>',
                 $page_rows, lang('No AI bot fetched a page in this period.')) . '
         </div>
-        <div class="col-12">
-            ' . pg_visitor_insight_card(lang('Visits from AI Assistants'), $referral_head, $referral_rows,
-                lang('No visit came from an AI assistant\'s answer in this period.'), $referral_note) . '
-        </div>
-        <div class="col-12">
-            ' . pg_visitor_insight_card(lang(array('string' => 'Sitemap Pages No AI Fetched ({var:1})', 'vars' => array(pg_format_number($unfetched['total'], 0)))),
-                '<th>' . h(lang('Page')) . '</th>', $unfetched_rows, lang('Every sitemap page was fetched by an AI bot in this period.'), $unfetched_note) . '
-        </div>
+        ' . pg_visitor_insight_card(lang('Visits from AI Assistants'), $referral_head, $referral_rows,
+            lang('No visit came from an AI assistant\'s answer in this period.'), $referral_note) . '
+        ' . pg_visitor_insight_card(lang(array('string' => 'Sitemap Pages No AI Fetched ({var:1})', 'vars' => array(pg_format_number($unfetched['total'], 0)))),
+            '<th>' . h(lang('Page')) . '</th>', $unfetched_rows, lang('Every sitemap page was fetched by an AI bot in this period.'), $unfetched_note) . '
     </div>';
 }

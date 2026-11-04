@@ -25,9 +25,14 @@ if (!defined('PG_VISITORS_SCREEN')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/visitor_pages.php');
 
 /**
- * How many pages the table shows.
+ * How many pages the table holds.
  */
 const PG_VISITORS_PAGES_TOP = 25;
+
+/**
+ * How many of them show before its "Show all" button.
+ */
+const PG_VISITORS_PAGES_ROWS = 10;
 
 /**
  * The column the table is sorted by: clicks (only when linked), visits or
@@ -149,7 +154,7 @@ function pg_visitors_pages_table(array $rows, $linked, $ecommerce, $base)
         $body[] = $cells;
     }
 
-    return pg_visitors_table($headings, $body, array('caption' => lang('Pages and Google'), 'id' => 'pages_table'));
+    return pg_visitors_table($headings, $body, array('caption' => lang('Pages and Google'), 'id' => 'pages_table', 'limit' => PG_VISITORS_PAGES_ROWS));
 }
 
 /**
