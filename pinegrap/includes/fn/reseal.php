@@ -36,6 +36,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * - width:     the column's width, for 'gateway'
  * - json:      optional, true when an 'iv' value is JSON: one that does not
  *              decode after opening is taken as not sealed with the old key
+ * - fields:    optional, for a column holding JSON with sealed values inside:
+ *              the paths of those values ("formats.*.token_secret", '*' for
+ *              every key at that level); each is sealed by its kind
+ * - json_flags: optional, the json_encode() flags the column is written with
  *
  * @return array
  */
@@ -64,7 +68,163 @@ function pg_reseal_registry()
         );
     }
 
+    $config = function ($area, $column, $kind, array $extra = array()) {
+        return $extra + array(
+            'area'   => $area,
+            'table'  => 'config',
+            'column' => $column,
+            'key'    => '',
+            'kind'   => $kind,
+            'where'  => $column . " <> ''",
+        );
+    };
+
+    $config_text = function ($area, $name, $kind, array $extra = array()) {
+        return $extra + array(
+            'area'   => $area,
+            'table'  => 'config_text',
+            'column' => 'value',
+            'key'    => 'name',
+            'kind'   => $kind,
+            'where'  => "name = '" . $name . "' AND value <> ''",
+        );
+    };
+
+    $rows = function ($area, $table, $column, $key, $kind, array $extra = array()) {
+        return $extra + array(
+            'area'   => $area,
+            'table'  => $table,
+            'column' => $column,
+            'key'    => $key,
+            'kind'   => $kind,
+            'where'  => $column . " <> ''",
+        );
+    };
+
+    // Connected accounts and applications: every provider's row, the service
+    // rows (Google Analytics, CAPTCHA, SMS, mail transport, storage, carriers,
+    // payment drivers) included.
+    $registry[] = $rows('connect', 'connect_apps', 'secret', 'provider', 'connect');
+    $registry[] = $rows('connect', 'connect_accounts', 'secret', 'id', 'connect');
+
+    $registry[] = $rows('marketplace', 'marketplace_accounts', 'credentials', 'id', 'iv', array('json' => true));
+    $registry[] = $rows('edoc', 'erp_edoc_providers', 'credentials_enc', 'id', 'iv', array('json' => true));
+    $registry[] = $config('parasut', 'parasut_credentials_enc', 'iv', array('json' => true));
+    $registry[] = $config('backup', 'backup_remote_settings', 'iv', array('json' => true));
+    $registry[] = $config('product_feeds', 'product_feeds', 'iv', array(
+        'where'      => "product_feeds LIKE '%token_secret%'",
+        'fields'     => array('formats.*.token_secret'),
+        'json_flags' => JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+    ));
+    $registry[] = $config('google', 'oauth_google_client_secret', 'iv', array('iv_column' => 'oauth_google_secret_iv'));
+
+    // Two-step keys, the one in use and the one waiting for its first code.
+    $registry[] = $rows('mfa', 'user_mfa', 'totp_secret', 'user_id', 'iv');
+    $registry[] = $rows('mfa', 'user_mfa', 'pending_secret', 'user_id', 'iv');
+
+    // A card_ref may hold a service's plain token: only the sealed shape is
+    // picked, and a plain one that slips through does not open and is skipped.
+    $registry[] = $rows('subscriptions', 'subscriptions', 'card_ref', 'id', 'iv', array('where' => "card_ref LIKE '%:%=='"));
+
+    $registry[] = $config('translation', 'translation_google_key', 'iv');
+    $registry[] = $config_text('activitypub', 'ap_keys', 'connect', array('fields' => array('private')));
+
+    $registry[] = $rows('workspace', 'ws_mcp_servers', 'secret', 'id', 'iv', array('json' => true));
+    $registry[] = $rows('workspace', 'ws_calendar_feeds', 'token_secret', 'id', 'iv');
+    $registry[] = $rows('workspace', 'ws_mail_boxes', 'settings', 'id', 'connect', array(
+        'where'  => "settings LIKE '%\"secret\"%'",
+        'fields' => array('secret'),
+    ));
+    $registry[] = $config('workspace', 'ws_claude_token', 'iv');
+    $registry[] = $config_text('workspace', 'ws_voice_key', 'iv');
+    $registry[] = $config_text('workspace', 'ws_voice_speech_key', 'iv');
+
     return $registry;
+}
+
+/**
+ * The sealed values inside a JSON column, each sealed again by the entry's
+ * kind. The row's status is 'done' when at least one value was, and its
+ * counts are per value.
+ *
+ * @param array  $entry   a registry entry with 'fields'
+ * @param string $stored
+ * @param string $old_key
+ * @param string $new_key
+ * @return array status, value, iv, counts
+ */
+function pg_reseal_json_value(array $entry, $stored, $old_key, $new_key)
+{
+    $counts = array('done' => 0, 'skipped' => 0, 'failed' => 0);
+    $data = json_decode((string) $stored, true);
+
+    if (!is_array($data)) {
+        $counts['skipped']++;
+
+        return array('status' => 'skipped', 'value' => (string) $stored, 'iv' => '', 'counts' => $counts);
+    }
+
+    $leaf_entry = $entry;
+    unset($leaf_entry['fields']);
+
+    foreach ((array) $entry['fields'] as $path) {
+        pg_reseal_json_walk($data, explode('.', (string) $path), $leaf_entry, $old_key, $new_key, $counts);
+    }
+
+    if ($counts['done'] === 0) {
+        return array('status' => ($counts['failed'] > 0) ? 'failed' : 'skipped', 'value' => (string) $stored, 'iv' => '', 'counts' => $counts);
+    }
+
+    $json = json_encode($data, isset($entry['json_flags']) ? (int) $entry['json_flags'] : 0);
+
+    if ($json === false) {
+        $counts['failed'] += $counts['done'];
+        $counts['done'] = 0;
+
+        return array('status' => 'failed', 'value' => (string) $stored, 'iv' => '', 'counts' => $counts);
+    }
+
+    return array('status' => 'done', 'value' => $json, 'iv' => '', 'counts' => $counts);
+}
+
+/**
+ * Follows one path into $node and seals the string at its end again.
+ *
+ * @param mixed  $node     changed in place
+ * @param array  $segments the path's keys; '*' is every key at that level
+ * @param array  $entry    the entry without 'fields'
+ * @param string $old_key
+ * @param string $new_key
+ * @param array  $counts   changed in place
+ * @return void
+ */
+function pg_reseal_json_walk(&$node, array $segments, array $entry, $old_key, $new_key, array &$counts)
+{
+    if (!$segments) {
+        if (!is_string($node) || ($node === '')) {
+            return;
+        }
+
+        $result = pg_reseal_value($entry, $node, '', $old_key, $new_key);
+        $counts[$result['status']]++;
+
+        if ($result['status'] === 'done') {
+            $node = $result['value'];
+        }
+
+        return;
+    }
+
+    if (!is_array($node)) {
+        return;
+    }
+
+    $segment = array_shift($segments);
+    $keys = ($segment === '*') ? array_keys($node) : (array_key_exists($segment, $node) ? array($segment) : array());
+
+    foreach ($keys as $key) {
+        pg_reseal_json_walk($node[$key], $segments, $entry, $old_key, $new_key, $counts);
+    }
 }
 
 /**
@@ -94,6 +254,10 @@ function pg_reseal_value(array $entry, $stored, $iv, $old_key, $new_key)
 
     if (($stored === '') || ($new_key === '')) {
         return $skipped;
+    }
+
+    if (!empty($entry['fields'])) {
+        return pg_reseal_json_value($entry, $stored, $old_key, $new_key);
     }
 
     switch (isset($entry['kind']) ? $entry['kind'] : '') {
@@ -236,8 +400,12 @@ function pg_reseal_run($old_key, $new_key, $registry = null)
             $stored_iv = ($iv_column !== '') ? (string) $row['reseal_iv'] : '';
             $result = pg_reseal_value($entry, $stored, $stored_iv, $old_key, $new_key);
 
+            $row_counts = isset($result['counts']) ? $result['counts'] : array($result['status'] => 1);
+
             if ($result['status'] !== 'done') {
-                $counts[$area][$result['status']]++;
+                foreach ($row_counts as $status => $count) {
+                    $counts[$area][$status] += $count;
+                }
 
                 continue;
             }
@@ -260,7 +428,9 @@ function pg_reseal_run($old_key, $new_key, $registry = null)
 
             $written = db_q("UPDATE " . $table . " SET " . implode(', ', $set) . " WHERE " . implode(' AND ', $where), $values);
 
-            $counts[$area][$written ? 'done' : 'failed']++;
+            foreach ($row_counts as $status => $count) {
+                $counts[$area][(($status === 'done') && !$written) ? 'failed' : $status] += $count;
+            }
         }
     }
 

@@ -23,7 +23,7 @@ description: Payment driver layer (2026.11.0, PR #740; iyzico on it since step 2
 ## Where are the settings?
 - `connect_apps` row `payment_<key>`: secrets sealed as one map (`pg_connect_seal()`), others in `options`, `enabled` = redirect switch. Read: `pg_payment_setting($key, $name)`.
 - `'settings' => 'config'` (shipped drivers only; add-ons get `connect`): keeps the config columns the card draws; its own `_fields()` go to `connect_apps` (iyzico's renewals switch).
-- Reset Encryption Key does not re-seal `connect_apps`; the card warns.
+- Reset Encryption Key re-seals `connect_apps`.
 
 ## What does the Ecommerce card do?
 - Draws `pg_payment_settings_gateway_options()`, `_card_rows()` (gateway box), `_redirect_rows()` (after PayPal Express); never secrets.

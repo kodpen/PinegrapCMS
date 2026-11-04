@@ -70,7 +70,7 @@ function test_visitors_pages_join_keeps_rows_one_side_alone_knows()
 		array('page_id' => 8, 'page_name' => 'only-visits', 'page_home' => 'no', 'seo_score' => 0, 'scored' => false),
 	);
 
-	$rows = pg_visitors_pages_join($google, $landing, $views, $pages, 'https://example.com/', array('home'));
+	$rows = pg_visitor_pages_join($google, $landing, $views, $pages, 'https://example.com/', array('home'));
 
 	pg_assert_same(array('about-us', '', 'only-google', 'only-visits'), array_keys($rows));
 
@@ -105,9 +105,9 @@ function test_visitors_pages_sort()
 		'c' => array('key' => 'c', 'clicks' => 7, 'visits' => 3, 'score' => 80),
 	);
 
-	pg_assert_same(array('c', 'a', 'b'), array_keys(pg_visitors_pages_sort($rows, 'clicks')), 'no Google figure last');
-	pg_assert_same(array('b', 'c', 'a'), array_keys(pg_visitors_pages_sort($rows, 'visits')));
-	pg_assert_same(array('c', 'b', 'a'), array_keys(pg_visitors_pages_sort($rows, 'score')), 'no score last');
+	pg_assert_same(array('c', 'a', 'b'), array_keys(pg_visitor_pages_sort($rows, 'clicks')), 'no Google figure last');
+	pg_assert_same(array('b', 'c', 'a'), array_keys(pg_visitor_pages_sort($rows, 'visits')));
+	pg_assert_same(array('c', 'b', 'a'), array_keys(pg_visitor_pages_sort($rows, 'score')), 'no score last');
 	pg_assert_same('clicks', pg_visitors_pages_sort_key('nonsense', true));
 	pg_assert_same('visits', pg_visitors_pages_sort_key('clicks', false), 'clicks need Google');
 	pg_assert_same('score', pg_visitors_pages_sort_key('score', false));
