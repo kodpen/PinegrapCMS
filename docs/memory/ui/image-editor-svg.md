@@ -1,7 +1,7 @@
 ---
 name: image-editor-svg
 description: The image editor's SVG files: opened as layers on a transparent artboard, saved as SVG through the allowlist sanitizer pg_svg_sanitize()
-module: svg_sanitize, image_editor
+module: image_editor
 ---
 
 ## How does an SVG file open?
@@ -18,9 +18,4 @@ module: svg_sanitize, image_editor
 - Not for SVG files: versions (the drawer reads pictures) and the raster export. An `svg` layer paints on a canvas as an SVG picture (#6653, `image-editor-import.md`).
 
 ## What does pg_svg_sanitize() keep?
-- It rebuilds the SVG element by element (`includes/fn/svg_sanitize.php`): only the listed drawing elements and their listed attributes; presentation properties as attributes or `style` declarations.
-- `href` / `xlink:href` only to `#id` or `data:image/png|jpeg|gif|webp|avif;base64`; never `data:image/svg+xml`. A `use` with nothing left to point at goes.
-- A value with an outside `url()`, an image function (`image-set(`, `-webkit-image-set(`, `cross-fade(`, `element(`, `image(`, `src(`), a backslash, `<`, `expression(`, `javascript:` or `@import` is dropped.
-- Why are style sheets scoped? An inline SVG's `<style>` applies to the whole page: a file's `svg path{display:none}` hid every panel icon. A sheet keeps only plain rules (names, `.class`, `#id`, descendant and child combinators; no attribute selector, pseudo-class, `*`, sibling combinator, at-rule or rule on `svg`), its declarations kept as a `style` attribute's, each selector prefixed with the root's id (its own plain id, else `pgsvg-` and ten hex of the file's SHA-1), set on the root. Already scoped rules are scoped once, so a sanitized file comes through unchanged. The editor gives the stage and the saved root that id (`doc.svgRootId`).
-- Refused whole (''): not a string, empty, over 5 MB, broken XML, a root that is not an SVG-namespace `<svg>`, any `<!DOCTYPE` / `<!ENTITY` in the text or a document type after parsing. Comments, processing instructions, scripts, event handlers, `foreignObject`, `a`, animations and other namespaces never come through.
-- Tests: `tests/svg_sanitize_test.php` (hostile samples), `tests/image_editor_svg_test.php` (the model's SVG section).
+- See `image-editor-svg-sanitize.md`.
