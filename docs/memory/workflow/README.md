@@ -88,6 +88,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - install-check-filter.md: When install-check.yml runs its six-database matrix (#1985): the changes job, the paths it reads, always on merge trains and pushes, why plain git, a skipped job blocks nothing
 - memory-index-key-rules.md: The hand-written key-rules block of each memory folder README, what tools/memory_index.php keeps and regenerates, when it stops with exit 1 and how a merge conflict in a README is settled
 - merge-review.md: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, digs deeper for access, payments, SQL, schema; an architect decision counts as the owner's
+- merge-train-forks.md: A PR from a fork never rides a merge train, never lands alone and is never merged by a session; the owner reviews it. Where tools/merge_train.php enforces it
 - merge-train-landing.md: How a green merge train lands (2026-10-25): one fast-forward push, GitHub marks the PRs merged and wakes their sessions, no push to PR branches; why not a squash per PR; a red train; the merge queue
 - merge-train-tool.md: tools/merge_train.php (#2002): --start (the lock), --list (train order), --build (merge, settle, changelog, push), --land (fast-forward); what it leaves to the merging session
 - merge-train.md: Working rule (2026-10-25) for the merging session: one merger, one train at a time, 30-minute windows, rules-only PRs alone, the ready label, one merge commit per PR, one CI run
