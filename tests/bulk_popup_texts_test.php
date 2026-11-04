@@ -89,3 +89,19 @@ function test_bulk_popup_texts_variant_sets_bar_acts_on_the_selection()
 	pg_assert_contains('data-pg-vs-status="enabled"><i class="bi bi-toggle-on me-3"></i>\' . lang(\'Enable Selected\') . \'</button>', $source, 'the enable button names the selection');
 	pg_assert_contains('data-pg-vs-status="disabled"><i class="bi bi-toggle-off me-3"></i>\' . lang(\'Disable Selected\') . \'</button>', $source, 'the disable button names the selection');
 }
+
+// A list's bulk action that posts the page form (Delete Selected on the
+// products list) asks through the panel's own dialog, not window.confirm(),
+// and takes the action back when the answer is no.
+function test_bulk_popup_texts_bulk_action_asks_with_pg_confirm()
+{
+	$js = bulk_popup_texts_source('assets/js/backend.src.js');
+	$start = strpos($js, "case 'Delete Selected':");
+	pg_assert_true($start !== false, 'the bulk handler is found');
+	$block = substr($js, $start, 2500);
+
+	pg_assert_contains("if (result == true && autoconfirm == false && confirm_content && !confirm_action && typeof window.pgConfirm === 'function') {", $block, 'a form-posting bulk action asks with pgConfirm');
+	pg_assert_contains("variant: value == 'Delete Selected' ? 'danger' : 'primary'", $block, 'Delete Selected asks in red');
+	pg_assert_contains("document.form.action.value = '';", $block, 'a refusal takes the action back');
+	pg_assert_true(strpos($block, 'window.pgConfirm(') < strpos($block, 'if (confirm(confirm_content) == true)'), 'pgConfirm comes before the native fallback');
+}
