@@ -258,6 +258,79 @@ function pg_page_bulk_touch($page_id, $user_id)
 }
 
 /**
+ * The Modify Selected dialog of the Pages list: the folder, the two styles
+ * (staff only, as on the page screen), site search and sitemap.xml pick
+ * lists, owned by the list's form ($form_id) and posted to edit_pages.php
+ * with the list's selection. An empty pick list leaves its property alone.
+ *
+ * @param array  $user     validate_user()
+ * @param string $form_id  the id of the list's form
+ * @return string
+ */
+function pg_page_bulk_edit_dialog($user, $form_id)
+{
+    $id = 'page_bulk_edit_dialog';
+    $owner = ' form="' . h($form_id) . '"';
+    $default_style_label = lang('Default') . ' (' . lang('inherit') . ')';
+    $output_preview_note = '';
+
+    // While a theme other than the activated one is previewed, the styles
+    // picked here go to the preview (edit_pages.php).
+    $preview_theme_id = (int) ($_SESSION['software']['preview_theme_id'] ?? 0);
+
+    if (($preview_theme_id > 0)
+        && ($preview_theme_id != (int) db_value("SELECT id FROM files WHERE activated_desktop_theme = '1'"))
+        && ($preview_theme_id != (int) db_value("SELECT id FROM files WHERE activated_mobile_theme = '1'"))) {
+        $default_style_label = '[' . lang('Activated') . ']';
+        $output_preview_note = '
+                    <div class="col-12">
+                        <div class="alert theme-success small mb-0" role="alert">
+                            <strong class="d-block">' . lang('Theme Preview Mode') . '</strong>
+                            ' . lang('You are currently previewing a Theme that is not activated, so your Page Style and Mobile Page Style selections below will update the preview Page Style, and not the activated Page Style.  The preview Page Styles that you set here will be activated when you activate the Theme.') . '
+                        </div>
+                    </div>';
+    }
+
+    $select = function ($name, $label, $options, $width = 'sm:col-6') use ($id, $owner) {
+        return '
+                    <div class="col-12 ' . $width . '">
+                        <label class="form-label" for="' . $id . '_' . $name . '">' . $label . '</label>
+                        <select class="form-control" id="' . $id . '_' . $name . '" name="' . $name . '"' . $owner . '><option value=""></option>' . $options . '</select>
+                    </div>';
+    };
+
+    $include_options = '<option value="1">' . h(lang('Include')) . '</option><option value="0">' . h(lang('Exclude')) . '</option>';
+
+    $output_style_fields = '';
+
+    if ((int) $user['role'] < 3) {
+        $output_style_fields = $output_preview_note
+            . $select('edit_page_style', lang('Page Style'), select_style('', $default_style_label))
+            . $select('edit_mobile_style_id', lang('Mobile Page Style'), get_mobile_style_options('', $default_style_label));
+    }
+
+    return '<dialog id="' . $id . '" class="dialog" aria-labelledby="' . $id . '_title">
+            <div class="dialog-header">
+                <h5 class="dialog-title" id="' . $id . '_title">' . lang('Modify Pages') . '</h5>
+                <button type="button" class="btn-close no-submit" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
+            </div>
+            <div class="dialog-body">
+                <p class="small fg-secondary">' . lang('You may update various properties below for the selected pages. You may leave a pick list unselected if you do not want to modify a property.') . '</p>
+                <div class="row g-5">'
+                    . $select('move_to_folder', lang('Folder'), pg_page_select_folder(), '')
+                    . $output_style_fields
+                    . $select('edit_site_search', lang('Site Search'), $include_options)
+                    . $select('edit_sitemap', 'sitemap.xml', $include_options) . '
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <button type="button" class="no-submit btn btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                <button type="button" class="no-submit btn btn-solid theme-primary" data-pg-page-bulk-save><i class="bi bi-check-lg me-3" aria-hidden="true"></i>' . lang('Modify Pages') . '</button>
+            </div>
+        </dialog>';
+}
+
+/**
  * The page row pg_page_bulk_decide() reads, with the search keywords the
  * tag cloud update needs. False when there is no such page.
  *
