@@ -2135,6 +2135,47 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'campaigns.create',
+			'method'  => 'POST',
+			'path'    => '/campaigns',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaigns_create',
+			'dry_run' => true,
+			'returns' => 'Campaign',
+			'status'  => 201,
+			'summary' => 'Make a plain-text campaign, kept as a draft',
+			'description' => 'Puts a manual campaign together as the create screen does: the addresses of contact_group_ids (opted-in contacts only for a commercial campaign), less every address of excluded_contact_group_ids, plus email_address, each address once. It is kept paused and nothing is sent: POST /campaigns/{id}/schedule releases it. A group that does not exist, or that an account with the user role was not given, is refused with 422. A plain-text message only; an HTML campaign is made from a page on the create screen. A campaign whose groups hold no address it may go to is refused with 422. An entered address nobody has yet becomes a contact, for an account above the user role, as on the screen.',
+			'params'  => array(
+				array('name' => 'subject',                    'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true),
+				array('name' => 'body',                       'in' => 'body', 'type' => 'string', 'max_length' => 200000, 'required' => true, 'description' => 'The text of the message.'),
+				array('name' => 'from_name',                  'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'from_email',                 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'reply_to',                   'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'purpose',                    'in' => 'body', 'type' => 'enum', 'values' => array('commercial', 'transactional'), 'required' => true, 'description' => 'commercial skips contacts who have opted out and carries the organisation and e-mail preferences footer; transactional goes to every recipient.'),
+				array('name' => 'contact_group_ids',          'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 200, 'description' => 'The groups it goes to.'),
+				array('name' => 'excluded_contact_group_ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 200, 'description' => 'Groups whose members are left out.'),
+				array('name' => 'email_address',              'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'One more address it goes to.'),
+				array('name' => 'send_at',                    'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'When the job may start sending once it is scheduled. Empty: as soon as the job runs.')
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.schedule',
+			'method'  => 'POST',
+			'path'    => '/campaigns/{id}/schedule',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaigns_schedule',
+			'dry_run' => true,
+			'returns' => 'Campaign',
+			'summary' => 'Release a draft campaign for sending',
+			'description' => 'Moves a paused campaign to ready with send_at as its time (as soon as the job runs when it is left out or empty). Nothing is sent by this call: the scheduled e-mail job sends it, and where the site runs no job it waits for Send Campaign on its screen. Any other status is refused with 409 campaign_not_paused. An account with the user role reaches only the campaigns it created.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'send_at', 'in' => 'body', 'type' => 'datetime', 'nullable' => true)
+			)
+		),
+
+		array(
 			'id'      => 'campaigns.update',
 			'method'  => 'POST',
 			'also_accepts' => array('PATCH'),

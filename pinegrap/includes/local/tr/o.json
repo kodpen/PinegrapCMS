@@ -534,6 +534,7 @@
     "Only a live flow can be paused.": "Yalnız yayındaki bir akış duraklatılabilir.",
     "Only a member of a private channel can add people to it.": "Özel bir kanala yalnızca o kanalın üyeleri kişi ekleyebilir.",
     "Only a message, a note, a decision or a task card can be pinned.": "Yalnız bir mesaj, not, karar ya da görev kartı sabitlenebilir.",
+    "Only a paused campaign can be scheduled.": "Yalnızca duraklatılmış bir kampanya zamanlanabilir.",
     "Only a paused flow can be resumed.": "Yalnızca duraklatılmış bir akış sürdürülebilir.",
     "Only a paused subscription can be resumed.": "Yalnızca duraklatılmış bir abonelik devam ettirilebilir.",
     "Only a picture has a smaller copy.": "Küçük kopyası yalnız görselin olur.",

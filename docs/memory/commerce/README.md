@@ -271,6 +271,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - short-link-binned-destination.md: A short link whose page or file is in the Recycle Bin (list, CSV, redirect), and a name held by a short link in the bin (the form's message)
 - short-link-recycle-bin.md: How short links treat a product, product group, page or file in the Recycle Bin (lists, save checks on every entry point), where a deleted short link goes, and posted lists on the short link screens.
 - stock-locations-completion.md: Stock per location at sales, scans and the inventory API: the order's location, the checkout check, completion, barcode screens, the API location parameter, location keys on stock events
+- stock-locations-decisions.md: Stock per location as a whole: why it exists, the sum contract, what stays on the total, and where each part is written down
 - stock-locations-model.md: Stock per location: the three tables and two columns (11.0.162), the sum rule, the writer pg_stock_change()/pg_stock_set(), the no-locations path, seeding on the first location
 - stock-locations-moves.md: Stock per location, the operator's side: the Stock locations settings card, the stock history (view_stock_moves.php), the Transfer dialog, the product screen's last moves
 - stock-locations-pickup.md: Pickup at a location: a shipping method naming a stock location, no rate, offered only while the location holds the cart; the place on checkout, order screen, receipt, mails
