@@ -6,7 +6,10 @@
  * element and then styles that element's children or descendants as a whole
  * (`X:has(…) > *`, `X:has(…) > :not(…)`, `X:has(…) *`). Chromium restyles
  * the whole document on every element added or removed when such a rule
- * exists, and the visual editor redraws its panels on every click.
+ * exists, and the visual editor redraws its panels on every click. The
+ * Bootstrap 6 dist is read too: its one such rule is rewritten locally
+ * (assets/lib/bootstrap-6/document.txt), and an update that brings it back
+ * fails here.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -186,6 +189,24 @@ function test_panel_stylesheets_have_no_has_then_every_child()
 		}
 		pg_assert_same(array(), $slow, $file . ' styles no child of a :has() element as a whole');
 	}
+}
+
+function test_bootstrap_6_dist_has_no_has_then_every_child()
+{
+	$dir = dirname(__DIR__) . '/pinegrap/assets/lib/bootstrap-6/css/';
+	foreach (array('bootstrap.css', 'bootstrap.min.css') as $file) {
+		$css = (string) file_get_contents($dir . $file);
+		pg_assert_true($css !== '', $file . ' is read');
+		$slow = array();
+		foreach (css_has_restyle_selectors($css) as $selector) {
+			if (css_has_restyle_is_slow($selector)) {
+				$slow[] = $selector;
+			}
+		}
+		pg_assert_same(array(), $slow, $file . ' styles no child of a :has() element as a whole');
+	}
+	$css = (string) file_get_contents($dir . 'bootstrap.css');
+	pg_assert_contains('.form-field > :not(.check, .radio, .switch):is(:has(~ :is(.check, .radio, .switch)), :is(.check, .radio, .switch) ~ *) {', $css, 'the local rewrite of the check row rule is there');
 }
 
 function test_settings_card_catch_all_keeps_its_rows()
