@@ -14,7 +14,7 @@ description: Steps E26-E29 of plans/image-editor.md (owner 2026-11-03): free def
 - E27a (M) The tool and the selection. Done (#6611, `ui/image-editor-area.md`).
   - A Select area tool on the picture: rectangle, ellipse, lasso, polygon, magic wand (tolerance, contiguous); Shift adds, Alt subtracts; invert, feather, marching ants. Kept in the document as `selection` (shapes, wand seed points and tolerance), so it opens again. Redact (E10 on its shape: a redaction area of the selection's outline) needs no server code and came with it.
   - Tests: each shape, the wand's flood fill and the outline traced from its pixels, in the model.
-- E27b (M) What the selection does to pixels. `free` once E27a is merged.
+- E27b (M) What the selection does to pixels. Done (#6678, `ui/image-editor-area-pixels.md`).
   - Erase (see-through: a PNG, WebP or AVIF keeps it; a JPEG saves as a PNG copy unless a fill colour is chosen), Keep only (crop to it), Copy to a layer (a cut-out picture layer), Adjust inside (the Adjust panel scoped to it).
   - The server draws the mask: a step of `includes/image_engine.php` (GD and Imagick) from the selection (`M.selectionRings()`, feathered), as the redaction masks are. It changes the save path: one at a time with the other save-path steps.
   - Tests: the engine step under GD and Imagick (alpha out, the JPEG fill).
