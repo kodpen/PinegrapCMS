@@ -4408,6 +4408,7 @@
     "The site is not connected to the service yet: connect it in the Workspace settings.": "Site henüz hizmete bağlı değil: Çalışma Alanı ayarlarından bağlayın.",
     "The site is not linked to Google Search Console yet. An administrator or a manager can link it here.": "Site henüz Google Search Console'a bağlı değil. Bir yönetici ya da müdür burada bağlayabilir.",
     "The site is not linked to Google Search Console yet. An administrator, a designer or a manager can link it here.": "Site henüz Google Search Console'a bağlı değil. Bir yönetici, tasarımcı ya da menajer burada bağlayabilir.",
+    "The site is not linked to Search Console, so the Google columns are left out.": "Site Search Console'a bağlı değil, bu yüzden Google sütunları gösterilmiyor.",
     "The site is not linked to Search Console.": "Site Search Console'a bağlı değil.",
     "The site is quiet at the moment.": "Site şu an sakin.",
     "The site is restored exactly as it was when the backup was made.": "Site, yedeğin alındığı andaki hâliyle geri yüklenir.",

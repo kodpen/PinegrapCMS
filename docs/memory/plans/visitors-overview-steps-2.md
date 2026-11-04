@@ -21,7 +21,7 @@ description: Steps V5-V11 of plans/visitors-overview.md, the sections: traffic, 
 - V9 (M) Google search section. After V1. Done (#6472).
   - `includes/visitors/google.php`: linked: clicks, impressions, click rate and average position with changes over the period ending on the latest day with figures (said under the tiles), clicks and impressions by day, top queries and top pages (`pg_gsc_top()`), opportunities: queries whose impressions are above the period's median and whose click rate is under half the site's, and queries at positions 8-20 with impressions, each linking to the query in Search Console; not linked: the small card (decision 6) with one explaining line and a link to `search_console.php`. `search_console.php` is not changed.
 
-- V10 (M) Pages joined with Google. After V2 and V9.
+- V10 (M) Pages joined with Google. After V2 and V9. In progress.
   - `includes/visitors/pages.php`: `pg_visitor_page_key()` (`-data.md`); one table per page: impressions, clicks, click rate, position (`pg_gsc_top('page', ...)`), visits and page views (landing-page breakdown and content rows), forms, orders, `page.seo_score` with its colour (`pg_seo_score_color()`); sortable by clicks, visits or score; rows one side alone knows stay in; links to the page and to its SEO panel. `tests/visitors_pages_test.php`: the key on Google addresses, pretty paths, the root and its aliases, encoded Turkish letters.
 
 - V11 (S) Places and devices section. Done (#6473).
