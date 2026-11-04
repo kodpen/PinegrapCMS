@@ -201,6 +201,7 @@ description: Generated from the module field of the memory files: each includes/
 - `store_zones`: [[api-store-zone-writes]]
 - `style_usage`: [[style-usage-counts]]
 - `submitted_form_list`: [[filter-on-form-data-rows]], [[list-table-driver-lists]], [[submitted-form-import-export]]
+- `submitted_form_list_edit`: [[list-table-quick-edit-submitted-forms]]
 - `submitted_form_writes`: [[api-form-submission-writes]]
 - `subscription_renewal`: [[subscriptions-mails]], [[subscriptions-number-of-payments]], [[subscriptions-price-notice]], [[subscriptions-renewal]]
 - `subscriptions`: [[subscriptions]], [[subscriptions-iyzico]], [[subscriptions-later-start]], [[subscriptions-stripe]]
