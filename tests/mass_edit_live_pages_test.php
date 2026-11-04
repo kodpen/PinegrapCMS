@@ -47,3 +47,26 @@ function test_mass_edit_posts_only_changed_fields()
 	pg_assert_contains('el.value === el.defaultValue', $source, 'an unchanged text field is left out of the post');
 	pg_assert_contains('box.checked === box.defaultChecked', $source, 'an unchanged switch is left out of the post');
 }
+
+// The grid draws one screen of pages: every page of a large site at once
+// froze the browser tab. The save comes back to the same screen.
+function test_mass_edit_grid_is_paged()
+{
+	$source = _test_mass_edit_live_pages_source();
+
+	pg_assert_contains('LIMIT " . (($screen - 1) * MASS_EDIT_PAGES_PER_SCREEN) . ", " . MASS_EDIT_PAGES_PER_SCREEN', $source, 'the grid reads one screen');
+	pg_assert_false(strpos($source, 'SELECT * FROM page" . $live_pages_where . " ORDER BY') !== false, 'not every column of every page');
+	pg_assert_contains('<input type="hidden" name="screen"', $source, 'the form posts its screen');
+	pg_assert_contains("pg_list_page_number(\$_POST['screen'] ?? 1)", $source, 'the save goes back to it');
+	pg_assert_false(strpos($source, 'history.pushState') !== false, 'Back leaves the screen in one step');
+}
+
+// A changed page shows in the Pages list's Last Modified column, as after
+// Edit Page and Modify Selected.
+function test_mass_edit_touches_changed_pages()
+{
+	$source = _test_mass_edit_live_pages_source();
+
+	pg_assert_same(2, substr_count($source, 'pg_page_bulk_touch('), 'Find & Replace and the grid save');
+	pg_assert_same(2, substr_count($source, 'log_activity('), 'one site log line for each');
+}
