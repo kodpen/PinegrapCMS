@@ -43,7 +43,7 @@ if (!$_POST) {
             'cancel'=>array('enable'=>'true','url'=>'view_calendar_event_locations.php'),
         
         
-            'breadcrumb' => array(array('label' => lang('All Event Locations'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendar_event_locations.php'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Event Location'))))),
+            'breadcrumb' => array(array('label' => lang('Event Locations'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendar_event_locations.php'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Event Location'))))),
         )
     ) . '
 <main id="content" class="container-fluid">
