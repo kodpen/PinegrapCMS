@@ -110,3 +110,4 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-agent-handles.md: Plan (2026-10-21): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
 - workspace-menu-layout.md: Plan (owner decision 2026-10-30) for a tidier Workspace list in the main menu: search, places, one Channels section, discussions, Tools tiles; channel screen unchanged
+- workspace-today-dashboard.md: Plan: the Workspace Today page (?view=home) drawn as new-dashboard cards (v2 top row, greeting, grid, card frame), every link and action kept
