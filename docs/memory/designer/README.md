@@ -280,7 +280,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - layout-widget-offer.md: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
 - legacy-region-preview.md: The canvas preview of a classic page's system region drawn by its custom layout (designer/legacy_region_preview): who sees it, the markers, the background render, read only, when it is asked again
 - legacy-to-designer-bulk-run.md: The bulk move of classic styles to the visual designer (LD2): the decision, the dry run on the report screen, the server twins of the editor steps the run uses
-- legacy-to-designer-report.md: The "Move to the visual designer" readiness report (LD1): what it lists per classic style, how the state is worked out, what it does not do
+- legacy-to-designer-report.md: The "Move to the visual designer" readiness report (LD1, #6219): what it lists per classic style, its state, the "What stays classic" card (#6488), the rules the whole move keeps
 - legacy-to-designer-run.md: The run of the bulk move to the visual designer (LD2b, #6421): Convert under a dry run, the steps per style, cursor, lock, screen requests, job tick, kept reports, what a resume skips
 - link-button-inline-children.md: Spans and icons inside a link or button: two ways to hold them, why an inline edit keeps a link's markup, which drops a button accepts, where the label prints beside children.
 - link-target-in-attrs.md: A link's window and rel: props first, _attrs when the prop is empty (link and button link, server and canvas alike), the selection-time fold, starter trees and templates, page bodies drawn before

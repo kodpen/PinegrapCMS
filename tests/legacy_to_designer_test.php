@@ -102,3 +102,26 @@ function test_ltd_style_state()
 	pg_assert_same(array('refusal'), $s['reasons']);
 	pg_assert_same(array('no_pages'), $s['notes']);
 }
+
+function test_ltd_stays_classic_list()
+{
+	$report = array(
+		array('name' => 'Old grid', 'state' => 'blocked', 'regions' => array('counts' => array()), 'custom_layouts' => 0),
+		array('name' => 'Main', 'state' => 'ready', 'regions' => array('counts' => array('dynamic' => 2)), 'custom_layouts' => 3),
+		array('name' => 'Shop', 'state' => 'attention', 'regions' => array('counts' => array('dynamic' => 1)), 'custom_layouts' => 0),
+	);
+	$out = pg_ltd_stays_classic($report, 'Authorize.Net');
+	$codes = array();
+	foreach ($out as $i) $codes[] = $i['code'];
+	pg_assert_same(array('blocked', 'dynamic', 'custom_layout', 'gateway'), $codes);
+	pg_assert_same(array(1, array('Old grid')), array($out[0]['count'], $out[0]['styles']));
+	pg_assert_same(array(3, array('Main', 'Shop')), array($out[1]['count'], $out[1]['styles']));
+	pg_assert_same(array(3, array('Main')), array($out[2]['count'], $out[2]['styles']));
+	pg_assert_same('Authorize.Net', $out[3]['gateway']);
+}
+
+function test_ltd_stays_classic_empty()
+{
+	pg_assert_same(array(), pg_ltd_stays_classic(array(), ''));
+	pg_assert_same(array(), pg_ltd_stays_classic(array(array('name' => 'A', 'state' => 'ready', 'regions' => array('counts' => array()), 'custom_layouts' => 0)), ''));
+}
