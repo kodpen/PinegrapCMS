@@ -20,8 +20,9 @@
  * selected rows"): one request per row; that group is then the last save.
  * With the mode off, a click selects and a double-click opens, as always.
  *
- * QuickEdits, applyTargets(), quickValue() and quickChanged() are pure (no
- * DOM; tests/list_table_quick_edit_js_test.php runs them in Node).
+ * QuickEdits, applyTargets(), quickValue(), quickChanged() and
+ * rowNameText() are pure (no browser; tests/list_table_quick_edit_js_test.php
+ * runs them in Node).
  *
  * Bundled after pg_list_table.js into pg_list_table.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
@@ -115,6 +116,33 @@
     /** Whether a field holds something else than the stored value. */
     function quickChanged(type, raw, stored) {
         return quickValue(type, raw) !== String(stored);
+    }
+
+    /**
+     * The text a cell names its row by, as shown: words of a block child
+     * kept apart (textContent fused a gift card's code with the
+     * "Expired" printed under it) and hidden text left out (unseen search
+     * words, icon ligatures). Reads only childNodes, nodeType, nodeValue,
+     * tagName, hidden and getAttribute, so it runs on any node tree.
+     */
+    function rowNameText(node) {
+        var walk = function (parent) {
+            var text = '';
+
+            Array.prototype.forEach.call(parent.childNodes || [], function (child) {
+                if (child.nodeType === 3) {
+                    text += child.nodeValue;
+                } else if ((child.nodeType === 1) && !child.hidden && (child.getAttribute('aria-hidden') !== 'true')) {
+                    var gap = /^(DIV|P|BR|LI|UL|OL|DL|DT|DD|H[1-6])$/.test(String(child.tagName).toUpperCase()) ? ' ' : '';
+
+                    text += gap + walk(child) + gap;
+                }
+            });
+
+            return text;
+        };
+
+        return node ? walk(node).replace(/\s+/g, ' ').trim() : '';
     }
 
     // ------------------------------------------------------------------
@@ -323,7 +351,7 @@
         // The row's name is its first cell's text. That cell may be an open
         // field itself (quick edit opens a row's fields in order), so its text
         // is the one kept when it opened, not the empty text it has now.
-        var nameText = name ? (name.pgQuick ? (name.pgQuickName || '') : name.textContent.trim()) : '';
+        var nameText = name ? (name.pgQuick ? (name.pgQuickName || '') : rowNameText(name)) : '';
 
         // No name: the field never travels with a form the list sits in.
         control.setAttribute('aria-label', String(def.label || '') + ((name && (name !== cell) && (nameText !== '')) ? ': ' + nameText : ''));
@@ -336,7 +364,7 @@
         control.setAttribute('aria-describedby', note.id);
 
         cell.pgQuickHtml = cell.innerHTML;
-        cell.pgQuickName = cell.textContent.trim();
+        cell.pgQuickName = rowNameText(cell);
         cell.pgQuick = { control: control, note: note, def: def };
         cell.textContent = '';
         cell.appendChild(control);
@@ -759,6 +787,7 @@
     T.applyTargets = applyTargets;
     T.quickValue = quickValue;
     T.quickChanged = quickChanged;
+    T.rowNameText = rowNameText;
 
     // Lists the driver started before this part loaded.
     if (typeof document !== 'undefined' && document.querySelectorAll) {

@@ -168,6 +168,19 @@ function test_gift_card_form_edit_keeps_the_balance_guard()
 }
 
 /**
+ * The save bar's icons are hidden from screen readers: the Material Icons
+ * ligatures were read out, naming the buttons "saveKaydet" and "deleteSil".
+ */
+function test_gift_card_form_edit_buttons_name_only_their_label()
+{
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_gift_card.php');
+
+	pg_assert_contains('<i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">', $edit, 'the save icon');
+	pg_assert_contains('<i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">', $edit, 'the delete icon');
+	pg_assert_false(strpos($edit, 'material-icons me-3') !== false, 'no ligature icon in the save bar');
+}
+
+/**
  * The quantity of a create is a whole number of cards: a fraction used to
  * pass the "above 0" check and create the whole part only (0.5 none at all)
  * while the screen said the cards were created.
@@ -218,4 +231,37 @@ function test_gift_card_form_screens_use_the_edit_screen_layout()
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_gift_card.php');
 	pg_assert_contains('<div class="col-12 lg:col-4 2xl:col-3 order-2">', $edit, 'the order info sits in the status column');
 	pg_assert_contains('<div class="position-sticky" style="top:3.3rem;">', $edit, 'the status column box sticks below the top bar');
+}
+
+/**
+ * The maxlength of the input a card draws with the given name.
+ */
+function pg_test_gift_card_form_maxlength($card, $name)
+{
+	if (preg_match('/<input[^>]*\bname="' . preg_quote($name, '/') . '"[^>]*>/', $card, $tag) !== 1) {
+		return null;
+	}
+
+	return (preg_match('/\bmaxlength="([0-9]*)"/', $tag[0], $length) === 1) ? $length[1] : '';
+}
+
+/**
+ * The money mask counts its grouping and decimals against maxlength: at 12
+ * the amount and balance boxes stopped at 9.999.999,99, so 40000000 kept
+ * 4.000.000,00 and the card was made ten times smaller without a word.
+ * 13 holds 42.949.672,95, the column top. The quantity box kept 4 digits
+ * in the limit=false mode too, cutting 12000 cards to 1200.
+ */
+function test_gift_card_form_boxes_hold_their_top()
+{
+	$add = pg_test_gift_card_form_card('add', array('symbol' => '$', 'scripts' => '', 'quantity_max' => '1000'));
+	$edit = pg_test_gift_card_form_card('edit', array('symbol' => '$', 'scripts' => '', 'original_amount' => '$5.00'));
+	$unlimited = pg_test_gift_card_form_card('add', array('symbol' => '$', 'scripts' => '', 'quantity_max' => ''));
+
+	pg_assert_same('13', pg_test_gift_card_form_maxlength($add, 'amount'), 'the amount box holds 42.949.672,95');
+	pg_assert_same('13', pg_test_gift_card_form_maxlength($edit, 'balance'), 'the balance box holds 42.949.672,95');
+	pg_assert_same(13, strlen('42.949.672,95'), 'the column top with grouping and decimals');
+	pg_assert_same('4', pg_test_gift_card_form_maxlength($add, 'quantity'), 'the 1,000 limit takes four digits');
+	pg_assert_same('9', pg_test_gift_card_form_maxlength($unlimited, 'quantity'), 'no limit: as many digits as the server reads');
+	pg_assert_same(123456789, pg_gift_card_form_quantity('123456789'), 'the server reads nine digits');
 }

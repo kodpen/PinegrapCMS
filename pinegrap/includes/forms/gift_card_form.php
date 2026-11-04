@@ -92,6 +92,11 @@ function pg_gift_card_form_card($liveform, $mode, $options)
     $output_quantity = '';
 
     if ($add) {
+        // Four digits under the 1,000 limit; without it (limit=false) as
+        // many as pg_gift_card_form_quantity() reads, or the box cuts the
+        // typed number short and fewer cards are made without a word.
+        $quantity_max = (string) ($options['quantity_max'] ?? '');
+
         $output_quantity = '
                                         <div class="col-12 md:col-6 xl:col-4 my-3">
                                             <label for="quantity" class="form-label">' . lang('Quantity') . '</label>
@@ -103,9 +108,9 @@ function pg_gift_card_form_card($liveform, $mode, $options)
                                                     'id' => 'quantity',
                                                     'value' => '1',
                                                     'min' => '1',
-                                                    'max' => (string) ($options['quantity_max'] ?? ''),
+                                                    'max' => $quantity_max,
                                                     'class' => 'form-control text-center border-start-0 border-end-0',
-                                                    'maxlength' => '4',
+                                                    'maxlength' => ($quantity_max !== '') ? '4' : '9',
                                                     'inputmode'=>'numeric',
                                                     'data-inputmask-alias'=>'integer',
                                                     'data-inputmask-allowminus'=>'false',
@@ -117,6 +122,8 @@ function pg_gift_card_form_card($liveform, $mode, $options)
                                         </div>';
     }
 
+    // The money mask counts its grouping and decimals against maxlength:
+    // 13 holds 42.949.672,95, the column top (PG_GIFT_CARD_AMOUNT_MAX).
     return '
                             <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
@@ -128,7 +135,7 @@ function pg_gift_card_form_card($liveform, $mode, $options)
                                             <label for="' . $field . '" class="form-label">' . $output_label . '</label>
                                             <label class="form-control form-adorn form-adorn-end">
                                                 <span class="form-adorn-text" aria-hidden="true">' . ($options['symbol'] ?? '') . '</span>
-                                                ' . $liveform->output_field(array('type' => 'text', 'id' => $field, 'name' => $field, 'class' => 'form-ghost text-end', 'maxlength'=>'12', 'inputmode'=>'decimal', 'required'=>'required') + pg_money_mask_attributes()) . '
+                                                ' . $liveform->output_field(array('type' => 'text', 'id' => $field, 'name' => $field, 'class' => 'form-ghost text-end', 'maxlength'=>'13', 'inputmode'=>'decimal', 'required'=>'required') + pg_money_mask_attributes()) . '
                                             </label>
                                             ' . $output_help . '
                                         </div>
