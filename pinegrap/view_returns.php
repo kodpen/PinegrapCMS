@@ -27,6 +27,9 @@ if (!defined('ECOMMERCE') || (ECOMMERCE !== true)) {
     output_error(lang('E-commerce is not enabled on this site.'));
 }
 
+// One value: one sent as an array counts as not given.
+pg_request_single_values(array('bulk'));
+
 $liveform = new liveform('view_returns');
 
 // Approve Selected.
