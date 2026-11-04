@@ -16,7 +16,7 @@ description: The ERP read-only right for an accountant (user.manage_erp_readonly
 ## What must screens and other modules do?
 - On ERP screens hide every button that changes something when `USER_ERP_READONLY` is set (invoice, account, stock and cash screens do). A screen that is only a write form (Open a Till, Transfer, Record a Receipt/Payment, Invoice an Order, New Invoice) asks `validate_erp_access($user, 'write')` on arrival for the accountant, so the refusal comes before the form is filled in (#5545).
 - The invoice view (`edit_erp_invoice.php`, `$erp_readonly`) draws no cancel/return bar, snooze, e-document send/poll/date/fix forms or Issue the Delivery Note, and the note box is read-only without its button; the draft editor reads without its save bar.
-- Outside the ERP screens, every place that writes ERP data checks `empty($user['manage_erp_readonly'])` for role 3: the order screen (`$erp_writes` in `view_order.php` hides the bar's invoice and delivery note buttons; the documents card still draws its steps, and the gate refuses their POST), the contact card (no Open an Account), the counter sale (`local_sale_can_erp()`: no ERP side), the Workspace (below), and the external API's ceiling (`erp_owner_scopes()` in `includes/erp/api.php`: `erp:read` and `erp_cash:read` only).
+- Outside the ERP screens, every place that writes ERP data checks `empty($user['manage_erp_readonly'])` for role 3: the order screen (`$erp_writes` in `view_order.php` hides the bar's invoice and delivery note buttons; the documents card drops each step's buttons and `add_*` links through `erp_order_flow_readonly_step()`), the contact card (no Open an Account), the counter sale (`local_sale_can_erp()`: no ERP side), the Workspace (below), and the external API's ceiling (`erp_owner_scopes()` in `includes/erp/api.php`: `erp:read` and `erp_cash:read` only).
 - Quick account and taxpayer lookup endpoints (`erp_account_quick.php`, `erp_taxpayer_lookup.php`) refuse it as well.
 
 ## How does the Workspace honour it?
@@ -24,8 +24,5 @@ description: The ERP read-only right for an accountant (user.manage_erp_readonly
 - `ws_change_erp_readonly_refusal()` refuses it every kind in `ws_change_erp_types()` (`erp_account`, the kinds asked with an ERP right) with the gate's sentence. `ws_change_allowed()` asks it, so the drawer, proposals and Apply (panel and API), bulk, scheduled changes and the kinds Claude and Pinegrap AI are told about leave ERP accounts out; `ws_change_write()` refuses it too.
 - Reads stay: tags and summaries need only `erp`; Claude's record route asks with `ws_change_reader()`. Also gated: the invoice draft from a channel's time (`ws_task_time_can_invoice()`) and the quote copy link (`ws_screen_config()`).
 - Before the fix a read-only accountant changed or created ERP accounts from the Workspace drawer or a change card. Test: `tests/workspace_erp_readonly_test.php`.
-
-## What does the order screen's documents card show the accountant?
-- `erp_order_flow_card()` passes each step through `erp_order_flow_readonly_step()`: no action, greyed action or goto button, no `add_*.php` link; View, PDF and print stay. Before, every button ended on `erp_order_flow.php`'s refusal page.
 
 Related: docs/memory/erp/erp-module-basics.md, docs/memory/core/permission-columns.md
