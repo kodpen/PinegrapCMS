@@ -198,18 +198,12 @@ foreach ($comments as $comment) {
     }
 
     // The comment's place on the site, when it has one.
+    // A page in the Recycle Bin is not on the site: no address to go to.
     $comment_url = '';
+    $comment_path = $binned ? '' : pg_comment_site_path(get_page_name($comment['page_id']), $comment);
 
-    if ($binned) {
-        // The page is in the Recycle Bin: no address to go to.
-    } else if (($comment['item_type'] === 'submitted_form') && ($comment['reference_code'] != '')) {
-        $comment_url = OUTPUT_PATH . get_page_name($comment['page_id']) . pg_comment_view_query('?r=' . $comment['reference_code'], $comment['id']);
-    } else if (($comment['item_type'] === 'product_group') && ($comment['product_group_address_name'] != '')) {
-        $comment_url = OUTPUT_PATH . get_page_name($comment['page_id']) . '/' . $comment['product_group_address_name'] . pg_comment_view_query('', $comment['id']);
-    } else if (($comment['item_type'] === 'product') && ($comment['product_address_name'] != '')) {
-        $comment_url = OUTPUT_PATH . get_page_name($comment['page_id']) . '/' . $comment['product_address_name'] . pg_comment_view_query('', $comment['id']);
-    } else if ($comment['item_type'] === '') {
-        $comment_url = OUTPUT_PATH . get_page_name($comment['page_id']) . pg_comment_view_query('', $comment['id']);
+    if ($comment_path !== '') {
+        $comment_url = OUTPUT_PATH . $comment_path;
     }
 
     $output_reference_button = ($comment_url === '') ? '' : '<a class="btn btn-sm btn-text theme-secondary" href="' . h($comment_url . '#c-' . $comment['id']) . '" title="' . h(lang('Go To Comment')) . '" aria-label="' . h(lang('Go To Comment')) . '"><i class="bi bi-link" aria-hidden="true"></i></a>';

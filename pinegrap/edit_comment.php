@@ -118,32 +118,19 @@ $question_answer = $question_state['answer'];
 $reply_allowed = $review && pg_review_replies_ready() && ($comment_kind === 'comment');
 
 
-$form_reference_code = '';
-$output_reference_button = '';
 $output_reference_line = '';
-if($item_type === 'submitted_form'){
-    //if this is custom page check referance code from forms
-    $form_reference_code = $row['reference_code'];
-    if($form_reference_code != ''){
-        $output_reference_button = '<a class="btn btn-sm btn-text theme-secondary" href="' . h(OUTPUT_PATH . get_page_name($page_id) . pg_comment_view_query('?r=' . $form_reference_code, $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link me-2" aria-hidden="true"></i>' . lang('Go To Comment') . '</a>';
-        $output_reference_line = '<p class="p-0 m-0">' . lang('Form Reference Code') . ': ' . $form_reference_code . '</p>';
-    }
-    
-}else if($item_type === 'product_group'){
-    //if this is product group check address name from product groups
-    $product_group_address_name = $row['product_group_address_name'];
-    if($product_group_address_name != ''){
-        $output_reference_button = '<a class="btn btn-sm btn-text theme-secondary" href="' . h(OUTPUT_PATH . get_page_name($page_id) . '/' . $product_group_address_name . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link me-2" aria-hidden="true"></i>' . lang('Go To Comment') . '</a>';
-    }
 
-}else if($item_type === 'product'){
-    //if this is product group check address name from product groups
-    $product_address_name = $row['product_address_name'];
-    if($product_address_name != ''){
-        $output_reference_button = '<a class="btn btn-sm btn-text theme-secondary" href="' . h(OUTPUT_PATH . get_page_name($page_id) . '/' . $product_address_name . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link me-2" aria-hidden="true"></i>' . lang('Go To Comment') . '</a>';
-    }
-}else if($item_type === ''){
-    $output_reference_button = '<a class="btn btn-sm btn-text theme-secondary" href="' . h(OUTPUT_PATH . get_page_name($page_id) . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link me-2" aria-hidden="true"></i>' . lang('Go To Comment') . '</a>';
+// A record's comment also names the record's reference code.
+if (($item_type === 'submitted_form') && ((string) $row['reference_code'] !== '')) {
+    $output_reference_line = '<p class="p-0 m-0">' . lang('Form Reference Code') . ': ' . h($row['reference_code']) . '</p>';
+}
+
+// The comment's place on the site, as the comment mails link it.
+$output_reference_button = '';
+$comment_path = pg_comment_site_path(get_page_name($page_id), $row);
+
+if ($comment_path !== '') {
+    $output_reference_button = '<a class="btn btn-sm btn-text theme-secondary" href="' . h(OUTPUT_PATH . $comment_path . '#c-' . $comment_id) . '"><i class="bi bi-link me-2" aria-hidden="true"></i>' . lang('Go To Comment') . '</a>';
 }
 
 // A page in the Recycle Bin is not on the site, so its comment gets no link.
