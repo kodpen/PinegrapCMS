@@ -9,7 +9,7 @@ module: product_list
 - On the list table driver since TD7b: `pg_product_list_source()` (gate role < 3 or `manage_ecommerce`), `pg_product_list_columns($view, $quick_edit)` keyed by the old codes (a kept sort still names its column): `id` (the SKU as the `data-pg-open` editor link, with the SEO bar), `image`, the view's columns, `seo` (hidden at first, only where the view sorts by it), `actions` (edit, print barcode). The `product_list_rows` DataTables action is gone.
 
 ## How does quick edit work?
-- The source's `edit` is `view_products.php` + `pg_pb_quick_edit_columns()`; the column keys are the edit fields (`short_description` text, `enabled` select, `price` and `compare_at_price` money, `inventory_quantity` number), cells carry `pg_list_edit_cell_attributes()`. A product that does not track stock gets no stock field. The write stays `pg_pb_quick_update()` on the screen's `pg_list_edit_request()`; the name cell (`data-pg-cell="name"`) follows the enabled flag in its answer.
+- The source's `edit` is `view_products.php` + `pg_pb_quick_edit_columns()`; the column keys are the edit fields (every value the product screen changes: `list-table-quick-edit-values.md`), cells carry `pg_list_edit_cell_attributes()`. A product that does not track stock gets no stock field. The write stays `pg_pb_quick_update()` on the screen's `pg_list_edit_request()`; the name cell (`data-pg-cell="name"`) follows the enabled flag in its answer.
 
 ## What do the bulk actions post?
 - Modify Selected (its window fills the form's `edit_*` fields), Assign Barcodes and Delete Selected post `selection` + `list_params` to `edit_products.php`, which reads them with `pg_product_list_selected_ids()` (null above 10,000: refused, "Too many products are selected").

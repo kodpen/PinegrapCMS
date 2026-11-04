@@ -18,6 +18,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// The switches the list changes in place.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table_edit.php');
+
 /**
  * The style each folder hands down to a page without a style of its own:
  * the folder's style for the device type, else its nearest parent's, as
@@ -440,9 +443,9 @@ function pg_page_list_columns($view)
     $columns['folder'] = array('heading' => lang('Folder'), 'width' => '14rem', 'sort' => 'folder.folder_name');
     $columns['style'] = array('heading' => $view['style_heading'], 'width' => '12rem', 'sort' => empty($view['previewing_other_theme']) ? 'style.style_name' : '');
     $columns['page_type'] = array('heading' => lang('Page Type'), 'width' => '10rem', 'sort' => pg_list_label_order('page.page_type', get_page_type_names()));
-    $columns['searchable'] = array('heading' => lang('Searchable'), 'kind' => 'check', 'sort' => 'page.page_search');
-    $columns['comments'] = array('heading' => lang('Comments'), 'kind' => 'check', 'sort' => 'page.comments');
-    $columns['sitemap'] = array('heading' => lang('Site Map'), 'kind' => 'check', 'sort' => 'page.sitemap');
+    $columns['searchable'] = array('heading' => lang('Searchable'), 'kind' => 'check', 'sort' => 'page.page_search', 'editable' => 'select');
+    $columns['comments'] = array('heading' => lang('Comments'), 'kind' => 'check', 'sort' => 'page.comments', 'editable' => 'select');
+    $columns['sitemap'] = array('heading' => lang('Site Map'), 'kind' => 'check', 'sort' => 'page.sitemap', 'editable' => 'select');
     $columns['seo'] = array('heading' => lang('SEO'), 'kind' => 'badge', 'sort' => 'page.seo_score');
     $columns['impact'] = array('heading' => lang('Impact'), 'kind' => 'number', 'sort' => pg_seo_impact_sql('page.seo_score', 'page.seo_checked_at'));
     $columns['last_modified'] = array('heading' => lang('Last Modified'), 'width' => '10rem', 'kind' => 'date', 'sort' => 'page.page_timestamp');
@@ -521,6 +524,9 @@ function pg_page_list_source($user, $params)
             return pg_page_list_rows($view, $records);
         },
         'params_out' => array('filter' => $view['filter']),
+        // The switches change in place on the screen's own endpoint; the
+        // write checks the page's folder (pg_page_quick_update()).
+        'edit' => array('url' => 'view_pages.php', 'columns' => pg_page_quick_edit_columns()),
     ));
 }
 
@@ -718,7 +724,8 @@ function pg_page_list_style_cells($view, $pages)
 function pg_page_list_rows($view, $pages)
 {
     $styles = pg_page_list_style_cells($view, $pages);
-    $check = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
+    $quick_edit = pg_page_quick_edit_columns();
+    $check = pg_page_list_check_html();
     $rows = array();
 
     // Experiments: a chip on a page with an open one and on its variant
@@ -754,9 +761,10 @@ function pg_page_list_rows($view, $pages)
         $cells['folder'] = pg_list_cell(pg_folder_list_name($page['folder_name'], $page['folder_access_control_type']), 'align-middle text-start text-wrap ' . $page['folder_access_control_type']);
         $cells['style'] = pg_list_cell($styles[$id]['html'], $styles[$id]['class']);
         $cells['page_type'] = pg_list_cell(h(get_page_type_name($page['page_type'])));
-        $cells['searchable'] = pg_list_cell(($page['page_search'] == 1) ? $check : '', 'align-middle');
-        $cells['comments'] = pg_list_cell(($page['comments'] == '1') ? $check : '', 'align-middle');
-        $cells['sitemap'] = pg_list_cell(($page['sitemap'] == '1') ? $check : '', 'align-middle');
+        // The switches change in place (pg_page_quick_edit_columns()).
+        $cells['searchable'] = pg_list_cell(($page['page_search'] == 1) ? $check : '', 'align-middle', pg_list_edit_cell_attributes($quick_edit, 'searchable', $id, pg_page_quick_edit_value('searchable', $page)));
+        $cells['comments'] = pg_list_cell(($page['comments'] == '1') ? $check : '', 'align-middle', pg_list_edit_cell_attributes($quick_edit, 'comments', $id, pg_page_quick_edit_value('comments', $page)));
+        $cells['sitemap'] = pg_list_cell(($page['sitemap'] == '1') ? $check : '', 'align-middle', pg_list_edit_cell_attributes($quick_edit, 'sitemap', $id, pg_page_quick_edit_value('sitemap', $page)));
         $cells['seo'] = pg_list_cell('<a href="javascript:void(0)" class="pg-seo-open text-decoration-none" data-pg-seo-badge="page:' . (int) $page['page_id'] . '" aria-label="' . h(pg_seo_link_name($page)) . '" title="' . lang('SEO Detail') . '" data-seo-url="' . $seo_url . '">' . pg_seo_render_badge($page) . '</a>', 'align-middle');
         $cells['impact'] = pg_list_cell(pg_seo_render_impact($page), 'align-middle');
         $cells['last_modified'] = pg_list_cell(pg_list_when($page['page_timestamp'], $page['user_username'] ?? ''));
