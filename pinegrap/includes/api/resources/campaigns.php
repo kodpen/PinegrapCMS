@@ -659,3 +659,231 @@ function api_campaigns_delete($params) {
 	api_ok(array('id' => $id, 'deleted' => true));
 
 }
+
+// SMS campaigns (includes/fn/sms_campaigns.php): a text queued once for the
+// mobile numbers of chosen contact groups, beside the e-mail campaigns and in
+// their own table. Read here as My SMS Campaigns lists them; an account with
+// the e-mail right but the user role sees only the campaigns it created, as
+// on that screen.
+
+// The SMS campaigns an owner may reach: all from the manager role up, its own
+// below that.
+function api_sms_campaign_owner_filter($owner) {
+
+	if ((int)$owner['role'] < 3) {
+
+		return '';
+
+	}
+
+	return "sms_campaigns.created_by = '" . (int)$owner['id'] . "'";
+
+}
+
+// One SMS campaign. outbox is what the SMS queue still holds of a queued
+// campaign's messages (sent rows are swept after 7 days, failed ones after
+// 30), null before it is queued; queued and refused are the lasting counts.
+function api_sms_campaign_present($row, $groups, $outbox) {
+
+	$queued = ((string)$row['status'] === 'queued');
+
+	return array(
+		'id'                => (int)$row['id'],
+		'name'              => (string)$row['name'],
+		'body'              => (string)$row['body'],
+		// draft (kept, never sent), ready (waiting for send_at), queued (handed
+		// to the SMS queue) or cancelled.
+		'status'            => (string)$row['status'],
+		'send_at'           => api_time($row['start_at']),
+		'queued_at'         => api_time($row['queued_at']),
+		'queued'            => (int)$row['queued_count'],
+		'refused'           => (int)$row['refused_count'],
+		'outbox'            => $queued ? array(
+			'sent'    => isset($outbox['sent']) ? (int)$outbox['sent'] : 0,
+			'waiting' => (isset($outbox['queued']) ? (int)$outbox['queued'] : 0) + (isset($outbox['sending']) ? (int)$outbox['sending'] : 0),
+			'failed'  => (isset($outbox['failed']) ? (int)$outbox['failed'] : 0) + (isset($outbox['uncertain']) ? (int)$outbox['uncertain'] : 0)
+		) : null,
+		'contact_group_ids'          => isset($groups['included']) ? $groups['included'] : array(),
+		'excluded_contact_group_ids' => isset($groups['excluded']) ? $groups['excluded'] : array(),
+		'created_by'        => ((string)$row['created_username'] !== '') ? (string)$row['created_username'] : null,
+		'created_at'        => api_time($row['created_at']),
+		'updated_at'        => api_time($row['updated_at'])
+	);
+
+}
+
+function api_sms_campaign_schema() {
+
+	return array(
+		'id'                => 'integer',
+		'name'              => 'string',
+		'body'              => 'string',
+		'status'            => 'string',
+		'send_at'           => 'string?',
+		'queued_at'         => 'string?',
+		'queued'            => 'integer',
+		'refused'           => 'integer',
+		'outbox'            => 'SmsCampaignOutbox?',
+		'contact_group_ids' => 'integer[]',
+		'excluded_contact_group_ids' => 'integer[]',
+		'created_by'        => 'string?',
+		'created_at'        => 'string?',
+		'updated_at'        => 'string?'
+	);
+
+}
+
+// What api_sms_campaign_present() gives as outbox.
+function api_sms_campaign_outbox_schema() {
+
+	return array(
+		'sent'    => 'integer',
+		'waiting' => 'integer',
+		'failed'  => 'integer'
+	);
+
+}
+
+// The campaign id a queue reference belongs to (smscampaign:<id>:<contact>),
+// 0 for any other reference. Pure.
+function api_sms_campaign_reference_id($reference) {
+
+	if (preg_match('/^smscampaign:(\d+):/', (string)$reference, $match) !== 1) {
+
+		return 0;
+
+	}
+
+	return (int)$match[1];
+
+}
+
+function api_campaigns_sms_list($params) {
+
+	if (!function_exists('pg_sms_campaigns_ready') || !pg_sms_campaigns_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('The database has not been upgraded yet. Run the software update first.'));
+
+	}
+
+	$where = array();
+
+	$app = api_current_app();
+
+	$owner = api_sms_campaign_owner_filter($app['owner']);
+
+	if ($owner !== '') {
+
+		$where[] = $owner;
+
+	}
+
+	if (isset($params['status'])) {
+
+		$where[] = "sms_campaigns.status = '" . escape($params['status']) . "'";
+
+	}
+
+	if (isset($params['cursor']) && $params['cursor'] !== '') {
+
+		$cursor = api_cursor_decode($params['cursor']);
+
+		if ($cursor === null) {
+
+			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+
+		}
+
+		$where[] = "sms_campaigns.id < '" . (int)$cursor['i'] . "'";
+
+	}
+
+	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
+
+	$rows = api_rows("SELECT sms_campaigns.*, created_user.user_username AS created_username
+		FROM sms_campaigns
+		LEFT JOIN user AS created_user ON created_user.user_id = sms_campaigns.created_by"
+		. (empty($where) ? '' : ' WHERE ' . implode(' AND ', $where)) . "
+		ORDER BY sms_campaigns.id DESC
+		LIMIT " . ($limit + 1));
+
+	$next = null;
+
+	if (count($rows) > $limit) {
+
+		array_pop($rows);
+
+		$last = end($rows);
+
+		$next = api_cursor_encode((int)$last['id'], (int)$last['id']);
+
+	}
+
+	$ids = array();
+	$queued_ids = array();
+
+	foreach ($rows as $row) {
+
+		$ids[] = (int)$row['id'];
+
+		if ((string)$row['status'] === 'queued') {
+
+			$queued_ids[] = (int)$row['id'];
+
+		}
+
+	}
+
+	// The groups and the queue figures of the whole page, one read each.
+	$groups = array();
+
+	if ($ids) {
+
+		foreach (api_rows("SELECT sms_campaign_id, contact_group_id, type FROM contact_groups_sms_campaigns_xref
+			WHERE sms_campaign_id IN (" . implode(',', $ids) . ")
+			ORDER BY contact_group_id ASC") as $group) {
+
+			$groups[(int)$group['sms_campaign_id']][(string)$group['type']][] = (int)$group['contact_group_id'];
+
+		}
+
+	}
+
+	$outbox = array();
+
+	if ($queued_ids) {
+
+		$likes = array();
+
+		foreach ($queued_ids as $queued_id) {
+
+			$likes[] = "reference LIKE 'smscampaign:" . $queued_id . ":%'";
+
+		}
+
+		foreach (api_rows("SELECT SUBSTRING_INDEX(reference, ':', 2) AS campaign, status, COUNT(*) AS number
+			FROM sms_outbox
+			WHERE " . implode(' OR ', $likes) . "
+			GROUP BY campaign, status") as $count) {
+
+			$campaign_id = api_sms_campaign_reference_id($count['campaign'] . ':');
+
+			$outbox[$campaign_id][(string)$count['status']] = (int)$count['number'];
+
+		}
+
+	}
+
+	$out = array();
+
+	foreach ($rows as $row) {
+
+		$key = (int)$row['id'];
+
+		$out[] = api_sms_campaign_present($row, isset($groups[$key]) ? $groups[$key] : array(), isset($outbox[$key]) ? $outbox[$key] : array());
+
+	}
+
+	api_ok_list($out, $limit, $next);
+
+}
