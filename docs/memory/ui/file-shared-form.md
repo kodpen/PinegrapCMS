@@ -9,8 +9,11 @@ description: add_file.php and edit_file.php draw the File Access Control and Des
 - Edit: the same card with `select_folder($row['folder'])` and `'design_checked' => ($design == 1)`, and `pg_design_file_form_description_card($row['description'])`.
 - The Design File switch shows for role ≤ 1 only; `design_checked` (default true for the design file screens) leaves it off for a new upload and follows the stored flag on edit.
 
+## How is Upload File laid out?
+- The design file screens' row (`pg_design_file_form_layout()`, `ui/edit-screen-wide-layout.md`), as `add_design_file.php`: form column Files To Upload and Description, status column File Access Control, sticky save bar with Upload. Before, the limits sat loose above the form, the drop card took a full-width row and Access and Description split the next one.
+
 ## What stays in the screens?
-- Upload: the dropzone script and form, the Files To Upload card, the limits, the INSERT loop, the JSON answer, the notices.
+- Upload: the dropzone script and form, the Files To Upload card (the file count and size limits on top, the cloud buttons below), the INSERT loop, the JSON answer, the notices.
 - Edit: the id not-found gate, the row load, the File Name field and rename guards, image and editor rows, convert rows, replace, delete, the UPDATE, the button bar, the `md:col-*` wrappers.
 - Every query stays in the screens (`db_q_*_test.php` count them; `panel_id_gate_test.php` and `panel_missing_param_test.php` read the gates).
 
