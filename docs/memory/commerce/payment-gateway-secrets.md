@@ -21,7 +21,7 @@ module: payments
 ## What does the settings screen do?
 - `includes/settings/prep.php` prints `pg_gateway_secret_shown()`: the mask `********` when something is stored, else empty.
 - `pg_gateway_secret_for_save()`: a blank or masked box keeps the stored secret (a `pgenc2:` one written back unchanged, so no new IV and no audit line on every save); a new value replaces it; a sealed value that no longer opens is left alone, never wiped. There is no way to clear one from the box.
-- Encryption key reset (same save): the kept secrets are opened with the old key and sealed with the new one, since the `ENCRYPTION_KEY` constant still holds the old key in that request.
+- Encryption key reset (same save): the kept secrets are opened with the old key and sealed with the new one, since the `ENCRYPTION_KEY` constant still holds the old key there (`gateway` entries of `pg_reseal_registry()`).
 
 ## Why the 41-character limit?
 - A sealed value is `7 + 4 × ceil((28 + length) / 3)` characters (GCM has no padding); a 100-wide column fits 41 plain characters, the 255-wide one 158 (`pg_gateway_secret_max_length()`; the first form fitted 47 and 159). A longer new value is refused with a field error before anything is written; a longer plain value kept from before stays plain. Real keys are 16–32 characters.
