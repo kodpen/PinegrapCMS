@@ -246,6 +246,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_messages.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_booking.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/store_credit.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/store_credit_points.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/store_credit_refunds.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/variant_set_copy.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/text_search.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/tree_search.php');

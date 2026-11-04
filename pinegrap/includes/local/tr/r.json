@@ -1185,6 +1185,7 @@
     "Return request {var:1} of order {var:2} was closed.": "{var:2} numaralı siparişin {var:1} numaralı iade talebi kapatıldı.",
     "Return request {var:1} of order {var:2} was recorded as refunded another way: {var:3}.": "{var:2} numaralı siparişin {var:1} numaralı iade talebinin ücreti başka bir yolla iade edildi olarak kaydedildi: {var:3}.",
     "Return request {var:1} of order {var:2} was recorded as sent back.": "{var:2} numaralı siparişin {var:1} numaralı iade talebi geri gönderildi olarak kaydedildi.",
+    "Return request {var:1} of order {var:2} was refunded as store credit: {var:3}, the card holds {var:4}.": "{var:2} numaralı siparişin {var:1} numaralı iade talebi mağaza kredisi olarak iade edildi: {var:3}, kartta {var:4} var.",
     "Return request {var:1} of order {var:2} was refunded: {var:3}.": "{var:2} numaralı siparişin {var:1} numaralı iade talebinin ücreti iade edildi: {var:3}.",
     "Return request {var:1} of order {var:2} was rejected.": "{var:2} numaralı siparişin {var:1} numaralı iade talebi reddedildi.",
     "Return request {var:1} of order {var:2} was sent back by the customer.": "#{var:2} numaralı siparişin {var:1} numaralı iade talebindeki ürünler müşteri tarafından kargoya verildi.",
