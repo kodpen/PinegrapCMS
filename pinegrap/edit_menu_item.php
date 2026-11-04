@@ -197,8 +197,8 @@ if (!$_POST) {
                                         </script>',
                         )),
                         '
-                                        <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                        <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('menu item and all menu items underneath it')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>') . '
+                                        <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('menu item and all menu items underneath it')))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>') . '
                 </form>
             </div>
         </div>
@@ -269,6 +269,18 @@ if (!$_POST) {
             $liveform->mark_error('link_url', $url_problem);
         }
 
+        // The parent select only offers items of this menu outside the item's
+        // own subtree; a posted id inside it would store a cycle that hides
+        // the item and everything below it.
+        if (!pg_menu_item_parent_allowed($menu_id, $id, $_POST['parent_id'] ?? '0', pg_menu_item_parent_lookup())) {
+            $liveform->mark_error('parent_id', lang('Please choose a parent menu item of this menu.'));
+        }
+
+        // The column holds 255 characters and would cut a longer list mid-class.
+        if (mb_strlen((string) ($_POST['class'] ?? ''), 'UTF-8') > 255) {
+            $liveform->mark_error('class', lang('Classes can be at most 255 characters long.'));
+        }
+
         // if there is an error, forward user back to edit menu screen
         if ($liveform->check_form_errors() == true) {
             header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_menu_item.php?id=' . $_POST['id'] . '&from=' . urlencode($_POST['from']) . '&send_to=' . urlencode($_POST['send_to']));
@@ -299,7 +311,7 @@ if (!$_POST) {
                 last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
             WHERE id = ?";
-        $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) $new_parent_id, (string) $link_page_id, (string) $link_url, (string) ($_POST['link_target'] ?? ''), (string) ($_POST['security'] ?? ''), (string) ($_POST['class'] ?? ''), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) $new_parent_id, (string) $link_page_id, (string) $link_url, pg_menu_item_form_link_target($_POST['link_target'] ?? ''), (string) ($_POST['security'] ?? ''), (string) ($_POST['class'] ?? ''), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         pg_menu_item_form_touch_menu($menu_id, $user['id']);
         

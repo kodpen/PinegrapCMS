@@ -80,7 +80,7 @@ if (!$_POST) {
         // Cancel returns where Save does: the menu's items screen.
         'cancel'=>array('enable'=>'true','url'=>$items_url)
     ,
-            'breadcrumb' => array(array('label' => lang('All Menus'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menus.php'), array('label' => lang('Edit Menu Properties'))),
+            'breadcrumb' => array(array('label' => lang('All Menus'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menus.php'), array('label' => lang('Edit Menu'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $items_url), array('label' => lang('Edit Menu Properties'))),
         ]) . '
 <main id="content" class="container-fluid">
     ' . pg_screen_toolbar(array(
@@ -104,8 +104,8 @@ if (!$_POST) {
                             'status' => pg_menu_form_items_status($item_count, h($items_url)),
                         )),
                         '
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('menu')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>'
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('menu')))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>'
                     ) . '
                 </form>
             </div>
@@ -161,6 +161,7 @@ if (!$_POST) {
         $liveform->add_fields_to_session();
         
         pg_menu_form_validate_name($liveform, (string) ($_POST['id'] ?? ''));
+        pg_menu_form_validate_classes($liveform);
         
         // if there is an error, forward user back to edit menu screen
         if ($liveform->check_form_errors() == true) {
