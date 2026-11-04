@@ -137,7 +137,7 @@ function pg_visitors_pages_table(array $rows, $linked, $ecommerce, $base)
         if ($linked) {
             $cells[] = pg_visitors_pages_figure($row['impressions'], pg_format_number((int) $row['impressions'], 0));
             $cells[] = pg_visitors_pages_figure($row['clicks'], pg_format_number((int) $row['clicks'], 0));
-            $cells[] = pg_visitors_pages_figure($row['ctr'], pg_format_number((float) $row['ctr'] * 100, 1) . ' %');
+            $cells[] = pg_visitors_pages_figure($row['ctr'], pg_visitors_percent((float) $row['ctr'] * 100, 1));
             $cells[] = pg_visitors_pages_figure($row['position'], pg_format_number((float) $row['position'], 1));
         }
 

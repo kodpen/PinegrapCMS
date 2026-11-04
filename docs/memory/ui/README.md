@@ -21,7 +21,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - Call Bootstrap's JavaScript and listen to its events only through `pgUI` (`assets/js/pg_ui.js`): kinds dialog/drawer/menu, `pgUI.on()` instead of jQuery `.on('….bs.modal')`, floating layers on `pgUI.overlayHost()` (`pg-ui-adapter.md`).
 - Hand a dialog's or drawer's result to a box of the page only once it has closed (`pgUI.dialog.hide(el).then(…)`): a Bootstrap 6 one keeps the page inert till its closing animation ends, and focus, the caret and editing commands there fail without an error (`dialog-result-after-close.md`).
 - A Bootstrap 6 `.menu` a script opens itself gets `.show`, or a rule of the screen draws it at `opacity: 1`: without either it opens invisible, clickable but unseen (`explorer-context-menu-visible.md`).
-- Show a screen change with `tools/screenshots/shoot.js` on a sandbox, images on a private page the PR links, never committed (`panel-screenshots.md`).
+- Show a screen change with `tools/screenshots/shoot.js` on a sandbox, images on a private page the PR links, never committed but a look note's reference pictures (`panel-screenshots.md`).
 - Panel CSS sits in `@layer custom` and reads `--pg-*` tokens, never `--bs-*` variables; colour with alpha is `color-mix(in srgb, var(--pg-…) N%, transparent)`, not `rgba(var(--bs-…-rgb))`; a missing name goes into the token block of backend.src.css (`panel-css-tokens.md`).
 - A button's label span is `<span class="pg-btn-label">`, never `btn-text`; a flyout menu inside a menu is `.pg-submenu`, never `.submenu`: Bootstrap 6 owns `.btn-text`, `.submenu` and `.menu` (`bootstrap-6.md`).
 - Mark a chips, select2, date or time field with its `data-pg-*` hook and print `pg_fields_script()`; read and write it through `pgChips`/`pgCombobox`/`pgDatePicker`/`pgDateTimeField`, never call tagin, select2 or the jQuery UI pickers from a panel screen (`pg-field-wrappers.md`).
@@ -509,7 +509,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - user-shared-form.md: The user create and edit screens share includes/forms/user_form.php (rights cards, folder rights, access save)
 - verified-shipping-address-shared-form.md: The verified shipping address create and edit screens share includes/forms/verified_shipping_address_form.php: what it holds, what stays in the screens
 - visitors-ai-section.md: AI Visibility section of the Visitors overview (ai.php, #6475): bots and firewall, fetches by day, pages per bot, assistant visits, unfetched pages, old-screen redirect
-- visitors-screen-look.md: How the Visitors overview is drawn: frames and blocks, one change column, folding lists, quiet dashes, anchors, calm charts, the menu's section links, and the traps behind them
+- visitors-screen-look.md: How the Visitors overview is drawn: reference pictures, frames and blocks, one change column, folding lists, quiet dashes, anchors, calm charts, the menu's section links, the traps
 - visitors-screen.md: The Visitors overview screen (visitors.php): the period and its query string, the period bar, the section loader and contract, the shell helpers, its CSS/JS bundles, the Visitors menu and panel search
 - visitors-section-rules.md: Rules for a Visitors overview section (includes/visitors/<name>.php): what it owns, where its figures come from, texts and formats, access, files never touched
 - visitors-speed-section.md: Page Speed section of the Visitors overview (speed.php, #6475): period, device and order filters, p75 tiles, slowest pages, trend, old-screen redirect, perf card tile

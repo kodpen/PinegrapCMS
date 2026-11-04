@@ -11,7 +11,7 @@ description: The conversions section of the Visitors overview (includes/visitors
 
 ## Where do the figures come from?
 - `pg_visitor_totals()` for the period (`from_ts` to `to_ts - 1`) and for the earlier one (`previous_*`, cut at the same hour when the period ends today).
-- The chart: one bucket per step of the period's grain (day, Monday week, month; `pg_visitors_conversions_buckets()`, pure), cut to the period. The summary run is read once (`pg_visitor_summary_range()`) and each bucket split against it with `pg_visitor_day_split()` + `pg_visitor_totals_of_parts()`: at most two queries a bucket. A one-day period has no chart.
+- The chart: one bucket per step of the period's grain (day, Monday week, month; `pg_visitors_conversions_buckets()`, pure), cut to the period. The summary run is read once (`pg_visitor_summary_range()`) and each bucket split against it with `pg_visitor_day_split()` + `pg_visitor_totals_of_parts()`: at most two queries a bucket. A one-day period has no chart. Forms and completed orders share one axis; each bucket's revenue is a tooltip line (`notes`), not a second axis.
 
 ## When is it empty?
 - When neither a form nor (with commerce on) an order figure is above 0: `pg_visitors_empty()`. Visits alone belong to the traffic section.

@@ -155,7 +155,7 @@ function pg_visitors_google_query_url($property, $query, $from, $to)
  */
 function pg_visitors_google_percent($fraction)
 {
-    return pg_format_number((float) $fraction * 100, 1) . ' %';
+    return pg_visitors_percent((float) $fraction * 100, 1);
 }
 
 /**
