@@ -3542,6 +3542,39 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'reports.search',
+			'method'  => 'GET',
+			'path'    => '/reports/search',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_search',
+			'returns' => 'SearchReport',
+			'summary' => 'Google Search: clicks, impressions, searches and pages',
+			'description' => 'What Google Search Console reports for the site, from the figures its daily job downloads: totals of the window (clicks, impressions, ctr as a fraction, average position weighted by impressions), clicks and impressions for every day, and the searches (queries) and addresses (pages) with the most clicks, at most limit each. Google publishes two or three days late: latest_day is the last day with figures and the days after it read as zeros. Searches Google keeps anonymous count in the totals but are not listed, so queries add up to less. linked false is a site not linked to Search Console: empty figures, not an error. Defaults to the last thirty days; a window is at most 400 days.',
+			'params'  => array(
+				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 25, 'description' => 'Searches and pages each.')
+			)
+		),
+
+		array(
+			'id'      => 'reports.pages',
+			'method'  => 'GET',
+			'path'    => '/reports/pages',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_pages',
+			'returns' => 'PagesReport',
+			'summary' => 'Pages with their Google figures, visits and SEO score',
+			'description' => 'One row per page of the site: Google\'s clicks, impressions, ctr (a fraction) and average position for it, the visits that began on it with their forms submitted and orders completed, its page views, and its SEO score (0-100, null until scored). A Google address and a site page meet on their path: without host, query, trailing slash or .html, decoded, case-blind; the root and every home page name are one row with home true and path /. A page only one side knows is listed too: null Google figures for a page Google did not show (or every row when linked is false, a site not linked to Search Console), page_id null for an address no page of the site has (a product or article address, or a page since deleted). Sorted by clicks, visits or score, largest first, a row without the figure last; total counts every row before limit. Google publishes two or three days late, so for the last days visits have no clicks beside them yet. summary_days and summary_to describe the visit figures as in GET /reports/visitors. Defaults to the last thirty days; a window is at most 400 days.',
+			'params'  => array(
+				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'sort',  'in' => 'query', 'type' => 'enum', 'values' => array('clicks', 'visits', 'score'), 'default' => 'clicks'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50)
+			)
+		),
+
+		array(
 			'id'      => 'reports.ai_visibility',
 			'method'  => 'GET',
 			'path'    => '/reports/ai-visibility',
