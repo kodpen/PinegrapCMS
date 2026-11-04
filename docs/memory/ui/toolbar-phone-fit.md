@@ -1,6 +1,6 @@
 ---
 name: toolbar-phone-fit
-description: Toolbar filter forms capped to the bar (.pg-toolbar-filter), facts of Edit Page / Edit Comment / Edit Theme File in the grow slot, the Subscriptions date range wrapping at 375 px (#4264)
+description: Toolbar filter forms capped to the bar (.pg-toolbar-filter), Edit Comment / Edit Theme File facts in the grow slot, Subscriptions date range wrapping at 375 px (#4264)
 ---
 
 ## Why does a toolbar filter no longer push the page sideways?
@@ -10,7 +10,8 @@ description: Toolbar filter forms capped to the bar (.pg-toolbar-filter), facts 
 
 ## Where do a screen's facts go?
 - Into `pg_screen_toolbar()`'s `grow` slot, never a block above the bar (owner rule, `admin-screen-toolbar.md`).
-- Edit Page: the Access / Page Type / Short Link / Searchable / Next and Skip Page line (and the home badge) is the grow; the bar is built after the page-type block for every user, so it shows even with no edit buttons or no right to set the type. The buttons collect in `$output_button_bar_buttons`.
+- An edit screen on the wide layout reads them in its status column instead (`edit-screen-wide-layout.md`).
+- Edit Page: the Access / Page Type / Short Link / Searchable / Next and Skip Page facts (and the home badge) are a list in the Summary card of the sticky status column, with the SEO badge in its header (`page-edit-layout.md`); the bar holds only `$output_button_bar_buttons` and is not drawn without them.
 - Edit Comment: Added / Page / Form Reference Code / verified-purchase lines are the grow; "Go To Comment" is a slot 2 button (`btn btn-sm btn-text theme-secondary`).
 - Edit Theme File: the h2 repeating the file name is gone (the breadcrumb names it; Download File / Export open it); "Page Style Head Tag" is the grow.
 - A bar with only a filled grow is drawn and shown (#4142 CSS).
