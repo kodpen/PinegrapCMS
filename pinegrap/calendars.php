@@ -35,7 +35,7 @@ if (isset($_GET['view']) && is_string($_GET['view'])) {
     $_SESSION['software']['calendars']['view'] = $_GET['view'];
 }
 
-if (!in_array(($_SESSION['software']['calendars']['view'] ?? ''), array('', 'monthly', 'weekly', 'upcoming'), true)) {
+if (!in_array(($_SESSION['software']['calendars']['view'] ?? ''), array('', 'monthly', 'weekly'), true)) {
     $_SESSION['software']['calendars']['view'] = '';
 }
 
@@ -80,7 +80,7 @@ if($calendar_name == ''){
     $calendar_name = lang('All Calendars');
     $pg_breadcrumb_items[] = array('label' => lang('All Calendars'));
 }else{
-    $pg_breadcrumb_items[] = array('label' => lang('View Calendars'));
+    $pg_breadcrumb_items[] = array('label' => $calendar_name);
     // The create screen starts with the viewed calendar ticked.
     $create_calendar_event_url = 'add_calendar_event.php?calendar_id=' . urlencode((string) $_SESSION['software']['calendars']['calendar_id']);
     $output_edit_calendar_button = array('label' => lang('Edit Calendar Properties'), 'url' => 'edit_calendar.php?id=' . urlencode((string) ($_SESSION['software']['calendars']['calendar_id'] ?? '')), 'icon' => 'bi-pencil');
