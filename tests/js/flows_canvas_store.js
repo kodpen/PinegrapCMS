@@ -419,6 +419,18 @@ async function createStore(name, check) {
             return { flow: detail(flow) };
         },
 
+        ws_flow_resume: (request) => {
+            const flow = flowOf(request, true);
+
+            if (flow.refuse) {
+                return flow;
+            }
+
+            flow.status = 'live';
+
+            return { flow: detail(flow) };
+        },
+
         ws_flow_bin: (request) => {
             const flow = flowOf(request, true);
 

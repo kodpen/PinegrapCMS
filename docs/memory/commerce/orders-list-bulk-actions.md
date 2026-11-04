@@ -1,6 +1,6 @@
 ---
 name: orders-list-bulk-actions
-description: Orders list bulk actions and exports: what the Paraşüt export takes and how it ends, Cancel Selected and open carts, CSV empty cells, the Country filter, the phone bar
+description: Orders list bulk actions and exports: Paraşüt export (scope, end, refusals), Cancel Selected (open carts, refunds), CSV empty cells, Country and Product Name filters, phone bar
 module: order_list
 ---
 
@@ -14,6 +14,12 @@ module: order_list
 ## How does the export end?
 - The log line and the liveform notice are written before the zip is streamed; after it only this export's folder (`includes/phpexcel/temps/parasut_<date>/`) is removed and the script `exit`s. Before (#5296) the redirect after the zip added a "headers already sent" warning to the file and the whole `temps/` folder (another export's files too) was deleted.
 
+## How does a refused Paraşüt export reach the operator?
+- `pgParasutOrderExport()` (backend.src.js) fetches with `redirect: 'manual'`: a refusal (tax rate, nothing exportable) is an `opaqueredirect`, so the list reloads and prints the liveform reason. Followed, the hidden page consumed the message and only the generic toast showed. The tax rate field is checked with `reportValidity()` first (#6513).
+
+## What does Cancel Selected say about money?
+- `pg_order_bulk_cancel_refunds()` groups the cancelled orders as `cancel_order.php` decides for one: refunded, refund by bank transfer, refund in the provider's dashboard, gift card part (sum in minor units). `edit_orders.php` adds one notice or warning per group with the order numbers (#6513).
+
 ## Why does Cancel Selected skip incomplete orders?
 - An `incomplete` order is a customer's open cart; the row's Cancel button is not drawn for it. The bulk cancel skips it with "… were never completed and skipped", as Mark Shipped Selected does (#5297). `process_order_cancellation()` itself is unchanged.
 
@@ -22,6 +28,9 @@ module: order_list
 
 ## How does the Country filter match "Türkiye"?
 - The stored value is the code and `countries.name` is English. `pg_order_country_filter_sql()` adds `OR column IN (codes)` for the countries whose shown name (`pg_geo_country_label()`) contains the text, case and Turkish I folded (`pg_order_country_codes_by_label()`); the code and English-name match stay (#5300).
+
+## What does the Product Name filter match?
+- `order_items.product_name` (the SKU) or, through `product_id IN (SELECT … short_description LIKE …)`, the product name. A subquery, not a join: the order items exports read `order_items` without `$join_order_items` (#6513).
 
 ## How does the bulk bar look on a phone?
 - Every button uses Bootstrap Icons and a `title`; the label sits in `.pg-btn-label`. The bar carries `pg-bar-icons`: under 576 px the labels are visually hidden, so the buttons share one or two rows (#5302).

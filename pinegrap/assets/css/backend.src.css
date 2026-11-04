@@ -5250,6 +5250,11 @@ a.dt-button {
 .input-group-text {
   border-radius: var(--pg-radius-lg);
 }
+/* Backup Manager status line: a refused or failed step reads as an error,
+   not in the muted grey of a progress notice. */
+.logbox.software_error {
+  color: var(--pg-danger-ink);
+}
 .dialog-header,
 .popover .popover-header,
 .advanced-filter-bar > *:first-child {
@@ -8706,6 +8711,8 @@ button.no-popover:focus-visible {
 .pg-toolbar-grow { flex: 1 1 220px; min-width: 160px; overflow: hidden; }
 
 .pg-toolbar-search { width: 200px; }
+/* Backup Manager: the name field and its button share the box. */
+.pg-toolbar-search.pg-backup-create { width: 320px; }
 
 /* A filter form (pg_filter_select(), Browse Items' folder and access pickers)
    is a flex item of the bar, and a flex item's automatic minimum is its

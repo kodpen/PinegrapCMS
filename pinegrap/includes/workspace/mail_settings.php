@@ -709,22 +709,22 @@ function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false)
     }
 
     return '
-        <form method="post" action="' . h($self_url) . '#ws-mail" class="py-5">
+        <form method="post" action="' . h($self_url) . '#ws-mail" class="py-5 ws-mail-box-form">
             ' . get_token_field() . '
             <input type="hidden" name="ws_action" value="mail_box_save">
             <input type="hidden" name="box_id" value="' . $id . '">
             <div class="row g-5">
                 <div class="md:col-6">
                     <label class="form-label" for="' . $prefix . 'name">' . h(lang('Name')) . '</label>
-                    <input class="form-control form-control-sm" type="text" name="name" id="' . $prefix . 'name" maxlength="100" value="' . h($box ? (string) $box['name'] : '') . '" placeholder="' . h(lang('Support')) . '">
+                    <input class="form-control form-control-sm" type="text" name="name" id="' . $prefix . 'name" maxlength="100" required value="' . h($box ? (string) $box['name'] : '') . '" placeholder="' . h(lang('Support')) . '">
                 </div>
                 <div class="md:col-6">
                     <label class="form-label" for="' . $prefix . 'address">' . h(lang('E-mail address')) . '</label>
-                    <input class="form-control form-control-sm" type="email" name="address" id="' . $prefix . 'address" maxlength="255" value="' . h($box ? (string) $box['address'] : '') . '" placeholder="support@example.com">
+                    <input class="form-control form-control-sm" type="email" name="address" id="' . $prefix . 'address" maxlength="255" required value="' . h($box ? (string) $box['address'] : '') . '" placeholder="support@example.com">
                 </div>
                 <div class="md:col-6">
                     <label class="form-label" for="' . $prefix . 'channel">' . h(lang('Channel')) . '</label>
-                    <select class="form-control form-control-sm" name="channel_id" id="' . $prefix . 'channel">' . $options . '</select>
+                    <select class="form-control form-control-sm" name="channel_id" id="' . $prefix . 'channel" required>' . $options . '</select>
                     <div class="form-text">' . h(lang('Each new conversation becomes a card here; its answers go under the card.')) . '</div>
                 </div>
                 <div class="md:col-6">
@@ -780,7 +780,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
     $move = $box && ((string) $box['after_fetch'] === 'move');
     $via = $box ? (string) ($box['reply_via'] ?? 'box') : 'box';
     $connection_id = (int) ($settings['connection_id'] ?? 0);
-    $accounts = '<option value="0">' . h(lang('None: sign in with the password')) . '</option>';
+    $accounts = '<option value="">' . h(lang('None: sign in with the password')) . '</option>';
     $listed = false;
 
     foreach (ws_mail_box_accounts() as $account) {
@@ -821,7 +821,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                 </div>
                 <div class="md:col-12">
                     <label class="form-label" for="' . $prefix . 'connection">' . h(lang('Connected account')) . '</label>
-                    <select class="form-control form-control-sm" name="connection_id" id="' . $prefix . 'connection">' . $accounts . '</select>
+                    <select class="form-control form-control-sm" name="connection_id" id="' . $prefix . 'connection"' . (($via === 'connection') ? ' required' : '') . '>' . $accounts . '</select>
                     <div class="form-text">' . h(lang('Microsoft 365 and Outlook.com sign in with a connected account instead of a password.')) . '</div>
                 </div>
                 <div class="md:col-4">
@@ -835,7 +835,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                         <option value="move"' . ($move ? ' selected' : '') . '>' . h(lang('Move to a folder')) . '</option>
                     </select>
                 </div>
-                <div class="md:col-4">
+                <div class="md:col-4' . ($move ? '' : ' d-none') . '" data-ws-mail-when="after_fetch=move">
                     <label class="form-label" for="' . $prefix . 'move">' . h(lang('Folder to move to')) . '</label>
                     <input class="form-control form-control-sm" type="text" name="move_folder" id="' . $prefix . 'move" maxlength="255" value="' . h((string) ($settings['move_folder'] ?? '')) . '" placeholder="' . h(lang('Processed')) . '">
                 </div>
@@ -850,11 +850,11 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                         <option value="connection"' . (($via === 'connection') ? ' selected' : '') . '>' . h(lang('The connected account')) . '</option>
                     </select>
                 </div>
-                <div class="md:col-5">
+                <div class="md:col-5' . (($via === 'box') ? '' : ' d-none') . '" data-ws-mail-when="reply_via=box">
                     <label class="form-label" for="' . $prefix . 'smtp_host">' . h(lang('SMTP server')) . '</label>
                     <input class="form-control form-control-sm font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="smtp_host" id="' . $prefix . 'smtp_host" maxlength="253" value="' . h((string) ($settings['smtp_host'] ?? '')) . '" placeholder="smtp.example.com" autocomplete="off">
                 </div>
-                <div class="md:col-3">
+                <div class="md:col-3' . (($via === 'box') ? '' : ' d-none') . '" data-ws-mail-when="reply_via=box">
                     <label class="form-label" for="' . $prefix . 'smtp_port">' . h(lang('Port')) . '</label>
                     <input class="form-control form-control-sm" type="number" name="smtp_port" id="' . $prefix . 'smtp_port" min="1" max="65535" value="' . (int) ($settings['smtp_port'] ?? 587) . '">
                 </div>
@@ -1037,5 +1037,43 @@ function ws_mail_settings_card($self_url, $viewer)
                 <div class="form-text mt-5">' . h(lang('A mailbox with a server is read every minute while the general scheduled job runs; an .eml file saved from a mail program can also be brought in by hand.')) . '</div>
                 ' . ws_mail_connect_form($viewer) . '
             </div>
-        </div>';
+        </div>
+        <script>
+        (function () {
+            // A field that applies to one choice of a select shows only with
+            // it (data-ws-mail-when="name=value"); the connected account is
+            // required when answers are sent through it.
+            function sync(form) {
+                form.querySelectorAll(\'[data-ws-mail-when]\').forEach(function (part) {
+                    var rule = part.getAttribute(\'data-ws-mail-when\').split(\'=\');
+                    var select = form.querySelector(\'[name="\' + rule[0] + \'"]\');
+
+                    part.classList.toggle(\'d-none\', !select || (select.value !== rule[1]));
+                });
+
+                var via = form.querySelector(\'[name="reply_via"]\');
+                var account = form.querySelector(\'[name="connection_id"]\');
+
+                if (via && account) {
+                    var marker = form.querySelector(\'label[for="\' + account.id + \'"] .pg-required-marker\');
+
+                    account.required = (via.value === \'connection\');
+
+                    if (!account.required && marker) {
+                        marker.remove();
+                    } else if (account.required && window.pgInjectAriaAndRequiredMarkers) {
+                        window.pgInjectAriaAndRequiredMarkers(form);
+                    }
+                }
+            }
+
+            document.addEventListener(\'change\', function (event) {
+                var form = (event.target.closest && /^(after_fetch|reply_via)$/.test(event.target.name || \'\')) ? event.target.closest(\'form.ws-mail-box-form\') : null;
+
+                if (form) {
+                    sync(form);
+                }
+            });
+        })();
+        </script>';
 }

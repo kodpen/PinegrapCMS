@@ -188,6 +188,23 @@ function ws_person_edit_url($viewer, $person)
 }
 
 /**
+ * Whether somebody with the Workspace settings right may change a person's
+ * row on Workspace Settings (title, working day, taken out of the team).
+ * Nobody changes an account of a higher rank than their own: Administrator
+ * (0) above Designer (1) above Manager (2) above a basic user (3). Taking an
+ * administrator out of the team would shut them out of every Workspace
+ * screen, this one included.
+ *
+ * @param int $viewer_role
+ * @param int $person_role
+ * @return bool
+ */
+function ws_settings_may_edit_person($viewer_role, $person_role)
+{
+    return (int) $person_role >= min(3, max(0, (int) $viewer_role));
+}
+
+/**
  * Everyone in the team, by name.
  *
  * @return array[] briefs, keyed by nothing
