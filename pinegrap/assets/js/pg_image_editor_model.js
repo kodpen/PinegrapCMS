@@ -4205,7 +4205,7 @@
             add('lockPicture');
             add('removePicture');
         } else {
-            ['erase', 'keep', 'copy', 'cut', 'adjust'].forEach(function (name) {
+            ['erase', 'keep', 'copy', 'cutToLayer', 'adjust'].forEach(function (name) {
                 if (can[name]) {
                     add(name);
                 }

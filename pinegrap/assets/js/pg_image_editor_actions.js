@@ -42,7 +42,7 @@
         erase: ['eraser', 'areaErase', function () { this.areaErase(); }, true],
         keep: ['crop', 'areaKeep', function () { this.areaKeep(); }],
         copy: ['layers', 'areaCopy', function () { this.areaCopy(); }],
-        cut: ['scissors', 'areaCut', function () { this.areaCut(); }],
+        cutToLayer: ['scissors', 'areaCut', function () { this.areaCut(); }],
         adjust: ['adjust', 'areaAdjust', function () { this.areaAdjust(); }],
         redact: ['redact', 'areaRedact', function () { this.areaRedact(); }],
         invert: ['invert', 'areaInvert', function () { this.areaInvert(); }],
@@ -67,7 +67,7 @@
             area: (this.tool === 'area') && !!this.areaSelected && this.areaSelected(),
             sheet: !!this.panel && !this.sheetOpen,
             can: {
-                erase: !!this.areaErase, keep: !!this.areaKeep, copy: !!this.areaCopy, cut: !!this.areaCut, adjust: !!this.areaAdjust,
+                erase: !!this.areaErase, keep: !!this.areaKeep, copy: !!this.areaCopy, cutToLayer: !!this.areaCut, adjust: !!this.areaAdjust,
                 redact: !!this.newRedaction
             }
         };

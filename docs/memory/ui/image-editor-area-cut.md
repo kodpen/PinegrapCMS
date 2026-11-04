@@ -7,7 +7,7 @@ module: image_editor
 ## What does Cut to a layer do?
 - After Select area: the picture inside the outline as a see-through picture layer ("Cut-out", the copy Copy to a layer makes, `areaCutout()`) on top, and an erase layer of the same outline under it, in one undo step (`areaCut()` in `pg_image_editor_area.js`); the selection goes and the piece is selected with the Select tool. The piece moves on its own and leaves a see-through hole; a save writes the hole (a JPEG as a PNG copy, as any see-through erase) and the piece over it.
 - The uncut picture stays restorable (owner): one undo, or deleting the erased area ("Silinen alan"), brings it back; the saved versions keep the file as it was.
-- In the panel after Copy to a layer; in the small screen's bar (`image-editor-actions.md`) with the scissors icon, Keep only taking the crop icon.
+- In the panel after Copy to a layer; in the small screen's bar (`image-editor-actions.md`) with the scissors icon, Keep only taking the crop icon. Its name in `M.actionList()` is `cutToLayer`: `cut` is the context menu's clipboard Cut of layers.
 
 ## Why was it added?
 - On dev the owner selected a subject, inverted, erased the background, then pressed the kept subject and deleted what was selected: it was the erase layer, so the background came back and nothing separate was left. He expected the kept part to behave as a separate PNG piece and chose a new command over changing Erase or Keep only.

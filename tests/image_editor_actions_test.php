@@ -42,7 +42,7 @@ function image_editor_actions_node($script)
 	file_put_contents($file, 'var M = require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_model.js') . ');' . "\n"
 		// The names in order, a disabled one marked with a minus.
 		. 'var names = function (s) { return M.actionList(s).map(function (a) { return (a.off ? "-" : "") + a.name; }); };' . "\n"
-		. 'var all = { erase: true, keep: true, copy: true, cut: true, adjust: true, redact: true };' . "\n"
+		. 'var all = { erase: true, keep: true, copy: true, cutToLayer: true, adjust: true, redact: true };' . "\n"
 		. $script);
 
 	$out = array();
@@ -100,7 +100,7 @@ function test_image_editor_actions_for_picture_and_area()
 
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'runs');
 	pg_assert_same(array('options', 'lockPicture', 'removePicture'), $r['picture'], 'the picture');
-	pg_assert_same(array('options', 'erase', 'keep', 'copy', 'cut', 'adjust', 'redact', 'invert', 'deselect'), $r['area'], 'every area command');
+	pg_assert_same(array('options', 'erase', 'keep', 'copy', 'cutToLayer', 'adjust', 'redact', 'invert', 'deselect'), $r['area'], 'every area command');
 	pg_assert_same(array('redact', 'invert', 'deselect'), $r['areaOpen'], 'only the commands the editor has');
 	pg_assert_same(array('-redact', 'invert', 'deselect'), $r['noRedact'], 'Redact off without the redaction part');
 }
