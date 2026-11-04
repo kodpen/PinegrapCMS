@@ -285,6 +285,7 @@ function pg_visitors_section($id, $title, $body, $aside = '')
  *   labels   the x-axis labels (text)
  *   series   list of array('label' => text, 'data' => list of numbers or
  *            null, 'dashed' => bool, 'axis' => 'right' for a second axis)
+ *   notes    one more tooltip line for each label (text, '' for none)
  *   caption  the hidden table's caption
  *   height   CSS height of the drawing, '16rem' by default
  *
@@ -333,6 +334,7 @@ function pg_visitors_chart($id, array $config)
         'type'   => (isset($config['type']) && ($config['type'] === 'bar')) ? 'bar' : 'line',
         'labels' => array_map('strval', $labels),
         'series' => $series,
+        'notes'  => isset($config['notes']) ? array_map('strval', array_values($config['notes'])) : array(),
     );
 
     $height = isset($config['height']) && preg_match('/^\d+(\.\d+)?(rem|px)$/', (string) $config['height']) ? $config['height'] : '16rem';
