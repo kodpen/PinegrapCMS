@@ -98,3 +98,33 @@ JS
 
 	pg_assert_same(array('Blue shirt', ' a ', '12,50', false, true), $result);
 }
+
+/**
+ * A quick edit field is named by its row's first cell as shown: the gift
+ * card list's notes field was labelled "Notes: 6579-6686-6645-5163Expired"
+ * (textContent ran the code and the word under it together).
+ */
+function test_list_table_quick_edit_row_name()
+{
+	$result = list_table_js_test_node(<<<'JS'
+var text = function (value) { return { nodeType: 3, nodeValue: value }; };
+var el = function (tag, children, attrs) {
+  attrs = attrs || {};
+  return { nodeType: 1, tagName: tag, childNodes: children, hidden: !!attrs.hidden, getAttribute: function (name) { return (name in attrs) ? attrs[name] : null; } };
+};
+var cell = el('TD', [
+  el('A', [el('SPAN', [text('6579-6686-6645-5163')])]),
+  el('SPAN', [text('6579668666455163')], { hidden: true }),
+  el('DIV', [text('Expired')])
+]);
+var icon = el('TD', [el('I', [text('edit')], { 'aria-hidden': 'true' }), text(' Blue '), el('B', [text('shirt')]), text('s\n  ')]);
+console.log(JSON.stringify([T.rowNameText(cell), T.rowNameText(icon), T.rowNameText(null)]));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('6579-6686-6645-5163 Expired', 'Blue shirts', ''), $result);
+}
