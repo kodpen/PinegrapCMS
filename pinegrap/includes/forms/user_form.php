@@ -125,6 +125,57 @@ function pg_user_contact_sql($contact_id)
 }
 
 /**
+ * The posted Reward Points as the integer user_reward_points holds (int
+ * unsigned): blank is 0, anything that is not a whole number from 0 to
+ * 4294967295 is null. A lenient server would clamp -5 to 0, cut "12,50" to
+ * 12 and cap a larger number, and the screen would still say it saved. Pure.
+ *
+ * @param mixed $value  The posted value; null when the field was not sent
+ * @return int|null
+ */
+function pg_user_form_reward_points($value)
+{
+    if ($value === null) {
+        return 0;
+    }
+
+    if (is_int($value)) {
+        $value = (string) $value;
+    }
+
+    if (!is_string($value)) {
+        return null;
+    }
+
+    $value = trim($value);
+
+    if ($value === '') {
+        return 0;
+    }
+
+    if (!ctype_digit($value) || (strlen(ltrim($value, '0')) > 10)) {
+        return null;
+    }
+
+    $points = (float) $value;
+
+    return ($points <= 4294967295) ? (int) $value : null;
+}
+
+/**
+ * Whether a user text fits its varchar(100) column (user_username,
+ * user_badge_label). A lenient server cuts a longer value, which also gets
+ * around the uniqueness check run on the whole value. Pure.
+ *
+ * @param mixed $value
+ * @return bool
+ */
+function pg_user_form_text_fits($value)
+{
+    return mb_strlen((string) $value, 'UTF-8') <= 100;
+}
+
+/**
  * The private folders whose posted expiration date is a problem: 'invalid'
  * (a checked folder whose date is not a date, which would save no access)
  * and 'past' (a date already gone, so the access ends as it is given). Only

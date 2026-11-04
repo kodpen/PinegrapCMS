@@ -62,6 +62,7 @@ function test_reset_password_screen_sends_the_link()
 	pg_assert_contains("'secret' => true", $source);
 	pg_assert_contains('$sent = (bool) email(', $source);
 	pg_assert_contains('pg_reset_password_notice($set_password_url, $sent)', $source);
+	pg_assert_contains('$liveform_view_users->add_warning(h(pg_reset_password_notice($set_password_url, $sent)));', $source);
 	pg_assert_same(0, preg_match('/\$random_password\s*\.\s*"\\\\n/', $source), 'password in the e-mail');
 	pg_assert_same(0, substr_count($source, '$random_password') - 2, 'the random password is only generated and hashed');
 	pg_assert_contains('validate_token_field();', $source);
