@@ -141,6 +141,16 @@ function test_import_users_checks_points_and_lengths()
 	pg_assert_false(strpos($source, "escape(\$_POST['reward_points']") !== false, 'the raw points are not written');
 }
 
+function test_import_users_wide_layout()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/import_users.php');
+
+	pg_assert_contains('pg_user_form_layout(', $source, 'the import screen uses the shared wide layout');
+	pg_assert_contains('pg_user_form_rights_cards($permission_ui[\'rows\'])', $source, 'the rights cards are the shared ones');
+	pg_assert_same(0, substr_count($source, 'class="buttons navigation'), 'no save bar of its own: the layout draws it');
+	pg_assert_true(strpos($source, "pg_user_form_layout(") < strpos($source, "\$permission_ui['panels']"), 'the permission panels follow the layout');
+}
+
 function test_user_form_field_problems()
 {
 	pg_assert_same(array(), pg_user_form_field_problems(array('reward_points' => '12', 'username' => 'ann', 'badge_label' => '')), 'valid fields');
