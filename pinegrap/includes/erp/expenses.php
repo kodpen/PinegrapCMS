@@ -1123,7 +1123,8 @@ function erp_expense_save($data, $user_id = 0, $id = 0)
  *
  * @param int   $id
  * @param array $payment  cash_account_id, paid_date, payment_method
- * @return array ['error' => string, 'expense' => array|null]
+ * @return array ['error' => string, 'expense' => array|null, 'field' => the
+ *               form field the refusal is about, or '']
  */
 function erp_expense_pay_check($id, $payment)
 {
@@ -1136,9 +1137,10 @@ function erp_expense_pay_check($id, $payment)
         return array('error' => lang('That expense is not waiting to be paid.'), 'expense' => null);
     }
 
-    $refusal = erp_expense_payment_refusal($expense, $payment);
+    $field = '';
+    $refusal = erp_expense_payment_refusal($expense, $payment, $field);
 
-    return array('error' => $refusal, 'expense' => ($refusal === '') ? $expense : null);
+    return array('error' => $refusal, 'expense' => ($refusal === '') ? $expense : null, 'field' => ($refusal !== '') ? (string) $field : '');
 }
 
 /**
@@ -1147,14 +1149,15 @@ function erp_expense_pay_check($id, $payment)
  * @param int   $id
  * @param array $payment  cash_account_id, paid_date, payment_method
  * @param int   $user_id
- * @return array ['success' => bool, 'error' => string]
+ * @return array ['success' => bool, 'error' => string, 'field' => the form
+ *               field a refusal is about, when one is]
  */
 function erp_expense_pay($id, $payment, $user_id = 0)
 {
     $checked = erp_expense_pay_check($id, $payment);
 
     if ($checked['error'] !== '') {
-        return array('success' => false, 'error' => $checked['error']);
+        return array('success' => false, 'error' => $checked['error'], 'field' => (string) ($checked['field'] ?? ''));
     }
 
     if (!erp_tx_begin()) {
