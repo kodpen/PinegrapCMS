@@ -28,11 +28,13 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
 - AN6 (M) Video. Done (#6314, `ui/image-editor-video-export.md`).
   - WebCodecs with the MP4 and WebM muxers, the MediaRecorder fallback, the limits.
 
-- AN7 (M) Scenes. `free` (AN3 and AN4 are done).
-  - `doc.scenes`, the strip, transitions, the timeline and exports across scenes; the validator's cap on scenes and their layers goes in one at a time with the save-path steps.
-  - Left by AN4 (#6229 review): a canvas animation names source 0, so a replace from one canvas may name another canvas's animation as its target; tie it to its own canvas (record the canvas file, and have `pg_image_editor_animation_open()` open it as a canvas).
+- AN7a (M) Scenes. Done (#6409, `ui/image-editor-scenes.md`).
+  - `doc.scenes` on a canvas, the strip under the play bar, the scene panel (duration, transition and its time, duplicate, delete, move), transitions in Save animation's frames across scenes, the validator's cap on scenes and their layers, a canvas animation tied to its canvas (#6229 review).
 
-- AN8 (M) Present and PDF. After AN7.
+- AN7b (S) Scenes on the stage. `free` after AN7a.
+  - Play, the scrub and the clock across every scene (the stage opening each scene as the playhead reaches it, the transition shown there), then back to the scene that was open; drag a card to reorder; the tracks of the open scene under the whole timeline.
+
+- AN8 (M) Present and PDF. After AN7a.
   - Present mode in the editor (full screen; click, Space, arrow keys, swipe); the PDF writer; video and GIF of all scenes. No live-site viewer (question 1).
 
 - AN9 (M) Keyframes. Done (#6290, `ui/image-editor-keyframes.md`).

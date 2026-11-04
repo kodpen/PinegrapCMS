@@ -1,6 +1,6 @@
 ---
 name: list-table-commerce-lists
-description: Orders, gift cards, key codes and shipping methods on the list table driver (TD8a): printed whole, columns in commerce_list.php, quick edit, the orders bulk actions as orders[]
+description: Orders, gift cards, key codes, shipping methods (TD8a) and the ERP account prices, minimum stock and stock lists (TD8b) on the list table driver: printed whole, quick edit, bulk actions as ids
 module: commerce_list
 ---
 
@@ -15,6 +15,11 @@ module: commerce_list
 
 ## How do the orders bulk actions get the selection?
 - The bulk buttons (Paraşüt export, Remove Card Data, Mark Shipped, the label buttons, Cancel, Delete) sit in the selection bar inside `form[name=form]`, which still posts to `edit_orders.php` (or `shipment_label.php` by `formaction`). A browser-mode payload is always `{ids}`, so the screen's script writes them as hidden `orders[]` inputs into `#pg_orders_selected`; neither endpoint changed. The per-row cancel button and the tracking buttons are the Action column.
+
+## How did the ERP lists move (TD8b)?
+- `erp_account_prices.php`, `erp_stock_minimums.php` (both quick edit) and the costed products of `erp_stock.php` print whole in browser mode, with their columns inline. They never kept a sort in the session, so they are not in `pg_list_table_printed_lists()`: the browser sorts them for the page only, as their `data-pg-sort` tables did. `pg_commerce_list_specs()` turns an `integer` edit field into a number input.
+- Column keys `product` and `stock` match the cells the quick edit answers redraw. The minimum stock list's selection fills `#erp_order_form` with `products[]` for `add_erp_purchase_order.php` ("Purchase order for the selected" in the bar); the old tick boxes are gone. The stock list's product opens its movements; its total stays in the toolbar line.
+- The "Click a … to change it" hints went: the Quick edit button (F2) opens the fields.
 
 ## What else moved?
 - The gift card balances (active, expired, total) are a line above the list, since the list fills the window to its bottom.

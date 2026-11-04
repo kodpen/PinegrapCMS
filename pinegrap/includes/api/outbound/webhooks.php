@@ -210,7 +210,10 @@ function api_webhook_events() {
 		// and contact_id follow. GET /calendars/events/{id}/reservations lists
 		// them. A cancellation does not give the spots back and is not
 		// announced here (order.cancelled is).
-		'calendar_event.reserved' => 'A placed order reserved spots on a calendar event (a cart that is not ordered yet is not announced)'
+		'calendar_event.reserved' => 'A placed order reserved spots on a calendar event (a cart that is not ordered yet is not announced)',
+		// The submitted form screens' deletes and the API's alike (includes/fn/
+		// submitted_form_writes.php); undoing an import stays quiet.
+		'form.submission.deleted' => 'A form submission was deleted'
 	);
 
 	// A module announces its own events from its own file. The core list wins a

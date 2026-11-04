@@ -4612,6 +4612,16 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         }
     }
 
+    // Stock per location: the product's quantity at each location and its
+    // last moves (includes/fn/stock_moves.php); '' on a site without
+    // locations or for a product that tracks no inventory.
+    $output_stock_moves_card = '';
+
+    if (($pg_mode === 'edit') && function_exists('pg_schema_has') && pg_schema_has('stock_moves')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_moves.php');
+        $output_stock_moves_card = pg_stock_product_moves_card($pg_product_id);
+    }
+
     $output_barcode_card = '';
 
     if (($pg_mode === 'edit') && defined('BARCODE_ENABLED') && BARCODE_ENABLED) {
@@ -6203,6 +6213,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                     -->
                     ' . $output_workspace_card . '
                     ' . $output_barcode_card . '
+                    ' . $output_stock_moves_card . '
                     ' . pg_pb_render_preview($pg_mode !== 'edit') . '
                 </div>
             </div>

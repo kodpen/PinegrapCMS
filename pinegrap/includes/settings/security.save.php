@@ -112,6 +112,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // A key reset leaves the values the card lists unreadable: it waits for
+    // the box saying they will be entered again.
+    if ((post_value('ecommerce_reset_encryption_key') == 1)
+        && (post_value('ecommerce_reset_encryption_key_confirm') != 1)
+        && pg_encryption_key_reset_counts(pg_encryption_key_reset_source())) {
+        $liveform->mark_error('ecommerce_reset_encryption_key_confirm', lang('Tick the box saying the listed values will have to be entered again, or turn Reset Encryption Key off.'));
+    }
+
     if ($liveform->check_form_errors()) {
         return;
     }

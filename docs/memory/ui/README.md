@@ -93,7 +93,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - comment-moderation-recycle-bin.md: Comments on pages in the Recycle Bin: left out of the moderation queue, its count, the greeting and the Workspace counter; marked without a link on the Comments list and edit screens
 - commerce-delete-confirm.md: Edit State, Country, Shipping Method, Zone and Product Attribute name and count, in their Delete confirmation, the records the delete removes or unlinks
 - commerce-form-group-names.md: Commerce forms names: State Country label, ship date Adjustment pair, shipping day sets, rate tiers and rate boxes, product group Display Type and gift card Format legends
-- commission-list-paging.md: The commission lists (view_commissions.php, view_recurring_commission_profiles.php) paged and searched on the server; issue #2038 (search found only the page PHP printed); what the screens keep
+- commission-list-paging.md: The commission lists searched on the server, on the list table driver since #6380; issue #2038 (search found only the page PHP printed); what the screens keep
 - common-region-shared-form.md: The common region create and edit screens share includes/forms/common_region_form.php: what it holds, the label fixes, what stays in the screens
 - contact-filter-keyboards.md: Contacts Advanced Filters: no address autofill, phone and web address keyboards, an unmasked e-mail box; the panel's permissive Inputmask email alias; Submitted Forms Referring URL keyboard
 - contact-form-checks.md: Create/Edit Contact save checks: membership date and negative rate refused, role 3 keeps a group on edit, picture posted as file_id or image_url, notes box, wording
@@ -139,7 +139,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-v2-pipeline-card.md: New dashboard pipeline card (cards/pipeline.php, renderer in pg_dash_cards_work.js): the line per preset, the eight spans, where each step reads its data, gates, flags and links
 - dashboard-v2-queue-card.md: The new dashboard's Next up card (queue): its sources and gates, where each count is read (Operations Desk helpers, ERP aging, the drafts folder), the row order, the actions
 - dashboard-v2-security-team-cards.md: New dashboard cards firewall, team, mytasks, waiting, week, calendars (cards/<id>.php, team.php, pg_dash_cards_security.js, pg_dash_cards_team.js): data sources, failed sign-ins figure, the task tick
-- dashboard-v2-share.md: New dashboard role defaults and lock (#4975): the Share with the team section, dashboard_role_default, which layout and look a person sees, why the lock never binds administrators and designers
+- dashboard-v2-share.md: New dashboard role defaults and lock (#4975, removal #6393): Share with the team, dashboard_role_default and its remove, which layout a person sees, why the lock skips roles 0-1
 - dashboard-v2-shop-cards.md: The new dashboard's shop cards (shop, salesmap, ops, orders, offers, fx): where each reads its data, the widget queries they share, money as plain text, the map drawing
 - dashboard-v2-side-panel.md: New dashboard side panel (#4888): gallery.php data, pg_dash_panel.js (work area, gallery, Add card tile, top section, look) and its hooks with the edit script
 - dashboard-v2-width.md: How wide the new dashboard gets and how many columns its grid takes: the 118rem cap, columns by the dashboard's own width (container queries), edit mode, the fallback
@@ -153,6 +153,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - design-files-screens.md: All Design Files and Edit Design File: type read from the name, image editor script outside the table, Recycle Bin left out, POST branch, blocked rename, optimize way back
 - designer-region-shared-form.md: The designer region create and edit screens share includes/forms/designer_region_form.php: what it holds, the label fix, what stays in the screens
 - detail-screen-values.md: Read-only values on details screens (Visit Details, submitted forms) as text not headings, escaped once, long links wrapping; ERP quarter option wording
+- details-panel-rule.md: The one structure rule of a list's details panel ("Ayrıntılar"): fixed section order, label/value lines with a fixed label column, empty values left out; how the table driver applies it
 - dialog-result-after-close.md: A Bootstrap 6 dialog or drawer hands its result to the page only once closed; the writing box's + menu windows put in nothing before that (#4196); the caret after a card
 - dynamic-region-shared-form.md: The dynamic region create and edit screens share includes/forms/dynamic_region_form.php: what it holds, the label fix, what stays in the screens
 - edit-file-header.md: Edit File header (edit_file.php) mirrors the File Manager details: "W × H px", folder crumb, optimized state, last change with name, address, Where is it used?
@@ -241,6 +242,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-picture-layer.md: A photo's picture as the bottom layer (E30, #6470): doc.canvas.picture, unlocking, move, resize and delete like a layer, the extend step's pw and ph
 - image-editor-redact.md: The image editor's redaction (E10): layer fields, box and brush areas, the preview filters, the masks a save sends, the server's step 4 under Imagick and GD, metadata, versions
 - image-editor-render.md: The image editor's animation frames and GIF (AN3): renderFrame(), paintLayers() with a time, action base, the encoder worker, the Save animation dialog with estimate, progress, Cancel and Download
+- image-editor-scenes.md: A canvas's scenes (AN7a): doc.scenes and the open scene, the strip under the play bar, the scene panel, transitions, frames across scenes, the save's cap, a canvas animation tied to its canvas
 - image-editor-scissors.md: The image editor's Scissors tool: a click cuts a path or shape at a point, a drag cuts every path the line crosses; the model's cut functions
 - image-editor-sticker.md: The image editor's Sticker and Frame tools: the sticker layer, its label, a picture from Files, the four frames on the saved picture's edge, an artboard's background fill, how a save draws them
 - image-editor-svg-motion.md: Motion in a saved SVG (AN10): layer groups pgm-n, the numbers M.svgMotion() sends, the @keyframes style the server writes, reduced motion, what reopening keeps
@@ -269,10 +271,11 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-row-names.md: Orders, products, submitted forms, pages and files lists: row box names, SEO links, No Image, folder access by icon and word, names and descriptions that wrap instead of a cut
 - list-stale-filter.md: All Ads, Verified Shipping Addresses and Submitted Forms reset a remembered filter whose ad region, state or custom form is gone to '[All]' (pg_list_filter_known())
 - list-status-words.md: A word beside a list row's green or red state (pg_list_status_word()): product groups, key codes, arrival dates, gift cards, ERP expenses
-- list-table-commerce-lists.md: Orders, gift cards, key codes and shipping methods on the list table driver (TD8a): printed whole, columns in commerce_list.php, quick edit, the orders bulk actions as orders[]
+- list-table-commerce-lists.md: Orders, gift cards, key codes, shipping methods (TD8a) and the ERP account prices, minimum stock and stock lists (TD8b) on the list table driver: printed whole, quick edit, bulk actions as ids
 - list-table-driver-browser.md: List table driver in the browser (assets/js/pg_list_table.js): selection, Ctrl+A, undo, rows on scroll, sort, search, columns menu, details panel, phone cards, thumbnails, layout
-- list-table-driver-lists.md: Which screens are on the list table driver (pages, users, contacts, submitted forms, products, logs, the printed lists): sources, columns, bulk actions, what each keeps
+- list-table-driver-lists.md: Which screens are on the list table driver (pages, users, contacts, submitted forms, products, commissions, mail queue, logs, printed lists): sources, columns, bulk actions
 - list-table-driver.md: List table driver server core (includes/fn/list_table.php): source and column model, first rows printed, keyset batches, the list_table_rows action, the selection resolver
+- list-table-layout.md: How a list on the table driver looks (backend.src.css): the frame, one-line rows, sticky name and actions columns, the selection bar, the details panel's layout rule, the SEO score column
 - list-table-printed.md: Browser mode of the list table driver: a small list printed whole (pg_list_table_printed()), its sort kept by list_table_sort, the toolbar search box
 - list-table-quick-edit.md: Quick edit mode of the list table driver (assets/js/pg_list_table_edit.js): the source's edit key, F2, save on leave, refused values, undo, apply to the selected rows
 - live-filter-status.md: Live filters that say what they found (API applications, Workspace MCP tools, marketplace picker and category search): hidden status region, empty line, Enter in the MCP tool filter
@@ -281,7 +284,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - liveform-notices-trap.md: Pitfalls: notices and warnings stay in the session until remove_form(), screens must print them, and a request run twice stacks the same notice.
 - loading-curtain.md: Panel transitions (pg_preloader_markup()): arrival curtain after 120 ms and held screens, the leaving bar after 150 ms until pagehide, what never shows it, the download cookie
 - login-region-shared-form.md: The login region create and edit screens share includes/forms/login_region_form.php: what it holds, the default, what stays in the screens
-- mail-queue-paging.md: The mail queue screen's e-mail and SMS lists paged on the server, the wrapping long-text cells, Retry while the queue is inactive, and the screen's wording
+- mail-queue-paging.md: The mail queue screen's e-mail and SMS lists on the list table driver, the row confirm, the wrapping long-text cells, Retry while the queue is inactive, and the screen's wording
 - main-menu-categories.md: Main menu rows in categories (pg_menu_categories(), pg_menu_layout()): which rows, no heading over nothing, the File Manager row with the files, retired slot 3, store row names, heading look
 - main-menu-drawer-focus.md: The phone main menu drawer (below lg) is inert while shut, Escape gives focus back to the bar button, focus leaving it shuts it; the symptoms they fixed
 - main-menu-entry-gates.md: Main menu entries follow the gate of the screen they open: the screens that had no menu path for some of the people they admit, the entries that led to a refusal, and how both were checked

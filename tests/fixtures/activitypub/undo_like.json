@@ -1,0 +1,12 @@
+{
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "id": "https://mastodon.example/users/alice#likes/5678/undo",
+    "type": "Undo",
+    "actor": "https://mastodon.example/users/alice",
+    "object": {
+        "id": "https://mastodon.example/users/alice#likes/5678",
+        "type": "Like",
+        "actor": "https://mastodon.example/users/alice",
+        "object": "https://blog.example/news/first-post"
+    }
+}

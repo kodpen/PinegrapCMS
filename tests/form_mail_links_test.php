@@ -5,7 +5,7 @@
  * Tests for the link fields of form e-mails (^^email_preferences_url^^ and
  * ^^confirm_subscription_url^^): the preferences address builder
  * (includes/fn/mail.php), the fill and its context (includes/fn/custom_form.php)
- * and where custom_form.php fills them in.
+ * and where the form's e-mails (includes/fn/form_mails.php) fill them in.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -216,23 +216,23 @@ function pg_test_form_mail_links_path($file, $gate, $needles)
 
 function test_form_mail_links_custom_form_order()
 {
-	pg_test_form_mail_links_path('custom_form.php', 'if ($to_email_address == $submitter_email_address)', array(
+	pg_test_form_mail_links_path('includes/fn/form_mails.php', 'if ($to_email_address == $submitter_email_address)', array(
 		'values'            => '$mail_link_values = pg_cf_mail_link_values();',
 		'subject template'  => "\$subject = pg_cf_fill_mail_links(\$submitter_email_subject, \$mail_link_values, 'plain_text');",
 		'subject values'    => '$subject = get_variable_submitted_form_data_for_content(',
-		'plain body'        => "get_variable_submitted_form_data_for_content(\$_POST['page_id'], \$form_id, pg_cf_fill_mail_links(pg_cf_email_body_or_default(",
+		'plain body'        => "get_variable_submitted_form_data_for_content(\$page_id, \$form_id, pg_cf_fill_mail_links(pg_cf_email_body_or_default(",
 		'html page'         => '$body = get_page_content($submitter_email_page_id',
 		'html tokens'       => "pg_cf_fill_mail_link_tokens(\$body, \$mail_link_values, 'html')",
 		'send'              => 'email(array(',
 		'clear'             => 'pg_cf_mail_links_context(false);',
 		'admin subject'     => "\$administrator_email_subject = pg_cf_fill_mail_links(\$administrator_email_subject, array(), 'plain_text');",
 		'admin subject values' => '$administrator_email_subject = get_variable_submitted_form_data_for_content(',
-		'admin plain body'  => "pg_cf_fill_mail_links(pg_cf_email_body_or_default(\$_POST['page_id'], \$administrator_email_body), array(), 'plain_text')",
+		'admin plain body'  => "pg_cf_fill_mail_links(pg_cf_email_body_or_default(\$page_id, \$administrator_email_body), array(), 'plain_text')",
 		'admin html page'   => '$body = get_page_content($administrator_email_page_id',
 		'admin html tokens' => "pg_cf_fill_mail_link_tokens(\$body, array(), 'html')",
 	));
 
-	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/custom_form.php');
+	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/fn/form_mails.php');
 	pg_assert_contains("'subject' => \$subject,", $source, 'the filled copy of the subject is sent');
 }
 

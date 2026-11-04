@@ -225,3 +225,87 @@ function pg_vat_order_write($order_id, array $fields)
         array((string) $fields['vat_id'], (int) $fields['vat_checked_at'], (string) $fields['vat_request_id'], (int) $order_id)
     );
 }
+
+/**
+ * The line an order with a VIES-confirmed VAT id carries on its screen and
+ * printout: the reverse charge, the id, when VIES confirmed it and, when VIES
+ * gave one, the consultation number. '' for an order without a confirmed id.
+ *
+ * @param array $order a row of orders (vat_id, vat_checked_at, vat_request_id)
+ * @return string plain text, not escaped
+ */
+function pg_vat_order_note(array $order)
+{
+    $vat_id = trim((string) ($order['vat_id'] ?? ''));
+
+    if ($vat_id === '') {
+        return '';
+    }
+
+    $checked_at = (int) ($order['vat_checked_at'] ?? 0);
+
+    $note = ($checked_at > 0)
+        ? lang(array('string' => 'Reverse charge: VAT id {var:1} confirmed by VIES on {var:2}.', 'vars' => array($vat_id, date('Y-m-d H:i', $checked_at))))
+        : lang(array('string' => 'Reverse charge: VAT id {var:1} confirmed by VIES.', 'vars' => array($vat_id)));
+
+    $request_id = trim((string) ($order['vat_request_id'] ?? ''));
+
+    if ($request_id !== '') {
+        $note .= ' ' . lang(array('string' => 'VIES consultation number: {var:1}.', 'vars' => array($request_id)));
+    }
+
+    return $note;
+}
+
+/**
+ * The tax number box's attributes on a designed checkout form, fitted to the
+ * store's country: a Turkish store keeps them (10 or 11 digits); elsewhere
+ * the digits-only pattern goes and the box takes an EU VAT id with its
+ * prefix, as wide as contacts.tax_number. Pure.
+ *
+ * @param array  $attrs         list of array('name' => …, 'value' => …)
+ * @param string $store_country ISO code
+ * @return array the fitted list
+ */
+function pg_vat_tax_number_attrs_fit(array $attrs, $store_country)
+{
+    $width = pg_vat_tax_number_width($store_country);
+
+    if ($width === 11) {
+        return $attrs;
+    }
+
+    $fitted = array();
+
+    foreach ($attrs as $attr) {
+        $name = strtolower((string) ($attr['name'] ?? ''));
+
+        if ($name === 'pattern') {
+            continue;
+        }
+
+        if ($name === 'maxlength') {
+            $attr['value'] = (string) $width;
+        } elseif ($name === 'inputmode') {
+            $attr['value'] = 'text';
+        }
+
+        $fitted[] = $attr;
+    }
+
+    return $fitted;
+}
+
+/**
+ * The hint under the tax number box for a store outside Turkey, '' for a
+ * Turkish store (its box keeps the digits hint).
+ *
+ * @param string $store_country ISO code
+ * @return string
+ */
+function pg_vat_tax_number_hint($store_country)
+{
+    return (pg_vat_tax_number_width($store_country) === 11)
+        ? ''
+        : lang('Your tax number; an EU VAT id with its country prefix, for example DE123456789.');
+}

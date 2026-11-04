@@ -53,6 +53,11 @@ function pg_list_table_definitions()
         'view_log' => array('file' => 'includes/fn/site_log_list.php', 'source' => 'pg_site_log_list_source'),
         'view_audit_log' => array('file' => 'includes/fn/audit_list.php', 'source' => 'pg_audit_list_source'),
         'view_waf_log' => array('file' => 'includes/fn/waf_log_list.php', 'source' => 'pg_waf_log_list_source'),
+        'view_stock_moves' => array('file' => 'includes/fn/stock_moves.php', 'source' => 'pg_stock_move_list_source'),
+        'view_commissions' => array('file' => 'includes/fn/commission_list.php', 'source' => 'pg_commission_list_source'),
+        'view_recurring_commission_profiles' => array('file' => 'includes/fn/commission_list.php', 'source' => 'pg_commission_profile_list_source'),
+        'mail_queue' => array('file' => 'includes/fn/mail_queue_list.php', 'source' => 'pg_mail_queue_list_source'),
+        'mail_queue_sms' => array('file' => 'includes/fn/mail_queue_list.php', 'source' => 'pg_sms_queue_list_source'),
     );
 }
 
@@ -1188,4 +1193,40 @@ function pg_list_table_check_cell($on)
 {
     return pg_list_cell($on ? '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>' : '',
         'align-middle', array('data-pg-sort-value' => $on ? 1 : 0));
+}
+
+/**
+ * The SEO column of a list: its heading, a narrow width and the score it
+ * sorts by. The bar sits in this column of its own, never under the
+ * record's name, so rows keep one height.
+ *
+ * @param string $sort the SQL expression of the score ('' when the list
+ *                     does not sort by it)
+ * @return array spec, as pg_list_table_column() takes it
+ */
+function pg_list_table_seo_column($sort)
+{
+    return array('heading' => lang('SEO'), 'width' => '7.5rem', 'kind' => 'badge', 'sort' => (string) $sort);
+}
+
+/**
+ * The SEO column's cell: the score bar with its number, opening the
+ * record's analysis; a fresh analysis redraws it (data-pg-seo-bar). Needs
+ * seo.php.
+ *
+ * @param string $type 'page' or 'product'
+ * @param int    $id
+ * @param array  $row  the record with seo_score, seo_flags and
+ *                     seo_analysis_current
+ * @return array pg_list_cell()
+ */
+function pg_list_table_seo_cell($type, $id, array $row)
+{
+    $key = $type . ':' . (int) $id;
+    $url = 'get_seo_analysis.php?type=' . rawurlencode($type) . '&amp;id=' . (int) $id . get_token_query_string_field();
+
+    return pg_list_cell('<a href="javascript:void(0)" class="pg-seo-open pg-list-table-seo text-decoration-none" data-pg-seo-bar="' . h($key) . '"'
+        . ' aria-label="' . h(pg_seo_link_name($row)) . '" title="' . h(lang('SEO Detail')) . '" data-seo-url="' . $url . '">'
+        . pg_seo_render_bar($row) . '</a>',
+        'align-middle', array('data-pg-sort-value' => pg_seo_row_scored($row) ? (int) $row['seo_score'] : -1));
 }

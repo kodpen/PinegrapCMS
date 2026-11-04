@@ -343,6 +343,7 @@
     "Google reviews need the site's encryption key to keep the API key.": "Google yorumları, API anahtarını saklamak için sitenin şifreleme anahtarına ihtiyaç duyar.",
     "Google shows no review of the business yet.": "Google'da işletmenin henüz yorumu yok.",
     "Google shows the business without a review": "Google işletmeyi yorumsuz gösteriyor",
+    "Google sign-in client secret": "Google oturum açma istemci sırrı",
     "Google sign-in is off": "Google ile giriş kapalı",
     "Google sign-in is on": "Google ile giriş açık",
     "Google tags you add yourself (Tag Manager, Google Ads) are told the answer through Google Consent Mode v2: they set no cookies until the visitor allows statistics or marketing. Such a tag can stay as it is; for the notice to ask about its category, add an empty held tag such as {var:1}.": "Kendi eklediğiniz Google etiketleri (Etiket Yöneticisi, Google Ads) yanıtı Google İzin Modu v2 ile öğrenir: ziyaretçi istatistiğe ya da pazarlamaya izin verene kadar çerez yazmazlar. Böyle bir etiket olduğu gibi kalabilir; bildirimin onun kategorisini sorması için {var:1} gibi boş bir bekletilen etiket ekleyin.",

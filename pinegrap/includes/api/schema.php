@@ -607,7 +607,7 @@ function api_schema() {
 			'handler' => 'api_orders_list',
 			'returns' => array('list' => 'Order'),
 			'summary' => 'List orders',
-			'description' => 'Cursor paged and ordered by the order date, oldest first, so updated_since walks new orders in one direction without repeating any; sort=placed_desc lists the newest first and resumes the same way. modified_since lists the orders changed at or after a moment, oldest change first, so a client asks what changed since its last read and walks forward: a status change, a cancellation, a restore, a refund, notes, shipping or an export moves an order\'s modified_at. A cursor works only under the sort (or the modified_since listing) it was made for; under another one it is 400 invalid_cursor. Each order carries type (online, local for a counter sale, or marketplace), cancelled_at (null unless cancelled), cancellation_reason (\'\' when none) and refund_status (\'\', pending, refunded, failed or manual_required); each is null on a site whose database lacks its column.',
+			'description' => 'Cursor paged and ordered by the order date, oldest first, so updated_since walks new orders in one direction without repeating any; sort=placed_desc lists the newest first and resumes the same way. modified_since lists the orders changed at or after a moment, oldest change first, so a client asks what changed since its last read and walks forward: a status change, a cancellation, a restore, a refund, notes, shipping or an export moves an order\'s modified_at. A cursor works only under the sort (or the modified_since listing) it was made for; under another one it is 400 invalid_cursor. Each order carries type (online, local for a counter sale, or marketplace), cancelled_at (null unless cancelled), cancellation_reason (\'\' when none), refund_status (\'\', pending, refunded, failed or manual_required) and the EU VAT id the EU VAT service (VIES) confirmed at checkout: vat_id (\'\' when none; the order is then tax-exempt under the reverse charge), vat_checked_at (when VIES confirmed it, null when never) and vat_request_id (the VIES consultation number, \'\' when none); each is null on a site whose database lacks its column.',
 			'params'  => array(
 				array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only orders placed at or after this moment.'),
 				array('name' => 'date_to',       'in' => 'query', 'type' => 'datetime', 'description' => 'Only orders placed at or before this moment. A date alone (YYYY-MM-DD) counts that day whole, to 23:59:59 in the site\'s time zone; a value with a time is that moment.'),
@@ -652,7 +652,7 @@ function api_schema() {
 			'handler' => 'api_orders_get',
 			'returns' => 'Order',
 			'summary' => 'One order, with its lines',
-			'description' => 'The order with its lines and its shipments, one per shipping address. Each shipment lists its tracking_numbers and, in parcels, every number with the carrier (a key such as yurtici, or null when none is known), carrier_name, tracking_url (the carrier\'s own page, or the one built from the carrier\'s tracking address; null when neither is known), status (created, in_transit, out_for_delivery, delivered, returned or exception) and shipped_at / delivered_at (UTC, null when not known) - the carrier and link the order screen shows. labels lists the carrier labels made for the address, newest first: driver (the label service), number (the tracking number, null when none), reference (the shipment at the service), barcode, format (pdf, zpl or svg), state (active or cancelled), is_return, created_at, cancelled_at, pickup_ref (the carrier\'s confirmation of a booked pickup, null when none), pickup_at (the start of the booked pickup window, UTC, null when none), file_kept (false once the kept copy was removed after its retention time) and document_url (GET /orders/{id}/shipments/labels/{label_id}/document); the document, which carries the recipient\'s address, is never inline. The order.shipped and order.delivered webhooks carry the same parcels for the address they are about; order.shipped from a marketplace import carries only the parcel it announces. Like the list, the order carries type (online, local or marketplace), cancelled_at, cancellation_reason and refund_status (\'\', pending, refunded, failed or manual_required), each null on a site whose database lacks its column.',
+			'description' => 'The order with its lines and its shipments, one per shipping address. Each shipment lists its tracking_numbers and, in parcels, every number with the carrier (a key such as yurtici, or null when none is known), carrier_name, tracking_url (the carrier\'s own page, or the one built from the carrier\'s tracking address; null when neither is known), status (created, in_transit, out_for_delivery, delivered, returned or exception) and shipped_at / delivered_at (UTC, null when not known) - the carrier and link the order screen shows. labels lists the carrier labels made for the address, newest first: driver (the label service), number (the tracking number, null when none), reference (the shipment at the service), barcode, format (pdf, zpl or svg), state (active or cancelled), is_return, created_at, cancelled_at, pickup_ref (the carrier\'s confirmation of a booked pickup, null when none), pickup_at (the start of the booked pickup window, UTC, null when none), file_kept (false once the kept copy was removed after its retention time) and document_url (GET /orders/{id}/shipments/labels/{label_id}/document); the document, which carries the recipient\'s address, is never inline. The order.shipped and order.delivered webhooks carry the same parcels for the address they are about; order.shipped from a marketplace import carries only the parcel it announces. Like the list, the order carries type (online, local or marketplace), cancelled_at, cancellation_reason, refund_status (\'\', pending, refunded, failed or manual_required), vat_id, vat_checked_at and vat_request_id, each null on a site whose database lacks its column.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -3588,6 +3588,71 @@ function api_schema() {
 				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'complete',      'in' => 'body', 'type' => 'bool'),
 				array('name' => 'values',        'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'value' => 'string'), 'max_items' => 50, 'description' => 'Objects of {name, value}: the field name and its new answer. Up to 10000 characters each; an empty value clears it.')
+			)
+		),
+
+		array(
+			'id'      => 'forms.fields',
+			'method'  => 'GET',
+			'path'    => '/forms/{id}/fields',
+			'scope'   => 'forms:read',
+			'handler' => 'api_form_fields',
+			'returns' => array('list' => 'FormField'),
+			'summary' => 'The fields of a form',
+			'description' => 'The same field list GET /forms/{id} carries, on its own: what a client reads before it sends a submission. name is what a submission\'s values are addressed by; options lists the choices of a pick list, radio button or check box, and an answer to one of those is one of their value strings. In form order, one page. A form on a page in a folder the owner may not edit is answered 404.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.')
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_create',
+			'method'  => 'POST',
+			'path'    => '/forms/{id}/submissions',
+			'scope'   => 'forms:write',
+			'handler' => 'api_form_submission_create',
+			'dry_run' => true,
+			'returns' => 'FormSubmission',
+			'status'  => 201,
+			'summary' => 'Add a submission',
+			'description' => 'Records a submission the way staff add one on the Add Submitted Form screen, through the same checks and the same write: the owner is stored as the submitter, office-use fields may be answered, and no visitor columns (address, referrer, tracking code) are written. Answers are addressed by the field name (GET /forms/{id}/fields). A required field is refused when it is left empty and the submission is complete; a date is YYYY-MM-DD, a time HH:MM, an e-mail address must be one, and the answer to a choice field must be one of its option values - a check box group or a multiple pick list takes its name once per choice. A file upload or a signature field cannot be answered through the API. A complete submission announces form.submitted; send_notifications also sends the e-mails a visitor\'s submission would. Contact records, memberships and the confirmation page of a visitor\'s submission are not part of it. A form on a page in a folder the owner may not edit is answered 404.',
+			'params'  => array(
+				array('name' => 'id',                 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'values',             'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'value' => 'string'), 'max_items' => 200, 'description' => 'Objects of {name, value}: the field name and its answer, up to 10000 characters each.'),
+				array('name' => 'complete',           'in' => 'body', 'type' => 'bool', 'description' => 'false saves it for later: required fields are not enforced and nothing is announced. true by default.'),
+				array('name' => 'send_notifications', 'in' => 'body', 'type' => 'bool', 'description' => 'true sends the notification e-mails the form sends for a visitor\'s submission. Off by default; only for a complete submission.')
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_delete',
+			'method'  => 'DELETE',
+			'path'    => '/forms/{id}/submissions/{submission_id}',
+			'scope'   => 'forms:write',
+			'handler' => 'api_form_submission_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a submission',
+			'description' => 'As the submitted form screens delete one, which cannot be undone: its answers, its uploaded files, its signatures, its comments and their attachments go with it. Announces form.submission.deleted. A submission made on another form, or on a form in a folder the owner may not edit, is answered 404. A default IIS install answers DELETE itself before PHP is reached: POST /forms/{id}/submissions/{submission_id}/delete does the same thing and always arrives.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_delete_post',
+			'method'  => 'POST',
+			'path'    => '/forms/{id}/submissions/{submission_id}/delete',
+			'scope'   => 'forms:write',
+			'handler' => 'api_form_submission_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a submission, addressed as a POST',
+			'description' => 'The same deletion as DELETE /forms/{id}/submissions/{submission_id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
 		),
 

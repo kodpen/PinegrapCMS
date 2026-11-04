@@ -63,12 +63,25 @@ for ($i = $oldest_year; $i <= $current_year; $i++) {
     $years[] = $i;
 }
 
-// The rows come one page at a time from the commission_list_rows action
-// (includes/panel/lists.php), searched and counted on the server.
+// The list table driver prints the first rows; the next ones come from its
+// list_table_rows action (includes/panel/lists.php) as the list scrolls,
+// within the range kept above.
 $list_sort = pg_commission_list_sort();
 $sort_columns = $list_sort['sort_columns'];
 $sort_default = $list_sort['sort_default'];
 $sort_levels = $list_sort['sort_levels'];
+
+$list_source = pg_commission_list_source($user, array());
+
+if ($list_source === null) {
+    output_error(lang('Access denied'));
+}
+
+$list_page = pg_list_table_page($list_source, array(), null);
+
+if ($list_page === false) {
+    output_error(lang('Query failed.'));
+}
 
 // get pending total
 $query =
@@ -195,65 +208,52 @@ pg_page_shell([
            
             ' . pg_screen_toolbar(array(
                 'search' => array(
+                    '<label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search"><span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span><input type="search" class="form-ghost" data-pg-list-search="view_commissions" placeholder="' . h(lang('Search')) . '" aria-label="' . h(lang('Search')) . '"></label>',
                     pg_list_sort_menu('view_commissions.php', $sort_columns, $sort_levels, $sort_default),
                     '<a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_commissions.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>',
                 ),
             )) . '
             ' . $output_advanced_filters . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table " style="width:100%;display:none" data-pg-list-action="commission_list_rows">
-                        <thead>
-                            <tr>
-                                <th class="noVis">' . lang('Action') . '</th> 
-                                <th>' . get_column_heading(lang('Affiliate Name'), $sort_levels, '', '', 'affiliate_name') . '</th>
-                                <th>' . get_column_heading(lang('Affiliate Code'), $sort_levels, '', '', 'affiliate_code') . '</th>
-                                <th>' . get_column_heading(lang('Reference Code'), $sort_levels, '', '', 'reference_code') . '</th>
-                                <th>' . get_column_heading(lang('Status'), $sort_levels, '', '', 'status') . '</th>
-                                <th>' . get_column_heading(lang('Amount'), $sort_levels, '', '', 'amount') . '</th>
-                                <th>' . get_column_heading(lang('Frequency'), $sort_levels, '', '', 'frequency') . '</th>
-                                <th>' . get_column_heading(lang('Order'), $sort_levels, '', '', 'order_number') . '</th>
-                                <th>' . get_column_heading(lang('Product'), $sort_levels, '', '', 'product') . '</th>
-                                <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
+            <div class="row g-5 my-3">
+                <div class="col-6 md:col-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="small fg-secondary">' . lang('Pending Total') . '</div>
+                            <div class="fs-2xl fw-bold fg-body">' . pg_format_money($pending_total / 100, BASE_CURRENCY_SYMBOL) . '</div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="d-flow-root">
-                <div class="col-12 sm:col-6 md:col-4 lg:col-3  sm:float-end">
-                    <div class="card my-7 border-primary">
-                        <div class="card-body ">
-                            <div class="row">
-                                <div class="col-12 text-center">
-                                    <h5>' . lang('Pending Total') . '</h5>
-                                    <p class="fw-bolder fg-body">' . pg_format_money($pending_total / 100, BASE_CURRENCY_SYMBOL) . '</p>
-                                    <hr/>
-                                </div>
-                                <div class="col-12 text-center">
-                                    <h5>' . lang('Payable Total') . '</h5>
-                                    <p class="fw-bolder fg-primary">' . pg_format_money($payable_total / 100, BASE_CURRENCY_SYMBOL) . '</p>
-                                    <hr/>
-                                </div>
-                                <div class="col-12 text-center ">
-                                    <h5>' . lang('Ineligible Total') . '</h5>
-                                    <p class="fw-bolder fg-danger">' . pg_format_money($ineligible_total / 100, BASE_CURRENCY_SYMBOL) . '</p>
-                                    <hr/>
-                                </div>
-                                <div class="col-12 text-center ">
-                                    <h5>' . lang('Paid Total') . '</h5>
-                                    <p class="fw-bolder fg-success">' . pg_format_money($paid_total / 100, BASE_CURRENCY_SYMBOL) . '</p>
-                                </div>
-                            </div>
+                <div class="col-6 md:col-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="small fg-secondary">' . lang('Payable Total') . '</div>
+                            <div class="fs-2xl fw-bold fg-primary">' . pg_format_money($payable_total / 100, BASE_CURRENCY_SYMBOL) . '</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 md:col-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="small fg-secondary">' . lang('Ineligible Total') . '</div>
+                            <div class="fs-2xl fw-bold fg-danger">' . pg_format_money($ineligible_total / 100, BASE_CURRENCY_SYMBOL) . '</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 md:col-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="small fg-secondary">' . lang('Paid Total') . '</div>
+                            <div class="fs-2xl fw-bold fg-success">' . pg_format_money($paid_total / 100, BASE_CURRENCY_SYMBOL) . '</div>
                         </div>
                     </div>
                 </div>
             </div>
+            ' . pg_list_table_html($list_source, $list_page, lang('All Commissions')) . '
         </div>
     </div>
-</main>' .
+</main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
+' .
     output_footer();
 
 $liveform->remove_form();

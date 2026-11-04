@@ -6,7 +6,7 @@ description: Steps SL4-SL7 of plans/stock-locations.md: transfers and stock hist
 ## Which steps are there?
 - Sizes, tests and memory rules as in `stock-locations-steps.md`; SL4 runs beside SL2 and SL3.
 
-- SL4 (M) Transfers and history. After SL1.
+- SL4 (M) Transfers and history. After SL1. Done in #6417.
   - Settings › Ecommerce › Stock locations (add, edit, order, default, enable); `view_stock_moves.php` (filters by product, location, reason, period, server paged) and a "Transfer" dialog (from, to, quantity, note: two `pg_stock_change()` calls in one transaction); the product screen shows its last moves. Memory: `commerce/stock-locations-moves.md`.
 
 - SL5 (S) Pickup at a location. After SL3 and question 2.
