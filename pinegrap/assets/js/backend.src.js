@@ -7547,11 +7547,13 @@ function generateIndexNowKey() {
 
 // Handle error state specifically for backup process
 function software_backup_handleError(response, backup_btn) {
-    software_backup_updateProgress(0, response.message, true);
+    software_backup_updateProgress(100, response.message, true);
     backup_btn.prop("disabled", false);
 }
 
-// Update progress bar and log messages for backup process
+// Update progress bar and log messages for backup process. An error fills
+// the bar in red and stops its animation, as on the update screens, so a
+// failed step never looks like a running one.
 function software_backup_updateProgress(percent, message, isError = false) {
     const Progress = $(".progress .progress-bar");
     const Progress_container = $(".progress");
@@ -7559,7 +7561,8 @@ function software_backup_updateProgress(percent, message, isError = false) {
 
     Progress.attr("style", "width: " + percent + "%").attr("aria-valuenow", percent);
     Progress_container.removeClass("d-none");
-    Progress.toggleClass("progress-bar-animated", percent < 100);
+    Progress.toggleClass("bg-danger", isError);
+    Progress.toggleClass("progress-bar-animated", !isError && percent < 100);
 
     LogBox.empty().append(message);
     if (isError) {
