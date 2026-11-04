@@ -78,6 +78,19 @@ function test_shipping_carrier_method_beats_default()
 	pg_assert_same('aras', pg_shipping_carrier('12345678901', 'tr-aras', 'yurtici'), 'an alias');
 }
 
+// Kolay Gelsin: named by the method code, linked to its tracking page with the
+// number in ?q=, and its numbers are not shape-checked (their format is not
+// known).
+function test_shipping_carrier_kolaygelsin()
+{
+	pg_assert_same('kolaygelsin', pg_shipping_carrier('12345678901', 'Kolay Gelsin Kargo', 'yurtici'), 'an alias');
+	pg_assert_same('kolaygelsin', pg_shipping_carrier('12345678901', 'KOLAYGELSIN', 'yurtici'), 'the key in capitals');
+	pg_assert_same('kolaygelsin', pg_shipping_carrier('12345678901', '', 'kolaygelsin'), 'the site default');
+	pg_assert_same('https://www.kolaygelsin.com/tracking?q=12345678901', get_shipping_tracking_url('12345678901', 'Kolay Gelsin', 'yurtici'), 'link');
+	pg_assert_same('Kolay Gelsin', get_shipping_carrier_name('12345678901', 'Kolay Gelsin', 'yurtici'), 'name');
+	pg_assert_false(pg_shipment_number_warning('KG-12345678', 'kolaygelsin'), 'no shape check');
+}
+
 // A default that is not a carrier key is no default.
 function test_shipping_carrier_unknown_default_ignored()
 {
