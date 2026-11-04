@@ -228,6 +228,41 @@ $output_table = $report
         </table>'
     : '<p class="p-7 mb-0">' . h(lang('There is no classic style left: every style is a visual design.')) . '</p>';
 
+// What stays classic after every style is moved: refused styles, dynamic
+// regions, custom layouts and a card gateway no payment driver serves.
+$frozen_gateway = '';
+if (defined('ECOMMERCE') && ECOMMERCE && defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD
+    && defined('ECOMMERCE_PAYMENT_GATEWAY') && in_array((string)ECOMMERCE_PAYMENT_GATEWAY, pg_payment_legacy_gateways(), true)
+    && pg_payment_driver_for_gateway((string)ECOMMERCE_PAYMENT_GATEWAY) === '') {
+    $frozen_gateway = (string)ECOMMERCE_PAYMENT_GATEWAY;
+}
+$output_classic = '';
+foreach (pg_ltd_stays_classic($report, $frozen_gateway) as $item) {
+    $styles = $item['styles'] ? ' <span class="fg-secondary">(' . h(implode(', ', $item['styles'])) . ')</span>' : '';
+    switch ($item['code']) {
+        case 'blocked':
+            $text = lang(array('string' => '{var:1} styles the visual designer cannot open stay as they are.', 'vars' => array($item['count'])));
+            break;
+        case 'dynamic':
+            $text = lang(array('string' => '{var:1} dynamic regions stay PHP, edited from their node.', 'vars' => array($item['count'])));
+            break;
+        case 'custom_layout':
+            $text = lang(array('string' => '{var:1} pages keep a custom layout inside the system region.', 'vars' => array($item['count'])));
+            break;
+        default:
+            $text = lang(array('string' => 'Card payments stay on the {var:1} gateway code; a moved checkout page posts to it unchanged.', 'vars' => array($item['gateway'])));
+    }
+    $output_classic .= '<li>' . h($text) . $styles . '</li>';
+}
+if ($output_classic !== '') {
+    $output_classic = '
+    <div class="card my-7" id="ltd-stays-classic">
+        <div class="card-header"><h2 class="h5 mb-0">' . h(lang('What stays classic')) . '</h2>
+            <div class="small fg-secondary">' . h(lang('Kept and working after the move; nothing here is converted.')) . '</div></div>
+        <div class="card-body"><ul class="small mb-0 ps-12">' . $output_classic . '</ul></div>
+    </div>';
+}
+
 $output_plan = '';
 if ($plan !== null) {
     $output_plan = $plan ? '' : '<p class="mb-0">' . h(lang('Choose the styles to move first.')) . '</p>';
@@ -349,7 +384,7 @@ pg_page_shell([
     <div class="card my-7">
         <div class="card-body p-0 table-responsive">' . $output_table . '</div>
     </div>
-    ' . $output_runs . '
+    ' . $output_classic . $output_runs . '
 </main>
 ' .
 output_footer();

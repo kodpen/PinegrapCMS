@@ -11,7 +11,7 @@ description: Decisions list, product part 21 (2026-11-03 on): clearing the perfo
 
 ## The Migration screen carries classic content only (2026-11-03, #6006)
 - Owner (2026-11-02 night) delegated the question to the architect; decided: `migration.php` copies the classic columns of folders, pages, styles, common and designer regions; its heading and help say so, it warns before copying when the source reports pages with a page tree, and the source's Recycle Bin, Drafts and Workspace folders are skipped. Carrying designer trees with remapped ids is a plan of its own, opened only when the owner orders it. Reason: designer pages arrived empty without a word; the full carry is large.
-- Owner (2026-11-03): carrying designer content joins the next plan, `plans/legacy-to-designer.md` (LD4); the classic-only screen with its warning stays until then.
+- Owner (2026-11-03): carrying designer content joins the next plan (legacy to designer, LD4), done in #6221: `designer/migration-carries-designs.md`.
 
 ## The dashboard has no Subscriptions card (2026-11-03)
 - Owner: the `subs` card (licence, renewal date, period bar, support package) is not built and has no plan; it may be looked at again later. N12c leaves the dashboard plan.

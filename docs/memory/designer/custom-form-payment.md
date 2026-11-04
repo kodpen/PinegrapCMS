@@ -1,6 +1,6 @@
 ---
 name: custom-form-payment
-description: Fee of a designed form (plan designer-form-logic FL4-FL6): the setting's shape and store, pg_form_fee() rules, the fee order, forms.order_id and paid_at
+description: Fee of a designed form: the setting's shape and store, pg_form_fee() rules, the fee order, forms.order_id and paid_at
 module: form_payments
 ---
 

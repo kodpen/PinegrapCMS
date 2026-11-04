@@ -2426,6 +2426,8 @@ $widgets = array(
                     lang('No insurance, I pay myself'),
                 ), false))), '6'),
             ), '3'),
+            $field('cl-appt-policy', lang('Insurance company and policy number'), $input('cl-appt-policy', 'text', 'policy', 'off', false,
+                array('rules' => array('shown_when' => array('field' => 'insurance', 'answers' => array(lang('Private insurance'))))))),
             $field('cl-appt-reason', lang('Reason for the visit'), $textarea('cl-appt-reason', 'reason', 4, false, array('url_param' => 'reason'))),
             $field('cl-appt-status', lang('Status'), $select('cl-appt-status', 'status', '', array(
                 lang('Requested'), lang('Confirmed'), lang('Completed'), lang('Cancelled'),
@@ -3486,7 +3488,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Clinic'),
-    'version'     => '1.1.2',
+    'version'     => '1.2.0',
     'framework'   => 'bootstrap5',
     'order'       => 50,
     'icon'        => 'bi-heart-pulse',

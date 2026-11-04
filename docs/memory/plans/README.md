@@ -45,10 +45,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bug-hunt.md: Plan: module-by-module bug hunt when no plan step is free; how a module is taken, hunted and closed; the module lists are in bug-hunt-modules-*.md
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, CI checks, and the parked explicit "who may write PHP" rule
-- designer-form-logic-steps-2.md: Steps FL5-FL8 of plans/designer-form-logic.md: the payment step on the site, the staff side and API, template fees, close-out; claim as [plan:designer-form-logic] FL<n>
-- designer-form-logic-steps.md: Steps FL1-FL4 of plans/designer-form-logic.md: Shown when rules, form steps with progress, the browser draft, the fee setting and order writer; claim as [plan:designer-form-logic] FL<n>
-- designer-form-logic.md: Plan (owner 2026-11-02): designed forms get Shown-when rules, steps with progress, and a payment step that places a one-line order through the payment drivers; steps FL1-FL8
-- encryption-key-reseal.md: Plan: Reset Encryption Key re-seals every value sealed with the key in the same save (owner, 2026-11-03, #6392, after the warn-and-confirm fix); claim as [plan:encryption-key-reseal] RK<n>
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19): web orders invoiced on their own once paid or shipped, with two filters, the e-Fatura threshold warning and the internet-sale UBL fields of an e-Arşiv invoice
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
@@ -78,7 +74,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - kodpen-vendor-api-client-design.md: Client contract of plans/kodpen-vendor-api-client.md: calls and headers, the licence check, card and key field, what is stored where, the switch line; updates in -design-update
 - kodpen-vendor-api-client-steps.md: Steps P1-P8 of plans/kodpen-vendor-api-client.md: changes, files, tests, memory, size, order; claim as [plan:kodpen-vendor-api-client] P<n>
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): 2026.11.0 asks api.kodpen.com/v1 for licences and signed updates behind one switch line, no api2 fallback; steps P1-P8 in -steps, contract in the -design files
-- legacy-to-designer.md: Plan (owner 2026-11-03, started): classic designs moved to the visual designer in bulk with a readiness report and a dry run, search over trees, Migration carrying designer content (LD1-LD5)
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - new-dashboard-build.md: New dashboard plan: the page branch in welcome.php, the files (page, script bundle, stylesheet), charts, refresh, light and dark, phone, keyboard, texts; how card steps stay out of each other's files
@@ -104,9 +99,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - small-features-2026-11-steps-2.md: Steps SF4-SF8 of plans/small-features-2026-11.md: product questions, pre-order, EU VAT checks, the panel offline page, Slack, Teams and Telegram channels; claim as [plan:small-features-2026-11] SF<n>
 - small-features-2026-11-steps.md: Steps SF1-SF3 of plans/small-features-2026-11.md: address autocomplete, the accessibility statement widget, site search rollup with synonyms; claim as [plan:small-features-2026-11] SF<n>
 - small-features-2026-11.md: Plan (owner 2026-11-02): eight small independent features: address autocomplete, accessibility statement, search tuning, product questions, pre-order, EU VAT, offline page, chat channels; SF1-SF8
-- stock-locations-steps-2.md: Steps SL4-SL7 of plans/stock-locations.md: transfers and stock history, pickup at a location, API and webhooks, close-out; claim as [plan:stock-locations] SL<n>
-- stock-locations-steps.md: Steps SL1-SL3 of plans/stock-locations.md: tables and the sum-keeping writer, product screens and import, order completion and scans by location; claim as [plan:stock-locations] SL<n>
-- stock-locations.md: Plan (owner 2026-11-02): stock kept per location (warehouse, shop, consignment) with the product's total unchanged for every reader; transfers, pickup at a location, API and webhooks; steps SL1-SL7
 - store-credit-steps-2.md: Steps SC5-SC7 of plans/store-credit.md: the staff and account screens with mails and expiry, API and webhooks, close-out; claim as [plan:store-credit] SC<n>
 - store-credit-steps.md: Steps SC1-SC4 of plans/store-credit.md: the customer-bound card model, credit at checkout through applied_gift_cards, points to credit, refunds to credit; claim as [plan:store-credit] SC<n>
 - store-credit.md: Plan (owner 2026-11-02): store credit as customer-bound gift cards: points to credit, refunds to credit, staff-issued credit, the balance applied at checkout; steps SC1-SC7

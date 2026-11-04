@@ -328,6 +328,7 @@
     "Google asks for permission to manage Search Console and to verify sites. The account itself stays yours.": "Google, Search Console'u yönetme ve site doğrulama izni ister. Hesabın kendisi sizde kalır.",
     "Google attribution": "Google kaynak gösterimi",
     "Google attribution (\"Google Maps\")": "Google kaynak gösterimi (\"Google Maps\")",
+    "Google clicks fell by {var:1} %: {var:2} against {var:3} in the period before.": "Google tıklamaları %{var:1} düştü: önceki dönemde {var:3}, şimdi {var:2}.",
     "Google could not verify the site: {var:1}": "Google siteyi doğrulayamadı: {var:1}",
     "Google did not answer with the place: {var:1}": "Google yeri döndürmedi: {var:1}",
     "Google did not give a verification code: {var:1}": "Google doğrulama kodu vermedi: {var:1}",

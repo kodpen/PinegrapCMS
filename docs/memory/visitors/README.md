@@ -61,9 +61,11 @@ Visitor statistics, page and article views, search engine index flags.
 - visitor-rollup-tables.md: The hourly visitor summary tables (visitor_stats_hourly, visitor_content_hourly), bucket_key hashing, and how content items are identified (2026.3.4).
 - visitor-table-size-figures.md: Where the visitor card, the System Status line and the shrink/move before-after sizes get their record count and file size, and how each figure says its source
 - visitor-texts-list.md: Referring address and user agent of a visit kept once each in visitor_texts and named by number in visitors (step 10.6): writer, readers, prune, old rows, upgrade limits
+- visitors-alerts.md: The alerts section of the Visitors overview (includes/visitors/alerts.php): the six rules, their thresholds and minimums, the Google window, the quiet-day check, drawn only when something fell
 - visitors-content.md: The content section of visitors.php: most viewed pages, products, groups and form entries from the content rollup, landing pages with the home page folded, each with the earlier figure
 - visitors-conversions.md: The conversions section of the Visitors overview (includes/visitors/conversions.php): which tiles, the conversion rate, the funnel, the chart by grain, commerce off, the empty state
 - visitors-google.md: The Google search section of visitors.php: its window ending on the latest day with figures, tiles, top lists, the two opportunity rules, the unlinked card
+- visitors-pages.md: The pages section of visitors.php: Google figures joined to visits, page views, forms, orders and SEO score per page on pg_visitor_page_key(); which window, the sort, rows one side alone knows
 - visitors-places.md: The places and devices section of the Visitors overview (includes/visitors/places.php): country and city top lists, device and first/return split bars, where a place comes from
 - visitors-sources.md: The sources section of visitors.php: channel bar and list, the eight top lists with the earlier figure, the summary days line; what it reads and what it leaves out
 - visitors-traffic.md: The traffic section of visitors.php (includes/visitors/traffic.php): headline tiles, the line by the period's grain with the earlier period dashed, the busiest content in the tooltip, the empty states

@@ -70,3 +70,59 @@ function test_encryption_key_reset_product_feed_tokens_ignore_bad_shapes()
 	pg_assert_same(0, pg_encryption_key_reset_feed_tokens('{"formats":"x"}'));
 	pg_assert_same(1, pg_encryption_key_reset_feed_tokens('{"formats":{"a":{"token_secret":"x:y"},"b":"bad","c":{"token_secret":["x"]}}}'));
 }
+
+function test_encryption_key_reset_counts_signed_in_devices_last()
+{
+	pg_assert_same(array('mfa' => 1, 'devices' => 3), pg_encryption_key_reset_counts(array(
+		'devices'  => 3,
+		'mfa_keys' => 1,
+	)));
+}
+
+function test_encryption_key_reset_carried_areas_from_registry()
+{
+	pg_assert_same(array('cards', 'gateway', 'mfa'), pg_encryption_key_reset_carried_areas(array(
+		array('area' => 'cards'),
+		array('area' => 'gateway'),
+		array('area' => 'gateway'),
+		array('area' => 'mfa'),
+		array('table' => 'no_area'),
+		'not an entry',
+	)));
+}
+
+function test_encryption_key_reset_split_by_registry()
+{
+	$counts = array('connect' => 2, 'parasut' => 1, 'mfa' => 4, 'devices' => 3);
+
+	// Before the module entries: everything but the cards is lost.
+	pg_assert_same(array(
+		'resealed' => array(),
+		'lost'     => $counts,
+	), pg_encryption_key_reset_split($counts, array('cards', 'gateway')));
+
+	// With the entries: only the devices stay in the confirmed list, even
+	// when an entry were to name their area.
+	pg_assert_same(array(
+		'resealed' => array('connect' => 2, 'parasut' => 1, 'mfa' => 4),
+		'lost'     => array('devices' => 3),
+	), pg_encryption_key_reset_split($counts, array('cards', 'gateway', 'connect', 'parasut', 'mfa', 'devices')));
+
+	pg_assert_same(array('resealed' => array(), 'lost' => array()), pg_encryption_key_reset_split(array(), array('cards')));
+}
+
+function test_encryption_key_reset_summary_lines()
+{
+	$summary = pg_encryption_key_reset_summary(array(
+		'cards'   => array('done' => 12, 'skipped' => 1, 'failed' => 0),
+		'gateway' => array('done' => 0, 'skipped' => 0, 'failed' => 0),
+		'mfa'     => array('done' => 3, 'skipped' => 0, 'failed' => 2),
+		'other'   => array('done' => 1, 'skipped' => 0, 'failed' => 0),
+		'bad'     => 'x',
+	), array('cards' => 'Cards', 'gateway' => 'Gateway', 'mfa' => 'Keys'));
+
+	pg_assert_same(array(
+		'done'   => array('Cards: 12', 'Keys: 3', 'other: 1'),
+		'failed' => array('Keys: 2'),
+	), $summary);
+}
