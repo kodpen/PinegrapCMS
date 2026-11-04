@@ -21,7 +21,9 @@
 
 include('init.php');
 $user = validate_user();
-if (!validate_erp_access($user)) {
+// The read-only accountant is told on arrival, not after filling the form in.
+if (!validate_erp_access($user)
+    || (defined('USER_ERP_READONLY') && USER_ERP_READONLY && !validate_erp_access($user, 'write'))) {
     exit();
 }
 
@@ -126,7 +128,7 @@ if (!$_POST) {
                                 <label for="order_id" class="form-label">' . lang('Order') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'select', 'id' => 'order_id', 'name' => 'order_id',
-                                    'class' => 'form-control', 'options' => $order_options)) . '
+                                    'class' => 'form-control', 'data-pg-combobox' => '', 'options' => $order_options)) . '
                                 <div class="form-text">' . lang('Completed orders that are linked to a contact or an account and have not been invoiced yet. Orders still awaiting payment are marked.') . '</div>
                             </div>
                         </div>
@@ -149,6 +151,7 @@ if (!$_POST) {
         </div>
     </div>
 </main>' .
+    get_date_picker_format() . pg_fields_script() .
     output_footer();
 
     $liveform->remove_form();

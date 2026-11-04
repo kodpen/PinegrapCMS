@@ -1779,6 +1779,7 @@
     "The comments run over more than one page": "Yorumlar birden fazla sayfaya yayılıyor",
     "The comments waiting for approval turn up on the dashboard now, newest first.": "Onay bekleyen yorumlar artık panelde çıkıyor, en yenisi üstte.",
     "The commission has been saved.": "Komisyon kaydedildi.",
+    "The commission rate cannot be more than 100.": "Komisyon oranı 100'den büyük olamaz.",
     "The commission rate cannot be negative.": "Komisyon oranı eksi olamaz.",
     "The common region \"{var:1}\" becomes a shared component.": "\"{var:1}\" ortak bölgesi paylaşılan bileşen olur.",
     "The common region \"{var:1}\" is now a shared component.": "\"{var:1}\" ortak bölgesi artık paylaşılan bir bileşen.",

@@ -164,12 +164,14 @@ function pg_contact_group_rules_card($liveform, array $group, $may_edit, $review
     $dynamic = ($liveform->get_field_value('kind') === 'dynamic');
     $rules = pg_audience_rules_clean((string) $liveform->get_field_value('rules'));
 
+    // HTML: get_relative_time() writes a <time> element with the full date
+    // as its title, so only the plain texts are escaped.
     if (!empty($group['compute_cursor'])) {
-        $last_run = lang('A refresh is under way.');
+        $last_run = h(lang('A refresh is under way.'));
     } elseif (!empty($group['computed_at'])) {
         $last_run = lang(array('string' => 'Last refreshed {var:1}.', 'vars' => array(get_relative_time(array('timestamp' => $group['computed_at'])))));
     } else {
-        $last_run = lang('Not refreshed yet.');
+        $last_run = h(lang('Not refreshed yet.'));
     }
 
     $config = array(
@@ -256,7 +258,7 @@ function pg_contact_group_rules_card($liveform, array $group, $may_edit, $review
                                         <div id="pg_audience_editor" class="my-5" data-pg-audience="' . h(json_encode($config, JSON_UNESCAPED_UNICODE)) . '"></div>
                                         <p class="fw-bold my-3" id="pg_audience_count" role="status" aria-live="polite"></p>
                                         <div class="d-flex flex-wrap align-items-center gap-3 my-3">
-                                            <span id="pg_audience_last_run">' . h($last_run) . '</span>' . $output_refresh . '
+                                            <span id="pg_audience_last_run">' . $last_run . '</span>' . $output_refresh . '
                                             <span id="pg_audience_refresh_status" role="status" aria-live="polite"></span>
                                         </div>
                                     </div>

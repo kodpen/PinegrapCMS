@@ -49,6 +49,7 @@
     "Rate limit reached ({var:1} requests per minute). Try again in {var:2} seconds.": "İstek sınırına ulaşıldı (dakikada {var:1} istek). {var:2} saniye sonra tekrar deneyin.",
     "Rate limit: every answer carries X-RateLimit-Limit, X-RateLimit-Remaining and X-RateLimit-Reset, and a refused call carries Retry-After. A 409 is reported by the endpoint that can produce it and is named in that endpoint's description.": "Hız sınırı: her yanıt X-RateLimit-Limit, X-RateLimit-Remaining ve X-RateLimit-Reset taşır; reddedilen çağrı Retry-After taşır. 409'lar onu üretebilen ucun açıklamasında adıyla yazılıdır.",
     "Rate limited": "Hız sınırlandı",
+    "Rate of the account's tax zone (the store's when the account has no address); the product has no rate of its own.": "Cari hesabın vergi bölgesinin oranı (cari kartında adres yoksa mağazanınki); ürünün kendi oranı yok.",
     "Rate of the buyer's tax zone (the store's when the account has no address); the product has no rate of its own.": "Alıcının vergi bölgesinin oranı (cari kartında adres yoksa mağazanınki); ürünün kendi oranı yok.",
     "Rate over the last 7 days": "Son 7 gündeki kur",
     "Rate this guide": "Bu rehberi değerlendirin",

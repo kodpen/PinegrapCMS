@@ -333,7 +333,13 @@ if ($_POST) {
             log_activity(lang(array('string' => 'erp invoice ({var:1}) was set to repeat', 'vars' => $invoice['full_number'])), $_SESSION['sessionusername']);
             $liveform->add_notice(lang('The invoice will repeat.'));
         } else {
-            $liveform->mark_error('_error', h($started['error']));
+            // The form comes back as it was sent, with the refused box
+            // marked: drawn from its defaults, a second press after fixing
+            // only the end date started a monthly series nobody chose.
+            foreach (array('recur_every', 'recur_first', 'recur_end', 'recur_mode') as $recur_field) {
+                $liveform->assign_field_value($recur_field, trim((string) ($_POST[$recur_field] ?? '')));
+            }
+            $liveform->mark_error((string) ($started['field'] ?? '_error'), h($started['error']));
         }
 
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query . '#erp-recurring');
@@ -451,6 +457,17 @@ if ($can_return && !erp_return_lines_left(erp_returnable_lines($invoice_id))) {
     $returned_in_full = true;
 }
 
+// The read-only accountant sees the document but no control that changes
+// it: the gate would refuse every one of them only after the press.
+$erp_readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
+
+if ($erp_readonly) {
+    $can_cancel = false;
+    $can_return = false;
+    $cancel_locked = '';
+    $cancel_note = '';
+}
+
 $status_labels = erp_invoice_status_labels();
 
 // The lines are shown in the order they were written on the document, so this
@@ -480,7 +497,7 @@ foreach ($lines as $line) {
             ' . ($output_line_thumbs
                 ? '<td class="align-middle" style="width:3.5rem">' . erp_product_thumb((string) ($line['image_name'] ?? ''), 40) . '</td>'
                 : '') . '
-            <td class="align-middle">' . h($line['description'])
+            <td class="align-middle text-break" style="min-width:12rem">' . h($line['description'])
                 . ((trim((string) ($line['withholding_code'] ?? '')) !== '')
                     ? '<div class="small fg-secondary">' . h(lang(array('string' => 'VAT withholding {var:1}: {var:2}', 'vars' => array(
                         erp_withholding_label((string) $line['withholding_code'], (float) $line['withholding_rate'], false),
@@ -516,7 +533,7 @@ if (function_exists('erp_stock_ready') && erp_stock_ready() && ((string) $invoic
 
         $stock_rows .= '
                         <tr>
-                            <td class="align-middle">' . h($product_name) . ((trim((string) $move['product_sku']) !== '') ? '<div class="small fg-secondary font-monospace">' . h($move['product_sku']) . '</div>' : '') . '</td>
+                            <td class="align-middle text-break" style="min-width:10rem">' . h($product_name) . ((trim((string) $move['product_sku']) !== '') ? '<div class="small fg-secondary font-monospace">' . h($move['product_sku']) . '</div>' : '') . '</td>
                             <td class="align-middle">' . h($stock_kinds[(string) $move['kind']] ?? (string) $move['kind']) . '</td>
                             <td class="align-middle">' . h(erp_stock_effect_text($move)) . '</td>
                             <td class="align-middle text-end text-nowrap" data-sort="' . (int) $move['unit_cost'] . '">' . h(erp_money_out((int) $move['unit_cost'])) . '</td>
@@ -826,7 +843,7 @@ if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($remind
 
     // A snooze is offered while the reminders have anything left to say: up
     // to and including the second announcement.
-    $can_snooze = ($reminder['phase'] !== 'off') && (($reminder['second_notified_at'] === 0) || ($reminder['phase'] === 'snoozed'));
+    $can_snooze = !$erp_readonly && ($reminder['phase'] !== 'off') && (($reminder['second_notified_at'] === 0) || ($reminder['phase'] === 'snoozed'));
 
     $output_snooze = '';
 
@@ -893,9 +910,9 @@ if (((string) $invoice['direction'] === 'sales') && !$is_return && !$is_cancelle
     }
 
     if ($invoice_waybills) {
-        $output_waybill_button = '<a class="btn btn-sm btn-outline theme-secondary m-1" href="edit_erp_waybill.php?id=' . (int) $invoice_waybills[0]['id'] . '"><i class="bi bi-truck me-3"></i>' . h($invoice_waybills[0]['full_number']) . '</a>';
-    } else {
-        $output_waybill_button = '<a class="btn btn-sm btn-outline theme-primary m-1" href="add_erp_waybill.php?invoice_id=' . $invoice_id . '"><i class="bi bi-truck me-3"></i>' . lang('Issue the Delivery Note') . '</a>';
+        $output_waybill_button = '<a class="btn btn-sm btn-text theme-secondary" href="edit_erp_waybill.php?id=' . (int) $invoice_waybills[0]['id'] . '"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . h($invoice_waybills[0]['full_number']) . '</a>';
+    } elseif (!$erp_readonly) {
+        $output_waybill_button = '<a class="btn btn-sm btn-text theme-secondary" href="add_erp_waybill.php?invoice_id=' . $invoice_id . '"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . lang('Issue the Delivery Note') . '</a>';
     }
 }
 
@@ -917,6 +934,8 @@ if (((string) $invoice['direction'] === 'sales')
     $edoc_status = (string) ($invoice['edoc_status'] ?? 'none');
     $edoc_label = $edoc_labels[$edoc_status] ?? array($edoc_status, 'secondary');
     $edoc_gate = erp_edoc_invoice_can_send($invoice);
+    // The send, hand-over, status question and repairs are writes.
+    $edoc_can_act = $edoc_gate['ok'] && !$erp_readonly;
     $edoc_carrier = ($edoc_provider !== '') ? $edoc_provider : $edoc_active;
     $edoc_carrier_info = ($edoc_carrier !== '') ? erp_edoc_info($edoc_carrier) : null;
     $edoc_carrier_label = is_array($edoc_carrier_info) ? (string) $edoc_carrier_info['label'] : $edoc_carrier;
@@ -942,11 +961,11 @@ if (((string) $invoice['direction'] === 'sales')
     // at them instead.
     $edoc_send_gaps = array_merge((array) erp_edoc_invoice_party_missing($invoice)['fields'], (array) erp_edoc_invoice_document_missing($invoice)['fields']);
 
-    if ($edoc_gate['ok'] && !empty($edoc_send_gaps) && erp_edoc_invoice_party_editable($invoice)) {
+    if ($edoc_can_act && !empty($edoc_send_gaps) && erp_edoc_invoice_party_editable($invoice)) {
         $output_edoc_buttons .= '<a class="btn btn-sm btn-outline theme-warning m-1" href="#edoc_fix"><i class="bi bi-pencil-square me-3" aria-hidden="true"></i>' . lang('Complete the missing fields') . '</a>';
-    } elseif ($edoc_gate['ok'] && $edoc_date_blocked) {
+    } elseif ($edoc_can_act && $edoc_date_blocked) {
         $output_edoc_buttons .= '<a class="btn btn-sm btn-outline theme-warning m-1" href="#edoc_date"><i class="bi bi-calendar-x me-3" aria-hidden="true"></i>' . lang('Fix the date') . '</a>';
-    } elseif ($edoc_gate['ok']) {
+    } elseif ($edoc_can_act) {
         $output_edoc_buttons .= '<form method="post" action="' . $self_action . '" class="d-inline">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $invoice_id . '" />
@@ -957,7 +976,7 @@ if (((string) $invoice['direction'] === 'sales')
 
     // Only while the document is still a draft there: once it has gone, the
     // button goes with it, so nothing is handed over twice.
-    if (($edoc_status === 'created') && ($edoc_provider !== '') && ((string) $invoice['edoc_external_id'] !== '') && erp_edoc_supports('submit_invoice', $edoc_provider)) {
+    if (!$erp_readonly && ($edoc_status === 'created') && ($edoc_provider !== '') && ((string) $invoice['edoc_external_id'] !== '') && erp_edoc_supports('submit_invoice', $edoc_provider)) {
         $output_edoc_buttons .= '<form method="post" action="' . $self_action . '" class="d-inline">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $invoice_id . '" />
@@ -966,7 +985,7 @@ if (((string) $invoice['direction'] === 'sales')
                     </form>';
     }
 
-    if (($edoc_provider !== '') && ((string) $invoice['edoc_external_id'] !== '') && erp_edoc_supports('poll', $edoc_provider)) {
+    if (!$erp_readonly && ($edoc_provider !== '') && ((string) $invoice['edoc_external_id'] !== '') && erp_edoc_supports('poll', $edoc_provider)) {
         $output_edoc_buttons .= '<form method="post" action="' . $self_action . '" class="d-inline">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $invoice_id . '" />
@@ -1018,7 +1037,7 @@ if (((string) $invoice['direction'] === 'sales')
                                     : $edoc_redate['reason']) . '</div>
                             </div>
                         </div>
-                        ' . ($edoc_redate['ok'] ? '<div class="d-flex flex-wrap gap-3">
+                        ' . (($edoc_redate['ok'] && !$erp_readonly) ? '<div class="d-flex flex-wrap gap-3">
                         ' . ($edoc_gate['ok'] && empty($edoc_send_gaps) ? '<form method="post" action="' . $self_action . '">
                             ' . get_token_field() . '
                             <input type="hidden" name="id" value="' . $invoice_id . '" />
@@ -1044,7 +1063,7 @@ if (((string) $invoice['direction'] === 'sales')
         $edoc_missing['fields'] = array_merge((array) $edoc_missing['fields'], $edoc_doc_missing['fields']);
     }
 
-    if (!empty($edoc_missing['fields']) && erp_edoc_invoice_party_editable($invoice)) {
+    if (!$erp_readonly && !empty($edoc_missing['fields']) && erp_edoc_invoice_party_editable($invoice)) {
         // Offered filled in wherever something is known: the document's own
         // copy first, then the account card. The common case is a card that
         // was completed after the invoice was raised - then the boxes come
@@ -1351,7 +1370,7 @@ if (($mail_invoice !== null) && ((string) $invoice['direction'] === 'sales') && 
                     <span class="small fg-secondary" role="status" aria-live="polite" data-erp-send-once-status></span>
                 </div>
             </form>';
-        $output_mail_button = '<a class="btn btn-sm btn-outline theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
+        $output_mail_button = '<a class="btn btn-sm btn-text theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
     } elseif ($mail_refusal !== '') {
         $output_mail_form = '<p class="fg-secondary mb-0">' . h($mail_refusal) . '</p>';
     }
@@ -1393,13 +1412,25 @@ if (function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_read
     } elseif ($recur_refusal !== '') {
         $recur_body = '<p class="fg-secondary mb-0">' . h($recur_refusal) . '</p>';
     } elseif (!$recur_readonly) {
+        // After a refusal the boxes hold what was sent (the recur_start
+        // handler keeps it), and the refused one is marked.
+        $recur_kept = function ($field, $default) use ($liveform) {
+            $value = $liveform->get_field_value($field);
+            return ($value === null) ? $default : (string) $value;
+        };
+        $recur_invalid = function ($field, $class) use ($liveform) {
+            return 'class="' . h($liveform->create_error_class($field, $class)) . '"'
+                . ($liveform->check_field_error($field) ? ' aria-invalid="true"' : '');
+        };
+        $recur_every_value = $recur_kept('recur_every', '');
+        $recur_mode_value = $recur_kept('recur_mode', '');
         $period_options = '';
         foreach (erp_expense_recurring_periods() as $months => $label) {
-            $period_options .= '<option value="' . (int) $months . '">' . h($label) . '</option>';
+            $period_options .= '<option value="' . (int) $months . '"' . (((string) (int) $months === $recur_every_value) ? ' selected' : '') . '>' . h($label) . '</option>';
         }
         $mode_options = '';
         foreach (erp_invoice_recurring_modes() as $mode => $label) {
-            $mode_options .= '<option value="' . h($mode) . '">' . h($label) . '</option>';
+            $mode_options .= '<option value="' . h($mode) . '"' . (((string) $mode === $recur_mode_value) ? ' selected' : '') . '>' . h($label) . '</option>';
         }
         $recur_body = '
                     <form method="post" action="' . $self_action . '" class="row g-3 align-items-end">
@@ -1408,19 +1439,19 @@ if (function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_read
                         <input type="hidden" name="erp_action" value="recur_start" />
                         <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_every">' . lang('Repeats') . '</label>
-                            <select class="form-control form-control-sm" id="recur_every" name="recur_every">' . $period_options . '</select>
+                            <select ' . $recur_invalid('recur_every', 'form-control form-control-sm') . ' id="recur_every" name="recur_every">' . $period_options . '</select>
                         </div>
                         <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_first">' . lang('Next invoice on') . '</label>
-                            <input type="date" data-pg-date class="form-control form-control-sm" id="recur_first" name="recur_first" value="' . h(erp_invoice_recurring_first_default((string) $invoice['issue_date'], date('Y-m-d'))) . '" min="' . h(date('Y-m-d', strtotime('+1 day'))) . '" required />
+                            <input type="date" data-pg-date ' . $recur_invalid('recur_first', 'form-control form-control-sm') . ' id="recur_first" name="recur_first" value="' . h($recur_kept('recur_first', erp_invoice_recurring_first_default((string) $invoice['issue_date'], date('Y-m-d')))) . '" min="' . h(date('Y-m-d', strtotime('+1 day'))) . '" required />
                         </div>
                         <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_end">' . lang('Until (optional)') . '</label>
-                            <input type="date" data-pg-date class="form-control form-control-sm" id="recur_end" name="recur_end" min="' . h(date('Y-m-d', strtotime('+1 day'))) . '" />
+                            <input type="date" data-pg-date ' . $recur_invalid('recur_end', 'form-control form-control-sm') . ' id="recur_end" name="recur_end" value="' . h($recur_kept('recur_end', '')) . '" min="' . h(date('Y-m-d', strtotime('+1 day'))) . '" />
                         </div>
                         <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_mode">' . lang('Each invoice is') . '</label>
-                            <select class="form-control form-control-sm" id="recur_mode" name="recur_mode">' . $mode_options . '</select>
+                            <select ' . $recur_invalid('recur_mode', 'form-control form-control-sm') . ' id="recur_mode" name="recur_mode">' . $mode_options . '</select>
                         </div>
                         <div class="col-12">
                             <div class="form-text mb-3">' . lang('The same account, lines and prices, dated on the day. Issued straight away, each takes the next number, and the e-document and e-mail settings apply to it.') . '</div>
@@ -1442,8 +1473,44 @@ $output_workspace_button = '';
 
 if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
     require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
-    $output_workspace_button = ws_record_button($user, 'invoice', (int) $invoice_id, (string) $invoice['full_number']);
+    $output_workspace_button = ws_record_button($user, 'invoice', (int) $invoice_id, (string) $invoice['full_number'], 'menu-item pg-link-body-emphasis');
 }
+
+// One toolbar: the PDF first, the e-mail and the delivery note beside it,
+// the rarer things in the three-dots menu, so a phone keeps one row.
+$toolbar_more = array();
+
+if ($has_own_pdf) {
+    $toolbar_more[] = '<a class="menu-item pg-link-body-emphasis" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '&amp;download=1"><i class="bi bi-download me-3" aria-hidden="true"></i>' . lang('Download') . '</a>';
+}
+
+if (((string) $invoice['doc_type'] === 'invoice') && ((int) $invoice['order_id'] === 0) && !$erp_readonly) {
+    $toolbar_more[] = '<a class="menu-item pg-link-body-emphasis" href="add_erp_manual_invoice.php?copy=' . $invoice_id . '"><i class="bi bi-files me-3" aria-hidden="true"></i>' . lang('Copy') . '</a>';
+}
+
+if ($output_workspace_button !== '') {
+    $toolbar_more[] = $output_workspace_button;
+}
+
+if (function_exists('erp_audit_ready') && erp_audit_ready() && (((int) $user['role'] < 3) || !empty($user['manage_erp_settings']) || $erp_readonly)) {
+    $toolbar_more[] = '<a class="menu-item pg-link-body-emphasis" href="erp_audit.php?type=invoice&amp;id=' . $invoice_id . '"><i class="bi bi-shield-check me-3" aria-hidden="true"></i>' . lang('Audit trail') . '</a>';
+}
+
+$output_toolbar = pg_screen_toolbar(array(
+    'primary' => $has_own_pdf
+        ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>'
+        : '',
+    'secondary' => $output_mail_button . $output_waybill_button,
+    'overflow' => $toolbar_more
+        ? '<div class="pg-menu-wrap">
+                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-display="static" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                <ul class="menu pg-menu-end">
+                    <li>' . implode('</li>
+                    <li>', $toolbar_more) . '</li>
+                </ul>
+            </div>'
+        : '',
+));
 
 echo
 pg_page_shell([
@@ -1465,16 +1532,7 @@ pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                        ' . ($has_own_pdf ? '
-                        <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>' . lang('PDF') . '</a>
-                        <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '&amp;download=1"><i class="bi bi-download me-1"></i>' . lang('Download') . '</a>' : '') . '
-                        ' . ((((string) $invoice['doc_type'] === 'invoice') && ((int) $invoice['order_id'] === 0) && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_manual_invoice.php?copy=' . $invoice_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>' : '') . '
-                        ' . $output_mail_button . '
-                        ' . $output_waybill_button . '
-                        ' . $output_workspace_button . '
-                        ' . ((function_exists('erp_audit_ready') && erp_audit_ready() && ((((int) $user['role'] < 3) || !empty($user['manage_erp_settings']) || (defined('USER_ERP_READONLY') && USER_ERP_READONLY)))) ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_audit.php?type=invoice&amp;id=' . $invoice_id . '"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>' . lang('Audit trail') . '</a>' : '') . '
-                    </nav>
+            ' . $output_toolbar . '
         </div>
 
         <!--
@@ -1540,12 +1598,13 @@ pg_page_shell([
                                 ' . $liveform->output_field(array(
                                     'type' => 'textarea', 'id' => 'notes', 'name' => 'notes',
                                     'class' => 'form-control', 'rows' => '2', 'maxlength' => '5000',
+                                    'readonly' => $erp_readonly ? 'readonly' : '',
                                     'aria-label' => lang('Notes'))) . '
                                 <div class="form-text">' . lang('Printed at the foot of the document. The only part of an issued invoice that may still be changed; the figures and the lines cannot.') . '</div>
                             </div>
-                            <div class="col-12 lg:col-3 my-3 d-flex align-items-start">
+                            ' . ($erp_readonly ? '' : '<div class="col-12 lg:col-3 my-3 d-flex align-items-start">
                                 <button type="submit" name="submit_notes" value="Save" class="btn btn-outline theme-secondary"><i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save the Note') . '</span></button>
-                            </div>
+                            </div>') . '
                         </div>
                     </div>
                 </div>
