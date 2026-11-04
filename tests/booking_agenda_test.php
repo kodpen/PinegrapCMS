@@ -235,3 +235,15 @@ function test_booking_agenda_audit_fields_leave_the_customer_out()
 	pg_assert_same(array('service_id' => 2, 'staff_id' => 4, 'start_at' => 100, 'end_at' => 200, 'status' => 'confirmed', 'source' => 'panel', 'notes_length' => 3), $fields);
 	pg_assert_same(array(), pg_booking_agenda_audit_fields(array()));
 }
+
+// A scope reaches every booking (null), the staff member's own (an id) or
+// none (false).
+function test_booking_agenda_scope_allows()
+{
+	pg_assert_true(pg_booking_agenda_scope_allows(null, 7), 'roles 0-2: any staff member');
+	pg_assert_true(pg_booking_agenda_scope_allows(null, 0), 'roles 0-2: a booking without a staff member');
+	pg_assert_true(pg_booking_agenda_scope_allows(7, 7), 'the staff member\'s own');
+	pg_assert_false(pg_booking_agenda_scope_allows(7, 8), 'another staff member\'s');
+	pg_assert_false(pg_booking_agenda_scope_allows(false, 7), 'no agenda');
+	pg_assert_false(pg_booking_agenda_scope_allows(0, 0), 'a zero scope reaches nothing');
+}

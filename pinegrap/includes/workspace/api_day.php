@@ -533,6 +533,7 @@ function ws_api_search_record_scopes()
         'receipt'        => 'erp_cash:read',
         'form'           => 'forms:read',
         'calendar_event' => 'calendars:read',
+        'booking'        => 'bookings:read',
         'file'           => 'files:read',
         'page'           => 'pages:read',
     );

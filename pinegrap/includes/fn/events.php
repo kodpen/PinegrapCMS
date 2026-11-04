@@ -229,6 +229,10 @@ function pg_event_workspace_events()
         'customer.updated',
         'product.updated',
         'form.submitted',
+        'booking.created',
+        'booking.confirmed',
+        'booking.rescheduled',
+        'booking.cancelled',
     );
 }
 

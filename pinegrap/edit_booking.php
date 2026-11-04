@@ -498,6 +498,14 @@ $cancel_field = in_array('cancelled', $status_options, true) && ($booking['statu
                             </script>'
     : '';
 
+// Where it was talked about in the workspace, and the tasks about it.
+$workspace_button = '';
+
+if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+    $workspace_button = ws_record_button($user, 'booking', (int) $booking['id'], lang('Booking') . ' #' . (int) $booking['id'], 'btn btn-sm btn-text theme-secondary');
+}
+
 echo
 pg_page_shell(array(
     'title'               => lang('Booking') . ' #' . (int) $booking['id'],
@@ -508,6 +516,7 @@ pg_page_shell(array(
     'breadcrumb'          => array_merge($booking_breadcrumb, array(array('label' => lang('Booking') . ' #' . (int) $booking['id']))),
 )) . '
 <main id="content" class="container-fluid">
+    ' . (($workspace_button !== '') ? pg_screen_toolbar(array('secondary' => array($workspace_button))) : '') . '
     ' . $liveform->output_errors() . '
     ' . $liveform->output_notices() . '
     <form action="edit_booking.php" method="post">

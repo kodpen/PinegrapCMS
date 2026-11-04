@@ -225,6 +225,24 @@ function pg_booking_agenda_scope($role, $staff_id)
 }
 
 /**
+ * Whether a scope (pg_booking_agenda_scope()) reaches a booking of a staff
+ * member: every booking for null, the staff member's own for an id, none
+ * for false. Pure: the Workspace's tags and event rules ask it per row.
+ *
+ * @param int|null|false $scope
+ * @param int            $staff_id bookings.staff_id
+ * @return bool
+ */
+function pg_booking_agenda_scope_allows($scope, $staff_id)
+{
+    if ($scope === null) {
+        return true;
+    }
+
+    return ($scope !== false) && ((int) $scope > 0) && ((int) $scope === (int) $staff_id);
+}
+
+/**
  * The staff member the agenda is narrowed to: the one asked for when the
  * viewer may see them, the viewer's own when they see only themselves, else
  * 0 (every staff member).

@@ -154,6 +154,18 @@ function ws_events_catalog()
         'form.submitted'   => array('label' => lang('A form is submitted'), 'when' => lang('When a form is submitted'), 'record' => 'form', 'right' => 'forms', 'filter' => 'page'),
     );
 
+    // The staff agenda's (pg_booking_changed()): every member may wait for
+    // them; each is checked against the bookings its creator's agenda shows
+    // when it comes (ws_events_creator_sees()).
+    if (function_exists('pg_booking_ready') && pg_booking_ready()) {
+        $catalog += array(
+            'booking.created'     => array('label' => lang('A booking is made'), 'when' => lang('When a booking is made'), 'record' => 'booking', 'right' => 'member', 'filter' => ''),
+            'booking.confirmed'   => array('label' => lang('A booking is confirmed'), 'when' => lang('When a booking is confirmed'), 'record' => 'booking', 'right' => 'member', 'filter' => ''),
+            'booking.rescheduled' => array('label' => lang('A booking is moved'), 'when' => lang('When a booking is moved to another time'), 'record' => 'booking', 'right' => 'member', 'filter' => ''),
+            'booking.cancelled'   => array('label' => lang('A booking is cancelled'), 'when' => lang('When a booking is cancelled'), 'record' => 'booking', 'right' => 'member', 'filter' => ''),
+        );
+    }
+
     // The workspace's own: every member of the staff may wait for them, and
     // each event is checked against what its creator may read when it comes.
     $catalog += array(
@@ -207,6 +219,20 @@ function ws_events_own()
 function ws_events_is_own($event)
 {
     return in_array((string) $event, ws_events_own(), true);
+}
+
+/**
+ * Is this event checked against what the creator of a scheduled action may
+ * read before it starts their action? The workspace's own events, and the
+ * staff agenda's, which every member may wait for while only some may see
+ * the booking (ws_events_creator_sees()).
+ *
+ * @param string $event
+ * @return bool
+ */
+function ws_events_checks_creator($event)
+{
+    return ws_events_is_own($event) || (strpos((string) $event, 'booking.') === 0);
 }
 
 /**
@@ -331,7 +357,8 @@ function ws_event($event, $payload = array())
 /**
  * May the creator of a scheduled action read what one of the workspace's
  * own events is about: the task, or the channel of the request or of the
- * guest's message? Asked before the event starts their action.
+ * guest's message; for a booking's event, the booking? Asked before the
+ * event starts their action.
  *
  * @param int    $user_id
  * @param string $event
@@ -352,6 +379,20 @@ function ws_events_creator_sees($user_id, $event, $payload)
 
     if (!is_array($viewer) || empty($viewer['member'])) {
         return false;
+    }
+
+    // A booking: on the creator's agenda (roles 0-2 every one, a role-3
+    // staff member their own), as edit_booking.php opens it.
+    if (strpos((string) $event, 'booking.') === 0) {
+        if (!function_exists('pg_booking_ready') || !pg_booking_ready()) {
+            return false;
+        }
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
+        $staff_id = db_value("SELECT staff_id FROM bookings WHERE id = '" . (int) ($payload['id'] ?? 0) . "'");
+
+        return ($staff_id !== null)
+            && pg_booking_agenda_scope_allows(pg_booking_agenda_user_scope(array('id' => $user_id, 'role' => (int) ($viewer['role'] ?? 3))), (int) $staff_id);
     }
 
     if (strpos((string) $event, 'workspace.task.') === 0) {
@@ -417,6 +458,10 @@ function ws_events_record_of($event, $payload)
 
     if (strpos($event, 'workspace.task.') === 0) {
         return array('task', (int) ($payload['id'] ?? 0));
+    }
+
+    if (strpos($event, 'booking.') === 0) {
+        return array('booking', (int) ($payload['id'] ?? 0));
     }
 
     if ($event === 'workspace.approval.decided') {
@@ -608,8 +653,8 @@ function ws_events_process($limit = WS_EVENTS_BATCH)
  * an hour; the starts stand at the head of a chain (no source action), at
  * depth 0 - or, for a workspace event a scheduled action's run caused, one
  * step below that run, and not at all past WS_SCHEDULED_CHAIN_DEPTH. A
- * workspace event starts an action only when its creator may read what it
- * is about.
+ * workspace or booking event starts an action only when its creator may
+ * read what it is about (ws_events_checks_creator()).
  *
  * @param int    $event_id
  * @param string $event
@@ -644,7 +689,7 @@ function ws_events_start($event_id, $event, $payload)
         return 0;
     }
 
-    $own = ws_events_is_own($event);
+    $own = ws_events_checks_creator($event);
     $now = time();
     $queued = 0;
     $context = json_encode(array('event' => (string) $event, 'payload' => $payload, 'event_id' => (int) $event_id), JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);

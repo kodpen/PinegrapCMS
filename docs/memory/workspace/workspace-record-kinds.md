@@ -9,9 +9,9 @@ description: Every list a Workspace record kind (order, product, invoice...) mus
 - Held together as well: a change kind has its `ws_change_write_<kind>()`; its right shows its tag in `ws_ref_types()`; it gets an audit line on its table exactly when `pg_audit_tables()` follows that table; the assistants ask the scope the API search asks; each catalogue event's `record` is what `ws_events_record_of()` finds; the drawer's short lists name fields of their kind; workspace.js offers the same customer kinds; no two kinds share a `#` prefix; a change kind and its update fields have a line in `workspace_flows_parity_table()` (`workspace-flows-parity-test.md`).
 
 ## Which kinds stay out of a list today, and why?
-- Tag-only (no change kind, so no drawer, bulk or audit line): the ERP documents (invoice, waybill, receipt, edoc) and cart_quote, made on its own screens (workspace-cart-quote-tag.md); erp_quote only adds (#1705).
+- Tag-only (no change kind: no drawer, bulk, audit): the ERP documents (invoice, waybill, receipt, edoc), cart_quote (workspace-cart-quote-tag.md), booking (workspace-booking-record.md); erp_quote only adds (#1705).
 - Drawer: user_account (role on the user screen), form (the drawer has no input for its answers), file, page (file manager). Bulk: order, user_account, form.
-- Events: only order, product, contact and form have one. Search scopes: user_account (no API scope reads users). Audit: product_group, erp_account, form, calendar_event (tables not in `pg_audit_tables()`). Screens: file and page draw no Workspace button. Customers: only contact, user_account, erp_account.
+- Events: order, product, contact, form, booking. Search scopes: user_account (no API scope reads users). Audit: product_group, erp_account, form, calendar_event (tables not in `pg_audit_tables()`). Screens: file and page draw no Workspace button. Customers: contact, user_account, erp_account.
 
 ## Which scope do the assistants read a kind with?
 - The one the external API reads it with: `ws_ai_type_scope()` asks what `ws_api_search_record_scopes()` asks, kind by kind, no exception, so an assistant's key reads no record it could not read over the API.

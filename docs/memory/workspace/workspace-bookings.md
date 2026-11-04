@@ -22,5 +22,6 @@ module: booking_agenda
 - `pg_booking_agenda_ws_busy()` is unchanged: bookings are already counted by the slot engine from their own table, so nothing is counted twice.
 
 ## What is left and unverified?
-- The four `booking.*` events in `ws_events_catalog()` (flows) are not in this step (plan BK6b).
 - No live Google or Graph call ran; the Work Calendar and Today were not opened in a browser (pure parts tested in `tests/workspace_bookings_calendar_test.php`).
+
+Related: docs/memory/workspace/workspace-booking-record.md

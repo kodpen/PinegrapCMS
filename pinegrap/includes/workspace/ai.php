@@ -2821,6 +2821,7 @@ function ws_ai_type_scope($type)
         'erp_quote'      => 'erp:read',
         'form'           => 'forms:read',
         'calendar_event' => 'calendars:read',
+        'booking'        => 'bookings:read',
         'file'           => 'files:read',
         'page'           => 'pages:read',
         'task'           => 'tasks:read',
