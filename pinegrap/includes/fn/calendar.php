@@ -818,7 +818,7 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                     $output_calendar_classes = '';
                     // Loop through the calendars for this event in order to add a class for calendar that the event is assigned to.
                     // (e.g. in order to add a different background color behind each event based on the calendar that the event is in).
-                    foreach ($event['calendars'] as $calendar) {
+                    foreach (($event['calendars'] ?? array()) as $calendar) {
                         // If a class has already been added, then add a space for separation.
                         if ($output_calendar_classes != '') {
                             $output_calendar_classes .= ' ';
@@ -941,7 +941,7 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                             // (e.g. in order to add a different background color behind each event based on the calendar that the event is in).
                             if (!$user) {
                                 // Loop through the calendars for this event in order to prepare classes.
-                                foreach ($event['calendars'] as $calendar) {
+                                foreach (($event['calendars'] ?? array()) as $calendar) {
                                     // If a class has already been added, then add a space for separation.
                                     if ($output_calendar_classes != '') {
                                         $output_calendar_classes .= ' ';
@@ -1127,7 +1127,7 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                     // (e.g. in order to add a different background color behind each event based on the calendar that the event is in).
                     if (!$user) {
                         // Loop through the calendars for this event in order to prepare classes.
-                        foreach ($event['calendars'] as $calendar) {
+                        foreach (($event['calendars'] ?? array()) as $calendar) {
                             // If a class has already been added, then add a space for separation.
                             if ($output_calendar_classes != '') {
                                 $output_calendar_classes .= ' ';
