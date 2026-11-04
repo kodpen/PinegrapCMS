@@ -91,7 +91,7 @@ description: Generated from the module field of the memory files: each includes/
 - `link_resolve`: [[designer-prototype-viewer]], [[link-resolve-letter-case]], [[seo-link-graph-self-links]]
 - `list_paging`: [[list-label-sort]], [[list-page-number]], [[server-paged-lists]]
 - `list_period`: [[list-period-navigator-and-clock]], [[list-period-order]], [[list-period-week]]
-- `list_table`: [[list-table-driver]], [[list-table-driver-lists]], [[list-table-printed]]
+- `list_table`: [[details-panel-rule]], [[list-table-driver]], [[list-table-driver-lists]], [[list-table-layout]], [[list-table-printed]]
 - `local_order`: [[erp-counter-sale-completion]]
 - `mail`: [[mail-transport-failure]], [[single-email-address-boxes]]
 - `mail_bounce_report`: [[mail-bounce-screens]]

@@ -1194,3 +1194,39 @@ function pg_list_table_check_cell($on)
     return pg_list_cell($on ? '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>' : '',
         'align-middle', array('data-pg-sort-value' => $on ? 1 : 0));
 }
+
+/**
+ * The SEO column of a list: its heading, a narrow width and the score it
+ * sorts by. The bar sits in this column of its own, never under the
+ * record's name, so rows keep one height.
+ *
+ * @param string $sort the SQL expression of the score ('' when the list
+ *                     does not sort by it)
+ * @return array spec, as pg_list_table_column() takes it
+ */
+function pg_list_table_seo_column($sort)
+{
+    return array('heading' => lang('SEO'), 'width' => '7.5rem', 'kind' => 'badge', 'sort' => (string) $sort);
+}
+
+/**
+ * The SEO column's cell: the score bar with its number, opening the
+ * record's analysis; a fresh analysis redraws it (data-pg-seo-bar). Needs
+ * seo.php.
+ *
+ * @param string $type 'page' or 'product'
+ * @param int    $id
+ * @param array  $row  the record with seo_score, seo_flags and
+ *                     seo_analysis_current
+ * @return array pg_list_cell()
+ */
+function pg_list_table_seo_cell($type, $id, array $row)
+{
+    $key = $type . ':' . (int) $id;
+    $url = 'get_seo_analysis.php?type=' . rawurlencode($type) . '&amp;id=' . (int) $id . get_token_query_string_field();
+
+    return pg_list_cell('<a href="javascript:void(0)" class="pg-seo-open pg-list-table-seo text-decoration-none" data-pg-seo-bar="' . h($key) . '"'
+        . ' aria-label="' . h(pg_seo_link_name($row)) . '" title="' . h(lang('SEO Detail')) . '" data-seo-url="' . $url . '">'
+        . pg_seo_render_bar($row) . '</a>',
+        'align-middle', array('data-pg-sort-value' => pg_seo_row_scored($row) ? (int) $row['seo_score'] : -1));
+}

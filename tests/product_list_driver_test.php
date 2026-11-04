@@ -56,11 +56,13 @@ function test_product_list_driver_columns()
 	$columns = pg_list_table_columns(pg_product_list_columns(product_list_driver_test_view('all_products'), pg_pb_quick_edit_columns()));
 
 	pg_assert_same(
-		array('id', 'image', 'short_description', 'enabled', 'price', 'inventory_quantity', 'taxable', 'product_form', 'selection_type', 'default_quantity', 'shippable', 'custom_field_1', 'recurring_payment', 'seo', 'impact', 'last_modified', 'actions'),
+		array('id', 'image', 'seo', 'short_description', 'enabled', 'price', 'inventory_quantity', 'taxable', 'product_form', 'selection_type', 'default_quantity', 'shippable', 'custom_field_1', 'recurring_payment', 'impact', 'last_modified', 'actions'),
 		array_keys($columns));
 	pg_assert_same(false, $columns['id']['hideable'], 'the name with the editor link is never hidden');
 	pg_assert_same('products.name', $columns['id']['sort']);
-	pg_assert_true($columns['seo']['hidden'], 'the score sorts through a column hidden at first');
+	pg_assert_false($columns['seo']['hidden'], 'the score bar has a column of its own, shown');
+	pg_assert_true($columns['seo']['hideable'], 'the score column can be hidden');
+	pg_assert_same('products.seo_score', $columns['seo']['sort']);
 	pg_assert_false($columns['image']['sortable']);
 	pg_assert_false($columns['actions']['sortable']);
 	pg_assert_same("IF(products.inventory = '1', products.inventory_quantity, NULL)", $columns['inventory_quantity']['sort']);
@@ -101,7 +103,8 @@ function test_product_list_driver_sort_columns_match_the_old_codes()
 	pg_assert_false(isset($sorts['allowed_zones']), 'the zones do not sort');
 
 	$columns = pg_product_list_columns(product_list_driver_test_view('out_of_stock_products'), array());
-	pg_assert_false(isset($columns['seo']), 'no score column where the view does not sort by it');
+	pg_assert_true(isset($columns['seo']), 'the score bar shows where the view does not sort by it');
+	pg_assert_same('', pg_list_table_columns($columns)['seo']['sort'], 'that column does not sort');
 	pg_assert_same('out_of_stock_date', array_keys($columns)[count($columns) - 2]);
 }
 
@@ -116,6 +119,9 @@ function test_product_list_driver_row_cells()
 	pg_assert_same(array_keys($columns), array_keys($row['cells']), 'one cell per column, in its order');
 	pg_assert_contains('data-pg-open', $row['cells']['id']['html'], 'a double-click opens the product');
 	pg_assert_contains('edit_product.php?id=12', $row['cells']['id']['html']);
+	pg_assert_false(strpos($row['cells']['id']['html'], 'pg-seo-bar') !== false, 'no score bar under the name');
+	pg_assert_contains('data-pg-seo-bar="product:12"', $row['cells']['seo']['html'], 'the bar in its own column, redrawn after an analysis');
+	pg_assert_same('-1', $row['cells']['seo']['attributes']['data-pg-sort-value'], 'a record not analysed sorts lowest');
 	pg_assert_same('name', $row['cells']['id']['attributes']['data-pg-cell'], 'the name follows the enabled flag');
 	pg_assert_same('price', $row['cells']['price']['attributes']['data-pg-edit']);
 	pg_assert_same('12', $row['cells']['price']['attributes']['data-pg-edit-id']);
