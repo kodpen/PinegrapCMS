@@ -18,6 +18,7 @@ description: The Pinegrap logo (the squirrel's space window, the single-line wor
 - `pgLogoVideos()` at the end of `backend.src.js` starts every `video[data-pg-logo-video]` unless reduced motion, a data saver or `deviceMemory` under 2; nothing is fetched before `play()`, and a refused play keeps the poster.
 - `pg_logo_svg()` draws the wordmark at stroke 22 (the header's size) with stops `var(--pg-logo-color-1, #3D5AFE)`, `-3` (purple) and `-2` (pink); dark mode lightens them in `backend.src.css`. Its view box keeps 100 units above the letters so a flex row centres them on the mascot. Every copy on one page needs its own suffix: Firefox draws no gradient defined inside a hidden copy (header '', curtain '-pl', installer '-in1'...'-in5', theme designer '-td').
 - Sizes: `--pg-logo-h` (the mascot's side, 32px default) on a wrapper; the corners are CSS (`border-radius: 22.6%`).
+- Nothing sits over the logo (owner, 2026-11-04): the short version that was a pill under the mascot is gone; it stays in the page title (`Pinegrap 26.11 | …`).
 
 ## What does the header show on a phone?
 - Below 768px the mascot alone; below 390px nothing, so the controls keep the row (`ui/panel-top-bar-phone.md`).

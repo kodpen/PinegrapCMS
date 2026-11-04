@@ -5,8 +5,7 @@
  * Tests for the panel top bar at phone width (#header in
  * output_header() in includes/fn/output.php, and assets/css/backend.src.css):
  * below 768px, where the full logo no longer fits, the mascot stays as the
- * square logo and the wordmark, the version pill and the page heading are
- * hidden; below 390px the mascot gives way too, so the controls keep the
+ * square logo and the wordmark and the page heading are hidden; below 390px the mascot gives way too, so the controls keep the
  * row; from 768px up nothing hides them.
  *
  * @author      Erdal Güral (Kodpen)
@@ -53,7 +52,7 @@ function test_panel_header_phone_keeps_the_mascot()
 	$tiny = false;
 
 	foreach (panel_header_phone_test_media_bodies($css, '(max-width: 767.98px)') as $body) {
-		if (preg_match('/#header \.pinegrap-logo-word,\s*#header \.pinegrap-version,\s*#header \.pg-navhead\s*\{\s*display: none;\s*\}/', $body)) {
+		if (preg_match('/#header \.pinegrap-logo-word,\s*#header \.pg-navhead\s*\{\s*display: none;\s*\}/', $body)) {
 			$narrow = true;
 		}
 
@@ -66,7 +65,7 @@ function test_panel_header_phone_keeps_the_mascot()
 		}
 	}
 
-	pg_assert_true($narrow, 'below md the wordmark, the version pill and the page heading are hidden, the mascot stays');
+	pg_assert_true($narrow, 'below md the wordmark and the page heading are hidden, the mascot stays');
 	pg_assert_true($tiny, 'below 390px the logo item gives way to the controls');
 
 	$outside = preg_replace('/@media \(max-width: (767|389)\.98px\) \{.*?\n\}/s', '', $css);
@@ -80,4 +79,13 @@ function test_panel_header_phone_brand_item_markup()
 	$php = file_get_contents(dirname(__DIR__) . '/pinegrap/includes/fn/output.php');
 
 	pg_assert_true((bool) preg_match('/<li class="nav-item pg-brand-item">\s*<a href="[^"]*welcome\.php"/', $php), 'the logo link sits in li.pg-brand-item');
+}
+
+function test_panel_header_nothing_over_the_logo()
+{
+	$php = file_get_contents(dirname(__DIR__) . '/pinegrap/includes/fn/output.php');
+	$css = file_get_contents(dirname(__DIR__) . '/pinegrap/assets/css/backend.src.css');
+
+	pg_assert_false(strpos($php, 'pinegrap-version') !== false, 'no version pill in the header');
+	pg_assert_false(strpos($css, '.pinegrap-version') !== false, 'no rule left for it');
 }

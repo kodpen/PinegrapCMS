@@ -3337,6 +3337,7 @@
     "Store credit card #{var:1} of user #{var:2} was voided through the API by the application {var:3}: {var:4}": "{var:3} uygulaması API üzerinden #{var:2} numaralı kullanıcının #{var:1} numaralı mağaza kredisi kartını iptal etti: {var:4}",
     "Store credit card #{var:1} of user #{var:2} was voided: {var:3}": "#{var:2} numaralı kullanıcının #{var:1} numaralı mağaza kredisi kartı geçersiz kılındı: {var:3}",
     "Store credit expired on {var:1} with {var:2} unused.": "Mağaza kredisinin süresi {var:1} tarihinde doldu; {var:2} kullanılmadan kaldı.",
+    "Store credit is not deleted: void it on the customer's Store credit card.": "Mağaza kredisi silinmez: müşterinin Mağaza kredisi kartından geçersiz kılın.",
     "Store credit is not installed yet: the database has to be updated first.": "Mağaza kredisi henüz kurulmadı: önce veritabanı güncellenmeli.",
     "Store credit of {var:1} was issued to user #{var:2} through the API by the application {var:3}: {var:4}": "{var:3} uygulaması API üzerinden #{var:2} numaralı kullanıcıya {var:1} mağaza kredisi verdi: {var:4}",
     "Store credit of {var:1} was issued to user #{var:2}: {var:3}": "#{var:2} numaralı kullanıcıya {var:1} tutarında mağaza kredisi verildi: {var:3}",

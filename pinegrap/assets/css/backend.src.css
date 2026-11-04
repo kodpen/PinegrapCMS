@@ -8586,7 +8586,7 @@ html[data-bs-theme="dark"] .pg-next {
      baseline and pushes the 50px navbar row around.
    - The mascot (a muted loop over its still poster) and the inline wordmark
      carry explicit sizes from one variable, so the box is known before they
-     paint (no CLS) and the version pill never jumps.
+     paint (no CLS).
    - The wordmark's view box keeps room above the letters as large as the
      descenders below, so centring it centres the letters on the mascot.
    - Below md the header shows the mascot alone: a narrow place gets the
@@ -8636,12 +8636,11 @@ html[data-bs-theme="dark"] .pg-next {
 }
 
 /* Below md the lockup no longer fits beside the menu button and the right
-   hand cluster: the mascot stays as the square logo, the wordmark, the
-   version pill and the page heading give way, so the controls keep the row.
-   From md up nothing changes. */
+   hand cluster: the mascot stays as the square logo, the wordmark and the
+   page heading give way, so the controls keep the row. From md up nothing
+   changes. */
 @media (max-width: 767.98px) {
   #header .pinegrap-logo-word,
-  #header .pinegrap-version,
   #header .pg-navhead {
     display: none;
   }
@@ -8658,13 +8657,6 @@ html[data-bs-theme="dark"] .pg-next {
   #header .pg-brand-item {
     display: none;
   }
-}
-
-.pinegrap-version {
-  font-size: 0.65em;
-    position: absolute;
-    bottom: -7px;
-    left: 22px;
 }
 
 /* ──────────────────────────────────────────────────────────────────────
